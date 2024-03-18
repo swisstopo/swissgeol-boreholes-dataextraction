@@ -138,9 +138,7 @@ def process_page(page: fitz.Page, ground_truth_for_file: GroundTruthForFile, tmp
                 color=fitz.utils.getColor("red"),
             )
             description_lines = get_description_lines(lines, material_description_rect)
-            description_blocks = get_description_blocks(
-                description_lines, geometric_lines, params["block_line_ratio"], params["left_line_length_threshold"]
-            )
+            description_blocks = get_description_blocks(description_lines, geometric_lines, params["block_line_ratio"])
             for index, block in enumerate(description_blocks):
                 correct = ground_truth_for_file.is_correct(block.text)
                 draw_layer(
