@@ -5,7 +5,6 @@ import abc
 import fitz
 
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
-from stratigraphy.util.find_description import get_description_blocks
 from stratigraphy.util.line import TextLine
 from stratigraphy.util.textblock import TextBlock
 
