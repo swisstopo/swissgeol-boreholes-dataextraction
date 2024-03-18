@@ -1,0 +1,340 @@
+from __future__ import annotations
+
+import abc
+
+import fitz
+import numpy as np
+
+from stratigraphy.util.dataclasses import Line
+from stratigraphy.util.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
+from stratigraphy.util.find_description import get_description_blocks
+from stratigraphy.util.interval import BoundaryInterval, Interval, LayerInterval
+from stratigraphy.util.line import TextLine
+
+
+class DepthColumn(metaclass=abc.ABCMeta):
+    def __init__(self):
+        pass
+
+    @abc.abstractmethod
+    def depth_intervals(self) -> list[Interval]:
+        pass
+
+    @abc.abstractmethod
+    def rects(self) -> list[fitz.Rect]:
+        pass
+
+    """Used for scoring how well a depth column corresponds to a material description bbox."""
+
+    def rect(self) -> fitz.Rect:
+        x0 = min([rect.x0 for rect in self.rects()])
+        x1 = max([rect.x1 for rect in self.rects()])
+        y0 = min([rect.y0 for rect in self.rects()])
+        y1 = max([rect.y1 for rect in self.rects()])
+        return fitz.Rect(x0, y0, x1, y1)
+
+    @property
+    def max_x0(self) -> float:
+        return max([rect.x0 for rect in self.rects()])
+
+    @property
+    def min_x1(self) -> float:
+        return min([rect.x1 for rect in self.rects()])
+
+    @abc.abstractmethod
+    def noise_count(self, all_words: list[TextLine]) -> int:
+        pass
+
+    @abc.abstractmethod
+    def identify_groups(self, description_lines: list[TextLine], geometric_lines: list[Line]) -> list[dict]:
+        pass
+
+
+class LayerDepthColumn(DepthColumn):
+    """
+    Represents a depth column where the upper and lower depths of each layer are explicitly specified, e.g.:
+      0 - 0.1m: xxx
+      0.1 - 0.3m: yyy
+      0.3 - 0.8m: zzz
+      ...
+    """
+
+    entries: list[LayerDepthColumnEntry]
+
+    def __init__(self, entries=None):
+        super().__init__()
+
+        if entries is not None:
+            self.entries = entries
+        else:
+            self.entries = []
+
+    def __repr__(self):
+        return "LayerDepthColumn({})".format(", ".join([str(entry) for entry in self.entries]))
+
+    def add_entry(self, entry: LayerDepthColumnEntry) -> LayerDepthColumn:
+        self.entries.append(entry)
+        return self
+
+    def depth_intervals(self) -> list[Interval]:
+        return [LayerInterval(entry) for entry in self.entries]
+
+    def rects(self) -> list[fitz.Rect]:
+        return [entry.rect for entry in self.entries]
+
+    def noise_count(self, all_words: list[TextLine]) -> int:
+        # currently, we don't count noise for layer columns
+        return 0
+
+    def break_on_mismatch(self) -> list[LayerDepthColumn]:
+        segments = []
+        segment_start = 0
+        for index, current_entry in enumerate(self.entries):
+            if index >= 1 and current_entry.start.value < self.entries[index - 1].end.value:
+                # (_, big) || (small, _)
+                segments.append(self.entries[segment_start:index])
+                segment_start = index
+
+        final_segment = self.entries[segment_start:]
+        if len(final_segment):
+            segments.append(final_segment)
+
+        return [LayerDepthColumn(segment) for segment in segments]
+
+    def is_valid(self) -> bool:
+        if len(self.entries) <= 2:
+            return False
+
+        # At least half of the "end" values must match the subsequent "start" value (e.g. 2-5m, 5-9m).
+        sequence_matches_count = 0
+        for index, entry in enumerate(self.entries):
+            if index >= 1 and self.entries[index - 1].end.value == entry.start.value:
+                sequence_matches_count += 1
+
+        return sequence_matches_count / (len(self.entries) - 1) > 0.5
+
+    def identify_groups(self, description_lines: list[TextLine], geometric_lines: list[Line], **params) -> list[dict]:
+        depth_intervals = self.depth_intervals()
+
+        groups = []
+        line_index = 0
+
+        for interval_index, interval in enumerate(depth_intervals):
+            # don't allow a layer above depth 0
+            if interval.start is None and interval.end.value == 0:
+                continue
+
+            if interval_index + 1 < len(depth_intervals):
+                next_interval = depth_intervals[interval_index + 1]
+            else:
+                next_interval = None
+            matched_blocks = interval.matching_blocks(description_lines, line_index, next_interval)
+            line_index += sum([len(block.lines) for block in matched_blocks])
+            groups.append({"depth_intervals": [interval], "blocks": matched_blocks})
+
+        return groups
+
+
+class BoundaryDepthColumn(DepthColumn):
+    """
+    Represents a depth column where the depths of the boundaries between layers are labels, at a vertical position on
+    the page that is proportional to the depth, e.g.
+      0m
+
+      0.2m
+
+
+      0.5m
+      ...
+    """
+
+    entries: list[DepthColumnEntry]
+
+    def __init__(self, entries=None):
+        super().__init__()
+
+        if entries is not None:
+            self.entries = entries
+        else:
+            self.entries = []
+
+    def rects(self) -> list[fitz.Rect]:
+        return [entry.rect for entry in self.entries]
+
+    def __repr__(self):
+        return "DepthColumn({})".format(", ".join([str(entry) for entry in self.entries]))
+
+    def add_entry(self, entry: DepthColumnEntry) -> BoundaryDepthColumn:
+        self.entries.append(entry)
+        return self
+
+    """
+    Check if the middle of the new rect is between the outer horizontal boundaries of the column, and if there is an
+    intersection with the minimal horizontal boundaries of the column.
+    """
+
+    def can_be_appended(self, rect: fitz.Rect) -> bool:
+        new_middle = (rect.x0 + rect.x1) / 2
+        if self.rect().width < rect.width or self.rect().x0 < new_middle < self.rect().x1:
+            if rect.x0 <= self.min_x1 and self.max_x0 <= rect.x1:
+                return True
+        return False
+
+    def valid_initial_segment(self, rect: fitz.Rect) -> BoundaryDepthColumn:
+        for i in range(len(self.entries) - 1):
+            initial_segment = BoundaryDepthColumn(self.entries[: -i - 1])
+            if initial_segment.can_be_appended(rect):
+                return initial_segment
+        return BoundaryDepthColumn()
+
+    def strictly_contains(self, other: BoundaryDepthColumn):
+        return len(other.entries) < len(self.entries) and all(
+            other_entry in self.entries for other_entry in other.entries
+        )
+
+    def depth_intervals(self) -> list[BoundaryInterval]:
+        depth_intervals = [BoundaryInterval(None, self.entries[0])]
+        for i in range(len(self.entries) - 1):
+            depth_intervals.append(BoundaryInterval(self.entries[i], self.entries[i + 1]))
+        depth_intervals.append(BoundaryInterval(self.entries[len(self.entries) - 1], None))
+        return depth_intervals
+
+    def significant_arithmetic_progression(self) -> bool:
+        if len(self.entries) < 6:
+            return self.is_arithmetic_progression()
+        else:
+            # to allow for OCR errors or gaps in the progression, we only require a segment of length 6 that is an
+            # arithmetic progression
+            for i in range(len(self.entries) - 6 + 1):
+                if BoundaryDepthColumn(self.entries[i : i + 6]).is_arithmetic_progression():
+                    return True
+            return False
+
+    def is_arithmetic_progression(self) -> bool:
+        if len(self.entries) <= 2:
+            return True
+
+        progression = np.array(range(len(self.entries)))
+        entries = np.array([entry.value for entry in self.entries])
+
+        # Avoid warnings in the np.corrcoef call, as the correlation coef is undefined if the standard deviation is 0.
+        if np.std(entries) == 0:
+            return False
+
+        scale_pearson_correlation_coef = np.corrcoef(entries, progression)[0, 1].item()
+        return abs(scale_pearson_correlation_coef) >= 0.999
+
+    def is_valid(self, all_words: list[TextLine]) -> bool:
+        if len(self.entries) < 3:
+            return False
+
+        # When too much other text is in the column, then it is probably not valid
+        # TODO: make this check more robust/intelligent
+        if self.noise_count(all_words) > 0.5 * len(self.entries) - 2:
+            return False
+
+        corr_coef = self.pearson_correlation_coef()
+        return corr_coef and corr_coef > 0.99
+
+    def noise_count(self, all_words: list[TextLine]) -> int:
+        def significant_intersection(other_rect):
+            intersection = fitz.Rect(other_rect).intersect(self.rect())
+            return intersection.is_valid and intersection.width > 0.25 * self.rect().width
+
+        return len([line for line in all_words if significant_intersection(line.rect)]) - len(self.entries)
+
+    def pearson_correlation_coef(self) -> float:
+        positions = np.array([entry.rect.y0 for entry in self.entries])
+        entries = np.array([entry.value for entry in self.entries])
+
+        # Avoid warnings in the np.corrcoef call, as the correlation coef is undefined if the standard deviation is 0.
+        if np.std(entries) == 0 or np.std(positions) == 0:
+            return 0
+
+        return np.corrcoef(positions, entries)[0, 1].item()
+
+    def reduce_until_valid(self, all_words: list[TextLine]) -> BoundaryDepthColumn:
+        current = self
+        while current:
+            if current.is_valid(all_words):
+                return current
+            else:
+                current = current.remove_entry_by_correlation_gradient()
+
+    def remove_entry_by_correlation_gradient(self) -> BoundaryDepthColumn | None:
+        if len(self.entries) < 3:
+            return None
+
+        new_columns = [
+            BoundaryDepthColumn([entry for index, entry in enumerate(self.entries) if index != remove_index])
+            for remove_index in range(len(self.entries))
+        ]
+        return max(new_columns, key=lambda column: column.pearson_correlation_coef())
+
+    def break_on_double_descending(self) -> list[BoundaryDepthColumn]:
+        segments = []
+        segment_start = 0
+        for index, current_entry in enumerate(self.entries):
+            if (
+                index >= 2
+                and index + 1 < len(self.entries)
+                and current_entry.value < self.entries[index - 2].value
+                and current_entry.value < self.entries[index - 1].value
+                and self.entries[index + 1].value < self.entries[index - 2].value
+                and self.entries[index + 1].value < self.entries[index - 1].value
+            ):
+                # big big || small small
+                segments.append(self.entries[segment_start:index])
+                segment_start = index
+
+        final_segment = self.entries[segment_start:]
+        if len(final_segment):
+            segments.append(final_segment)
+
+        return [BoundaryDepthColumn(segment) for segment in segments]
+
+    def identify_groups(self, description_lines: list[TextLine], geometric_lines: list[Line], **params) -> list[dict]:
+        depth_intervals = self.depth_intervals()
+
+        groups = []
+
+        current_intervals = []
+        current_blocks = []
+        all_blocks = get_description_blocks(
+            description_lines,
+            geometric_lines,
+            params["block_line_ratio"],
+            left_line_length_threshold=params["left_line_length_threshold"],
+            target_layer_count=len(depth_intervals),
+        )
+
+        block_index = 0
+
+        for interval_index, interval in enumerate(depth_intervals):
+            # don't allow a layer above depth 0
+            if interval.start is None and interval.end.value == 0:
+                continue
+
+            pre, exact, post = interval.matching_blocks(all_blocks, block_index)
+            block_index += len(pre) + len(exact) + len(post)
+
+            current_blocks.extend(pre)
+            if len(exact):
+                if len(current_intervals) > 0 or len(current_blocks) > 0:
+                    groups.append({"depth_intervals": current_intervals, "blocks": current_blocks})
+
+                groups.append({"depth_intervals": [interval], "blocks": exact})
+                current_blocks = post
+                current_intervals = []
+            else:
+                # only add "unlimited" final layer, if the description is visually below the final depth label
+                if interval.end is not None or (
+                    len(current_blocks)
+                    and current_blocks[-1].rect.y1 > interval.start.rect.y1 + interval.start.rect.height / 2
+                ):
+                    current_intervals.append(interval)
+
+        if len(current_intervals) > 0 or len(current_blocks) > 0:
+            groups.append({"depth_intervals": current_intervals, "blocks": current_blocks})
+
+        return groups

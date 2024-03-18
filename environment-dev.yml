@@ -1,0 +1,27 @@
+name: boreholes-dev
+channels:
+  - conda-forge
+dependencies:
+# prod dependencies; needs to be a strict copy of environment-prod.yml
+  - python==3.10
+  - boto3
+  - pandas
+  - levenshtein
+  - pathlib==1.0.1
+  - opencv==4.9.0
+  - python-dotenv==1.0.1
+  - pip
+# dev dependencies
+  - matplotlib==3.8.0
+  - isort==5.13.2
+  - jupyterlab==4.1.3
+  - black==24.2.0
+  - pre-commit==3.6.2
+  - pip:
+# prod pip dependencies; needs to be a strict copy of environment-prod.yml
+      - amazon-textract-textractor
+      - backoff
+      - PyMuPDF==1.23.26
+      - -e .
+# dev pip dependencies
+      - mlflow==2.11.1

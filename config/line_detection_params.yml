@@ -1,0 +1,19 @@
+# All parameters used for the line detection pipeline
+lsd:
+  scale: 1
+  sigma_scale: 0.6
+  quant: 2.0
+  ang_th: 22.5
+  log_eps: 0.0
+  density_th: 0.7
+  n_bins: 1024
+
+pdf_scale_factor: 2
+
+vertical_lines_threshold: 0.6
+
+line_merging_params:
+  clustering_threshold: 0.08
+  merging_tolerance: 5
+  angle_threshold: 5  # maximum difference in degrees two line segments can have in order to be merged.
+  use_clustering: false  # No measureable performance improvement for "true"

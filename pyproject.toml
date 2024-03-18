@@ -1,0 +1,8 @@
+[project]
+name = "swisstopo-boreholes"
+version = "0.0.1-dev"
+description = "Python project to analyse borehole profiles."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+]

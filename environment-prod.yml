@@ -1,0 +1,17 @@
+name: boreholes-prod
+channels:
+  - conda-forge
+dependencies:
+  - python==3.10
+  - boto3
+  - pandas
+  - levenshtein
+  - pathlib==1.0.1
+  - opencv==4.9.0
+  - python-dotenv==1.0.1
+  - pip
+  - pip:
+      - amazon-textract-textractor
+      - backoff
+      - PyMuPDF==1.23.26
+      - -e .
