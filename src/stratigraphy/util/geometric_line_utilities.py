@@ -111,7 +111,7 @@ def merge_parallel_lines_approximately(
     return merged_lines
 
 
-def merge_parallel_lines_efficiently(lines: list[Line], tol: int = 8, angle_threshold: float = 0.1) -> list[Line]:
+def merge_parallel_lines_efficiently(lines: list[Line], tol: int = 8, angle_threshold: float = 2) -> list[Line]:
     """Merge parallel lines that are close to each other.
 
     This merging algorithm first sorts lines by their intercept and slope and then only compares neighbours. This
@@ -133,7 +133,7 @@ def merge_parallel_lines_efficiently(lines: list[Line], tol: int = 8, angle_thre
     Args:
         lines (list[Line]): The lines to merge.
         tol (int, optional): Tolerance to check if lines are close. Defaults to 8.
-        angle_threshold (float, optional): Acceptable difference between the slopes of two lines. Defaults to 0.1.
+        angle_threshold (float, optional): Acceptable difference between the slopes of two lines. Defaults to 2.
 
     Returns:
         list[Line]: The merged lines.

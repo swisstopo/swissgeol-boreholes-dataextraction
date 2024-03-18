@@ -1,2 +1,3 @@
 # TODO: Any thoughts on a better name?
-block_line_ratio: 0.13
+block_line_ratio: 0.19
+left_line_length_threshold: 7

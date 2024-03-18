@@ -301,7 +301,11 @@ class BoundaryDepthColumn(DepthColumn):
         current_intervals = []
         current_blocks = []
         all_blocks = get_description_blocks(
-            description_lines, geometric_lines, params["block_line_ratio"], target_layer_count=len(depth_intervals)
+            description_lines,
+            geometric_lines,
+            params["block_line_ratio"],
+            left_line_length_threshold=params["left_line_length_threshold"],
+            target_layer_count=len(depth_intervals),
         )
 
         block_index = 0
