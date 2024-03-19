@@ -1,3 +1,5 @@
+from typing import Callable
+
 import fitz
 import numpy as np
 
@@ -48,30 +50,30 @@ def get_description_blocks(
     if len(distances):
         threshold = min(distances) * 1.15
 
-    blocks = []
-    current_block_lines = []
-    for line in description_lines:
-        if len(current_block_lines) > 0:
-            last_line = current_block_lines[-1]
-            if _block_separated_by_line(
-                last_line, line, TextBlock(current_block_lines), geometric_lines, threshold=block_line_ratio
-            ):
-                blocks.append(TextBlock(current_block_lines, is_terminated_by_line=True))
-                current_block_lines = []
-            elif _block_separated_by_lefthandside_line_segment(
-                last_line,
-                line,
-                TextBlock(current_block_lines),
+    # Create blocks separated by lines
+    blocks = _create_blocks_by_separator(
+        description_lines,
+        geometric_lines,
+        _block_separated_by_line,
+        {"threshold": block_line_ratio},
+        set_terminated_by_line_flag=True,
+    )
+
+    # Create blocks separated by lefthandside line segments
+    _blocks = []
+    for block in blocks:
+        _blocks.extend(
+            _create_blocks_by_separator(
+                block.lines,
                 geometric_lines,
-                length_threshold=left_line_length_threshold,
-            ):
-                blocks.append(
-                    TextBlock(current_block_lines, is_terminated_by_line=False)
-                )  # we consider a splitting due to a lefthandside line segment as weak.
-                current_block_lines = []
-        current_block_lines.append(line)
-    if len(current_block_lines):
-        blocks.append(TextBlock(current_block_lines))
+                _block_separated_by_lefthandside_line_segment,
+                {"length_threshold": left_line_length_threshold},
+                set_terminated_by_line_flag=False,
+            )
+        )
+        if block.is_terminated_by_line:  # keep the line termination if it was there
+            _blocks[-1].is_terminated_by_line = True
+    blocks = _blocks
 
     if target_layer_count is None:
         # If we have only found one splitting line, then we fall back to considering vertical spacing, as it is more
@@ -100,6 +102,29 @@ def get_description_blocks(
         blocks = _blocks
     blocks = [new_block for block in blocks for new_block in block.split_based_on_indentation()]
 
+    return blocks
+
+
+def _create_blocks_by_separator(
+    description_lines: list[TextLine],
+    geometric_lines: list[Line],
+    separator_condition: Callable,
+    separator_params,
+    set_terminated_by_line_flag: bool,
+) -> list[TextBlock]:
+    blocks = []
+    current_block_lines = []
+    for line in description_lines:
+        if len(current_block_lines) > 0:
+            last_line = current_block_lines[-1]
+            if separator_condition(
+                last_line, line, TextBlock(current_block_lines), geometric_lines, **separator_params
+            ):
+                blocks.append(TextBlock(current_block_lines, is_terminated_by_line=set_terminated_by_line_flag))
+                current_block_lines = []
+        current_block_lines.append(line)
+    if len(current_block_lines):
+        blocks.append(TextBlock(current_block_lines))
     return blocks
 
 
