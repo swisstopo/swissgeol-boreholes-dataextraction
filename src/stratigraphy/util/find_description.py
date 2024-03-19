@@ -219,6 +219,13 @@ def _block_separated_by_lefthandside_line_segment(
         )  # for the block splitting, we only care about x-extension
 
         line_ends_block = last_line_y_coordinate < line_y_coordinate and line_y_coordinate < current_line_y_coordinate
-        if is_line_long_enough and line_ends_block and line_cuts_lefthandside_of_block:
+
+        alternative_condition = (
+            (line.start.x - 5 < block.rect.x0 and line.end.x > block.rect.x0)
+            and (np.abs(line.start.x - line.end.x) > length_threshold - 2)
+            and (len(block.lines) > 1)
+        )  # if block has at least three lines, we weaken the splitting condition.
+
+        if line_ends_block and ((is_line_long_enough and line_cuts_lefthandside_of_block) or alternative_condition):
             return True
     return False
