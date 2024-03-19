@@ -6,3 +6,9 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
 ]
+
+[tool.ruff]
+line-length = 119
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
