@@ -220,12 +220,14 @@ def _block_separated_by_lefthandside_line_segment(
 
         line_ends_block = last_line_y_coordinate < line_y_coordinate and line_y_coordinate < current_line_y_coordinate
 
-        alternative_condition = (
+        weak_condition = (
             (line.start.x - 5 < block.rect.x0 and line.end.x > block.rect.x0)
             and (np.abs(line.start.x - line.end.x) > length_threshold - 2)
             and (len(block.lines) > 1)
         )  # if block has at least three lines, we weaken the splitting condition.
+        # It is three lines because the statement means that block.lines has at least two elements.
+        # The third line is current_line
 
-        if line_ends_block and ((is_line_long_enough and line_cuts_lefthandside_of_block) or alternative_condition):
+        if line_ends_block and ((is_line_long_enough and line_cuts_lefthandside_of_block) or weak_condition):
             return True
     return False
