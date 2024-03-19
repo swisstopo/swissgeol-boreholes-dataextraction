@@ -1,3 +1,5 @@
+"""This module contains dataclasses for (depth) intervals."""
+
 from __future__ import annotations
 
 import abc
@@ -10,6 +12,8 @@ from stratigraphy.util.textblock import TextBlock
 
 
 class Interval(metaclass=abc.ABCMeta):
+    """Abstract class for (depth) intervals."""
+
     def __init__(self, start: DepthColumnEntry | None, end: DepthColumnEntry | None):
         super().__init__()
         self.start = start
@@ -41,6 +45,11 @@ class Interval(metaclass=abc.ABCMeta):
 
 
 class BoundaryInterval(Interval):
+    """Class for boundary intervals.
+
+    TODO: Write description. It is not entirely clear to me (@redur) what this class does.
+    """
+
     def __init__(self, start: DepthColumnEntry | None, end: DepthColumnEntry | None):
         super().__init__(start, end)
 
@@ -111,6 +120,11 @@ class BoundaryInterval(Interval):
 
 
 class LayerInterval(Interval):
+    """Class for layer intervals.
+
+    TODO: Write description. It is not entirely clear to me (@redur) what this class does.
+    """
+
     def __init__(self, layer_depth_column_entry: LayerDepthColumnEntry):
         self.entry = layer_depth_column_entry
         super().__init__(layer_depth_column_entry.start, layer_depth_column_entry.end)

@@ -1,3 +1,5 @@
+"""This module contains functionalities to draw on pdf pages."""
+
 import fitz
 
 from stratigraphy.util.interval import Interval
@@ -6,7 +8,21 @@ from stratigraphy.util.textblock import TextBlock
 colors = ["purple", "blue"]
 
 
-def draw_layer(page, interval: Interval | None, block: TextBlock, index: int, is_correct: bool | None):
+def draw_layer(
+    page: fitz.Page, interval: Interval | None, block: TextBlock, index: int, is_correct: bool | None
+) -> None:
+    """Draw layers on a pdf page.
+
+    Args:
+        page (fitz.Page): The page to draw on.
+        interval (Interval | None): The depth interval for the layer.
+        block (TextBlock): The text block for the layer.
+        index (int): The index of the layer.
+        is_correct (bool | None): Whether the text block and depth interval were correctly identified.
+
+    Returns:
+        None
+    """
     if len(block.lines):
         block_rect = block.rect
         color = colors[index % len(colors)]

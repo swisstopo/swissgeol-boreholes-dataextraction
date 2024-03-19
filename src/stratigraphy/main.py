@@ -1,9 +1,10 @@
+"""This module contains the main pipeline for the stratigraphy matching."""
+
 import json
 import logging
 import math
 import os
 from pathlib import Path
-from typing import Dict, List, Union
 
 import fitz
 from dotenv import load_dotenv
@@ -33,14 +34,29 @@ logger.setLevel(logging.INFO)
 matching_params = read_params("matching_params.yml")
 
 
-def process_page(page: fitz.Page, ground_truth_for_file: GroundTruthForFile, tmp_file_path: str, **params):
+def process_page(
+    page: fitz.Page, ground_truth_for_file: GroundTruthForFile, tmp_file_path: str, **params
+) -> list[dict]:
+    """Process a single page of a pdf.
+
+    Finds all descriptions and depth intervals on the page and matches them.
+
+    Args:
+        page (fitz.Page): The page to process.
+        ground_truth_for_file (GroundTruthForFile): The ground truth, used to create plots.
+        tmp_file_path (str): The path to save the temporary file.
+        **params: Additional parameters for the matching pipeline.
+
+    Returns:
+        list[dict]: All list of the text of all description blocks.
+    """
     words = []
     words_by_line = {}
-    for x0, y0, x1, y1, word, block_no, line_no, word_no in fitz.utils.get_text(page, "words"):
+    for x0, y0, x1, y1, word, block_no, line_no, _word_no in fitz.utils.get_text(page, "words"):
         rect = fitz.Rect(x0, y0, x1, y1) * page.rotation_matrix
         depth_interval = DepthInterval(rect, word)
         words.append(TextLine([depth_interval]))
-        key = "{}_{}".format(block_no, line_no)
+        key = f"{block_no}_{line_no}"
         if key not in words_by_line:
             words_by_line[key] = []
         words_by_line[key].append(depth_interval)
@@ -94,8 +110,8 @@ def process_page(page: fitz.Page, ground_truth_for_file: GroundTruthForFile, tmp
     pairs.sort(key=lambda pair: score_column_match(pair[0], pair[1], words))
 
     to_delete = []
-    for i, (depth_column, material_description_rect) in enumerate(pairs):
-        for depth_column_2, material_description_rect_2 in pairs[i + 1 :]:
+    for i, (_depth_column, material_description_rect) in enumerate(pairs):
+        for _depth_column_2, material_description_rect_2 in pairs[i + 1 :]:
             if material_description_rect.intersects(material_description_rect_2):
                 to_delete.append(i)
                 continue
@@ -178,7 +194,18 @@ def score_column_match(
     material_description_rect: fitz.Rect,
     all_words: list[TextLine] | None = None,
     **params,
-):
+) -> float:
+    """Scores the match between a depth column and a material description.
+
+    Args:
+        depth_column (DepthColumn): The depth column.
+        material_description_rect (fitz.Rect): The material description rectangle.
+        all_words (list[TextLine] | None, optional): List of the available textlines. Defaults to None.
+        **params: Additional parameters for the matching pipeline. Kept here for compatibility with the pipeline.
+
+    Returns:
+        float: The score of the match.
+    """
     rect = depth_column.rect()
     top = rect.y0
     bottom = rect.y1
@@ -191,10 +218,7 @@ def score_column_match(
 
     height = bottom - top
 
-    if all_words:
-        noise_count = depth_column.noise_count(all_words)
-    else:
-        noise_count = 0
+    noise_count = depth_column.noise_count(all_words) if all_words else 0
 
     return (height - distance) * math.pow(0.8, noise_count)
 
@@ -204,7 +228,22 @@ def match_columns(
     description_lines: list[TextLine],
     geometric_lines: list[Line],
     **params,
-):
+) -> list:
+    """Match the depth column with the description lines.
+
+    As part of the matching, the number of text blocks is adjusted to match the number of depth intervals.
+
+    TODO: Check if docstring is correct.
+
+    Args:
+        depth_column (DepthColumn): The depth column.
+        description_lines (list[TextLine]): The description lines.
+        geometric_lines (list[Line]): The geometric lines.
+        **params: Additional parameters for the matching pipeline.
+
+    Returns:
+        list: The matched depth intervals and text blocks.
+    """
     return [
         element
         for group in depth_column.identify_groups(description_lines, geometric_lines, **params)
@@ -213,10 +252,9 @@ def match_columns(
 
 
 def transform_groups(
-    depth_intervals: List[Interval], blocks: List[TextBlock], **params
-) -> List[Dict[str, Union[Interval, TextBlock]]]:
-    """
-    Transforms the text blocks such that their number equals the number of depth intervals.
+    depth_intervals: list[Interval], blocks: list[TextBlock], **params
+) -> list[dict[str, Interval | TextBlock]]:
+    """Transforms the text blocks such that their number equals the number of depth intervals.
 
     If there are more depth intervals than text blocks, text blocks are splitted. When there
     are more text blocks than depth intervals, text blocks are merged. If the number of text blocks
@@ -246,11 +284,11 @@ def transform_groups(
 
         return [
             {"depth_interval": depth_interval, "block": block}
-            for depth_interval, block in zip(depth_intervals, blocks)
+            for depth_interval, block in zip(depth_intervals, blocks, strict=False)
         ]
 
 
-def merge_blocks_by_vertical_spacing(blocks: List[TextBlock], target_merge_count: int) -> List[TextBlock]:
+def merge_blocks_by_vertical_spacing(blocks: list[TextBlock], target_merge_count: int) -> list[TextBlock]:
     """Merge textblocks without any geometric lines that separates them.
 
     The logic looks at the distances between the textblocks and merges them if they are closer
@@ -288,7 +326,7 @@ def merge_blocks_by_vertical_spacing(blocks: List[TextBlock], target_merge_count
     return merged_blocks
 
 
-def split_blocks_by_textline_length(blocks: List[TextBlock], target_split_count: int) -> List[TextBlock]:
+def split_blocks_by_textline_length(blocks: list[TextBlock], target_split_count: int) -> list[TextBlock]:
     """Split textblocks without any geometric lines that separates them.
 
     The logic looks at the lengths of the text lines and cuts them off
@@ -328,21 +366,34 @@ def split_blocks_by_textline_length(blocks: List[TextBlock], target_split_count:
         return split_blocks
 
 
-def find_material_description_column(lines, depth_column, **params):
+def find_material_description_column(
+    lines: list[TextLine], depth_column: DepthColumn, **params: dict
+) -> fitz.Rect | None:
+    """Find the material description column given a depth column.
+
+    Args:
+        lines (list[TextLine]): The text lines of the page.
+        depth_column (DepthColumn): The depth column.
+        **params: Additional parameters for the matching pipeline.
+
+    Returns:
+        fitz.Rect | None: The material description column.
+    """
     if depth_column:
         above_depth_column = [
             line
             for line in lines
             if x_overlap(line.rect, depth_column.rect()) and line.rect.y0 < depth_column.rect().y0
         ]
-        if len(above_depth_column):
-            min_y0 = max(line.rect.y0 for line in above_depth_column)
-        else:
-            min_y0 = -1
 
-        check_y0_condition = lambda y0: y0 > min_y0 and y0 < depth_column.rect().y1
+        min_y0 = max(line.rect.y0 for line in above_depth_column) if len(above_depth_column) else -1
+
+        def check_y0_condition(y0):
+            return y0 > min_y0 and y0 < depth_column.rect().y1
     else:
-        check_y0_condition = lambda y0: True
+
+        def check_y0_condition(y0):
+            return True
 
     candidate_description = [line for line in lines if check_y0_condition(line.rect.y0)]
     is_description = [line for line in candidate_description if line.is_description]
@@ -404,7 +455,7 @@ def find_material_description_column(lines, depth_column, **params):
                 (
                     line.rect.x0 > best_x0 - 5
                 )  # How did we determine the 5? Should it be a parameter? What would it do if we were to change it?
-                and (line.rect.x0 < (best_x0 + best_x1) / 2)
+                and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa B023
                 and (
                     line.rect.y0 < best_y1 + 10
                 )  # How did we determine the 10? Should it be a parameter? What would it do if we were to change it?
@@ -424,7 +475,7 @@ def find_material_description_column(lines, depth_column, **params):
         candidate_rects.append(fitz.Rect(best_x0, best_y0, best_x1, best_y1))
 
     if len(candidate_rects) == 0:
-        return
+        return None
     if depth_column:
         return max(candidate_rects, key=lambda rect: score_column_match(depth_column, rect))
     else:
@@ -461,7 +512,7 @@ def perform_matching(directory: Path, ground_truth: GroundTruth, **params) -> No
                         tmp_file_path = os.path.join(
                             root,
                             "extract",
-                            "{}_page{}.png".format(filename, page_number),
+                            f"{filename}_page{page_number}.png",
                         )
                         predictions.extend(process_page(page, ground_truth_for_file, tmp_file_path, **params))
                     output[filename] = {"layers": predictions}

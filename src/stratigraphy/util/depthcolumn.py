@@ -1,3 +1,5 @@
+"""This module contains the DepthColumn class, which is used to represent a depth column in a pdf page."""
+
 from __future__ import annotations
 
 import abc
@@ -13,7 +15,10 @@ from stratigraphy.util.line import TextLine
 
 
 class DepthColumn(metaclass=abc.ABCMeta):
-    def __init__(self):
+    """Abstract DepthColumn class."""
+
+    @abc.abstractmethod
+    def __init__(self):  # noqa: D107
         pass
 
     @abc.abstractmethod
@@ -51,12 +56,13 @@ class DepthColumn(metaclass=abc.ABCMeta):
 
 
 class LayerDepthColumn(DepthColumn):
-    """
-    Represents a depth column where the upper and lower depths of each layer are explicitly specified, e.g.:
-      0 - 0.1m: xxx
-      0.1 - 0.3m: yyy
-      0.3 - 0.8m: zzz
-      ...
+    """Represents a depth column where the upper and lower depths of each layer are explicitly specified.
+
+    Example::
+        0 - 0.1m: xxx
+        0.1 - 0.3m: yyy
+        0.3 - 0.8m: zzz
+        ...
     """
 
     entries: list[LayerDepthColumnEntry]
@@ -124,10 +130,8 @@ class LayerDepthColumn(DepthColumn):
             if interval.start is None and interval.end.value == 0:
                 continue
 
-            if interval_index + 1 < len(depth_intervals):
-                next_interval = depth_intervals[interval_index + 1]
-            else:
-                next_interval = None
+            next_interval = depth_intervals[interval_index + 1] if interval_index + 1 < len(depth_intervals) else None
+
             matched_blocks = interval.matching_blocks(description_lines, line_index, next_interval)
             line_index += sum([len(block.lines) for block in matched_blocks])
             groups.append({"depth_intervals": [interval], "blocks": matched_blocks})
@@ -136,16 +140,19 @@ class LayerDepthColumn(DepthColumn):
 
 
 class BoundaryDepthColumn(DepthColumn):
-    """
-    Represents a depth column where the depths of the boundaries between layers are labels, at a vertical position on
-    the page that is proportional to the depth, e.g.
-      0m
+    """Represents a depth column.
 
-      0.2m
+    The depths of the boundaries between layers are labels, at a vertical position on
+    the page that is proportional to the depth.
+
+    Example:
+        0m
+
+        0.2m
 
 
-      0.5m
-      ...
+        0.5m
+        ...
     """
 
     entries: list[DepthColumnEntry]
@@ -175,9 +182,10 @@ class BoundaryDepthColumn(DepthColumn):
 
     def can_be_appended(self, rect: fitz.Rect) -> bool:
         new_middle = (rect.x0 + rect.x1) / 2
-        if self.rect().width < rect.width or self.rect().x0 < new_middle < self.rect().x1:
-            if rect.x0 <= self.min_x1 and self.max_x0 <= rect.x1:
-                return True
+        if (self.rect().width < rect.width or self.rect().x0 < new_middle < self.rect().x1) and (
+            rect.x0 <= self.min_x1 and self.max_x0 <= rect.x1
+        ):
+            return True
         return False
 
     def valid_initial_segment(self, rect: fitz.Rect) -> BoundaryDepthColumn:
@@ -310,7 +318,7 @@ class BoundaryDepthColumn(DepthColumn):
 
         block_index = 0
 
-        for interval_index, interval in enumerate(depth_intervals):
+        for interval in depth_intervals:
             # don't allow a layer above depth 0
             if interval.start is None and interval.end.value == 0:
                 continue

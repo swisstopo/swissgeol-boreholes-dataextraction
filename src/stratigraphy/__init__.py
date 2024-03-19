@@ -1,7 +1,7 @@
-"""Contains package wide constants such as paths"""
+"""Contains package wide constants such as paths."""
 
-from pathlib import Path
 import os
+from pathlib import Path
 
 PROJECT_ROOT = Path(os.path.abspath(__file__)).parent.parent.parent
 PKG_ROOT = Path(os.path.abspath(__file__)).parent

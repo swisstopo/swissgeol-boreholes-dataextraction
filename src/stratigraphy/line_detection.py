@@ -1,8 +1,6 @@
-""" Temporary script for line detection"""
+"""Script for line detection in pdf pages."""
 
 import os
-from collections import deque
-from typing import Dict
 
 import cv2
 import fitz
@@ -18,7 +16,6 @@ from stratigraphy.util.geometric_line_utilities import (
     merge_parallel_lines_efficiently,
 )
 from stratigraphy.util.plot_utils import plot_lines
-from stratigraphy.util.textblock import TextBlock
 from stratigraphy.util.util import flatten, line_from_array, read_params
 
 load_dotenv()
@@ -29,7 +26,7 @@ mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlo
 line_detection_params = read_params("line_detection_params.yml")
 
 
-def detect_lines_lsd(page: fitz.Page, scale_factor=2, lsd_params={}) -> ArrayLike:
+def detect_lines_lsd(page: fitz.Page, scale_factor=2, lsd_params=None) -> ArrayLike:
     """Given a file path, detect lines in the pdf using the Line Segment Detector (LSD) algorithm.
 
     Publication of the algorithm can be found here: http://www.ipol.im/pub/art/2012/gjmr-lsd/article.pdf
@@ -40,6 +37,7 @@ def detect_lines_lsd(page: fitz.Page, scale_factor=2, lsd_params={}) -> ArrayLik
     Args:
         page (fitz.Page): The page to detect lines in.
         scale_factor (float, optional): The scale factor to scale the pdf page. Defaults to 2.
+        lsd_params (dict, optional): The parameters for the Line Segment Detector. Defaults to None.
 
     Returns:
         list[Line]: The lines detected in the pdf.
@@ -58,7 +56,16 @@ def detect_lines_lsd(page: fitz.Page, scale_factor=2, lsd_params={}) -> ArrayLik
     return [line_from_array(line, scale_factor) for line in lines]
 
 
-def extract_lines(page: fitz.Page, line_detection_params: Dict) -> list[Line]:
+def extract_lines(page: fitz.Page, line_detection_params: dict) -> list[Line]:
+    """Extract lines from a pdf page.
+
+    Args:
+        page (fitz.Page): The page to extract lines from.
+        line_detection_params (dict): The parameters for the line detection algorithm.
+
+    Returns:
+        list[Line]: The detected lines as a list.
+    """
     lines = detect_lines_lsd(
         page,
         lsd_params=line_detection_params["lsd"],

@@ -1,14 +1,9 @@
-""" Contains utility functions for plotting stratigraphic data."""
-
-from pathlib import Path
-from typing import List, Union
+"""Contains utility functions for plotting stratigraphic data."""
 
 import cv2
 import fitz
 import numpy as np
-from numpy.typing import ArrayLike
 
-from stratigraphy import DATAPATH
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.textblock import TextBlock
 
@@ -39,7 +34,7 @@ def _convert_page_to_opencv_img(page, scale_factor):
     return open_cv_img
 
 
-def plot_lines(page: fitz.Page, lines: List[Line], scale_factor: float = 2) -> cv2.COLOR_RGB2BGR:
+def plot_lines(page: fitz.Page, lines: list[Line], scale_factor: float = 2) -> cv2.COLOR_RGB2BGR:
     """Given a page object and the lines detected in the page, plot the page with the detected lines.
 
     Args:
@@ -47,7 +42,6 @@ def plot_lines(page: fitz.Page, lines: List[Line], scale_factor: float = 2) -> c
         lines (ArrayLike): The lines detected in the pdf.
         scale_factor (float, optional): The scale factor to apply to the pdf. Defaults to 2.
     """
-
     open_cv_img = _convert_page_to_opencv_img(page, scale_factor=scale_factor)
 
     open_cv_img = _draw_lines(open_cv_img, lines, scale_factor=scale_factor)
@@ -55,7 +49,7 @@ def plot_lines(page: fitz.Page, lines: List[Line], scale_factor: float = 2) -> c
     return open_cv_img
 
 
-def draw_blocks_and_lines(page: fitz.Page, blocks: List[TextBlock], lines: List[Line] = None):
+def draw_blocks_and_lines(page: fitz.Page, blocks: list[TextBlock], lines: list[Line] = None):
     """Draw the blocks and lines on the page.
 
     Args:

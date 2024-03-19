@@ -1,4 +1,4 @@
-""" This module contains utility functions to work with geometric lines. """
+"""This module contains utility functions to work with geometric lines."""
 
 from collections import deque
 from math import atan, pi
@@ -44,7 +44,6 @@ def is_point_on_line(line: Line, point: Point, tol=10) -> ArrayLike:
     Returns:
         ArrayLike: True if the point is on the line, False otherwise.
     """
-
     x_start = np.min([line.start.x, line.end.x])
     x_end = np.max([line.start.x, line.end.x])
     y_start = np.min([line.start.y, line.end.y])

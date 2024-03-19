@@ -1,3 +1,5 @@
+"""This module contains the TextBlock class, which represents a block of text in a PDF document."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,6 +12,8 @@ from stratigraphy.util.line import TextLine
 
 @dataclass
 class TextBlock:
+    """Class to represent a block of text in a PDF document."""
+
     lines: list[TextLine]
     is_terminated_by_line: bool = False
 
@@ -49,7 +53,8 @@ class TextBlock:
         # don't do anything if the first line already indented (e.g. centered text)
         if first_line_start > indentation_low:
             return [self]
-        # don't do anything if we don't have any lines at a reasonable indentation (2%-20% of max width from leftmost edge)
+        # don't do anything if we don't have any lines at a reasonable indentation
+        # (2%-20% of max width from leftmost edge)
         if all(line.rect.x0 < indentation_low or line.rect.x0 > indentation_high for line in self.lines):
             return [self]
 

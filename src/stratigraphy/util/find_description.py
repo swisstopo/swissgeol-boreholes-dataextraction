@@ -1,4 +1,6 @@
-from typing import Callable
+"""This module contains functions to find the description (blocks) of a material in a pdf page."""
+
+from collections.abc import Callable
 
 import fitz
 import numpy as np
@@ -9,6 +11,17 @@ from stratigraphy.util.textblock import TextBlock
 
 
 def get_description_lines(lines: list[TextLine], material_description_rect: fitz.Rect) -> list[TextLine]:
+    """Get the description lines of a material.
+
+    Checks if the lines are within the material description rectangle and if they are not too far to the right.
+
+    Args:
+        lines (list[TextLine]): The lines to filter.
+        material_description_rect (fitz.Rect): The rectangle containing the material description.
+
+    Returns:
+        list[TextLine]: The filtered lines.
+    """
     filtered_lines = [
         line
         for line in lines
@@ -26,14 +39,17 @@ def get_description_blocks(
     left_line_length_threshold: float,
     target_layer_count: int = None,
 ) -> list[TextBlock]:
-    """Group the description lines into blocks based on the presence of geometric lines, the indentation of lines
+    """Group the description lines into blocks.
+
+    The grouping is done based on the presence of geometric lines, the indentation of lines
     and the vertical spacing between lines.
 
     Args:
         description_lines (list[TextLine]): The text lines to group into blocks.
         geometric_lines (list[Line]): The geometric lines detected in the pdf page.
         block_line_ratio (float): The relative part a line has to cross a block in order to induce a splitting.
-        left_line_length_threshold (float): The minimum length of a line segment on the left side of a block to split it.
+        left_line_length_threshold (float): The minimum length of a line segment on the left side
+                                            of a block to split it.
         target_layer_count (int, optional): Expected number of blocks. Defaults to None.
 
     Returns:
@@ -75,15 +91,12 @@ def get_description_blocks(
             _blocks[-1].is_terminated_by_line = True
     blocks = _blocks
 
-    if target_layer_count is None:
-        # If we have only found one splitting line, then we fall back to considering vertical spacing, as it is more
-        # likely that this line is a false positive, than that we have a borehole profile with only two layers.
-        min_block_count = 3
-    else:
-        # If the number of blocks is less than 2/3 of the expected number of layers (based on the information from the
-        # depth column, then the splitting based on horizontal lines is not reliable, and we fall back to considering
-        # vertical spacing between text.
-        min_block_count = 2 / 3 * target_layer_count
+    min_block_count = 3 if target_layer_count is None else 2 / 3 * target_layer_count
+    # If we have only found one splitting line, then we fall back to considering vertical spacing, as it is more
+    # likely that this line is a false positive, than that we have a borehole profile with only two layers.
+    # If the number of blocks is less than 2/3 of the expected number of layers (based on the information from the
+    # depth column, then the splitting based on horizontal lines is not reliable, and we fall back to considering
+    # vertical spacing between text.
 
     count_blocks_divided_by_line = len([block for block in blocks if block.is_terminated_by_line])
     if len(blocks) < min_block_count:

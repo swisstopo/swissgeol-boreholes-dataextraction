@@ -1,10 +1,10 @@
+"""Evaluate the predictions against the ground truth."""
+
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Tuple
 
 import pandas as pd
-
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.ground_truth import GroundTruth
 
@@ -12,6 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 def f1(precision: float, recall: float) -> float:
+    """Calculate the F1 score.
+
+    Args:
+        precision (float): Precision.
+        recall (float): Recall.
+
+    Returns:
+        float: The F1 score.
+    """
     if precision + recall > 0:
         return 2 * precision * recall / (precision + recall)
     else:
@@ -29,10 +38,11 @@ def evaluate_matching(predictions_path: Path, ground_truth_path: Path) -> tuple[
         ground_truth_path (Path): Path to the ground truth annotated data.
 
     Returns:
-        tuple[dict, pd.DataFrame]: A tuple containing the overall F1, precision and recall as a dictionary and the individual document metrics as a DataFrame.
+        tuple[dict, pd.DataFrame]: A tuple containing the overall F1, precision and recall as a dictionary and the
+        individual document metrics as a DataFrame.
     """
     ground_truth = GroundTruth(ground_truth_path)
-    with open(predictions_path, "r") as in_file:
+    with open(predictions_path) as in_file:
         predictions = json.load(in_file)
 
     document_level_metrics = {
@@ -77,7 +87,8 @@ def evaluate_matching(predictions_path: Path, ground_truth_path: Path) -> tuple[
         overall_recall = sum(document_level_metrics["recall"]) / len(document_level_metrics["recall"])
         logging.info("Macro avg:")
         logging.info(
-            f"F1: {f1(overall_precision, overall_recall):.1%}, precision: {overall_precision:.1%}, recall: {overall_recall:.1%}"
+            f"F1: {f1(overall_precision, overall_recall):.1%},"
+            "precision: {overall_precision:.1%}, recall: {overall_recall:.1%}"
         )
 
     worst_count = 5

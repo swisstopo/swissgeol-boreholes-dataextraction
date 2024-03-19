@@ -1,10 +1,20 @@
+"""Ground truth data classes for the stratigraphy benchmark."""
+
 import json
-import Levenshtein
 import re
+
+import Levenshtein
 
 
 class GroundTruthForFile:
+    """Ground truth data for a single file."""
+
     def __init__(self, descriptions: list[str]):
+        """Ground truth data for a single file.
+
+        Args:
+            descriptions (list[str]): List of ground truth descriptions for the file.
+        """
         self.descriptions = descriptions
         self.unmatched_descriptions = descriptions.copy()
 
@@ -21,22 +31,30 @@ class GroundTruthForFile:
 
 
 class GroundTruth:
-    not_alphanum = re.compile(r'[^\w\d]', re.U)
+    """Ground truth data for the stratigraphy benchmark."""
+
+    not_alphanum = re.compile(r"[^\w\d]", re.U)
 
     def __init__(self, path: str):
-        with open(path, 'r') as in_file:
+        """Ground truth data for the stratigraphy benchmark.
+
+        Args:
+            path (str): Path to the ground truth data.
+        """
+        with open(path) as in_file:
             ground_truth = json.load(in_file)
             self.ground_truth_descriptions = {
                 filename: [
                     GroundTruth.parse(entry["text"])
                     for entry in data
-                    if entry["tag"] == "Material description" and GroundTruth.parse(entry["text"]) != ""]
+                    if entry["tag"] == "Material description" and GroundTruth.parse(entry["text"]) != ""
+                ]
                 for filename, data in ground_truth.items()
             }
 
     @staticmethod
     def parse(text: str) -> str:
-        return GroundTruth.not_alphanum.sub('', text).lower()
+        return GroundTruth.not_alphanum.sub("", text).lower()
 
     def for_file(self, filename: str) -> GroundTruthForFile:
         if filename in self.ground_truth_descriptions:
