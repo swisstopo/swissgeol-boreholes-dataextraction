@@ -1,11 +1,16 @@
 """Contains utility functions for plotting stratigraphic data."""
 
+import logging
+
 import cv2
 import fitz
 import numpy as np
 
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.textblock import TextBlock
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def _draw_lines(open_cv_img, lines, scale_factor=1):
@@ -27,10 +32,8 @@ def _draw_lines(open_cv_img, lines, scale_factor=1):
             cv2.circle(open_cv_img, np.dot(scale_factor, line.end.tuple), radius=1, color=(0, 0, 255), thickness=-1)
 
         except cv2.error as e:
-            print("Error drawing line")
-            print(f"Line points: {line.start.tuple}, {line.end.tuple}")
-            print(e)
-            print()
+            logging.warning(f"Error drawing line. Exception: {e}. Skipping to draw the line.")
+
     return open_cv_img
 
 
