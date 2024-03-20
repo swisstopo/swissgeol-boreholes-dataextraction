@@ -1,14 +1,20 @@
 """This module contains utility functions to work with geometric lines."""
 
+import logging
 from collections import deque
+from itertools import combinations
 from math import atan, pi
 
 import numpy as np
 from numpy.typing import ArrayLike
+from scipy import odr
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 
 from stratigraphy.util.dataclasses import Line, Point
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def drop_vertical_lines(lines: list[Line], threshold: float = 0.1) -> ArrayLike:
@@ -223,36 +229,106 @@ def merge_parallel_lines(lines: list[Line], tol: int = 8, angle_threshold: float
         return merged_lines
 
 
-def _merge_lines(line1: Line, line2: Line) -> Line:
-    """Merge two lines.
+def odr_regression(x: ArrayLike, y: ArrayLike) -> tuple[float, float]:
+    """Perform orthogonal distance regression on the given data.
 
-    Note: This method is not robust for near vertical lines. We assume
-    an ordering in the x-coordinates of the lines.
+    Solves the line equation y = mx + c for the best fit values of m and c.
+    Different to linear regression, ODR takes into account the error in both x and y.
+    As such, it can handle horizontal and vertical lines.
+
+    Note: For vertical lines, the slope is nan.
 
     Args:
-        line1 (Line): The first line.
-        line2 (Line): The second line.
+        x (ArrayLike): The x-coordinates of the data.
+        y (ArrayLike): The y-coordinates of the data.
+
+    Returns:
+        tuple[float, float]: (m, c), the best fit values for the line equation.
+    """
+
+    # Define a function to fit the data with.
+    def linear_func(p, x):
+        m, c = p
+        return m * x + c
+
+    linear_model = odr.Model(linear_func)
+    data = odr.RealData(x, y)
+    odr_model = odr.ODR(data, linear_model, beta0=[0.0, 1.0])  # kept the initial guess as default
+
+    out = odr_model.run()
+
+    return out.beta[0], out.beta[1]
+
+
+def _merge_lines(line1: Line, line2: Line) -> Line:
+    """Merge two lines into one.
+
+    The algorithm performes odr regression on the points of the two lines to find the best fit line.
+    Then, it calculates the orthogonal projection of the four points onto the best fit line and takes the two points
+    that are the furthest apart. These two points are then used to create the merged line.
+
+    Note: Strictly vertical lines cannot be handled. In that case the slope is nan. A warning is thrown
+    and the first line is returned.
+
+    Args:
+        line1 (Line): First line to merge.
+        line2 (Line): Second line to merge.
 
     Returns:
         Line: The merged line.
     """
-    # determine start point
-    if line1.start.x > line2.start.x:
-        x_start = line2.start.x
-        y_start = line2.start.y
-    else:
-        x_start = line1.start.x
-        y_start = line1.start.y
+    x = np.array([line1.start.x, line1.end.x, line2.start.x, line2.end.x])
+    y = np.array([line1.start.y, line1.end.y, line2.start.y, line2.end.y])
+    slope, intercept = odr_regression(x, y)
+    if np.isnan(slope):
+        logger.warning("Merged line slope is nan. Returning line1 in absence of any better choice.")
+        return line1
+    projected_points = []
+    for point in [line1.start, line1.end, line2.start, line2.end]:
+        projection = _get_orthogonal_projection_to_line(point, slope, intercept)
+        projected_points.append(projection)
+    # Take the two points such that the distance between them is the largest.
+    # Since there are only 4 points involved, we can just calculate the distance between all points.
+    point_combinations = list(combinations(projected_points, 2))
+    distances = []
+    for interval in point_combinations:
+        distances.append(_calculate_squared_distance_between_two_points(interval[0], interval[1]))
 
-    # determine end point
-    if line1.end.x > line2.end.x:
-        x_end = line1.end.x
-        y_end = line1.end.y
-    else:
-        x_end = line2.end.x
-        y_end = line2.end.y
+    point1, point2 = point_combinations[np.argmax(distances)]
+    return Line(point1, point2)
 
-    return Line(Point(x_start, y_start), Point(x_end, y_end))
+
+def _calculate_squared_distance_between_two_points(point1: Point, point2: Point) -> float:
+    return (point1.x - point2.x) ** 2 + (point1.y - point2.y) ** 2
+
+
+def _get_orthogonal_projection_to_line(point: Point, slope: float, intercept: float) -> Point:
+    """Calculate orthogonal projection of a point onto a line in 2D space.
+
+    Formula taken from:
+    https://math.stackexchange.com/questions/62633/orthogonal-projection-of-a-point-onto-a-line
+
+    Args:
+        point (Point): The point to project onto the line.
+        slope (float): Slope of the line.
+        intercept (float): Intercept of the line.
+
+    Returns:
+        Point: Projected point onto the line.
+    """
+    v = np.array([1, slope])
+    projection = np.dot(np.outer(v, v) / np.inner(v, v), np.array([point.x, point.y - intercept])) + np.array(
+        [0, intercept]
+    )
+    if np.shape(projection) != (2,):
+        logger.critical(
+            f"Wrong shape for orthogonal projection. The correct shape is (2,), but it is {np.shape(projection)}."
+        )
+        raise ValueError
+    if np.isnan(projection).any():
+        logger.critical("Projection is nan. Cannot calculate orthogonal projection.")
+        raise ValueError
+    return Point(int(np.round(projection[0], 0)), int(np.round(projection[1], 0)))
 
 
 def _are_close(line1: Line, line2: Line, tol: int = 5) -> bool:

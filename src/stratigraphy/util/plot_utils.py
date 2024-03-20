@@ -15,15 +15,22 @@ def _draw_lines(open_cv_img, lines, scale_factor=1):
             (5 * line_count) % 255,
             (10 * line_count) % 255,
         )
-        cv2.line(
-            open_cv_img,
-            np.dot(scale_factor, line.start.tuple),
-            np.dot(scale_factor, line.end.tuple),
-            color,
-            1,
-        )
-        cv2.circle(open_cv_img, np.dot(scale_factor, line.start.tuple), radius=1, color=(0, 0, 255), thickness=-1)
-        cv2.circle(open_cv_img, np.dot(scale_factor, line.end.tuple), radius=1, color=(0, 0, 255), thickness=-1)
+        try:
+            cv2.line(
+                open_cv_img,
+                np.dot(scale_factor, line.start.tuple),
+                np.dot(scale_factor, line.end.tuple),
+                color,
+                1,
+            )
+            cv2.circle(open_cv_img, np.dot(scale_factor, line.start.tuple), radius=1, color=(0, 0, 255), thickness=-1)
+            cv2.circle(open_cv_img, np.dot(scale_factor, line.end.tuple), radius=1, color=(0, 0, 255), thickness=-1)
+
+        except cv2.error as e:
+            print("Error drawing line")
+            print(f"Line points: {line.start.tuple}, {line.end.tuple}")
+            print(e)
+            print()
     return open_cv_img
 
 
