@@ -3,7 +3,7 @@
 import logging
 from collections import deque
 from itertools import combinations
-from math import atan, pi
+from math import atan, cos, pi, sin
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -260,6 +260,29 @@ def odr_regression(x: ArrayLike, y: ArrayLike) -> tuple[float, float]:
     return out.beta[0], out.beta[1]
 
 
+def _odr_regression(x: ArrayLike, y: ArrayLike) -> tuple:
+    """Perform orthogonal distance regression on the given data.
+
+    Args:
+        x (ArrayLike): The x-coordinates of the data.
+        y (ArrayLike): The y-coordinates of the data.
+
+    Returns:
+        tuple: (phi, r), the best fit values for the line equation in normal form.
+    """
+    x_mean = np.mean(x)
+    y_mean = np.mean(y)
+    nominator = -2 * np.sum((x - x_mean) * (y - y_mean))
+    denominator = np.sum((y - y_mean) ** 2 - (x - x_mean) ** 2)
+    if nominator == 0 and denominator == 0:
+        logger.warning("The data is constant. The slope is undefined.")
+        return np.nan, np.nan
+    phi = 0.5 * np.arctan2(nominator, denominator)  # np.arctan2 can deal with np.inf due to zero division.
+    r = x_mean * cos(phi) + y_mean * sin(phi)
+
+    return phi, r
+
+
 def _merge_lines(line1: Line, line2: Line) -> Line:
     """Merge two lines into one.
 
@@ -279,13 +302,11 @@ def _merge_lines(line1: Line, line2: Line) -> Line:
     """
     x = np.array([line1.start.x, line1.end.x, line2.start.x, line2.end.x])
     y = np.array([line1.start.y, line1.end.y, line2.start.y, line2.end.y])
-    slope, intercept = odr_regression(x, y)
-    if np.isnan(slope):
-        logger.warning("Merged line slope is nan. Returning line1 in absence of any better choice.")
-        return line1
+    phi, r = _odr_regression(x, y)
+
     projected_points = []
     for point in [line1.start, line1.end, line2.start, line2.end]:
-        projection = _get_orthogonal_projection_to_line(point, slope, intercept)
+        projection = _get_orthogonal_projection_to_line(point, phi, r)
         projected_points.append(projection)
     # Take the two points such that the distance between them is the largest.
     # Since there are only 4 points involved, we can just calculate the distance between all points.
@@ -302,33 +323,27 @@ def _calculate_squared_distance_between_two_points(point1: Point, point2: Point)
     return (point1.x - point2.x) ** 2 + (point1.y - point2.y) ** 2
 
 
-def _get_orthogonal_projection_to_line(point: Point, slope: float, intercept: float) -> Point:
+def _get_orthogonal_projection_to_line(point: Point, phi: float, r: float) -> Point:
     """Calculate orthogonal projection of a point onto a line in 2D space.
 
-    Formula taken from:
-    https://math.stackexchange.com/questions/62633/orthogonal-projection-of-a-point-onto-a-line
+    Calculates the orhtogonal projection of a point onto a line in 2D space using the normal form of the line equation.
+    Formula derived from:
+    https://www.researchgate.net/publication/272179120
+    _A_tutorial_on_the_total_least_squares_method_for_fitting_a_straight_line_and_a_plane
 
     Args:
         point (Point): The point to project onto the line.
-        slope (float): Slope of the line.
-        intercept (float): Intercept of the line.
+        phi (float): The angle phi of the normal form of the line equation.
+        r (float): The distance r of the normal form of the line equation.
 
     Returns:
-        Point: Projected point onto the line.
+        Point: The projected point onto the line.
     """
-    v = np.array([1, slope])
-    projection = np.dot(np.outer(v, v) / np.inner(v, v), np.array([point.x, point.y - intercept])) + np.array(
-        [0, intercept]
-    )
-    if np.shape(projection) != (2,):
-        logger.critical(
-            f"Wrong shape for orthogonal projection. The correct shape is (2,), but it is {np.shape(projection)}."
-        )
-        raise ValueError
-    if np.isnan(projection).any():
-        logger.critical("Projection is nan. Cannot calculate orthogonal projection.")
-        raise ValueError
-    return Point(int(np.round(projection[0], 0)), int(np.round(projection[1], 0)))
+    ri = point.x * cos(phi) + point.y * sin(phi)
+    d = ri - r
+    x = point.x - d * cos(phi)
+    y = point.y - d * sin(phi)
+    return Point(int(np.round(x, 0)), int(np.round(y, 0)))
 
 
 def _are_close(line1: Line, line2: Line, tol: int = 5) -> bool:
