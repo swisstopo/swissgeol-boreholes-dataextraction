@@ -83,7 +83,7 @@ def get_description_blocks(
         length_threshold=left_line_length_threshold, geometric_lines=geometric_lines
     )
     for block in blocks:
-        _blocks.extend(splitter.create_blocks(description_lines))
+        _blocks.extend(splitter.create_blocks(block.lines))
         if block.is_terminated_by_line:  # keep the line termination if it was there
             _blocks[-1].is_terminated_by_line = True
     blocks = _blocks
@@ -101,7 +101,7 @@ def get_description_blocks(
     if len(blocks) < min_block_count:
         # This case means that there are fewer blocks than the minimum number of blocks we expect.
         # In this case we redo all the blocks from scratch.
-        splitter.create_blocks(description_lines)
+        blocks = splitter.create_blocks(description_lines)
 
     elif count_blocks_divided_by_line < min_block_count:
         # In this case there blocks due to line segments. However, they are mostly due to small segments
