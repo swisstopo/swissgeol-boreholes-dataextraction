@@ -94,6 +94,7 @@ if __name__ == "__main__":
         "675230002-bp.pdf",
         "268125592-bp.pdf",
         "267124070-bp.pdf",
+        "699248001-bp.pdf",
     ]
 
     if mlflow_tracking:
