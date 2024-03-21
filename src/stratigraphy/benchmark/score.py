@@ -88,7 +88,7 @@ def evaluate_matching(predictions_path: Path, ground_truth_path: Path) -> tuple[
         logging.info("Macro avg:")
         logging.info(
             f"F1: {f1(overall_precision, overall_recall):.1%},"
-            "precision: {overall_precision:.1%}, recall: {overall_recall:.1%}"
+            f"precision: {overall_precision:.1%}, recall: {overall_recall:.1%}"
         )
 
     worst_count = 5
