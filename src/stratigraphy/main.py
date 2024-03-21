@@ -93,7 +93,9 @@ def process_page(
     depth_columns: list[DepthColumn] = layer_depth_columns
     depth_columns.extend(find_depth_columns.find_depth_columns(depth_column_entries, words))
 
-    for column in depth_columns:  # This adjusts the page object. This is a problem for subsequent line detection.
+    for column in (
+        depth_columns
+    ):  # This adjusts the page object. This may be a problem for subsequent computer vision operations.
         fitz.utils.draw_rect(
             page,
             column.rect() * page.derotation_matrix,
