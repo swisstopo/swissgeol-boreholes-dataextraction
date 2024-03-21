@@ -22,6 +22,7 @@ def get_description_lines(lines: list[TextLine], material_description_rect: fitz
 def get_description_blocks(
     description_lines: list[TextLine],
     geometric_lines: list[Line],
+    material_description_rect: fitz.Rect,
     block_line_ratio: float,
     left_line_length_threshold: float,
     target_layer_count: int = None,
@@ -55,7 +56,7 @@ def get_description_blocks(
         description_lines,
         geometric_lines,
         _block_separated_by_line,
-        {"threshold": block_line_ratio},
+        {"threshold": block_line_ratio, "material_description_rect": material_description_rect},
         set_terminated_by_line_flag=True,
     )
 
@@ -161,7 +162,12 @@ def _split_block_by_vertical_spacing(description_lines: list[TextLine], threshol
 
 
 def _block_separated_by_line(
-    last_line: TextLine, current_line: TextLine, block: TextBlock, geometric_lines: list[Line], threshold: float
+    last_line: TextLine,
+    current_line: TextLine,
+    block: TextBlock,
+    geometric_lines: list[Line],
+    material_description_rect: fitz.Rect,
+    threshold: float,
 ) -> bool:
     """Check if a block is separated by a line.
 
@@ -183,7 +189,8 @@ def _block_separated_by_line(
         line_y_coordinate = (line.start.y + line.end.y) / 2
 
         is_line_long_enough = (
-            np.min([block.rect.x1, line_right_x]) - np.max([block.rect.x0, line_left_x]) > threshold * block.rect.width
+            np.min([material_description_rect.x1, line_right_x]) - np.max([material_description_rect.x0, line_left_x])
+            > threshold * material_description_rect.width
         )
 
         line_ends_block = last_line_y_coordinate < line_y_coordinate and line_y_coordinate < current_line_y_coordinate
