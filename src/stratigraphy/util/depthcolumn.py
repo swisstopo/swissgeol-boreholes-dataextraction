@@ -119,7 +119,13 @@ class LayerDepthColumn(DepthColumn):
 
         return sequence_matches_count / (len(self.entries) - 1) > 0.5
 
-    def identify_groups(self, description_lines: list[TextLine], geometric_lines: list[Line], **params) -> list[dict]:
+    def identify_groups(
+        self,
+        description_lines: list[TextLine],
+        geometric_lines: list[Line],
+        material_description_rect: fitz.Rect,
+        **params,
+    ) -> list[dict]:
         depth_intervals = self.depth_intervals()
 
         groups = []
@@ -301,7 +307,9 @@ class BoundaryDepthColumn(DepthColumn):
 
         return [BoundaryDepthColumn(segment) for segment in segments]
 
-    def identify_groups(self, description_lines: list[TextLine], geometric_lines: list[Line], **params) -> list[dict]:
+    def identify_groups(
+        self, description_lines: list[TextLine], geometric_lines: list[Line], material_description_rect, **params
+    ) -> list[dict]:
         depth_intervals = self.depth_intervals()
 
         groups = []
@@ -311,6 +319,7 @@ class BoundaryDepthColumn(DepthColumn):
         all_blocks = get_description_blocks(
             description_lines,
             geometric_lines,
+            material_description_rect,
             params["block_line_ratio"],
             left_line_length_threshold=params["left_line_length_threshold"],
             target_layer_count=len(depth_intervals),
