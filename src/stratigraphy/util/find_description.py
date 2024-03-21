@@ -227,6 +227,9 @@ def _block_separated_by_lefthandside_line_segment(
         )  # if block has at least three lines, we weaken the splitting condition.
         # It is three lines because the statement means that block.lines has at least two elements.
         # The third line is current_line
+        # The reason for the splitting is, that if we know that a block is long, the probability for
+        # a missed splitting is higher. Therefore, we weaken the condition. The weakened condition
+        # leads to an improved score as per 21.03.2024.
 
         if line_ends_block and ((is_line_long_enough and line_cuts_lefthandside_of_block) or weak_condition):
             return True
