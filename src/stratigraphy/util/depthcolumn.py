@@ -345,7 +345,7 @@ class BoundaryDepthColumn(DepthColumn):
                     "blocks": [DescriptionBlock(...), DescriptionBlock(...), ...]
                 },
                 {
-                    "depth_intervals": [BoundaryInterval(0.1, 0.3)],
+                    "depth_intervals": [BoundaryInterval(0.3, 0.7)],
                     "blocks": [DescriptionBlock(...), DescriptionBlock(...), ...]
                 },
                 ...
