@@ -329,7 +329,7 @@ def _get_orthogonal_projection_to_line(point: Point, phi: float, r: float) -> Po
     # We now need to move towards the line by d in the direction defined by phi.
     x = point.x - d * cos(phi)
     y = point.y - d * sin(phi)
-    return Point(int(np.round(x, 0)), int(np.round(y, 0)))
+    return Point(x, y)
 
 
 def _are_close(line1: Line, line2: Line, tol: int = 5) -> bool:
