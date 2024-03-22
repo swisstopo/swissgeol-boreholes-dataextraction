@@ -253,7 +253,10 @@ def _odr_regression(x: ArrayLike, y: ArrayLike) -> tuple:
     nominator = -2 * np.sum((x - x_mean) * (y - y_mean))
     denominator = np.sum((y - y_mean) ** 2 - (x - x_mean) ** 2)
     if nominator == 0 and denominator == 0:
-        logger.warning("The data is constant. The slope is undefined. We return phi=np.nan and r=np.nan.")
+        logger.warning(
+            "The problem is ill defined as both nominator and denominator for arctan are 0."
+            "We return phi=np.nan and r=np.nan."
+        )
         return np.nan, np.nan
     phi = 0.5 * np.arctan2(nominator, denominator)  # np.arctan2 can deal with np.inf due to zero division.
     r = x_mean * cos(phi) + y_mean * sin(phi)
