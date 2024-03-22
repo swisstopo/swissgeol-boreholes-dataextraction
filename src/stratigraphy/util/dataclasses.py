@@ -1,4 +1,4 @@
-""" Dataclasses for stratigraphy module. """
+"""Dataclasses for stratigraphy module."""
 
 from dataclasses import dataclass
 

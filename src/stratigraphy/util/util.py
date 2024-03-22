@@ -1,31 +1,32 @@
+"""This module contains general utility functions for the stratigraphy module."""
+
 from collections.abc import MutableMapping
-from typing import Dict
-from pathlib import Path
-import yaml
 
 import fitz
+import yaml
 from numpy.typing import ArrayLike
 
 from stratigraphy import PROJECT_ROOT
-from stratigraphy.util.dataclasses import Point, Line
+from stratigraphy.util.dataclasses import Line, Point
 
 
-def x_overlap(rect1: fitz.Rect, rect2: fitz.Rect) -> float:
+def x_overlap(rect1: fitz.Rect, rect2: fitz.Rect) -> float:  # noqa: D103
     if (rect1.x0 < rect2.x1) and (rect2.x0 < rect1.x1):
         return min(rect1.x1, rect2.x1) - max(rect1.x0, rect2.x0)
     else:
         return 0
 
 
-def x_overlap_significant_smallest(rect1: fitz.Rect, rect2: fitz.Rect, level: float) -> bool:
+def x_overlap_significant_smallest(rect1: fitz.Rect, rect2: fitz.Rect, level: float) -> bool:  # noqa: D103
     return x_overlap(rect1, rect2) > level * min(rect1.width, rect2.width)
 
 
-def x_overlap_significant_largest(rect1: fitz.Rect, rect2: fitz.Rect, level: float) -> bool:
+def x_overlap_significant_largest(rect1: fitz.Rect, rect2: fitz.Rect, level: float) -> bool:  # noqa: D103
     return x_overlap(rect1, rect2) > level * max(rect1.width, rect2.width)
 
-def flatten(dictionary: Dict, parent_key: str='', separator: str='__') -> Dict:
-    """ Flatten a nested dictionary.
+
+def flatten(dictionary: dict, parent_key: str = "", separator: str = "__") -> dict:
+    """Flatten a nested dictionary.
 
     Args:
         dictionary (Dict): Dictionary to flatten.
@@ -46,10 +47,12 @@ def flatten(dictionary: Dict, parent_key: str='', separator: str='__') -> Dict:
 
 
 def line_from_array(line: ArrayLike, scale_factor: float) -> Line:
-    """ Convert a line in the format of [[x1, y1, x2, y2]] to a Line objects.
+    """Convert a line in the format of [[x1, y1, x2, y2]] to a Line objects.
 
     Args:
         line (ArrayLike): line as represented by an array of four numbers.
+        scale_factor (float): The scale factor to apply to the lines. Required when
+                              the pdf page was scaled before detecting lines.
 
     Returns:
         Line: The converted line.
@@ -58,8 +61,9 @@ def line_from_array(line: ArrayLike, scale_factor: float) -> Line:
     end = Point(int(line[0][2] / scale_factor), int(line[0][3] / scale_factor))
     return Line(start, end)
 
+
 def read_params(params_name: str) -> dict:
-    """ Read parameters from a yaml file.
+    """Read parameters from a yaml file.
 
     Args:
         params_name (str): Name of the params yaml file.

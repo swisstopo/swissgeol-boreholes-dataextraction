@@ -1,7 +1,9 @@
+"""Contains dataclasses for entries in a depth column."""
+
 import fitz
 
 
-class DepthColumnEntry:
+class DepthColumnEntry:  # noqa: D101
     def __init__(self, rect: fitz.Rect, value: float):
         self.rect = rect
         self.value = value
@@ -10,13 +12,13 @@ class DepthColumnEntry:
         return str(self.value)
 
 
-class LayerDepthColumnEntry:
+class LayerDepthColumnEntry:  # noqa: D101
     def __init__(self, start: DepthColumnEntry, end: DepthColumnEntry):
         self.start = start
         self.end = end
 
     def __repr__(self):
-        return "{}-{}".format(self.start.value, self.end.value)
+        return f"{self.start.value}-{self.end.value}"
 
     @property
     def rect(self):

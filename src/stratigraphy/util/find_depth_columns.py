@@ -1,21 +1,35 @@
-import fitz
+"""This module contains functionalities to find depth columns in a pdf page."""
+
 import re
-from stratigraphy.util.line import TextLine
-from stratigraphy.util.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
+
+import fitz
+
 from stratigraphy.util.depthcolumn import BoundaryDepthColumn, LayerDepthColumn
+from stratigraphy.util.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
+from stratigraphy.util.line import TextLine
 
 
 def depth_column_entries(all_words: list[TextLine], include_splits: bool) -> list[DepthColumnEntry]:
-    def value_as_float(string_value: str) -> float:
+    """Find all depth column entries given a list of TextLine objects.
+
+    Args:
+        all_words (list[TextLine]): List of Text lines to extract depth column entries from.
+        include_splits (bool): Whether to include split entries.
+
+    Returns:
+        list[DepthColumnEntry]: The extracted depth column entries.
+    """
+
+    def value_as_float(string_value: str) -> float:  # noqa: D103
         # OCR sometimes tends to miss the decimal comma
-        parsed_text = re.sub(r'^([0-9]+)([0-9]{2})', r'\1.\2', string_value)
+        parsed_text = re.sub(r"^([0-9]+)([0-9]{2})", r"\1.\2", string_value)
         return abs(float(parsed_text))
 
     entries = []
     for line in sorted(all_words, key=lambda line: line.rect.y0):
         try:
             input_string = line.text.strip().replace(",", ".")
-            regex = re.compile(r'^([0-9]+(\.[0-9]+)?)[müMN\\.]*$')
+            regex = re.compile(r"^([0-9]+(\.[0-9]+)?)[müMN\\.]*$")
             match = regex.match(input_string)
 
             if match:
@@ -23,25 +37,19 @@ def depth_column_entries(all_words: list[TextLine], include_splits: bool) -> lis
                 entries.append(DepthColumnEntry(line.rect, value))
             elif include_splits:
                 # support for e.g. "1.10-1.60m" extracted as a single word
-                regex2 = re.compile(r'^([0-9]+(\.[0-9]+)?)[müMN\\.]*\W+([0-9]+(\.[0-9]+)?)[müMN\\.]*$')
+                regex2 = re.compile(r"^([0-9]+(\.[0-9]+)?)[müMN\\.]*\W+([0-9]+(\.[0-9]+)?)[müMN\\.]*$")
                 match2 = regex2.match(input_string)
 
                 if match2:
                     value1 = value_as_float(match2.group(1))
                     first_half_rect = fitz.Rect(
-                        line.rect.x0,
-                        line.rect.y0,
-                        line.rect.x1 - line.rect.width / 2,
-                        line.rect.y1
+                        line.rect.x0, line.rect.y0, line.rect.x1 - line.rect.width / 2, line.rect.y1
                     )
                     entries.append(DepthColumnEntry(first_half_rect, value1))
 
                     value2 = value_as_float(match2.group(3))
                     second_half_rect = fitz.Rect(
-                        line.rect.x0 + line.rect.width / 2,
-                        line.rect.y0,
-                        line.rect.x1,
-                        line.rect.y1
+                        line.rect.x0 + line.rect.width / 2, line.rect.y0, line.rect.x1, line.rect.y1
                     )
                     entries.append(DepthColumnEntry(second_half_rect, value2))
         except ValueError:
@@ -50,7 +58,17 @@ def depth_column_entries(all_words: list[TextLine], include_splits: bool) -> lis
 
 
 def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextLine]) -> list[LayerDepthColumn]:
-    def find_pair(entry: DepthColumnEntry) -> DepthColumnEntry | None:
+    """TODO: Add description here. It is not entirely clear to me (@redur) what this function does.
+
+    Args:
+        entries (list[DepthColumnEntry]): _description_
+        all_words (list[TextLine]): _description_
+
+    Returns:
+        list[LayerDepthColumn]: _description_
+    """
+
+    def find_pair(entry: DepthColumnEntry) -> DepthColumnEntry | None:  # noqa: D103
         min_y0 = entry.rect.y0 - entry.rect.height / 2
         max_y0 = entry.rect.y0 + entry.rect.height / 2
         for other in entries:
@@ -63,18 +81,17 @@ def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[Te
                 continue
             if not min_y0 <= other.rect.y0 <= max_y0:
                 continue
-            in_between_text = " ".join([
-                word.text
-                for word in all_words
-                if entry.rect.x0 < word.rect.x0 < other.rect.x0 and min_y0 <= word.rect.y0 <= max_y0
-            ])
-            if re.fullmatch(r'\W*m?\W*', in_between_text):
+            in_between_text = " ".join(
+                [
+                    word.text
+                    for word in all_words
+                    if entry.rect.x0 < word.rect.x0 < other.rect.x0 and min_y0 <= word.rect.y0 <= max_y0
+                ]
+            )
+            if re.fullmatch(r"\W*m?\W*", in_between_text):
                 return other
 
-    pairs = [
-        (entry, find_pair(entry))
-        for entry in entries
-    ]
+    pairs = [(entry, find_pair(entry)) for entry in entries]
 
     columns = []
     for first, second in pairs:
@@ -100,6 +117,15 @@ def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[Te
 
 
 def find_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextLine]) -> list[BoundaryDepthColumn]:
+    """TODO: Add description here. It is not entirely clear to me (@redur) what this function does.
+
+    Args:
+        entries (list[DepthColumnEntry]): _description_
+        all_words (list[TextLine]): _description_
+
+    Returns:
+        list[BoundaryDepthColumn]: _description_
+    """
     numeric_columns: list[BoundaryDepthColumn] = []
     for entry in entries:
         has_match = False
@@ -129,11 +155,12 @@ def find_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextLine
         column.reduce_until_valid(all_words)
         for numeric_column in numeric_columns
         for column in numeric_column.break_on_double_descending()
-        # when we have a perfect arithmetic progression, this is usually just a scale that doesn't match the descriptions
+        # when we have a perfect arithmetic progression, this is usually just a scale
+        # that does not match the descriptions
         if not column.significant_arithmetic_progression()
     ]
 
     return sorted(
         [column for column in numeric_columns if column and column.is_valid(all_words)],
-        key=lambda column: len(column.entries)
+        key=lambda column: len(column.entries),
     )

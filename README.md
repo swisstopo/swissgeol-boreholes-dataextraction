@@ -35,10 +35,9 @@ Pre-commit comes in the boreholes-dev conda environment. After activating the co
 
 After installing pre-commit, it will trigger 'hooks' upon each `git commit -m ...` command. The hooks will be applied on all the files in the commit. A hook is nothing but a script specified in `.pre-commit-config.yaml`.
 
-The installed hooks are:
-- black
-- isort.
+We use [ruffs](https://github.com/astral-sh/ruff) [pre-commit package](https://github.com/astral-sh/ruff-pre-commit) for linting and formatting.
+The specific linting and formatting settings applied are defined in `pyproject.toml`.
 
-If you want to skip the hooks, you can use `git commit -m "" --no-verify`.
+If you want to skip the hooks, you can use `git commit -m "..." --no-verify`.
 
 More information about pre-commit can be found [here](https://pre-commit.com).

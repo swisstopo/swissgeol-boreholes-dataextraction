@@ -1,23 +1,54 @@
+"""This module contains utility functions and classes for TextLine objects."""
+
 from __future__ import annotations
+
 import fitz
+
 from stratigraphy.util.util import x_overlap_significant_largest
 
 material_description = [
-    "sand", "silt", "kies", "asphalt", "humus", "braun", "grau", "weich", "hart", "wurzel", "belag", "stein", "beige",
-    "beton", "kreide", "mergel"
+    "sand",
+    "silt",
+    "kies",
+    "asphalt",
+    "humus",
+    "braun",
+    "grau",
+    "weich",
+    "hart",
+    "wurzel",
+    "belag",
+    "stein",
+    "beige",
+    "beton",
+    "kreide",
+    "mergel",
 ]  # Consider those as parameter?
 
 
 class DepthInterval:
+    """Class to represent a DepthInterval object.
+
+    A DepthInterval object is a collection of fitz Rectangle objects and a string.
+    The string is the text that is contained in the rectangle. The rectangles are used
+    to represent the location of the text in a PDF document.
+    """
+
     def __init__(self, rect: fitz.Rect, text: str):
         self.rect = rect
         self.text = text
 
     def __repr__(self) -> str:
-        return "DepthInterval({}, {})".format(self.rect, self.text)
+        return f"DepthInterval({self.rect}, {self.text})"
 
 
 class TextLine:
+    """Class to represent TextLine objects.
+
+    A TextLine object is a collection of DepthInterval objects.
+    It is used to represent a line of text in a PDF document.
+    """
+
     def __init__(self, words: list[DepthInterval]):
         self.rect = fitz.Rect()
         for word in words:
@@ -30,7 +61,7 @@ class TextLine:
         return " ".join([word.text for word in self.words])
 
     def __repr__(self) -> str:
-        return "TextLine({}, {})".format(self.text, self.rect)
+        return f"TextLine({self.text}, {self.rect})"
 
     """
     Check if the current line can be trusted as a stand-alone line, even if it is only a tailing segment of a line that
@@ -42,6 +73,7 @@ class TextLine:
     The logic is still not very robust. A more robust solution will be possible once we include line detection as a
     feature in this pipeline as well.
     """
+
     def is_line_start(self, raw_lines_before: list[TextLine], raw_lines_after: list[TextLine]) -> bool:
         def significant_overlap(line: TextLine) -> bool:
             return x_overlap_significant_largest(line.rect, self.rect, 0.5)
@@ -54,8 +86,7 @@ class TextLine:
             indentation_points = 0
             for other in lines:
                 line_height = self.rect.height
-                if max(other.rect.y0 - self.rect.y1,
-                       self.rect.y0 - other.rect.y1) > 5 * line_height:
+                if max(other.rect.y0 - self.rect.y1, self.rect.y0 - other.rect.y1) > 5 * line_height:
                     # too far away vertically
                     return exact_points, indentation_points
 
@@ -75,4 +106,3 @@ class TextLine:
         indentation_points = indentation_points_1 + indentation_points_2
 
         return exact_points >= 3 or (exact_points >= 2 and indentation_points >= 1)
-
