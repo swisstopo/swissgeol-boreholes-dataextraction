@@ -7,7 +7,6 @@ from math import atan, cos, pi, sin
 
 import numpy as np
 from numpy.typing import ArrayLike
-from scipy import odr
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 
@@ -229,37 +228,6 @@ def merge_parallel_lines(lines: list[Line], tol: int = 8, angle_threshold: float
         return merged_lines
 
 
-def odr_regression(x: ArrayLike, y: ArrayLike) -> tuple[float, float]:
-    """Perform orthogonal distance regression on the given data.
-
-    Solves the line equation y = mx + c for the best fit values of m and c.
-    Different to linear regression, ODR takes into account the error in both x and y.
-    As such, it can handle horizontal and vertical lines.
-
-    Note: For vertical lines, the slope is nan.
-
-    Args:
-        x (ArrayLike): The x-coordinates of the data.
-        y (ArrayLike): The y-coordinates of the data.
-
-    Returns:
-        tuple[float, float]: (m, c), the best fit values for the line equation.
-    """
-
-    # Define a function to fit the data with.
-    def linear_func(p, x):
-        m, c = p
-        return m * x + c
-
-    linear_model = odr.Model(linear_func)
-    data = odr.RealData(x, y)
-    odr_model = odr.ODR(data, linear_model, beta0=[0.0, 1.0])  # kept the initial guess as default
-
-    out = odr_model.run()
-
-    return out.beta[0], out.beta[1]
-
-
 def _odr_regression(x: ArrayLike, y: ArrayLike) -> tuple:
     """Perform orthogonal distance regression on the given data.
 
@@ -275,8 +243,8 @@ def _odr_regression(x: ArrayLike, y: ArrayLike) -> tuple:
     nominator = -2 * np.sum((x - x_mean) * (y - y_mean))
     denominator = np.sum((y - y_mean) ** 2 - (x - x_mean) ** 2)
     if nominator == 0 and denominator == 0:
-        logger.warning("The data is constant. The slope is undefined.")
-        return np.nan, np.nan
+        logger.warning("The data is constant. The slope is undefined. We return phi=0 and r=0.")
+        # TODO: Any idea what we should do here? Happens 4 times on the test data.
     phi = 0.5 * np.arctan2(nominator, denominator)  # np.arctan2 can deal with np.inf due to zero division.
     r = x_mean * cos(phi) + y_mean * sin(phi)
 
@@ -339,8 +307,11 @@ def _get_orthogonal_projection_to_line(point: Point, phi: float, r: float) -> Po
     Returns:
         Point: The projected point onto the line.
     """
+    # ri is the distance to the line that is parallel to the line defined by phi and r
+    # and that goes through the poin (point.y, point.y).
     ri = point.x * cos(phi) + point.y * sin(phi)
-    d = ri - r
+    d = ri - r  # d is the distance between point and the line.
+    # We now need to move towards the line by d in the direction defined by phi.
     x = point.x - d * cos(phi)
     y = point.y - d * sin(phi)
     return Point(int(np.round(x, 0)), int(np.round(y, 0)))
