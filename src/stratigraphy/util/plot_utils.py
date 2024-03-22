@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def _draw_lines(open_cv_img, lines, scale_factor=1):
-    grid_lines = _convert_lines_to_grid(lines, scale_factor=scale_factor)
+    grid_lines = [_convert_line_to_grid(line, scale_factor=scale_factor) for line in lines]
     for line_count, line in enumerate(grid_lines):
         color = (
             (255 - 5 * line_count) % 255,
@@ -45,31 +45,27 @@ def _convert_page_to_opencv_img(page, scale_factor):
     return open_cv_img
 
 
-def _convert_lines_to_grid(lines: list[Line], scale_factor: float) -> list[Line]:
-    """Convert the lines to a grid.
+def _convert_line_to_grid(line: Line, scale_factor: float) -> Line:
+    """Convert the line to a grid.
 
     Note: OpenCV uses a pixel grid system as a coordinate system, and as such only allows
     integer values for the coordinates. This function converts the lines to a grid by
     applying the right scale factor and then rounding the coordinates to the nearest integer.
 
     Args:
-        lines (list[Line]): The lines to convert to a grid.
+        line (Line): The line to convert to a grid.
         scale_factor (float): The scale factor to apply to the lines.
 
     Returns:
-        list[Line]: The lines converted to a grid.
+        Line: The lines converted to a grid.
     """
-    grid_lines = []
-    for line in lines:
-        start = line.start
-        start.x = int(np.round(scale_factor * start.x, 0))
-        start.y = int(np.round(scale_factor * start.y, 0))
-        end = line.end
-        end.x = int(np.round(scale_factor * end.x, 0))
-        end.y = int(np.round(scale_factor * end.y, 0))
-        grid_lines.append(Line(start, end))
-
-    return grid_lines
+    start = line.start
+    start.x = int(np.round(scale_factor * start.x, 0))
+    start.y = int(np.round(scale_factor * start.y, 0))
+    end = line.end
+    end.x = int(np.round(scale_factor * end.x, 0))
+    end.y = int(np.round(scale_factor * end.y, 0))
+    return Line(start, end)
 
 
 def plot_lines(page: fitz.Page, lines: list[Line], scale_factor: float = 2) -> cv2.COLOR_RGB2BGR:
