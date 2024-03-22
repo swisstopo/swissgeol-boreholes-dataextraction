@@ -236,7 +236,7 @@ def merge_parallel_lines(lines: list[Line], tol: int = 8, angle_threshold: float
 def _odr_regression(x: ArrayLike, y: ArrayLike) -> tuple:
     """Perform orthogonal distance regression on the given data.
 
-    Note: If the problem is ill defined (i.e. denominator == nominator == 0),
+    Note: If the problem is ill-defined (i.e. denominator == nominator == 0),
     then the function will return phi=np.nan and r=np.nan.
 
     Args:
@@ -258,6 +258,10 @@ def _odr_regression(x: ArrayLike, y: ArrayLike) -> tuple:
         return np.nan, np.nan
     phi = 0.5 * np.arctan2(nominator, denominator)  # np.arctan2 can deal with np.inf due to zero division.
     r = x_mean * cos(phi) + y_mean * sin(phi)
+
+    if r < 0:
+        r = -r
+        phi = phi + np.pi
 
     return phi, r
 

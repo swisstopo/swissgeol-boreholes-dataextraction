@@ -14,7 +14,7 @@ from stratigraphy.util.geometric_line_utilities import (
 # The way phi is defined is a bit counterintuitive, but it seems consistent all along.
 @pytest.fixture(
     params=[
-        (np.array([0, 1, 2, 3]), np.array([1, 1, 1, 1]), -np.pi / 2, 1),  # Test case 1 horizontal line at y=0
+        (np.array([0, 1, 2, 3]), np.array([1, 1, 1, 1]), np.pi / 2, 1),  # Test case 1 horizontal line at y=1
         (np.array([0, 1, 2, 3]), np.array([0, 1, 2, 3]), -np.pi / 4, 0),  # Test case 2 45 degrees through zero
         (np.array([2, 2, 2, 2]), np.array([0, 1, 2, 3]), 0, 2),  # Test case 3 vertical line at x=2
         # Add more test cases here as needed
@@ -28,8 +28,8 @@ def odr_regression_case(request):  # noqa: D103
 def test_odr_regression(odr_regression_case):  # noqa: D103
     x, y, expected_phi, expected_r = odr_regression_case
     phi, r = _odr_regression(x, y)
-    assert pytest.approx(np.sin(expected_phi)) == np.sin(phi)
-    assert pytest.approx(np.abs(expected_r)) == np.abs(r)
+    assert pytest.approx(expected_phi) == phi
+    assert pytest.approx(expected_r) == r
 
 
 @pytest.fixture(
@@ -55,6 +55,10 @@ def test_odr_regression_with_zeroes(odr_regression_with_zeroes_case):  # noqa: D
     params=[
         (Point(1, 1), 3 * np.pi / 4, 0, Point(1, 1)),  # Test case 1
         (Point(1, 0), 0, 0, Point(0, 0)),  # Test case 2
+        (Point(1, 1), 0, 0, Point(0, 1)),  # Test case 3
+        (Point(1, 1), np.pi / 2, 0, Point(1, 0)),  # Test case 4
+        (Point(1, 1), np.pi / 2, 1, Point(1, 1)),  # Test case 5
+        (Point(1, 1), np.pi / 2, -1, Point(1, -1)),  # Test case 5
         # Add more test cases here as needed
     ]
 )
@@ -65,7 +69,7 @@ def orthogonal_projection_case(request):  # noqa: D103
 def test_get_orthogonal_projection_to_line(orthogonal_projection_case):  # noqa: D103
     point, phi, r, expected_projection = orthogonal_projection_case
     projection = _get_orthogonal_projection_to_line(point, phi, r)
-    assert pytest.approx(projection) == expected_projection
+    assert pytest.approx(projection.tuple) == expected_projection.tuple
 
 
 @pytest.fixture(
