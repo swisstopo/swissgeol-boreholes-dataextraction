@@ -98,4 +98,5 @@ def test_merge_lines(merge_lines_case):  # noqa: D103
     merged_line = _merge_lines(line1, line2)
     assert (
         pytest.approx(merged_line.start.tuple) == expected_merged_line.start.tuple
+        and pytest.approx(merged_line.end.tuple) == expected_merged_line.end.tuple
     )  # Adjust this line if Line objects can't be compared directly
