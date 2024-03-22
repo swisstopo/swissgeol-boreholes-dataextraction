@@ -176,7 +176,11 @@ def merge_parallel_lines_neighbours(
         if _are_parallel(current_line, line, angle_threshold=angle_threshold) and _are_close(
             current_line, line, tol=tol
         ):
-            current_line = _merge_lines(current_line, line)
+            merged_line = _merge_lines(current_line, line)
+            if merged_line is None:  # no merge possible
+                merged_lines.append(line)
+                continue
+            current_line = merged_line
             any_merges = True
         else:
             merged_lines.append(current_line)
@@ -216,6 +220,9 @@ def merge_parallel_lines(lines: list[Line], tol: int = 8, angle_threshold: float
                 line, merge_candidate, tol=tol
             ):
                 line = _merge_lines(line, merge_candidate)
+                if line is None:  # No merge possible
+                    merged_lines.append(line)
+                    continue
                 merged_lines.remove(merge_candidate)
                 merged_lines.append(line)
                 merged = True
@@ -231,6 +238,9 @@ def merge_parallel_lines(lines: list[Line], tol: int = 8, angle_threshold: float
 def _odr_regression(x: ArrayLike, y: ArrayLike) -> tuple:
     """Perform orthogonal distance regression on the given data.
 
+    Note: If the problem is ill defined (i.e. denominator == nominator == 0),
+    then the function will return phi=np.nan and r=np.nan.
+
     Args:
         x (ArrayLike): The x-coordinates of the data.
         y (ArrayLike): The y-coordinates of the data.
@@ -243,8 +253,8 @@ def _odr_regression(x: ArrayLike, y: ArrayLike) -> tuple:
     nominator = -2 * np.sum((x - x_mean) * (y - y_mean))
     denominator = np.sum((y - y_mean) ** 2 - (x - x_mean) ** 2)
     if nominator == 0 and denominator == 0:
-        logger.warning("The data is constant. The slope is undefined. We return phi=0 and r=0.")
-        # TODO: Any idea what we should do here? Happens 4 times on the test data.
+        logger.warning("The data is constant. The slope is undefined. We return phi=np.nan and r=np.nan.")
+        return np.nan, np.nan
     phi = 0.5 * np.arctan2(nominator, denominator)  # np.arctan2 can deal with np.inf due to zero division.
     r = x_mean * cos(phi) + y_mean * sin(phi)
 
@@ -271,6 +281,8 @@ def _merge_lines(line1: Line, line2: Line) -> Line:
     x = np.array([line1.start.x, line1.end.x, line2.start.x, line2.end.x])
     y = np.array([line1.start.y, line1.end.y, line2.start.y, line2.end.y])
     phi, r = _odr_regression(x, y)
+    if np.isnan(phi) or np.isnan(r):
+        return None
 
     projected_points = []
     for point in [line1.start, line1.end, line2.start, line2.end]:

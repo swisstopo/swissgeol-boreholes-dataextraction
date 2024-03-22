@@ -32,9 +32,18 @@ def test_odr_regression(odr_regression_case):  # noqa: D103
     assert pytest.approx(np.abs(expected_r)) == np.abs(r)
 
 
-def test_odr_regression_with_zeroes():  # noqa: D103
-    x = np.array([0, 0, 0, 0])
-    y = np.array([0, 0, 0, 0])
+@pytest.fixture(
+    params=[
+        (np.array([0, 0, 0, 0]), np.array([0, 0, 0, 0])),  # Test case 1 all zeroes
+        (np.array([1, 1, -1, -1]), np.array([1, -1, 1, -1])),  # Test case square
+    ]
+)
+def odr_regression_with_zeroes_case(request):  # noqa: D103
+    return request.param
+
+
+def test_odr_regression_with_zeroes(odr_regression_with_zeroes_case):  # noqa: D103
+    x, y = odr_regression_with_zeroes_case
     phi, r = _odr_regression(x, y)
     print(f"phi: {phi}, r: {r}")
     assert np.isnan(phi)  # Expected value
