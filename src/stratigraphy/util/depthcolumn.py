@@ -51,7 +51,9 @@ class DepthColumn(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def identify_groups(self, description_lines: list[TextLine], geometric_lines: list[Line]) -> list[dict]:
+    def identify_groups(
+        self, description_lines: list[TextLine], geometric_lines: list[Line], material_description_rect: fitz.Rect
+    ) -> list[dict]:
         pass
 
 
@@ -119,7 +121,13 @@ class LayerDepthColumn(DepthColumn):
 
         return sequence_matches_count / (len(self.entries) - 1) > 0.5
 
-    def identify_groups(self, description_lines: list[TextLine], geometric_lines: list[Line], **params) -> list[dict]:
+    def identify_groups(
+        self,
+        description_lines: list[TextLine],
+        geometric_lines: list[Line],
+        material_description_rect: fitz.Rect,
+        **params,
+    ) -> list[dict]:
         depth_intervals = self.depth_intervals()
 
         groups = []
@@ -308,7 +316,13 @@ class BoundaryDepthColumn(DepthColumn):
 
         return [BoundaryDepthColumn(segment) for segment in segments]
 
-    def identify_groups(self, description_lines: list[TextLine], geometric_lines: list[Line], **params) -> list[dict]:
+    def identify_groups(
+        self,
+        description_lines: list[TextLine],
+        geometric_lines: list[Line],
+        material_description_rect: fitz.Rect,
+        **params,
+    ) -> list[dict]:
         """Identifies groups of description blocks that correspond to depth intervals.
 
         Note: includes a heuristic of whether there should be a group corresponding to a final depth interval
@@ -317,6 +331,7 @@ class BoundaryDepthColumn(DepthColumn):
         Args:
             description_lines (list[TextLine]): A list of text lines that are part of the description.
             geometric_lines (list[Line]): A list of geometric lines that are part of the description.
+            material_description_rect (fitz.Rect): The bounding box of the material description.
             params (dict): A dictionary of parameters used for line detection.
 
         Returns:
@@ -345,6 +360,7 @@ class BoundaryDepthColumn(DepthColumn):
         all_blocks = get_description_blocks(
             description_lines,
             geometric_lines,
+            material_description_rect,
             params["block_line_ratio"],
             left_line_length_threshold=params["left_line_length_threshold"],
             target_layer_count=len(depth_intervals),

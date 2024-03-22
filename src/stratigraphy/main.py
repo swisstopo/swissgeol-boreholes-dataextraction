@@ -134,7 +134,9 @@ def process_page(
             if len(description_lines) > 1:
                 for rect in depth_column.rects():
                     fitz.utils.draw_rect(page, rect * page.derotation_matrix, color=fitz.utils.getColor("purple"))
-                new_groups = match_columns(depth_column, description_lines, geometric_lines, **params)
+                new_groups = match_columns(
+                    depth_column, description_lines, geometric_lines, material_description_rect, **params
+                )
                 for index, group in enumerate(new_groups):
                     correct = ground_truth_for_file.is_correct(group["block"].text)
                     draw_layer(
@@ -156,7 +158,11 @@ def process_page(
             )
             description_lines = get_description_lines(lines, material_description_rect)
             description_blocks = get_description_blocks(
-                description_lines, geometric_lines, params["block_line_ratio"], params["left_line_length_threshold"]
+                description_lines,
+                geometric_lines,
+                material_description_rect,
+                params["block_line_ratio"],
+                params["left_line_length_threshold"],
             )
             for index, block in enumerate(description_blocks):
                 correct = ground_truth_for_file.is_correct(block.text)
@@ -228,6 +234,7 @@ def match_columns(
     depth_column: DepthColumn,
     description_lines: list[TextLine],
     geometric_lines: list[Line],
+    material_description_rect: fitz.Rect,
     **params,
 ) -> list:
     """Match the depth column entries with the description lines.
@@ -239,6 +246,7 @@ def match_columns(
         depth_column (DepthColumn): The depth column.
         description_lines (list[TextLine]): The description lines.
         geometric_lines (list[Line]): The geometric lines.
+        material_description_rect (fitz.Rect): The material description rectangle.
         **params: Additional parameters for the matching pipeline.
 
     Returns:
@@ -246,7 +254,9 @@ def match_columns(
     """
     return [
         element
-        for group in depth_column.identify_groups(description_lines, geometric_lines, **params)
+        for group in depth_column.identify_groups(
+            description_lines, geometric_lines, material_description_rect, **params
+        )
         for element in transform_groups(group["depth_intervals"], group["blocks"], **params)
     ]
 
