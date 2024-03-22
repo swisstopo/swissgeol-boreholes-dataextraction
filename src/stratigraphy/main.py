@@ -102,7 +102,7 @@ def process_page(
             color=fitz.utils.getColor("green"),
         )
 
-    pairs = []
+    pairs = []  # pairs of depth column and material description column
     for depth_column in depth_columns:
         material_description_rect = find_material_description_column(lines, depth_column)
         if material_description_rect:
@@ -121,10 +121,11 @@ def process_page(
 
     geometric_lines = extract_lines(page, line_detection_params)
 
-    groups = []
-    if len(filtered_pairs):
+    groups = []  # list of matched depth intervals and text blocks
+    # groups is of the form: ["depth_interval": BoundaryInterval, "block": TextBlock]
+    if len(filtered_pairs):  # match depth column items with material description
         for depth_column, material_description_rect in filtered_pairs:
-            fitz.utils.draw_rect(  # This adjusts the page object. This is a problem for subsequent line detection.
+            fitz.utils.draw_rect(  # This adjusts the page object, critical for potential computer vision operations.
                 page,
                 material_description_rect * page.derotation_matrix,
                 color=fitz.utils.getColor("red"),
@@ -132,9 +133,7 @@ def process_page(
             description_lines = get_description_lines(lines, material_description_rect)
             if len(description_lines) > 1:
                 for rect in depth_column.rects():
-                    fitz.utils.draw_rect(  # this affects the line detection
-                        page, rect * page.derotation_matrix, color=fitz.utils.getColor("purple")
-                    )
+                    fitz.utils.draw_rect(page, rect * page.derotation_matrix, color=fitz.utils.getColor("purple"))
                 new_groups = match_columns(depth_column, description_lines, geometric_lines, **params)
                 for index, group in enumerate(new_groups):
                     correct = ground_truth_for_file.is_correct(group["block"].text)
@@ -231,11 +230,10 @@ def match_columns(
     geometric_lines: list[Line],
     **params,
 ) -> list:
-    """Match the depth column with the description lines.
+    """Match the depth column entries with the description lines.
 
-    As part of the matching, the number of text blocks is adjusted to match the number of depth intervals.
-
-    TODO: Check if docstring is correct.
+    This function identifies groups of depth intervals and text blocks that are likely to match.
+    In this process, the number of text blocks is adjusted to match the number of depth intervals.
 
     Args:
         depth_column (DepthColumn): The depth column.

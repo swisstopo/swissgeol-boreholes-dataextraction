@@ -201,6 +201,13 @@ class BoundaryDepthColumn(DepthColumn):
         )
 
     def depth_intervals(self) -> list[BoundaryInterval]:
+        """Creates a list of depth intervals from the depth column entries.
+
+        The first and last depth intervals are open-ended.
+
+        Returns:
+            list[BoundaryInterval]: A list of depth intervals.
+        """
         depth_intervals = [BoundaryInterval(None, self.entries[0])]
         for i in range(len(self.entries) - 1):
             depth_intervals.append(BoundaryInterval(self.entries[i], self.entries[i + 1]))
@@ -302,6 +309,33 @@ class BoundaryDepthColumn(DepthColumn):
         return [BoundaryDepthColumn(segment) for segment in segments]
 
     def identify_groups(self, description_lines: list[TextLine], geometric_lines: list[Line], **params) -> list[dict]:
+        """Identifies groups of description blocks that correspond to depth intervals.
+
+        Note: includes a heuristic of whether there should be a group corresponding to a final depth interval
+        starting from the last depth entry without any end value.
+
+        Args:
+            description_lines (list[TextLine]): A list of text lines that are part of the description.
+            geometric_lines (list[Line]): A list of geometric lines that are part of the description.
+            params (dict): A dictionary of parameters used for line detection.
+
+        Returns:
+            list[dict]: A list of groups, where each group is a dictionary
+                        with the keys "depth_intervals" and "blocks".
+
+        Example:
+            [
+                {
+                    "depth_intervals": [BoundaryInterval(None, 0.1), BoundaryInterval(0.1, 0.3), ...],
+                    "blocks": [DescriptionBlock(...), DescriptionBlock(...), ...]
+                },
+                {
+                    "depth_intervals": [BoundaryInterval(0.1, 0.3)],
+                    "blocks": [DescriptionBlock(...), DescriptionBlock(...), ...]
+                },
+                ...
+            ]
+        """
         depth_intervals = self.depth_intervals()
 
         groups = []
@@ -315,6 +349,8 @@ class BoundaryDepthColumn(DepthColumn):
             left_line_length_threshold=params["left_line_length_threshold"],
             target_layer_count=len(depth_intervals),
         )
+
+        open_end_interval = len(all_blocks) >= len(depth_intervals)
 
         block_index = 0
 
@@ -336,9 +372,11 @@ class BoundaryDepthColumn(DepthColumn):
                 current_intervals = []
             else:
                 # only add "unlimited" final layer, if the description is visually below the final depth label
+                # and if there are at least as many blocks as intervals (intervals always include the open ended one)
                 if interval.end is not None or (
                     len(current_blocks)
                     and current_blocks[-1].rect.y1 > interval.start.rect.y1 + interval.start.rect.height / 2
+                    and open_end_interval
                 ):
                     current_intervals.append(interval)
 
