@@ -254,7 +254,7 @@ def _odr_regression(x: ArrayLike, y: ArrayLike) -> tuple:
     denominator = np.sum((y - y_mean) ** 2 - (x - x_mean) ** 2)
     if nominator == 0 and denominator == 0:
         logger.warning(
-            "The problem is ill defined as both nominator and denominator for arctan are 0."
+            "The problem is ill defined as both nominator and denominator for arctan are 0. "
             "We return phi=np.nan and r=np.nan."
         )
         return np.nan, np.nan
