@@ -1,4 +1,4 @@
-"""This module contains the main pipeline for the stratigraphy matching."""
+"""This module contains the main pipeline for the boreholes data extraction."""
 
 import json
 import logging
@@ -246,6 +246,7 @@ def match_columns(
         depth_column (DepthColumn): The depth column.
         description_lines (list[TextLine]): The description lines.
         geometric_lines (list[Line]): The geometric lines.
+        material_description_rect (fitz.Rect): The material description rectangle.
         **params: Additional parameters for the matching pipeline.
 
     Returns:
