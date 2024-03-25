@@ -54,6 +54,13 @@ class DepthColumn(metaclass=abc.ABCMeta):
     def identify_groups(self, description_lines: list[TextLine], geometric_lines: list[Line]) -> list[dict]:
         pass
 
+    def to_json(self):
+        rect = self.rect()
+        return {
+            "rect": [rect.x0, rect.y0, rect.x1, rect.y1],
+            "entries": [entry.to_json() for entry in self.entries],
+        }
+
 
 class LayerDepthColumn(DepthColumn):
     """Represents a depth column where the upper and lower depths of each layer are explicitly specified.

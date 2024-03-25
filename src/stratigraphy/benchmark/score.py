@@ -7,8 +7,30 @@ from pathlib import Path
 import pandas as pd
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.ground_truth import GroundTruth
+from stratigraphy.util.draw import draw_predictions
 
 logger = logging.getLogger(__name__)
+
+
+def _get_from_all_pages(predictions: dict) -> dict:
+    """Get all predictions from all pages.
+
+    Args:
+        predictions (dict): The predictions.
+
+    Returns:
+        dict: The predictions from all pages.
+    """
+    all_predictions = {}
+    layers = []
+    depths_materials_column_pairs = []
+    for page in predictions:
+        layers.extend(predictions[page]["layers"])
+        depths_materials_column_pairs.extend(predictions[page]["depths_materials_column_pairs"])
+    all_predictions["layers"] = layers
+    if len(depths_materials_column_pairs):
+        all_predictions["depths_materials_column_pairs"] = depths_materials_column_pairs
+    return all_predictions
 
 
 def f1(precision: float, recall: float) -> float:
@@ -27,7 +49,9 @@ def f1(precision: float, recall: float) -> float:
         return 0
 
 
-def evaluate_matching(predictions_path: Path, ground_truth_path: Path) -> tuple[dict, pd.DataFrame]:
+def evaluate_matching(
+    predictions_path: Path, ground_truth_path: Path, directory: Path, out_directory: Path
+) -> tuple[dict, pd.DataFrame]:
     """Calculate F1, precision and recall for the predictions.
 
     Calculate F1, precision and recall for the individual documents as well as overall.
@@ -36,6 +60,8 @@ def evaluate_matching(predictions_path: Path, ground_truth_path: Path) -> tuple[
     Args:
         predictions_path (Path): Path to the predictions.json file.
         ground_truth_path (Path): Path to the ground truth annotated data.
+        directory (Path): Path to the directory containing the pdf files.
+        out_directory (Path): Path to the directory where the evaluation images should be saved.
 
     Returns:
         tuple[dict, pd.DataFrame]: A tuple containing the overall F1, precision and recall as a dictionary and the
@@ -44,6 +70,8 @@ def evaluate_matching(predictions_path: Path, ground_truth_path: Path) -> tuple[
     ground_truth = GroundTruth(ground_truth_path)
     with open(predictions_path) as in_file:
         predictions = json.load(in_file)
+
+    draw_predictions(predictions, ground_truth, directory, out_directory)
 
     document_level_metrics = {
         "document_name": [],
@@ -54,9 +82,10 @@ def evaluate_matching(predictions_path: Path, ground_truth_path: Path) -> tuple[
         "Number wrong elements": [],
     }
     for filename in predictions:
+        all_predictions = _get_from_all_pages(predictions[filename])
         if filename in ground_truth.ground_truth_descriptions:
             prediction_descriptions = [
-                GroundTruth.parse(entry["description"]) for entry in predictions[filename]["layers"]
+                GroundTruth.parse(entry["material_description"]["text"]) for entry in all_predictions["layers"]
             ]
             prediction_descriptions = [description for description in prediction_descriptions if description]
             ground_truth_for_file = ground_truth.for_file(filename)
