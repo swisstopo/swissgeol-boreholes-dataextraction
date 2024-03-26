@@ -187,14 +187,15 @@ def draw_layer(page: fitz.Page, interval: dict | None, block: dict, index: int, 
 
 
 def _get_line_anchor(interval):
-    if interval["start"] and interval["end"]:
-        return fitz.Point(
-            interval["start"]["rect"][2], (interval["start"]["rect"][1] + interval["end"]["rect"][3]) / 2
-        )
-    elif interval["start"]:
-        return fitz.Point(interval["start"]["rect"][2], interval["start"]["rect"][3])
-    elif interval["end"]:
-        return fitz.Point(interval["end"]["rect"][2], interval["end"]["rect"][1])
+    interval_start_rect = fitz.Rect(interval["start"]["rect"]) if interval["start"] else None
+    interval_end_rect = fitz.Rect(interval["end"]["rect"]) if interval["end"] else None
+
+    if interval_start_rect and interval_end_rect:
+        return fitz.Point(interval_start_rect.x1, (interval_start_rect.y0 + interval_end_rect.y1) / 2)
+    elif interval_start_rect:
+        return fitz.Point(interval_start_rect.x1, interval_start_rect.y1)
+    elif interval_end_rect:
+        return fitz.Point(interval_end_rect.x1, interval_end_rect.y0)
 
 
 def _background_rect(interval) -> fitz.Rect | None:
