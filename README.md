@@ -41,3 +41,7 @@ The specific linting and formatting settings applied are defined in `pyproject.t
 If you want to skip the hooks, you can use `git commit -m "..." --no-verify`.
 
 More information about pre-commit can be found [here](https://pre-commit.com).
+
+## Package Manager
+We use [miniforge](https://github.com/conda-forge/miniforge) as a package manager for the project. Miniforge imitates the behavior of conda, with the difference that no packages from the anaconda repository are used. The only channel we use is conda-forge which does not come with license implications.
+
