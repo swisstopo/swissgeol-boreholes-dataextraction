@@ -211,7 +211,7 @@ class BoundaryDepthColumn(DepthColumn):
     def depth_intervals(self) -> list[BoundaryInterval]:
         """Creates a list of depth intervals from the depth column entries.
 
-        The first and last depth intervals are open-ended.
+        The first depth interval is open-ended.
 
         Returns:
             list[BoundaryInterval]: A list of depth intervals.
@@ -219,7 +219,9 @@ class BoundaryDepthColumn(DepthColumn):
         depth_intervals = [BoundaryInterval(None, self.entries[0])]
         for i in range(len(self.entries) - 1):
             depth_intervals.append(BoundaryInterval(self.entries[i], self.entries[i + 1]))
-        depth_intervals.append(BoundaryInterval(self.entries[len(self.entries) - 1], None))
+        depth_intervals.append(
+            BoundaryInterval(self.entries[len(self.entries) - 1], None)
+        )  # even though no open ended intervals are allowed, they are still useful for matching
         return depth_intervals
 
     def significant_arithmetic_progression(self) -> bool:
@@ -366,8 +368,6 @@ class BoundaryDepthColumn(DepthColumn):
             target_layer_count=len(depth_intervals),
         )
 
-        open_end_interval = len(all_blocks) >= len(depth_intervals)
-
         block_index = 0
 
         for interval in depth_intervals:
@@ -389,11 +389,7 @@ class BoundaryDepthColumn(DepthColumn):
             else:
                 # only add "unlimited" final layer, if the description is visually below the final depth label
                 # and if there are at least as many blocks as intervals (intervals always include the open ended one)
-                if interval.end is not None or (
-                    len(current_blocks)
-                    and current_blocks[-1].rect.y1 > interval.start.rect.y1 + interval.start.rect.height / 2
-                    and open_end_interval
-                ):
+                if interval.end is not None:
                     current_intervals.append(interval)
 
         if len(current_intervals) > 0 or len(current_blocks) > 0:
