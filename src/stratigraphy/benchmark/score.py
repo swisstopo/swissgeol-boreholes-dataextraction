@@ -2,12 +2,18 @@
 
 import json
 import logging
+import os
 from pathlib import Path
 
 import pandas as pd
+from dotenv import load_dotenv
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.util.draw import draw_predictions
+
+load_dotenv()
+
+mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +143,22 @@ def evaluate_matching(
 
 
 if __name__ == "__main__":
-    predictions_path = DATAPATH / "Benchmark" / "extract" / "predictions.json"
-    ground_truth_path = DATAPATH / "Benchmark" / "ground_truth.json"
+    # setup mlflow tracking; should be started before any other code
+    # such that tracking is enabled in other parts of the code.
+    # This does not create any scores, but will logg all the created images to mlflow.
+    if mlflow_tracking:
+        import mlflow
 
-    metrics = evaluate_matching(predictions_path, ground_truth_path)
+        mlflow.set_experiment("Boreholes Stratigraphy")
+        mlflow.start_run()
+
+    # instantiate all paths
+    input_directory = DATAPATH / "Benchmark"
+    ground_truth_path = input_directory / "ground_truth.json"
+    out_directory = input_directory / "evaluation"
+    predictions_path = input_directory / "extract" / "predictions.json"
+
+    # evaluate the predictions
+    metrics, document_level_metrics = evaluate_matching(
+        predictions_path, ground_truth_path, input_directory, out_directory
+    )
