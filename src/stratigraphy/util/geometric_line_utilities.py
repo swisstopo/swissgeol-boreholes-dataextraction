@@ -177,10 +177,12 @@ def merge_parallel_lines_neighbours(
             current_line, line, tol=tol
         ):
             merged_line = _merge_lines(current_line, line)
-            if merged_line is not None:  # no merge possible
+            if merged_line is not None:
+                # current_line and line were merged
                 current_line = merged_line
                 any_merges = True
                 continue
+        # current_line and line were not merged
         merged_lines.append(current_line)
         current_line = line
     merged_lines.append(current_line)
