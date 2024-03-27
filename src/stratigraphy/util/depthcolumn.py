@@ -221,7 +221,9 @@ class BoundaryDepthColumn(DepthColumn):
             depth_intervals.append(BoundaryInterval(self.entries[i], self.entries[i + 1]))
         depth_intervals.append(
             BoundaryInterval(self.entries[len(self.entries) - 1], None)
-        )  # even though no open ended intervals are allowed, they are still useful for matching
+        )  # even though no open ended intervals are allowed, they are still useful for matching,
+        # especially for documents where the material description rectangle is too tall
+        # (and includes additional lines below the actual material descriptions).
         return depth_intervals
 
     def significant_arithmetic_progression(self) -> bool:
@@ -388,7 +390,8 @@ class BoundaryDepthColumn(DepthColumn):
                 current_intervals = []
             else:
                 # only add "unlimited" final layer, if the description is visually below the final depth label
-                # and if there are at least as many blocks as intervals (intervals always include the open ended one)
+                # The final open ended interval should not be added, since borehole profiles do typically not come
+                # with open ended intervals.
                 if interval.end is not None:
                     current_intervals.append(interval)
 
