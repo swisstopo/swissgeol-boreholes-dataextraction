@@ -155,13 +155,12 @@ class SplitDescriptionBlockByVerticalSpace(DescriptionBlockSplitter):
         self.threshold = threshold
         self.set_terminated_by_line_flag = False
 
-    def separator_condition(self, last_line: TextLine, current_line: TextLine, current_block: TextBlock) -> bool:
+    def separator_condition(self, last_line: TextLine, current_line: TextLine) -> bool:
         """Check if a block is separated by sufficient vertical space.
 
         Args:
             last_line (TextLine): The previous line.
             current_line (TextLine): The current line.
-            current_block (TextBlock): Current block.
 
         Returns:
             bool: True if the block is separated by sufficient vertical space, False otherwise.
