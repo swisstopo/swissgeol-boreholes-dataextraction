@@ -7,8 +7,6 @@ from pathlib import Path
 import fitz
 from dotenv import load_dotenv
 
-from stratigraphy.benchmark.ground_truth import GroundTruth, GroundTruthForFile
-
 load_dotenv()
 
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
@@ -18,7 +16,7 @@ colors = ["purple", "blue"]
 logger = logging.getLogger(__name__)
 
 
-def draw_predictions(predictions: dict, ground_truth: GroundTruth, directory: Path, out_directory: Path) -> None:
+def draw_predictions(predictions: dict, directory: Path, out_directory: Path) -> None:
     """Draw predictions on pdf pages.
 
     Draws various recognized information on the pdf pages present at directory and saves
@@ -34,7 +32,6 @@ def draw_predictions(predictions: dict, ground_truth: GroundTruth, directory: Pa
 
     Args:
         predictions (dict): Content of the predictions.json file..
-        ground_truth (GroundTruth): Path to the ground truth annotated data.
         directory (Path): Path to the directory containing the pdf files.
         out_directory (Path): Path to the output directory where the images are saved.
     """
@@ -48,7 +45,7 @@ def draw_predictions(predictions: dict, ground_truth: GroundTruth, directory: Pa
                     "depths_materials_column_pairs"
                 ]
                 draw_depth_columns_and_material_rect(page, depths_materials_column_pairs)
-                draw_material_descriptions(page, layers, ground_truth.for_file(file))
+                draw_material_descriptions(page, layers)
 
                 tmp_file_path = out_directory / f"{file}_page{page_number}.png"
                 fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
@@ -61,7 +58,7 @@ def draw_predictions(predictions: dict, ground_truth: GroundTruth, directory: Pa
                         logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
 
 
-def draw_material_descriptions(page: fitz.Page, layers: dict, ground_truth: GroundTruthForFile) -> None:
+def draw_material_descriptions(page: fitz.Page, layers: dict) -> None:
     """Draw information about material descriptions on a pdf page.
 
     In particular, this function:
@@ -72,7 +69,6 @@ def draw_material_descriptions(page: fitz.Page, layers: dict, ground_truth: Grou
     Args:
         page (fitz.Page): The page to draw on.
         layers (dict): The predictions for the page.
-        ground_truth (GroundTruth): The ground truth data for the page.
     """
     for index, block in enumerate(layers):
         material_description_block = block["material_description"]
@@ -82,13 +78,12 @@ def draw_material_descriptions(page: fitz.Page, layers: dict, ground_truth: Grou
                 fitz.Rect(material_description_block["rect"]) * page.derotation_matrix,
                 color=fitz.utils.getColor("orange"),
             )
-        correct = ground_truth.is_correct(material_description_block["text"])
         draw_layer(
             page=page,
             interval=block.get("depth_interval"),  # None if no depth interval
             block=material_description_block,
             index=index,
-            is_correct=correct,
+            is_correct=material_description_block.get("is_correct"),  # None if no ground truth
         )
 
 

@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.util.draw import draw_predictions
+from stratigraphy.util.util import parse_text
 
 load_dotenv()
 
@@ -77,7 +78,9 @@ def evaluate_matching(
     with open(predictions_path) as in_file:
         predictions = json.load(in_file)
 
-    draw_predictions(predictions, ground_truth, directory, out_directory)
+    predictions, number_of_truth_values = _add_ground_truth_to_predictions(predictions, ground_truth)
+
+    draw_predictions(predictions, directory, out_directory)
 
     document_level_metrics = {
         "document_name": [],
@@ -89,33 +92,28 @@ def evaluate_matching(
     }
     for filename in predictions:
         all_predictions = _get_from_all_pages(predictions[filename])
-        if filename in ground_truth.ground_truth_descriptions:
-            prediction_descriptions = [
-                GroundTruth.parse(entry["material_description"]["text"]) for entry in all_predictions["layers"]
-            ]
-            prediction_descriptions = [description for description in prediction_descriptions if description]
-            ground_truth_for_file = ground_truth.for_file(filename)
+        hits = 0
+        for value in all_predictions["layers"]:
+            if value["material_description"]["is_correct"]:
+                hits += 1
+            if parse_text(value["material_description"]["text"]) == "":
+                print("Empty string found in predictions")
+        tp = hits
+        fp = len(all_predictions["layers"]) - tp
+        fn = number_of_truth_values[filename] - tp
 
-            hits = []
-            for value in prediction_descriptions:
-                if ground_truth_for_file.is_correct(value):
-                    hits.append(value)
-            tp = len(hits)
-            fp = len(prediction_descriptions) - tp
-            fn = len(ground_truth_for_file.descriptions) - tp
-
-            if tp:
-                precision = tp / (tp + fp)
-                recall = tp / (tp + fn)
-            else:
-                precision = 0
-                recall = 0
-            document_level_metrics["document_name"].append(filename)
-            document_level_metrics["precision"].append(precision)
-            document_level_metrics["recall"].append(recall)
-            document_level_metrics["F1"].append(f1(precision, recall))
-            document_level_metrics["Number Elements"].append(len(ground_truth_for_file.descriptions))
-            document_level_metrics["Number wrong elements"].append(len(ground_truth_for_file.descriptions) - len(hits))
+        if tp:
+            precision = tp / (tp + fp)
+            recall = tp / (tp + fn)
+        else:
+            precision = 0
+            recall = 0
+        document_level_metrics["document_name"].append(filename)
+        document_level_metrics["precision"].append(precision)
+        document_level_metrics["recall"].append(recall)
+        document_level_metrics["F1"].append(f1(precision, recall))
+        document_level_metrics["Number Elements"].append(number_of_truth_values[filename])
+        document_level_metrics["Number wrong elements"].append(fn + fp)
 
     if len(document_level_metrics["precision"]):
         overall_precision = sum(document_level_metrics["precision"]) / len(document_level_metrics["precision"])
@@ -140,6 +138,28 @@ def evaluate_matching(
         "precision": overall_precision,
         "recall": overall_recall,
     }, pd.DataFrame(document_level_metrics)
+
+
+def _add_ground_truth_to_predictions(predictions: dict, ground_truth: GroundTruth) -> tuple[dict]:
+    """Add the ground truth to the predictions.
+
+    Args:
+        predictions (dict): The predictions.
+        ground_truth (GroundTruth): The ground truth.
+
+    Returns:
+        dict: The predictions with the ground truth added.
+    """
+    number_of_truth_values = {}
+    for file, file_predictions in predictions.items():
+        ground_truth_for_file = ground_truth.for_file(file)
+        number_of_truth_values[file] = len(ground_truth_for_file.descriptions)
+        for page in file_predictions:
+            for layer in file_predictions[page]["layers"]:
+                layer["material_description"]["is_correct"] = ground_truth_for_file.is_correct(
+                    layer["material_description"]["text"]
+                )
+    return predictions, number_of_truth_values
 
 
 if __name__ == "__main__":

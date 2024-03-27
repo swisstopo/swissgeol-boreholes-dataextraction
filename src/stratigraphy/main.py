@@ -19,7 +19,13 @@ from stratigraphy.util.find_description import get_description_blocks, get_descr
 from stratigraphy.util.interval import Interval
 from stratigraphy.util.line import DepthInterval, TextLine
 from stratigraphy.util.textblock import TextBlock, block_distance
-from stratigraphy.util.util import flatten, read_params, x_overlap, x_overlap_significant_smallest
+from stratigraphy.util.util import (
+    flatten,
+    parse_and_remove_empty_predictions,
+    read_params,
+    x_overlap,
+    x_overlap_significant_smallest,
+)
 
 load_dotenv()
 
@@ -160,6 +166,7 @@ def process_page(page: fitz.Page, **params: dict) -> list[dict]:
         else {"material_description": group["block"].to_json()}
         for group in groups
     ]
+    predictions = parse_and_remove_empty_predictions(predictions)
     return predictions, json_filtered_pairs
 
 

@@ -1,5 +1,6 @@
 """This module contains general utility functions for the stratigraphy module."""
 
+import re
 from collections.abc import MutableMapping
 
 import fitz
@@ -72,3 +73,33 @@ def read_params(params_name: str) -> dict:
         params = yaml.safe_load(f)
 
     return params
+
+
+def parse_text(text: str) -> str:
+    """Parse text by removing non-alphanumeric characters and converting to lowercase.
+
+    Args:
+        text (str): Text to parse.
+
+    Returns:
+        str: Parsed text.
+    """
+    not_alphanum = re.compile(r"[^\w\d]", re.U)
+    return not_alphanum.sub("", text).lower()
+
+
+def parse_and_remove_empty_predictions(predictions: dict) -> dict:
+    """Remove empty predictions from the predictions dictionary.
+
+    Args:
+        predictions (dict): Predictions dictionary.
+
+    Returns:
+        dict: Predictions dictionary without empty predictions.
+    """
+    for layer in predictions:
+        layer["material_description"]["text"] = parse_text(layer["material_description"]["text"])
+        if layer["material_description"]["text"] == "":
+            predictions.remove(layer)
+
+    return predictions
