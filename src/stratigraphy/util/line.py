@@ -4,26 +4,9 @@ from __future__ import annotations
 
 import fitz
 
-from stratigraphy.util.util import x_overlap_significant_largest
+from stratigraphy.util.util import read_params, x_overlap_significant_largest
 
-material_description = [
-    "sand",
-    "silt",
-    "kies",
-    "asphalt",
-    "humus",
-    "braun",
-    "grau",
-    "weich",
-    "hart",
-    "wurzel",
-    "belag",
-    "stein",
-    "beige",
-    "beton",
-    "kreide",
-    "mergel",
-]  # Consider those as parameter?
+material_description = read_params("matching_params.yml")["material_description"]
 
 
 class DepthInterval:
