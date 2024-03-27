@@ -111,8 +111,9 @@ def process_page(page: fitz.Page, **params: dict) -> list[dict]:
 
     geometric_lines = extract_lines(page, line_detection_params)
 
-    groups = []
-    if len(filtered_pairs):
+    groups = []  # list of matched depth intervals and text blocks
+    # groups is of the form: ["depth_interval": BoundaryInterval, "block": TextBlock]
+    if len(filtered_pairs):  # match depth column items with material description
         for depth_column, material_description_rect in filtered_pairs:
             description_lines = get_description_lines(lines, material_description_rect)
             if len(description_lines) > 1:
@@ -211,11 +212,10 @@ def match_columns(
     material_description_rect: fitz.Rect,
     **params: dict,
 ) -> list:
-    """Match the depth column with the description lines.
+    """Match the depth column entries with the description lines.
 
-    As part of the matching, the number of text blocks is adjusted to match the number of depth intervals.
-
-    TODO: Check if docstring is correct.
+    This function identifies groups of depth intervals and text blocks that are likely to match.
+    In this process, the number of text blocks is adjusted to match the number of depth intervals.
 
     Args:
         depth_column (DepthColumn): The depth column.

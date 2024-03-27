@@ -51,7 +51,9 @@ class DepthColumn(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def identify_groups(self, description_lines: list[TextLine], geometric_lines: list[Line]) -> list[dict]:
+    def identify_groups(
+        self, description_lines: list[TextLine], geometric_lines: list[Line], material_description_rect: fitz.Rect
+    ) -> list[dict]:
         pass
 
     def to_json(self):
@@ -214,10 +216,21 @@ class BoundaryDepthColumn(DepthColumn):
         )
 
     def depth_intervals(self) -> list[BoundaryInterval]:
+        """Creates a list of depth intervals from the depth column entries.
+
+        The first depth interval is open-ended.
+
+        Returns:
+            list[BoundaryInterval]: A list of depth intervals.
+        """
         depth_intervals = [BoundaryInterval(None, self.entries[0])]
         for i in range(len(self.entries) - 1):
             depth_intervals.append(BoundaryInterval(self.entries[i], self.entries[i + 1]))
-        depth_intervals.append(BoundaryInterval(self.entries[len(self.entries) - 1], None))
+        depth_intervals.append(
+            BoundaryInterval(self.entries[len(self.entries) - 1], None)
+        )  # even though no open ended intervals are allowed, they are still useful for matching,
+        # especially for documents where the material description rectangle is too tall
+        # (and includes additional lines below the actual material descriptions).
         return depth_intervals
 
     def significant_arithmetic_progression(self) -> bool:
@@ -315,8 +328,40 @@ class BoundaryDepthColumn(DepthColumn):
         return [BoundaryDepthColumn(segment) for segment in segments]
 
     def identify_groups(
-        self, description_lines: list[TextLine], geometric_lines: list[Line], material_description_rect, **params
+        self,
+        description_lines: list[TextLine],
+        geometric_lines: list[Line],
+        material_description_rect: fitz.Rect,
+        **params,
     ) -> list[dict]:
+        """Identifies groups of description blocks that correspond to depth intervals.
+
+        Note: includes a heuristic of whether there should be a group corresponding to a final depth interval
+        starting from the last depth entry without any end value.
+
+        Args:
+            description_lines (list[TextLine]): A list of text lines that are part of the description.
+            geometric_lines (list[Line]): A list of geometric lines that are part of the description.
+            material_description_rect (fitz.Rect): The bounding box of the material description.
+            params (dict): A dictionary of parameters used for line detection.
+
+        Returns:
+            list[dict]: A list of groups, where each group is a dictionary
+                        with the keys "depth_intervals" and "blocks".
+
+        Example:
+            [
+                {
+                    "depth_intervals": [BoundaryInterval(None, 0.1), BoundaryInterval(0.1, 0.3), ...],
+                    "blocks": [DescriptionBlock(...), DescriptionBlock(...), ...]
+                },
+                {
+                    "depth_intervals": [BoundaryInterval(0.3, 0.7)],
+                    "blocks": [DescriptionBlock(...), DescriptionBlock(...), ...]
+                },
+                ...
+            ]
+        """
         depth_intervals = self.depth_intervals()
 
         groups = []
@@ -351,11 +396,9 @@ class BoundaryDepthColumn(DepthColumn):
                 current_blocks = post
                 current_intervals = []
             else:
-                # only add "unlimited" final layer, if the description is visually below the final depth label
-                if interval.end is not None or (
-                    len(current_blocks)
-                    and current_blocks[-1].rect.y1 > interval.start.rect.y1 + interval.start.rect.height / 2
-                ):
+                # The final open ended interval should not be added, since borehole profiles do typically not come
+                # with open ended intervals.
+                if interval.end is not None:
                     current_intervals.append(interval)
 
         if len(current_intervals) > 0 or len(current_blocks) > 0:
