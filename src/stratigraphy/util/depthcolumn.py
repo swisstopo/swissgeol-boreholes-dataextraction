@@ -389,7 +389,6 @@ class BoundaryDepthColumn(DepthColumn):
                 current_blocks = post
                 current_intervals = []
             else:
-                # only add "unlimited" final layer, if the description is visually below the final depth label
                 # The final open ended interval should not be added, since borehole profiles do typically not come
                 # with open ended intervals.
                 if interval.end is not None:
