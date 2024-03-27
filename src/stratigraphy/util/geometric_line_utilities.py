@@ -115,7 +115,7 @@ def merge_parallel_lines_approximately(
     return merged_lines
 
 
-def merge_parallel_lines_efficiently(lines: list[Line], tol: int = 8, angle_threshold: float = 2) -> list[Line]:
+def merge_parallel_lines_efficiently(lines: list[Line], tol: int, angle_threshold: float) -> list[Line]:
     """Merge parallel lines that are close to each other.
 
     This merging algorithm first sorts lines by their intercept and slope and then only compares neighbours. This
@@ -136,8 +136,8 @@ def merge_parallel_lines_efficiently(lines: list[Line], tol: int = 8, angle_thre
 
     Args:
         lines (list[Line]): The lines to merge.
-        tol (int, optional): Tolerance to check if lines are close. Defaults to 8.
-        angle_threshold (float, optional): Acceptable difference between the slopes of two lines. Defaults to 2.
+        tol (int, optional): Tolerance to check if lines are close.
+        angle_threshold (float, optional): Acceptable difference between the slopes of two lines.
 
     Returns:
         list[Line]: The merged lines.
@@ -155,15 +155,15 @@ def merge_parallel_lines_efficiently(lines: list[Line], tol: int = 8, angle_thre
 
 
 def merge_parallel_lines_neighbours(
-    lines: list[Line], sorting_function: callable, tol: int = 8, angle_threshold: float = 2
+    lines: list[Line], sorting_function: callable, tol: int, angle_threshold: float
 ) -> list[Line]:
     """Merge parallel lines by comparing neighbours in the sorted list of lines.
 
     Args:
         lines (list[Line]): The lines to merge.
         sorting_function (callable): The function to sort the lines by.
-        tol (int, optional): Tolerance to check if lines are close. Defaults to 8.
-        angle_threshold (float, optional): Acceptable difference between the slopes of two lines. Defaults to 2.
+        tol (int, optional): Tolerance to check if lines are close.
+        angle_threshold (float, optional): Acceptable difference between the slopes of two lines.
 
     Returns:
         list[Line]: The merged lines.
@@ -187,12 +187,14 @@ def merge_parallel_lines_neighbours(
         current_line = line
     merged_lines.append(current_line)
     if any_merges:
-        return merge_parallel_lines_neighbours(merged_lines, sorting_function=sorting_function, tol=tol)
+        return merge_parallel_lines_neighbours(
+            merged_lines, sorting_function=sorting_function, tol=tol, angle_threshold=angle_threshold
+        )
     else:
         return merged_lines
 
 
-def merge_parallel_lines(lines: list[Line], tol: int = 8, angle_threshold: float = 2) -> list[Line]:
+def merge_parallel_lines(lines: list[Line], tol: int, angle_threshold: float) -> list[Line]:
     """Merge parallel lines that are close to each other.
 
     NOTE: This function can likely be dropped. It is kept here for reference until the line functions
@@ -203,8 +205,8 @@ def merge_parallel_lines(lines: list[Line], tol: int = 8, angle_threshold: float
 
     Args:
         lines (list[Line]): The lines to merge.
-        tol (int, optional): Tolerance to check if lines are close. Defaults to 8.
-        angle_threshold (float, optional): Acceptable difference between the slopes of two lines. Defaults to 2.
+        tol (int, optional): Tolerance to check if lines are close.
+        angle_threshold (float, optional): Acceptable difference between the slopes of two lines.
 
     Returns:
         list[Line]: The merged lines.
@@ -216,7 +218,7 @@ def merge_parallel_lines(lines: list[Line], tol: int = 8, angle_threshold: float
         line = line_queue.popleft()
         merged = False
         for merge_candidate in merged_lines:
-            if _are_parallel(line, merge_candidate, threshold=angle_threshold) and _are_close(
+            if _are_parallel(line, merge_candidate, angle_threshold=angle_threshold) and _are_close(
                 line, merge_candidate, tol=tol
             ):
                 line = _merge_lines(line, merge_candidate)
@@ -230,7 +232,7 @@ def merge_parallel_lines(lines: list[Line], tol: int = 8, angle_threshold: float
         if not merged:
             merged_lines.append(line)
     if merged_any:
-        return merge_parallel_lines(merged_lines, tol=tol)
+        return merge_parallel_lines(merged_lines, tol=tol, angle_threshold=angle_threshold)
     else:
         return merged_lines
 
@@ -336,13 +338,13 @@ def _get_orthogonal_projection_to_line(point: Point, phi: float, r: float) -> Po
     return Point(x, y)
 
 
-def _are_close(line1: Line, line2: Line, tol: int = 5) -> bool:
+def _are_close(line1: Line, line2: Line, tol: int) -> bool:
     """Check if two lines are close to each other.
 
     Args:
         line1 (Line): The first line.
         line2 (Line): The second line.
-        tol (int, optional): The tolerance to check if the lines are close. Defaults to 10.
+        tol (int, optional): The tolerance to check if the lines are close.
 
     Returns:
         bool: True if the lines are close, False otherwise.
@@ -350,13 +352,13 @@ def _are_close(line1: Line, line2: Line, tol: int = 5) -> bool:
     return is_point_on_line(line1, line2.start, tol=tol) or is_point_on_line(line1, line2.end, tol=tol)
 
 
-def _are_parallel(line1: Line, line2: Line, angle_threshold: float = 2) -> bool:
+def _are_parallel(line1: Line, line2: Line, angle_threshold: float) -> bool:
     """Check if two lines are parallel.
 
     Args:
         line1 (Line): The first line.
         line2 (Line): The second line.
-        angle_threshold (float, optional): The acceptable difference between the slopes of the lines. Defaults to 2.
+        angle_threshold (float, optional): The acceptable difference between the slopes of the lines.
 
     Returns:
         bool: True if the lines are parallel, False otherwise.

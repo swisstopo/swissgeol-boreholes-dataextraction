@@ -98,19 +98,17 @@ class SplitDescriptionBlockByLine(DescriptionBlockSplitter):
 class SplitDescriptionBlockByLeftHandSideSeparator(DescriptionBlockSplitter):
     """Creates blocks based on shorter lines at the left-hand side of the material description text."""
 
-    def __init__(self, length_threshold: float, geometric_lines: list[Line], material_description_rect: fitz.Rect):
+    def __init__(self, length_threshold: float, geometric_lines: list[Line]):
         """Create a new SplitDescriptionBlockByLine instance.
 
         Args:
             length_threshold (int): The minimum length of a line segment on the left side of a block to split it.
             geometric_lines (list[Line]): The geometric lines detected in the pdf page.
-            material_description_rect (fitz.Rect): The bounding box for all material descriptions.
         """
         super().__init__()
         self.length_threshold = length_threshold
         self.set_terminated_by_line_flag = False
         self.geometric_lines = geometric_lines
-        self.material_description_rect = material_description_rect
 
     def separator_condition(self, last_line: TextLine, current_line: TextLine) -> bool:
         """Check if a block is separated by a line segment on the left side of the block.
@@ -128,8 +126,8 @@ class SplitDescriptionBlockByLeftHandSideSeparator(DescriptionBlockSplitter):
         for line in self.geometric_lines:
             line_y_coordinate = (line.start.y + line.end.y) / 2
 
-            line_near_lefthandside_of_block = (
-                line.start.x - self.length_threshold < self.material_description_rect.x0 < line.end.x
+            line_cuts_lefthandside_of_text = (line.start.x < last_line.rect.x0 < line.end.x) and (
+                line.start.x < current_line.rect.x0 < line.end.x
             )
             is_line_long_enough = (
                 np.abs(line.start.x - line.end.x) > self.length_threshold
@@ -137,7 +135,7 @@ class SplitDescriptionBlockByLeftHandSideSeparator(DescriptionBlockSplitter):
 
             line_ends_block = last_line_y_coordinate < line_y_coordinate < current_line_y_coordinate
 
-            if line_ends_block and is_line_long_enough and line_near_lefthandside_of_block:
+            if line_ends_block and is_line_long_enough and line_cuts_lefthandside_of_text:
                 return True
         return False
 

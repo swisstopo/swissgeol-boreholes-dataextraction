@@ -80,9 +80,7 @@ def get_description_blocks(
     # Create blocks separated by lefthandside line segments
     _blocks = []
     splitter = SplitDescriptionBlockByLeftHandSideSeparator(
-        length_threshold=left_line_length_threshold,
-        geometric_lines=geometric_lines,
-        material_description_rect=material_description_rect,
+        length_threshold=left_line_length_threshold, geometric_lines=geometric_lines
     )
     for block in blocks:
         _blocks.extend(splitter.create_blocks(block.lines))
