@@ -10,18 +10,22 @@ import fitz
 from dotenv import load_dotenv
 
 from stratigraphy import DATAPATH
-from stratigraphy.benchmark.ground_truth import GroundTruth, GroundTruthForFile
 from stratigraphy.benchmark.score import evaluate_matching
 from stratigraphy.line_detection import extract_lines, line_detection_params
 from stratigraphy.util import find_depth_columns
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.depthcolumn import DepthColumn
-from stratigraphy.util.draw import draw_layer
 from stratigraphy.util.find_description import get_description_blocks, get_description_lines
 from stratigraphy.util.interval import Interval
 from stratigraphy.util.line import DepthInterval, TextLine
 from stratigraphy.util.textblock import TextBlock, block_distance
-from stratigraphy.util.util import flatten, read_params, x_overlap, x_overlap_significant_smallest
+from stratigraphy.util.util import (
+    flatten,
+    parse_and_remove_empty_predictions,
+    read_params,
+    x_overlap,
+    x_overlap_significant_smallest,
+)
 
 load_dotenv()
 
@@ -29,23 +33,18 @@ mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlo
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 matching_params = read_params("matching_params.yml")
 
 
-def process_page(
-    page: fitz.Page, ground_truth_for_file: GroundTruthForFile, tmp_file_path: str, **params
-) -> list[dict]:
+def process_page(page: fitz.Page, **params: dict) -> list[dict]:
     """Process a single page of a pdf.
 
     Finds all descriptions and depth intervals on the page and matches them.
 
     Args:
         page (fitz.Page): The page to process.
-        ground_truth_for_file (GroundTruthForFile): The ground truth, used to create plots.
-        tmp_file_path (str): The path to save the temporary file.
-        **params: Additional parameters for the matching pipeline.
+        **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
         list[dict]: All list of the text of all description blocks.
@@ -93,16 +92,7 @@ def process_page(
     depth_columns: list[DepthColumn] = layer_depth_columns
     depth_columns.extend(find_depth_columns.find_depth_columns(depth_column_entries, words))
 
-    for column in (
-        depth_columns
-    ):  # This adjusts the page object. This may be a problem for subsequent computer vision operations.
-        fitz.utils.draw_rect(
-            page,
-            column.rect() * page.derotation_matrix,
-            color=fitz.utils.getColor("green"),
-        )
-
-    pairs = []  # pairs of depth column and material description column
+    pairs = []
     for depth_column in depth_columns:
         material_description_rect = find_material_description_column(lines, depth_column)
         if material_description_rect:
@@ -125,37 +115,30 @@ def process_page(
     # groups is of the form: ["depth_interval": BoundaryInterval, "block": TextBlock]
     if len(filtered_pairs):  # match depth column items with material description
         for depth_column, material_description_rect in filtered_pairs:
-            fitz.utils.draw_rect(  # This adjusts the page object, critical for potential computer vision operations.
-                page,
-                material_description_rect * page.derotation_matrix,
-                color=fitz.utils.getColor("red"),
-            )
             description_lines = get_description_lines(lines, material_description_rect)
             if len(description_lines) > 1:
-                for rect in depth_column.rects():
-                    fitz.utils.draw_rect(page, rect * page.derotation_matrix, color=fitz.utils.getColor("purple"))
                 new_groups = match_columns(
                     depth_column, description_lines, geometric_lines, material_description_rect, **params
                 )
-                for index, group in enumerate(new_groups):
-                    correct = ground_truth_for_file.is_correct(group["block"].text)
-                    draw_layer(
-                        page=page,
-                        interval=group["depth_interval"],
-                        block=group["block"],
-                        index=index,
-                        is_correct=correct,
-                    )
                 groups.extend(new_groups)
+        json_filtered_pairs = [
+            {
+                "depth_column": depth_column.to_json(),
+                "material_description_rect": [
+                    material_description_rect.x0,
+                    material_description_rect.y0,
+                    material_description_rect.x1,
+                    material_description_rect.y1,
+                ],
+            }
+            for depth_column, material_description_rect in filtered_pairs
+        ]
+
     else:
+        json_filtered_pairs = []
         # Fallback when no depth column was found
         material_description_rect = find_material_description_column(lines, depth_column=None)
         if material_description_rect:
-            fitz.utils.draw_rect(
-                page,
-                material_description_rect * page.derotation_matrix,
-                color=fitz.utils.getColor("red"),
-            )
             description_lines = get_description_lines(lines, material_description_rect)
             description_blocks = get_description_blocks(
                 description_lines,
@@ -164,43 +147,35 @@ def process_page(
                 params["block_line_ratio"],
                 params["left_line_length_threshold"],
             )
-            for index, block in enumerate(description_blocks):
-                correct = ground_truth_for_file.is_correct(block.text)
-                draw_layer(
-                    page=page,
-                    interval=None,
-                    block=block,
-                    index=index,
-                    is_correct=correct,
-                )
             groups.extend([{"block": block} for block in description_blocks])
-
-    for group in groups:
-        block = group["block"]
-        if block.rect is None:
-            logger.info("Block is None.")
-            continue
-        fitz.utils.draw_rect(
-            page,
-            block.rect * page.derotation_matrix,
-            color=fitz.utils.getColor("orange"),
-        )
-
-    fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
-    if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
-        try:
-            mlflow.log_artifact(tmp_file_path, artifact_path="pages")
-        except NameError:
-            logger.info("MLFlow not enabled. Skipping logging of artifact.")
-
-    return [{"description": group["block"].text} for group in groups]
+            json_filtered_pairs.extend(
+                [
+                    {
+                        "depth_column": None,
+                        "material_description_rect": [
+                            material_description_rect.x0,
+                            material_description_rect.y0,
+                            material_description_rect.x1,
+                            material_description_rect.y1,
+                        ],
+                    }
+                ]
+            )
+    predictions = [
+        {"material_description": group["block"].to_json(), "depth_interval": group["depth_interval"].to_json()}
+        if "depth_interval" in group
+        else {"material_description": group["block"].to_json()}
+        for group in groups
+    ]
+    predictions = parse_and_remove_empty_predictions(predictions)
+    return predictions, json_filtered_pairs
 
 
 def score_column_match(
     depth_column: DepthColumn,
     material_description_rect: fitz.Rect,
     all_words: list[TextLine] | None = None,
-    **params,
+    **params: dict,
 ) -> float:
     """Scores the match between a depth column and a material description.
 
@@ -208,7 +183,7 @@ def score_column_match(
         depth_column (DepthColumn): The depth column.
         material_description_rect (fitz.Rect): The material description rectangle.
         all_words (list[TextLine] | None, optional): List of the available textlines. Defaults to None.
-        **params: Additional parameters for the matching pipeline. Kept here for compatibility with the pipeline.
+        **params (dict): Additional parameters for the matching pipeline. Kept for compatibility with the pipeline.
 
     Returns:
         float: The score of the match.
@@ -235,7 +210,7 @@ def match_columns(
     description_lines: list[TextLine],
     geometric_lines: list[Line],
     material_description_rect: fitz.Rect,
-    **params,
+    **params: dict,
 ) -> list:
     """Match the depth column entries with the description lines.
 
@@ -247,7 +222,7 @@ def match_columns(
         description_lines (list[TextLine]): The description lines.
         geometric_lines (list[Line]): The geometric lines.
         material_description_rect (fitz.Rect): The material description rectangle.
-        **params: Additional parameters for the matching pipeline.
+        **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
         list: The matched depth intervals and text blocks.
@@ -262,7 +237,7 @@ def match_columns(
 
 
 def transform_groups(
-    depth_intervals: list[Interval], blocks: list[TextBlock], **params
+    depth_intervals: list[Interval], blocks: list[TextBlock], **params: dict
 ) -> list[dict[str, Interval | TextBlock]]:
     """Transforms the text blocks such that their number equals the number of depth intervals.
 
@@ -273,7 +248,7 @@ def transform_groups(
     Args:
         depth_intervals (List[Interval]): The depth intervals from the pdf.
         blocks (List[TextBlock]): Found textblocks from the pdf.
-        **params: Additional parameters for the matching pipeline.
+        **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
         List[Dict[str, Union[Interval, TextBlock]]]: Pairing of text blocks and depth intervals.
@@ -384,7 +359,7 @@ def find_material_description_column(
     Args:
         lines (list[TextLine]): The text lines of the page.
         depth_column (DepthColumn): The depth column.
-        **params: Additional parameters for the matching pipeline.
+        **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
         fitz.Rect | None: The material description column.
@@ -492,52 +467,41 @@ def find_material_description_column(
         return candidate_rects[0]
 
 
-def perform_matching(directory: Path, ground_truth: GroundTruth, **params) -> None:
+def perform_matching(directory: Path, **params: dict) -> dict:
     """Perform the matching of text blocks with depth intervals.
-
-    TODO: Decouple the evaluation from the matching. In the future
-    `ground_truth` should not be an argument to this function any more.
 
     Args:
         directory (Path): Path to the directory that contains the pdfs.
-        ground_truth (GroundTruth): The ground truth matchings.
-        **params: Additional parameters for the matching pipeline.
+        **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
-        None
+        dict: The predictions.
     """
     for root, _dirs, files in os.walk(directory):
         output = {}
         for filename in files:
             if filename.endswith(".pdf"):
                 in_path = os.path.join(root, filename)
-                ground_truth_for_file = ground_truth.for_file(filename)
                 logger.info("Processing file: %s", in_path)
+                output[filename] = {}
 
                 with fitz.Document(in_path) as doc:
-                    predictions = []
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
                         logger.info("Processing page %s", page_number)
-                        tmp_file_path = os.path.join(
-                            root,
-                            "extract",
-                            f"{filename}_page{page_number}.png",
-                        )
-                        predictions.extend(process_page(page, ground_truth_for_file, tmp_file_path, **params))
-                    output[filename] = {"layers": predictions}
 
-        with open(os.path.join(root, "extract", "predictions.json"), "w") as file:
-            file.write(json.dumps(output))
-        break
+                        predictions, depths_materials_column_pairs = process_page(page, **params)
+
+                        output[filename][f"page_{page_number}"] = {
+                            "layers": predictions,
+                            "depths_materials_column_pairs": depths_materials_column_pairs,
+                        }
+        return output
 
 
 if __name__ == "__main__":
-    directory = DATAPATH / "Benchmark"
-    ground_truth = GroundTruth(
-        DATAPATH / "Benchmark" / "ground_truth.json"
-    )  # TODO: unify ground_truth and ground_truth_path
-
+    # setup mlflow tracking; should be started before any other code
+    # such that tracking is enabled in other parts of the code.
     if mlflow_tracking:
         import mlflow
 
@@ -546,18 +510,28 @@ if __name__ == "__main__":
         mlflow.log_params(flatten(line_detection_params))
         mlflow.log_params(flatten(matching_params))
 
-    perform_matching(directory, ground_truth, **matching_params)  # TODO: specify parameters for mlflow
-    predictions_path = DATAPATH / "Benchmark" / "extract" / "predictions.json"
-    ground_truth_path = DATAPATH / "Benchmark" / "ground_truth.json"
+    # instantiate all paths
+    input_directory = DATAPATH / "Benchmark"
+    ground_truth_path = input_directory / "ground_truth.json"
+    out_directory = input_directory / "evaluation"
+    predictions_path = input_directory / "extract" / "predictions.json"
+    temp_directory = DATAPATH / "_temp"  # temporary directory to dump files for mlflow artifact logging
 
-    metrics, document_level_metrics = evaluate_matching(predictions_path, ground_truth_path)
-    if not (
-        DATAPATH / "_temp"
-    ).exists():  # _temp is a temporary directory containing data that is frequently overwritten
-        (DATAPATH / "_temp").mkdir()
-    document_level_metrics.to_csv(
-        DATAPATH / "_temp" / "document_level_metrics.csv"
-    )  # mlflow.log_artifact expects a file
+    # check if directories exist and create them when neccessary
+    out_directory.mkdir(parents=True, exist_ok=True)
+    temp_directory.mkdir(parents=True, exist_ok=True)
+
+    # run the matching pipeline and save the result
+    predictions = perform_matching(input_directory, **matching_params)
+    with open(predictions_path, "w") as file:
+        file.write(json.dumps(predictions))
+
+    # evaluate the predictions
+    metrics, document_level_metrics = evaluate_matching(
+        predictions_path, ground_truth_path, input_directory, out_directory
+    )
+    document_level_metrics.to_csv(temp_directory / "document_level_metrics.csv")  # mlflow.log_artifact expects a file
+
     if mlflow_tracking:
         mlflow.log_metrics(metrics)
-        mlflow.log_artifact(DATAPATH / "_temp" / "document_level_metrics.csv")
+        mlflow.log_artifact(temp_directory / "document_level_metrics.csv")

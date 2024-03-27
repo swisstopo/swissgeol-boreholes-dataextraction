@@ -1,7 +1,9 @@
 """This module contains utility functions to work with geometric lines."""
 
+import logging
 from collections import deque
-from math import atan, pi
+from itertools import combinations
+from math import atan, cos, pi, sin
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -9,6 +11,9 @@ from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 
 from stratigraphy.util.dataclasses import Line, Point
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def drop_vertical_lines(lines: list[Line], threshold: float = 0.1) -> ArrayLike:
@@ -171,11 +176,15 @@ def merge_parallel_lines_neighbours(
         if _are_parallel(current_line, line, angle_threshold=angle_threshold) and _are_close(
             current_line, line, tol=tol
         ):
-            current_line = _merge_lines(current_line, line)
-            any_merges = True
-        else:
-            merged_lines.append(current_line)
-            current_line = line
+            merged_line = _merge_lines(current_line, line)
+            if merged_line is not None:
+                # current_line and line were merged
+                current_line = merged_line
+                any_merges = True
+                continue
+        # current_line and line were not merged
+        merged_lines.append(current_line)
+        current_line = line
     merged_lines.append(current_line)
     if any_merges:
         return merge_parallel_lines_neighbours(merged_lines, sorting_function=sorting_function, tol=tol)
@@ -211,6 +220,9 @@ def merge_parallel_lines(lines: list[Line], tol: int = 8, angle_threshold: float
                 line, merge_candidate, tol=tol
             ):
                 line = _merge_lines(line, merge_candidate)
+                if line is None:  # No merge possible
+                    merged_lines.append(line)
+                    continue
                 merged_lines.remove(merge_candidate)
                 merged_lines.append(line)
                 merged = True
@@ -223,36 +235,105 @@ def merge_parallel_lines(lines: list[Line], tol: int = 8, angle_threshold: float
         return merged_lines
 
 
-def _merge_lines(line1: Line, line2: Line) -> Line:
-    """Merge two lines.
+def _odr_regression(x: ArrayLike, y: ArrayLike) -> tuple:
+    """Perform orthogonal distance regression on the given data.
 
-    Note: This method is not robust for near vertical lines. We assume
-    an ordering in the x-coordinates of the lines.
+    Note: If the problem is ill-defined (i.e. denominator == nominator == 0),
+    then the function will return phi=np.nan and r=np.nan.
 
     Args:
-        line1 (Line): The first line.
-        line2 (Line): The second line.
+        x (ArrayLike): The x-coordinates of the data.
+        y (ArrayLike): The y-coordinates of the data.
 
     Returns:
-        Line: The merged line.
+        tuple: (phi, r), the best fit values for the line equation in normal form.
     """
-    # determine start point
-    if line1.start.x > line2.start.x:
-        x_start = line2.start.x
-        y_start = line2.start.y
-    else:
-        x_start = line1.start.x
-        y_start = line1.start.y
+    x_mean = np.mean(x)
+    y_mean = np.mean(y)
+    nominator = -2 * np.sum((x - x_mean) * (y - y_mean))
+    denominator = np.sum((y - y_mean) ** 2 - (x - x_mean) ** 2)
+    if nominator == 0 and denominator == 0:
+        logger.warning(
+            "The problem is ill defined as both nominator and denominator for arctan are 0. "
+            "We return phi=np.nan and r=np.nan."
+        )
+        return np.nan, np.nan
+    phi = 0.5 * np.arctan2(nominator, denominator)  # np.arctan2 can deal with np.inf due to zero division.
+    r = x_mean * cos(phi) + y_mean * sin(phi)
 
-    # determine end point
-    if line1.end.x > line2.end.x:
-        x_end = line1.end.x
-        y_end = line1.end.y
-    else:
-        x_end = line2.end.x
-        y_end = line2.end.y
+    if r < 0:
+        r = -r
+        phi = phi + np.pi
 
-    return Line(Point(x_start, y_start), Point(x_end, y_end))
+    return phi, r
+
+
+def _merge_lines(line1: Line, line2: Line) -> Line | None:
+    """Merge two lines into one.
+
+    The algorithm performs odr regression on the points of the two lines to find the best fit line.
+    Then, it calculates the orthogonal projection of the four points onto the best fit line and takes the two points
+    that are the furthest apart. These two points are then used to create the merged line.
+
+    Note: a few cases (e.g. the lines are sides of a perfect square) the solution is not well-defined. In such a case,
+    the method returns None.
+
+    Args:
+        line1 (Line): First line to merge.
+        line2 (Line): Second line to merge.
+
+    Returns:
+        Line | None: The merged line.
+    """
+    x = np.array([line1.start.x, line1.end.x, line2.start.x, line2.end.x])
+    y = np.array([line1.start.y, line1.end.y, line2.start.y, line2.end.y])
+    phi, r = _odr_regression(x, y)
+    if np.isnan(phi) or np.isnan(r):
+        return None
+
+    projected_points = []
+    for point in [line1.start, line1.end, line2.start, line2.end]:
+        projection = _get_orthogonal_projection_to_line(point, phi, r)
+        projected_points.append(projection)
+    # Take the two points such that the distance between them is the largest.
+    # Since there are only 4 points involved, we can just calculate the distance between all points.
+    point_combinations = list(combinations(projected_points, 2))
+    distances = []
+    for interval in point_combinations:
+        distances.append(_calculate_squared_distance_between_two_points(interval[0], interval[1]))
+
+    point1, point2 = point_combinations[np.argmax(distances)]
+    return Line(point1, point2)
+
+
+def _calculate_squared_distance_between_two_points(point1: Point, point2: Point) -> float:
+    return (point1.x - point2.x) ** 2 + (point1.y - point2.y) ** 2
+
+
+def _get_orthogonal_projection_to_line(point: Point, phi: float, r: float) -> Point:
+    """Calculate orthogonal projection of a point onto a line in 2D space.
+
+    Calculates the orhtogonal projection of a point onto a line in 2D space using the normal form of the line equation.
+    Formula derived from:
+    https://www.researchgate.net/publication/272179120
+    _A_tutorial_on_the_total_least_squares_method_for_fitting_a_straight_line_and_a_plane
+
+    Args:
+        point (Point): The point to project onto the line.
+        phi (float): The angle phi of the normal form of the line equation.
+        r (float): The distance r of the normal form of the line equation.
+
+    Returns:
+        Point: The projected point onto the line.
+    """
+    # ri is the distance to the line that is parallel to the line defined by phi and r
+    # and that goes through the poin (point.y, point.y).
+    ri = point.x * cos(phi) + point.y * sin(phi)
+    d = ri - r  # d is the distance between point and the line.
+    # We now need to move towards the line by d in the direction defined by phi.
+    x = point.x - d * cos(phi)
+    y = point.y - d * sin(phi)
+    return Point(x, y)
 
 
 def _are_close(line1: Line, line2: Line, tol: int = 5) -> bool:
