@@ -54,9 +54,9 @@ Example: predictions.json
 {
     "685256002-bp.pdf": {  # file name
         "page_1": {
-            "layers": [
+            "layers": [  # a layer corresponds to a material layer in the borehole profile
                 {
-                    "material_description": {
+                    "material_description": {  # all information about the complete description of the material of the layer
                         "text": "grauer, siltig-sandiger Kies (Auffullung)",
                         "rect": [
                             232.78799438476562,
@@ -76,7 +76,7 @@ Example: predictions.json
                                     }
                                 ]
                             },
-                    "depth_interval": {
+                    "depth_interval": {  # information about the depth of the layer
                         "start": null,
                         "end": {
                             "value": 0.4,
@@ -91,7 +91,7 @@ Example: predictions.json
                 },
                 ...
             ],
-            "depths_materials_column_pairs": [
+            "depths_materials_column_pairs": [  # information about where on the pdf the information for material as well as depths are taken.
                 {
                     "depth_column": {
                         "rect": [
