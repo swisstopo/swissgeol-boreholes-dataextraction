@@ -118,20 +118,15 @@ def evaluate_matching(
     if len(document_level_metrics["precision"]):
         overall_precision = sum(document_level_metrics["precision"]) / len(document_level_metrics["precision"])
         overall_recall = sum(document_level_metrics["recall"]) / len(document_level_metrics["recall"])
-        logging.info("Macro avg:")
-        logging.info(
-            f"F1: {f1(overall_precision, overall_recall):.1%},"
-            f"precision: {overall_precision:.1%}, recall: {overall_recall:.1%}"
-        )
+    else:
+        overall_precision = 0
+        overall_recall = 0
 
-    worst_count = 5
-    if len(document_level_metrics["precision"]) > worst_count:
-        best_precisions = sorted(document_level_metrics["precision"])[worst_count:]
-        best_recalls = sorted(document_level_metrics["recall"])[worst_count:]
-        precision = sum(best_precisions) / len(best_precisions)
-        recall = sum(best_recalls) / len(best_recalls)
-        logger.info(f"Ignoring worst {worst_count}:")
-        logger.info(f"F1: {f1(precision, recall):.1%}, precision: {precision:.1%}, recall: {recall:.1%}")
+    logging.info("Macro avg:")
+    logging.info(
+        f"F1: {f1(overall_precision, overall_recall):.1%},"
+        f"precision: {overall_precision:.1%}, recall: {overall_recall:.1%}"
+    )
 
     return {
         "F1": f1(overall_precision, overall_recall),
@@ -140,7 +135,7 @@ def evaluate_matching(
     }, pd.DataFrame(document_level_metrics)
 
 
-def _add_ground_truth_to_predictions(predictions: dict, ground_truth: GroundTruth) -> tuple[dict]:
+def _add_ground_truth_to_predictions(predictions: dict, ground_truth: GroundTruth) -> (dict, dict):
     """Add the ground truth to the predictions.
 
     Args:
@@ -148,7 +143,7 @@ def _add_ground_truth_to_predictions(predictions: dict, ground_truth: GroundTrut
         ground_truth (GroundTruth): The ground truth.
 
     Returns:
-        dict: The predictions with the ground truth added.
+        (dict, dict): The predictions with the ground truth added, and the number of ground truth values per file.
     """
     number_of_truth_values = {}
     for file, file_predictions in predictions.items():
