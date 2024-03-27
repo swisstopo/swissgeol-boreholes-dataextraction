@@ -11,13 +11,18 @@ from stratigraphy.util.geometric_line_utilities import (
 
 
 # Remember, phi is orthogonal to the line we are to parameterize
-# The way phi is defined is a bit counterintuitive, but it seems consistent all along.
 @pytest.fixture(
     params=[
-        (np.array([0, 1, 2, 3]), np.array([1, 1, 1, 1]), np.pi / 2, 1),  # Test case 1 horizontal line at y=1
-        (np.array([0, 1, 2, 3]), np.array([0, 1, 2, 3]), -np.pi / 4, 0),  # Test case 2 45 degrees through zero
-        (np.array([2, 2, 2, 2]), np.array([0, 1, 2, 3]), 0, 2),  # Test case 3 vertical line at x=2
-        # Add more test cases here as needed
+        # Test case 1: horizontal line at y=1
+        (np.array([0, 1, 2, 3]), np.array([1, 1, 1, 1]), np.pi / 2, 1),
+        # Test case 2: 45 degrees through zero
+        (np.array([0, 1, 2, 3]), np.array([0, 1, 2, 3]), -np.pi / 4, 0),
+        # Test case 3: vertical line at x=2
+        (np.array([2, 2, 2, 2]), np.array([0, 1, 2, 3]), 0, 2),
+        # Test case 4: best fix is a horizontal line at y=0.5
+        (np.array([0, 0, 2, 2]), np.array([0, 1, 0, 1]), np.pi / 2, 0.5),
+        # Test case 4: best fix is a vertical line at x=0.5
+        (np.array([0, 1, 0, 1]), np.array([0, 0, 2, 2]), 0, 0.5),
     ]
 )
 def odr_regression_case(request):  # noqa: D103
@@ -90,7 +95,21 @@ def test_get_orthogonal_projection_to_line(orthogonal_projection_case):  # noqa:
             Line(Point(2, 1), Point(2, 2)),
             Line(Point(2, 0), Point(2, 2)),
         ),  # vertical line
-        # Add more test cases here as needed
+        (
+            Line(Point(0, 0), Point(2, 0)),
+            Line(Point(1, 0), Point(3, 0)),
+            Line(Point(0, 0), Point(3, 0)),
+        ),  # horizontal line; lines partially overlap
+        (
+            Line(Point(0, 0), Point(3, 0)),
+            Line(Point(1, 0), Point(2, 0)),
+            Line(Point(0, 0), Point(3, 0)),
+        ),  # horizontal line; one line is contained in the other
+        (
+            Line(Point(1, 0), Point(2, 0)),
+            Line(Point(0, 0), Point(3, 0)),
+            Line(Point(0, 0), Point(3, 0)),
+        ),  # horizontal line; one line is contained in the other (reversed)
     ]
 )
 def merge_lines_case(request):  # noqa: D103
@@ -100,4 +119,5 @@ def merge_lines_case(request):  # noqa: D103
 def test_merge_lines(merge_lines_case):  # noqa: D103
     line1, line2, expected_merged_line = merge_lines_case
     merged_line = _merge_lines(line1, line2)
-    assert merged_line == expected_merged_line  # Adjust this line if Line objects can't be compared directly
+    assert pytest.approx(merged_line.start.tuple) == expected_merged_line.start.tuple
+    assert pytest.approx(merged_line.end.tuple) == expected_merged_line.end.tuple
