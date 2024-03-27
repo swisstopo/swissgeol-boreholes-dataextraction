@@ -43,6 +43,12 @@ class Interval(metaclass=abc.ABCMeta):
     def background_rect(self) -> fitz.Rect | None:
         pass
 
+    def to_json(self):
+        return {
+            "start": self.start.to_json() if self.start else None,
+            "end": self.end.to_json() if self.end else None,
+        }
+
 
 class BoundaryInterval(Interval):
     """Class for boundary intervals.

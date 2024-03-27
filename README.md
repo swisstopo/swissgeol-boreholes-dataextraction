@@ -52,24 +52,84 @@ The predictions.json file contains the results of a data extraction process from
 Example: predictions.json 
 ```json
 {
-    "685256002-bp.pdf": {
-        "layers": [
-            {
-                "description": "grauer, siltig-sandiger Kies (Auffullung)"
-            },
-            {
-                "description": "grauer, lehmiger Kies (Auffullung)"
-            },
-            {
-                "description": "grauer, lehmig-sandiger Kies (Auffullung)"
-            },
-            {
-                "description": "grauer, sandig-lehmiger Kies (Auffullung)"
-            },
-            {
-                "description": "grauer, lehmig-sandiger Kies (Auffullung)"
-            }
-        ]
+    "685256002-bp.pdf": {  # file name
+        "page_1": {
+            "layers": [
+                {
+                    "material_description": {
+                        "text": "grauer, siltig-sandiger Kies (Auffullung)",
+                        "rect": [
+                            232.78799438476562,
+                            130.18496704101562,
+                            525.6640014648438,
+                            153.54295349121094
+                        ],
+                        "lines": [
+                                    {
+                                        "text": "grauer, siltig-sandiger Kies (Auffullung)",
+                                        "rect": [
+                                            232.78799438476562,
+                                            130.18496704101562,
+                                            525.6640014648438,
+                                            153.54295349121094
+                                        ]
+                                    }
+                                ]
+                            },
+                    "depth_interval": {
+                        "start": null,
+                        "end": {
+                            "value": 0.4,
+                            "rect": [
+                                125.25399780273438,
+                                140.2349853515625,
+                                146.10398864746094,
+                                160.84498596191406
+                            ]
+                        }
+                    }
+                },
+                ...
+            ],
+            "depths_materials_column_pairs": [
+                {
+                    "depth_column": {
+                        "rect": [
+                            119.05999755859375,
+                            140.2349853515625,
+                            146.8470001220703,
+                            1014.4009399414062
+                        ],
+                        "entries": [
+                            {
+                                "value": 0.4,
+                                "rect": [
+                                    125.25399780273438,
+                                    140.2349853515625,
+                                    146.10398864746094,
+                                    160.84498596191406
+                                ]
+                            },
+                            {
+                                "value": 0.6,
+                                "rect": [
+                                    125.21800231933594,
+                                    153.8349609375,
+                                    146.0679931640625,
+                                    174.44496154785156
+                                ]
+                            }
+                        ]
+                    },
+                    "material_description_rect": [
+                        231.22500610351562,
+                        130.18496704101562,
+                        540.6109619140625,
+                        897.7429809570312
+                    ]
+                }
+            ]
+        }
     }
 }
 ```
@@ -129,3 +189,7 @@ The specific linting and formatting settings applied are defined in `pyproject.t
 If you want to skip the hooks, you can use `git commit -m "..." --no-verify`.
 
 More information about pre-commit can be found [here](https://pre-commit.com).
+
+## Package Manager
+We use [miniforge](https://github.com/conda-forge/miniforge) as a package manager for the project. Miniforge imitates the behavior of conda, with the difference that no packages from the anaconda repository are used. The only channel we use is conda-forge which does not come with license implications.
+

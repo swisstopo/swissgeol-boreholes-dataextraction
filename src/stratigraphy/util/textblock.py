@@ -78,6 +78,13 @@ class TextBlock:
             blocks[-1].is_terminated_by_line = True
         return blocks
 
+    def to_json(self):
+        return {
+            "text": self.text,
+            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
+            "lines": [line.to_json() for line in self.lines],
+        }
+
 
 def block_distance(block1: TextBlock, block2: TextBlock) -> float:
     """Calculate the distance between two text blocks.
