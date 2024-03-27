@@ -264,8 +264,8 @@ def transform_groups(
         if len(blocks) < len(depth_intervals):
             blocks = split_blocks_by_textline_length(blocks, target_split_count=len(depth_intervals) - len(blocks))
 
-        if len(blocks) > len(depth_intervals):
-            blocks = merge_blocks_by_vertical_spacing(blocks, target_merge_count=len(blocks) - len(depth_intervals))
+        # if len(blocks) > len(depth_intervals):
+        #     blocks = merge_blocks_by_vertical_spacing(blocks, target_merge_count=len(blocks) - len(depth_intervals))
 
         return [
             {"depth_interval": depth_interval, "block": block}
