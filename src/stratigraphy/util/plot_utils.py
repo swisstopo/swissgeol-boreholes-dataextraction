@@ -1,5 +1,7 @@
 """Contains utility functions for plotting stratigraphic data."""
 
+import logging
+
 import cv2
 import fitz
 import numpy as np
@@ -7,23 +9,32 @@ import numpy as np
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.textblock import TextBlock
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def _draw_lines(open_cv_img, lines, scale_factor=1):
-    for line_count, line in enumerate(lines):
+    grid_lines = [_convert_line_to_grid(line, scale_factor=scale_factor) for line in lines]
+    for line_count, line in enumerate(grid_lines):
         color = (
             (255 - 5 * line_count) % 255,
             (5 * line_count) % 255,
             (10 * line_count) % 255,
         )
-        cv2.line(
-            open_cv_img,
-            np.dot(scale_factor, line.start.tuple),
-            np.dot(scale_factor, line.end.tuple),
-            color,
-            1,
-        )
-        cv2.circle(open_cv_img, np.dot(scale_factor, line.start.tuple), radius=1, color=(0, 0, 255), thickness=-1)
-        cv2.circle(open_cv_img, np.dot(scale_factor, line.end.tuple), radius=1, color=(0, 0, 255), thickness=-1)
+        try:
+            cv2.line(
+                open_cv_img,
+                line.start.tuple,
+                line.end.tuple,
+                color,
+                1,
+            )
+            cv2.circle(open_cv_img, line.start.tuple, radius=1, color=(0, 0, 255), thickness=-1)
+            cv2.circle(open_cv_img, line.end.tuple, radius=1, color=(0, 0, 255), thickness=-1)
+
+        except cv2.error as e:
+            logging.warning(f"Error drawing line. Exception: {e}. Skipping to draw the line.")
+
     return open_cv_img
 
 
@@ -32,6 +43,29 @@ def _convert_page_to_opencv_img(page, scale_factor):
     img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, 3)
     open_cv_img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     return open_cv_img
+
+
+def _convert_line_to_grid(line: Line, scale_factor: float) -> Line:
+    """Convert the line to a grid.
+
+    Note: OpenCV uses a pixel grid system as a coordinate system, and as such only allows
+    integer values for the coordinates. This function converts the lines to a grid by
+    applying the right scale factor and then rounding the coordinates to the nearest integer.
+
+    Args:
+        line (Line): The line to convert to a grid.
+        scale_factor (float): The scale factor to apply to the lines.
+
+    Returns:
+        Line: The lines converted to a grid.
+    """
+    start = line.start
+    start.x = int(np.round(scale_factor * start.x, 0))
+    start.y = int(np.round(scale_factor * start.y, 0))
+    end = line.end
+    end.x = int(np.round(scale_factor * end.x, 0))
+    end.y = int(np.round(scale_factor * end.y, 0))
+    return Line(start, end)
 
 
 def plot_lines(page: fitz.Page, lines: list[Line], scale_factor: float = 2) -> cv2.COLOR_RGB2BGR:
