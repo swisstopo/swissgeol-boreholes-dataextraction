@@ -222,11 +222,7 @@ def match_columns(
         description_lines (list[TextLine]): The description lines.
         geometric_lines (list[Line]): The geometric lines.
         material_description_rect (fitz.Rect): The material description rectangle.
-    <<<<<<< HEAD
-        **params: Additional parameters for the matching pipeline.
-    =======
         **params (dict): Additional parameters for the matching pipeline.
-    >>>>>>> main
 
     Returns:
         list: The matched depth intervals and text blocks.
