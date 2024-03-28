@@ -1,3 +1,21 @@
 # TODO: Any thoughts on a better name?
 block_line_ratio: 0.20
 left_line_length_threshold: 7
+
+material_description:
+  - sand
+  - silt
+  - kies
+  - asphalt
+  - humus
+  - braun
+  - grau
+  - weich
+  - hart
+  - wurzel
+  - belag
+  - stein
+  - beige
+  - beton
+  - kreide
+  - mergel
