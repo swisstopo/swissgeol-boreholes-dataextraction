@@ -16,7 +16,7 @@ from stratigraphy.util import find_depth_columns
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.depthcolumn import DepthColumn
 from stratigraphy.util.find_description import get_description_blocks, get_description_lines
-from stratigraphy.util.interval import Interval
+from stratigraphy.util.interval import BoundaryInterval, Interval
 from stratigraphy.util.line import DepthInterval, TextLine
 from stratigraphy.util.textblock import TextBlock, block_distance
 from stratigraphy.util.util import (
@@ -264,8 +264,10 @@ def transform_groups(
         if len(blocks) < len(depth_intervals):
             blocks = split_blocks_by_textline_length(blocks, target_split_count=len(depth_intervals) - len(blocks))
 
-        # if len(blocks) > len(depth_intervals):
-        #     blocks = merge_blocks_by_vertical_spacing(blocks, target_merge_count=len(blocks) - len(depth_intervals))
+        if len(blocks) > len(depth_intervals):
+            # create additional depth intervals with end & start value None to match the number of blocks
+            depth_intervals.extend([BoundaryInterval(None, None) for _ in range(len(blocks) - len(depth_intervals))])
+            # blocks = merge_blocks_by_vertical_spacing(blocks, target_merge_count=len(blocks) - len(depth_intervals))
 
         return [
             {"depth_interval": depth_interval, "block": block}
