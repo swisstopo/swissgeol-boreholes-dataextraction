@@ -1,4 +1,4 @@
-"""This module contains the main pipeline for the stratigraphy matching."""
+"""This module contains the main pipeline for the boreholes data extraction."""
 
 import json
 import logging
