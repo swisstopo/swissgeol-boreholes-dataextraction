@@ -235,7 +235,7 @@ def merge_parallel_lines(lines: list[Line], tol: int = 8, angle_threshold: float
         return merged_lines
 
 
-def _odr_regression(x: ArrayLike, y: ArrayLike, weights: ArrayLike) -> tuple:
+def _odr_regression(x: ArrayLike, y: ArrayLike, weights: ArrayLike = None) -> tuple:
     """Perform orthogonal distance regression on the given data.
 
     Note: If the problem is ill defined (i.e. denominator == nominator == 0),
@@ -244,18 +244,21 @@ def _odr_regression(x: ArrayLike, y: ArrayLike, weights: ArrayLike) -> tuple:
     Args:
         x (ArrayLike): The x-coordinates of the data.
         y (ArrayLike): The y-coordinates of the data.
-        weights (ArrayLike): The weight for each data point.
+        weights (ArrayLike, optional): The weight for each data point. Defaults to None.
 
     Returns:
         tuple: (phi, r), the best fit values for the line equation in normal form.
     """
+    if weights is None:
+        weights = np.ones((len(x),))
+
     x_mean = np.mean(np.dot(weights, x)) / np.sum(weights)
     y_mean = np.mean(np.dot(weights, y)) / np.sum(weights)
-    nominator = -2 * np.sum(np.dot(weights, (x - x_mean) * (y - y_mean)))
-    denominator = np.sum(np.dot(weights, (y - y_mean) ** 2 - (x - x_mean) ** 2))
+    nominator = -2 * np.sum(np.dot(weights**2, (x - x_mean) * (y - y_mean)))
+    denominator = np.sum(np.dot(weights**2, (y - y_mean) ** 2 - (x - x_mean) ** 2))
     if nominator == 0 and denominator == 0:
         logger.warning(
-            "The problem is ill defined as both nominator and denominator for arctan are 0. "
+            "The line merging problem is ill defined as both nominator and denominator for arctan are 0. "
             "We return phi=np.nan and r=np.nan."
         )
         return np.nan, np.nan

@@ -14,9 +14,48 @@ from stratigraphy.util.geometric_line_utilities import (
 # The way phi is defined is a bit counterintuitive, but it seems consistent all along.
 @pytest.fixture(
     params=[
-        (np.array([0, 1, 2, 3]), np.array([1, 1, 1, 1]), -np.pi / 2, 1),  # Test case 1 horizontal line at y=0
-        (np.array([0, 1, 2, 3]), np.array([0, 1, 2, 3]), -np.pi / 4, 0),  # Test case 2 45 degrees through zero
-        (np.array([2, 2, 2, 2]), np.array([0, 1, 2, 3]), 0, 2),  # Test case 3 vertical line at x=2
+        (
+            np.array([0, 1, 2, 3]),
+            np.array([1, 1, 1, 1]),
+            np.array([1, 1, 1, 1]),
+            -np.pi / 2,
+            1,
+        ),  # Test case 1 horizontal line at y=0
+        (
+            np.array([0, 1, 2, 3]),
+            np.array([0, 1, 2, 3]),
+            np.array([2, 2, 2, 2]),
+            -np.pi / 4,
+            0,
+        ),  # Test case 2 45 degrees through zero
+        (
+            np.array([2, 2, 2, 2]),
+            np.array([0, 1, 2, 3]),
+            np.array([1, 1, 1, 1]),
+            0,
+            2,
+        ),  # Test case 3 vertical line at x=2
+        (
+            np.array([2, 2, 4, 4]),
+            np.array([0, 1, 1, 4]),
+            np.array([1, 1, 3, 3]),
+            -0.20684460663943172,
+            3.0146477721771516,
+        ),  # some random lines
+        (
+            np.array([2, 2, 4, 4]),
+            np.array([0, 1, 1, 4]),
+            np.array([2, 2, 6, 6]),
+            -0.20684460663943172,
+            3.0146477721771516,
+        ),  # same line as before but weights are scaled
+        (
+            np.array([0, 4, -2, 6]),
+            np.array([1, 1, 4, 4]),
+            np.array([1, 1, 2, 2]),
+            -np.pi / 2,
+            3,
+        ),  # test impact of the weights
         # Add more test cases here as needed
     ]
 )
@@ -26,8 +65,8 @@ def odr_regression_case(request):  # noqa: D103
 
 # Use the fixture in the test function
 def test_odr_regression(odr_regression_case):  # noqa: D103
-    x, y, expected_phi, expected_r = odr_regression_case
-    phi, r = _odr_regression(x, y, np.array([1, 1, 1, 1]))
+    x, y, weights, expected_phi, expected_r = odr_regression_case
+    phi, r = _odr_regression(x, y, weights)
     assert pytest.approx(np.sin(expected_phi)) == np.sin(phi)
     assert pytest.approx(np.abs(expected_r)) == np.abs(r)
 
@@ -65,7 +104,9 @@ def orthogonal_projection_case(request):  # noqa: D103
 def test_get_orthogonal_projection_to_line(orthogonal_projection_case):  # noqa: D103
     point, phi, r, expected_projection = orthogonal_projection_case
     projection = _get_orthogonal_projection_to_line(point, phi, r)
-    assert pytest.approx(projection) == expected_projection
+    # pytest.approx cannot deal with unceratinty in Point objects, therefore we need to compare the x and y values
+    assert pytest.approx(projection.x) == expected_projection.x
+    assert pytest.approx(projection.y) == expected_projection.y
 
 
 @pytest.fixture(
@@ -99,4 +140,4 @@ def test_merge_lines(merge_lines_case):  # noqa: D103
     assert (
         pytest.approx(merged_line.start.tuple) == expected_merged_line.start.tuple
         and pytest.approx(merged_line.end.tuple) == expected_merged_line.end.tuple
-    )  # Adjust this line if Line objects can't be compared directly
+    )
