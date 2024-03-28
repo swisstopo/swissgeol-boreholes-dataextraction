@@ -2,10 +2,16 @@
 
 Boreholes Data Extraction is a data extraction pipeline that extracts depth layers with their corresponding material description from borehole profiles in form of pdfs.
 
-Note that the project is under active development and there is no release to this date, nor has the project reached a maturity such that it could be used. The current extractions are solely focused on material descriptions. In the future, the material descriptions should be matched with their corresponding depth layers.
+## Limitations
 
-## Installing
-We use conda to create and manage the project's dependencies. The project comes with two environments, `environment-dev.yml` and `environment-prod.yml`, respectively. The prod environment contains all neccessary dependencies to run the code and extraction pipelines therein. All dependencies that are useful for the development of the code, but not to run it are separated into the dev environment.
+Note that the project is under active development and there is no release to this date, nor has the project reached a maturity such that it could be used.
+
+The current extractions are solely focused on the depths of the upper and lower limits of each layer, and on the material descriptions of the layers.
+
+The current benchmarking only considers the correctness of the material descriptions. Whether they are linked with the correct depths, is not yet evaluated.
+
+## Installation
+We use conda to create and manage the project's dependencies. The project comes with two environments, `environment-dev.yml` and `environment-prod.yml`, respectively. The prod environment contains all necessary dependencies to run the code and extraction pipelines therein. All dependencies that are useful for the development of the code, but not to run it, are separated into the dev environment.
 
 Assuming you have conda installed and cloned the repository, run the following command in your project repository:
 ```bash
@@ -19,10 +25,10 @@ conda env create -f environment-dev.yml
 ```
 
 
-## Run Data Extraction
-This documentation provides a step-by-step guide on how to execute the pipeline, from activating the conda environment to checking the results. To execute the data extraction pipeline, follow these steps:
+## Run data extraction
+To execute the data extraction pipeline, follow these steps:
 
-1. **Activate the Conda Environment**
+1. **Activate the Conda environment**
 
    If you haven't already, activate the conda environment using the following command:
 
@@ -34,20 +40,20 @@ This documentation provides a step-by-step guide on how to execute the pipeline,
 
     `conda activate boreholes-dev`
 
-2. **Run the Main Script**
+2. **Run the main script**
 
-    The main script for the extraction pipeline is located at src/stratigraphy/main.py. Run this script to start the extraction process:
+    The main script for the extraction pipeline is located at `src/stratigraphy/main.py`. Run this script to start the extraction process.
 
-    This script will source all PDFs from the data/Benchmark directory and create PNG files in the data/Benchmark/extract directory.
+    This script will source all PDFs from the `data/Benchmark` directory and create PNG files in the `data/Benchmark/extract` directory.
 
-3. **Check the Results**
+3. **Check the results**
 
-    Once the script has finished running, you can check the results in the `data/Benchmark/extract` directory. The result is a `predictions.json` file as well as a png file for each pdf in the `data/Benchmark` directory.
+    Once the script has finished running, you can check the results in the `data/Benchmark/extract` directory. The result is a `predictions.json` file as well as a png file for each page of each PDF in the `data/Benchmark` directory.
 
 Please note that for now the pipeline assumes that all PDF files to be analyzed are placed in the `data/Benchmark` directory. If you want to analyze different files, please place them in this directory.
 
 ### Output Structure
-The predictions.json file contains the results of a data extraction process from PDF files. Each key in the JSON object is the name of a PDF file, and the value is a list of extracted items in a dictionary like object. The extracted items for now are the material descriptions in their correct order (given by their depths).
+The `predictions.json` file contains the results of a data extraction process from PDF files. Each key in the JSON object is the name of a PDF file, and the value is a list of extracted items in a dictionary like object. The extracted items for now are the material descriptions in their correct order (given by their depths).
 
 Example: predictions.json 
 ```json
@@ -91,7 +97,7 @@ Example: predictions.json
                 },
                 ...
             ],
-            "depths_materials_column_pairs": [  # information about where on the pdf the information for material as well as depths are taken.
+            "depths_materials_column_pairs": [  # information about where on the pdf the information for material description as well as depths are taken.
                 {
                     "depth_column": {
                         "rect": [
@@ -137,7 +143,7 @@ Example: predictions.json
 # Developer Guidance
 ## Project Structure
 
-The project structured and the most important files are as follows:
+The project structure and the most important files are as follows:
 
 - `root/` : The root directory of the project.
   - `src/` : The source code of the project.
@@ -154,7 +160,7 @@ The project structured and the most important files are as follows:
   - `README.md` : The README file for the project.
 
 
-## Main Scripts
+## Main scripts
 
 - `main.py` : This is the main script of the project. It runs the data extraction pipeline, which analyzes the PDF files in the `data/Benchmark` directory and saves the results in the `predictions.json` file.
 
@@ -163,7 +169,7 @@ The project structured and the most important files are as follows:
 ## Experiment Tracking
 We perform experiment tracking using MLFlow. Each developer has his own local MLFlow instance. 
 
-In order to use mlflow, you will need to place a `.env` file at the project root. The required environment variables specified in the `.env` are:
+In order to use MLFlow, you will need to place a `.env` file at the project root. The required environment variables specified in the `.env` are:
 
 ```
 MLFLOW_TRACKING="True"
@@ -192,4 +198,3 @@ More information about pre-commit can be found [here](https://pre-commit.com).
 
 ## Package Manager
 We use [miniforge](https://github.com/conda-forge/miniforge) as a package manager for the project. Miniforge imitates the behavior of conda, with the difference that no packages from the anaconda repository are used. The only channel we use is conda-forge which does not come with license implications.
-
