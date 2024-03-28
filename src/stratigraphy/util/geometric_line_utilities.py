@@ -235,7 +235,7 @@ def merge_parallel_lines(lines: list[Line], tol: int = 8, angle_threshold: float
         return merged_lines
 
 
-def _odr_regression(x: ArrayLike, y: ArrayLike) -> tuple:
+def _odr_regression(x: ArrayLike, y: ArrayLike, weights: ArrayLike = None) -> tuple:
     """Perform orthogonal distance regression on the given data.
 
     Note: If the problem is ill-defined (i.e. denominator == nominator == 0),
@@ -244,17 +244,21 @@ def _odr_regression(x: ArrayLike, y: ArrayLike) -> tuple:
     Args:
         x (ArrayLike): The x-coordinates of the data.
         y (ArrayLike): The y-coordinates of the data.
+        weights (ArrayLike, optional): The weight for each data point. Defaults to None.
 
     Returns:
         tuple: (phi, r), the best fit values for the line equation in normal form.
     """
-    x_mean = np.mean(x)
-    y_mean = np.mean(y)
-    nominator = -2 * np.sum((x - x_mean) * (y - y_mean))
-    denominator = np.sum((y - y_mean) ** 2 - (x - x_mean) ** 2)
+    if weights is None:
+        weights = np.ones((len(x),))
+
+    x_mean = np.mean(np.dot(weights, x)) / np.sum(weights)
+    y_mean = np.mean(np.dot(weights, y)) / np.sum(weights)
+    nominator = -2 * np.sum(np.dot(weights**2, (x - x_mean) * (y - y_mean)))
+    denominator = np.sum(np.dot(weights**2, (y - y_mean) ** 2 - (x - x_mean) ** 2))
     if nominator == 0 and denominator == 0:
         logger.warning(
-            "The problem is ill defined as both nominator and denominator for arctan are 0. "
+            "The line merging problem is ill defined as both nominator and denominator for arctan are 0. "
             "We return phi=np.nan and r=np.nan."
         )
         return np.nan, np.nan
@@ -287,7 +291,8 @@ def _merge_lines(line1: Line, line2: Line) -> Line | None:
     """
     x = np.array([line1.start.x, line1.end.x, line2.start.x, line2.end.x])
     y = np.array([line1.start.y, line1.end.y, line2.start.y, line2.end.y])
-    phi, r = _odr_regression(x, y)
+    weights = np.array([line1.length, line1.length, line2.length, line2.length])
+    phi, r = _odr_regression(x, y, weights)
     if np.isnan(phi) or np.isnan(r):
         return None
 
