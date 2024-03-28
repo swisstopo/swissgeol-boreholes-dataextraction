@@ -267,7 +267,6 @@ def transform_groups(
         if len(blocks) > len(depth_intervals):
             # create additional depth intervals with end & start value None to match the number of blocks
             depth_intervals.extend([BoundaryInterval(None, None) for _ in range(len(blocks) - len(depth_intervals))])
-            # blocks = merge_blocks_by_vertical_spacing(blocks, target_merge_count=len(blocks) - len(depth_intervals))
 
         return [
             {"depth_interval": depth_interval, "block": block}
@@ -277,6 +276,8 @@ def transform_groups(
 
 def merge_blocks_by_vertical_spacing(blocks: list[TextBlock], target_merge_count: int) -> list[TextBlock]:
     """Merge textblocks without any geometric lines that separates them.
+
+    Note: Deprecated. Currently not in use any more. Kept here until we are sure that it is not needed anymore.
 
     The logic looks at the distances between the textblocks and merges them if they are closer
     than a certain cutoff.
