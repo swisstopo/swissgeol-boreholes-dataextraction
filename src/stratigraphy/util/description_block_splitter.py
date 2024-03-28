@@ -20,7 +20,7 @@ class DescriptionBlockSplitter(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def separator_condition(self, last_line: TextLine, current_line: TextLine, current_block: TextBlock) -> bool:  # noqa: D107
+    def separator_condition(self, last_line: TextLine, current_line: TextLine) -> bool:  # noqa: D107
         pass
 
     def create_blocks(self, description_lines: list[TextLine]) -> list[TextBlock]:
@@ -37,10 +37,10 @@ class DescriptionBlockSplitter(metaclass=abc.ABCMeta):
         for line in description_lines:
             if len(current_block_lines) > 0:
                 last_line = current_block_lines[-1]
-                current_block = TextBlock(current_block_lines)
-                if self.separator_condition(last_line, line, current_block):
-                    current_block.is_terminated_by_line = self.set_terminated_by_line_flag
-                    blocks.append(current_block)
+                if self.separator_condition(last_line, line):
+                    blocks.append(
+                        TextBlock(current_block_lines, is_terminated_by_line=self.set_terminated_by_line_flag)
+                    )
                     current_block_lines = []
             current_block_lines.append(line)
         if len(current_block_lines):
@@ -65,14 +65,13 @@ class SplitDescriptionBlockByLine(DescriptionBlockSplitter):
         self.geometric_lines = geometric_lines
         self.set_terminated_by_line_flag = True
 
-    def separator_condition(self, last_line: TextLine, current_line: TextLine, current_block: TextBlock) -> bool:
+    def separator_condition(self, last_line: TextLine, current_line: TextLine) -> bool:
         """Check if a block is separated by a line.
 
         Args:
             current_block:
             last_line (TextLine): The previous line.
             current_line (TextLine): The current line.
-            current_block (TextBlock): Current block.
 
         Returns:
             bool: True if the block is separated by a line, False otherwise.
@@ -111,13 +110,12 @@ class SplitDescriptionBlockByLeftHandSideSeparator(DescriptionBlockSplitter):
         self.set_terminated_by_line_flag = False
         self.geometric_lines = geometric_lines
 
-    def separator_condition(self, last_line: TextLine, current_line: TextLine, current_block: TextBlock) -> bool:
+    def separator_condition(self, last_line: TextLine, current_line: TextLine) -> bool:
         """Check if a block is separated by a line segment on the left side of the block.
 
         Args:
             last_line (TextLine): The previous line.
             current_line (TextLine): The current line.
-            current_block (TextBlock): Current block.
 
         Returns:
             bool: True if the block is separated by a line segment, False otherwise.
@@ -128,25 +126,16 @@ class SplitDescriptionBlockByLeftHandSideSeparator(DescriptionBlockSplitter):
         for line in self.geometric_lines:
             line_y_coordinate = (line.start.y + line.end.y) / 2
 
-            line_cuts_lefthandside_of_block = line.start.x < current_block.rect.x0 < line.end.x
+            line_cuts_lefthandside_of_text = (line.start.x < last_line.rect.x0 < line.end.x) and (
+                line.start.x < current_line.rect.x0 < line.end.x
+            )
             is_line_long_enough = (
                 np.abs(line.start.x - line.end.x) > self.length_threshold
             )  # for the block splitting, we only care about x-extension
 
             line_ends_block = last_line_y_coordinate < line_y_coordinate < current_line_y_coordinate
 
-            weak_condition = (
-                (line.start.x - 5 < current_block.rect.x0 and line.end.x > current_block.rect.x0)
-                and (np.abs(line.start.x - line.end.x) > self.length_threshold - 2)
-                and (len(current_block.lines) > 1)
-            )  # if block has at least three lines, we weaken the splitting condition.
-            # It is three lines because the statement means that block.lines has at least two elements.
-            # The third line is current_line
-            # The reason for the splitting is, that if we know that a block is long, the probability for
-            # a missed splitting is higher. Therefore, we weaken the condition. The weakened condition
-            # leads to an improved score as per 21.03.2024.
-
-            if line_ends_block and ((is_line_long_enough and line_cuts_lefthandside_of_block) or weak_condition):
+            if line_ends_block and is_line_long_enough and line_cuts_lefthandside_of_text:
                 return True
         return False
 
@@ -164,13 +153,12 @@ class SplitDescriptionBlockByVerticalSpace(DescriptionBlockSplitter):
         self.threshold = threshold
         self.set_terminated_by_line_flag = False
 
-    def separator_condition(self, last_line: TextLine, current_line: TextLine, current_block: TextBlock) -> bool:
+    def separator_condition(self, last_line: TextLine, current_line: TextLine) -> bool:
         """Check if a block is separated by sufficient vertical space.
 
         Args:
             last_line (TextLine): The previous line.
             current_line (TextLine): The current line.
-            current_block (TextBlock): Current block.
 
         Returns:
             bool: True if the block is separated by sufficient vertical space, False otherwise.
