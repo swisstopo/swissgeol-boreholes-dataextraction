@@ -177,14 +177,14 @@ def merge_parallel_lines_neighbours(
             current_line, line, tol=tol
         ):
             merged_line = _merge_lines(current_line, line)
-            if merged_line is None:  # no merge possible
-                merged_lines.append(line)
+            if merged_line is not None:
+                # current_line and line were merged
+                current_line = merged_line
+                any_merges = True
                 continue
-            current_line = merged_line
-            any_merges = True
-        else:
-            merged_lines.append(current_line)
-            current_line = line
+        # current_line and line were not merged
+        merged_lines.append(current_line)
+        current_line = line
     merged_lines.append(current_line)
     if any_merges:
         return merge_parallel_lines_neighbours(merged_lines, sorting_function=sorting_function, tol=tol)
@@ -238,7 +238,7 @@ def merge_parallel_lines(lines: list[Line], tol: int = 8, angle_threshold: float
 def _odr_regression(x: ArrayLike, y: ArrayLike, weights: ArrayLike = None) -> tuple:
     """Perform orthogonal distance regression on the given data.
 
-    Note: If the problem is ill defined (i.e. denominator == nominator == 0),
+    Note: If the problem is ill-defined (i.e. denominator == nominator == 0),
     then the function will return phi=np.nan and r=np.nan.
 
     Args:
@@ -265,25 +265,29 @@ def _odr_regression(x: ArrayLike, y: ArrayLike, weights: ArrayLike = None) -> tu
     phi = 0.5 * np.arctan2(nominator, denominator)  # np.arctan2 can deal with np.inf due to zero division.
     r = x_mean * cos(phi) + y_mean * sin(phi)
 
+    if r < 0:
+        r = -r
+        phi = phi + np.pi
+
     return phi, r
 
 
-def _merge_lines(line1: Line, line2: Line) -> Line:
+def _merge_lines(line1: Line, line2: Line) -> Line | None:
     """Merge two lines into one.
 
-    The algorithm performes odr regression on the points of the two lines to find the best fit line.
+    The algorithm performs odr regression on the points of the two lines to find the best fit line.
     Then, it calculates the orthogonal projection of the four points onto the best fit line and takes the two points
     that are the furthest apart. These two points are then used to create the merged line.
 
-    Note: Strictly vertical lines cannot be handled. In that case the slope is nan. A warning is thrown
-    and the first line is returned.
+    Note: a few cases (e.g. the lines are sides of a perfect square) the solution is not well-defined. In such a case,
+    the method returns None.
 
     Args:
         line1 (Line): First line to merge.
         line2 (Line): Second line to merge.
 
     Returns:
-        Line: The merged line.
+        Line | None: The merged line.
     """
     x = np.array([line1.start.x, line1.end.x, line2.start.x, line2.end.x])
     y = np.array([line1.start.y, line1.end.y, line2.start.y, line2.end.y])

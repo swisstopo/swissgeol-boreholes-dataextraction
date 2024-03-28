@@ -58,14 +58,21 @@ def depth_column_entries(all_words: list[TextLine], include_splits: bool) -> lis
 
 
 def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextLine]) -> list[LayerDepthColumn]:
-    """TODO: Add description here. It is not entirely clear to me (@redur) what this function does.
+    """Finds all layer depth columns.
+
+    Generates a list of LayerDepthColumnEntry objects, by finding conseucutive paris of DepthColumnEntry objects.
+    Different columns are grouped together in LayerDepthColumn objects. Finally a list of LayerDepthColumn objects,
+    one for each column, is returned.
+
+    A layer corresponds to a material layer. The layer is defined using a start and end point (e.g. 1.10-1.60m).
+    The start and end points are represented as DepthColumnEntry objects.
 
     Args:
-        entries (list[DepthColumnEntry]): _description_
-        all_words (list[TextLine]): _description_
+        entries (list[DepthColumnEntry]): List of depth column entries.
+        all_words (list[TextLine]): List of all TextLine objects.
 
     Returns:
-        list[LayerDepthColumn]: _description_
+        list[LayerDepthColumn]: List of all layer depth columns identified.
     """
 
     def find_pair(entry: DepthColumnEntry) -> DepthColumnEntry | None:  # noqa: D103

@@ -43,6 +43,12 @@ class Interval(metaclass=abc.ABCMeta):
     def background_rect(self) -> fitz.Rect | None:
         pass
 
+    def to_json(self):
+        return {
+            "start": self.start.to_json() if self.start else None,
+            "end": self.end.to_json() if self.end else None,
+        }
+
 
 class BoundaryInterval(Interval):
     """Class for boundary intervals.
@@ -67,9 +73,20 @@ class BoundaryInterval(Interval):
         if self.start and self.end:
             return fitz.Rect(self.start.rect.x0, self.start.rect.y1, self.start.rect.x1, self.end.rect.y0)
 
-    def matching_blocks(
-        self, all_blocks: list[TextBlock], block_index: int
-    ) -> (list[TextBlock], list[TextBlock], list[TextBlock]):
+    def matching_blocks(self, all_blocks: list[TextBlock], block_index: int) -> tuple[list[TextBlock]]:
+        """Calculates pre, exact and post blocks for the boundary interval.
+
+        Pre contains all the blocks that are supposed to come before the interval.
+        Exact contains all the blocks that are supposed to be inside the interval.
+        Post contains all the blocks that are supposed to come after the interval.
+
+        Args:
+            all_blocks (list[TextBlock]): All blocks available blocks.
+            block_index (int): Index of the current block.
+
+        Returns:
+            tuple[list[TextBlock]]: Pre, exact and post blocks.
+        """
         pre, exact, post = [], [], []
 
         while block_index < len(all_blocks) and (
