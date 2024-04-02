@@ -16,7 +16,7 @@ from stratigraphy.util import find_depth_columns
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.depthcolumn import DepthColumn
 from stratigraphy.util.find_description import get_description_blocks, get_description_lines
-from stratigraphy.util.interval import Interval
+from stratigraphy.util.interval import BoundaryInterval, Interval
 from stratigraphy.util.line import DepthInterval, TextLine
 from stratigraphy.util.textblock import TextBlock, block_distance
 from stratigraphy.util.util import (
@@ -265,7 +265,8 @@ def transform_groups(
             blocks = split_blocks_by_textline_length(blocks, target_split_count=len(depth_intervals) - len(blocks))
 
         if len(blocks) > len(depth_intervals):
-            blocks = merge_blocks_by_vertical_spacing(blocks, target_merge_count=len(blocks) - len(depth_intervals))
+            # create additional depth intervals with end & start value None to match the number of blocks
+            depth_intervals.extend([BoundaryInterval(None, None) for _ in range(len(blocks) - len(depth_intervals))])
 
         return [
             {"depth_interval": depth_interval, "block": block}
@@ -275,6 +276,8 @@ def transform_groups(
 
 def merge_blocks_by_vertical_spacing(blocks: list[TextBlock], target_merge_count: int) -> list[TextBlock]:
     """Merge textblocks without any geometric lines that separates them.
+
+    Note: Deprecated. Currently not in use any more. Kept here until we are sure that it is not needed anymore.
 
     The logic looks at the distances between the textblocks and merges them if they are closer
     than a certain cutoff.
