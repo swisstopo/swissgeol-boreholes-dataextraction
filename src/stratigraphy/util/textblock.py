@@ -85,7 +85,6 @@ class TextBlock:
         number_vertically_close = 0
         for line in self.lines:
             if line._is_legend_word():
-                print(line.text)
                 if _is_close(line.rect.y0, y0_coordinates, 1):
                     number_horizontally_close += 1
                 if _is_close(line.rect.x0, x0_coordinates, 1):
