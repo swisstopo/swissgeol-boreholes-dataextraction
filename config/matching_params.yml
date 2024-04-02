@@ -3,19 +3,41 @@ block_line_ratio: 0.20
 left_line_length_threshold: 7
 
 material_description:
-  - sand
-  - silt
-  - kies
-  - asphalt
-  - humus
-  - braun
-  - grau
-  - weich
-  - hart
-  - wurzel
-  - belag
-  - stein
-  - beige
-  - beton
-  - kreide
-  - mergel
+  including_expressions:
+    - sand
+    - silt
+    - kies
+    - asphalt
+    - humus
+    - braun
+    - grau
+    - weich
+    - hart
+    - wurzel
+    - belag
+    - stein
+    - beige
+    - beton
+    - kreide
+    - mergel
+    - dito
+  excluding_expressions:
+    - herr
+    - ende
+    - profil
+    - beschreibung
+    - signaturen
+    - mischprobe
+    - projekt
+    - ort
+    - adresse
+    - wetter
+    - pumpversuch
+    - kernbohrung
+    - beispiele
+  legend_expressions:
+    - sand
+    - silt
+    - kies
+    - ton
+    - fremdstoffe

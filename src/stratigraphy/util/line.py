@@ -37,7 +37,9 @@ class TextLine:
         for word in words:
             self.rect.include_rect(word.rect)
         self.words = words
-        self.is_description = any(self.text.lower().find(word) > -1 for word in material_description)
+        self.is_description = any(
+            self.text.lower().find(word) > -1 for word in material_description["including_expressions"]
+        ) and not any(self.text.lower().find(word) > -1 for word in material_description["excluding_expressions"])
 
     @property
     def text(self) -> str:
@@ -45,6 +47,16 @@ class TextLine:
 
     def __repr__(self) -> str:
         return f"TextLine({self.text}, {self.rect})"
+
+    def _is_legend(self) -> bool:
+        # check if at least two of legend expressions are in the text, but no other words except for spaces
+        num_legend_words = len(
+            [word for word in self.text.split(" ") if word.lower() in material_description["legend_expressions"]]
+        )
+        is_legend = num_legend_words >= 2 and (len(self.text.split(" ")) - num_legend_words < 2)
+        if is_legend:
+            print("Legend found: ", self.text)
+        return is_legend
 
     """
     Check if the current line can be trusted as a stand-alone line, even if it is only a tailing segment of a line that
