@@ -6,6 +6,7 @@ import math
 import os
 from pathlib import Path
 
+import click
 import fitz
 from dotenv import load_dotenv
 
@@ -502,9 +503,40 @@ def perform_matching(directory: Path, **params: dict) -> dict:
         return output
 
 
-if __name__ == "__main__":
-    # setup mlflow tracking; should be started before any other code
-    # such that tracking is enabled in other parts of the code.
+@click.command()
+@click.option(
+    "--input_directory",
+    type=click.Path(exists=True, path_type=Path),
+    default=DATAPATH / "Benchmark",
+    help="Path to the input directory.",
+)
+@click.option(
+    "--ground_truth_path",
+    type=click.Path(exists=True, path_type=Path),
+    default=DATAPATH / "Benchmark" / "ground_truth.json",
+    help="Path to the ground truth file.",
+)
+@click.option(
+    "--out_directory",
+    type=click.Path(path_type=Path),
+    default=DATAPATH / "Benchmark" / "evaluation",
+    help="Path to the output directory.",
+)
+@click.option(
+    "--predictions_path",
+    type=click.Path(path_type=Path),
+    default=DATAPATH / "Benchmark" / "extract" / "predictions.json",
+    help="Path to the predictions file.",
+)
+def start_pipeline(input_directory: Path, ground_truth_path: Path, out_directory: Path, predictions_path: Path):
+    """Description.
+
+    Args:
+        input_directory (Path): _description_
+        ground_truth_path (Path): _description_
+        out_directory (Path): _description_
+        predictions_path (Path): _description_
+    """
     if mlflow_tracking:
         import mlflow
 
@@ -513,13 +545,8 @@ if __name__ == "__main__":
         mlflow.log_params(flatten(line_detection_params))
         mlflow.log_params(flatten(matching_params))
 
-    # instantiate all paths
-    input_directory = DATAPATH / "Benchmark"
-    ground_truth_path = input_directory / "ground_truth.json"
-    out_directory = input_directory / "evaluation"
-    predictions_path = input_directory / "extract" / "predictions.json"
     temp_directory = DATAPATH / "_temp"  # temporary directory to dump files for mlflow artifact logging
-
+    # check if directories exist and create them when neccessary
     # check if directories exist and create them when neccessary
     out_directory.mkdir(parents=True, exist_ok=True)
     temp_directory.mkdir(parents=True, exist_ok=True)
@@ -538,3 +565,7 @@ if __name__ == "__main__":
     if mlflow_tracking:
         mlflow.log_metrics(metrics)
         mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
+
+
+if __name__ == "__main__":
+    start_pipeline()
