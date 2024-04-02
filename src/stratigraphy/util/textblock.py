@@ -78,12 +78,32 @@ class TextBlock:
             blocks[-1].is_terminated_by_line = True
         return blocks
 
+    def _is_legend(self) -> bool:
+        y0_coordinates = []
+        x0_coordinates = []
+        number_horizontally_close = 0
+        number_vertically_close = 0
+        for line in self.lines:
+            if line._is_legend_word():
+                print(line.text)
+                if _is_close(line.rect.y0, y0_coordinates, 1):
+                    number_horizontally_close += 1
+                if _is_close(line.rect.x0, x0_coordinates, 1):
+                    number_vertically_close += 1
+                x0_coordinates.append(line.rect.x0)
+                y0_coordinates.append(line.rect.y0)
+        return number_horizontally_close > 1 or number_vertically_close > 1
+
     def to_json(self):
         return {
             "text": self.text,
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
             "lines": [line.to_json() for line in self.lines],
         }
+
+
+def _is_close(a: float, b: list, tolerance: float) -> bool:
+    return any(abs(a - c) < tolerance for c in b)
 
 
 def block_distance(block1: TextBlock, block2: TextBlock) -> float:

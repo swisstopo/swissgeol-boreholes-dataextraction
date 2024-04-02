@@ -34,6 +34,7 @@ material_description:
     - wetter
     - pumpversuch
     - kernbohrung
+    - bohrradius
     - beispiele
   legend_expressions:
     - sand
@@ -41,3 +42,11 @@ material_description:
     - kies
     - ton
     - fremdstoffe
+    - draht
+    - schlacke
+    - vollrohr
+    - filterrohr
+    - abdichtung
+    - auffüllung
+    - schwarzbelag-stücke
+    - befestigung/belag
