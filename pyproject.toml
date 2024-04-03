@@ -8,7 +8,7 @@ dependencies = [
 ]
 
 [project.scripts]
-boreholes-extract-materials = "stratigraphy.main:start_pipeline"
+boreholes-extract-layers = "stratigraphy.main:start_pipeline"
 
 [tool.ruff.lint]
 select = [
