@@ -40,11 +40,13 @@ To execute the data extraction pipeline, follow these steps:
 
     `conda activate boreholes-dev`
 
-2. **Run the main script**
+2. **Run the extraction script**
 
-    The main script for the extraction pipeline is located at `src/stratigraphy/main.py`. Run this script to start the extraction process.
+    The main script for the extraction pipeline is located at `src/stratigraphy/main.py`. A cli command is created to run this script.
 
-    This script will source all PDFs from the `data/Benchmark` directory and create PNG files in the `data/Benchmark/extract` directory.
+    Run `boreholes-extract-materials` to run the main extraction script. With the default options, the command will source all PDFs from the `data/Benchmark` directory and create PNG files in the `data/Benchmark/extract` directory.
+
+    Use `boreholes-extract-materials --help` to see all options for the extraction script.
 
 3. **Check the results**
 
