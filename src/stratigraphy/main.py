@@ -78,14 +78,14 @@ def start_pipeline(
     depth intervals. The input directory should contain pdf files with boreholes data. The algorithm can deal
     with borehole profiles of multiple pages.
 
-    Args:
-        input_directory (Path): The directory containing the pdf files.
-        ground_truth_path (Path): The path to the ground truth file json file.
-        out_directory (Path): The directory to store the evaluation results.
-        predictions_path (Path): The path to the predictions file.
-        skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
+    Args:\n
+        input_directory (Path): The directory containing the pdf files.\n
+        ground_truth_path (Path): The path to the ground truth file json file.\n
+        out_directory (Path): The directory to store the evaluation results.\n
+        predictions_path (Path): The path to the predictions file.\n
+        skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.\n
         draw_lines (bool, optional): Whether to produce a visualisation of the line detection results of each PDF page.
-            Defaults to False.
+            Defaults to False.\n
     """  # noqa: D301
     if mlflow_tracking:
         import mlflow
