@@ -57,7 +57,7 @@ def f1(precision: float, recall: float) -> float:
 
 
 def evaluate_matching(
-    predictions_path: Path, ground_truth_path: Path, directory: Path, out_directory: Path
+    predictions_path: Path, ground_truth_path: Path, directory: Path, out_directory: Path, skip_draw_predictions: bool
 ) -> tuple[dict, pd.DataFrame]:
     """Calculate F1, precision and recall for the predictions.
 
@@ -69,6 +69,7 @@ def evaluate_matching(
         ground_truth_path (Path): Path to the ground truth annotated data.
         directory (Path): Path to the directory containing the pdf files.
         out_directory (Path): Path to the directory where the evaluation images should be saved.
+        skip_draw_predictions (bool): Whether to draw the predictions on the pdf pages.
 
     Returns:
         tuple[dict, pd.DataFrame]: A tuple containing the overall F1, precision and recall as a dictionary and the
@@ -80,7 +81,8 @@ def evaluate_matching(
 
     predictions, number_of_truth_values = _add_ground_truth_to_predictions(predictions, ground_truth)
 
-    draw_predictions(predictions, directory, out_directory)
+    if not skip_draw_predictions:
+        draw_predictions(predictions, directory, out_directory)
 
     document_level_metrics = {
         "document_name": [],
