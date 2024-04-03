@@ -35,6 +35,8 @@ def draw_predictions(predictions: dict, directory: Path, out_directory: Path) ->
         directory (Path): Path to the directory containing the pdf files.
         out_directory (Path): Path to the output directory where the images are saved.
     """
+    if directory.is_file():  # deal with the case when we pass a file instead of a directory
+        directory = directory.parent
     for file in predictions:
         logger.info(f"Evaluating {file}.")
         with fitz.Document(directory / file) as doc:

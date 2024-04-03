@@ -3,7 +3,6 @@
 import json
 import logging
 import os
-import shutil
 from pathlib import Path
 
 import click
@@ -104,16 +103,12 @@ def start_pipeline(
 
     # if a file is specified instead of an input directory, copy the file to a temporary directory and work with that.
     if input_directory.is_file():
-        if (temp_directory / "single_file").is_dir():
-            shutil.rmtree(temp_directory / "single_file")
-
-        Path.mkdir(temp_directory / "single_file")
-        shutil.copy(input_directory, temp_directory / "single_file")
-        input_directory = temp_directory / "single_file"
-
+        file_iterator = [(input_directory.parent, None, [input_directory.name])]
+    else:
+        file_iterator = os.walk(input_directory)
     # process the individual pdf files
     predictions = {}
-    for root, _dirs, files in os.walk(input_directory):
+    for root, _dirs, files in file_iterator:
         for filename in files:
             if filename.endswith(".pdf"):
                 in_path = os.path.join(root, filename)
