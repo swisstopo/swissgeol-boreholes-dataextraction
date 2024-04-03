@@ -95,6 +95,10 @@ def draw_lines_on_pdfs(input_directory: Path, line_detection_params: dict):
         input_directory (Path): The directory containing the pdf files.
         line_detection_params (dict): The parameters for the line detection algorithm.
     """
+    if not mlflow_tracking:
+        raise Warning("MLFlow tracking is not enabled. MLFLow is required to store the images.")
+    import mlflow
+
     for root, _dirs, files in os.walk(input_directory):
         output = {}
         for filename in files:
@@ -106,7 +110,4 @@ def draw_lines_on_pdfs(input_directory: Path, line_detection_params: dict):
                     for page_index, page in enumerate(doc):
                         lines = extract_lines(page, line_detection_params)
                         img = plot_lines(page, lines, scale_factor=line_detection_params["pdf_scale_factor"])
-                        if mlflow_tracking:
-                            import mlflow
-
-                            mlflow.log_image(img, f"pages/{filename}_page_{page_index}_lines.png")
+                        mlflow.log_image(img, f"pages/{filename}_page_{page_index}_lines.png")
