@@ -34,25 +34,36 @@ matching_params = read_params("matching_params.yml")
     help="Path to the input directory.",
 )
 @click.option(
+    "-g",
     "--ground_truth_path",
     type=click.Path(exists=True, path_type=Path),
     default=DATAPATH / "Benchmark" / "ground_truth.json",
     help="Path to the ground truth file.",
 )
 @click.option(
+    "-o",
     "--out_directory",
     type=click.Path(path_type=Path),
     default=DATAPATH / "Benchmark" / "evaluation",
     help="Path to the output directory.",
 )
 @click.option(
+    "-p",
     "--predictions_path",
     type=click.Path(path_type=Path),
     default=DATAPATH / "Benchmark" / "extract" / "predictions.json",
     help="Path to the predictions file.",
 )
-@click.option("-s", "--skip-draw-predictions", is_flag=True, default=False, help="Draw predictions on pdf pages.")
-@click.option("-l", "--draw-lines", is_flag=True, default=False, help="Draw lines on pdf pages.")
+@click.option(
+    "-s",
+    "--skip-draw-predictions",
+    is_flag=True,
+    default=False,
+    help="Whether to skip drawing the predictions on pdf pages. Defaults to False.",
+)
+@click.option(
+    "-l", "--draw-lines", is_flag=True, default=False, help="Whether to draw lines on pdf pages. Defaults to False."
+)
 def start_pipeline(
     input_directory: Path,
     ground_truth_path: Path,
@@ -61,16 +72,20 @@ def start_pipeline(
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
 ):
-    """Description.
+    """Run the boreholes data extraction pipeline.
 
-    Args:
-        input_directory (Path): The directory containing the pdf files.
-        ground_truth_path (Path): The path to the ground truth file.
-        out_directory (Path): The directory to store the evaluation results.
-        predictions_path (Path): The path to the predictions file.
-        skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
-        draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.
-    """
+    The pipeline will extract material description of all found layers and assign them to the corresponding
+    depth intervals. The input directory should contain pdf files with boreholes data. The algorithm can deal
+    with borehole profiles of multiple pages.
+
+    Args:\n
+        input_directory (Path): The directory containing the pdf files.\n
+        ground_truth_path (Path): The path to the ground truth file json file.\n
+        out_directory (Path): The directory to store the evaluation results.\n
+        predictions_path (Path): The path to the predictions file.\n
+        skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.\n
+        draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.\n
+    """  # noqa: D301
     if mlflow_tracking:
         import mlflow
 
