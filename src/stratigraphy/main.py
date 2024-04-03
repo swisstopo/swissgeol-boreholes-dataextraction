@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.score import evaluate_matching
 from stratigraphy.extract import perform_matching
-from stratigraphy.line_detection import draw_lines_on_pdfs, line_detection_params
+from stratigraphy.line_detection import line_detection_params
 from stratigraphy.util.util import flatten, read_params
 
 load_dotenv()
@@ -78,13 +78,14 @@ def start_pipeline(
     depth intervals. The input directory should contain pdf files with boreholes data. The algorithm can deal
     with borehole profiles of multiple pages.
 
-    Args:\n
-        input_directory (Path): The directory containing the pdf files.\n
-        ground_truth_path (Path): The path to the ground truth file json file.\n
-        out_directory (Path): The directory to store the evaluation results.\n
-        predictions_path (Path): The path to the predictions file.\n
-        skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.\n
-        draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.\n
+    Args:
+        input_directory (Path): The directory containing the pdf files.
+        ground_truth_path (Path): The path to the ground truth file json file.
+        out_directory (Path): The directory to store the evaluation results.
+        predictions_path (Path): The path to the predictions file.
+        skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
+        draw_lines (bool, optional): Whether to produce a visualisation of the line detection results of each PDF page.
+            Defaults to False.
     """  # noqa: D301
     if mlflow_tracking:
         import mlflow
@@ -110,7 +111,7 @@ def start_pipeline(
         input_directory = temp_directory / "single_file"
 
     # run the matching pipeline and save the result
-    predictions = perform_matching(input_directory, **matching_params)
+    predictions = perform_matching(input_directory, draw_lines, **matching_params)
     with open(predictions_path, "w") as file:
         file.write(json.dumps(predictions))
 
@@ -123,10 +124,6 @@ def start_pipeline(
     if mlflow_tracking:
         mlflow.log_metrics(metrics)
         mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
-
-    if draw_lines:
-        logger.info("Drawing lines on pdf pages.")
-        draw_lines_on_pdfs(input_directory, line_detection_params=line_detection_params)
 
 
 if __name__ == "__main__":

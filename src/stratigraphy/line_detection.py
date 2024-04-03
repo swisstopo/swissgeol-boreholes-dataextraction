@@ -1,7 +1,6 @@
 """Script for line detection in pdf pages."""
 
 import os
-from pathlib import Path
 
 import cv2
 import fitz
@@ -88,26 +87,18 @@ def extract_lines(page: fitz.Page, line_detection_params: dict) -> list[Line]:
     return lines
 
 
-def draw_lines_on_pdfs(input_directory: Path, line_detection_params: dict):
-    """Draw lines on pdf pages and stores them as artifacts in mlflow.
+def draw_lines_on_pdf(filename: str, page: fitz.Page, geometric_lines: list[Line], pdf_scale_factor: float):
+    """Draw lines on a pdf page and stores the resulting PNG image as an artifact in mlflow.
 
     Args:
-        input_directory (Path): The directory containing the pdf files.
-        line_detection_params (dict): The parameters for the line detection algorithm.
+        filename (str): The name of the PDF file.
+        page (fitz.Page): The PDF page.
+        geometric_lines (list[Line]): The detected geometric lines.
+        pdf_scale_factor (float): Scale factor for the produced PNG image.
     """
     if not mlflow_tracking:
         raise Warning("MLFlow tracking is not enabled. MLFLow is required to store the images.")
     import mlflow
 
-    for root, _dirs, files in os.walk(input_directory):
-        output = {}
-        for filename in files:
-            if filename.endswith(".pdf"):
-                in_path = os.path.join(root, filename)
-                output[filename] = {}
-
-                with fitz.Document(in_path) as doc:
-                    for page_index, page in enumerate(doc):
-                        lines = extract_lines(page, line_detection_params)
-                        img = plot_lines(page, lines, scale_factor=line_detection_params["pdf_scale_factor"])
-                        mlflow.log_image(img, f"pages/{filename}_page_{page_index}_lines.png")
+    img = plot_lines(page, geometric_lines, scale_factor=pdf_scale_factor)
+    mlflow.log_image(img, f"pages/{filename}_page{page.number + 1}_lines.png")
