@@ -48,11 +48,6 @@ class TextLine:
     def __repr__(self) -> str:
         return f"TextLine({self.text}, {self.rect})"
 
-    def _is_legend_word(self) -> bool:
-        individual_words = self.text.split(" ")
-        if len(individual_words) == 1 and individual_words[0].lower() in material_description["legend_expressions"]:
-            return True
-
     """
     Check if the current line can be trusted as a stand-alone line, even if it is only a tailing segment of a line that
     was directly extracted from the PDF. This decision is made based on the location (especially x0-coordinates) of the
