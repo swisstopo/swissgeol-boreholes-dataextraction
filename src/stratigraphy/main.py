@@ -7,12 +7,13 @@ import shutil
 from pathlib import Path
 
 import click
+import fitz
 from dotenv import load_dotenv
 
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.score import evaluate_matching
-from stratigraphy.extract import perform_matching
-from stratigraphy.line_detection import draw_lines_on_pdfs, line_detection_params
+from stratigraphy.extract import process_page
+from stratigraphy.line_detection import draw_lines_on_pdfs, extract_lines, line_detection_params
 from stratigraphy.util.util import flatten, read_params
 
 load_dotenv()
@@ -110,8 +111,34 @@ def start_pipeline(
         shutil.copy(input_directory, temp_directory / "single_file")
         input_directory = temp_directory / "single_file"
 
-    # run the matching pipeline and save the result
-    predictions = perform_matching(input_directory, **matching_params)
+    # process the individual pdf files
+    predictions = {}
+    for root, _dirs, files in os.walk(input_directory):
+        for filename in files:
+            if filename.endswith(".pdf"):
+                in_path = os.path.join(root, filename)
+                logger.info("Processing file: %s", in_path)
+                predictions[filename] = {}
+
+                with fitz.Document(in_path) as doc:
+                    for page_index, page in enumerate(doc):
+                        page_number = page_index + 1
+                        logger.info("Processing page %s", page_number)
+
+                        geometric_lines = extract_lines(page, line_detection_params)
+                        layer_predictions, depths_materials_column_pairs = process_page(
+                            page, geometric_lines, **matching_params
+                        )
+
+                        predictions[filename][f"page_{page_number}"] = {
+                            "layers": layer_predictions,
+                            "depths_materials_column_pairs": depths_materials_column_pairs,
+                        }
+
+                        if draw_lines:
+                            logger.info("Drawing lines on pdf pages.")
+                            draw_lines_on_pdfs(filename, page, geometric_lines)
+
     with open(predictions_path, "w") as file:
         file.write(json.dumps(predictions))
 
@@ -124,10 +151,6 @@ def start_pipeline(
     if mlflow_tracking:
         mlflow.log_metrics(metrics)
         mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
-
-    if draw_lines:
-        logger.info("Drawing lines on pdf pages.")
-        draw_lines_on_pdfs(input_directory, line_detection_params=line_detection_params)
 
 
 if __name__ == "__main__":

@@ -7,7 +7,6 @@ from pathlib import Path
 
 import fitz
 
-from stratigraphy.line_detection import extract_lines, line_detection_params
 from stratigraphy.util import find_depth_columns
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.depthcolumn import DepthColumn
@@ -25,13 +24,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def process_page(page: fitz.Page, **params: dict) -> list[dict]:
+def process_page(page: fitz.Page, geometric_lines, **params: dict) -> list[dict]:
     """Process a single page of a pdf.
 
     Finds all descriptions and depth intervals on the page and matches them.
 
     Args:
         page (fitz.Page): The page to process.
+        geometric_lines (list[Line]): The geometric lines of the page.
         **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
@@ -96,8 +96,6 @@ def process_page(page: fitz.Page, **params: dict) -> list[dict]:
                 to_delete.append(i)
                 continue
     filtered_pairs = [item for index, item in enumerate(pairs) if index not in to_delete]
-
-    geometric_lines = extract_lines(page, line_detection_params)
 
     groups = []  # list of matched depth intervals and text blocks
     # groups is of the form: ["depth_interval": BoundaryInterval, "block": TextBlock]
