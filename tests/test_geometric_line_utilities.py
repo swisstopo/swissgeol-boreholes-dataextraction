@@ -14,15 +14,29 @@ from stratigraphy.util.geometric_line_utilities import (
 @pytest.fixture(
     params=[
         # Test case 1: horizontal line at y=1
-        (np.array([0, 1, 2, 3]), np.array([1, 1, 1, 1]), np.pi / 2, 1),
+        (np.array([0, 1, 2, 3]), np.array([1, 1, 1, 1]), np.array([1, 1, 1, 1]), np.pi / 2, 1),
         # Test case 2: 45 degrees through zero
-        (np.array([0, 1, 2, 3]), np.array([0, 1, 2, 3]), -np.pi / 4, 0),
+        (np.array([0, 1, 2, 3]), np.array([0, 1, 2, 3]), np.array([1, 1, 1, 1]), -np.pi / 4, 0),
         # Test case 3: vertical line at x=2
-        (np.array([2, 2, 2, 2]), np.array([0, 1, 2, 3]), 0, 2),
+        (np.array([2, 2, 2, 2]), np.array([0, 1, 2, 3]), np.array([1, 1, 1, 1]), 0, 2),
         # Test case 4: best fix is a horizontal line at y=0.5
-        (np.array([0, 0, 2, 2]), np.array([0, 1, 0, 1]), np.pi / 2, 0.5),
+        (np.array([0, 0, 2, 2]), np.array([0, 1, 0, 1]), np.array([1, 1, 1, 1]), np.pi / 2, 0.5),
         # Test case 4: best fix is a vertical line at x=0.5
-        (np.array([0, 1, 0, 1]), np.array([0, 0, 2, 2]), 0, 0.5),
+        (np.array([0, 1, 0, 1]), np.array([0, 0, 2, 2]), np.array([1, 1, 1, 1]), 0, 0.5),
+        (
+            np.array([0, 1, 2, 3]),
+            np.array([0, 1, 1, 0]),
+            np.array([3, 1, 1, 3]),
+            np.pi / 2,
+            1 / 4,
+        ),  # test impact of the weights (horizontal, parallel lines)
+        (
+            np.array([0, 0, 1]),
+            np.array([0.1, -0.1, 0]),
+            np.array([2, 1, 1]),
+            1.536249331404415,
+            0.03362011376179206,
+        ),  # test impact of the weights (three points)
     ]
 )
 def odr_regression_case(request):  # noqa: D103
@@ -31,8 +45,8 @@ def odr_regression_case(request):  # noqa: D103
 
 # Use the fixture in the test function
 def test_odr_regression(odr_regression_case):  # noqa: D103
-    x, y, expected_phi, expected_r = odr_regression_case
-    phi, r = _odr_regression(x, y)
+    x, y, weights, expected_phi, expected_r = odr_regression_case
+    phi, r = _odr_regression(x, y, weights)
     assert pytest.approx(expected_phi) == phi
     assert pytest.approx(expected_r) == r
 
@@ -49,7 +63,7 @@ def odr_regression_with_zeroes_case(request):  # noqa: D103
 
 def test_odr_regression_with_zeroes(odr_regression_with_zeroes_case):  # noqa: D103
     x, y = odr_regression_with_zeroes_case
-    phi, r = _odr_regression(x, y)
+    phi, r = _odr_regression(x, y, np.array([1, 1, 1, 1]))
     print(f"phi: {phi}, r: {r}")
     assert np.isnan(phi)  # Expected value
     assert np.isnan(r)  # Expected value

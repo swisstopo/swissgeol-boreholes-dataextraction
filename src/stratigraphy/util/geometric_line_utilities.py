@@ -237,8 +237,14 @@ def merge_parallel_lines(lines: list[Line], tol: int, angle_threshold: float) ->
         return merged_lines
 
 
-def _odr_regression(x: ArrayLike, y: ArrayLike) -> tuple:
-    """Perform orthogonal distance regression on the given data.
+def _odr_regression(x: ArrayLike, y: ArrayLike, weights: ArrayLike = None) -> tuple:
+    """Perform orthogonal distance regression (a.k.a. Deming regression) on the given data.
+
+    This algorithm minimises the quadratic distance from the given points to the resulting line, where each point
+    can be given a specific weight. If no weights are specified, then all points are weighted equally.
+
+    The implementation follow the paper "A tutorial on the total least squares method for fitting a straight line and
+    a plane" (https://www.researchgate.net/publication/272179120).
 
     Note: If the problem is ill-defined (i.e. denominator == nominator == 0),
     then the function will return phi=np.nan and r=np.nan.
@@ -246,17 +252,21 @@ def _odr_regression(x: ArrayLike, y: ArrayLike) -> tuple:
     Args:
         x (ArrayLike): The x-coordinates of the data.
         y (ArrayLike): The y-coordinates of the data.
+        weights (ArrayLike, optional): The weight for each data point. Defaults to None.
 
     Returns:
         tuple: (phi, r), the best fit values for the line equation in normal form.
     """
-    x_mean = np.mean(x)
-    y_mean = np.mean(y)
-    nominator = -2 * np.sum((x - x_mean) * (y - y_mean))
-    denominator = np.sum((y - y_mean) ** 2 - (x - x_mean) ** 2)
+    if weights is None:
+        weights = np.ones((len(x),))
+
+    x_mean = np.mean(np.dot(weights, x)) / np.sum(weights)
+    y_mean = np.mean(np.dot(weights, y)) / np.sum(weights)
+    nominator = -2 * np.sum(np.dot(weights, (x - x_mean) * (y - y_mean)))
+    denominator = np.sum(np.dot(weights, (y - y_mean) ** 2 - (x - x_mean) ** 2))
     if nominator == 0 and denominator == 0:
         logger.warning(
-            "The problem is ill defined as both nominator and denominator for arctan are 0. "
+            "The line merging problem is ill defined as both nominator and denominator for arctan are 0. "
             "We return phi=np.nan and r=np.nan."
         )
         return np.nan, np.nan
@@ -289,7 +299,14 @@ def _merge_lines(line1: Line, line2: Line) -> Line | None:
     """
     x = np.array([line1.start.x, line1.end.x, line2.start.x, line2.end.x])
     y = np.array([line1.start.y, line1.end.y, line2.start.y, line2.end.y])
-    phi, r = _odr_regression(x, y)
+    # For the orthogonal distance regression, we weigh each point proportionally to the length of the line. The
+    # intuition behind this, is that we want the resulting merged line to be equal, regardless of whether we are
+    # merging a line AB with a line CD, or whether we are merging three lines AB, CE and ED, where E is the midpoint
+    # of CD. The current choice of weights only achieves this requirement if the lines are exactly parallel. Still,
+    # we use these weights also for non-parallel input lines, as it is still a good enough approximation for our
+    # purposes, and it keeps the mathematics reasonable simple.
+    weights = np.array([line1.length, line1.length, line2.length, line2.length])
+    phi, r = _odr_regression(x, y, weights)
     if np.isnan(phi) or np.isnan(r):
         return None
 
