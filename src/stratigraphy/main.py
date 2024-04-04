@@ -10,9 +10,10 @@ import fitz
 from dotenv import load_dotenv
 
 from stratigraphy import DATAPATH
-from stratigraphy.benchmark.score import evaluate_matching
+from stratigraphy.benchmark.score import add_ground_truth_to_predictions, evaluate_matching
 from stratigraphy.extract import process_page
-from stratigraphy.line_detection import draw_lines_on_pdfs, extract_lines, line_detection_params
+from stratigraphy.line_detection import draw_lines_on_page, extract_lines, line_detection_params
+from stratigraphy.util.draw import draw_predictions
 from stratigraphy.util.util import flatten, read_params
 
 load_dotenv()
@@ -132,15 +133,18 @@ def start_pipeline(
 
                         if draw_lines:
                             logger.info("Drawing lines on pdf pages.")
-                            draw_lines_on_pdfs(filename, page, geometric_lines)
+                            draw_lines_on_page(filename, page, geometric_lines)
 
     with open(predictions_path, "w") as file:
         file.write(json.dumps(predictions))
 
     # evaluate the predictions
-    metrics, document_level_metrics = evaluate_matching(
-        predictions_path, ground_truth_path, input_directory, out_directory, skip_draw_predictions
-    )
+    predictions, number_of_truth_values = add_ground_truth_to_predictions(predictions, ground_truth_path)
+
+    if not skip_draw_predictions:
+        draw_predictions(predictions, input_directory, out_directory)
+
+    metrics, document_level_metrics = evaluate_matching(predictions, number_of_truth_values)
     document_level_metrics.to_csv(temp_directory / "document_level_metrics.csv")  # mlflow.log_artifact expects a file
 
     if mlflow_tracking:

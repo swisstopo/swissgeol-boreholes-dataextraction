@@ -87,7 +87,7 @@ def extract_lines(page: fitz.Page, line_detection_params: dict) -> list[Line]:
     return lines
 
 
-def draw_lines_on_pdfs(filename: str, page: fitz.Page, geometric_lines: list[Line]):
+def draw_lines_on_page(filename: str, page: fitz.Page, geometric_lines: list[Line]):
     """Draw lines on pdf pages and stores them as artifacts in mlflow.
 
     Note: now the function draw_lines_on_pdfs may not even be needed any more.
