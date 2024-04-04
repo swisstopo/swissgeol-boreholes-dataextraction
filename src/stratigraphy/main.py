@@ -130,7 +130,6 @@ def start_pipeline(
                             "layers": layer_predictions,
                             "depths_materials_column_pairs": depths_materials_column_pairs,
                         }
-
                         if draw_lines:
                             logger.info("Drawing lines on pdf pages.")
                             draw_lines_on_page(filename, page, geometric_lines)
