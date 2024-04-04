@@ -47,6 +47,9 @@ class Line:
             - (self.start.x - point.x) * (self.end.y - self.start.y)
         ) / np.sqrt((self.end.x - self.start.x) ** 2 + (self.end.y - self.start.y) ** 2)
 
+    def length(self) -> float:
+        return np.sqrt((self.end.x - self.start.x) ** 2 + (self.end.y - self.start.y) ** 2)
+
     def slope(self) -> float:
         return (self.end.y - self.start.y) / (self.end.x - self.start.x) if self.end.x - self.start.x != 0 else np.inf
 
