@@ -24,26 +24,19 @@ from stratigraphy.util.geometric_line_utilities import (
         # Test case 4: best fix is a vertical line at x=0.5
         (np.array([0, 1, 0, 1]), np.array([0, 0, 2, 2]), np.array([1, 1, 1, 1]), 0, 0.5),
         (
-            np.array([2, 2, 4, 4]),
-            np.array([0, 1, 1, 4]),
-            np.array([1, 1, 3, 3]),
-            -0.2068446066394317,
-            3.0146477721771516,
-        ),  # some random lines
-        (
-            np.array([2, 2, 4, 4]),
-            np.array([0, 1, 1, 4]),
-            np.array([2, 2, 6, 6]),
-            -0.2068446066394317,
-            3.0146477721771516,
-        ),  # same line as before but weights are scaled
-        (
-            np.array([0, 4, -2, 6]),
-            np.array([1, 1, 4, 4]),
-            np.array([1, 1, 2, 2]),
+            np.array([0, 1, 2, 3]),
+            np.array([0, 1, 1, 0]),
+            np.array([3, 1, 1, 3]),
             np.pi / 2,
-            3,
-        ),  # test impact of the weights
+            1 / 4,
+        ),  # test impact of the weights (horizontal, parallel lines)
+        (
+            np.array([0, 0, 1]),
+            np.array([0.1, -0.1, 0]),
+            np.array([2, 1, 1]),
+            1.536249331404415,
+            0.03362011376179206,
+        ),  # test impact of the weights (three points)
     ]
 )
 def odr_regression_case(request):  # noqa: D103
