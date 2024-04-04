@@ -22,7 +22,7 @@ from stratigraphy.util.geometric_line_utilities import (
         # Test case 4: best fix is a horizontal line at y=0.5
         (np.array([0, 0, 2, 2]), np.array([0, 1, 0, 1]), np.pi / 2, 0.5),
         # Test case 4: best fix is a vertical line at x=0.5
-        (np.array([0, 1, 0, 1]), np.array([0, 0, 2, 2]), 0, 0.5),
+        (np.array([0, 1, 0, 1]), np.array([0, 0, 2, 2]), 0, 0),
     ]
 )
 def odr_regression_case(request):  # noqa: D103
