@@ -1,5 +1,7 @@
 """Dataclasses for stratigraphy module."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 import numpy as np
@@ -15,6 +17,9 @@ class Point:
     @property
     def tuple(self) -> (float, float):
         return self.x, self.y
+
+    def distance_to(self, point: Point) -> float:
+        return np.sqrt((self.x - point.x) ** 2 + (self.y - point.y) ** 2)
 
 
 @dataclass
@@ -32,6 +37,7 @@ class Line:
 
         self.slope = self.slope()
         self.intercept = self.intercept()
+        self.length = self.start.distance_to(self.end)
 
     def distance_to(self, point: Point) -> float:
         # Calculate the distance of the point to the line:
