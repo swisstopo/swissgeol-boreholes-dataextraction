@@ -84,9 +84,6 @@ def process_page(page: fitz.Page, geometric_lines, **params: dict) -> list[dict]
     for depth_column in depth_columns:
         material_description_rect = find_material_description_column(lines, depth_column)
         if material_description_rect:
-            material_description_rect = adjust_material_description_rect(
-                material_description_rect, page.rect.width, geometric_lines
-            )
             pairs.append((depth_column, material_description_rect))
 
     # lowest score first
@@ -128,9 +125,6 @@ def process_page(page: fitz.Page, geometric_lines, **params: dict) -> list[dict]
         # Fallback when no depth column was found
         material_description_rect = find_material_description_column(lines, depth_column=None)
         if material_description_rect:
-            material_description_rect = adjust_material_description_rect(
-                material_description_rect, page.rect.width, geometric_lines
-            )
             description_lines = get_description_lines(lines, material_description_rect)
             description_blocks = get_description_blocks(
                 description_lines,
@@ -460,42 +454,6 @@ def find_material_description_column(
         return max(candidate_rects, key=lambda rect: score_column_match(depth_column, rect))
     else:
         return candidate_rects[0]
-
-
-def adjust_material_description_rect(
-    material_description_rect: fitz.Rect, page_width: float, geometric_lines: list[Line]
-) -> fitz.Rect:
-    """Adjust the material description rectangle based on the geometric lines.
-
-    Tries to adjust the material description rectangle to the top until a long solid line is reached.
-
-    Args:
-        material_description_rect (fitz.Rect): _description_
-        page_width (float): _description_
-        geometric_lines (list[Line]): _description_
-
-    Returns:
-        fitz.Rect: _description_
-    """
-    material_description_rect_top = material_description_rect.y0
-    max_line_y = 0
-    for line in geometric_lines:
-        if (
-            line.length() > 0.7 * material_description_rect.width
-            and (line.start.y + line.end.y) / 2 < material_description_rect_top + 5
-        ):
-            max_line_y = max(max_line_y, (line.start.y + line.end.y) / 2) - 5
-
-    if max_line_y > material_description_rect_top:
-        new_coordinates = [
-            material_description_rect.x0,
-            max_line_y,
-            material_description_rect.x1,
-            material_description_rect.y1,
-        ]
-        return fitz.Rect(*new_coordinates)
-    else:
-        return material_description_rect
 
 
 def perform_matching(directory: Path, **params: dict) -> dict:
