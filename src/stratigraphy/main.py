@@ -38,7 +38,7 @@ matching_params = read_params("matching_params.yml")
 @click.option(
     "-g",
     "--ground_truth_path",
-    type=click.Path(exists=True, path_type=Path),
+    type=click.Path(exists=False, path_type=Path),
     default=DATAPATH / "Benchmark" / "ground_truth.json",
     help="Path to the ground truth file.",
 )
@@ -151,12 +151,17 @@ def start_pipeline(
     if not skip_draw_predictions:
         draw_predictions(predictions, input_directory, out_directory)
 
-    metrics, document_level_metrics = evaluate_matching(predictions, number_of_truth_values)
-    document_level_metrics.to_csv(temp_directory / "document_level_metrics.csv")  # mlflow.log_artifact expects a file
+    if number_of_truth_values:  # only evaluate if ground truth is available
+        metrics, document_level_metrics = evaluate_matching(predictions, number_of_truth_values)
+        document_level_metrics.to_csv(
+            temp_directory / "document_level_metrics.csv"
+        )  # mlflow.log_artifact expects a file
 
-    if mlflow_tracking:
-        mlflow.log_metrics(metrics)
-        mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
+        if mlflow_tracking:
+            mlflow.log_metrics(metrics)
+            mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
+    else:
+        logger.warning("Ground truth file not found. Skipping evaluation.")
 
 
 if __name__ == "__main__":

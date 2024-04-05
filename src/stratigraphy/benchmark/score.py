@@ -131,7 +131,12 @@ def add_ground_truth_to_predictions(predictions: dict, ground_truth_path: Path) 
     Returns:
         tuple[dict, dict]: The predictions with the ground truth added, and the number of ground truth values per file.
     """
-    ground_truth = GroundTruth(ground_truth_path)
+    try:  # for inference no ground truth is available
+        ground_truth = GroundTruth(ground_truth_path)
+
+    except FileNotFoundError:
+        logging.warning("Ground truth file not found.")
+        return predictions, {}
 
     number_of_truth_values = {}
     for file, file_predictions in predictions.items():

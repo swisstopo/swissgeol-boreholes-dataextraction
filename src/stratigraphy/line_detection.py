@@ -1,5 +1,6 @@
 """Script for line detection in pdf pages."""
 
+import logging
 import os
 
 import cv2
@@ -18,8 +19,9 @@ from stratigraphy.util.util import line_from_array, read_params
 
 load_dotenv()
 
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
+logger = logging.getLogger(__name__)
 
+mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 
 line_detection_params = read_params("line_detection_params.yml")
 
