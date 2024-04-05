@@ -104,7 +104,7 @@ def get_description_blocks(
         blocks = splitter.create_blocks(description_lines)
 
     elif count_blocks_divided_by_line < min_block_count:
-        # In this case there blocks due to line segments. However, they are mostly due to small segments
+        # In this case the blocks are due to line segments. However, they are mostly due to small segments
         # on the lefthandside of the blocks. Minimum there are fewer blocks due to lines than min_block_count.
         # Often, these lefthandside lines are only used when space is tight. If space is not tight, those
         # indicators are dropped. That's why we have to consider vertical spacing as well.
