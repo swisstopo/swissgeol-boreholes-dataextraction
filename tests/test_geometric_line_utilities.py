@@ -7,6 +7,8 @@ from stratigraphy.util.geometric_line_utilities import (
     _get_orthogonal_projection_to_line,
     _merge_lines,
     _odr_regression,
+    drop_vertical_lines,
+    is_point_on_line,
 )
 
 
@@ -135,3 +137,32 @@ def test_merge_lines(merge_lines_case):  # noqa: D103
     merged_line = _merge_lines(line1, line2)
     assert pytest.approx(merged_line.start.tuple) == expected_merged_line.start.tuple
     assert pytest.approx(merged_line.end.tuple) == expected_merged_line.end.tuple
+
+
+def test_drop_vertical_lines():  # noqa: D103
+    lines = [
+        Line(Point(0, 0), Point(1, 0)),  # slope = 0
+        Line(Point(0, 0), Point(1, -0.1)),  # slope = -0.1
+        Line(Point(0, 0), Point(1, 2)),  # slope = 2
+        Line(Point(0, 0), Point(1, 10)),  # slope = 10
+    ]
+    result = drop_vertical_lines(lines, threshold=2)  # lines with abs(slopes) smaller than 0.5 are kept
+    assert len(result) == 2, "Only two lines should remain"
+    assert pytest.approx(result[0].slope) == 0, "The first remaining line should have slope 0"
+    assert pytest.approx(result[1].slope) == -0.1, "The second remaining line should have slope -0.1"
+
+
+def test_is_point_on_line():  # noqa: D103
+    line = Line(Point(0, 0), Point(100, 100))
+
+    # Test with a point that is on the line
+    point = Point(55.5, 55.5)
+    assert is_point_on_line(line, point, tol=1), "The point should be on the line"
+
+    # Test with a point that is not on the line
+    point = Point(10, 0)
+    assert not is_point_on_line(line, point, tol=5), "The point should not be on the line"
+
+    # Test with a point that is close to the line, within the tolerance
+    point = Point(50, 55)
+    assert is_point_on_line(line, point, tol=6), "The point should be on the line within the tolerance"
