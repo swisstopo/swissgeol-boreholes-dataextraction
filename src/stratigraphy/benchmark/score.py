@@ -1,6 +1,5 @@
 """Evaluate the predictions against the ground truth."""
 
-import json
 import logging
 import os
 from pathlib import Path
@@ -9,7 +8,6 @@ import pandas as pd
 from dotenv import load_dotenv
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.ground_truth import GroundTruth
-from stratigraphy.util.draw import draw_predictions
 from stratigraphy.util.util import parse_text
 
 load_dotenv()
@@ -56,32 +54,20 @@ def f1(precision: float, recall: float) -> float:
         return 0
 
 
-def evaluate_matching(
-    predictions_path: Path, ground_truth_path: Path, directory: Path, out_directory: Path
-) -> tuple[dict, pd.DataFrame]:
+def evaluate_matching(predictions: dict, number_of_truth_values: dict) -> tuple[dict, pd.DataFrame]:
     """Calculate F1, precision and recall for the predictions.
 
     Calculate F1, precision and recall for the individual documents as well as overall.
     The individual document metrics are returned as a DataFrame.
 
     Args:
-        predictions_path (Path): Path to the predictions.json file.
-        ground_truth_path (Path): Path to the ground truth annotated data.
-        directory (Path): Path to the directory containing the pdf files.
-        out_directory (Path): Path to the directory where the evaluation images should be saved.
+        predictions (dict): The predictions.
+        number_of_truth_values (dict): The number of ground truth values per file.
 
     Returns:
         tuple[dict, pd.DataFrame]: A tuple containing the overall F1, precision and recall as a dictionary and the
         individual document metrics as a DataFrame.
     """
-    ground_truth = GroundTruth(ground_truth_path)
-    with open(predictions_path) as in_file:
-        predictions = json.load(in_file)
-
-    predictions, number_of_truth_values = _add_ground_truth_to_predictions(predictions, ground_truth)
-
-    draw_predictions(predictions, directory, out_directory)
-
     document_level_metrics = {
         "document_name": [],
         "F1": [],
@@ -135,16 +121,18 @@ def evaluate_matching(
     }, pd.DataFrame(document_level_metrics)
 
 
-def _add_ground_truth_to_predictions(predictions: dict, ground_truth: GroundTruth) -> (dict, dict):
+def add_ground_truth_to_predictions(predictions: dict, ground_truth_path: Path) -> tuple[dict, dict]:
     """Add the ground truth to the predictions.
 
     Args:
         predictions (dict): The predictions.
-        ground_truth (GroundTruth): The ground truth.
+        ground_truth_path (Path): The path to the ground truth file.
 
     Returns:
-        (dict, dict): The predictions with the ground truth added, and the number of ground truth values per file.
+        tuple[dict, dict]: The predictions with the ground truth added, and the number of ground truth values per file.
     """
+    ground_truth = GroundTruth(ground_truth_path)
+
     number_of_truth_values = {}
     for file, file_predictions in predictions.items():
         ground_truth_for_file = ground_truth.for_file(file)

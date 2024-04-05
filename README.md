@@ -40,17 +40,17 @@ To execute the data extraction pipeline, follow these steps:
 
     `conda activate boreholes-dev`
 
-2. **Run the main script**
+2. **Run the extraction script**
 
-    The main script for the extraction pipeline is located at `src/stratigraphy/main.py`. Run this script to start the extraction process.
+    The main script for the extraction pipeline is located at `src/stratigraphy/main.py`. A cli command is created to run this script.
 
-    This script will source all PDFs from the `data/Benchmark` directory and create PNG files in the `data/Benchmark/extract` directory.
+    Run `boreholes-extract-layers` to run the main extraction script. With the default options, the command will source all PDFs from the `data/Benchmark` directory and create PNG files in the `data/Benchmark/extract` directory.
+
+    Use `boreholes-extract-layers --help` to see all options for the extraction script.
 
 3. **Check the results**
 
     Once the script has finished running, you can check the results in the `data/Benchmark/extract` directory. The result is a `predictions.json` file as well as a png file for each page of each PDF in the `data/Benchmark` directory.
-
-Please note that for now the pipeline assumes that all PDF files to be analyzed are placed in the `data/Benchmark` directory. If you want to analyze different files, please place them in this directory.
 
 ### Output Structure
 The `predictions.json` file contains the results of a data extraction process from PDF files. Each key in the JSON object is the name of a PDF file, and the value is a list of extracted items in a dictionary like object. The extracted items for now are the material descriptions in their correct order (given by their depths).
@@ -149,7 +149,7 @@ The project structure and the most important files are as follows:
   - `src/` : The source code of the project.
     - `stratigraphy/` : The main package of the project.
       - `main.py` : The main script of the project. This script runs the data extraction pipeline.
-      - `line_detection.py`: This script runs the line detection on provided sample pdfs. Will be deprecated in the future.
+      - `line_detection.py`: Contains functionalities for line detection on pdf pages.
       - `util/` : Utility scripts and modules.
       - `benchmark/` : Scripts to evaluate the data extraction.
   - `data/` : The data used by the project.
@@ -164,7 +164,6 @@ The project structure and the most important files are as follows:
 
 - `main.py` : This is the main script of the project. It runs the data extraction pipeline, which analyzes the PDF files in the `data/Benchmark` directory and saves the results in the `predictions.json` file.
 
-- `line_detection.py` : Runs the line detection algorithm on pdfs using `lsd` from opencv. It is meant to find all lines that potentially separate two material descriptions. It is incorporated in the script `main.py` and will be deprecated as a standalone script in the future.
 
 ## Experiment Tracking
 We perform experiment tracking using MLFlow. Each developer has his own local MLFlow instance. 

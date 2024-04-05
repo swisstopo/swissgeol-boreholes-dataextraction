@@ -8,15 +8,13 @@ import numpy as np
 from dotenv import load_dotenv
 from numpy.typing import ArrayLike
 
-from stratigraphy import DATAPATH
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.geometric_line_utilities import (
     drop_vertical_lines,
     merge_parallel_lines_approximately,
     merge_parallel_lines_efficiently,
 )
-from stratigraphy.util.plot_utils import plot_lines
-from stratigraphy.util.util import flatten, line_from_array, read_params
+from stratigraphy.util.util import line_from_array, read_params
 
 load_dotenv()
 
@@ -86,36 +84,3 @@ def extract_lines(page: fitz.Page, line_detection_params: dict) -> list[Line]:
             lines, tol=merging_params["merging_tolerance"], angle_threshold=merging_params["angle_threshold"]
         )
     return lines
-
-
-if __name__ == "__main__":
-    # Some test pdfs
-    selected_pdfs = [
-        "270124083-bp.pdf",
-        "268124307-bp.pdf",
-        "268125268-bp.pdf",
-        "267125378-bp.pdf",
-        "268124435-bp.pdf",
-        "267123060-bp.pdf",
-        "268124635-bp.pdf",
-        "675230002-bp.pdf",
-        "268125592-bp.pdf",
-        "267124070-bp.pdf",
-        "699248001-bp.pdf",
-    ]
-
-    if mlflow_tracking:
-        import mlflow
-
-        mlflow.set_experiment("LineDetection")
-        mlflow.start_run()
-        mlflow.log_params(flatten(line_detection_params))
-    lines = {}
-    for pdf in selected_pdfs:
-        doc = fitz.open(DATAPATH / "Benchmark" / pdf)
-
-        for page in doc:
-            lines[pdf] = extract_lines(page, line_detection_params)
-            img = plot_lines(page, lines[pdf], scale_factor=line_detection_params["pdf_scale_factor"])
-            if mlflow_tracking:
-                mlflow.log_image(img, f"lines_{pdf}.png")
