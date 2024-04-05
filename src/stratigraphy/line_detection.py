@@ -14,7 +14,6 @@ from stratigraphy.util.geometric_line_utilities import (
     merge_parallel_lines_approximately,
     merge_parallel_lines_efficiently,
 )
-from stratigraphy.util.plot_utils import plot_lines
 from stratigraphy.util.util import line_from_array, read_params
 
 load_dotenv()
@@ -85,21 +84,3 @@ def extract_lines(page: fitz.Page, line_detection_params: dict) -> list[Line]:
             lines, tol=merging_params["merging_tolerance"], angle_threshold=merging_params["angle_threshold"]
         )
     return lines
-
-
-def draw_lines_on_page(filename: str, page: fitz.Page, geometric_lines: list[Line]):
-    """Draw lines on pdf pages and stores them as artifacts in mlflow.
-
-    Note: now the function draw_lines_on_pdfs may not even be needed any more.
-
-    Args:
-        filename (str): The filename of the pdf.
-        page (fitz.Page): The page to draw lines on.
-        geometric_lines (list[Line]): The lines to draw on the pdf page.
-    """
-    if not mlflow_tracking:
-        raise Warning("MLFlow tracking is not enabled. MLFLow is required to store the images.")
-    import mlflow
-
-    img = plot_lines(page, geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"])
-    mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")

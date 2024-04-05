@@ -12,8 +12,9 @@ from dotenv import load_dotenv
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.score import add_ground_truth_to_predictions, evaluate_matching
 from stratigraphy.extract import process_page
-from stratigraphy.line_detection import draw_lines_on_page, extract_lines, line_detection_params
+from stratigraphy.line_detection import extract_lines, line_detection_params
 from stratigraphy.util.draw import draw_predictions
+from stratigraphy.util.plot_utils import plot_lines
 from stratigraphy.util.util import flatten, read_params
 
 load_dotenv()
@@ -130,9 +131,16 @@ def start_pipeline(
                             "layers": layer_predictions,
                             "depths_materials_column_pairs": depths_materials_column_pairs,
                         }
-                        if draw_lines:
-                            logger.info("Drawing lines on pdf pages.")
-                            draw_lines_on_page(filename, page, geometric_lines)
+                        if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
+                            if not mlflow_tracking:
+                                logger.warning(
+                                    "MLFlow tracking is not enabled. MLFLow is required to store the images."
+                                )
+                            else:
+                                img = plot_lines(
+                                    page, geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"]
+                                )
+                                mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
     with open(predictions_path, "w") as file:
         file.write(json.dumps(predictions))
