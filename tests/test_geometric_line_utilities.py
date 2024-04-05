@@ -9,6 +9,7 @@ from stratigraphy.util.geometric_line_utilities import (
     _odr_regression,
     drop_vertical_lines,
     is_point_on_line,
+    merge_parallel_lines_efficiently,
 )
 
 
@@ -166,3 +167,31 @@ def test_is_point_on_line():  # noqa: D103
     # Test with a point that is close to the line, within the tolerance
     point = Point(50, 55)
     assert is_point_on_line(line, point, tol=6), "The point should be on the line within the tolerance"
+
+
+def test_merge_parallel_lines_efficiently():  # noqa: D103
+    """Could be extended with border cases that are not merged but should be.
+
+    Should probably be done when these cases are addressed in the implementation.
+    """
+    lines = [
+        Line(Point(0, 0), Point(1, 1)),  # line 1
+        Line(Point(1, 1), Point(2, 2)),  # line 2, should be merged with line 1
+        Line(Point(0, 5), Point(1, 6)),  # line 3, parallel but not close to line 1
+    ]
+    merged_lines = merge_parallel_lines_efficiently(lines, tol=1, angle_threshold=1)
+    assert len(merged_lines) == 2, "There should be 2 lines after merging"
+
+
+def test_merge_parallel_lines_approximately():  # noqa: D103
+    """Could be extended with border cases that are not merged but should be.
+
+    Should probably be done when these cases are addressed in the implementation.
+    """
+    lines = [
+        Line(Point(0, 0), Point(1, 1)),  # line 1
+        Line(Point(1, 1), Point(2, 2)),  # line 2, should be merged with line 1
+        Line(Point(0, 5), Point(1, 6)),  # line 3, parallel but not close to line 1
+    ]
+    merged_lines = merge_parallel_lines_efficiently(lines, tol=1, angle_threshold=1)
+    assert len(merged_lines) == 2, "There should be 2 lines after merging"
