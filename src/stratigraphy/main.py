@@ -33,7 +33,7 @@ matching_params = read_params("matching_params.yml")
     "--input_directory",
     type=click.Path(exists=True, path_type=Path),
     default=DATAPATH / "Benchmark",
-    help="Path to the input directory.",
+    help="Path to the input directory, or path to a single pdf file.",
 )
 @click.option(
     "-g",
@@ -82,7 +82,7 @@ def start_pipeline(
 
     \f
     Args:
-        input_directory (Path): The directory containing the pdf files.
+        input_directory (Path): The directory containing the pdf files. Can also be the path to a single pdf file.
         ground_truth_path (Path): The path to the ground truth file json file.
         out_directory (Path): The directory to store the evaluation results.
         predictions_path (Path): The path to the predictions file.
