@@ -110,6 +110,7 @@ def start_pipeline(
         file_iterator = os.walk(input_directory)
     # process the individual pdf files
     predictions = {}
+    logger.info(predictions["ho"])
     for root, _dirs, files in file_iterator:
         for filename in files:
             if filename.endswith(".pdf"):
