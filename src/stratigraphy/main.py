@@ -145,7 +145,7 @@ def start_pipeline(
     with open(predictions_path, "w") as file:
         file.write(json.dumps(predictions))
 
-    # evaluate the predictions
+    # evaluate the predictions; if file doesnt exist, the predictions are not changed.
     predictions, number_of_truth_values = add_ground_truth_to_predictions(predictions, ground_truth_path)
 
     if not skip_draw_predictions:
