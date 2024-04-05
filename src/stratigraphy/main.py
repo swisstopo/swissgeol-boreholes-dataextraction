@@ -3,16 +3,18 @@
 import json
 import logging
 import os
-import shutil
 from pathlib import Path
 
 import click
+import fitz
 from dotenv import load_dotenv
 
 from stratigraphy import DATAPATH
-from stratigraphy.benchmark.score import evaluate_matching
-from stratigraphy.extract import perform_matching
-from stratigraphy.line_detection import draw_lines_on_pdfs, line_detection_params
+from stratigraphy.benchmark.score import add_ground_truth_to_predictions, evaluate_matching
+from stratigraphy.extract import process_page
+from stratigraphy.line_detection import extract_lines, line_detection_params
+from stratigraphy.util.draw import draw_predictions
+from stratigraphy.util.plot_utils import plot_lines
 from stratigraphy.util.util import flatten, read_params
 
 load_dotenv()
@@ -103,31 +105,58 @@ def start_pipeline(
 
     # if a file is specified instead of an input directory, copy the file to a temporary directory and work with that.
     if input_directory.is_file():
-        if (temp_directory / "single_file").is_dir():
-            shutil.rmtree(temp_directory / "single_file")
+        file_iterator = [(input_directory.parent, None, [input_directory.name])]
+    else:
+        file_iterator = os.walk(input_directory)
+    # process the individual pdf files
+    predictions = {}
+    for root, _dirs, files in file_iterator:
+        for filename in files:
+            if filename.endswith(".pdf"):
+                in_path = os.path.join(root, filename)
+                logger.info("Processing file: %s", in_path)
+                predictions[filename] = {}
 
-        Path.mkdir(temp_directory / "single_file")
-        shutil.copy(input_directory, temp_directory / "single_file")
-        input_directory = temp_directory / "single_file"
+                with fitz.Document(in_path) as doc:
+                    for page_index, page in enumerate(doc):
+                        page_number = page_index + 1
+                        logger.info("Processing page %s", page_number)
 
-    # run the matching pipeline and save the result
-    predictions = perform_matching(input_directory, **matching_params)
+                        geometric_lines = extract_lines(page, line_detection_params)
+                        layer_predictions, depths_materials_column_pairs = process_page(
+                            page, geometric_lines, **matching_params
+                        )
+
+                        predictions[filename][f"page_{page_number}"] = {
+                            "layers": layer_predictions,
+                            "depths_materials_column_pairs": depths_materials_column_pairs,
+                        }
+                        if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
+                            if not mlflow_tracking:
+                                logger.warning(
+                                    "MLFlow tracking is not enabled. MLFLow is required to store the images."
+                                )
+                            else:
+                                img = plot_lines(
+                                    page, geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"]
+                                )
+                                mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
+
     with open(predictions_path, "w") as file:
         file.write(json.dumps(predictions))
 
-    # evaluate the predictions
-    metrics, document_level_metrics = evaluate_matching(
-        predictions_path, ground_truth_path, input_directory, out_directory, skip_draw_predictions
-    )
+    # evaluate the predictions; if file doesnt exist, the predictions are not changed.
+    predictions, number_of_truth_values = add_ground_truth_to_predictions(predictions, ground_truth_path)
+
+    if not skip_draw_predictions:
+        draw_predictions(predictions, input_directory, out_directory)
+
+    metrics, document_level_metrics = evaluate_matching(predictions, number_of_truth_values)
     document_level_metrics.to_csv(temp_directory / "document_level_metrics.csv")  # mlflow.log_artifact expects a file
 
     if mlflow_tracking:
         mlflow.log_metrics(metrics)
         mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
-
-    if draw_lines:
-        logger.info("Drawing lines on pdf pages.")
-        draw_lines_on_pdfs(input_directory, line_detection_params=line_detection_params)
 
 
 if __name__ == "__main__":

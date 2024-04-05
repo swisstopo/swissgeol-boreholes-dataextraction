@@ -1,7 +1,6 @@
 """Script for line detection in pdf pages."""
 
 import os
-from pathlib import Path
 
 import cv2
 import fitz
@@ -15,7 +14,6 @@ from stratigraphy.util.geometric_line_utilities import (
     merge_parallel_lines_approximately,
     merge_parallel_lines_efficiently,
 )
-from stratigraphy.util.plot_utils import plot_lines
 from stratigraphy.util.util import line_from_array, read_params
 
 load_dotenv()
@@ -86,28 +84,3 @@ def extract_lines(page: fitz.Page, line_detection_params: dict) -> list[Line]:
             lines, tol=merging_params["merging_tolerance"], angle_threshold=merging_params["angle_threshold"]
         )
     return lines
-
-
-def draw_lines_on_pdfs(input_directory: Path, line_detection_params: dict):
-    """Draw lines on pdf pages and stores them as artifacts in mlflow.
-
-    Args:
-        input_directory (Path): The directory containing the pdf files.
-        line_detection_params (dict): The parameters for the line detection algorithm.
-    """
-    if not mlflow_tracking:
-        raise Warning("MLFlow tracking is not enabled. MLFLow is required to store the images.")
-    import mlflow
-
-    for root, _dirs, files in os.walk(input_directory):
-        output = {}
-        for filename in files:
-            if filename.endswith(".pdf"):
-                in_path = os.path.join(root, filename)
-                output[filename] = {}
-
-                with fitz.Document(in_path) as doc:
-                    for page_index, page in enumerate(doc):
-                        lines = extract_lines(page, line_detection_params)
-                        img = plot_lines(page, lines, scale_factor=line_detection_params["pdf_scale_factor"])
-                        mlflow.log_image(img, f"pages/{filename}_page_{page_index}_lines.png")

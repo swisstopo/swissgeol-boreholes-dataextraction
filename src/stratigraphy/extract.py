@@ -2,12 +2,9 @@
 
 import logging
 import math
-import os
-from pathlib import Path
 
 import fitz
 
-from stratigraphy.line_detection import extract_lines, line_detection_params
 from stratigraphy.util import find_depth_columns
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.depthcolumn import DepthColumn
@@ -25,13 +22,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def process_page(page: fitz.Page, **params: dict) -> list[dict]:
+def process_page(page: fitz.Page, geometric_lines, **params: dict) -> list[dict]:
     """Process a single page of a pdf.
 
     Finds all descriptions and depth intervals on the page and matches them.
 
     Args:
         page (fitz.Page): The page to process.
+        geometric_lines (list[Line]): The geometric lines of the page.
         **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
@@ -96,8 +94,6 @@ def process_page(page: fitz.Page, **params: dict) -> list[dict]:
                 to_delete.append(i)
                 continue
     filtered_pairs = [item for index, item in enumerate(pairs) if index not in to_delete]
-
-    geometric_lines = extract_lines(page, line_detection_params)
 
     groups = []  # list of matched depth intervals and text blocks
     # groups is of the form: ["depth_interval": BoundaryInterval, "block": TextBlock]
@@ -456,35 +452,3 @@ def find_material_description_column(
         return max(candidate_rects, key=lambda rect: score_column_match(depth_column, rect))
     else:
         return candidate_rects[0]
-
-
-def perform_matching(directory: Path, **params: dict) -> dict:
-    """Perform the matching of text blocks with depth intervals.
-
-    Args:
-        directory (Path): Path to the directory that contains the pdfs.
-        **params (dict): Additional parameters for the matching pipeline.
-
-    Returns:
-        dict: The predictions.
-    """
-    for root, _dirs, files in os.walk(directory):
-        output = {}
-        for filename in files:
-            if filename.endswith(".pdf"):
-                in_path = os.path.join(root, filename)
-                logger.info("Processing file: %s", in_path)
-                output[filename] = {}
-
-                with fitz.Document(in_path) as doc:
-                    for page_index, page in enumerate(doc):
-                        page_number = page_index + 1
-                        logger.info("Processing page %s", page_number)
-
-                        predictions, depths_materials_column_pairs = process_page(page, **params)
-
-                        output[filename][f"page_{page_number}"] = {
-                            "layers": predictions,
-                            "depths_materials_column_pairs": depths_materials_column_pairs,
-                        }
-        return output
