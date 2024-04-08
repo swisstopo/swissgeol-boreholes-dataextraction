@@ -62,7 +62,7 @@ def depth_column_entries(all_words: list[TextLine], include_splits: bool) -> lis
 def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextLine]) -> list[LayerDepthColumn]:
     """Finds all layer depth columns.
 
-    Generates a list of LayerDepthColumnEntry objects, by finding conseucutive paris of DepthColumnEntry objects.
+    Generates a list of LayerDepthColumnEntry objects by finding conseucutive pairs of DepthColumnEntry objects.
     Different columns are grouped together in LayerDepthColumn objects. Finally a list of LayerDepthColumn objects,
     one for each column, is returned.
 
