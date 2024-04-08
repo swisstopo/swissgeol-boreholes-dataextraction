@@ -20,6 +20,8 @@ dependencies:
   - black==24.2.0
   - pre-commit==3.6.2
   - pytest==8.1.1
+  - langdetect==1.0.9
+  - tqdm==4.66.2
   - pip:
 # prod pip dependencies; needs to be a strict copy of environment-prod.yml
       - amazon-textract-textractor
