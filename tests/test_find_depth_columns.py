@@ -78,6 +78,26 @@ def test_find_depth_columns():  # noqa: D103
     assert pytest.approx(columns[0].entries[4].value) == 50.0, "The fourth entry should have a value of 50.0"
 
 
+def test_two_columns_find_depth_columns():  # noqa: D103
+    entries = [  # first depth column
+        DepthColumnEntry(fitz.Rect(0, 0, 5, 1), 12.0),
+        DepthColumnEntry(fitz.Rect(0, 2, 5, 3), 20.0),
+        DepthColumnEntry(fitz.Rect(0, 4, 5, 5), 34.0),
+        DepthColumnEntry(fitz.Rect(0, 6, 5, 7), 40.0),
+        DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 50.0),
+        DepthColumnEntry(fitz.Rect(20, 0, 25, 1), 12.0),  # second depth column
+        DepthColumnEntry(fitz.Rect(20, 2, 25, 3), 20.0),
+        DepthColumnEntry(fitz.Rect(20, 4, 25, 5), 34.0),
+        DepthColumnEntry(fitz.Rect(20, 6, 25, 7), 40.0),
+        DepthColumnEntry(fitz.Rect(20, 8, 25, 9), 50.0),
+        DepthColumnEntry(fitz.Rect(20, 10, 25, 11), 61.0),
+    ]
+    columns = find_depth_columns(entries, all_words_find_depth_column)
+    assert len(columns) == 2, "There should be 2 columns"
+    assert len(columns[0].entries) == 5, "The first column should have 5 entries"
+    assert len(columns[1].entries) == 6, "The second column should have 6 entries"
+
+
 all_words_find_layer_depth_column = [
     TextLine([DepthInterval(fitz.Rect(0, 0, 5, 1), "12.00-20.0m")]),
     TextLine([DepthInterval(fitz.Rect(20, 0, 30, 1), "Kies, Torf und Sand")]),
