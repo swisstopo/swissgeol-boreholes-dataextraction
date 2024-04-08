@@ -31,12 +31,13 @@ def draw_predictions(predictions: dict, directory: Path, out_directory: Path) ->
         - Assignments of material description text blocks to depth intervals (if available)
 
     Args:
-        predictions (dict): Content of the predictions.json file..
+        predictions (dict): Content of the predictions.json file.
         directory (Path): Path to the directory containing the pdf files.
         out_directory (Path): Path to the output directory where the images are saved.
     """
+    if directory.is_file():  # deal with the case when we pass a file instead of a directory
+        directory = directory.parent
     for file in predictions:
-        logger.info(f"Evaluating {file}.")
         with fitz.Document(directory / file) as doc:
             for page_index, page in enumerate(doc):
                 page_number = page_index + 1
