@@ -113,5 +113,5 @@ def get_description_blocks(
             _blocks.extend(splitter.create_blocks(block.lines))
         blocks = _blocks
     blocks = [new_block for block in blocks for new_block in block.split_based_on_indentation()]
-
+    blocks = [block for block in blocks if not block._is_legend()]
     return blocks

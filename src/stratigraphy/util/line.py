@@ -37,7 +37,9 @@ class TextLine:
         for word in words:
             self.rect.include_rect(word.rect)
         self.words = words
-        self.is_description = any(self.text.lower().find(word) > -1 for word in material_description)
+        self.is_description = any(
+            self.text.lower().find(word) > -1 for word in material_description["including_expressions"]
+        ) and not any(self.text.lower().find(word) > -1 for word in material_description["excluding_expressions"])
 
     @property
     def text(self) -> str:
