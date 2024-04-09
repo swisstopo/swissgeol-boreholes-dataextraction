@@ -12,6 +12,8 @@ from stratigraphy.util.line import TextLine
 def depth_column_entries(all_words: list[TextLine], include_splits: bool) -> list[DepthColumnEntry]:
     """Find all depth column entries given a list of TextLine objects.
 
+    Note: Only depths up to two digits before the decimal point are supported.
+
     Args:
         all_words (list[TextLine]): List of Text lines to extract depth column entries from.
         include_splits (bool): Whether to include split entries.
@@ -60,7 +62,7 @@ def depth_column_entries(all_words: list[TextLine], include_splits: bool) -> lis
 def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextLine]) -> list[LayerDepthColumn]:
     """Finds all layer depth columns.
 
-    Generates a list of LayerDepthColumnEntry objects, by finding conseucutive paris of DepthColumnEntry objects.
+    Generates a list of LayerDepthColumnEntry objects by finding conseucutive pairs of DepthColumnEntry objects.
     Different columns are grouped together in LayerDepthColumn objects. Finally a list of LayerDepthColumn objects,
     one for each column, is returned.
 

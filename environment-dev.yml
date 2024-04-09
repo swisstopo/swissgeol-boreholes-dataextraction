@@ -20,6 +20,7 @@ dependencies:
   - black==24.2.0
   - pre-commit==3.6.2
   - pytest==8.1.1
+  - pytest-cov==5.0.0
   - pip:
 # prod pip dependencies; needs to be a strict copy of environment-prod.yml
       - amazon-textract-textractor

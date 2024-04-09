@@ -20,4 +20,10 @@ jobs:
         source "${HOME}/.bash_profile"
         conda env create -f environment-dev.yml
         conda activate boreholes-dev
-        pytest
+        pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=stratigraphy tests/ | tee pytest-coverage.txt
+    - name: Pytest coverage comment  # For more information see: https://github.com/MishaKav/pytest-coverage-comment/
+      uses: MishaKav/pytest-coverage-comment@main
+      with:
+        pytest-coverage-path: ./pytest-coverage.txt
+        junitxml-path: ./pytest.xml
+
