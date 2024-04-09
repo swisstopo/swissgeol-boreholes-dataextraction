@@ -40,6 +40,13 @@ material_description:
 
   fr:
     including_expressions:
+      - sol
+      - végétal
+      - dallage
+      - terre
+      - bitume
+      - bitumineux
+      - grave d'infrastructure
       - sable
       - limon
       - gravier
@@ -57,6 +64,8 @@ material_description:
       - craie
       - marne
       - materiau de base
+      - matrice sableuse
+      - enrobé
     excluding_expressions:
       - monsieur
       - fin
@@ -71,3 +80,7 @@ material_description:
       - essai de pompage
       - carottage
       - rayon de forage
+      - remarque
+      - piezometre
+      - profondeur
+      - désignation
