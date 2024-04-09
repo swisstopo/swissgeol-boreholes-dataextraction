@@ -2,7 +2,7 @@
 
 import fitz
 from stratigraphy.util.line import TextLine, TextWord
-from stratigraphy.util.textblock import TextBlock
+from stratigraphy.util.textblock import TextBlock, block_distance
 
 
 def test_concatenate():  # noqa: D103
@@ -30,3 +30,26 @@ def test_post_init():  # noqa: D103
     assert tb.line_count == 1, "The line count should be 1"
     assert tb.text == "Hello", "The text should be 'Hello'"
     assert tb.rect == fitz.Rect(0, 0, 5, 1), "The rect should be the same as the line's rect"
+
+
+def test_post_init_longer_text():  # noqa: D103
+    tb = TextBlock(
+        [
+            TextLine([TextWord(fitz.Rect(0, 0, 5, 1), "Hello")]),
+            TextLine([TextWord(fitz.Rect(0, 1, 5, 2), "It's"), TextWord(fitz.Rect(5, 1, 10, 2), "me")]),
+        ]
+    )
+    assert tb.line_count == 2, "The line count should be 2"
+    assert tb.text == "Hello It's me", "Lines and words should be joined with a space"
+    assert tb.rect == fitz.Rect(0, 0, 10, 2), "The block's rect should surround the rects of the individual words"
+
+
+def test_block_distance():  # noqa: D103
+    block_1 = TextBlock([TextLine([TextWord(fitz.Rect(0, 0, 5, 1), "Hello")])])
+    block_2 = TextBlock([TextLine([TextWord(fitz.Rect(0, 2, 5, 3), "Hello")])])
+    assert (
+        block_distance(block_1, block_2) == 1
+    ), "The distance should be measured from the bottom of the first block to the top of the second block."
+    assert (
+        block_distance(block_2, block_1) == -3
+    ), "The distance should negative when the second block is above the first block."
