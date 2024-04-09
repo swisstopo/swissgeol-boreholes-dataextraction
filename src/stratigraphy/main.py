@@ -94,6 +94,10 @@ def start_pipeline(
 
         mlflow.set_experiment("Boreholes Stratigraphy")
         mlflow.start_run()
+        mlflow.set_tag("input_directory", str(input_directory))
+        mlflow.set_tag("ground_truth_path", str(ground_truth_path))
+        mlflow.set_tag("out_directory", str(out_directory))
+        mlflow.set_tag("predictions_path", str(predictions_path))
         mlflow.log_params(flatten(line_detection_params))
         mlflow.log_params(flatten(matching_params))
 
