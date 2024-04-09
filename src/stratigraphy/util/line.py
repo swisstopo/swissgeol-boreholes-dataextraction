@@ -9,12 +9,12 @@ from stratigraphy.util.util import read_params, x_overlap_significant_largest
 material_description = read_params("matching_params.yml")["material_description"]
 
 
-class DepthInterval:
-    """Class to represent a DepthInterval object.
+class TextWord:
+    """Class to represent a word on a specific location on a PDF page.
 
-    A DepthInterval object is a collection of fitz Rectangle objects and a string.
-    The string is the text that is contained in the rectangle. The rectangles are used
-    to represent the location of the text in a PDF document.
+    A TextWord object consists of a fitz Rectangle object and a string.
+    The string is the word that is contained in the rectangle. The rectangles are used
+    to represent the location of the word in a PDF document.
     """
 
     def __init__(self, rect: fitz.Rect, text: str):
@@ -22,7 +22,7 @@ class DepthInterval:
         self.text = text
 
     def __repr__(self) -> str:
-        return f"DepthInterval({self.rect}, {self.text})"
+        return f"TextWord({self.rect}, {self.text})"
 
 
 class TextLine:
@@ -32,7 +32,7 @@ class TextLine:
     It is used to represent a line of text in a PDF document.
     """
 
-    def __init__(self, words: list[DepthInterval]):
+    def __init__(self, words: list[TextWord]):
         self.rect = fitz.Rect()
         for word in words:
             self.rect.include_rect(word.rect)

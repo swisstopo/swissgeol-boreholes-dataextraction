@@ -10,7 +10,7 @@ from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.depthcolumn import DepthColumn
 from stratigraphy.util.find_description import get_description_blocks, get_description_lines
 from stratigraphy.util.interval import BoundaryInterval, Interval
-from stratigraphy.util.line import DepthInterval, TextLine
+from stratigraphy.util.line import TextLine, TextWord
 from stratigraphy.util.textblock import TextBlock, block_distance
 from stratigraphy.util.util import (
     parse_and_remove_empty_predictions,
@@ -39,12 +39,12 @@ def process_page(page: fitz.Page, geometric_lines, **params: dict) -> list[dict]
     words_by_line = {}
     for x0, y0, x1, y1, word, block_no, line_no, _word_no in fitz.utils.get_text(page, "words"):
         rect = fitz.Rect(x0, y0, x1, y1) * page.rotation_matrix
-        depth_interval = DepthInterval(rect, word)
-        words.append(TextLine([depth_interval]))
+        text_word = TextWord(rect, word)
+        words.append(TextLine([text_word]))
         key = f"{block_no}_{line_no}"
         if key not in words_by_line:
             words_by_line[key] = []
-        words_by_line[key].append(depth_interval)
+        words_by_line[key].append(text_word)
 
     raw_lines = [TextLine(words_by_line[key]) for key in words_by_line]
 
