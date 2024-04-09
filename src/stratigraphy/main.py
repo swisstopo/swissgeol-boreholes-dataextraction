@@ -14,6 +14,7 @@ from stratigraphy.benchmark.score import add_ground_truth_to_predictions, evalua
 from stratigraphy.extract import process_page
 from stratigraphy.line_detection import extract_lines, line_detection_params
 from stratigraphy.util.draw import draw_predictions
+from stratigraphy.util.language_detection import detect_language_of_document
 from stratigraphy.util.plot_utils import plot_lines
 from stratigraphy.util.util import flatten, read_params
 
@@ -122,13 +123,14 @@ def start_pipeline(
                 predictions[filename] = {}
 
                 with fitz.Document(in_path) as doc:
+                    language = detect_language_of_document(doc)
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
                         logger.info("Processing page %s", page_number)
 
                         geometric_lines = extract_lines(page, line_detection_params)
                         layer_predictions, depths_materials_column_pairs = process_page(
-                            page, geometric_lines, **matching_params
+                            page, geometric_lines, language, **matching_params
                         )
 
                         predictions[filename][f"page_{page_number}"] = {

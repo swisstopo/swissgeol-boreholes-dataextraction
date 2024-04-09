@@ -1,38 +1,73 @@
-# TODO: Any thoughts on a better name?
+
 block_line_ratio: 0.20
 left_line_length_threshold: 7
 
 material_description:
-  including_expressions:
-    - sand
-    - silt
-    - kies
-    - asphalt
-    - humus
-    - braun
-    - grau
-    - weich
-    - hart
-    - wurzel
-    - belag
-    - stein
-    - beige
-    - beton
-    - kreide
-    - mergel
-    - kernmaterial
-    - dito
-  excluding_expressions:
-    - herr
-    - ende
-    - profil
-    - beschreibung
-    - signaturen
-    - mischprobe
-    - projekt
-    - ort
-    - adresse
-    - wetter
-    - pumpversuch
-    - kernbohrung
-    - bohrradius
+  de:
+    including_expressions:
+      - sand
+      - silt
+      - kies
+      - asphalt
+      - humus
+      - braun
+      - grau
+      - weich
+      - hart
+      - wurzel
+      - belag
+      - stein
+      - beige
+      - beton
+      - kreide
+      - mergel
+      - kernmaterial
+      - dito
+    excluding_expressions:
+      - herr
+      - ende
+      - profil
+      - beschreibung
+      - signaturen
+      - mischprobe
+      - projekt
+      - ort
+      - adresse
+      - wetter
+      - pumpversuch
+      - kernbohrung
+      - bohrradius
+
+  fr:
+    including_expressions:
+      - sable
+      - limon
+      - gravier
+      - asphalte
+      - humus
+      - brun
+      - gris
+      - mou
+      - dur
+      - racine
+      - revetement
+      - pierre
+      - beige
+      - beton
+      - craie
+      - marne
+      - materiau de base
+    excluding_expressions:
+      - monsieur
+      - fin
+      - profil
+      - description
+      - signatures
+      - echantillon mixte
+      - projet
+      - lieu
+      - adresse
+      - temps
+      - essai de pompage
+      - carottage
+      - rayon de forage
