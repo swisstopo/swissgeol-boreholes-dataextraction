@@ -51,6 +51,7 @@ class GroundTruth:
                     "depth_interval": layer["depth_interval"],
                 }
                 for layer in layers
+                if parse_text(layer["material_description"]) != ""
             ]
 
     def for_file(self, file_name: str) -> GroundTruthForFile:
