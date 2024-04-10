@@ -84,7 +84,7 @@ def parse_text(text: str) -> str:
     Returns:
         str: Parsed text.
     """
-    not_alphanum = re.compile(r"[^\w\d]", re.U)
+    not_alphanum = re.compile(r"[^\w\d ] ", re.U)
     return not_alphanum.sub("", text).lower()
 
 

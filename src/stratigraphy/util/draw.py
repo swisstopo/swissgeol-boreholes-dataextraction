@@ -7,6 +7,8 @@ from pathlib import Path
 import fitz
 from dotenv import load_dotenv
 
+from stratigraphy.util.predictions import FilePredictions, LayerPrediction, MaterialDescriptionPrediction
+
 load_dotenv()
 
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
@@ -16,7 +18,7 @@ colors = ["purple", "blue"]
 logger = logging.getLogger(__name__)
 
 
-def draw_predictions(predictions: dict, directory: Path, out_directory: Path) -> None:
+def draw_predictions(predictions: list[FilePredictions], directory: Path, out_directory: Path) -> None:
     """Draw predictions on pdf pages.
 
     Draws various recognized information on the pdf pages present at directory and saves
@@ -37,18 +39,16 @@ def draw_predictions(predictions: dict, directory: Path, out_directory: Path) ->
     """
     if directory.is_file():  # deal with the case when we pass a file instead of a directory
         directory = directory.parent
-    for file in predictions:
-        with fitz.Document(directory / file) as doc:
+    for file_name, file_prediction in predictions.items():
+        with fitz.Document(directory / file_name) as doc:
             for page_index, page in enumerate(doc):
                 page_number = page_index + 1
-                layers = predictions[file][f"page_{page_number}"]["layers"]
-                depths_materials_column_pairs = predictions[file][f"page_{page_number}"][
-                    "depths_materials_column_pairs"
-                ]
+                layers = file_prediction.pages[page_index].layers
+                depths_materials_column_pairs = file_prediction.pages[page_index].depths_materials_columns_pairs
                 draw_depth_columns_and_material_rect(page, depths_materials_column_pairs)
                 draw_material_descriptions(page, layers)
 
-                tmp_file_path = out_directory / f"{file}_page{page_number}.png"
+                tmp_file_path = out_directory / f"{file_name}_page{page_number}.png"
                 fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
                 if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
                     try:
@@ -59,7 +59,7 @@ def draw_predictions(predictions: dict, directory: Path, out_directory: Path) ->
                         logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
 
 
-def draw_material_descriptions(page: fitz.Page, layers: dict) -> None:
+def draw_material_descriptions(page: fitz.Page, layers: LayerPrediction) -> None:
     """Draw information about material descriptions on a pdf page.
 
     In particular, this function:
@@ -69,22 +69,22 @@ def draw_material_descriptions(page: fitz.Page, layers: dict) -> None:
 
     Args:
         page (fitz.Page): The page to draw on.
-        layers (dict): The predictions for the page.
+        layers (LayerPrediction): The predictions for the page.
     """
-    for index, block in enumerate(layers):
-        material_description_block = block["material_description"]
-        if material_description_block["rect"] is not None:
+    for index, layer in enumerate(layers):
+        material_description_layer = layer.material_description
+        if material_description_layer.rect is not None:
             fitz.utils.draw_rect(
                 page,
-                fitz.Rect(material_description_block["rect"]) * page.derotation_matrix,
+                fitz.Rect(material_description_layer.rect) * page.derotation_matrix,
                 color=fitz.utils.getColor("orange"),
             )
         draw_layer(
             page=page,
-            interval=block.get("depth_interval"),  # None if no depth interval
-            block=material_description_block,
+            interval=layer.depth_interval,  # None if no depth interval
+            layer=material_description_layer,
             index=index,
-            is_correct=material_description_block.get("is_correct"),  # None if no ground truth
+            is_correct=layer.material_is_correct,  # None if no ground truth
         )
 
 
@@ -127,35 +127,36 @@ def draw_depth_columns_and_material_rect(page: fitz.Page, depths_materials_colum
     return page
 
 
-def draw_layer(page: fitz.Page, interval: dict | None, block: dict, index: int, is_correct: bool):
+def draw_layer(
+    page: fitz.Page, interval: dict | None, layer: MaterialDescriptionPrediction, index: int, is_correct: bool
+):
     """Draw layers on a pdf page.
 
     In particular, this function:
-        - draws lines connecting the material description text blocks to the depth intervals,
-        - colors the lines of the material description text blocks based on whether they were correctly identified.
+        - draws lines connecting the material description text layers to the depth intervals,
+        - colors the lines of the material description text layers based on whether they were correctly identified.
 
     Args:
         page (fitz.Page): The page to draw on.
         interval (dict | None): Depth interval for the layer.
-        block (dict): Material description block for the layer.
+        layer (dict): Material description block for the layer.
         index (int): Index of the layer.
         is_correct (bool): Whether the text block was correctly identified.
     """
-    if len(block["lines"]):
-        block_rect = fitz.Rect(block["rect"])
+    if len(layer.lines):
+        layer_rect = fitz.Rect(layer.rect)
         color = colors[index % len(colors)]
 
         # background color for material description
-        for line in [line for line in block["lines"]]:
-            line_rect = fitz.Rect(line["rect"])
+        for line in [line for line in layer.lines]:
             page.draw_rect(
-                line_rect * page.derotation_matrix, width=0, fill=fitz.utils.getColor(color), fill_opacity=0.2
+                line.rect * page.derotation_matrix, width=0, fill=fitz.utils.getColor(color), fill_opacity=0.2
             )
             if is_correct is not None:
                 correct_color = "green" if is_correct else "red"
                 page.draw_line(
-                    line_rect.top_left * page.derotation_matrix,
-                    line_rect.bottom_left * page.derotation_matrix,
+                    line.rect.top_left * page.derotation_matrix,
+                    line.rect.bottom_left * page.derotation_matrix,
                     color=fitz.utils.getColor(correct_color),
                     width=6,
                     stroke_opacity=0.5,
@@ -177,28 +178,25 @@ def draw_layer(page: fitz.Page, interval: dict | None, block: dict, index: int, 
             if line_anchor:
                 page.draw_line(
                     line_anchor * page.derotation_matrix,
-                    fitz.Point(block_rect.x0, (block_rect.y0 + block_rect.y1) / 2) * page.derotation_matrix,
+                    fitz.Point(layer_rect.x0, (layer_rect.y0 + layer_rect.y1) / 2) * page.derotation_matrix,
                     color=fitz.utils.getColor(color),
                 )
 
 
 def _get_line_anchor(interval):
-    interval_start_rect = fitz.Rect(interval["start"]["rect"]) if interval["start"] else None
-    interval_end_rect = fitz.Rect(interval["end"]["rect"]) if interval["end"] else None
-
-    if interval_start_rect and interval_end_rect:
-        return fitz.Point(interval_start_rect.x1, (interval_start_rect.y0 + interval_end_rect.y1) / 2)
-    elif interval_start_rect:
-        return fitz.Point(interval_start_rect.x1, interval_start_rect.y1)
-    elif interval_end_rect:
-        return fitz.Point(interval_end_rect.x1, interval_end_rect.y0)
+    if interval.start and interval.end:
+        return fitz.Point(interval.start.rect.x1, (interval.start.rect.y0 + interval.end.rect.y1) / 2)
+    elif interval.start:
+        return fitz.Point(interval.start.rect.x1, interval.start.rect.y1)
+    elif interval.end:
+        return fitz.Point(interval.end.rect.x1, interval.end.rect.y0)
 
 
 def _background_rect(interval) -> fitz.Rect | None:
-    if interval["start"] and interval["end"]:
+    if interval.start and interval.end:
         return fitz.Rect(
-            interval["start"]["rect"][0],
-            interval["start"]["rect"][3],
-            interval["start"]["rect"][2],
-            interval["end"]["rect"][1],
+            interval.start.rect[0],
+            interval.start.rect[3],
+            interval.start.rect[2],
+            interval.end.rect[1],
         )

@@ -5,34 +5,20 @@ import logging
 from collections import defaultdict
 from pathlib import Path
 
-import Levenshtein
 from stratigraphy.util.util import parse_text
 
 logger = logging.getLogger(__name__)
 
 
 class GroundTruthForFile:
-    """Ground truth data for a single file."""
+    """Ground truth data for a single file.
 
-    def __init__(self, ground_truth: list):
-        self.descriptions = [layer["material_description"] for layer in ground_truth]
-        self.unmatched_descriptions = self.descriptions.copy()
+    Evaluates the prediction against the ground truth.
+    """
 
-    def is_correct(self, prediction: str) -> bool | None:
-        if len(self.descriptions):
-            if len(self.unmatched_descriptions):
-                parsed_prediction = parse_text(prediction)
-                best_match = max(
-                    self.unmatched_descriptions, key=lambda ref: Levenshtein.ratio(parsed_prediction, ref)
-                )
-                if Levenshtein.ratio(parsed_prediction, best_match) > 0.9:
-                    # ensure every ground truth entry is only matched at most once
-                    self.unmatched_descriptions.remove(best_match)
-                    return True
-            return False
-        else:
-            # Return None if we don't have a ground truth for the file
-            return None
+    def __init__(self, ground_truth_layers: list):
+        self.layers = ground_truth_layers
+        self.num_layers = len(ground_truth_layers)
 
 
 class GroundTruth:
