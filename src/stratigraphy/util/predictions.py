@@ -35,13 +35,14 @@ class PagePredictions:
 class FilePredictions:
     """A class to represent predictions for a single file."""
 
-    def __init__(self, pages: list[PagePredictions] = None, file_name: str = None):
+    def __init__(self, pages: list[PagePredictions], file_name: str):
         self.pages = pages
         self.file_name = file_name
         if self.pages:
             self.layers = sum([page.layers for page in self.pages], [])
 
-    def create_from_json(self, predictions_for_file: dict, file_name: str):
+    @staticmethod
+    def create_from_json(predictions_for_file: dict, file_name: str):
         """Create predictions class for a file given the predictions.json file.
 
         Args:
@@ -53,7 +54,7 @@ class FilePredictions:
             page_layers = page_predictions["layers"]
             layer_predictions = []
             for layer in page_layers:
-                material_prediction = self._create_textblock_object(layer["material_description"]["lines"])
+                material_prediction = _create_textblock_object(layer["material_description"]["lines"])
                 if "depth_interval" in layer:
                     start = (
                         DepthColumnEntry(
@@ -93,9 +94,7 @@ class FilePredictions:
             else:
                 page_predictions_class.append(PagePredictions(page_number=page_number, layers=layer_predictions))
 
-        self.file_name = file_name
-        self.pages = page_predictions_class
-        self.layers = sum([page.layers for page in self.pages], [])
+        return FilePredictions(pages=page_predictions_class, file_name=file_name)
 
     def evaluate(self, ground_truth: GroundTruthForFile):
         """Evaluate all layers of the predictions against the ground truth.
@@ -103,7 +102,6 @@ class FilePredictions:
         Args:
             ground_truth (GroundTruthForFile): The ground truth for the file.
         """
-        self._check_if_initialized()
         self.unmatched_layers = ground_truth.layers.copy()
         for layer in self.layers:
             match, depth_interval_is_correct = self._find_matching_layer(layer)
@@ -114,20 +112,16 @@ class FilePredictions:
                 layer.material_is_correct = False
                 layer.depth_interval_is_correct = None
 
-    def _create_textblock_object(self, lines: dict) -> TextBlock:
-        lines = [TextLine([TextWord(**line)]) for line in lines]
-        return TextBlock(lines)
-
-    def _find_matching_layer(self, layer: LayerPrediction) -> tuple[dict, bool]:
+    def _find_matching_layer(self, layer: LayerPrediction) -> tuple[dict, bool] | tuple[None, None]:
         """Find the matching layer in the ground truth.
 
         Args:
             layer (LayerPrediction): The layer to match.
 
         Returns:
-            tuple[dict, bool]: The matching layer and a boolean indicating if the depth interval is correct.
+            tuple[dict, bool] | tuple[None, None]: The matching layer and a boolean indicating if the depth interval
+                                is correct. None if no match was found.
         """
-        self._check_if_initialized()
         parsed_text = parse_text(layer.material_description.text)
         possible_matches = [
             ground_truth_layer
@@ -162,9 +156,7 @@ class FilePredictions:
         self.unmatched_layers.remove(match)
         return match, False
 
-    def _check_if_initialized(self):
-        if self.pages is None:
-            raise ValueError(
-                "No predictions found for this file. Initialize the predictions first."
-                "You may use the create_from_json() method."
-            )
+
+def _create_textblock_object(lines: dict) -> TextBlock:
+    lines = [TextLine([TextWord(**line)]) for line in lines]
+    return TextBlock(lines)

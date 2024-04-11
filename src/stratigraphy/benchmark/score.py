@@ -162,8 +162,7 @@ def create_predictions_objects(predictions: dict, ground_truth_path: Path) -> tu
     number_of_truth_values = {}
     predictions_objects = {}
     for file_name, file_predictions in predictions.items():
-        prediction_object = FilePredictions()
-        prediction_object.create_from_json(file_predictions, file_name)
+        prediction_object = FilePredictions.create_from_json(file_predictions, file_name)
 
         predictions_objects[file_name] = prediction_object
         if ground_truth_is_present:
