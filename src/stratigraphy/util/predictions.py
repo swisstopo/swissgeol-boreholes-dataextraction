@@ -5,6 +5,7 @@ import Levenshtein
 
 from stratigraphy.benchmark.ground_truth import GroundTruthForFile
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry
+from stratigraphy.util.interval import BoundaryInterval
 from stratigraphy.util.line import TextLine, TextWord
 from stratigraphy.util.util import parse_text
 
@@ -21,23 +22,10 @@ class MaterialDescriptionPrediction:
         self.lines = [TextLine([TextWord(**line)]) for line in lines]
 
 
-class DepthIntervalPrediction:
-    """A class to represent a depth interval prediction.
-
-    TODO: Could be replaced by BoundaryInterval from interval.py. Then we could use line_anchor and background_rect.
-    """
-
-    def __init__(self, start: dict, end: dict):
-        self.start = (
-            DepthColumnEntry(value=start["value"], rect=fitz.Rect(start["rect"])) if start is not None else None
-        )
-        self.end = DepthColumnEntry(value=end["value"], rect=fitz.Rect(end["rect"])) if end is not None else None
-
-
 class LayerPrediction:
     """A class to represent predictions for a single layer."""
 
-    def __init__(self, material_description: MaterialDescriptionPrediction, depth_interval: DepthIntervalPrediction):
+    def __init__(self, material_description: MaterialDescriptionPrediction, depth_interval: BoundaryInterval):
         self.material_description = material_description
         self.depth_interval = depth_interval
         self.material_is_correct = None
@@ -78,7 +66,24 @@ class FilePredictions:
             for layer in page_layers:
                 material_prediction = MaterialDescriptionPrediction(**layer["material_description"])
                 if "depth_interval" in layer:
-                    depth_interval_prediction = DepthIntervalPrediction(**layer["depth_interval"])
+                    start = (
+                        DepthColumnEntry(
+                            value=layer["depth_interval"]["start"]["value"],
+                            rect=fitz.Rect(layer["depth_interval"]["start"]["rect"]),
+                        )
+                        if layer["depth_interval"]["start"] is not None
+                        else None
+                    )
+                    end = (
+                        DepthColumnEntry(
+                            value=layer["depth_interval"]["end"]["value"],
+                            rect=fitz.Rect(layer["depth_interval"]["end"]["rect"]),
+                        )
+                        if layer["depth_interval"]["end"] is not None
+                        else None
+                    )
+
+                    depth_interval_prediction = BoundaryInterval(start=start, end=end)
                     layer_predictions.append(
                         LayerPrediction(
                             material_description=material_prediction, depth_interval=depth_interval_prediction

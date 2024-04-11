@@ -7,6 +7,7 @@ from pathlib import Path
 import fitz
 from dotenv import load_dotenv
 
+from stratigraphy.util.interval import BoundaryInterval
 from stratigraphy.util.predictions import FilePredictions, LayerPrediction, MaterialDescriptionPrediction
 
 load_dotenv()
@@ -127,7 +128,11 @@ def draw_depth_columns_and_material_rect(page: fitz.Page, depths_materials_colum
 
 
 def draw_layer(
-    page: fitz.Page, interval: dict | None, layer: MaterialDescriptionPrediction, index: int, is_correct: bool
+    page: fitz.Page,
+    interval: BoundaryInterval | None,
+    layer: MaterialDescriptionPrediction,
+    index: int,
+    is_correct: bool,
 ):
     """Draw layers on a pdf page.
 
@@ -138,7 +143,7 @@ def draw_layer(
     Args:
         page (fitz.Page): The page to draw on.
         interval (dict | None): Depth interval for the layer.
-        layer (dict): Material description block for the layer.
+        layer (MaterialDescriptionPrediction): Material description block for the layer.
         index (int): Index of the layer.
         is_correct (bool): Whether the text block was correctly identified.
     """
@@ -163,7 +168,8 @@ def draw_layer(
 
         if interval:
             # background color for depth interval
-            background_rect = _background_rect(interval)
+            # background_rect = _background_rect(interval)
+            background_rect = interval.background_rect
             if background_rect is not None:
                 page.draw_rect(
                     background_rect * page.derotation_matrix,
@@ -173,7 +179,8 @@ def draw_layer(
                 )
 
             # line from depth interval to material description
-            line_anchor = _get_line_anchor(interval)
+            # line_anchor = _get_line_anchor(interval)
+            line_anchor = interval.line_anchor
             if line_anchor:
                 page.draw_line(
                     line_anchor * page.derotation_matrix,
