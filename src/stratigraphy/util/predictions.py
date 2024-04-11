@@ -139,7 +139,7 @@ class FilePredictions:
                 pass
 
             elif (
-                start == 0 and layer.depth_interval.start is None and end == layer.depth_interval.end
+                start == 0 and layer.depth_interval.start is None and end == layer.depth_interval.end.value
             ):  # If not specified differently, we start at 0.
                 self.unmatched_layers.remove(possible_match)
                 return possible_match, True

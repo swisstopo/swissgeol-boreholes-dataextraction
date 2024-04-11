@@ -169,7 +169,6 @@ def draw_layer(
 
         if interval:
             # background color for depth interval
-            # background_rect = _background_rect(interval)
             background_rect = interval.background_rect
             if background_rect is not None:
                 page.draw_rect(
@@ -180,7 +179,6 @@ def draw_layer(
                 )
 
             # line from depth interval to material description
-            # line_anchor = _get_line_anchor(interval)
             line_anchor = interval.line_anchor
             if line_anchor:
                 page.draw_line(
