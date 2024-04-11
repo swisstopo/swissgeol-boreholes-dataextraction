@@ -12,6 +12,7 @@ dependencies:
   - click==8.1.7
   - PyYAML==6.0.1
   - scikit-learn==1.4.0
+  - langdetect==1.0.9
   - pip
 # dev dependencies
   - matplotlib==3.8.0

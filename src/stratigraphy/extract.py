@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def process_page(page: fitz.Page, geometric_lines, **params: dict) -> list[dict]:
+def process_page(page: fitz.Page, geometric_lines, language: str, **params: dict) -> list[dict]:
     """Process a single page of a pdf.
 
     Finds all descriptions and depth intervals on the page and matches them.
@@ -30,6 +30,7 @@ def process_page(page: fitz.Page, geometric_lines, **params: dict) -> list[dict]
     Args:
         page (fitz.Page): The page to process.
         geometric_lines (list[Line]): The geometric lines of the page.
+        language (str): The language of the page.
         **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
@@ -80,7 +81,9 @@ def process_page(page: fitz.Page, geometric_lines, **params: dict) -> list[dict]
 
     pairs = []
     for depth_column in depth_columns:
-        material_description_rect = find_material_description_column(lines, depth_column)
+        material_description_rect = find_material_description_column(
+            lines, depth_column, language, **params["material_description"]
+        )
         if material_description_rect:
             pairs.append((depth_column, material_description_rect))
 
@@ -121,7 +124,9 @@ def process_page(page: fitz.Page, geometric_lines, **params: dict) -> list[dict]
     else:
         json_filtered_pairs = []
         # Fallback when no depth column was found
-        material_description_rect = find_material_description_column(lines, depth_column=None)
+        material_description_rect = find_material_description_column(
+            lines, depth_column=None, language=language, **params["material_description"]
+        )
         if material_description_rect:
             description_lines = get_description_lines(lines, material_description_rect)
             description_blocks = get_description_blocks(
@@ -339,13 +344,14 @@ def split_blocks_by_textline_length(blocks: list[TextBlock], target_split_count:
 
 
 def find_material_description_column(
-    lines: list[TextLine], depth_column: DepthColumn, **params: dict
+    lines: list[TextLine], depth_column: DepthColumn, language: str, **params: dict
 ) -> fitz.Rect | None:
     """Find the material description column given a depth column.
 
     Args:
         lines (list[TextLine]): The text lines of the page.
         depth_column (DepthColumn): The depth column.
+        language (str): The language of the page.
         **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
@@ -368,7 +374,7 @@ def find_material_description_column(
             return True
 
     candidate_description = [line for line in lines if check_y0_condition(line.rect.y0)]
-    is_description = [line for line in candidate_description if line.is_description]
+    is_description = [line for line in candidate_description if line.is_description(params[language])]
 
     if len(candidate_description) == 0:
         return

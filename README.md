@@ -10,6 +10,8 @@ The current extractions are solely focused on the depths of the upper and lower 
 
 The current benchmarking only considers the correctness of the material descriptions. Whether they are linked with the correct depths, is not yet evaluated.
 
+Only German and French borehole profiles are supported as of now.
+
 ## Installation
 We use conda to create and manage the project's dependencies. The project comes with two environments, `environment-dev.yml` and `environment-prod.yml`, respectively. The prod environment contains all necessary dependencies to run the code and extraction pipelines therein. All dependencies that are useful for the development of the code, but not to run it, are separated into the dev environment.
 
