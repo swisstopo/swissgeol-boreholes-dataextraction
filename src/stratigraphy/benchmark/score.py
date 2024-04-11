@@ -2,7 +2,6 @@
 
 import logging
 import os
-from collections import defaultdict
 from pathlib import Path
 
 import pandas as pd
@@ -141,35 +140,6 @@ def evaluate_matching(predictions: dict, number_of_truth_values: dict) -> tuple[
         "recall": overall_recall,
         "depth_interval_accuracy": overall_depth_interval_accuracy,
     }, pd.DataFrame(document_level_metrics)
-
-
-def add_ground_truth_to_predictions(predictions: dict, ground_truth_path: Path) -> tuple[dict, dict]:
-    """Add the ground truth to the predictions.
-
-    Args:
-        predictions (dict): The predictions.
-        ground_truth_path (Path): The path to the ground truth file.
-
-    Returns:
-        tuple[dict, dict]: The predictions with the ground truth added, and the number of ground truth values per file.
-    """
-    try:  # for inference no ground truth is available
-        ground_truth = GroundTruth(ground_truth_path)
-
-    except FileNotFoundError:
-        logging.warning("Ground truth file not found.")
-        return predictions, {}
-
-    number_of_truth_values = {}
-    evaluations = defaultdict(dict)
-    for file, file_predictions in predictions.items():
-        ground_truth_for_file = ground_truth.for_file(file)
-        number_of_truth_values[file] = len(ground_truth_for_file.descriptions)
-        for page in file_predictions:
-            breakpoint()
-            evaluations[file][page] = ground_truth_for_file.evaluate(file_predictions[page])
-
-    return evaluations, number_of_truth_values
 
 
 def create_predictions_objects(predictions: dict, ground_truth_path: Path) -> tuple[dict, dict]:
