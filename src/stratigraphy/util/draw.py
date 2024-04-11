@@ -72,17 +72,16 @@ def draw_material_descriptions(page: fitz.Page, layers: LayerPrediction) -> None
         layers (LayerPrediction): The predictions for the page.
     """
     for index, layer in enumerate(layers):
-        material_description_layer = layer.material_description
-        if material_description_layer.rect is not None:
+        if layer.material_description.rect is not None:
             fitz.utils.draw_rect(
                 page,
-                fitz.Rect(material_description_layer.rect) * page.derotation_matrix,
+                fitz.Rect(layer.material_description.rect) * page.derotation_matrix,
                 color=fitz.utils.getColor("orange"),
             )
         draw_layer(
             page=page,
             interval=layer.depth_interval,  # None if no depth interval
-            layer=material_description_layer,
+            layer=layer.material_description,
             index=index,
             is_correct=layer.material_is_correct,  # None if no ground truth
         )

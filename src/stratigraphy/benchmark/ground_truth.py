@@ -11,10 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class GroundTruthForFile:
-    """Ground truth data for a single file.
-
-    Evaluates the prediction against the ground truth.
-    """
+    """Ground truth data for a single file."""
 
     def __init__(self, ground_truth_layers: list):
         self.layers = ground_truth_layers

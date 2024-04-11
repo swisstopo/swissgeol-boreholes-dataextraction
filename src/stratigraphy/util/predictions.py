@@ -10,7 +10,10 @@ from stratigraphy.util.util import parse_text
 
 
 class MaterialDescriptionPrediction:
-    """A class to represent a material description prediction."""
+    """A class to represent a material description prediction.
+
+    TODO: Check if this class can be replaced.
+    """
 
     def __init__(self, text: str, rect: list, lines: list):
         self.text = text
@@ -19,7 +22,10 @@ class MaterialDescriptionPrediction:
 
 
 class DepthIntervalPrediction:
-    """A class to represent a depth interval prediction."""
+    """A class to represent a depth interval prediction.
+
+    TODO: Could be replaced by BoundaryInterval from interval.py. Then we could use line_anchor and background_rect.
+    """
 
     def __init__(self, start: dict, end: dict):
         self.start = (
