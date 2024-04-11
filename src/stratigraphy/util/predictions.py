@@ -1,5 +1,7 @@
 """This module contains classes for predictions."""
 
+from dataclasses import dataclass
+
 import fitz
 import Levenshtein
 
@@ -7,40 +9,27 @@ from stratigraphy.benchmark.ground_truth import GroundTruthForFile
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry
 from stratigraphy.util.interval import BoundaryInterval
 from stratigraphy.util.line import TextLine, TextWord
+from stratigraphy.util.textblock import TextBlock
 from stratigraphy.util.util import parse_text
 
 
-class MaterialDescriptionPrediction:
-    """A class to represent a material description prediction.
-
-    TODO: Check if this class can be replaced.
-    """
-
-    def __init__(self, text: str, rect: list, lines: list):
-        self.text = text
-        self.rect = fitz.Rect(rect)
-        self.lines = [TextLine([TextWord(**line)]) for line in lines]
-
-
+@dataclass
 class LayerPrediction:
     """A class to represent predictions for a single layer."""
 
-    def __init__(self, material_description: MaterialDescriptionPrediction, depth_interval: BoundaryInterval):
-        self.material_description = material_description
-        self.depth_interval = depth_interval
-        self.material_is_correct = None
-        self.depth_interval_is_correct = None
+    material_description: TextBlock
+    depth_interval: BoundaryInterval
+    material_is_correct: bool = None
+    depth_interval_is_correct: bool = None
 
 
+@dataclass
 class PagePredictions:
     """A class to represent predictions for a single page."""
 
-    def __init__(
-        self, layers: list[LayerPrediction], page_number: int, depths_materials_columns_pairs: list[dict] = None
-    ):
-        self.layers = layers
-        self.page_number = page_number
-        self.depths_materials_columns_pairs = depths_materials_columns_pairs
+    layers: list[LayerPrediction]
+    page_number: int
+    depths_materials_columns_pairs: list[dict] = None
 
 
 class FilePredictions:
@@ -64,7 +53,7 @@ class FilePredictions:
             page_layers = page_predictions["layers"]
             layer_predictions = []
             for layer in page_layers:
-                material_prediction = MaterialDescriptionPrediction(**layer["material_description"])
+                material_prediction = self._create_textblock_object(layer["material_description"]["lines"])
                 if "depth_interval" in layer:
                     start = (
                         DepthColumnEntry(
@@ -124,6 +113,10 @@ class FilePredictions:
             else:
                 layer.material_is_correct = False
                 layer.depth_interval_is_correct = None
+
+    def _create_textblock_object(self, lines: dict) -> TextBlock:
+        lines = [TextLine([TextWord(**line)]) for line in lines]
+        return TextBlock(lines)
 
     def _find_matching_layer(self, layer: LayerPrediction) -> tuple[dict, bool]:
         """Find the matching layer in the ground truth.

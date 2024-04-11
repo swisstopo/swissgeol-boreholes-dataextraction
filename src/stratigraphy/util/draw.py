@@ -8,7 +8,8 @@ import fitz
 from dotenv import load_dotenv
 
 from stratigraphy.util.interval import BoundaryInterval
-from stratigraphy.util.predictions import FilePredictions, LayerPrediction, MaterialDescriptionPrediction
+from stratigraphy.util.predictions import FilePredictions, LayerPrediction
+from stratigraphy.util.textblock import TextBlock
 
 load_dotenv()
 
@@ -130,7 +131,7 @@ def draw_depth_columns_and_material_rect(page: fitz.Page, depths_materials_colum
 def draw_layer(
     page: fitz.Page,
     interval: BoundaryInterval | None,
-    layer: MaterialDescriptionPrediction,
+    layer: TextBlock,
     index: int,
     is_correct: bool,
 ):
@@ -187,22 +188,3 @@ def draw_layer(
                     fitz.Point(layer_rect.x0, (layer_rect.y0 + layer_rect.y1) / 2) * page.derotation_matrix,
                     color=fitz.utils.getColor(color),
                 )
-
-
-def _get_line_anchor(interval):
-    if interval.start and interval.end:
-        return fitz.Point(interval.start.rect.x1, (interval.start.rect.y0 + interval.end.rect.y1) / 2)
-    elif interval.start:
-        return fitz.Point(interval.start.rect.x1, interval.start.rect.y1)
-    elif interval.end:
-        return fitz.Point(interval.end.rect.x1, interval.end.rect.y0)
-
-
-def _background_rect(interval) -> fitz.Rect | None:
-    if interval.start and interval.end:
-        return fitz.Rect(
-            interval.start.rect[0],
-            interval.start.rect[3],
-            interval.start.rect[2],
-            interval.end.rect[1],
-        )
