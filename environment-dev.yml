@@ -13,6 +13,7 @@ dependencies:
   - PyYAML==6.0.1
   - scikit-learn==1.4.0
   - langdetect==1.0.9
+  - boto3==1.34.82
   - pip
 # dev dependencies
   - matplotlib==3.8.0

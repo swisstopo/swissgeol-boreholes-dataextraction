@@ -42,7 +42,10 @@ To execute the data extraction pipeline, follow these steps:
 
     `conda activate boreholes-dev`
 
-2. **Run the extraction script**
+2. **Download the borehole profiles, optional**
+    Use `boreholes-download-profiles` to download the files to be processed from an AWS S3 storage. In order to do so, you need to authenticate with aws first. We recommend to use the aws CLI for that purpose. This step is optional, you can continue with step 3 on your own set of borehole profiles.
+
+3. **Run the extraction script**
 
     The main script for the extraction pipeline is located at `src/stratigraphy/main.py`. A cli command is created to run this script.
 
@@ -50,7 +53,7 @@ To execute the data extraction pipeline, follow these steps:
 
     Use `boreholes-extract-layers --help` to see all options for the extraction script.
 
-3. **Check the results**
+4. **Check the results**
 
     Once the script has finished running, you can check the results in the `data/Benchmark/extract` directory. The result is a `predictions.json` file as well as a png file for each page of each PDF in the `data/Benchmark` directory.
 
