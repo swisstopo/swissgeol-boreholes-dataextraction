@@ -10,14 +10,6 @@ from stratigraphy.util.util import parse_text
 logger = logging.getLogger(__name__)
 
 
-class GroundTruthForFile:
-    """Ground truth data for a single file."""
-
-    def __init__(self, ground_truth_layers: list):
-        self.layers = ground_truth_layers
-        self.num_layers = len(ground_truth_layers)
-
-
 class GroundTruth:
     """Ground truth data for the stratigraphy benchmark."""
 
@@ -37,9 +29,9 @@ class GroundTruth:
                 if parse_text(layer["material_description"]) != ""
             ]
 
-    def for_file(self, file_name: str) -> GroundTruthForFile:
+    def for_file(self, file_name: str) -> list:
         if file_name in self.ground_truth:
-            return GroundTruthForFile(self.ground_truth[file_name]["layers"])
+            return self.ground_truth[file_name]["layers"]
         else:
             logger.warning(f"No ground truth data found for {file_name}.")
-            return GroundTruthForFile([])
+            return []

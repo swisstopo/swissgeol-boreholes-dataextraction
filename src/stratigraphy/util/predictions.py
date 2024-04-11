@@ -5,7 +5,6 @@ from dataclasses import dataclass
 import fitz
 import Levenshtein
 
-from stratigraphy.benchmark.ground_truth import GroundTruthForFile
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry
 from stratigraphy.util.interval import BoundaryInterval
 from stratigraphy.util.line import TextLine, TextWord
@@ -96,13 +95,13 @@ class FilePredictions:
 
         return FilePredictions(pages=page_predictions_class, file_name=file_name)
 
-    def evaluate(self, ground_truth: GroundTruthForFile):
+    def evaluate(self, ground_truth_layers: list):
         """Evaluate all layers of the predictions against the ground truth.
 
         Args:
-            ground_truth (GroundTruthForFile): The ground truth for the file.
+            ground_truth_layers (list): The ground truth layers for the file.
         """
-        self.unmatched_layers = ground_truth.layers.copy()
+        self.unmatched_layers = ground_truth_layers.copy()
         for layer in self.layers:
             match, depth_interval_is_correct = self._find_matching_layer(layer)
             if match:
