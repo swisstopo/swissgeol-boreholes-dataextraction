@@ -9,6 +9,7 @@ dependencies = [
 
 [project.scripts]
 boreholes-extract-layers = "stratigraphy.main:start_pipeline"
+boreholes-download-profiles = "stratigraphy.get_files:download_directory_froms3"
 
 [tool.ruff.lint]
 select = [
