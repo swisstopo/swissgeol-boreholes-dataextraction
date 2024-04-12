@@ -8,6 +8,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.ground_truth import GroundTruth
+from stratigraphy.util.predictions import FilePredictions
 from stratigraphy.util.util import parse_text
 
 load_dotenv()
@@ -73,19 +74,31 @@ def evaluate_matching(predictions: dict, number_of_truth_values: dict) -> tuple[
         "F1": [],
         "precision": [],
         "recall": [],
+        "Depth_interval_accuracy": [],
         "Number Elements": [],
         "Number wrong elements": [],
     }
-    for filename in predictions:
-        all_predictions = _get_from_all_pages(predictions[filename])
+    # separate list to calculate the overall depth interval accuracy is required,
+    # as the depth interval accuracy is not calculated for documents with no correct
+    # material predictions.
+    depth_interval_accuracies = []
+    for filename, file_prediction in predictions.items():
         hits = 0
-        for value in all_predictions["layers"]:
-            if value["material_description"]["is_correct"]:
+        depth_interval_hits = 0
+        depth_interval_occurences = 0
+        for layer in file_prediction.layers:
+            if layer.material_is_correct:
                 hits += 1
-            if parse_text(value["material_description"]["text"]) == "":
-                print("Empty string found in predictions")
+                if layer.depth_interval_is_correct:
+                    depth_interval_hits += 1
+                    depth_interval_occurences += 1
+                elif layer.depth_interval_is_correct is not None:
+                    depth_interval_occurences += 1
+
+            if parse_text(layer.material_description.text) == "":
+                logger.warning("Empty string found in predictions")
         tp = hits
-        fp = len(all_predictions["layers"]) - tp
+        fp = len(file_prediction.layers) - tp
         fn = number_of_truth_values[filename] - tp
 
         if tp:
@@ -100,54 +113,63 @@ def evaluate_matching(predictions: dict, number_of_truth_values: dict) -> tuple[
         document_level_metrics["F1"].append(f1(precision, recall))
         document_level_metrics["Number Elements"].append(number_of_truth_values[filename])
         document_level_metrics["Number wrong elements"].append(fn + fp)
+        try:
+            document_level_metrics["Depth_interval_accuracy"].append(depth_interval_hits / depth_interval_occurences)
+            depth_interval_accuracies.append(depth_interval_hits / depth_interval_occurences)
+        except ZeroDivisionError:
+            document_level_metrics["Depth_interval_accuracy"].append(None)
 
     if len(document_level_metrics["precision"]):
         overall_precision = sum(document_level_metrics["precision"]) / len(document_level_metrics["precision"])
         overall_recall = sum(document_level_metrics["recall"]) / len(document_level_metrics["recall"])
+        overall_depth_interval_accuracy = sum(depth_interval_accuracies) / len(depth_interval_accuracies)
     else:
         overall_precision = 0
         overall_recall = 0
 
     logging.info("Macro avg:")
     logging.info(
-        f"F1: {f1(overall_precision, overall_recall):.1%},"
-        f"precision: {overall_precision:.1%}, recall: {overall_recall:.1%}"
+        f"F1: {f1(overall_precision, overall_recall):.1%}, "
+        f"precision: {overall_precision:.1%}, recall: {overall_recall:.1%}, "
+        f"depth_interval_accuracy: {overall_depth_interval_accuracy:.1%}"
     )
 
     return {
         "F1": f1(overall_precision, overall_recall),
         "precision": overall_precision,
         "recall": overall_recall,
+        "depth_interval_accuracy": overall_depth_interval_accuracy,
     }, pd.DataFrame(document_level_metrics)
 
 
-def add_ground_truth_to_predictions(predictions: dict, ground_truth_path: Path) -> tuple[dict, dict]:
-    """Add the ground truth to the predictions.
+def create_predictions_objects(predictions: dict, ground_truth_path: Path) -> tuple[dict, dict]:
+    """Create predictions objects from the predictions and evaluate them against the ground truth.
 
     Args:
-        predictions (dict): The predictions.
+        predictions (dict): The predictions from the predictions.json file.
         ground_truth_path (Path): The path to the ground truth file.
 
     Returns:
-        tuple[dict, dict]: The predictions with the ground truth added, and the number of ground truth values per file.
+        tuple[dict, dict]: The predictions objects and the number of ground truth values per file.
     """
     try:  # for inference no ground truth is available
         ground_truth = GroundTruth(ground_truth_path)
-
+        ground_truth_is_present = True
     except FileNotFoundError:
         logging.warning("Ground truth file not found.")
-        return predictions, {}
+        ground_truth_is_present = False
 
     number_of_truth_values = {}
-    for file, file_predictions in predictions.items():
-        ground_truth_for_file = ground_truth.for_file(file)
-        number_of_truth_values[file] = len(ground_truth_for_file.descriptions)
-        for page in file_predictions:
-            for layer in file_predictions[page]["layers"]:
-                layer["material_description"]["is_correct"] = ground_truth_for_file.is_correct(
-                    layer["material_description"]["text"]
-                )
-    return predictions, number_of_truth_values
+    predictions_objects = {}
+    for file_name, file_predictions in predictions.items():
+        prediction_object = FilePredictions.create_from_json(file_predictions, file_name)
+
+        predictions_objects[file_name] = prediction_object
+        if ground_truth_is_present:
+            predictions_objects[file_name].evaluate(ground_truth.for_file(file_name))
+            number_of_truth_values[file_name] = len(ground_truth.for_file(file_name))
+
+    return predictions_objects, number_of_truth_values
 
 
 if __name__ == "__main__":

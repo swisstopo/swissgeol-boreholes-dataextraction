@@ -10,7 +10,7 @@ import fitz
 from dotenv import load_dotenv
 
 from stratigraphy import DATAPATH
-from stratigraphy.benchmark.score import add_ground_truth_to_predictions, evaluate_matching
+from stratigraphy.benchmark.score import create_predictions_objects, evaluate_matching
 from stratigraphy.extract import process_page
 from stratigraphy.line_detection import extract_lines, line_detection_params
 from stratigraphy.util.draw import draw_predictions
@@ -152,7 +152,8 @@ def start_pipeline(
         file.write(json.dumps(predictions))
 
     # evaluate the predictions; if file doesnt exist, the predictions are not changed.
-    predictions, number_of_truth_values = add_ground_truth_to_predictions(predictions, ground_truth_path)
+    # predictions, number_of_truth_values = add_ground_truth_to_predictions(predictions, ground_truth_path)
+    predictions, number_of_truth_values = create_predictions_objects(predictions, ground_truth_path)
 
     if not skip_draw_predictions:
         draw_predictions(predictions, input_directory, out_directory)
