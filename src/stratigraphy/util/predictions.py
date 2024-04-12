@@ -34,9 +34,10 @@ class PagePredictions:
 class FilePredictions:
     """A class to represent predictions for a single file."""
 
-    def __init__(self, pages: list[PagePredictions], file_name: str):
+    def __init__(self, pages: list[PagePredictions], file_name: str, language: str):
         self.pages = pages
         self.file_name = file_name
+        self.language = language
         if self.pages:
             self.layers = sum([page.layers for page in self.pages], [])
 
@@ -50,6 +51,9 @@ class FilePredictions:
         """
         page_predictions_class = []
         for page_number, page_predictions in predictions_for_file.items():
+            if page_number == "language":
+                file_language = page_predictions
+                continue
             page_layers = page_predictions["layers"]
             layer_predictions = []
             for layer in page_layers:
@@ -93,7 +97,7 @@ class FilePredictions:
             else:
                 page_predictions_class.append(PagePredictions(page_number=page_number, layers=layer_predictions))
 
-        return FilePredictions(pages=page_predictions_class, file_name=file_name)
+        return FilePredictions(pages=page_predictions_class, file_name=file_name, language=file_language)
 
     def evaluate(self, ground_truth_layers: list):
         """Evaluate all layers of the predictions against the ground truth.
