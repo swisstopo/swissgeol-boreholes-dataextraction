@@ -43,6 +43,7 @@ To execute the data extraction pipeline, follow these steps:
     `conda activate boreholes-dev`
 
 2. **Download the borehole profiles, optional**
+
     Use `boreholes-download-profiles` to download the files to be processed from an AWS S3 storage. In order to do so, you need to authenticate with aws first. We recommend to use the aws CLI for that purpose. This step is optional, you can continue with step 3 on your own set of borehole profiles.
 
 3. **Run the extraction script**
