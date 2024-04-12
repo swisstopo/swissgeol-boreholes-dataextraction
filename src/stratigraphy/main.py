@@ -124,6 +124,7 @@ def start_pipeline(
 
                 with fitz.Document(in_path) as doc:
                     language = detect_language_of_document(doc)
+                    predictions[filename]["language"] = language
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
                         logger.info("Processing page %s", page_number)
