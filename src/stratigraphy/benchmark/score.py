@@ -19,27 +19,6 @@ mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlo
 logger = logging.getLogger(__name__)
 
 
-def _get_from_all_pages(predictions: dict) -> dict:
-    """Get all predictions from all pages.
-
-    Args:
-        predictions (dict): The predictions.
-
-    Returns:
-        dict: The predictions from all pages.
-    """
-    all_predictions = {}
-    layers = []
-    depths_materials_column_pairs = []
-    for page in predictions:
-        layers.extend(predictions[page]["layers"])
-        depths_materials_column_pairs.extend(predictions[page]["depths_materials_column_pairs"])
-    all_predictions["layers"] = layers
-    if len(depths_materials_column_pairs):
-        all_predictions["depths_materials_column_pairs"] = depths_materials_column_pairs
-    return all_predictions
-
-
 def f1(precision: float, recall: float) -> float:
     """Calculate the F1 score.
 
