@@ -171,6 +171,8 @@ def start_pipeline(
     else:
         logger.warning("Ground truth file not found. Skipping evaluation.")
 
+    return predictions
+
 
 if __name__ == "__main__":
     start_pipeline()
