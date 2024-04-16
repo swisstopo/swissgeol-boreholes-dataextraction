@@ -1,5 +1,6 @@
 """This module contains classes for predictions."""
 
+import uuid
 from dataclasses import dataclass
 
 import fitz
@@ -20,6 +21,7 @@ class LayerPrediction:
     depth_interval: BoundaryInterval
     material_is_correct: bool = None
     depth_interval_is_correct: bool = None
+    id: str = uuid.uuid4().hex
 
 
 @dataclass
