@@ -1,7 +1,7 @@
 """This module contains classes for predictions."""
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import fitz
 import Levenshtein
@@ -21,7 +21,7 @@ class LayerPrediction:
     depth_interval: BoundaryInterval
     material_is_correct: bool = None
     depth_interval_is_correct: bool = None
-    id: str = uuid.uuid4().hex
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
 
 
 @dataclass
