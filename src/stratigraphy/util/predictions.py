@@ -30,6 +30,8 @@ class PagePredictions:
 
     layers: list[LayerPrediction]
     page_number: int
+    page_width: int
+    page_height: int
     depths_materials_columns_pairs: list[dict] = None
 
 
@@ -92,6 +94,8 @@ class FilePredictions:
                 page_predictions_class.append(
                     PagePredictions(
                         page_number=page_number,
+                        page_width=page_predictions["page_width"],
+                        page_height=page_predictions["page_height"],
                         layers=layer_predictions,
                         depths_materials_columns_pairs=page_predictions["depths_materials_column_pairs"],
                     )

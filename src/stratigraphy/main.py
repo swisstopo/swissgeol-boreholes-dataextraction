@@ -31,28 +31,28 @@ matching_params = read_params("matching_params.yml")
 @click.command()
 @click.option(
     "-i",
-    "--input_directory",
+    "--input-directory",
     type=click.Path(exists=True, path_type=Path),
     default=DATAPATH / "Benchmark",
     help="Path to the input directory, or path to a single pdf file.",
 )
 @click.option(
     "-g",
-    "--ground_truth_path",
+    "--ground-truth-path",
     type=click.Path(exists=False, path_type=Path),
     default=DATAPATH / "Benchmark" / "ground_truth.json",
     help="Path to the ground truth file.",
 )
 @click.option(
     "-o",
-    "--out_directory",
+    "--out-directory",
     type=click.Path(path_type=Path),
     default=DATAPATH / "Benchmark" / "evaluation",
     help="Path to the output directory.",
 )
 @click.option(
     "-p",
-    "--predictions_path",
+    "--predictions-path",
     type=click.Path(path_type=Path),
     default=DATAPATH / "Benchmark" / "extract" / "predictions.json",
     help="Path to the predictions file.",
@@ -67,6 +67,24 @@ matching_params = read_params("matching_params.yml")
 @click.option(
     "-l", "--draw-lines", is_flag=True, default=False, help="Whether to draw lines on pdf pages. Defaults to False."
 )
+def click_pipeline(
+    input_directory: Path,
+    ground_truth_path: Path,
+    out_directory: Path,
+    predictions_path: Path,
+    skip_draw_predictions: bool = False,
+    draw_lines: bool = False,
+):
+    start_pipeline(
+        input_directory=input_directory,
+        ground_truth_path=ground_truth_path,
+        out_directory=out_directory,
+        predictions_path=predictions_path,
+        skip_draw_predictions=skip_draw_predictions,
+        draw_lines=draw_lines,
+    )
+
+
 def start_pipeline(
     input_directory: Path,
     ground_truth_path: Path,
@@ -137,6 +155,8 @@ def start_pipeline(
                         predictions[filename][f"page_{page_number}"] = {
                             "layers": layer_predictions,
                             "depths_materials_column_pairs": depths_materials_column_pairs,
+                            "page_height": page.rect.height,
+                            "page_width": page.rect.width,
                         }
                         if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
                             if not mlflow_tracking:
@@ -153,7 +173,6 @@ def start_pipeline(
         file.write(json.dumps(predictions))
 
     # evaluate the predictions; if file doesnt exist, the predictions are not changed.
-    # predictions, number_of_truth_values = add_ground_truth_to_predictions(predictions, ground_truth_path)
     predictions, number_of_truth_values = create_predictions_objects(predictions, ground_truth_path)
 
     if not skip_draw_predictions:
@@ -175,4 +194,4 @@ def start_pipeline(
 
 
 if __name__ == "__main__":
-    start_pipeline()
+    click_pipeline()
