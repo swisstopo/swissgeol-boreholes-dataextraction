@@ -11,6 +11,26 @@ from stratigraphy.util.line import TextLine
 
 
 @dataclass
+class MaterialDescription:
+    """Class to represent a material description in a PDF document.
+
+    Note: This class is similar to the TextBlock class. As such it has the attributes text and rect.
+    But it does not have the attribute lines and is missing class methods. TextBlock is used during the extraction
+    process where more fine-grained information is required. We lose this "fine-grainedness" when we annotate
+    the boreholes in label-studio.
+    """
+
+    text: str
+    rect: fitz.Rect
+
+    def to_json(self):
+        return {
+            "text": self.text,
+            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
+        }
+
+
+@dataclass
 class TextBlock:
     """Class to represent a block of text in a PDF document."""
 
