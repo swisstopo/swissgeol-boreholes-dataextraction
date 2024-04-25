@@ -14,6 +14,7 @@ from stratigraphy.benchmark.score import create_predictions_objects, evaluate_ma
 from stratigraphy.extract import process_page
 from stratigraphy.line_detection import extract_lines, line_detection_params
 from stratigraphy.util.draw import draw_predictions
+from stratigraphy.util.duplicate_detection import remove_duplicate_layers
 from stratigraphy.util.language_detection import detect_language_of_document
 from stratigraphy.util.plot_utils import plot_lines
 from stratigraphy.util.util import flatten, read_params
@@ -114,7 +115,9 @@ def start_pipeline(
     depth intervals. The input directory should contain pdf files with boreholes data. The algorithm can deal
     with borehole profiles of multiple pages.
 
-    \f
+    Note: This function is used to be called from the label-studio backend, whereas the click_pipeline function
+    is called from the CLI.
+
     Args:
         input_directory (Path): The directory containing the pdf files. Can also be the path to a single pdf file.
         ground_truth_path (Path): The path to the ground truth file json file.
@@ -169,7 +172,9 @@ def start_pipeline(
                         layer_predictions, depths_materials_column_pairs = process_page(
                             page, geometric_lines, language, **matching_params
                         )
-
+                        # Add remove duplicates here!
+                        if page_index > 0:
+                            layer_predictions = remove_duplicate_layers(doc[page_index - 1], page, layer_predictions)
                         predictions[filename][f"page_{page_number}"] = {
                             "layers": layer_predictions,
                             "depths_materials_column_pairs": depths_materials_column_pairs,

@@ -105,7 +105,10 @@ def get_scores(
     if len(document_level_metrics["precision"]):
         overall_precision = sum(document_level_metrics["precision"]) / len(document_level_metrics["precision"])
         overall_recall = sum(document_level_metrics["recall"]) / len(document_level_metrics["recall"])
-        overall_depth_interval_accuracy = sum(depth_interval_accuracies) / len(depth_interval_accuracies)
+        try:
+            overall_depth_interval_accuracy = sum(depth_interval_accuracies) / len(depth_interval_accuracies)
+        except ZeroDivisionError:
+            overall_depth_interval_accuracy = None
     else:
         overall_precision = 0
         overall_recall = 0
