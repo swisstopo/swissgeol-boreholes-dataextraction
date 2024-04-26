@@ -1,6 +1,7 @@
 """This module contains classes for predictions."""
 
 import contextlib
+import logging
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -13,6 +14,8 @@ from stratigraphy.util.interval import AnnotatedInterval, BoundaryInterval
 from stratigraphy.util.line import TextLine, TextWord
 from stratigraphy.util.textblock import MaterialDescription, TextBlock
 from stratigraphy.util.util import parse_text
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -36,6 +39,10 @@ class PagePredictions:
     page_height: int
     depths_materials_columns_pairs: list[dict] = None
 
+    def __post__init__(self):
+        """Sort layers by their occurence on the page."""
+        self.layers = sorted(self.layers, key=lambda layer: layer.material_description.rect.y0)
+
 
 class FilePredictions:
     """A class to represent predictions for a single file."""
@@ -44,8 +51,7 @@ class FilePredictions:
         self.pages = pages
         self.file_name = file_name
         self.language = language
-        if self.pages:
-            self.layers = sum([page.layers for page in self.pages], [])
+        self.layers = sum([page.layers for page in self.pages], [])
 
     @staticmethod
     def create_from_json(predictions_for_file: dict, file_name: str):
