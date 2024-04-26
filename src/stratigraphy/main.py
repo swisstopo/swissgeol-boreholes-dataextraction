@@ -75,6 +75,21 @@ def click_pipeline(
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
 ):
+    """Run the boreholes data extraction pipeline.
+
+    The pipeline will extract material description of all found layers and assign them to the corresponding
+    depth intervals. The input directory should contain pdf files with boreholes data. The algorithm can deal
+    with borehole profiles of multiple pages.
+
+     \f
+     Args:
+         input_directory (Path): The directory containing the pdf files. Can also be the path to a single pdf file.
+         ground_truth_path (Path): The path to the ground truth file json file.
+         out_directory (Path): The directory to store the evaluation results.
+         predictions_path (Path): The path to the predictions file.
+         skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
+         draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.
+    """  # noqa: D301
     start_pipeline(
         input_directory=input_directory,
         ground_truth_path=ground_truth_path,
@@ -92,7 +107,7 @@ def start_pipeline(
     predictions_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
-):
+) -> list[dict]:
     """Run the boreholes data extraction pipeline.
 
     The pipeline will extract material description of all found layers and assign them to the corresponding
@@ -107,6 +122,9 @@ def start_pipeline(
         predictions_path (Path): The path to the predictions file.
         skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
         draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.
+
+    Returns:
+        list[dict]: The predictions of the pipeline.
     """  # noqa: D301
     if mlflow_tracking:
         import mlflow
