@@ -13,7 +13,7 @@ from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.geometric_line_utilities import (
     drop_vertical_lines,
     merge_parallel_lines_approximately,
-    merge_parallel_lines_efficiently,
+    merge_parallel_lines_quadtree,
 )
 from stratigraphy.util.util import line_from_array, read_params
 
@@ -82,7 +82,7 @@ def extract_lines(page: fitz.Page, line_detection_params: dict) -> list[Line]:
         )
 
     else:
-        lines = merge_parallel_lines_efficiently(
+        lines = merge_parallel_lines_quadtree(
             lines, tol=merging_params["merging_tolerance"], angle_threshold=merging_params["angle_threshold"]
         )
     return lines
