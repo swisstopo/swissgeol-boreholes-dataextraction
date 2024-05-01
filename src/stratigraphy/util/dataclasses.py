@@ -63,9 +63,11 @@ class IndexedLines:
         for line in lines:
             self.hashmap[uuid.uuid4().hex] = line
 
-    def remove(self, line_index: int):
+    def remove(self, line_index: str):
         if line_index in self.hashmap:
             del self.hashmap[line_index]
 
-    def add(self, line: Line):
-        self.hashmap[uuid.uuid4()] = line
+    def add(self, line: Line) -> str:
+        key = uuid.uuid4().hex
+        self.hashmap[key] = line
+        return key
