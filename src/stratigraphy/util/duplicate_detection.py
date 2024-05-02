@@ -46,16 +46,20 @@ def remove_duplicate_layers(
     for layer_index, layer in enumerate(sorted_layers):
         if (
             count_consecutive_non_duplicate_layers >= 3
-        ):  # if we have 3 consecutive non-duplicate layers, we can assume that there is no further page overlap
+        ):  # if we have three consecutive non-duplicate layers, we can assume that there is no further page overlap.
             break
         [x0, y_start, x1, y_end] = layer["material_description"]["rect"]
-        x_start = int(scale_factor * min(x0, current_page.rect.width * 0.2))
+        x_start = int(scale_factor * min(x0, current_page.rect.width * 0.2))  # 0.2 is a magic number that works well
         x_end = int(scale_factor * min(max(x1, current_page.rect.width * 0.8), previous_page.rect.width - 1))
         y_start = int(scale_factor * max(y_start, 0))  # do not go higher up as otherwise we remove too many layers.
-        y_end = int(
-            scale_factor * min(y_end + 5, previous_page.rect.height - 5, current_page.rect.height - 5)
-        )  # make sure template is smaller than current and previous page
-        # get cv2 image of current_page of the bounding_box_coordinates
+        y_end = int(scale_factor * min(y_end + 5, previous_page.rect.height - 5, current_page.rect.height - 5))
+        # y_start and y_end define the upper and lower bound of the image used to compare to the previous page
+        # and determine if there is an overlap. We add 5 pixel to y_end to add a bit more context to the image
+        # as the material_description bounding box is very tight around the text. Furthermore, we need to ensure
+        # that the template is smallen than the previous and the current page.
+        # y_start should not be lowered further as otherwise the we include potential overlap to the previous page
+        # that belongs to the previous layer.
+
         layer_image = current_page_image[y_start:y_end, x_start:x_end]
         try:
             img_template_probablility_match = np.max(
