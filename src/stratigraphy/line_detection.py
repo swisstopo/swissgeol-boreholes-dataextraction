@@ -11,6 +11,7 @@ from numpy.typing import ArrayLike
 
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.geometric_line_utilities import (
+    deduplicate_lines,
     drop_vertical_lines,
     merge_parallel_lines_approximately,
     merge_parallel_lines_quadtree,
@@ -53,7 +54,9 @@ def detect_lines_lsd(page: fitz.Page, scale_factor=2, lsd_params=None) -> ArrayL
 
     # Detect lines in the image
     lines = lsd.detect(gray)[0]
-    return [line_from_array(line, scale_factor) for line in lines]
+    converted_lines = [line_from_array(line, scale_factor) for line in lines]
+    deduplicated_lines = deduplicate_lines(converted_lines)
+    return deduplicated_lines
 
 
 def extract_lines(page: fitz.Page, line_detection_params: dict) -> list[Line]:

@@ -21,6 +21,26 @@ logger = logging.getLogger(__name__)
 sys.setrecursionlimit(10000)  # required for the quadtree
 
 
+def deduplicate_lines(lines: list[Line]) -> list[Line]:
+    """Deduplicate lines by merging lines that are close to each other.
+
+    Args:
+        lines (list[Line]): The lines to deduplicate.
+
+    Returns:
+        list[Line]: The deduplicated lines.
+    """
+    deduplicated_lines = []
+    for line in lines:
+        if not _check_if_present(deduplicated_lines, line):
+            deduplicated_lines.append(line)
+    return deduplicated_lines
+
+
+def _check_if_present(lines, line: Line) -> bool:
+    return any(value.start == line.start and value.end == line.end for value in lines)
+
+
 def drop_vertical_lines(lines: list[Line], threshold: float = 0.1) -> ArrayLike:
     """Given a list of lines, remove the lines that are close to vertical.
 
@@ -456,7 +476,6 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
                             merged_any = True
                         continue
     if merged_any:
-        print("Starting recursion.")
         return merge_parallel_lines_quadtree(
             list(indexed_lines.hashmap.values()), tol=tol, angle_threshold=angle_threshold
         )
