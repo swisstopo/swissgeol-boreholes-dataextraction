@@ -1,10 +1,14 @@
 """This module contains functionality for detecting duplicate layers across pdf pages."""
 
+import logging
+
 import cv2
 import fitz
 import numpy as np
 
 from stratigraphy.util.plot_utils import convert_page_to_opencv_img
+
+logger = logging.getLogger(__name__)
 
 
 def remove_duplicate_layers(
@@ -52,7 +56,7 @@ def remove_duplicate_layers(
         x_start = int(scale_factor * min(x0, current_page.rect.width * 0.2))  # 0.2 is a magic number that works well
         x_end = int(scale_factor * min(max(x1, current_page.rect.width * 0.8), previous_page.rect.width - 1))
         y_start = int(scale_factor * max(y_start, 0))  # do not go higher up as otherwise we remove too many layers.
-        y_end = int(scale_factor * min(y_end + 5, previous_page.rect.height - 5, current_page.rect.height - 5))
+        y_end = int(scale_factor * min(y_end + 5, previous_page.rect.height - 1, current_page.rect.height - 1))
         # y_start and y_end define the upper and lower bound of the image used to compare to the previous page
         # and determine if there is an overlap. We add 5 pixel to y_end to add a bit more context to the image
         # as the material_description bounding box is very tight around the text. Furthermore, we need to ensure
@@ -67,6 +71,7 @@ def remove_duplicate_layers(
             )
         except cv2.error:  # there can be strange correlation errors here.
             # Just ignore them as it is only a few over the complete dataset
+            logger.warning("Error in template matching. Skipping layer.")
             img_template_probablility_match = 0
         if img_template_probablility_match > img_template_probability_threshold:
             duplicated_layer_index = layer_index + 1  # all layers before this layer are duplicates
