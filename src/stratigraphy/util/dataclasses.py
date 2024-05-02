@@ -68,4 +68,5 @@ class IndexedLines:
             del self.hashmap[line_index]
 
     def add(self, line: Line):
-        self.hashmap[uuid.uuid4()] = line
+        id = uuid.uuid4().hex
+        self.hashmap[id] = line
