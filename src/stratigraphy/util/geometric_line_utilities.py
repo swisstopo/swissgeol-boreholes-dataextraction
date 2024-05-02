@@ -2,6 +2,7 @@
 
 import logging
 import queue
+import sys
 from collections import deque
 from itertools import combinations
 from math import atan, cos, pi, sin
@@ -16,6 +17,8 @@ from stratigraphy.util.dataclasses import IndexedLines, Line, Point
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+sys.setrecursionlimit(10000)  # required for the quadtree
 
 
 def drop_vertical_lines(lines: list[Line], threshold: float = 0.1) -> ArrayLike:
@@ -410,12 +413,17 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
         (width / 2, height / 2), width + 1000, height + 1000
     )  # Add some margin to the width and height to allow for slightly negative values
     for line_index, line in indexed_lines.hashmap.items():
-        qtree.insert((line.start.x, line.start.y), data=line_index)
-        qtree.insert((line.end.x, line.end.y), data=line_index)
+        try:  # Likely the ValueErrors stem from duplicate lines.
+            qtree.insert((line.start.x, line.start.y), data=line_index)
+            qtree.insert((line.end.x, line.end.y), data=line_index)
+        except ValueError as e:
+            logger.warning(f"Line could not be inserted into the quadtree. Line: {line}.")
+            logger.warning(e)
 
     keys_queue = queue.Queue()
     for key in indexed_lines.hashmap:
         keys_queue.put(key)
+    merged_any = False
     while not keys_queue.empty():
         line_index = keys_queue.get()
         if line_index in indexed_lines.hashmap:
@@ -443,10 +451,17 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
                         indexed_lines.remove(merge_candidate_idx)
                         indexed_lines.remove(line_index)
                         new_key = indexed_lines.add(new_line)
-                        keys_queue.put(new_key)
+                        if new_key is not None:
+                            keys_queue.put(new_key)
+                            merged_any = True
                         continue
-
-    return list(indexed_lines.hashmap.values())
+    if merged_any:
+        print("Starting recursion.")
+        return merge_parallel_lines_quadtree(
+            list(indexed_lines.hashmap.values()), tol=tol, angle_threshold=angle_threshold
+        )
+    else:
+        return list(indexed_lines.hashmap.values())
 
 
 def get_merge_candidates_from_points(points: list[quads.Point], lines: IndexedLines) -> set:

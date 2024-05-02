@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -68,6 +71,13 @@ class IndexedLines:
             del self.hashmap[line_index]
 
     def add(self, line: Line) -> str:
-        key = uuid.uuid4().hex
-        self.hashmap[key] = line
-        return key
+        if not self._check_if_present(line):
+            key = uuid.uuid4().hex
+            self.hashmap[key] = line
+            return key
+        else:
+            logger.warning("Line already present in IndexedLines.")
+            return None
+
+    def _check_if_present(self, line: Line) -> bool:
+        return any(value.start == line.start and value.end == line.end for _key, value in self.hashmap.items())
