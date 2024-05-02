@@ -111,8 +111,14 @@ class FilePredictions:
     def create_from_label_studio(annotation_results: dict):
         """Create predictions class for a file given the annotation results from Label Studio.
 
+        This method is meant to import annotations from label studio. The primary use case is to
+        use the annotated data for evaluation. For that purpose, there is the convert_to_ground_truth
+        method, which then converts the predictions to ground truth format.
+
         NOTE: We may want to adjust this method to return a single instance of the class,
         instead of a list of class objects.
+
+        NOTE: Before using this to create new ground truth, this method should be tested.
 
         Args:
             annotation_results (dict): The annotation results from Label Studio.
@@ -211,6 +217,11 @@ class FilePredictions:
 
     def convert_to_ground_truth(self):
         """Convert the predictions to ground truth format.
+
+        This method is meant to be used in combination with the create_from_label_studio method.
+        It converts the predictions to ground truth format, which can then be used for evaluation.
+
+        NOTE: This method should be tested before using it to create new ground truth.
 
         Returns:
             dict: The predictions in ground truth format.
