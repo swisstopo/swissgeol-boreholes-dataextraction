@@ -174,7 +174,12 @@ def start_pipeline(
                         )
                         # Add remove duplicates here!
                         if page_index > 0:
-                            layer_predictions = remove_duplicate_layers(doc[page_index - 1], page, layer_predictions)
+                            layer_predictions = remove_duplicate_layers(
+                                doc[page_index - 1],
+                                page,
+                                layer_predictions,
+                                matching_params["img_template_probability_threshold"],
+                            )
                         predictions[filename][f"page_{page_number}"] = {
                             "layers": layer_predictions,
                             "depths_materials_column_pairs": depths_materials_column_pairs,

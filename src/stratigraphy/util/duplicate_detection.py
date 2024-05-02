@@ -8,7 +8,10 @@ from stratigraphy.util.plot_utils import convert_page_to_opencv_img
 
 
 def remove_duplicate_layers(
-    previous_page: fitz.Page, current_page: fitz.Page, layer_predictions: list[dict]
+    previous_page: fitz.Page,
+    current_page: fitz.Page,
+    layer_predictions: list[dict],
+    img_template_probability_threshold: float,
 ) -> list[dict]:
     """Remove duplicate layers from the current page based on the layers of the previous page.
 
@@ -23,6 +26,8 @@ def remove_duplicate_layers(
         previous_page (fitz.Page): The previous page.
         current_page (fitz.Page): The current page containing the layers.
         layer_predictions (list[dict]): The layers of the current page.
+        img_template_probability_threshold (float): The threshold for the template matching probability
+                                                    to consider a layer a duplicate.
 
     Returns:
         list[dict]: The layers of the current page without duplicates.
@@ -59,10 +64,8 @@ def remove_duplicate_layers(
         except cv2.error:  # there can be strange correlation errors here.
             # Just ignore them as it is only a few over the complete dataset
             img_template_probablility_match = 0
-        if (
-            img_template_probablility_match > 0.62
-        ):  # This number has been tested on the dataset. It is not perfect but works well.
-            duplicated_layer_index = layer_index
+        if img_template_probablility_match > img_template_probability_threshold:
+            duplicated_layer_index = layer_index + 1  # all layers before this layer are duplicates
             count_consecutive_non_duplicate_layers = 0
         else:
             count_consecutive_non_duplicate_layers += 1
