@@ -114,6 +114,9 @@ def start_pipeline(
     depth intervals. The input directory should contain pdf files with boreholes data. The algorithm can deal
     with borehole profiles of multiple pages.
 
+    Note: This function is used to be called from the label-studio backend, whereas the click_pipeline function
+    is called from the CLI.
+
     \f
     Args:
         input_directory (Path): The directory containing the pdf files. Can also be the path to a single pdf file.
