@@ -37,8 +37,10 @@ def deduplicate_lines(lines: list[Line]) -> list[Line]:
     return deduplicated_lines
 
 
-def _check_if_present(lines, line: Line) -> bool:
-    return any(value.start == line.start and value.end == line.end for value in lines)
+def _check_if_present(lines: list[Line], line: Line) -> bool:
+    return any(
+        value.start.distance_to(line.start) < 0.1 and value.end.distance_to(line.end) < 0.1 for value in lines
+    )  # we are on a pixel grid and 0.1 is a reasonable threshold
 
 
 def drop_vertical_lines(lines: list[Line], threshold: float = 0.1) -> ArrayLike:
@@ -476,6 +478,7 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
                             merged_any = True
                         continue
     if merged_any:
+        print("Starting recursion.")
         return merge_parallel_lines_quadtree(
             list(indexed_lines.hashmap.values()), tol=tol, angle_threshold=angle_threshold
         )

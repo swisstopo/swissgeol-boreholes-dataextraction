@@ -54,9 +54,7 @@ def detect_lines_lsd(page: fitz.Page, scale_factor=2, lsd_params=None) -> ArrayL
 
     # Detect lines in the image
     lines = lsd.detect(gray)[0]
-    converted_lines = [line_from_array(line, scale_factor) for line in lines]
-    deduplicated_lines = deduplicate_lines(converted_lines)
-    return deduplicated_lines
+    return [line_from_array(line, scale_factor) for line in lines]
 
 
 def extract_lines(page: fitz.Page, line_detection_params: dict) -> list[Line]:
@@ -75,6 +73,7 @@ def extract_lines(page: fitz.Page, line_detection_params: dict) -> list[Line]:
         scale_factor=line_detection_params["pdf_scale_factor"],
     )
     lines = drop_vertical_lines(lines, threshold=line_detection_params["vertical_lines_threshold"])
+    lines = deduplicate_lines(lines)
     merging_params = line_detection_params["line_merging_params"]
     if merging_params["use_clustering"]:
         lines = merge_parallel_lines_approximately(
