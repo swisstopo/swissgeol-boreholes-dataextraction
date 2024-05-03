@@ -1,6 +1,7 @@
 
 block_line_ratio: 0.20
 left_line_length_threshold: 7
+img_template_probability_threshold: 0.62
 
 material_description:
   de:

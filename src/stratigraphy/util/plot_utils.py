@@ -38,10 +38,20 @@ def _draw_lines(open_cv_img, lines, scale_factor=1):
     return open_cv_img
 
 
-def _convert_page_to_opencv_img(page, scale_factor):
+def convert_page_to_opencv_img(page: fitz.Page, scale_factor: float, color_mode=cv2.COLOR_RGB2BGR) -> np.array:
+    """Converts a fitz.Page object to an OpenCV image.
+
+    Args:
+        page (fitz.Page): The page to convert to an OpenCV image.
+        scale_factor (float): Applied scale factor to the image.
+        color_mode (_type_, optional): _description_. Defaults to cv2.COLOR_RGB2BGR.
+
+    Returns:
+        np.array: The OpenCV image.
+    """
     pix = page.get_pixmap(matrix=fitz.Matrix(scale_factor, scale_factor))
     img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, 3)
-    open_cv_img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    open_cv_img = cv2.cvtColor(img, color_mode)
     return open_cv_img
 
 
@@ -76,7 +86,7 @@ def plot_lines(page: fitz.Page, lines: list[Line], scale_factor: float = 2) -> c
         lines (ArrayLike): The lines detected in the pdf.
         scale_factor (float, optional): The scale factor to apply to the pdf. Defaults to 2.
     """
-    open_cv_img = _convert_page_to_opencv_img(page, scale_factor=scale_factor)
+    open_cv_img = convert_page_to_opencv_img(page, scale_factor=scale_factor)
 
     open_cv_img = _draw_lines(open_cv_img, lines, scale_factor=scale_factor)
 
@@ -103,7 +113,7 @@ def draw_blocks_and_lines(page: fitz.Page, blocks: list[TextBlock], lines: list[
             color=fitz.utils.getColor("orange"),
         )
 
-    open_cv_img = _convert_page_to_opencv_img(page, scale_factor=2)
+    open_cv_img = convert_page_to_opencv_img(page, scale_factor=2)
 
     if lines is not None:
         open_cv_img = _draw_lines(open_cv_img, lines, scale_factor=scale_factor)
