@@ -86,6 +86,7 @@ def draw_material_descriptions(page: fitz.Page, layers: LayerPrediction) -> None
             layer=layer.material_description,
             index=index,
             is_correct=layer.material_is_correct,  # None if no ground truth
+            depth_is_correct=layer.depth_interval_is_correct,  # None if no ground truth
         )
 
 
@@ -134,6 +135,7 @@ def draw_layer(
     layer: TextBlock,
     index: int,
     is_correct: bool,
+    depth_is_correct: bool,
 ):
     """Draw layers on a pdf page.
 
@@ -143,10 +145,11 @@ def draw_layer(
 
     Args:
         page (fitz.Page): The page to draw on.
-        interval (dict | None): Depth interval for the layer.
+        interval (BoundaryInterval | None): Depth interval for the layer.
         layer (MaterialDescriptionPrediction): Material description block for the layer.
         index (int): Index of the layer.
         is_correct (bool): Whether the text block was correctly identified.
+        depth_is_correct (bool): Whether the depth interval was correctly identified.
     """
     if len(layer.lines):
         layer_rect = fitz.Rect(layer.rect)
@@ -177,6 +180,17 @@ def draw_layer(
                     fill=fitz.utils.getColor(color),
                     fill_opacity=0.2,
                 )
+
+                # draw green line if depth interval is correct else red line
+                if depth_is_correct is not None:
+                    depth_is_correct_color = "green" if depth_is_correct else "red"
+                    page.draw_line(
+                        background_rect.top_left * page.derotation_matrix,
+                        background_rect.bottom_left * page.derotation_matrix,
+                        color=fitz.utils.getColor(depth_is_correct_color),
+                        width=6,
+                        stroke_opacity=0.5,
+                    )
 
             # line from depth interval to material description
             line_anchor = interval.line_anchor
