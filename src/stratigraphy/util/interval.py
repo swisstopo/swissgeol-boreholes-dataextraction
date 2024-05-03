@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import abc
+from dataclasses import dataclass
 
 import fitz
 
@@ -48,6 +49,15 @@ class Interval(metaclass=abc.ABCMeta):
             "start": self.start.to_json() if self.start else None,
             "end": self.end.to_json() if self.end else None,
         }
+
+
+@dataclass
+class AnnotatedInterval:
+    """Class for annotated intervals."""
+
+    start: float
+    end: float
+    background_rect: fitz.Rect
 
 
 class BoundaryInterval(Interval):
