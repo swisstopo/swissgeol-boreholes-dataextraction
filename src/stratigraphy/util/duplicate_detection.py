@@ -45,7 +45,7 @@ def remove_duplicate_layers(
     )
 
     sorted_layers = sorted(layer_predictions, key=lambda x: x["material_description"]["rect"][1])
-    duplicated_layer_index = 0
+    first_non_duplicated_layer_index = 0
     count_consecutive_non_duplicate_layers = 0
     for layer_index, layer in enumerate(sorted_layers):
         if (
@@ -60,7 +60,7 @@ def remove_duplicate_layers(
         # y_start and y_end define the upper and lower bound of the image used to compare to the previous page
         # and determine if there is an overlap. We add 5 pixel to y_end to add a bit more context to the image
         # as the material_description bounding box is very tight around the text. Furthermore, we need to ensure
-        # that the template is smallen than the previous and the current page.
+        # that the template is smaller than the previous and the current page.
         # y_start should not be lowered further as otherwise the we include potential overlap to the previous page
         # that belongs to the previous layer.
 
@@ -74,8 +74,8 @@ def remove_duplicate_layers(
             logger.warning("Error in template matching. Skipping layer.")
             img_template_probablility_match = 0
         if img_template_probablility_match > img_template_probability_threshold:
-            duplicated_layer_index = layer_index + 1  # all layers before this layer are duplicates
+            first_non_duplicated_layer_index = layer_index + 1  # all layers before this layer are duplicates
             count_consecutive_non_duplicate_layers = 0
         else:
             count_consecutive_non_duplicate_layers += 1
-    return sorted_layers[duplicated_layer_index:]
+    return sorted_layers[first_non_duplicated_layer_index:]
