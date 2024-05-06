@@ -2,7 +2,6 @@
 
 import logging
 import queue
-import sys
 from collections import deque
 from itertools import combinations
 from math import atan, cos, pi, sin
@@ -17,8 +16,6 @@ from stratigraphy.util.dataclasses import IndexedLines, Line, Point
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-sys.setrecursionlimit(10000)  # required for the quadtree
 
 
 def deduplicate_lines(lines: list[Line]) -> list[Line]:
@@ -435,12 +432,8 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
         (width / 2, height / 2), width + 1000, height + 1000
     )  # Add some margin to the width and height to allow for slightly negative values
     for line_index, line in indexed_lines.hashmap.items():
-        try:  # Likely the ValueErrors stem from duplicate lines.
-            qtree.insert((line.start.x, line.start.y), data=line_index)
-            qtree.insert((line.end.x, line.end.y), data=line_index)
-        except ValueError as e:
-            logger.warning(f"Line could not be inserted into the quadtree. Line: {line}.")
-            logger.warning(e)
+        qtree.insert((line.start.x, line.start.y), data=line_index)
+        qtree.insert((line.end.x, line.end.y), data=line_index)
 
     keys_queue = queue.Queue()
     for key in indexed_lines.hashmap:
@@ -474,11 +467,18 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
                         indexed_lines.remove(line_index)
                         new_key = indexed_lines.add(new_line)
                         if new_key is not None:
+                            # Ideally, we would also remove the points of the old lines from the quadtree
+                            # and add the points of the new line. However, removing points is not implemented in
+                            # the quads library. Only adding the points of the new lines does not work, as there
+                            # would be duplicate points which is hard to handle in the quadtree. Therefore, we
+                            # start a recursion and build the quadtree from scratch after one full pass. This is
+                            # not the most efficient way to do this. Speedup fully utilizing the quadtree was tested
+                            # and is around 5%. This is not worth the effort of patching an old library.
                             keys_queue.put(new_key)
                             merged_any = True
-                        continue
-    if merged_any:
-        print("Starting recursion.")
+                        break
+
+    if merged_any:  # start recursion to rebuild the tree.
         return merge_parallel_lines_quadtree(
             list(indexed_lines.hashmap.values()), tol=tol, angle_threshold=angle_threshold
         )

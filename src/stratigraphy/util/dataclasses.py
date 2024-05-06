@@ -71,16 +71,6 @@ class IndexedLines:
             del self.hashmap[line_index]
 
     def add(self, line: Line) -> str:
-        if not self._check_if_present(line):
-            key = uuid.uuid4().hex
-            self.hashmap[key] = line
-            return key
-        else:
-            logger.warning("Line already present in IndexedLines.")
-            return None
-
-    def _check_if_present(self, line: Line) -> bool:
-        return any(
-            value.start.distance_to(line.start) < 0.1 and value.end.distance_to(line.end) < 0.1
-            for _key, value in self.hashmap.items()
-        )
+        key = uuid.uuid4().hex
+        self.hashmap[key] = line
+        return key
