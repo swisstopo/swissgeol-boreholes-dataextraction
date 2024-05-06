@@ -168,7 +168,7 @@ def evaluate_matching(predictions: dict, number_of_truth_values: dict) -> tuple[
     logging.info(
         f"F1: {metrics['all']['F1']:.1%}, "
         f"precision: {metrics['all']['precision']:.1%}, recall: {metrics['all']['recall']:.1%}, "
-        # f"depth_interval_accuracy: {metrics['all']['depth_interval_accuracy']:.1%}"
+        f"depth_interval_accuracy: {metrics['all']['depth_interval_accuracy']:.1%}"
     )
 
     _metrics = {}
