@@ -59,10 +59,6 @@ class AnnotatedInterval:
     end: float
     background_rect: fitz.Rect
 
-    @property
-    def line_anchor(self) -> fitz.Point:
-        return fitz.Point(0, 0)
-
 
 class BoundaryInterval(Interval):
     """Class for boundary intervals.
