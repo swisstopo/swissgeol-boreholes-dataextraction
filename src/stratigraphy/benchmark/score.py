@@ -113,6 +113,9 @@ def get_scores(
         overall_precision = 0
         overall_recall = 0
 
+    if overall_depth_interval_accuracy is None:
+        overall_depth_interval_accuracy = 0
+
     if return_document_level_metrics:
         return {
             "F1": f1(overall_precision, overall_recall),
@@ -165,7 +168,7 @@ def evaluate_matching(predictions: dict, number_of_truth_values: dict) -> tuple[
     logging.info(
         f"F1: {metrics['all']['F1']:.1%}, "
         f"precision: {metrics['all']['precision']:.1%}, recall: {metrics['all']['recall']:.1%}, "
-        f"depth_interval_accuracy: {metrics['all']['depth_interval_accuracy']:.1%}"
+        # f"depth_interval_accuracy: {metrics['all']['depth_interval_accuracy']:.1%}"
     )
 
     _metrics = {}
