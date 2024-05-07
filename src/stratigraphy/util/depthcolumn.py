@@ -196,6 +196,20 @@ class BoundaryDepthColumn(DepthColumn):
     """
 
     def can_be_appended(self, rect: fitz.Rect) -> bool:
+        """Checks if a new depth column entry can be appended to the current depth column.
+
+        The checks are:
+        - The width of the new rectangle is greater than the width of the current depth column. Or;
+        - The middle of the new rectangle is within the horizontal boundaries of the current depth column.
+        - The new rectangle intersects with the minimal horizontal boundaries of the current depth column.
+
+
+        Args:
+            rect (fitz.Rect): Rect of the depth column entry to be appended.
+
+        Returns:
+            bool: True if the new depth column entry can be appended, False otherwise.
+        """
         new_middle = (rect.x0 + rect.x1) / 2
         if (self.rect().width < rect.width or self.rect().x0 < new_middle < self.rect().x1) and (
             rect.x0 <= self.min_x1 and self.max_x0 <= rect.x1
@@ -218,7 +232,7 @@ class BoundaryDepthColumn(DepthColumn):
     def depth_intervals(self) -> list[BoundaryInterval]:
         """Creates a list of depth intervals from the depth column entries.
 
-        The first depth interval is open-ended.
+        The first depth interval has an open start value (i.e. None).
 
         Returns:
             list[BoundaryInterval]: A list of depth intervals.
@@ -259,18 +273,46 @@ class BoundaryDepthColumn(DepthColumn):
         return abs(scale_pearson_correlation_coef) >= 0.999
 
     def is_valid(self, all_words: list[TextLine]) -> bool:
+        """Checks whether the depth column is valid.
+
+        The depth column is considered valid if:
+        - The number of entries is at least 3.
+        - The number of words that intersect with the depth column entries is less than half of the number
+          of entries minus 1.
+        - The entries are linearly correlated with their vertical position.
+
+        Note: The check for the noise count may require further refinement. Too many valid depth columns are
+        completely dropped because of this check.
+
+        Args:
+            all_words (list[TextLine]): A list of all text lines on the page.
+
+        Returns:
+            bool: True if the depth column is valid, False otherwise.
+        """
         if len(self.entries) < 3:
             return False
 
         # When too much other text is in the column, then it is probably not valid
         # TODO: make this check more robust/intelligent
-        if self.noise_count(all_words) > 0.5 * len(self.entries) - 2:
+        if self.noise_count(all_words) > 0.5 * len(self.entries) - 0:  # TODO: Explain magic numbers
             return False
 
         corr_coef = self.pearson_correlation_coef()
         return corr_coef and corr_coef > 0.99
 
     def noise_count(self, all_words: list[TextLine]) -> int:
+        """Counts the number of words that intersect with the depth column entries.
+
+        Returns the number of words that intersect with the depth column entries, but are not part of the depth column.
+
+        Args:
+            all_words (list[TextLine]): A list of all text lines on the page.
+
+        Returns:
+            int: The number of words that intersect with the depth column entries but are not part of it.
+        """
+
         def significant_intersection(other_rect):
             intersection = fitz.Rect(other_rect).intersect(self.rect())
             return intersection.is_valid and intersection.width > 0.25 * self.rect().width
@@ -288,6 +330,17 @@ class BoundaryDepthColumn(DepthColumn):
         return np.corrcoef(positions, entries)[0, 1].item()
 
     def reduce_until_valid(self, all_words: list[TextLine]) -> BoundaryDepthColumn:
+        """Removes entries from the depth column until it is fullfills the is_valid condition.
+
+        is_valid checks whether there is too much noise (i.e. other text) in the column and whether the entries are
+        linearly correlated with their vertical position.
+
+        Args:
+            all_words (list[TextLine]): _description_
+
+        Returns:
+            BoundaryDepthColumn: _description_
+        """
         current = self
         while current:
             if current.is_valid(all_words):
