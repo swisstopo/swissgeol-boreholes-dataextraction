@@ -3,6 +3,10 @@ block_line_ratio: 0.20
 left_line_length_threshold: 7
 img_template_probability_threshold: 0.62
 
+depth_column_params:
+  noise_count_threshold: 1.25
+  noise_count_offset: 0
+
 material_description:
   de:
     including_expressions:

@@ -124,12 +124,15 @@ def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[Te
     ]
 
 
-def find_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextLine]) -> list[BoundaryDepthColumn]:
+def find_depth_columns(
+    entries: list[DepthColumnEntry], all_words: list[TextLine], depth_column_params: dict
+) -> list[BoundaryDepthColumn]:
     """Construct all possible BoundaryDepthColumn objects from the given DepthColumnEntry objects.
 
     Args:
         entries (list[DepthColumnEntry]): All found depth column entries in the page.
         all_words (list[TextLine]): All words in the page.
+        depth_column_params (dict): Parameters for the BoundaryDepthColumn objects.
 
     Returns:
         list[BoundaryDepthColumn]: Found BoundaryDepthColumn objects.
@@ -150,7 +153,7 @@ def find_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextLine
 
         numeric_columns.extend(additional_columns)
         if not has_match:
-            numeric_columns.append(BoundaryDepthColumn([entry]))
+            numeric_columns.append(BoundaryDepthColumn(**depth_column_params, entries=[entry]))
 
         # only keep columns that are not contained in a different column
         numeric_columns = [
@@ -158,7 +161,6 @@ def find_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextLine
             for column in numeric_columns
             if all(not other.strictly_contains(column) for other in numeric_columns)
         ]
-
     numeric_columns = [
         column.reduce_until_valid(all_words)
         for numeric_column in numeric_columns

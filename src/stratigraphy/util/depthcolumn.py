@@ -172,8 +172,20 @@ class BoundaryDepthColumn(DepthColumn):
 
     entries: list[DepthColumnEntry]
 
-    def __init__(self, entries=None):
+    def __init__(self, noise_count_threshold: float, noise_count_offset: int, entries: list = None):
+        """Initializes a BoundaryDepthColumn object.
+
+        Args:
+            noise_count_threshold (float): Noise count threshold deciding how much noise is allowed in a column
+                                           to be valid.
+            noise_count_offset (int): Offset for the noise count threshold. Affects the noise count criterion.
+                                      Effective specifically for depth columns with very few entries.
+            entries (list, optional): Depth Column Entries for the depth column. Defaults to None.
+        """
         super().__init__()
+
+        self.noise_count_threshold = noise_count_threshold
+        self.noise_count_offset = noise_count_offset
 
         if entries is not None:
             self.entries = entries
@@ -219,10 +231,12 @@ class BoundaryDepthColumn(DepthColumn):
 
     def valid_initial_segment(self, rect: fitz.Rect) -> BoundaryDepthColumn:
         for i in range(len(self.entries) - 1):
-            initial_segment = BoundaryDepthColumn(self.entries[: -i - 1])
+            initial_segment = BoundaryDepthColumn(
+                self.noise_count_threshold, self.noise_count_offset, self.entries[: -i - 1]
+            )
             if initial_segment.can_be_appended(rect):
                 return initial_segment
-        return BoundaryDepthColumn()
+        return BoundaryDepthColumn(self.noise_count_threshold, self.noise_count_offset)
 
     def strictly_contains(self, other: BoundaryDepthColumn):
         return len(other.entries) < len(self.entries) and all(
@@ -254,7 +268,9 @@ class BoundaryDepthColumn(DepthColumn):
             # to allow for OCR errors or gaps in the progression, we only require a segment of length 6 that is an
             # arithmetic progression
             for i in range(len(self.entries) - 6 + 1):
-                if BoundaryDepthColumn(self.entries[i : i + 6]).is_arithmetic_progression():
+                if BoundaryDepthColumn(
+                    self.noise_count_threshold, self.noise_count_offset, self.entries[i : i + 6]
+                ).is_arithmetic_progression():
                     return True
             return False
 
@@ -277,12 +293,12 @@ class BoundaryDepthColumn(DepthColumn):
 
         The depth column is considered valid if:
         - The number of entries is at least 3.
-        - The number of words that intersect with the depth column entries is less than half of the number
-          of entries minus 1.
+        - The number of words that intersect with the depth column entries is less than the noise count threshold
+          time the number of entries minus the noise count offset.
         - The entries are linearly correlated with their vertical position.
 
-        Note: The check for the noise count may require further refinement. Too many valid depth columns are
-        completely dropped because of this check.
+        Note: The noise count criteria may require a rehaul. Some depth columns are not recognized as valid
+        even though they are.
 
         Args:
             all_words (list[TextLine]): A list of all text lines on the page.
@@ -294,8 +310,7 @@ class BoundaryDepthColumn(DepthColumn):
             return False
 
         # When too much other text is in the column, then it is probably not valid
-        # TODO: make this check more robust/intelligent
-        if self.noise_count(all_words) > 0.5 * len(self.entries) - 0:  # TODO: Explain magic numbers
+        if self.noise_count(all_words) > self.noise_count_threshold * len(self.entries) - self.noise_count_offset:
             return False
 
         corr_coef = self.pearson_correlation_coef()
@@ -353,7 +368,11 @@ class BoundaryDepthColumn(DepthColumn):
             return None
 
         new_columns = [
-            BoundaryDepthColumn([entry for index, entry in enumerate(self.entries) if index != remove_index])
+            BoundaryDepthColumn(
+                self.noise_count_threshold,
+                self.noise_count_offset,
+                [entry for index, entry in enumerate(self.entries) if index != remove_index],
+            )
             for remove_index in range(len(self.entries))
         ]
         return max(new_columns, key=lambda column: column.pearson_correlation_coef())
@@ -378,7 +397,9 @@ class BoundaryDepthColumn(DepthColumn):
         if len(final_segment):
             segments.append(final_segment)
 
-        return [BoundaryDepthColumn(segment) for segment in segments]
+        return [
+            BoundaryDepthColumn(self.noise_count_threshold, self.noise_count_offset, segment) for segment in segments
+        ]
 
     def identify_groups(
         self,
