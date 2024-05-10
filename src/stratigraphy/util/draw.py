@@ -47,6 +47,8 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                 page_number = page_index + 1
                 layers = file_prediction.pages[page_index].layers
                 depths_materials_column_pairs = file_prediction.pages[page_index].depths_materials_columns_pairs
+                if page_index == 0:
+                    draw_coordinates(page, file_prediction.metadata["coordinates"])
                 draw_depth_columns_and_material_rect(page, depths_materials_column_pairs)
                 draw_material_descriptions(page, layers)
 
@@ -59,6 +61,16 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                         mlflow.log_artifact(tmp_file_path, artifact_path="pages")
                     except NameError:
                         logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
+
+
+def draw_coordinates(page: fitz.Page, coordinates: list[float]) -> None:
+    """Draw the coordinates on a pdf page.
+
+    Args:
+        page (fitz.Page): The page to draw on.
+        coordinates (list[float]): List of coordinates to draw.
+    """
+    page.add_freetext_annot(fitz.Rect([5, 5, 100, 250]), f"Coordinates: {coordinates}")
 
 
 def draw_material_descriptions(page: fitz.Page, layers: LayerPrediction) -> None:

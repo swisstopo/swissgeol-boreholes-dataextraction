@@ -166,7 +166,11 @@ def start_pipeline(
                     language = detect_language_of_document(doc)
                     predictions[filename]["language"] = language
                     coordinate_extractor = CoordinateExtractor(doc)
-                    predictions[filename]["metadata"] = coordinate_extractor.extract_coordinates()
+                    coordinates = coordinate_extractor.extract_coordinates()
+                    if coordinates:
+                        predictions[filename]["metadata"] = {"coordinates": coordinates.to_json()}
+                    else:
+                        predictions[filename]["metadata"] = {"coordinates": None}
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
                         logger.info("Processing page %s", page_number)
