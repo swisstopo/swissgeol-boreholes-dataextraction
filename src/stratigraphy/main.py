@@ -13,6 +13,7 @@ from stratigraphy import DATAPATH
 from stratigraphy.benchmark.score import create_predictions_objects, evaluate_matching
 from stratigraphy.extract import process_page
 from stratigraphy.line_detection import extract_lines, line_detection_params
+from stratigraphy.util.coordinate_extraction import CoordinateExtractor
 from stratigraphy.util.draw import draw_predictions
 from stratigraphy.util.duplicate_detection import remove_duplicate_layers
 from stratigraphy.util.language_detection import detect_language_of_document
@@ -164,6 +165,8 @@ def start_pipeline(
                 with fitz.Document(in_path) as doc:
                     language = detect_language_of_document(doc)
                     predictions[filename]["language"] = language
+                    coordinate_extractor = CoordinateExtractor(doc)
+                    predictions[filename]["metadata"] = coordinate_extractor.extract_coordinates()
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
                         logger.info("Processing page %s", page_number)

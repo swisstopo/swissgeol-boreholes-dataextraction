@@ -47,11 +47,12 @@ class PagePredictions:
 class FilePredictions:
     """A class to represent predictions for a single file."""
 
-    def __init__(self, pages: list[PagePredictions], file_name: str, language: str):
+    def __init__(self, pages: list[PagePredictions], file_name: str, language: str, metadata: dict = None):
         self.pages = pages
         self.file_name = file_name
         self.language = language
         self.layers = sum([page.layers for page in self.pages], [])
+        self.metadata = metadata
 
     @staticmethod
     def create_from_json(predictions_for_file: dict, file_name: str):
@@ -65,6 +66,9 @@ class FilePredictions:
         for page_number, page_predictions in predictions_for_file.items():
             if page_number == "language":
                 file_language = page_predictions
+                continue
+            elif page_number == "metadata":
+                file_metadata = page_predictions
                 continue
             page_layers = page_predictions["layers"]
             layer_predictions = []
@@ -111,7 +115,9 @@ class FilePredictions:
             else:
                 page_predictions_class.append(PagePredictions(page_number=page_number, layers=layer_predictions))
 
-        return FilePredictions(pages=page_predictions_class, file_name=file_name, language=file_language)
+        return FilePredictions(
+            pages=page_predictions_class, file_name=file_name, language=file_language, metadata=file_metadata
+        )
 
     @staticmethod
     def create_from_label_studio(annotation_results: dict):

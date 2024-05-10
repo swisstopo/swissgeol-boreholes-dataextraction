@@ -35,10 +35,11 @@ class CoordinateExtractor:
             if match:
                 matches.append((match.group(), sum(match.fuzzy_counts)))
 
-        best_match = sorted(matches, key=lambda x: x[1], reverse=True)[0][0]
         # if no match was found, return None
-        if best_match is None:
+        if matches == []:
             return None
+
+        best_match = sorted(matches, key=lambda x: x[1], reverse=True)[0][0]
 
         return best_match
 
@@ -53,8 +54,6 @@ class CoordinateExtractor:
         """
         # find the key that indicates the coordinate information
         key = self.find_coordinate_key(text)
-        print(f"{key=}")
-
         # if no key was found, return None
         if key is None:
             return None
@@ -75,7 +74,6 @@ class CoordinateExtractor:
 
         # get the substring that contains the coordinate information
         coord_substring = self.get_coordinate_substring(text)
-        print(f"{coord_substring=}")
 
         # if no coordinate information was found, return an empty list
         if coord_substring is None:
