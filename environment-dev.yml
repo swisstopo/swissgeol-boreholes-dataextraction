@@ -14,6 +14,7 @@ dependencies:
   - scikit-learn==1.4.0
   - langdetect==1.0.9
   - boto3==1.34.82
+  - fuzzywuzzy==0.18.0
   - pip
 # dev dependencies
   - matplotlib==3.8.0
