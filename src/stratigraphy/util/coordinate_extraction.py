@@ -1,17 +1,20 @@
 """This module contains the CoordinateExtractor class."""
 
+import logging
 from dataclasses import dataclass
 
 import fitz
 import regex
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
 class CoordinateEntry:
     """Dataclass to represent a coordinate entry."""
 
-    first_entry: int
-    second_entry: int
+    first_entry: str
+    second_entry: str
 
     def __repr__(self):
         return f"{self.first_entry}.{self.second_entry}"
@@ -38,9 +41,7 @@ class Coordinate:
     def from_json(input: dict):
         latitude = input["latitude"].split(".")
         longitude = input["longitude"].split(".")
-        return Coordinate(
-            CoordinateEntry(int(latitude[0]), int(latitude[1])), CoordinateEntry(int(longitude[0]), int(longitude[1]))
-        )
+        return Coordinate(CoordinateEntry(latitude[0], latitude[1]), CoordinateEntry(longitude[0], longitude[1]))
 
 
 class CoordinateExtractor:
@@ -94,10 +95,11 @@ class CoordinateExtractor:
 
         # if no key was found, return None
         if key is None:
-            return None
+            return ""
 
         coord_start = text.find(key) + len(key)
-        coord_end = coord_start + 100
+        coord_end = coord_start + 100  # 100 seems to be enough to capture the coordinates;
+        # and not too much to introduce random numbers
         substring = text[coord_start:coord_end]
         substring = substring.replace(",", ".")
         substring = substring.replace("'", ".")
@@ -115,7 +117,7 @@ class CoordinateExtractor:
         Returns:
             list: A list of matched coordinates.
         """
-        return regex.findall(r"X?[=:\s]?\d{3}[\.\s]\d{3}.*Y?[=:\s]?\d{3}[\.\s]\d{3}", text)
+        return regex.findall(r"X?[=:\s]?\d{3}[\.\s\']{0,2}\d{3}\.?\d?.*Y?[=:\s]?\d{3}[\.\s\']?\d{3}\.?\d?", text)
 
     def extract_coordinates(self) -> list:
         """Extracts the coordinates from a string of text.
@@ -126,26 +128,40 @@ class CoordinateExtractor:
         text = ""
         for page in self.doc:
             text += page.get_text()
+        text = text.replace("\n", " ")
 
-        # get the substring that contains the coordinate information
-        coord_substring = self.get_coordinate_substring(text)
-
-        # if no coordinate information was found, return an empty list
-        if coord_substring is None:
-            return None
-
-        # match the format X[=:\s]123[.\s]456 Y[=:\s]123[.\s]456
+        # try to get the text by including X and Y
         try:
-            coordinate_string = self.get_coordinates_text(coord_substring)[0]
-
+            y_coordinate_string = regex.findall(r"Y[=:\s]{0,2}\d{3}[\.\s\']{0,2}\d{3}\.?\d?", text)
+            x_coordinate_string = regex.findall(r"X[=:\s]{0,2}\d{3}[\.\s\']{0,2}\d{3}\.?\d?", text)
+            coordinate_string = y_coordinate_string[0] + " / " + x_coordinate_string[0]
         except IndexError:  # no coordinates found
-            return None
+            try:
+                # get the substring that contains the coordinate information
+                # match the format X[=:\s]123[.\s]456 Y[=:\s]123[.\s]456
+                coord_substring = self.get_coordinate_substring(text)
+                coordinate_string = self.get_coordinates_text(coord_substring)[0]
+            except IndexError:
+                # if that doesnt work, try to directly detect coordinates in the text
+                try:
+                    coordinate_string = self.get_coordinates_text(text)[0]
+                except IndexError:
+                    return None
 
-        matches = regex.findall(r"\d{3}[\.\s]\d{3}", coordinate_string)
-        lattitude1, lattitued2 = regex.findall(r"\d{3}", matches[0])
-        longitude1, longitude2 = regex.findall(r"\d{3}", matches[1])
+        matches = regex.findall(r"\d{3}[\.\s']{1,2}\d{3}", coordinate_string)
+        if len(matches) >= 2:
+            lattitude1, lattitude2 = regex.findall(r"\d{3}", matches[0])
+            longitude1, longitude2 = regex.findall(r"\d{3}", matches[1])
+        else:
+            try:
+                matches = regex.findall(r"\d{6}", coordinate_string)
+                lattitude1, lattitude2 = matches[0][:3], matches[0][3:]
+                longitude1, longitude2 = matches[1][:3], matches[1][3:]
+            except IndexError:
+                logger.warning(f"Could not extract coordinates from: {coordinate_string}")
+                return None
 
-        latitude = CoordinateEntry(int(lattitude1), int(lattitued2))
-        longitude = CoordinateEntry(int(longitude1), int(longitude2))
+        latitude = CoordinateEntry(lattitude1, lattitude2)
+        longitude = CoordinateEntry(longitude1, longitude2)
 
         return Coordinate(latitude, longitude)
