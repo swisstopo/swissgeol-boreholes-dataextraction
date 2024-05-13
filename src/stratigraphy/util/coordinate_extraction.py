@@ -68,8 +68,10 @@ class LV95Coordinate(Coordinate):
     latitude: CoordinateEntry
 
     def __repr__(self):
-        return f"longitude: 2.{self.longitude.first_entry}.{self.longitude.second_entry}, \
-                latitude: 1.{self.latitude.first_entry}.{self.latitude.second_entry}"
+        return (
+            f"longitude: 2.{self.longitude.first_entry}.{self.longitude.second_entry}, "
+            f"latitude: 1.{self.latitude.first_entry}.{self.latitude.second_entry}"
+        )
 
     def to_json(self):
         return {
@@ -86,8 +88,10 @@ class LV03Coordinate(Coordinate):
     latitude: CoordinateEntry
 
     def __repr__(self):
-        return f"longitude: {self.longitude.first_entry}.{self.longitude.second_entry}, \
-               latitude: {self.latitude.first_entry}.{self.latitude.second_entry}"
+        return (
+            f"longitude: {self.longitude.first_entry}.{self.longitude.second_entry}, "
+            f"latitude: {self.latitude.first_entry}.{self.latitude.second_entry}"
+        )
 
     def to_json(self):
         return {
