@@ -351,10 +351,10 @@ class BoundaryDepthColumn(DepthColumn):
         linearly correlated with their vertical position.
 
         Args:
-            all_words (list[TextLine]): _description_
+            all_words (list[TextLine]): A list of all text lines on the page.
 
         Returns:
-            BoundaryDepthColumn: _description_
+            BoundaryDepthColumn: The current depth column with entries removed until it is valid.
         """
         current = self
         while current:
