@@ -227,6 +227,20 @@ def _are_parallel(line1: Line, line2: Line, angle_threshold: float) -> bool:
     return np.abs(atan(line1.slope) - atan(line2.slope)) < angle_threshold * pi / 180
 
 
+def _qtree_insert(qtree, point, line_index):
+    qtree_point = qtree.find(point)
+    if qtree_point:
+        qtree_point.data.add(line_index)
+    else:
+        qtree.insert(point, data=set(line_index))
+
+
+def _qtree_delete(qtree, point, line_index):
+    qtree_point = qtree.find(point)
+    if qtree_point:
+        qtree_point.data.remove(line_index)
+
+
 def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: float) -> list[Line]:
     """Merge parallel lines that are close to each other.
 
@@ -252,13 +266,12 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
         (width / 2, height / 2), width + 1000, height + 1000
     )  # Add some margin to the width and height to allow for slightly negative values
     for line_index, line in indexed_lines.hashmap.items():
-        qtree.insert((line.start.x, line.start.y), data=line_index)
-        qtree.insert((line.end.x, line.end.y), data=line_index)
+        _qtree_insert(qtree, (line.start.x, line.start.y), line_index)
+        _qtree_insert(qtree, (line.end.x, line.end.y), line_index)
 
     keys_queue = queue.Queue()
     for key in indexed_lines.hashmap:
         keys_queue.put(key)
-    merged_any = False
     while not keys_queue.empty():
         line_index = keys_queue.get()
         if line_index in indexed_lines.hashmap:
@@ -284,26 +297,20 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
                     new_line = _merge_lines(line, merge_candidate)
                     if new_line is not None:
                         indexed_lines.remove(merge_candidate_idx)
+                        _qtree_insert(qtree, (merge_candidate.start.x, merge_candidate.start.y), merge_candidate_idx)
+                        _qtree_insert(qtree, (merge_candidate.end.x, merge_candidate.end.y), merge_candidate_idx)
+
                         indexed_lines.remove(line_index)
+                        _qtree_insert(qtree, (line.start.x, line.start.y), line_index)
+                        _qtree_insert(qtree, (line.end.x, line.end.y), line_index)
+
                         new_key = indexed_lines.add(new_line)
-                        if new_key is not None:
-                            # Ideally, we would also remove the points of the old lines from the quadtree
-                            # and add the points of the new line. However, removing points is not implemented in
-                            # the quads library. Only adding the points of the new lines does not work, as there
-                            # would be duplicate points which is hard to handle in the quadtree. Therefore, we
-                            # start a recursion and build the quadtree from scratch after one full pass. This is
-                            # not the most efficient way to do this. Speedup fully utilizing the quadtree was tested
-                            # and is around 5%. This is not worth the effort of patching an old library.
-                            keys_queue.put(new_key)
-                            merged_any = True
+                        _qtree_insert(qtree, (new_line.start.x, new_line.start.y), new_key)
+                        _qtree_insert(qtree, (new_line.end.x, new_line.end.y), new_key)
+                        keys_queue.put(new_key)
                         break
 
-    if merged_any:  # start recursion to rebuild the tree.
-        return merge_parallel_lines_quadtree(
-            list(indexed_lines.hashmap.values()), tol=tol, angle_threshold=angle_threshold
-        )
-    else:
-        return list(indexed_lines.hashmap.values())
+    return list(indexed_lines.hashmap.values())
 
 
 def get_merge_candidates_from_points(points: list[quads.Point], lines: IndexedLines) -> set:
@@ -320,6 +327,7 @@ def get_merge_candidates_from_points(points: list[quads.Point], lines: IndexedLi
     """
     merge_idx = set()
     for point in points:
-        if point.data in lines.hashmap:
-            merge_idx.add(point.data)
+        for line_index in point.data:
+            if line_index in lines.hashmap:
+                merge_idx.add(line_index)
     return merge_idx
