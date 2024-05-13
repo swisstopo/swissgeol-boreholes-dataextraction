@@ -1,5 +1,6 @@
 """This module contains the CoordinateExtractor class."""
 
+import abc
 import logging
 from dataclasses import dataclass
 
@@ -20,9 +21,66 @@ class CoordinateEntry:
         return f"{self.first_entry}.{self.second_entry}"
 
 
+class Coordinate(metaclass=abc.ABCMeta):
+    """Abstract DepthColumn class."""
+
+    @abc.abstractmethod
+    def __init__(self, latitude: CoordinateEntry, longitude: CoordinateEntry):  # noqa: D107
+        pass
+
+    def __post_init__(self):
+        # y always greater than x by definition. Irrespective of the leading 1 or 2
+        if int(self.latitude.first_entry) < int(self.longitude.first_entry):
+            logger.info("Swapping coordinates.")
+            latitude = self.longitude
+            self.longitude = self.latitude
+            self.latitude = latitude
+
+    @abc.abstractmethod
+    def __repr__(self):  # noqa: D105
+        pass
+
+    @abc.abstractmethod
+    def to_json(self):
+        pass
+
+    @staticmethod
+    def from_json(input: dict):
+        latitude = input["latitude"].split(".")
+        longitude = input["longitude"].split(".")
+        if len(latitude) == 3:
+            return LV95Coordinate(
+                CoordinateEntry(latitude[1], latitude[2]), CoordinateEntry(longitude[1], longitude[2])
+            )
+        elif len(latitude) == 2:
+            return LV03Coordinate(
+                CoordinateEntry(latitude[0], latitude[1]), CoordinateEntry(longitude[0], longitude[1])
+            )
+        else:
+            raise ValueError("Invalid coordinates format")
+
+
 @dataclass
-class Coordinate:
-    """Dataclass to represent a coordinate."""
+class LV95Coordinate(Coordinate):
+    """Dataclass to represent a coordinate in the LV95 format."""
+
+    latitude: CoordinateEntry
+    longitude: CoordinateEntry
+
+    def __repr__(self):
+        return f"Latitude: 2.{self.latitude.first_entry}.{self.latitude.second_entry}, \
+                Longitude: 1.{self.longitude.first_entry}.{self.longitude.second_entry}"
+
+    def to_json(self):
+        return {
+            "latitude": f"2.{self.latitude.first_entry}.{self.latitude.second_entry}",
+            "longitude": f"1.{self.longitude.first_entry}.{self.longitude.second_entry}",
+        }
+
+
+@dataclass
+class LV03Coordinate(Coordinate):
+    """Dataclass to represent a coordinate in the LV03 format."""
 
     latitude: CoordinateEntry
     longitude: CoordinateEntry
@@ -36,12 +94,6 @@ class Coordinate:
             "latitude": f"{self.latitude.first_entry}.{self.latitude.second_entry}",
             "longitude": f"{self.longitude.first_entry}.{self.longitude.second_entry}",
         }
-
-    @staticmethod
-    def from_json(input: dict):
-        latitude = input["latitude"].split(".")
-        longitude = input["longitude"].split(".")
-        return Coordinate(CoordinateEntry(latitude[0], latitude[1]), CoordinateEntry(longitude[0], longitude[1]))
 
 
 class CoordinateExtractor:
@@ -117,7 +169,10 @@ class CoordinateExtractor:
         Returns:
             list: A list of matched coordinates.
         """
-        return regex.findall(r"X?[=:\s]?\d{3}[\.\s\']{0,2}\d{3}\.?\d?.*Y?[=:\s]?\d{3}[\.\s\']?\d{3}\.?\d?", text)
+        return regex.findall(
+            r"[XY]?[=:\s]{0,2}(?:[12][\.\s']{0,2})?\d{3}[\.\s']{0,2}\d{3}\.?\d?.*[XY]?[=:\s]{0,2}(?:[12][\.\s']{0,2})?\d{3}[\.\s']?\d{3}\.?\d?",
+            text,
+        )
 
     def extract_coordinates(self) -> list:
         """Extracts the coordinates from a string of text.
@@ -132,8 +187,8 @@ class CoordinateExtractor:
 
         # try to get the text by including X and Y
         try:
-            y_coordinate_string = regex.findall(r"Y[=:\s]{0,2}\d{3}[\.\s\']{0,2}\d{3}\.?\d?", text)
-            x_coordinate_string = regex.findall(r"X[=:\s]{0,2}\d{3}[\.\s\']{0,2}\d{3}\.?\d?", text)
+            y_coordinate_string = regex.findall(r"Y[=:\s]{0,2}2?\d{3}[\.\s']{0,2}\d{3}\.?\d?", text)
+            x_coordinate_string = regex.findall(r"X[=:\s]{0,2}1?\d{3}[\.\s']{0,2}\d{3}\.?\d?", text)
             coordinate_string = y_coordinate_string[0] + " / " + x_coordinate_string[0]
         except IndexError:  # no coordinates found
             try:
@@ -147,21 +202,39 @@ class CoordinateExtractor:
                     coordinate_string = self.get_coordinates_text(text)[0]
                 except IndexError:
                     return None
-
-        matches = regex.findall(r"\d{3}[\.\s']{1,2}\d{3}", coordinate_string)
+        matches = regex.findall(r"(?:[12][\.\s']{0,2})?\d{3}[\.\s']{1,2}\d{3}", coordinate_string)
         if len(matches) >= 2:
-            lattitude1, lattitude2 = regex.findall(r"\d{3}", matches[0])
-            longitude1, longitude2 = regex.findall(r"\d{3}", matches[1])
+            latitude1, latitude2 = regex.findall(r"(?:2[\.\s']{0,2})?\d{3}", matches[0])
+            longitude1, longitude2 = regex.findall(r"(?:1[\.\s']{0,2})?\d{3}", matches[1])
+            if len(latitude1) > 3 and len(longitude1) > 3:
+                latitude1 = latitude1[-3:]  # drop leading 2 and whatever separator comes after
+                longitude1 = longitude1[-3:]  # drop leading 1 and whatever separator comes after
+                return LV95Coordinate(CoordinateEntry(latitude1, latitude2), CoordinateEntry(longitude1, longitude2))
+
+            else:
+                # in some strange cases we recognize either latitude or longitude with 4 digits
+                # in these case we just truncate to the required 3 digits
+                latitude1 = latitude1[-3:]
+                longitude1 = longitude1[-3:]
+                return LV03Coordinate(CoordinateEntry(latitude1, latitude2), CoordinateEntry(longitude1, longitude2))
+
         else:
             try:
-                matches = regex.findall(r"\d{6}", coordinate_string)
-                lattitude1, lattitude2 = matches[0][:3], matches[0][3:]
-                longitude1, longitude2 = matches[1][:3], matches[1][3:]
+                matches = regex.findall(r"[12]?\d{6}", coordinate_string)
+                if len(matches[0]) == 6:  # we expect matches[0] and matches[1] to have the same length
+                    latitude1, latitude2 = matches[0][:3], matches[0][3:]  # We could add back the 2 and 1 here
+                    longitude1, longitude2 = matches[1][:3], matches[1][3:]
+                    return LV03Coordinate(
+                        CoordinateEntry(latitude1, latitude2), CoordinateEntry(longitude1, longitude2)
+                    )
+
+                if len(matches[0]) == 7:
+                    latitude1, latitude2 = matches[0][1:4], matches[0][4:]
+                    longitude1, longitude2 = matches[1][1:4], matches[1][4:]
+                    return LV95Coordinate(
+                        CoordinateEntry(latitude1, latitude2), CoordinateEntry(longitude1, longitude2)
+                    )
+
             except IndexError:
                 logger.warning(f"Could not extract coordinates from: {coordinate_string}")
                 return None
-
-        latitude = CoordinateEntry(lattitude1, lattitude2)
-        longitude = CoordinateEntry(longitude1, longitude2)
-
-        return Coordinate(latitude, longitude)
