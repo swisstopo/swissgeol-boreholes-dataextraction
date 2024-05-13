@@ -106,10 +106,14 @@ class CoordinateExtractor:
             document (fitz.Document): A PDF document.
         """
         self.doc = document
-        self.coordinate_keys = ["Koordinaten", "Koordinate", "coordinates", "coordinate", "coordonnés"]
+        self.coordinate_keys = ["Koordinaten", "Koordinate", "coordinates", "coordinate", "coordonnés", "coordonnes"]
+        # TODO: extend coordinate keys with other languages
 
     def find_coordinate_key(self, text: str, allowed_operations: int = 3) -> str:
         """Finds the location of a coordinate key in a string of text.
+
+        This is is useful to reduce the text within which the coordinates are searched. If the text is too large
+        false positive (found coordinates that are no coordinates) are more likely.
 
         Args:
             text (str): Arbitrary string of text.
@@ -161,7 +165,26 @@ class CoordinateExtractor:
 
     @staticmethod
     def get_coordinates_text(text: str) -> list:
-        """Matches the coordinates in a string of text.
+        r"""Matches the coordinates in a string of text.
+
+        The full regular expressions query is:
+        "[XY]?[=:\s]{0,2}(?:[12][\.\s']{0,2})?\d{3}[\.\s']{0,2}\d{3}\.?\d?.*[XY]?[=:\s]{0,2}(?:[12][\.\s']{0,2})?\d{3}[\.\s']?\d{3}\.?\d?"
+        Query explanation:
+            - [XY]?: This matches an optional 'X' or 'Y'. The ? makes the preceding character optional.
+            - [=:\s]{0,2}: This matches zero to two occurrences of either an equals sign, a colon, or a whitespace
+              character.
+            - (?:[12][\.\s']{0,2})?: This is a non-capturing group (indicated by ?:), which means it groups the
+              enclosed characters but does not create a backreference. It matches an optional '1' or '2' followed
+              by zero to two occurrences of a period, space, or single quote.
+            - \d{3}: This matches exactly three digits.
+            - [\.\s']{0,2}: This matches zero to two occurrences of a period, space, or single quote.
+            - \d{3}: This again matches exactly three digits.
+            - \.?\d?: This matches an optional period followed by an optional digit.
+            - .*: This matches any number of any characters, except newline.
+
+            The second half of the regular expression repeats the pattern, allowing it to match a pair of coordinates
+            in the format 'X=123.456 Y=123.456', with some flexibility for variations in the format. For example, it
+            can also match 'X:123.456, Y:123.456', 'X 123 456 Y 123 456', and so on.
 
         Args:
             text (str): Arbitrary string of text.
@@ -176,6 +199,11 @@ class CoordinateExtractor:
 
     def extract_coordinates(self) -> list:
         """Extracts the coordinates from a string of text.
+
+        Algorithm description:
+            - Try to find the coordinate key in the text.
+            - If the key is found, extract the substring that contains the coordinates.
+            - If the key is not found, try to directly detect coordinates in the text.
 
         Returns:
             list: A list of coordinates.
@@ -193,7 +221,6 @@ class CoordinateExtractor:
         except IndexError:  # no coordinates found
             try:
                 # get the substring that contains the coordinate information
-                # match the format X[=:\s]123[.\s]456 Y[=:\s]123[.\s]456
                 coord_substring = self.get_coordinate_substring(text)
                 coordinate_string = self.get_coordinates_text(coord_substring)[0]
             except IndexError:
@@ -229,7 +256,7 @@ class CoordinateExtractor:
                     )
 
                 if len(matches[0]) == 7:
-                    longitude1, longitude2 = matches[0][1:4], matches[0][4:]
+                    longitude1, longitude2 = matches[0][1:4], matches[0][4:]  # leading 1/2 are added in LV95Coordinate
                     latitude1, latitude2 = matches[1][1:4], matches[1][4:]
                     return LV95Coordinate(
                         CoordinateEntry(longitude1, longitude2), CoordinateEntry(latitude1, latitude2)
