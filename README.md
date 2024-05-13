@@ -6,9 +6,9 @@ Boreholes Data Extraction is a data extraction pipeline that extracts depth laye
 
 Note that the project is under active development and there is no release to this date, nor has the project reached a maturity such that it could be used.
 
-The current extractions are solely focused on the depths of the upper and lower limits of each layer, and on the material descriptions of the layers.
+The current extractions are focused on the depths of the upper and lower limits of each layer, on the material descriptions of the layers and the coordinates.
 
-The current benchmarking only considers the correctness of the material descriptions. Whether they are linked with the correct depths, is not yet evaluated.
+The coordinate types LV95 as well as the older LV03 are supported. More information about the swiss coordinate systems [here](https://opendata.swiss/de/dataset/bezugsrahmenwechsel-lv03-lv95-koordinatenanderung-lv03-lv95) and [here](https://de.wikipedia.org/wiki/Schweizer_Landeskoordinaten).
 
 Only German and French borehole profiles are supported as of now.
 
@@ -61,10 +61,12 @@ To execute the data extraction pipeline, follow these steps:
 ### Output Structure
 The `predictions.json` file contains the results of a data extraction process from PDF files. Each key in the JSON object is the name of a PDF file, and the value is a list of extracted items in a dictionary like object. The extracted items for now are the material descriptions in their correct order (given by their depths).
 
-Example: predictions.json 
+Example: predictions.json
 ```json
 {
     "685256002-bp.pdf": {  # file name
+        "language": "de",
+        "metadata": {"coordinates": {"longitude": "140.160", "latitude": "100.200"}},
         "page_1": {
             "layers": [  # a layer corresponds to a material layer in the borehole profile
                 {
