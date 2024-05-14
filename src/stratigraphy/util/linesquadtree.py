@@ -103,3 +103,6 @@ class LinesQuadTree:
         qtree_point = self.qtree.find(coordinates)
         if qtree_point:
             qtree_point.data.remove(line_key)
+            # If the data is now empty, then we could theoretically completely remove the point from the quad tree.
+            # However, the current implementation from the quads library does not support removing points. Therefore,
+            # a point with empty data might be left in the quad tree.
