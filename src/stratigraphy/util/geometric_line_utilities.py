@@ -6,10 +6,10 @@ from itertools import combinations
 from math import atan, cos, pi, sin
 
 import numpy as np
-import quads
 from numpy.typing import ArrayLike
 
-from stratigraphy.util.dataclasses import IndexedLines, Line, Point
+from stratigraphy.util.dataclasses import Line, Point
+from stratigraphy.util.linesquadtree import LinesQuadTree
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -227,20 +227,6 @@ def _are_parallel(line1: Line, line2: Line, angle_threshold: float) -> bool:
     return np.abs(atan(line1.slope) - atan(line2.slope)) < angle_threshold * pi / 180
 
 
-def _qtree_insert(qtree, point, line_index):
-    qtree_point = qtree.find(point)
-    if qtree_point:
-        qtree_point.data.add(line_index)
-    else:
-        qtree.insert(point, data=set(line_index))
-
-
-def _qtree_delete(qtree, point, line_index):
-    qtree_point = qtree.find(point)
-    if qtree_point:
-        qtree_point.data.remove(line_index)
-
-
 def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: float) -> list[Line]:
     """Merge parallel lines that are close to each other.
 
@@ -255,79 +241,32 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
     Returns:
         list[Line]: The merged lines.
     """
-    indexed_lines = IndexedLines(lines)
-
     # Create a quadtree
-    width = max([line.end.x for line in indexed_lines.hashmap.values()])
-    max_end_y = max([line.end.y for line in indexed_lines.hashmap.values()])
-    max_start_y = max([line.start.y for line in indexed_lines.hashmap.values()])
+    width = max([line.end.x for line in lines])
+    max_end_y = max([line.end.y for line in lines])
+    max_start_y = max([line.start.y for line in lines])
     height = max(max_end_y, max_start_y)
-    qtree = quads.QuadTree(
-        (width / 2, height / 2), width + 1000, height + 1000
-    )  # Add some margin to the width and height to allow for slightly negative values
-    for line_index, line in indexed_lines.hashmap.items():
-        _qtree_insert(qtree, (line.start.x, line.start.y), line_index)
-        _qtree_insert(qtree, (line.end.x, line.end.y), line_index)
+    lines_quad_tree = LinesQuadTree(width, height)
+
+    for line in lines:
+        lines_quad_tree.add(line)
 
     keys_queue = queue.Queue()
-    for key in indexed_lines.hashmap:
+    for key in lines_quad_tree.hashmap:
         keys_queue.put(key)
     while not keys_queue.empty():
-        line_index = keys_queue.get()
-        if line_index in indexed_lines.hashmap:
-            line = indexed_lines.hashmap[line_index]
-            # Get all points in the quadtree that are close to the line
-            min_x = min(line.start.x, line.end.x)
-            max_x = max(line.start.x, line.end.x)
-            min_y = min(line.start.y, line.end.y)
-            max_y = max(line.start.y, line.end.y)
-            bb = quads.BoundingBox(min_x - tol, min_y - tol, max_x + tol, max_y + tol)
+        line_key = keys_queue.get()
 
-            points = qtree.within_bb(bb)
-            merge_candidates_idx = get_merge_candidates_from_points(points, indexed_lines)
+        for neighbour_key, neighbour_line in lines_quad_tree.neighbouring_lines(line_key, tol):
+            if _are_parallel(line, neighbour_line, angle_threshold=angle_threshold) and _are_close(
+                line, neighbour_line, tol=tol
+            ):
+                new_line = _merge_lines(line, neighbour_line)
+                if new_line is not None:
+                    lines_quad_tree.remove(neighbour_key)
+                    lines_quad_tree.remove(line_key)
+                    new_key = lines_quad_tree.add(new_line)
+                    keys_queue.put(new_key)
+                    break
 
-            for merge_candidate_idx in merge_candidates_idx:
-                if line_index == merge_candidate_idx:  # do not compare line with itself
-                    continue
-                merge_candidate = indexed_lines.hashmap[merge_candidate_idx]
-
-                if _are_parallel(line, merge_candidate, angle_threshold=angle_threshold) and _are_close(
-                    line, merge_candidate, tol=tol
-                ):
-                    new_line = _merge_lines(line, merge_candidate)
-                    if new_line is not None:
-                        indexed_lines.remove(merge_candidate_idx)
-                        _qtree_insert(qtree, (merge_candidate.start.x, merge_candidate.start.y), merge_candidate_idx)
-                        _qtree_insert(qtree, (merge_candidate.end.x, merge_candidate.end.y), merge_candidate_idx)
-
-                        indexed_lines.remove(line_index)
-                        _qtree_insert(qtree, (line.start.x, line.start.y), line_index)
-                        _qtree_insert(qtree, (line.end.x, line.end.y), line_index)
-
-                        new_key = indexed_lines.add(new_line)
-                        _qtree_insert(qtree, (new_line.start.x, new_line.start.y), new_key)
-                        _qtree_insert(qtree, (new_line.end.x, new_line.end.y), new_key)
-                        keys_queue.put(new_key)
-                        break
-
-    return list(indexed_lines.hashmap.values())
-
-
-def get_merge_candidates_from_points(points: list[quads.Point], lines: IndexedLines) -> set:
-    """Obtain the indices of lines that are defined by the points.
-
-    These indices are the merge candidates for the line.
-
-    Args:
-        points (list[quads.Point]): The points to check for lines.
-        lines (IndexedLines): The lines to check for.
-
-    Returns:
-        set: The indices of the lines that are defined by the points.
-    """
-    merge_idx = set()
-    for point in points:
-        for line_index in point.data:
-            if line_index in lines.hashmap:
-                merge_idx.add(line_index)
-    return merge_idx
+    return list(lines_quad_tree.hashmap.values())

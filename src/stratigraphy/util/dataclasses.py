@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import uuid
 from dataclasses import dataclass
 
 import numpy as np
@@ -56,21 +55,3 @@ class Line:
 
     def intercept(self) -> float:
         return self.start.y - self.slope * self.start.x
-
-
-class IndexedLines:
-    """Class to store lines with an index for efficient lookup."""
-
-    def __init__(self, lines: list[Line]):
-        self.hashmap = {}
-        for line in lines:
-            self.hashmap[uuid.uuid4().hex] = line
-
-    def remove(self, line_index: str):
-        if line_index in self.hashmap:
-            del self.hashmap[line_index]
-
-    def add(self, line: Line) -> str:
-        key = uuid.uuid4().hex
-        self.hashmap[key] = line
-        return key
