@@ -227,7 +227,6 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
     lines_quad_tree = LinesQuadTree(width, height)
 
     keys_queue = queue.Queue()
-    print("lines", len(lines))
     for line in lines:
         line_key = lines_quad_tree.add(line)
         keys_queue.put(line_key)

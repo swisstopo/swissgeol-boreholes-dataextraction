@@ -14,12 +14,28 @@ class LinesQuadTree:
     """
 
     def __init__(self, width: float, height: float):
+        """Create a LinesQuadTree instance.
+
+        The LinesQuadTree will contain an actual quad tree with the end points of all lines, as well as a hashmap to
+        keep track of the lines themselves.
+
+        Args:
+            width (float): width of the area that should contain all (endpoints of) all lines.
+            height (float): height of the area that should contain all (endpoints of) all lines.
+        """
         self.qtree = quads.QuadTree(
             (width / 2, height / 2), width + 1000, height + 1000
         )  # Add some margin to the width and height to allow for slightly negative values
         self.hashmap = {}
 
     def remove(self, line_key: str):
+        """Remove a line from the quad tree.
+
+        If no matching line exists in the quad tree, then the method returns immediately without error.
+
+        Args:
+            line_key (str): The key of the line to be removed from the quad tree.
+        """
         if line_key in self.hashmap:
             line = self.hashmap[line_key]
             self._qtree_delete(line.start, line_key)
@@ -27,6 +43,15 @@ class LinesQuadTree:
             del self.hashmap[line_key]
 
     def add(self, line: Line) -> str:
+        """Add a line to the quad tree.
+
+        Args:
+            line (Line): the line to be added to the quad tree.
+
+        Returns:
+            str: the UUID key that is automatically generated for the new line.
+
+        """
         line_key = uuid.uuid4().hex
         self.hashmap[line_key] = line
 
