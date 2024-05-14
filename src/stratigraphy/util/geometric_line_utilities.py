@@ -15,28 +15,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def deduplicate_lines(lines: list[Line]) -> list[Line]:
-    """Deduplicate lines by merging lines that are close to each other.
-
-    Args:
-        lines (list[Line]): The lines to deduplicate.
-
-    Returns:
-        list[Line]: The deduplicated lines.
-    """
-    deduplicated_lines = []
-    for line in lines:
-        if not _check_if_present(deduplicated_lines, line):
-            deduplicated_lines.append(line)
-    return deduplicated_lines
-
-
-def _check_if_present(lines: list[Line], line: Line) -> bool:
-    return any(
-        value.start.distance_to(line.start) < 0.1 and value.end.distance_to(line.end) < 0.1 for value in lines
-    )  # we are on a pixel grid and 0.1 is a reasonable threshold
-
-
 def drop_vertical_lines(lines: list[Line], threshold: float = 0.1) -> ArrayLike:
     """Given a list of lines, remove the lines that are close to vertical.
 
@@ -248,25 +226,28 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
     height = max(max_end_y, max_start_y)
     lines_quad_tree = LinesQuadTree(width, height)
 
-    for line in lines:
-        lines_quad_tree.add(line)
-
     keys_queue = queue.Queue()
-    for key in lines_quad_tree.hashmap:
-        keys_queue.put(key)
+    print("lines", len(lines))
+    for line in lines:
+        line_key = lines_quad_tree.add(line)
+        keys_queue.put(line_key)
+
     while not keys_queue.empty():
         line_key = keys_queue.get()
 
-        for neighbour_key, neighbour_line in lines_quad_tree.neighbouring_lines(line_key, tol):
-            if _are_parallel(line, neighbour_line, angle_threshold=angle_threshold) and _are_close(
-                line, neighbour_line, tol=tol
-            ):
-                new_line = _merge_lines(line, neighbour_line)
-                if new_line is not None:
-                    lines_quad_tree.remove(neighbour_key)
-                    lines_quad_tree.remove(line_key)
-                    new_key = lines_quad_tree.add(new_line)
-                    keys_queue.put(new_key)
-                    break
+        if line_key in lines_quad_tree.hashmap:
+            line = lines_quad_tree.hashmap[line_key]
+
+            for neighbour_key, neighbour_line in lines_quad_tree.neighbouring_lines(line_key, tol).items():
+                if _are_parallel(line, neighbour_line, angle_threshold=angle_threshold) and _are_close(
+                    line, neighbour_line, tol=tol
+                ):
+                    new_line = _merge_lines(line, neighbour_line)
+                    if new_line is not None:
+                        lines_quad_tree.remove(neighbour_key)
+                        lines_quad_tree.remove(line_key)
+                        new_key = lines_quad_tree.add(new_line)
+                        keys_queue.put(new_key)
+                        break
 
     return list(lines_quad_tree.hashmap.values())

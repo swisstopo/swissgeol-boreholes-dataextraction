@@ -22,19 +22,21 @@ class LinesQuadTree:
     def remove(self, line_key: str):
         if line_key in self.hashmap:
             line = self.hashmap[line_key]
-            self._qtree_delete((line.start.x, line.start.y), line_key)
-            self._qtree_delete((line.end.x, line.end.y), line_key)
+            self._qtree_delete(line.start, line_key)
+            self._qtree_delete(line.end, line_key)
             del self.hashmap[line_key]
 
     def add(self, line: Line) -> str:
         line_key = uuid.uuid4().hex
         self.hashmap[line_key] = line
 
-        self._qtree_insert((line.start.x, line.start.y), line_key)
-        self._qtree_insert((line.end.x, line.end.y), line_key)
+        # We round the coordinates, as we don't require infinite precision anyway, and like this we avoid excessive
+        # recursion within the quad tree in the case of floating point values that are very close to each other.
+        self._qtree_insert(line.start, line_key)
+        self._qtree_insert(line.end, line_key)
         return line_key
 
-    def neighbouring_lines(self, line_key: str, tol: float) -> list[(str, Line)]:
+    def neighbouring_lines(self, line_key: str, tol: float) -> dict[str, Line]:
         """Efficiently search for all the lines that have a start or end point close to the given line.
 
         Args:
@@ -43,7 +45,7 @@ class LinesQuadTree:
                          from the bounding box formed by the start and end points of the given line.
 
         Returns:
-            list[(str, Line)]: The lines that are close to the given line, returned as a tuples (line_key, line).
+            dict[str, Line]: The lines that are close to the given line, returned as a dict of (line_key, line) pairs.
         """
         if line_key not in self.hashmap:
             return []
@@ -56,21 +58,23 @@ class LinesQuadTree:
         bb = quads.BoundingBox(min_x - tol, min_y - tol, max_x + tol, max_y + tol)
         points = self.qtree.within_bb(bb)
 
-        neighbouring_lines = []
+        neighbouring_lines = {}
         for point in points:
             for neighbour_key in point.data:
                 if neighbour_key != line_key and neighbour_key in self.hashmap:
-                    neighbouring_lines.append((neighbour_key, self.hashmap[neighbour_key]))
+                    neighbouring_lines[neighbour_key] = self.hashmap[neighbour_key]
         return neighbouring_lines
 
-    def _qtree_insert(self, point: Point | tuple, line_key: str):
-        qtree_point = self.qtree.find(point)
+    def _qtree_insert(self, point: Point, line_key: str):
+        coordinates = (round(point.x), round(point.y))
+        qtree_point = self.qtree.find(coordinates)
         if qtree_point:
             qtree_point.data.add(line_key)
         else:
-            self.qtree.insert(point, data={line_key})
+            self.qtree.insert(coordinates, data={line_key})
 
-    def _qtree_delete(self, point: Point | tuple, line_key: str):
-        qtree_point = self.qtree.find(point)
+    def _qtree_delete(self, point: Point, line_key: str):
+        coordinates = (round(point.x), round(point.y))
+        qtree_point = self.qtree.find(coordinates)
         if qtree_point:
             qtree_point.data.remove(line_key)
