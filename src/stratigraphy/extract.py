@@ -75,10 +75,12 @@ def process_page(page: fitz.Page, geometric_lines, language: str, **params: dict
         for entry in find_depth_columns.depth_column_entries(words, include_splits=False)
         if entry.rect not in used_entry_rects
     ]
-
     depth_columns: list[DepthColumn] = layer_depth_columns
-    depth_columns.extend(find_depth_columns.find_depth_columns(depth_column_entries, words))
-
+    depth_columns.extend(
+        find_depth_columns.find_depth_columns(
+            depth_column_entries, words, depth_column_params=params["depth_column_params"]
+        )
+    )
     pairs = []
     for depth_column in depth_columns:
         material_description_rect = find_material_description_column(

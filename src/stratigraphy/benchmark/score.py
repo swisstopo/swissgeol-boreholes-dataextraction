@@ -113,6 +113,9 @@ def get_scores(
         overall_precision = 0
         overall_recall = 0
 
+    if overall_depth_interval_accuracy is None:
+        overall_depth_interval_accuracy = 0
+
     if return_document_level_metrics:
         return {
             "F1": f1(overall_precision, overall_recall),

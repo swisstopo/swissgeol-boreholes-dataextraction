@@ -63,7 +63,7 @@ class AnnotatedInterval:
 class BoundaryInterval(Interval):
     """Class for boundary intervals.
 
-    TODO: Write description. It is not entirely clear to me (@redur) what this class does.
+    Boundary intervals are intervals that are defined by a start and an end point.
     """
 
     def __init__(self, start: DepthColumnEntry | None, end: DepthColumnEntry | None):
@@ -149,7 +149,8 @@ class BoundaryInterval(Interval):
 class LayerInterval(Interval):
     """Class for layer intervals.
 
-    TODO: Write description. It is not entirely clear to me (@redur) what this class does.
+    A layer interval is an interval whose start and end-points are defined in a single entry.
+    E.g. 1.00 - 2.30m.
     """
 
     def __init__(self, layer_depth_column_entry: LayerDepthColumnEntry):

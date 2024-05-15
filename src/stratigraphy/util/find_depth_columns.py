@@ -24,22 +24,21 @@ def depth_column_entries(all_words: list[TextLine], include_splits: bool) -> lis
 
     def value_as_float(string_value: str) -> float:  # noqa: D103
         # OCR sometimes tends to miss the decimal comma
-        parsed_text = re.sub(r"^([0-9]+)([0-9]{2})", r"\1.\2", string_value)
+        parsed_text = re.sub(r"^-?([0-9]+)([0-9]{2})", r"\1.\2", string_value)
         return abs(float(parsed_text))
 
     entries = []
     for line in sorted(all_words, key=lambda line: line.rect.y0):
         try:
             input_string = line.text.strip().replace(",", ".")
-            regex = re.compile(r"^([0-9]+(\.[0-9]+)?)[müMN\\.]*$")
+            regex = re.compile(r"^-?([0-9]+(\.[0-9]+)?)[müMN\\.]*$")
             match = regex.match(input_string)
-
             if match:
                 value = value_as_float(match.group(1))
                 entries.append(DepthColumnEntry(line.rect, value))
             elif include_splits:
                 # support for e.g. "1.10-1.60m" extracted as a single word
-                regex2 = re.compile(r"^([0-9]+(\.[0-9]+)?)[müMN\\.]*\W+([0-9]+(\.[0-9]+)?)[müMN\\.]*$")
+                regex2 = re.compile(r"^-?([0-9]+(\.[0-9]+)?)[müMN\\.]*\W+([0-9]+(\.[0-9]+)?)[müMN\\.]*$")
                 match2 = regex2.match(input_string)
 
                 if match2:
@@ -125,15 +124,18 @@ def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[Te
     ]
 
 
-def find_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextLine]) -> list[BoundaryDepthColumn]:
-    """TODO: Add description here. It is not entirely clear to me (@redur) what this function does.
+def find_depth_columns(
+    entries: list[DepthColumnEntry], all_words: list[TextLine], depth_column_params: dict
+) -> list[BoundaryDepthColumn]:
+    """Construct all possible BoundaryDepthColumn objects from the given DepthColumnEntry objects.
 
     Args:
-        entries (list[DepthColumnEntry]): _description_
-        all_words (list[TextLine]): _description_
+        entries (list[DepthColumnEntry]): All found depth column entries in the page.
+        all_words (list[TextLine]): All words in the page.
+        depth_column_params (dict): Parameters for the BoundaryDepthColumn objects.
 
     Returns:
-        list[BoundaryDepthColumn]: _description_
+        list[BoundaryDepthColumn]: Found BoundaryDepthColumn objects.
     """
     numeric_columns: list[BoundaryDepthColumn] = []
     for entry in entries:
@@ -151,7 +153,7 @@ def find_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextLine
 
         numeric_columns.extend(additional_columns)
         if not has_match:
-            numeric_columns.append(BoundaryDepthColumn([entry]))
+            numeric_columns.append(BoundaryDepthColumn(**depth_column_params, entries=[entry]))
 
         # only keep columns that are not contained in a different column
         numeric_columns = [
@@ -159,7 +161,6 @@ def find_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextLine
             for column in numeric_columns
             if all(not other.strictly_contains(column) for other in numeric_columns)
         ]
-
     numeric_columns = [
         column.reduce_until_valid(all_words)
         for numeric_column in numeric_columns
