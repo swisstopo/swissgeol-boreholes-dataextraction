@@ -9,6 +9,8 @@ import regex
 
 logger = logging.getLogger(__name__)
 
+COORDINATE_ENTRY_REGEX = "(?:[12][\.\s']{0,2})?\d{3}[\.\s']{0,2}\d{3}\.?\d?"
+
 
 @dataclass
 class CoordinateEntry:
@@ -210,7 +212,7 @@ class CoordinateExtractor:
             list: A list of matched coordinates.
         """
         return regex.findall(
-            r"[XY]?[=:\s]{0,2}(?:[12][\.\s']{0,2})?\d{3}[\.\s']{0,2}\d{3}\.?\d?.*[XY]?[=:\s]{0,2}(?:[12][\.\s']{0,2})?\d{3}[\.\s']?\d{3}\.?\d?",
+            r"[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX + ".*[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX,
             text,
         )
 
@@ -232,8 +234,8 @@ class CoordinateExtractor:
 
         # try to get the text by including X and Y
         try:
-            y_coordinate_string = regex.findall(r"Y[=:\s]{0,2}2?\d{3}[\.\s']{0,2}\d{3}\.?\d?", text)
-            x_coordinate_string = regex.findall(r"X[=:\s]{0,2}1?\d{3}[\.\s']{0,2}\d{3}\.?\d?", text)
+            y_coordinate_string = regex.findall(r"Y[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX, text)
+            x_coordinate_string = regex.findall(r"X[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX, text)
             coordinate_string = y_coordinate_string[0] + " / " + x_coordinate_string[0]
         except IndexError:  # no coordinates found
             try:
@@ -245,6 +247,7 @@ class CoordinateExtractor:
                 try:
                     coordinate_string = self.get_coordinates_text(text)[0]
                 except IndexError:
+                    logger.info("No coordinates found in this borehole profile.")
                     return None
         matches = regex.findall(r"(?:[12][\.\s']{0,2})?\d{3}[\.\s']{1,2}\d{3}", coordinate_string)
         if len(matches) >= 2:
