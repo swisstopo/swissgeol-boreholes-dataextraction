@@ -66,7 +66,7 @@ Example: predictions.json
 {
     "685256002-bp.pdf": {  # file name
         "language": "de",
-        "metadata": {"coordinates": {"longitude": "140.160", "latitude": "100.200"}},
+        "metadata": {"coordinates": {"E": 117146, "N": 100388}},
         "page_1": {
             "layers": [  # a layer corresponds to a material layer in the borehole profile
                 {
