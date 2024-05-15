@@ -20,6 +20,13 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class BoreholeMetaData:
+    """Class to represent metadata of a borehole profile."""
+
+    coordinates: Coordinate | None
+
+
+@dataclass
 class LayerPrediction:
     """A class to represent predictions for a single layer."""
 
@@ -48,12 +55,13 @@ class PagePredictions:
 class FilePredictions:
     """A class to represent predictions for a single file."""
 
-    def __init__(self, pages: list[PagePredictions], file_name: str, language: str, metadata: dict = None):
+    def __init__(self, pages: list[PagePredictions], file_name: str, language: str, metadata: BoreholeMetaData = None):
         self.pages = pages
         self.file_name = file_name
         self.language = language
         self.layers = sum([page.layers for page in self.pages], [])
         self.metadata = metadata
+        self.metadata_is_correct: dict = {}
 
     @staticmethod
     def create_from_json(predictions_for_file: dict, file_name: str):
@@ -69,13 +77,13 @@ class FilePredictions:
                 file_language = page_predictions
                 continue
             elif page_number == "metadata":
-                file_metadata = {}
                 metadata = page_predictions
                 if "coordinates" in metadata:
                     if metadata["coordinates"] is not None:
-                        file_metadata["coordinates"] = Coordinate.from_json(metadata["coordinates"])
+                        coordinates = Coordinate.from_json(metadata["coordinates"])
                     else:
-                        file_metadata["coordinates"] = None
+                        coordinates = None
+                file_metadata = BoreholeMetaData(coordinates=coordinates)
                 # TODO: Add additional metadata here.
                 continue
             page_layers = page_predictions["layers"]
@@ -258,7 +266,11 @@ class FilePredictions:
             ground_truth = {self.file_name: {"layers": layers}}
         return ground_truth
 
-    def evaluate(self, ground_truth_layers: list):
+    def evaluate(self, ground_truth: dict):
+        self.evaluate_layers(ground_truth["layers"])
+        self.evaluate_metadata(ground_truth.get("metadata"))
+
+    def evaluate_layers(self, ground_truth_layers: list):
         """Evaluate all layers of the predictions against the ground truth.
 
         Args:
@@ -273,6 +285,28 @@ class FilePredictions:
             else:
                 layer.material_is_correct = False
                 layer.depth_interval_is_correct = None
+
+    def evaluate_metadata(self, metadata_ground_truth: dict):
+        """Evaluate the metadata of the file against the ground truth.
+
+        Note: For now coordinates is the only metadata extracted and evaluated for.
+
+        Args:
+            metadata_ground_truth (dict): The ground truth for the file.
+        """
+        print(self.metadata.coordinates)
+        if self.metadata.coordinates is None:
+            self.metadata_is_correct["coordinates"] = False
+        elif metadata_ground_truth is None or metadata_ground_truth.get("coordinates") is None:
+            self.metadata_is_correct["coordinates"] = None
+        elif (int(self.metadata.coordinates.east.coordinate_value) == int(metadata_ground_truth["E"])) and (
+            int(self.metadata.coordinates.north.coordinate_value) == int(metadata_ground_truth["N"])
+        ):
+            self.metadata_is_correct["coordinates"] = True
+            print(metadata_ground_truth["coordinates"])
+        else:
+            self.metadata_is_correct["coordinates"] = False
+            print(metadata_ground_truth["coordinates"])
 
     def _find_matching_layer(self, layer: LayerPrediction) -> tuple[dict, bool] | tuple[None, None]:
         """Find the matching layer in the ground truth.

@@ -31,7 +31,7 @@ class GroundTruth:
 
     def for_file(self, file_name: str) -> list:
         if file_name in self.ground_truth:
-            return self.ground_truth[file_name]["layers"]
+            return self.ground_truth[file_name]
         else:
             logger.warning(f"No ground truth data found for {file_name}.")
             return []

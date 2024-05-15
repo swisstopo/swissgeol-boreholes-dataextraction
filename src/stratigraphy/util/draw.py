@@ -48,7 +48,7 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                 layers = file_prediction.pages[page_index].layers
                 depths_materials_column_pairs = file_prediction.pages[page_index].depths_materials_columns_pairs
                 if page_index == 0:
-                    draw_coordinates(page, file_prediction.metadata["coordinates"])
+                    draw_coordinates(page, file_prediction.metadata.coordinates)
                 draw_depth_columns_and_material_rect(page, depths_materials_column_pairs)
                 draw_material_descriptions(page, layers)
 
