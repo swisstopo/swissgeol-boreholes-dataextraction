@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 import fitz
 import Levenshtein
 
+from stratigraphy.util.coordinate_extraction import Coordinate
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry
 from stratigraphy.util.interval import AnnotatedInterval, BoundaryInterval
 from stratigraphy.util.line import TextLine, TextWord
@@ -68,7 +69,11 @@ class FilePredictions:
                 file_language = page_predictions
                 continue
             elif page_number == "metadata":
-                file_metadata = page_predictions
+                file_metadata = {}
+                metadata = page_predictions
+                if "coordinates" in metadata:
+                    file_metadata["coordinates"] = Coordinate.from_json(metadata["coordinates"])
+                # TODO: Add additional metadata here.
                 continue
             page_layers = page_predictions["layers"]
             layer_predictions = []
