@@ -72,7 +72,10 @@ class FilePredictions:
                 file_metadata = {}
                 metadata = page_predictions
                 if "coordinates" in metadata:
-                    file_metadata["coordinates"] = Coordinate.from_json(metadata["coordinates"])
+                    if metadata["coordinates"] is not None:
+                        file_metadata["coordinates"] = Coordinate.from_json(metadata["coordinates"])
+                    else:
+                        file_metadata["coordinates"] = None
                 # TODO: Add additional metadata here.
                 continue
             page_layers = page_predictions["layers"]

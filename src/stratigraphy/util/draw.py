@@ -70,7 +70,7 @@ def draw_coordinates(page: fitz.Page, coordinates: list[float]) -> None:
         page (fitz.Page): The page to draw on.
         coordinates (list[float]): List of coordinates to draw.
     """
-    page.add_freetext_annot(fitz.Rect([5, 5, 100, 250]), f"Coordinates: {coordinates}")
+    page.add_freetext_annot(fitz.Rect([5, 5, 100, 250]), f"Coordinates:\n{coordinates}")
 
 
 def draw_material_descriptions(page: fitz.Page, layers: LayerPrediction) -> None:

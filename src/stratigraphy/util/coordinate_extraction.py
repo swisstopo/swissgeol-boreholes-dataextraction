@@ -21,6 +21,8 @@ class CoordinateEntry:
     def __post_init__(self):
         if self.coordinate_value is not None:
             string_representation = str(self.coordinate_value)
+            if len(string_representation) < 6:  # leading zeros are lost in the int conversion
+                string_representation = "0" * (6 - len(string_representation)) + string_representation
             self.first_entry = string_representation[:3]
             self.second_entry = string_representation[3:]
 
@@ -61,12 +63,11 @@ class Coordinate(metaclass=abc.ABCMeta):
     def from_json(input: dict):
         east = input["E"]
         north = input["N"]
-        print(f"{east=} {north=}")
-        if east > 2e6 and east > 1e7:
+        if east > 2e6 and east < 1e7:
             return LV95Coordinate(
                 CoordinateEntry(coordinate_value=east - 2e6), CoordinateEntry(coordinate_value=north - 1e6)
             )
-        elif east > 1e5 and east < 1e6:
+        elif east < 1e6:
             return LV03Coordinate(CoordinateEntry(coordinate_value=east), CoordinateEntry(coordinate_value=north))
         else:
             raise ValueError("Invalid coordinates format")
@@ -87,8 +88,8 @@ class LV95Coordinate(Coordinate):
 
     def to_json(self):
         return {
-            "E": self.east.coordinate_value + 2e7,
-            "N": self.north.coordinate_value + 1e7,
+            "E": self.east.coordinate_value + 2e6,
+            "N": self.north.coordinate_value + 1e6,
         }
 
 
