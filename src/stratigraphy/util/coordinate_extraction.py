@@ -33,7 +33,7 @@ class CoordinateEntry:
             raise ValueError("Either coordinate_value or first_entry and second_entry must be provided.")
 
     def __repr__(self):
-        return f"{self.first_entry}.{self.second_entry}"
+        return f"{self.first_entry}'{self.second_entry}"
 
 
 @dataclass

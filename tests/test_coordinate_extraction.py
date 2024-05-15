@@ -14,35 +14,43 @@ from stratigraphy.util.coordinate_extraction import (
 
 def test_reprLV95():  # noqa: D103
     coord = LV95Coordinate(CoordinateEntry("789", "456"), CoordinateEntry("123", "012"))
-    assert repr(coord) == "longitude: 2.789.456, latitude: 1.123.012"
+    assert repr(coord) == "E: 2'789'456, N: 1'123'012"
 
 
 def test_to_jsonLV95():  # noqa: D103
     coord = LV95Coordinate(CoordinateEntry("789", "456"), CoordinateEntry("123", "012"))
     assert coord.to_json() == {
-        "longitude": "2.789.456",
-        "latitude": "1.123.012",
+        "E": 2789456,
+        "N": 1123012,
     }
 
 
+def test_CoordinateEntry():  # noqa: D103
+    entry1 = CoordinateEntry("089", "456")
+    entry2 = CoordinateEntry(coordinate_value=89456)
+    assert entry2.first_entry == "089"
+    assert entry1.first_entry == entry2.first_entry
+    assert entry1.coordinate_value == entry2.coordinate_value
+
+
 def test_swap_coordinates():  # noqa: D103
-    latitude = CoordinateEntry("789", "456")
-    longitude = CoordinateEntry("123", "012")
-    coord = LV95Coordinate(latitude=latitude, longitude=longitude)
-    assert coord.longitude == latitude
-    assert coord.latitude == longitude
+    north = CoordinateEntry("789", "456")
+    east = CoordinateEntry("123", "012")
+    coord = LV95Coordinate(north=north, east=east)
+    assert coord.east == north
+    assert coord.north == east
 
 
 def test_reprLV03():  # noqa: D103
     coord = LV03Coordinate(CoordinateEntry("789", "456"), CoordinateEntry("123", "012"))
-    assert repr(coord) == "longitude: 789.456, latitude: 123.012"
+    assert repr(coord) == "E: 789'456, N: 123'012"
 
 
 def test_to_jsonLV03():  # noqa: D103
     coord = LV03Coordinate(CoordinateEntry("789", "456"), CoordinateEntry("123", "012"))
     assert coord.to_json() == {
-        "longitude": "789.456",
-        "latitude": "123.012",
+        "E": 789456,
+        "N": 123012,
     }
 
 
@@ -62,8 +70,8 @@ def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
     coordinates = extractor.extract_coordinates()
     # Check if the returned value is a list
     assert isinstance(coordinates, Coordinate)
-    assert repr(coordinates.longitude) == "615.790"
-    assert repr(coordinates.latitude) == "157.500"
+    assert repr(coordinates.east) == "615'790"
+    assert repr(coordinates.north) == "157'500"
 
 
 def test_CoordinateExtractor_find_coordinate_key():  # noqa: D103
