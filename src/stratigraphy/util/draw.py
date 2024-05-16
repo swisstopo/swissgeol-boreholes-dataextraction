@@ -7,6 +7,7 @@ from pathlib import Path
 import fitz
 from dotenv import load_dotenv
 
+from stratigraphy.util.coordinate_extraction import Coordinate
 from stratigraphy.util.interval import BoundaryInterval
 from stratigraphy.util.predictions import FilePredictions, LayerPrediction
 from stratigraphy.util.textblock import TextBlock
@@ -48,7 +49,9 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                 layers = file_prediction.pages[page_index].layers
                 depths_materials_column_pairs = file_prediction.pages[page_index].depths_materials_columns_pairs
                 if page_index == 0:
-                    draw_coordinates(page, file_prediction.metadata.coordinates)
+                    draw_coordinates(
+                        page, file_prediction.metadata.coordinates, file_prediction.metadata_is_correct["coordinates"]
+                    )
                 draw_depth_columns_and_material_rect(page, depths_materials_column_pairs)
                 draw_material_descriptions(page, layers)
 
@@ -63,14 +66,24 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                         logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
 
 
-def draw_coordinates(page: fitz.Page, coordinates: list[float]) -> None:
+def draw_coordinates(page: fitz.Page, coordinates: Coordinate, coordinates_is_correct: bool) -> None:
     """Draw the coordinates on a pdf page.
 
     Args:
         page (fitz.Page): The page to draw on.
-        coordinates (list[float]): List of coordinates to draw.
+        coordinates (Coordinate): The coordinate object to draw.
+        coordinates_is_correct (bool): Whether the coordinates are correct.
     """
-    page.add_freetext_annot(fitz.Rect([5, 5, 100, 250]), f"Coordinates:\n{coordinates}")
+    color = "green" if coordinates_is_correct else "red"
+    coordinate_rect = fitz.Rect([5, 5, 100, 45])
+    page.add_freetext_annot(coordinate_rect, f"Coordinates:\n{coordinates}")
+    page.draw_line(
+        coordinate_rect.top_left * page.derotation_matrix,
+        coordinate_rect.bottom_left * page.derotation_matrix,
+        color=fitz.utils.getColor(color),
+        width=6,
+        stroke_opacity=0.5,
+    )
 
 
 def draw_material_descriptions(page: fitz.Page, layers: LayerPrediction) -> None:

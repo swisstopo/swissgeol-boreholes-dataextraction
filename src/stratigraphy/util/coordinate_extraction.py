@@ -16,26 +16,18 @@ COORDINATE_ENTRY_REGEX = "(?:[12][\.\s']{0,2})?\d{3}[\.\s']{0,2}\d{3}\.?\d?"
 class CoordinateEntry:
     """Dataclass to represent a coordinate entry."""
 
-    first_entry: str | None = None
-    second_entry: str | None = None
     coordinate_value: int | None = None
 
-    def __post_init__(self):
-        if self.coordinate_value is not None:
-            string_representation = str(self.coordinate_value)
-            if len(string_representation) < 6:  # leading zeros are lost in the int conversion
-                string_representation = "0" * (6 - len(string_representation)) + string_representation
-            self.first_entry = string_representation[:3]
-            self.second_entry = string_representation[3:]
-
-        elif self.first_entry is not None and self.second_entry is not None:
-            joint_coordinate = self.first_entry + self.second_entry
-            self.coordinate_value = int(joint_coordinate)
-        else:
-            raise ValueError("Either coordinate_value or first_entry and second_entry must be provided.")
+    @staticmethod
+    def create_from_string(first_entry: str, second_entry: str = None):
+        coordinate_value = int(first_entry) if second_entry is None else int(first_entry + second_entry)
+        return CoordinateEntry(coordinate_value)
 
     def __repr__(self):
-        return f"{self.first_entry}'{self.second_entry}"
+        if self.coordinate_value > 1e5:
+            return f"{self.coordinate_value:,}".replace(",", "'")
+        else:  # Fix for LV03 coordinates with leading 0
+            return f"{self.coordinate_value:07,}".replace(",", "'")
 
 
 @dataclass
@@ -66,9 +58,7 @@ class Coordinate(metaclass=abc.ABCMeta):
         east = input["E"]
         north = input["N"]
         if east > 2e6 and east < 1e7:
-            return LV95Coordinate(
-                CoordinateEntry(coordinate_value=east - 2e6), CoordinateEntry(coordinate_value=north - 1e6)
-            )
+            return LV95Coordinate(CoordinateEntry(coordinate_value=east), CoordinateEntry(coordinate_value=north))
         elif east < 1e6:
             return LV03Coordinate(CoordinateEntry(coordinate_value=east), CoordinateEntry(coordinate_value=north))
         else:
@@ -83,15 +73,12 @@ class LV95Coordinate(Coordinate):
     north: CoordinateEntry
 
     def __repr__(self):
-        return (
-            f"E: 2'{self.east.first_entry}'{self.east.second_entry}, "
-            f"N: 1'{self.north.first_entry}'{self.north.second_entry}"
-        )
+        return f"E: 2'{self.east}, " f"N: 1'{self.north}"
 
     def to_json(self):
         return {
-            "E": self.east.coordinate_value + 2e6,
-            "N": self.north.coordinate_value + 1e6,
+            "E": self.east.coordinate_value,
+            "N": self.north.coordinate_value,
         }
 
 
@@ -103,10 +90,7 @@ class LV03Coordinate(Coordinate):
     north: CoordinateEntry
 
     def __repr__(self):
-        return (
-            f"E: {self.east.first_entry}'{self.east.second_entry}, "
-            f"N: {self.north.first_entry}'{self.north.second_entry}"
-        )
+        return f"E: {self.east}, " f"N: {self.north}"
 
     def to_json(self):
         return {
@@ -254,29 +238,38 @@ class CoordinateExtractor:
             east1, east2 = regex.findall(r"(?:2[\.\s']{0,2})?\d{3}", matches[0])
             north1, north2 = regex.findall(r"(?:1[\.\s']{0,2})?\d{3}", matches[1])
             if len(east1) > 3 and len(north1) > 3:
-                east1 = east1[-3:]  # drop leading 2 and whatever separator comes after
-                north1 = north1[-3:]  # drop leading 1 and whatever separator comes after
-                return LV95Coordinate(CoordinateEntry(east1, east2), CoordinateEntry(north1, north2))
+                # remove all characters that are not number from east1 and north1
+                # this is necessary because in some cases there is a separator after the
+                # leading 2 or 1.
+                east1 = regex.sub(r"\D", "", east1)
+                north1 = regex.sub(r"\D", "", north1)
+                return LV95Coordinate(
+                    CoordinateEntry.create_from_string(east1, east2),
+                    CoordinateEntry.create_from_string(north1, north2),
+                )
 
             else:
                 # in some strange cases we recognize either east or north with 4 digits
                 # in these case we just truncate to the required 3 digits
                 east1 = east1[-3:]
                 north1 = north1[-3:]
-                return LV03Coordinate(CoordinateEntry(east1, east2), CoordinateEntry(north1, north2))
+                return LV03Coordinate(
+                    CoordinateEntry.create_from_string(east1, east2),
+                    CoordinateEntry.create_from_string(north1, north2),
+                )
 
         else:
             try:
                 matches = regex.findall(r"[12]?\d{6}", coordinate_string)
                 if len(matches[0]) == 6:  # we expect matches[0] and matches[1] to have the same length
-                    east1, east2 = matches[0][:3], matches[0][3:]  # We could add back the 2 and 1 here
-                    north1, north2 = matches[1][:3], matches[1][3:]
-                    return LV03Coordinate(CoordinateEntry(east1, east2), CoordinateEntry(north1, north2))
+                    return LV03Coordinate(
+                        CoordinateEntry.create_from_string(matches[0]), CoordinateEntry.create_from_string(matches[1])
+                    )
 
                 if len(matches[0]) == 7:
-                    east1, east2 = matches[0][1:4], matches[0][4:]  # leading 1/2 are added in LV95Coordinate
-                    north1, north2 = matches[1][1:4], matches[1][4:]
-                    return LV95Coordinate(CoordinateEntry(east1, east2), CoordinateEntry(north1, north2))
+                    return LV95Coordinate(
+                        CoordinateEntry.create_from_string(matches[0]), CoordinateEntry.create_from_string(matches[1])
+                    )
 
             except IndexError:
                 logger.warning(f"Could not extract coordinates from: {coordinate_string}")

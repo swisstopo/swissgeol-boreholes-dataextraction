@@ -294,19 +294,34 @@ class FilePredictions:
         Args:
             metadata_ground_truth (dict): The ground truth for the file.
         """
-        print(self.metadata.coordinates)
         if self.metadata.coordinates is None:
             self.metadata_is_correct["coordinates"] = False
         elif metadata_ground_truth is None or metadata_ground_truth.get("coordinates") is None:
             self.metadata_is_correct["coordinates"] = None
-        elif (int(self.metadata.coordinates.east.coordinate_value) == int(metadata_ground_truth["E"])) and (
-            int(self.metadata.coordinates.north.coordinate_value) == int(metadata_ground_truth["N"])
-        ):
-            self.metadata_is_correct["coordinates"] = True
-            print(metadata_ground_truth["coordinates"])
+
         else:
-            self.metadata_is_correct["coordinates"] = False
-            print(metadata_ground_truth["coordinates"])
+            if (
+                self.metadata.coordinates.east.coordinate_value > 2e6
+                and metadata_ground_truth["coordinates"]["E"] < 2e6
+            ):
+                ground_truth_east = int(metadata_ground_truth["coordinates"]["E"]) + 2e6
+                ground_truth_west = int(metadata_ground_truth["coordinates"]["N"]) + 1e6
+            elif (
+                self.metadata.coordinates.east.coordinate_value < 2e6
+                and metadata_ground_truth["coordinates"]["E"] > 2e6
+            ):
+                ground_truth_east = int(metadata_ground_truth["coordinates"]["E"]) - 2e6
+                ground_truth_west = int(metadata_ground_truth["coordinates"]["N"]) - 1e6
+            else:
+                ground_truth_east = int(metadata_ground_truth["coordinates"]["E"])
+                ground_truth_west = int(metadata_ground_truth["coordinates"]["N"])
+
+            if (int(self.metadata.coordinates.east.coordinate_value) == ground_truth_east) and (
+                int(self.metadata.coordinates.north.coordinate_value) == ground_truth_west
+            ):
+                self.metadata_is_correct["coordinates"] = True
+            else:
+                self.metadata_is_correct["coordinates"] = False
 
     def _find_matching_layer(self, layer: LayerPrediction) -> tuple[dict, bool] | tuple[None, None]:
         """Find the matching layer in the ground truth.
