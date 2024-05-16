@@ -62,7 +62,8 @@ class Coordinate(metaclass=abc.ABCMeta):
         elif east < 1e6:
             return LV03Coordinate(CoordinateEntry(coordinate_value=east), CoordinateEntry(coordinate_value=north))
         else:
-            raise ValueError("Invalid coordinates format")
+            logger.warning(f"Invalid coordinates format. Got E: {east}, N: {north}")
+            return None
 
 
 @dataclass
