@@ -220,6 +220,7 @@ def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -
                 _metrics[metric_type] = value
             else:
                 _metrics[f"{language}_{metric_type}"] = value
+    print(_metrics)
     return _metrics, document_level_metrics
 
 
@@ -248,7 +249,7 @@ def create_predictions_objects(predictions: dict, ground_truth_path: Path) -> tu
         predictions_objects[file_name] = prediction_object
         if ground_truth_is_present:
             predictions_objects[file_name].evaluate(ground_truth.for_file(file_name))
-            number_of_truth_values[file_name] = len(ground_truth.for_file(file_name))
+            number_of_truth_values[file_name] = len(ground_truth.for_file(file_name)["layers"])
 
     return predictions_objects, number_of_truth_values
 
