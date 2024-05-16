@@ -11,7 +11,6 @@ from numpy.typing import ArrayLike
 
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.geometric_line_utilities import (
-    deduplicate_lines,
     drop_vertical_lines,
     merge_parallel_lines_quadtree,
 )
@@ -72,7 +71,6 @@ def extract_lines(page: fitz.Page, line_detection_params: dict) -> list[Line]:
         scale_factor=line_detection_params["pdf_scale_factor"],
     )
     lines = drop_vertical_lines(lines, threshold=line_detection_params["vertical_lines_threshold"])
-    lines = deduplicate_lines(lines)
     merging_params = line_detection_params["line_merging_params"]
 
     return merge_parallel_lines_quadtree(
