@@ -113,7 +113,7 @@ class CoordinateExtractor:
         self.coordinate_keys = ["Koordinaten", "Koordinate", "coordinates", "coordinate", "coordonnés", "coordonnes"]
         # TODO: extend coordinate keys with other languages
 
-    def find_coordinate_key(self, text: str, allowed_operations: int = 3) -> str:
+    def find_coordinate_key(self, text: str, allowed_errors: int = 3) -> str:
         """Finds the location of a coordinate key in a string of text.
 
         This is is useful to reduce the text within which the coordinates are searched. If the text is too large
@@ -121,15 +121,15 @@ class CoordinateExtractor:
 
         Args:
             text (str): Arbitrary string of text.
-            allowed_operations (int, optional): The maximum number of allowed operations to consider a key contained
-                                                in text. Defaults to 3.
+            allowed_errors (int, optional): The maximum number of errors to consider a key contained
+                                            in text. An error is a character that is different. Defaults to 3.
 
         Returns:
             str: The coordinate key found in the text.
         """
         matches = []
         for key in self.coordinate_keys:
-            match = regex.search(r"\b(" + key + "){e<" + str(allowed_operations) + "}\s", text, flags=regex.IGNORECASE)
+            match = regex.search(r"\b(" + key + "){e<" + str(allowed_errors) + "}\s", text, flags=regex.IGNORECASE)
             if match:
                 matches.append((match.group(), sum(match.fuzzy_counts)))
 
