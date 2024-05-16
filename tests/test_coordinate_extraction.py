@@ -13,12 +13,16 @@ from stratigraphy.util.coordinate_extraction import (
 
 
 def test_reprLV95():  # noqa: D103
-    coord = LV95Coordinate(CoordinateEntry("789", "456"), CoordinateEntry("123", "012"))
+    coord = LV95Coordinate(
+        CoordinateEntry.create_from_string("2789", "456"), CoordinateEntry.create_from_string("1123", "012")
+    )
     assert repr(coord) == "E: 2'789'456, N: 1'123'012"
 
 
 def test_to_jsonLV95():  # noqa: D103
-    coord = LV95Coordinate(CoordinateEntry("789", "456"), CoordinateEntry("123", "012"))
+    coord = LV95Coordinate(
+        CoordinateEntry.create_from_string("2789", "456"), CoordinateEntry.create_from_string("1123", "012")
+    )
     assert coord.to_json() == {
         "E": 2789456,
         "N": 1123012,
@@ -26,39 +30,32 @@ def test_to_jsonLV95():  # noqa: D103
 
 
 def test_CoordinateEntry():  # noqa: D103
-    entry1 = CoordinateEntry("089", "456")
-    entry2 = CoordinateEntry(coordinate_value=89456)
-    assert entry2.first_entry == "089"
-    assert entry1.first_entry == entry2.first_entry
+    entry1 = CoordinateEntry.create_from_string("089", "456")
+    entry2 = CoordinateEntry(89456)
     assert entry1.coordinate_value == entry2.coordinate_value
 
 
 def test_swap_coordinates():  # noqa: D103
-    north = CoordinateEntry("789", "456")
-    east = CoordinateEntry("123", "012")
+    north = CoordinateEntry.create_from_string("789456")
+    east = CoordinateEntry.create_from_string("123012")
     coord = LV95Coordinate(north=north, east=east)
     assert coord.east == north
     assert coord.north == east
 
 
 def test_reprLV03():  # noqa: D103
-    coord = LV03Coordinate(CoordinateEntry("789", "456"), CoordinateEntry("123", "012"))
+    coord = LV03Coordinate(CoordinateEntry.create_from_string("789456"), CoordinateEntry.create_from_string("123012"))
     assert repr(coord) == "E: 789'456, N: 123'012"
 
 
 def test_to_jsonLV03():  # noqa: D103
-    coord = LV03Coordinate(CoordinateEntry("789", "456"), CoordinateEntry("123", "012"))
+    coord = LV03Coordinate(
+        CoordinateEntry.create_from_string("789", "456"), CoordinateEntry.create_from_string("123", "012")
+    )
     assert coord.to_json() == {
         "E": 789456,
         "N": 123012,
     }
-
-
-@pytest.mark.parametrize("first_entry,second_entry", [("123", "456"), ("789", "012")])
-def test_coordinate_entry(first_entry, second_entry):  # noqa: D103
-    entry = CoordinateEntry(first_entry, second_entry)
-    assert entry.first_entry == first_entry
-    assert entry.second_entry == second_entry
 
 
 doc = fitz.open(DATAPATH.parent / "example" / "example_borehole_profile.pdf")

@@ -9,7 +9,7 @@ import regex
 
 logger = logging.getLogger(__name__)
 
-COORDINATE_ENTRY_REGEX = "(?:[12][\.\s']{0,2})?\d{3}[\.\s']{0,2}\d{3}\.?\d?"
+COORDINATE_ENTRY_REGEX = r"(?:[12][\.\s']{0,2})?\d{3}[\.\s']{0,2}\d{3}\.?\d?"
 
 
 @dataclass
@@ -74,7 +74,7 @@ class LV95Coordinate(Coordinate):
     north: CoordinateEntry
 
     def __repr__(self):
-        return f"E: 2'{self.east}, " f"N: 1'{self.north}"
+        return f"E: {self.east}, " f"N: {self.north}"
 
     def to_json(self):
         return {
@@ -129,7 +129,7 @@ class CoordinateExtractor:
         """
         matches = []
         for key in self.coordinate_keys:
-            match = regex.search(r"\b(" + key + "){e<" + str(allowed_errors) + "}\s", text, flags=regex.IGNORECASE)
+            match = regex.search(r"\b(" + key + "){e<" + str(allowed_errors) + r"}\s", text, flags=regex.IGNORECASE)
             if match:
                 matches.append((match.group(), sum(match.fuzzy_counts)))
 
@@ -197,7 +197,7 @@ class CoordinateExtractor:
             list: A list of matched coordinates.
         """
         return regex.findall(
-            r"[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX + ".*[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX,
+            r"[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX + r".*[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX,
             text,
         )
 
