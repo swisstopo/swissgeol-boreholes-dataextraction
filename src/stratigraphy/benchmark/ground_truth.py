@@ -18,8 +18,8 @@ class GroundTruth:
 
         with open(path) as in_file:
             ground_truth = json.load(in_file)
-        for borehole_profile, layers in ground_truth.items():
-            layers = layers["layers"]
+        for borehole_profile, ground_truth_item in ground_truth.items():
+            layers = ground_truth_item["layers"]
             self.ground_truth[borehole_profile]["layers"] = [
                 {
                     "material_description": parse_text(layer["material_description"]),
@@ -28,10 +28,12 @@ class GroundTruth:
                 for layer in layers
                 if parse_text(layer["material_description"]) != ""
             ]
+            metadata = ground_truth_item["metadata"]
+            self.ground_truth[borehole_profile]["metadata"] = metadata
 
     def for_file(self, file_name: str) -> list:
         if file_name in self.ground_truth:
-            return self.ground_truth[file_name]["layers"]
+            return self.ground_truth[file_name]
         else:
             logger.warning(f"No ground truth data found for {file_name}.")
             return []

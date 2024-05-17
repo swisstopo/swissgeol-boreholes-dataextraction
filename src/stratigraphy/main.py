@@ -10,7 +10,7 @@ import fitz
 from dotenv import load_dotenv
 
 from stratigraphy import DATAPATH
-from stratigraphy.benchmark.score import create_predictions_objects, evaluate_matching
+from stratigraphy.benchmark.score import create_predictions_objects, evaluate_borehole_extraction
 from stratigraphy.extract import process_page
 from stratigraphy.line_detection import extract_lines, line_detection_params
 from stratigraphy.util.coordinate_extraction import CoordinateExtractor
@@ -214,7 +214,7 @@ def start_pipeline(
         draw_predictions(predictions, input_directory, out_directory)
 
     if number_of_truth_values:  # only evaluate if ground truth is available
-        metrics, document_level_metrics = evaluate_matching(predictions, number_of_truth_values)
+        metrics, document_level_metrics = evaluate_borehole_extraction(predictions, number_of_truth_values)
         document_level_metrics.to_csv(
             temp_directory / "document_level_metrics.csv"
         )  # mlflow.log_artifact expects a file

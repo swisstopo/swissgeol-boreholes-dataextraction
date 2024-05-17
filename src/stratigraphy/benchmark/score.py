@@ -132,15 +132,57 @@ def get_scores(
         }
 
 
-def evaluate_matching(predictions: dict, number_of_truth_values: dict) -> tuple[dict, pd.DataFrame]:
+def evaluate_borehole_extraction(predictions: dict, number_of_truth_values: dict) -> tuple[dict, pd.DataFrame]:
+    """Evaluate the borehole extraction predictions.
+
+    Args:
+       predictions (dict): The FilePredictions objects.
+       number_of_truth_values (dict): The number of layer ground truth values per file.
+
+    Returns:
+        tuple[dict, pd.DataFrame]: A tuple containing the overall metrics as a dictionary and the
+        individual document metrics as a DataFrame.
+    """
+    layer_metrics, layer_document_level_metrics = evaluate_layer_extraction(predictions, number_of_truth_values)
+    coordinate_metrics, coordinate_document_level_metrics = evaluate_metadata(predictions)
+    metrics = {**layer_metrics, **coordinate_metrics}
+    document_level_metrics = pd.concat([layer_document_level_metrics, coordinate_document_level_metrics], axis=1)
+    return metrics, document_level_metrics
+
+
+def evaluate_metadata(predictions: dict) -> tuple[dict, pd.DataFrame]:
+    """Evaluate the metadata predictions.
+
+    Args:
+        predictions (dict): The FilePredictions objects.
+
+    Returns:
+        tuple[dict, pd.DataFrame]: The overall coordinate accuracy and the individual document metrics as a DataFrame.
+    """
+    document_level_metrics = {
+        "document_name": [],
+        "coordinates": [],
+    }
+    coordinates_tp = 0
+    for file_name, file_prediction in predictions.items():
+        document_level_metrics["document_name"].append(file_name)
+        if file_prediction.metadata_is_correct["coordinates"]:
+            coordinates_tp += 1
+            document_level_metrics["coordinates"].append(1)
+        else:
+            document_level_metrics["coordinates"].append(0)
+    return {"coordinate_accuracy": coordinates_tp / len(predictions)}, pd.DataFrame(document_level_metrics)
+
+
+def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -> tuple[dict, pd.DataFrame]:
     """Calculate F1, precision and recall for the predictions.
 
     Calculate F1, precision and recall for the individual documents as well as overall.
     The individual document metrics are returned as a DataFrame.
 
     Args:
-        predictions (dict): The predictions.
-        number_of_truth_values (dict): The number of ground truth values per file.
+        predictions (dict): The FilePredictions objects.
+        number_of_truth_values (dict): The number of layer ground truth values per file.
 
     Returns:
         tuple[dict, pd.DataFrame]: A tuple containing the overall F1, precision and recall as a dictionary and the
@@ -178,10 +220,11 @@ def evaluate_matching(predictions: dict, number_of_truth_values: dict) -> tuple[
                 _metrics[metric_type] = value
             else:
                 _metrics[f"{language}_{metric_type}"] = value
+    print(_metrics)
     return _metrics, document_level_metrics
 
 
-def create_predictions_objects(predictions: dict, ground_truth_path: Path) -> tuple[dict, dict]:
+def create_predictions_objects(predictions: dict, ground_truth_path: Path) -> tuple[dict[FilePredictions], dict]:
     """Create predictions objects from the predictions and evaluate them against the ground truth.
 
     Args:
@@ -189,7 +232,7 @@ def create_predictions_objects(predictions: dict, ground_truth_path: Path) -> tu
         ground_truth_path (Path): The path to the ground truth file.
 
     Returns:
-        tuple[dict, dict]: The predictions objects and the number of ground truth values per file.
+        tuple[dict[FilePredictions], dict]: The predictions objects and the number of ground truth values per file.
     """
     try:  # for inference no ground truth is available
         ground_truth = GroundTruth(ground_truth_path)
@@ -206,7 +249,7 @@ def create_predictions_objects(predictions: dict, ground_truth_path: Path) -> tu
         predictions_objects[file_name] = prediction_object
         if ground_truth_is_present:
             predictions_objects[file_name].evaluate(ground_truth.for_file(file_name))
-            number_of_truth_values[file_name] = len(ground_truth.for_file(file_name))
+            number_of_truth_values[file_name] = len(ground_truth.for_file(file_name)["layers"])
 
     return predictions_objects, number_of_truth_values
 
@@ -228,6 +271,6 @@ if __name__ == "__main__":
     predictions_path = input_directory / "extract" / "predictions.json"
 
     # evaluate the predictions
-    metrics, document_level_metrics = evaluate_matching(
+    metrics, document_level_metrics = evaluate_borehole_extraction(
         predictions_path, ground_truth_path, input_directory, out_directory
     )
