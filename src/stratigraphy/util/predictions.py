@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 import fitz
 import Levenshtein
 
+from stratigraphy.util.coordinate_extraction import Coordinate
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry
 from stratigraphy.util.interval import AnnotatedInterval, BoundaryInterval
 from stratigraphy.util.line import TextLine, TextWord
@@ -16,6 +17,13 @@ from stratigraphy.util.textblock import MaterialDescription, TextBlock
 from stratigraphy.util.util import parse_text
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class BoreholeMetaData:
+    """Class to represent metadata of a borehole profile."""
+
+    coordinates: Coordinate | None
 
 
 @dataclass
@@ -47,11 +55,13 @@ class PagePredictions:
 class FilePredictions:
     """A class to represent predictions for a single file."""
 
-    def __init__(self, pages: list[PagePredictions], file_name: str, language: str):
+    def __init__(self, pages: list[PagePredictions], file_name: str, language: str, metadata: BoreholeMetaData = None):
         self.pages = pages
         self.file_name = file_name
         self.language = language
         self.layers = sum([page.layers for page in self.pages], [])
+        self.metadata = metadata
+        self.metadata_is_correct: dict = {}
 
     @staticmethod
     def create_from_json(predictions_for_file: dict, file_name: str):
@@ -65,6 +75,16 @@ class FilePredictions:
         for page_number, page_predictions in predictions_for_file.items():
             if page_number == "language":
                 file_language = page_predictions
+                continue
+            elif page_number == "metadata":
+                metadata = page_predictions
+                if "coordinates" in metadata:
+                    if metadata["coordinates"] is not None:
+                        coordinates = Coordinate.from_json(metadata["coordinates"])
+                    else:
+                        coordinates = None
+                file_metadata = BoreholeMetaData(coordinates=coordinates)
+                # TODO: Add additional metadata here.
                 continue
             page_layers = page_predictions["layers"]
             layer_predictions = []
@@ -111,7 +131,9 @@ class FilePredictions:
             else:
                 page_predictions_class.append(PagePredictions(page_number=page_number, layers=layer_predictions))
 
-        return FilePredictions(pages=page_predictions_class, file_name=file_name, language=file_language)
+        return FilePredictions(
+            pages=page_predictions_class, file_name=file_name, language=file_language, metadata=file_metadata
+        )
 
     @staticmethod
     def create_from_label_studio(annotation_results: dict):
@@ -244,7 +266,11 @@ class FilePredictions:
             ground_truth = {self.file_name: {"layers": layers}}
         return ground_truth
 
-    def evaluate(self, ground_truth_layers: list):
+    def evaluate(self, ground_truth: dict):
+        self.evaluate_layers(ground_truth["layers"])
+        self.evaluate_metadata(ground_truth.get("metadata"))
+
+    def evaluate_layers(self, ground_truth_layers: list):
         """Evaluate all layers of the predictions against the ground truth.
 
         Args:
@@ -259,6 +285,43 @@ class FilePredictions:
             else:
                 layer.material_is_correct = False
                 layer.depth_interval_is_correct = None
+
+    def evaluate_metadata(self, metadata_ground_truth: dict):
+        """Evaluate the metadata of the file against the ground truth.
+
+        Note: For now coordinates is the only metadata extracted and evaluated for.
+
+        Args:
+            metadata_ground_truth (dict): The ground truth for the file.
+        """
+        if self.metadata.coordinates is None:
+            self.metadata_is_correct["coordinates"] = False
+        elif metadata_ground_truth is None or metadata_ground_truth.get("coordinates") is None:
+            self.metadata_is_correct["coordinates"] = None
+
+        else:
+            if (
+                self.metadata.coordinates.east.coordinate_value > 2e6
+                and metadata_ground_truth["coordinates"]["E"] < 2e6
+            ):
+                ground_truth_east = int(metadata_ground_truth["coordinates"]["E"]) + 2e6
+                ground_truth_west = int(metadata_ground_truth["coordinates"]["N"]) + 1e6
+            elif (
+                self.metadata.coordinates.east.coordinate_value < 2e6
+                and metadata_ground_truth["coordinates"]["E"] > 2e6
+            ):
+                ground_truth_east = int(metadata_ground_truth["coordinates"]["E"]) - 2e6
+                ground_truth_west = int(metadata_ground_truth["coordinates"]["N"]) - 1e6
+            else:
+                ground_truth_east = int(metadata_ground_truth["coordinates"]["E"])
+                ground_truth_west = int(metadata_ground_truth["coordinates"]["N"])
+
+            if (int(self.metadata.coordinates.east.coordinate_value) == ground_truth_east) and (
+                int(self.metadata.coordinates.north.coordinate_value) == ground_truth_west
+            ):
+                self.metadata_is_correct["coordinates"] = True
+            else:
+                self.metadata_is_correct["coordinates"] = False
 
     def _find_matching_layer(self, layer: LayerPrediction) -> tuple[dict, bool] | tuple[None, None]:
         """Find the matching layer in the ground truth.

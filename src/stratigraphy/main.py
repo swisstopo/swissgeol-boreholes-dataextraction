@@ -10,9 +10,10 @@ import fitz
 from dotenv import load_dotenv
 
 from stratigraphy import DATAPATH
-from stratigraphy.benchmark.score import create_predictions_objects, evaluate_matching
+from stratigraphy.benchmark.score import create_predictions_objects, evaluate_borehole_extraction
 from stratigraphy.extract import process_page
 from stratigraphy.line_detection import extract_lines, line_detection_params
+from stratigraphy.util.coordinate_extraction import CoordinateExtractor
 from stratigraphy.util.draw import draw_predictions
 from stratigraphy.util.duplicate_detection import remove_duplicate_layers
 from stratigraphy.util.language_detection import detect_language_of_document
@@ -164,6 +165,12 @@ def start_pipeline(
                 with fitz.Document(in_path) as doc:
                     language = detect_language_of_document(doc)
                     predictions[filename]["language"] = language
+                    coordinate_extractor = CoordinateExtractor(doc)
+                    coordinates = coordinate_extractor.extract_coordinates()
+                    if coordinates:
+                        predictions[filename]["metadata"] = {"coordinates": coordinates.to_json()}
+                    else:
+                        predictions[filename]["metadata"] = {"coordinates": None}
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
                         logger.info("Processing page %s", page_number)
@@ -207,7 +214,7 @@ def start_pipeline(
         draw_predictions(predictions, input_directory, out_directory)
 
     if number_of_truth_values:  # only evaluate if ground truth is available
-        metrics, document_level_metrics = evaluate_matching(predictions, number_of_truth_values)
+        metrics, document_level_metrics = evaluate_borehole_extraction(predictions, number_of_truth_values)
         document_level_metrics.to_csv(
             temp_directory / "document_level_metrics.csv"
         )  # mlflow.log_artifact expects a file
