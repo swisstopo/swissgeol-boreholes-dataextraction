@@ -46,21 +46,24 @@ material_description:
   fr:
     including_expressions:
       - sol
-      - végétal
+      - végétal  # remove accents generally; ocr might be wrong
       - dallage
       - terre
       - bitume
       - bitumineux
-      - grave d'infrastructure
+      - grave d'infrastructure  # what happens if we remove this?
       - sable
       - limon
       - gravier
       - asphalte
-      - humus
+      - humus  # hummus maybe?
       - brun
       - gris
+      - grise
       - mou
       - dur
+      - dure
+      - ferme
       - racine
       - revetement
       - pierre
@@ -68,9 +71,19 @@ material_description:
       - beton
       - craie
       - marne
-      - materiau de base
+      - materiau
       - matrice sableuse
-      - enrobé
+      - enrobé  # accent --> check what happens if it's removed
+      - terrain
+      - remblais
+      - remblai
+      - molasse
+      - phase
+      - formations
+      - limoneuse
+      - argileuse
+      - argileux
+      - mousse
     excluding_expressions:
       - monsieur
       - fin
