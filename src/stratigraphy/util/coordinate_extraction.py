@@ -113,16 +113,21 @@ class CoordinateExtractor:
         self.coordinate_keys = ["Koordinaten", "Koordinate", "coordinates", "coordinate", "coordonnés", "coordonnes"]
         # TODO: extend coordinate keys with other languages
 
-    def find_coordinate_key(self, text: str, allowed_errors: int = 3) -> str:
+    def find_coordinate_key(self, text: str, allowed_errors: int = 3) -> str:  # noqa: E501
         """Finds the location of a coordinate key in a string of text.
 
         This is is useful to reduce the text within which the coordinates are searched. If the text is too large
         false positive (found coordinates that are no coordinates) are more likely.
 
+        The function allows for a certain number of errors in the key. Errors are defined as insertions, deletions
+        or substitutions of characters (i.e. Levenshtein distance). For more information of how errors are defined see
+        https://github.com/mrabarnett/mrab-regex?tab=readme-ov-file#approximate-fuzzy-matching-hg-issue-12-hg-issue-41-hg-issue-109.
+
+
         Args:
             text (str): Arbitrary string of text.
-            allowed_errors (int, optional): The maximum number of errors to consider a key contained
-                                            in text. An error is a character that is different. Defaults to 3.
+            allowed_errors (int, optional): The maximum number of errors (Levenshtein distance) to consider a key
+                                            contained in text. Defaults to 3 (guestimation; no optimisation done yet).
 
         Returns:
             str: The coordinate key found in the text.
