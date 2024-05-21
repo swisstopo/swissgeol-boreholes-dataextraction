@@ -50,8 +50,6 @@ def get_description_blocks_from_layer_index(
     blocks = []
     line_index = 0
     for layer_index_idx, _layer_index in enumerate(layer_index_entries):
-        # don't allow a layer above depth 0
-
         next_layer_index = (
             layer_index_entries[layer_index_idx + 1] if layer_index_idx + 1 < len(layer_index_entries) else None
         )

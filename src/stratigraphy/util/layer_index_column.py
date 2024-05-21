@@ -92,9 +92,6 @@ class LayerIndexColumn:
             and self.rect().y1 <= rect.y1
         )
 
-    def noise_count(self, words):
-        return 0
-
 
 def find_layer_index_column_entries(all_words: list[TextLine]) -> list:
     r"""Find the layer index column entries.
@@ -113,11 +110,11 @@ def find_layer_index_column_entries(all_words: list[TextLine]) -> list:
         list: The layer index column entries.
     """
     entries = []
-    for line in sorted(all_words, key=lambda line: line.rect.y0):
+    for word in sorted(all_words, key=lambda word: word.rect.y0):
         regex = re.compile(r"\b[\da-z-]+\)")
-        match = regex.match(line.text)
-        if match and len(line.text) < 7:
-            entries.append(line)
+        match = regex.match(word.text)
+        if match and len(word.text) < 7:
+            entries.append(word)
     return entries
 
 
