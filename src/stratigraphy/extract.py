@@ -235,7 +235,8 @@ def match_columns(
     """Match the depth column entries with the description lines.
 
     This function identifies groups of depth intervals and text blocks that are likely to match.
-    In this process, the number of text blocks is adjusted to match the number of depth intervals.
+    Makes a distinction between DepthColumn and LayerIdentifierColumn and obtains the corresponding text blocks
+    as well as their depth intervals where present.
 
     Args:
         depth_column (DepthColumn | LayerIdentifierColumn): The depth column.
@@ -259,7 +260,9 @@ def match_columns(
         blocks = get_description_blocks_from_layer_identifier(depth_column.entries, description_lines)
         return [{"block": block} for block in blocks]
     else:
-        raise ValueError("depth_column must be a DepthColumn or a LayerIdentifierColumn.")
+        raise ValueError(
+            f"depth_column must be a DepthColumn or a LayerIdentifierColumn object. Got {type(depth_column)}."
+        )
 
 
 def transform_groups(
