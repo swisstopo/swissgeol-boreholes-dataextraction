@@ -7,6 +7,26 @@ import fitz
 from stratigraphy.util.line import TextWord
 
 
+class LayerIdentifierEntry:
+    """Class for a layer identifier entry.
+
+    Note: As of now this is very similar to DepthColumnEntry. Refactoring may be desired.
+    """
+
+    def __init__(self, rect: fitz.Rect, text: str):
+        self.rect = rect
+        self.text = text
+
+    def __repr__(self):
+        return str(self.text)
+
+    def to_json(self):
+        return {
+            "text": self.text,
+            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
+        }
+
+
 class LayerIdentifierColumn:
     """Class for a layer identifier column."""
 
@@ -16,7 +36,7 @@ class LayerIdentifierColumn:
         Args:
             entries (list[TextWord]): The entries corresponding to the layer indices.
         """
-        self.entries = entries
+        self.entries = [LayerIdentifierEntry(entry.rect, entry.text) for entry in entries]
 
     @property
     def max_x0(self) -> float:
@@ -91,6 +111,13 @@ class LayerIdentifierColumn:
             and rect.y0 <= self.rect().y0
             and self.rect().y1 <= rect.y1
         )
+
+    def to_json(self):
+        rect = self.rect()
+        return {
+            "rect": [rect.x0, rect.y0, rect.x1, rect.y1],
+            "entries": [entry.to_json() for entry in self.entries],
+        }
 
 
 def find_layer_identifier_column_entries(all_words: list[TextWord]) -> list:
