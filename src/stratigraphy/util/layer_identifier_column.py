@@ -1,4 +1,4 @@
-"""Module for the LayerIndexColumn class."""
+"""Module for the LayerIdentifierColumn class."""
 
 import re
 
@@ -7,11 +7,11 @@ import fitz
 from stratigraphy.util.line import TextLine
 
 
-class LayerIndexColumn:
-    """Class for a layer index column."""
+class LayerIdentifierColumn:
+    """Class for a layer identifier column."""
 
     def __init__(self, entries: list[TextLine]):
-        """Initialize the LayerIndexColumn object.
+        """Initialize the LayerIdentifierColumn object.
 
         Args:
             entries (list[TextLine]): The entries corresponding to the layer indices.
@@ -27,10 +27,10 @@ class LayerIndexColumn:
         return min([rect.x1 for rect in self.rects()])
 
     def rect(self) -> fitz.Rect:
-        """Get the rectangle of the layer index column.
+        """Get the rectangle of the layer identifier column.
 
         Returns:
-            fitz.Rect: The rectangle of the layer index column.
+            fitz.Rect: The rectangle of the layer identifier column.
         """
         x0 = min([rect.x0 for rect in self.rects()])
         x1 = max([rect.x1 for rect in self.rects()])
@@ -42,27 +42,27 @@ class LayerIndexColumn:
         return [entry.rect for entry in self.entries]
 
     def add_entry(self, entry: TextLine):
-        """Add a new layer index column entry to the layer index column.
+        """Add a new layer identifier column entry to the layer identifier column.
 
         Args:
-            entry (TextLine): The layer index column entry to be added.
+            entry (TextLine): The layer identifier column entry to be added.
         """
         self.entries.append(entry)
 
     def can_be_appended(self, rect: fitz.Rect) -> bool:
-        """Checks if a new layer index column entry can be appended to the current layer index column.
+        """Checks if a new layer identifier column entry can be appended to the current layer identifier column.
 
         The checks are:
-        - The width of the new rectangle is greater than the width of the current layer index column. Or;
-        - The middle of the new rectangle is within the horizontal boundaries of the current layer index column.
-        - The new rectangle intersects with the minimal horizontal boundaries of the current layer index column.
+        - The width of the new rectangle is greater than the width of the current layer identifier column. Or;
+        - The middle of the new rectangle is within the horizontal boundaries of the current layer identifier column.
+        - The new rectangle intersects with the minimal horizontal boundaries of the current layer identifier column.
 
 
         Args:
-            rect (fitz.Rect): Rect of the layer index column entry to be appended.
+            rect (fitz.Rect): Rect of the layer identifier column entry to be appended.
 
         Returns:
-            bool: True if the new layer index column entry can be appended, False otherwise.
+            bool: True if the new layer identifier column entry can be appended, False otherwise.
         """
         new_middle = (rect.x0 + rect.x1) / 2
         if (self.rect().width < rect.width or self.rect().x0 < new_middle < self.rect().x1) and (
@@ -77,13 +77,13 @@ class LayerIndexColumn:
         )
 
     def is_contained(self, rect: fitz.Rect) -> bool:
-        """Check if the layer index column is contained in another rectangle.
+        """Check if the layer identifier column is contained in another rectangle.
 
         Args:
-            rect (fitz.Rect): The rectangle to check if it contains the layer index column.
+            rect (fitz.Rect): The rectangle to check if it contains the layer identifier column.
 
         Returns:
-            bool: True if the layer index column is contained in the rectangle, False otherwise.
+            bool: True if the layer identifier column is contained in the rectangle, False otherwise.
         """
         return (
             rect.x0 <= self.rect().x0
@@ -93,8 +93,8 @@ class LayerIndexColumn:
         )
 
 
-def find_layer_index_column_entries(all_words: list[TextLine]) -> list:
-    r"""Find the layer index column entries.
+def find_layer_identifier_column_entries(all_words: list[TextLine]) -> list:
+    r"""Find the layer identifier column entries.
 
     Regex explanation:
     - \b is a word boundary. This ensures that the match must start at the beginning of a word.
@@ -104,10 +104,10 @@ def find_layer_index_column_entries(all_words: list[TextLine]) -> list:
     This regular expression will match strings like "1)", "2)", "a)", "b)", "1a4)", "6de)", etc.
 
     Args:
-        all_words (ist[TextLine]): The words to search for layer index columns.
+        all_words (ist[TextLine]): The words to search for layer identifier columns.
 
     Returns:
-        list: The layer index column entries.
+        list: The layer identifier column entries.
     """
     entries = []
     for word in sorted(all_words, key=lambda word: word.rect.y0):
@@ -118,42 +118,42 @@ def find_layer_index_column_entries(all_words: list[TextLine]) -> list:
     return entries
 
 
-def find_layer_index_column(entries: list[TextLine]) -> list[LayerIndexColumn]:
-    """Find the layer index column given the index column entries.
+def find_layer_identifier_column(entries: list[TextLine]) -> list[LayerIdentifierColumn]:
+    """Find the layer identifier column given the index column entries.
 
     Note: Similar to find_depth_columns.find_depth_columns. Refactoring may be desired.
 
     Args:
-        entries (list[TextLine]): The layer index column entries.
+        entries (list[TextLine]): The layer identifier column entries.
 
     Returns:
-        list[LayerIndexColumn]: The found layer index columns.
+        list[LayerIdentifierColumn]: The found layer identifier columns.
     """
-    layer_index_columns = [LayerIndexColumn([entries[0]])]
+    layer_identifier_columns = [LayerIdentifierColumn([entries[0]])]
     for entry in entries[1:]:
         has_match = False
-        for column in layer_index_columns:
+        for column in layer_identifier_columns:
             if column.can_be_appended(entry.rect):
                 column.add_entry(entry)
                 has_match = True
         if not has_match:
-            layer_index_columns.append(LayerIndexColumn([entry]))
+            layer_identifier_columns.append(LayerIdentifierColumn([entry]))
 
         # only keep columns whose entries are not fully contained in a different column
-        layer_index_columns = [
+        layer_identifier_columns = [
             column
-            for column in layer_index_columns
-            if all(not other.strictly_contains(column) for other in layer_index_columns)
+            for column in layer_identifier_columns
+            if all(not other.strictly_contains(column) for other in layer_identifier_columns)
         ]
         # check if the column rect is a subset of another column rect. If so, merge the entries and sort them by y0.
-        for column in layer_index_columns:
-            for other in layer_index_columns:
+        for column in layer_identifier_columns:
+            for other in layer_identifier_columns:
                 if column != other and column.is_contained(other.rect()):
                     for entry in other.entries:
                         if entry not in column.entries:
                             column.entries.append(entry)
                     column.entries.sort(key=lambda entry: entry.rect.y0)
-                    layer_index_columns.remove(other)
+                    layer_identifier_columns.remove(other)
                     break
-    layer_index_columns = [column for column in layer_index_columns if len(column.entries) > 2]
-    return layer_index_columns
+    layer_identifier_columns = [column for column in layer_identifier_columns if len(column.entries) > 2]
+    return layer_identifier_columns
