@@ -6,7 +6,7 @@ import fitz
 
 from stratigraphy.util.depthcolumn import BoundaryDepthColumn, LayerDepthColumn
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
-from stratigraphy.util.line import TextWord, TextLine
+from stratigraphy.util.line import TextLine, TextWord
 
 
 def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> list[DepthColumnEntry]:
@@ -44,7 +44,7 @@ def value_as_float(string_value: str) -> float:  # noqa: D103
 
 
 def extract_layer_depth_interval_entries(
-    input_string: str, line: TextWord|TextLine, require_start_of_string: bool = True
+    input_string: str, line: TextWord | TextLine, require_start_of_string: bool = True
 ) -> list[DepthColumnEntry]:
     """Extracts two DepthColumnEntry obejcts from a string to represent a layer depth interval.
 

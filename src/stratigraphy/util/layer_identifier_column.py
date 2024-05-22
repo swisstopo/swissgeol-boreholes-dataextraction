@@ -5,10 +5,9 @@ import re
 import fitz
 import numpy as np
 
-from stratigraphy.util.line import TextWord
-from stratigraphy.util.depthcolumn import LayerDepthColumnEntry
 from stratigraphy.util.depthcolumn import LayerDepthColumnEntry
 from stratigraphy.util.find_depth_columns import extract_layer_depth_interval_entries
+from stratigraphy.util.line import TextWord
 from stratigraphy.util.textblock import TextBlock
 
 
