@@ -34,13 +34,13 @@ class LayerIdentifierEntry:
 class LayerIdentifierColumn:
     """Class for a layer identifier column."""
 
-    def __init__(self, entries: list[TextWord]):
+    def __init__(self, words: list[TextWord]):
         """Initialize the LayerIdentifierColumn object.
 
         Args:
-            entries (list[TextWord]): The entries corresponding to the layer indices.
+            words (list[TextWord]): The entries corresponding to the layer indices.
         """
-        self.entries = [LayerIdentifierEntry(entry.rect, entry.text) for entry in entries]
+        self.entries = [LayerIdentifierEntry(word.rect, word.text) for word in words]
 
     @property
     def max_x0(self) -> float:
@@ -71,7 +71,7 @@ class LayerIdentifierColumn:
         Args:
             entry (TextWord): The layer identifier column entry to be added.
         """
-        self.entries.append(entry)
+        self.entries.append(LayerIdentifierEntry(entry.rect, entry.text))
 
     def can_be_appended(self, rect: fitz.Rect) -> bool:
         """Checks if a new layer identifier column entry can be appended to the current layer identifier column.
@@ -133,7 +133,9 @@ class LayerIdentifierColumn:
         depth_entries = []
         for line in block.lines:
             try:
-                new_entries = extract_layer_depth_interval_entries(line.text, line, require_start_of_string=False)
+                new_entries = extract_layer_depth_interval_entries(line.text, line.rect, require_start_of_string=False)
+                # require_start_of_string = False because the depth interval may not always start at the beginning
+                # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
                 if new_entries:
                     depth_entries.append(new_entries)
             except ValueError:

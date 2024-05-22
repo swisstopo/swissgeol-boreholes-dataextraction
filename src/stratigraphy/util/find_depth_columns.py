@@ -6,7 +6,7 @@ import fitz
 
 from stratigraphy.util.depthcolumn import BoundaryDepthColumn, LayerDepthColumn
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
-from stratigraphy.util.line import TextLine, TextWord
+from stratigraphy.util.line import TextWord
 
 
 def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> list[DepthColumnEntry]:
@@ -31,7 +31,8 @@ def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> lis
                 value = value_as_float(match.group(1))
                 entries.append(DepthColumnEntry(word.rect, value))
             elif include_splits:
-                entries.extend(extract_layer_depth_interval_entries(input_string, word))
+                # support for e.g. "1.10-1.60m" extracted as a single word
+                entries.extend(extract_layer_depth_interval_entries(input_string, word.rect))
         except ValueError:
             pass
     return entries
@@ -44,20 +45,20 @@ def value_as_float(string_value: str) -> float:  # noqa: D103
 
 
 def extract_layer_depth_interval_entries(
-    input_string: str, line: TextWord | TextLine, require_start_of_string: bool = True
+    text: str, rect: fitz.Rect, require_start_of_string: bool = True
 ) -> list[DepthColumnEntry]:
     """Extracts two DepthColumnEntry obejcts from a string to represent a layer depth interval.
 
     Args:
-        input_string (str): The string to extract the depth interval from.
-        line (TextLine): The line object containing the rectangle of the string.
+        text (str): The string to extract the depth interval from.
+        rect (fitz.Rect): The rectangle of the text.
         require_start_of_string (bool, optional): Whether the number to extract needs to be
                                                   at the start of a string. Defaults to True.
 
     Returns:
         list[DepthColumnEntry]: The extracted depth column entries. Either two entries or an empty list.
     """
-    input_string = line.text.strip().replace(",", ".")
+    input_string = text.strip().replace(",", ".")
     entries = []
     query = r"-?([0-9]+(\.[0-9]+)?)[müMN\]*[\s-]+([0-9]+(\.[0-9]+)?)[müMN\\.]*"
     if not require_start_of_string:
@@ -66,11 +67,11 @@ def extract_layer_depth_interval_entries(
     match = regex.match(input_string)
     if match:
         value1 = value_as_float(match.group(1))
-        first_half_rect = fitz.Rect(line.rect.x0, line.rect.y0, line.rect.x1 - line.rect.width / 2, line.rect.y1)
+        first_half_rect = fitz.Rect(rect.x0, rect.y0, rect.x1 - rect.width / 2, rect.y1)
         entries.append(DepthColumnEntry(first_half_rect, value1))
 
         value2 = value_as_float(match.group(3))
-        second_half_rect = fitz.Rect(line.rect.x0 + line.rect.width / 2, line.rect.y0, line.rect.x1, line.rect.y1)
+        second_half_rect = fitz.Rect(rect.x0 + rect.width / 2, rect.y0, rect.x1, rect.y1)
         entries.append(DepthColumnEntry(second_half_rect, value2))
 
     return entries
