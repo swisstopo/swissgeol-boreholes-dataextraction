@@ -72,7 +72,7 @@ def process_page(page: fitz.Page, geometric_lines, language: str, **params: dict
             current_line_words = []
 
     # Detect Layer Index Columns
-    layer_identifier_entries = find_layer_identifier_column_entries(words)
+    layer_identifier_entries = find_layer_identifier_column_entries(lines)
     layer_identifier_columns = (
         find_layer_identifier_column(layer_identifier_entries) if layer_identifier_entries else []
     )
