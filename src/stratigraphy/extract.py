@@ -258,7 +258,14 @@ def match_columns(
         ]
     elif isinstance(depth_column, LayerIdentifierColumn):
         blocks = get_description_blocks_from_layer_identifier(depth_column.entries, description_lines)
-        return [{"block": block} for block in blocks]
+        groups = []
+        for block in blocks:
+            depth_interval = depth_column.get_depth_interval(block)
+            if depth_interval:
+                groups.append({"depth_interval": depth_interval, "block": block})
+            else:
+                groups.append({"block": block})
+        return groups
     else:
         raise ValueError(
             f"depth_column must be a DepthColumn or a LayerIdentifierColumn object. Got {type(depth_column)}."

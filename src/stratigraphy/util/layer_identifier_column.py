@@ -3,8 +3,11 @@
 import re
 
 import fitz
+import numpy as np
 
 from stratigraphy.util.line import TextWord
+from stratigraphy.util.depthcolumn import DepthColumnEntry, LayerDepthColumnEntry
+from stratigraphy.util.textblock import TextBlock
 
 
 class LayerIdentifierEntry:
@@ -111,6 +114,68 @@ class LayerIdentifierColumn:
             and rect.y0 <= self.rect().y0
             and self.rect().y1 <= rect.y1
         )
+
+    def get_depth_interval(self, block: TextBlock) -> LayerDepthColumnEntry:
+        """Extract depth interval from a material description block.
+
+        For borehole profiles in the Deriaz layout, the depth interval is usually found in the text description
+        of the material. Often, these text descriptions contain a further separation into multiple sub layers.
+        These sub layers have their own depth intervals. This function extracts the overall depth interval,
+        spanning across all mentioned sub layers.
+
+        Note: There is a lot of similarity with find_depth_columns.find_depth_columns. Refactoring may be desired.
+
+        Args:
+            block (TextBlock): The block to calculate the depth interval for.
+
+        Returns:
+            LayerDepthColumnEntry: The depth interval.
+        """
+
+        def value_as_float(string_value: str) -> float:  # noqa: D103
+            # OCR sometimes tends to miss the decimal comma
+            parsed_text = re.sub(r"-?([0-9]+)([0-9]{2})", r"\1.\2", string_value)
+            # remove final "."
+            parsed_text = re.sub(r"\D+$", "", parsed_text)
+            return abs(float(parsed_text))
+
+        # The regular expression pattern
+        pattern = re.compile(r"-?\d+[\.,]?\d*\s*[müMN\\.]*\s*-\s*\d+[\.,]?\d*\s*[müMN\\.]?")
+
+        number_pairs = []
+        rects = []
+        for line in block.lines:
+            match = pattern.findall(line.text)
+            if match:
+                for m in match:
+                    try:
+                        numbers = m.split("-")
+                        # Remove any trailing 'm' and leading/trailing whitespace, and replace commas with periods
+                        numbers = [n.strip().replace("m", "").replace(",", ".") for n in numbers]
+                        number_pairs.append([value_as_float(n) for n in numbers])
+                        if any(n is None for n in number_pairs[-1]):
+                            number_pairs.pop()
+                            continue
+                        first_half_rect = fitz.Rect(
+                            line.rect.x0, line.rect.y0, line.rect.x1 - line.rect.width / 2, line.rect.y1
+                        )
+                        second_half_rect = fitz.Rect(
+                            line.rect.x0 + line.rect.width / 2, line.rect.y0, line.rect.x1, line.rect.y1
+                        )
+                        rects.append([first_half_rect, second_half_rect])
+                    except ValueError:
+                        pass
+
+        if number_pairs:
+            start_idx = np.argmin([pair[0] for pair in number_pairs])
+            end_idx = np.argmax([pair[1] for pair in number_pairs])
+
+            start = DepthColumnEntry(rects[start_idx][0], number_pairs[start_idx][0])
+            end = DepthColumnEntry(rects[end_idx][1], number_pairs[end_idx][1])
+
+            return LayerDepthColumnEntry(start, end)
+        else:
+            return None
 
     def to_json(self):
         rect = self.rect()
