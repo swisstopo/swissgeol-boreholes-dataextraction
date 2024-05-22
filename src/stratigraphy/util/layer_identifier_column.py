@@ -3,10 +3,9 @@
 import re
 
 import fitz
-import numpy as np
 
 from stratigraphy.util.depthcolumn import LayerDepthColumnEntry
-from stratigraphy.util.find_depth_columns import extract_layer_depth_interval_entries
+from stratigraphy.util.find_depth_columns import extract_layer_depth_interval
 from stratigraphy.util.line import TextWord
 from stratigraphy.util.textblock import TextBlock
 
@@ -133,21 +132,18 @@ class LayerIdentifierColumn:
         depth_entries = []
         for line in block.lines:
             try:
-                new_entries = extract_layer_depth_interval_entries(line.text, line.rect, require_start_of_string=False)
+                layer_depth_entry = extract_layer_depth_interval(line.text, line.rect, require_start_of_string=False)
                 # require_start_of_string = False because the depth interval may not always start at the beginning
                 # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
-                if new_entries:
-                    depth_entries.append(new_entries)
+                if layer_depth_entry:
+                    depth_entries.append(layer_depth_entry)
             except ValueError:
                 pass
 
         if depth_entries:
             # Merge the sub layers into one depth interval.
-            start_idx = np.argmin([entry[0].value for entry in depth_entries])
-            end_idx = np.argmax([entry[1].value for entry in depth_entries])
-
-            start = depth_entries[start_idx][0]
-            end = depth_entries[end_idx][1]
+            start = min([entry.start for entry in depth_entries], key=lambda start_entry: start_entry.value)
+            end = max([entry.end for entry in depth_entries], key=lambda end_entry: end_entry.value)
 
             return LayerDepthColumnEntry(start, end)
         else:
