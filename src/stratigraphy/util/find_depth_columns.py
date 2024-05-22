@@ -32,7 +32,10 @@ def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> lis
                 entries.append(DepthColumnEntry(word.rect, value))
             elif include_splits:
                 # support for e.g. "1.10-1.60m" extracted as a single word
-                entries.extend(extract_layer_depth_interval_entries(input_string, word.rect))
+                layer_depth_column_entry = extract_layer_depth_interval_entries(input_string, word.rect)
+                entries.extend(
+                    [layer_depth_column_entry.start, layer_depth_column_entry.end] if layer_depth_column_entry else []
+                )
         except ValueError:
             pass
     return entries
@@ -46,8 +49,8 @@ def value_as_float(string_value: str) -> float:  # noqa: D103
 
 def extract_layer_depth_interval_entries(
     text: str, rect: fitz.Rect, require_start_of_string: bool = True
-) -> list[DepthColumnEntry]:
-    """Extracts two DepthColumnEntry obejcts from a string to represent a layer depth interval.
+) -> LayerDepthColumnEntry | None:
+    """Extracts a LayerDepthColumnEntry from a string.
 
     Args:
         text (str): The string to extract the depth interval from.
@@ -56,10 +59,10 @@ def extract_layer_depth_interval_entries(
                                                   at the start of a string. Defaults to True.
 
     Returns:
-        list[DepthColumnEntry]: The extracted depth column entries. Either two entries or an empty list.
+        LayerDepthColumnEntry | None: The extracted LayerDepthColumnEntry or None if none is found.
     """
     input_string = text.strip().replace(",", ".")
-    entries = []
+
     query = r"-?([0-9]+(\.[0-9]+)?)[müMN\]*[\s-]+([0-9]+(\.[0-9]+)?)[müMN\\.]*"
     if not require_start_of_string:
         query = r".*?" + query
@@ -68,13 +71,13 @@ def extract_layer_depth_interval_entries(
     if match:
         value1 = value_as_float(match.group(1))
         first_half_rect = fitz.Rect(rect.x0, rect.y0, rect.x1 - rect.width / 2, rect.y1)
-        entries.append(DepthColumnEntry(first_half_rect, value1))
 
         value2 = value_as_float(match.group(3))
         second_half_rect = fitz.Rect(rect.x0 + rect.width / 2, rect.y0, rect.x1, rect.y1)
-        entries.append(DepthColumnEntry(second_half_rect, value2))
-
-    return entries
+        return LayerDepthColumnEntry(
+            DepthColumnEntry(first_half_rect, value1), DepthColumnEntry(second_half_rect, value2)
+        )
+    return None
 
 
 def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextWord]) -> list[LayerDepthColumn]:
