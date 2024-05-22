@@ -24,6 +24,12 @@ class TextWord:
     def __repr__(self) -> str:
         return f"TextWord({self.rect}, {self.text})"
 
+    def to_json(self):
+        return {
+            "text": self.text,
+            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
+        }
+
 
 class TextLine:
     """Class to represent TextLine objects.

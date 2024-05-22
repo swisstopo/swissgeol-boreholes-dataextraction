@@ -6,7 +6,9 @@ import fitz
 import numpy as np
 
 from stratigraphy.util.line import TextWord
-from stratigraphy.util.depthcolumn import DepthColumnEntry, LayerDepthColumnEntry
+from stratigraphy.util.depthcolumn import LayerDepthColumnEntry
+from stratigraphy.util.depthcolumn import LayerDepthColumnEntry
+from stratigraphy.util.find_depth_columns import extract_layer_depth_interval_entries
 from stratigraphy.util.textblock import TextBlock
 
 
@@ -123,55 +125,28 @@ class LayerIdentifierColumn:
         These sub layers have their own depth intervals. This function extracts the overall depth interval,
         spanning across all mentioned sub layers.
 
-        Note: There is a lot of similarity with find_depth_columns.find_depth_columns. Refactoring may be desired.
-
         Args:
             block (TextBlock): The block to calculate the depth interval for.
 
         Returns:
             LayerDepthColumnEntry: The depth interval.
         """
-
-        def value_as_float(string_value: str) -> float:  # noqa: D103
-            # OCR sometimes tends to miss the decimal comma
-            parsed_text = re.sub(r"-?([0-9]+)([0-9]{2})", r"\1.\2", string_value)
-            # remove final "."
-            parsed_text = re.sub(r"\D+$", "", parsed_text)
-            return abs(float(parsed_text))
-
-        # The regular expression pattern
-        pattern = re.compile(r"-?\d+[\.,]?\d*\s*[müMN\\.]*\s*-\s*\d+[\.,]?\d*\s*[müMN\\.]?")
-
-        number_pairs = []
-        rects = []
+        depth_entries = []
         for line in block.lines:
-            match = pattern.findall(line.text)
-            if match:
-                for m in match:
-                    try:
-                        numbers = m.split("-")
-                        # Remove any trailing 'm' and leading/trailing whitespace, and replace commas with periods
-                        numbers = [n.strip().replace("m", "").replace(",", ".") for n in numbers]
-                        number_pairs.append([value_as_float(n) for n in numbers])
-                        if any(n is None for n in number_pairs[-1]):
-                            number_pairs.pop()
-                            continue
-                        first_half_rect = fitz.Rect(
-                            line.rect.x0, line.rect.y0, line.rect.x1 - line.rect.width / 2, line.rect.y1
-                        )
-                        second_half_rect = fitz.Rect(
-                            line.rect.x0 + line.rect.width / 2, line.rect.y0, line.rect.x1, line.rect.y1
-                        )
-                        rects.append([first_half_rect, second_half_rect])
-                    except ValueError:
-                        pass
+            try:
+                new_entries = extract_layer_depth_interval_entries(line.text, line, require_start_of_string=False)
+                if new_entries:
+                    depth_entries.append(new_entries)
+            except ValueError:
+                pass
 
-        if number_pairs:
-            start_idx = np.argmin([pair[0] for pair in number_pairs])
-            end_idx = np.argmax([pair[1] for pair in number_pairs])
+        if depth_entries:
+            # Merge the sub layers into one depth interval.
+            start_idx = np.argmin([entry[0].value for entry in depth_entries])
+            end_idx = np.argmax([entry[1].value for entry in depth_entries])
 
-            start = DepthColumnEntry(rects[start_idx][0], number_pairs[start_idx][0])
-            end = DepthColumnEntry(rects[end_idx][1], number_pairs[end_idx][1])
+            start = depth_entries[start_idx][0]
+            end = depth_entries[end_idx][1]
 
             return LayerDepthColumnEntry(start, end)
         else:
