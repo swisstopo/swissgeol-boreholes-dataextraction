@@ -9,10 +9,10 @@ from stratigraphy.util.line import TextLine, TextWord
 
 def test_depth_column_entries():  # noqa: D103
     all_words = [
-        TextLine([TextWord(fitz.Rect(0, 0, 5, 1), "10.00m")]),
-        TextLine([TextWord(fitz.Rect(0, 2, 5, 3), "20.0m")]),
-        TextLine([TextWord(fitz.Rect(0, 4, 5, 5), "30.0m")]),
-        TextLine([TextWord(fitz.Rect(0, 6, 5, 7), "40.0m")]),
+        TextWord(fitz.Rect(0, 0, 5, 1), "10.00m"),
+        TextWord(fitz.Rect(0, 2, 5, 3), "20.0m"),
+        TextWord(fitz.Rect(0, 4, 5, 5), "30.0m"),
+        TextWord(fitz.Rect(0, 6, 5, 7), "40.0m"),
     ]
     entries = depth_column_entries(all_words, include_splits=False)
     assert len(entries) == 4, "There should be 4 entries"
@@ -36,13 +36,13 @@ def test_depth_column_entries_with_splits():  # noqa: D103
 
 
 all_words_find_depth_column = [
-    TextLine([TextWord(fitz.Rect(0, 0, 5, 1), "10.00m")]),
-    TextLine([TextWord(fitz.Rect(20, 0, 30, 1), "Kies, Torf und Sand")]),
-    TextLine([TextWord(fitz.Rect(20, 2, 30, 3), "Kies, verwittert.")]),
-    TextLine([TextWord(fitz.Rect(0, 2, 5, 3), "20.0m")]),
-    TextLine([TextWord(fitz.Rect(0, 4, 5, 5), "30.0m")]),
-    TextLine([TextWord(fitz.Rect(0, 6, 5, 7), "40.0m")]),
-    TextLine([TextWord(fitz.Rect(0, 8, 5, 9), "50.0m")]),
+    TextWord(fitz.Rect(0, 0, 5, 1), "10.00m"),
+    TextWord(fitz.Rect(20, 0, 30, 1), "Kies, Torf und Sand"),
+    TextWord(fitz.Rect(20, 2, 30, 3), "Kies, verwittert."),
+    TextWord(fitz.Rect(0, 2, 5, 3), "20.0m"),
+    TextWord(fitz.Rect(0, 4, 5, 5), "30.0m"),
+    TextWord(fitz.Rect(0, 6, 5, 7), "40.0m"),
+    TextWord(fitz.Rect(0, 8, 5, 9), "50.0m"),
 ]
 
 
@@ -111,13 +111,13 @@ def test_two_columns_find_depth_columns():  # noqa: D103
 
 
 all_words_find_layer_depth_column = [
-    TextLine([TextWord(fitz.Rect(0, 0, 5, 1), "12.00-20.0m")]),
-    TextLine([TextWord(fitz.Rect(20, 0, 30, 1), "Kies, Torf und Sand")]),
-    TextLine([TextWord(fitz.Rect(20, 2, 30, 3), "Kies, verwittert.")]),
-    TextLine([TextWord(fitz.Rect(0, 2, 5, 3), "20.0-34.0m")]),
-    TextLine([TextWord(fitz.Rect(0, 4, 5, 5), "34.0 - 40.0m")]),
-    TextLine([TextWord(fitz.Rect(0, 6, 5, 7), "40.0-50m")]),
-    TextLine([TextWord(fitz.Rect(0, 8, 5, 9), "50.0-60m")]),
+    TextWord(fitz.Rect(0, 0, 5, 1), "12.00-20.0m"),
+    TextWord(fitz.Rect(20, 0, 30, 1), "Kies, Torf und Sand"),
+    TextWord(fitz.Rect(20, 2, 30, 3), "Kies, verwittert."),
+    TextWord(fitz.Rect(0, 2, 5, 3), "20.0-34.0m"),
+    TextWord(fitz.Rect(0, 4, 5, 5), "34.0 - 40.0m"),
+    TextWord(fitz.Rect(0, 6, 5, 7), "40.0-50m"),
+    TextWord(fitz.Rect(0, 8, 5, 9), "50.0-60m"),
 ]
 
 

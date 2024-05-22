@@ -5,11 +5,20 @@ import math
 
 import fitz
 
+from stratigraphy import DATAPATH
 from stratigraphy.util import find_depth_columns
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.depthcolumn import DepthColumn
-from stratigraphy.util.find_description import get_description_blocks, get_description_lines
+from stratigraphy.util.find_description import (
+    get_description_blocks,
+    get_description_blocks_from_layer_identifier,
+    get_description_lines,
+)
 from stratigraphy.util.interval import BoundaryInterval, Interval
+from stratigraphy.util.layer_identifier_column import (
+    find_layer_identifier_column,
+    find_layer_identifier_column_entries,
+)
 from stratigraphy.util.line import TextLine, TextWord
 from stratigraphy.util.textblock import TextBlock, block_distance
 from stratigraphy.util.util import (
@@ -41,7 +50,7 @@ def process_page(page: fitz.Page, geometric_lines, language: str, **params: dict
     for x0, y0, x1, y1, word, block_no, line_no, _word_no in fitz.utils.get_text(page, "words"):
         rect = fitz.Rect(x0, y0, x1, y1) * page.rotation_matrix
         text_word = TextWord(rect, word)
-        words.append(TextLine([text_word]))
+        words.append(text_word)
         key = f"{block_no}_{line_no}"
         if key not in words_by_line:
             words_by_line[key] = []
@@ -81,6 +90,58 @@ def process_page(page: fitz.Page, geometric_lines, language: str, **params: dict
             depth_column_entries, words, depth_column_params=params["depth_column_params"]
         )
     )
+
+    # Detect Layer Index Columns
+    layer_identifier_entries = find_layer_identifier_column_entries(words)
+    layer_identifier_columns = (
+        find_layer_identifier_column(layer_identifier_entries) if layer_identifier_entries else []
+    )
+    if layer_identifier_columns:
+        layer_identifier_pairs = []
+        for layer_identifier_column in layer_identifier_columns:
+            material_description_rect = find_material_description_column(
+                lines, layer_identifier_column, language, **params["material_description"]
+            )
+            if material_description_rect:
+                layer_identifier_pairs.append((layer_identifier_column, material_description_rect))
+
+        # Obtain the best pair. In contrast to depth columns, there only ever is one layer index column per page.
+        if layer_identifier_pairs:
+            layer_identifier_pairs.sort(key=lambda pair: score_column_match(pair[0], pair[1]))
+            layer_identifier_column, material_description_rect = layer_identifier_pairs[-1]
+            # split the material description rect into blocks.
+            description_lines = get_description_lines(lines, material_description_rect)
+            blocks = get_description_blocks_from_layer_identifier(layer_identifier_column.entries, description_lines)
+
+            predictions = [{"material_description": block.to_json()} for block in blocks]
+            predictions = parse_and_remove_empty_predictions(predictions)
+
+            json_filtered_pairs = [
+                {
+                    "depth_column": None,
+                    "material_description_rect": [
+                        material_description_rect.x0,
+                        material_description_rect.y0,
+                        material_description_rect.x1,
+                        material_description_rect.y1,
+                    ],
+                }
+            ]
+
+            # Visualization: To be dropped before merging to main.
+            for layer_identifier_column in layer_identifier_columns:
+                fitz.utils.draw_rect(
+                    page, layer_identifier_column.rect() * page.derotation_matrix, color=fitz.utils.getColor("blue")
+                )
+            for block in blocks:
+                fitz.utils.draw_rect(page, block.rect * page.derotation_matrix, color=fitz.utils.getColor("red"))
+            fitz.utils.draw_rect(
+                page, material_description_rect * page.derotation_matrix, color=fitz.utils.getColor("blue")
+            )
+            page.parent.save(DATAPATH / "_temp" / "output.pdf", garbage=4, deflate=True, clean=True)
+
+            return predictions, json_filtered_pairs
+
     pairs = []
     for depth_column in depth_columns:
         material_description_rect = find_material_description_column(
@@ -88,7 +149,6 @@ def process_page(page: fitz.Page, geometric_lines, language: str, **params: dict
         )
         if material_description_rect:
             pairs.append((depth_column, material_description_rect))
-
     # lowest score first
     pairs.sort(key=lambda pair: score_column_match(pair[0], pair[1], words))
 
@@ -101,7 +161,7 @@ def process_page(page: fitz.Page, geometric_lines, language: str, **params: dict
     filtered_pairs = [item for index, item in enumerate(pairs) if index not in to_delete]
 
     groups = []  # list of matched depth intervals and text blocks
-    # groups is of the form: ["depth_interval": BoundaryInterval, "block": TextBlock]
+    # groups is of the form: [{"depth_interval": BoundaryInterval, "block": TextBlock}]
     if len(filtered_pairs):  # match depth column items with material description
         for depth_column, material_description_rect in filtered_pairs:
             description_lines = get_description_lines(lines, material_description_rect)
