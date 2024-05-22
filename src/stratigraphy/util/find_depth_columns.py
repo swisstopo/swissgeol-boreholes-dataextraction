@@ -32,7 +32,7 @@ def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> lis
                 entries.append(DepthColumnEntry(word.rect, value))
             elif include_splits:
                 # support for e.g. "1.10-1.60m" extracted as a single word
-                layer_depth_column_entry = extract_layer_depth_interval_entries(input_string, word.rect)
+                layer_depth_column_entry = extract_layer_depth_interval(input_string, word.rect)
                 entries.extend(
                     [layer_depth_column_entry.start, layer_depth_column_entry.end] if layer_depth_column_entry else []
                 )
@@ -47,7 +47,7 @@ def value_as_float(string_value: str) -> float:  # noqa: D103
     return abs(float(parsed_text))
 
 
-def extract_layer_depth_interval_entries(
+def extract_layer_depth_interval(
     text: str, rect: fitz.Rect, require_start_of_string: bool = True
 ) -> LayerDepthColumnEntry | None:
     """Extracts a LayerDepthColumnEntry from a string.

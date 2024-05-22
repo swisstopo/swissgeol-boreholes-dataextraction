@@ -5,7 +5,7 @@ import re
 import fitz
 
 from stratigraphy.util.depthcolumn import LayerDepthColumnEntry
-from stratigraphy.util.find_depth_columns import extract_layer_depth_interval_entries
+from stratigraphy.util.find_depth_columns import extract_layer_depth_interval
 from stratigraphy.util.line import TextLine
 from stratigraphy.util.textblock import TextBlock
 
@@ -132,9 +132,7 @@ class LayerIdentifierColumn:
         depth_entries = []
         for line in block.lines:
             try:
-                layer_depth_entry = extract_layer_depth_interval_entries(
-                    line.text, line.rect, require_start_of_string=False
-                )
+                layer_depth_entry = extract_layer_depth_interval(line.text, line.rect, require_start_of_string=False)
                 # require_start_of_string = False because the depth interval may not always start at the beginning
                 # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
                 if layer_depth_entry:
