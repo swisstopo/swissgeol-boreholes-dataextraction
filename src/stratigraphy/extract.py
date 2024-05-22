@@ -50,7 +50,7 @@ def process_page(page: fitz.Page, geometric_lines, language: str, **params: dict
     for x0, y0, x1, y1, word, block_no, line_no, _word_no in fitz.utils.get_text(page, "words"):
         rect = fitz.Rect(x0, y0, x1, y1) * page.rotation_matrix
         text_word = TextWord(rect, word)
-        words.append(TextLine([text_word]))
+        words.append(text_word)
         key = f"{block_no}_{line_no}"
         if key not in words_by_line:
             words_by_line[key] = []
@@ -105,7 +105,7 @@ def process_page(page: fitz.Page, geometric_lines, language: str, **params: dict
             if material_description_rect:
                 layer_identifier_pairs.append((layer_identifier_column, material_description_rect))
 
-        # Obtain the best pair. In contrast do depth columns, there only ever is one layer index column per page.
+        # Obtain the best pair. In contrast to depth columns, there only ever is one layer index column per page.
         if layer_identifier_pairs:
             layer_identifier_pairs.sort(key=lambda pair: score_column_match(pair[0], pair[1]))
             layer_identifier_column, material_description_rect = layer_identifier_pairs[-1]

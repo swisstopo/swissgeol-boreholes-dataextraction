@@ -4,17 +4,17 @@ import re
 
 import fitz
 
-from stratigraphy.util.line import TextLine
+from stratigraphy.util.line import TextWord
 
 
 class LayerIdentifierColumn:
     """Class for a layer identifier column."""
 
-    def __init__(self, entries: list[TextLine]):
+    def __init__(self, entries: list[TextWord]):
         """Initialize the LayerIdentifierColumn object.
 
         Args:
-            entries (list[TextLine]): The entries corresponding to the layer indices.
+            entries (list[TextWord]): The entries corresponding to the layer indices.
         """
         self.entries = entries
 
@@ -41,11 +41,11 @@ class LayerIdentifierColumn:
     def rects(self) -> list[fitz.Rect]:
         return [entry.rect for entry in self.entries]
 
-    def add_entry(self, entry: TextLine):
+    def add_entry(self, entry: TextWord):
         """Add a new layer identifier column entry to the layer identifier column.
 
         Args:
-            entry (TextLine): The layer identifier column entry to be added.
+            entry (TextWord): The layer identifier column entry to be added.
         """
         self.entries.append(entry)
 
@@ -93,7 +93,7 @@ class LayerIdentifierColumn:
         )
 
 
-def find_layer_identifier_column_entries(all_words: list[TextLine]) -> list:
+def find_layer_identifier_column_entries(all_words: list[TextWord]) -> list:
     r"""Find the layer identifier column entries.
 
     Regex explanation:
@@ -104,13 +104,16 @@ def find_layer_identifier_column_entries(all_words: list[TextLine]) -> list:
     This regular expression will match strings like "1)", "2)", "a)", "b)", "1a4)", "6de)", etc.
 
     Args:
-        all_words (ist[TextLine]): The words to search for layer identifier columns.
+        all_words (list[TextWord]): The words to search for layer identifier columns.
 
     Returns:
         list: The layer identifier column entries.
     """
     entries = []
     for word in sorted(all_words, key=lambda word: word.rect.y0):
+        # TODO There are quite a few false positives such as "(ca. 10 cm)" where "cm)" would be matched currently.
+        # Could we avoid some of those examples by requiring that the word is at the start of a line and/or there are
+        # no other words immediately to the left of it?
         regex = re.compile(r"\b[\da-z-]+\)")
         match = regex.match(word.text)
         if match and len(word.text) < 7:
@@ -118,13 +121,13 @@ def find_layer_identifier_column_entries(all_words: list[TextLine]) -> list:
     return entries
 
 
-def find_layer_identifier_column(entries: list[TextLine]) -> list[LayerIdentifierColumn]:
+def find_layer_identifier_column(entries: list[TextWord]) -> list[LayerIdentifierColumn]:
     """Find the layer identifier column given the index column entries.
 
     Note: Similar to find_depth_columns.find_depth_columns. Refactoring may be desired.
 
     Args:
-        entries (list[TextLine]): The layer identifier column entries.
+        entries (list[TextWord]): The layer identifier column entries.
 
     Returns:
         list[LayerIdentifierColumn]: The found layer identifier columns.

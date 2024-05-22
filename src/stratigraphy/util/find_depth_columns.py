@@ -6,16 +6,16 @@ import fitz
 
 from stratigraphy.util.depthcolumn import BoundaryDepthColumn, LayerDepthColumn
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
-from stratigraphy.util.line import TextLine
+from stratigraphy.util.line import TextWord
 
 
-def depth_column_entries(all_words: list[TextLine], include_splits: bool) -> list[DepthColumnEntry]:
+def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> list[DepthColumnEntry]:
     """Find all depth column entries given a list of TextLine objects.
 
     Note: Only depths up to two digits before the decimal point are supported.
 
     Args:
-        all_words (list[TextLine]): List of Text lines to extract depth column entries from.
+        all_words (list[TextWord]): List of text words to extract depth column entries from.
         include_splits (bool): Whether to include split entries.
 
     Returns:
@@ -28,14 +28,14 @@ def depth_column_entries(all_words: list[TextLine], include_splits: bool) -> lis
         return abs(float(parsed_text))
 
     entries = []
-    for line in sorted(all_words, key=lambda line: line.rect.y0):
+    for word in sorted(all_words, key=lambda word: word.rect.y0):
         try:
-            input_string = line.text.strip().replace(",", ".")
+            input_string = word.text.strip().replace(",", ".")
             regex = re.compile(r"^-?([0-9]+(\.[0-9]+)?)[müMN\\.]*$")
             match = regex.match(input_string)
             if match:
                 value = value_as_float(match.group(1))
-                entries.append(DepthColumnEntry(line.rect, value))
+                entries.append(DepthColumnEntry(word.rect, value))
             elif include_splits:
                 # support for e.g. "1.10-1.60m" extracted as a single word
                 regex2 = re.compile(r"^-?([0-9]+(\.[0-9]+)?)[müMN\\.]*\W+([0-9]+(\.[0-9]+)?)[müMN\\.]*$")
@@ -44,13 +44,13 @@ def depth_column_entries(all_words: list[TextLine], include_splits: bool) -> lis
                 if match2:
                     value1 = value_as_float(match2.group(1))
                     first_half_rect = fitz.Rect(
-                        line.rect.x0, line.rect.y0, line.rect.x1 - line.rect.width / 2, line.rect.y1
+                        word.rect.x0, word.rect.y0, word.rect.x1 - word.rect.width / 2, word.rect.y1
                     )
                     entries.append(DepthColumnEntry(first_half_rect, value1))
 
                     value2 = value_as_float(match2.group(3))
                     second_half_rect = fitz.Rect(
-                        line.rect.x0 + line.rect.width / 2, line.rect.y0, line.rect.x1, line.rect.y1
+                        word.rect.x0 + word.rect.width / 2, word.rect.y0, word.rect.x1, word.rect.y1
                     )
                     entries.append(DepthColumnEntry(second_half_rect, value2))
         except ValueError:
@@ -58,11 +58,11 @@ def depth_column_entries(all_words: list[TextLine], include_splits: bool) -> lis
     return entries
 
 
-def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextLine]) -> list[LayerDepthColumn]:
+def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextWord]) -> list[LayerDepthColumn]:
     """Finds all layer depth columns.
 
-    Generates a list of LayerDepthColumnEntry objects by finding conseucutive pairs of DepthColumnEntry objects.
-    Different columns are grouped together in LayerDepthColumn objects. Finally a list of LayerDepthColumn objects,
+    Generates a list of LayerDepthColumnEntry objects by finding consecutive pairs of DepthColumnEntry objects.
+    Different columns are grouped together in LayerDepthColumn objects. Finally, a list of LayerDepthColumn objects,
     one for each column, is returned.
 
     A layer corresponds to a material layer. The layer is defined using a start and end point (e.g. 1.10-1.60m).
@@ -70,7 +70,7 @@ def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[Te
 
     Args:
         entries (list[DepthColumnEntry]): List of depth column entries.
-        all_words (list[TextLine]): List of all TextLine objects.
+        all_words (list[TextWord]): List of all TextWord objects.
 
     Returns:
         list[LayerDepthColumn]: List of all layer depth columns identified.
@@ -125,7 +125,7 @@ def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[Te
 
 
 def find_depth_columns(
-    entries: list[DepthColumnEntry], all_words: list[TextLine], depth_column_params: dict
+    entries: list[DepthColumnEntry], all_words: list[TextWord], depth_column_params: dict
 ) -> list[BoundaryDepthColumn]:
     """Construct all possible BoundaryDepthColumn objects from the given DepthColumnEntry objects.
 
