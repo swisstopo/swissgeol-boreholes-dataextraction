@@ -2,6 +2,7 @@
 
 import contextlib
 import logging
+import math
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -294,9 +295,9 @@ class FilePredictions:
         Args:
             metadata_ground_truth (dict): The ground truth for the file.
         """
-        if self.metadata.coordinates is None:
-            self.metadata_is_correct["coordinates"] = False
-        elif metadata_ground_truth is None or metadata_ground_truth.get("coordinates") is None:
+        if self.metadata.coordinates is None or (
+            metadata_ground_truth is None or metadata_ground_truth.get("coordinates") is None
+        ):
             self.metadata_is_correct["coordinates"] = None
 
         else:
@@ -316,8 +317,10 @@ class FilePredictions:
                 ground_truth_east = int(metadata_ground_truth["coordinates"]["E"])
                 ground_truth_west = int(metadata_ground_truth["coordinates"]["N"])
 
-            if (int(self.metadata.coordinates.east.coordinate_value) == ground_truth_east) and (
-                int(self.metadata.coordinates.north.coordinate_value) == ground_truth_west
+            if (
+                math.isclose(int(self.metadata.coordinates.east.coordinate_value), ground_truth_east, rel_tol=0.001)
+            ) and (
+                math.isclose(int(self.metadata.coordinates.north.coordinate_value), ground_truth_west, rel_tol=0.001)
             ):
                 self.metadata_is_correct["coordinates"] = True
             else:

@@ -163,21 +163,41 @@ def evaluate_metadata(predictions: dict) -> tuple[dict, pd.DataFrame]:
         "document_name": [],
         "coordinates": [],
     }
-    coordinates_tp = 0
-    number_predictions = 0
+    coordinates_tp = 0  # correct prediction
+    coordinates_fn = 0  # no predictions, i.e. None
+    coordinates_fp = 0  # wrong prediction
+    # there is no such thing as true negatives as each document has coordinates - though not necessarily specified
+    number_coordinate_predictions = 0
     for file_name, file_prediction in predictions.items():
-        document_level_metrics["document_name"].append(file_name)
         if file_prediction.metadata_is_correct["coordinates"]:
             coordinates_tp += 1
-            number_predictions += 1
+            number_coordinate_predictions += 1
+            document_level_metrics["document_name"].append(file_name)
             document_level_metrics["coordinates"].append(1)
         elif file_prediction.metadata_is_correct["coordinates"] is None:
-            # If there is no ground truth, the prediction is not evaluated.
-            continue
+            coordinates_fn += 1
+            number_coordinate_predictions += 1
         else:
-            number_predictions += 1
+            coordinates_fp += 1
+            number_coordinate_predictions += 1
+            document_level_metrics["document_name"].append(file_name)
             document_level_metrics["coordinates"].append(0)
-    return {"coordinate_accuracy": coordinates_tp / number_predictions}, pd.DataFrame(document_level_metrics)
+    try:
+        coordinate_precision = coordinates_tp / (coordinates_tp + coordinates_fp)
+    except ZeroDivisionError:
+        coordinate_precision = 0
+    try:
+        coordinate_recall = coordinates_tp / (coordinates_tp + coordinates_fn)
+    except ZeroDivisionError:
+        coordinate_recall = 0
+
+    metrics = {
+        "coordinate_accuracy": coordinates_tp / number_coordinate_predictions,
+        "coordinate_precision": coordinate_precision,
+        "coordinate_recall": coordinate_recall,
+        "coordinate_f1": f1(coordinate_precision, coordinate_recall),
+    }
+    return metrics, pd.DataFrame(document_level_metrics)
 
 
 def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -> tuple[dict, pd.DataFrame]:
