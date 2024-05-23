@@ -21,12 +21,6 @@ def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> lis
     Returns:
         list[DepthColumnEntry]: The extracted depth column entries.
     """
-
-    def value_as_float(string_value: str) -> float:  # noqa: D103
-        # OCR sometimes tends to miss the decimal comma
-        parsed_text = re.sub(r"^-?([0-9]+)([0-9]{2})", r"\1.\2", string_value)
-        return abs(float(parsed_text))
-
     entries = []
     for word in sorted(all_words, key=lambda word: word.rect.y0):
         try:
@@ -38,24 +32,52 @@ def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> lis
                 entries.append(DepthColumnEntry(word.rect, value))
             elif include_splits:
                 # support for e.g. "1.10-1.60m" extracted as a single word
-                regex2 = re.compile(r"^-?([0-9]+(\.[0-9]+)?)[müMN\\.]*\W+([0-9]+(\.[0-9]+)?)[müMN\\.]*$")
-                match2 = regex2.match(input_string)
-
-                if match2:
-                    value1 = value_as_float(match2.group(1))
-                    first_half_rect = fitz.Rect(
-                        word.rect.x0, word.rect.y0, word.rect.x1 - word.rect.width / 2, word.rect.y1
-                    )
-                    entries.append(DepthColumnEntry(first_half_rect, value1))
-
-                    value2 = value_as_float(match2.group(3))
-                    second_half_rect = fitz.Rect(
-                        word.rect.x0 + word.rect.width / 2, word.rect.y0, word.rect.x1, word.rect.y1
-                    )
-                    entries.append(DepthColumnEntry(second_half_rect, value2))
+                layer_depth_column_entry = extract_layer_depth_interval(input_string, word.rect)
+                entries.extend(
+                    [layer_depth_column_entry.start, layer_depth_column_entry.end] if layer_depth_column_entry else []
+                )
         except ValueError:
             pass
     return entries
+
+
+def value_as_float(string_value: str) -> float:  # noqa: D103
+    # OCR sometimes tends to miss the decimal comma
+    parsed_text = re.sub(r"^-?([0-9]+)([0-9]{2})", r"\1.\2", string_value)
+    return abs(float(parsed_text))
+
+
+def extract_layer_depth_interval(
+    text: str, rect: fitz.Rect, require_start_of_string: bool = True
+) -> LayerDepthColumnEntry | None:
+    """Extracts a LayerDepthColumnEntry from a string.
+
+    Args:
+        text (str): The string to extract the depth interval from.
+        rect (fitz.Rect): The rectangle of the text.
+        require_start_of_string (bool, optional): Whether the number to extract needs to be
+                                                  at the start of a string. Defaults to True.
+
+    Returns:
+        LayerDepthColumnEntry | None: The extracted LayerDepthColumnEntry or None if none is found.
+    """
+    input_string = text.strip().replace(",", ".")
+
+    query = r"-?([0-9]+(\.[0-9]+)?)[müMN\]*[\s-]+([0-9]+(\.[0-9]+)?)[müMN\\.]*"
+    if not require_start_of_string:
+        query = r".*?" + query
+    regex = re.compile(query)
+    match = regex.match(input_string)
+    if match:
+        value1 = value_as_float(match.group(1))
+        first_half_rect = fitz.Rect(rect.x0, rect.y0, rect.x1 - rect.width / 2, rect.y1)
+
+        value2 = value_as_float(match.group(3))
+        second_half_rect = fitz.Rect(rect.x0 + rect.width / 2, rect.y0, rect.x1, rect.y1)
+        return LayerDepthColumnEntry(
+            DepthColumnEntry(first_half_rect, value1), DepthColumnEntry(second_half_rect, value2)
+        )
+    return None
 
 
 def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextWord]) -> list[LayerDepthColumn]:

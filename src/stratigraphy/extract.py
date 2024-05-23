@@ -5,7 +5,6 @@ import math
 
 import fitz
 
-from stratigraphy import DATAPATH
 from stratigraphy.util import find_depth_columns
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.depthcolumn import DepthColumn
@@ -16,6 +15,7 @@ from stratigraphy.util.find_description import (
 )
 from stratigraphy.util.interval import BoundaryInterval, Interval
 from stratigraphy.util.layer_identifier_column import (
+    LayerIdentifierColumn,
     find_layer_identifier_column,
     find_layer_identifier_column_entries,
 )
@@ -71,86 +71,55 @@ def process_page(page: fitz.Page, geometric_lines, language: str, **params: dict
             lines.append(TextLine(current_line_words))
             current_line_words = []
 
-    depth_column_entries = find_depth_columns.depth_column_entries(words, include_splits=True)
-    layer_depth_columns = find_depth_columns.find_layer_depth_columns(depth_column_entries, words)
-
-    used_entry_rects = []
-    for column in layer_depth_columns:
-        for entry in column.entries:
-            used_entry_rects.extend([entry.start.rect, entry.end.rect])
-
-    depth_column_entries = [
-        entry
-        for entry in find_depth_columns.depth_column_entries(words, include_splits=False)
-        if entry.rect not in used_entry_rects
-    ]
-    depth_columns: list[DepthColumn] = layer_depth_columns
-    depth_columns.extend(
-        find_depth_columns.find_depth_columns(
-            depth_column_entries, words, depth_column_params=params["depth_column_params"]
-        )
-    )
-
     # Detect Layer Index Columns
-    layer_identifier_entries = find_layer_identifier_column_entries(words)
+    layer_identifier_entries = find_layer_identifier_column_entries(lines)
     layer_identifier_columns = (
         find_layer_identifier_column(layer_identifier_entries) if layer_identifier_entries else []
     )
+    pairs = []
     if layer_identifier_columns:
-        layer_identifier_pairs = []
         for layer_identifier_column in layer_identifier_columns:
             material_description_rect = find_material_description_column(
                 lines, layer_identifier_column, language, **params["material_description"]
             )
             if material_description_rect:
-                layer_identifier_pairs.append((layer_identifier_column, material_description_rect))
+                pairs.append((layer_identifier_column, material_description_rect))
 
-        # Obtain the best pair. In contrast to depth columns, there only ever is one layer index column per page.
-        if layer_identifier_pairs:
-            layer_identifier_pairs.sort(key=lambda pair: score_column_match(pair[0], pair[1]))
-            layer_identifier_column, material_description_rect = layer_identifier_pairs[-1]
-            # split the material description rect into blocks.
-            description_lines = get_description_lines(lines, material_description_rect)
-            blocks = get_description_blocks_from_layer_identifier(layer_identifier_column.entries, description_lines)
+        # Obtain the best pair. In contrast do depth columns, there only ever is one layer index column per page.
+        if pairs:
+            pairs.sort(key=lambda pair: score_column_match(pair[0], pair[1]))
 
-            predictions = [{"material_description": block.to_json()} for block in blocks]
-            predictions = parse_and_remove_empty_predictions(predictions)
+    # If there is a layer identifier column, then we use this directly.
+    # Else, we search for depth columns. We could also think of some scoring mechanism to decide which one to use.
+    if not pairs:
+        depth_column_entries = find_depth_columns.depth_column_entries(words, include_splits=True)
+        layer_depth_columns = find_depth_columns.find_layer_depth_columns(depth_column_entries, words)
 
-            json_filtered_pairs = [
-                {
-                    "depth_column": None,
-                    "material_description_rect": [
-                        material_description_rect.x0,
-                        material_description_rect.y0,
-                        material_description_rect.x1,
-                        material_description_rect.y1,
-                    ],
-                }
-            ]
+        used_entry_rects = []
+        for column in layer_depth_columns:
+            for entry in column.entries:
+                used_entry_rects.extend([entry.start.rect, entry.end.rect])
 
-            # Visualization: To be dropped before merging to main.
-            for layer_identifier_column in layer_identifier_columns:
-                fitz.utils.draw_rect(
-                    page, layer_identifier_column.rect() * page.derotation_matrix, color=fitz.utils.getColor("blue")
-                )
-            for block in blocks:
-                fitz.utils.draw_rect(page, block.rect * page.derotation_matrix, color=fitz.utils.getColor("red"))
-            fitz.utils.draw_rect(
-                page, material_description_rect * page.derotation_matrix, color=fitz.utils.getColor("blue")
+        depth_column_entries = [
+            entry
+            for entry in find_depth_columns.depth_column_entries(words, include_splits=False)
+            if entry.rect not in used_entry_rects
+        ]
+        depth_columns: list[DepthColumn] = layer_depth_columns
+        depth_columns.extend(
+            find_depth_columns.find_depth_columns(
+                depth_column_entries, words, depth_column_params=params["depth_column_params"]
             )
-            page.parent.save(DATAPATH / "_temp" / "output.pdf", garbage=4, deflate=True, clean=True)
-
-            return predictions, json_filtered_pairs
-
-    pairs = []
-    for depth_column in depth_columns:
-        material_description_rect = find_material_description_column(
-            lines, depth_column, language, **params["material_description"]
         )
-        if material_description_rect:
-            pairs.append((depth_column, material_description_rect))
-    # lowest score first
-    pairs.sort(key=lambda pair: score_column_match(pair[0], pair[1], words))
+
+        for depth_column in depth_columns:
+            material_description_rect = find_material_description_column(
+                lines, depth_column, language, **params["material_description"]
+            )
+            if material_description_rect:
+                pairs.append((depth_column, material_description_rect))
+        # lowest score first
+        pairs.sort(key=lambda pair: score_column_match(pair[0], pair[1], words))
 
     to_delete = []
     for i, (_depth_column, material_description_rect) in enumerate(pairs):
@@ -257,7 +226,7 @@ def score_column_match(
 
 
 def match_columns(
-    depth_column: DepthColumn,
+    depth_column: DepthColumn | LayerIdentifierColumn,
     description_lines: list[TextLine],
     geometric_lines: list[Line],
     material_description_rect: fitz.Rect,
@@ -266,10 +235,11 @@ def match_columns(
     """Match the depth column entries with the description lines.
 
     This function identifies groups of depth intervals and text blocks that are likely to match.
-    In this process, the number of text blocks is adjusted to match the number of depth intervals.
+    Makes a distinction between DepthColumn and LayerIdentifierColumn and obtains the corresponding text blocks
+    as well as their depth intervals where present.
 
     Args:
-        depth_column (DepthColumn): The depth column.
+        depth_column (DepthColumn | LayerIdentifierColumn): The depth column.
         description_lines (list[TextLine]): The description lines.
         geometric_lines (list[Line]): The geometric lines.
         material_description_rect (fitz.Rect): The material description rectangle.
@@ -278,13 +248,28 @@ def match_columns(
     Returns:
         list: The matched depth intervals and text blocks.
     """
-    return [
-        element
-        for group in depth_column.identify_groups(
-            description_lines, geometric_lines, material_description_rect, **params
+    if isinstance(depth_column, DepthColumn):
+        return [
+            element
+            for group in depth_column.identify_groups(
+                description_lines, geometric_lines, material_description_rect, **params
+            )
+            for element in transform_groups(group["depth_intervals"], group["blocks"], **params)
+        ]
+    elif isinstance(depth_column, LayerIdentifierColumn):
+        blocks = get_description_blocks_from_layer_identifier(depth_column.entries, description_lines)
+        groups = []
+        for block in blocks:
+            depth_interval = depth_column.get_depth_interval(block)
+            if depth_interval:
+                groups.append({"depth_interval": depth_interval, "block": block})
+            else:
+                groups.append({"block": block})
+        return groups
+    else:
+        raise ValueError(
+            f"depth_column must be a DepthColumn or a LayerIdentifierColumn object. Got {type(depth_column)}."
         )
-        for element in transform_groups(group["depth_intervals"], group["blocks"], **params)
-    ]
 
 
 def transform_groups(
