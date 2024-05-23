@@ -6,7 +6,7 @@ import fitz
 
 from stratigraphy.util.depthcolumn import LayerDepthColumnEntry
 from stratigraphy.util.find_depth_columns import extract_layer_depth_interval
-from stratigraphy.util.line import TextWord
+from stratigraphy.util.line import TextLine
 from stratigraphy.util.textblock import TextBlock
 
 
@@ -33,13 +33,13 @@ class LayerIdentifierEntry:
 class LayerIdentifierColumn:
     """Class for a layer identifier column."""
 
-    def __init__(self, words: list[TextWord]):
+    def __init__(self, entries: list[LayerIdentifierEntry]):
         """Initialize the LayerIdentifierColumn object.
 
         Args:
-            words (list[TextWord]): The entries corresponding to the layer indices.
+            entries (list[LayerIdentifierEntry]): The entries corresponding to the layer indices.
         """
-        self.entries = [LayerIdentifierEntry(word.rect, word.text) for word in words]
+        self.entries = entries
 
     @property
     def max_x0(self) -> float:
@@ -64,13 +64,13 @@ class LayerIdentifierColumn:
     def rects(self) -> list[fitz.Rect]:
         return [entry.rect for entry in self.entries]
 
-    def add_entry(self, entry: TextWord):
+    def add_entry(self, entry: LayerIdentifierEntry):
         """Add a new layer identifier column entry to the layer identifier column.
 
         Args:
-            entry (TextWord): The layer identifier column entry to be added.
+            entry (LayerIdentifierEntry): The layer identifier column entry to be added.
         """
-        self.entries.append(LayerIdentifierEntry(entry.rect, entry.text))
+        self.entries.append(entry)
 
     def can_be_appended(self, rect: fitz.Rect) -> bool:
         """Checks if a new layer identifier column entry can be appended to the current layer identifier column.
@@ -157,7 +157,7 @@ class LayerIdentifierColumn:
         }
 
 
-def find_layer_identifier_column_entries(all_words: list[TextWord]) -> list:
+def find_layer_identifier_column_entries(lines: list[TextLine]) -> list[LayerIdentifierEntry]:
     r"""Find the layer identifier column entries.
 
     Regex explanation:
@@ -168,30 +168,31 @@ def find_layer_identifier_column_entries(all_words: list[TextWord]) -> list:
     This regular expression will match strings like "1)", "2)", "a)", "b)", "1a4)", "6de)", etc.
 
     Args:
-        all_words (list[TextWord]): The words to search for layer identifier columns.
+        lines (list[TextLine]): The lines to search for layer identifier columns.
 
     Returns:
-        list: The layer identifier column entries.
+        list[LayerIdentifierEntry]: The layer identifier column entries.
     """
     entries = []
-    for word in sorted(all_words, key=lambda word: word.rect.y0):
-        # TODO There are quite a few false positives such as "(ca. 10 cm)" where "cm)" would be matched currently.
-        # Could we avoid some of those examples by requiring that the word is at the start of a line and/or there are
-        # no other words immediately to the left of it?
-        regex = re.compile(r"\b[\da-z-]+\)")
-        match = regex.match(word.text)
-        if match and len(word.text) < 7:
-            entries.append(word)
+    for line in sorted(lines, key=lambda line: line.rect.y0):
+        if len(line.words) > 0:
+            # Only match in the first word of every line, to avoid e.g. matching with "cm)" in a material description
+            # containing an expression like "(diameter max 6 cm)".
+            first_word = line.words[0]
+            regex = re.compile(r"\b[\da-z-]+\)")
+            match = regex.match(first_word.text)
+            if match and len(first_word.text) < 7:
+                entries.append(LayerIdentifierEntry(first_word.rect, first_word.text))
     return entries
 
 
-def find_layer_identifier_column(entries: list[TextWord]) -> list[LayerIdentifierColumn]:
+def find_layer_identifier_column(entries: list[LayerIdentifierEntry]) -> list[LayerIdentifierColumn]:
     """Find the layer identifier column given the index column entries.
 
     Note: Similar to find_depth_columns.find_depth_columns. Refactoring may be desired.
 
     Args:
-        entries (list[TextWord]): The layer identifier column entries.
+        entries (list[LayerIdentifierEntry]): The layer identifier column entries.
 
     Returns:
         list[LayerIdentifierColumn]: The found layer identifier columns.
