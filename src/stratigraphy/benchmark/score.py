@@ -164,14 +164,20 @@ def evaluate_metadata(predictions: dict) -> tuple[dict, pd.DataFrame]:
         "coordinates": [],
     }
     coordinates_tp = 0
+    number_predictions = 0
     for file_name, file_prediction in predictions.items():
         document_level_metrics["document_name"].append(file_name)
         if file_prediction.metadata_is_correct["coordinates"]:
             coordinates_tp += 1
+            number_predictions += 1
             document_level_metrics["coordinates"].append(1)
+        elif file_prediction.metadata_is_correct["coordinates"] is None:
+            # If there is no ground truth, the prediction is not evaluated.
+            continue
         else:
+            number_predictions += 1
             document_level_metrics["coordinates"].append(0)
-    return {"coordinate_accuracy": coordinates_tp / len(predictions)}, pd.DataFrame(document_level_metrics)
+    return {"coordinate_accuracy": coordinates_tp / number_predictions}, pd.DataFrame(document_level_metrics)
 
 
 def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -> tuple[dict, pd.DataFrame]:
