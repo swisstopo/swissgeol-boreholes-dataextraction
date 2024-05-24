@@ -135,7 +135,15 @@ class CoordinateExtractor:
             document (fitz.Document): A PDF document.
         """
         self.doc = document
-        self.coordinate_keys = ["Koordinaten", "Koordinate", "coordinates", "coordinate", "coordonnés", "coordonnes"]
+        self.coordinate_keys = [
+            "Koordinaten",
+            "Koordinate",
+            "Koord.",
+            "coordinates",
+            "coordinate",
+            "coordonnés",
+            "coordonnes",
+        ]
         # TODO: extend coordinate keys with other languages
 
     def find_coordinate_key(self, text: str, allowed_errors: int = 3) -> str:  # noqa: E501
