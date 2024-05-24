@@ -53,6 +53,10 @@ class Coordinate(metaclass=abc.ABCMeta):
     def to_json(self):
         pass
 
+    @abc.abstractmethod
+    def is_valid(self):
+        pass
+
     @staticmethod
     def from_json(input: dict):
         east = input["E"]
@@ -82,6 +86,15 @@ class LV95Coordinate(Coordinate):
             "N": self.north.coordinate_value,
         }
 
+    def is_valid(self):
+        """Reference: https://de.wikipedia.org/wiki/Schweizer_Landeskoordinaten#Beispielkoordinaten."""
+        return (
+            self.east.coordinate_value > 2324800
+            and self.east.coordinate_value < 2847500
+            and self.north.coordinate_value > 1074000
+            and self.north.coordinate_value < 1302000
+        )
+
 
 @dataclass
 class LV03Coordinate(Coordinate):
@@ -98,6 +111,18 @@ class LV03Coordinate(Coordinate):
             "E": self.east.coordinate_value,
             "N": self.north.coordinate_value,
         }
+
+    def is_valid(self):
+        """Reference: https://de.wikipedia.org/wiki/Schweizer_Landeskoordinaten#Beispielkoordinaten.
+
+        To account for uncertainties in the conversion of LV03 to LV95, we allow a margin of 2.
+        """
+        return (
+            self.east.coordinate_value > 324798
+            and self.east.coordinate_value < 847502
+            and self.north.coordinate_value > 73998
+            and self.north.coordinate_value < 302002
+        )
 
 
 class CoordinateExtractor:
@@ -202,7 +227,7 @@ class CoordinateExtractor:
             list: A list of matched coordinates.
         """
         return regex.findall(
-            r"[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX + r".*[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX,
+            r"[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX + r".{0,4}[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX,
             text,
         )
 
@@ -224,9 +249,13 @@ class CoordinateExtractor:
 
         # try to get the text by including X and Y
         try:
-            y_coordinate_string = regex.findall(r"Y[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX, text)
-            x_coordinate_string = regex.findall(r"X[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX, text)
-            coordinate_string = y_coordinate_string[0] + " / " + x_coordinate_string[0]
+            y_coordinate_string = regex.findall(r"Y[=:\s]{0,3}" + COORDINATE_ENTRY_REGEX, text)
+            x_coordinate_string = regex.findall(r"X[=:\s]{0,3}" + COORDINATE_ENTRY_REGEX, text)
+            coordinate_string = (
+                y_coordinate_string[0].replace(" ", "") + " / " + x_coordinate_string[0].replace(" ", "")
+            )
+            # if we have a 'Y' and 'X' coordinate, we can allow for some whitespace in between the numbers.
+            # In some older borehole profile the OCR may recognize whitespace between two digits.
         except IndexError:  # no coordinates found
             try:
                 # get the substring that contains the coordinate information
@@ -249,7 +278,7 @@ class CoordinateExtractor:
                 # leading 2 or 1.
                 east1 = regex.sub(r"\D", "", east1)
                 north1 = regex.sub(r"\D", "", north1)
-                return LV95Coordinate(
+                coordinate = LV95Coordinate(
                     CoordinateEntry.create_from_string(east1, east2),
                     CoordinateEntry.create_from_string(north1, north2),
                 )
@@ -259,23 +288,32 @@ class CoordinateExtractor:
                 # in these case we just truncate to the required 3 digits
                 east1 = east1[-3:]
                 north1 = north1[-3:]
-                return LV03Coordinate(
+                coordinate = LV03Coordinate(
                     CoordinateEntry.create_from_string(east1, east2),
                     CoordinateEntry.create_from_string(north1, north2),
                 )
+            if coordinate.is_valid():
+                return coordinate
+            else:
+                return None
 
         else:
             try:
                 matches = regex.findall(r"[12]?\d{6}", coordinate_string)
                 if len(matches[0]) == 6:  # we expect matches[0] and matches[1] to have the same length
-                    return LV03Coordinate(
+                    coordinate = LV03Coordinate(
                         CoordinateEntry.create_from_string(matches[0]), CoordinateEntry.create_from_string(matches[1])
                     )
 
                 if len(matches[0]) == 7:
-                    return LV95Coordinate(
+                    coordinate = LV95Coordinate(
                         CoordinateEntry.create_from_string(matches[0]), CoordinateEntry.create_from_string(matches[1])
                     )
+
+                if isinstance(coordinate, Coordinate) and coordinate.is_valid():
+                    return coordinate
+
+                return None
 
             except IndexError:
                 logger.warning(f"Could not extract coordinates from: {coordinate_string}")
