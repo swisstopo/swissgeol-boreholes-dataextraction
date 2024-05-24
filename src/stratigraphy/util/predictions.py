@@ -317,10 +317,8 @@ class FilePredictions:
                 ground_truth_east = int(metadata_ground_truth["coordinates"]["E"])
                 ground_truth_west = int(metadata_ground_truth["coordinates"]["N"])
 
-            if (
-                math.isclose(int(self.metadata.coordinates.east.coordinate_value), ground_truth_east, rel_tol=0.001)
-            ) and (
-                math.isclose(int(self.metadata.coordinates.north.coordinate_value), ground_truth_west, rel_tol=0.001)
+            if (math.isclose(int(self.metadata.coordinates.east.coordinate_value), ground_truth_east, abs_tol=2)) and (
+                math.isclose(int(self.metadata.coordinates.north.coordinate_value), ground_truth_west, abs_tol=2)
             ):
                 self.metadata_is_correct["coordinates"] = True
             else:
