@@ -183,7 +183,7 @@ def start_pipeline(
                         if page_index > 0:
                             layer_predictions = remove_duplicate_layers(
                                 doc[page_index - 1],
-                                doc[page_index],
+                                page,
                                 predictions[filename][f"page_{page_number - 1}"]["layers"],
                                 layer_predictions,
                                 matching_params["img_template_probability_threshold"],

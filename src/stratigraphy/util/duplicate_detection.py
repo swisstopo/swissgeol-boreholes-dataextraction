@@ -21,6 +21,10 @@ def remove_duplicate_layers(
 ) -> list[dict]:
     """Remove duplicate layers from the current page based on the layers of the previous page.
 
+    We check if a layer on the current page is present on the previous page. If we have 3 consecutive layers that are
+    not duplicates, we assume that there is no further overlap between the pages and stop the search. If we find a
+    duplicate, all layers up to including the duplicate layer are removed.
+
     If the page contains a depth column, we compare the depth intervals and the material description to determine
     duplicate layers. If there is no depth column, we use template matching to compare the layers.
 
@@ -32,7 +36,7 @@ def remove_duplicate_layers(
         img_template_probability_threshold (float): The threshold for the template matching probability
 
     Returns:
-        list[dict]: _description_
+        list[dict]: The layers of the current page without duplicates.
     """
     sorted_layers = sorted(current_layers, key=lambda x: x["material_description"]["rect"][1])
     first_non_duplicated_layer_index = 0
@@ -95,6 +99,10 @@ def check_duplicate_layer_by_template_matching(
     previous_page: fitz.Page, current_page: fitz.Page, current_layer: dict, img_template_probability_threshold: float
 ) -> bool:
     """Check if the current layer is a duplicate of a layer on the previous page by using template matching.
+
+    This is done by extracting an image of the layer and check if that image is present in the previous page
+    by applying template matching onto the previous page. This checks if the image of the current layer is present
+    in the previous page.
 
     Args:
         previous_page (fitz.Page): The previous page.
