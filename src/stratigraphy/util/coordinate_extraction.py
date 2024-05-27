@@ -266,7 +266,7 @@ class CoordinateExtractor:
         # try to get the text by including X and Y
         try:
             x_values = [
-                int("".join(groups)) for groups in regex.findall(r"Y[=:\s]{0,3}" + COORDINATE_ENTRY_REGEX, text)
+                int("".join(groups)) for groups in regex.findall(r"X[=:\s]{0,3}" + COORDINATE_ENTRY_REGEX, text)
             ]
             y_values = [
                 int("".join(groups)) for groups in regex.findall(r"Y[=:\s]{0,3}" + COORDINATE_ENTRY_REGEX, text)
