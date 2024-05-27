@@ -209,8 +209,13 @@ class CoordinateExtractor:
     def get_coordinates_text(text: str) -> list:
         r"""Matches the coordinates in a string of text.
 
+        The query searches for a pair of coordinates of 6 or 7 digits, respectively. The pair of coordinates
+        must at most be separated by 4 characters. The regular expression is designed to match a wide range of
+        coordinate formats, including 'X=123.456 Y=123.456', 'X:123.456, Y:123.456', 'X 123 456 Y 123 456', whereby
+        the X and Y are optional.
+
         The full regular expressions query is:
-        "[XY]?[=:\s]{0,2}(?:[12][\.\s']{0,2})?\d{3}[\.\s']{0,2}\d{3}\.?\d?.*[XY]?[=:\s]{0,2}(?:[12][\.\s']{0,2})?\d{3}[\.\s']?\d{3}\.?\d?"
+        "[XY]?[=:\s]{0,2}(?:[12][\.\s']{0,2})?\d{3}[\.\s']{0,2}\d{3}\.?\d?.{0,4}[XY]?[=:\s]{0,2}(?:[12][\.\s']{0,2})?\d{3}[\.\s']?\d{3}\.?\d?"
         Query explanation:
             - [XY]?: This matches an optional 'X' or 'Y'. The ? makes the preceding character optional.
             - [=:\s]{0,2}: This matches zero to two occurrences of either an equals sign, a colon, or a whitespace
@@ -222,7 +227,7 @@ class CoordinateExtractor:
             - [\.\s']{0,2}: This matches zero to two occurrences of a period, space, or single quote.
             - \d{3}: This again matches exactly three digits.
             - \.?\d?: This matches an optional period followed by an optional digit.
-            - .*: This matches any number of any characters, except newline.
+            - .{0,4}: This matches up to four occurences of any characters, except newline.
 
             The second half of the regular expression repeats the pattern, allowing it to match a pair of coordinates
             in the format 'X=123.456 Y=123.456', with some flexibility for variations in the format. For example, it
