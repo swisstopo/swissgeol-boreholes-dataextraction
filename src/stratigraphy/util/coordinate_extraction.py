@@ -272,7 +272,7 @@ class CoordinateExtractor:
                 int("".join(groups)) for groups in regex.findall(r"Y[=:\s]{0,3}" + COORDINATE_ENTRY_REGEX, text)
             ]
 
-            coordinate_values = [x_values[0], y_values[0]]
+            coordinate_values = [(x_values[0], y_values[0])]
             # if we have a 'Y' and 'X' coordinate, we can allow for some whitespace in between the numbers.
             # In some older borehole profile the OCR may recognize whitespace between two digits.
         except IndexError:  # no coordinates found
