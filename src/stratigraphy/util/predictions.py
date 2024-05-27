@@ -306,19 +306,19 @@ class FilePredictions:
                 and metadata_ground_truth["coordinates"]["E"] < 2e6
             ):
                 ground_truth_east = int(metadata_ground_truth["coordinates"]["E"]) + 2e6
-                ground_truth_west = int(metadata_ground_truth["coordinates"]["N"]) + 1e6
+                ground_truth_north = int(metadata_ground_truth["coordinates"]["N"]) + 1e6
             elif (
                 self.metadata.coordinates.east.coordinate_value < 2e6
                 and metadata_ground_truth["coordinates"]["E"] > 2e6
             ):
                 ground_truth_east = int(metadata_ground_truth["coordinates"]["E"]) - 2e6
-                ground_truth_west = int(metadata_ground_truth["coordinates"]["N"]) - 1e6
+                ground_truth_north = int(metadata_ground_truth["coordinates"]["N"]) - 1e6
             else:
                 ground_truth_east = int(metadata_ground_truth["coordinates"]["E"])
-                ground_truth_west = int(metadata_ground_truth["coordinates"]["N"])
+                ground_truth_north = int(metadata_ground_truth["coordinates"]["N"])
 
             if (math.isclose(int(self.metadata.coordinates.east.coordinate_value), ground_truth_east, abs_tol=2)) and (
-                math.isclose(int(self.metadata.coordinates.north.coordinate_value), ground_truth_west, abs_tol=2)
+                math.isclose(int(self.metadata.coordinates.north.coordinate_value), ground_truth_north, abs_tol=2)
             ):
                 self.metadata_is_correct["coordinates"] = True
             else:
