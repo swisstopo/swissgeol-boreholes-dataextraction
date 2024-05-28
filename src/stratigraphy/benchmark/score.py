@@ -146,7 +146,9 @@ def evaluate_borehole_extraction(predictions: dict, number_of_truth_values: dict
     layer_metrics, layer_document_level_metrics = evaluate_layer_extraction(predictions, number_of_truth_values)
     coordinate_metrics, coordinate_document_level_metrics = evaluate_metadata(predictions)
     metrics = {**layer_metrics, **coordinate_metrics}
-    document_level_metrics = pd.concat([layer_document_level_metrics, coordinate_document_level_metrics], axis=1)
+    document_level_metrics = pd.merge(
+        layer_document_level_metrics, coordinate_document_level_metrics, on="document_name"
+    )
     return metrics, document_level_metrics
 
 
