@@ -259,25 +259,25 @@ class CoordinateExtractor:
             text += page.get_text()
         text = text.replace("\n", " ")
 
-        # try to get the text by including X and Y
-        try:
-            x_values = [
-                int("".join(groups)) for groups in regex.findall(r"X[=:\s]{0,3}" + COORDINATE_ENTRY_REGEX, text)
-            ]
-            y_values = [
-                int("".join(groups)) for groups in regex.findall(r"Y[=:\s]{0,3}" + COORDINATE_ENTRY_REGEX, text)
-            ]
+        # Try to get the text by including explicit 'X' and 'Y' labels.
+        # In this case, we can allow for some whitespace in between the numbers.
+        # In some older borehole profile the OCR may recognize whitespace between two digits.
+        x_values = [int("".join(groups)) for groups in regex.findall(r"X[=:\s]{0,3}" + COORDINATE_ENTRY_REGEX, text)]
+        y_values = [int("".join(groups)) for groups in regex.findall(r"Y[=:\s]{0,3}" + COORDINATE_ENTRY_REGEX, text)]
+        # We are only checking the 1st x-value with the 1st y-value, the 2nd x-value with the 2nd y-value, etc.
+        # In some edge cases, the matched x_values and y-values might not be aligned / equal in number. However,
+        # we ignore this for now, as almost always, the 1st x and y values are already the ones that we are looking
+        # for.
+        coordinate_values = list(zip(x_values, y_values, strict=False))
 
-            coordinate_values = [(x_values[0], y_values[0])]
-            # if we have a 'Y' and 'X' coordinate, we can allow for some whitespace in between the numbers.
-            # In some older borehole profile the OCR may recognize whitespace between two digits.
-        except IndexError:  # no coordinates found
+        if len(coordinate_values) == 0:
             # get the substring that contains the coordinate information
             coord_substring = self.get_coordinate_substring(text)
             coordinate_values = self.get_coordinate_pairs(coord_substring)
-            if len(coordinate_values) == 0:
-                # if that doesn't work, try to directly detect coordinates in the text
-                coordinate_values = self.get_coordinate_pairs(text)
+
+        if len(coordinate_values) == 0:
+            # if that doesn't work, try to directly detect coordinates in the text
+            coordinate_values = self.get_coordinate_pairs(text)
 
         if len(coordinate_values) == 0:
             logger.info("No coordinates found in this borehole profile.")
