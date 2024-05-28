@@ -13,45 +13,33 @@ from stratigraphy.util.coordinate_extraction import (
 
 
 def test_reprLV95():  # noqa: D103
-    coord = LV95Coordinate(
-        CoordinateEntry.create_from_string("2789", "456"), CoordinateEntry.create_from_string("1123", "012")
-    )
+    coord = LV95Coordinate(CoordinateEntry(2789456), CoordinateEntry(1123012))
     assert repr(coord) == "E: 2'789'456, N: 1'123'012"
 
 
 def test_to_jsonLV95():  # noqa: D103
-    coord = LV95Coordinate(
-        CoordinateEntry.create_from_string("2789", "456"), CoordinateEntry.create_from_string("1123", "012")
-    )
+    coord = LV95Coordinate(CoordinateEntry(2789456), CoordinateEntry(1123012))
     assert coord.to_json() == {
         "E": 2789456,
         "N": 1123012,
     }
 
 
-def test_CoordinateEntry():  # noqa: D103
-    entry1 = CoordinateEntry.create_from_string("089", "456")
-    entry2 = CoordinateEntry(89456)
-    assert entry1.coordinate_value == entry2.coordinate_value
-
-
 def test_swap_coordinates():  # noqa: D103
-    north = CoordinateEntry.create_from_string("789456")
-    east = CoordinateEntry.create_from_string("123012")
+    north = CoordinateEntry(789456)
+    east = CoordinateEntry(123012)
     coord = LV95Coordinate(north=north, east=east)
     assert coord.east == north
     assert coord.north == east
 
 
 def test_reprLV03():  # noqa: D103
-    coord = LV03Coordinate(CoordinateEntry.create_from_string("789456"), CoordinateEntry.create_from_string("123012"))
+    coord = LV03Coordinate(CoordinateEntry(789456), CoordinateEntry(123012))
     assert repr(coord) == "E: 789'456, N: 123'012"
 
 
 def test_to_jsonLV03():  # noqa: D103
-    coord = LV03Coordinate(
-        CoordinateEntry.create_from_string("789", "456"), CoordinateEntry.create_from_string("123", "012")
-    )
+    coord = LV03Coordinate(CoordinateEntry(789456), CoordinateEntry(123012))
     assert coord.to_json() == {
         "E": 789456,
         "N": 123012,
@@ -91,26 +79,26 @@ def test_CoordinateExtractor_get_coordinate_substring():  # noqa: D103
     [
         (
             "sample text followed by a key with a spelling mistake Ko0rdinate 615.790 / 157.500 and some noise",
-            " 615.790 / 157.500",
+            (615790, 157500),
         ),
         (
             "sample text followed by a key with a spelling mistake Ko0rdinate X= 615.790 / Y157.500 and some noise",
-            "X= 615.790 / Y157.500",
+            (615790, 157500),
         ),
         (
             "sample text followed by a key with a spelling mistake Ko0rdinate X: 2'615'790 / 1'157'500 and some noise",
-            "X: 2'615'790 / 1'157'500",
+            (2615790, 1157500),
         ),
         (
             "sample text followed by a key with a spelling mistake Ko0rdinate X 2615790 / 1157500 and some noise",
-            "X 2615790 / 1157500",
+            (2615790, 1157500),
         ),
         (
             "sample text followed by a key with a spelling mistake Ko0rdinate 615790 / 157500 and some noise",
-            " 615790 / 157500",
+            (615790, 157500),
         ),
     ],
 )
-def test_CoordinateExtractor_get_coordinates_text(text, expected):  # noqa: D103
-    coordinates_text = extractor.get_coordinates_text(text)
+def test_CoordinateExtractor_get_coordinate_pairs(text, expected):  # noqa: D103
+    coordinates_text = extractor.get_coordinate_pairs(text)
     assert coordinates_text[0] == expected
