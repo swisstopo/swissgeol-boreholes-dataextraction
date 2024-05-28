@@ -16,12 +16,7 @@ COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2
 class CoordinateEntry:
     """Dataclass to represent a coordinate entry."""
 
-    coordinate_value: int | None = None
-
-    @staticmethod
-    def create_from_string(first_entry: str, second_entry: str = None):
-        coordinate_value = int(first_entry) if second_entry is None else int(first_entry + second_entry)
-        return CoordinateEntry(coordinate_value)
+    coordinate_value: int
 
     def __repr__(self):
         if self.coordinate_value > 1e5:
@@ -146,7 +141,7 @@ class CoordinateExtractor:
         ]
         # TODO: extend coordinate keys with other languages
 
-    def find_coordinate_key(self, text: str, allowed_errors: int = 3) -> str:  # noqa: E501
+    def find_coordinate_key(self, text: str, allowed_errors: int = 3) -> str | None:  # noqa: E501
         """Finds the location of a coordinate key in a string of text.
 
         This is useful to reduce the text within which the coordinates are searched. If the text is too large
@@ -163,7 +158,7 @@ class CoordinateExtractor:
                                             contained in text. Defaults to 3 (guestimation; no optimisation done yet).
 
         Returns:
-            str: The coordinate key found in the text.
+            str | None: The coordinate key found in the text.
         """
         matches = []
         for key in self.coordinate_keys:
@@ -206,28 +201,28 @@ class CoordinateExtractor:
         return substring
 
     @staticmethod
-    def get_coordinates_text(text: str) -> list:
+    def get_coordinate_pairs(text: str) -> list:
         r"""Matches the coordinates in a string of text.
 
         The query searches for a pair of coordinates of 6 or 7 digits, respectively. The pair of coordinates
         must at most be separated by 4 characters. The regular expression is designed to match a wide range of
-        coordinate formats, including 'X=123.456 Y=123.456', 'X:123.456, Y:123.456', 'X 123 456 Y 123 456', whereby
-        the X and Y are optional.
+        coordinate formats for the Swiss coordinate systems LV03 and LV95, including 'X=123.456 Y=123.456',
+        'X:123.456, Y:123.456', 'X 123 456 Y 123 456', whereby the X and Y are optional.
 
         The full regular expressions query is:
-        "[XY]?[=:\s]{0,2}(?:[12][\.\s']{0,2})?\d{3}[\.\s']{0,2}\d{3}\.?\d?.{0,4}[XY]?[=:\s]{0,2}(?:[12][\.\s']{0,2})?\d{3}[\.\s']?\d{3}\.?\d?"
+        "[XY]?[=:\s]{0,2}(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})\.?\d?.{0,4}?[XY]?[=:\s]{0,2}(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})\.?\d?"
         Query explanation:
             - [XY]?: This matches an optional 'X' or 'Y'. The ? makes the preceding character optional.
             - [=:\s]{0,2}: This matches zero to two occurrences of either an equals sign, a colon, or a whitespace
               character.
-            - (?:[12][\.\s']{0,2})?: This is a non-capturing group (indicated by ?:), which means it groups the
-              enclosed characters but does not create a backreference. It matches an optional '1' or '2' followed
-              by zero to two occurrences of a period, space, or single quote.
+            - (?:([12])[\.\s'‘’]{0,2})?: This is a non-capturing group (indicated by ?:), which means it groups the
+              enclosed characters but does not create a backreference. It matches an optional '1' or '2' (which is
+              captured in a group) followed by zero to two occurrences of a period, space, or single quote.
             - \d{3}: This matches exactly three digits.
-            - [\.\s']{0,2}: This matches zero to two occurrences of a period, space, or single quote.
+            - [\.\s'‘’]{0,2}: This matches zero to two occurrences of a period, space, or single quote.
             - \d{3}: This again matches exactly three digits.
             - \.?\d?: This matches an optional period followed by an optional digit.
-            - .{0,4}: This matches up to four occurences of any characters, except newline.
+            - .{0,4}?: This matches up to four occurrences of any characters, except newline.
 
             The second half of the regular expression repeats the pattern, allowing it to match a pair of coordinates
             in the format 'X=123.456 Y=123.456', with some flexibility for variations in the format. For example, it
@@ -237,17 +232,18 @@ class CoordinateExtractor:
             text (str): Arbitrary string of text.
 
         Returns:
-            list: A list of matched coordinates.
+            list: A list of matched coordinate pairs, e.g. (2600000, 1200000)
         """
+        full_regex = r"[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX + r".{0,4}?[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX
         return [
             (int("".join(groups[:3])), int("".join(groups[3:])))
             for groups in regex.findall(
-                r"[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX + r".{0,4}?[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX,
+                full_regex,
                 text,
             )
         ]
 
-    def extract_coordinates(self) -> list:
+    def extract_coordinates(self) -> Coordinate | None:
         """Extracts the coordinates from a string of text.
 
         Algorithm description:
@@ -256,7 +252,7 @@ class CoordinateExtractor:
             - If the key is not found, try to directly detect coordinates in the text.
 
         Returns:
-            list: A list of coordinates.
+            Coordinate | None: the extracted coordinates (if any)
         """
         text = ""
         for page in self.doc:
@@ -278,10 +274,10 @@ class CoordinateExtractor:
         except IndexError:  # no coordinates found
             # get the substring that contains the coordinate information
             coord_substring = self.get_coordinate_substring(text)
-            coordinate_values = self.get_coordinates_text(coord_substring)
+            coordinate_values = self.get_coordinate_pairs(coord_substring)
             if len(coordinate_values) == 0:
                 # if that doesn't work, try to directly detect coordinates in the text
-                coordinate_values = self.get_coordinates_text(text)
+                coordinate_values = self.get_coordinate_pairs(text)
 
         if len(coordinate_values) == 0:
             logger.info("No coordinates found in this borehole profile.")
