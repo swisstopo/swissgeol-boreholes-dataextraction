@@ -16,7 +16,7 @@ logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logg
 def remove_duplicate_layers(
     previous_page: fitz.Page,
     current_page: fitz.Page,
-    previous_layers: fitz.Page,
+    previous_layers: list[dict],
     current_layers: list[dict],
     img_template_probability_threshold: float,
 ) -> list[dict]:
@@ -32,7 +32,7 @@ def remove_duplicate_layers(
     Args:
         previous_page (fitz.Page): The previous page.
         current_page (fitz.Page): The current page containing the layers to check for duplicates.
-        previous_layers (fitz.Page): The layers of the previous page.
+        previous_layers (list[dict]): The layers of the previous page.
         current_layers (list[dict]): The layers of the current page.
         img_template_probability_threshold (float): The threshold for the template matching probability
 
