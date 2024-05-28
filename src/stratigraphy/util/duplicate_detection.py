@@ -10,6 +10,7 @@ import numpy as np
 from stratigraphy.util.plot_utils import convert_page_to_opencv_img
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
 
 
 def remove_duplicate_layers(
@@ -84,7 +85,7 @@ def remove_duplicate_layers(
                     and current_depth_interval["end"].get("value") == previous_depth_interval["end"].get("value")
                 ):
                     duplicate_condition = True
-                    print("Duplicate condition met")
+                    logger.info("Removing duplicate layer.")
                     break
 
         if duplicate_condition:
