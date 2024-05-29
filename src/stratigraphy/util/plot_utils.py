@@ -9,7 +9,6 @@ import numpy as np
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.textblock import TextBlock
 
-logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
 
 
