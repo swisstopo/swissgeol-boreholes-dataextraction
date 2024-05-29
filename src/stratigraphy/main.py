@@ -23,8 +23,7 @@ from stratigraphy.util.util import flatten, read_params
 load_dotenv()
 
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
-
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
 
 matching_params = read_params("matching_params.yml")
@@ -184,6 +183,7 @@ def start_pipeline(
                             layer_predictions = remove_duplicate_layers(
                                 doc[page_index - 1],
                                 page,
+                                predictions[filename][f"page_{page_number - 1}"]["layers"],
                                 layer_predictions,
                                 matching_params["img_template_probability_threshold"],
                             )

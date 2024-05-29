@@ -27,7 +27,6 @@ from stratigraphy.util.util import (
     x_overlap_significant_smallest,
 )
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

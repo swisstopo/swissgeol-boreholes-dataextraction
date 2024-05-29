@@ -11,7 +11,6 @@ from numpy.typing import ArrayLike
 from stratigraphy.util.dataclasses import Line, Point
 from stratigraphy.util.linesquadtree import LinesQuadTree
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

@@ -9,7 +9,6 @@ import numpy as np
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.textblock import TextBlock
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
