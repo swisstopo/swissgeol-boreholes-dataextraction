@@ -25,7 +25,7 @@ def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> lis
     for word in sorted(all_words, key=lambda word: word.rect.y0):
         try:
             input_string = word.text.strip().replace(",", ".")
-            regex = re.compile(r"^-?([0-9]+(\.[0-9]+)?)[müMN\\.]*$")
+            regex = re.compile(r"^-?\.?([0-9]+(\.[0-9]+)?)[müMN\\.]*$")
             match = regex.match(input_string)
             if match:
                 value = value_as_float(match.group(1))
@@ -191,7 +191,6 @@ def find_depth_columns(
         # that does not match the descriptions
         if not column.significant_arithmetic_progression()
     ]
-
     return sorted(
         [column for column in numeric_columns if column and column.is_valid(all_words)],
         key=lambda column: len(column.entries),

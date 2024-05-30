@@ -248,7 +248,6 @@ def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -
                 _metrics[metric_type] = value
             else:
                 _metrics[f"{language}_{metric_type}"] = value
-    print(_metrics)
     return _metrics, document_level_metrics
 
 

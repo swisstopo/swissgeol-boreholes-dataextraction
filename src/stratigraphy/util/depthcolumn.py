@@ -286,7 +286,10 @@ class BoundaryDepthColumn(DepthColumn):
             return False
 
         scale_pearson_correlation_coef = np.corrcoef(entries, progression)[0, 1].item()
-        return abs(scale_pearson_correlation_coef) >= 0.999
+        if len(self.entries) < 6:  # It is more likely that fewer entries are accidently very much correlated
+            return abs(scale_pearson_correlation_coef) >= 0.9999
+        else:
+            return abs(scale_pearson_correlation_coef) >= 0.999
 
     def is_valid(self, all_words: list[TextLine]) -> bool:
         """Checks whether the depth column is valid.
@@ -309,8 +312,14 @@ class BoundaryDepthColumn(DepthColumn):
         if len(self.entries) < 3:
             return False
 
-        # When too much other text is in the column, then it is probably not valid
-        if self.noise_count(all_words) > self.noise_count_threshold * len(self.entries) - self.noise_count_offset:
+        # When too much other text is in the column, then it is probably not valid.
+        # The quadratic behavior of the noise count check makes the check strictoer for columns with few entries
+        # than columns with more entries. The more entries we have, the less likely it is that we found them by chance.
+        # TODO: Once evaluation data is of good enough qualities, we should optimize for the parameter below.
+        if (
+            self.noise_count(all_words)
+            > self.noise_count_threshold * (len(self.entries) - self.noise_count_offset) ** 2
+        ):
             return False
 
         corr_coef = self.pearson_correlation_coef()
