@@ -36,8 +36,8 @@ def detect_language_of_document(doc: fitz.Document) -> str:
     try:
         language = detect(text)
     except LangDetectException:
-        language = "de"
+        language = "de"  # TODO: default language should be read from config
 
-    if language not in ["de", "fr"]:
+    if language not in ["de", "fr"]:  # TODO: This should be read from the config
         language = "de"
     return language

@@ -35,6 +35,21 @@ def test_depth_column_entries_with_splits():  # noqa: D103
     assert entries[3].value == 40.0, "The fourth entry should have a value of 40.0"
 
 
+def test_depth_column_entries_with_leading_character():  # noqa: D103
+    all_words = [
+        TextWord(fitz.Rect(0, 0, 5, 1), "0.00m"),
+        TextWord(fitz.Rect(0, 2, 5, 3), ".2m"),  # this is a test for an ocr error from '-2m' to '.2m'
+        TextWord(fitz.Rect(0, 4, 5, 5), "-3.0m"),
+        TextWord(fitz.Rect(0, 6, 5, 7), ".4.2m"),
+    ]
+    entries = depth_column_entries(all_words, include_splits=True)
+    assert len(entries) == 4, "There should be 4 entries"
+    assert entries[0].value == 0.0, "The first entry should have a value of 0"
+    assert entries[1].value == 2.0, "The second entry should have a value of 2.0"
+    assert entries[2].value == 3.0, "The third entry should have a value of 3.0"
+    assert entries[3].value == 4.2, "The fourth entry should have a value of 4.2"
+
+
 all_words_find_depth_column = [
     TextWord(fitz.Rect(0, 0, 5, 1), "10.00m"),
     TextWord(fitz.Rect(20, 0, 30, 1), "Kies, Torf und Sand"),
