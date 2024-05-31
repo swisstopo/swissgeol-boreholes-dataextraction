@@ -26,6 +26,8 @@ def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> lis
         try:
             input_string = word.text.strip().replace(",", ".")
             regex = re.compile(r"^-?\.?([0-9]+(\.[0-9]+)?)[müMN\\.]*$")
+            # numbers such as '.40' are not supported. The reason is that sometimes the OCR
+            # recognizes a '-' as a '.' and we just ommit the leading '.' to avoid this issue.
             match = regex.match(input_string)
             if match:
                 value = value_as_float(match.group(1))
