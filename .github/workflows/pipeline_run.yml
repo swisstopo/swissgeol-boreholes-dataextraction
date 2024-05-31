@@ -10,15 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
     - name: Create Environment and run pipeline
       shell: bash
       run: |
-        wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-        bash Miniforge3.sh -b -p "${HOME}/conda"
-        source "${HOME}/conda/etc/profile.d/conda.sh"
-        conda init --all
-        source "${HOME}/.bash_profile"
-        conda env create -f environment-prod.yml
-        conda activate boreholes-prod
+        python -m pip install --upgrade pip
+        python -m venv env
+        source env/bin/activate
+        pip install -e .
         echo "Running pipeline"
         boreholes-extract-layers -l -i example/example_borehole_profile.pdf -o example/ -p example/predictions.json
