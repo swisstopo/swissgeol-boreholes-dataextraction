@@ -19,7 +19,6 @@ dependencies = [
     "PyYAML>=6.0.1",
     "langdetect>=1.0.9",
     "regex",
-    "amazon-textract-textractor",
     "backoff",
     "PyMuPDF>=1.23.26",
     "opencv-python-headless",
