@@ -7,6 +7,8 @@ from dataclasses import dataclass
 import fitz
 import regex
 
+from stratigraphy.util.util import read_params
+
 logger = logging.getLogger(__name__)
 
 COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})\.?\d?"
@@ -130,16 +132,7 @@ class CoordinateExtractor:
             document (fitz.Document): A PDF document.
         """
         self.doc = document
-        self.coordinate_keys = [
-            "Koordinaten",
-            "Koordinate",
-            "Koord.",
-            "coordinates",
-            "coordinate",
-            "coordonnés",
-            "coordonnes",
-        ]
-        # TODO: extend coordinate keys with other languages
+        self.coordinate_keys = read_params("matching_params.yml")["coordinate_keys"]
 
     def find_coordinate_key(self, text: str, allowed_errors: int = 3) -> str | None:  # noqa: E501
         """Finds the location of a coordinate key in a string of text.

@@ -162,7 +162,9 @@ def start_pipeline(
                 predictions[filename] = {}
 
                 with fitz.Document(in_path) as doc:
-                    language = detect_language_of_document(doc)
+                    language = detect_language_of_document(
+                        doc, matching_params["default_language"], matching_params["material_description"].keys()
+                    )
                     predictions[filename]["language"] = language
                     coordinate_extractor = CoordinateExtractor(doc)
                     coordinates = coordinate_extractor.extract_coordinates()
