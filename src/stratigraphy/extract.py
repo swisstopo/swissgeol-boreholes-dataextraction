@@ -19,7 +19,7 @@ from stratigraphy.util.layer_identifier_column import (
     find_layer_identifier_column,
     find_layer_identifier_column_entries,
 )
-from stratigraphy.util.line import TextLine, TextWord
+from stratigraphy.util.line import TextLine
 from stratigraphy.util.textblock import TextBlock, block_distance
 from stratigraphy.util.util import (
     parse_and_remove_empty_predictions,
@@ -30,13 +30,13 @@ from stratigraphy.util.util import (
 logger = logging.getLogger(__name__)
 
 
-def process_page(page: fitz.Page, geometric_lines, language: str, **params: dict) -> list[dict]:
+def process_page(lines: list[TextLine], geometric_lines, language: str, **params: dict) -> list[dict]:
     """Process a single page of a pdf.
 
     Finds all descriptions and depth intervals on the page and matches them.
 
     Args:
-        page (fitz.Page): The page to process.
+        lines (list[TextLine]): all the text lines on the page.
         geometric_lines (list[Line]): The geometric lines of the page.
         language (str): The language of the page.
         **params (dict): Additional parameters for the matching pipeline.
@@ -44,32 +44,6 @@ def process_page(page: fitz.Page, geometric_lines, language: str, **params: dict
     Returns:
         list[dict]: All list of the text of all description blocks.
     """
-    words = []
-    words_by_line = {}
-    for x0, y0, x1, y1, word, block_no, line_no, _word_no in fitz.utils.get_text(page, "words"):
-        rect = fitz.Rect(x0, y0, x1, y1) * page.rotation_matrix
-        text_word = TextWord(rect, word)
-        words.append(text_word)
-        key = f"{block_no}_{line_no}"
-        if key not in words_by_line:
-            words_by_line[key] = []
-        words_by_line[key].append(text_word)
-
-    raw_lines = [TextLine(words_by_line[key]) for key in words_by_line]
-
-    lines = []
-    current_line_words = []
-    for line_index, raw_line in enumerate(raw_lines):
-        for word_index, word in enumerate(raw_line.words):
-            remaining_line = TextLine(raw_line.words[word_index:])
-            if len(current_line_words) > 0 and remaining_line.is_line_start(lines, raw_lines[line_index + 1 :]):
-                lines.append(TextLine(current_line_words))
-                current_line_words = []
-            current_line_words.append(word)
-        if len(current_line_words):
-            lines.append(TextLine(current_line_words))
-            current_line_words = []
-
     # Detect Layer Index Columns
     layer_identifier_entries = find_layer_identifier_column_entries(lines)
     layer_identifier_columns = (
@@ -84,9 +58,11 @@ def process_page(page: fitz.Page, geometric_lines, language: str, **params: dict
             if material_description_rect:
                 pairs.append((layer_identifier_column, material_description_rect))
 
-        # Obtain the best pair. In contrast do depth columns, there only ever is one layer index column per page.
+        # Obtain the best pair. In contrast to depth columns, there only ever is one layer index column per page.
         if pairs:
             pairs.sort(key=lambda pair: score_column_match(pair[0], pair[1]))
+
+    words = [word for line in lines for word in line.words]
 
     # If there is a layer identifier column, then we use this directly.
     # Else, we search for depth columns. We could also think of some scoring mechanism to decide which one to use.
