@@ -31,9 +31,9 @@ class GroundTruth:
             metadata = ground_truth_item["metadata"]
             self.ground_truth[borehole_profile]["metadata"] = metadata
 
-    def for_file(self, file_name: str) -> list:
+    def for_file(self, file_name: str) -> dict:
         if file_name in self.ground_truth:
             return self.ground_truth[file_name]
         else:
             logger.warning(f"No ground truth data found for {file_name}.")
-            return []
+            return {}

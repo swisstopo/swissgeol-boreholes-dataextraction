@@ -275,8 +275,10 @@ def create_predictions_objects(predictions: dict, ground_truth_path: Path) -> tu
 
         predictions_objects[file_name] = prediction_object
         if ground_truth_is_present:
-            predictions_objects[file_name].evaluate(ground_truth.for_file(file_name))
-            number_of_truth_values[file_name] = len(ground_truth.for_file(file_name)["layers"])
+            ground_truth_for_file = ground_truth.for_file(file_name)
+            if ground_truth_for_file:
+                predictions_objects[file_name].evaluate(ground_truth_for_file)
+                number_of_truth_values[file_name] = len(ground_truth_for_file["layers"])
 
     return predictions_objects, number_of_truth_values
 
