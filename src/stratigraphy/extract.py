@@ -46,14 +46,21 @@ def process_page(page: fitz.Page, geometric_lines, language: str, **params: dict
     """
     words = []
     words_by_line = {}
+    key = None
+    previous_y = None
     for x0, y0, x1, y1, word, block_no, line_no, _word_no in fitz.utils.get_text(page, "words"):
         rect = fitz.Rect(x0, y0, x1, y1) * page.rotation_matrix
         text_word = TextWord(rect, word)
         words.append(text_word)
-        key = f"{block_no}_{line_no}"
+        if not key or previous_y != (y0, y1):
+            # Only start a new line if the y coordinates change. PyMuPDF sometimes starts a new line even when there
+            # is just a wider whitespace, which we'd rather not consider as a new line.
+            key = f"{block_no}_{line_no}"
+
         if key not in words_by_line:
             words_by_line[key] = []
         words_by_line[key].append(text_word)
+        previous_y = (y0, y1)
 
     raw_lines = [TextLine(words_by_line[key]) for key in words_by_line]
 
