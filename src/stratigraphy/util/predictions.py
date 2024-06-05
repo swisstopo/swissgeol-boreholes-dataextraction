@@ -178,7 +178,7 @@ class FilePredictions:
                     if annotation_result["value"]["labels"] == ["Material Description"]:
                         material_descriptions[annotation_result["id"]] = {
                             "rect": annotation_result["value"]
-                        }  # TODO extract rectangle properly
+                        }  # TODO extract rectangle properly; does not impact the ground truth though.
                     elif annotation_result["value"]["labels"] == ["Depth Interval"]:
                         depth_intervals[annotation_result["id"]] = {}
                 if annotation_result["type"] == "relation":
@@ -204,7 +204,7 @@ class FilePredictions:
                         depth_intervals[id]["end"] = end
                         depth_intervals[id]["background_rect"] = annotation_result[
                             "value"
-                        ]  # TODO extract rectangle properly
+                        ]  # TODO extract rectangle properly; does not impact the ground truth though.
                     else:
                         print(f"Unknown id: {id}")
 
@@ -239,7 +239,7 @@ class FilePredictions:
         file_predictions = []
         for file_name, page_predictions in file_pages.items():
             file_predictions.append(
-                FilePredictions(file_name=file_name, pages=page_predictions, language="unknown")
+                FilePredictions(file_name=f"{file_name}.pdf", pages=page_predictions, language="unknown")
             )  # TODO: language should not be required here.
 
         return file_predictions
@@ -255,8 +255,9 @@ class FilePredictions:
         Returns:
             dict: The predictions in ground truth format.
         """
+        ground_truth = {self.file_name: {"metadata": self.metadata}}
+        layers = []
         for page in self.pages:
-            layers = []
             for layer in page.layers:
                 material_description = layer.material_description.text
                 depth_interval = {
@@ -264,7 +265,7 @@ class FilePredictions:
                     "end": layer.depth_interval.end.value if layer.depth_interval.end else None,
                 }
                 layers.append({"material_description": material_description, "depth_interval": depth_interval})
-            ground_truth = {self.file_name: {"layers": layers}}
+        ground_truth[self.file_name]["layers"] = layers
         return ground_truth
 
     def evaluate(self, ground_truth: dict):

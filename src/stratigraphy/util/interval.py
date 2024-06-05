@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import abc
-from dataclasses import dataclass
 
 import fitz
 
-from stratigraphy.util.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
+from stratigraphy.util.depthcolumnentry import AnnotatedDepthColumnEntry, DepthColumnEntry, LayerDepthColumnEntry
 from stratigraphy.util.line import TextLine
 from stratigraphy.util.textblock import TextBlock
 
@@ -51,13 +50,13 @@ class Interval(metaclass=abc.ABCMeta):
         }
 
 
-@dataclass
 class AnnotatedInterval:
     """Class for annotated intervals."""
 
-    start: float
-    end: float
-    background_rect: fitz.Rect
+    def __init__(self, start: float, end: float, background_rect: fitz.Rect):
+        self.start = AnnotatedDepthColumnEntry(start)
+        self.end = AnnotatedDepthColumnEntry(end)
+        self.background_rect = background_rect
 
 
 class BoundaryInterval(Interval):
