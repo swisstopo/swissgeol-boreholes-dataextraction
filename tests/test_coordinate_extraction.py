@@ -79,6 +79,10 @@ def test_CoordinateExtractor_find_coordinate_key():  # noqa: D103
     key_line = extractor.find_coordinate_key(lines)
     assert key_line.text == "Ko0rdinate 615.790 / 157.500"
 
+    lines = _create_simple_lines(["An all-uppercase key should be matched", "COORDONNEES"])
+    key_line = extractor.find_coordinate_key(lines)
+    assert key_line.text == "COORDONNEES"
+
     lines = _create_simple_lines(["This is a sample text", "without any relevant key"])
     key_line = extractor.find_coordinate_key(lines)
     assert key_line is None

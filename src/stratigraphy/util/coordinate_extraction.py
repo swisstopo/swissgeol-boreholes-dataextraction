@@ -157,11 +157,14 @@ class CoordinateExtractor:
         """
         matches = []
         for key in self.coordinate_keys:
-            pattern = regex.compile(r"\b(" + key + "){e<" + str(allowed_errors) + r"}\s", flags=regex.IGNORECASE)
+            print(key)
+            pattern = regex.compile(r"\b(" + key + "){e<" + str(allowed_errors) + r"}\b", flags=regex.IGNORECASE)
             for line in lines:
                 match = pattern.search(line.text)
                 if match:
                     matches.append((line, sum(match.fuzzy_counts)))
+
+        print(matches)
 
         # if no match was found, return None
         if len(matches) == 0:
@@ -189,7 +192,6 @@ class CoordinateExtractor:
         # look for coordinate values to the right and/or immediately below the key
         coordinate_search_rect = fitz.Rect(key_rect.x0, key_rect.y0, page_width, key_rect.y1 + 3 * key_rect.height)
         coordinate_search_lines = [line for line in lines if line.rect.intersects(coordinate_search_rect)]
-
         substring = " ".join([line.text for line in coordinate_search_lines])
         substring = substring.replace(",", ".")
         substring = substring.replace("'", ".")
