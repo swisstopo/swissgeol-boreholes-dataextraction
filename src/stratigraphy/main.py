@@ -208,6 +208,7 @@ def start_pipeline(
                                 )
                                 mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
+    logger.info("Writing predictions to JSON file %s", predictions_path)
     with open(predictions_path, "w") as file:
         file.write(json.dumps(predictions))
 

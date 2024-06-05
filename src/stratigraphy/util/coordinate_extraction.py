@@ -295,6 +295,7 @@ class CoordinateExtractor:
                     if coordinate.is_valid():
                         return coordinate
 
+                if len(coordinate_values):
                     logger.warning(f"Could not extract valid coordinates from {coordinate_values}")
 
         logger.info("No coordinates found in this borehole profile.")
