@@ -277,25 +277,25 @@ class CoordinateExtractor:
                 coord_substring = self.get_coordinate_substring(lines, page.rect.width)
                 coordinate_values = self.get_coordinate_pairs(coord_substring)
 
-                if len(coordinate_values) == 0:
-                    # if that doesn't work, try to directly detect coordinates in the text
-                    coordinate_values = self.get_coordinate_pairs(text)
+            if len(coordinate_values) == 0:
+                # if that doesn't work, try to directly detect coordinates in the text
+                coordinate_values = self.get_coordinate_pairs(text)
 
-                for east, north in coordinate_values:
-                    if east > 1e6 and north > 1e6:
-                        coordinate = LV95Coordinate(
-                            CoordinateEntry(east),
-                            CoordinateEntry(north),
-                        )
-                    else:
-                        coordinate = LV03Coordinate(
-                            CoordinateEntry(east),
-                            CoordinateEntry(north),
-                        )
-                    if coordinate.is_valid():
-                        return coordinate
+            for east, north in coordinate_values:
+                if east > 1e6 and north > 1e6:
+                    coordinate = LV95Coordinate(
+                        CoordinateEntry(east),
+                        CoordinateEntry(north),
+                    )
+                else:
+                    coordinate = LV03Coordinate(
+                        CoordinateEntry(east),
+                        CoordinateEntry(north),
+                    )
+                if coordinate.is_valid():
+                    return coordinate
 
-                if len(coordinate_values):
-                    logger.warning(f"Could not extract valid coordinates from {coordinate_values}")
+            if len(coordinate_values):
+                logger.warning(f"Could not extract valid coordinates from {coordinate_values}")
 
         logger.info("No coordinates found in this borehole profile.")
