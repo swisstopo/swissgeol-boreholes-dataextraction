@@ -157,14 +157,11 @@ class CoordinateExtractor:
         """
         matches = []
         for key in self.coordinate_keys:
-            print(key)
             pattern = regex.compile(r"\b(" + key + "){e<" + str(allowed_errors) + r"}\b", flags=regex.IGNORECASE)
             for line in lines:
                 match = pattern.search(line.text)
                 if match:
                     matches.append((line, sum(match.fuzzy_counts)))
-
-        print(matches)
 
         # if no match was found, return None
         if len(matches) == 0:
