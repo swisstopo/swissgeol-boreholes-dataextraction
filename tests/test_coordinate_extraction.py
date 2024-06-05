@@ -10,6 +10,7 @@ from stratigraphy.util.coordinate_extraction import (
     LV03Coordinate,
     LV95Coordinate,
 )
+from stratigraphy.util.line import TextLine, TextWord
 
 
 def test_reprLV95():  # noqa: D103
@@ -59,19 +60,46 @@ def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
     assert repr(coordinates.north) == "157'500"
 
 
+def _create_simple_lines(text_lines: list[str]) -> list[TextLine]:
+    return [
+        TextLine(
+            [
+                TextWord(fitz.Rect(word_index, line_index, word_index + 1, line_index + 1), word_text)
+                for word_index, word_text in enumerate(text_line.split(" "))
+            ]
+        )
+        for line_index, text_line in enumerate(text_lines)
+    ]
+
+
 def test_CoordinateExtractor_find_coordinate_key():  # noqa: D103
-    text = "This is a sample text followed by a key with a spelling mistake Ko0rdinate 615.790 / 157.500"
-    key = extractor.find_coordinate_key(text)
-    assert key == "Ko0rdinate "
+    lines = _create_simple_lines(
+        ["This is a sample text", "followed by a key with a spelling mistake", "Ko0rdinate 615.790 / 157.500"]
+    )
+    key_line = extractor.find_coordinate_key(lines)
+    assert key_line.text == "Ko0rdinate 615.790 / 157.500"
+
+    lines = _create_simple_lines(["This is a sample text", "without any relevant key"])
+    key_line = extractor.find_coordinate_key(lines)
+    assert key_line is None
 
 
 def test_CoordinateExtractor_get_coordinate_substring():  # noqa: D103
-    text = (
-        "This is a sample text followed by a key with a spelling"
-        "mistake Ko0rdinate and some noise 615.79o /\n157; 500 in the middle."
+    lines = _create_simple_lines(
+        [
+            "This is a sample text followed by a key with a spelling",
+            "mistake Ko0rdinate and some noise 615.79o /\n157; 500 in the middle.",
+            "and a line immediately below AAA",
+            "and more lines below",
+            "and more lines below",
+            "and more lines below",
+            "and something far below BBB",
+        ]
     )
-    substring = extractor.get_coordinate_substring(text)
-    assert substring == "and s0me n0ise 615.790 / 157; 500 in the middle."
+    substring = extractor.get_coordinate_substring(lines, page_width=100)
+    assert "and s0me n0ise 615.790 / 157; 500 in the middle." in substring
+    assert "AAA" in substring
+    assert "BBB" not in substring
 
 
 @pytest.mark.parametrize(
