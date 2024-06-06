@@ -15,19 +15,24 @@ Only German and French borehole profiles are supported as of now.
 ## Installation
 We use pip to manage the packages dependencies. We recommend using a virtual environment within which to install all dependencies.
 
-Local installation for development: `pip install -e .[all]`
-Installation from source for production scenarios: `pip install git+https://github.com/swisstopo/swissgeol-boreholes-dataextraction.git"
+The below commands will install the package for you (assuming you have successfully cloned the repository):
+```bash
+python -m venv env
+source env/bin/activate
+pip install -e .[all]
+```
+
+Alternatively you can replace the `pip install -e .[all]` command with `pip install git+https://github.com/swisstopo/swissgeol-boreholes-dataextraction.git` in production scenarios.
 
 ## Run data extraction
 To execute the data extraction pipeline, follow these steps:
 
 1. **Activate the virtual environment**
 
-    Activate your virtual environment and install the package. On unix systems this is
-    ```bash
-    python -m venv env
+    Activate your virtual environment. On unix systems this is
+
+    ``` bash
     source env/bin/activate
-    pip install -e .[all]
     ```
 
 2. **Download the borehole profiles, optional**

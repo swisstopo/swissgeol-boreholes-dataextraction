@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "swisstopo-boreholes"
+name = "swissgeol-boreholes-dataextraction"
 version = "0.0.1-dev"
 description = "Python project to analyse borehole profiles."
 readme = "README.md"
@@ -33,17 +33,17 @@ test = [
 lint = [
     "pre-commit==3.6.2",
 ]
-experiment_tracking = [
+experiment-tracking = [
     "mlflow==2.11.1"
 ]
 visualize = [
     "matplotlib==3.8.0"
 ]
 
-all = ["swisstopo-boreholes[test, lint, experiment_tracking, visualize]"]
+all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize]"]
 
 [project.scripts]
-boreholes-extract-layers = "stratigraphy.main:click_pipeline"
+boreholes-extract-all = "stratigraphy.main:click_pipeline"
 boreholes-download-profiles = "stratigraphy.get_files:download_directory_froms3"
 
 [tool.ruff.lint]
