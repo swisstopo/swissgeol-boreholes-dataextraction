@@ -240,7 +240,10 @@ class CoordinateExtractor:
         ]
 
     def extract_coordinates(self) -> Coordinate | None:
-        """Extracts the coordinates from a string of text.
+        """Extracts the coordinates from a borehole profile.
+
+        Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
+        page.
 
         Algorithm description:
             - Try to find the coordinate key in the text.
