@@ -21,4 +21,4 @@ jobs:
         source env/bin/activate
         pip install -e .
         echo "Running pipeline"
-        boreholes-extract-layers -l -i example/example_borehole_profile.pdf -o example/ -p example/predictions.json
+        boreholes-extract-all -l -i example/example_borehole_profile.pdf -o example/ -p example/predictions.json
