@@ -16,6 +16,7 @@ from stratigraphy.line_detection import extract_lines, line_detection_params
 from stratigraphy.util.coordinate_extraction import CoordinateExtractor
 from stratigraphy.util.draw import draw_predictions
 from stratigraphy.util.duplicate_detection import remove_duplicate_layers
+from stratigraphy.util.extract_text import extract_text_lines
 from stratigraphy.util.language_detection import detect_language_of_document
 from stratigraphy.util.plot_utils import plot_lines
 from stratigraphy.util.util import flatten, read_params
@@ -176,9 +177,10 @@ def start_pipeline(
                         page_number = page_index + 1
                         logger.info("Processing page %s", page_number)
 
+                        text_lines = extract_text_lines(page)
                         geometric_lines = extract_lines(page, line_detection_params)
                         layer_predictions, depths_materials_column_pairs = process_page(
-                            page, geometric_lines, language, **matching_params
+                            text_lines, geometric_lines, language, **matching_params
                         )
                         # Add remove duplicates here!
                         if page_index > 0:
@@ -206,6 +208,7 @@ def start_pipeline(
                                 )
                                 mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
+    logger.info("Writing predictions to JSON file %s", predictions_path)
     with open(predictions_path, "w") as file:
         file.write(json.dumps(predictions))
 

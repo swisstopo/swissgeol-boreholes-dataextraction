@@ -43,6 +43,7 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
     if directory.is_file():  # deal with the case when we pass a file instead of a directory
         directory = directory.parent
     for file_name, file_prediction in predictions.items():
+        logger.info("Drawing predictions for file %s", file_name)
         with fitz.Document(directory / file_name) as doc:
             for page_index, page in enumerate(doc):
                 page_number = page_index + 1
