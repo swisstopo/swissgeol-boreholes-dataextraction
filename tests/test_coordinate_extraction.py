@@ -13,37 +13,35 @@ from stratigraphy.util.coordinate_extraction import (
 from stratigraphy.util.line import TextLine, TextWord
 
 
-def test_reprLV95():  # noqa: D103
-    coord = LV95Coordinate(CoordinateEntry(2789456), CoordinateEntry(1123012))
-    assert repr(coord) == "E: 2'789'456, N: 1'123'012"
+def test_strLV95():  # noqa: D103
+    coord = LV95Coordinate(CoordinateEntry(2789456), CoordinateEntry(1123012), fitz.Rect())
+    assert str(coord) == "E: 2'789'456, N: 1'123'012"
 
 
 def test_to_jsonLV95():  # noqa: D103
-    coord = LV95Coordinate(CoordinateEntry(2789456), CoordinateEntry(1123012))
-    assert coord.to_json() == {
-        "E": 2789456,
-        "N": 1123012,
-    }
+    coord = LV95Coordinate(CoordinateEntry(2789456), CoordinateEntry(1123012), fitz.Rect(0, 1, 2, 3))
+    assert coord.to_json() == {"E": 2789456, "N": 1123012, "rect": [0, 1, 2, 3]}
 
 
 def test_swap_coordinates():  # noqa: D103
     north = CoordinateEntry(789456)
     east = CoordinateEntry(123012)
-    coord = LV95Coordinate(north=north, east=east)
+    coord = LV95Coordinate(north=north, east=east, rect=fitz.Rect())
     assert coord.east == north
     assert coord.north == east
 
 
-def test_reprLV03():  # noqa: D103
-    coord = LV03Coordinate(CoordinateEntry(789456), CoordinateEntry(123012))
-    assert repr(coord) == "E: 789'456, N: 123'012"
+def test_strLV03():  # noqa: D103
+    coord = LV03Coordinate(CoordinateEntry(789456), CoordinateEntry(123012), rect=fitz.Rect())
+    assert str(coord) == "E: 789'456, N: 123'012"
 
 
 def test_to_jsonLV03():  # noqa: D103
-    coord = LV03Coordinate(CoordinateEntry(789456), CoordinateEntry(123012))
+    coord = LV03Coordinate(CoordinateEntry(789456), CoordinateEntry(123012), fitz.Rect(0, 1, 2, 3))
     assert coord.to_json() == {
         "E": 789456,
         "N": 123012,
+        "rect": [0, 1, 2, 3],
     }
 
 
@@ -92,7 +90,7 @@ def test_CoordinateExtractor_get_coordinate_substring():  # noqa: D103
     lines = _create_simple_lines(
         [
             "This is a sample text followed by a key with a spelling",
-            "mistake Ko0rdinate and some noise 615.79o /\n157; 500 in the middle.",
+            "mistake Ko0rdinate and some noise 615.79o / 157; 500 in the middle.",
             "and a line immediately below AAA",
             "and more lines below",
             "and more lines below",
@@ -100,8 +98,8 @@ def test_CoordinateExtractor_get_coordinate_substring():  # noqa: D103
             "and something far below BBB",
         ]
     )
-    substring = extractor.get_coordinate_substring(lines, page_width=100)
-    assert "and s0me n0ise 615.790 / 157; 500 in the middle." in substring
+    substring = " ".join([line.text for line in extractor.get_coordinate_lines(lines, page_width=100)])
+    assert "615.79o / 157; 500" in substring
     assert "AAA" in substring
     assert "BBB" not in substring
 
@@ -132,5 +130,8 @@ def test_CoordinateExtractor_get_coordinate_substring():  # noqa: D103
     ],
 )
 def test_CoordinateExtractor_get_coordinate_pairs(text, expected):  # noqa: D103
-    coordinates_text = extractor.get_coordinates_from_lines(text)
-    assert coordinates_text[0] == expected
+    lines = _create_simple_lines([text])
+    coordinates = extractor.get_coordinates_from_lines(lines)
+    expected_east, expected_north = expected
+    assert coordinates[0].east.coordinate_value == expected_east
+    assert coordinates[0].north.coordinate_value == expected_north

@@ -69,7 +69,7 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                         logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
 
 
-def draw_coordinates(page: fitz.Page, coordinates: Coordinate, coordinates_is_correct: bool) -> None:
+def draw_coordinates(page: fitz.Page, coordinates: Coordinate | None, coordinates_is_correct: bool) -> None:
     """Draw the coordinates on a pdf page.
 
     Args:
@@ -89,8 +89,8 @@ def draw_coordinates(page: fitz.Page, coordinates: Coordinate, coordinates_is_co
         width=6,
         stroke_opacity=0.5,
     )
-
-    page.draw_rect(coordinates.rect, color=fitz.utils.getColor("purple"))
+    if coordinates is not None:
+        page.draw_rect(coordinates.rect, color=fitz.utils.getColor("purple"))
 
 
 def draw_material_descriptions(page: fitz.Page, layers: LayerPrediction) -> None:
