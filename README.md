@@ -13,34 +13,27 @@ The coordinate types LV95 as well as the older LV03 are supported. More informat
 Only German and French borehole profiles are supported as of now.
 
 ## Installation
-We use conda to create and manage the project's dependencies. The project comes with two environments, `environment-dev.yml` and `environment-prod.yml`, respectively. The prod environment contains all necessary dependencies to run the code and extraction pipelines therein. All dependencies that are useful for the development of the code, but not to run it, are separated into the dev environment.
+We use pip to manage the packages dependencies. We recommend using a virtual environment within which to install all dependencies.
 
-Assuming you have conda installed and cloned the repository, run the following command in your project repository:
+The below commands will install the package for you (assuming you have successfully cloned the repository):
 ```bash
-conda env create -f environment-prod.yml
+python -m venv env
+source env/bin/activate
+pip install -e .[all]
 ```
 
-If you would like to get all developer functionalities, run:
-
-```bash
-conda env create -f environment-dev.yml
-```
-
+Alternatively you can replace the `pip install -e .[all]` command with `pip install git+https://github.com/swisstopo/swissgeol-boreholes-dataextraction.git` in production scenarios.
 
 ## Run data extraction
 To execute the data extraction pipeline, follow these steps:
 
-1. **Activate the Conda environment**
+1. **Activate the virtual environment**
 
-   If you haven't already, activate the conda environment using the following command:
+    Activate your virtual environment. On unix systems this is
 
-   ```bash
-   conda activate boreholes-prod
-   ````
-
-    If you are developing and testing the code, you might want to use the dev environment instead:
-
-    `conda activate boreholes-dev`
+    ``` bash
+    source env/bin/activate
+    ```
 
 2. **Download the borehole profiles, optional**
 

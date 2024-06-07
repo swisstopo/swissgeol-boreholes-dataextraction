@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "swisstopo-boreholes"
+name = "swissgeol-boreholes-dataextraction"
 version = "0.0.1-dev"
 description = "Python project to analyse borehole profiles."
 readme = "README.md"
@@ -12,20 +12,38 @@ dependencies = [
     "boto3",
     "pandas",
     "levenshtein",
-    "pathlib==1.0.1",
-    "python-dotenv==1.0.1",
-    "scikit-learn==1.4.0",
-    "click==8.1.7",
-    "PyYAML==6.0.1",
-    "langdetect==1.0.9",
+    "pathlib",
+    "python-dotenv",
+    "scikit-learn>=1.4.0",
+    "click>=8.0.0",
+    "PyYAML>=6.0.1",
+    "langdetect>=1.0.9",
+    "regex",
     "backoff",
-    "PyMuPDF==1.23.26",
+    "PyMuPDF>=1.23.26",
     "opencv-python-headless",
-    "quads==1.1.0",
+    "quads>=1.1.0",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest==8.1.1",
+    "pytest-cov==5.0.0"
+]
+lint = [
+    "pre-commit==3.6.2",
+]
+experiment-tracking = [
+    "mlflow==2.11.1"
+]
+visualize = [
+    "matplotlib==3.8.0"
+]
+
+all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize]"]
+
 [project.scripts]
-boreholes-extract-layers = "stratigraphy.main:click_pipeline"
+boreholes-extract-all = "stratigraphy.main:click_pipeline"
 boreholes-download-profiles = "stratigraphy.get_files:download_directory_froms3"
 
 [tool.ruff.lint]
