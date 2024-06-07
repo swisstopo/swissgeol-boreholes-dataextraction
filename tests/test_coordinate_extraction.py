@@ -132,5 +132,5 @@ def test_CoordinateExtractor_get_coordinate_substring():  # noqa: D103
     ],
 )
 def test_CoordinateExtractor_get_coordinate_pairs(text, expected):  # noqa: D103
-    coordinates_text = extractor.get_coordinate_pairs(text)
+    coordinates_text = extractor.get_coordinates_from_lines(text)
     assert coordinates_text[0] == expected

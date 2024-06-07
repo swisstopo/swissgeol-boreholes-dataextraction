@@ -78,8 +78,10 @@ def draw_coordinates(page: fitz.Page, coordinates: Coordinate, coordinates_is_co
         coordinates_is_correct (bool): Whether the coordinates are correct.
     """
     color = "green" if coordinates_is_correct else "red"
-    coordinate_rect = fitz.Rect([5, 5, 100, 45])
-    page.add_freetext_annot(coordinate_rect, f"Coordinates:\n{coordinates}")
+    coordinate_rect = fitz.Rect([5, 5, 200, 25])
+
+    page.draw_rect(coordinate_rect * page.derotation_matrix, fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
+    page.insert_htmlbox(coordinate_rect * page.derotation_matrix, f"Coordinates: {coordinates}")
     page.draw_line(
         coordinate_rect.top_left * page.derotation_matrix,
         coordinate_rect.bottom_left * page.derotation_matrix,
@@ -87,6 +89,8 @@ def draw_coordinates(page: fitz.Page, coordinates: Coordinate, coordinates_is_co
         width=6,
         stroke_opacity=0.5,
     )
+
+    page.draw_rect(coordinates.rect, color=fitz.utils.getColor("purple"))
 
 
 def draw_material_descriptions(page: fitz.Page, layers: LayerPrediction) -> None:
