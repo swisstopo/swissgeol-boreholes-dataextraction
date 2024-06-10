@@ -86,7 +86,7 @@ def test_CoordinateExtractor_find_coordinate_key():  # noqa: D103
     assert key_line is None
 
 
-def test_CoordinateExtractor_get_coordinate_substring():  # noqa: D103
+def test_CoordinateExtractor_get_coordinate_lines():  # noqa: D103
     lines = _create_simple_lines(
         [
             "This is a sample text followed by a key with a spelling",
@@ -129,9 +129,21 @@ def test_CoordinateExtractor_get_coordinate_substring():  # noqa: D103
         ),
     ],
 )
-def test_CoordinateExtractor_get_coordinate_pairs(text, expected):  # noqa: D103
+def test_CoordinateExtractor_get_coordinates_from_lines(text, expected):  # noqa: D103
     lines = _create_simple_lines([text])
     coordinates = extractor.get_coordinates_from_lines(lines)
     expected_east, expected_north = expected
     assert coordinates[0].east.coordinate_value == expected_east
     assert coordinates[0].north.coordinate_value == expected_north
+
+
+def test_CoordinateExtractor_get_coordinates_from_lines_rect():  # noqa: D103
+    lines = _create_simple_lines(["start", "2600000 1200000", "end"])
+    coordinates = extractor.get_coordinates_from_lines(lines)
+    assert coordinates[0].rect == lines[1].rect
+
+    lines = _create_simple_lines(["start", "2600000", "1200000", "end"])
+    coordinates = extractor.get_coordinates_from_lines(lines)
+    expected_rect = lines[1].rect
+    expected_rect.include_rect(lines[2].rect)
+    assert coordinates[0].rect == expected_rect

@@ -268,7 +268,7 @@ class CoordinateExtractor:
             list[Coordinate]: A list of potential coordinates
         """
         full_regex = regex.compile(
-            r"[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX + r".{0,4}?[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX
+            r"(?:[XY][=:\s]{0,2})?" + COORDINATE_ENTRY_REGEX + r".{0,4}?[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX
         )
         potential_coordinates = [
             Coordinate.from_values(
@@ -297,13 +297,14 @@ class CoordinateExtractor:
 
         results = []
         for match in pattern.finditer(full_text):
-            lines = [
+            match_lines = [
                 entry["line"]
                 for entry in lines_with_position
                 if entry["end"] >= match.start() and entry["start"] < match.end()
             ]
+
             rect = fitz.Rect()
-            for line in lines:
+            for line in match_lines:
                 rect.include_rect(line.rect)
             results.append((match, rect))
         return results
