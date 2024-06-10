@@ -213,7 +213,7 @@ class CoordinateExtractor:
         return self.get_coordinates_from_lines(coord_lines, preprocess)
 
     def get_coordinate_lines(self, lines: list[TextLine], page_width: float) -> list[TextLine]:
-        """Returns the substring of a text that contains the coordinate information.
+        """Returns the lines of the text that are close to an identified coordinate key.
 
         Args:
             lines (list[TextLine]): The lines of text to search in.
