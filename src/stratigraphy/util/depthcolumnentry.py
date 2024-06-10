@@ -18,6 +18,24 @@ class DepthColumnEntry:  # noqa: D101
         }
 
 
+class AnnotatedDepthColumnEntry(DepthColumnEntry):  # noqa: D101
+    """Class to represent a depth column entry obtained from LabelStudio.
+
+    The annotation process in label studio does not come with rectangles for depth column entries.
+    Therefore, we set them to None.
+    """
+
+    def __init__(self, value):
+        self.value = value
+        self.rect = None
+
+    def to_json(self):
+        return {
+            "value": self.value,
+            "rect": None,
+        }
+
+
 class LayerDepthColumnEntry:  # noqa: D101
     def __init__(self, start: DepthColumnEntry, end: DepthColumnEntry):
         self.start = start
