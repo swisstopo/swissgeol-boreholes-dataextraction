@@ -133,7 +133,8 @@ def start_pipeline(
     if mlflow_tracking:
         import mlflow
 
-        mlflow.set_experiment("Boreholes Stratigraphy")
+        mlflow.set_experiment(f"Boreholes Stratigraphy {input_directory}")
+
         mlflow.start_run()
         mlflow.set_tag("input_directory", str(input_directory))
         mlflow.set_tag("ground_truth_path", str(ground_truth_path))
