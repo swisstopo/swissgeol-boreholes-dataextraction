@@ -50,11 +50,13 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                 layers = file_prediction.pages[page_index].layers
                 depths_materials_column_pairs = file_prediction.pages[page_index].depths_materials_columns_pairs
                 if page_index == 0:
-                    draw_coordinates(
+                    draw_metadata(
                         page,
                         file_prediction.metadata.coordinates,
                         file_prediction.metadata_is_correct.get("coordinates"),
                     )
+                if file_prediction.metadata.coordinates is not None:
+                    draw_coordinates(page, file_prediction.metadata.coordinates)
                 draw_depth_columns_and_material_rect(page, depths_materials_column_pairs)
                 draw_material_descriptions(page, layers)
 
@@ -69,19 +71,22 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                         logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
 
 
-def draw_coordinates(page: fitz.Page, coordinates: Coordinate | None, coordinates_is_correct: bool) -> None:
-    """Draw the coordinates on a pdf page.
+def draw_metadata(page: fitz.Page, coordinates: Coordinate | None, coordinates_is_correct: bool) -> None:
+    """Draw the extracted metadata on the top of the given PDF page.
+
+    The data is always drawn at the top-left of the page, without considering where on the page the data was originally
+    found / extracted from.
 
     Args:
         page (fitz.Page): The page to draw on.
-        coordinates (Coordinate): The coordinate object to draw.
+        coordinates (Coordinate | None): The coordinate object to draw.
         coordinates_is_correct (bool): Whether the coordinates are correct.
     """
     color = "green" if coordinates_is_correct else "red"
     coordinate_rect = fitz.Rect([5, 5, 200, 25])
 
     page.draw_rect(coordinate_rect * page.derotation_matrix, fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
-    page.insert_htmlbox(coordinate_rect * page.derotation_matrix, f"Coordinates: {coordinates}")
+    page.insert_htmlbox(coordinate_rect * page.derotation_matrix, f"Coordinates: {coordinates}", rotate=page.rotation)
     page.draw_line(
         coordinate_rect.top_left * page.derotation_matrix,
         coordinate_rect.bottom_left * page.derotation_matrix,
@@ -89,7 +94,16 @@ def draw_coordinates(page: fitz.Page, coordinates: Coordinate | None, coordinate
         width=6,
         stroke_opacity=0.5,
     )
-    if coordinates is not None:
+
+
+def draw_coordinates(page: fitz.Page, coordinates: Coordinate) -> None:
+    """Draw a bounding box around the area of the page where the coordinates were extracted from.
+
+    Args:
+        page (fitz.Page): The page to draw on.
+        coordinates (Coordinate): The coordinate object to draw.
+    """
+    if (page.number + 1) == coordinates.page:  ## page.number is 0-based
         page.draw_rect(coordinates.rect, color=fitz.utils.getColor("purple"))
 
 

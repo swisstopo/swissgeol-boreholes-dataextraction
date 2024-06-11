@@ -14,35 +14,31 @@ from stratigraphy.util.line import TextLine, TextWord
 
 
 def test_strLV95():  # noqa: D103
-    coord = LV95Coordinate(CoordinateEntry(2789456), CoordinateEntry(1123012), fitz.Rect())
+    coord = LV95Coordinate(CoordinateEntry(2789456), CoordinateEntry(1123012), fitz.Rect(), page=1)
     assert str(coord) == "E: 2'789'456, N: 1'123'012"
 
 
 def test_to_jsonLV95():  # noqa: D103
-    coord = LV95Coordinate(CoordinateEntry(2789456), CoordinateEntry(1123012), fitz.Rect(0, 1, 2, 3))
-    assert coord.to_json() == {"E": 2789456, "N": 1123012, "rect": [0, 1, 2, 3]}
+    coord = LV95Coordinate(CoordinateEntry(2789456), CoordinateEntry(1123012), fitz.Rect(0, 1, 2, 3), page=1)
+    assert coord.to_json() == {"E": 2789456, "N": 1123012, "rect": [0, 1, 2, 3], "page": 1}
 
 
 def test_swap_coordinates():  # noqa: D103
     north = CoordinateEntry(789456)
     east = CoordinateEntry(123012)
-    coord = LV95Coordinate(north=north, east=east, rect=fitz.Rect())
+    coord = LV95Coordinate(north=north, east=east, rect=fitz.Rect(), page=1)
     assert coord.east == north
     assert coord.north == east
 
 
 def test_strLV03():  # noqa: D103
-    coord = LV03Coordinate(CoordinateEntry(789456), CoordinateEntry(123012), rect=fitz.Rect())
+    coord = LV03Coordinate(CoordinateEntry(789456), CoordinateEntry(123012), rect=fitz.Rect(), page=1)
     assert str(coord) == "E: 789'456, N: 123'012"
 
 
 def test_to_jsonLV03():  # noqa: D103
-    coord = LV03Coordinate(CoordinateEntry(789456), CoordinateEntry(123012), fitz.Rect(0, 1, 2, 3))
-    assert coord.to_json() == {
-        "E": 789456,
-        "N": 123012,
-        "rect": [0, 1, 2, 3],
-    }
+    coord = LV03Coordinate(CoordinateEntry(789456), CoordinateEntry(123012), fitz.Rect(0, 1, 2, 3), page=1)
+    assert coord.to_json() == {"E": 789456, "N": 123012, "rect": [0, 1, 2, 3], "page": 1}
 
 
 doc = fitz.open(DATAPATH.parent / "example" / "example_borehole_profile.pdf")
@@ -131,19 +127,22 @@ def test_CoordinateExtractor_get_coordinate_lines():  # noqa: D103
 )
 def test_CoordinateExtractor_get_coordinates_from_lines(text, expected):  # noqa: D103
     lines = _create_simple_lines([text])
-    coordinates = extractor.get_coordinates_from_lines(lines)
+    coordinates = extractor.get_coordinates_from_lines(lines, page=1)
     expected_east, expected_north = expected
     assert coordinates[0].east.coordinate_value == expected_east
     assert coordinates[0].north.coordinate_value == expected_north
+    assert coordinates[0].page == 1
 
 
 def test_CoordinateExtractor_get_coordinates_from_lines_rect():  # noqa: D103
     lines = _create_simple_lines(["start", "2600000 1200000", "end"])
-    coordinates = extractor.get_coordinates_from_lines(lines)
+    coordinates = extractor.get_coordinates_from_lines(lines, page=1)
     assert coordinates[0].rect == lines[1].rect
+    assert coordinates[0].page == 1
 
     lines = _create_simple_lines(["start", "2600000", "1200000", "end"])
-    coordinates = extractor.get_coordinates_from_lines(lines)
+    coordinates = extractor.get_coordinates_from_lines(lines, page=1)
     expected_rect = lines[1].rect
     expected_rect.include_rect(lines[2].rect)
     assert coordinates[0].rect == expected_rect
+    assert coordinates[0].page == 1
