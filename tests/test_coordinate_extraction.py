@@ -82,22 +82,54 @@ def test_CoordinateExtractor_find_coordinate_key():  # noqa: D103
     assert key_line is None
 
 
-def test_CoordinateExtractor_get_coordinate_lines():  # noqa: D103
+def test_CoordinateExtractor_get_coordinates_with_x_y_labels():  # noqa: D103
+    lines = _create_simple_lines(
+        [
+            "X = 2 600 000",
+            "x = 1'200'001",
+            "X = 2 600 002",
+            "X = 2 600 003",
+            "some noise",
+            "Y = 1'200'000",
+            "y = 2 600 001",
+            "Y = 1'999'999",
+        ]
+    )
+    coordinates = extractor.get_coordinates_with_x_y_labels(lines, page=1)
+
+    # coordinates with explicit "X" and "Y" labels are found, even when they are further apart
+    assert coordinates[0].east.coordinate_value == 2600000
+    assert coordinates[0].north.coordinate_value == 1200000
+    # 1st X-value is only combined with the 1st Y-value, 2nd X-value with 2nd Y-value, etc.
+    # Values are swapped when necessary
+    assert coordinates[1].east.coordinate_value == 2600001
+    assert coordinates[1].north.coordinate_value == 1200001
+    # ignore invalid coordinates and additional values that are only available with "X" or "Y" label, but not both
+    assert len(coordinates) == 2
+
+
+def test_CoordinateExtractor_get_coordinates_near_key():  # noqa: D103
     lines = _create_simple_lines(
         [
             "This is a sample text followed by a key with a spelling",
-            "mistake Ko0rdinate and some noise 615.79o / 157; 500 in the middle.",
-            "and a line immediately below AAA",
+            "mistake Ko0rdinate and some noise 615.79o / 157’ 500 in the middle.",
+            "and a line immediately below 600 001 / 200 001",
             "and more lines below",
             "and more lines below",
             "and more lines below",
-            "and something far below BBB",
+            "and something far below 600 002 / 200 002",
         ]
     )
-    substring = " ".join([line.text for line in extractor.get_coordinate_lines(lines, page_width=100)])
-    assert "615.79o / 157; 500" in substring
-    assert "AAA" in substring
-    assert "BBB" not in substring
+    coordinates = extractor.get_coordinates_near_key(lines, page=1, page_width=100)
+
+    # coordinates on the same line as the key are found, and OCR errors are corrected
+    assert coordinates[0].east.coordinate_value == 615790
+    assert coordinates[0].north.coordinate_value == 157500
+    # coordinates immediately below is also found
+    assert coordinates[1].east.coordinate_value == 600001
+    assert coordinates[1].north.coordinate_value == 200001
+    # no coordinates are found far down from the coordinates key
+    assert len(coordinates) == 2
 
 
 @pytest.mark.parametrize(
