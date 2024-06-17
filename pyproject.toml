@@ -23,6 +23,7 @@ dependencies = [
     "PyMuPDF>=1.23.26",
     "opencv-python-headless",
     "quads>=1.1.0",
+    "numpy<2",
 ]
 
 [project.optional-dependencies]
