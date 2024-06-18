@@ -147,8 +147,6 @@ class FilePredictions:
         NOTE: We may want to adjust this method to return a single instance of the class,
         instead of a list of class objects.
 
-        NOTE: Before using this to create new ground truth, this method should be tested.
-
         Args:
             annotation_results (dict): The annotation results from Label Studio.
                                        The annotation_results can cover multiple files.
@@ -158,6 +156,7 @@ class FilePredictions:
                                    annotation_results.
         """
         file_pages = defaultdict(list)
+        metadata = {}
         for annotation in annotation_results:
             # get page level information
             file_name, page_index = _get_file_name_and_page_index(annotation)
@@ -170,6 +169,7 @@ class FilePredictions:
             # information for each id.
             material_descriptions = {}
             depth_intervals = {}
+            coordinates = {}
             linking_objects = []
 
             # define all the material descriptions and depth intervals with their ids
@@ -181,6 +181,8 @@ class FilePredictions:
                         }  # TODO extract rectangle properly; does not impact the ground truth though.
                     elif annotation_result["value"]["labels"] == ["Depth Interval"]:
                         depth_intervals[annotation_result["id"]] = {}
+                    elif annotation_result["value"]["labels"] == ["Coordinates"]:
+                        coordinates[annotation_result["id"]] = {}
                 if annotation_result["type"] == "relation":
                     linking_objects.append(
                         {"from_id": annotation_result["from_id"], "to_id": annotation_result["to_id"]}
@@ -205,6 +207,8 @@ class FilePredictions:
                         depth_intervals[id]["background_rect"] = annotation_result[
                             "value"
                         ]  # TODO extract rectangle properly; does not impact the ground truth though.
+                    elif id in coordinates:
+                        coordinates[id]["text"] = annotation_result["value"]["text"][0]
                     else:
                         print(f"Unknown id: {id}")
 
@@ -232,6 +236,11 @@ class FilePredictions:
                 print(material_descriptions)
                 print(depth_intervals)
 
+            # instantiate metadata object
+            if coordinates:
+                coordinate_text = coordinates.popitem()[1]["text"]
+                # TODO: we could extract the rectangle as well. For conversion to ground truth this does not matter.
+                metadata[file_name] = BoreholeMetaData(coordinates=_get_coordinates_from_text(coordinate_text))
             file_pages[file_name].append(
                 PagePredictions(layers=layers, page_number=page_index, page_width=page_width, page_height=page_height)
             )
@@ -239,7 +248,12 @@ class FilePredictions:
         file_predictions = []
         for file_name, page_predictions in file_pages.items():
             file_predictions.append(
-                FilePredictions(file_name=f"{file_name}.pdf", pages=page_predictions, language="unknown")
+                FilePredictions(
+                    file_name=f"{file_name}.pdf",
+                    pages=page_predictions,
+                    language="unknown",
+                    metadata=metadata.get(file_name),
+                )
             )  # TODO: language should not be required here.
 
         return file_predictions
@@ -266,6 +280,13 @@ class FilePredictions:
                 }
                 layers.append({"material_description": material_description, "depth_interval": depth_interval})
         ground_truth[self.file_name]["layers"] = layers
+        if self.metadata.coordinates is not None:
+            ground_truth[self.file_name]["metadata"] = {
+                "coordinates": {
+                    "E": self.metadata.coordinates.east.coordinate_value,
+                    "N": self.metadata.coordinates.north.coordinate_value,
+                }
+            }
         return ground_truth
 
     def evaluate(self, ground_truth: dict):
@@ -385,3 +406,24 @@ def _get_file_name_and_page_index(annotation):
     file_name = annotation["data"]["ocr"].split("/")[-1]
     file_name = file_name.split(".")[0]
     return file_name.split("_")
+
+
+def _get_coordinates_from_text(text: str) -> Coordinate:
+    """Convert a string to a Coordinate object.
+
+    The string has the format: E: 498'561, N: 114'332 or E: 2'498'561, N: 1'114'332.
+
+    Args:
+        text (str): The input string to be converted to a Coordinate object.
+
+    Returns:
+        Coordinate: The Coordinate object.
+    """
+    try:
+        east_text, north_text = text.split(", ")
+        east = int(east_text.split(": ")[1].replace("'", ""))
+        north = int(north_text.split(": ")[1].replace("'", ""))
+        return Coordinate.from_values(east=east, north=north, page=0, rect=fitz.Rect([0, 0, 0, 0]))
+    except ValueError:  # This is likely due to a wrong format of the text.
+        logger.warning(f"Could not extract coordinates from text: {text}.")
+        return None
