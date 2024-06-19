@@ -262,14 +262,14 @@ class BoundaryDepthColumn(DepthColumn):
         return depth_intervals
 
     def significant_arithmetic_progression(self) -> bool:
-        if len(self.entries) < 6:
+        if len(self.entries) < 7:
             return self.is_arithmetic_progression()
         else:
-            # to allow for OCR errors or gaps in the progression, we only require a segment of length 6 that is an
+            # to allow for OCR errors or gaps in the progression, we only require a segment of length 7 that is an
             # arithmetic progression
-            for i in range(len(self.entries) - 6 + 1):
+            for i in range(len(self.entries) - 7 + 1):
                 if BoundaryDepthColumn(
-                    self.noise_count_threshold, self.noise_count_offset, self.entries[i : i + 6]
+                    self.noise_count_threshold, self.noise_count_offset, self.entries[i : i + 7]
                 ).is_arithmetic_progression():
                     return True
             return False
@@ -321,9 +321,16 @@ class BoundaryDepthColumn(DepthColumn):
             > self.noise_count_threshold * (len(self.entries) - self.noise_count_offset) ** 2
         ):
             return False
+        # Check if the entries are strictly increasing.
+        if not all(i.value < j.value for i, j in zip(self.entries, self.entries[1:], strict=False)):
+            return False
 
         corr_coef = self.pearson_correlation_coef()
-        return corr_coef and corr_coef > 0.99
+
+        return (
+            corr_coef and corr_coef > np.min([1.0382 - len(self.entries) * 0.01, 0.9985]) and corr_coef > 0.95
+        )  # Magic numbers obtained using an error analysis on critical borehole profiles. Admittedly, this may
+        # be overfitted to the borehole profiles present.
 
     def noise_count(self, all_words: list[TextLine]) -> int:
         """Counts the number of words that intersect with the depth column entries.
@@ -369,8 +376,45 @@ class BoundaryDepthColumn(DepthColumn):
         while current:
             if current.is_valid(all_words):
                 return current
+            elif current.correct_OCR_mistakes(all_words) is not None:
+                return current.correct_OCR_mistakes(all_words)
             else:
                 current = current.remove_entry_by_correlation_gradient()
+
+    def correct_OCR_mistakes(self, all_words: list[TextLine]) -> BoundaryDepthColumn | None:
+        """Corrects OCR mistakes in the depth column entries.
+
+        Loops through all values and corrects common OCR mistakes for the given entry. Then, the column with the
+        hightest pearson correlation coefficient is selected and checked for validity.
+
+        This is useful if one entry has an OCR mistake, and the column is not valid because of it.
+
+        Note: Common mistakes should be extended as needed.
+
+        Args:
+            all_words (list[TextLine]): A list of all text lines on the page.
+
+        Returns:
+            BoundaryDepthColumn | None: The corrected depth column, or None if no correction was possible.
+        """
+        new_columns = []
+        for remove_index in range(len(self.entries)):
+            new_columns.append(
+                BoundaryDepthColumn(
+                    self.noise_count_threshold,
+                    self.noise_count_offset,
+                    [
+                        entry if index != remove_index else _correct_entry(entry)
+                        for index, entry in enumerate(self.entries)
+                    ],
+                ),
+            )
+        best_column = max(new_columns, key=lambda column: column.pearson_correlation_coef())
+
+        if best_column.is_valid(all_words):
+            return best_column
+        else:
+            return None
 
     def remove_entry_by_correlation_gradient(self) -> BoundaryDepthColumn | None:
         if len(self.entries) < 3:
@@ -488,3 +532,17 @@ class BoundaryDepthColumn(DepthColumn):
             groups.append({"depth_intervals": current_intervals, "blocks": current_blocks})
 
         return groups
+
+
+def _correct_entry(entry: DepthColumnEntry) -> DepthColumnEntry:
+    """Corrects frequent OCR errors in depth column entries.
+
+    Args:
+        entry (DepthColumnEntry): The depth column entry to correct.
+
+    Returns:
+        DepthColumnEntry: The corrected depth column entry.
+    """
+    text_value = str(entry.value)
+    text_value = text_value.replace("4", "1")  # In older documents, OCR sometimes mistakes 1 for 4
+    return DepthColumnEntry(entry.rect, float(text_value))

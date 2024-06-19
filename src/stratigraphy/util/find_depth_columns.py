@@ -185,6 +185,7 @@ def find_depth_columns(
             for column in numeric_columns
             if all(not other.strictly_contains(column) for other in numeric_columns)
         ]
+
     numeric_columns = [
         column.reduce_until_valid(all_words)
         for numeric_column in numeric_columns
@@ -193,6 +194,7 @@ def find_depth_columns(
         # that does not match the descriptions
         if not column.significant_arithmetic_progression()
     ]
+
     return sorted(
         [column for column in numeric_columns if column and column.is_valid(all_words)],
         key=lambda column: len(column.entries),
