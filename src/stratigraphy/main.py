@@ -8,6 +8,7 @@ from pathlib import Path
 import click
 import fitz
 from dotenv import load_dotenv
+from joblib import Parallel, delayed
 
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.score import create_predictions_objects, evaluate_borehole_extraction
@@ -24,7 +25,9 @@ from stratigraphy.util.util import flatten, read_params
 load_dotenv()
 
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
-logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
+logging.basicConfig(
+    format="%(asctime)s %(threadName)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S"
+)
 logger = logging.getLogger(__name__)
 
 matching_params = read_params("matching_params.yml")
@@ -144,75 +147,71 @@ def start_pipeline(
 
     temp_directory = DATAPATH / "_temp"  # temporary directory to dump files for mlflow artifact logging
 
-    # check if directories exist and create them when neccessary
+    # check if directories exist and create them when necessary
     out_directory.mkdir(parents=True, exist_ok=True)
     temp_directory.mkdir(parents=True, exist_ok=True)
 
-    # if a file is specified instead of an input directory, copy the file to a temporary directory and work with that.
-    if input_directory.is_file():
-        file_iterator = [(input_directory.parent, None, [input_directory.name])]
-    else:
-        file_iterator = os.walk(input_directory)
+    paths = [input_directory] if input_directory.is_file() else sorted(input_directory.glob("*"))
+    paths = [path for path in paths if path.name.endswith(".pdf")]
+
     # process the individual pdf files
-    predictions = {}
-    for root, _dirs, files in file_iterator:
-        for filename in files:
-            if filename.endswith(".pdf"):
-                in_path = os.path.join(root, filename)
-                logger.info("Processing file: %s", in_path)
-                predictions[filename] = {}
+    def process(path: Path):
+        logger.info("Processing file: %s", path)
+        predictions = {}
 
-                with fitz.Document(in_path) as doc:
-                    language = detect_language_of_document(
-                        doc, matching_params["default_language"], matching_params["material_description"].keys()
+        with fitz.Document(path) as doc:
+            language = detect_language_of_document(
+                doc, matching_params["default_language"], matching_params["material_description"].keys()
+            )
+            predictions["language"] = language
+            coordinate_extractor = CoordinateExtractor(doc)
+            coordinates = coordinate_extractor.extract_coordinates()
+            if coordinates:
+                predictions["metadata"] = {"coordinates": coordinates.to_json()}
+            else:
+                predictions["metadata"] = {"coordinates": None}
+            for page_index, page in enumerate(doc):
+                page_number = page_index + 1
+                logger.info("Processing page %s", page_number)
+
+                text_lines = extract_text_lines(page)
+                geometric_lines = extract_lines(page, line_detection_params)
+                layer_predictions, depths_materials_column_pairs = process_page(
+                    text_lines, geometric_lines, language, **matching_params
+                )
+                # Add remove duplicates here!
+                if page_index > 0:
+                    layer_predictions = remove_duplicate_layers(
+                        doc[page_index - 1],
+                        page,
+                        predictions[f"page_{page_number - 1}"]["layers"],
+                        layer_predictions,
+                        matching_params["img_template_probability_threshold"],
                     )
-                    predictions[filename]["language"] = language
-                    coordinate_extractor = CoordinateExtractor(doc)
-                    coordinates = coordinate_extractor.extract_coordinates()
-                    if coordinates:
-                        predictions[filename]["metadata"] = {"coordinates": coordinates.to_json()}
+                predictions[f"page_{page_number}"] = {
+                    "layers": layer_predictions,
+                    "depths_materials_column_pairs": depths_materials_column_pairs,
+                    "page_height": page.rect.height,
+                    "page_width": page.rect.width,
+                }
+                if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
+                    if not mlflow_tracking:
+                        logger.warning("MLFlow tracking is not enabled. MLFLow is required to store the images.")
                     else:
-                        predictions[filename]["metadata"] = {"coordinates": None}
-                    for page_index, page in enumerate(doc):
-                        page_number = page_index + 1
-                        logger.info("Processing page %s", page_number)
+                        img = plot_lines(page, geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"])
+                        mlflow.log_image(img, f"pages/{path.name}_page_{page.number + 1}_lines.png")
+        return {path.name: predictions}
 
-                        text_lines = extract_text_lines(page)
-                        geometric_lines = extract_lines(page, line_detection_params)
-                        layer_predictions, depths_materials_column_pairs = process_page(
-                            text_lines, geometric_lines, language, **matching_params
-                        )
-                        # Add remove duplicates here!
-                        if page_index > 0:
-                            layer_predictions = remove_duplicate_layers(
-                                doc[page_index - 1],
-                                page,
-                                predictions[filename][f"page_{page_number - 1}"]["layers"],
-                                layer_predictions,
-                                matching_params["img_template_probability_threshold"],
-                            )
-                        predictions[filename][f"page_{page_number}"] = {
-                            "layers": layer_predictions,
-                            "depths_materials_column_pairs": depths_materials_column_pairs,
-                            "page_height": page.rect.height,
-                            "page_width": page.rect.width,
-                        }
-                        if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
-                            if not mlflow_tracking:
-                                logger.warning(
-                                    "MLFlow tracking is not enabled. MLFLow is required to store the images."
-                                )
-                            else:
-                                img = plot_lines(
-                                    page, geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"]
-                                )
-                                mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
+    all_predictions = Parallel(n_jobs=matching_params["parallellism"], backend="threading", verbose=2)(
+        delayed(process)(path) for path in paths
+    )
+    predictions = {name: predictions for entry in all_predictions for name, predictions in entry.items()}
 
     logger.info("Writing predictions to JSON file %s", predictions_path)
     with open(predictions_path, "w") as file:
         file.write(json.dumps(predictions))
 
-    # evaluate the predictions; if file doesnt exist, the predictions are not changed.
+    # evaluate the predictions; if file doesn't exist, the predictions are not changed.
     predictions, number_of_truth_values = create_predictions_objects(predictions, ground_truth_path)
 
     if not skip_draw_predictions:
