@@ -2,8 +2,6 @@
 
 import dataclasses
 
-import numpy as np
-
 from stratigraphy.util.depthcolumn import BoundaryDepthColumn
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry
 from stratigraphy.util.line import TextWord
@@ -25,7 +23,7 @@ class BoundaryDepthColumnValidator:
     noise_count_threshold: float
     noise_count_offset: int
 
-    def is_valid(self, column: BoundaryDepthColumn) -> bool:
+    def is_valid(self, column: BoundaryDepthColumn, corr_coef_threshold: float = 0.99) -> bool:
         """Checks whether the depth column is valid.
 
         The depth column is considered valid if:
@@ -40,6 +38,7 @@ class BoundaryDepthColumnValidator:
 
         Args:
             column (BoundaryDepthColumn): The depth column to validate.
+            corr_coef_threshold (float): The minimal correlation coefficient for the column to be deemed valid.
 
         Returns:
             bool: True if the depth column is valid, False otherwise.
@@ -62,13 +61,10 @@ class BoundaryDepthColumnValidator:
 
         corr_coef = column.pearson_correlation_coef()
 
-        return (
-            corr_coef and corr_coef > np.min([1.0382 - len(column.entries) * 0.01, 0.9985]) and corr_coef > 0.95
-        )  # Magic numbers obtained using an error analysis on critical borehole profiles. Admittedly, this may
-        # be overfitted to the borehole profiles present.
+        return corr_coef and corr_coef > corr_coef_threshold
 
     def reduce_until_valid(self, column: BoundaryDepthColumn) -> BoundaryDepthColumn:
-        """Removes entries from the depth column until it fullfills the is_valid condition.
+        """Removes entries from the depth column until it fulfills the is_valid condition.
 
         is_valid checks whether there is too much noise (i.e. other text) in the column and whether the entries are
         linearly correlated with their vertical position.
@@ -115,7 +111,8 @@ class BoundaryDepthColumnValidator:
             )
         best_column = max(new_columns, key=lambda column: column.pearson_correlation_coef())
 
-        if self.is_valid(best_column):
+        # We require a higher correlation coefficient when we've already corrected a mistake.
+        if self.is_valid(best_column, corr_coef_threshold=0.999):
             return best_column
         else:
             return None

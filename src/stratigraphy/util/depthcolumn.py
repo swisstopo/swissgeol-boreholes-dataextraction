@@ -297,7 +297,9 @@ class BoundaryDepthColumn(DepthColumn):
         return len([line for line in all_words if significant_intersection(line.rect)]) - len(self.entries)
 
     def pearson_correlation_coef(self) -> float:
-        positions = np.array([entry.rect.y0 for entry in self.entries])
+        # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with
+        # the line of the corresponding layer boundary.
+        positions = np.array([entry.rect.y1 for entry in self.entries])
         entries = np.array([entry.value for entry in self.entries])
 
         # Avoid warnings in the np.corrcoef call, as the correlation coef is undefined if the standard deviation is 0.
