@@ -4,6 +4,7 @@ import re
 
 import fitz
 
+from stratigraphy.util.boundarydepthcolumnvalidator import BoundaryDepthColumnValidator
 from stratigraphy.util.depthcolumn import BoundaryDepthColumn, LayerDepthColumn
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
 from stratigraphy.util.line import TextWord
@@ -177,7 +178,7 @@ def find_depth_columns(
 
         numeric_columns.extend(additional_columns)
         if not has_match:
-            numeric_columns.append(BoundaryDepthColumn(**depth_column_params, entries=[entry]))
+            numeric_columns.append(BoundaryDepthColumn(entries=[entry]))
 
         # only keep columns that are not contained in a different column
         numeric_columns = [
@@ -185,15 +186,19 @@ def find_depth_columns(
             for column in numeric_columns
             if all(not other.strictly_contains(column) for other in numeric_columns)
         ]
+
+    boundary_depth_column_validator = BoundaryDepthColumnValidator(all_words, **depth_column_params)
+
     numeric_columns = [
-        column.reduce_until_valid(all_words)
+        boundary_depth_column_validator.reduce_until_valid(column)
         for numeric_column in numeric_columns
         for column in numeric_column.break_on_double_descending()
         # when we have a perfect arithmetic progression, this is usually just a scale
         # that does not match the descriptions
         if not column.significant_arithmetic_progression()
     ]
+
     return sorted(
-        [column for column in numeric_columns if column and column.is_valid(all_words)],
+        [column for column in numeric_columns if column and boundary_depth_column_validator.is_valid(column)],
         key=lambda column: len(column.entries),
     )
