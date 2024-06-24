@@ -229,10 +229,13 @@ class BoundaryDepthColumn(DepthColumn):
                 return initial_segment
         return BoundaryDepthColumn()
 
-    def strictly_contains(self, other: BoundaryDepthColumn):
+    def strictly_contains(self, other: BoundaryDepthColumn) -> bool:
         return len(other.entries) < len(self.entries) and all(
             other_entry in self.entries for other_entry in other.entries
         )
+
+    def is_strictly_increasing(self) -> bool:
+        return all(i.value < j.value for i, j in zip(self.entries, self.entries[1:], strict=False))
 
     def depth_intervals(self) -> list[BoundaryInterval]:
         """Creates a list of depth intervals from the depth column entries.
