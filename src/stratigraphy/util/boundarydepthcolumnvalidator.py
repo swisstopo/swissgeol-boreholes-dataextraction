@@ -1,6 +1,7 @@
 """This module contains logic to validate BoundaryDepthColumn instances."""
 
 import dataclasses
+import re
 
 from stratigraphy.util.depthcolumn import BoundaryDepthColumn
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry
@@ -129,4 +130,11 @@ def _correct_entry(entry: DepthColumnEntry) -> DepthColumnEntry:
     """
     text_value = str(entry.value)
     text_value = text_value.replace("4", "1")  # In older documents, OCR sometimes mistakes 1 for 4
+
+    # replace a pattern such as '.80' with '0.80'. These cases are already converted
+    # to '80.0' when depth entries are recognized. Whe therefore look at patterns such as '80.0'
+    # that start with a digit, followed by a '0.0'. We then replace it with a pattern such as '0.80'.
+    if re.match(r"^[0-9]0\.0$", text_value):
+        text_value = text_value.replace(".", "")
+        text_value = "0." + text_value
     return DepthColumnEntry(entry.rect, float(text_value))
