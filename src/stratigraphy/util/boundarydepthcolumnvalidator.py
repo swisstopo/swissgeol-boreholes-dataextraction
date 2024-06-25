@@ -56,7 +56,7 @@ class BoundaryDepthColumnValidator:
         ):
             return False
         # Check if the entries are strictly increasing.
-        if not all(i.value < j.value for i, j in zip(column.entries, column.entries[1:], strict=False)):
+        if not column.is_strictly_increasing():
             return False
 
         corr_coef = column.pearson_correlation_coef()
@@ -89,7 +89,14 @@ class BoundaryDepthColumnValidator:
         Loops through all values and corrects common OCR mistakes for the given entry. Then, the column with the
         highest pearson correlation coefficient is selected and checked for validity.
 
-        This is useful if one entry has an OCR mistake, and the column is not valid because of it.
+        This is useful if one or more entries have an OCR mistake, and the column is not valid because of it.
+
+        Currently, there is no limit on the number of corrections per depth column. Indeed, there are examples of depth
+        columns with multiple OCR errors on different depth values. On the other hand, allowing an unlimited number of
+        corrections increases the risk, that a random column of different values is incorrectly accepted as a depth
+        column after making the corrections, especially if the column has a low number of entries. A more robust
+        solution might be to allow corrections on less than 50% of all entries, or something similar. However, we
+        currently don't have enough examples to properly tune this parameter.
 
         Note: Common mistakes should be extended as needed.
 
@@ -99,34 +106,43 @@ class BoundaryDepthColumnValidator:
         Returns:
             BoundaryDepthColumn | None: The corrected depth column, or None if no correction was possible.
         """
-        new_columns = []
-        for remove_index in range(len(column.entries)):
-            new_columns.append(
-                BoundaryDepthColumn(
-                    [
-                        entry if index != remove_index else _correct_entry(entry)
-                        for index, entry in enumerate(column.entries)
-                    ],
-                ),
-            )
-        best_column = max(new_columns, key=lambda column: column.pearson_correlation_coef())
+        new_columns = [BoundaryDepthColumn()]
+        for entry in column.entries:
+            new_columns = [
+                BoundaryDepthColumn([*column.entries, DepthColumnEntry(entry.rect, new_value)])
+                for column in new_columns
+                for new_value in _value_alternatives(entry.value)
+            ]
+            # Immediately require strictly increasing values, to avoid exponential complexity when many implausible
+            # alternative values are suggested
+            new_columns = [column for column in new_columns if column.is_strictly_increasing()]
 
-        # We require a higher correlation coefficient when we've already corrected a mistake.
-        if self.is_valid(best_column, corr_coef_threshold=0.999):
-            return best_column
-        else:
-            return None
+        if len(new_columns):
+            best_column = max(new_columns, key=lambda column: column.pearson_correlation_coef())
+
+            # We require a higher correlation coefficient when we've already corrected a mistake.
+            if self.is_valid(best_column, corr_coef_threshold=0.999):
+                return best_column
+
+        return None
 
 
-def _correct_entry(entry: DepthColumnEntry) -> DepthColumnEntry:
+def _value_alternatives(value: float) -> set[float]:
     """Corrects frequent OCR errors in depth column entries.
 
     Args:
-        entry (DepthColumnEntry): The depth column entry to correct.
+        value (float): The depth values to find plausible alternatives for
 
     Returns:
-        DepthColumnEntry: The corrected depth column entry.
+        set(float): all plausible values (including the original one)
     """
-    text_value = str(entry.value)
-    text_value = text_value.replace("4", "1")  # In older documents, OCR sometimes mistakes 1 for 4
-    return DepthColumnEntry(entry.rect, float(text_value))
+    alternatives = {value}
+    # In older documents, OCR sometimes mistakes 1 for 4
+    alternatives.add(float(str(value).replace("4", "1")))
+
+    # replace a pattern such as '.80' with '0.80'. These cases are already converted
+    # to '80.0' when depth entries are recognized.
+    if value.is_integer():
+        alternatives.add(value / 100)
+
+    return alternatives
