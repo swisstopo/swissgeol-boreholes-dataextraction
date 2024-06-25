@@ -89,7 +89,14 @@ class BoundaryDepthColumnValidator:
         Loops through all values and corrects common OCR mistakes for the given entry. Then, the column with the
         highest pearson correlation coefficient is selected and checked for validity.
 
-        This is useful if one entry has an OCR mistake, and the column is not valid because of it.
+        This is useful if one or more entries have an OCR mistake, and the column is not valid because of it.
+
+        Currently, there is no limit on the number of corrections per depth column. Indeed, there are examples of depth
+        columns with multiple OCR errors on different depth values. On the other hand, allowing an unlimited number of
+        corrections increases the risk, that a random column of different values is incorrectly accepted as a depth
+        column after making the corrections, especially if the column has a low number of entries. A more robust
+        solution might be to allow corrections on less than 50% of all entries, or something similar. However, we
+        currently don't have enough examples to properly tune this parameter.
 
         Note: Common mistakes should be extended as needed.
 
