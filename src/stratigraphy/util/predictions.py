@@ -1,10 +1,8 @@
 """This module contains classes for predictions."""
 
-import contextlib
 import logging
 import math
 import uuid
-from collections import defaultdict
 from dataclasses import dataclass, field
 
 import fitz
@@ -136,114 +134,6 @@ class FilePredictions:
             pages=page_predictions_class, file_name=file_name, language=file_language, metadata=file_metadata
         )
 
-    @staticmethod
-    def create_from_label_studio(annotation_results: dict):
-        """Create predictions class for a file given the annotation results from Label Studio.
-
-        This method is meant to import annotations from label studio. The primary use case is to
-        use the annotated data for evaluation. For that purpose, there is the convert_to_ground_truth
-        method, which then converts the predictions to ground truth format.
-
-        NOTE: We may want to adjust this method to return a single instance of the class,
-        instead of a list of class objects.
-
-        NOTE: Before using this to create new ground truth, this method should be tested.
-
-        Args:
-            annotation_results (dict): The annotation results from Label Studio.
-                                       The annotation_results can cover multiple files.
-
-        Returns:
-            list[FilePredictions]: A list of FilePredictions objects, one for each file present in the
-                                   annotation_results.
-        """
-        file_pages = defaultdict(list)
-        for annotation in annotation_results:
-            # get page level information
-            file_name, page_index = _get_file_name_and_page_index(annotation)
-            page_width = annotation["annotations"][0]["result"][0]["original_width"]
-            page_height = annotation["annotations"][0]["result"][0]["original_height"]
-
-            # extract all material descriptions and depth intervals and link them together
-            # Note: we need to loop through the annotations twice, because the order of the annotations is
-            # not guaranteed. In the first iteration we grasp all IDs, in the second iteration we extract the
-            # information for each id.
-            material_descriptions = {}
-            depth_intervals = {}
-            linking_objects = []
-
-            # define all the material descriptions and depth intervals with their ids
-            for annotation_result in annotation["annotations"][0]["result"]:
-                if annotation_result["type"] == "labels":
-                    if annotation_result["value"]["labels"] == ["Material Description"]:
-                        material_descriptions[annotation_result["id"]] = {
-                            "rect": annotation_result["value"]
-                        }  # TODO extract rectangle properly; does not impact the ground truth though.
-                    elif annotation_result["value"]["labels"] == ["Depth Interval"]:
-                        depth_intervals[annotation_result["id"]] = {}
-                if annotation_result["type"] == "relation":
-                    linking_objects.append(
-                        {"from_id": annotation_result["from_id"], "to_id": annotation_result["to_id"]}
-                    )
-
-            # check annotation results for material description or depth interval ids
-            for annotation_result in annotation["annotations"][0]["result"]:
-                with contextlib.suppress(KeyError):
-                    id = annotation_result["id"]  # relation regions do not have an ID.
-                if annotation_result["type"] == "textarea":
-                    if id in material_descriptions:
-                        material_descriptions[id]["text"] = annotation_result["value"]["text"][
-                            0
-                        ]  # There is always only one element. TO CHECK!
-                        if len(annotation_result["value"]["text"]) > 1:
-                            print(f"More than one text in material description: {annotation_result['value']['text']}")
-                    elif id in depth_intervals:
-                        depth_interval_text = annotation_result["value"]["text"][0]
-                        start, end = _get_start_end_from_text(depth_interval_text)
-                        depth_intervals[id]["start"] = start
-                        depth_intervals[id]["end"] = end
-                        depth_intervals[id]["background_rect"] = annotation_result[
-                            "value"
-                        ]  # TODO extract rectangle properly; does not impact the ground truth though.
-                    else:
-                        print(f"Unknown id: {id}")
-
-            # create the layer prediction objects by linking material descriptions with depth intervals
-            layers = []
-
-            for link in linking_objects:
-                from_id = link["from_id"]
-                to_id = link["to_id"]
-                material_description_prediction = MaterialDescription(**material_descriptions.pop(from_id))
-                depth_interval_prediction = AnnotatedInterval(**depth_intervals.pop(to_id))
-                layers.append(
-                    LayerPrediction(
-                        material_description=material_description_prediction,
-                        depth_interval=depth_interval_prediction,
-                        material_is_correct=True,
-                        depth_interval_is_correct=True,
-                    )
-                )
-
-            if material_descriptions or depth_intervals:
-                # TODO: This should not be acceptable. Raising an error doesnt seem the right way to go either.
-                # But at least it should be warned.
-                print("There are material descriptions or depth intervals left over.")
-                print(material_descriptions)
-                print(depth_intervals)
-
-            file_pages[file_name].append(
-                PagePredictions(layers=layers, page_number=page_index, page_width=page_width, page_height=page_height)
-            )
-
-        file_predictions = []
-        for file_name, page_predictions in file_pages.items():
-            file_predictions.append(
-                FilePredictions(file_name=f"{file_name}.pdf", pages=page_predictions, language="unknown")
-            )  # TODO: language should not be required here.
-
-        return file_predictions
-
     def convert_to_ground_truth(self):
         """Convert the predictions to ground truth format.
 
@@ -266,6 +156,13 @@ class FilePredictions:
                 }
                 layers.append({"material_description": material_description, "depth_interval": depth_interval})
         ground_truth[self.file_name]["layers"] = layers
+        if self.metadata.coordinates is not None:
+            ground_truth[self.file_name]["metadata"] = {
+                "coordinates": {
+                    "E": self.metadata.coordinates.east.coordinate_value,
+                    "N": self.metadata.coordinates.north.coordinate_value,
+                }
+            }
         return ground_truth
 
     def evaluate(self, ground_truth: dict):
@@ -373,15 +270,3 @@ class FilePredictions:
 def _create_textblock_object(lines: dict) -> TextBlock:
     lines = [TextLine([TextWord(**line)]) for line in lines]
     return TextBlock(lines)
-
-
-def _get_start_end_from_text(text: str) -> tuple[float]:
-    start, end = text.split("end: ")
-    start = start.split("start: ")[1]
-    return float(start), float(end)
-
-
-def _get_file_name_and_page_index(annotation):
-    file_name = annotation["data"]["ocr"].split("/")[-1]
-    file_name = file_name.split(".")[0]
-    return file_name.split("_")
