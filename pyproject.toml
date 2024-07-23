@@ -40,8 +40,11 @@ experiment-tracking = [
 visualize = [
     "matplotlib==3.8.0"
 ]
+devtools = [
+    "tqdm"
+]
 
-all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize]"]
+all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize, devtools]"]
 
 [project.scripts]
 boreholes-extract-all = "stratigraphy.main:click_pipeline"

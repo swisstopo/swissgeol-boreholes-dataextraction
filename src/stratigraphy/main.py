@@ -35,28 +35,26 @@ matching_params = read_params("matching_params.yml")
     "-i",
     "--input-directory",
     type=click.Path(exists=True, path_type=Path),
-    default=DATAPATH / "Benchmark",
     help="Path to the input directory, or path to a single pdf file.",
 )
 @click.option(
     "-g",
     "--ground-truth-path",
     type=click.Path(exists=False, path_type=Path),
-    default=DATAPATH / "Benchmark" / "ground_truth.json",
     help="Path to the ground truth file.",
 )
 @click.option(
     "-o",
     "--out-directory",
     type=click.Path(path_type=Path),
-    default=DATAPATH / "Benchmark" / "evaluation",
+    default=DATAPATH / "output",
     help="Path to the output directory.",
 )
 @click.option(
     "-p",
     "--predictions-path",
     type=click.Path(path_type=Path),
-    default=DATAPATH / "Benchmark" / "extract" / "predictions.json",
+    default=DATAPATH / "output" / "predictions.json",
     help="Path to the predictions file.",
 )
 @click.option(
@@ -144,8 +142,9 @@ def start_pipeline(
 
     temp_directory = DATAPATH / "_temp"  # temporary directory to dump files for mlflow artifact logging
 
-    # check if directories exist and create them when neccessary
-    out_directory.mkdir(parents=True, exist_ok=True)
+    # check if directories exist and create them when necessary
+    draw_directory = out_directory / "draw"
+    draw_directory.mkdir(parents=True, exist_ok=True)
     temp_directory.mkdir(parents=True, exist_ok=True)
 
     # if a file is specified instead of an input directory, copy the file to a temporary directory and work with that.
@@ -216,7 +215,7 @@ def start_pipeline(
     predictions, number_of_truth_values = create_predictions_objects(predictions, ground_truth_path)
 
     if not skip_draw_predictions:
-        draw_predictions(predictions, input_directory, out_directory)
+        draw_predictions(predictions, input_directory, draw_directory)
 
     if number_of_truth_values:  # only evaluate if ground truth is available
         metrics, document_level_metrics = evaluate_borehole_extraction(predictions, number_of_truth_values)

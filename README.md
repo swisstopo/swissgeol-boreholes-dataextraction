@@ -43,9 +43,9 @@ To execute the data extraction pipeline, follow these steps:
 
     The main script for the extraction pipeline is located at `src/stratigraphy/main.py`. A cli command is created to run this script.
 
-    Run `boreholes-extract-layers` to run the main extraction script. With the default options, the command will source all PDFs from the `data/Benchmark` directory and create PNG files in the `data/Benchmark/extract` directory.
+    Run `boreholes-extract-all` to run the main extraction script. With the default options, the command will source all PDFs from the `data/Benchmark` directory and create PNG files in the `data/Benchmark/extract` directory.
 
-    Use `boreholes-extract-layers --help` to see all options for the extraction script.
+    Use `boreholes-extract-all --help` to see all options for the extraction script.
 
 4. **Check the results**
 
@@ -154,9 +154,9 @@ The project structure and the most important files are as follows:
       - `util/` : Utility scripts and modules.
       - `benchmark/` : Scripts to evaluate the data extraction.
   - `data/` : The data used by the project.
-    - `Benchmark/` : The directory containing the PDF files to be analyzed.
-      - `extract/` : The directory where the PNG files are saved.
-          - `predictions.json` : The output file of the project, containing the results of the data extraction process.
+    - `output/` : 
+      - `draw/` : The directory where the PNG files are saved.
+      - `predictions.json` : The output file of the project, containing the results of the data extraction process.
   - `tests/` : The tests for the project.
   - `README.md` : The README file for the project.
 
