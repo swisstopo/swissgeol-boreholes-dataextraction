@@ -251,20 +251,22 @@ def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -
     return _metrics, document_level_metrics
 
 
-def create_predictions_objects(predictions: dict, ground_truth_path: Path) -> tuple[dict[FilePredictions], dict]:
+def create_predictions_objects(
+    predictions: dict, ground_truth_path: Path | None
+) -> tuple[dict[FilePredictions], dict]:
     """Create predictions objects from the predictions and evaluate them against the ground truth.
 
     Args:
         predictions (dict): The predictions from the predictions.json file.
-        ground_truth_path (Path): The path to the ground truth file.
+        ground_truth_path (Path　| None): The path to the ground truth file.
 
     Returns:
         tuple[dict[FilePredictions], dict]: The predictions objects and the number of ground truth values per file.
     """
-    try:  # for inference no ground truth is available
+    if ground_truth_path and os.path.exists(ground_truth_path):  # for inference no ground truth is available
         ground_truth = GroundTruth(ground_truth_path)
         ground_truth_is_present = True
-    except FileNotFoundError:
+    else:
         logging.warning("Ground truth file not found.")
         ground_truth_is_present = False
 

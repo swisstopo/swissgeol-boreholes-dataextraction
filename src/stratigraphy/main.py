@@ -34,14 +34,15 @@ matching_params = read_params("matching_params.yml")
 @click.option(
     "-i",
     "--input-directory",
+    required=True,
     type=click.Path(exists=True, path_type=Path),
     help="Path to the input directory, or path to a single pdf file.",
 )
 @click.option(
     "-g",
     "--ground-truth-path",
-    type=click.Path(exists=False, path_type=Path),
-    help="Path to the ground truth file.",
+    type=click.Path(exists=True, path_type=Path),
+    help="Path to the ground truth file (optional).",
 )
 @click.option(
     "-o",
@@ -69,7 +70,7 @@ matching_params = read_params("matching_params.yml")
 )
 def click_pipeline(
     input_directory: Path,
-    ground_truth_path: Path,
+    ground_truth_path: Path | None,
     out_directory: Path,
     predictions_path: Path,
     skip_draw_predictions: bool = False,
@@ -84,7 +85,7 @@ def click_pipeline(
      \f
      Args:
          input_directory (Path): The directory containing the pdf files. Can also be the path to a single pdf file.
-         ground_truth_path (Path): The path to the ground truth file json file.
+         ground_truth_path (Path | None): The path to the ground truth file json file.
          out_directory (Path): The directory to store the evaluation results.
          predictions_path (Path): The path to the predictions file.
          skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
@@ -119,7 +120,7 @@ def start_pipeline(
 
     Args:
         input_directory (Path): The directory containing the pdf files. Can also be the path to a single pdf file.
-        ground_truth_path (Path): The path to the ground truth file json file.
+        ground_truth_path (Path | None): The path to the ground truth file json file.
         out_directory (Path): The directory to store the evaluation results.
         predictions_path (Path): The path to the predictions file.
         skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
