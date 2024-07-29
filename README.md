@@ -19,10 +19,10 @@ The below commands will install the package for you (assuming you have successfu
 ```bash
 python -m venv env
 source env/bin/activate
-pip install -e .[all]
+pip install -e '.[all]'
 ```
 
-Alternatively you can replace the `pip install -e .[all]` command with `pip install git+https://github.com/swisstopo/swissgeol-boreholes-dataextraction.git` in production scenarios.
+Alternatively you can replace the `pip install -e '.[all]'` command with `pip install git+https://github.com/swisstopo/swissgeol-boreholes-dataextraction.git` in production scenarios.
 
 ## Run data extraction
 To execute the data extraction pipeline, follow these steps:
