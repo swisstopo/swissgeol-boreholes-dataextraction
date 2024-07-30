@@ -173,30 +173,36 @@ def start_pipeline(
                         predictions[filename]["metadata"] = {"coordinates": coordinates.to_json()}
                     else:
                         predictions[filename]["metadata"] = {"coordinates": None}
+
+                    layer_predictions_list = []
+                    depths_materials_column_pairs_list = []
+                    page_heights_list = []
+                    page_widths_list = []
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
                         logger.info("Processing page %s", page_number)
 
-                        text_lines = extract_text_lines(page)
+                        text_lines = extract_text_lines(page, page_number)
                         geometric_lines = extract_lines(page, line_detection_params)
                         layer_predictions, depths_materials_column_pairs = process_page(
-                            text_lines, geometric_lines, language, **matching_params
+                            text_lines, geometric_lines, language, page_number, **matching_params
                         )
-                        # Add remove duplicates here!
+
+                        # TODO: Add remove duplicates here!
                         if page_index > 0:
                             layer_predictions = remove_duplicate_layers(
                                 doc[page_index - 1],
                                 page,
-                                predictions[filename][f"page_{page_number - 1}"]["layers"],
+                                layer_predictions_list,
                                 layer_predictions,
                                 matching_params["img_template_probability_threshold"],
                             )
-                        predictions[filename][f"page_{page_number}"] = {
-                            "layers": layer_predictions,
-                            "depths_materials_column_pairs": depths_materials_column_pairs,
-                            "page_height": page.rect.height,
-                            "page_width": page.rect.width,
-                        }
+
+                        layer_predictions_list.extend(layer_predictions)
+                        depths_materials_column_pairs_list.extend(depths_materials_column_pairs)
+                        page_heights_list.append(page.rect.height)
+                        page_widths_list.append(page.rect.width)
+
                         if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
                             if not mlflow_tracking:
                                 logger.warning(
@@ -208,11 +214,18 @@ def start_pipeline(
                                 )
                                 mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
+                    predictions[filename]["layers"] = layer_predictions_list
+                    predictions[filename]["depths_materials_column_pairs"] = depths_materials_column_pairs_list
+                    predictions[filename]["page_height"] = page_heights_list
+                    predictions[filename]["page_width"] = page_widths_list
+
+                    assert len(page_heights_list) == len(page_widths_list) == doc.page_count, "Page count mismatch."
+
     logger.info("Writing predictions to JSON file %s", predictions_path)
     with open(predictions_path, "w") as file:
         file.write(json.dumps(predictions))
 
-    # evaluate the predictions; if file doesnt exist, the predictions are not changed.
+    # evaluate the predictions; if file does not exist, the predictions are not changed.
     predictions, number_of_truth_values = create_predictions_objects(predictions, ground_truth_path)
 
     if not skip_draw_predictions:

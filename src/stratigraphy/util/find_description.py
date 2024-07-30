@@ -89,7 +89,7 @@ def matching_blocks(
         else:
             break
 
-    if len(matched_lines):
+    if matched_lines:
         return [TextBlock(matched_lines)]
     else:
         return []
@@ -128,7 +128,7 @@ def get_description_blocks(
             distances.append(line2rect.y0 - line1rect.y0)
 
     threshold = None
-    if len(distances):
+    if distances:
         threshold = min(distances) * 1.15
 
     # Create blocks separated by lines

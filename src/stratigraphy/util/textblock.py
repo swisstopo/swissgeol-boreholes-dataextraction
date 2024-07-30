@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import fitz
 import numpy as np
@@ -24,6 +25,7 @@ class MaterialDescription:
     rect: fitz.Rect
 
     def to_json(self):
+        """Convert the MaterialDescription object to a JSON serializable dictionary."""
         return {
             "text": self.text,
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
@@ -32,7 +34,11 @@ class MaterialDescription:
 
 @dataclass
 class TextBlock:
-    """Class to represent a block of text in a PDF document."""
+    """Class to represent a block of text in a PDF document.
+
+    A TextBlock is a collection of Lines surrounded by Lines.
+    It is used to represent a block of text in a PDF document.
+    """
 
     lines: list[TextLine]
     is_terminated_by_line: bool = False
@@ -50,7 +56,23 @@ class TextBlock:
         else:
             self.rect = fitz.Rect()
 
-    def concatenate(self, other: TextBlock):
+        # go through all the lines and check if they are on the same page
+        page_number_set = set(line.page_number for line in self.lines)
+        assert len(page_number_set) < 2, "TextBlock spans multiple pages"
+        if page_number_set:
+            self.page_number = page_number_set.pop()
+        else:
+            self.page_number = None
+
+    def concatenate(self, other: TextBlock) -> TextBlock:
+        """Concatenate two text blocks.
+
+        Args:
+            other (TextBlock): The other text block.
+
+        Returns:
+            TextBlock: The concatenated text block.
+        """
         new_lines = []
         new_lines.extend(self.lines)
         new_lines.extend(other.lines)
@@ -59,6 +81,11 @@ class TextBlock:
     # LGD-288: sometimes indentation is the only significant signal for deciding where we need to split the material
     # descriptions of adjacent layers.
     def split_based_on_indentation(self) -> list[TextBlock]:
+        """Split the text block based on indentation.
+
+        Returns:
+            list[TextBlock]: The split text blocks.
+        """
         if len(self.lines) == 0:
             return []
 
@@ -84,14 +111,14 @@ class TextBlock:
         for line in self.lines:
             if line.rect.x0 < indentation_low:
                 # start new block
-                if len(current_block_lines):
+                if current_block_lines:
                     blocks.append(TextBlock(current_block_lines))
                 current_block_lines = [line]
             else:
                 # continue block
                 current_block_lines.append(line)
 
-        if len(current_block_lines):
+        if current_block_lines:
             blocks.append(TextBlock(current_block_lines))
 
         if self.is_terminated_by_line:  # if the block was terminated by a line, then the last block should be as well
@@ -123,11 +150,13 @@ class TextBlock:
                 y0_coordinates.append(line.rect.y0)
         return number_horizontally_close > 1 or number_vertically_close > 2
 
-    def to_json(self):
+    def to_json(self) -> dict[str, Any]:
+        """Convert the TextBlock object to a JSON serializable dictionary."""
         return {
             "text": self.text,
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
             "lines": [line.to_json() for line in self.lines],
+            "page": self.page_number,
         }
 
 

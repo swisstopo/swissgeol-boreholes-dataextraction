@@ -252,7 +252,8 @@ def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -
 
 
 def create_predictions_objects(
-    predictions: dict, ground_truth_path: Path | None
+    predictions: dict,
+    ground_truth_path: Path | None,
 ) -> tuple[dict[FilePredictions], dict]:
     """Create predictions objects from the predictions and evaluate them against the ground truth.
 

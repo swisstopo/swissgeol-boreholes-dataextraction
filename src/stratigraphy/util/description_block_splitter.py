@@ -21,6 +21,7 @@ class DescriptionBlockSplitter(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def separator_condition(self, last_line: TextLine, current_line: TextLine) -> bool:  # noqa: D107
+        """Check if a block is separated by a certain condition."""
         pass
 
     def create_blocks(self, description_lines: list[TextLine]) -> list[TextBlock]:
@@ -30,7 +31,7 @@ class DescriptionBlockSplitter(metaclass=abc.ABCMeta):
             description_lines (list[TextLine]): all the text lines from the material descriptions.
 
         Returns:
-            list[TextBlock]: the list of textblocks
+            list[TextBlock]: the list of TextBlocks
         """
         blocks = []
         current_block_lines = []
@@ -43,7 +44,7 @@ class DescriptionBlockSplitter(metaclass=abc.ABCMeta):
                     )
                     current_block_lines = []
             current_block_lines.append(line)
-        if len(current_block_lines):
+        if current_block_lines:
             blocks.append(TextBlock(current_block_lines))
         return blocks
 

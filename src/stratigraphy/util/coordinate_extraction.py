@@ -312,8 +312,9 @@ class CoordinateExtractor:
         Returns:
             Coordinate | None: the extracted coordinates (if any)
         """
-        for page in self.doc:
-            lines = extract_text_lines(page)
+        for page_idx, page in enumerate(self.doc):
+            page_number = page_idx + 1
+            lines = extract_text_lines(page, page_number)
             page_number = page.number + 1  # page.number is 0-based
 
             found_coordinates = (

@@ -14,16 +14,19 @@ from stratigraphy.util.line import TextLine, TextWord
 
 
 def test_strLV95():  # noqa: D103
+    """Test the string representation of an LV95Coordinate object."""
     coord = LV95Coordinate(CoordinateEntry(2789456), CoordinateEntry(1123012), fitz.Rect(), page=1)
     assert str(coord) == "E: 2'789'456, N: 1'123'012"
 
 
 def test_to_jsonLV95():  # noqa: D103
+    """Test the to_json method of an LV95Coordinate object."""
     coord = LV95Coordinate(CoordinateEntry(2789456), CoordinateEntry(1123012), fitz.Rect(0, 1, 2, 3), page=1)
     assert coord.to_json() == {"E": 2789456, "N": 1123012, "rect": [0, 1, 2, 3], "page": 1}
 
 
 def test_swap_coordinates():  # noqa: D103
+    """Test the swapping of coordinates in an LV95Coordinate object."""
     north = CoordinateEntry(789456)
     east = CoordinateEntry(123012)
     coord = LV95Coordinate(north=north, east=east, rect=fitz.Rect(), page=1)
@@ -32,11 +35,13 @@ def test_swap_coordinates():  # noqa: D103
 
 
 def test_strLV03():  # noqa: D103
+    """Test the string representation of an LV03Coordinate object."""
     coord = LV03Coordinate(CoordinateEntry(789456), CoordinateEntry(123012), rect=fitz.Rect(), page=1)
     assert str(coord) == "E: 789'456, N: 123'012"
 
 
 def test_to_jsonLV03():  # noqa: D103
+    """Test the to_json method of an LV03Coordinate object."""
     coord = LV03Coordinate(CoordinateEntry(789456), CoordinateEntry(123012), fitz.Rect(0, 1, 2, 3), page=1)
     assert coord.to_json() == {"E": 789456, "N": 123012, "rect": [0, 1, 2, 3], "page": 1}
 
@@ -46,6 +51,7 @@ extractor = CoordinateExtractor(doc)
 
 
 def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
+    """Test the extraction of coordinates from a PDF document."""
     # Assuming there is a method called 'extract' in CoordinateExtractor class
     coordinates = extractor.extract_coordinates()
     # Check if the returned value is a list
@@ -55,10 +61,12 @@ def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
 
 
 def _create_simple_lines(text_lines: list[str]) -> list[TextLine]:
+    """Create a list of TextLine objects from a list of text lines."""
+    page_number = 1
     return [
         TextLine(
             [
-                TextWord(fitz.Rect(word_index, line_index, word_index + 1, line_index + 1), word_text)
+                TextWord(fitz.Rect(word_index, line_index, word_index + 1, line_index + 1), word_text, page_number)
                 for word_index, word_text in enumerate(text_line.split(" "))
             ]
         )
@@ -67,6 +75,7 @@ def _create_simple_lines(text_lines: list[str]) -> list[TextLine]:
 
 
 def test_CoordinateExtractor_find_coordinate_key():  # noqa: D103
+    """Test the extraction of the coordinate key from a list of text lines."""
     lines = _create_simple_lines(
         ["This is a sample text", "followed by a key with a spelling mistake", "Ko0rdinate 615.790 / 157.500"]
     )
@@ -83,6 +92,7 @@ def test_CoordinateExtractor_find_coordinate_key():  # noqa: D103
 
 
 def test_CoordinateExtractor_get_coordinates_with_x_y_labels():  # noqa: D103
+    """Test the extraction of coordinates with explicit "X" and "Y" labels."""
     lines = _create_simple_lines(
         [
             "X = 2 600 000",
@@ -109,6 +119,7 @@ def test_CoordinateExtractor_get_coordinates_with_x_y_labels():  # noqa: D103
 
 
 def test_CoordinateExtractor_get_coordinates_near_key():  # noqa: D103
+    """Test the extraction of coordinates near a key."""
     lines = _create_simple_lines(
         [
             "This is a sample text followed by a key with a spelling",
@@ -158,6 +169,7 @@ def test_CoordinateExtractor_get_coordinates_near_key():  # noqa: D103
     ],
 )
 def test_CoordinateExtractor_get_coordinates_from_lines(text, expected):  # noqa: D103
+    """Test the extraction of coordinates from a list of text lines."""
     lines = _create_simple_lines([text])
     coordinates = extractor.get_coordinates_from_lines(lines, page=1)
     expected_east, expected_north = expected
@@ -167,6 +179,7 @@ def test_CoordinateExtractor_get_coordinates_from_lines(text, expected):  # noqa
 
 
 def test_CoordinateExtractor_get_coordinates_from_lines_rect():  # noqa: D103
+    """Test the extraction of coordinates from a list of text lines with different rect formats."""
     lines = _create_simple_lines(["start", "2600000 1200000", "end"])
     coordinates = extractor.get_coordinates_from_lines(lines, page=1)
     assert coordinates[0].rect == lines[1].rect

@@ -21,6 +21,7 @@ class Interval(metaclass=abc.ABCMeta):
 
     @property
     def start_value(self) -> float | None:
+        """Get the start value of the interval."""
         if self.start:
             return self.start.value
         else:
@@ -28,6 +29,7 @@ class Interval(metaclass=abc.ABCMeta):
 
     @property
     def end_value(self) -> float | None:
+        """Get the end value of the interval."""
         if self.end:
             return self.end.value
         else:
@@ -36,14 +38,17 @@ class Interval(metaclass=abc.ABCMeta):
     @property
     @abc.abstractmethod
     def line_anchor(self) -> fitz.Point:
+        """Get the line anchor of the interval."""
         pass
 
     @property
     @abc.abstractmethod
     def background_rect(self) -> fitz.Rect | None:
+        """Get the background rectangle of the interval."""
         pass
 
     def to_json(self):
+        """Convert the interval to a JSON serializable format."""
         return {
             "start": self.start.to_json() if self.start else None,
             "end": self.end.to_json() if self.end else None,
@@ -64,9 +69,6 @@ class BoundaryInterval(Interval):
 
     Boundary intervals are intervals that are defined by a start and an end point.
     """
-
-    def __init__(self, start: DepthColumnEntry | None, end: DepthColumnEntry | None):
-        super().__init__(start, end)
 
     @property
     def line_anchor(self) -> fitz.Point | None:
@@ -132,10 +134,10 @@ class BoundaryInterval(Interval):
                 if not can_end_exact_match:
                     exact_match_blocks = []
 
-            if len(exact_match_blocks):
+            if exact_match_blocks:
                 exact.extend(exact_match_blocks)
                 block_index = exact_match_index - 1
-            elif len(exact):
+            elif exact:
                 post.append(current_block)
             else:
                 pre.append(current_block)
@@ -168,6 +170,7 @@ class LayerInterval(Interval):
     def matching_blocks(
         self, all_lines: list[TextLine], line_index: int, next_interval: Interval | None
     ) -> list[TextBlock]:
+        """Adds lines to a block until the next layer identifier is reached."""
         y1_threshold = None
         if next_interval:
             next_interval_start_rect = next_interval.start.rect
@@ -181,7 +184,7 @@ class LayerInterval(Interval):
             else:
                 break
 
-        if len(matched_lines):
+        if matched_lines:
             return [TextBlock(matched_lines)]
         else:
             return []

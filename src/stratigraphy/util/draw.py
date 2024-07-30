@@ -47,8 +47,7 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
         with fitz.Document(directory / file_name) as doc:
             for page_index, page in enumerate(doc):
                 page_number = page_index + 1
-                layers = file_prediction.pages[page_index].layers
-                depths_materials_column_pairs = file_prediction.pages[page_index].depths_materials_columns_pairs
+                depths_materials_column_pairs = file_prediction.depths_materials_columns_pairs
                 if page_index == 0:
                     draw_metadata(
                         page,
@@ -58,10 +57,12 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                 if file_prediction.metadata.coordinates is not None:
                     draw_coordinates(page, file_prediction.metadata.coordinates)
                 draw_depth_columns_and_material_rect(page, depths_materials_column_pairs)
-                draw_material_descriptions(page, layers)
+                draw_material_descriptions(page, file_prediction.layers)
 
                 tmp_file_path = out_directory / f"{file_name}_page{page_number}.png"
                 fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
+                print(f"Saved image to {tmp_file_path}")
+
                 if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
                     try:
                         import mlflow
@@ -119,21 +120,24 @@ def draw_material_descriptions(page: fitz.Page, layers: LayerPrediction) -> None
         page (fitz.Page): The page to draw on.
         layers (LayerPrediction): The predictions for the page.
     """
+    page_number = page.number + 1
+
     for index, layer in enumerate(layers):
-        if layer.material_description.rect is not None:
-            fitz.utils.draw_rect(
-                page,
-                fitz.Rect(layer.material_description.rect) * page.derotation_matrix,
-                color=fitz.utils.getColor("orange"),
+        if layer.material_description.page_number == page_number:
+            if layer.material_description.rect is not None:
+                fitz.utils.draw_rect(
+                    page,
+                    fitz.Rect(layer.material_description.rect) * page.derotation_matrix,
+                    color=fitz.utils.getColor("orange"),
+                )
+            draw_layer(
+                page=page,
+                interval=layer.depth_interval,  # None if no depth interval
+                layer=layer.material_description,
+                index=index,
+                is_correct=layer.material_is_correct,  # None if no ground truth
+                depth_is_correct=layer.depth_interval_is_correct,  # None if no ground truth
             )
-        draw_layer(
-            page=page,
-            interval=layer.depth_interval,  # None if no depth interval
-            layer=layer.material_description,
-            index=index,
-            is_correct=layer.material_is_correct,  # None if no ground truth
-            depth_is_correct=layer.depth_interval_is_correct,  # None if no ground truth
-        )
 
 
 def draw_depth_columns_and_material_rect(page: fitz.Page, depths_materials_column_pairs: list) -> fitz.Page:
@@ -197,7 +201,7 @@ def draw_layer(
         is_correct (bool): Whether the text block was correctly identified.
         depth_is_correct (bool): Whether the depth interval was correctly identified.
     """
-    if len(layer.lines):
+    if layer.lines:
         layer_rect = fitz.Rect(layer.rect)
         color = colors[index % len(colors)]
 
