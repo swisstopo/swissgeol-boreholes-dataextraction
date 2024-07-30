@@ -115,7 +115,7 @@ class LayerIdentifierColumn:
             and self.rect().y1 <= rect.y1
         )
 
-    def get_depth_interval(self, block: TextBlock) -> LayerDepthColumnEntry:
+    def get_depth_interval(self, block: TextBlock, page_number: int) -> LayerDepthColumnEntry:
         """Extract depth interval from a material description block.
 
         For borehole profiles in the Deriaz layout, the depth interval is usually found in the text description
@@ -125,6 +125,7 @@ class LayerIdentifierColumn:
 
         Args:
             block (TextBlock): The block to calculate the depth interval for.
+            page_number (int): The page number of the block.
 
         Returns:
             LayerDepthColumnEntry: The depth interval.
@@ -132,7 +133,9 @@ class LayerIdentifierColumn:
         depth_entries = []
         for line in block.lines:
             try:
-                layer_depth_entry = extract_layer_depth_interval(line.text, line.rect, require_start_of_string=False)
+                layer_depth_entry = extract_layer_depth_interval(
+                    line.text, line.rect, page_number, require_start_of_string=False
+                )
                 # require_start_of_string = False because the depth interval may not always start at the beginning
                 # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
                 if layer_depth_entry:

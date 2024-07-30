@@ -111,7 +111,7 @@ class LayerDepthColumn(DepthColumn):
                 segment_start = index
 
         final_segment = self.entries[segment_start:]
-        if len(final_segment):
+        if final_segment:
             segments.append(final_segment)
 
         return [LayerDepthColumn(segment) for segment in segments]
@@ -338,7 +338,7 @@ class BoundaryDepthColumn(DepthColumn):
                 segment_start = index
 
         final_segment = self.entries[segment_start:]
-        if len(final_segment):
+        if final_segment:
             segments.append(final_segment)
 
         return [BoundaryDepthColumn(segment) for segment in segments]
