@@ -22,7 +22,7 @@ from stratigraphy.util.layer_identifier_column import (
 from stratigraphy.util.line import TextLine
 from stratigraphy.util.textblock import TextBlock, block_distance
 from stratigraphy.util.util import (
-    parse_and_remove_empty_predictions,
+    remove_empty_predictions,
     x_overlap,
     x_overlap_significant_smallest,
 )
@@ -167,7 +167,7 @@ def process_page(
         )
         for group in groups
     ]
-    predictions = parse_and_remove_empty_predictions(predictions)
+    predictions = remove_empty_predictions(predictions)
     return predictions, json_filtered_pairs
 
 
