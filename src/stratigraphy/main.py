@@ -222,8 +222,8 @@ def start_pipeline(
                     assert len(page_heights_list) == len(page_widths_list) == doc.page_count, "Page count mismatch."
 
     logger.info("Writing predictions to JSON file %s", predictions_path)
-    with open(predictions_path, "w") as file:
-        file.write(json.dumps(predictions))
+    with open(predictions_path, "w", encoding="utf8") as file:
+        json.dump(predictions, file, ensure_ascii=False)
 
     # evaluate the predictions; if file does not exist, the predictions are not changed.
     predictions, number_of_truth_values = create_predictions_objects(predictions, ground_truth_path)
