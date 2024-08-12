@@ -54,6 +54,7 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                         page,
                         file_prediction.metadata.coordinates,
                         file_prediction.metadata_is_correct.get("coordinates"),
+                        file_prediction.metadata.drilling_method,
                     )
                 if file_prediction.metadata.coordinates is not None:
                     draw_coordinates(page, file_prediction.metadata.coordinates)
@@ -71,7 +72,12 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                         logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
 
 
-def draw_metadata(page: fitz.Page, coordinates: Coordinate | None, coordinates_is_correct: bool) -> None:
+def draw_metadata(
+    page: fitz.Page,
+    coordinates: Coordinate | None,
+    coordinates_is_correct: bool,
+    drilling_method: TextBlock | None,
+) -> None:
     """Draw the extracted metadata on the top of the given PDF page.
 
     The data is always drawn at the top-left of the page, without considering where on the page the data was originally
@@ -81,12 +87,17 @@ def draw_metadata(page: fitz.Page, coordinates: Coordinate | None, coordinates_i
         page (fitz.Page): The page to draw on.
         coordinates (Coordinate | None): The coordinate object to draw.
         coordinates_is_correct (bool): Whether the coordinates are correct.
+        drilling_method (TextBlock | None): The drilling method text block to draw.
     """
     color = "green" if coordinates_is_correct else "red"
     coordinate_rect = fitz.Rect([5, 5, 200, 25])
 
     page.draw_rect(coordinate_rect * page.derotation_matrix, fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
-    page.insert_htmlbox(coordinate_rect * page.derotation_matrix, f"Coordinates: {coordinates}", rotate=page.rotation)
+    page.insert_htmlbox(
+        coordinate_rect * page.derotation_matrix,
+        f"Coordinates: {coordinates}, Drilling Method: {drilling_method.text}",
+        rotate=page.rotation,
+    )
     page.draw_line(
         coordinate_rect.top_left * page.derotation_matrix,
         coordinate_rect.bottom_left * page.derotation_matrix,

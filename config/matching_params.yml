@@ -114,3 +114,86 @@ coordinate_keys:
   - coordinate
   - coordonnées
   - coordonn
+
+
+drilling_method_keys:
+  # Abbreviations
+  - HA
+  - RS
+  - RKS
+  - SCHL
+  - RB
+  - AIR
+  - RKB
+  - SKB
+  - SCHT
+  - SS
+  - GR
+  - PFAHL
+  - SCHN
+  - a
+  - kA
+  # ENG - Words
+  - manual drilling
+  - dynamic probing
+  - direct push soil sampling
+  - percussion drilling
+  - rotary drilling
+  - reverse circulation drilling
+  - rotary coring
+  - wireline core drilling
+  - shaft drilling
+  - trench
+  - grab drilling
+  - piling
+  - auger drilling
+  - other 
+  - not specified
+  # GER - Words
+  - Handbohrung
+  - Rammsondierung
+  - Rammkernsondierung
+  - Imlochhammerbohrung
+  - Rotary Bohrung
+  - Rotary Bohrung Lufthebend
+  - Rotary Kernbohrung
+  - Rotary Seilkernbohrung
+  - Schachtbohrung
+  - Baggerschlitz
+  - Greiferbohrung
+  - Pfahlbohrung
+  - Schneckenbohrung
+  - andere
+  - keine Angabe
+  # FR - Words
+  - tarière à main
+  - sondage au pénétromètre
+  - forage carotté avec pénétromètre
+  - forage par battage
+  - forage par rotation
+  - forage airlift
+  - forage par carottage rotatif
+  - forage carotté à câble
+  - forage en puits
+  - fouille
+  - perçage d'excavation
+  - forage au pieu
+  - forage à la tarière
+  - autre
+  - sans indication
+  # IT - Words
+  - trivella manuale
+  - prova penetrometrica 
+  - prova penetrometrica carotata 
+  - perforazione a percussione
+  - perforazione rotary
+  - perforazione airlift
+  - sondaggio a carotaggio
+  - sondaggio a carotaggio continuo
+  - pozzo trivellato
+  - trincea di riconoscimento
+  - perforazione di scavo
+  - perforazione tramite battipalo
+  - perforazione a coclea
+  - altro
+  - senza indicazioni

@@ -128,7 +128,7 @@ def get_description_blocks(
             distances.append(line2rect.y0 - line1rect.y0)
 
     threshold = None
-    if len(distances):
+    if distances:
         threshold = min(distances) * 1.15
 
     # Create blocks separated by lines
@@ -166,8 +166,8 @@ def get_description_blocks(
 
     elif count_blocks_divided_by_line < min_block_count:
         # In this case the blocks are due to line segments. However, they are mostly due to small segments
-        # on the lefthandside of the blocks. Minimum there are fewer blocks due to lines than min_block_count.
-        # Often, these lefthandside lines are only used when space is tight. If space is not tight, those
+        # on the left-hand side of the blocks. Minimum there are fewer blocks due to lines than min_block_count.
+        # Often, these left-hand side lines are only used when space is tight. If space is not tight, those
         # indicators are dropped. That's why we have to consider vertical spacing as well.
         _blocks = []
         for block in blocks:
