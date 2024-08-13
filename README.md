@@ -16,7 +16,13 @@ All code and documentation is published in this GitHub repository as open source
 
 ### Extracted properties
 
-Below is a list of the most relevant properties for the extraction of structure data from borehole profiles. Properties that can be automatically extracted by the current pipeline are in **bold**. Properties for which the implementation of automatic extraction is actively being worked on, are in _italics_.
+Below is a list of the most relevant properties for the extraction of structure data from borehole profiles, using the following styles:
+
+- Properties that can already be automatically extracted by the current pipeline implementation are in **bold**.
+- Properties for which the implementation of automatic extraction is actively being worked on, are in _italics_.
+- Properties that are likely to be added to the data extraction pipeline in the future, but are not under active development yet, are in regular font.
+
+#### Most relevant borehole properties
 
 * Metadata
   * **Coordinates**
