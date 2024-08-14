@@ -8,10 +8,12 @@ from pathlib import Path
 import click
 import fitz
 from dotenv import load_dotenv
+from tqdm import tqdm
 
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.score import create_predictions_objects, evaluate_borehole_extraction
 from stratigraphy.extract import process_page
+from stratigraphy.groundwater.groundwater_extraction import GroundwaterLevelExtractor
 from stratigraphy.line_detection import extract_lines, line_detection_params
 from stratigraphy.util.coordinate_extraction import CoordinateExtractor
 from stratigraphy.util.draw import draw_predictions
@@ -156,7 +158,7 @@ def start_pipeline(
     # process the individual pdf files
     predictions = {}
     for root, _dirs, files in file_iterator:
-        for filename in files:
+        for filename in tqdm(files):
             if filename.endswith(".pdf"):
                 in_path = os.path.join(root, filename)
                 logger.info("Processing file: %s", in_path)
@@ -167,12 +169,24 @@ def start_pipeline(
                         doc, matching_params["default_language"], matching_params["material_description"].keys()
                     )
                     predictions[filename]["language"] = language
+
+                    # Extract the coordinates of the borehole
                     coordinate_extractor = CoordinateExtractor(doc)
                     coordinates = coordinate_extractor.extract_coordinates()
                     if coordinates:
                         predictions[filename]["metadata"] = {"coordinates": coordinates.to_json()}
                     else:
                         predictions[filename]["metadata"] = {"coordinates": None}
+
+                    # Extract the groundwater levels
+                    groundwater_extractor = GroundwaterLevelExtractor(doc)
+                    groundwater_information = groundwater_extractor.extract_groundwater_information()
+                    if groundwater_information:
+                        predictions[filename]["metadata"]["groundwater_information"] = (
+                            groundwater_information.to_dict()
+                        )
+                    else:
+                        predictions[filename]["metadata"]["groundwater_information"] = None
 
                     layer_predictions_list = []
                     depths_materials_column_pairs_list = []
@@ -233,6 +247,17 @@ def start_pipeline(
         document_level_metrics.to_csv(
             temp_directory / "document_level_metrics.csv"
         )  # mlflow.log_artifact expects a file
+
+        # print the metrics
+        logger.info("Performance metrics:")
+        logger.info(metrics)
+        logger.info("Groundwater level metrics:")
+        logger.info("Accuracy:")
+        logger.info(round(metrics["groundwater_accuracy"], 3))
+        logger.info("TP:")
+        logger.info(metrics["groundwater_tp"])
+        logger.info("Coordinate metrics:")
+        logger.info(round(metrics["coordinate_accuracy"], 3))
 
         if mlflow_tracking:
             mlflow.log_metrics(metrics)

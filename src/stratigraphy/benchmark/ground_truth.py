@@ -29,9 +29,21 @@ class GroundTruth:
                 if parse_text(layer["material_description"]) != ""
             ]
             metadata = ground_truth_item["metadata"]
+
+            # Add the groundwater to the metadata if it is present
+            if "groundwater" in ground_truth_item:
+                metadata["groundwater"] = ground_truth_item["groundwater"]
             self.ground_truth[borehole_profile]["metadata"] = metadata
 
     def for_file(self, file_name: str) -> dict:
+        """Get the ground truth data for a given file.
+
+        Args:
+            file_name (str): The file name.
+
+        Returns:
+            dict: The ground truth data for the file.
+        """
         if file_name in self.ground_truth:
             return self.ground_truth[file_name]
         else:

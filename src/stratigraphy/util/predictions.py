@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 import fitz
 import Levenshtein
 
+from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformation
 from stratigraphy.util.coordinate_extraction import Coordinate
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry
 from stratigraphy.util.interval import AnnotatedInterval, BoundaryInterval
@@ -23,6 +24,7 @@ class BoreholeMetaData:
     """Class to represent metadata of a borehole profile."""
 
     coordinates: Coordinate | None
+    groundwater_information: GroundwaterInformation | None = None
 
 
 @dataclass
@@ -74,7 +76,12 @@ class FilePredictions:
         coordinates = None
         if "coordinates" in metadata and metadata["coordinates"] is not None:
             coordinates = Coordinate.from_json(metadata["coordinates"])
-        file_metadata = BoreholeMetaData(coordinates=coordinates)
+        if "groundwater_information" in metadata:
+            if metadata["groundwater_information"] is not None:
+                groundwater_information = GroundwaterInformation(**metadata["groundwater_information"])
+            else:
+                groundwater_information = None
+        file_metadata = BoreholeMetaData(coordinates=coordinates, groundwater_information=groundwater_information)
         # TODO: Add additional metadata here.
 
         for layer in predictions_for_file["layers"]:
@@ -185,6 +192,9 @@ class FilePredictions:
         Args:
             metadata_ground_truth (dict): The ground truth for the file.
         """
+        ############################################################################################################
+        ### Compute the metadata correctness for the coordinates.
+        ############################################################################################################
         if self.metadata.coordinates is None or (
             metadata_ground_truth is None or metadata_ground_truth.get("coordinates") is None
         ):
@@ -213,6 +223,41 @@ class FilePredictions:
                 self.metadata_is_correct["coordinates"] = True
             else:
                 self.metadata_is_correct["coordinates"] = False
+
+        ############################################################################################################
+        ### Compute the metadata correctness for the groundwater information.
+        ############################################################################################################
+        if self.metadata.groundwater_information is None or (
+            metadata_ground_truth is None or metadata_ground_truth.get("groundwater") is None
+        ):
+            self.metadata_is_correct["groundwater_information"] = None
+            self.metadata_is_correct["groundwater_information_depth"] = None
+            self.metadata_is_correct["groundwater_information_elevation"] = None
+            self.metadata_is_correct["groundwater_information_date"] = None
+        else:
+            if len(metadata_ground_truth["groundwater"]) > 1:
+                # TODO: We could also check if the groundwater information is the same for all entries.
+                # TODO: We could also take the most recent entry.
+                logger.warning(
+                    f"Multiple groundwater information entries found in the ground truth for file {self.file_name}."
+                    " Only the first entry will be considered for evaluation."
+                )
+            extracted_groundwater_info: GroundwaterInformation = self.metadata.groundwater_information
+            gt_groundwater_info: GroundwaterInformation = GroundwaterInformation(
+                **metadata_ground_truth["groundwater"][0]
+            )
+            self.metadata_is_correct["groundwater_information"] = gt_groundwater_info.is_extracted_information_correct(
+                extracted_groundwater_info
+            )
+            self.metadata_is_correct["groundwater_information_depth"] = gt_groundwater_info.is_extracted_depth_correct(
+                extracted_groundwater_info.depth
+            )
+            self.metadata_is_correct["groundwater_information_elevation"] = (
+                gt_groundwater_info.is_extracted_elevation_correct(extracted_groundwater_info.elevation)
+            )
+            self.metadata_is_correct["groundwater_information_date"] = gt_groundwater_info.is_extracted_date_correct(
+                extracted_groundwater_info.date
+            )
 
     @staticmethod
     def _find_matching_layer(

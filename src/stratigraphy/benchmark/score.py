@@ -132,7 +132,9 @@ def get_scores(
         }
 
 
-def evaluate_borehole_extraction(predictions: dict, number_of_truth_values: dict) -> tuple[dict, pd.DataFrame]:
+def evaluate_borehole_extraction(
+    predictions: dict[str, FilePredictions], number_of_truth_values: dict
+) -> tuple[dict, pd.DataFrame]:
     """Evaluate the borehole extraction predictions.
 
     Args:
@@ -144,15 +146,26 @@ def evaluate_borehole_extraction(predictions: dict, number_of_truth_values: dict
         individual document metrics as a DataFrame.
     """
     layer_metrics, layer_document_level_metrics = evaluate_layer_extraction(predictions, number_of_truth_values)
-    coordinate_metrics, coordinate_document_level_metrics = evaluate_metadata(predictions)
+    (
+        coordinate_metrics,
+        document_level_metrics_coordinates,
+        document_level_metrics_groundwater,
+        document_level_metrics_groundwater_depth,
+    ) = evaluate_metadata(predictions)
     metrics = {**layer_metrics, **coordinate_metrics}
     document_level_metrics = pd.merge(
-        layer_document_level_metrics, coordinate_document_level_metrics, on="document_name", how="outer"
+        layer_document_level_metrics, document_level_metrics_coordinates, on="document_name", how="outer"
+    )
+    document_level_metrics = pd.merge(
+        document_level_metrics, document_level_metrics_groundwater, on="document_name", how="outer"
+    )
+    document_level_metrics = pd.merge(
+        document_level_metrics, document_level_metrics_groundwater_depth, on="document_name", how="outer"
     )
     return metrics, document_level_metrics
 
 
-def evaluate_metadata(predictions: dict) -> tuple[dict, pd.DataFrame]:
+def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd.DataFrame]:
     """Evaluate the metadata predictions.
 
     Args:
@@ -161,10 +174,19 @@ def evaluate_metadata(predictions: dict) -> tuple[dict, pd.DataFrame]:
     Returns:
         tuple[dict, pd.DataFrame]: The overall coordinate accuracy and the individual document metrics as a DataFrame.
     """
-    document_level_metrics = {
+    document_level_metrics_coordinates = {
         "document_name": [],
         "coordinates": [],
     }
+    document_level_metrics_groundwater_information = {
+        "document_name": [],
+        "groundwater_information": [],
+    }
+    document_level_metrics_groundwater_depth = {
+        "document_name": [],
+        "groundwater_depth": [],
+    }
+
     coordinates_tp = 0  # correct prediction
     coordinates_fn = 0  # no predictions, i.e. None
     coordinates_fp = 0  # wrong prediction
@@ -174,16 +196,16 @@ def evaluate_metadata(predictions: dict) -> tuple[dict, pd.DataFrame]:
         if file_prediction.metadata_is_correct["coordinates"]:
             coordinates_tp += 1
             number_coordinate_predictions += 1
-            document_level_metrics["document_name"].append(file_name)
-            document_level_metrics["coordinates"].append(1)
+            document_level_metrics_coordinates["document_name"].append(file_name)
+            document_level_metrics_coordinates["coordinates"].append(1)
         elif file_prediction.metadata_is_correct["coordinates"] is None:
             coordinates_fn += 1
             number_coordinate_predictions += 1
         else:
             coordinates_fp += 1
             number_coordinate_predictions += 1
-            document_level_metrics["document_name"].append(file_name)
-            document_level_metrics["coordinates"].append(0)
+            document_level_metrics_coordinates["document_name"].append(file_name)
+            document_level_metrics_coordinates["coordinates"].append(0)
     try:
         coordinate_precision = coordinates_tp / (coordinates_tp + coordinates_fp)
     except ZeroDivisionError:
@@ -193,13 +215,99 @@ def evaluate_metadata(predictions: dict) -> tuple[dict, pd.DataFrame]:
     except ZeroDivisionError:
         coordinate_recall = 0
 
+    groundwater_tp = 0  # correct prediction
+    groundwater_fn = 0  # no predictions, i.e. None
+    groundwater_fp = 0  # wrong prediction
+
+    # there is no such thing as true negatives as each document has coordinates - though not necessarily specified
+    number_groundwater_predictions = 0
+    for file_name, file_prediction in predictions.items():
+        if file_prediction.metadata_is_correct["groundwater_information"]:
+            groundwater_tp += 1
+            number_groundwater_predictions += 1
+            document_level_metrics_groundwater_information["document_name"].append(file_name)
+            document_level_metrics_groundwater_information["groundwater_information"].append(1)
+        elif file_prediction.metadata_is_correct["groundwater_information"] is None:
+            groundwater_fn += 1
+            number_groundwater_predictions += 1
+        else:
+            groundwater_fp += 1
+            number_groundwater_predictions += 1
+            document_level_metrics_groundwater_information["document_name"].append(file_name)
+            document_level_metrics_groundwater_information["groundwater_information"].append(0)
+
+    try:
+        groundwater_precision = groundwater_tp / (groundwater_tp + groundwater_fp)
+    except ZeroDivisionError:
+        groundwater_precision = 0
+    try:
+        groundwater_recall = groundwater_tp / (groundwater_tp + groundwater_fn)
+    except ZeroDivisionError:
+        groundwater_recall = 0
+
+    #######################################
+    ########## Groundwater depth ##########
+    #######################################
+    groundwater_depth_tp = 0  # correct prediction
+    groundwater_depth_fn = 0  # no predictions, i.e. None
+    groundwater_depth_fp = 0  # wrong prediction
+
+    # there is no such thing as true negatives as each document has coordinates - though not necessarily specified
+    number_groundwater_depth_predictions = 0
+
+    for file_name, file_prediction in predictions.items():
+        if file_prediction.metadata_is_correct["groundwater_information_depth"]:
+            groundwater_depth_tp += 1
+            number_groundwater_depth_predictions += 1
+            document_level_metrics_groundwater_depth["document_name"].append(file_name)
+            document_level_metrics_groundwater_depth["groundwater_depth"].append(1)
+        elif file_prediction.metadata_is_correct["groundwater_information_depth"] is None:
+            groundwater_depth_fn += 1
+            number_groundwater_depth_predictions += 1
+        else:
+            groundwater_depth_fp += 1
+            number_groundwater_depth_predictions += 1
+            document_level_metrics_groundwater_depth["document_name"].append(file_name)
+            document_level_metrics_groundwater_depth["groundwater_depth"].append(0)
+
+    try:
+        groundwater_depth_precision = groundwater_depth_tp / (groundwater_depth_tp + groundwater_depth_fp)
+    except ZeroDivisionError:
+        groundwater_depth_precision = 0
+    try:
+        groundwater_depth_recall = groundwater_depth_tp / (groundwater_depth_tp + groundwater_depth_fn)
+    except ZeroDivisionError:
+        groundwater_depth_recall = 0
+
     metrics = {
         "coordinate_accuracy": coordinates_tp / number_coordinate_predictions,
         "coordinate_precision": coordinate_precision,
         "coordinate_recall": coordinate_recall,
         "coordinate_f1": f1(coordinate_precision, coordinate_recall),
+        "coordinates_tp": coordinates_tp,
+        "coordinates_fp": coordinates_fp,
+        "coordinates_fn": coordinates_fn,
+        "groundwater_accuracy": groundwater_tp / number_groundwater_predictions,
+        "groundwater_precision": groundwater_precision,
+        "groundwater_recall": groundwater_recall,
+        "groundwater_f1": f1(groundwater_precision, groundwater_recall),
+        "groundwater_tp": groundwater_tp,
+        "groundwater_fp": groundwater_fp,
+        "groundwater_fn": groundwater_fn,
+        "groundwater_depth_accuracy": groundwater_depth_tp / number_groundwater_depth_predictions,
+        "groundwater_depth_precision": groundwater_depth_precision,
+        "groundwater_depth_recall": groundwater_depth_recall,
+        "groundwater_depth_f1": f1(groundwater_depth_precision, groundwater_depth_recall),
+        "groundwater_depth_tp": groundwater_depth_tp,
+        "groundwater_depth_fp": groundwater_depth_fp,
+        "groundwater_depth_fn": groundwater_depth_fn,
     }
-    return metrics, pd.DataFrame(document_level_metrics)
+    return (
+        metrics,
+        pd.DataFrame(document_level_metrics_coordinates),
+        pd.DataFrame(document_level_metrics_groundwater_information),
+        pd.DataFrame(document_level_metrics_groundwater_depth),
+    )
 
 
 def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -> tuple[dict, pd.DataFrame]:
