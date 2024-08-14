@@ -270,7 +270,6 @@ def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd
         tuple[dict, pd.DataFrame]: The overall coordinate accuracy and the individual document metrics as a DataFrame.
     """
     document_level_metrics_coordinates, metrics_coordinates = get_metadata_metrics(predictions, "coordinates")
-
     metrics = {
         "coordinate_precision": metrics_coordinates["coordinates_precision"],
         "coordinate_recall": metrics_coordinates["coordinates_recall"],

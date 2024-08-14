@@ -59,6 +59,8 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                         page.rotation,
                         file_prediction.metadata.coordinates,
                         file_prediction.metadata_is_correct.get("coordinates"),
+                        file_prediction.metadata.groundwater_information,
+                        file_prediction.metadata_is_correct.get("groundwater_information"),
                     )
                 if coordinates is not None and page_number == coordinates.page:
                     draw_coordinates(shape, coordinates)
