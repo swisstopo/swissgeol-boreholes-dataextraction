@@ -26,7 +26,6 @@ class BoreholeMetaData:
     """Class to represent metadata of a borehole profile."""
 
     coordinates: Coordinate | None
-    groundwater_information: GroundwaterInformation | None = None
     elevation: ElevationInformation | None = None
 
 
