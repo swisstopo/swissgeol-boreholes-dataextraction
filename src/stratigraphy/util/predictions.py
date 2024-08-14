@@ -25,6 +25,7 @@ class BoreholeMetaData:
     """Class to represent metadata of a borehole profile."""
 
     coordinates: Coordinate | None
+    groundwater_information: GroundwaterInformation | None = None
 
 
 @dataclass
@@ -80,7 +81,12 @@ class FilePredictions:
         coordinates = None
         if "coordinates" in metadata and metadata["coordinates"] is not None:
             coordinates = Coordinate.from_json(metadata["coordinates"])
-        file_metadata = BoreholeMetaData(coordinates=coordinates)
+        if "groundwater_information" in metadata:
+            if metadata["groundwater_information"] is not None:
+                groundwater_information = GroundwaterInformation(**metadata["groundwater_information"])
+            else:
+                groundwater_information = None
+        file_metadata = BoreholeMetaData(coordinates=coordinates, groundwater_information=groundwater_information)
         # TODO: Add additional metadata here.
 
         # Extract groundwater information if available.
