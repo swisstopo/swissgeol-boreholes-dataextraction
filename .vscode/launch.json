@@ -16,6 +16,20 @@
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
             "python": "./swisstopo/bin/python3",
+        },
+        {
+            "name": "Python: Run label studio to GT",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.scripts.label_studio_annotation_to_ground_truth",
+            "args": [
+                // "-a", "/Users/david.cleres/Downloads/project-2-at-2024-08-15-12-37-dd0f900a.json",
+                "-a", "/Users/david.cleres/Downloads/project-2-at-2024-08-15-13-55-e7d6ebf7.json",
+                "-o", "data/label-studio/zurich_ground_truth.json"
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "./swisstopo/bin/python3",
         }
     ]
 }

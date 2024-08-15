@@ -46,7 +46,7 @@ class FilePredictions:
         language: str,
         metadata: BoreholeMetaData = None,
         depths_materials_columns_pairs: list[dict] = None,
-        page_sizes: list[tuple[int, int]] = None,
+        page_sizes: list[dict[str, float]] = None,
     ):
         self.layers: list[LayerPrediction] = layers
         self.depths_materials_columns_pairs: list[dict] = depths_materials_columns_pairs
@@ -54,7 +54,7 @@ class FilePredictions:
         self.language = language
         self.metadata = metadata
         self.metadata_is_correct: dict = {}
-        self.page_sizes: list[tuple[int, int]] = page_sizes
+        self.page_sizes: list[dict[str, float]] = page_sizes
 
     @staticmethod
     def create_from_json(predictions_for_file: dict, file_name: str):
@@ -143,7 +143,7 @@ class FilePredictions:
             }
             layers.append({"material_description": material_description, "depth_interval": depth_interval})
         ground_truth[self.file_name]["layers"] = layers
-        if self.metadata.coordinates is not None:
+        if self.metadata is not None and self.metadata.coordinates is not None:
             ground_truth[self.file_name]["metadata"] = {
                 "coordinates": {
                     "E": self.metadata.coordinates.east.coordinate_value,
