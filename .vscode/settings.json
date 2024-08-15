@@ -7,6 +7,10 @@
         "fitz",
         "mlflow",
         "pixmap",
-        "textblock"
+        "pyproject",
+        "swissgeol",
+        "swisstopo",
+        "textblock",
+        "venv"
     ]
 }
