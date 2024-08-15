@@ -10,14 +10,13 @@ from stratigraphy.util.depthcolumnentry import DepthColumnEntry, LayerDepthColum
 from stratigraphy.util.line import TextWord
 
 
-def depth_column_entries(all_words: list[TextWord], page_number: int, include_splits: bool) -> list[DepthColumnEntry]:
+def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> list[DepthColumnEntry]:
     """Find all depth column entries given a list of TextLine objects.
 
     Note: Only depths up to two digits before the decimal point are supported.
 
     Args:
         all_words (list[TextWord]): List of text words to extract depth column entries from.
-        page_number (int): The page number of the entries.
         include_splits (bool): Whether to include split entries.
 
     Returns:
@@ -33,10 +32,10 @@ def depth_column_entries(all_words: list[TextWord], page_number: int, include_sp
             match = regex.match(input_string)
             if match:
                 value = value_as_float(match.group(1))
-                entries.append(DepthColumnEntry(word.rect, value, page_number))
+                entries.append(DepthColumnEntry(word.rect, value, word.page_number))
             elif include_splits:
                 # support for e.g. "1.10-1.60m" extracted as a single word
-                layer_depth_column_entry = extract_layer_depth_interval(input_string, word.rect, page_number)
+                layer_depth_column_entry = extract_layer_depth_interval(input_string, word.rect, word.page_number)
                 entries.extend(
                     [layer_depth_column_entry.start, layer_depth_column_entry.end] if layer_depth_column_entry else []
                 )

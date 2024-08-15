@@ -182,7 +182,7 @@ def start_pipeline(
                         page_number = page_index + 1
                         logger.info("Processing page %s", page_number)
 
-                        text_lines = extract_text_lines(page, page_number)
+                        text_lines = extract_text_lines(page)
                         geometric_lines = extract_lines(page, line_detection_params)
                         layer_predictions, depths_materials_column_pairs = process_page(
                             text_lines, geometric_lines, language, page_number, **matching_params
@@ -216,8 +216,10 @@ def start_pipeline(
 
                     predictions[filename]["layers"] = layer_predictions_list
                     predictions[filename]["depths_materials_column_pairs"] = depths_materials_column_pairs_list
-                    predictions[filename]["page_height"] = page_heights_list
-                    predictions[filename]["page_width"] = page_widths_list
+                    predictions[filename]["page_dimensions"] = [
+                        {"height": height, "width": width}
+                        for height, width in zip(page_heights_list, page_widths_list, strict=False)
+                    ]
 
                     assert len(page_heights_list) == len(page_widths_list) == doc.page_count, "Page count mismatch."
 

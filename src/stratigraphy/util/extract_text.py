@@ -5,7 +5,7 @@ import fitz
 from stratigraphy.util.line import TextLine, TextWord
 
 
-def extract_text_lines(page: fitz.Page, page_number: int) -> list[TextLine]:
+def extract_text_lines(page: fitz.Page) -> list[TextLine]:
     """Extract all text lines from the page.
 
     Sometimes, a single lines as identified by PyMuPDF, is still split into separate lines.
@@ -21,7 +21,7 @@ def extract_text_lines(page: fitz.Page, page_number: int) -> list[TextLine]:
     words_by_line = {}
     for x0, y0, x1, y1, word, block_no, line_no, _word_no in fitz.utils.get_text(page, "words"):
         rect = fitz.Rect(x0, y0, x1, y1) * page.rotation_matrix
-        text_word = TextWord(rect, word, page_number)
+        text_word = TextWord(rect, word, page.number + 1)
         words.append(text_word)
         key = f"{block_no}_{line_no}"
         if key not in words_by_line:

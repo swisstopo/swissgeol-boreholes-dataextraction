@@ -48,7 +48,7 @@ class FilePredictions:
         depths_materials_columns_pairs: list[dict] = None,
         page_sizes: list[tuple[int, int]] = None,
     ):
-        self.layers: list[LayerPrediction] = sorted(layers, key=lambda layer: layer.material_description.rect.y0)
+        self.layers: list[LayerPrediction] = layers
         self.depths_materials_columns_pairs: list[dict] = depths_materials_columns_pairs
         self.file_name = file_name
         self.language = language
@@ -65,8 +65,7 @@ class FilePredictions:
             file_name (str): The name of the file.
         """
         page_layer_predictions_list: list[LayerPrediction] = []
-        pages_width_list: list[int] = []
-        pages_height_list: list[int] = []
+        pages_dimensions_list: list[dict[str, float]] = []
         depths_materials_columns_pairs_list: list[dict] = []
 
         file_language = predictions_for_file["language"]
@@ -112,8 +111,7 @@ class FilePredictions:
         if "depths_materials_column_pairs" in predictions_for_file:
             depths_materials_columns_pairs_list.extend(predictions_for_file["depths_materials_column_pairs"])
 
-        pages_width_list.extend(predictions_for_file["page_width"])
-        pages_height_list.extend(predictions_for_file["page_height"])
+        pages_dimensions_list.extend(predictions_for_file["page_dimensions"])
 
         return FilePredictions(
             layers=page_layer_predictions_list,
@@ -121,7 +119,7 @@ class FilePredictions:
             language=file_language,
             metadata=file_metadata,
             depths_materials_columns_pairs=depths_materials_columns_pairs_list,
-            page_sizes=list(zip(pages_width_list, pages_height_list, strict=False)),
+            page_sizes=pages_dimensions_list,
         )
 
     def convert_to_ground_truth(self):

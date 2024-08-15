@@ -110,85 +110,91 @@ Example: predictions.json
 {
     "685256002-bp.pdf": {  # file name
         "language": "de",
-        "metadata": {"coordinates": {"E": 117146, "N": 100388}},
-        "page_1": {
-            "layers": [  # a layer corresponds to a material layer in the borehole profile
-                {
-                    "material_description": {  # all information about the complete description of the material of the layer
-                        "text": "grauer, siltig-sandiger Kies (Auffullung)",
+        "metadata": {
+            "coordinates": null
+        },
+        "layers": [  # a layer corresponds to a material layer in the borehole profile
+            {
+                "material_description": {  # all information about the complete description of the material of the layer
+                    "text": "grauer, siltig-sandiger Kies (Auffullung)",
+                    "rect": [
+                        232.78799438476562,
+                        130.18496704101562,
+                        525.6640014648438,
+                        153.54295349121094
+                    ],
+                    "lines": [
+                        {
+                            "text": "grauer, siltig-sandiger Kies (Auffullung)",
+                            "rect": [
+                                232.78799438476562,
+                                130.18496704101562,
+                                525.6640014648438,
+                                153.54295349121094
+                            ],
+                            "page": 1
+                        }
+                    ],
+                    "page": 1
+                },
+                "depth_interval": {  # information about the depth of the layer
+                    "start": null,
+                    "end": {
+                        "value": 0.4,
                         "rect": [
-                            232.78799438476562,
-                            130.18496704101562,
-                            525.6640014648438,
-                            153.54295349121094
+                            125.25399780273438,
+                            140.2349853515625,
+                            146.10398864746094,
+                            160.84498596191406
                         ],
-                        "lines": [
-                                    {
-                                        "text": "grauer, siltig-sandiger Kies (Auffullung)",
-                                        "rect": [
-                                            232.78799438476562,
-                                            130.18496704101562,
-                                            525.6640014648438,
-                                            153.54295349121094
-                                        ]
-                                    }
-                                ]
-                            },
-                    "depth_interval": {  # information about the depth of the layer
-                        "start": null,
-                        "end": {
+                        "page": 1
+                    }
+                }
+            },
+            ...
+        ],
+        "depths_materials_column_pairs": [  # information about where on the pdf the information for material description as well as depths are taken.
+            {
+                "depth_column": {
+                    "rect": [
+                        119.05999755859375,
+                        140.2349853515625,
+                        146.8470001220703,
+                        1014.4009399414062
+                    ],
+                    "entries": [
+                        {
                             "value": 0.4,
                             "rect": [
                                 125.25399780273438,
                                 140.2349853515625,
                                 146.10398864746094,
                                 160.84498596191406
-                            ]
-                        }
-                    }
-                },
-                ...
-            ],
-            "depths_materials_column_pairs": [  # information about where on the pdf the information for material description as well as depths are taken.
-                {
-                    "depth_column": {
-                        "rect": [
-                            119.05999755859375,
-                            140.2349853515625,
-                            146.8470001220703,
-                            1014.4009399414062
-                        ],
-                        "entries": [
-                            {
-                                "value": 0.4,
-                                "rect": [
-                                    125.25399780273438,
-                                    140.2349853515625,
-                                    146.10398864746094,
-                                    160.84498596191406
-                                ]
-                            },
-                            {
-                                "value": 0.6,
-                                "rect": [
-                                    125.21800231933594,
-                                    153.8349609375,
-                                    146.0679931640625,
-                                    174.44496154785156
-                                ]
-                            }
-                        ]
-                    },
-                    "material_description_rect": [
-                        231.22500610351562,
-                        130.18496704101562,
-                        540.6109619140625,
-                        897.7429809570312
+                            ],
+                            "page": 1
+                        },
+                        {
+                            "value": 0.6,
+                            "rect": [
+                                125.21800231933594,
+                                153.8349609375,
+                                146.0679931640625,
+                                174.44496154785156
+                            ],
+                            "page": 1
+                        },
+                        ...
                     ]
                 }
-            ]
-        }
-    }
+            }
+        ],
+        "page_dimensions": [
+            {
+                "height": 1192.0999755859375,
+                "width": 842.1500244140625
+            }
+        ]
+    },
 }
 ```
 

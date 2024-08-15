@@ -61,7 +61,6 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
 
                 tmp_file_path = out_directory / f"{file_name}_page{page_number}.png"
                 fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
-                print(f"Saved image to {tmp_file_path}")
 
                 if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
                     try:

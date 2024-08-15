@@ -115,7 +115,7 @@ class LayerIdentifierColumn:
             and self.rect().y1 <= rect.y1
         )
 
-    def get_depth_interval(self, block: TextBlock, page_number: int) -> LayerDepthColumnEntry:
+    def get_depth_interval(self, block: TextBlock) -> LayerDepthColumnEntry:
         """Extract depth interval from a material description block.
 
         For borehole profiles in the Deriaz layout, the depth interval is usually found in the text description
@@ -125,7 +125,6 @@ class LayerIdentifierColumn:
 
         Args:
             block (TextBlock): The block to calculate the depth interval for.
-            page_number (int): The page number of the block.
 
         Returns:
             LayerDepthColumnEntry: The depth interval.
@@ -134,7 +133,7 @@ class LayerIdentifierColumn:
         for line in block.lines:
             try:
                 layer_depth_entry = extract_layer_depth_interval(
-                    line.text, line.rect, page_number, require_start_of_string=False
+                    line.text, line.rect, line.page_number, require_start_of_string=False
                 )
                 # require_start_of_string = False because the depth interval may not always start at the beginning
                 # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
@@ -153,6 +152,11 @@ class LayerIdentifierColumn:
             return None
 
     def to_json(self):
+        """Convert the layer identifier column to a JSON serializable format.
+
+        Returns:
+            dict: The JSON serializable format of the layer identifier column.
+        """
         rect = self.rect()
         return {
             "rect": [rect.x0, rect.y0, rect.x1, rect.y1],

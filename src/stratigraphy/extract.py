@@ -70,7 +70,7 @@ def process_page(
     # If there is a layer identifier column, then we use this directly.
     # Else, we search for depth columns. We could also think of some scoring mechanism to decide which one to use.
     if not pairs:
-        depth_column_entries = find_depth_columns.depth_column_entries(words, page_number, include_splits=True)
+        depth_column_entries = find_depth_columns.depth_column_entries(words, include_splits=True)
         layer_depth_columns = find_depth_columns.find_layer_depth_columns(depth_column_entries, words)
 
         used_entry_rects = []
@@ -80,7 +80,7 @@ def process_page(
 
         depth_column_entries = [
             entry
-            for entry in find_depth_columns.depth_column_entries(words, page_number, include_splits=False)
+            for entry in find_depth_columns.depth_column_entries(words, include_splits=False)
             if entry.rect not in used_entry_rects
         ]
         depth_columns: list[DepthColumn] = layer_depth_columns
@@ -242,7 +242,7 @@ def match_columns(
         blocks = get_description_blocks_from_layer_identifier(depth_column.entries, description_lines)
         groups = []
         for block in blocks:
-            depth_interval = depth_column.get_depth_interval(block, page_number)
+            depth_interval = depth_column.get_depth_interval(block)
             if depth_interval:
                 groups.append({"depth_interval": depth_interval, "block": block})
             else:

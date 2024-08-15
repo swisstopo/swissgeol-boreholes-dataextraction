@@ -1,5 +1,12 @@
 {
     "cSpell.words": [
-        "fitz"
+        "DATAPATH",
+        "depthcolumn",
+        "depthcolumnentry",
+        "dotenv",
+        "fitz",
+        "mlflow",
+        "pixmap",
+        "textblock"
     ]
 }
