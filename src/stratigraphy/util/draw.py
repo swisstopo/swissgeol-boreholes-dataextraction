@@ -157,6 +157,12 @@ def draw_depth_columns_and_material_rect(page: fitz.Page, depths_materials_colum
     for pair in depths_materials_column_pairs:
         depth_column = pair["depth_column"]
         material_description_rect = pair["material_description_rect"]
+        page_number = pair["page"]
+
+        # skip if the page number does not match to display the correct page
+        if page_number != page.number + 1:
+            continue
+
         if depth_column is not None:  # draw rectangle for depth columns
             page.draw_rect(
                 fitz.Rect(depth_column["rect"]) * page.derotation_matrix,

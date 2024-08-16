@@ -126,6 +126,7 @@ def process_page(
                     material_description_rect.x1,
                     material_description_rect.y1,
                 ],
+                "page": page_number,
             }
             for depth_column, material_description_rect in filtered_pairs
         ]
@@ -156,6 +157,7 @@ def process_page(
                             material_description_rect.x1,
                             material_description_rect.y1,
                         ],
+                        "page": page_number,
                     }
                 ]
             )
