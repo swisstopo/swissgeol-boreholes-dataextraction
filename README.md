@@ -6,7 +6,7 @@ Boreholes Data Extraction is a pipeline to extract structured data from borehole
 
 The Federal Office of Topography swisstopo is Switzerland's geoinformation centre. The Swiss Geological Survey at swisstopo is the federal competence centre for the collection, analysis, storage, and provision of geological data of national interest. 
 
-Data from boreholes is an essential source for our knowledge about the subsurface. In order to manage and publish borehole data of national interest, swisstopo has developed the application boreholes.swissgeol.ch (currently for internal use only), part of the [swissgeol.ch](https://swissgeol.ch) platform. As of August 2024, over 30.000 boreholes are registered in the application database, a number that is rapidly increasing thanks to an improved data exchange with cantonal offices, other government agencies and federal corporations such as the Swiss Federal Railways SBB. In the coming years, the number of boreholes in the database is expected to keep increasing to a multiple of the current size. Data is being added from both boreholes that were recently constructued and documented, as well as from older boreholes that were until now only documented in separate databases or in analogue archives. Data from older boreholes can still be very relevant, as geology only changes very slowly, and newer data is often unavailable (and expensive to collect).
+Data from boreholes is an essential source for our knowledge about the subsurface. In order to manage and publish borehole data of national interest, swisstopo has developed the application boreholes.swissgeol.ch (currently for internal use only), part of the [swissgeol.ch](https://swissgeol.ch) platform. As of August 2024, over 30.000 boreholes are registered in the application database, a number that is rapidly increasing thanks to an improved data exchange with cantonal offices, other government agencies and federal corporations such as the Swiss Federal Railways SBB. In the coming years, the number of boreholes in the database is expected to keep increasing to a multiple of the current size. Data is being added from both boreholes that were recently constructed and documented, as well as from older boreholes that were until now only documented in separate databases or in analogue archives. Data from older boreholes can still be very relevant, as geology only changes very slowly, and newer data is often unavailable (and expensive to collect).
 
 In order to use the collected borehole data efficiently, it is critical that both metadata as well as geological information is digitally stored in a structured database. However, the relevant data for most boreholes that are received by swisstopo, is contained in PDF-files that lack a standardized structure. Older data is often only available in the form of a scanned image, obtained from a printed document or from a microfiche. Manually entering all the relevant data from these various sources into a structured database is not feasible, given the large amount of boreholes and the continuous influx of new data.
 
@@ -110,85 +110,91 @@ Example: predictions.json
 {
     "685256002-bp.pdf": {  # file name
         "language": "de",
-        "metadata": {"coordinates": {"E": 117146, "N": 100388}},
-        "page_1": {
-            "layers": [  # a layer corresponds to a material layer in the borehole profile
-                {
-                    "material_description": {  # all information about the complete description of the material of the layer
-                        "text": "grauer, siltig-sandiger Kies (Auffullung)",
+        "metadata": {
+            "coordinates": null
+        },
+        "layers": [  # a layer corresponds to a material layer in the borehole profile
+            {
+                "material_description": {  # all information about the complete description of the material of the layer
+                    "text": "grauer, siltig-sandiger Kies (Auffullung)",
+                    "rect": [
+                        232.78799438476562,
+                        130.18496704101562,
+                        525.6640014648438,
+                        153.54295349121094
+                    ],
+                    "lines": [
+                        {
+                            "text": "grauer, siltig-sandiger Kies (Auffullung)",
+                            "rect": [
+                                232.78799438476562,
+                                130.18496704101562,
+                                525.6640014648438,
+                                153.54295349121094
+                            ],
+                            "page": 1
+                        }
+                    ],
+                    "page": 1
+                },
+                "depth_interval": {  # information about the depth of the layer
+                    "start": null,
+                    "end": {
+                        "value": 0.4,
                         "rect": [
-                            232.78799438476562,
-                            130.18496704101562,
-                            525.6640014648438,
-                            153.54295349121094
+                            125.25399780273438,
+                            140.2349853515625,
+                            146.10398864746094,
+                            160.84498596191406
                         ],
-                        "lines": [
-                                    {
-                                        "text": "grauer, siltig-sandiger Kies (Auffullung)",
-                                        "rect": [
-                                            232.78799438476562,
-                                            130.18496704101562,
-                                            525.6640014648438,
-                                            153.54295349121094
-                                        ]
-                                    }
-                                ]
-                            },
-                    "depth_interval": {  # information about the depth of the layer
-                        "start": null,
-                        "end": {
+                        "page": 1
+                    }
+                }
+            },
+            ...
+        ],
+        "depths_materials_column_pairs": [  # information about where on the pdf the information for material description as well as depths are taken.
+            {
+                "depth_column": {
+                    "rect": [
+                        119.05999755859375,
+                        140.2349853515625,
+                        146.8470001220703,
+                        1014.4009399414062
+                    ],
+                    "entries": [
+                        {
                             "value": 0.4,
                             "rect": [
                                 125.25399780273438,
                                 140.2349853515625,
                                 146.10398864746094,
                                 160.84498596191406
-                            ]
-                        }
-                    }
-                },
-                ...
-            ],
-            "depths_materials_column_pairs": [  # information about where on the pdf the information for material description as well as depths are taken.
-                {
-                    "depth_column": {
-                        "rect": [
-                            119.05999755859375,
-                            140.2349853515625,
-                            146.8470001220703,
-                            1014.4009399414062
-                        ],
-                        "entries": [
-                            {
-                                "value": 0.4,
-                                "rect": [
-                                    125.25399780273438,
-                                    140.2349853515625,
-                                    146.10398864746094,
-                                    160.84498596191406
-                                ]
-                            },
-                            {
-                                "value": 0.6,
-                                "rect": [
-                                    125.21800231933594,
-                                    153.8349609375,
-                                    146.0679931640625,
-                                    174.44496154785156
-                                ]
-                            }
-                        ]
-                    },
-                    "material_description_rect": [
-                        231.22500610351562,
-                        130.18496704101562,
-                        540.6109619140625,
-                        897.7429809570312
+                            ],
+                            "page": 1
+                        },
+                        {
+                            "value": 0.6,
+                            "rect": [
+                                125.21800231933594,
+                                153.8349609375,
+                                146.0679931640625,
+                                174.44496154785156
+                            ],
+                            "page": 1
+                        },
+                        ...
                     ]
                 }
-            ]
-        }
-    }
+            }
+        ],
+        "page_dimensions": [
+            {
+                "height": 1192.0999755859375,
+                "width": 842.1500244140625
+            }
+        ]
+    },
 }
 ```
 

@@ -30,37 +30,31 @@ class LayerPrediction:
     """A class to represent predictions for a single layer."""
 
     material_description: TextBlock | MaterialDescription
-    depth_interval: BoundaryInterval | AnnotatedInterval
+    depth_interval: BoundaryInterval | AnnotatedInterval | None
     material_is_correct: bool = None
     depth_interval_is_correct: bool = None
     id: uuid.UUID = field(default_factory=uuid.uuid4)
 
 
-@dataclass
-class PagePredictions:
-    """A class to represent predictions for a single page."""
-
-    layers: list[LayerPrediction]
-    page_number: int
-    page_width: int
-    page_height: int
-    depths_materials_columns_pairs: list[dict] = None
-
-    def __post__init__(self):
-        """Sort layers by their occurence on the page."""
-        self.layers = sorted(self.layers, key=lambda layer: layer.material_description.rect.y0)
-
-
 class FilePredictions:
     """A class to represent predictions for a single file."""
 
-    def __init__(self, pages: list[PagePredictions], file_name: str, language: str, metadata: BoreholeMetaData = None):
-        self.pages = pages
+    def __init__(
+        self,
+        layers: list[LayerPrediction],
+        file_name: str,
+        language: str,
+        metadata: BoreholeMetaData = None,
+        depths_materials_columns_pairs: list[dict] = None,
+        page_sizes: list[dict[str, float]] = None,
+    ):
+        self.layers: list[LayerPrediction] = layers
+        self.depths_materials_columns_pairs: list[dict] = depths_materials_columns_pairs
         self.file_name = file_name
         self.language = language
-        self.layers = sum([page.layers for page in self.pages], [])
         self.metadata = metadata
         self.metadata_is_correct: dict = {}
+        self.page_sizes: list[dict[str, float]] = page_sizes
 
     @staticmethod
     def create_from_json(predictions_for_file: dict, file_name: str):
@@ -70,68 +64,62 @@ class FilePredictions:
             predictions_for_file (dict): The predictions for the file in json format.
             file_name (str): The name of the file.
         """
-        page_predictions_class = []
-        for page_number, page_predictions in predictions_for_file.items():
-            if page_number == "language":
-                file_language = page_predictions
-                continue
-            elif page_number == "metadata":
-                metadata = page_predictions
-                if "coordinates" in metadata:
-                    if metadata["coordinates"] is not None:
-                        coordinates = Coordinate.from_json(metadata["coordinates"])
-                    else:
-                        coordinates = None
-                file_metadata = BoreholeMetaData(coordinates=coordinates)
-                # TODO: Add additional metadata here.
-                continue
-            page_layers = page_predictions["layers"]
-            layer_predictions = []
-            for layer in page_layers:
-                material_prediction = _create_textblock_object(layer["material_description"]["lines"])
-                if "depth_interval" in layer:
-                    start = (
-                        DepthColumnEntry(
-                            value=layer["depth_interval"]["start"]["value"],
-                            rect=fitz.Rect(layer["depth_interval"]["start"]["rect"]),
-                        )
-                        if layer["depth_interval"]["start"] is not None
-                        else None
-                    )
-                    end = (
-                        DepthColumnEntry(
-                            value=layer["depth_interval"]["end"]["value"],
-                            rect=fitz.Rect(layer["depth_interval"]["end"]["rect"]),
-                        )
-                        if layer["depth_interval"]["end"] is not None
-                        else None
-                    )
+        page_layer_predictions_list: list[LayerPrediction] = []
+        pages_dimensions_list: list[dict[str, float]] = []
+        depths_materials_columns_pairs_list: list[dict] = []
 
-                    depth_interval_prediction = BoundaryInterval(start=start, end=end)
-                    layer_predictions.append(
-                        LayerPrediction(
-                            material_description=material_prediction, depth_interval=depth_interval_prediction
-                        )
+        file_language = predictions_for_file["language"]
+
+        metadata = predictions_for_file["metadata"]
+        coordinates = None
+        if "coordinates" in metadata and metadata["coordinates"] is not None:
+            coordinates = Coordinate.from_json(metadata["coordinates"])
+        file_metadata = BoreholeMetaData(coordinates=coordinates)
+        # TODO: Add additional metadata here.
+
+        for layer in predictions_for_file["layers"]:
+            material_prediction = _create_textblock_object(layer["material_description"]["lines"])
+            if "depth_interval" in layer:
+                start = (
+                    DepthColumnEntry(
+                        value=layer["depth_interval"]["start"]["value"],
+                        rect=fitz.Rect(layer["depth_interval"]["start"]["rect"]),
+                        page_number=layer["depth_interval"]["start"]["page"],
                     )
-                else:
-                    layer_predictions.append(
-                        LayerPrediction(material_description=material_prediction, depth_interval=None)
+                    if layer["depth_interval"]["start"] is not None
+                    else None
+                )
+                end = (
+                    DepthColumnEntry(
+                        value=layer["depth_interval"]["end"]["value"],
+                        rect=fitz.Rect(layer["depth_interval"]["end"]["rect"]),
+                        page_number=layer["depth_interval"]["end"]["page"],
                     )
-            if "depths_materials_column_pairs" in page_predictions:
-                page_predictions_class.append(
-                    PagePredictions(
-                        page_number=page_number,
-                        page_width=page_predictions["page_width"],
-                        page_height=page_predictions["page_height"],
-                        layers=layer_predictions,
-                        depths_materials_columns_pairs=page_predictions["depths_materials_column_pairs"],
-                    )
+                    if layer["depth_interval"]["end"] is not None
+                    else None
+                )
+
+                depth_interval_prediction = BoundaryInterval(start=start, end=end)
+                layer_predictions = LayerPrediction(
+                    material_description=material_prediction, depth_interval=depth_interval_prediction
                 )
             else:
-                page_predictions_class.append(PagePredictions(page_number=page_number, layers=layer_predictions))
+                layer_predictions = LayerPrediction(material_description=material_prediction, depth_interval=None)
+
+            page_layer_predictions_list.append(layer_predictions)
+
+        if "depths_materials_column_pairs" in predictions_for_file:
+            depths_materials_columns_pairs_list.extend(predictions_for_file["depths_materials_column_pairs"])
+
+        pages_dimensions_list.extend(predictions_for_file["page_dimensions"])
 
         return FilePredictions(
-            pages=page_predictions_class, file_name=file_name, language=file_language, metadata=file_metadata
+            layers=page_layer_predictions_list,
+            file_name=file_name,
+            language=file_language,
+            metadata=file_metadata,
+            depths_materials_columns_pairs=depths_materials_columns_pairs_list,
+            page_sizes=pages_dimensions_list,
         )
 
     def convert_to_ground_truth(self):
@@ -147,16 +135,15 @@ class FilePredictions:
         """
         ground_truth = {self.file_name: {"metadata": self.metadata}}
         layers = []
-        for page in self.pages:
-            for layer in page.layers:
-                material_description = layer.material_description.text
-                depth_interval = {
-                    "start": layer.depth_interval.start.value if layer.depth_interval.start else None,
-                    "end": layer.depth_interval.end.value if layer.depth_interval.end else None,
-                }
-                layers.append({"material_description": material_description, "depth_interval": depth_interval})
+        for layer in self.layers:
+            material_description = layer.material_description.text
+            depth_interval = {
+                "start": layer.depth_interval.start.value if layer.depth_interval.start else None,
+                "end": layer.depth_interval.end.value if layer.depth_interval.end else None,
+            }
+            layers.append({"material_description": material_description, "depth_interval": depth_interval})
         ground_truth[self.file_name]["layers"] = layers
-        if self.metadata.coordinates is not None:
+        if self.metadata is not None and self.metadata.coordinates is not None:
             ground_truth[self.file_name]["metadata"] = {
                 "coordinates": {
                     "E": self.metadata.coordinates.east.coordinate_value,
@@ -166,6 +153,11 @@ class FilePredictions:
         return ground_truth
 
     def evaluate(self, ground_truth: dict):
+        """Evaluate the predictions against the ground truth.
+
+        Args:
+            ground_truth (dict): The ground truth for the file.
+        """
         self.evaluate_layers(ground_truth["layers"])
         self.evaluate_metadata(ground_truth.get("metadata"))
 
@@ -175,9 +167,9 @@ class FilePredictions:
         Args:
             ground_truth_layers (list): The ground truth layers for the file.
         """
-        self.unmatched_layers = ground_truth_layers.copy()
+        unmatched_layers = ground_truth_layers.copy()
         for layer in self.layers:
-            match, depth_interval_is_correct = self._find_matching_layer(layer)
+            match, depth_interval_is_correct = self._find_matching_layer(layer, unmatched_layers)
             if match:
                 layer.material_is_correct = True
                 layer.depth_interval_is_correct = depth_interval_is_correct
@@ -222,11 +214,16 @@ class FilePredictions:
             else:
                 self.metadata_is_correct["coordinates"] = False
 
-    def _find_matching_layer(self, layer: LayerPrediction) -> tuple[dict, bool] | tuple[None, None]:
+    @staticmethod
+    def _find_matching_layer(
+        layer: LayerPrediction, unmatched_layers: list[dict]
+    ) -> tuple[dict, bool] | tuple[None, None]:
         """Find the matching layer in the ground truth.
 
         Args:
             layer (LayerPrediction): The layer to match.
+            unmatched_layers (list[dict]): The layers from the ground truth that were not yet matched during the
+                                           current evaluation.
 
         Returns:
             tuple[dict, bool] | tuple[None, None]: The matching layer and a boolean indicating if the depth interval
@@ -235,7 +232,7 @@ class FilePredictions:
         parsed_text = parse_text(layer.material_description.text)
         possible_matches = [
             ground_truth_layer
-            for ground_truth_layer in self.unmatched_layers
+            for ground_truth_layer in unmatched_layers
             if Levenshtein.ratio(parsed_text, ground_truth_layer["material_description"]) > 0.9
         ]
 
@@ -252,18 +249,18 @@ class FilePredictions:
             elif (
                 start == 0 and layer.depth_interval.start is None and end == layer.depth_interval.end.value
             ):  # If not specified differently, we start at 0.
-                self.unmatched_layers.remove(possible_match)
+                unmatched_layers.remove(possible_match)
                 return possible_match, True
 
             elif (  # noqa: SIM102
                 layer.depth_interval.start is not None and layer.depth_interval.end is not None
             ):  # In all other cases we do not allow a None value.
                 if start == layer.depth_interval.start.value and end == layer.depth_interval.end.value:
-                    self.unmatched_layers.remove(possible_match)
+                    unmatched_layers.remove(possible_match)
                     return possible_match, True
 
         match = max(possible_matches, key=lambda x: Levenshtein.ratio(parsed_text, x["material_description"]))
-        self.unmatched_layers.remove(match)
+        unmatched_layers.remove(match)
         return match, False
 
 

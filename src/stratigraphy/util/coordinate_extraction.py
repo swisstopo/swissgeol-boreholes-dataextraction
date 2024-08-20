@@ -313,8 +313,8 @@ class CoordinateExtractor:
             Coordinate | None: the extracted coordinates (if any)
         """
         for page in self.doc:
-            lines = extract_text_lines(page)
             page_number = page.number + 1  # page.number is 0-based
+            lines = extract_text_lines(page)
 
             found_coordinates = (
                 self.get_coordinates_with_x_y_labels(lines, page_number)

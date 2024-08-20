@@ -132,7 +132,9 @@ class LayerIdentifierColumn:
         depth_entries = []
         for line in block.lines:
             try:
-                layer_depth_entry = extract_layer_depth_interval(line.text, line.rect, require_start_of_string=False)
+                layer_depth_entry = extract_layer_depth_interval(
+                    line.text, line.rect, line.page_number, require_start_of_string=False
+                )
                 # require_start_of_string = False because the depth interval may not always start at the beginning
                 # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
                 if layer_depth_entry:
@@ -150,6 +152,11 @@ class LayerIdentifierColumn:
             return None
 
     def to_json(self):
+        """Convert the layer identifier column to a JSON serializable format.
+
+        Returns:
+            dict: The JSON serializable format of the layer identifier column.
+        """
         rect = self.rect()
         return {
             "rect": [rect.x0, rect.y0, rect.x1, rect.y1],

@@ -32,10 +32,10 @@ def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> lis
             match = regex.match(input_string)
             if match:
                 value = value_as_float(match.group(1))
-                entries.append(DepthColumnEntry(word.rect, value))
+                entries.append(DepthColumnEntry(word.rect, value, word.page_number))
             elif include_splits:
                 # support for e.g. "1.10-1.60m" extracted as a single word
-                layer_depth_column_entry = extract_layer_depth_interval(input_string, word.rect)
+                layer_depth_column_entry = extract_layer_depth_interval(input_string, word.rect, word.page_number)
                 entries.extend(
                     [layer_depth_column_entry.start, layer_depth_column_entry.end] if layer_depth_column_entry else []
                 )
@@ -45,19 +45,21 @@ def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> lis
 
 
 def value_as_float(string_value: str) -> float:  # noqa: D103
+    """Converts a string to a float."""
     # OCR sometimes tends to miss the decimal comma
     parsed_text = re.sub(r"^-?([0-9]+)([0-9]{2})", r"\1.\2", string_value)
     return abs(float(parsed_text))
 
 
 def extract_layer_depth_interval(
-    text: str, rect: fitz.Rect, require_start_of_string: bool = True
+    text: str, rect: fitz.Rect, page_number: int, require_start_of_string: bool = True
 ) -> LayerDepthColumnEntry | None:
     """Extracts a LayerDepthColumnEntry from a string.
 
     Args:
         text (str): The string to extract the depth interval from.
         rect (fitz.Rect): The rectangle of the text.
+        page_number (int): The page number of the text.
         require_start_of_string (bool, optional): Whether the number to extract needs to be
                                                   at the start of a string. Defaults to True.
 
@@ -78,7 +80,8 @@ def extract_layer_depth_interval(
         value2 = value_as_float(match.group(3))
         second_half_rect = fitz.Rect(rect.x0 + rect.width / 2, rect.y0, rect.x1, rect.y1)
         return LayerDepthColumnEntry(
-            DepthColumnEntry(first_half_rect, value1), DepthColumnEntry(second_half_rect, value2)
+            DepthColumnEntry(first_half_rect, value1, page_number),
+            DepthColumnEntry(second_half_rect, value2, page_number),
         )
     return None
 
@@ -150,13 +153,14 @@ def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[Te
 
 
 def find_depth_columns(
-    entries: list[DepthColumnEntry], all_words: list[TextWord], depth_column_params: dict
+    entries: list[DepthColumnEntry], all_words: list[TextWord], page_number: int, depth_column_params: dict
 ) -> list[BoundaryDepthColumn]:
     """Construct all possible BoundaryDepthColumn objects from the given DepthColumnEntry objects.
 
     Args:
         entries (list[DepthColumnEntry]): All found depth column entries in the page.
         all_words (list[TextLine]): All words in the page.
+        page_number (int): The page number of the entries.
         depth_column_params (dict): Parameters for the BoundaryDepthColumn objects.
 
     Returns:
@@ -190,7 +194,7 @@ def find_depth_columns(
     boundary_depth_column_validator = BoundaryDepthColumnValidator(all_words, **depth_column_params)
 
     numeric_columns = [
-        boundary_depth_column_validator.reduce_until_valid(column)
+        boundary_depth_column_validator.reduce_until_valid(column, page_number)
         for numeric_column in numeric_columns
         for column in numeric_column.break_on_double_descending()
         # when we have a perfect arithmetic progression, this is usually just a scale

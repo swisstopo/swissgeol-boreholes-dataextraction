@@ -22,7 +22,7 @@ from stratigraphy.util.layer_identifier_column import (
 from stratigraphy.util.line import TextLine
 from stratigraphy.util.textblock import TextBlock, block_distance
 from stratigraphy.util.util import (
-    parse_and_remove_empty_predictions,
+    remove_empty_predictions,
     x_overlap,
     x_overlap_significant_smallest,
 )
@@ -30,7 +30,9 @@ from stratigraphy.util.util import (
 logger = logging.getLogger(__name__)
 
 
-def process_page(lines: list[TextLine], geometric_lines, language: str, **params: dict) -> list[dict]:
+def process_page(
+    lines: list[TextLine], geometric_lines, language: str, page_number: int, **params: dict
+) -> list[dict]:
     """Process a single page of a pdf.
 
     Finds all descriptions and depth intervals on the page and matches them.
@@ -39,6 +41,7 @@ def process_page(lines: list[TextLine], geometric_lines, language: str, **params
         lines (list[TextLine]): all the text lines on the page.
         geometric_lines (list[Line]): The geometric lines of the page.
         language (str): The language of the page.
+        page_number (int): The page number.
         **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
@@ -83,7 +86,7 @@ def process_page(lines: list[TextLine], geometric_lines, language: str, **params
         depth_columns: list[DepthColumn] = layer_depth_columns
         depth_columns.extend(
             find_depth_columns.find_depth_columns(
-                depth_column_entries, words, depth_column_params=params["depth_column_params"]
+                depth_column_entries, words, page_number, depth_column_params=params["depth_column_params"]
             )
         )
 
@@ -106,12 +109,12 @@ def process_page(lines: list[TextLine], geometric_lines, language: str, **params
 
     groups = []  # list of matched depth intervals and text blocks
     # groups is of the form: [{"depth_interval": BoundaryInterval, "block": TextBlock}]
-    if len(filtered_pairs):  # match depth column items with material description
+    if filtered_pairs:  # match depth column items with material description
         for depth_column, material_description_rect in filtered_pairs:
             description_lines = get_description_lines(lines, material_description_rect)
             if len(description_lines) > 1:
                 new_groups = match_columns(
-                    depth_column, description_lines, geometric_lines, material_description_rect, **params
+                    depth_column, description_lines, geometric_lines, material_description_rect, page_number, **params
                 )
                 groups.extend(new_groups)
         json_filtered_pairs = [
@@ -123,6 +126,7 @@ def process_page(lines: list[TextLine], geometric_lines, language: str, **params
                     material_description_rect.x1,
                     material_description_rect.y1,
                 ],
+                "page": page_number,
             }
             for depth_column, material_description_rect in filtered_pairs
         ]
@@ -153,16 +157,19 @@ def process_page(lines: list[TextLine], geometric_lines, language: str, **params
                             material_description_rect.x1,
                             material_description_rect.y1,
                         ],
+                        "page": page_number,
                     }
                 ]
             )
     predictions = [
-        {"material_description": group["block"].to_json(), "depth_interval": group["depth_interval"].to_json()}
-        if "depth_interval" in group
-        else {"material_description": group["block"].to_json()}
+        (
+            {"material_description": group["block"].to_json(), "depth_interval": group["depth_interval"].to_json()}
+            if "depth_interval" in group
+            else {"material_description": group["block"].to_json()}
+        )
         for group in groups
     ]
-    predictions = parse_and_remove_empty_predictions(predictions)
+    predictions = remove_empty_predictions(predictions)
     return predictions, json_filtered_pairs
 
 
@@ -205,6 +212,7 @@ def match_columns(
     description_lines: list[TextLine],
     geometric_lines: list[Line],
     material_description_rect: fitz.Rect,
+    page_number: int,
     **params: dict,
 ) -> list:
     """Match the depth column entries with the description lines.
@@ -218,6 +226,7 @@ def match_columns(
         description_lines (list[TextLine]): The description lines.
         geometric_lines (list[Line]): The geometric lines.
         material_description_rect (fitz.Rect): The material description rectangle.
+        page_number (int): The page number.
         **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
@@ -320,7 +329,7 @@ def merge_blocks_by_vertical_spacing(blocks: list[TextBlock], target_merge_count
             merged_blocks.append(current_merged_block)
             current_merged_block = new_block
 
-    if len(current_merged_block.lines):
+    if current_merged_block.lines:
         merged_blocks.append(current_merged_block)
     return merged_blocks
 
@@ -355,7 +364,7 @@ def split_blocks_by_textline_length(blocks: list[TextBlock], target_split_count:
                     split_blocks.append(TextBlock(current_block_lines))
                     cutoff_values.remove(line.rect.x1)
                     current_block_lines = []
-            if len(current_block_lines):
+            if current_block_lines:
                 split_blocks.append(TextBlock(current_block_lines))
                 current_block_lines = []
             if (
@@ -386,7 +395,7 @@ def find_material_description_column(
             if x_overlap(line.rect, depth_column.rect()) and line.rect.y0 < depth_column.rect().y0
         ]
 
-        min_y0 = max(line.rect.y0 for line in above_depth_column) if len(above_depth_column) else -1
+        min_y0 = max(line.rect.y0 for line in above_depth_column) if above_depth_column else -1
 
         def check_y0_condition(y0):
             return y0 > min_y0 and y0 < depth_column.rect().y1
@@ -409,7 +418,7 @@ def find_material_description_column(
         ]
 
         def filter_coverage(coverage):
-            if len(coverage):
+            if coverage:
                 min_x0 = min(line.rect.x0 for line in coverage)
                 max_x1 = max(line.rect.x1 for line in coverage)
                 x0_threshold = max_x1 - 0.4 * (
