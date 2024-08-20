@@ -176,8 +176,7 @@ def start_pipeline(
 
                     layer_predictions_list = []
                     depths_materials_column_pairs_list = []
-                    page_heights_list = []
-                    page_widths_list = []
+                    page_dimensions = []
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
                         logger.info("Processing page %s", page_number)
@@ -200,8 +199,7 @@ def start_pipeline(
 
                         layer_predictions_list.extend(layer_predictions)
                         depths_materials_column_pairs_list.extend(depths_materials_column_pairs)
-                        page_heights_list.append(page.rect.height)
-                        page_widths_list.append(page.rect.width)
+                        page_dimensions.append({"height": page.rect.height, "width": page.rect.width})
 
                         if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
                             if not mlflow_tracking:
@@ -216,12 +214,9 @@ def start_pipeline(
 
                     predictions[filename]["layers"] = layer_predictions_list
                     predictions[filename]["depths_materials_column_pairs"] = depths_materials_column_pairs_list
-                    predictions[filename]["page_dimensions"] = [
-                        {"height": height, "width": width}
-                        for height, width in zip(page_heights_list, page_widths_list, strict=False)
-                    ]
+                    predictions[filename]["page_dimensions"] = page_dimensions
 
-                    assert len(page_heights_list) == len(page_widths_list) == doc.page_count, "Page count mismatch."
+                    assert len(page_dimensions) == doc.page_count, "Page count mismatch."
 
     logger.info("Writing predictions to JSON file %s", predictions_path)
     with open(predictions_path, "w", encoding="utf8") as file:
