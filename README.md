@@ -75,6 +75,8 @@ pip install -e '.[all]'
 
 Alternatively you can replace the `pip install -e '.[all]'` command with `pip install git+https://github.com/swisstopo/swissgeol-boreholes-dataextraction.git` in production scenarios.
 
+Adding pip packages can be done by editing the `pyproject.toml` of the project and adding the required package.
+
 ## Run data extraction
 To execute the data extraction pipeline, follow these steps:
 
