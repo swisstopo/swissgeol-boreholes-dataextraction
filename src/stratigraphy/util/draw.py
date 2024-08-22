@@ -2,9 +2,12 @@
 
 import logging
 import os
+import time
 from pathlib import Path
 
 import fitz
+import numpy as np
+import pandas as pd
 from dotenv import load_dotenv
 
 from stratigraphy.util.coordinate_extraction import Coordinate
@@ -21,7 +24,7 @@ colors = ["purple", "blue"]
 logger = logging.getLogger(__name__)
 
 
-def draw_predictions(predictions: list[FilePredictions], directory: Path, out_directory: Path) -> None:
+def draw_predictions(predictions: list[FilePredictions], directory: Path, out_directory: Path) -> pd.DataFrame:
     """Draw predictions on pdf pages.
 
     Draws various recognized information on the pdf pages present at directory and saves
@@ -40,9 +43,18 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
         directory (Path): Path to the directory containing the pdf files.
         out_directory (Path): Path to the output directory where the images are saved.
     """
+    drawing_times = {
+        "filename": [],
+        "draw_time": [],
+        "layers": [],
+        "lines": [],
+    }
+
     if directory.is_file():  # deal with the case when we pass a file instead of a directory
         directory = directory.parent
     for file_name, file_prediction in predictions.items():
+        start_time = time.time()
+
         logger.info("Drawing predictions for file %s", file_name)
         with fitz.Document(directory / file_name) as doc:
             for page_index, page in enumerate(doc):
@@ -54,10 +66,14 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                         file_prediction.metadata.coordinates,
                         file_prediction.metadata_is_correct.get("coordinates"),
                     )
+                    print("time to draw metadata", time.time() - start_time)
                 if file_prediction.metadata.coordinates is not None:
                     draw_coordinates(page, file_prediction.metadata.coordinates)
+                    print("time to draw coordinates", time.time() - start_time)
                 draw_depth_columns_and_material_rect(page, depths_materials_column_pairs)
+                print("time to draw depth columns and material rects", time.time() - start_time)
                 draw_material_descriptions(page, file_prediction.layers)
+                print("time to draw material descriptions", time.time() - start_time)
 
                 tmp_file_path = out_directory / f"{file_name}_page{page_number}.png"
                 fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
@@ -69,6 +85,18 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                         mlflow.log_artifact(tmp_file_path, artifact_path="pages")
                     except NameError:
                         logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
+
+        drawing_times["filename"].append(file_name)
+        drawing_times["draw_time"].append(time.time() - start_time)
+        drawing_times["layers"].append(len(file_prediction.layers))
+        drawing_times["lines"].append(
+            np.sum([len(layer.material_description.lines) for layer in file_prediction.layers])
+        )
+
+        logger.info("Finished drawing predictions for file %s", file_name)
+        logger.info("Drawing time: %s", time.time() - start_time)
+
+    return pd.DataFrame(drawing_times)
 
 
 def draw_metadata(page: fitz.Page, coordinates: Coordinate | None, coordinates_is_correct: bool) -> None:
@@ -85,15 +113,21 @@ def draw_metadata(page: fitz.Page, coordinates: Coordinate | None, coordinates_i
     color = "green" if coordinates_is_correct else "red"
     coordinate_rect = fitz.Rect([5, 5, 200, 25])
 
-    page.draw_rect(coordinate_rect * page.derotation_matrix, fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
+    shape = page.new_shape()  # Create a shape object for drawing
+
+    shape.draw_rect(coordinate_rect * page.derotation_matrix)
+    shape.finish(fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
     page.insert_htmlbox(coordinate_rect * page.derotation_matrix, f"Coordinates: {coordinates}", rotate=page.rotation)
-    page.draw_line(
+    shape.draw_line(
         coordinate_rect.top_left * page.derotation_matrix,
         coordinate_rect.bottom_left * page.derotation_matrix,
+    )
+    shape.finish(
         color=fitz.utils.getColor(color),
         width=6,
         stroke_opacity=0.5,
     )
+    shape.commit()  # Commit all the drawing operations to the page
 
 
 def draw_coordinates(page: fitz.Page, coordinates: Coordinate) -> None:
@@ -103,8 +137,11 @@ def draw_coordinates(page: fitz.Page, coordinates: Coordinate) -> None:
         page (fitz.Page): The page to draw on.
         coordinates (Coordinate): The coordinate object to draw.
     """
+    shape = page.new_shape()  # Create a shape object for drawing
     if (page.number + 1) == coordinates.page:  ## page.number is 0-based
-        page.draw_rect(coordinates.rect, color=fitz.utils.getColor("purple"))
+        shape.draw_rect(coordinates.rect)
+        shape.finish(color=fitz.utils.getColor("purple"))
+    shape.commit()  # Commit all the drawing operations to the page
 
 
 def draw_material_descriptions(page: fitz.Page, layers: LayerPrediction) -> None:
@@ -120,23 +157,25 @@ def draw_material_descriptions(page: fitz.Page, layers: LayerPrediction) -> None
         layers (LayerPrediction): The predictions for the page.
     """
     page_number = page.number + 1
+    shape = page.new_shape()  # Create a shape object for drawing
 
     for index, layer in enumerate(layers):
         if layer.material_description.page_number == page_number:
             if layer.material_description.rect is not None:
-                fitz.utils.draw_rect(
-                    page,
+                shape.draw_rect(
                     fitz.Rect(layer.material_description.rect) * page.derotation_matrix,
-                    color=fitz.utils.getColor("orange"),
                 )
+                shape.finish(color=fitz.utils.getColor("orange"))
             draw_layer(
-                page=page,
+                shape=shape,
+                derotation_matrix=page.derotation_matrix,
                 interval=layer.depth_interval,  # None if no depth interval
                 layer=layer.material_description,
                 index=index,
                 is_correct=layer.material_is_correct,  # None if no ground truth
                 depth_is_correct=layer.depth_interval_is_correct,  # None if no ground truth
             )
+    shape.commit()  # Commit all the drawing operations to the page
 
 
 def draw_depth_columns_and_material_rect(page: fitz.Page, depths_materials_column_pairs: list) -> fitz.Page:
@@ -154,38 +193,42 @@ def draw_depth_columns_and_material_rect(page: fitz.Page, depths_materials_colum
     Returns:
         fitz.Page: The page with the drawn depth columns and material rects.
     """
+    shape = page.new_shape()  # Create a shape object for drawing
+    derotation_matrix = page.derotation_matrix
+
     for pair in depths_materials_column_pairs:
         depth_column = pair["depth_column"]
         material_description_rect = pair["material_description_rect"]
         page_number = pair["page"]
 
-        # skip if the page number does not match to display the correct page
+        # Skip if the page number does not match to display the correct page
         if page_number != page.number + 1:
             continue
 
-        if depth_column is not None:  # draw rectangle for depth columns
-            page.draw_rect(
-                fitz.Rect(depth_column["rect"]) * page.derotation_matrix,
-                color=fitz.utils.getColor("green"),
+        if depth_column is not None:  # Draw rectangle for depth columns
+            shape.draw_rect(
+                fitz.Rect(depth_column["rect"]) * derotation_matrix,
             )
-            for depth_column_entry in depth_column["entries"]:  # draw rectangle for depth column entries
-                fitz.utils.draw_rect(
-                    page,
-                    fitz.Rect(depth_column_entry["rect"]) * page.derotation_matrix,
-                    color=fitz.utils.getColor("purple"),
+            shape.finish(color=fitz.utils.getColor("green"))
+            for depth_column_entry in depth_column["entries"]:  # Draw rectangle for depth column entries
+                shape.draw_rect(
+                    fitz.Rect(depth_column_entry["rect"]) * derotation_matrix,
                 )
+            shape.finish(color=fitz.utils.getColor("purple"))
 
-        fitz.utils.draw_rect(  # draw rectangle for material description column
-            page,
-            fitz.Rect(material_description_rect) * page.derotation_matrix,
-            color=fitz.utils.getColor("red"),
+        shape.draw_rect(  # Draw rectangle for material description column
+            fitz.Rect(material_description_rect) * derotation_matrix,
         )
+        shape.finish(color=fitz.utils.getColor("red"))
+
+    shape.commit()  # Commit all the drawing operations to the page
 
     return page
 
 
 def draw_layer(
-    page: fitz.Page,
+    shape: fitz.Shape,
+    derotation_matrix: fitz.Matrix,
     interval: BoundaryInterval | None,
     layer: TextBlock,
     index: int,
@@ -199,7 +242,8 @@ def draw_layer(
         - colors the lines of the material description text layers based on whether they were correctly identified.
 
     Args:
-        page (fitz.Page): The page to draw on.
+        shape (fitz.Shape): The shape object for drawing.
+        derotation_matrix (fitz.Matrix): The derotation matrix of the page.
         interval (BoundaryInterval | None): Depth interval for the layer.
         layer (MaterialDescriptionPrediction): Material description block for the layer.
         index (int): Index of the layer.
@@ -212,46 +256,71 @@ def draw_layer(
 
         # background color for material description
         for line in [line for line in layer.lines]:
-            page.draw_rect(
-                line.rect * page.derotation_matrix, width=0, fill=fitz.utils.getColor(color), fill_opacity=0.2
+            start_time = time.time()
+            shape.draw_rect(line.rect * derotation_matrix)
+            shape.finish(
+                color=fitz.utils.getColor(color),
+                fill_opacity=0.2,
+                fill=fitz.utils.getColor(color),
+                width=0,
             )
+            print("time to draw rect - 1", time.time() - start_time)
             if is_correct is not None:
                 correct_color = "green" if is_correct else "red"
-                page.draw_line(
-                    line.rect.top_left * page.derotation_matrix,
-                    line.rect.bottom_left * page.derotation_matrix,
+                start_time = time.time()
+                shape.draw_line(
+                    line.rect.top_left * derotation_matrix,
+                    line.rect.bottom_left * derotation_matrix,
+                )
+                shape.finish(
                     color=fitz.utils.getColor(correct_color),
                     width=6,
                     stroke_opacity=0.5,
                 )
+                print("time to draw line - 1", time.time() - start_time)
 
         if interval:
             # background color for depth interval
             background_rect = interval.background_rect
             if background_rect is not None:
-                page.draw_rect(
-                    background_rect * page.derotation_matrix,
-                    width=0,
-                    fill=fitz.utils.getColor(color),
-                    fill_opacity=0.2,
+                start_time = time.time()
+                shape.draw_rect(
+                    background_rect * derotation_matrix,
                 )
+                shape.finish(
+                    color=fitz.utils.getColor(color),
+                    fill_opacity=0.2,
+                    fill=fitz.utils.getColor(color),
+                    width=0,
+                )
+                print("time to draw rect - 2", time.time() - start_time)
 
                 # draw green line if depth interval is correct else red line
                 if depth_is_correct is not None:
                     depth_is_correct_color = "green" if depth_is_correct else "red"
-                    page.draw_line(
-                        background_rect.top_left * page.derotation_matrix,
-                        background_rect.bottom_left * page.derotation_matrix,
+                    start_time = time.time()
+                    shape.draw_line(
+                        background_rect.top_left * derotation_matrix,
+                        background_rect.bottom_left * derotation_matrix,
+                    )
+                    shape.finish(
                         color=fitz.utils.getColor(depth_is_correct_color),
                         width=6,
                         stroke_opacity=0.5,
                     )
+                    print("time to draw line - 2", time.time() - start_time)
 
             # line from depth interval to material description
             line_anchor = interval.line_anchor
             if line_anchor:
-                page.draw_line(
-                    line_anchor * page.derotation_matrix,
-                    fitz.Point(layer_rect.x0, (layer_rect.y0 + layer_rect.y1) / 2) * page.derotation_matrix,
+                start_time = time.time()
+                shape.draw_line(
+                    line_anchor * derotation_matrix,
+                    fitz.Point(layer_rect.x0, (layer_rect.y0 + layer_rect.y1) / 2) * derotation_matrix,
+                )
+                shape.finish(
                     color=fitz.utils.getColor(color),
                 )
+                print("time to draw line - 3", time.time() - start_time)
+
+    shape.commit()  # Commit all the drawing operations to the page

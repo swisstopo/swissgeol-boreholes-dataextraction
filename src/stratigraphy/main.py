@@ -3,10 +3,12 @@
 import json
 import logging
 import os
+import time
 from pathlib import Path
 
 import click
 import fitz
+import pandas as pd
 from dotenv import load_dotenv
 
 from stratigraphy import DATAPATH
@@ -155,9 +157,15 @@ def start_pipeline(
         file_iterator = os.walk(input_directory)
     # process the individual pdf files
     predictions = {}
+    prediction_times = {"filename": [], "prediction_time": []}
     for root, _dirs, files in file_iterator:
         for filename in files:
             if filename.endswith(".pdf"):
+                # if not filename == "267125439-bp.pdf":
+                #     continue
+
+                start_time = time.time()
+
                 in_path = os.path.join(root, filename)
                 logger.info("Processing file: %s", in_path)
                 predictions[filename] = {}
@@ -218,6 +226,9 @@ def start_pipeline(
 
                     assert len(page_dimensions) == doc.page_count, "Page count mismatch."
 
+                prediction_times["filename"].append(filename)
+                prediction_times["prediction_time"].append(time.time() - start_time)
+
     logger.info("Writing predictions to JSON file %s", predictions_path)
     with open(predictions_path, "w", encoding="utf8") as file:
         json.dump(predictions, file, ensure_ascii=False)
@@ -226,17 +237,22 @@ def start_pipeline(
     predictions, number_of_truth_values = create_predictions_objects(predictions, ground_truth_path)
 
     if not skip_draw_predictions:
-        draw_predictions(predictions, input_directory, draw_directory)
+        draw_times_df = draw_predictions(predictions, input_directory, draw_directory)
+        processing_time_df = pd.merge(
+            pd.DataFrame(prediction_times), draw_times_df, on="filename", how="outer"
+        ).fillna(0)
 
     if number_of_truth_values:  # only evaluate if ground truth is available
         metrics, document_level_metrics = evaluate_borehole_extraction(predictions, number_of_truth_values)
         document_level_metrics.to_csv(
             temp_directory / "document_level_metrics.csv"
         )  # mlflow.log_artifact expects a file
+        processing_time_df.to_csv(temp_directory / "processing_times.csv", index=False)
 
         if mlflow_tracking:
             mlflow.log_metrics(metrics)
             mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
+            mlflow.log_artifact(temp_directory / "processing_times.csv")
     else:
         logger.warning("Ground truth file not found. Skipping evaluation.")
 
