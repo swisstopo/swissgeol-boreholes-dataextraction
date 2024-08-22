@@ -66,15 +66,10 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                         file_prediction.metadata.coordinates,
                         file_prediction.metadata_is_correct.get("coordinates"),
                     )
-                    print("time to draw metadata", time.time() - start_time)
                 if file_prediction.metadata.coordinates is not None:
                     draw_coordinates(page, file_prediction.metadata.coordinates)
-                    print("time to draw coordinates", time.time() - start_time)
                 draw_depth_columns_and_material_rect(page, depths_materials_column_pairs)
-                print("time to draw depth columns and material rects", time.time() - start_time)
                 draw_material_descriptions(page, file_prediction.layers)
-                print("time to draw material descriptions", time.time() - start_time)
-
                 tmp_file_path = out_directory / f"{file_name}_page{page_number}.png"
                 fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
 
@@ -94,7 +89,6 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
         )
 
         logger.info("Finished drawing predictions for file %s", file_name)
-        logger.info("Drawing time: %s", time.time() - start_time)
 
     return pd.DataFrame(drawing_times)
 
@@ -256,7 +250,6 @@ def draw_layer(
 
         # background color for material description
         for line in [line for line in layer.lines]:
-            start_time = time.time()
             shape.draw_rect(line.rect * derotation_matrix)
             shape.finish(
                 color=fitz.utils.getColor(color),
@@ -264,10 +257,8 @@ def draw_layer(
                 fill=fitz.utils.getColor(color),
                 width=0,
             )
-            print("time to draw rect - 1", time.time() - start_time)
             if is_correct is not None:
                 correct_color = "green" if is_correct else "red"
-                start_time = time.time()
                 shape.draw_line(
                     line.rect.top_left * derotation_matrix,
                     line.rect.bottom_left * derotation_matrix,
@@ -277,13 +268,11 @@ def draw_layer(
                     width=6,
                     stroke_opacity=0.5,
                 )
-                print("time to draw line - 1", time.time() - start_time)
 
         if interval:
             # background color for depth interval
             background_rect = interval.background_rect
             if background_rect is not None:
-                start_time = time.time()
                 shape.draw_rect(
                     background_rect * derotation_matrix,
                 )
@@ -293,12 +282,10 @@ def draw_layer(
                     fill=fitz.utils.getColor(color),
                     width=0,
                 )
-                print("time to draw rect - 2", time.time() - start_time)
 
                 # draw green line if depth interval is correct else red line
                 if depth_is_correct is not None:
                     depth_is_correct_color = "green" if depth_is_correct else "red"
-                    start_time = time.time()
                     shape.draw_line(
                         background_rect.top_left * derotation_matrix,
                         background_rect.bottom_left * derotation_matrix,
@@ -308,12 +295,10 @@ def draw_layer(
                         width=6,
                         stroke_opacity=0.5,
                     )
-                    print("time to draw line - 2", time.time() - start_time)
 
             # line from depth interval to material description
             line_anchor = interval.line_anchor
             if line_anchor:
-                start_time = time.time()
                 shape.draw_line(
                     line_anchor * derotation_matrix,
                     fitz.Point(layer_rect.x0, (layer_rect.y0 + layer_rect.y1) / 2) * derotation_matrix,
@@ -321,6 +306,5 @@ def draw_layer(
                 shape.finish(
                     color=fitz.utils.getColor(color),
                 )
-                print("time to draw line - 3", time.time() - start_time)
 
     shape.commit()  # Commit all the drawing operations to the page

@@ -131,6 +131,8 @@ def start_pipeline(
     Returns:
         list[dict]: The predictions of the pipeline.
     """  # noqa: D301
+    start_time_pipeline = time.time()
+
     if mlflow_tracking:
         import mlflow
 
@@ -155,15 +157,13 @@ def start_pipeline(
         file_iterator = [(input_directory.parent, None, [input_directory.name])]
     else:
         file_iterator = os.walk(input_directory)
+
     # process the individual pdf files
     predictions = {}
     prediction_times = {"filename": [], "prediction_time": []}
     for root, _dirs, files in file_iterator:
         for filename in files:
             if filename.endswith(".pdf"):
-                # if not filename == "267125439-bp.pdf":
-                #     continue
-
                 start_time = time.time()
 
                 in_path = os.path.join(root, filename)
@@ -248,13 +248,17 @@ def start_pipeline(
             temp_directory / "document_level_metrics.csv"
         )  # mlflow.log_artifact expects a file
         processing_time_df.to_csv(temp_directory / "processing_times.csv", index=False)
+        total_runtime = time.time() - start_time_pipeline
+        logger.info("Total runtime: %s", total_runtime)
 
         if mlflow_tracking:
             mlflow.log_metrics(metrics)
             mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
             mlflow.log_artifact(temp_directory / "processing_times.csv")
+            mlflow.log_metric("total_runtime", round(total_runtime, 2))
     else:
         logger.warning("Ground truth file not found. Skipping evaluation.")
+        logger.warning("Total time: %s", time.time() - start_time_pipeline)
 
     return predictions
 
