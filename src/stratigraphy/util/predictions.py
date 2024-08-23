@@ -9,8 +9,9 @@ from dataclasses import dataclass, field
 import fitz
 import Levenshtein
 
+from stratigraphy.coordinates.coordinate_extraction import Coordinate
+from stratigraphy.elevation.elevation_extraction import ElevationInformation
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformation, GroundwaterInformationOnPage
-from stratigraphy.util.coordinate_extraction import Coordinate
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry
 from stratigraphy.util.interval import AnnotatedInterval, BoundaryInterval
 from stratigraphy.util.line import TextLine, TextWord
@@ -26,6 +27,7 @@ class BoreholeMetaData:
 
     coordinates: Coordinate | None
     groundwater_information: GroundwaterInformation | None = None
+    elevation_information: ElevationInformation | None = None
 
 
 @dataclass
@@ -79,6 +81,8 @@ class FilePredictions:
         # Extract metadata.
         metadata = predictions_for_file["metadata"]
         coordinates = None
+        groundwater_information = None
+        elevation = None
         if "coordinates" in metadata and metadata["coordinates"] is not None:
             coordinates = Coordinate.from_json(metadata["coordinates"])
         if "groundwater_information" in metadata:
@@ -86,7 +90,14 @@ class FilePredictions:
                 groundwater_information = GroundwaterInformation(**metadata["groundwater_information"])
             else:
                 groundwater_information = None
-        file_metadata = BoreholeMetaData(coordinates=coordinates, groundwater_information=groundwater_information)
+        if "elevation_information" in metadata:
+            if metadata["elevation_information"] is not None:
+                elevation = ElevationInformation(**metadata["elevation_information"])
+            else:
+                elevation = None
+        file_metadata = BoreholeMetaData(
+            coordinates=coordinates, groundwater_information=groundwater_information, elevation_information=elevation
+        )
         # TODO: Add additional metadata here.
 
         # Extract groundwater information if available.
@@ -256,6 +267,18 @@ class FilePredictions:
         Args:
             groundwater_ground_truth (list): The ground truth for the file.
         """
+        ############################################################################################################
+        ### Compute the metadata correctness for the elevation information.
+        ############################################################################################################
+        if self.metadata.elevation_information is None or (
+            metadata_ground_truth is None or metadata_ground_truth.get("reference_elevation") is None
+        ):
+            self.metadata_is_correct["elevation_information"] = None
+        else:
+            extracted_elevation_info = self.metadata.elevation_information
+            gt_elevation_info = metadata_ground_truth["reference_elevation"]
+            self.metadata_is_correct["elevation_information"] = gt_elevation_info == extracted_elevation_info.elevation
+
         ############################################################################################################
         ### Compute the metadata correctness for the groundwater information.
         ############################################################################################################

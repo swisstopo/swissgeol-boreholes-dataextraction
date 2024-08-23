@@ -8,7 +8,6 @@ import fitz
 from dotenv import load_dotenv
 
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformationOnPage
-from stratigraphy.util.coordinate_extraction import Coordinate
 from stratigraphy.util.interval import BoundaryInterval
 from stratigraphy.util.predictions import FilePredictions, LayerPrediction
 from stratigraphy.util.textblock import TextBlock
@@ -59,8 +58,8 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                         page.rotation,
                         file_prediction.metadata.coordinates,
                         file_prediction.metadata_is_correct.get("coordinates"),
-                        file_prediction.metadata.groundwater_information,
-                        file_prediction.metadata_is_correct.get("groundwater_information"),
+                        file_prediction.metadata.elevation_information,
+                        file_prediction.metadata_is_correct.get("elevation_information"),
                     )
                 if coordinates is not None and page_number == coordinates.page:
                     draw_coordinates(shape, coordinates)
@@ -103,6 +102,8 @@ def draw_metadata(
     rotation: float,
     coordinates: Coordinate | None,
     coordinates_is_correct: bool,
+    elevation_info: ElevationInformation | None,
+    elevation_is_correct: bool,
 ) -> None:
     """Draw the extracted metadata on the top of the given PDF page.
 
@@ -115,11 +116,16 @@ def draw_metadata(
         rotation (float): The rotation of the page.
         coordinates (Coordinate | None): The coordinate object to draw.
         coordinates_is_correct (bool): Whether the coordinates are correct.
+        elevation_info (ElevationInformation | None): The elevation information to draw.
+        elevation_is_correct (bool): Whether the elevation information is correct.
     """
     # TODO associate correctness with the extracted coordinates in a better way
     coordinate_correct = coordinates_is_correct is not None and coordinates_is_correct["tp"] > 0
     coordinate_color = "green" if coordinate_correct else "red"
     coordinate_rect = fitz.Rect([5, 5, 200, 25])
+
+    elevation_color = "green" if elevation_is_correct else "red"
+    elevation_rect = fitz.Rect([5, 25, 200, 65])
 
     shape.draw_rect(coordinate_rect * derotation_matrix)
     shape.finish(fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
@@ -130,6 +136,20 @@ def draw_metadata(
     )
     shape.finish(
         color=fitz.utils.getColor(coordinate_color),
+        width=6,
+        stroke_opacity=0.5,
+    )
+
+    # Draw the bounding box around the elevation information
+    shape.draw_rect(elevation_rect * derotation_matrix)
+    shape.finish(fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
+    shape.insert_textbox(elevation_rect * derotation_matrix, f"Elevation: {elevation_info}", rotate=rotation)
+    shape.draw_line(
+        elevation_rect.top_left * derotation_matrix,
+        elevation_rect.bottom_left * derotation_matrix,
+    )
+    shape.finish(
+        color=fitz.utils.getColor(elevation_color),
         width=6,
         stroke_opacity=0.5,
     )
@@ -155,6 +175,17 @@ def draw_groundwater(shape: fitz.Shape, groundwater_entry: GroundwaterInformatio
     """
     shape.draw_rect(groundwater_entry.rect)
     shape.finish(color=fitz.utils.getColor("pink"))
+
+
+def draw_elevation_information(shape: fitz.Shape, elevation_information: ElevationInformation) -> None:
+    """Draw a bounding box around the area of the page where the coordinates were extracted from.
+
+    Args:
+        page (fitz.Page): The page to draw on.
+        elevation_information (ElevationInformation): The elevation information to draw.
+    """
+    shape.draw_rect(elevation_information.rect)
+    shape.finish(color=fitz.utils.getColor("blue"))
 
 
 def draw_material_descriptions(

@@ -12,10 +12,11 @@ from tqdm import tqdm
 
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.score import create_predictions_objects, evaluate_borehole_extraction
+from stratigraphy.coordinates.coordinate_extraction import CoordinateExtractor
+from stratigraphy.elevation.elevation_extraction import ElevationExtractor
 from stratigraphy.extract import process_page
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterLevelExtractor
 from stratigraphy.line_detection import extract_lines, line_detection_params
-from stratigraphy.util.coordinate_extraction import CoordinateExtractor
 from stratigraphy.util.draw import draw_predictions
 from stratigraphy.util.duplicate_detection import remove_duplicate_layers
 from stratigraphy.util.extract_text import extract_text_lines
@@ -177,6 +178,14 @@ def start_pipeline(
                         predictions[filename]["metadata"] = {"coordinates": coordinates.to_json()}
                     else:
                         predictions[filename]["metadata"] = {"coordinates": None}
+
+                    # Extract the elevation information
+                    elevation_extractor = ElevationExtractor(doc)
+                    elevation_information = elevation_extractor.extract_elevation_information()
+                    if elevation_information:
+                        predictions[filename]["metadata"]["elevation_information"] = elevation_information.to_dict()
+                    else:
+                        predictions[filename]["metadata"]["elevation_information"] = None
 
                     # Extract the groundwater levels
                     groundwater_extractor = GroundwaterLevelExtractor(doc)

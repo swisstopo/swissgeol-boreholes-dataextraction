@@ -66,6 +66,7 @@ def extract_elevation(text: str) -> float | None:
     elevation_patterns = [
         r"([\d.]+)\s*m\s*u\.m\.",
         r"([\d.]+)\s*m\s*ur.",
+        r"(\d{3,}\.\d+)",
     ]
 
     elevation = None
@@ -74,6 +75,7 @@ def extract_elevation(text: str) -> float | None:
         if elevation_match:
             elevation = float(elevation_match.group(1).replace(",", "."))
             break
+
     return elevation
 
 

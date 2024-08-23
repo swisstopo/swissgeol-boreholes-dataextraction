@@ -9,7 +9,7 @@ from typing import Any
 
 import click
 import fitz
-from stratigraphy.util.coordinate_extraction import Coordinate
+from stratigraphy.coordinates.coordinate_extraction import Coordinate
 from stratigraphy.util.interval import AnnotatedInterval
 from stratigraphy.util.predictions import BoreholeMetaData, FilePredictions, LayerPrediction
 from stratigraphy.util.textblock import MaterialDescription
