@@ -154,3 +154,15 @@ groundwater_unit_keys:
   - MuT
   - m.u.T.
 
+elevation_keys:
+  # German
+  - Kote OK Terrain
+  - Höhenlage
+  - Höhe
+  - Kote
+  - OK Terrain
+  - OKT
+  - Ansatzhöhe
+  # - OKR
+  - Terrainkote
+

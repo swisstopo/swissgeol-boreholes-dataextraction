@@ -3,7 +3,7 @@
 import fitz
 import pytest
 from stratigraphy import DATAPATH
-from stratigraphy.util.coordinate_extraction import (
+from stratigraphy.coordinates.coordinate_extraction import (
     Coordinate,
     CoordinateEntry,
     CoordinateExtractor,
