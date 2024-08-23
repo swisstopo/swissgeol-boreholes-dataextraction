@@ -269,6 +269,18 @@ class FilePredictions:
             self.metadata_is_correct["elevation"] = gt_elevation_info == extracted_elevation_info.elevation
 
         ############################################################################################################
+        ### Compute the metadata correctness for the elevation information.
+        ############################################################################################################
+        if self.metadata.elevation_information is None or (
+            metadata_ground_truth is None or metadata_ground_truth.get("reference_elevation") is None
+        ):
+            self.metadata_is_correct["elevation_information"] = None
+        else:
+            extracted_elevation_info = self.metadata.elevation_information
+            gt_elevation_info = metadata_ground_truth["reference_elevation"]
+            self.metadata_is_correct["elevation_information"] = gt_elevation_info == extracted_elevation_info.elevation
+
+        ############################################################################################################
         ### Compute the metadata correctness for the groundwater information.
         ############################################################################################################
         gt_groundwater = [

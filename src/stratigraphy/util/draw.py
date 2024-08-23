@@ -158,6 +158,17 @@ def draw_metadata(
         stroke_opacity=0.5,
     )
 
+    # Draw the bounding box around the elevation information
+    page.draw_rect(elevation_rect * page.derotation_matrix, fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
+    page.insert_htmlbox(elevation_rect * page.derotation_matrix, f"Elevation: {elevation_info}", rotate=page.rotation)
+    page.draw_line(
+        elevation_rect.top_left * page.derotation_matrix,
+        elevation_rect.bottom_left * page.derotation_matrix,
+        color=fitz.utils.getColor(elevation_color),
+        width=6,
+        stroke_opacity=0.5,
+    )
+
 
 def draw_coordinates(shape: fitz.Shape, coordinates: Coordinate) -> None:
     """Draw a bounding box around the area of the page where the coordinates were extracted from.
