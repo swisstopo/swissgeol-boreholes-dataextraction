@@ -24,7 +24,6 @@ class BoreholeMetaData:
     """Class to represent metadata of a borehole profile."""
 
     coordinates: Coordinate | None
-    groundwater_information: GroundwaterInformation | None = None
 
 
 @dataclass
@@ -47,6 +46,7 @@ class FilePredictions:
         file_name: str,
         language: str,
         metadata: BoreholeMetaData = None,
+        groundwater_information: GroundwaterInformation = None,
         depths_materials_columns_pairs: list[dict] = None,
         page_sizes: list[dict[str, float]] = None,
     ):
@@ -57,6 +57,7 @@ class FilePredictions:
         self.metadata = metadata
         self.metadata_is_correct: dict = {}
         self.page_sizes: list[dict[str, float]] = page_sizes
+        self.groundwater_information: GroundwaterInformation = groundwater_information
 
     @staticmethod
     def create_from_json(predictions_for_file: dict, file_name: str):
@@ -72,18 +73,26 @@ class FilePredictions:
 
         file_language = predictions_for_file["language"]
 
+        # Extract metadata.
         metadata = predictions_for_file["metadata"]
         coordinates = None
+        groundwater_information = None
         if "coordinates" in metadata and metadata["coordinates"] is not None:
             coordinates = Coordinate.from_json(metadata["coordinates"])
-        if "groundwater_information" in metadata:
-            if metadata["groundwater_information"] is not None:
-                groundwater_information = GroundwaterInformation(**metadata["groundwater_information"])
-            else:
-                groundwater_information = None
-        file_metadata = BoreholeMetaData(coordinates=coordinates, groundwater_information=groundwater_information)
+        file_metadata = BoreholeMetaData(coordinates=coordinates)
         # TODO: Add additional metadata here.
 
+        # Extract groundwater information if available.
+        if (
+            "groundwater_information" in predictions_for_file
+            and predictions_for_file["groundwater_information"] is not None
+        ):
+            if predictions_for_file["groundwater_information"] is not None:
+                groundwater_information = GroundwaterInformation(**predictions_for_file["groundwater_information"])
+            else:
+                groundwater_information = None
+
+        # Extract the layer predictions.
         for layer in predictions_for_file["layers"]:
             material_prediction = _create_textblock_object(layer["material_description"]["lines"])
             if "depth_interval" in layer:
@@ -127,6 +136,7 @@ class FilePredictions:
             metadata=file_metadata,
             depths_materials_columns_pairs=depths_materials_columns_pairs_list,
             page_sizes=pages_dimensions_list,
+            groundwater_information=groundwater_information,
         )
 
     def convert_to_ground_truth(self):
@@ -167,6 +177,7 @@ class FilePredictions:
         """
         self.evaluate_layers(ground_truth["layers"])
         self.evaluate_metadata(ground_truth.get("metadata"))
+        self.evaluate_groundwater_information(ground_truth.get("metadata"))
 
     def evaluate_layers(self, ground_truth_layers: list):
         """Evaluate all layers of the predictions against the ground truth.
@@ -224,10 +235,16 @@ class FilePredictions:
             else:
                 self.metadata_is_correct["coordinates"] = False
 
+    def evaluate_groundwater_information(self, metadata_ground_truth: dict):
+        """Evaluate the groundwater information of the file against the ground truth.
+
+        Args:
+            metadata_ground_truth (dict): The ground truth for the file.
+        """
         ############################################################################################################
         ### Compute the metadata correctness for the groundwater information.
         ############################################################################################################
-        if self.metadata.groundwater_information is None or (
+        if self.groundwater_information is None or (
             metadata_ground_truth is None or metadata_ground_truth.get("groundwater") is None
         ):
             self.metadata_is_correct["groundwater_information"] = None
@@ -242,7 +259,7 @@ class FilePredictions:
                     f"Multiple groundwater information entries found in the ground truth for file {self.file_name}."
                     " Only the first entry will be considered for evaluation."
                 )
-            extracted_groundwater_info: GroundwaterInformation = self.metadata.groundwater_information
+            extracted_groundwater_info: GroundwaterInformation = self.groundwater_information
             gt_groundwater_info: GroundwaterInformation = GroundwaterInformation(
                 **metadata_ground_truth["groundwater"][0]
             )

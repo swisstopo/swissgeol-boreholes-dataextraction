@@ -149,18 +149,21 @@ def evaluate_borehole_extraction(
     (
         coordinate_metrics,
         document_level_metrics_coordinates,
-        document_level_metrics_groundwater,
-        document_level_metrics_groundwater_depth,
     ) = evaluate_metadata(predictions)
-    metrics = {**layer_metrics, **coordinate_metrics}
+    (
+        metrics_groundwater_information,
+        document_level_metrics_groundwater_information,
+        document_level_metrics_groundwater_information_depth,
+    ) = evaluate_groundwater_information(predictions)
+    metrics = {**layer_metrics, **coordinate_metrics, **metrics_groundwater_information}
     document_level_metrics = pd.merge(
         layer_document_level_metrics, document_level_metrics_coordinates, on="document_name", how="outer"
     )
     document_level_metrics = pd.merge(
-        document_level_metrics, document_level_metrics_groundwater, on="document_name", how="outer"
+        document_level_metrics, document_level_metrics_groundwater_information, on="document_name", how="outer"
     )
     document_level_metrics = pd.merge(
-        document_level_metrics, document_level_metrics_groundwater_depth, on="document_name", how="outer"
+        document_level_metrics, document_level_metrics_groundwater_information_depth, on="document_name", how="outer"
     )
     return metrics, document_level_metrics
 
@@ -223,6 +226,32 @@ def get_metadata_metrics(predictions: dict[str, FilePredictions], metadata_field
     return document_level_metrics, metrics
 
 
+def evaluate_groundwater_information(predictions: dict[str, FilePredictions]) -> tuple[dict, pd.DataFrame]:
+    """Evaluate the groundwater information predictions.
+
+    Args:
+        predictions (dict): The FilePredictions objects.
+
+    Returns:
+        tuple[dict, pd.DataFrame]: The overall groundwater information accuracy and the individual document metrics as
+        a DataFrame.
+    """
+    document_level_metrics_groundwater_information, metrics_groundwater_information = get_metadata_metrics(
+        predictions, "groundwater_information"
+    )
+    document_level_metrics_groundwater_information_depth, metrics_groundwater_information_depth = get_metadata_metrics(
+        predictions, "groundwater_information_depth"
+    )
+
+    metrics_groundwater_information.update(metrics_groundwater_information_depth)
+
+    return (
+        metrics_groundwater_information,
+        pd.DataFrame(document_level_metrics_groundwater_information),
+        pd.DataFrame(document_level_metrics_groundwater_information_depth),
+    )
+
+
 def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd.DataFrame]:
     """Evaluate the metadata predictions.
 
@@ -233,12 +262,6 @@ def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd
         tuple[dict, pd.DataFrame]: The overall coordinate accuracy and the individual document metrics as a DataFrame.
     """
     document_level_metrics_coordinates, metrics_coordinates = get_metadata_metrics(predictions, "coordinates")
-    document_level_metrics_groundwater_information, metrics_groundwater_information = get_metadata_metrics(
-        predictions, "groundwater_information"
-    )
-    document_level_metrics_groundwater_depth, metrics_groundwater_depth = get_metadata_metrics(
-        predictions, "groundwater_information_depth"
-    )
 
     metrics = {
         "coordinate_accuracy": metrics_coordinates["coordinates_accuracy"],
@@ -248,27 +271,11 @@ def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd
         "coordinates_tp": metrics_coordinates["coordinates_tp"],
         "coordinates_fp": metrics_coordinates["coordinates_fp"],
         "coordinates_fn": metrics_coordinates["coordinates_fn"],
-        "groundwater_accuracy": metrics_groundwater_information["groundwater_information_accuracy"],
-        "groundwater_precision": metrics_groundwater_information["groundwater_information_precision"],
-        "groundwater_recall": metrics_groundwater_information["groundwater_information_recall"],
-        "groundwater_f1": metrics_groundwater_information["groundwater_information_f1"],
-        "groundwater_tp": metrics_groundwater_information["groundwater_information_tp"],
-        "groundwater_fp": metrics_groundwater_information["groundwater_information_fp"],
-        "groundwater_fn": metrics_groundwater_information["groundwater_information_fn"],
-        "groundwater_depth_accuracy": metrics_groundwater_depth["groundwater_information_depth_accuracy"],
-        "groundwater_depth_precision": metrics_groundwater_depth["groundwater_information_depth_precision"],
-        "groundwater_depth_recall": metrics_groundwater_depth["groundwater_information_depth_recall"],
-        "groundwater_depth_f1": metrics_groundwater_depth["groundwater_information_depth_f1"],
-        "groundwater_depth_tp": metrics_groundwater_depth["groundwater_information_depth_tp"],
-        "groundwater_depth_fp": metrics_groundwater_depth["groundwater_information_depth_fp"],
-        "groundwater_depth_fn": metrics_groundwater_depth["groundwater_information_depth_fn"],
     }
 
     return (
         metrics,
         pd.DataFrame(document_level_metrics_coordinates),
-        pd.DataFrame(document_level_metrics_groundwater_information),
-        pd.DataFrame(document_level_metrics_groundwater_depth),
     )
 
 

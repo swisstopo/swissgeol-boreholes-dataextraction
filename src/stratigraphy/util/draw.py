@@ -48,7 +48,7 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
 
         depths_materials_column_pairs = file_prediction.depths_materials_columns_pairs
         coordinates = file_prediction.metadata.coordinates
-        groundwater_information = file_prediction.metadata.groundwater_information
+        groundwater_information = file_prediction.groundwater_information
         with fitz.Document(directory / file_name) as doc:
             for page_index, page in enumerate(doc):
                 page_number = page_index + 1
@@ -59,7 +59,7 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                         page.derotation_matrix,
                         page.rotation,
                         file_prediction.metadata.coordinates,
-                        file_prediction.metadata_is_correct.get("coordinates")
+                        file_prediction.metadata_is_correct.get("coordinates"),
                     )
                 if coordinates is not None and page_number == coordinates.page:
                     draw_coordinates(shape, coordinates)
@@ -155,7 +155,9 @@ def draw_groundwater_information(shape: fitz.Shape, groundwater_information: Gro
     shape.finish(color=fitz.utils.getColor("pink"))
 
 
-def draw_material_descriptions(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layers: list[LayerPrediction]) -> None:
+def draw_material_descriptions(
+    shape: fitz.Shape, derotation_matrix: fitz.Matrix, layers: list[LayerPrediction]
+) -> None:
     """Draw information about material descriptions on a pdf page.
 
     In particular, this function:

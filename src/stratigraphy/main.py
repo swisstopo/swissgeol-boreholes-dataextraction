@@ -182,11 +182,9 @@ def start_pipeline(
                     groundwater_extractor = GroundwaterLevelExtractor(doc)
                     groundwater_information = groundwater_extractor.extract_groundwater_information()
                     if groundwater_information:
-                        predictions[filename]["metadata"]["groundwater_information"] = (
-                            groundwater_information.to_dict()
-                        )
+                        predictions[filename]["groundwater_information"] = groundwater_information.to_dict()
                     else:
-                        predictions[filename]["metadata"]["groundwater_information"] = None
+                        predictions[filename]["groundwater_information"] = None
 
                     layer_predictions_list = []
                     depths_materials_column_pairs_list = []
