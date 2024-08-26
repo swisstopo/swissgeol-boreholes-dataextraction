@@ -2,12 +2,9 @@
 
 import logging
 import os
-import time
 from pathlib import Path
 
 import fitz
-import numpy as np
-import pandas as pd
 from dotenv import load_dotenv
 
 from stratigraphy.util.coordinate_extraction import Coordinate
@@ -24,7 +21,7 @@ colors = ["purple", "blue"]
 logger = logging.getLogger(__name__)
 
 
-def draw_predictions(predictions: list[FilePredictions], directory: Path, out_directory: Path) -> pd.DataFrame:
+def draw_predictions(predictions: list[FilePredictions], directory: Path, out_directory: Path) -> None:
     """Draw predictions on pdf pages.
 
     Draws various recognized information on the pdf pages present at directory and saves
@@ -43,12 +40,9 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
         directory (Path): Path to the directory containing the pdf files.
         out_directory (Path): Path to the output directory where the images are saved.
     """
-    drawing_times = []
-
     if directory.is_file():  # deal with the case when we pass a file instead of a directory
         directory = directory.parent
     for file_name, file_prediction in predictions.items():
-        start_time = time.time()
         logger.info("Drawing predictions for file %s", file_name)
 
         depths_materials_column_pairs = file_prediction.depths_materials_columns_pairs
@@ -94,18 +88,7 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                     except NameError:
                         logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
 
-        drawing_times.append(
-            {
-                "filename": file_name,
-                "draw_time": time.time() - start_time,
-                "layers": len(file_prediction.layers),
-                "lines": np.sum([len(layer.material_description.lines) for layer in file_prediction.layers]),
-            }
-        )
-
         logger.info("Finished drawing predictions for file %s", file_name)
-
-    return pd.DataFrame(drawing_times)
 
 
 def draw_metadata(
