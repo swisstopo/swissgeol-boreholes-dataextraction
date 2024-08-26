@@ -251,13 +251,6 @@ def start_pipeline(
         # print the metrics
         logger.info("Performance metrics:")
         logger.info(metrics)
-        logger.info("Groundwater level metrics:")
-        logger.info("Accuracy:")
-        logger.info(round(metrics["groundwater_accuracy"], 3))
-        logger.info("TP:")
-        logger.info(metrics["groundwater_tp"])
-        logger.info("Coordinate metrics:")
-        logger.info(round(metrics["coordinate_accuracy"], 3))
 
         if mlflow_tracking:
             mlflow.log_metrics(metrics)

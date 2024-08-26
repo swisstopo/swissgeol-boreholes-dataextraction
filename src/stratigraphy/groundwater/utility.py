@@ -6,45 +6,9 @@ import regex
 def extract_date(text: str) -> str | None:
     """Extract the date from a string."""
     date = None
-    date_match = regex.search(r"(\d{2}\.\d{2}\.\d{4})", text)
+    date_match = regex.search(r"(\d{1,2}\.\d{1,2}\.\d{2,4})", text)
     if date_match:
         date = date_match.group(1)
-    else:
-        # Try to match a date with a two-digit year
-        date_match = regex.search(r"(\d{2}\.\d{2}\.\d{2})", text)
-        if date_match:
-            date = date_match.group(1)
-        else:
-            # Try to match a date with a one-digit month: 14.6.75
-            date_match = regex.search(r"(\d{2}\.\d{1}\.\d{2})", text)
-            if date_match:
-                date = date_match.group(1)
-            else:
-                # Try to match a date with a four-digit year and one-digit month: 14.6.1975
-                date_match = regex.search(r"(\d{2}\.\d{1}\.\d{4})", text)
-                if date_match:
-                    date = date_match.group(1)
-                else:
-                    # Try to match a date with a four-digit year and two-digit month: 14.06.1975
-                    date_match = regex.search(r"(\d{1}\.\d{1}\.\d{2})", text)
-                    if date_match:
-                        date = date_match.group(1)
-                    else:
-                        # Try to match a date with a four-digit year and two-digit month: 14.06.1975
-                        date_match = regex.search(r"(\d{1}\.\d{2}\.\d{4})", text)
-                        if date_match:
-                            date = date_match.group(1)
-                        else:
-                            # Try to match a date with a four-digit year and two-digit month: 14.06.1975
-                            date_match = regex.search(r"(\d{1}\.\d{1}\.\d{4})", text)
-                            if date_match:
-                                date = date_match.group(1)
-                            else:
-                                # Try to match a date with a four-digit year and two-digit month: 14.06.1975
-                                date_match = regex.search(r"(\d{1}\.\d{2}\.\d{2})", text)
-                                if date_match:
-                                    date = date_match.group(1)
-
     return date
 
 
@@ -57,22 +21,19 @@ def extract_depth(text: str) -> float | None:
     Returns:
         float: The extracted depth.
     """
+    depth_patterns = [
+        r"([\d.]+)\s*m\s*u\.t\.",
+        r"([\d.]+)\s*m\s*u\.t",
+        r"(\d+.\d+)",
+    ]
+
     depth = None
     corrected_text = correct_ocr_text(text).lower()
-    depth_match = regex.search(r"([\d.]+)\s*m\s*u\.t\.", corrected_text)
-    if depth is None:
-        # Only match depth if it has not been found yet
+    for pattern in depth_patterns:
+        depth_match = regex.search(pattern, corrected_text)
         if depth_match:
             depth = float(depth_match.group(1).replace(",", "."))
-        else:
-            depth_match = regex.search(r"([\d.]+)\s*m\s*u\.t", corrected_text)
-            if depth_match:
-                depth = float(depth_match.group(1).replace(",", "."))
-            else:
-                # Try to match a depth with a comma as decimal separator
-                depth_match = regex.search(r"(\d+.\d+)", corrected_text)
-                if depth_match:
-                    depth = float(depth_match.group(1).replace(",", "."))
+            break
     return depth
 
 
@@ -85,15 +46,17 @@ def extract_elevation(text: str) -> float | None:
     Returns:
         float: The extracted elevation.
     """
+    elevation_patterns = [
+        r"([\d.]+)\s*m\s*u\.m\.",
+        r"([\d.]+)\s*m\s*ur.",
+    ]
+
     elevation = None
-    elevation_match = regex.search(r"([\d.]+)\s*m\s*u\.m\.", text.lower())
-    if elevation_match:
-        elevation = float(elevation_match.group(1).replace(",", "."))
-    else:
-        elevation_match = regex.search(r"([\d.]+)\s*m\s*ur.", text.lower())
+    for pattern in elevation_patterns:
+        elevation_match = regex.search(pattern, text.lower())
         if elevation_match:
             elevation = float(elevation_match.group(1).replace(",", "."))
-
+            break
     return elevation
 
 
