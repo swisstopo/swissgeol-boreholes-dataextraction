@@ -160,7 +160,7 @@ def start_pipeline(
 
     # process the individual pdf files
     predictions = {}
-    prediction_times = {"filename": [], "prediction_time": []}
+    prediction_times = []
     for root, _dirs, files in file_iterator:
         for filename in files:
             if filename.endswith(".pdf"):
@@ -226,8 +226,7 @@ def start_pipeline(
 
                     assert len(page_dimensions) == doc.page_count, "Page count mismatch."
 
-                prediction_times["filename"].append(filename)
-                prediction_times["prediction_time"].append(time.time() - start_time)
+                prediction_times.append({"filename": filename, "prediction_time": time.time() - start_time})
 
     logger.info("Writing predictions to JSON file %s", predictions_path)
     with open(predictions_path, "w", encoding="utf8") as file:
