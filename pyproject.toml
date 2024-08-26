@@ -21,7 +21,7 @@ dependencies = [
     "langdetect>=1.0.9",
     "regex",
     "backoff",
-    "PyMuPDF>=1.23.26,<1.24.2",
+    "PyMuPDF>=1.23.26",
     "opencv-python-headless",
     "quads>=1.1.0",
     "numpy<2",
