@@ -129,7 +129,7 @@ def draw_metadata(
     coordinate_rect = fitz.Rect([5, 5, 200, 25])
 
     elevation_color = "green" if elevation_is_correct else "red"
-    elevation_rect = fitz.Rect([5, 25, 200, 65])
+    elevation_rect = fitz.Rect([5, 25, 200, 45])
 
     shape.draw_rect(coordinate_rect * derotation_matrix)
     shape.finish(fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
@@ -145,25 +145,15 @@ def draw_metadata(
     )
 
     # Draw the bounding box around the elevation information
+    elevation_txt = f"Elevation: {elevation_info.elevation} m" if elevation_info is not None else "Elevation: N/A"
     shape.draw_rect(elevation_rect * derotation_matrix)
     shape.finish(fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
-    shape.insert_textbox(elevation_rect * derotation_matrix, f"Elevation: {elevation_info}", rotate=rotation)
+    shape.insert_textbox(elevation_rect * derotation_matrix, elevation_txt, rotate=rotation)
     shape.draw_line(
         elevation_rect.top_left * derotation_matrix,
         elevation_rect.bottom_left * derotation_matrix,
     )
     shape.finish(
-        color=fitz.utils.getColor(elevation_color),
-        width=6,
-        stroke_opacity=0.5,
-    )
-
-    # Draw the bounding box around the elevation information
-    page.draw_rect(elevation_rect * page.derotation_matrix, fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
-    page.insert_htmlbox(elevation_rect * page.derotation_matrix, f"Elevation: {elevation_info}", rotate=page.rotation)
-    page.draw_line(
-        elevation_rect.top_left * page.derotation_matrix,
-        elevation_rect.bottom_left * page.derotation_matrix,
         color=fitz.utils.getColor(elevation_color),
         width=6,
         stroke_opacity=0.5,
