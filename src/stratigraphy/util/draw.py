@@ -7,6 +7,8 @@ from pathlib import Path
 import fitz
 from dotenv import load_dotenv
 
+from stratigraphy.coordinates.coordinate_extraction import Coordinate
+from stratigraphy.elevation.elevation_extraction import ElevationInformation
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformationOnPage
 from stratigraphy.util.interval import BoundaryInterval
 from stratigraphy.util.predictions import FilePredictions, LayerPrediction
@@ -47,6 +49,8 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
 
         depths_materials_column_pairs = file_prediction.depths_materials_columns_pairs
         coordinates = file_prediction.metadata.coordinates
+        elevation = file_prediction.metadata.elevation
+        groundwater_information = file_prediction.groundwater_information
         with fitz.Document(directory / file_name) as doc:
             for page_index, page in enumerate(doc):
                 page_number = page_index + 1
@@ -181,7 +185,7 @@ def draw_elevation_information(shape: fitz.Shape, elevation_information: Elevati
     """Draw a bounding box around the area of the page where the coordinates were extracted from.
 
     Args:
-        page (fitz.Page): The page to draw on.
+        shape (fitz.Shape): The shape object for drawing.
         elevation_information (ElevationInformation): The elevation information to draw.
     """
     shape.draw_rect(elevation_information.rect)

@@ -27,7 +27,7 @@ class BoreholeMetaData:
 
     coordinates: Coordinate | None
     groundwater_information: GroundwaterInformation | None = None
-    elevation_information: ElevationInformation | None = None
+    elevation: ElevationInformation | None = None
 
 
 @dataclass
@@ -85,19 +85,9 @@ class FilePredictions:
         elevation = None
         if "coordinates" in metadata and metadata["coordinates"] is not None:
             coordinates = Coordinate.from_json(metadata["coordinates"])
-        if "groundwater_information" in metadata:
-            if metadata["groundwater_information"] is not None:
-                groundwater_information = GroundwaterInformation(**metadata["groundwater_information"])
-            else:
-                groundwater_information = None
-        if "elevation_information" in metadata:
-            if metadata["elevation_information"] is not None:
-                elevation = ElevationInformation(**metadata["elevation_information"])
-            else:
-                elevation = None
-        file_metadata = BoreholeMetaData(
-            coordinates=coordinates, groundwater_information=groundwater_information, elevation_information=elevation
-        )
+        if "elevation" in metadata:
+            elevation = ElevationInformation(**metadata["elevation"]) if metadata["elevation"] is not None else None
+        file_metadata = BoreholeMetaData(coordinates=coordinates, elevation=elevation)
         # TODO: Add additional metadata here.
 
         # Extract groundwater information if available.
@@ -270,14 +260,14 @@ class FilePredictions:
         ############################################################################################################
         ### Compute the metadata correctness for the elevation information.
         ############################################################################################################
-        if self.metadata.elevation_information is None or (
+        if self.metadata.elevation is None or (
             metadata_ground_truth is None or metadata_ground_truth.get("reference_elevation") is None
         ):
-            self.metadata_is_correct["elevation_information"] = None
+            self.metadata_is_correct["elevation"] = None
         else:
-            extracted_elevation_info = self.metadata.elevation_information
+            extracted_elevation_info = self.metadata.elevation
             gt_elevation_info = metadata_ground_truth["reference_elevation"]
-            self.metadata_is_correct["elevation_information"] = gt_elevation_info == extracted_elevation_info.elevation
+            self.metadata_is_correct["elevation"] = gt_elevation_info == extracted_elevation_info.elevation
 
         ############################################################################################################
         ### Compute the metadata correctness for the groundwater information.
