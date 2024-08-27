@@ -159,7 +159,7 @@ def start_pipeline(
     # process the individual pdf files
     predictions = {}
     for root, _dirs, files in file_iterator:
-        for filename in tqdm(files):
+        for filename in tqdm(files, desc="Processing files", unit="file"):
             if filename.endswith(".pdf"):
                 in_path = os.path.join(root, filename)
                 logger.info("Processing file: %s", in_path)
@@ -181,11 +181,11 @@ def start_pipeline(
 
                     # Extract the elevation information
                     elevation_extractor = ElevationExtractor(doc)
-                    elevation_information = elevation_extractor.extract_elevation_information()
-                    if elevation_information:
-                        predictions[filename]["metadata"]["elevation_information"] = elevation_information.to_dict()
+                    elevation = elevation_extractor.extract_elevation_information()
+                    if elevation:
+                        predictions[filename]["metadata"]["elevation"] = elevation.to_dict()
                     else:
-                        predictions[filename]["metadata"]["elevation_information"] = None
+                        predictions[filename]["metadata"]["elevation"] = None
 
                     # Extract the groundwater levels
                     groundwater_extractor = GroundwaterLevelExtractor(doc)
