@@ -4,6 +4,7 @@ import logging
 import math
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime
 
 import fitz
 import Levenshtein
@@ -58,6 +59,7 @@ class FilePredictions:
         self.metadata_is_correct: dict = {}
         self.page_sizes: list[dict[str, float]] = page_sizes
         self.groundwater_information: GroundwaterInformation = groundwater_information
+        self.groundwater_information_is_correct: dict = {}
 
     @staticmethod
     def create_from_json(predictions_for_file: dict, file_name: str):
@@ -88,6 +90,11 @@ class FilePredictions:
             and predictions_for_file["groundwater_information"] is not None
         ):
             if predictions_for_file["groundwater_information"] is not None:
+                if predictions_for_file["groundwater_information"]["measurement_date"]:
+                    # convert to datetime object
+                    predictions_for_file["groundwater_information"]["measurement_date"] = datetime.strptime(
+                        predictions_for_file["groundwater_information"]["measurement_date"], "%d.%m.%Y"
+                    ).date()
                 groundwater_information = GroundwaterInformation(**predictions_for_file["groundwater_information"])
             else:
                 groundwater_information = None
@@ -247,10 +254,10 @@ class FilePredictions:
         if self.groundwater_information is None or (
             metadata_ground_truth is None or metadata_ground_truth.get("groundwater") is None
         ):
-            self.metadata_is_correct["groundwater_information"] = None
-            self.metadata_is_correct["groundwater_information_depth"] = None
-            self.metadata_is_correct["groundwater_information_elevation"] = None
-            self.metadata_is_correct["groundwater_information_date"] = None
+            self.groundwater_information_is_correct["groundwater_information"] = None
+            self.groundwater_information_is_correct["groundwater_information_depth"] = None
+            self.groundwater_information_is_correct["groundwater_information_elevation"] = None
+            self.groundwater_information_is_correct["groundwater_information_date"] = None
         else:
             if len(metadata_ground_truth["groundwater"]) > 1:
                 # TODO: We could also check if the groundwater information is the same for all entries.
@@ -260,20 +267,31 @@ class FilePredictions:
                     " Only the first entry will be considered for evaluation."
                 )
             extracted_groundwater_info: GroundwaterInformation = self.groundwater_information
+
+            gt_measurement_date = metadata_ground_truth["groundwater"][0]["date"]
+            if gt_measurement_date:
+                # convert to datetime object
+                metadata_ground_truth["groundwater"][0]["measurement_date"] = datetime.strptime(
+                    gt_measurement_date, "%Y-%m-%d"
+                ).date()
+            else:
+                metadata_ground_truth["groundwater"][0]["measurement_date"] = None
+            # delete the key "date" from the dictionary
+            del metadata_ground_truth["groundwater"][0]["date"]
             gt_groundwater_info: GroundwaterInformation = GroundwaterInformation(
                 **metadata_ground_truth["groundwater"][0]
             )
-            self.metadata_is_correct["groundwater_information"] = gt_groundwater_info.is_extracted_information_correct(
-                extracted_groundwater_info
+            self.groundwater_information_is_correct["groundwater_information"] = (
+                gt_groundwater_info == extracted_groundwater_info
             )
-            self.metadata_is_correct["groundwater_information_depth"] = gt_groundwater_info.is_extracted_depth_correct(
-                extracted_groundwater_info.depth
+            self.groundwater_information_is_correct["groundwater_information_depth"] = (
+                gt_groundwater_info.depth == extracted_groundwater_info.depth
             )
-            self.metadata_is_correct["groundwater_information_elevation"] = (
-                gt_groundwater_info.is_extracted_elevation_correct(extracted_groundwater_info.elevation)
+            self.groundwater_information_is_correct["groundwater_information_elevation"] = (
+                gt_groundwater_info.elevation == extracted_groundwater_info.elevation
             )
-            self.metadata_is_correct["groundwater_information_date"] = gt_groundwater_info.is_extracted_date_correct(
-                extracted_groundwater_info.date
+            self.groundwater_information_is_correct["groundwater_information_date"] = (
+                gt_groundwater_info.measurement_date == extracted_groundwater_info.measurement_date
             )
 
     @staticmethod

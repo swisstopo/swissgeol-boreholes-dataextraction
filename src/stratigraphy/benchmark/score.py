@@ -168,41 +168,41 @@ def evaluate_borehole_extraction(
     return metrics, document_level_metrics
 
 
-def get_metadata_metrics(predictions: dict[str, FilePredictions], metadata_field: str) -> dict:
-    """Get the metadata metrics.
+def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_name: str) -> dict:
+    """Get the metrics for a specific field in the predictions.
 
     Args:
         predictions (dict): The FilePredictions objects.
-        metadata_field (str): The metadata field to evaluate. For example, "coordinates".
+        field_key (str): The key to access the specific field in the prediction objects.
+        field_name (str): The name of the field being evaluated.
 
     Returns:
-        dict: The metadata metrics.
+        dict: The document level metrics and overall metrics.
     """
     document_level_metrics = {
         "document_name": [],
-        f"{metadata_field}": [],
+        field_name: [],
     }
 
     tp = 0  # correct prediction
     fn = 0  # no predictions, i.e. None
     fp = 0  # wrong prediction
-
-    # there is no such thing as true negatives as each document has coordinates - though not necessarily specified
     number_predictions = 0
+
     for file_name, file_prediction in predictions.items():
-        if file_prediction.metadata_is_correct[metadata_field]:
+        is_correct = getattr(file_prediction, field_key)[field_name]
+        if is_correct:
             tp += 1
-            number_predictions += 1
             document_level_metrics["document_name"].append(file_name)
-            document_level_metrics[f"{metadata_field}"].append(1)
-        elif file_prediction.metadata_is_correct[metadata_field] is None:
+            document_level_metrics[field_name].append(1)
+        elif is_correct is None:
             fn += 1
-            number_predictions += 1
         else:
             fp += 1
-            number_predictions += 1
             document_level_metrics["document_name"].append(file_name)
-            document_level_metrics[f"{metadata_field}"].append(0)
+            document_level_metrics[field_name].append(0)
+
+        number_predictions += 1
 
     try:
         precision = tp / (tp + fp)
@@ -214,16 +214,26 @@ def get_metadata_metrics(predictions: dict[str, FilePredictions], metadata_field
         recall = 0
 
     metrics = {
-        f"{metadata_field}_accuracy": tp / number_predictions,
-        f"{metadata_field}_precision": precision,
-        f"{metadata_field}_recall": recall,
-        f"{metadata_field}_f1": f1(precision, recall),
-        f"{metadata_field}_tp": tp,
-        f"{metadata_field}_fp": fp,
-        f"{metadata_field}_fn": fn,
+        f"{field_name}_accuracy": tp / number_predictions,
+        f"{field_name}_precision": precision,
+        f"{field_name}_recall": recall,
+        f"{field_name}_f1": f1(precision, recall),
+        f"{field_name}_tp": tp,
+        f"{field_name}_fp": fp,
+        f"{field_name}_fn": fn,
     }
 
     return document_level_metrics, metrics
+
+
+def get_metadata_metrics(predictions: dict[str, FilePredictions], metadata_field: str) -> dict:
+    """Get the metadata metrics."""
+    return get_metrics(predictions, "metadata_is_correct", metadata_field)
+
+
+def get_groundwater_metrics(predictions: dict[str, FilePredictions], metadata_field: str) -> dict:
+    """Get the groundwater information metrics."""
+    return get_metrics(predictions, "groundwater_information_is_correct", metadata_field)
 
 
 def evaluate_groundwater_information(predictions: dict[str, FilePredictions]) -> tuple[dict, pd.DataFrame]:
@@ -236,11 +246,11 @@ def evaluate_groundwater_information(predictions: dict[str, FilePredictions]) ->
         tuple[dict, pd.DataFrame]: The overall groundwater information accuracy and the individual document metrics as
         a DataFrame.
     """
-    document_level_metrics_groundwater_information, metrics_groundwater_information = get_metadata_metrics(
+    document_level_metrics_groundwater_information, metrics_groundwater_information = get_groundwater_metrics(
         predictions, "groundwater_information"
     )
-    document_level_metrics_groundwater_information_depth, metrics_groundwater_information_depth = get_metadata_metrics(
-        predictions, "groundwater_information_depth"
+    document_level_metrics_groundwater_information_depth, metrics_groundwater_information_depth = (
+        get_groundwater_metrics(predictions, "groundwater_information_depth")
     )
 
     metrics_groundwater_information.update(metrics_groundwater_information_depth)

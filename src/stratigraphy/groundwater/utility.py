@@ -1,15 +1,27 @@
 """Series of utility functions for groundwater stratigraphy."""
 
+from datetime import date, datetime
+
 import regex
 
 
-def extract_date(text: str) -> str | None:
-    """Extract the date from a string."""
-    date = None
+def extract_date(text: str) -> tuple[date | None, str | None]:
+    """Extract the date from a string in the format dd.mm.yyyy or dd.mm.yy."""
     date_match = regex.search(r"(\d{1,2}\.\d{1,2}\.\d{2,4})", text)
-    if date_match:
-        date = date_match.group(1)
-    return date
+
+    if not date_match:
+        return None, None
+
+    date_str = date_match.group(1)
+
+    for date_format in ("%d.%m.%Y", "%d.%m.%y"):
+        try:
+            measurement_date = datetime.strptime(date_str, date_format).date()
+            return measurement_date, date_str
+        except ValueError:
+            continue
+
+    return None, None
 
 
 def extract_depth(text: str) -> float | None:

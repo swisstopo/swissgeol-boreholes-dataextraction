@@ -3,7 +3,7 @@
 import abc
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date
 
 import fitz
 import numpy as np
@@ -21,7 +21,7 @@ class GroundwaterInformation(metaclass=abc.ABCMeta):
     """Abstract class for Groundwater Information."""
 
     depth: float  # Depth of the groundwater relative to the surface
-    date: str | None = (
+    measurement_date: date | None = (
         None  # Date of the groundwater measurement, if several dates
         # are present, the date of the document the last measurement is taken
     )
@@ -43,9 +43,12 @@ class GroundwaterInformation(metaclass=abc.ABCMeta):
         Returns:
             str: The object as a string.
         """
+        measurement_date_str = (
+            self.measurement_date.strftime("%d.%m.%Y") if self.measurement_date is not None else None
+        )
         return (
             f"GroundwaterInformation("
-            f"date={self.date}, "
+            f"measurement_date={measurement_date_str}, "
             f"depth={self.depth}, "
             f"elevation={self.elevation}, "
             f"page={self.page})"
@@ -58,104 +61,42 @@ class GroundwaterInformation(metaclass=abc.ABCMeta):
             dict: The object as a dictionary.
         """
         return {
-            "date": self.date,
+            "measurement_date": self.measurement_date.strftime("%d.%m.%Y")
+            if self.measurement_date is not None
+            else None,
             "depth": self.depth,
             "elevation": self.elevation,
             "page": self.page if self.page else None,
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
         }
 
-    def compare_dates(self, date1, date2) -> bool:
-        """Compares two dates.
+    def __eq__(self, other: object) -> bool:
+        """Checks if two GroundwaterInformation objects are equal.
 
         Args:
-            date1 (str): The first date.
-            date2 (str): The second date.
+            other (object): The object to compare with.
 
         Returns:
-            bool: True if the dates are equal, otherwise False.
+            bool: True if the objects are equal, otherwise False.
         """
-        # Define possible date formats
-        date_formats = ["%Y-%m-%d", "%d.%m.%Y"]
+        if not isinstance(other, GroundwaterInformation):
+            return NotImplemented
 
-        # Try to parse date1
-        for fmt in date_formats:
-            try:
-                parsed_date1 = datetime.strptime(date1, fmt)
-                break
-            except ValueError:
-                continue
-            except TypeError:
-                logger.warning("Groundtruth or extracted date is None.")
-                continue
-        else:
-            return False  # date1 does not match any format
-
-        # Try to parse date2
-        for fmt in date_formats:
-            try:
-                parsed_date2 = datetime.strptime(date2, fmt)
-                break
-            except TypeError:
-                logger.warning("Groundtruth or extracted date is None.")
-                continue
-            except ValueError:
-                continue
-        else:
-            return False  # date2 does not match any format
-
-        # Compare the parsed dates
-        return parsed_date1 == parsed_date2
-
-    def is_extracted_information_correct(self, extracted_information: "GroundwaterInformation") -> bool:
-        """Checks if the extracted information is correct.
-
-        Args:
-            extracted_information (GroundwaterInformation): The extracted information.
-
-        Returns:
-            bool: True if the information is correct, otherwise False.
-        """
-        assert extracted_information.is_valid(), "The extracted information is not valid."
+        assert other.is_valid(), "The extracted information is not valid."
 
         return (
-            self.compare_dates(self.date, extracted_information.date)
-            and (self.depth == extracted_information.depth)
-            and (self.elevation == extracted_information.elevation)
+            self.measurement_date == other.measurement_date
+            and self.depth == other.depth
+            and self.elevation == other.elevation
         )
 
-    def is_extracted_date_correct(self, extracted_date: str) -> bool:
-        """Checks if the extracted date is correct.
-
-        Args:
-            extracted_date (str): The extracted date.
+    def __hash__(self) -> int:
+        """Generates a hash for the GroundwaterInformation object.
 
         Returns:
-            bool: True if the date is correct, otherwise False.
+            int: The hash value of the object.
         """
-        return self.compare_dates(self.date, extracted_date)
-
-    def is_extracted_depth_correct(self, extracted_depth: float) -> bool:
-        """Checks if the extracted depth is correct.
-
-        Args:
-            extracted_depth (float): The extracted depth.
-
-        Returns:
-            bool: True if the depth is correct, otherwise False.
-        """
-        return self.depth == extracted_depth
-
-    def is_extracted_elevation_correct(self, extracted_elevation: float) -> bool:
-        """Checks if the extracted elevation is correct.
-
-        Args:
-            extracted_elevation (float): The extracted elevation.
-
-        Returns:
-            bool: True if the elevation is correct, otherwise False.
-        """
-        return self.elevation == extracted_elevation
+        return hash((self.measurement_date, self.depth, self.elevation))
 
 
 class GroundwaterLevelExtractor:
@@ -258,7 +199,8 @@ class GroundwaterLevelExtractor:
                 )
                 if extracted_gw_information.depth:
                     extracted_groundwater_informations.append(extracted_gw_information)
-            except ValueError:
+            except ValueError as error:
+                logger.warning(f"ValueError: {error}")
                 logger.warning("Could not extract groundwater information from the lines near the key.")
 
         return self.select_best_groundwater_information(extracted_groundwater_informations)
@@ -283,7 +225,7 @@ class GroundwaterLevelExtractor:
 
         # if the date is none remove the extracted groundwater information
         extracted_groundwater_informations_with_date = [
-            info for info in extracted_groundwater_informations if info.date is not None
+            info for info in extracted_groundwater_informations if info.measurement_date is not None
         ]
 
         # If there are no extracted groundwater information with date, return the first one
@@ -291,7 +233,7 @@ class GroundwaterLevelExtractor:
             return extracted_groundwater_informations[0]
 
         # If there are multiple extracted groundwater information, return the one with the most recent date
-        extracted_groundwater_informations_with_date.sort(key=lambda x: x.date, reverse=True)
+        extracted_groundwater_informations_with_date.sort(key=lambda x: x.measurement_date, reverse=True)
 
         # remove the one with no elevation
         extracted_groundwater_informations_with_date_and_elevation = [
@@ -314,9 +256,9 @@ class GroundwaterLevelExtractor:
         Returns:
             GroundwaterInformation: the extracted groundwater information
         """
-        date = None
-        depth = None
-        elevation = None
+        datetime_date: date = None
+        depth: float = None
+        elevation: float = None
 
         matched_lines_rect = []
 
@@ -326,9 +268,10 @@ class GroundwaterLevelExtractor:
             # The first line is the keyword line that contains the groundwater keyword
             if idx == 0:
                 # Check if the keyword line contains the date, depth, and elevation, extract them
-                date = extract_date(text)
-                if date:
-                    text = text.replace(date, "").strip()
+                extracted_date, extracted_date_str = extract_date(text)
+                if extracted_date_str:
+                    text = text.replace(extracted_date_str, "").strip()
+                    datetime_date = extracted_date
 
                 depth = extract_depth(text)
                 if depth:
@@ -338,30 +281,29 @@ class GroundwaterLevelExtractor:
 
                 # Pattern for matching depth (e.g., "1,48 m u.T.")
                 matched_lines_rect.append(line.rect)
-                continue
+            else:
+                # Pattern for matching date
+                if not datetime_date:
+                    extracted_date, extracted_date_str = extract_date(text)
+                    if extracted_date_str:
+                        text = text.replace(extracted_date_str, "").strip()
+                        datetime_date = extracted_date
 
-            # Pattern for matching date
-            if not date:
-                date = extract_date(text)
-                if date:
-                    matched_lines_rect.append(line.rect)
-                    text = text.replace(date, "").strip()
+                # Pattern for matching depth (e.g., "1,48 m u.T.")
+                if not depth:
+                    depth = extract_depth(text)
+                    if depth:
+                        matched_lines_rect.append(line.rect)
+                        text = text.replace(str(depth), "").strip()
 
-            # Pattern for matching depth (e.g., "1,48 m u.T.")
-            if not depth:
-                depth = extract_depth(text)
-                if depth:
-                    matched_lines_rect.append(line.rect)
-                    text = text.replace(str(depth), "").strip()
-
-            # Pattern for matching elevation (e.g., "457,69 m U.M.")
-            if not elevation:
-                elevation = extract_elevation(text)
-                if elevation:
-                    matched_lines_rect.append(line.rect)
+                # Pattern for matching elevation (e.g., "457,69 m U.M.")
+                if not elevation:
+                    elevation = extract_elevation(text)
+                    if elevation:
+                        matched_lines_rect.append(line.rect)
 
             # If all required data is found, break early
-            if date and depth and elevation:
+            if datetime_date and depth and elevation:
                 break
 
         # Get the union of all matched lines' rectangles
@@ -388,7 +330,9 @@ class GroundwaterLevelExtractor:
         #   # TODO: IF the date is not provided for the groundwater (most of the time because there was only one
         # drilling date - chose the date of the document. Date needs to be extracted from the document separately)
         if depth:
-            return GroundwaterInformation(depth=depth, date=date, elevation=elevation, rect=rect_union, page=page)
+            return GroundwaterInformation(
+                depth=depth, measurement_date=datetime_date, elevation=elevation, rect=rect_union, page=page
+            )
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
 
