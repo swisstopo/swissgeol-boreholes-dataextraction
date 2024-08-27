@@ -60,10 +60,10 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                         shape,
                         page.derotation_matrix,
                         page.rotation,
-                        file_prediction.metadata.coordinates,
+                        coordinates,
                         file_prediction.metadata_is_correct.get("coordinates"),
-                        file_prediction.metadata.elevation_information,
-                        file_prediction.metadata_is_correct.get("elevation_information"),
+                        elevation,
+                        file_prediction.metadata_is_correct.get("elevation"),
                     )
                 if coordinates is not None and page_number == coordinates.page:
                     draw_coordinates(shape, coordinates)

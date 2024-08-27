@@ -114,8 +114,14 @@ class ElevationExtractor:
         if len(matches) == 0:
             return None
 
-        best_match = min(matches, key=lambda x: x[1])
-        return best_match[0]
+        # Remove duplicates
+        matches = list(dict.fromkeys(matches))
+
+        # Sort the matches by their error counts (ascending order)
+        matches.sort(key=lambda x: x[1])
+
+        # Return the top three matches (lines only)
+        return [match[0] for match in matches[:5]]
 
     def get_elevation_near_key(self, lines: list[TextLine], page: int) -> list[float]:
         """Find elevation from text lines that are close to an explicit "elevation" label.
@@ -131,33 +137,60 @@ class ElevationExtractor:
             list[float]: all found elevations
         """
         # find the key that indicates the coordinate information
-        elevation_key_line = self.find_elevation_key(lines)
-        if elevation_key_line is None:
+        elevation_key_lines = self.find_elevation_key(lines)
+        if elevation_key_lines is None:
             return []
 
-        # find the lines of the text that are close to an identified coordinate key.
-        key_rect = elevation_key_line.rect
-        # look for coordinate values to the right and/or immediately below the key
-        elevation_search_rect = fitz.Rect(key_rect.x0, key_rect.y0, key_rect.x1 + 5 * key_rect.width, key_rect.y1)
-        elevation_lines = [line for line in lines if line.rect.intersects(elevation_search_rect)]
+        extracted_elevation_informations = []
 
-        def preprocess(value: str) -> str:
-            value = value.replace(",", ".")
-            value = value.replace("'", ".")
-            value = value.replace("o", "0")  # frequent ocr error
-            value = value.replace("\n", " ")
-            value = value.replace("ate", "ote")  # frequent ocr error
-            return value
+        for elevation_key_line in elevation_key_lines:
+            # find the lines of the text that are close to an identified coordinate key.
+            key_rect = elevation_key_line.rect
+            # look for coordinate values to the right and/or immediately below the key
+            elevation_search_rect = fitz.Rect(key_rect.x0, key_rect.y0, key_rect.x1 + 5 * key_rect.width, key_rect.y1)
+            elevation_lines = [line for line in lines if line.rect.intersects(elevation_search_rect)]
 
-        # makes sure the line with the key is included first in the extracted information and the duplicate removed
-        elevation_lines.insert(0, elevation_key_line)
-        elevation_lines = list(dict.fromkeys(elevation_lines))
+            def preprocess(value: str) -> str:
+                value = value.replace(",", ".")
+                value = value.replace("'", ".")
+                value = value.replace("o", "0")  # frequent ocr error
+                value = value.replace("\n", " ")
+                value = value.replace("ate", "ote")  # frequent ocr error
+                return value
 
-        try:
-            return self.get_elevation_from_lines(elevation_lines, page, preprocess)
-        except ValueError:
-            logger.warning("Could not extract all required information from the lines provided.")
-            return []
+            # makes sure the line with the key is included first in the extracted information and the duplicate removed
+            elevation_lines.insert(0, elevation_key_line)
+            elevation_lines = list(dict.fromkeys(elevation_lines))
+
+            try:
+                extracted_elevation_information = self.get_elevation_from_lines(elevation_lines, page, preprocess)
+                if extracted_elevation_information.elevation:
+                    extracted_elevation_informations.append(extracted_elevation_information)
+            except ValueError as error:
+                logger.warning(f"ValueError: {error}")
+                logger.warning("Could not extract all required information from the lines provided.")
+
+        return self.select_best_elevation_information(extracted_elevation_informations)
+
+    def select_best_elevation_information(
+        self, extracted_elevation_informations: list[ElevationInformation]
+    ) -> ElevationInformation | None:
+        """Select the best elevation information from a list of extracted elevation information.
+
+        Args:
+            extracted_elevation_informations (list[ElevationInformation]): A list of extracted elevation information.
+
+        Returns:
+            ElevationInformation | None: The best extracted elevation information.
+        """
+        # Sort the extracted elevation information by elevation with the highest elevation first
+        extracted_elevation_informations.sort(key=lambda x: x.elevation, reverse=True)
+
+        # Return the first element of the sorted list
+        if extracted_elevation_informations:
+            return extracted_elevation_informations[0]
+        else:
+            return None
 
     @staticmethod
     def get_elevation_from_lines(lines: list[TextLine], page: int, preprocess=lambda x: x) -> list[float]:
