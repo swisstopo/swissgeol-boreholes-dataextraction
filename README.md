@@ -207,6 +207,11 @@ The project structure and the most important files are as follows:
 
 - `root/` : The root directory of the project.
   - `src/` : The source code of the project.
+    - `app/`: The API of the project.
+      - `main.py`: The main script that launches the API.
+      - `common/config.py`: Config file for the API.
+      - `v1/`: Contain all the code for the version 1 of the API.
+      - `v1/router.py`: Presents at a glance all the available endpoints.
     - `stratigraphy/` : The main package of the project.
       - `main.py` : The main script of the project. This script runs the data extraction pipeline.
       - `line_detection.py`: Contains functionalities for line detection on pdf pages.
@@ -223,6 +228,70 @@ The project structure and the most important files are as follows:
 ## Main scripts
 
 - `main.py` : This is the main script of the project. It runs the data extraction pipeline, which analyzes the PDF files in the `data/Benchmark` directory and saves the results in the `predictions.json` file.
+
+## API
+
+The API for this project is built using FastAPI, a modern, fast (high-performance), web framework for building APIs with Python.
+
+To launch the API and access its endpoints, follow these steps:
+
+1. **Activate the virtual environment**
+
+    Activate your virtual environment. On Unix systems, this can be done with the following command:
+
+    ```bash
+    source env/bin/activate
+    ```
+
+2. **Start the FastAPI server**
+
+    Run the following command to start the FastAPI server:
+
+    ```bash
+    uvicorn src.app.main:app --reload
+    ```
+
+    This will start the server and enable automatic reloading whenever changes are made to the code.
+
+    **NOTE**: You can also launch the API in the debugger by adding the following to the `launch.json`: 
+
+    ```json
+    {
+        "name": "API",
+        "type": "debugpy",
+        "request": "launch",
+        "cwd": "${workspaceFolder}/",
+        "module": "uvicorn",
+        "args": [
+            "src.app.main:app",
+            "--reload",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "8002",
+        ],
+        "console": "integratedTerminal",
+        "justMyCode": true
+    }
+    ```
+
+    This will expose the API to the port 8002 of the localhost. You can see the swagger by opening: `http://127.0.0.1:8002/docs#/` in your favorite browser. 
+
+3. **Access the API endpoints**
+
+    Once the server is running, you can access the API endpoints using a web browser or an API testing tool like Postman.
+
+    The main endpoint for the data extraction pipeline is `http://localhost:8000/extract-data`. You can send a POST request to this endpoint with the PDF file you want to extract data from.
+
+    Additional endpoints and their functionalities can be found in the project's source code.
+
+    **Note:** Make sure to replace `localhost` with the appropriate hostname or IP address if you are running the server on a remote machine.
+
+4. **Stop the server**
+
+    To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is running.
+
+Please refer to the FastAPI documentation for more information on how to work with FastAPI and build APIs using this framework.
 
 
 ## Experiment Tracking

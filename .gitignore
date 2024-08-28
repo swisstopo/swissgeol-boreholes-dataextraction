@@ -1,5 +1,6 @@
 # Project specific gitignores
 data/
+data-legacy/
 **/.DS_Store
 /notebooks
 /mlruns
@@ -131,6 +132,7 @@ celerybeat.pid
 .env
 .venv
 env/
+swisstopo/
 venv/
 ENV/
 env.bak/
