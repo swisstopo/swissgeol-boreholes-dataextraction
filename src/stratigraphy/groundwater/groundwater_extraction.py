@@ -3,7 +3,7 @@
 import abc
 import logging
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 import fitz
 import numpy as np
@@ -16,6 +16,9 @@ from stratigraphy.util.util import read_params
 logger = logging.getLogger(__name__)
 
 
+DATE_FORMAT = "%Y-%m-%d"
+
+
 @dataclass
 class GroundwaterInformation(metaclass=abc.ABCMeta):
     """Abstract class for Groundwater Information."""
@@ -26,8 +29,6 @@ class GroundwaterInformation(metaclass=abc.ABCMeta):
         # are present, the date of the document the last measurement is taken
     )
     elevation: float | None = None  # Elevation of the groundwater relative to the mean sea level
-    rect: fitz.Rect | None = None  # The rectangle that contains the extracted information
-    page: int | None = None  # The page number of the PDF document
 
     def is_valid(self) -> bool:
         """Checks if the information is valid.
@@ -43,16 +44,37 @@ class GroundwaterInformation(metaclass=abc.ABCMeta):
         Returns:
             str: The object as a string.
         """
-        measurement_date_str = (
-            self.measurement_date.strftime("%d.%m.%Y") if self.measurement_date is not None else None
-        )
         return (
             f"GroundwaterInformation("
-            f"measurement_date={measurement_date_str}, "
+            f"measurement_date={self.format_measurement_date()}, "
             f"depth={self.depth}, "
-            f"elevation={self.elevation}, "
-            f"page={self.page})"
+            f"elevation={self.elevation})"
         )
+
+    @staticmethod
+    def from_json_values(depth: float | None, measurement_date: str | None, elevation: float | None):
+        if measurement_date is not None and measurement_date != "":
+            # convert to datetime object
+            measurement_date = datetime.strptime(measurement_date, DATE_FORMAT).date()
+        else:
+            measurement_date = None
+
+        return GroundwaterInformation(depth=depth, measurement_date=measurement_date, elevation=elevation)
+
+    def format_measurement_date(self) -> str | None:
+        if self.measurement_date is not None:
+            return self.measurement_date.strftime(DATE_FORMAT)
+        else:
+            return None
+
+
+@dataclass
+class GroundwaterInformationOnPage(metaclass=abc.ABCMeta):
+    """Abstract class for Groundwater Information."""
+
+    groundwater_information: GroundwaterInformation
+    rect: fitz.Rect  # The rectangle that contains the extracted information
+    page: int  # The page number of the PDF document
 
     def to_dict(self) -> dict:
         """Converts the object to a dictionary.
@@ -61,42 +83,24 @@ class GroundwaterInformation(metaclass=abc.ABCMeta):
             dict: The object as a dictionary.
         """
         return {
-            "measurement_date": self.measurement_date.strftime("%d.%m.%Y")
-            if self.measurement_date is not None
-            else None,
-            "depth": self.depth,
-            "elevation": self.elevation,
+            "measurement_date": self.groundwater_information.format_measurement_date(),
+            "depth": self.groundwater_information.depth,
+            "elevation": self.groundwater_information.elevation,
             "page": self.page if self.page else None,
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
         }
 
-    def __eq__(self, other: object) -> bool:
-        """Checks if two GroundwaterInformation objects are equal.
-
-        Args:
-            other (object): The object to compare with.
-
-        Returns:
-            bool: True if the objects are equal, otherwise False.
-        """
-        if not isinstance(other, GroundwaterInformation):
-            return NotImplemented
-
-        assert other.is_valid(), "The extracted information is not valid."
-
-        return (
-            self.measurement_date == other.measurement_date
-            and self.depth == other.depth
-            and self.elevation == other.elevation
+    @staticmethod
+    def from_json_values(
+        measurement_date: str | None, depth: float | None, elevation: float | None, page: int, rect: list[float]
+    ):
+        return GroundwaterInformationOnPage(
+            groundwater_information=GroundwaterInformation.from_json_values(
+                depth=depth, measurement_date=measurement_date, elevation=elevation
+            ),
+            page=page,
+            rect=fitz.Rect(rect),
         )
-
-    def __hash__(self) -> int:
-        """Generates a hash for the GroundwaterInformation object.
-
-        Returns:
-            int: The hash value of the object.
-        """
-        return hash((self.measurement_date, self.depth, self.elevation))
 
 
 class GroundwaterLevelExtractor:
@@ -148,7 +152,9 @@ class GroundwaterLevelExtractor:
         # Return the top three matches (lines only)
         return [match[0] for match in matches[:5]]
 
-    def get_groundwater_near_key(self, lines: list[TextLine], page: int, page_width: float) -> GroundwaterInformation:
+    def get_groundwater_near_key(
+        self, lines: list[TextLine], page: int, page_width: float
+    ) -> list[GroundwaterInformationOnPage]:
         """Find coordinates from text lines that are close to an explicit "groundwater" label.
 
         Also apply some preprocessing to the text of those text lines, to deal with some common (OCR) errors.
@@ -159,7 +165,7 @@ class GroundwaterLevelExtractor:
             page_width (float): the width of the current page (in points / PyMuPDF coordinates)
 
         Returns:
-            list[Coordinate]: all found groundwater information
+            list[GroundwaterInformationOnPage]: all found groundwater information
         """
         # find the key that indicates the groundwater information
         groundwater_key_lines = self.find_groundwater_key(lines)
@@ -197,56 +203,17 @@ class GroundwaterLevelExtractor:
                 extracted_gw_information = self.get_groundwater_info_from_lines(
                     groundwater_info_lines, page, preprocess
                 )
-                if extracted_gw_information.depth:
+                if extracted_gw_information.groundwater_information.depth:
                     extracted_groundwater_informations.append(extracted_gw_information)
             except ValueError as error:
                 logger.warning(f"ValueError: {error}")
                 logger.warning("Could not extract groundwater information from the lines near the key.")
 
-        return self.select_best_groundwater_information(extracted_groundwater_informations)
-
-    def select_best_groundwater_information(
-        self, extracted_groundwater_informations: list[GroundwaterInformation]
-    ) -> GroundwaterInformation | None:
-        """Selects the best groundwater information from a list of extracted groundwater information.
-
-        Args:
-            extracted_groundwater_informations (List[GroundwaterInformation]): The extracted groundwater information.
-
-        Returns:
-            GroundwaterInformation | None: The best groundwater information.
-        """
-        if len(extracted_groundwater_informations) == 0:
-            return None
-
-        # If there is only one extracted groundwater information, return it
-        if len(extracted_groundwater_informations) == 1:
-            return extracted_groundwater_informations[0]
-
-        # if the date is none remove the extracted groundwater information
-        extracted_groundwater_informations_with_date = [
-            info for info in extracted_groundwater_informations if info.measurement_date is not None
-        ]
-
-        # If there are no extracted groundwater information with date, return the first one
-        if len(extracted_groundwater_informations_with_date) == 0:
-            return extracted_groundwater_informations[0]
-
-        # If there are multiple extracted groundwater information, return the one with the most recent date
-        extracted_groundwater_informations_with_date.sort(key=lambda x: x.measurement_date, reverse=True)
-
-        # remove the one with no elevation
-        extracted_groundwater_informations_with_date_and_elevation = [
-            info for info in extracted_groundwater_informations_with_date if info.elevation is not None
-        ]
-        if len(extracted_groundwater_informations_with_date_and_elevation) > 0:
-            return extracted_groundwater_informations_with_date_and_elevation[0]
-
-        return extracted_groundwater_informations_with_date[0]
+        return extracted_groundwater_informations
 
     def get_groundwater_info_from_lines(
         self, lines: list[TextLine], page: int, preprocess: lambda x: x
-    ) -> GroundwaterInformation:
+    ) -> GroundwaterInformationOnPage:
         """Extracts the groundwater information from a list of text lines.
 
         Args:
@@ -254,11 +221,11 @@ class GroundwaterLevelExtractor:
             page (int): the page number (1-based) of the PDF document
             preprocess (callable[[str], str]): a function to preprocess the text of the lines
         Returns:
-            GroundwaterInformation: the extracted groundwater information
+            GroundwaterInformationOnPage: the extracted groundwater information
         """
-        datetime_date: date = None
-        depth: float = None
-        elevation: float = None
+        datetime_date: date | None = None
+        depth: float | None = None
+        elevation: float | None = None
 
         matched_lines_rect = []
 
@@ -330,13 +297,15 @@ class GroundwaterLevelExtractor:
         #   # TODO: IF the date is not provided for the groundwater (most of the time because there was only one
         # drilling date - chose the date of the document. Date needs to be extracted from the document separately)
         if depth:
-            return GroundwaterInformation(
-                depth=depth, measurement_date=datetime_date, elevation=elevation, rect=rect_union, page=page
+            return GroundwaterInformationOnPage(
+                GroundwaterInformation(depth=depth, measurement_date=datetime_date, elevation=elevation),
+                rect=rect_union,
+                page=page,
             )
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
 
-    def extract_groundwater_information(self) -> GroundwaterInformation | None:
+    def extract_groundwater_information(self) -> list[GroundwaterInformationOnPage] | None:
         """Extracts the groundwater information from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
@@ -345,7 +314,7 @@ class GroundwaterLevelExtractor:
             1. if that gives no results, search for coordinates close to an explicit "groundwater" label (e.g. "Gswp")
 
         Returns:
-            GroundwaterInformation | None: the extracted coordinates (if any)
+            list[GroundwaterInformationOnPage] | None: the extracted coordinates (if any)
         """
         for page in self.doc:
             lines = extract_text_lines(page)
@@ -356,8 +325,11 @@ class GroundwaterLevelExtractor:
                 # or XXXX # Add other techniques here
             )
 
-            if found_groundwater_information:
-                logger.info(f"Found groundwater information on page {page_number}: {found_groundwater_information}")
+            if len(found_groundwater_information):
+                groundwater_output = ", ".join(
+                    [str(entry.groundwater_information) for entry in found_groundwater_information]
+                )
+                logger.info(f"Found groundwater information on page {page_number}: {groundwater_output}")
                 return found_groundwater_information
 
         logger.info("No groundwater found in this borehole profile.")

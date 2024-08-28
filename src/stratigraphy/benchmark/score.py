@@ -187,22 +187,26 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
     tp = 0  # correct prediction
     fn = 0  # no predictions, i.e. None
     fp = 0  # wrong prediction
-    number_predictions = 0
 
     for file_name, file_prediction in predictions.items():
         is_correct = getattr(file_prediction, field_key)[field_name]
-        if is_correct:
-            tp += 1
-            document_level_metrics["document_name"].append(file_name)
-            document_level_metrics[field_name].append(1)
-        elif is_correct is None:
+        if is_correct is None:
             fn += 1
         else:
-            fp += 1
+            tp += is_correct["tp"]
+            fp += is_correct["fp"]
+            fn += is_correct["fn"]
             document_level_metrics["document_name"].append(file_name)
-            document_level_metrics[field_name].append(0)
 
-        number_predictions += 1
+            try:
+                precision = is_correct["tp"] / (is_correct["tp"] + is_correct["fp"])
+            except ZeroDivisionError:
+                precision = 0
+            try:
+                recall = is_correct["tp"] / (is_correct["tp"] + is_correct["fn"])
+            except ZeroDivisionError:
+                recall = 0
+            document_level_metrics[field_name].append(f1(precision, recall))
 
     try:
         precision = tp / (tp + fp)
@@ -214,7 +218,6 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
         recall = 0
 
     metrics = {
-        f"{field_name}_accuracy": tp / number_predictions,
         f"{field_name}_precision": precision,
         f"{field_name}_recall": recall,
         f"{field_name}_f1": f1(precision, recall),
@@ -233,7 +236,7 @@ def get_metadata_metrics(predictions: dict[str, FilePredictions], metadata_field
 
 def get_groundwater_metrics(predictions: dict[str, FilePredictions], metadata_field: str) -> dict:
     """Get the groundwater information metrics."""
-    return get_metrics(predictions, "groundwater_information_is_correct", metadata_field)
+    return get_metrics(predictions, "groundwater_is_correct", metadata_field)
 
 
 def evaluate_groundwater_information(predictions: dict[str, FilePredictions]) -> tuple[dict, pd.DataFrame]:
@@ -246,19 +249,17 @@ def evaluate_groundwater_information(predictions: dict[str, FilePredictions]) ->
         tuple[dict, pd.DataFrame]: The overall groundwater information accuracy and the individual document metrics as
         a DataFrame.
     """
-    document_level_metrics_groundwater_information, metrics_groundwater_information = get_groundwater_metrics(
-        predictions, "groundwater_information"
-    )
-    document_level_metrics_groundwater_information_depth, metrics_groundwater_information_depth = (
-        get_groundwater_metrics(predictions, "groundwater_information_depth")
+    document_level_metrics_groundwater, metrics_groundwater = get_groundwater_metrics(predictions, "groundwater")
+    document_level_metrics_groundwater_depth, metrics_groundwater_depth = get_groundwater_metrics(
+        predictions, "groundwater_depth"
     )
 
-    metrics_groundwater_information.update(metrics_groundwater_information_depth)
+    metrics_groundwater.update(metrics_groundwater_depth)
 
     return (
-        metrics_groundwater_information,
-        pd.DataFrame(document_level_metrics_groundwater_information),
-        pd.DataFrame(document_level_metrics_groundwater_information_depth),
+        metrics_groundwater,
+        pd.DataFrame(document_level_metrics_groundwater),
+        pd.DataFrame(document_level_metrics_groundwater_depth),
     )
 
 
@@ -274,7 +275,6 @@ def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd
     document_level_metrics_coordinates, metrics_coordinates = get_metadata_metrics(predictions, "coordinates")
 
     metrics = {
-        "coordinate_accuracy": metrics_coordinates["coordinates_accuracy"],
         "coordinate_precision": metrics_coordinates["coordinates_precision"],
         "coordinate_recall": metrics_coordinates["coordinates_recall"],
         "coordinate_f1": metrics_coordinates["coordinates_f1"],

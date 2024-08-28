@@ -7,7 +7,7 @@ from pathlib import Path
 import fitz
 from dotenv import load_dotenv
 
-from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformation
+from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformationOnPage
 from stratigraphy.util.coordinate_extraction import Coordinate
 from stratigraphy.util.interval import BoundaryInterval
 from stratigraphy.util.predictions import FilePredictions, LayerPrediction
@@ -48,7 +48,6 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
 
         depths_materials_column_pairs = file_prediction.depths_materials_columns_pairs
         coordinates = file_prediction.metadata.coordinates
-        groundwater_information = file_prediction.groundwater_information
         with fitz.Document(directory / file_name) as doc:
             for page_index, page in enumerate(doc):
                 page_number = page_index + 1
@@ -63,8 +62,9 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                     )
                 if coordinates is not None and page_number == coordinates.page:
                     draw_coordinates(shape, coordinates)
-                if groundwater_information is not None and page_number == groundwater_information.page:
-                    draw_groundwater_information(shape, groundwater_information)
+                for groundwater_entry in file_prediction.groundwater_entries:
+                    if page_number == groundwater_entry.page:
+                        draw_groundwater_information(shape, groundwater_entry)
                 draw_depth_columns_and_material_rect(
                     shape,
                     page.derotation_matrix,
@@ -113,10 +113,10 @@ def draw_metadata(
         rotation (float): The rotation of the page.
         coordinates (Coordinate | None): The coordinate object to draw.
         coordinates_is_correct (bool): Whether the coordinates are correct.
-        groundwater_info (GroundwaterInformation | None): The groundwater information to draw.
-        groundwater_is_correct (bool): Whether the groundwater information is correct.
     """
-    coordinate_color = "green" if coordinates_is_correct else "red"
+    # TODO associate correctness with the extracted coordinates in a better way
+    coordinate_correct = coordinates_is_correct is not None and coordinates_is_correct["tp"] > 0
+    coordinate_color = "green" if coordinate_correct else "red"
     coordinate_rect = fitz.Rect([5, 5, 200, 25])
 
     shape.draw_rect(coordinate_rect * derotation_matrix)
@@ -144,14 +144,14 @@ def draw_coordinates(shape: fitz.Shape, coordinates: Coordinate) -> None:
     shape.finish(color=fitz.utils.getColor("purple"))
 
 
-def draw_groundwater_information(shape: fitz.Shape, groundwater_information: GroundwaterInformation) -> None:
+def draw_groundwater_information(shape: fitz.Shape, groundwater_entry: GroundwaterInformationOnPage) -> None:
     """Draw a bounding box around the area of the page where the coordinates were extracted from.
 
     Args:
         shape (fitz.Shape): The shape object for drawing.
-        groundwater_information (GroundwaterInformation): The groundwater information to draw.
+        groundwater_entry (GroundwaterInformationOnPage): The groundwater information to draw.
     """
-    shape.draw_rect(groundwater_information.rect)
+    shape.draw_rect(groundwater_entry.rect)
     shape.finish(color=fitz.utils.getColor("pink"))
 
 
