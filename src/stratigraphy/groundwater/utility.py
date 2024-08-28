@@ -24,11 +24,12 @@ def extract_date(text: str) -> tuple[date | None, str | None]:
     return None, None
 
 
-def extract_depth(text: str) -> float | None:
+def extract_depth(text: str, max_depth: int) -> float | None:
     """Extract the depth from a string.
 
     Args:
         text (str): The text to extract the depth from.
+        max_depth (int): The maximum depth allowed.
 
     Returns:
         float: The extracted depth.
@@ -45,7 +46,11 @@ def extract_depth(text: str) -> float | None:
         depth_match = regex.search(pattern, corrected_text)
         if depth_match:
             depth = float(depth_match.group(1).replace(",", "."))
-            break
+            if depth > max_depth:
+                # If the extracted depth is greater than the max depth, set it to None and continue searching.
+                depth = None
+            else:
+                break
     return depth
 
 

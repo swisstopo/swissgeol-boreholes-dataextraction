@@ -64,7 +64,7 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                     draw_coordinates(shape, coordinates)
                 for groundwater_entry in file_prediction.groundwater_entries:
                     if page_number == groundwater_entry.page:
-                        draw_groundwater_information(shape, groundwater_entry)
+                        draw_groundwater(shape, groundwater_entry)
                 draw_depth_columns_and_material_rect(
                     shape,
                     page.derotation_matrix,
@@ -144,7 +144,7 @@ def draw_coordinates(shape: fitz.Shape, coordinates: Coordinate) -> None:
     shape.finish(color=fitz.utils.getColor("purple"))
 
 
-def draw_groundwater_information(shape: fitz.Shape, groundwater_entry: GroundwaterInformationOnPage) -> None:
+def draw_groundwater(shape: fitz.Shape, groundwater_entry: GroundwaterInformationOnPage) -> None:
     """Draw a bounding box around the area of the page where the coordinates were extracted from.
 
     Args:

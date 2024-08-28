@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 DATE_FORMAT = "%Y-%m-%d"
+MAX_DEPTH = 200  # Maximum depth of the groundwater in meters - Otherwise, depth might be confused with
+# elevation from the extraction algorithm.
+# TODO: One could use the depth column to find the maximal depth of the borehole and use this as a threshold.
 
 
 @dataclass
@@ -72,7 +75,7 @@ class GroundwaterInformation(metaclass=abc.ABCMeta):
 class GroundwaterInformationOnPage(metaclass=abc.ABCMeta):
     """Abstract class for Groundwater Information."""
 
-    groundwater_information: GroundwaterInformation
+    groundwater: GroundwaterInformation
     rect: fitz.Rect  # The rectangle that contains the extracted information
     page: int  # The page number of the PDF document
 
@@ -83,9 +86,9 @@ class GroundwaterInformationOnPage(metaclass=abc.ABCMeta):
             dict: The object as a dictionary.
         """
         return {
-            "measurement_date": self.groundwater_information.format_measurement_date(),
-            "depth": self.groundwater_information.depth,
-            "elevation": self.groundwater_information.elevation,
+            "measurement_date": self.groundwater.format_measurement_date(),
+            "depth": self.groundwater.depth,
+            "elevation": self.groundwater.elevation,
             "page": self.page if self.page else None,
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
         }
@@ -95,7 +98,7 @@ class GroundwaterInformationOnPage(metaclass=abc.ABCMeta):
         measurement_date: str | None, depth: float | None, elevation: float | None, page: int, rect: list[float]
     ):
         return GroundwaterInformationOnPage(
-            groundwater_information=GroundwaterInformation.from_json_values(
+            groundwater=GroundwaterInformation.from_json_values(
                 depth=depth, measurement_date=measurement_date, elevation=elevation
             ),
             page=page,
@@ -172,7 +175,7 @@ class GroundwaterLevelExtractor:
         if groundwater_key_lines is None:
             return []
 
-        extracted_groundwater_informations = []
+        extracted_groundwater_list = []
 
         for groundwater_key_line in groundwater_key_lines:
             # find the lines of the text that are close to an identified groundwater key.
@@ -200,16 +203,14 @@ class GroundwaterLevelExtractor:
             groundwater_info_lines.sort(key=lambda line: abs((line.rect.x0 + line.rect.x1) / 2 - key_center))
 
             try:
-                extracted_gw_information = self.get_groundwater_info_from_lines(
-                    groundwater_info_lines, page, preprocess
-                )
-                if extracted_gw_information.groundwater_information.depth:
-                    extracted_groundwater_informations.append(extracted_gw_information)
+                extracted_gw = self.get_groundwater_info_from_lines(groundwater_info_lines, page, preprocess)
+                if extracted_gw.groundwater.depth:
+                    extracted_groundwater_list.append(extracted_gw)
             except ValueError as error:
                 logger.warning(f"ValueError: {error}")
                 logger.warning("Could not extract groundwater information from the lines near the key.")
 
-        return extracted_groundwater_informations
+        return extracted_groundwater_list
 
     def get_groundwater_info_from_lines(
         self, lines: list[TextLine], page: int, preprocess: lambda x: x
@@ -240,7 +241,7 @@ class GroundwaterLevelExtractor:
                     text = text.replace(extracted_date_str, "").strip()
                     datetime_date = extracted_date
 
-                depth = extract_depth(text)
+                depth = extract_depth(text, MAX_DEPTH)
                 if depth:
                     text = text.replace(str(depth), "").strip()
 
@@ -258,7 +259,7 @@ class GroundwaterLevelExtractor:
 
                 # Pattern for matching depth (e.g., "1,48 m u.T.")
                 if not depth:
-                    depth = extract_depth(text)
+                    depth = extract_depth(text, MAX_DEPTH)
                     if depth:
                         matched_lines_rect.append(line.rect)
                         text = text.replace(str(depth), "").strip()
@@ -305,7 +306,7 @@ class GroundwaterLevelExtractor:
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
 
-    def extract_groundwater_information(self) -> list[GroundwaterInformationOnPage] | None:
+    def extract_groundwater(self) -> list[GroundwaterInformationOnPage] | None:
         """Extracts the groundwater information from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
@@ -320,17 +321,15 @@ class GroundwaterLevelExtractor:
             lines = extract_text_lines(page)
             page_number = page.number + 1  # page.number is 0-based
 
-            found_groundwater_information = (
+            found_groundwater = (
                 self.get_groundwater_near_key(lines, page_number, page.rect.width)
                 # or XXXX # Add other techniques here
             )
 
-            if len(found_groundwater_information):
-                groundwater_output = ", ".join(
-                    [str(entry.groundwater_information) for entry in found_groundwater_information]
-                )
+            if len(found_groundwater):
+                groundwater_output = ", ".join([str(entry.groundwater) for entry in found_groundwater])
                 logger.info(f"Found groundwater information on page {page_number}: {groundwater_output}")
-                return found_groundwater_information
+                return found_groundwater
 
         logger.info("No groundwater found in this borehole profile.")
         return None

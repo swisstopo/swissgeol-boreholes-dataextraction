@@ -151,19 +151,19 @@ def evaluate_borehole_extraction(
         document_level_metrics_coordinates,
     ) = evaluate_metadata(predictions)
     (
-        metrics_groundwater_information,
-        document_level_metrics_groundwater_information,
-        document_level_metrics_groundwater_information_depth,
-    ) = evaluate_groundwater_information(predictions)
-    metrics = {**layer_metrics, **coordinate_metrics, **metrics_groundwater_information}
+        metrics_groundwater,
+        document_level_metrics_groundwater,
+        document_level_metrics_groundwater_depth,
+    ) = evaluate_groundwater(predictions)
+    metrics = {**layer_metrics, **coordinate_metrics, **metrics_groundwater}
     document_level_metrics = pd.merge(
         layer_document_level_metrics, document_level_metrics_coordinates, on="document_name", how="outer"
     )
     document_level_metrics = pd.merge(
-        document_level_metrics, document_level_metrics_groundwater_information, on="document_name", how="outer"
+        document_level_metrics, document_level_metrics_groundwater, on="document_name", how="outer"
     )
     document_level_metrics = pd.merge(
-        document_level_metrics, document_level_metrics_groundwater_information_depth, on="document_name", how="outer"
+        document_level_metrics, document_level_metrics_groundwater_depth, on="document_name", how="outer"
     )
     return metrics, document_level_metrics
 
@@ -206,6 +206,10 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
         document_level_metrics[field_name].append(f1(precision, recall))
 
     try:
+        accuracy = tp / (tp + fp + fn)
+    except ZeroDivisionError:
+        accuracy = 0
+    try:
         precision = tp / (tp + fp)
     except ZeroDivisionError:
         precision = 0
@@ -215,6 +219,7 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
         recall = 0
 
     metrics = {
+        f"{field_name}_accuracy": accuracy,
         f"{field_name}_precision": precision,
         f"{field_name}_recall": recall,
         f"{field_name}_f1": f1(precision, recall),
@@ -236,7 +241,7 @@ def get_groundwater_metrics(predictions: dict[str, FilePredictions], metadata_fi
     return get_metrics(predictions, "groundwater_is_correct", metadata_field)
 
 
-def evaluate_groundwater_information(predictions: dict[str, FilePredictions]) -> tuple[dict, pd.DataFrame]:
+def evaluate_groundwater(predictions: dict[str, FilePredictions]) -> tuple[dict, pd.DataFrame]:
     """Evaluate the groundwater information predictions.
 
     Args:
@@ -272,6 +277,7 @@ def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd
     document_level_metrics_coordinates, metrics_coordinates = get_metadata_metrics(predictions, "coordinates")
 
     metrics = {
+        "coordinate_accuracy": metrics_coordinates["coordinates_accuracy"],
         "coordinate_precision": metrics_coordinates["coordinates_precision"],
         "coordinate_recall": metrics_coordinates["coordinates_recall"],
         "coordinate_f1": metrics_coordinates["coordinates_f1"],

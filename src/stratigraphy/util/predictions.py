@@ -253,7 +253,7 @@ class FilePredictions:
         ############################################################################################################
         ### Compute the metadata correctness for the groundwater information.
         ############################################################################################################
-        gt_groundwater_info = [
+        gt_groundwater = [
             GroundwaterInformation.from_json_values(
                 depth=json_gt_data["depth"],
                 measurement_date=json_gt_data["date"],
@@ -265,25 +265,25 @@ class FilePredictions:
         self.groundwater_is_correct["groundwater"] = self.count_against_ground_truth(
             [
                 (
-                    entry.groundwater_information.depth,
-                    entry.groundwater_information.format_measurement_date(),
-                    entry.groundwater_information.elevation,
+                    entry.groundwater.depth,
+                    entry.groundwater.format_measurement_date(),
+                    entry.groundwater.elevation,
                 )
                 for entry in self.groundwater_entries
             ],
-            [(entry.depth, entry.format_measurement_date(), entry.elevation) for entry in gt_groundwater_info],
+            [(entry.depth, entry.format_measurement_date(), entry.elevation) for entry in gt_groundwater],
         )
         self.groundwater_is_correct["groundwater_depth"] = self.count_against_ground_truth(
-            [entry.groundwater_information.depth for entry in self.groundwater_entries],
-            [entry.depth for entry in gt_groundwater_info],
+            [entry.groundwater.depth for entry in self.groundwater_entries],
+            [entry.depth for entry in gt_groundwater],
         )
         self.groundwater_is_correct["groundwater_elevation"] = self.count_against_ground_truth(
-            [entry.groundwater_information.elevation for entry in self.groundwater_entries],
-            [entry.elevation for entry in gt_groundwater_info],
+            [entry.groundwater.elevation for entry in self.groundwater_entries],
+            [entry.elevation for entry in gt_groundwater],
         )
         self.groundwater_is_correct["groundwater_date"] = self.count_against_ground_truth(
-            [entry.groundwater_information.measurement_date for entry in self.groundwater_entries],
-            [entry.measurement_date for entry in gt_groundwater_info],
+            [entry.groundwater.measurement_date for entry in self.groundwater_entries],
+            [entry.measurement_date for entry in gt_groundwater],
         )
 
     @staticmethod
