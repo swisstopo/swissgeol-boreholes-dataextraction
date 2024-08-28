@@ -175,8 +175,11 @@ class FilePredictions:
             ground_truth (dict): The ground truth for the file.
         """
         self.evaluate_layers(ground_truth["layers"])
-        self.evaluate_metadata(ground_truth.get("metadata"))
-        self.evaluate_groundwater(ground_truth.get("groundwater"))
+        self.evaluate_metadata(ground_truth.get("metadata", {}))
+        groundwater_ground_truth = ground_truth.get("groundwater", [])
+        if groundwater_ground_truth is None:
+            groundwater_ground_truth = []
+        self.evaluate_groundwater(groundwater_ground_truth)
 
     def evaluate_layers(self, ground_truth_layers: list):
         """Evaluate all layers of the predictions against the ground truth.
@@ -205,34 +208,32 @@ class FilePredictions:
         ############################################################################################################
         ### Compute the metadata correctness for the coordinates.
         ############################################################################################################
-        if self.metadata.coordinates is None or (
-            metadata_ground_truth is None or metadata_ground_truth.get("coordinates") is None
-        ):
-            self.metadata_is_correct["coordinates"] = None
+        extracted_coordinates = self.metadata.coordinates
+        ground_truth_coordinates = metadata_ground_truth.get("coordinates")
 
-        else:
-            if (
-                self.metadata.coordinates.east.coordinate_value > 2e6
-                and metadata_ground_truth["coordinates"]["E"] < 2e6
-            ):
-                ground_truth_east = int(metadata_ground_truth["coordinates"]["E"]) + 2e6
-                ground_truth_north = int(metadata_ground_truth["coordinates"]["N"]) + 1e6
-            elif (
-                self.metadata.coordinates.east.coordinate_value < 2e6
-                and metadata_ground_truth["coordinates"]["E"] > 2e6
-            ):
-                ground_truth_east = int(metadata_ground_truth["coordinates"]["E"]) - 2e6
-                ground_truth_north = int(metadata_ground_truth["coordinates"]["N"]) - 1e6
+        if extracted_coordinates is not None and ground_truth_coordinates is not None:
+            if extracted_coordinates.east.coordinate_value > 2e6 and ground_truth_coordinates["E"] < 2e6:
+                ground_truth_east = int(ground_truth_coordinates["E"]) + 2e6
+                ground_truth_north = int(ground_truth_coordinates["N"]) + 1e6
+            elif extracted_coordinates.east.coordinate_value < 2e6 and ground_truth_coordinates["E"] > 2e6:
+                ground_truth_east = int(ground_truth_coordinates["E"]) - 2e6
+                ground_truth_north = int(ground_truth_coordinates["N"]) - 1e6
             else:
-                ground_truth_east = int(metadata_ground_truth["coordinates"]["E"])
-                ground_truth_north = int(metadata_ground_truth["coordinates"]["N"])
+                ground_truth_east = int(ground_truth_coordinates["E"])
+                ground_truth_north = int(ground_truth_coordinates["N"])
 
-            if (math.isclose(int(self.metadata.coordinates.east.coordinate_value), ground_truth_east, abs_tol=2)) and (
-                math.isclose(int(self.metadata.coordinates.north.coordinate_value), ground_truth_north, abs_tol=2)
+            if (math.isclose(int(extracted_coordinates.east.coordinate_value), ground_truth_east, abs_tol=2)) and (
+                math.isclose(int(extracted_coordinates.north.coordinate_value), ground_truth_north, abs_tol=2)
             ):
                 self.metadata_is_correct["coordinates"] = {"tp": 1, "fp": 0, "fn": 0}
             else:
                 self.metadata_is_correct["coordinates"] = {"tp": 0, "fp": 1, "fn": 1}
+        else:
+            self.metadata_is_correct["coordinates"] = {
+                "tp": 0,
+                "fp": 1 if extracted_coordinates is not None else 0,
+                "fn": 1 if ground_truth_coordinates is not None else 0,
+            }
 
     @staticmethod
     def count_against_ground_truth(values: list, ground_truth: list) -> dict:
@@ -243,53 +244,47 @@ class FilePredictions:
         tp = (values_counter & ground_truth_counter).total()  # size of intersection
         return {"tp": tp, "fp": len(values) - tp, "fn": len(ground_truth) - tp}
 
-    def evaluate_groundwater(self, groundwater_ground_truth: dict):
+    def evaluate_groundwater(self, groundwater_ground_truth: list):
         """Evaluate the groundwater information of the file against the ground truth.
 
         Args:
-            groundwater_ground_truth (dict): The ground truth for the file.
+            groundwater_ground_truth (list): The ground truth for the file.
         """
         ############################################################################################################
         ### Compute the metadata correctness for the groundwater information.
         ############################################################################################################
-        if self.groundwater_entries is None or groundwater_ground_truth is None:
-            self.groundwater_is_correct["groundwater"] = None
-            self.groundwater_is_correct["groundwater_depth"] = None
-            self.groundwater_is_correct["groundwater_elevation"] = None
-            self.groundwater_is_correct["groundwater_date"] = None
-        else:
-            gt_groundwater_info = [
-                GroundwaterInformation.from_json_values(
-                    depth=json_gt_data["depth"],
-                    measurement_date=json_gt_data["date"],
-                    elevation=json_gt_data["elevation"],
-                )
-                for json_gt_data in groundwater_ground_truth
-            ]
+        gt_groundwater_info = [
+            GroundwaterInformation.from_json_values(
+                depth=json_gt_data["depth"],
+                measurement_date=json_gt_data["date"],
+                elevation=json_gt_data["elevation"],
+            )
+            for json_gt_data in groundwater_ground_truth
+        ]
 
-            self.groundwater_is_correct["groundwater"] = self.count_against_ground_truth(
-                [
-                    (
-                        entry.groundwater_information.depth,
-                        entry.groundwater_information.format_measurement_date(),
-                        entry.groundwater_information.elevation,
-                    )
-                    for entry in self.groundwater_entries
-                ],
-                [(entry.depth, entry.format_measurement_date(), entry.elevation) for entry in gt_groundwater_info],
-            )
-            self.groundwater_is_correct["groundwater_depth"] = self.count_against_ground_truth(
-                [entry.groundwater_information.depth for entry in self.groundwater_entries],
-                [entry.depth for entry in gt_groundwater_info],
-            )
-            self.groundwater_is_correct["groundwater_elevation"] = self.count_against_ground_truth(
-                [entry.groundwater_information.elevation for entry in self.groundwater_entries],
-                [entry.elevation for entry in gt_groundwater_info],
-            )
-            self.groundwater_is_correct["groundwater_date"] = self.count_against_ground_truth(
-                [entry.groundwater_information.measurement_date for entry in self.groundwater_entries],
-                [entry.measurement_date for entry in gt_groundwater_info],
-            )
+        self.groundwater_is_correct["groundwater"] = self.count_against_ground_truth(
+            [
+                (
+                    entry.groundwater_information.depth,
+                    entry.groundwater_information.format_measurement_date(),
+                    entry.groundwater_information.elevation,
+                )
+                for entry in self.groundwater_entries
+            ],
+            [(entry.depth, entry.format_measurement_date(), entry.elevation) for entry in gt_groundwater_info],
+        )
+        self.groundwater_is_correct["groundwater_depth"] = self.count_against_ground_truth(
+            [entry.groundwater_information.depth for entry in self.groundwater_entries],
+            [entry.depth for entry in gt_groundwater_info],
+        )
+        self.groundwater_is_correct["groundwater_elevation"] = self.count_against_ground_truth(
+            [entry.groundwater_information.elevation for entry in self.groundwater_entries],
+            [entry.elevation for entry in gt_groundwater_info],
+        )
+        self.groundwater_is_correct["groundwater_date"] = self.count_against_ground_truth(
+            [entry.groundwater_information.measurement_date for entry in self.groundwater_entries],
+            [entry.measurement_date for entry in gt_groundwater_info],
+        )
 
     @staticmethod
     def _find_matching_layer(

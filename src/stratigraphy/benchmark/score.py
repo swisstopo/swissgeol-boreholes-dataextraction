@@ -190,23 +190,20 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
 
     for file_name, file_prediction in predictions.items():
         is_correct = getattr(file_prediction, field_key)[field_name]
-        if is_correct is None:
-            fn += 1
-        else:
-            tp += is_correct["tp"]
-            fp += is_correct["fp"]
-            fn += is_correct["fn"]
-            document_level_metrics["document_name"].append(file_name)
+        tp += is_correct["tp"]
+        fp += is_correct["fp"]
+        fn += is_correct["fn"]
+        document_level_metrics["document_name"].append(file_name)
 
-            try:
-                precision = is_correct["tp"] / (is_correct["tp"] + is_correct["fp"])
-            except ZeroDivisionError:
-                precision = 0
-            try:
-                recall = is_correct["tp"] / (is_correct["tp"] + is_correct["fn"])
-            except ZeroDivisionError:
-                recall = 0
-            document_level_metrics[field_name].append(f1(precision, recall))
+        try:
+            precision = is_correct["tp"] / (is_correct["tp"] + is_correct["fp"])
+        except ZeroDivisionError:
+            precision = 0
+        try:
+            recall = is_correct["tp"] / (is_correct["tp"] + is_correct["fn"])
+        except ZeroDivisionError:
+            recall = 0
+        document_level_metrics[field_name].append(f1(precision, recall))
 
     try:
         precision = tp / (tp + fp)
