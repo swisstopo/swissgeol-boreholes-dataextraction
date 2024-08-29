@@ -243,7 +243,18 @@ To launch the API and access its endpoints, follow these steps:
     source env/bin/activate
     ```
 
-2. **Start the FastAPI server**
+2. **Environment variables**
+
+    Please make sure to define the environment variables needed for the API to access the S3 Bucket of interest.
+
+    ```python
+    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+    aws_secret_key_access = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    aws_session_token = os.environ.get("AWS_SESSION_TOKEN")
+    aws_endpoint = os.environ.get("AWS_ENDPOINT")
+    ```
+
+3. **Start the FastAPI server**
 
     Run the following command to start the FastAPI server:
 
@@ -277,7 +288,7 @@ To launch the API and access its endpoints, follow these steps:
 
     This will expose the API to the port 8002 of the localhost. You can see the swagger by opening: `http://127.0.0.1:8002/docs#/` in your favorite browser. 
 
-3. **Access the API endpoints**
+4. **Access the API endpoints**
 
     Once the server is running, you can access the API endpoints using a web browser or an API testing tool like Postman.
 
@@ -287,7 +298,7 @@ To launch the API and access its endpoints, follow these steps:
 
     **Note:** Make sure to replace `localhost` with the appropriate hostname or IP address if you are running the server on a remote machine.
 
-4. **Stop the server**
+5. **Stop the server**
 
     To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is running.
 

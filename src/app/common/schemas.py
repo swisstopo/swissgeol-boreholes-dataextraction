@@ -49,6 +49,7 @@ class Coordinates(BaseModel):
     east: float = Field(..., example=1.0)
     north: float = Field(..., example=2.0)
     page: int = Field(..., example=1)
+    spacial_reference_system: str = Field(..., example="LV95")
 
 
 class ExtractDataRequest(ABC, BaseModel):
@@ -70,7 +71,7 @@ class ExtractDataRequest(ABC, BaseModel):
         example for the entire request model.
         """
 
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "filename": "document.png",
                 "page_number": 1,

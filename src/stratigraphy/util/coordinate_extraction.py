@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import fitz
 import regex
 
-from stratigraphy.util.extract_text import extract_text_lines
+from stratigraphy.util.extract_text import extract_text_lines, extract_text_lines_from_bbox
 from stratigraphy.util.line import TextLine
 from stratigraphy.util.util import read_params
 
@@ -119,7 +119,7 @@ class LV03Coordinate(Coordinate):
 class CoordinateExtractor:
     """Extracts coordinates from a PDF document."""
 
-    def __init__(self, document: fitz.Document):
+    def __init__(self, document: fitz.Document = None):
         """Initializes the CoordinateExtractor object.
 
         Args:
@@ -337,5 +337,32 @@ class CoordinateExtractor:
 
             if len(found_coordinates) > 0:
                 return found_coordinates[0]
+
+        logger.info("No coordinates found in this borehole profile.")
+
+    def extract_coordinates_from_bbox(self, page: fitz.Page, page_number: int, bbox: fitz.Rect) -> Coordinate | None:
+        """Extracts the coordinates from a borehole profile.
+
+        Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
+        page.
+
+        Algorithm description:
+            1. search for coordinates with explicit 'X' and 'Y' labels
+            2. if that gives no results, search for coordinates close to an explicit "coordinates" label
+            3. if that gives no results either, try to detect coordinates in the full text
+
+        Returns:
+            Coordinate | None: the extracted coordinates (if any)
+        """
+        lines = extract_text_lines_from_bbox(page, bbox)
+
+        found_coordinates = (
+            self.get_coordinates_with_x_y_labels(lines, page_number)
+            or self.get_coordinates_near_key(lines, page_number, page.rect.width)
+            or self.get_coordinates_from_lines(lines, page_number)
+        )
+
+        if len(found_coordinates) > 0:
+            return found_coordinates[0]
 
         logger.info("No coordinates found in this borehole profile.")

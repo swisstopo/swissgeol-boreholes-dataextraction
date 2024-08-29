@@ -3,48 +3,34 @@
 import os
 
 import fitz
+from app.common.aws import load_pdf_from_aws, s3_client
 from app.common.config import config
 from app.common.schemas import PNGResponse
-from boto3 import client
 from fastapi import Form, HTTPException
 
 
-def create_pngs(filename: str = Form(...)):
+def create_pngs(aws_filename: str = Form(...)):
     """Convert a PDF document to PNG images.
 
     Args:
-        filename (str): The name of the PDF document in the S3 bucket. For example, "pdfs/geoquat/train/10012.pdf".
+        aws_filename (str): The name of the PDF document in the S3 bucket. For example, "pdfs/geoquat/train/10012.pdf".
 
     Returns:
         PNGResponse: The URLs of the PNG images in the S3 bucket.
     """
     # Validate the filename parameter
-    if not filename or not isinstance(filename, str):
+    if not aws_filename or not isinstance(aws_filename, str):
         raise HTTPException(
             status_code=400, detail="Invalid request. 'filename' parameter is required and must be a string."
         )
 
     # Get the filename from the path
-    filename = filename.split("/")[-1].split(".")[0]
-    dataset_type = filename.split("/")[-2]  # The dataset name (e.g., "train")
-    dataset_name = filename.split("/")[-3]  # The dataset type (e.g., "geoquat")
+    filename = aws_filename.split("/")[-1].split(".")[0]
+    dataset_type = aws_filename.split("/")[-2]  # The dataset name (e.g., "train")
+    dataset_name = aws_filename.split("/")[-3]  # The dataset type (e.g., "geoquat")
 
     # Initialize the S3 client
-    # AWS S3 Configuration
-    s3_client = client("s3")
-
-    # Check if the PDF exists in S3
-    try:
-        pdf_object = s3_client.get_object(Bucket=config.bucket_name, Key=filename)
-    except s3_client.exceptions.NoSuchKey:
-        raise HTTPException(status_code=404, detail="PDF document not found in S3 bucket.") from None
-
-    # Load the PDF from the S3 object
-    try:
-        pdf_data = pdf_object["Body"].read()
-        pdf_document = fitz.open(stream=pdf_data, filetype="pdf")
-    except Exception:
-        raise HTTPException(status_code=500, detail="Failed to load PDF document.") from None
+    pdf_document = load_pdf_from_aws(aws_filename)
 
     png_urls = []
 
