@@ -32,6 +32,7 @@ class FormatTypes(Enum):
     NUMBER = "number"
     COORDINATES = "coordinates"
     ELEVATION = "elevation"
+    LINES = "lines"
 
 
 class BoundingBox(BaseModel):
@@ -84,7 +85,7 @@ class ExtractDataRequest(ABC, BaseModel):
 class ExtractDataResponse(ABC, BaseModel):
     """Response schema for the extract_data endpoint."""
 
-    bbox: BoundingBox = Field(..., example={"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0})
+    bbox_list: list[BoundingBox] = Field(..., example=[{"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0}])
 
     @property
     @abstractmethod
@@ -95,7 +96,9 @@ class ExtractDataResponse(ABC, BaseModel):
 class ExtractCoordinatesResponse(ExtractDataResponse):
     """Response schema for the extract_data endpoint."""
 
-    coordinates: Coordinates
+    coordinates: list[Coordinates] = Field(
+        ..., example=[{"east": 1.0, "north": 2.0, "page": 1, "spacial_reference_system": "LV95"}]
+    )
 
     @property
     def response_type(self):
@@ -105,8 +108,38 @@ class ExtractCoordinatesResponse(ExtractDataResponse):
 class ExtractElevationResponse(ExtractDataResponse):
     """Response schema for the extract_data endpoint."""
 
-    elevation: float
+    elevation: list[float] = Field(..., example=[1.0])
 
     @property
     def response_type(self):
         return "elevation"
+
+
+class ExtractTextResponse(ExtractDataResponse):
+    """Response schema for the extract_data endpoint."""
+
+    text: list[str] = Field(..., example=["text"])
+
+    @property
+    def response_type(self):
+        return "text"
+
+
+class ExtractNumberResponse(ExtractDataResponse):
+    """Response schema for the extract_data endpoint."""
+
+    number: list[float] = Field(..., example=[1.0])
+
+    @property
+    def response_type(self):
+        return "number"
+
+
+class ExtractLinesResponse(ExtractDataResponse):
+    """Response schema for the extract_data endpoint."""
+
+    lines: list[str] = Field(..., example=["line"])
+
+    @property
+    def response_type(self):
+        return "lines"
