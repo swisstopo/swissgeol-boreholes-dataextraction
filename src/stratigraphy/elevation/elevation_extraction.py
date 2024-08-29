@@ -147,7 +147,9 @@ class ElevationExtractor:
             # find the lines of the text that are close to an identified coordinate key.
             key_rect = elevation_key_line.rect
             # look for coordinate values to the right and/or immediately below the key
-            elevation_search_rect = fitz.Rect(key_rect.x0, key_rect.y0, key_rect.x1 + 5 * key_rect.width, key_rect.y1)
+            elevation_search_rect = fitz.Rect(
+                key_rect.x0, key_rect.y0, key_rect.x1 + 5 * key_rect.width, key_rect.y1 + 1 * key_rect.width
+            )
             elevation_lines = [line for line in lines if line.rect.intersects(elevation_search_rect)]
 
             def preprocess(value: str) -> str:

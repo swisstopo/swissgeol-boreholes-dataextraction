@@ -67,13 +67,15 @@ def extract_elevation(text: str) -> float | None:
         r"([\d.]+)\s*m\s*u\.m\.",
         r"([\d.]+)\s*m\s*ur.",
         r"(\d{3,}\.\d+)",
+        r"(\d{3,})\s*m",
+        # r"([\d]+(?:\s*\.\s*\d+))",  # match numbers that may have a space before and after the decimal point.
     ]
 
     elevation = None
     for pattern in elevation_patterns:
-        elevation_match = regex.search(pattern, text.lower())
+        elevation_match = regex.search(pattern, text.lower().replace(", ", ",").replace(". ", "."))
         if elevation_match:
-            elevation = float(elevation_match.group(1).replace(",", "."))
+            elevation = float(elevation_match.group(1).replace(" ", "").replace(",", "."))
             break
 
     return elevation
