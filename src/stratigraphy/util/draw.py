@@ -50,7 +50,6 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
         depths_materials_column_pairs = file_prediction.depths_materials_columns_pairs
         coordinates = file_prediction.metadata.coordinates
         elevation = file_prediction.metadata.elevation
-        groundwater_information = file_prediction.groundwater_information
         with fitz.Document(directory / file_name) as doc:
             for page_index, page in enumerate(doc):
                 page_number = page_index + 1
@@ -67,6 +66,8 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                     )
                 if coordinates is not None and page_number == coordinates.page:
                     draw_coordinates(shape, coordinates)
+                if elevation is not None and page_number == elevation.page:
+                    draw_elevation(shape, elevation)
                 for groundwater_entry in file_prediction.groundwater_entries:
                     if page_number == groundwater_entry.page:
                         draw_groundwater(shape, groundwater_entry)
@@ -128,7 +129,8 @@ def draw_metadata(
     coordinate_color = "green" if coordinate_correct else "red"
     coordinate_rect = fitz.Rect([5, 5, 200, 25])
 
-    elevation_color = "green" if elevation_is_correct else "red"
+    elevation_correct = elevation_is_correct is not None and elevation_is_correct["tp"] > 0
+    elevation_color = "green" if elevation_correct else "red"
     elevation_rect = fitz.Rect([5, 25, 200, 45])
 
     shape.draw_rect(coordinate_rect * derotation_matrix)
@@ -182,14 +184,14 @@ def draw_groundwater(shape: fitz.Shape, groundwater_entry: GroundwaterInformatio
     shape.finish(color=fitz.utils.getColor("pink"))
 
 
-def draw_elevation_information(shape: fitz.Shape, elevation_information: ElevationInformation) -> None:
+def draw_elevation(shape: fitz.Shape, elevation: ElevationInformation) -> None:
     """Draw a bounding box around the area of the page where the coordinates were extracted from.
 
     Args:
         shape (fitz.Shape): The shape object for drawing.
-        elevation_information (ElevationInformation): The elevation information to draw.
+        elevation (ElevationInformation): The elevation information to draw.
     """
-    shape.draw_rect(elevation_information.rect)
+    shape.draw_rect(elevation.rect)
     shape.finish(color=fitz.utils.getColor("blue"))
 
 

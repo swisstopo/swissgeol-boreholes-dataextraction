@@ -26,7 +26,7 @@ class BoreholeMetaData:
     """Class to represent metadata of a borehole profile."""
 
     coordinates: Coordinate | None
-    elevation: ElevationInformation | None = None
+    elevation: ElevationInformation | None
 
 
 @dataclass
@@ -80,11 +80,10 @@ class FilePredictions:
         # Extract metadata.
         metadata = predictions_for_file["metadata"]
         coordinates = None
-        groundwater_information = None
         elevation = None
         if "coordinates" in metadata and metadata["coordinates"] is not None:
             coordinates = Coordinate.from_json(metadata["coordinates"])
-        if "elevation" in metadata:
+        if "elevation" in metadata and metadata["elevation"] is not None:
             elevation = ElevationInformation(**metadata["elevation"]) if metadata["elevation"] is not None else None
         file_metadata = BoreholeMetaData(coordinates=coordinates, elevation=elevation)
         # TODO: Add additional metadata here.
@@ -241,6 +240,24 @@ class FilePredictions:
                 "fn": 1 if ground_truth_coordinates is not None else 0,
             }
 
+        ############################################################################################################
+        ### Compute the metadata correctness for the elevation.
+        ############################################################################################################
+        extracted_elevation = None if self.metadata.elevation is None else self.metadata.elevation.elevation
+        ground_truth_elevation = metadata_ground_truth.get("reference_elevation")
+
+        if extracted_elevation is not None and ground_truth_elevation is not None:
+            if math.isclose(extracted_elevation, ground_truth_elevation, abs_tol=0.1):
+                self.metadata_is_correct["elevation"] = {"tp": 1, "fp": 0, "fn": 0}
+            else:
+                self.metadata_is_correct["elevation"] = {"tp": 0, "fp": 1, "fn": 1}
+        else:
+            self.metadata_is_correct["elevation"] = {
+                "tp": 0,
+                "fp": 1 if extracted_elevation is not None else 0,
+                "fn": 1 if ground_truth_elevation is not None else 0,
+            }
+
     @staticmethod
     def count_against_ground_truth(values: list, ground_truth: list) -> dict:
         # Counter deals with duplicates when doing intersection
@@ -255,24 +272,6 @@ class FilePredictions:
 
         Args:
             groundwater_ground_truth (list): The ground truth for the file.
-        """
-        ############################################################################################################
-        ### Compute the metadata correctness for the elevation information.
-        ############################################################################################################
-        if self.metadata.elevation is None or (
-            metadata_ground_truth is None or metadata_ground_truth.get("reference_elevation") is None
-        ):
-            self.metadata_is_correct["elevation"] = None
-        else:
-            extracted_elevation_info = self.metadata.elevation
-            gt_elevation_info = metadata_ground_truth["reference_elevation"]
-            self.metadata_is_correct["elevation"] = gt_elevation_info == extracted_elevation_info.elevation
-
-    def evaluate_groundwater_information(self, metadata_ground_truth: dict):
-        """Evaluate the groundwater information of the file against the ground truth.
-
-        Args:
-            metadata_ground_truth (dict): The ground truth for the file.
         """
         ############################################################################################################
         ### Compute the metadata correctness for the groundwater information.
