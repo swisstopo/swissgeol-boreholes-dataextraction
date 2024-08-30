@@ -10,7 +10,7 @@ from fastapi import Form, HTTPException
 
 
 def create_pngs(aws_filename: str = Form(...)):
-    """Convert a PDF document to PNG images.
+    """Convert a PDF document to PNG images. Please note that this function will overwrite any existing PNG files.
 
     Args:
         aws_filename (str): The name of the PDF document in the S3 bucket. For example, "pdfs/geoquat/train/10012.pdf".
@@ -47,9 +47,9 @@ def create_pngs(aws_filename: str = Form(...)):
 
             # Upload the PNG to S3
             s3_client.upload_file(
-                filename=png_path,  # The local path to the file to upload
-                bucket=config.bucket_name,  # The S3 bucket name
-                key=png_filename,  # The key (name) of the file in the bucket
+                png_path,  # The local path to the file to upload
+                config.bucket_name,  # The S3 bucket name
+                s3_bucket_png_path,  # The key (name) of the file in the bucket
             )
 
             # Generate the S3 URL
@@ -61,4 +61,4 @@ def create_pngs(aws_filename: str = Form(...)):
     except Exception:
         raise HTTPException(status_code=500, detail="An error occurred while processing the PDF.") from None
 
-    return PNGResponse(png_urls)
+    return PNGResponse(png_urls=png_urls)

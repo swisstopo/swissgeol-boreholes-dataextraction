@@ -18,7 +18,7 @@ class Config(BaseSettings):
     ###########################################################
     # AWS
     ###########################################################
-    bucket_name: str = "stijnvermeeren-boreholes-data"
+    bucket_name: str = "stijnvermeeren-boreholes-integration-tmp"
 
     # TODO: check how this is used on the VM
     # aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")

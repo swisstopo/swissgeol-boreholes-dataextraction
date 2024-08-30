@@ -9,7 +9,6 @@ from app.common.schemas import (
     ExtractDataRequest,
     ExtractDataResponse,
     ExtractElevationResponse,
-    ExtractLinesResponse,
     ExtractTextResponse,
     FormatTypes,
 )
@@ -30,13 +29,13 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
     pdf_document = load_pdf_from_aws(extract_data_request.filename)
 
     # Load the page from the PDF document
-    pdf_page = pdf_document.load_page(extract_data_request.page_number)
+    pdf_page = pdf_document.load_page(extract_data_request.page_number - 1)
     pdf_page_width = pdf_page.rect.width
     pdf_page_height = pdf_page.rect.height
 
     # Load the PNG image the boreholes app is showing to the user
     # Convert the PDF filename to a PNG filename: "pdfs/geoquat/train/10012.pdf" -> 'pngs/geoquat/train/10012_0.png'
-    png_filename = f"{extract_data_request.filename}_{extract_data_request.page_number}.png"
+    png_filename = f"{extract_data_request.filename}-{extract_data_request.page_number}.png"
     png_filename = png_filename.replace(".pdf", "")
     png_filename = png_filename.replace("pdf", "png")
     png_page = load_png_from_aws(png_filename)
@@ -54,31 +53,23 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
     if extract_data_request.format == FormatTypes.COORDINATES:
         # Extract the coordinates and bounding box
         extracted_coords: ExtractCoordinatesResponse = extract_coordinates(
-            pdf_page, extract_data_request.page_number, user_defined_bbox
+            extract_data_request, pdf_page, user_defined_bbox
         )
 
         # Convert the bounding box to PNG coordinates
-        png_bbox_list = []
-        for bbox in extracted_coords.bbox_list:
-            x0 = bbox.x0 * png_page_width / pdf_page_width
-            y0 = bbox.y0 * png_page_height / pdf_page_height
-            x1 = bbox.x1 * png_page_width / pdf_page_width
-            y1 = bbox.y1 * png_page_height / pdf_page_height
-            png_bbox_list.append(BoundingBox(x0=x0, y0=y0, x1=x1, y1=y1))
-
-        coordinates_list = []
-        for coords in extracted_coords.coordinates:
-            east = coords.east
-            north = coords.north
-            page = coords.page
-            spacial_reference_system = coords.spacial_reference_system
-            coordinates_list.append(
-                Coordinates(east=east, north=north, page=page, spacial_reference_system=spacial_reference_system)
-            )
+        x0 = extracted_coords.bbox.x0 * png_page_width / pdf_page_width
+        y0 = extracted_coords.bbox.y0 * png_page_height / pdf_page_height
+        x1 = extracted_coords.bbox.x1 * png_page_width / pdf_page_width
+        y1 = extracted_coords.bbox.y1 * png_page_height / pdf_page_height
 
         return ExtractCoordinatesResponse(
-            bbox_list=png_bbox_list,
-            coordinates=coordinates_list,
+            bbox=BoundingBox(x0=x0, y0=y0, x1=x1, y1=y1),
+            coordinates=Coordinates(
+                east=extracted_coords.coordinates.east,
+                north=extracted_coords.coordinates.north,
+                page=extracted_coords.coordinates.page,
+                spacial_reference_system=extracted_coords.coordinates.spacial_reference_system,
+            ),
         )
     elif extract_data_request.format == FormatTypes.ELEVATION:
         return extract_elevation(extract_data_request, pdf_page, user_defined_bbox)
@@ -86,36 +77,17 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
         extracted_text: ExtractTextResponse = extract_text(pdf_page, user_defined_bbox)
 
         # Convert the bounding box to PNG coordinates
-        png_bbox_list = []
-        for bbox in extracted_text.bbox_list:
-            x0 = bbox.x0 * png_page_width / pdf_page_width
-            y0 = bbox.y0 * png_page_height / pdf_page_height
-            x1 = bbox.x1 * png_page_width / pdf_page_width
-            y1 = bbox.y1 * png_page_height / pdf_page_height
-            png_bbox_list.append(BoundingBox(x0=x0, y0=y0, x1=x1, y1=y1))
+        x0 = extracted_text.bbox.x0 * png_page_width / pdf_page_width
+        y0 = extracted_text.bbox.y0 * png_page_height / pdf_page_height
+        x1 = extracted_text.bbox.x1 * png_page_width / pdf_page_width
+        y1 = extracted_text.bbox.y1 * png_page_height / pdf_page_height
 
         return ExtractTextResponse(
-            bbox_list=png_bbox_list,
+            bbox=BoundingBox(x0=x0, y0=y0, x1=x1, y1=y1),
             text=extracted_text.text,
         )
     elif extract_data_request.format == FormatTypes.NUMBER:
         raise NotImplementedError("Number extraction is not implemented.")
-    elif extract_data_request.format == FormatTypes.LINES:
-        extracted_lines: ExtractLinesResponse = extract_lines(extract_data_request, pdf_page, user_defined_bbox)
-
-        # Convert the bounding box to PNG coordinates
-        png_bbox_list = []
-        for bbox in extracted_lines.bbox_list:
-            x0 = bbox.x0 * png_page_width / pdf_page_width
-            y0 = bbox.y0 * png_page_height / pdf_page_height
-            x1 = bbox.x1 * png_page_width / pdf_page_width
-            y1 = bbox.y1 * png_page_height / pdf_page_height
-            png_bbox_list.append(BoundingBox(x0=x0, y0=y0, x1=x1, y1=y1))
-
-        return ExtractLinesResponse(
-            bbox_list=png_bbox_list,
-            lines=extracted_lines.lines,
-        )
     else:
         raise ValueError("Invalid format type.")
 
@@ -147,15 +119,13 @@ def extract_coordinates(
         )
 
         return ExtractCoordinatesResponse(
-            bbox=[bbox],
-            coordinates=[
-                Coordinates(
-                    east=extracted_coord.east.coordinate_value,
-                    north=extracted_coord.north.coordinate_value,
-                    page=extract_data_request.page_number,
-                    spacial_reference_system="LV03",
-                )
-            ],
+            bbox=bbox,
+            coordinates=Coordinates(
+                east=extracted_coord.east.coordinate_value,
+                north=extracted_coord.north.coordinate_value,
+                page=extract_data_request.page_number,
+                spacial_reference_system="LV03",
+            ),
         )
 
     if isinstance(extracted_coord, LV95Coordinate):
@@ -167,15 +137,13 @@ def extract_coordinates(
         )
 
         return ExtractCoordinatesResponse(
-            bbox=[bbox],
-            coordinates=[
-                Coordinates(
-                    east=extracted_coord.east.coordinate_value,
-                    north=extracted_coord.north.coordinate_value,
-                    page=extract_data_request.page_number,
-                    spacial_reference_system="LV95",
-                )
-            ],
+            bbox=bbox,
+            coordinates=Coordinates(
+                east=extracted_coord.east.coordinate_value,
+                north=extracted_coord.north.coordinate_value,
+                page=extract_data_request.page_number,
+                spacial_reference_system="LV95",
+            ),
         )
 
     return None
@@ -219,47 +187,10 @@ def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDa
     for text_line in text_lines:
         text += text_line.text + " "
 
-    bbox_list = [
-        BoundingBox(
-            x0=user_defined_bbox.x0,
-            y0=user_defined_bbox.y0,
-            x1=user_defined_bbox.x1,
-            y1=user_defined_bbox.y1,
-        )
-    ]
-    return ExtractTextResponse(bbox_list=bbox_list, text=[text])
-
-
-def extract_lines(
-    extract_data_request: ExtractDataRequest, pdf_page: fitz.Page, user_defined_bbox: fitz.Rect
-) -> ExtractLinesResponse:
-    """Extract lines from a PNG image.
-
-    Args:
-        extract_data_request (ExtractDataRequest): The request data.
-        pdf_page (fitz.Page): The PDF page.
-        user_defined_bbox (fitz.Rect): The user-defined bounding box.
-
-    Returns:
-        ExtractLinesResponse: The extracted lines.
-    """
-    # Extract the lines
-    text_lines = extract_text_lines_from_bbox(pdf_page, user_defined_bbox)
-
-    # Convert the text lines to a string
-    lines = []
-    rects = []
-    for text_line in text_lines:
-        lines.append(text_line.text)
-        rects.append(text_line.rect)
-
-    bbox_list = [
-        BoundingBox(
-            x0=rect.x0,
-            y0=rect.y0,
-            x1=rect.x1,
-            y1=rect.y1,
-        )
-        for rect in rects
-    ]
-    return ExtractLinesResponse(bbox_list=bbox_list, lines=lines)
+    bbox = BoundingBox(
+        x0=user_defined_bbox.x0,
+        y0=user_defined_bbox.y0,
+        x1=user_defined_bbox.x1,
+        y1=user_defined_bbox.y1,
+    )
+    return ExtractTextResponse(bbox=bbox, text=text)

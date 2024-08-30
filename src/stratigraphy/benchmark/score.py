@@ -187,7 +187,6 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
     tp = 0  # correct prediction
     fn = 0  # no predictions, i.e. None
     fp = 0  # wrong prediction
-    number_predictions = 0
 
     for file_name, file_prediction in predictions.items():
         is_correct = getattr(file_prediction, field_key)[field_name]
@@ -202,8 +201,6 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
             document_level_metrics["document_name"].append(file_name)
             document_level_metrics[field_name].append(0)
 
-        number_predictions += 1
-
     try:
         precision = tp / (tp + fp)
     except ZeroDivisionError:
@@ -214,7 +211,6 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
         recall = 0
 
     metrics = {
-        f"{field_name}_accuracy": tp / number_predictions,
         f"{field_name}_precision": precision,
         f"{field_name}_recall": recall,
         f"{field_name}_f1": f1(precision, recall),
@@ -269,12 +265,11 @@ def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd
         predictions (dict): The FilePredictions objects.
 
     Returns:
-        tuple[dict, pd.DataFrame]: The overall coordinate accuracy and the individual document metrics as a DataFrame.
+        tuple[dict, pd.DataFrame]: The overall coordinate metrics as a DataFrame.
     """
     document_level_metrics_coordinates, metrics_coordinates = get_metadata_metrics(predictions, "coordinates")
 
     metrics = {
-        "coordinate_accuracy": metrics_coordinates["coordinates_accuracy"],
         "coordinate_precision": metrics_coordinates["coordinates_precision"],
         "coordinate_recall": metrics_coordinates["coordinates_recall"],
         "coordinate_f1": metrics_coordinates["coordinates_f1"],

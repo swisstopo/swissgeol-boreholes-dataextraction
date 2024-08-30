@@ -32,7 +32,6 @@ class FormatTypes(Enum):
     NUMBER = "number"
     COORDINATES = "coordinates"
     ELEVATION = "elevation"
-    LINES = "lines"
 
 
 class BoundingBox(BaseModel):
@@ -61,7 +60,7 @@ class ExtractDataRequest(ABC, BaseModel):
     """
 
     filename: str = Field(..., example="document.png")
-    page_number: int = Field(..., example=1)
+    page_number: int = Field(..., example=1)  # 1-based index
     bbox: BoundingBox = Field(..., example={"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0})
     format: FormatTypes = Field(..., example=FormatTypes.COORDINATES.value)
 
@@ -74,9 +73,9 @@ class ExtractDataRequest(ABC, BaseModel):
 
         json_schema_extra = {
             "example": {
-                "filename": "document.png",
+                "filename": "pdfs/geoquat/train/10012.pdf",
                 "page_number": 1,
-                "bbox": {"x_min": 0.1, "y_min": 0.1, "x_max": 0.9, "y_max": 0.9},
+                "bbox": {"x0": 0.0, "y0": 0.0, "x1": 200.0, "y1": 200.0},
                 "format": "coordinates",  # Adjust this to match your actual FormatTypes
             }
         }
@@ -85,7 +84,7 @@ class ExtractDataRequest(ABC, BaseModel):
 class ExtractDataResponse(ABC, BaseModel):
     """Response schema for the extract_data endpoint."""
 
-    bbox_list: list[BoundingBox] = Field(..., example=[{"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0}])
+    bbox: BoundingBox = Field(..., example={"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0})
 
     @property
     @abstractmethod
@@ -96,8 +95,8 @@ class ExtractDataResponse(ABC, BaseModel):
 class ExtractCoordinatesResponse(ExtractDataResponse):
     """Response schema for the extract_data endpoint."""
 
-    coordinates: list[Coordinates] = Field(
-        ..., example=[{"east": 1.0, "north": 2.0, "page": 1, "spacial_reference_system": "LV95"}]
+    coordinates: Coordinates = Field(
+        ..., example={"east": 1.0, "north": 2.0, "page": 1, "spacial_reference_system": "LV95"}
     )
 
     @property
@@ -108,7 +107,7 @@ class ExtractCoordinatesResponse(ExtractDataResponse):
 class ExtractElevationResponse(ExtractDataResponse):
     """Response schema for the extract_data endpoint."""
 
-    elevation: list[float] = Field(..., example=[1.0])
+    elevation: float = Field(..., example=1.0)
 
     @property
     def response_type(self):
@@ -118,7 +117,7 @@ class ExtractElevationResponse(ExtractDataResponse):
 class ExtractTextResponse(ExtractDataResponse):
     """Response schema for the extract_data endpoint."""
 
-    text: list[str] = Field(..., example=["text"])
+    text: str = Field(..., example="text")
 
     @property
     def response_type(self):
@@ -128,18 +127,8 @@ class ExtractTextResponse(ExtractDataResponse):
 class ExtractNumberResponse(ExtractDataResponse):
     """Response schema for the extract_data endpoint."""
 
-    number: list[float] = Field(..., example=[1.0])
+    number: float = Field(..., example=1.0)
 
     @property
     def response_type(self):
         return "number"
-
-
-class ExtractLinesResponse(ExtractDataResponse):
-    """Response schema for the extract_data endpoint."""
-
-    lines: list[str] = Field(..., example=["line"])
-
-    @property
-    def response_type(self):
-        return "lines"
