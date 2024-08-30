@@ -114,3 +114,43 @@ coordinate_keys:
   - coordinate
   - coordonnées
   - coordonn
+
+
+groundwater_keys:
+  # German
+  - Wasserspiegel
+  - Wasserstand
+  - Grundwasserspiegel
+  - GW
+  - GWSP
+  - Gwsp
+  - gwsp
+  - G.W.Sp 
+  - GW.SP.
+  - W.SP.
+  - W.SP
+  - Gr.W.spiegel
+  - Wsp.
+  - Wsp
+
+  # French
+  - nappe phréatique
+  - nappe
+  - nappe d'eau
+  - nappe d'eau souterraine
+  - venue d'eau
+  - niveau d'eau
+
+  # English
+  - groundwater
+
+groundwater_unit_keys:
+  # German
+  - m ü. M.
+  - müM
+  - M.ü.T.
+  - MüT
+  - M.u.T.
+  - MuT
+  - m.u.T.
+

@@ -49,13 +49,20 @@ The automatic data extraction pipeline can be considered to belong to the field 
 
 ### Limitations
 
+#### Project Status
 The project is under active development and there is no release to this date. The quality/accuracy of the results may vary strongly depending on the documents that are used as input.
 
+#### Requirements on the input PDFs
 The input PDF files must contain digital text content. For PDF files that are not _digitally-born_ (e.g. scanned documents), this means that OCR must be performed, and the OCR results stored in the PDF file, before using the file as an input for this data extraction pipeline. The quality of the extracted data is dependent on the quality of the OCR. At swisstopo, we use the [AWS Textract](https://aws.amazon.com/textract/) service together with our own code from the [swissgeol-ocr](https://github.com/swisstopo/swissgeol-ocr) repository for this purpose.
 
+#### Test Regions and Languages
 The pipeline has been optimized for and tested on boreholes profiles from Switzerland that have been written in German or (to a more limited extent) in French.
 
+#### Coordinates
 With regard to the extraction of coordinates, the [Swiss coordinate systems](https://de.wikipedia.org/wiki/Schweizer_Landeskoordinaten) LV95 as well as the older LV03 are supported ([visualization of the differences](https://opendata.swiss/de/dataset/bezugsrahmenwechsel-lv03-lv95-koordinatenanderung-lv03-lv95)).
+
+#### Groundwater
+With the current version of the code, groundwater can only be found at depth smaller than 200 meters. This threshold is defined in `src/stratigraphy/groundwater/groundwater_extraction.py` by the constant `MAX_DEPTH`. 
 
 ## Main contributors
 

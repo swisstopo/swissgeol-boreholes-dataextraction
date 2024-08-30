@@ -7,6 +7,7 @@ from pathlib import Path
 import fitz
 from dotenv import load_dotenv
 
+from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformationOnPage
 from stratigraphy.util.coordinate_extraction import Coordinate
 from stratigraphy.util.interval import BoundaryInterval
 from stratigraphy.util.predictions import FilePredictions, LayerPrediction
@@ -61,6 +62,9 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                     )
                 if coordinates is not None and page_number == coordinates.page:
                     draw_coordinates(shape, coordinates)
+                for groundwater_entry in file_prediction.groundwater_entries:
+                    if page_number == groundwater_entry.page:
+                        draw_groundwater(shape, groundwater_entry)
                 draw_depth_columns_and_material_rect(
                     shape,
                     page.derotation_matrix,
@@ -110,7 +114,9 @@ def draw_metadata(
         coordinates (Coordinate | None): The coordinate object to draw.
         coordinates_is_correct (bool): Whether the coordinates are correct.
     """
-    color = "green" if coordinates_is_correct else "red"
+    # TODO associate correctness with the extracted coordinates in a better way
+    coordinate_correct = coordinates_is_correct is not None and coordinates_is_correct["tp"] > 0
+    coordinate_color = "green" if coordinate_correct else "red"
     coordinate_rect = fitz.Rect([5, 5, 200, 25])
 
     shape.draw_rect(coordinate_rect * derotation_matrix)
@@ -121,7 +127,7 @@ def draw_metadata(
         coordinate_rect.bottom_left * derotation_matrix,
     )
     shape.finish(
-        color=fitz.utils.getColor(color),
+        color=fitz.utils.getColor(coordinate_color),
         width=6,
         stroke_opacity=0.5,
     )
@@ -136,6 +142,17 @@ def draw_coordinates(shape: fitz.Shape, coordinates: Coordinate) -> None:
     """
     shape.draw_rect(coordinates.rect)
     shape.finish(color=fitz.utils.getColor("purple"))
+
+
+def draw_groundwater(shape: fitz.Shape, groundwater_entry: GroundwaterInformationOnPage) -> None:
+    """Draw a bounding box around the area of the page where the coordinates were extracted from.
+
+    Args:
+        shape (fitz.Shape): The shape object for drawing.
+        groundwater_entry (GroundwaterInformationOnPage): The groundwater information to draw.
+    """
+    shape.draw_rect(groundwater_entry.rect)
+    shape.finish(color=fitz.utils.getColor("pink"))
 
 
 def draw_material_descriptions(

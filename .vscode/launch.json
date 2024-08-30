@@ -12,6 +12,8 @@
             "args": [
                 "-i", "data/zurich",
                 "-g", "data/zurich_ground_truth.json"
+                // "-i", "data/geoquat/validation",
+                // "-g", "data/geoquat_ground_truth.json"
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,

@@ -49,7 +49,12 @@ class Coordinate(metaclass=abc.ABCMeta):
     def __str__(self):
         return f"E: {self.east}, N: {self.north}"
 
-    def to_json(self):
+    def to_json(self) -> dict:
+        """Converts the object to a dictionary.
+
+        Returns:
+            dict: The object as a dictionary.
+        """
         return {
             "E": self.east.coordinate_value,
             "N": self.north.coordinate_value,
@@ -77,6 +82,14 @@ class Coordinate(metaclass=abc.ABCMeta):
 
     @staticmethod
     def from_json(input: dict):
+        """Converts a dictionary to a Coordinate object.
+
+        Args:
+            input (dict): A dictionary containing the coordinate information.
+
+        Returns:
+            Coordinate: The coordinate object.
+        """
         return Coordinate.from_values(
             east=input["E"], north=input["N"], rect=fitz.Rect(input["rect"]), page=input["page"]
         )
