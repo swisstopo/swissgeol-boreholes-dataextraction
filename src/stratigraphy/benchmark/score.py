@@ -278,7 +278,6 @@ def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd
         "coordinates_tp": metrics_coordinates["coordinates_tp"],
         "coordinates_fp": metrics_coordinates["coordinates_fp"],
         "coordinates_fn": metrics_coordinates["coordinates_fn"],
-        "elevation_accuracy": metrics_elevation["elevation_accuracy"],
         "elevation_precision": metrics_elevation["elevation_precision"],
         "elevation_recall": metrics_elevation["elevation_recall"],
         "elevation_f1": metrics_elevation["elevation_f1"],
