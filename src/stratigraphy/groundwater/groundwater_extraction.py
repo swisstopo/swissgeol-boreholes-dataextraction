@@ -118,7 +118,7 @@ class GroundwaterLevelExtractor:
         self.doc = document
         self.groundwater_keys = read_params("matching_params.yml")["groundwater_keys"]
 
-    def find_groundwater_key(self, lines: list[TextLine], allowed_errors: int = 3) -> list[TextLine] | None:  # noqa: E501
+    def find_groundwater_key(self, lines: list[TextLine], allowed_errors: int = 3) -> list[TextLine]:  # noqa: E501
         """Finds the location of a groundwater key in a string of text.
 
         Args:
@@ -127,9 +127,9 @@ class GroundwaterLevelExtractor:
                                             contained in text. Defaults to 3 (guestimation; no optimisation done yet).
 
         Returns:
-            TextLine | None: The line of the drilling method key found in the text.
+            list[TextLine]: The line of the drilling method key found in the text.
         """
-        matches = []
+        matches = set()
         for key in self.groundwater_keys:
             if len(key) < 5:
                 # if the key is very short, do an exact match
@@ -140,20 +140,9 @@ class GroundwaterLevelExtractor:
             for line in lines:
                 match = pattern.search(line.text)
                 if match:
-                    matches.append((line, sum(match.fuzzy_counts)))
+                    matches.add(line)
 
-        # if no match was found, return None
-        if len(matches) == 0:
-            return None
-
-        # Remove duplicates
-        matches = list(dict.fromkeys(matches))
-
-        # Sort the matches by their error counts (ascending order)
-        matches.sort(key=lambda x: x[1])
-
-        # Return the top three matches (lines only)
-        return [match[0] for match in matches[:5]]
+        return list(matches)
 
     def get_groundwater_near_key(
         self, lines: list[TextLine], page: int, page_width: float
@@ -172,8 +161,6 @@ class GroundwaterLevelExtractor:
         """
         # find the key that indicates the groundwater information
         groundwater_key_lines = self.find_groundwater_key(lines)
-        if groundwater_key_lines is None:
-            return []
 
         extracted_groundwater_list = []
 
