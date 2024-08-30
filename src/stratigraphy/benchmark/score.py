@@ -206,10 +206,6 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
         document_level_metrics[field_name].append(f1(precision, recall))
 
     try:
-        accuracy = tp / (tp + fp + fn)
-    except ZeroDivisionError:
-        accuracy = 0
-    try:
         precision = tp / (tp + fp)
     except ZeroDivisionError:
         precision = 0
@@ -219,7 +215,6 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
         recall = 0
 
     metrics = {
-        f"{field_name}_accuracy": accuracy,
         f"{field_name}_precision": precision,
         f"{field_name}_recall": recall,
         f"{field_name}_f1": f1(precision, recall),
@@ -277,14 +272,12 @@ def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd
     document_level_metrics_coordinates, metrics_coordinates = get_metadata_metrics(predictions, "coordinates")
     document_level_metrics_elevation, metrics_elevation = get_metadata_metrics(predictions, "elevation")
     metrics = {
-        "coordinate_accuracy": metrics_coordinates["coordinates_accuracy"],
         "coordinate_precision": metrics_coordinates["coordinates_precision"],
         "coordinate_recall": metrics_coordinates["coordinates_recall"],
         "coordinate_f1": metrics_coordinates["coordinates_f1"],
         "coordinates_tp": metrics_coordinates["coordinates_tp"],
         "coordinates_fp": metrics_coordinates["coordinates_fp"],
         "coordinates_fn": metrics_coordinates["coordinates_fn"],
-        "elevation_accuracy": metrics_elevation["elevation_accuracy"],
         "elevation_precision": metrics_elevation["elevation_precision"],
         "elevation_recall": metrics_elevation["elevation_recall"],
         "elevation_f1": metrics_elevation["elevation_f1"],
