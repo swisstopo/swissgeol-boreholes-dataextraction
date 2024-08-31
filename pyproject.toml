@@ -20,6 +20,8 @@ dependencies = [
     "uvicorn",
     "pydantic_settings",
     "pydantic",
+    "httpx",
+    "moto",
     "scikit-learn>=1.4.0",
     "click>=8.0.0",
     "PyYAML>=6.0.1",

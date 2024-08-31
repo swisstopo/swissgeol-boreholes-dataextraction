@@ -50,5 +50,15 @@
             "console": "integratedTerminal",
             "justMyCode": true
         },
+        {
+            "name": "Python: Run pytests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "./swisstopo/bin/python3",
+        },
     ]
 }

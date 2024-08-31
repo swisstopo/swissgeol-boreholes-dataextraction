@@ -1,6 +1,7 @@
 """Utils related to logging."""
 
 import logging
+import logging.config
 
 from app.common.config import config
 
