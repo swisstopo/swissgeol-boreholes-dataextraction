@@ -8,9 +8,9 @@ from dataclasses import dataclass
 
 import fitz
 import regex
+from stratigraphy.data_extractor.data_extractor import DataExtractor
 from stratigraphy.util.extract_text import extract_text_lines
 from stratigraphy.util.line import TextLine
-from stratigraphy.util.util import read_params
 
 logger = logging.getLogger(__name__)
 
@@ -115,17 +115,8 @@ class LV03Coordinate(Coordinate):
         return 324798 < self.east.coordinate_value < 847502 and 73998 < self.north.coordinate_value < 302002
 
 
-class CoordinateExtractor:
+class CoordinateExtractor(DataExtractor):
     """Extracts coordinates from a PDF document."""
-
-    def __init__(self, document: fitz.Document):
-        """Initializes the CoordinateExtractor object.
-
-        Args:
-            document (fitz.Document): A PDF document.
-        """
-        self.doc = document
-        self.coordinate_keys = read_params("matching_params.yml")["coordinate_keys"]
 
     def get_coordinates_with_x_y_labels(self, lines: list[TextLine], page: int) -> list[Coordinate]:
         """Find coordinates with explicit "X" and "Y" labels from the text lines.
@@ -164,41 +155,7 @@ class CoordinateExtractor:
                 found_coordinates.append(coordinates)
         return found_coordinates
 
-    def find_coordinate_key(self, lines: list[TextLine], allowed_errors: int = 3) -> TextLine | None:  # noqa: E501
-        """Finds the location of a coordinate key in a string of text.
-
-        This is useful to reduce the text within which the coordinates are searched. If the text is too large
-        false positive (found coordinates that are no coordinates) are more likely.
-
-        The function allows for a certain number of errors in the key. Errors are defined as insertions, deletions
-        or substitutions of characters (i.e. Levenshtein distance). For more information of how errors are defined see
-        https://github.com/mrabarnett/mrab-regex?tab=readme-ov-file#approximate-fuzzy-matching-hg-issue-12-hg-issue-41-hg-issue-109.
-
-
-        Args:
-            lines (list[TextLine]): Arbitrary text lines to search in.
-            allowed_errors (int, optional): The maximum number of errors (Levenshtein distance) to consider a key
-                                            contained in text. Defaults to 3 (guestimation; no optimisation done yet).
-
-        Returns:
-            TextLine | None: The line of the coordinate key found in the text.
-        """
-        matches = []
-        for key in self.coordinate_keys:
-            pattern = regex.compile(r"\b(" + key + "){e<" + str(allowed_errors) + r"}\b", flags=regex.IGNORECASE)
-            for line in lines:
-                match = pattern.search(line.text)
-                if match:
-                    matches.append((line, sum(match.fuzzy_counts)))
-
-        # if no match was found, return None
-        if len(matches) == 0:
-            return None
-
-        best_match = min(matches, key=lambda x: x[1])
-        return best_match[0]
-
-    def get_coordinates_near_key(self, lines: list[TextLine], page: int, page_width: float) -> list[Coordinate]:
+    def get_feature_near_key(self, lines: list[TextLine], page: int, page_width: float) -> list[Coordinate]:
         """Find coordinates from text lines that are close to an explicit "coordinates" label.
 
         Also apply some preprocessing to the text of those text lines, to deal with some common (OCR) errors.
@@ -212,7 +169,7 @@ class CoordinateExtractor:
             list[Coordinate]: all found coordinates
         """
         # find the key that indicates the coordinate information
-        coordinate_key_line = self.find_coordinate_key(lines)
+        coordinate_key_line = self.find_feature_key(lines)
         if coordinate_key_line is None:
             return []
 
@@ -310,7 +267,7 @@ class CoordinateExtractor:
             results.append((match, rect))
         return results
 
-    def extract_coordinates(self) -> Coordinate | None:
+    def extract_data(self) -> Coordinate | None:
         """Extracts the coordinates from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
@@ -330,7 +287,7 @@ class CoordinateExtractor:
 
             found_coordinates = (
                 self.get_coordinates_with_x_y_labels(lines, page_number)
-                or self.get_coordinates_near_key(lines, page_number, page.rect.width)
+                or self.get_feature_near_key(lines, page_number, page.rect.width)
                 or self.get_coordinates_from_lines(lines, page_number)
             )
 
