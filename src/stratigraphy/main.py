@@ -172,24 +172,33 @@ def start_pipeline(
                     predictions[filename]["language"] = language
 
                     # Extract the coordinates of the borehole
-                    coordinate_extractor = CoordinateExtractor(doc)
-                    coordinates = coordinate_extractor.extract_coordinates()
+                    coordinate_extractor = CoordinateExtractor(
+                        document=doc,
+                        feature_name="coordinate",
+                    )
+                    coordinates = coordinate_extractor.extract_data()
                     if coordinates:
                         predictions[filename]["metadata"] = {"coordinates": coordinates.to_json()}
                     else:
                         predictions[filename]["metadata"] = {"coordinates": None}
 
                     # Extract the elevation information
-                    elevation_extractor = ElevationExtractor(doc)
-                    elevation = elevation_extractor.extract_elevation_information()
+                    elevation_extractor = ElevationExtractor(
+                        document=doc,
+                        feature_name="elevation",
+                    )
+                    elevation = elevation_extractor.extract_data()
                     if elevation:
                         predictions[filename]["metadata"]["elevation"] = elevation.to_dict()
                     else:
                         predictions[filename]["metadata"]["elevation"] = None
 
                     # Extract the groundwater levels
-                    groundwater_extractor = GroundwaterLevelExtractor(doc)
-                    groundwater = groundwater_extractor.extract_groundwater()
+                    groundwater_extractor = GroundwaterLevelExtractor(
+                        document=doc,
+                        feature_name="groundwater",
+                    )
+                    groundwater = groundwater_extractor.extract_data()
                     if groundwater:
                         predictions[filename]["groundwater"] = [
                             groundwater_entry.to_dict() for groundwater_entry in groundwater

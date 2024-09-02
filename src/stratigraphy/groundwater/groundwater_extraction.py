@@ -7,11 +7,9 @@ from datetime import date, datetime
 
 import fitz
 import numpy as np
-import regex
+from stratigraphy.data_extractor.data_extractor import DataExtractor
 from stratigraphy.groundwater.utility import extract_date, extract_depth, extract_elevation
-from stratigraphy.util.extract_text import extract_text_lines
 from stratigraphy.util.line import TextLine
-from stratigraphy.util.util import read_params
 
 logger = logging.getLogger(__name__)
 
@@ -106,56 +104,10 @@ class GroundwaterInformationOnPage(metaclass=abc.ABCMeta):
         )
 
 
-class GroundwaterLevelExtractor:
+class GroundwaterLevelExtractor(DataExtractor):
     """Extracts coordinates from a PDF document."""
 
-    def __init__(self, document: fitz.Document):
-        """Initializes the CoordinateExtractor object.
-
-        Args:
-            document (fitz.Document): A PDF document.
-        """
-        self.doc = document
-        self.groundwater_keys = read_params("matching_params.yml")["groundwater_keys"]
-
-    def find_groundwater_key(self, lines: list[TextLine], allowed_errors: int = 3) -> list[TextLine] | None:  # noqa: E501
-        """Finds the location of a groundwater key in a string of text.
-
-        Args:
-            lines (list[TextLine]): Arbitrary text lines to search in.
-            allowed_errors (int, optional): The maximum number of errors (Levenshtein distance) to consider a key
-                                            contained in text. Defaults to 3 (guestimation; no optimisation done yet).
-
-        Returns:
-            TextLine | None: The line of the drilling method key found in the text.
-        """
-        matches = []
-        for key in self.groundwater_keys:
-            if len(key) < 5:
-                # if the key is very short, do an exact match
-                pattern = regex.compile(r"\b" + key + r"\b", flags=regex.IGNORECASE)
-            else:
-                pattern = regex.compile(r"\b" + key + "{e<" + str(allowed_errors) + r"}\b", flags=regex.IGNORECASE)
-
-            for line in lines:
-                match = pattern.search(line.text)
-                if match:
-                    matches.append((line, sum(match.fuzzy_counts)))
-
-        # if no match was found, return None
-        if len(matches) == 0:
-            return None
-
-        # Remove duplicates
-        matches = list(dict.fromkeys(matches))
-
-        # Sort the matches by their error counts (ascending order)
-        matches.sort(key=lambda x: x[1])
-
-        # Return the top three matches (lines only)
-        return [match[0] for match in matches[:5]]
-
-    def get_groundwater_near_key(
+    def get_feature_near_key(
         self, lines: list[TextLine], page: int, page_width: float
     ) -> list[GroundwaterInformationOnPage]:
         """Find coordinates from text lines that are close to an explicit "groundwater" label.
@@ -171,7 +123,7 @@ class GroundwaterLevelExtractor:
             list[GroundwaterInformationOnPage]: all found groundwater information
         """
         # find the key that indicates the groundwater information
-        groundwater_key_lines = self.find_groundwater_key(lines)
+        groundwater_key_lines = self.find_feature_key(lines)
         if groundwater_key_lines is None:
             return []
 
@@ -305,31 +257,3 @@ class GroundwaterLevelExtractor:
             )
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
-
-    def extract_groundwater(self) -> list[GroundwaterInformationOnPage] | None:
-        """Extracts the groundwater information from a borehole profile.
-
-        Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
-        page.
-        Algorithm description:
-            1. if that gives no results, search for coordinates close to an explicit "groundwater" label (e.g. "Gswp")
-
-        Returns:
-            list[GroundwaterInformationOnPage] | None: the extracted coordinates (if any)
-        """
-        for page in self.doc:
-            lines = extract_text_lines(page)
-            page_number = page.number + 1  # page.number is 0-based
-
-            found_groundwater = (
-                self.get_groundwater_near_key(lines, page_number, page.rect.width)
-                # or XXXX # Add other techniques here
-            )
-
-            if len(found_groundwater):
-                groundwater_output = ", ".join([str(entry.groundwater) for entry in found_groundwater])
-                logger.info(f"Found groundwater information on page {page_number}: {groundwater_output}")
-                return found_groundwater
-
-        logger.info("No groundwater found in this borehole profile.")
-        return None

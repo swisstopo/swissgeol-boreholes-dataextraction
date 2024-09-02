@@ -12,11 +12,9 @@ from dataclasses import dataclass
 
 import fitz
 import numpy as np
-import regex
+from stratigraphy.data_extractor.data_extractor import DataExtractor
 from stratigraphy.groundwater.utility import extract_elevation
-from stratigraphy.util.extract_text import extract_text_lines
 from stratigraphy.util.line import TextLine
-from stratigraphy.util.util import read_params
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +56,7 @@ class ElevationInformation(metaclass=abc.ABCMeta):
         }
 
 
-class ElevationExtractor:
+class ElevationExtractor(DataExtractor):
     """Class for extracting elevation data from text.
 
     The ElevationExtractor class is used to extract elevation data from text. The class is designed
@@ -70,60 +68,7 @@ class ElevationExtractor:
     the location of a coordinate key in a string of text.
     """
 
-    def __init__(self, document: fitz.Document):
-        """Initializes the CoordinateExtractor object.
-
-        Args:
-            document (fitz.Document): A PDF document.
-        """
-        self.doc = document
-        self.elevation_keys = read_params("matching_params.yml")["elevation_keys"]
-
-    def find_elevation_key(self, lines: list[TextLine], allowed_errors: int = 3) -> TextLine | None:  # noqa: E501
-        """Finds the location of a coordinate key in a string of text.
-
-        This is useful to reduce the text within which the coordinates are searched. If the text is too large
-        false positive (found coordinates that are no coordinates) are more likely.
-
-        The function allows for a certain number of errors in the key. Errors are defined as insertions, deletions
-        or substitutions of characters (i.e. Levenshtein distance). For more information of how errors are defined see
-        https://github.com/mrabarnett/mrab-regex?tab=readme-ov-file#approximate-fuzzy-matching-hg-issue-12-hg-issue-41-hg-issue-109.
-
-
-        Args:
-            lines (list[TextLine]): Arbitrary text lines to search in.
-            allowed_errors (int, optional): The maximum number of errors (Levenshtein distance) to consider a key
-                                            contained in text. Defaults to 3 (guestimation; no optimisation done yet).
-
-        Returns:
-            TextLine | None: The line of the coordinate key found in the text.
-        """
-        matches = []
-        for key in self.elevation_keys:
-            if len(key) < 5:
-                # if the key is very short, do an exact match
-                pattern = regex.compile(r"\b" + key + r"\b", flags=regex.IGNORECASE)
-            else:
-                pattern = regex.compile(r"\b" + key + "{e<" + str(allowed_errors) + r"}\b", flags=regex.IGNORECASE)
-            for line in lines:
-                match = pattern.search(line.text)
-                if match:
-                    matches.append((line, sum(match.fuzzy_counts)))
-
-        # if no match was found, return None
-        if len(matches) == 0:
-            return None
-
-        # Remove duplicates
-        matches = list(dict.fromkeys(matches))
-
-        # Sort the matches by their error counts (ascending order)
-        matches.sort(key=lambda x: x[1])
-
-        # Return the top three matches (lines only)
-        return [match[0] for match in matches[:5]]
-
-    def get_elevation_near_key(self, lines: list[TextLine], page: int) -> list[float]:
+    def get_feature_near_key(self, lines: list[TextLine], page: int, page_width: float) -> list[float]:
         """Find elevation from text lines that are close to an explicit "elevation" label.
 
         Also apply some preprocessing to the text of those text lines, to deal with some common (OCR) errors.
@@ -137,7 +82,7 @@ class ElevationExtractor:
             list[float]: all found elevations
         """
         # find the key that indicates the coordinate information
-        elevation_key_lines = self.find_elevation_key(lines)
+        elevation_key_lines = self.find_feature_key(lines)
         if elevation_key_lines is None:
             return []
 
@@ -239,30 +184,3 @@ class ElevationExtractor:
             return ElevationInformation(elevation=elevation, rect=rect_union, page=page)
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
-
-    def extract_elevation_information(self) -> ElevationInformation | None:
-        """Extracts the groundwater information from a borehole profile.
-
-        Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
-        page.
-        Algorithm description:
-            1. if that gives no results, search for coordinates close to an explicit "groundwater" label (e.g. "Gswp")
-
-        Returns:
-            GroundwaterInformation | None: the extracted coordinates (if any)
-        """
-        for page in self.doc:
-            lines = extract_text_lines(page)
-            page_number = page.number + 1  # page.number is 0-based
-
-            found_groundwater_information = (
-                self.get_elevation_near_key(lines, page_number)
-                # or XXXX # Add other techniques here
-            )
-
-            if found_groundwater_information:
-                logger.info(f"Found elevation information on page {page_number}: {found_groundwater_information}")
-                return found_groundwater_information
-
-        logger.info("No elevation information found in this borehole profile.")
-        return None
