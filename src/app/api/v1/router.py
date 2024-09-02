@@ -9,6 +9,7 @@ from app.common.schemas import (
     ExtractElevationResponse,
     ExtractNumberResponse,
     ExtractTextResponse,
+    NotFoundResponse,
     PNGRequest,
     PNGResponse,
 )
@@ -32,7 +33,11 @@ def post_create_pngs(request: PNGRequest) -> PNGResponse:
 @router.post(
     "/extract_data",
     tags=["extract_data"],
-    response_model=ExtractCoordinatesResponse | ExtractElevationResponse | ExtractTextResponse | ExtractNumberResponse,
+    response_model=ExtractCoordinatesResponse
+    | ExtractElevationResponse
+    | ExtractTextResponse
+    | ExtractNumberResponse
+    | NotFoundResponse,
 )
 def post_extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataResponse:
     """Extract data from the given PNGs."""

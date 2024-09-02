@@ -11,6 +11,7 @@ from app.common.schemas import (
     ExtractElevationResponse,
     ExtractTextResponse,
     FormatTypes,
+    NotFoundResponse,
 )
 from stratigraphy.util.coordinate_extraction import CoordinateExtractor, LV03Coordinate, LV95Coordinate
 from stratigraphy.util.extract_text import extract_text_lines_from_bbox
@@ -49,12 +50,23 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
     y1 = extract_data_request.bbox.y1 * pdf_page_height / png_page_height
     user_defined_bbox = BoundingBox(x0=x0, y0=y0, x1=x1, y1=y1)  # bbox in PDF coordinates
 
+    # Convert the user-defined bounding box to a fitz.Rect object
+    user_defined_bbox = fitz.Rect(
+        user_defined_bbox.x0, user_defined_bbox.y0, user_defined_bbox.x1, user_defined_bbox.y1
+    )
+
     # Extract the information based on the format type
     if extract_data_request.format == FormatTypes.COORDINATES:
         # Extract the coordinates and bounding box
-        extracted_coords: ExtractCoordinatesResponse = extract_coordinates(
+        extracted_coords: ExtractCoordinatesResponse | None = extract_coordinates(
             extract_data_request, pdf_page, user_defined_bbox
         )
+
+        if extracted_coords is None:
+            return NotFoundResponse(
+                detail="Coordinates not found.",
+                bbox=extract_data_request.bbox,
+            )
 
         # Convert the bounding box to PNG coordinates
         x0 = extracted_coords.bbox.x0 * png_page_width / pdf_page_width
@@ -94,7 +106,7 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
 
 def extract_coordinates(
     extract_data_request: ExtractDataRequest, pdf_page: fitz.Page, user_defined_bbox: fitz.Rect
-) -> ExtractDataResponse:
+) -> ExtractDataResponse | None:
     """Extract coordinates from a PNG image.
 
     Args:
@@ -179,6 +191,11 @@ def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDa
     Returns:
         ExtractDataResponse: The extracted text.
     """
+    if isinstance(user_defined_bbox, BoundingBox):
+        user_defined_bbox = fitz.Rect(
+            user_defined_bbox.x0, user_defined_bbox.y0, user_defined_bbox.x1, user_defined_bbox.y1
+        )
+
     # Extract the text
     text_lines = extract_text_lines_from_bbox(pdf_page, user_defined_bbox)
 

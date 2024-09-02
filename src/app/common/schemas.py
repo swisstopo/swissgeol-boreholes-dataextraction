@@ -31,7 +31,7 @@ class PNGResponse(BaseModel):
 ########################################################################################################################
 
 
-class FormatTypes(Enum):
+class FormatTypes(str, Enum):
     """Enum for the format types."""
 
     TEXT = "text"
@@ -138,3 +138,13 @@ class ExtractNumberResponse(ExtractDataResponse):
     @property
     def response_type(self):
         return "number"
+
+
+class NotFoundResponse(ExtractDataResponse):
+    """Response schema for the not found response."""
+
+    detail: str = Field(..., example="Resource not found.")
+
+    @property
+    def response_type(self):
+        return "not_found"

@@ -354,6 +354,9 @@ class CoordinateExtractor:
         Returns:
             Coordinate | None: the extracted coordinates (if any)
         """
+        if not isinstance(bbox, fitz.Rect):
+            raise ValueError("The bounding box must be a fitz.Rect object.")
+
         lines = extract_text_lines_from_bbox(page, bbox)
 
         found_coordinates = (

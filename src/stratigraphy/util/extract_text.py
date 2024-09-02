@@ -58,9 +58,12 @@ def extract_text_lines_from_bbox(page: fitz.Page, bbox: fitz.Rect) -> list[TextL
     Returns:
         list[TextLine]: A list of text lines.
     """
+    if not isinstance(bbox, fitz.Rect):
+        raise ValueError("The bbox parameter must be a fitz.Rect object.")
+
     words = []
     words_by_line = {}
-    for x0, y0, x1, y1, word, block_no, line_no, _word_no in fitz.utils.get_text(page, "words", clip=bbox):
+    for x0, y0, x1, y1, word, block_no, line_no, _word_no in page.get_text("words", clip=bbox):
         rect = fitz.Rect(x0, y0, x1, y1) * page.rotation_matrix
         text_word = TextWord(rect, word, page.number + 1)
         words.append(text_word)
