@@ -48,18 +48,37 @@ def test_extract_coordinate_fail(test_client: TestClient, upload_test_pdf, uploa
 
 def test_extract_text_success(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test the extract_data endpoint with a valid request."""
-    target_text = """BLS AlpTransit AG Lötschberg-Basislinie Sondierbohrung : SST KB 5
-    Bauherrschaft: BLS AlpTransit
-    Bohrfirma : jet injectobohr AG
-    Bohrmeister : Dragnic
-    Ausführungsdatum 2.-3. 9. 1995
-    Koordinaten : 615 790 / 157 500
-    Kote Bezugspunkt : ~788,6 m ü. M. """
+    target_text = (
+        "BLS AlpTransit AG Lötschberg-Basislinie Sondierbohrung : SST KB 5 "
+        "Bauherrschaft: BLS AlpTransit "
+        "Bohrfirma : jet injectobohr AG "
+        "Bohrmeister : Dragnic "
+        "Ausführungsdatum 2.-3. 9. 1995 "
+        "Koordinaten : 615 790 / 157 500 "
+        "Kote Bezugspunkt : ~788,6 m ü. M. "
+    )
 
     request = ExtractDataRequest(
         filename=TEST_PDF_KEY,
         page_number=1,
         bbox={"x0": 0, "y0": 0, "x1": 1000, "y1": 1000},
+        format="text",
+    )
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump())
+    assert response.status_code == 200
+    json_response = response.json()
+    assert "bbox" in json_response
+    assert json_response["text"] == target_text
+
+
+def test_extract_text_empty(test_client: TestClient, upload_test_pdf, upload_test_png):
+    """Test the extract_data endpoint with a valid request."""
+    target_text = ""
+
+    request = ExtractDataRequest(
+        filename=TEST_PDF_KEY,
+        page_number=1,
+        bbox={"x0": 0, "y0": 0, "x1": 100, "y1": 100},
         format="text",
     )
     response = test_client.post("/api/V1/extract_data", json=request.model_dump())
@@ -85,4 +104,4 @@ def test_extract_coordinate_success(test_client: TestClient, upload_test_pdf, up
     assert json_response["coordinates"]["east"] == 615790
     assert json_response["coordinates"]["north"] == 157500
     assert json_response["coordinates"]["page"] == 1
-    assert json_response["coordinates"]["spacial_reference_system"] == "LV95"
+    assert json_response["coordinates"]["spacial_reference_system"] == "LV03"
