@@ -28,7 +28,9 @@ def load_pdf_from_aws(filename: str) -> fitz.Document:
         data = load_data_from_aws(filename)
         pdf_document = fitz.open(stream=data, filetype="pdf")
     except Exception:
-        raise HTTPException(status_code=500, detail="Failed to load PDF document.") from None
+        raise HTTPException(
+            status_code=404, detail="Failed to load PDF document. The filename is not found in the bucket."
+        ) from None
 
     return pdf_document
 
@@ -64,7 +66,7 @@ def load_data_from_aws(filename: str) -> bytes:
     try:
         png_object = s3_client.get_object(Bucket=config.bucket_name, Key=filename)
     except s3_client.exceptions.NoSuchKey:
-        raise HTTPException(status_code=404, detail="PNG image not found in S3 bucket.") from None
+        raise HTTPException(status_code=404, detail="Document not found in S3 bucket.") from None
 
     # Load the PNG from the S3 object
     try:

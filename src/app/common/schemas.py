@@ -11,7 +11,13 @@ as well as a patch version with all fields optional for patch operations.
 from abc import ABC, abstractmethod
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, constr
+
+
+class PNGRequest(BaseModel):
+    """Request schema for the create_pngs endpoint."""
+
+    filename: constr(min_length=1)  # This will ensure the filename is a non-empty string.
 
 
 class PNGResponse(BaseModel):

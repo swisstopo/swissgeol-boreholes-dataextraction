@@ -9,6 +9,7 @@ from app.common.schemas import (
     ExtractElevationResponse,
     ExtractNumberResponse,
     ExtractTextResponse,
+    PNGRequest,
     PNGResponse,
 )
 from fastapi import APIRouter
@@ -20,9 +21,9 @@ router = APIRouter(prefix="/api/V1")
 ### Create PNGs
 ####################################################################################################
 @router.post("/create_pngs", tags=["create_pngs"])
-def post_create_pngs(filename: str) -> PNGResponse:
+def post_create_pngs(request: PNGRequest) -> PNGResponse:
     """Create PNGs from the given data."""
-    return create_pngs(filename)
+    return create_pngs(request.filename)
 
 
 ####################################################################################################

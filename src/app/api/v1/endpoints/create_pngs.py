@@ -24,6 +24,16 @@ def create_pngs(aws_filename: str = Form(...)):
             status_code=400, detail="Invalid request. 'filename' parameter is required and must be a string."
         )
 
+    # Check if the PDF name is valid
+    if not aws_filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Invalid request. The filename must end with '.pdf'.")
+    if len(aws_filename.split("/")) < 4:
+        error_details = "The filename must be in the format 'pdfs/{dataset_name}/{dataset_type}/{filename}.pdf'."
+        raise HTTPException(
+            status_code=400,
+            detail=error_details,
+        )
+
     # Get the filename from the path
     filename = aws_filename.split("/")[-1].split(".")[0]
     dataset_type = aws_filename.split("/")[-2]  # The dataset name (e.g., "train")
