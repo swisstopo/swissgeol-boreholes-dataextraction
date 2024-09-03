@@ -80,7 +80,7 @@ class Coordinate(ExtractedFeature):
                 page=page,
             )
         else:
-            logger.warning(f"Invalid coordinates format. Got E: {east}, N: {north}")
+            logger.warning("Invalid coordinates format. Got E: %s, N: %s", east, north)
             return None
 
     @staticmethod
