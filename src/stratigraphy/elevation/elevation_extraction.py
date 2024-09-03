@@ -175,15 +175,14 @@ class ElevationExtractor(DataExtractor):
             lines = extract_text_lines(page)
             page_number = page.number + 1  # page.number is 0-based
 
-            found_feature_value = (
+            found_elevation_value = (
                 self.get_elevation_near_key(lines, page_number)
                 # or XXXX # Add other techniques here
             )
 
-            if found_feature_value:
-                feature_value = getattr(found_feature_value, self.feature_name)
-                logger.info("Found %s on page %s: %s", self.feature_name, page_number, feature_value)
-                return found_feature_value
+            if found_elevation_value:
+                logger.info("Found Elevation on page %s: %s", page_number, found_elevation_value.elevation)
+                return found_elevation_value
 
         logger.info("No %s found in this borehole profile.", self.feature_name)
         return None
