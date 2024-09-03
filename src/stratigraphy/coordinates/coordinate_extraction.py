@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 import fitz
 import regex
-from stratigraphy.data_extractor.data_extractor import DataExtractor
+from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature
 from stratigraphy.util.extract_text import extract_text_lines
 from stratigraphy.util.line import TextLine
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})\.?\d?"
 
 
-@dataclass
+@dataclass(kw_only=True)
 class CoordinateEntry:
     """Dataclass to represent a coordinate entry."""
 
@@ -30,14 +30,12 @@ class CoordinateEntry:
             return f"{self.coordinate_value:07,}".replace(",", "'")
 
 
-@dataclass
-class Coordinate(metaclass=abc.ABCMeta):
+@dataclass(kw_only=True)
+class Coordinate(ExtractedFeature):
     """Abstract class for coordinates."""
 
     east: CoordinateEntry
     north: CoordinateEntry
-    rect: fitz.Rect
-    page: int
 
     def __post_init__(self):
         # east always greater than north by definition. Irrespective of the leading 1 or 2
@@ -69,11 +67,17 @@ class Coordinate(metaclass=abc.ABCMeta):
     def from_values(east: int, north: int, rect: fitz.Rect, page: int) -> Coordinate | None:
         if 1e6 < east < 1e7:
             return LV95Coordinate(
-                CoordinateEntry(coordinate_value=east), CoordinateEntry(coordinate_value=north), rect, page
+                east=CoordinateEntry(coordinate_value=east),
+                north=CoordinateEntry(coordinate_value=north),
+                rect=rect,
+                page=page,
             )
         elif east < 1e6:
             return LV03Coordinate(
-                CoordinateEntry(coordinate_value=east), CoordinateEntry(coordinate_value=north), rect, page
+                east=CoordinateEntry(coordinate_value=east),
+                north=CoordinateEntry(coordinate_value=north),
+                rect=rect,
+                page=page,
             )
         else:
             logger.warning(f"Invalid coordinates format. Got E: {east}, N: {north}")
@@ -171,24 +175,36 @@ class CoordinateExtractor(DataExtractor):
             list[Coordinate]: all found coordinates
         """
         # find the key that indicates the coordinate information
-        coordinate_key_line = self.find_feature_key(lines)
-        if coordinate_key_line is None:
+        coordinate_key_lines = self.find_feature_key(lines)
+        if coordinate_key_lines is None:
             return []
 
-        # find the lines of the text that are close to an identified coordinate key.
-        key_rect = coordinate_key_line.rect
-        # look for coordinate values to the right and/or immediately below the key
-        coordinate_search_rect = fitz.Rect(key_rect.x0, key_rect.y0, page_width, key_rect.y1 + 3 * key_rect.height)
-        coord_lines = [line for line in lines if line.rect.intersects(coordinate_search_rect)]
+        extracted_coordinates = []
 
-        def preprocess(value: str) -> str:
-            value = value.replace(",", ".")
-            value = value.replace("'", ".")
-            value = value.replace("o", "0")  # frequent ocr error
-            value = value.replace("\n", " ")
-            return value
+        for coordinate_key_line in coordinate_key_lines:
+            # find the lines of the text that are close to an identified coordinate key.
+            key_rect = coordinate_key_line.rect
+            # look for coordinate values to the right and/or immediately below the key
+            coordinate_search_rect = fitz.Rect(key_rect.x0, key_rect.y0, page_width, key_rect.y1 + 3 * key_rect.height)
+            coord_lines = [line for line in lines if line.rect.intersects(coordinate_search_rect)]
 
-        return self.get_coordinates_from_lines(coord_lines, page, preprocess)
+            def preprocess(value: str) -> str:
+                value = value.replace(",", ".")
+                value = value.replace("'", ".")
+                value = value.replace("o", "0")  # frequent ocr error
+                value = value.replace("\n", " ")
+                return value
+
+            coord_lines.insert(0, coordinate_key_line)
+            coord_lines = list(dict.fromkeys(coord_lines))
+
+            extracted_coordinates.extend(self.get_coordinates_from_lines(coord_lines, page, preprocess))
+
+        return self.select_best_coordinate(extracted_coordinates)
+
+    def select_best_coordinate(self, extracted_coordinates: list[Coordinate]) -> Coordinate | None:
+        """Select the best coordinate from a list of extracted coordinates."""
+        return extracted_coordinates if extracted_coordinates else None
 
     @staticmethod
     def get_coordinates_from_lines(lines: list[TextLine], page: int, preprocess=lambda x: x) -> list[Coordinate]:
@@ -293,7 +309,7 @@ class CoordinateExtractor(DataExtractor):
                 or self.get_coordinates_from_lines(lines, page_number)
             )
 
-            if len(found_coordinates) > 0:
+            if found_coordinates:
                 return found_coordinates[0]
 
         logger.info("No coordinates found in this borehole profile.")

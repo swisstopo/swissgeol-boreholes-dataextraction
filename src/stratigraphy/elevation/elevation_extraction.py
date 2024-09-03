@@ -6,26 +6,24 @@ used in combination with the StratigraphyExtractor class to extract elevation da
 descriptions.
 """
 
-import abc
 import logging
 from dataclasses import dataclass
 
 import fitz
 import numpy as np
-from stratigraphy.data_extractor.data_extractor import DataExtractor
+from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature
 from stratigraphy.groundwater.utility import extract_elevation
+from stratigraphy.util.extract_text import extract_text_lines
 from stratigraphy.util.line import TextLine
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class ElevationInformation(metaclass=abc.ABCMeta):
+class ElevationInformation(ExtractedFeature):
     """Abstract class for Elevation Information."""
 
     elevation: float | None = None  # Elevation relative to the mean sea level
-    rect: fitz.Rect | None = None  # The rectangle that contains the extracted information
-    page: int | None = None  # The page number of the PDF document
 
     def is_valid(self) -> bool:
         """Checks if the information is valid.
@@ -116,7 +114,7 @@ class ElevationExtractor(DataExtractor):
                 if extracted_elevation_information.elevation:
                     extracted_elevation_informations.append(extracted_elevation_information)
             except ValueError as error:
-                logger.warning(f"ValueError: {error}")
+                logger.warning("ValueError: %s", error)
                 logger.warning("Could not extract all required information from the lines provided.")
 
         return self.select_best_elevation_information(extracted_elevation_informations)
@@ -136,10 +134,7 @@ class ElevationExtractor(DataExtractor):
         extracted_elevation_informations.sort(key=lambda x: x.elevation, reverse=True)
 
         # Return the first element of the sorted list
-        if extracted_elevation_informations:
-            return extracted_elevation_informations[0]
-        else:
-            return None
+        return extracted_elevation_informations[0] if extracted_elevation_informations else None
 
     @staticmethod
     def get_elevation_from_lines(lines: list[TextLine], page: int, preprocess=lambda x: x) -> list[float]:
@@ -186,3 +181,26 @@ class ElevationExtractor(DataExtractor):
             return ElevationInformation(elevation=elevation, rect=rect_union, page=page)
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
+
+    def extract_data(self) -> ElevationInformation | None:
+        """Extracts the elevation information from a borehole profile.
+
+        Processes the borehole profile page by page and tries to find the feature key in the respective text of the
+        page.
+        """
+        for page in self.doc:
+            lines = extract_text_lines(page)
+            page_number = page.number + 1  # page.number is 0-based
+
+            found_feature_value = (
+                self.get_feature_near_key(lines, page_number, page.rect.width)
+                # or XXXX # Add other techniques here
+            )
+
+            if found_feature_value:
+                feature_value = getattr(found_feature_value, self.feature_name)
+                logger.info("Found %s on page %s: %s", self.feature_name, page_number, feature_value)
+                return found_feature_value
+
+        logger.info("No %s found in this borehole profile.", self.feature_name)
+        return None
