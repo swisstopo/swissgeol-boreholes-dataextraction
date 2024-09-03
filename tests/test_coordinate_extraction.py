@@ -151,7 +151,7 @@ def test_CoordinateExtractor_get_coordinates_near_key():  # noqa: D103
             "and something far below 600 002 / 200 002",
         ]
     )
-    coordinates = extractor.get_feature_near_key(lines, page=1, page_width=100)
+    coordinates = extractor.get_coordinates_near_key(lines, page=1)
 
     # coordinates on the same line as the key are found, and OCR errors are corrected
     assert coordinates[0].east.coordinate_value == 615790
