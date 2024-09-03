@@ -63,12 +63,18 @@ class ElevationExtractor(DataExtractor):
 
     The class provides methods to extract elevation data from text. The main method is the extract_elevation
     method which extracts elevation data from a list of text lines. The class also provides methods to find
-    the location of a elevation key in a string of text.
+    the location of an elevation key in a string of text.
     """
 
     feature_name = "elevation"
 
-    def get_feature_near_key(self, lines: list[TextLine], page: int, page_width: float) -> ElevationInformation | None:
+    # look for elevation values to the right and/or immediately below the key
+    search_right_factor: float = 5
+    search_below_factor: float = 1
+
+    preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ate": "ote"}
+
+    def get_elevation_near_key(self, lines: list[TextLine], page: int) -> ElevationInformation | None:
         """Find elevation from text lines that are close to an explicit "elevation" label.
 
         Also apply some preprocessing to the text of those text lines, to deal with some common (OCR) errors.
@@ -79,38 +85,17 @@ class ElevationExtractor(DataExtractor):
             page_width (float): the width of the current page (in points / PyMuPDF coordinates)
 
         Returns:
-            list[float]: all found elevations
+            ElevationInformation | None: the found elevation
         """
         # find the key that indicates the elevation information
         elevation_key_lines = self.find_feature_key(lines)
-        if elevation_key_lines is None:
-            return []
-
         extracted_elevation_informations = []
 
         for elevation_key_line in elevation_key_lines:
-            # find the lines of the text that are close to an identified elevation key.
-            key_rect = elevation_key_line.rect
-            # look for elevation values to the right and/or immediately below the key
-            elevation_search_rect = fitz.Rect(
-                key_rect.x0, key_rect.y0, key_rect.x1 + 5 * key_rect.width, key_rect.y1 + 1 * key_rect.width
-            )
-            elevation_lines = [line for line in lines if line.rect.intersects(elevation_search_rect)]
-
-            def preprocess(value: str) -> str:
-                value = value.replace(",", ".")
-                value = value.replace("'", ".")
-                value = value.replace("o", "0")  # frequent ocr error
-                value = value.replace("\n", " ")
-                value = value.replace("ate", "ote")  # frequent ocr error
-                return value
-
-            # makes sure the line with the key is included first in the extracted information and the duplicate removed
-            elevation_lines.insert(0, elevation_key_line)
-            elevation_lines = list(dict.fromkeys(elevation_lines))
+            elevation_lines = self.get_lines_near_key(lines, elevation_key_line)
 
             try:
-                extracted_elevation_information = self.get_elevation_from_lines(elevation_lines, page, preprocess)
+                extracted_elevation_information = self.get_elevation_from_lines(elevation_lines, page)
                 if extracted_elevation_information.elevation:
                     extracted_elevation_informations.append(extracted_elevation_information)
             except ValueError as error:
@@ -136,22 +121,20 @@ class ElevationExtractor(DataExtractor):
         # Return the first element of the sorted list
         return extracted_elevation_informations[0] if extracted_elevation_informations else None
 
-    @staticmethod
-    def get_elevation_from_lines(lines: list[TextLine], page: int, preprocess=lambda x: x) -> list[float]:
+    def get_elevation_from_lines(self, lines: list[TextLine], page: int) -> ElevationInformation:
         r"""Matches the elevation in a string of text.
 
         Args:
             lines (list[TextLine]): Arbitrary string of text.
             page (int): the page number (1-based) of the PDF document
-            preprocess: function that takes a string and returns a preprocessed string  # TODO add type
 
         Returns:
-            list[float]: A list of potential elevation
+            ElevationInformation: A list of potential elevation
         """
         matched_lines_rect = []
 
         for line in lines:
-            text = preprocess(line.text)
+            text = self.preprocess(line.text)
 
             # Check if the keyword line contains the elevation, extract it
             elevation = extract_elevation(text)
@@ -182,7 +165,7 @@ class ElevationExtractor(DataExtractor):
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
 
-    def extract_data(self) -> ElevationInformation | None:
+    def extract_elevation(self) -> ElevationInformation | None:
         """Extracts the elevation information from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the feature key in the respective text of the
@@ -193,7 +176,7 @@ class ElevationExtractor(DataExtractor):
             page_number = page.number + 1  # page.number is 0-based
 
             found_feature_value = (
-                self.get_feature_near_key(lines, page_number, page.rect.width)
+                self.get_elevation_near_key(lines, page_number)
                 # or XXXX # Add other techniques here
             )
 

@@ -172,30 +172,24 @@ def start_pipeline(
                     predictions[filename]["language"] = language
 
                     # Extract the coordinates of the borehole
-                    coordinate_extractor = CoordinateExtractor(
-                        document=doc,
-                    )
-                    coordinates = coordinate_extractor.extract_data()
+                    coordinate_extractor = CoordinateExtractor(document=doc)
+                    coordinates = coordinate_extractor.extract_coordinates()
                     if coordinates:
                         predictions[filename]["metadata"] = {"coordinates": coordinates.to_json()}
                     else:
                         predictions[filename]["metadata"] = {"coordinates": None}
 
                     # Extract the elevation information
-                    elevation_extractor = ElevationExtractor(
-                        document=doc,
-                    )
-                    elevation = elevation_extractor.extract_data()
+                    elevation_extractor = ElevationExtractor(document=doc)
+                    elevation = elevation_extractor.extract_elevation()
                     if elevation:
                         predictions[filename]["metadata"]["elevation"] = elevation.to_dict()
                     else:
                         predictions[filename]["metadata"]["elevation"] = None
 
                     # Extract the groundwater levels
-                    groundwater_extractor = GroundwaterLevelExtractor(
-                        document=doc,
-                    )
-                    groundwater = groundwater_extractor.extract_data()
+                    groundwater_extractor = GroundwaterLevelExtractor(document=doc)
+                    groundwater = groundwater_extractor.extract_groundwater()
                     if groundwater:
                         predictions[filename]["groundwater"] = [
                             groundwater_entry.to_dict() for groundwater_entry in groundwater

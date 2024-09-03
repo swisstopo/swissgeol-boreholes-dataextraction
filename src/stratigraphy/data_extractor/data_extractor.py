@@ -35,13 +35,21 @@ class ExtractedFeature(metaclass=ABCMeta):
 class DataExtractor(ABC):
     """Abstract class for data extraction from stratigraphy data files.
 
-    This class defines the interface for extracting data from stratigraphy data files. Subclasses must implement the
-    extract_data method to define the data extraction logic.
+    This class defines the interface for extracting data from stratigraphy data files.
     """
 
     doc: fitz.Document = None
     feature_keys: list[str] = None
     feature_name: str = None
+
+    # How much to the left of a key do we look for the feature information, as a multiple of the key line width
+    search_left_factor: float = 0
+    # How much to the right of a key do we look for the feature information, as a multiple of the key line width
+    search_right_factor: float = 0
+    # How much below a key do we look for the feature information, as a multiple of the key line height
+    search_below_factor: float = 0
+
+    preprocess_replacements: dict[str, str] = {}
 
     def __init__(self, document: fitz.Document):
         """Initializes the DataExtractor object.
@@ -56,7 +64,12 @@ class DataExtractor(ABC):
         self.doc = document
         self.feature_keys = read_params("matching_params.yml")[f"{self.feature_name}_keys"]
 
-    def find_feature_key(self, lines: list[TextLine], allowed_errors: int = 3) -> list[TextLine] | None:  # noqa: E501
+    def preprocess(self, value: str) -> str:
+        for old, new in self.preprocess_replacements.items():
+            value = value.replace(old, new)
+        return value
+
+    def find_feature_key(self, lines: list[TextLine], allowed_errors: int = 3) -> list[TextLine]:  # noqa: E501
         """Finds the location of a feature key in a string of text.
 
         This is useful to reduce the text within which the feature is searched. If the text is too large
@@ -73,7 +86,7 @@ class DataExtractor(ABC):
                                             contained in text. Defaults to 3 (guestimation; no optimisation done yet).
 
         Returns:
-            list[TextLine] | None: The lines of the feature key found in the text.
+            list[TextLine]: The lines of the feature key found in the text.
         """
         matches = set()
         for key in self.feature_keys:
@@ -90,30 +103,27 @@ class DataExtractor(ABC):
 
         return list(matches)
 
-    @abstractmethod
-    def get_feature_near_key(
-        self, lines: list[TextLine], page: int, page_width: float
-    ) -> ExtractedFeature | list[ExtractedFeature]:
-        """Finds the location of a feature near a key in a string of text.
+    def get_lines_near_key(self, lines, key_line: TextLine) -> list[TextLine]:
+        """Find the lines of the text that are close to an identified key.
+
+        The line of the identified key is always returned as the first item in the list.
 
         Args:
             lines (list[TextLine]): Arbitrary text lines to search in.
-            page (int): The page number (1-based) of the PDF document.
-            page_width (float): The width of the page in pixels.
+            key_line (TextLine): The line of the identified key.
 
         Returns:
-            ExtractedFeature | list[ExtractedFeature]: The extracted feature information.
+            list[TextLine]: The lines close to the key.
         """
-        pass
+        key_rect = key_line.rect
+        elevation_search_rect = fitz.Rect(
+            key_rect.x0 - self.search_left_factor * key_rect.width,
+            key_rect.y0,
+            key_rect.x1 + self.search_right_factor * key_rect.width,
+            key_rect.y1 + self.search_below_factor * key_rect.height,
+        )
+        feature_lines = [line for line in lines if line.rect.intersects(elevation_search_rect)]
 
-    @abstractmethod
-    def extract_data(self) -> ExtractedFeature | list[ExtractedFeature] | None:
-        """Extracts the feature information (e.g., groundwater, elevation, coordinates) from a borehole profile.
-
-        Processes the borehole profile page by page and tries to find the feature key in the respective text of the
-        page.
-
-        Returns:
-            ExtractedFeature | list[ExtractedFeature] | None: The extracted feature information.
-        """
-        pass
+        # makes sure the line with the key is included first in the extracted information and the duplicate removed
+        feature_lines.insert(0, key_line)
+        return list(dict.fromkeys(feature_lines))
