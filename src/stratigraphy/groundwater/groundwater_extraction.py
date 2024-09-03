@@ -7,8 +7,9 @@ from datetime import date, datetime
 
 import fitz
 import numpy as np
-from stratigraphy.data_extractor.data_extractor import DataExtractor
+from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature
 from stratigraphy.groundwater.utility import extract_date, extract_depth, extract_elevation
+from stratigraphy.util.extract_text import extract_text_lines
 from stratigraphy.util.line import TextLine
 
 logger = logging.getLogger(__name__)
@@ -69,13 +70,19 @@ class GroundwaterInformation(metaclass=abc.ABCMeta):
             return None
 
 
-@dataclass
-class GroundwaterInformationOnPage(metaclass=abc.ABCMeta):
+@dataclass(kw_only=True)
+class GroundwaterInformationOnPage(ExtractedFeature):
     """Abstract class for Groundwater Information."""
 
     groundwater: GroundwaterInformation
-    rect: fitz.Rect  # The rectangle that contains the extracted information
-    page: int  # The page number of the PDF document
+
+    def is_valid(self) -> bool:
+        """Checks if the information is valid.
+
+        Returns:
+            bool: True if the information is valid, otherwise False.
+        """
+        return self.groundwater > 0
 
     def to_dict(self) -> dict:
         """Converts the object to a dictionary.
@@ -95,6 +102,18 @@ class GroundwaterInformationOnPage(metaclass=abc.ABCMeta):
     def from_json_values(
         measurement_date: str | None, depth: float | None, elevation: float | None, page: int, rect: list[float]
     ):
+        """Converts the object from a dictionary.
+
+        Args:
+            measurement_date (str | None): The measurement date of the groundwater.
+            depth (float | None): The depth of the groundwater.
+            elevation (float | None): The elevation of the groundwater.
+            page (int): The page number of the PDF document.
+            rect (list[float]): The rectangle that contains the extracted information.
+
+        Returns:
+            GroundwaterInformationOnPage: The object created from the dictionary.
+        """
         return GroundwaterInformationOnPage(
             groundwater=GroundwaterInformation.from_json_values(
                 depth=depth, measurement_date=measurement_date, elevation=elevation
@@ -106,6 +125,8 @@ class GroundwaterInformationOnPage(metaclass=abc.ABCMeta):
 
 class GroundwaterLevelExtractor(DataExtractor):
     """Extracts coordinates from a PDF document."""
+
+    feature_name = "groundwater"
 
     def get_feature_near_key(
         self, lines: list[TextLine], page: int, page_width: float
@@ -159,7 +180,7 @@ class GroundwaterLevelExtractor(DataExtractor):
                 if extracted_gw.groundwater.depth:
                     extracted_groundwater_list.append(extracted_gw)
             except ValueError as error:
-                logger.warning(f"ValueError: {error}")
+                logger.warning("ValueError: %s", error)
                 logger.warning("Could not extract groundwater information from the lines near the key.")
 
         return extracted_groundwater_list
@@ -251,9 +272,37 @@ class GroundwaterLevelExtractor(DataExtractor):
         # drilling date - chose the date of the document. Date needs to be extracted from the document separately)
         if depth:
             return GroundwaterInformationOnPage(
-                GroundwaterInformation(depth=depth, measurement_date=datetime_date, elevation=elevation),
+                groundwater=GroundwaterInformation(depth=depth, measurement_date=datetime_date, elevation=elevation),
                 rect=rect_union,
                 page=page,
             )
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
+
+    def extract_data(self) -> list[GroundwaterInformationOnPage] | None:
+        """Extracts the groundwater information from a borehole profile.
+
+        Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
+        page.
+        Algorithm description:
+            1. if that gives no results, search for coordinates close to an explicit "groundwater" label (e.g. "Gswp")
+
+        Returns:
+            list[GroundwaterInformationOnPage] | None: the extracted coordinates (if any)
+        """
+        for page in self.doc:
+            lines = extract_text_lines(page)
+            page_number = page.number + 1  # page.number is 0-based
+
+            found_groundwater = (
+                self.get_feature_near_key(lines, page_number, page.rect.width)
+                # or XXXX # Add other techniques here
+            )
+
+            if found_groundwater:
+                groundwater_output = ", ".join([str(entry.groundwater) for entry in found_groundwater])
+                logger.info("Found groundwater information on page %s: %s", page_number, groundwater_output)
+                return found_groundwater
+
+        logger.info("No groundwater found in this borehole profile.")
+        return None

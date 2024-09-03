@@ -174,7 +174,6 @@ def start_pipeline(
                     # Extract the coordinates of the borehole
                     coordinate_extractor = CoordinateExtractor(
                         document=doc,
-                        feature_name="coordinate",
                     )
                     coordinates = coordinate_extractor.extract_data()
                     if coordinates:
@@ -185,7 +184,6 @@ def start_pipeline(
                     # Extract the elevation information
                     elevation_extractor = ElevationExtractor(
                         document=doc,
-                        feature_name="elevation",
                     )
                     elevation = elevation_extractor.extract_data()
                     if elevation:
@@ -196,7 +194,6 @@ def start_pipeline(
                     # Extract the groundwater levels
                     groundwater_extractor = GroundwaterLevelExtractor(
                         document=doc,
-                        feature_name="groundwater",
                     )
                     groundwater = groundwater_extractor.extract_data()
                     if groundwater:
