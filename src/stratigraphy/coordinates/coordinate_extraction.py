@@ -161,7 +161,7 @@ class CoordinateExtractor(DataExtractor):
                 found_coordinates.append(coordinates)
         return found_coordinates
 
-    def get_feature_near_key(self, lines: list[TextLine], page: int, page_width: float) -> list[Coordinate]:
+    def get_feature_near_key(self, lines: list[TextLine], page: int, page_width: float) -> list[Coordinate] | None:
         """Find coordinates from text lines that are close to an explicit "coordinates" label.
 
         Also apply some preprocessing to the text of those text lines, to deal with some common (OCR) errors.
@@ -200,10 +200,6 @@ class CoordinateExtractor(DataExtractor):
 
             extracted_coordinates.extend(self.get_coordinates_from_lines(coord_lines, page, preprocess))
 
-        return self.select_best_coordinate(extracted_coordinates)
-
-    def select_best_coordinate(self, extracted_coordinates: list[Coordinate]) -> Coordinate | None:
-        """Select the best coordinate from a list of extracted coordinates."""
         return extracted_coordinates if extracted_coordinates else None
 
     @staticmethod

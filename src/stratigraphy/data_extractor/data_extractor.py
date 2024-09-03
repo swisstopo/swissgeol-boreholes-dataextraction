@@ -73,7 +73,7 @@ class DataExtractor(ABC):
                                             contained in text. Defaults to 3 (guestimation; no optimisation done yet).
 
         Returns:
-            TextLine | None: The line of the feature key found in the text.
+            list[TextLine] | None: The lines of the feature key found in the text.
         """
         matches = set()
         for key in self.feature_keys:
@@ -91,7 +91,9 @@ class DataExtractor(ABC):
         return list(matches)
 
     @abstractmethod
-    def get_feature_near_key(self, lines: list[TextLine], page: int, page_width: float):
+    def get_feature_near_key(
+        self, lines: list[TextLine], page: int, page_width: float
+    ) -> ExtractedFeature | list[ExtractedFeature]:
         """Finds the location of a feature near a key in a string of text.
 
         Args:
@@ -100,7 +102,7 @@ class DataExtractor(ABC):
             page_width (float): The width of the page in pixels.
 
         Returns:
-            TextLine | None: The line of the feature found near the key in the text.
+            ExtractedFeature | list[ExtractedFeature]: The extracted feature information.
         """
         pass
 
@@ -110,5 +112,8 @@ class DataExtractor(ABC):
 
         Processes the borehole profile page by page and tries to find the feature key in the respective text of the
         page.
+
+        Returns:
+            ExtractedFeature | list[ExtractedFeature] | None: The extracted feature information.
         """
         pass
