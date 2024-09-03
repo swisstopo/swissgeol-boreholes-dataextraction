@@ -181,8 +181,8 @@ class ElevationExtractor(DataExtractor):
             )
 
             if found_elevation_value:
-                logger.info("Found Elevation on page %s: %s", page_number, found_elevation_value.elevation)
+                logger.info("Found elevation on page %s: %s", page_number, found_elevation_value.elevation)
                 return found_elevation_value
 
-        logger.info("No %s found in this borehole profile.", self.feature_name)
+        logger.info("No elevation found in this borehole profile.")
         return None
