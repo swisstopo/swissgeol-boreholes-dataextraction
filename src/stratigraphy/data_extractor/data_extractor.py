@@ -93,10 +93,12 @@ class DataExtractor(ABC):
         for key in self.feature_keys:
             if len(key) < 5:
                 # If the key is very short, do an exact match
-                pattern = regex.compile(r"\b(" + key + ")" + r"\b", flags=regex.IGNORECASE)
+                pattern = regex.compile(r"\b(" + regex.escape(key) + ")" + r"\b", flags=regex.IGNORECASE)
             else:
                 # Allow for a certain number of errors in longer keys
-                pattern = regex.compile(r"\b(" + key + "){e<" + str(allowed_errors) + r"}\b", flags=regex.IGNORECASE)
+                pattern = regex.compile(
+                    r"\b(" + regex.escape(key) + "){e<" + str(allowed_errors) + r"}\b", flags=regex.IGNORECASE
+                )
 
             for line in lines:
                 match = pattern.search(line.text)

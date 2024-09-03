@@ -64,8 +64,8 @@ def extract_elevation(text: str) -> float | None:
         float: The extracted elevation.
     """
     elevation_patterns = [
-        r"([\d.]+)\s*m\s*u\.m\.",
-        r"([\d.]+)\s*m\s*ur.",
+        r"(\d+(\.\d+)?)\s*m\s*u\.m\.",
+        r"(\d+(\.\d+)?)\s*m\s*ur.",
         r"(\d{3,}\.\d+)",
         r"(\d{3,})\s*m",
         # r"([\d]+(?:\s*\.\s*\d+))",  # match numbers that may have a space before and after the decimal point.
