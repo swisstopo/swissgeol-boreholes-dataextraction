@@ -73,7 +73,7 @@ extractor = CoordinateExtractor(doc)
 def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
     """Test the extraction of coordinates from a PDF document."""
     # Assuming there is a method called 'extract' in CoordinateExtractor class
-    coordinates = extractor.extract_data()
+    coordinates = extractor.extract_coordinates()
     # Check if the returned value is a list
     assert isinstance(coordinates, Coordinate)
     assert repr(coordinates.east) == "615'790"
