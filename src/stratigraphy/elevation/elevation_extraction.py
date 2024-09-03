@@ -68,7 +68,7 @@ class ElevationExtractor(DataExtractor):
 
     feature_name = "elevation"
 
-    def get_feature_near_key(self, lines: list[TextLine], page: int, page_width: float) -> list[float]:
+    def get_feature_near_key(self, lines: list[TextLine], page: int, page_width: float) -> ElevationInformation | None:
         """Find elevation from text lines that are close to an explicit "elevation" label.
 
         Also apply some preprocessing to the text of those text lines, to deal with some common (OCR) errors.
