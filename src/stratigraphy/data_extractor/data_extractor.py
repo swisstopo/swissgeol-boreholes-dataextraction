@@ -76,12 +76,14 @@ class DataExtractor(ABC):
             list[TextLine] | None: The lines of the feature key found in the text.
         """
         matches = set()
+
         for key in self.feature_keys:
             if len(key) < 5:
-                # if the key is very short, do an exact match
-                pattern = regex.compile(r"\b" + key + r"\b", flags=regex.IGNORECASE)
+                # If the key is very short, do an exact match
+                pattern = regex.compile(r"\b(" + key + ")" + r"\b", flags=regex.IGNORECASE)
             else:
-                pattern = regex.compile(r"\b" + key + "{e<" + str(allowed_errors) + r"}\b", flags=regex.IGNORECASE)
+                # Allow for a certain number of errors in longer keys
+                pattern = regex.compile(r"\b(" + key + "){e<" + str(allowed_errors) + r"}\b", flags=regex.IGNORECASE)
 
             for line in lines:
                 match = pattern.search(line.text)
