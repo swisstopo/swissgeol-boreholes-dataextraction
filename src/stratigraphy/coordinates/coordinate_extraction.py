@@ -118,6 +118,8 @@ class LV03Coordinate(Coordinate):
 class CoordinateExtractor(DataExtractor):
     """Extracts coordinates from a PDF document."""
 
+    feature_name = "coordinate"
+
     def get_coordinates_with_x_y_labels(self, lines: list[TextLine], page: int) -> list[Coordinate]:
         """Find coordinates with explicit "X" and "Y" labels from the text lines.
 

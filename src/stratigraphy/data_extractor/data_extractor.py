@@ -24,24 +24,26 @@ class DataExtractor(ABC):
 
     doc: fitz.Document = None
     feature_keys: list[str] = None
-    feature_name = None
+    feature_name: str = None
 
-    def __init__(self, document: fitz.Document, feature_name: str = "coordinate"):
-        """Initializes the CoordinateExtractor object.
+    def __init__(self, document: fitz.Document):
+        """Initializes the DataExtractor object.
 
         Args:
             document (fitz.Document): A PDF document.
-            feature_name (str, optional): The name of the feature to extract. Defaults to "coordinate".
+            feature_name (str): The name of the feature to extract.
         """
+        if not self.feature_name:
+            raise ValueError("Feature name must be specified.")
+
         self.doc = document
-        self.feature_name = feature_name
         self.feature_keys = read_params("matching_params.yml")[f"{self.feature_name}_keys"]
 
     def find_feature_key(self, lines: list[TextLine], allowed_errors: int = 3) -> TextLine | None:  # noqa: E501
-        """Finds the location of a coordinate key in a string of text.
+        """Finds the location of a feature key in a string of text.
 
-        This is useful to reduce the text within which the coordinates are searched. If the text is too large
-        false positive (found coordinates that are no coordinates) are more likely.
+        This is useful to reduce the text within which the feature is searched. If the text is too large
+        false positive (found feature that is actually not the feature) are more likely.
 
         The function allows for a certain number of errors in the key. Errors are defined as insertions, deletions
         or substitutions of characters (i.e. Levenshtein distance). For more information of how errors are defined see
@@ -54,7 +56,7 @@ class DataExtractor(ABC):
                                             contained in text. Defaults to 3 (guestimation; no optimisation done yet).
 
         Returns:
-            TextLine | None: The line of the coordinate key found in the text.
+            TextLine | None: The line of the feature key found in the text.
         """
         matches = []
         for key in self.feature_keys:
@@ -76,7 +78,6 @@ class DataExtractor(ABC):
         # Remove duplicates
         matches = list(dict.fromkeys(matches))
 
-        # OPTION 1
         if self.feature_name == "coordinate":
             # Return the best match (line only)
             best_match = min(matches, key=lambda x: x[1])
@@ -105,15 +106,10 @@ class DataExtractor(ABC):
         pass
 
     def extract_data(self) -> dict:
-        """Extracts the groundwater information from a borehole profile.
+        """Extracts the feature information (e.g., groundwater, elevation, coordinates) from a borehole profile.
 
-        Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
+        Processes the borehole profile page by page and tries to find the feature key in the respective text of the
         page.
-        Algorithm description:
-            1. if that gives no results, search for coordinates close to an explicit "groundwater" label (e.g. "Gswp")
-
-        Returns:
-            list[GroundwaterInformationOnPage] | None: the extracted coordinates (if any)
         """
         for page in self.doc:
             lines = extract_text_lines(page)
@@ -127,17 +123,17 @@ class DataExtractor(ABC):
             if self.feature_name in ["elevation", "coordinate"]:
                 if found_feature_value:
                     feature_value = getattr(found_feature_value, self.feature_name)
-                    logger.info(f"Found {self.feature_name} information on page {page_number}: {feature_value}")
+                    logger.info(f"Found {self.feature_name} on page {page_number}: {feature_value}")
                     return found_feature_value
             elif self.feature_name == "groundwater":
                 if len(found_feature_value):
-                    groundwater_output = ", ".join(
+                    feature_output = ", ".join(
                         [str(getattr(entry, self.feature_name)) for entry in found_feature_value]
                     )
-                    logger.info(f"Found groundwater information on page {page_number}: {groundwater_output}")
+                    logger.info(f"Found {self.feature_name} on page {page_number}: {feature_output}")
                     return found_feature_value
             else:
                 raise ValueError(f"Feature name '{self.feature_name}' not supported")
 
-        logger.info("No groundwater found in this borehole profile.")
+        logger.info(f"No {self.feature_name}  found in this borehole profile.")
         return None

@@ -21,9 +21,9 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ElevationInformation(metaclass=abc.ABCMeta):
-    """Abstract class for Groundwater Information."""
+    """Abstract class for Elevation Information."""
 
-    elevation: float | None = None  # Elevation of the groundwater relative to the mean sea level
+    elevation: float | None = None  # Elevation relative to the mean sea level
     rect: fitz.Rect | None = None  # The rectangle that contains the extracted information
     page: int | None = None  # The page number of the PDF document
 
@@ -65,8 +65,10 @@ class ElevationExtractor(DataExtractor):
 
     The class provides methods to extract elevation data from text. The main method is the extract_elevation
     method which extracts elevation data from a list of text lines. The class also provides methods to find
-    the location of a coordinate key in a string of text.
+    the location of a elevation key in a string of text.
     """
+
+    feature_name = "elevation"
 
     def get_feature_near_key(self, lines: list[TextLine], page: int, page_width: float) -> list[float]:
         """Find elevation from text lines that are close to an explicit "elevation" label.
@@ -81,7 +83,7 @@ class ElevationExtractor(DataExtractor):
         Returns:
             list[float]: all found elevations
         """
-        # find the key that indicates the coordinate information
+        # find the key that indicates the elevation information
         elevation_key_lines = self.find_feature_key(lines)
         if elevation_key_lines is None:
             return []
@@ -89,9 +91,9 @@ class ElevationExtractor(DataExtractor):
         extracted_elevation_informations = []
 
         for elevation_key_line in elevation_key_lines:
-            # find the lines of the text that are close to an identified coordinate key.
+            # find the lines of the text that are close to an identified elevation key.
             key_rect = elevation_key_line.rect
-            # look for coordinate values to the right and/or immediately below the key
+            # look for elevation values to the right and/or immediately below the key
             elevation_search_rect = fitz.Rect(
                 key_rect.x0, key_rect.y0, key_rect.x1 + 5 * key_rect.width, key_rect.y1 + 1 * key_rect.width
             )
@@ -141,7 +143,7 @@ class ElevationExtractor(DataExtractor):
 
     @staticmethod
     def get_elevation_from_lines(lines: list[TextLine], page: int, preprocess=lambda x: x) -> list[float]:
-        r"""Matches the coordinates in a string of text.
+        r"""Matches the elevation in a string of text.
 
         Args:
             lines (list[TextLine]): Arbitrary string of text.

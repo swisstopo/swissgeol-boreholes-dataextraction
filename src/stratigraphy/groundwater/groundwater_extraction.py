@@ -107,6 +107,8 @@ class GroundwaterInformationOnPage(metaclass=abc.ABCMeta):
 class GroundwaterLevelExtractor(DataExtractor):
     """Extracts coordinates from a PDF document."""
 
+    feature_name = "groundwater"
+
     def get_feature_near_key(
         self, lines: list[TextLine], page: int, page_width: float
     ) -> list[GroundwaterInformationOnPage]:
