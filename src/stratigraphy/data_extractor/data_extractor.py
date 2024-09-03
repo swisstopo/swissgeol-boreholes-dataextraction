@@ -69,7 +69,7 @@ class DataExtractor(ABC):
             value = value.replace(old, new)
         return value
 
-    def find_feature_key(self, lines: list[TextLine], allowed_errors: int = 3) -> list[TextLine]:  # noqa: E501
+    def find_feature_key(self, lines: list[TextLine], allowed_error_rate: float = 0.2) -> list[TextLine]:  # noqa: E501
         """Finds the location of a feature key in a string of text.
 
         This is useful to reduce the text within which the feature is searched. If the text is too large
@@ -82,8 +82,9 @@ class DataExtractor(ABC):
 
         Args:
             lines (list[TextLine]): Arbitrary text lines to search in.
-            allowed_errors (int, optional): The maximum number of errors (Levenshtein distance) to consider a key
-                                            contained in text. Defaults to 3 (guestimation; no optimisation done yet).
+            allowed_error_rate (float, optional): The maximum number of errors (Levenshtein distance) to consider a key
+                                                  contained in text, as a percentage of the key length. Defaults to 0.2
+                                                  (guestimation; no optimisation done yet).
 
         Returns:
             list[TextLine]: The lines of the feature key found in the text.
@@ -91,13 +92,14 @@ class DataExtractor(ABC):
         matches = set()
 
         for key in self.feature_keys:
+            allowed_errors = int(len(key) * allowed_error_rate)
             if len(key) < 5:
                 # If the key is very short, do an exact match
-                pattern = regex.compile(r"\b(" + regex.escape(key) + ")" + r"\b", flags=regex.IGNORECASE)
+                pattern = regex.compile(r"(\b" + regex.escape(key) + r"\b)", flags=regex.IGNORECASE)
             else:
                 # Allow for a certain number of errors in longer keys
                 pattern = regex.compile(
-                    r"\b(" + regex.escape(key) + "){e<" + str(allowed_errors) + r"}\b", flags=regex.IGNORECASE
+                    r"(\b" + regex.escape(key) + r"\b){e<=" + str(allowed_errors) + r"}", flags=regex.IGNORECASE
                 )
 
             for line in lines:
