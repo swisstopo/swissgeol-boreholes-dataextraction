@@ -3,7 +3,7 @@
 import fitz
 import pytest
 from stratigraphy import DATAPATH
-from stratigraphy.util.coordinate_extraction import (
+from stratigraphy.coordinates.coordinate_extraction import (
     Coordinate,
     CoordinateEntry,
     CoordinateExtractor,
@@ -15,20 +15,30 @@ from stratigraphy.util.line import TextLine, TextWord
 
 def test_strLV95():  # noqa: D103
     """Test the string representation of an LV95Coordinate object."""
-    coord = LV95Coordinate(CoordinateEntry(2789456), CoordinateEntry(1123012), fitz.Rect(), page=1)
+    coord = LV95Coordinate(
+        east=CoordinateEntry(coordinate_value=2789456),
+        north=CoordinateEntry(coordinate_value=1123012),
+        rect=fitz.Rect(),
+        page=1,
+    )
     assert str(coord) == "E: 2'789'456, N: 1'123'012"
 
 
 def test_to_jsonLV95():  # noqa: D103
     """Test the to_json method of an LV95Coordinate object."""
-    coord = LV95Coordinate(CoordinateEntry(2789456), CoordinateEntry(1123012), fitz.Rect(0, 1, 2, 3), page=1)
+    coord = LV95Coordinate(
+        east=CoordinateEntry(coordinate_value=2789456),
+        north=CoordinateEntry(coordinate_value=1123012),
+        rect=fitz.Rect(0, 1, 2, 3),
+        page=1,
+    )
     assert coord.to_json() == {"E": 2789456, "N": 1123012, "rect": [0, 1, 2, 3], "page": 1}
 
 
 def test_swap_coordinates():  # noqa: D103
     """Test the swapping of coordinates in an LV95Coordinate object."""
-    north = CoordinateEntry(789456)
-    east = CoordinateEntry(123012)
+    north = CoordinateEntry(coordinate_value=789456)
+    east = CoordinateEntry(coordinate_value=123012)
     coord = LV95Coordinate(north=north, east=east, rect=fitz.Rect(), page=1)
     assert coord.east == north
     assert coord.north == east
@@ -36,13 +46,23 @@ def test_swap_coordinates():  # noqa: D103
 
 def test_strLV03():  # noqa: D103
     """Test the string representation of an LV03Coordinate object."""
-    coord = LV03Coordinate(CoordinateEntry(789456), CoordinateEntry(123012), rect=fitz.Rect(), page=1)
+    coord = LV03Coordinate(
+        east=CoordinateEntry(coordinate_value=789456),
+        north=CoordinateEntry(coordinate_value=123012),
+        rect=fitz.Rect(),
+        page=1,
+    )
     assert str(coord) == "E: 789'456, N: 123'012"
 
 
 def test_to_jsonLV03():  # noqa: D103
     """Test the to_json method of an LV03Coordinate object."""
-    coord = LV03Coordinate(CoordinateEntry(789456), CoordinateEntry(123012), fitz.Rect(0, 1, 2, 3), page=1)
+    coord = LV03Coordinate(
+        east=CoordinateEntry(coordinate_value=789456),
+        north=CoordinateEntry(coordinate_value=123012),
+        rect=fitz.Rect(0, 1, 2, 3),
+        page=1,
+    )
     assert coord.to_json() == {"E": 789456, "N": 123012, "rect": [0, 1, 2, 3], "page": 1}
 
 
@@ -79,16 +99,16 @@ def test_CoordinateExtractor_find_coordinate_key():  # noqa: D103
     lines = _create_simple_lines(
         ["This is a sample text", "followed by a key with a spelling mistake", "Ko0rdinate 615.790 / 157.500"]
     )
-    key_line = extractor.find_coordinate_key(lines)
-    assert key_line.text == "Ko0rdinate 615.790 / 157.500"
+    key_line = extractor.find_feature_key(lines)
+    assert key_line[0].text == "Ko0rdinate 615.790 / 157.500"
 
     lines = _create_simple_lines(["An all-uppercase key should be matched", "COORDONNEES"])
-    key_line = extractor.find_coordinate_key(lines)
-    assert key_line.text == "COORDONNEES"
+    key_line = extractor.find_feature_key(lines)
+    assert key_line[0].text == "COORDONNEES"
 
     lines = _create_simple_lines(["This is a sample text", "without any relevant key"])
-    key_line = extractor.find_coordinate_key(lines)
-    assert key_line is None
+    key_line = extractor.find_feature_key(lines)
+    assert not key_line
 
 
 def test_CoordinateExtractor_get_coordinates_with_x_y_labels():  # noqa: D103
@@ -131,7 +151,7 @@ def test_CoordinateExtractor_get_coordinates_near_key():  # noqa: D103
             "and something far below 600 002 / 200 002",
         ]
     )
-    coordinates = extractor.get_coordinates_near_key(lines, page=1, page_width=100)
+    coordinates = extractor.get_coordinates_near_key(lines, page=1)
 
     # coordinates on the same line as the key are found, and OCR errors are corrected
     assert coordinates[0].east.coordinate_value == 615790

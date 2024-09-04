@@ -147,17 +147,17 @@ def evaluate_borehole_extraction(
     """
     layer_metrics, layer_document_level_metrics = evaluate_layer_extraction(predictions, number_of_truth_values)
     (
-        coordinate_metrics,
-        document_level_metrics_coordinates,
+        metadata_metrics,
+        document_level_metrics_metadata,
     ) = evaluate_metadata(predictions)
     (
         metrics_groundwater,
         document_level_metrics_groundwater,
         document_level_metrics_groundwater_depth,
     ) = evaluate_groundwater(predictions)
-    metrics = {**layer_metrics, **coordinate_metrics, **metrics_groundwater}
+    metrics = {**layer_metrics, **metadata_metrics, **metrics_groundwater}
     document_level_metrics = pd.merge(
-        layer_document_level_metrics, document_level_metrics_coordinates, on="document_name", how="outer"
+        layer_document_level_metrics, document_level_metrics_metadata, on="document_name", how="outer"
     )
     document_level_metrics = pd.merge(
         document_level_metrics, document_level_metrics_groundwater, on="document_name", how="outer"
@@ -270,7 +270,7 @@ def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd
         tuple[dict, pd.DataFrame]: The overall coordinate accuracy and the individual document metrics as a DataFrame.
     """
     document_level_metrics_coordinates, metrics_coordinates = get_metadata_metrics(predictions, "coordinates")
-
+    document_level_metrics_elevation, metrics_elevation = get_metadata_metrics(predictions, "elevation")
     metrics = {
         "coordinate_precision": metrics_coordinates["coordinates_precision"],
         "coordinate_recall": metrics_coordinates["coordinates_recall"],
@@ -278,12 +278,21 @@ def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd
         "coordinates_tp": metrics_coordinates["coordinates_tp"],
         "coordinates_fp": metrics_coordinates["coordinates_fp"],
         "coordinates_fn": metrics_coordinates["coordinates_fn"],
+        "elevation_precision": metrics_elevation["elevation_precision"],
+        "elevation_recall": metrics_elevation["elevation_recall"],
+        "elevation_f1": metrics_elevation["elevation_f1"],
+        "elevation_tp": metrics_elevation["elevation_tp"],
+        "elevation_fp": metrics_elevation["elevation_fp"],
+        "elevation_fn": metrics_elevation["elevation_fn"],
     }
-
-    return (
-        metrics,
+    document_level_metrics_metadata = pd.merge(
         pd.DataFrame(document_level_metrics_coordinates),
+        pd.DataFrame(document_level_metrics_elevation),
+        on="document_name",
+        how="outer",
     )
+
+    return (metrics, document_level_metrics_metadata)
 
 
 def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -> tuple[dict, pd.DataFrame]:

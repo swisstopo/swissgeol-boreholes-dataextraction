@@ -8,17 +8,16 @@ from dataclasses import dataclass
 
 import fitz
 import regex
-
+from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature
 from stratigraphy.util.extract_text import extract_text_lines
 from stratigraphy.util.line import TextLine
-from stratigraphy.util.util import read_params
 
 logger = logging.getLogger(__name__)
 
 COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})\.?\d?"
 
 
-@dataclass
+@dataclass(kw_only=True)
 class CoordinateEntry:
     """Dataclass to represent a coordinate entry."""
 
@@ -31,14 +30,12 @@ class CoordinateEntry:
             return f"{self.coordinate_value:07,}".replace(",", "'")
 
 
-@dataclass
-class Coordinate(metaclass=abc.ABCMeta):
+@dataclass(kw_only=True)
+class Coordinate(ExtractedFeature):
     """Abstract class for coordinates."""
 
     east: CoordinateEntry
     north: CoordinateEntry
-    rect: fitz.Rect
-    page: int
 
     def __post_init__(self):
         # east always greater than north by definition. Irrespective of the leading 1 or 2
@@ -70,14 +67,20 @@ class Coordinate(metaclass=abc.ABCMeta):
     def from_values(east: int, north: int, rect: fitz.Rect, page: int) -> Coordinate | None:
         if 1e6 < east < 1e7:
             return LV95Coordinate(
-                CoordinateEntry(coordinate_value=east), CoordinateEntry(coordinate_value=north), rect, page
+                east=CoordinateEntry(coordinate_value=east),
+                north=CoordinateEntry(coordinate_value=north),
+                rect=rect,
+                page=page,
             )
         elif east < 1e6:
             return LV03Coordinate(
-                CoordinateEntry(coordinate_value=east), CoordinateEntry(coordinate_value=north), rect, page
+                east=CoordinateEntry(coordinate_value=east),
+                north=CoordinateEntry(coordinate_value=north),
+                rect=rect,
+                page=page,
             )
         else:
-            logger.warning(f"Invalid coordinates format. Got E: {east}, N: {north}")
+            logger.warning("Invalid coordinates format. Got E: %s, N: %s", east, north)
             return None
 
     @staticmethod
@@ -116,17 +119,16 @@ class LV03Coordinate(Coordinate):
         return 324798 < self.east.coordinate_value < 847502 and 73998 < self.north.coordinate_value < 302002
 
 
-class CoordinateExtractor:
+class CoordinateExtractor(DataExtractor):
     """Extracts coordinates from a PDF document."""
 
-    def __init__(self, document: fitz.Document):
-        """Initializes the CoordinateExtractor object.
+    feature_name = "coordinate"
 
-        Args:
-            document (fitz.Document): A PDF document.
-        """
-        self.doc = document
-        self.coordinate_keys = read_params("matching_params.yml")["coordinate_keys"]
+    # look for elevation values to the right and/or immediately below the key
+    search_right_factor: float = 10
+    search_below_factor: float = 3
+
+    preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " "}
 
     def get_coordinates_with_x_y_labels(self, lines: list[TextLine], page: int) -> list[Coordinate]:
         """Find coordinates with explicit "X" and "Y" labels from the text lines.
@@ -165,41 +167,7 @@ class CoordinateExtractor:
                 found_coordinates.append(coordinates)
         return found_coordinates
 
-    def find_coordinate_key(self, lines: list[TextLine], allowed_errors: int = 3) -> TextLine | None:  # noqa: E501
-        """Finds the location of a coordinate key in a string of text.
-
-        This is useful to reduce the text within which the coordinates are searched. If the text is too large
-        false positive (found coordinates that are no coordinates) are more likely.
-
-        The function allows for a certain number of errors in the key. Errors are defined as insertions, deletions
-        or substitutions of characters (i.e. Levenshtein distance). For more information of how errors are defined see
-        https://github.com/mrabarnett/mrab-regex?tab=readme-ov-file#approximate-fuzzy-matching-hg-issue-12-hg-issue-41-hg-issue-109.
-
-
-        Args:
-            lines (list[TextLine]): Arbitrary text lines to search in.
-            allowed_errors (int, optional): The maximum number of errors (Levenshtein distance) to consider a key
-                                            contained in text. Defaults to 3 (guestimation; no optimisation done yet).
-
-        Returns:
-            TextLine | None: The line of the coordinate key found in the text.
-        """
-        matches = []
-        for key in self.coordinate_keys:
-            pattern = regex.compile(r"\b(" + key + "){e<" + str(allowed_errors) + r"}\b", flags=regex.IGNORECASE)
-            for line in lines:
-                match = pattern.search(line.text)
-                if match:
-                    matches.append((line, sum(match.fuzzy_counts)))
-
-        # if no match was found, return None
-        if len(matches) == 0:
-            return None
-
-        best_match = min(matches, key=lambda x: x[1])
-        return best_match[0]
-
-    def get_coordinates_near_key(self, lines: list[TextLine], page: int, page_width: float) -> list[Coordinate]:
+    def get_coordinates_near_key(self, lines: list[TextLine], page: int) -> list[Coordinate]:
         """Find coordinates from text lines that are close to an explicit "coordinates" label.
 
         Also apply some preprocessing to the text of those text lines, to deal with some common (OCR) errors.
@@ -207,33 +175,21 @@ class CoordinateExtractor:
         Args:
             lines (list[TextLine]): all the lines of text to search in
             page (int): the page number (1-based) of the PDF document
-            page_width (float): the width of the current page (in points / PyMuPDF coordinates)
 
         Returns:
             list[Coordinate]: all found coordinates
         """
         # find the key that indicates the coordinate information
-        coordinate_key_line = self.find_coordinate_key(lines)
-        if coordinate_key_line is None:
-            return []
+        coordinate_key_lines = self.find_feature_key(lines)
+        extracted_coordinates = []
 
-        # find the lines of the text that are close to an identified coordinate key.
-        key_rect = coordinate_key_line.rect
-        # look for coordinate values to the right and/or immediately below the key
-        coordinate_search_rect = fitz.Rect(key_rect.x0, key_rect.y0, page_width, key_rect.y1 + 3 * key_rect.height)
-        coord_lines = [line for line in lines if line.rect.intersects(coordinate_search_rect)]
+        for coordinate_key_line in coordinate_key_lines:
+            coord_lines = self.get_lines_near_key(lines, coordinate_key_line)
+            extracted_coordinates.extend(self.get_coordinates_from_lines(coord_lines, page))
 
-        def preprocess(value: str) -> str:
-            value = value.replace(",", ".")
-            value = value.replace("'", ".")
-            value = value.replace("o", "0")  # frequent ocr error
-            value = value.replace("\n", " ")
-            return value
+        return extracted_coordinates
 
-        return self.get_coordinates_from_lines(coord_lines, page, preprocess)
-
-    @staticmethod
-    def get_coordinates_from_lines(lines: list[TextLine], page: int, preprocess=lambda x: x) -> list[Coordinate]:
+    def get_coordinates_from_lines(self, lines: list[TextLine], page: int) -> list[Coordinate]:
         r"""Matches the coordinates in a string of text.
 
         The query searches for a pair of coordinates of 6 or 7 digits, respectively. The pair of coordinates
@@ -263,7 +219,6 @@ class CoordinateExtractor:
         Args:
             lines (list[TextLine]): Arbitrary string of text.
             page (int): the page number (1-based) of the PDF document
-            preprocess: function that takes a string and returns a preprocessed string  # TODO add type
 
         Returns:
             list[Coordinate]: A list of potential coordinates
@@ -278,7 +233,7 @@ class CoordinateExtractor:
                 rect=rect,
                 page=page,
             )
-            for match, rect in CoordinateExtractor._match_text_with_rect(lines, full_regex, preprocess)
+            for match, rect in CoordinateExtractor._match_text_with_rect(lines, full_regex, self.preprocess)
         ]
         return [
             coordinates for coordinates in potential_coordinates if coordinates is not None and coordinates.is_valid()
@@ -331,11 +286,11 @@ class CoordinateExtractor:
 
             found_coordinates = (
                 self.get_coordinates_with_x_y_labels(lines, page_number)
-                or self.get_coordinates_near_key(lines, page_number, page.rect.width)
+                or self.get_coordinates_near_key(lines, page_number)
                 or self.get_coordinates_from_lines(lines, page_number)
             )
 
-            if len(found_coordinates) > 0:
+            if found_coordinates:
                 return found_coordinates[0]
 
         logger.info("No coordinates found in this borehole profile.")

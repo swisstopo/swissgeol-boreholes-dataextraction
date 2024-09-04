@@ -32,6 +32,16 @@
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
             "python": "./swisstopo/bin/python3",
+        },
+        {
+            "name": "Python: Run pytest",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "./swisstopo/bin/python3",
         }
     ]
 }
