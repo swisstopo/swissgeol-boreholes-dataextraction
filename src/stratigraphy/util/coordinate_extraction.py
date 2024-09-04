@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import fitz
 import regex
 
-from stratigraphy.util.extract_text import extract_text_lines, extract_text_lines_from_bbox
+from stratigraphy.util.extract_text import extract_text_lines_from_bbox
 from stratigraphy.util.line import TextLine
 from stratigraphy.util.util import read_params
 
@@ -311,35 +311,6 @@ class CoordinateExtractor:
             results.append((match, rect))
         return results
 
-    def extract_coordinates(self) -> Coordinate | None:
-        """Extracts the coordinates from a borehole profile.
-
-        Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
-        page.
-
-        Algorithm description:
-            1. search for coordinates with explicit 'X' and 'Y' labels
-            2. if that gives no results, search for coordinates close to an explicit "coordinates" label
-            3. if that gives no results either, try to detect coordinates in the full text
-
-        Returns:
-            Coordinate | None: the extracted coordinates (if any)
-        """
-        for page in self.doc:
-            page_number = page.number + 1  # page.number is 0-based
-            lines = extract_text_lines(page)
-
-            found_coordinates = (
-                self.get_coordinates_with_x_y_labels(lines, page_number)
-                or self.get_coordinates_near_key(lines, page_number, page.rect.width)
-                or self.get_coordinates_from_lines(lines, page_number)
-            )
-
-            if len(found_coordinates) > 0:
-                return found_coordinates[0]
-
-        logger.info("No coordinates found in this borehole profile.")
-
     def extract_coordinates_from_bbox(self, page: fitz.Page, page_number: int, bbox: fitz.Rect) -> Coordinate | None:
         """Extracts the coordinates from a borehole profile.
 
@@ -367,5 +338,33 @@ class CoordinateExtractor:
 
         if len(found_coordinates) > 0:
             return found_coordinates[0]
+
+        logger.info("No coordinates found in this borehole profile.")
+
+    def extract_coordinates(self) -> Coordinate | None:
+        """Extracts the coordinates from a borehole profile.
+
+        Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
+        page.
+
+        Algorithm description:
+            1. search for coordinates with explicit 'X' and 'Y' labels
+            2. if that gives no results, search for coordinates close to an explicit "coordinates" label
+            3. if that gives no results either, try to detect coordinates in the full text
+
+        Returns:
+            Coordinate | None: the extracted coordinates (if any)
+        """
+        for page in self.doc:
+            page_number = page.number + 1  # page.number is 0-based
+
+            found_coordinates = self.extract_coordinates_from_bbox(
+                page=page,
+                page_number=page_number,
+                bbox=fitz.Rect(0, 0, page.rect.width, page.rect.height),
+            )
+
+            if found_coordinates:
+                return found_coordinates
 
         logger.info("No coordinates found in this borehole profile.")

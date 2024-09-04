@@ -3,7 +3,7 @@
 import os
 
 import fitz
-from app.common.aws import load_pdf_from_aws, s3_client
+from app.common.aws import load_pdf_from_aws, upload_file_to_s3
 from app.common.config import config
 from app.common.schemas import PNGResponse
 from fastapi import Form, HTTPException
@@ -27,17 +27,9 @@ def create_pngs(aws_filename: str = Form(...)):
     # Check if the PDF name is valid
     if not aws_filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Invalid request. The filename must end with '.pdf'.")
-    if len(aws_filename.split("/")) < 4:
-        error_details = "The filename must be in the format 'pdfs/{dataset_name}/{dataset_type}/{filename}.pdf'."
-        raise HTTPException(
-            status_code=400,
-            detail=error_details,
-        )
 
     # Get the filename from the path
-    filename = aws_filename.split("/")[-1].split(".")[0]
-    dataset_type = aws_filename.split("/")[-2]  # The dataset name (e.g., "train")
-    dataset_name = aws_filename.split("/")[-3]  # The dataset type (e.g., "geoquat")
+    filename = aws_filename.split(".")[0]
 
     # Initialize the S3 client
     pdf_document = load_pdf_from_aws(aws_filename)
@@ -51,14 +43,13 @@ def create_pngs(aws_filename: str = Form(...)):
             pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))
             png_filename = f"{filename}-{page_number + 1}.png"
             png_path = f"/tmp/{png_filename}"  # Local path to save the PNG
-            s3_bucket_png_path = f"pngs/{dataset_name}/{dataset_type}/{png_filename}"
+            s3_bucket_png_path = f"pngs/{png_filename}"
 
             pix.save(png_path)
 
             # Upload the PNG to S3
-            s3_client.upload_file(
+            upload_file_to_s3(
                 png_path,  # The local path to the file to upload
-                config.bucket_name,  # The S3 bucket name
                 s3_bucket_png_path,  # The key (name) of the file in the bucket
             )
 

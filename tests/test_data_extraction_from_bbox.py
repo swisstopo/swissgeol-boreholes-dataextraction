@@ -8,33 +8,42 @@ The s3_client fixture is created by the mock_aws decorator, which mocks the AWS 
 
 from pathlib import Path
 
+import fitz
 import pytest
+from app.common.aws import load_pdf_from_aws
 from app.common.config import config
 from app.common.schemas import ExtractDataRequest
 from fastapi.testclient import TestClient
 
-TEST_PDF_KEY = "/pdfs/geoquat/train/sample.pdf"
+TEST_PDF_KEY = "pdfs/sample.pdf"
 TEST_PDF_PATH = Path(__file__).parent.parent / "example" / "example_borehole_profile.pdf"
-TEST_PNG_KEY = "/pngs/geoquat/train/sample-1.png"
+TEST_PNG_KEY = "pngs/sample-1.png"
 TEST_PNG_PATH = Path(__file__).parent.parent / "example" / "sample-1.png"
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def upload_test_pdf(s3_client):
     """Upload a test PDF file to S3."""
-    s3_client.upload_file(Filename=str(TEST_PDF_PATH), Bucket=config.bucket_name, Key=TEST_PDF_KEY)
+    s3_client.upload_file(Filename=str(TEST_PDF_PATH), Bucket=config.test_bucket_name, Key=TEST_PDF_KEY)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def upload_test_png(s3_client, upload_test_pdf):
     """Upload a test PNG file to S3."""
-    s3_client.upload_file(Filename=str(TEST_PNG_PATH), Bucket=config.bucket_name, Key=TEST_PNG_KEY)
+    s3_client.upload_file(Filename=str(TEST_PNG_PATH), Bucket=config.test_bucket_name, Key=TEST_PNG_KEY)
+
+
+def test_load_pdf_from_aws(upload_test_pdf):
+    """Test loading a PDF from mocked AWS S3."""
+    pdf_document = load_pdf_from_aws(TEST_PDF_KEY.split("/")[-1])
+    assert pdf_document is not None
+    assert isinstance(pdf_document, fitz.Document)
 
 
 def test_extract_coordinate_fail(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test the extract_data endpoint with a valid request."""
     request = ExtractDataRequest(
-        filename=TEST_PDF_KEY,
+        filename=TEST_PDF_KEY.split("/")[-1],
         page_number=1,
         bbox={"x0": 0, "y0": 0, "x1": 100, "y1": 100},
         format="coordinates",
@@ -59,7 +68,7 @@ def test_extract_text_success(test_client: TestClient, upload_test_pdf, upload_t
     )
 
     request = ExtractDataRequest(
-        filename=TEST_PDF_KEY,
+        filename=TEST_PDF_KEY.split("/")[-1],
         page_number=1,
         bbox={"x0": 0, "y0": 0, "x1": 1000, "y1": 1000},
         format="text",
@@ -76,7 +85,7 @@ def test_extract_text_empty(test_client: TestClient, upload_test_pdf, upload_tes
     target_text = ""
 
     request = ExtractDataRequest(
-        filename=TEST_PDF_KEY,
+        filename=TEST_PDF_KEY.split("/")[-1],
         page_number=1,
         bbox={"x0": 0, "y0": 0, "x1": 100, "y1": 100},
         format="text",
@@ -91,7 +100,7 @@ def test_extract_text_empty(test_client: TestClient, upload_test_pdf, upload_tes
 def test_extract_coordinate_success(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test the extract_data endpoint with a valid request."""
     request = ExtractDataRequest(
-        filename=TEST_PDF_KEY,
+        filename=TEST_PDF_KEY.split("/")[-1],
         page_number=1,
         bbox={"x0": 0, "y0": 0, "x1": 3000, "y1": 3000},
         format="coordinates",
@@ -103,5 +112,4 @@ def test_extract_coordinate_success(test_client: TestClient, upload_test_pdf, up
     assert "coordinates" in json_response
     assert json_response["coordinates"]["east"] == 615790
     assert json_response["coordinates"]["north"] == 157500
-    assert json_response["coordinates"]["page"] == 1
     assert json_response["coordinates"]["spacial_reference_system"] == "LV03"

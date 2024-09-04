@@ -259,34 +259,10 @@ To launch the API and access its endpoints, follow these steps:
     Run the following command to start the FastAPI server:
 
     ```bash
-    uvicorn src.app.main:app --reload
+    uvicorn src.app.main:app --reload --host 0.0.0.0 --port 8002
     ```
 
-    This will start the server and enable automatic reloading whenever changes are made to the code.
-
-    **NOTE**: You can also launch the API in the debugger by adding the following to the `launch.json`: 
-
-    ```json
-    {
-        "name": "API",
-        "type": "debugpy",
-        "request": "launch",
-        "cwd": "${workspaceFolder}/",
-        "module": "uvicorn",
-        "args": [
-            "src.app.main:app",
-            "--reload",
-            "--host",
-            "0.0.0.0",
-            "--port",
-            "8002",
-        ],
-        "console": "integratedTerminal",
-        "justMyCode": true
-    }
-    ```
-
-    This will expose the API to the port 8002 of the localhost. You can see the swagger by opening: `http://127.0.0.1:8002/docs#/` in your favorite browser. 
+    This will start the server on port 8002 of the localhost and enable automatic reloading whenever changes are made to the code. You can see the OpenAPI Specification (formerly Swagger Specification) by opening: `http://127.0.0.1:8002/docs#/` in your favorite browser. 
 
 4. **Access the API endpoints**
 
@@ -300,9 +276,7 @@ To launch the API and access its endpoints, follow these steps:
 
 5. **Stop the server**
 
-    To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is running.
-
-Please refer to the FastAPI documentation for more information on how to work with FastAPI and build APIs using this framework.
+    To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is running. Please refer to the [FastAPI documentation](https://fastapi.tiangolo.com) for more information on how to work with FastAPI and build APIs using this framework.
 
 
 ## Experiment Tracking
