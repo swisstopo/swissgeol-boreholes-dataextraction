@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 
 import fitz
-from pydantic import BaseModel, Field, constr
+from pydantic import BaseModel, Field, constr, field_validator
 
 
 class PNGRequest(BaseModel):
@@ -118,6 +118,14 @@ class ExtractDataRequest(ABC, BaseModel):
     bbox: BoundingBox = Field(..., example={"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0})
     format: FormatTypes = Field(..., example=FormatTypes.COORDINATES.value)
 
+    @field_validator("page_number")
+    @classmethod
+    def page_number_must_be_positive(cls, v: int) -> int:
+        """Validate that the page number is positive."""
+        if v <= 0:
+            raise ValueError("Page number must be a positive integer")
+        return v
+
     class Config:
         """Make it possible to define an example for the entire request model in the Swagger UI.
 
@@ -127,7 +135,7 @@ class ExtractDataRequest(ABC, BaseModel):
 
         json_schema_extra = {
             "example": {
-                "filename": "pdfs/geoquat/train/10012.pdf",
+                "filename": "pdfs/10012.pdf",
                 "page_number": 1,
                 "bbox": {"x0": 0.0, "y0": 0.0, "x1": 200.0, "y1": 200.0},
                 "format": "coordinates",  # Adjust this to match your actual FormatTypes

@@ -13,7 +13,8 @@ from app.common.schemas import (
     PNGRequest,
     PNGResponse,
 )
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from pydantic import ValidationError
 
 router = APIRouter(prefix="/api/V1")
 
@@ -41,4 +42,9 @@ def post_create_pngs(request: PNGRequest) -> PNGResponse:
 )
 def post_extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataResponse:
     """Extract data from the given PNGs."""
-    return extract_data(extract_data_request)
+    try:
+        return extract_data(extract_data_request)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))

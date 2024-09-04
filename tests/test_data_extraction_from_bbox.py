@@ -113,3 +113,51 @@ def test_extract_coordinate_success(test_client: TestClient, upload_test_pdf, up
     assert json_response["coordinates"]["east"] == 615790
     assert json_response["coordinates"]["north"] == 157500
     assert json_response["coordinates"]["spacial_reference_system"] == "LV03"
+
+
+def test_incomplete_request(test_client: TestClient, upload_test_pdf, upload_test_png):
+    """Test the extract_data endpoint with an incomplete request."""
+    request = ExtractDataRequest(
+        filename=TEST_PDF_KEY.split("/")[-1],
+        page_number=1,
+        bbox={"x0": 0, "y0": 0, "x1": 3000, "y1": 3000},
+        format="text",
+    )
+    request_json = request.model_dump()
+    del request_json["bbox"]
+    response = test_client.post("/api/V1/extract_data", json=request_json)
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": [
+            {
+                "loc": ["body", "bbox"],
+                "msg": "Field required",
+                "type": "missing",
+                "input": {
+                    "filename": "sample.pdf",
+                    "format": "text",
+                    "page_number": 1,
+                },
+            }
+        ]
+    }
+
+
+def test_page_number_out_of_range(test_client: TestClient, upload_test_pdf, upload_test_png):
+    """Test the extract_data endpoint with an out-of-range page number."""
+    request = ExtractDataRequest(
+        filename=TEST_PDF_KEY.split("/")[-1],
+        page_number=1,
+        bbox={"x0": 0, "y0": 0, "x1": 3000, "y1": 3000},
+        format="coordinates",
+    )
+    request_json = request.model_dump()
+    request_json["page_number"] = 2
+    response = test_client.post("/api/V1/extract_data", json=request_json)
+    assert response.status_code == 400
+    assert response.json() == {"detail": "page not in document"}
+
+    request_json["page_number"] = 0
+    response = test_client.post("/api/V1/extract_data", json=request_json)
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Page number must be a positive integer"}
