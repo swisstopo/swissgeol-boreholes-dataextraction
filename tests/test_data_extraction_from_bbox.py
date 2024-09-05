@@ -79,7 +79,7 @@ def test_extract_text_success(test_client: TestClient, upload_test_pdf, upload_t
         "Bohrmeister : Dragnic "
         "Ausführungsdatum 2.-3. 9. 1995 "
         "Koordinaten : 615 790 / 157 500 "
-        "Kote Bezugspunkt : ~788,6 m ü. M. "
+        "Kote Bezugspunkt: ~788,6 m ü. M. "
     )
 
     request = ExtractDataRequest(
