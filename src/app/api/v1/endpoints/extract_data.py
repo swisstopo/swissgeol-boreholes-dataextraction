@@ -1,5 +1,7 @@
 """This module defines the FastAPI endpoint for extracting information from PNG images."""
 
+import re
+
 import fitz
 from app.common.aws import load_pdf_from_aws, load_png_from_aws
 from app.common.schemas import (
@@ -9,6 +11,7 @@ from app.common.schemas import (
     ExtractDataRequest,
     ExtractDataResponse,
     ExtractElevationResponse,
+    ExtractNumberResponse,
     ExtractTextResponse,
     FormatTypes,
     NotFoundResponse,
@@ -117,7 +120,18 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
             text=extracted_text.text,
         )
     elif extract_data_request.format == FormatTypes.NUMBER:
-        raise NotImplementedError("Number extraction is not implemented.")
+        extracted_number = extract_number(pdf_page, user_defined_bbox.to_fitz_rect())
+
+        # Convert the bounding box to PNG coordinates and return the response
+        return ExtractNumberResponse(
+            bbox=extracted_number.bbox.rescale(
+                original_height=pdf_page_height,
+                original_width=pdf_page_width,
+                target_height=png_page_height,
+                target_width=png_page_width,
+            ),
+            number=extracted_number.number,
+        )
     else:
         raise ValueError("Invalid format type.")
 
@@ -225,3 +239,52 @@ def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDa
 
     bbox = BoundingBox.load_from_fitz_rect(text_based_bbox)
     return ExtractTextResponse(bbox=bbox, text=text)
+
+
+def extract_number(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect):
+    """Extract numbers from a PNG image.
+
+    Args:
+        extract_data_request (ExtractDataRequest): The request data.
+        pdf_page (fitz.Page): The PDF page.
+        user_defined_bbox (fitz.Rect): The user-defined bounding box.
+
+    Returns:
+        ExtractDataResponse: The extracted numbers.
+    """
+    # Extract the text
+    text_lines = extract_text_lines_from_bbox(pdf_page, user_defined_bbox)
+
+    # Extract the number
+    number = None
+    for text_line in text_lines:
+        number = extract_number_from_text(text_line.text)
+        if number:
+            bbox = BoundingBox(
+                x0=text_line.rect.x0,
+                y0=text_line.rect.y0,
+                x1=text_line.rect.x1,
+                y1=text_line.rect.y1,
+            )
+            return ExtractNumberResponse(bbox=bbox, number=number[0])
+
+
+def extract_number_from_text(text: str) -> list[float]:
+    """Extract the number from a string.
+
+    Args:
+        text (str): The text to extract the number from. Example: "The price is 123 dollars and 45.67 cents."
+
+    Returns:
+        List[float] | None: The extracted number. Example: [123, 45.67]
+    """
+    # Extract all numbers (both integers and decimals)
+    numbers_list = re.findall(r"\d+(?:\.\d+)?", text)
+
+    # Convert the numbers to floats
+    numbers = [float(number) for number in numbers_list]
+
+    if len(numbers) > 1:
+        raise ValueError("Multiple numbers found in the text.")
+
+    return numbers

@@ -192,3 +192,32 @@ def test_invalid_pdf(test_client: TestClient, upload_test_pdf, upload_test_png):
     response = test_client.post("/api/V1/extract_data", json=request_json)
     assert response.status_code == 404
     assert response.json() == {"detail": "Failed to load PDF document. The filename is not found in the bucket."}
+
+
+def test_number_extraction(test_client: TestClient, upload_test_pdf, upload_test_png):
+    """Test the extract_data endpoint with a valid request."""
+    request = get_default_coordinate_request()
+    request.format = FormatTypes.NUMBER
+
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump())
+    assert response.status_code == 200
+    json_response = response.json()
+    assert "bbox" in json_response
+    assert "number" in json_response
+    assert json_response["number"] == 5  # from STT KB5
+
+
+def test_number_extraction_failure(test_client: TestClient, upload_test_pdf, upload_test_png):
+    """Test the extract_data endpoint with a valid request."""
+    request = ExtractDataRequest(
+        filename=TEST_PDF_KEY.split("/")[-1],
+        page_number=1,
+        bbox={"x0": 0, "y0": 850, "x1": 1000, "y1": 950},  # Line with the coordinates in the document
+        format=FormatTypes.NUMBER,
+    )
+
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump())
+    assert response.status_code == 400
+    json_response = response.json()
+    assert "detail" in json_response
+    assert json_response["detail"] == "Multiple numbers found in the text."
