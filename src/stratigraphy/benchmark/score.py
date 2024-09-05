@@ -5,11 +5,10 @@ import logging
 import os
 from pathlib import Path
 
-import pandas as pd
 from dotenv import load_dotenv
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.ground_truth import GroundTruth
-from stratigraphy.benchmark.metrics import DatasetMetrics, Metrics
+from stratigraphy.benchmark.metrics import DatasetMetrics, DatasetMetricsCatalog, Metrics
 from stratigraphy.util.draw import draw_predictions
 from stratigraphy.util.predictions import FilePredictions
 from stratigraphy.util.util import parse_text
@@ -21,54 +20,70 @@ logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logg
 logger = logging.getLogger(__name__)
 
 
-def get_scores(predictions: dict, number_of_truth_values: dict) -> tuple[DatasetMetrics, DatasetMetrics]:
-    """Calculate F1, precision and recall for the predictions.
+def get_layer_metrics(predictions: dict, number_of_truth_values: dict) -> DatasetMetrics:
+    """Calculate F1, precision and recall for the layer predictions.
 
     Calculate F1, precision and recall for the individual documents as well as overall.
-    The individual document metrics are returned as a DataFrame.
 
     Args:
         predictions (dict): The predictions.
         number_of_truth_values (dict): The number of ground truth values per file.
 
     Returns:
-        tuple[DatasetMetrics, DatasetMetrics]: the metrics for the layers and depth intervals respectively
+        DatasetMetrics: the metrics for the layers
     """
-    # separate list to calculate the overall depth interval accuracy is required,
-    # as the depth interval accuracy is not calculated for documents with no correct
-    # material predictions.
-    depth_interval_metrics = DatasetMetrics()
     layer_metrics = DatasetMetrics()
 
     for filename, file_prediction in predictions.items():
         hits = 0
-        depth_interval_hits = 0
-        depth_interval_occurences = 0
         for layer in file_prediction.layers:
             if layer.material_is_correct:
                 hits += 1
-                if layer.depth_interval_is_correct:
-                    depth_interval_hits += 1
-                    depth_interval_occurences += 1
-                elif layer.depth_interval_is_correct is not None:
-                    depth_interval_occurences += 1
-
             if parse_text(layer.material_description.text) == "":
                 logger.warning("Empty string found in predictions")
         layer_metrics.metrics[filename] = Metrics(
             tp=hits, fp=len(file_prediction.layers) - hits, fn=number_of_truth_values[filename] - hits
         )
+
+    return layer_metrics
+
+
+def get_depth_interval_metrics(predictions: dict) -> DatasetMetrics:
+    """Calculate F1, precision and recall for the depth interval predictions.
+
+    Calculate F1, precision and recall for the individual documents as well as overall.
+
+    Depth interval accuracy is not calculated for layers with incorrect material predictions.
+
+    Args:
+        predictions (dict): The predictions.
+
+    Returns:
+        DatasetMetrics: the metrics for the depth intervals
+    """
+    depth_interval_metrics = DatasetMetrics()
+
+    for filename, file_prediction in predictions.items():
+        depth_interval_hits = 0
+        depth_interval_occurences = 0
+        for layer in file_prediction.layers:
+            if layer.material_is_correct:
+                if layer.depth_interval_is_correct is not None:
+                    depth_interval_occurences += 1
+                if layer.depth_interval_is_correct:
+                    depth_interval_hits += 1
+
         if depth_interval_occurences > 0:
             depth_interval_metrics.metrics[filename] = Metrics(
                 tp=depth_interval_hits, fp=depth_interval_occurences - depth_interval_hits, fn=0
             )
 
-    return layer_metrics, depth_interval_metrics
+    return depth_interval_metrics
 
 
 def evaluate_borehole_extraction(
     predictions: dict[str, FilePredictions], number_of_truth_values: dict
-) -> dict[str, DatasetMetrics]:
+) -> DatasetMetricsCatalog:
     """Evaluate the borehole extraction predictions.
 
     Args:
@@ -76,13 +91,14 @@ def evaluate_borehole_extraction(
        number_of_truth_values (dict): The number of layer ground truth values per file.
 
     Returns:
-        dict[str, DatasetMetrics]: A dictionary that maps a metrics name to the corresponding DatasetMetrics object
+        DatasetMetricsCatalogue: A DatasetMetricsCatalogue that maps a metrics name to the corresponding DatasetMetrics
+                                 object
     """
     all_metrics = evaluate_layer_extraction(predictions, number_of_truth_values)
-    all_metrics["coordinates"] = get_metrics(predictions, "metadata_is_correct", "coordinates")
-    all_metrics["elevation"] = get_metrics(predictions, "metadata_is_correct", "elevation")
-    all_metrics["groundwater"] = get_metrics(predictions, "groundwater_is_correct", "groundwater")
-    all_metrics["groundwater_depth"] = get_metrics(predictions, "groundwater_is_correct", "groundwater_depth")
+    all_metrics.metrics["coordinates"] = get_metrics(predictions, "metadata_is_correct", "coordinates")
+    all_metrics.metrics["elevation"] = get_metrics(predictions, "metadata_is_correct", "elevation")
+    all_metrics.metrics["groundwater"] = get_metrics(predictions, "groundwater_is_correct", "groundwater")
+    all_metrics.metrics["groundwater_depth"] = get_metrics(predictions, "groundwater_is_correct", "groundwater_depth")
     return all_metrics
 
 
@@ -95,7 +111,7 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
         field_name (str): The name of the field being evaluated.
 
     Returns:
-        dict: The requested DatasetMetrics object.
+        DatasetMetrics: The requested DatasetMetrics object.
     """
     dataset_metrics = DatasetMetrics()
 
@@ -105,7 +121,7 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
     return dataset_metrics
 
 
-def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -> dict[str, DatasetMetrics]:
+def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -> DatasetMetricsCatalog:
     """Calculate F1, precision and recall for the predictions.
 
     Calculate F1, precision and recall for the individual documents as well as overall.
@@ -116,10 +132,11 @@ def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -
         number_of_truth_values (dict): The number of layer ground truth values per file.
 
     Returns:
-        dict[str, DatasetMetrics]: A dictionary that maps a metrics name to the corresponding DatasetMetrics object
+        DatasetMetricsCatalogue: A dictionary that maps a metrics name to the corresponding DatasetMetrics object
     """
-    all_metrics = {}
-    all_metrics["layer"], all_metrics["depth_interval"] = get_scores(predictions, number_of_truth_values)
+    all_metrics = DatasetMetricsCatalog()
+    all_metrics.metrics["layer"] = get_layer_metrics(predictions, number_of_truth_values)
+    all_metrics.metrics["depth_interval"] = get_depth_interval_metrics(predictions)
 
     # create predictions by language
     predictions_by_language = {"de": {}, "fr": {}}
@@ -132,15 +149,17 @@ def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -
         language_number_of_truth_values = {
             file_name: number_of_truth_values[file_name] for file_name in language_predictions
         }
-        all_metrics[f"{language}_layer"], all_metrics[f"{language}_depth_interval"] = get_scores(
+        all_metrics.metrics[f"{language}_layer"] = get_layer_metrics(
             language_predictions, language_number_of_truth_values
         )
+        all_metrics.metrics[f"{language}_depth_interval"] = get_depth_interval_metrics(language_predictions)
 
     logging.info("Macro avg:")
     logging.info(
-        f"F1: {all_metrics['layer'].macro_f1():.1%}, "
-        f"precision: {all_metrics['layer'].macro_precision():.1%}, recall: {all_metrics['layer'].macro_recall():.1%}, "
-        f"depth_interval_accuracy: {all_metrics['depth_interval'].macro_precision():.1%}"
+        f"F1: {all_metrics.metrics['layer'].macro_f1():.1%}, "
+        f"precision: {all_metrics.metrics['layer'].macro_precision():.1%}, "
+        f"recall: {all_metrics.metrics['layer'].macro_recall():.1%}, "
+        f"depth_interval_accuracy: {all_metrics.metrics['depth_interval'].macro_precision():.1%}"
     )
 
     return all_metrics
@@ -198,59 +217,11 @@ def evaluate(
     if number_of_truth_values:  # only evaluate if ground truth is available
         metrics = evaluate_borehole_extraction(predictions, number_of_truth_values)
 
-        all_series = [
-            metrics["layer"].to_dataframe("F1", lambda metric: metric.f1),
-            metrics["layer"].to_dataframe("precision", lambda metric: metric.precision),
-            metrics["layer"].to_dataframe("recall", lambda metric: metric.recall),
-            metrics["depth_interval"].to_dataframe("Depth_interval_accuracy", lambda metric: metric.precision),
-            metrics["layer"].to_dataframe("Number Elements", lambda metric: metric.tp + metric.fn),
-            metrics["layer"].to_dataframe("Number wrong elements", lambda metric: metric.fp + metric.fn),
-            metrics["coordinates"].to_dataframe("coordinates", lambda metric: metric.f1),
-            metrics["elevation"].to_dataframe("elevation", lambda metric: metric.f1),
-            metrics["groundwater"].to_dataframe("groundwater", lambda metric: metric.f1),
-            metrics["groundwater_depth"].to_dataframe("groundwater_depth", lambda metric: metric.f1),
-        ]
-        document_level_metrics = pd.DataFrame()
-        for series in all_series:
-            document_level_metrics = document_level_metrics.join(series, how="outer")
-
-        document_level_metrics.to_csv(
+        metrics.document_level_metrics_df().to_csv(
             temp_directory / "document_level_metrics.csv", index_label="document_name"
         )  # mlflow.log_artifact expects a file
 
-        coordinates_metrics = metrics["coordinates"].overall_metrics()
-        groundwater_metrics = metrics["groundwater"].overall_metrics()
-        groundwater_depth_metrics = metrics["groundwater_depth"].overall_metrics()
-        elevation_metrics = metrics["elevation"].overall_metrics()
-
-        metrics_dict = {
-            "F1": metrics["layer"].pseudo_macro_f1(),
-            "recall": metrics["layer"].macro_recall(),
-            "precision": metrics["layer"].macro_precision(),
-            "depth_interval_accuracy": metrics["depth_interval"].macro_precision(),
-            "de_F1": metrics["de_layer"].pseudo_macro_f1(),
-            "de_recall": metrics["de_layer"].macro_recall(),
-            "de_precision": metrics["de_layer"].macro_precision(),
-            "de_depth_interval_accuracy": metrics["de_depth_interval"].macro_precision(),
-            "fr_F1": metrics["fr_layer"].pseudo_macro_f1(),
-            "fr_recall": metrics["fr_layer"].macro_recall(),
-            "fr_precision": metrics["fr_layer"].macro_precision(),
-            "fr_depth_interval_accuracy": metrics["fr_depth_interval"].macro_precision(),
-            "coordinate_f1": coordinates_metrics.f1,
-            "coordinate_recall": coordinates_metrics.recall,
-            "coordinate_precision": coordinates_metrics.precision,
-            "groundwater_f1": groundwater_metrics.f1,
-            "groundwater_recall": groundwater_metrics.recall,
-            "groundwater_precision": groundwater_metrics.precision,
-            "groundwater_depth_f1": groundwater_depth_metrics.f1,
-            "groundwater_depth_recall": groundwater_depth_metrics.recall,
-            "groundwater_depth_precision": groundwater_depth_metrics.precision,
-            "elevation_f1": elevation_metrics.f1,
-            "elevation_recall": elevation_metrics.recall,
-            "elevation_precision": elevation_metrics.precision,
-        }
-
-        # print the metrics
+        metrics_dict = metrics.metrics_dict()
         logger.info("Performance metrics: %s", metrics_dict)
 
         if mlflow_tracking:
@@ -273,7 +244,7 @@ if __name__ == "__main__":
         mlflow.start_run()
 
     # TODO: make configurable
-    ground_truth_path = DATAPATH.parent.parent / "data" / "geoquat_ground_truth.json"
+    ground_truth_path = DATAPATH.parent.parent / "data" / "zurich_ground_truth.json"
     predictions_path = DATAPATH / "output" / "predictions.json"
     temp_directory = DATAPATH / "_temp"
 
