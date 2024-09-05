@@ -13,7 +13,8 @@ from app.common.schemas import (
     FormatTypes,
     NotFoundResponse,
 )
-from stratigraphy.util.coordinate_extraction import CoordinateExtractor, LV03Coordinate, LV95Coordinate
+from stratigraphy.coordinates.coordinate_extraction import CoordinateExtractor, LV03Coordinate, LV95Coordinate
+from stratigraphy.elevation.elevation_extraction import ElevationExtractor
 from stratigraphy.util.extract_text import extract_text_lines_from_bbox
 
 
@@ -81,7 +82,27 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
             ),
         )
     elif extract_data_request.format == FormatTypes.ELEVATION:
-        return extract_elevation(extract_data_request, pdf_page, user_defined_bbox.to_fitz_rect())
+        extracted_elevation: ExtractElevationResponse | None = extract_elevation(
+            extract_data_request, pdf_page, user_defined_bbox.to_fitz_rect()
+        )
+
+        if extracted_elevation is None:
+            return NotFoundResponse(
+                detail="Elevation not found.",
+                bbox=extract_data_request.bbox,
+            )
+
+        # Convert the bounding box to PNG coordinates and return the response
+        return ExtractElevationResponse(
+            bbox=extracted_elevation.bbox.rescale(
+                original_height=pdf_page_height,
+                original_width=pdf_page_width,
+                target_height=png_page_height,
+                target_width=png_page_width,
+            ),
+            elevation=extracted_elevation.elevation,
+        )
+
     elif extract_data_request.format == FormatTypes.TEXT:
         extracted_text: ExtractTextResponse = extract_text(pdf_page, user_defined_bbox.to_fitz_rect())
 
@@ -131,7 +152,7 @@ def extract_coordinates(
             ),
         )
 
-    coord_extractor = CoordinateExtractor()
+    coord_extractor = CoordinateExtractor(pdf_page)
     extracted_coord = coord_extractor.extract_coordinates_from_bbox(
         pdf_page, extract_data_request.page_number, user_defined_bbox
     )
@@ -158,10 +179,27 @@ def extract_elevation(
     Returns:
         ExtractDataResponse: The extracted elevation.
     """
-    # Extract the elevation
-    elevation = 444
-    bbox = BoundingBox(x0=20.0, y0=40.0, x1=60.0, y1=80.0)
-    return ExtractElevationResponse(bbox=bbox, elevation=elevation)
+    elevation_extractor = ElevationExtractor(pdf_page)
+    elevation = elevation_extractor.extract_elevation_from_bbox(
+        pdf_page, extract_data_request.page_number, user_defined_bbox
+    )
+
+    if elevation is None:
+        return NotFoundResponse(
+            detail="Elevation not found.",
+            bbox=extract_data_request.bbox,
+        )
+
+    bbox = BoundingBox(
+        x0=elevation.rect.x0,
+        y0=elevation.rect.y0,
+        x1=elevation.rect.x1,
+        y1=elevation.rect.y1,
+    )
+    return ExtractElevationResponse(
+        bbox=bbox,
+        elevation=elevation.elevation,
+    )
 
 
 def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDataResponse:

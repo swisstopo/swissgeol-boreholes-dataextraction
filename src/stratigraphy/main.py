@@ -12,10 +12,11 @@ from tqdm import tqdm
 
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.score import create_predictions_objects, evaluate_borehole_extraction
+from stratigraphy.coordinates.coordinate_extraction import CoordinateExtractor
+from stratigraphy.elevation.elevation_extraction import ElevationExtractor
 from stratigraphy.extract import process_page
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterLevelExtractor
 from stratigraphy.line_detection import extract_lines, line_detection_params
-from stratigraphy.util.coordinate_extraction import CoordinateExtractor
 from stratigraphy.util.draw import draw_predictions
 from stratigraphy.util.duplicate_detection import remove_duplicate_layers
 from stratigraphy.util.extract_text import extract_text_lines
@@ -158,7 +159,7 @@ def start_pipeline(
     # process the individual pdf files
     predictions = {}
     for root, _dirs, files in file_iterator:
-        for filename in tqdm(files):
+        for filename in tqdm(files, desc="Processing files", unit="file"):
             if filename.endswith(".pdf"):
                 in_path = os.path.join(root, filename)
                 logger.info("Processing file: %s", in_path)
@@ -171,20 +172,30 @@ def start_pipeline(
                     predictions[filename]["language"] = language
 
                     # Extract the coordinates of the borehole
-                    coordinate_extractor = CoordinateExtractor(doc)
+                    coordinate_extractor = CoordinateExtractor(document=doc)
                     coordinates = coordinate_extractor.extract_coordinates()
                     if coordinates:
                         predictions[filename]["metadata"] = {"coordinates": coordinates.to_json()}
                     else:
                         predictions[filename]["metadata"] = {"coordinates": None}
 
-                    # Extract the groundwater levels
-                    groundwater_extractor = GroundwaterLevelExtractor(doc)
-                    groundwater_information = groundwater_extractor.extract_groundwater_information()
-                    if groundwater_information:
-                        predictions[filename]["groundwater_information"] = groundwater_information.to_dict()
+                    # Extract the elevation information
+                    elevation_extractor = ElevationExtractor(document=doc)
+                    elevation = elevation_extractor.extract_elevation()
+                    if elevation:
+                        predictions[filename]["metadata"]["elevation"] = elevation.to_dict()
                     else:
-                        predictions[filename]["groundwater_information"] = None
+                        predictions[filename]["metadata"]["elevation"] = None
+
+                    # Extract the groundwater levels
+                    groundwater_extractor = GroundwaterLevelExtractor(document=doc)
+                    groundwater = groundwater_extractor.extract_groundwater()
+                    if groundwater:
+                        predictions[filename]["groundwater"] = [
+                            groundwater_entry.to_dict() for groundwater_entry in groundwater
+                        ]
+                    else:
+                        predictions[filename]["groundwater"] = None
 
                     layer_predictions_list = []
                     depths_materials_column_pairs_list = []

@@ -125,6 +125,18 @@ def test_extract_coordinate_success(test_client: TestClient, upload_test_pdf, up
     assert json_response["coordinates"]["projection"] == "LV03"
 
 
+def test_extract_elevation_success(test_client: TestClient, upload_test_pdf, upload_test_png):
+    """Test the extract_data endpoint with a valid request."""
+    request = get_default_coordinate_request()
+    request.format = FormatTypes.ELEVATION
+    response = test_client.post("/api/V1/extract_data", json=request.model_dump())
+    assert response.status_code == 200
+    json_response = response.json()
+    assert "bbox" in json_response
+    assert "elevation" in json_response
+    assert json_response["elevation"] == 788.6
+
+
 def test_incomplete_request(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test the extract_data endpoint with an incomplete request."""
     request = get_default_coordinate_request()

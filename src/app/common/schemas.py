@@ -151,7 +151,7 @@ class ExtractDataRequest(ABC, BaseModel):
 
         json_schema_extra = {
             "example": {
-                "filename": "pdfs/10012.pdf",
+                "filename": "10012.pdf",
                 "page_number": 1,
                 "bbox": {"x0": 0.0, "y0": 0.0, "x1": 200.0, "y1": 200.0},
                 "format": "coordinates",  # Adjust this to match your actual FormatTypes
@@ -183,7 +183,7 @@ class ExtractCoordinatesResponse(ExtractDataResponse):
 class ExtractElevationResponse(ExtractDataResponse):
     """Response schema for the extract_data endpoint."""
 
-    elevation: float = Field(..., example=1.0)
+    elevation: float = Field(..., example=1.0, ge=0.0)
 
     @property
     def response_type(self):

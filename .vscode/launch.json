@@ -59,6 +59,6 @@
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
             "python": "./swisstopo/bin/python3",
-        },
+        }
     ]
 }

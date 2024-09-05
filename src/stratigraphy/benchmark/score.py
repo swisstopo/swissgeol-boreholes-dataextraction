@@ -147,23 +147,23 @@ def evaluate_borehole_extraction(
     """
     layer_metrics, layer_document_level_metrics = evaluate_layer_extraction(predictions, number_of_truth_values)
     (
-        coordinate_metrics,
-        document_level_metrics_coordinates,
+        metadata_metrics,
+        document_level_metrics_metadata,
     ) = evaluate_metadata(predictions)
     (
-        metrics_groundwater_information,
-        document_level_metrics_groundwater_information,
-        document_level_metrics_groundwater_information_depth,
-    ) = evaluate_groundwater_information(predictions)
-    metrics = {**layer_metrics, **coordinate_metrics, **metrics_groundwater_information}
+        metrics_groundwater,
+        document_level_metrics_groundwater,
+        document_level_metrics_groundwater_depth,
+    ) = evaluate_groundwater(predictions)
+    metrics = {**layer_metrics, **metadata_metrics, **metrics_groundwater}
     document_level_metrics = pd.merge(
-        layer_document_level_metrics, document_level_metrics_coordinates, on="document_name", how="outer"
+        layer_document_level_metrics, document_level_metrics_metadata, on="document_name", how="outer"
     )
     document_level_metrics = pd.merge(
-        document_level_metrics, document_level_metrics_groundwater_information, on="document_name", how="outer"
+        document_level_metrics, document_level_metrics_groundwater, on="document_name", how="outer"
     )
     document_level_metrics = pd.merge(
-        document_level_metrics, document_level_metrics_groundwater_information_depth, on="document_name", how="outer"
+        document_level_metrics, document_level_metrics_groundwater_depth, on="document_name", how="outer"
     )
     return metrics, document_level_metrics
 
@@ -190,16 +190,20 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
 
     for file_name, file_prediction in predictions.items():
         is_correct = getattr(file_prediction, field_key)[field_name]
-        if is_correct:
-            tp += 1
-            document_level_metrics["document_name"].append(file_name)
-            document_level_metrics[field_name].append(1)
-        elif is_correct is None:
-            fn += 1
-        else:
-            fp += 1
-            document_level_metrics["document_name"].append(file_name)
-            document_level_metrics[field_name].append(0)
+        tp += is_correct["tp"]
+        fp += is_correct["fp"]
+        fn += is_correct["fn"]
+        document_level_metrics["document_name"].append(file_name)
+
+        try:
+            precision = is_correct["tp"] / (is_correct["tp"] + is_correct["fp"])
+        except ZeroDivisionError:
+            precision = 0
+        try:
+            recall = is_correct["tp"] / (is_correct["tp"] + is_correct["fn"])
+        except ZeroDivisionError:
+            recall = 0
+        document_level_metrics[field_name].append(f1(precision, recall))
 
     try:
         precision = tp / (tp + fp)
@@ -229,10 +233,10 @@ def get_metadata_metrics(predictions: dict[str, FilePredictions], metadata_field
 
 def get_groundwater_metrics(predictions: dict[str, FilePredictions], metadata_field: str) -> dict:
     """Get the groundwater information metrics."""
-    return get_metrics(predictions, "groundwater_information_is_correct", metadata_field)
+    return get_metrics(predictions, "groundwater_is_correct", metadata_field)
 
 
-def evaluate_groundwater_information(predictions: dict[str, FilePredictions]) -> tuple[dict, pd.DataFrame]:
+def evaluate_groundwater(predictions: dict[str, FilePredictions]) -> tuple[dict, pd.DataFrame]:
     """Evaluate the groundwater information predictions.
 
     Args:
@@ -242,19 +246,17 @@ def evaluate_groundwater_information(predictions: dict[str, FilePredictions]) ->
         tuple[dict, pd.DataFrame]: The overall groundwater information accuracy and the individual document metrics as
         a DataFrame.
     """
-    document_level_metrics_groundwater_information, metrics_groundwater_information = get_groundwater_metrics(
-        predictions, "groundwater_information"
-    )
-    document_level_metrics_groundwater_information_depth, metrics_groundwater_information_depth = (
-        get_groundwater_metrics(predictions, "groundwater_information_depth")
+    document_level_metrics_groundwater, metrics_groundwater = get_groundwater_metrics(predictions, "groundwater")
+    document_level_metrics_groundwater_depth, metrics_groundwater_depth = get_groundwater_metrics(
+        predictions, "groundwater_depth"
     )
 
-    metrics_groundwater_information.update(metrics_groundwater_information_depth)
+    metrics_groundwater.update(metrics_groundwater_depth)
 
     return (
-        metrics_groundwater_information,
-        pd.DataFrame(document_level_metrics_groundwater_information),
-        pd.DataFrame(document_level_metrics_groundwater_information_depth),
+        metrics_groundwater,
+        pd.DataFrame(document_level_metrics_groundwater),
+        pd.DataFrame(document_level_metrics_groundwater_depth),
     )
 
 
@@ -268,7 +270,7 @@ def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd
         tuple[dict, pd.DataFrame]: The overall coordinate metrics as a DataFrame.
     """
     document_level_metrics_coordinates, metrics_coordinates = get_metadata_metrics(predictions, "coordinates")
-
+    document_level_metrics_elevation, metrics_elevation = get_metadata_metrics(predictions, "elevation")
     metrics = {
         "coordinate_precision": metrics_coordinates["coordinates_precision"],
         "coordinate_recall": metrics_coordinates["coordinates_recall"],
@@ -276,12 +278,21 @@ def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd
         "coordinates_tp": metrics_coordinates["coordinates_tp"],
         "coordinates_fp": metrics_coordinates["coordinates_fp"],
         "coordinates_fn": metrics_coordinates["coordinates_fn"],
+        "elevation_precision": metrics_elevation["elevation_precision"],
+        "elevation_recall": metrics_elevation["elevation_recall"],
+        "elevation_f1": metrics_elevation["elevation_f1"],
+        "elevation_tp": metrics_elevation["elevation_tp"],
+        "elevation_fp": metrics_elevation["elevation_fp"],
+        "elevation_fn": metrics_elevation["elevation_fn"],
     }
-
-    return (
-        metrics,
+    document_level_metrics_metadata = pd.merge(
         pd.DataFrame(document_level_metrics_coordinates),
+        pd.DataFrame(document_level_metrics_elevation),
+        on="document_name",
+        how="outer",
     )
+
+    return (metrics, document_level_metrics_metadata)
 
 
 def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -> tuple[dict, pd.DataFrame]:

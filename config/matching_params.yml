@@ -129,7 +129,9 @@ groundwater_keys:
   - GW.SP.
   - W.SP.
   - W.SP
+  - W SP
   - Gr.W.spiegel
+  - GrW Sp
   - Wsp.
   - Wsp
 
@@ -153,4 +155,15 @@ groundwater_unit_keys:
   - M.u.T.
   - MuT
   - m.u.T.
+
+elevation_keys:
+  # German
+  - Kote OK Terrain
+  - Höhenlage
+  - Höhe
+  - Kote
+  - OK Terrain
+  - OKT
+  - Ansatzhöhe
+  - Terrainkote
 

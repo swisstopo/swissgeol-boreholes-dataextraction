@@ -9,7 +9,7 @@ from typing import Any
 
 import click
 import fitz
-from stratigraphy.util.coordinate_extraction import Coordinate
+from stratigraphy.coordinates.coordinate_extraction import Coordinate
 from stratigraphy.util.interval import AnnotatedInterval
 from stratigraphy.util.predictions import BoreholeMetaData, FilePredictions, LayerPrediction
 from stratigraphy.util.textblock import MaterialDescription
@@ -159,6 +159,8 @@ def create_from_label_studio(annotation_results: dict) -> list[FilePredictions]:
                 file_name=f"{file_name}.pdf",
                 language="unknown",
                 metadata=metadata.get(file_name),
+                groundwater_entries=[],
+                depths_materials_columns_pairs=[],
                 page_sizes=[{"width": page_width, "height": page_height}],
             )
 

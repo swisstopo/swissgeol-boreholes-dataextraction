@@ -14,7 +14,6 @@ from app.common.schemas import (
     PNGResponse,
 )
 from fastapi import APIRouter, HTTPException
-from pydantic import ValidationError
 
 router = APIRouter(prefix="/api/V1")
 
@@ -45,6 +44,4 @@ def post_extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRe
     try:
         return extract_data(extract_data_request)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from None
