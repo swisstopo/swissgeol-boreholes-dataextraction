@@ -59,17 +59,9 @@ def test_create_pngs_success(test_client: TestClient, s3_client, upload_test_pdf
 def test_create_pngs_invalid_filename(test_client: TestClient):
     """Test the create_pngs endpoint with an invalid request."""
     response = test_client.post("/api/V1/create_pngs", json={"filename": ""})
-    assert response.status_code == 422
+    assert response.status_code == 400
     assert response.json() == {
-        "detail": [
-            {
-                "loc": ["body", "filename"],
-                "msg": "String should have at least 1 character",
-                "type": "string_too_short",
-                "ctx": {"min_length": 1},
-                "input": "",
-            }
-        ]
+        "detail": "filename field - String should have at least 1 character",
     }
 
 

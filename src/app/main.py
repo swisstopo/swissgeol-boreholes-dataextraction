@@ -18,7 +18,11 @@ app = FastAPI()
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    content = {"detail": exc._errors[0]["ctx"]["error"].args[0]}
+    """Handle validation errors."""
+    try:
+        content = {"detail": exc._errors[0]["ctx"]["error"].args[0]}
+    except (IndexError, KeyError):
+        content = {"detail": "{} field - {}".format(exc.errors()[0]["loc"][1], exc.errors()[0]["msg"])}
     return JSONResponse(content=content, status_code=status.HTTP_400_BAD_REQUEST)
 
 

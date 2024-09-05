@@ -77,7 +77,7 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
             coordinates=Coordinates(
                 east=extracted_coords.coordinates.east,
                 north=extracted_coords.coordinates.north,
-                spacial_reference_system=extracted_coords.coordinates.spacial_reference_system,
+                projection=extracted_coords.coordinates.projection,
             ),
         )
     elif extract_data_request.format == FormatTypes.ELEVATION:
@@ -127,7 +127,7 @@ def extract_coordinates(
             coordinates=Coordinates(
                 east=coord.east.coordinate_value,
                 north=coord.north.coordinate_value,
-                spacial_reference_system=srs,
+                projection=srs,
             ),
         )
 

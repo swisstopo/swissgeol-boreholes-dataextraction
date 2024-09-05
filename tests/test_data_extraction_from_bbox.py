@@ -12,13 +12,33 @@ import fitz
 import pytest
 from app.common.aws import load_pdf_from_aws
 from app.common.config import config
-from app.common.schemas import ExtractDataRequest
+from app.common.schemas import ExtractDataRequest, FormatTypes
 from fastapi.testclient import TestClient
 
 TEST_PDF_KEY = "pdfs/sample.pdf"
 TEST_PDF_PATH = Path(__file__).parent.parent / "example" / "example_borehole_profile.pdf"
 TEST_PNG_KEY = "pngs/sample-1.png"
 TEST_PNG_PATH = Path(__file__).parent.parent / "example" / "sample-1.png"
+
+
+def get_default_small_coordinate_request():
+    """Return a default ExtractDataRequest for coordinates."""
+    return ExtractDataRequest(
+        filename=TEST_PDF_KEY.split("/")[-1],
+        page_number=1,
+        bbox={"x0": 0, "y0": 0, "x1": 100, "y1": 100},
+        format=FormatTypes.COORDINATES,
+    )
+
+
+def get_default_coordinate_request():
+    """Return a default ExtractDataRequest for coordinates."""
+    return ExtractDataRequest(
+        filename=TEST_PDF_KEY.split("/")[-1],
+        page_number=1,
+        bbox={"x0": 0, "y0": 0, "x1": 3000, "y1": 3000},
+        format=FormatTypes.COORDINATES,
+    )
 
 
 @pytest.fixture(scope="function")
@@ -42,12 +62,7 @@ def test_load_pdf_from_aws(upload_test_pdf):
 
 def test_extract_coordinate_fail(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test the extract_data endpoint with a valid request."""
-    request = ExtractDataRequest(
-        filename=TEST_PDF_KEY.split("/")[-1],
-        page_number=1,
-        bbox={"x0": 0, "y0": 0, "x1": 100, "y1": 100},
-        format="coordinates",
-    )
+    request = get_default_small_coordinate_request()
     response = test_client.post("/api/V1/extract_data", json=request.model_dump())
     assert response.status_code == 200
     json_response = response.json()
@@ -71,7 +86,7 @@ def test_extract_text_success(test_client: TestClient, upload_test_pdf, upload_t
         filename=TEST_PDF_KEY.split("/")[-1],
         page_number=1,
         bbox={"x0": 0, "y0": 0, "x1": 1000, "y1": 1000},
-        format="text",
+        format=FormatTypes.TEXT,
     )
     response = test_client.post("/api/V1/extract_data", json=request.model_dump())
     assert response.status_code == 200
@@ -88,7 +103,7 @@ def test_extract_text_empty(test_client: TestClient, upload_test_pdf, upload_tes
         filename=TEST_PDF_KEY.split("/")[-1],
         page_number=1,
         bbox={"x0": 0, "y0": 0, "x1": 100, "y1": 100},
-        format="text",
+        format=FormatTypes.TEXT,
     )
     response = test_client.post("/api/V1/extract_data", json=request.model_dump())
     assert response.status_code == 200
@@ -99,12 +114,7 @@ def test_extract_text_empty(test_client: TestClient, upload_test_pdf, upload_tes
 
 def test_extract_coordinate_success(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test the extract_data endpoint with a valid request."""
-    request = ExtractDataRequest(
-        filename=TEST_PDF_KEY.split("/")[-1],
-        page_number=1,
-        bbox={"x0": 0, "y0": 0, "x1": 3000, "y1": 3000},
-        format="coordinates",
-    )
+    request = get_default_coordinate_request()
     response = test_client.post("/api/V1/extract_data", json=request.model_dump())
     assert response.status_code == 200
     json_response = response.json()
@@ -112,45 +122,22 @@ def test_extract_coordinate_success(test_client: TestClient, upload_test_pdf, up
     assert "coordinates" in json_response
     assert json_response["coordinates"]["east"] == 615790
     assert json_response["coordinates"]["north"] == 157500
-    assert json_response["coordinates"]["spacial_reference_system"] == "LV03"
+    assert json_response["coordinates"]["projection"] == "LV03"
 
 
 def test_incomplete_request(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test the extract_data endpoint with an incomplete request."""
-    request = ExtractDataRequest(
-        filename=TEST_PDF_KEY.split("/")[-1],
-        page_number=1,
-        bbox={"x0": 0, "y0": 0, "x1": 3000, "y1": 3000},
-        format="text",
-    )
+    request = get_default_coordinate_request()
     request_json = request.model_dump()
     del request_json["bbox"]
     response = test_client.post("/api/V1/extract_data", json=request_json)
-    assert response.status_code == 422
-    assert response.json() == {
-        "detail": [
-            {
-                "loc": ["body", "bbox"],
-                "msg": "Field required",
-                "type": "missing",
-                "input": {
-                    "filename": "sample.pdf",
-                    "format": "text",
-                    "page_number": 1,
-                },
-            }
-        ]
-    }
+    assert response.status_code == 400
+    assert response.json() == {"detail": "bbox field - Field required"}
 
 
 def test_page_number_out_of_range(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test the extract_data endpoint with an out-of-range page number."""
-    request = ExtractDataRequest(
-        filename=TEST_PDF_KEY.split("/")[-1],
-        page_number=1,
-        bbox={"x0": 0, "y0": 0, "x1": 3000, "y1": 3000},
-        format="coordinates",
-    )
+    request = get_default_coordinate_request()
     request_json = request.model_dump()
     request_json["page_number"] = 2
     response = test_client.post("/api/V1/extract_data", json=request_json)
@@ -161,3 +148,35 @@ def test_page_number_out_of_range(test_client: TestClient, upload_test_pdf, uplo
     response = test_client.post("/api/V1/extract_data", json=request_json)
     assert response.status_code == 400
     assert response.json() == {"detail": "Page number must be a positive integer"}
+
+
+def test_invalid_format(test_client: TestClient, upload_test_pdf, upload_test_png):
+    """Test the extract_data endpoint with an invalid format."""
+    request = get_default_coordinate_request()
+    request_json = request.model_dump()
+    request_json["format"] = "invalid"
+    response = test_client.post("/api/V1/extract_data", json=request_json)
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "format field - Input should be 'text', 'number', 'coordinates' or 'elevation'"
+    }
+
+
+def test_invalid_bbox(test_client: TestClient, upload_test_pdf, upload_test_png):
+    """Test the extract_data endpoint with an invalid bounding box."""
+    request = get_default_coordinate_request()
+    request_json = request.model_dump()
+    request_json["bbox"] = {"x0": 0, "y0": 0, "x1": 100, "y1": -100.0}
+    response = test_client.post("/api/V1/extract_data", json=request_json)
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Bounding box coordinate must be a positive integer"}
+
+
+def test_invalid_pdf(test_client: TestClient, upload_test_pdf, upload_test_png):
+    """Test the extract_data endpoint with an invalid PDF."""
+    request = get_default_coordinate_request()
+    request_json = request.model_dump()
+    request_json["filename"] = "invalid.pdf"
+    response = test_client.post("/api/V1/extract_data", json=request_json)
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Failed to load PDF document. The filename is not found in the bucket."}

@@ -49,6 +49,14 @@ class BoundingBox(BaseModel):
     x1: float = Field(..., example=100.0)
     y1: float = Field(..., example=100.0)
 
+    @field_validator("x0", "y0", "x1", "y1")
+    @classmethod
+    def page_number_must_be_positive(cls, v: int) -> int:
+        """Validate that the page number is positive."""
+        if v < 0.0:
+            raise ValueError("Bounding box coordinate must be a positive integer")
+        return v
+
     def rescale(
         self, original_width: float, original_height: float, target_width: float, target_height: float
     ) -> "BoundingBox":
@@ -103,7 +111,7 @@ class Coordinates(BaseModel):
 
     east: float = Field(..., example=1.0)
     north: float = Field(..., example=2.0)
-    spacial_reference_system: str = Field(..., example="LV95")
+    projection: str = Field(..., example="LV95")
 
 
 class ExtractDataRequest(ABC, BaseModel):
@@ -124,6 +132,14 @@ class ExtractDataRequest(ABC, BaseModel):
         """Validate that the page number is positive."""
         if v <= 0:
             raise ValueError("Page number must be a positive integer")
+        return v
+
+    @field_validator("format")
+    @classmethod
+    def format_must_be_valid(cls, v: FormatTypes) -> FormatTypes:
+        """Validate that the format is valid."""
+        if v not in FormatTypes:
+            raise ValueError(f"Invalid format type: {v}")
         return v
 
     class Config:
@@ -157,9 +173,7 @@ class ExtractDataResponse(ABC, BaseModel):
 class ExtractCoordinatesResponse(ExtractDataResponse):
     """Response schema for the extract_data endpoint."""
 
-    coordinates: Coordinates = Field(
-        ..., example={"east": 1.0, "north": 2.0, "page": 1, "spacial_reference_system": "LV95"}
-    )
+    coordinates: Coordinates = Field(..., example={"east": 1.0, "north": 2.0, "page": 1, "projection": "LV95"})
 
     @property
     def response_type(self):
