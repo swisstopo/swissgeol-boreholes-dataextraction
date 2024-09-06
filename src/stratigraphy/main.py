@@ -12,15 +12,14 @@ from tqdm import tqdm
 
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.score import create_predictions_objects, evaluate_borehole_extraction
-from stratigraphy.coordinates.coordinate_extraction import CoordinateExtractor
-from stratigraphy.elevation.elevation_extraction import ElevationExtractor
 from stratigraphy.extract import process_page
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterLevelExtractor
 from stratigraphy.line_detection import extract_lines, line_detection_params
+from stratigraphy.metadata.metadata import StratigraphyMetadata
+from stratigraphy.predictions.predictions import FilePredictions, StratigraphyPredictions
 from stratigraphy.util.draw import draw_predictions
 from stratigraphy.util.duplicate_detection import remove_duplicate_layers
 from stratigraphy.util.extract_text import extract_text_lines
-from stratigraphy.util.language_detection import detect_language_of_document
 from stratigraphy.util.plot_utils import plot_lines
 from stratigraphy.util.util import flatten, read_params
 
@@ -156,46 +155,19 @@ def start_pipeline(
         file_iterator = [(input_directory.parent, None, [input_directory.name])]
     else:
         file_iterator = os.walk(input_directory)
+
     # process the individual pdf files
-    predictions = {}
+    predictions = StratigraphyPredictions()
     for root, _dirs, files in file_iterator:
         for filename in tqdm(files, desc="Processing files", unit="file"):
             if filename.endswith(".pdf"):
                 in_path = os.path.join(root, filename)
                 logger.info("Processing file: %s", in_path)
-                predictions[filename] = {}
+                single_file_predictions = FilePredictions(filename)
 
                 with fitz.Document(in_path) as doc:
-                    language = detect_language_of_document(
-                        doc, matching_params["default_language"], matching_params["material_description"].keys()
-                    )
-                    predictions[filename]["language"] = language
-
-                    # Extract the coordinates of the borehole
-                    coordinate_extractor = CoordinateExtractor(document=doc)
-                    coordinates = coordinate_extractor.extract_coordinates()
-                    if coordinates:
-                        predictions[filename]["metadata"] = {"coordinates": coordinates.to_json()}
-                    else:
-                        predictions[filename]["metadata"] = {"coordinates": None}
-
-                    # Extract the elevation information
-                    elevation_extractor = ElevationExtractor(document=doc)
-                    elevation = elevation_extractor.extract_elevation()
-                    if elevation:
-                        predictions[filename]["metadata"]["elevation"] = elevation.to_dict()
-                    else:
-                        predictions[filename]["metadata"]["elevation"] = None
-
-                    # Extract the groundwater levels
-                    groundwater_extractor = GroundwaterLevelExtractor(document=doc)
-                    groundwater = groundwater_extractor.extract_groundwater()
-                    if groundwater:
-                        predictions[filename]["groundwater"] = [
-                            groundwater_entry.to_dict() for groundwater_entry in groundwater
-                        ]
-                    else:
-                        predictions[filename]["groundwater"] = None
+                    # Extract metadata
+                    metadata = StratigraphyMetadata(doc)
 
                     layer_predictions_list = []
                     depths_materials_column_pairs_list = []
@@ -204,10 +176,19 @@ def start_pipeline(
                         page_number = page_index + 1
                         logger.info("Processing page %s", page_number)
 
+                        # Extract groundwater information for the page
+                        groundwater_extractor = GroundwaterLevelExtractor(document=doc)
+                        single_file_predictions.set_groundwater(
+                            groundwater_extractor.extract_groundwater_from_page(page=page)
+                        )
+
+                        # Extract text and geometric lines
                         text_lines = extract_text_lines(page)
                         geometric_lines = extract_lines(page, line_detection_params)
+
+                        # Process the page and extract the layer predictions and depths-materials-column pairs
                         layer_predictions, depths_materials_column_pairs = process_page(
-                            text_lines, geometric_lines, language, page_number, **matching_params
+                            text_lines, geometric_lines, metadata.language, page_number, **matching_params
                         )
 
                         # TODO: Add remove duplicates here!
@@ -222,7 +203,6 @@ def start_pipeline(
 
                         layer_predictions_list.extend(layer_predictions)
                         depths_materials_column_pairs_list.extend(depths_materials_column_pairs)
-                        page_dimensions.append({"height": page.rect.height, "width": page.rect.width})
 
                         if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
                             if not mlflow_tracking:
@@ -237,7 +217,6 @@ def start_pipeline(
 
                     predictions[filename]["layers"] = layer_predictions_list
                     predictions[filename]["depths_materials_column_pairs"] = depths_materials_column_pairs_list
-                    predictions[filename]["page_dimensions"] = page_dimensions
 
                     assert len(page_dimensions) == doc.page_count, "Page count mismatch."
 

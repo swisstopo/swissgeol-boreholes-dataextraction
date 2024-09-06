@@ -38,7 +38,6 @@ class DataExtractor(ABC):
     This class defines the interface for extracting data from stratigraphy data files.
     """
 
-    doc: fitz.Document = None
     feature_keys: list[str] = None
     feature_name: str = None
 

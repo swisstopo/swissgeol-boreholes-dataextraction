@@ -271,19 +271,46 @@ class GroundwaterLevelExtractor(DataExtractor):
         Returns:
             list[GroundwaterInformationOnPage]: the extracted coordinates (if any)
         """
-        for page in self.doc:
-            lines = extract_text_lines(page)
-            page_number = page.number + 1  # page.number is 0-based
+        groundwater_list = []
 
-            found_groundwater = (
-                self.get_groundwater_near_key(lines, page_number)
-                # or XXXX # Add other techniques here
-            )
+        for page in self.doc:
+            page_number = page.number + 1
+            found_groundwater = self.extract_groundwater_from_page(page, page_number)
 
             if found_groundwater:
                 groundwater_output = ", ".join([str(entry.groundwater) for entry in found_groundwater])
                 logger.info("Found groundwater information on page %s: %s", page_number, groundwater_output)
-                return found_groundwater
+                groundwater_list.extend(found_groundwater)
+
+        logger.info("No groundwater found in this borehole profile.")
+        return groundwater_list
+
+    def extract_groundwater_from_page(
+        self,
+        page: fitz.Document,
+    ) -> list[GroundwaterInformationOnPage]:
+        """Extracts the groundwater information from a borehole profile.
+
+        Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
+        page.
+        Algorithm description:
+            1. if that gives no results, search for coordinates close to an explicit "groundwater" label (e.g. "Gswp")
+
+        Returns:
+            list[GroundwaterInformationOnPage]: the extracted coordinates (if any)
+        """
+        page_number = page.number + 1
+        lines = extract_text_lines(page)
+
+        found_groundwater = (
+            self.get_groundwater_near_key(lines, page_number)
+            # or XXXX # Add other techniques here
+        )
+
+        if found_groundwater:
+            groundwater_output = ", ".join([str(entry.groundwater) for entry in found_groundwater])
+            logger.info("Found groundwater information on page %s: %s", page_number, groundwater_output)
+            return found_groundwater
 
         logger.info("No groundwater found in this borehole profile.")
         return []
