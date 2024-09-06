@@ -5,6 +5,7 @@
         "depthcolumnentry",
         "dotenv",
         "fitz",
+        "groundtruth",
         "mlflow",
         "pixmap",
         "pyproject",

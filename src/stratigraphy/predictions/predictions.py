@@ -3,15 +3,10 @@
 import abc
 from dataclasses import dataclass
 
+from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformationOnPage
-from stratigraphy.metadata.metadata import StratigraphyMetadata
-
-
-@dataclass
-class Layer(metaclass=abc.ABCMeta):
-    """Layer class definition."""
-
-    # TODO: Add layer properties
+from stratigraphy.layer.layer import LayerPrediction
+from stratigraphy.metadata.metadata import BoreholeMetadata
 
 
 @dataclass
@@ -26,25 +21,9 @@ class FilePredictions(metaclass=abc.ABCMeta):
     """Prediction data for stratigraphy from a single file."""
 
     groundwater: list[GroundwaterInformationOnPage] | None = None
-    layers: list[Layer] = None
+    layers: list[LayerPrediction] = None
     depths_materials_column_pairs: list[DepthMaterialColumnPair] = None
     filename: str = None
-
-    def __init__(self, filename: str):
-        """Initializes the class.
-
-        Args:
-            filename (str): The filename.
-        """
-        self.filename = filename
-
-    def set_groundwater(self, groundwater: list[GroundwaterInformationOnPage]):
-        """Sets the groundwater.
-
-        Args:
-            groundwater (GroundwaterInformationOnPage): The groundwater.
-        """
-        self.groundwater = groundwater
 
 
 @dataclass
@@ -52,7 +31,7 @@ class ExtractedFileInformation(metaclass=abc.ABCMeta):
     """Prediction data for stratigraphy."""
 
     single_file_predictions: FilePredictions = None
-    metadata: StratigraphyMetadata = None
+    metadata: BoreholeMetadata = None
     filename: str = None
 
 
@@ -60,12 +39,22 @@ class ExtractedFileInformation(metaclass=abc.ABCMeta):
 class StratigraphyPredictions(metaclass=abc.ABCMeta):
     """Prediction data for stratigraphy."""
 
-    extracted_file_information: list[ExtractedFileInformation] = None
+    extracted_file_information: list[ExtractedFileInformation] = []
 
-    def __init__(self, extracted_file_information: list[ExtractedFileInformation]):
-        """Initializes the class.
+    def get_groundtruth(self, ground_truth_path: str) -> None:
+        """Reads the ground truth from a file.
 
         Args:
-            extracted_file_information (List[ExtractedFileInformation]): The extracted file information.
+            ground_truth_path (str): The path to the ground truth file.
         """
-        self.extracted_file_information = extracted_file_information
+        ground_truth = GroundTruth(ground_truth_path)
+
+        # TODO: Add code to get the ground truth from the ground truth object
+
+    def add_extracted_file_information(self, extracted_file_information: ExtractedFileInformation):
+        """Adds extracted file information.
+
+        Args:
+            extracted_file_information (ExtractedFileInformation): The extracted file information.
+        """
+        self.extracted_file_information.append(extracted_file_information)

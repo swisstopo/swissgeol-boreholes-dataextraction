@@ -1,43 +1,19 @@
 """This module contains classes for predictions."""
 
 import logging
-import math
-import uuid
 from collections import Counter
-from dataclasses import dataclass, field
 
 import fitz
 import Levenshtein
 
-from stratigraphy.coordinates.coordinate_extraction import Coordinate
-from stratigraphy.elevation.elevation_extraction import ElevationInformation
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformation, GroundwaterInformationOnPage
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry
-from stratigraphy.util.interval import AnnotatedInterval, BoundaryInterval
+from stratigraphy.util.interval import BoundaryInterval
 from stratigraphy.util.line import TextLine, TextWord
-from stratigraphy.util.textblock import MaterialDescription, TextBlock
+from stratigraphy.util.textblock import TextBlock
 from stratigraphy.util.util import parse_text
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class BoreholeMetaData:
-    """Class to represent metadata of a borehole profile."""
-
-    coordinates: Coordinate | None
-    elevation: ElevationInformation | None
-
-
-@dataclass
-class LayerPrediction:
-    """A class to represent predictions for a single layer."""
-
-    material_description: TextBlock | MaterialDescription
-    depth_interval: BoundaryInterval | AnnotatedInterval | None
-    material_is_correct: bool = None
-    depth_interval_is_correct: bool = None
-    id: uuid.UUID = field(default_factory=uuid.uuid4)
 
 
 class FilePredictions:
@@ -48,7 +24,7 @@ class FilePredictions:
         layers: list[LayerPrediction],
         file_name: str,
         language: str,
-        metadata: BoreholeMetaData,
+        metadata: BoreholeMetaDdta,
         groundwater_entries: list[GroundwaterInformationOnPage],
         depths_materials_columns_pairs: list[dict],
         page_sizes: list[dict[str, float]],
@@ -78,15 +54,15 @@ class FilePredictions:
         file_language = predictions_for_file["language"]
 
         # Extract metadata.
-        metadata = predictions_for_file["metadata"]
-        coordinates = None
-        elevation = None
-        if "coordinates" in metadata and metadata["coordinates"] is not None:
-            coordinates = Coordinate.from_json(metadata["coordinates"])
-        if "elevation" in metadata and metadata["elevation"] is not None:
-            elevation = ElevationInformation(**metadata["elevation"]) if metadata["elevation"] is not None else None
-        file_metadata = BoreholeMetaData(coordinates=coordinates, elevation=elevation)
-        # TODO: Add additional metadata here.
+        # metadata = predictions_for_file["metadata"]
+        # coordinates = None
+        # elevation = None
+        # if "coordinates" in metadata and metadata["coordinates"] is not None:
+        #     coordinates = Coordinate.from_json(metadata["coordinates"])
+        # if "elevation" in metadata and metadata["elevation"] is not None:
+        #     elevation = ElevationInformation(**metadata["elevation"]) if metadata["elevation"] is not None else None
+        # file_metadata = BoreholeMetaData(coordinates=coordinates, elevation=elevation)
+        # # TODO: Add additional metadata here.
 
         # Extract groundwater information if available.
         if "groundwater" in predictions_for_file and predictions_for_file["groundwater"] is not None:
@@ -202,61 +178,59 @@ class FilePredictions:
                 layer.material_is_correct = False
                 layer.depth_interval_is_correct = None
 
-    def evaluate_metadata(self, metadata_ground_truth: dict):
-        """Evaluate the metadata of the file against the ground truth.
+    # def evaluate_metadata(self, metadata_ground_truth: dict):
+    #     """Evaluate the metadata of the file against the ground truth.
 
-        Note: For now coordinates is the only metadata extracted and evaluated for.
+    #     Args:
+    #         metadata_ground_truth (dict): The ground truth for the file.
+    #     """
+    #     ############################################################################################################
+    #     ### Compute the metadata correctness for the coordinates.
+    #     ############################################################################################################
+    #     extracted_coordinates = self.metadata.coordinates
+    #     ground_truth_coordinates = metadata_ground_truth.get("coordinates")
 
-        Args:
-            metadata_ground_truth (dict): The ground truth for the file.
-        """
-        ############################################################################################################
-        ### Compute the metadata correctness for the coordinates.
-        ############################################################################################################
-        extracted_coordinates = self.metadata.coordinates
-        ground_truth_coordinates = metadata_ground_truth.get("coordinates")
+    #     if extracted_coordinates is not None and ground_truth_coordinates is not None:
+    #         if extracted_coordinates.east.coordinate_value > 2e6 and ground_truth_coordinates["E"] < 2e6:
+    #             ground_truth_east = int(ground_truth_coordinates["E"]) + 2e6
+    #             ground_truth_north = int(ground_truth_coordinates["N"]) + 1e6
+    #         elif extracted_coordinates.east.coordinate_value < 2e6 and ground_truth_coordinates["E"] > 2e6:
+    #             ground_truth_east = int(ground_truth_coordinates["E"]) - 2e6
+    #             ground_truth_north = int(ground_truth_coordinates["N"]) - 1e6
+    #         else:
+    #             ground_truth_east = int(ground_truth_coordinates["E"])
+    #             ground_truth_north = int(ground_truth_coordinates["N"])
 
-        if extracted_coordinates is not None and ground_truth_coordinates is not None:
-            if extracted_coordinates.east.coordinate_value > 2e6 and ground_truth_coordinates["E"] < 2e6:
-                ground_truth_east = int(ground_truth_coordinates["E"]) + 2e6
-                ground_truth_north = int(ground_truth_coordinates["N"]) + 1e6
-            elif extracted_coordinates.east.coordinate_value < 2e6 and ground_truth_coordinates["E"] > 2e6:
-                ground_truth_east = int(ground_truth_coordinates["E"]) - 2e6
-                ground_truth_north = int(ground_truth_coordinates["N"]) - 1e6
-            else:
-                ground_truth_east = int(ground_truth_coordinates["E"])
-                ground_truth_north = int(ground_truth_coordinates["N"])
+    #         if (math.isclose(int(extracted_coordinates.east.coordinate_value), ground_truth_east, abs_tol=2)) and (
+    #             math.isclose(int(extracted_coordinates.north.coordinate_value), ground_truth_north, abs_tol=2)
+    #         ):
+    #             self.metadata_is_correct["coordinates"] = {"tp": 1, "fp": 0, "fn": 0}
+    #         else:
+    #             self.metadata_is_correct["coordinates"] = {"tp": 0, "fp": 1, "fn": 1}
+    #     else:
+    #         self.metadata_is_correct["coordinates"] = {
+    #             "tp": 0,
+    #             "fp": 1 if extracted_coordinates is not None else 0,
+    #             "fn": 1 if ground_truth_coordinates is not None else 0,
+    #         }
 
-            if (math.isclose(int(extracted_coordinates.east.coordinate_value), ground_truth_east, abs_tol=2)) and (
-                math.isclose(int(extracted_coordinates.north.coordinate_value), ground_truth_north, abs_tol=2)
-            ):
-                self.metadata_is_correct["coordinates"] = {"tp": 1, "fp": 0, "fn": 0}
-            else:
-                self.metadata_is_correct["coordinates"] = {"tp": 0, "fp": 1, "fn": 1}
-        else:
-            self.metadata_is_correct["coordinates"] = {
-                "tp": 0,
-                "fp": 1 if extracted_coordinates is not None else 0,
-                "fn": 1 if ground_truth_coordinates is not None else 0,
-            }
+    #     ############################################################################################################
+    #     ### Compute the metadata correctness for the elevation.
+    #     ############################################################################################################
+    #     extracted_elevation = None if self.metadata.elevation is None else self.metadata.elevation.elevation
+    #     ground_truth_elevation = metadata_ground_truth.get("reference_elevation")
 
-        ############################################################################################################
-        ### Compute the metadata correctness for the elevation.
-        ############################################################################################################
-        extracted_elevation = None if self.metadata.elevation is None else self.metadata.elevation.elevation
-        ground_truth_elevation = metadata_ground_truth.get("reference_elevation")
-
-        if extracted_elevation is not None and ground_truth_elevation is not None:
-            if math.isclose(extracted_elevation, ground_truth_elevation, abs_tol=0.1):
-                self.metadata_is_correct["elevation"] = {"tp": 1, "fp": 0, "fn": 0}
-            else:
-                self.metadata_is_correct["elevation"] = {"tp": 0, "fp": 1, "fn": 1}
-        else:
-            self.metadata_is_correct["elevation"] = {
-                "tp": 0,
-                "fp": 1 if extracted_elevation is not None else 0,
-                "fn": 1 if ground_truth_elevation is not None else 0,
-            }
+    #     if extracted_elevation is not None and ground_truth_elevation is not None:
+    #         if math.isclose(extracted_elevation, ground_truth_elevation, abs_tol=0.1):
+    #             self.metadata_is_correct["elevation"] = {"tp": 1, "fp": 0, "fn": 0}
+    #         else:
+    #             self.metadata_is_correct["elevation"] = {"tp": 0, "fp": 1, "fn": 1}
+    #     else:
+    #         self.metadata_is_correct["elevation"] = {
+    #             "tp": 0,
+    #             "fp": 1 if extracted_elevation is not None else 0,
+    #             "fn": 1 if ground_truth_elevation is not None else 0,
+    #         }
 
     @staticmethod
     def count_against_ground_truth(values: list, ground_truth: list) -> dict:

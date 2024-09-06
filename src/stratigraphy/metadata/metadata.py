@@ -1,10 +1,12 @@
 """Metadata for stratigraphy data."""
 
 import abc
+import math
 from dataclasses import dataclass
 from typing import NamedTuple
 
 import fitz
+from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.metadata.coordinates.coordinate_extraction import Coordinate, CoordinateExtractor
 from stratigraphy.metadata.elevation.elevation_extraction import ElevationExtractor, ElevationInformation
 from stratigraphy.util.language_detection import detect_language_of_document
@@ -27,7 +29,24 @@ class PageDimensions(NamedTuple):
 
 
 @dataclass
-class StratigraphyMetadata(metaclass=abc.ABCMeta):
+class Metrics(metaclass=abc.ABCMeta):
+    """Metrics for metadata."""
+
+    tp: int
+    fp: int
+    fn: int
+
+
+@dataclass
+class BoreholeMetadataMetrics(metaclass=abc.ABCMeta):
+    """Metrics for borehole metadata."""
+
+    elevation_metrics: Metrics
+    coordinates_metrics: Metrics
+
+
+@dataclass
+class BoreholeMetadata(metaclass=abc.ABCMeta):
     """Metadata for stratigraphy data."""
 
     elevation: ElevationInformation | None = None
@@ -83,3 +102,81 @@ class StratigraphyMetadata(metaclass=abc.ABCMeta):
             str: The object as a string.
         """
         return f"StratigraphyMetadata(" f"elevation={self.elevation}, " f"coordinates={self.coordinates})"
+
+    def evaluate(self, ground_truth_path: str) -> BoreholeMetadataMetrics:
+        """Evaluate the metadata of the file against the ground truth.
+
+        Args:
+            ground_truth_path (str): The path to the ground truth file.
+        """
+        metadata_ground_truth = GroundTruth(ground_truth_path).for_file(self.filename).get("metadata", {})
+
+        # Initialize the metadata correctness metrics
+        coordinate_metrics = None
+        elevation_metrics = None
+
+        ############################################################################################################
+        ### Compute the metadata correctness for the coordinates.
+        ############################################################################################################
+        extracted_coordinates = self.coordinates
+        ground_truth_coordinates = metadata_ground_truth.get("coordinates")
+
+        if extracted_coordinates is not None and ground_truth_coordinates is not None:
+            if extracted_coordinates.east.coordinate_value > 2e6 and ground_truth_coordinates["E"] < 2e6:
+                ground_truth_east = int(ground_truth_coordinates["E"]) + 2e6
+                ground_truth_north = int(ground_truth_coordinates["N"]) + 1e6
+            elif extracted_coordinates.east.coordinate_value < 2e6 and ground_truth_coordinates["E"] > 2e6:
+                ground_truth_east = int(ground_truth_coordinates["E"]) - 2e6
+                ground_truth_north = int(ground_truth_coordinates["N"]) - 1e6
+            else:
+                ground_truth_east = int(ground_truth_coordinates["E"])
+                ground_truth_north = int(ground_truth_coordinates["N"])
+
+            if (math.isclose(int(extracted_coordinates.east.coordinate_value), ground_truth_east, abs_tol=2)) and (
+                math.isclose(int(extracted_coordinates.north.coordinate_value), ground_truth_north, abs_tol=2)
+            ):
+                coordinate_metrics = Metrics(
+                    tp=1,
+                    fp=0,
+                    fn=0,
+                )
+            else:
+                coordinate_metrics = Metrics(
+                    tp=0,
+                    fp=1,
+                    fn=1,
+                )
+        else:
+            coordinate_metrics = Metrics(
+                tp=0,
+                fp=1 if extracted_coordinates is not None else 0,
+                fn=1 if ground_truth_coordinates is not None else 0,
+            )
+
+        ############################################################################################################
+        ### Compute the metadata correctness for the elevation.
+        ############################################################################################################
+        extracted_elevation = None if self.elevation is None else self.elevation.elevation
+        ground_truth_elevation = metadata_ground_truth.get("reference_elevation")
+
+        if extracted_elevation is not None and ground_truth_elevation is not None:
+            if math.isclose(extracted_elevation, ground_truth_elevation, abs_tol=0.1):
+                elevation_metrics = Metrics(
+                    tp=1,
+                    fp=0,
+                    fn=0,
+                )
+            else:
+                elevation_metrics = Metrics(
+                    tp=0,
+                    fp=1,
+                    fn=1,
+                )
+        else:
+            elevation_metrics = Metrics(
+                tp=0,
+                fp=1 if extracted_elevation is not None else 0,
+                fn=1 if ground_truth_elevation is not None else 0,
+            )
+
+        return BoreholeMetadataMetrics(elevation_metrics=elevation_metrics, coordinates_metrics=coordinate_metrics)

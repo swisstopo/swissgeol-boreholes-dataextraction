@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from collections import defaultdict
 from pathlib import Path
 
@@ -15,6 +16,11 @@ class GroundTruth:
 
     def __init__(self, path: Path):
         self.ground_truth = defaultdict(dict)
+
+        # check if the ground truth file exists
+        if not (path and os.path.exists(path)):
+            logger.warning("Ground truth file not found: %s", path)
+            raise FileNotFoundError("Ground truth file not found: %s", path)
 
         with open(path) as in_file:
             ground_truth = json.load(in_file)

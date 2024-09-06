@@ -15,7 +15,7 @@ from stratigraphy.benchmark.score import create_predictions_objects, evaluate_bo
 from stratigraphy.extract import process_page
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterLevelExtractor
 from stratigraphy.line_detection import extract_lines, line_detection_params
-from stratigraphy.metadata.metadata import StratigraphyMetadata
+from stratigraphy.metadata.metadata import BoreholeMetadata
 from stratigraphy.predictions.predictions import FilePredictions, StratigraphyPredictions
 from stratigraphy.util.draw import draw_predictions
 from stratigraphy.util.duplicate_detection import remove_duplicate_layers
@@ -157,17 +157,16 @@ def start_pipeline(
         file_iterator = os.walk(input_directory)
 
     # process the individual pdf files
-    predictions = StratigraphyPredictions()
+    predictions = StratigraphyPredictions(ground_truth_path=ground_truth_path)
     for root, _dirs, files in file_iterator:
         for filename in tqdm(files, desc="Processing files", unit="file"):
             if filename.endswith(".pdf"):
                 in_path = os.path.join(root, filename)
                 logger.info("Processing file: %s", in_path)
-                single_file_predictions = FilePredictions(filename)
 
                 with fitz.Document(in_path) as doc:
                     # Extract metadata
-                    metadata = StratigraphyMetadata(doc)
+                    metadata = BoreholeMetadata(doc)
 
                     layer_predictions_list = []
                     depths_materials_column_pairs_list = []
@@ -178,9 +177,7 @@ def start_pipeline(
 
                         # Extract groundwater information for the page
                         groundwater_extractor = GroundwaterLevelExtractor(document=doc)
-                        single_file_predictions.set_groundwater(
-                            groundwater_extractor.extract_groundwater_from_page(page=page)
-                        )
+                        groundwater = groundwater_extractor.extract_groundwater_from_page(page=page)
 
                         # Extract text and geometric lines
                         text_lines = extract_text_lines(page)
@@ -215,8 +212,14 @@ def start_pipeline(
                                 )
                                 mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
-                    predictions[filename]["layers"] = layer_predictions_list
-                    predictions[filename]["depths_materials_column_pairs"] = depths_materials_column_pairs_list
+                    predictions.add_extracted_file_information(
+                        FilePredictions(
+                            filename=filename,
+                            layers=layer_predictions_list,
+                            depths_materials_column_pairs=depths_materials_column_pairs_list,
+                            groundwater=groundwater,
+                        )
+                    )
 
                     assert len(page_dimensions) == doc.page_count, "Page count mismatch."
 
