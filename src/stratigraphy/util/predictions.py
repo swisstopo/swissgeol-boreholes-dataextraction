@@ -1,8 +1,8 @@
 """This module contains classes for predictions."""
 
 import logging
-from collections import Counter
 import math
+from collections import Counter
 
 import fitz
 import Levenshtein
@@ -254,6 +254,8 @@ class FilePredictions:
         Args:
             groundwater_ground_truth (list): The ground truth for the file.
         """
+        raise DeprecationWarning("This method is deprecated and should not be used.")
+
         ############################################################################################################
         ### Compute the metadata correctness for the groundwater information.
         ############################################################################################################

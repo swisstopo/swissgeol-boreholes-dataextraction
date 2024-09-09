@@ -134,7 +134,7 @@ def get_scores(
 
 
 def evaluate_borehole_extraction(
-    predictions: dict[str, FilePredictions], number_of_truth_values: dict
+    predictions: StratigraphyPredictions, number_of_truth_values: dict, ground_truth_path: Path
 ) -> tuple[dict, pd.DataFrame]:
     """Evaluate the borehole extraction predictions.
 
@@ -151,12 +151,11 @@ def evaluate_borehole_extraction(
     (
         metadata_metrics,
         document_level_metrics_metadata,
-    ) = evaluate_metadata(predictions)
+    ) = evaluate_metadata(predictions, ground_truth_path)
     (
         metrics_groundwater,
         document_level_metrics_groundwater,
-        document_level_metrics_groundwater_depth,
-    ) = evaluate_groundwater(predictions)
+    ) = evaluate_groundwater(predictions, ground_truth_path)
 
     # merge all metrics
     metrics = {**layer_metrics, **metadata_metrics, **metrics_groundwater}
@@ -168,13 +167,10 @@ def evaluate_borehole_extraction(
     document_level_metrics = pd.merge(
         document_level_metrics, document_level_metrics_groundwater, on="document_name", how="outer"
     )
-    document_level_metrics = pd.merge(
-        document_level_metrics, document_level_metrics_groundwater_depth, on="document_name", how="outer"
-    )
     return metrics, document_level_metrics
 
 
-def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_name: str) -> dict:
+def get_metrics(predictions: StratigraphyPredictions, field_key: str, field_name: str) -> dict:
     """Get the metrics for a specific field in the predictions.
 
     Args:
@@ -194,12 +190,12 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
     fn = 0  # no predictions, i.e. None
     fp = 0  # wrong prediction
 
-    for file_name, file_prediction in predictions.items():
-        is_correct = getattr(file_prediction, field_key)[field_name]
+    for file_prediction in predictions.extracted_file_information:
+        is_correct = getattr(file_prediction, field_key)[file_prediction.filename]
         tp += is_correct["tp"]
         fp += is_correct["fp"]
         fn += is_correct["fn"]
-        document_level_metrics["document_name"].append(file_name)
+        document_level_metrics["document_name"].append(file_prediction.filename)
 
         try:
             precision = is_correct["tp"] / (is_correct["tp"] + is_correct["fp"])
@@ -232,17 +228,67 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
     return document_level_metrics, metrics
 
 
-def get_metadata_metrics(predictions: dict[str, FilePredictions], metadata_field: str) -> dict:
+def get_metadata_metrics(predictions: StratigraphyPredictions, metadata_field: str, ground_truth_path: Path) -> dict:
     """Get the metadata metrics."""
-    return get_metrics(predictions, "metadata_is_correct", metadata_field)
+    document_level_metrics = {
+        "document_name": [],
+        metadata_field: [],
+    }
+
+    if metadata_field == "coordinates":
+        attribute_name = "coordinates_metrics"
+    elif metadata_field == "elevation":
+        attribute_name = "elevation_metrics"
+    else:
+        raise ValueError(f"Unknown metadata field: {metadata_field}")
+
+    tp = 0  # correct prediction
+    fn = 0  # no predictions, i.e. None
+    fp = 0  # wrong prediction
+
+    for file_prediction in predictions.extracted_file_information:
+        file_metrics = file_prediction.metadata.evaluate(ground_truth_path)
+        feature_metrics = getattr(file_metrics, attribute_name)
+        tp += feature_metrics.tp
+        fp += feature_metrics.fp
+        fn += feature_metrics.fn
+        document_level_metrics["document_name"].append(file_prediction.filename)
+
+        precision = (
+            feature_metrics.tp / (feature_metrics.tp + feature_metrics.fp)
+            if feature_metrics.tp + feature_metrics.fp > 0
+            else 0
+        )
+        recall = (
+            feature_metrics.tp / (feature_metrics.tp + feature_metrics.fn)
+            if feature_metrics.tp + feature_metrics.fn > 0
+            else 0
+        )
+        document_level_metrics[metadata_field].append(f1(precision, recall))
+
+    precision = tp / (tp + fp) if tp + fp > 0 else 0
+    recall = tp / (tp + fn) if tp + fn > 0 else 0
+
+    metrics = {
+        f"{metadata_field}_precision": precision,
+        f"{metadata_field}_recall": recall,
+        f"{metadata_field}_f1": f1(precision, recall),
+        f"{metadata_field}_tp": tp,
+        f"{metadata_field}_fp": fp,
+        f"{metadata_field}_fn": fn,
+    }
+
+    return document_level_metrics, metrics
 
 
-def get_groundwater_metrics(predictions: dict[str, FilePredictions], metadata_field: str) -> dict:
+def get_groundwater_metrics(predictions: StratigraphyPredictions, metadata_field: str) -> dict:
     """Get the groundwater information metrics."""
     return get_metrics(predictions, "groundwater_is_correct", metadata_field)
 
 
-def evaluate_groundwater(predictions: dict[str, FilePredictions]) -> tuple[dict, pd.DataFrame]:
+def evaluate_groundwater(
+    predictions: dict[str, FilePredictions], ground_truth_path: Path
+) -> tuple[dict, pd.DataFrame]:
     """Evaluate the groundwater information predictions.
 
     Args:
@@ -252,6 +298,63 @@ def evaluate_groundwater(predictions: dict[str, FilePredictions]) -> tuple[dict,
         tuple[dict, pd.DataFrame]: The overall groundwater information accuracy and the individual document metrics as
         a DataFrame.
     """
+    metrics_groundwater = {}
+    document_level_metrics_groundwater = pd.DataFrame(columns=["document_name"])
+
+    for attribute_name in ["groundwater", "groundwater_depth"]:
+        document_level_metrics = {
+            "document_name": [],
+            attribute_name: [],
+        }
+
+        tp = 0  # correct prediction
+        fn = 0  # no predictions, i.e. None
+        fp = 0  # wrong prediction
+
+        for file_prediction in predictions.extracted_file_information:
+            file_metrics = file_prediction.single_file_predictions.evaluate_groundwater(ground_truth_path)
+            feature_metrics = getattr(file_metrics, attribute_name)
+            tp += feature_metrics.tp
+            fp += feature_metrics.fp
+            fn += feature_metrics.fn
+            document_level_metrics["document_name"].append(file_prediction.filename)
+
+            precision = (
+                feature_metrics.tp / (feature_metrics.tp + feature_metrics.fp)
+                if feature_metrics.tp + feature_metrics.fp > 0
+                else 0
+            )
+            recall = (
+                feature_metrics.tp / (feature_metrics.tp + feature_metrics.fn)
+                if feature_metrics.tp + feature_metrics.fn > 0
+                else 0
+            )
+            document_level_metrics[attribute_name].append(f1(precision, recall))
+
+        precision = tp / (tp + fp) if tp + fp > 0 else 0
+        recall = tp / (tp + fn) if tp + fn > 0 else 0
+
+        metrics = {
+            f"{attribute_name}_precision": precision,
+            f"{attribute_name}_recall": recall,
+            f"{attribute_name}_f1": f1(precision, recall),
+            f"{attribute_name}_tp": tp,
+            f"{attribute_name}_fp": fp,
+            f"{attribute_name}_fn": fn,
+        }
+
+        metrics_groundwater.update(metrics)
+        document_level_metrics_groundwater = pd.merge(
+            document_level_metrics_groundwater, pd.DataFrame(document_level_metrics), on="document_name", how="outer"
+        )
+
+    return (
+        metrics_groundwater,
+        pd.DataFrame(document_level_metrics_groundwater),
+    )
+
+    return document_level_metrics, metrics
+
     document_level_metrics_groundwater, metrics_groundwater = get_groundwater_metrics(predictions, "groundwater")
     document_level_metrics_groundwater_depth, metrics_groundwater_depth = get_groundwater_metrics(
         predictions, "groundwater_depth"
@@ -266,7 +369,7 @@ def evaluate_groundwater(predictions: dict[str, FilePredictions]) -> tuple[dict,
     )
 
 
-def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd.DataFrame]:
+def evaluate_metadata(predictions: StratigraphyPredictions, groundtruth: GroundTruth) -> tuple[dict, pd.DataFrame]:
     """Evaluate the metadata predictions.
 
     Args:
@@ -275,8 +378,10 @@ def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd
     Returns:
         tuple[dict, pd.DataFrame]: The overall coordinate accuracy and the individual document metrics as a DataFrame.
     """
-    document_level_metrics_coordinates, metrics_coordinates = get_metadata_metrics(predictions, "coordinates")
-    document_level_metrics_elevation, metrics_elevation = get_metadata_metrics(predictions, "elevation")
+    document_level_metrics_coordinates, metrics_coordinates = get_metadata_metrics(
+        predictions, "coordinates", groundtruth
+    )
+    document_level_metrics_elevation, metrics_elevation = get_metadata_metrics(predictions, "elevation", groundtruth)
     metrics = {
         "coordinate_precision": metrics_coordinates["coordinates_precision"],
         "coordinate_recall": metrics_coordinates["coordinates_recall"],
@@ -301,7 +406,9 @@ def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd
     return (metrics, document_level_metrics_metadata)
 
 
-def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -> tuple[dict, pd.DataFrame]:
+def evaluate_layer_extraction(
+    predictions: StratigraphyPredictions, number_of_truth_values: dict
+) -> tuple[dict, pd.DataFrame]:
     """Calculate F1, precision and recall for the predictions.
 
     Calculate F1, precision and recall for the individual documents as well as overall.
@@ -331,7 +438,8 @@ def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -
 
     for language, language_predictions in predictions_by_language.items():
         language_number_of_truth_values = {
-            prediction.filename: number_of_truth_values[prediction.filename] for prediction in language_predictions
+            prediction.filename: number_of_truth_values[prediction.filename]
+            for prediction in language_predictions.extracted_file_information
         }
         metrics[language] = get_scores(
             language_predictions, language_number_of_truth_values, return_document_level_metrics=False
@@ -367,6 +475,8 @@ def create_predictions_objects(
     Returns:
         tuple[dict[FilePredictions], dict]: The predictions objects and the number of ground truth values per file.
     """
+    raise DeprecationWarning("This function is deprecated. Use the evaluate_borehole_extraction function instead.")
+
     if ground_truth_path and os.path.exists(ground_truth_path):  # for inference no ground truth is available
         ground_truth = GroundTruth(ground_truth_path)
         ground_truth_is_present = True

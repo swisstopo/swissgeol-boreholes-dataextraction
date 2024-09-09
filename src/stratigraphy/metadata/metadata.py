@@ -181,7 +181,7 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
         extracted_coordinates = self.coordinates
         ground_truth_coordinates = metadata_ground_truth.get("coordinates")
 
-        if extracted_coordinates is not None and ground_truth_coordinates is not None:
+        if extracted_coordinates and ground_truth_coordinates:
             if extracted_coordinates.east.coordinate_value > 2e6 and ground_truth_coordinates["E"] < 2e6:
                 ground_truth_east = int(ground_truth_coordinates["E"]) + 2e6
                 ground_truth_north = int(ground_truth_coordinates["N"]) + 1e6

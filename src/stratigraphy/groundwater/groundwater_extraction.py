@@ -55,6 +55,16 @@ class GroundwaterInformation(metaclass=abc.ABCMeta):
 
     @staticmethod
     def from_json_values(depth: float | None, measurement_date: str | None, elevation: float | None):
+        """Converts the object from a dictionary.
+
+        Args:
+            depth (float | None): The depth of the groundwater.
+            measurement_date (str | None): The measurement date of the groundwater.
+            elevation (float | None): The elevation of the groundwater.
+
+        Returns:
+            GroundwaterInformation: The object created from the dictionary.
+        """
         if measurement_date is not None and measurement_date != "":
             # convert to datetime object
             measurement_date = datetime.strptime(measurement_date, DATE_FORMAT).date()
@@ -64,6 +74,11 @@ class GroundwaterInformation(metaclass=abc.ABCMeta):
         return GroundwaterInformation(depth=depth, measurement_date=measurement_date, elevation=elevation)
 
     def format_measurement_date(self) -> str | None:
+        """Formats the measurement date.
+
+        Returns:
+            str | None: The formatted measurement date.
+        """
         if self.measurement_date is not None:
             return self.measurement_date.strftime(DATE_FORMAT)
         else:
@@ -275,7 +290,7 @@ class GroundwaterLevelExtractor(DataExtractor):
 
         for page in self.doc:
             page_number = page.number + 1
-            found_groundwater = self.extract_groundwater_from_page(page, page_number)
+            found_groundwater = self.extract_groundwater_from_page(page)
 
             if found_groundwater:
                 groundwater_output = ", ".join([str(entry.groundwater) for entry in found_groundwater])
@@ -287,7 +302,7 @@ class GroundwaterLevelExtractor(DataExtractor):
 
     def extract_groundwater_from_page(
         self,
-        page: fitz.Document,
+        page: fitz.Page,
     ) -> list[GroundwaterInformationOnPage]:
         """Extracts the groundwater information from a borehole profile.
 

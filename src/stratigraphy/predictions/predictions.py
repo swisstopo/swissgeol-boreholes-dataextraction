@@ -1,10 +1,12 @@
 """Prediction classes for stratigraphy."""
 
 import abc
+from collections import Counter
 from dataclasses import dataclass
 
 import fitz
-from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformationOnPage
+from stratigraphy.benchmark.ground_truth import GroundTruth
+from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformation, GroundwaterInformationOnPage
 from stratigraphy.layer.layer import LayerPrediction
 from stratigraphy.metadata.metadata import (
     BoreholeMetadata,
@@ -77,6 +79,82 @@ class FilePredictions(metaclass=abc.ABCMeta):
 
         return layers
 
+    @staticmethod
+    def count_against_ground_truth(values: list, ground_truth: list, feature_name: str) -> Metrics:
+        # TODO: Make this a normal function
+        # Counter deals with duplicates when doing intersection
+        values_counter = Counter(values)
+        ground_truth_counter = Counter(ground_truth)
+
+        tp = (values_counter & ground_truth_counter).total()  # size of intersection
+        return Metrics(
+            tp=tp,
+            fp=len(values) - tp,
+            fn=len(ground_truth) - tp,
+            feature_name=feature_name,
+        )
+
+    def evaluate_groundwater(self, ground_truth_path: str) -> Metrics:
+        """Evaluate the groundwater information of the file against the ground truth.
+
+        Args:
+            groundwater_ground_truth (list): The ground truth for the file.
+        """
+        # Get the groundwater ground truth
+        groundwater_ground_truth = GroundTruth(ground_truth_path).for_file(self.filename).get("groundwater", [])
+
+        ############################################################################################################
+        ### Compute the metadata correctness for the groundwater information.
+        ############################################################################################################
+        gt_groundwater = [
+            GroundwaterInformation.from_json_values(
+                depth=json_gt_data["depth"],
+                measurement_date=json_gt_data["date"],
+                elevation=json_gt_data["elevation"],
+            )
+            for json_gt_data in groundwater_ground_truth
+        ]
+
+        return GroundwaterCorrectness(
+            groundwater=self.count_against_ground_truth(
+                [
+                    (
+                        entry.groundwater.depth,
+                        entry.groundwater.format_measurement_date(),
+                        entry.groundwater.elevation,
+                    )
+                    for entry in self.groundwater
+                ],
+                [(entry.depth, entry.format_measurement_date(), entry.elevation) for entry in gt_groundwater],
+                feature_name="groundwater",
+            ),
+            groundwater_depth=self.count_against_ground_truth(
+                [entry.groundwater.depth for entry in self.groundwater],
+                [entry.depth for entry in gt_groundwater],
+                feature_name="groundwater_depth",
+            ),
+            groundwater_elevation=self.count_against_ground_truth(
+                [entry.groundwater.elevation for entry in self.groundwater],
+                [entry.elevation for entry in gt_groundwater],
+                feature_name="groundwater_elevation",
+            ),
+            groundwater_date=self.count_against_ground_truth(
+                [entry.groundwater.measurement_date for entry in self.groundwater],
+                [entry.measurement_date for entry in gt_groundwater],
+                feature_name="groundwater_date",
+            ),
+        )
+
+
+@dataclass()
+class GroundwaterCorrectness:
+    """Groundwater correctness class definition."""
+
+    groundwater: list[Metrics] = None
+    groundwater_depth: list[Metrics] = None
+    groundwater_elevation: list[Metrics] = None
+    groundwater_date: list[Metrics] = None
+
 
 @dataclass
 class ExtractedFileInformation(metaclass=abc.ABCMeta):
@@ -90,7 +168,11 @@ class ExtractedFileInformation(metaclass=abc.ABCMeta):
 class StratigraphyPredictions(metaclass=abc.ABCMeta):
     """Prediction data for stratigraphy."""
 
-    extracted_file_information: list[ExtractedFileInformation] = []
+    extracted_file_information: list[ExtractedFileInformation] = None
+
+    def __init__(self):
+        """Initializes the StratigraphyPredictions object."""
+        self.extracted_file_information: list[ExtractedFileInformation] = []
 
     def add_extracted_file_information(self, extracted_file_information: ExtractedFileInformation):
         """Adds extracted file information.

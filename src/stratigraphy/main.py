@@ -245,7 +245,9 @@ def start_pipeline(
         draw_predictions(predictions, input_directory, draw_directory)
 
     if groundtruth:  # only evaluate if ground truth is available
-        metrics, document_level_metrics = evaluate_borehole_extraction(predictions, number_of_truth_values)
+        metrics, document_level_metrics = evaluate_borehole_extraction(
+            predictions, number_of_truth_values, ground_truth_path
+        )
         document_level_metrics.to_csv(
             temp_directory / "document_level_metrics.csv"
         )  # mlflow.log_artifact expects a file
