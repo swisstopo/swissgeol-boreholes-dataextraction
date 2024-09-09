@@ -51,3 +51,15 @@ class GroundTruth:
         else:
             logger.warning(f"No ground truth data found for {file_name}.")
             return {}
+
+    def get_number_of_truth_values(self) -> dict[str, int]:
+        """Get the number of ground truth values.
+
+        Returns:
+            int: The number of ground truth values.
+        """
+        number_of_truth_values = {}
+        for key in self.ground_truth:
+            number_of_truth_values[key] = len(self.ground_truth[key]["layers"])
+
+        return number_of_truth_values

@@ -97,6 +97,17 @@ class Coordinate(ExtractedFeature):
             east=input["E"], north=input["N"], rect=fitz.Rect(input["rect"]), page=input["page"]
         )
 
+    def is_extracted_value_correct(self, ground_truth_coordinates: dict[str, int]):
+        """Checks if the extracted coordinates are correct.
+
+        Args:
+            ground_truth_coordinates (Coordinate): The ground truth coordinates.
+        """
+        self.is_correct = (
+            self.east.coordinate_value == ground_truth_coordinates["E"]
+            and self.north.coordinate_value == ground_truth_coordinates["N"]
+        )
+
 
 @dataclass
 class LV95Coordinate(Coordinate):
@@ -266,7 +277,7 @@ class CoordinateExtractor(DataExtractor):
             results.append((match, rect))
         return results
 
-    def extract_coordinates(self) -> Coordinate | None:
+    def extract_coordinates(self, ground_truth_coordinates: Coordinate = None) -> Coordinate | None:
         """Extracts the coordinates from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
@@ -291,6 +302,9 @@ class CoordinateExtractor(DataExtractor):
             )
 
             if found_coordinates:
+                logger.info("Found coordinates on page %s: %s", page_number, found_coordinates[0])
+                if ground_truth_coordinates:
+                    found_coordinates[0].is_extracted_value_correct(ground_truth_coordinates)
                 return found_coordinates[0]
 
         logger.info("No coordinates found in this borehole profile.")

@@ -19,7 +19,7 @@ class PageDimensions(NamedTuple):
     width: float
     height: float
 
-    def to_dict(self) -> dict:
+    def to_json(self) -> dict:
         """Converts the object to a dictionary.
 
         Returns:
@@ -35,6 +35,48 @@ class Metrics(metaclass=abc.ABCMeta):
     tp: int
     fp: int
     fn: int
+    feature_name: str
+
+    def precision(self) -> float:
+        """Calculates the precision.
+
+        Returns:
+            float: The precision.
+        """
+        return self.tp / (self.tp + self.fp) if self.tp + self.fp > 0 else 0
+
+    def recall(self) -> float:
+        """Calculates the recall.
+
+        Returns:
+            float: The recall.
+        """
+        return self.tp / (self.tp + self.fn) if self.tp + self.fn > 0 else 0
+
+    def f1_score(self) -> float:
+        """Calculates the F1 score.
+
+        Returns:
+            float: The F1 score.
+        """
+        precision = self.precision()
+        recall = self.recall()
+        return 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
+
+    def to_json(self) -> dict:
+        """Converts the object to a dictionary.
+
+        Returns:
+            dict: The object as a dictionary.
+        """
+        return {
+            f"{self.feature_name}_tp": self.tp,
+            f"{self.feature_name}_fp": self.fp,
+            f"{self.feature_name}_fn": self.fn,
+            f"{self.feature_name}_precision": self.precision(),
+            f"{self.feature_name}_recall": self.recall(),
+            f"{self.feature_name}_f1_score": self.f1_score(),
+        }
 
 
 @dataclass
@@ -43,6 +85,13 @@ class BoreholeMetadataMetrics(metaclass=abc.ABCMeta):
 
     elevation_metrics: Metrics
     coordinates_metrics: Metrics
+
+
+@dataclass
+class FileBoreholeMetadataMetrics(BoreholeMetadataMetrics):
+    """Metrics for borehole metadata."""
+
+    filename: str
 
 
 @dataclass
@@ -55,13 +104,14 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
     filename: str = None
     page_dimensions: list[PageDimensions] = None
 
-    def __init__(self, document: fitz.Document):
+    def __init__(self, document: fitz.Document, ground_truth: GroundTruth):
         """Initializes the StratigraphyMetadata object.
 
         Args:
             document (fitz.Document): A PDF document.
         """
         matching_params = read_params("matching_params.yml")
+        ground_truth_metadata = ground_truth.for_file(document.name.split("/")[-1]).get("metadata", {})
 
         # Detect the language of the document
         self.language = detect_language_of_document(
@@ -70,11 +120,13 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
 
         # Extract the coordinates of the borehole
         coordinate_extractor = CoordinateExtractor(document=document)
-        self.coordinates = coordinate_extractor.extract_coordinates()
+        self.coordinates = coordinate_extractor.extract_coordinates(
+            ground_truth_coordinates=ground_truth_metadata["coordinates"]
+        )
 
         # Extract the elevation information
         elevation_extractor = ElevationExtractor(document=document)
-        self.elevation = elevation_extractor.extract_elevation()
+        self.elevation = elevation_extractor.extract_elevation(ground_truth_metadata["reference_elevation"])
 
         # Get the name of the document
         self.filename = document.name
@@ -84,7 +136,7 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
         for page in document:
             self.page_dimensions.append(PageDimensions(width=page.rect.width, height=page.rect.height))
 
-    def to_dict(self) -> dict:
+    def to_json(self) -> dict:
         """Converts the object to a dictionary.
 
         Returns:
@@ -93,6 +145,8 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
         return {
             "elevation": self.elevation.to_json() if self.elevation else None,
             "coordinates": self.coordinates.to_json() if self.coordinates else None,
+            "language": self.language,
+            "page_dimensions": [page_dimensions.to_json() for page_dimensions in self.page_dimensions],
         }
 
     def __str__(self) -> str:
@@ -101,9 +155,15 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
         Returns:
             str: The object as a string.
         """
-        return f"StratigraphyMetadata(" f"elevation={self.elevation}, " f"coordinates={self.coordinates})"
+        return (
+            f"StratigraphyMetadata("
+            f"elevation={self.elevation}, "
+            f"coordinates={self.coordinates} "
+            f"language={self.language}, "
+            f"page_dimensions={self.page_dimensions})"
+        )
 
-    def evaluate(self, ground_truth_path: str) -> BoreholeMetadataMetrics:
+    def evaluate(self, ground_truth_path: str) -> FileBoreholeMetadataMetrics:
         """Evaluate the metadata of the file against the ground truth.
 
         Args:
@@ -139,18 +199,21 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
                     tp=1,
                     fp=0,
                     fn=0,
+                    feature_name="coordinates",
                 )
             else:
                 coordinate_metrics = Metrics(
                     tp=0,
                     fp=1,
                     fn=1,
+                    feature_name="coordinates",
                 )
         else:
             coordinate_metrics = Metrics(
                 tp=0,
                 fp=1 if extracted_coordinates is not None else 0,
                 fn=1 if ground_truth_coordinates is not None else 0,
+                feature_name="coordinates",
             )
 
         ############################################################################################################
@@ -165,18 +228,23 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
                     tp=1,
                     fp=0,
                     fn=0,
+                    feature_name="elevation",
                 )
             else:
                 elevation_metrics = Metrics(
                     tp=0,
                     fp=1,
                     fn=1,
+                    feature_name="elevation",
                 )
         else:
             elevation_metrics = Metrics(
                 tp=0,
                 fp=1 if extracted_elevation is not None else 0,
                 fn=1 if ground_truth_elevation is not None else 0,
+                feature_name="elevation",
             )
 
-        return BoreholeMetadataMetrics(elevation_metrics=elevation_metrics, coordinates_metrics=coordinate_metrics)
+        return FileBoreholeMetadataMetrics(
+            elevation_metrics=elevation_metrics, coordinates_metrics=coordinate_metrics, filename=self.filename
+        )

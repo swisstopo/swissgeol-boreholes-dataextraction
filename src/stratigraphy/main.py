@@ -11,12 +11,13 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 
 from stratigraphy import DATAPATH
-from stratigraphy.benchmark.score import create_predictions_objects, evaluate_borehole_extraction
+from stratigraphy.benchmark.ground_truth import GroundTruth
+from stratigraphy.benchmark.score import evaluate_borehole_extraction
 from stratigraphy.extract import process_page
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterLevelExtractor
 from stratigraphy.line_detection import extract_lines, line_detection_params
 from stratigraphy.metadata.metadata import BoreholeMetadata
-from stratigraphy.predictions.predictions import FilePredictions, StratigraphyPredictions
+from stratigraphy.predictions.predictions import ExtractedFileInformation, FilePredictions, StratigraphyPredictions
 from stratigraphy.util.draw import draw_predictions
 from stratigraphy.util.duplicate_detection import remove_duplicate_layers
 from stratigraphy.util.extract_text import extract_text_lines
@@ -156,21 +157,24 @@ def start_pipeline(
     else:
         file_iterator = os.walk(input_directory)
 
+    # load the ground truth data
+    groundtruth = GroundTruth(ground_truth_path) if ground_truth_path else None
+    number_of_truth_values = groundtruth.get_number_of_truth_values()
+
     # process the individual pdf files
-    predictions = StratigraphyPredictions(ground_truth_path=ground_truth_path)
+    predictions = StratigraphyPredictions()
     for root, _dirs, files in file_iterator:
-        for filename in tqdm(files, desc="Processing files", unit="file"):
+        for filename in tqdm(files[:5], desc="Processing files", unit="file"):
             if filename.endswith(".pdf"):
                 in_path = os.path.join(root, filename)
                 logger.info("Processing file: %s", in_path)
 
                 with fitz.Document(in_path) as doc:
                     # Extract metadata
-                    metadata = BoreholeMetadata(doc)
+                    metadata = BoreholeMetadata(doc, groundtruth)
 
                     layer_predictions_list = []
                     depths_materials_column_pairs_list = []
-                    page_dimensions = []
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
                         logger.info("Processing page %s", page_number)
@@ -212,28 +216,35 @@ def start_pipeline(
                                 )
                                 mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
+                    # Convert layers to correct format
+                    layer_predictions_list = FilePredictions.extract_layers(layer_predictions_list)
+
                     predictions.add_extracted_file_information(
-                        FilePredictions(
+                        ExtractedFileInformation(
+                            single_file_predictions=FilePredictions(
+                                filename=filename,
+                                layers=layer_predictions_list,
+                                depths_materials_column_pairs=depths_materials_column_pairs_list,
+                                groundwater=groundwater,
+                            ),
+                            metadata=metadata,
                             filename=filename,
-                            layers=layer_predictions_list,
-                            depths_materials_column_pairs=depths_materials_column_pairs_list,
-                            groundwater=groundwater,
                         )
                     )
 
-                    assert len(page_dimensions) == doc.page_count, "Page count mismatch."
+                    assert len(metadata.page_dimensions) == doc.page_count, "Page count mismatch."
 
     logger.info("Writing predictions to JSON file %s", predictions_path)
     with open(predictions_path, "w", encoding="utf8") as file:
-        json.dump(predictions, file, ensure_ascii=False)
+        json.dump(predictions.to_json(), file, ensure_ascii=False)
 
     # evaluate the predictions; if file does not exist, the predictions are not changed.
-    predictions, number_of_truth_values = create_predictions_objects(predictions, ground_truth_path)
+    # predictions, number_of_truth_values = create_predictions_objects(predictions, ground_truth_path)
 
     if not skip_draw_predictions:
         draw_predictions(predictions, input_directory, draw_directory)
 
-    if number_of_truth_values:  # only evaluate if ground truth is available
+    if groundtruth:  # only evaluate if ground truth is available
         metrics, document_level_metrics = evaluate_borehole_extraction(predictions, number_of_truth_values)
         document_level_metrics.to_csv(
             temp_directory / "document_level_metrics.csv"

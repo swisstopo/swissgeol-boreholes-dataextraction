@@ -84,7 +84,7 @@ class GroundwaterInformationOnPage(ExtractedFeature):
         """
         return self.groundwater > 0
 
-    def to_dict(self) -> dict:
+    def to_json(self) -> dict:
         """Converts the object to a dictionary.
 
         Returns:

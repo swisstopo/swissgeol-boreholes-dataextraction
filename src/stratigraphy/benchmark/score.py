@@ -9,7 +9,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.ground_truth import GroundTruth
-from stratigraphy.util.predictions import FilePredictions
+from stratigraphy.predictions.predictions import FilePredictions, StratigraphyPredictions
 from stratigraphy.util.util import parse_text
 
 load_dotenv()
@@ -36,7 +36,7 @@ def f1(precision: float, recall: float) -> float:
 
 
 def get_scores(
-    predictions: dict, number_of_truth_values: dict, return_document_level_metrics: bool
+    predictions: StratigraphyPredictions, number_of_truth_values: dict, return_document_level_metrics: bool
 ) -> dict | tuple[dict, pd.DataFrame]:
     """Calculate F1, precision and recall for the predictions.
 
@@ -65,11 +65,12 @@ def get_scores(
     # as the depth interval accuracy is not calculated for documents with no correct
     # material predictions.
     depth_interval_accuracies = []
-    for filename, file_prediction in predictions.items():
+    for file_prediction in predictions.extracted_file_information:
+        filename = file_prediction.filename
         hits = 0
         depth_interval_hits = 0
         depth_interval_occurences = 0
-        for layer in file_prediction.layers:
+        for layer in file_prediction.single_file_predictions.layers:
             if layer.material_is_correct:
                 hits += 1
                 if layer.depth_interval_is_correct:
@@ -81,7 +82,7 @@ def get_scores(
             if parse_text(layer.material_description.text) == "":
                 logger.warning("Empty string found in predictions")
         tp = hits
-        fp = len(file_prediction.layers) - tp
+        fp = len(file_prediction.single_file_predictions.layers) - tp
         fn = number_of_truth_values[filename] - tp
 
         if tp:
@@ -145,6 +146,7 @@ def evaluate_borehole_extraction(
         tuple[dict, pd.DataFrame]: A tuple containing the overall metrics as a dictionary and the
         individual document metrics as a DataFrame.
     """
+    # evaluate the predictions
     layer_metrics, layer_document_level_metrics = evaluate_layer_extraction(predictions, number_of_truth_values)
     (
         metadata_metrics,
@@ -155,7 +157,11 @@ def evaluate_borehole_extraction(
         document_level_metrics_groundwater,
         document_level_metrics_groundwater_depth,
     ) = evaluate_groundwater(predictions)
+
+    # merge all metrics
     metrics = {**layer_metrics, **metadata_metrics, **metrics_groundwater}
+
+    # merge all document level metrics
     document_level_metrics = pd.merge(
         layer_document_level_metrics, document_level_metrics_metadata, on="document_name", how="outer"
     )
@@ -315,13 +321,17 @@ def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -
     )
     # create predictions by language
     predictions_by_language = defaultdict(dict)
-    for file_name, file_predictions in predictions.items():
-        language = file_predictions.language
-        predictions_by_language[language][file_name] = file_predictions
+    for file_predictions in predictions.extracted_file_information:
+        language = file_predictions.metadata.language
+
+        if language not in predictions_by_language.keys():
+            predictions_per_file = StratigraphyPredictions()
+            predictions_by_language[language] = predictions_per_file
+        predictions_by_language[language].add_extracted_file_information(file_predictions)
 
     for language, language_predictions in predictions_by_language.items():
         language_number_of_truth_values = {
-            file_name: number_of_truth_values[file_name] for file_name in language_predictions
+            prediction.filename: number_of_truth_values[prediction.filename] for prediction in language_predictions
         }
         metrics[language] = get_scores(
             language_predictions, language_number_of_truth_values, return_document_level_metrics=False

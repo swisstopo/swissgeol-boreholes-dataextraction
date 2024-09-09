@@ -7,11 +7,12 @@ from pathlib import Path
 import fitz
 from dotenv import load_dotenv
 
-from stratigraphy.coordinates.coordinate_extraction import Coordinate
-from stratigraphy.elevation.elevation_extraction import ElevationInformation
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformationOnPage
+from stratigraphy.metadata.coordinates.coordinate_extraction import Coordinate
+from stratigraphy.metadata.elevation.elevation_extraction import ElevationInformation
+from stratigraphy.predictions.predictions import ExtractedFileInformation
 from stratigraphy.util.interval import BoundaryInterval
-from stratigraphy.util.predictions import FilePredictions, LayerPrediction
+from stratigraphy.util.predictions import LayerPrediction
 from stratigraphy.util.textblock import TextBlock
 
 load_dotenv()
@@ -23,7 +24,7 @@ colors = ["purple", "blue"]
 logger = logging.getLogger(__name__)
 
 
-def draw_predictions(predictions: list[FilePredictions], directory: Path, out_directory: Path) -> None:
+def draw_predictions(predictions: ExtractedFileInformation, directory: Path, out_directory: Path) -> None:
     """Draw predictions on pdf pages.
 
     Draws various recognized information on the pdf pages present at directory and saves
@@ -44,10 +45,11 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
     """
     if directory.is_file():  # deal with the case when we pass a file instead of a directory
         directory = directory.parent
-    for file_name, file_prediction in predictions.items():
+    for file_prediction in predictions.extracted_file_information:
+        file_name = file_prediction.filename
         logger.info("Drawing predictions for file %s", file_name)
 
-        depths_materials_column_pairs = file_prediction.depths_materials_columns_pairs
+        depths_materials_column_pairs = file_prediction.single_file_predictions.depths_materials_column_pairs
         coordinates = file_prediction.metadata.coordinates
         elevation = file_prediction.metadata.elevation
         with fitz.Document(directory / file_name) as doc:
@@ -60,15 +62,13 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                         page.derotation_matrix,
                         page.rotation,
                         coordinates,
-                        file_prediction.metadata_is_correct.get("coordinates"),
                         elevation,
-                        file_prediction.metadata_is_correct.get("elevation"),
                     )
                 if coordinates is not None and page_number == coordinates.page:
                     draw_coordinates(shape, coordinates)
                 if elevation is not None and page_number == elevation.page:
                     draw_elevation(shape, elevation)
-                for groundwater_entry in file_prediction.groundwater_entries:
+                for groundwater_entry in file_prediction.single_file_predictions.groundwater:
                     if page_number == groundwater_entry.page:
                         draw_groundwater(shape, groundwater_entry)
                 draw_depth_columns_and_material_rect(
@@ -81,7 +81,7 @@ def draw_predictions(predictions: list[FilePredictions], directory: Path, out_di
                     page.derotation_matrix,
                     [
                         layer
-                        for layer in file_prediction.layers
+                        for layer in file_prediction.single_file_predictions.layers
                         if layer.material_description.page_number == page_number
                     ],
                 )
@@ -106,9 +106,7 @@ def draw_metadata(
     derotation_matrix: fitz.Matrix,
     rotation: float,
     coordinates: Coordinate | None,
-    coordinates_is_correct: bool,
-    elevation_info: ElevationInformation | None,
-    elevation_is_correct: bool,
+    elevation: ElevationInformation | None,
 ) -> None:
     """Draw the extracted metadata on the top of the given PDF page.
 
@@ -125,11 +123,11 @@ def draw_metadata(
         elevation_is_correct (bool): Whether the elevation information is correct.
     """
     # TODO associate correctness with the extracted coordinates in a better way
-    coordinate_correct = coordinates_is_correct is not None and coordinates_is_correct["tp"] > 0
+    coordinate_correct = coordinates and coordinates.is_correct
     coordinate_color = "green" if coordinate_correct else "red"
     coordinate_rect = fitz.Rect([5, 5, 200, 25])
 
-    elevation_correct = elevation_is_correct is not None and elevation_is_correct["tp"] > 0
+    elevation_correct = elevation and elevation.is_correct
     elevation_color = "green" if elevation_correct else "red"
     elevation_rect = fitz.Rect([5, 25, 200, 45])
 
@@ -147,7 +145,7 @@ def draw_metadata(
     )
 
     # Draw the bounding box around the elevation information
-    elevation_txt = f"Elevation: {elevation_info.elevation} m" if elevation_info is not None else "Elevation: N/A"
+    elevation_txt = f"Elevation: {elevation.elevation} m" if elevation is not None else "Elevation: N/A"
     shape.draw_rect(elevation_rect * derotation_matrix)
     shape.finish(fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
     shape.insert_textbox(elevation_rect * derotation_matrix, elevation_txt, rotate=rotation)

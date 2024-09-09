@@ -21,6 +21,7 @@ class ExtractedFeature(metaclass=ABCMeta):
 
     rect: fitz.Rect  # The rectangle that contains the extracted information
     page: int  # The page number of the PDF document
+    is_correct: bool = None  # Is the extracted elevation correct
 
     @abstractmethod
     def is_valid(self) -> bool:

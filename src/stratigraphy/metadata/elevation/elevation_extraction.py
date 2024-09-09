@@ -53,6 +53,14 @@ class ElevationInformation(ExtractedFeature):
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
         }
 
+    def is_extracted_value_correct(self, ground_truth_elevation: float) -> bool:
+        """Checks if the extracted elevation is correct.
+
+        Returns:
+            bool: True if the extracted elevation is correct, otherwise False.
+        """
+        self.is_correct = self.elevation == ground_truth_elevation
+
 
 class ElevationExtractor(DataExtractor):
     """Class for extracting elevation data from text.
@@ -165,7 +173,7 @@ class ElevationExtractor(DataExtractor):
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
 
-    def extract_elevation(self) -> ElevationInformation | None:
+    def extract_elevation(self, ground_truth_elevation: float = None) -> ElevationInformation | None:
         """Extracts the elevation information from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the feature key in the respective text of the
@@ -182,6 +190,8 @@ class ElevationExtractor(DataExtractor):
 
             if found_elevation_value:
                 logger.info("Found elevation on page %s: %s", page_number, found_elevation_value.elevation)
+                if ground_truth_elevation:
+                    found_elevation_value.is_extracted_value_correct(ground_truth_elevation)
                 return found_elevation_value
 
         logger.info("No elevation found in this borehole profile.")
