@@ -22,13 +22,19 @@ from stratigraphy.util.extract_text import extract_text_lines_from_bbox
 
 
 def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataResponse:
-    """Extract information from PNG images.
+    """Extract information from PDF document.
+
+    The user can specify the format type (coordinates, elevation, text,
+    number) as well as the bounding box on the PNG image. The bounding box is specified in the PNG image
+    coordinates (0, 0) is the top-left corner of the image.
 
     Args:
-        extract_data_request (ExtractDataRequest): The request data.
+        extract_data_request (ExtractDataRequest): The request data with the filename, page number, bounding box,
+        and format type. The page number is 1-based. The bounding box is in PNG coordinates.
 
     Returns:
-        ExtractDataResponse: The extracted information.
+        ExtractDataResponse: The extracted information with the bounding box where the information was found.
+        In PNG coordinates.
     """
     # Load the PNG image
     pdf_document = load_pdf_from_aws(extract_data_request.filename)
@@ -139,15 +145,19 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
 def extract_coordinates(
     extract_data_request: ExtractDataRequest, pdf_page: fitz.Page, user_defined_bbox: fitz.Rect
 ) -> ExtractDataResponse | None:
-    """Extract coordinates from a PNG image.
+    """Extract coordinates from a PDF document.
+
+    The coordinates are extracted from the user-defined bounding box. The coordinates are extracted in the
+    Swiss coordinate system (LV03 or LV95). The user_defined_bbox is in PDF coordinates.
 
     Args:
-        extract_data_request (ExtractDataRequest): The request data.
+        extract_data_request (ExtractDataRequest): The request data. The page number is 1-based.
         pdf_page (fitz.Page): The PDF page.
-        user_defined_bbox (fitz.Rect): The user-defined bounding box.
+        user_defined_bbox (fitz.Rect): The user-defined bounding box. The bounding box is in PDF coordinates.
 
     Returns:
-        ExtractDataResponse: The extracted coordinates.
+        ExtractDataResponse: The extracted coordinates. The coordinates are in the Swiss coordinate
+        system (LV03 or LV95). The bounding box is in PDF coordinates.
     """
 
     def create_response(coord, srs):
@@ -183,12 +193,14 @@ def extract_coordinates(
 def extract_elevation(
     extract_data_request: ExtractDataRequest, pdf_page: fitz.Page, user_defined_bbox: fitz.Rect
 ) -> ExtractDataResponse:
-    """Extract the elevation from a PNG image.
+    """Extract the elevation from a PDF document. The elevation is extracted from the user-defined bounding box.
+
+    The user_defined_bbox is in PDF coordinates.
 
     Args:
-        extract_data_request (ExtractDataRequest): The request data.
+        extract_data_request (ExtractDataRequest): The request data. The page number is 1-based.
         pdf_page (fitz.Page): The PDF page.
-        user_defined_bbox (fitz.Rect): The user-defined bounding box.
+        user_defined_bbox (fitz.Rect): The user-defined bounding box. The bounding box is in PDF coordinates.
 
     Returns:
         ExtractDataResponse: The extracted elevation.
@@ -217,12 +229,12 @@ def extract_elevation(
 
 
 def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDataResponse:
-    """Extract text from a PNG image.
+    """Extract text from a PDF Document. The text is extracted from the user-defined bounding box.
 
     Args:
-        extract_data_request (ExtractDataRequest): The request data.
+        extract_data_request (ExtractDataRequest): The request data. The page number is 1-based.
         pdf_page (fitz.Page): The PDF page.
-        user_defined_bbox (fitz.Rect): The user-defined bounding box.
+        user_defined_bbox (fitz.Rect): The user-defined bounding box. The bounding box is in PDF coordinates.
 
     Returns:
         ExtractDataResponse: The extracted text.
@@ -241,16 +253,16 @@ def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDa
     return ExtractTextResponse(bbox=bbox, text=text)
 
 
-def extract_number(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect):
-    """Extract numbers from a PNG image.
+def extract_number(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractNumberResponse:
+    """Extract numbers from a PDF document. The numbers are extracted from the user-defined bounding box.
 
     Args:
-        extract_data_request (ExtractDataRequest): The request data.
+        extract_data_request (ExtractDataRequest): The request data. The page number is 1-based.
         pdf_page (fitz.Page): The PDF page.
-        user_defined_bbox (fitz.Rect): The user-defined bounding box.
+        user_defined_bbox (fitz.Rect): The user-defined bounding box. The bounding box is in PDF coordinates.
 
     Returns:
-        ExtractDataResponse: The extracted numbers.
+        ExtractDataResponse: The extracted number with bbox.
     """
     # Extract the text
     text_lines = extract_text_lines_from_bbox(pdf_page, user_defined_bbox)

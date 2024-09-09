@@ -54,7 +54,7 @@ def load_png_from_aws(filename: str) -> np.ndarray:
 
 
 def load_data_from_aws(filename: str, format: str) -> bytes:
-    """Load a PNG image from AWS S3.
+    """Load a document from AWS S3.
 
     Args:
         filename (str): The filename of the PNG image.
