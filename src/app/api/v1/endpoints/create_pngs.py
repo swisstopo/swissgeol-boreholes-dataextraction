@@ -13,7 +13,7 @@ def create_pngs(aws_filename: str = Form(...)):
     """Convert a PDF document to PNG images. Please note that this function will overwrite any existing PNG files.
 
     Args:
-        aws_filename (str): The name of the PDF document in the S3 bucket. For example, "pdfs/geoquat/train/10012.pdf".
+        aws_filename (str): The name of the PDF document in the S3 bucket. For example, "pdfs/10012.pdf".
 
     Returns:
         PNGResponse: The URLs of the PNG images in the S3 bucket.
@@ -27,9 +27,11 @@ def create_pngs(aws_filename: str = Form(...)):
     # Check if the PDF name is valid
     if not aws_filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Invalid request. The filename must end with '.pdf'.")
+    if not aws_filename.startswith("pdfs/"):
+        raise HTTPException(status_code=400, detail="Invalid request. The filename must start with 'pdfs/'.")
 
     # Get the filename from the path
-    filename = aws_filename.split(".")[0]
+    filename = aws_filename.replace("pdfs/", "").replace(".pdf", "")
 
     # Initialize the S3 client
     pdf_document = load_pdf_from_aws(aws_filename)

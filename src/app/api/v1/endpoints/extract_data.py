@@ -1,4 +1,4 @@
-"""This module defines the FastAPI endpoint for extracting information from PNG images."""
+"""This module defines the FastAPI endpoint for extracting information from PDF borehole document."""
 
 import re
 
@@ -10,14 +10,12 @@ from app.common.schemas import (
     ExtractCoordinatesResponse,
     ExtractDataRequest,
     ExtractDataResponse,
-    ExtractElevationResponse,
     ExtractNumberResponse,
     ExtractTextResponse,
     FormatTypes,
     NotFoundResponse,
 )
 from stratigraphy.coordinates.coordinate_extraction import CoordinateExtractor, LV03Coordinate, LV95Coordinate
-from stratigraphy.elevation.elevation_extraction import ElevationExtractor
 from stratigraphy.util.extract_text import extract_text_lines_from_bbox
 
 
@@ -89,27 +87,6 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
                 north=extracted_coords.coordinates.north,
                 projection=extracted_coords.coordinates.projection,
             ),
-        )
-    elif extract_data_request.format == FormatTypes.ELEVATION:
-        extracted_elevation: ExtractElevationResponse | None = extract_elevation(
-            extract_data_request, pdf_page, user_defined_bbox.to_fitz_rect()
-        )
-
-        if extracted_elevation is None:
-            return NotFoundResponse(
-                detail="Elevation not found.",
-                bbox=extract_data_request.bbox,
-            )
-
-        # Convert the bounding box to PNG coordinates and return the response
-        return ExtractElevationResponse(
-            bbox=extracted_elevation.bbox.rescale(
-                original_height=pdf_page_height,
-                original_width=pdf_page_width,
-                target_height=png_page_height,
-                target_width=png_page_width,
-            ),
-            elevation=extracted_elevation.elevation,
         )
 
     elif extract_data_request.format == FormatTypes.TEXT:
@@ -188,44 +165,6 @@ def extract_coordinates(
         return create_response(extracted_coord, "LV95")
 
     return None
-
-
-def extract_elevation(
-    extract_data_request: ExtractDataRequest, pdf_page: fitz.Page, user_defined_bbox: fitz.Rect
-) -> ExtractDataResponse:
-    """Extract the elevation from a PDF document. The elevation is extracted from the user-defined bounding box.
-
-    The user_defined_bbox is in PDF coordinates.
-
-    Args:
-        extract_data_request (ExtractDataRequest): The request data. The page number is 1-based.
-        pdf_page (fitz.Page): The PDF page.
-        user_defined_bbox (fitz.Rect): The user-defined bounding box. The bounding box is in PDF coordinates.
-
-    Returns:
-        ExtractDataResponse: The extracted elevation.
-    """
-    elevation_extractor = ElevationExtractor(pdf_page)
-    elevation = elevation_extractor.extract_elevation_from_bbox(
-        pdf_page, extract_data_request.page_number, user_defined_bbox
-    )
-
-    if elevation is None:
-        return NotFoundResponse(
-            detail="Elevation not found.",
-            bbox=extract_data_request.bbox,
-        )
-
-    bbox = BoundingBox(
-        x0=elevation.rect.x0,
-        y0=elevation.rect.y0,
-        x1=elevation.rect.x1,
-        y1=elevation.rect.y1,
-    )
-    return ExtractElevationResponse(
-        bbox=bbox,
-        elevation=elevation.elevation,
-    )
 
 
 def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDataResponse:

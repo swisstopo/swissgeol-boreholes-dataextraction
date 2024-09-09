@@ -38,7 +38,6 @@ class FormatTypes(str, Enum):
     TEXT = "text"
     NUMBER = "number"
     COORDINATES = "coordinates"
-    ELEVATION = "elevation"
 
 
 class BoundingBox(BaseModel):
@@ -178,16 +177,6 @@ class ExtractCoordinatesResponse(ExtractDataResponse):
     @property
     def response_type(self):
         return "coordinates"
-
-
-class ExtractElevationResponse(ExtractDataResponse):
-    """Response schema for the extract_data endpoint."""
-
-    elevation: float = Field(..., example=1.0, ge=0.0)
-
-    @property
-    def response_type(self):
-        return "elevation"
 
 
 class ExtractTextResponse(ExtractDataResponse):
