@@ -10,15 +10,37 @@ as well as a patch version with all fields optional for patch operations.
 
 from abc import ABC, abstractmethod
 from enum import Enum
+from pathlib import Path
+from typing import Any
 
 import fitz
-from pydantic import BaseModel, Field, constr, field_validator
+from pydantic import BaseModel, Field, field_serializer, field_validator
 
 
 class PNGRequest(BaseModel):
     """Request schema for the create_pngs endpoint."""
 
-    filename: constr(min_length=1)  # This will ensure the filename is a non-empty string.
+    filename: Path  # This will ensure the filename is a Path object
+
+    @field_validator("filename")
+    @classmethod
+    def validate_filename(cls, value):
+        """Ensure the filename is not empty."""
+        if isinstance(value, str):
+            path = Path(value)
+            if not path.name:
+                raise ValueError("Filename must not be empty.")
+            return path
+        elif isinstance(value, Path):
+            if not value.name:
+                raise ValueError("Filename must not be empty.")
+            return value
+        raise ValueError("Filename must be a string or Path.")
+
+    class Config:
+        """Make to allow using non-standard types like Path."""
+
+        arbitrary_types_allowed = True  # This allows using non-standard types like Path
 
 
 class PNGResponse(BaseModel):
@@ -120,7 +142,7 @@ class ExtractDataRequest(ABC, BaseModel):
     example for that specific field.
     """
 
-    filename: str = Field(..., example="document.png")
+    filename: str = Field(..., example=Path("document.png"))
     page_number: int = Field(..., example=1)  # 1-based index
     bbox: BoundingBox = Field(..., example={"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0})
     format: FormatTypes = Field(..., example=FormatTypes.COORDINATES.value)
@@ -140,6 +162,29 @@ class ExtractDataRequest(ABC, BaseModel):
         if v not in FormatTypes:
             raise ValueError(f"Invalid format type: {v}")
         return v
+
+    @field_serializer("filename")
+    @classmethod
+    def serialize_filename(cls, value: Any) -> str:
+        """Serialize the filename to a string."""
+        if isinstance(value, Path):
+            return value.name
+        return value
+
+    @field_validator("filename")
+    @classmethod
+    def validate_filename(cls, value):
+        """Validate that the filename is not empty."""
+        if isinstance(value, str):
+            path = Path(value)
+            if not path.name:
+                raise ValueError("Filename must not be empty.")
+            return path
+        elif isinstance(value, Path):
+            if not value.name:
+                raise ValueError("Filename must not be empty.")
+            return value
+        raise ValueError("Filename must be a string or Path.")
 
     class Config:
         """Make it possible to define an example for the entire request model in the Swagger UI.

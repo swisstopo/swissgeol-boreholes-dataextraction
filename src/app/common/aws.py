@@ -1,6 +1,7 @@
 """Series of utility functions for the aws connection to get the groundwater stratigraphy."""
 
 import io
+from pathlib import Path
 
 import boto3
 import fitz
@@ -14,7 +15,7 @@ from PIL import Image
 s3_client = boto3.client("s3")
 
 
-def load_pdf_from_aws(filename: str) -> fitz.Document:
+def load_pdf_from_aws(filename: Path) -> fitz.Document:
     """Load a PDF document from AWS S3.
 
     Args:
@@ -25,7 +26,7 @@ def load_pdf_from_aws(filename: str) -> fitz.Document:
     """
     # Load the PDF from the S3 object
     try:
-        data = load_data_from_aws(filename, "pdfs/")
+        data = load_data_from_aws(filename, "pdfs")
         pdf_document = fitz.open(stream=data, filetype="pdf")
     except Exception:
         raise HTTPException(
@@ -35,7 +36,7 @@ def load_pdf_from_aws(filename: str) -> fitz.Document:
     return pdf_document
 
 
-def load_png_from_aws(filename: str) -> np.ndarray:
+def load_png_from_aws(filename: Path) -> np.ndarray:
     """Load a PNG image from AWS S3.
 
     Args:
@@ -44,7 +45,7 @@ def load_png_from_aws(filename: str) -> np.ndarray:
     Returns:
         ndarray: The loaded PNG image.
     """
-    data = load_data_from_aws(filename, "pngs/")
+    data = load_data_from_aws(filename, "pngs")
 
     # Convert the PNG data to an image using PIL
     image = Image.open(io.BytesIO(data))
@@ -53,7 +54,7 @@ def load_png_from_aws(filename: str) -> np.ndarray:
     return np.array(image)
 
 
-def load_data_from_aws(filename: str, format: str) -> bytes:
+def load_data_from_aws(filename: Path, format: str) -> bytes:
     """Load a document from AWS S3.
 
     Args:
@@ -65,7 +66,7 @@ def load_data_from_aws(filename: str, format: str) -> bytes:
     """
     # Check if the PNG exists in S3
     try:
-        png_object = s3_client.get_object(Bucket=config.bucket_name, Key=format + filename)
+        png_object = s3_client.get_object(Bucket=config.bucket_name, Key=str(format / filename))
     except s3_client.exceptions.NoSuchKey:
         raise HTTPException(status_code=404, detail=f"Document {format + filename} not found in S3 bucket.") from None
 

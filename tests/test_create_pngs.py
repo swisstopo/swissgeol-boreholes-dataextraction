@@ -61,7 +61,7 @@ def test_create_pngs_invalid_filename(test_client: TestClient):
     response = test_client.post("/api/V1/create_pngs", json={"filename": ""})
     assert response.status_code == 400
     assert response.json() == {
-        "detail": "filename field - String should have at least 1 character",
+        "detail": "Filename must not be empty.",
     }
 
 
