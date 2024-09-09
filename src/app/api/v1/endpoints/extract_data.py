@@ -22,7 +22,7 @@ from stratigraphy.util.extract_text import extract_text_lines_from_bbox
 def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataResponse:
     """Extract information from PDF document.
 
-    The user can specify the format type (coordinates, elevation, text,
+    The user can specify the format type (coordinates, text,
     number) as well as the bounding box on the PNG image. The bounding box is specified in the PNG image
     coordinates (0, 0) is the top-left corner of the image.
 

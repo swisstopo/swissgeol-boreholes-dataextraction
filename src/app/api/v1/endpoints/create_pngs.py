@@ -27,11 +27,9 @@ def create_pngs(aws_filename: str = Form(...)):
     # Check if the PDF name is valid
     if not aws_filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Invalid request. The filename must end with '.pdf'.")
-    if not aws_filename.startswith("pdfs/"):
-        raise HTTPException(status_code=400, detail="Invalid request. The filename must start with 'pdfs/'.")
 
     # Get the filename from the path
-    filename = aws_filename.replace("pdfs/", "").replace(".pdf", "")
+    filename = aws_filename.replace(".pdf", "")
 
     # Initialize the S3 client
     pdf_document = load_pdf_from_aws(aws_filename)
