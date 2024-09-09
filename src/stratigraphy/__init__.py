@@ -12,4 +12,7 @@ if os.getenv("BOREHOLES_DATA_PATH") is not None:
 else:
     DATAPATH = Path(__file__).parent.parent.parent / "data"
 
-PROJECT_ROOT = Path(os.path.abspath(__file__)).parent.parent.parent
+if os.getenv("COMPUTING_ENVIRONMENT") == "API":
+    PROJECT_ROOT = Path(os.path.abspath(__file__)).parent.parent.parent / "app"
+else:
+    PROJECT_ROOT = Path(os.path.abspath(__file__)).parent.parent.parent

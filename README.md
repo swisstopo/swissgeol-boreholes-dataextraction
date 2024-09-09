@@ -230,6 +230,8 @@ The project structure and the most important files are as follows:
       - `predictions.json` : The output file of the project, containing the results of the data extraction process.
   - `tests/` : The tests for the project.
   - `README.md` : The README file for the project.
+  - `pyproject.toml`: Contain the python requirements and provides specific for a python environment.
+  - `Dockerfile`: Dockerfile to launch the Borehole App as API.
 
 
 ## Main scripts
@@ -284,6 +286,78 @@ To launch the API and access its endpoints, follow these steps:
 5. **Stop the server**
 
     To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is running. Please refer to the [FastAPI documentation](https://fastapi.tiangolo.com) for more information on how to work with FastAPI and build APIs using this framework.
+
+
+## API as Docker Image
+
+The borehole application offers a given amount of functionalities (extract text, number, and coordinates) through an API. To build this API using a Docker Container, you can run the following commands. 
+
+1. **Navigate to the project directory**
+
+    Change your current directory to the project directory:
+
+    ```bash
+    cd swissgeol-boreholes-dataextraction
+    ```
+
+2. **Build the Docker image**
+
+    Build the Docker image using the following command:
+
+    ```bash
+    docker build -t boreholeapi .
+    ```
+
+    This command will build the Docker image with the tag `boreholeapi`.
+
+3. **Verify the Docker image**
+
+    Verify that the Docker image has been successfully built by running the following command:
+
+    ```bash
+    docker images
+    ```
+
+    You should see the `boreholeapi` image listed in the output.
+
+4. **Run the Docker container**
+
+    To run the Docker container, use the following command:
+
+    ```bash
+    docker run -p 8000:8000 boreholeapi
+    ```
+
+    This command will start the container and map port 8000 of the container to port 8000 of the host machine.
+
+5. **Run the docker image with the AWS credentials**
+
+If you have the AWS credentials configured locally in the `~/.aws` file, you can run the following command to forward your AWS credentials to the docker container 
+
+    ```bash
+
+    docker run -v ~/.aws:/root/.aws -d -p 8000:8000 `boreholeapi` 
+    ```
+
+5. **Access the API**
+
+    Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
+
+    You can also use an API testing tool like Postman to send requests to the API endpoints.
+
+    **Note:** If you are running Docker on a remote machine, replace `localhost` with the appropriate hostname or IP address.
+
+6. **Stop the Docker container**
+
+    To stop the Docker container, press `Ctrl + C` in the terminal where the container is running.
+
+    Alternatively, you can use the following command to stop the container:
+
+    ```bash
+    docker stop <container_id>
+    ```
+
+    Replace `<container_id>` with the ID of the running container, which can be obtained by running `docker ps`.
 
 
 ## Experiment Tracking
