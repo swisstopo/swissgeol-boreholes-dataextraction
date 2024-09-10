@@ -141,6 +141,7 @@ def evaluate_borehole_extraction(
     Args:
        predictions (dict): The FilePredictions objects.
        number_of_truth_values (dict): The number of layer ground truth values per file.
+       ground_truth_path (Path): The path to the ground truth file.
 
     Returns:
         tuple[dict, pd.DataFrame]: A tuple containing the overall metrics as a dictionary and the
@@ -293,6 +294,7 @@ def evaluate_groundwater(
 
     Args:
         predictions (dict): The FilePredictions objects.
+        ground_truth_path (Path): The path to the ground truth file.
 
     Returns:
         tuple[dict, pd.DataFrame]: The overall groundwater information accuracy and the individual document metrics as
@@ -374,6 +376,7 @@ def evaluate_metadata(predictions: StratigraphyPredictions, groundtruth: GroundT
 
     Args:
         predictions (dict): The FilePredictions objects.
+        groundtruth (GroundTruth): The ground truth object.
 
     Returns:
         tuple[dict, pd.DataFrame]: The overall coordinate accuracy and the individual document metrics as a DataFrame.
@@ -383,6 +386,7 @@ def evaluate_metadata(predictions: StratigraphyPredictions, groundtruth: GroundT
     )
     document_level_metrics_elevation, metrics_elevation = get_metadata_metrics(predictions, "elevation", groundtruth)
     metrics = {
+        "coordinate_accuracy": metrics_coordinates["coordinate_accuracy"],
         "coordinate_precision": metrics_coordinates["coordinates_precision"],
         "coordinate_recall": metrics_coordinates["coordinates_recall"],
         "coordinate_f1": metrics_coordinates["coordinates_f1"],
@@ -431,7 +435,7 @@ def evaluate_layer_extraction(
     for file_predictions in predictions.extracted_file_information:
         language = file_predictions.metadata.language
 
-        if language not in predictions_by_language.keys():
+        if language not in predictions_by_language:
             predictions_per_file = StratigraphyPredictions()
             predictions_by_language[language] = predictions_per_file
         predictions_by_language[language].add_extracted_file_information(file_predictions)
