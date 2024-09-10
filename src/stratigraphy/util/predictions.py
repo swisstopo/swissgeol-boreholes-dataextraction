@@ -279,7 +279,7 @@ class FilePredictions:
         gt_groundwater = [
             GroundwaterInformation.from_json_values(
                 depth=json_gt_data["depth"],
-                measurement_date=json_gt_data["date"],
+                date=json_gt_data["date"],
                 elevation=json_gt_data["elevation"],
             )
             for json_gt_data in groundwater_ground_truth
@@ -289,12 +289,12 @@ class FilePredictions:
             [
                 (
                     entry.groundwater.depth,
-                    entry.groundwater.format_measurement_date(),
+                    entry.groundwater.format_date(),
                     entry.groundwater.elevation,
                 )
                 for entry in self.groundwater_entries
             ],
-            [(entry.depth, entry.format_measurement_date(), entry.elevation) for entry in gt_groundwater],
+            [(entry.depth, entry.format_date(), entry.elevation) for entry in gt_groundwater],
         )
         self.groundwater_is_correct["groundwater_depth"] = self.count_against_ground_truth(
             [entry.groundwater.depth for entry in self.groundwater_entries],
@@ -305,8 +305,8 @@ class FilePredictions:
             [entry.elevation for entry in gt_groundwater],
         )
         self.groundwater_is_correct["groundwater_date"] = self.count_against_ground_truth(
-            [entry.groundwater.measurement_date for entry in self.groundwater_entries],
-            [entry.measurement_date for entry in gt_groundwater],
+            [entry.groundwater.date for entry in self.groundwater_entries],
+            [entry.date for entry in gt_groundwater],
         )
 
     @staticmethod
