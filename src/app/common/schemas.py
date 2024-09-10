@@ -17,6 +17,22 @@ import fitz
 from pydantic import BaseModel, Field, field_serializer, field_validator
 
 
+def validate_path_field(value: Any) -> Path:
+    """Validate that the value is a valid path."""
+    if isinstance(value, str):
+        # In the API requests the filename is a string
+        path = Path(value)
+        if not path.name:
+            raise ValueError("Filename must not be empty.")
+        return path
+    elif isinstance(value, Path):
+        # In the tests the filename is a Path object
+        if not value.name:
+            raise ValueError("Filename must not be empty.")
+        return value
+    raise ValueError("Filename must be a string or Path.")
+
+
 class PNGRequest(BaseModel):
     """Request schema for the create_pngs endpoint."""
 
@@ -26,16 +42,7 @@ class PNGRequest(BaseModel):
     @classmethod
     def validate_filename(cls, value):
         """Ensure the filename is not empty."""
-        if isinstance(value, str):
-            path = Path(value)
-            if not path.name:
-                raise ValueError("Filename must not be empty.")
-            return path
-        elif isinstance(value, Path):
-            if not value.name:
-                raise ValueError("Filename must not be empty.")
-            return value
-        raise ValueError("Filename must be a string or Path.")
+        return validate_path_field(value)
 
     class Config:
         """Make to allow using non-standard types like Path."""
@@ -175,16 +182,7 @@ class ExtractDataRequest(ABC, BaseModel):
     @classmethod
     def validate_filename(cls, value):
         """Validate that the filename is not empty."""
-        if isinstance(value, str):
-            path = Path(value)
-            if not path.name:
-                raise ValueError("Filename must not be empty.")
-            return path
-        elif isinstance(value, Path):
-            if not value.name:
-                raise ValueError("Filename must not be empty.")
-            return value
-        raise ValueError("Filename must be a string or Path.")
+        return validate_path_field(value)
 
     class Config:
         """Make it possible to define an example for the entire request model in the Swagger UI.
