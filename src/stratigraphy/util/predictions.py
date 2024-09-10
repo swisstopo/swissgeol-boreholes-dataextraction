@@ -3,7 +3,6 @@
 import logging
 import math
 from collections import Counter
-from dataclasses import dataclass
 
 import fitz
 import Levenshtein
@@ -12,21 +11,12 @@ from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformation, GroundwaterInformationOnPage
 from stratigraphy.layer.layer import LayerPrediction
 from stratigraphy.lines.line import TextLine, TextWord
-from stratigraphy.metadata.coordinate_extraction import Coordinate
-from stratigraphy.metadata.elevation_extraction import ElevationInformation
+from stratigraphy.metadata.metadata import BoreholeMetadata
 from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.interval import BoundaryInterval
 from stratigraphy.util.util import parse_text
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class BoreholeMetaData:
-    """Class to represent metadata of a borehole profile."""
-
-    coordinates: Coordinate | None
-    elevation: ElevationInformation | None
 
 
 class FilePredictions:
@@ -37,7 +27,7 @@ class FilePredictions:
         layers: list[LayerPrediction],
         file_name: str,
         language: str,
-        metadata: BoreholeMetaData,
+        metadata: BoreholeMetadata,
         groundwater_entries: list[GroundwaterInformationOnPage],
         depths_materials_columns_pairs: list[dict],
         page_sizes: list[dict[str, float]],
@@ -53,29 +43,17 @@ class FilePredictions:
         self.groundwater_is_correct: dict = {}
 
     @staticmethod
-    def create_from_json(predictions_for_file: dict, file_name: str):
+    def create_from_json(predictions_for_file: dict, metadata: BoreholeMetadata, file_name: str):
         """Create predictions class for a file given the predictions.json file.
 
         Args:
             predictions_for_file (dict): The predictions for the file in json format.
+            metadata (BoreholeMetadata): The metadata for the file.
             file_name (str): The name of the file.
         """
         page_layer_predictions_list: list[LayerPrediction] = []
         pages_dimensions_list: list[dict[str, float]] = []
         depths_materials_columns_pairs_list: list[dict] = []
-
-        file_language = predictions_for_file["language"]
-
-        # Extract metadata.
-        metadata = predictions_for_file["metadata"]
-        coordinates = None
-        elevation = None
-        if "coordinates" in metadata and metadata["coordinates"] is not None:
-            coordinates = Coordinate.from_json(metadata["coordinates"])
-        if "elevation" in metadata and metadata["elevation"] is not None:
-            elevation = ElevationInformation(**metadata["elevation"]) if metadata["elevation"] is not None else None
-        file_metadata = BoreholeMetaData(coordinates=coordinates, elevation=elevation)
-        # TODO: Add additional metadata here.
 
         # Extract groundwater information if available.
         if "groundwater" in predictions_for_file and predictions_for_file["groundwater"] is not None:
@@ -125,8 +103,8 @@ class FilePredictions:
         return FilePredictions(
             layers=page_layer_predictions_list,
             file_name=file_name,
-            language=file_language,
-            metadata=file_metadata,
+            language=metadata.language,
+            metadata=metadata,
             depths_materials_columns_pairs=depths_materials_columns_pairs_list,
             page_sizes=pages_dimensions_list,
             groundwater_entries=groundwater_entries,

@@ -9,6 +9,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.ground_truth import GroundTruth
+from stratigraphy.metadata.metadata import BoreholeMetadataList
 from stratigraphy.util.predictions import FilePredictions
 from stratigraphy.util.util import parse_text
 
@@ -346,6 +347,7 @@ def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -
 
 def create_predictions_objects(
     predictions: dict,
+    metadata_per_file: BoreholeMetadataList,
     ground_truth_path: Path | None,
 ) -> tuple[dict[FilePredictions], dict]:
     """Create predictions objects from the predictions and evaluate them against the ground truth.
@@ -353,6 +355,7 @@ def create_predictions_objects(
     Args:
         predictions (dict): The predictions from the predictions.json file.
         ground_truth_path (Path　| None): The path to the ground truth file.
+        metadata_per_file (BoreholeMetadataList): The metadata for the files.
 
     Returns:
         tuple[dict[FilePredictions], dict]: The predictions objects and the number of ground truth values per file.
@@ -367,7 +370,11 @@ def create_predictions_objects(
     number_of_truth_values = {}
     predictions_objects = {}
     for file_name, file_predictions in predictions.items():
-        prediction_object = FilePredictions.create_from_json(file_predictions, file_name)
+        metadata = metadata_per_file.get_metadata(file_name)
+        if not metadata:
+            raise ValueError(f"Metadata for file {file_name} not found.")
+
+        prediction_object = FilePredictions.create_from_json(file_predictions, metadata, file_name)
 
         predictions_objects[file_name] = prediction_object
         if ground_truth_is_present:

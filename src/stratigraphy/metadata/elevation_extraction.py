@@ -41,7 +41,7 @@ class ElevationInformation(ExtractedFeature):
         """
         return f"ElevationInformation(" f"elevation={self.elevation}, " f"page={self.page})"
 
-    def to_dict(self) -> dict:
+    def to_json(self) -> dict:
         """Converts the object to a dictionary.
 
         Returns:
