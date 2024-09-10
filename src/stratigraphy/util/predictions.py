@@ -2,20 +2,20 @@
 
 import logging
 import math
-import uuid
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import fitz
 import Levenshtein
 
-from stratigraphy.coordinates.coordinate_extraction import Coordinate
-from stratigraphy.elevation.elevation_extraction import ElevationInformation
+from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformation, GroundwaterInformationOnPage
-from stratigraphy.util.depthcolumnentry import DepthColumnEntry
-from stratigraphy.util.interval import AnnotatedInterval, BoundaryInterval
-from stratigraphy.util.line import TextLine, TextWord
-from stratigraphy.util.textblock import MaterialDescription, TextBlock
+from stratigraphy.layer.layer import LayerPrediction
+from stratigraphy.lines.line import TextLine, TextWord
+from stratigraphy.metadata.coordinate_extraction import Coordinate
+from stratigraphy.metadata.elevation_extraction import ElevationInformation
+from stratigraphy.text.textblock import TextBlock
+from stratigraphy.util.interval import BoundaryInterval
 from stratigraphy.util.util import parse_text
 
 logger = logging.getLogger(__name__)
@@ -27,17 +27,6 @@ class BoreholeMetaData:
 
     coordinates: Coordinate | None
     elevation: ElevationInformation | None
-
-
-@dataclass
-class LayerPrediction:
-    """A class to represent predictions for a single layer."""
-
-    material_description: TextBlock | MaterialDescription
-    depth_interval: BoundaryInterval | AnnotatedInterval | None
-    material_is_correct: bool = None
-    depth_interval_is_correct: bool = None
-    id: uuid.UUID = field(default_factory=uuid.uuid4)
 
 
 class FilePredictions:

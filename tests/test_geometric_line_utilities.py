@@ -2,8 +2,7 @@
 
 import numpy as np
 import pytest
-from stratigraphy.util.dataclasses import Line, Point
-from stratigraphy.util.geometric_line_utilities import (
+from stratigraphy.lines.geometric_line_utilities import (
     _get_orthogonal_projection_to_line,
     _merge_lines,
     _odr_regression,
@@ -11,6 +10,7 @@ from stratigraphy.util.geometric_line_utilities import (
     is_point_on_line,
     merge_parallel_lines_quadtree,
 )
+from stratigraphy.util.dataclasses import Line, Point
 
 
 # Remember, phi is orthogonal to the line we are to parameterize

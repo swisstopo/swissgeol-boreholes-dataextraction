@@ -1,15 +1,14 @@
 """This module contains functions to find the description (blocks) of a material in a pdf page."""
 
 import fitz
-
-from stratigraphy.util.dataclasses import Line
-from stratigraphy.util.description_block_splitter import (
+from stratigraphy.lines.line import TextLine
+from stratigraphy.text.description_block_splitter import (
     SplitDescriptionBlockByLeftHandSideSeparator,
     SplitDescriptionBlockByLine,
     SplitDescriptionBlockByVerticalSpace,
 )
-from stratigraphy.util.line import TextLine
-from stratigraphy.util.textblock import TextBlock
+from stratigraphy.text.textblock import TextBlock
+from stratigraphy.util.dataclasses import Line
 
 
 def get_description_lines(lines: list[TextLine], material_description_rect: fitz.Rect) -> list[TextLine]:

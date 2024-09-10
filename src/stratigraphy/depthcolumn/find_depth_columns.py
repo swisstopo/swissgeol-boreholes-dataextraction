@@ -3,11 +3,10 @@
 import re
 
 import fitz
-
-from stratigraphy.util.boundarydepthcolumnvalidator import BoundaryDepthColumnValidator
-from stratigraphy.util.depthcolumn import BoundaryDepthColumn, LayerDepthColumn
-from stratigraphy.util.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
-from stratigraphy.util.line import TextWord
+from stratigraphy.depthcolumn.boundarydepthcolumnvalidator import BoundaryDepthColumnValidator
+from stratigraphy.depthcolumn.depthcolumn import BoundaryDepthColumn, LayerDepthColumn
+from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
+from stratigraphy.lines.line import TextWord
 
 
 def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> list[DepthColumnEntry]:

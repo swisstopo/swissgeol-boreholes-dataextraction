@@ -13,8 +13,8 @@ import fitz
 import numpy as np
 from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature
 from stratigraphy.groundwater.utility import extract_elevation
-from stratigraphy.util.extract_text import extract_text_lines_from_bbox
-from stratigraphy.util.line import TextLine
+from stratigraphy.lines.line import TextLine
+from stratigraphy.text.extract_text import extract_text_lines_from_bbox
 
 logger = logging.getLogger(__name__)
 

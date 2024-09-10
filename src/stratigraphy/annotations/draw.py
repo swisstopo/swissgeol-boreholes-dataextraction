@@ -6,13 +6,13 @@ from pathlib import Path
 
 import fitz
 from dotenv import load_dotenv
-
-from stratigraphy.coordinates.coordinate_extraction import Coordinate
-from stratigraphy.elevation.elevation_extraction import ElevationInformation
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformationOnPage
+from stratigraphy.layer.layer import LayerPrediction
+from stratigraphy.metadata.coordinate_extraction import Coordinate
+from stratigraphy.metadata.elevation_extraction import ElevationInformation
+from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.interval import BoundaryInterval
-from stratigraphy.util.predictions import FilePredictions, LayerPrediction
-from stratigraphy.util.textblock import TextBlock
+from stratigraphy.util.predictions import FilePredictions
 
 load_dotenv()
 

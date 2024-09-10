@@ -11,17 +11,17 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 
 from stratigraphy import DATAPATH
+from stratigraphy.annotations.draw import draw_predictions
+from stratigraphy.annotations.plot_utils import plot_lines
 from stratigraphy.benchmark.score import create_predictions_objects, evaluate_borehole_extraction
-from stratigraphy.coordinates.coordinate_extraction import CoordinateExtractor
-from stratigraphy.elevation.elevation_extraction import ElevationExtractor
 from stratigraphy.extract import process_page
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterLevelExtractor
-from stratigraphy.line_detection import extract_lines, line_detection_params
-from stratigraphy.util.draw import draw_predictions
-from stratigraphy.util.duplicate_detection import remove_duplicate_layers
-from stratigraphy.util.extract_text import extract_text_lines
-from stratigraphy.util.language_detection import detect_language_of_document
-from stratigraphy.util.plot_utils import plot_lines
+from stratigraphy.layer.duplicate_detection import remove_duplicate_layers
+from stratigraphy.lines.line_detection import extract_lines, line_detection_params
+from stratigraphy.metadata.coordinate_extraction import CoordinateExtractor
+from stratigraphy.metadata.elevation_extraction import ElevationExtractor
+from stratigraphy.metadata.language_detection import detect_language_of_document
+from stratigraphy.text.extract_text import extract_text_lines
 from stratigraphy.util.util import flatten, read_params
 
 load_dotenv()

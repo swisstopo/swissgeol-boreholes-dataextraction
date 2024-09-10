@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import fitz
-
 from stratigraphy.util.util import read_params, x_overlap_significant_largest
 
 material_description = read_params("matching_params.yml")["material_description"]

@@ -5,9 +5,8 @@ import logging
 import cv2
 import fitz
 import numpy as np
-
+from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.dataclasses import Line
-from stratigraphy.util.textblock import TextBlock
 
 logger = logging.getLogger(__name__)
 

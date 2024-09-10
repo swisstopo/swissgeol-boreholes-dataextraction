@@ -6,8 +6,7 @@ import cv2
 import fitz
 import Levenshtein
 import numpy as np
-
-from stratigraphy.util.plot_utils import convert_page_to_opencv_img
+from stratigraphy.annotations.plot_utils import convert_page_to_opencv_img
 
 logger = logging.getLogger(__name__)
 

@@ -3,11 +3,10 @@
 import re
 
 import fitz
-
-from stratigraphy.util.depthcolumn import LayerDepthColumnEntry
-from stratigraphy.util.find_depth_columns import extract_layer_depth_interval
-from stratigraphy.util.line import TextLine
-from stratigraphy.util.textblock import TextBlock
+from stratigraphy.depthcolumn.depthcolumn import LayerDepthColumnEntry
+from stratigraphy.depthcolumn.find_depth_columns import extract_layer_depth_interval
+from stratigraphy.lines.line import TextLine
+from stratigraphy.text.textblock import TextBlock
 
 
 class LayerIdentifierEntry:

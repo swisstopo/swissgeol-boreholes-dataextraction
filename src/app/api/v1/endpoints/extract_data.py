@@ -16,8 +16,8 @@ from app.common.schemas import (
     FormatTypes,
     NotFoundResponse,
 )
-from stratigraphy.coordinates.coordinate_extraction import CoordinateExtractor, LV03Coordinate, LV95Coordinate
-from stratigraphy.util.extract_text import extract_text_lines_from_bbox
+from stratigraphy.metadata.coordinate_extraction import CoordinateExtractor, LV03Coordinate, LV95Coordinate
+from stratigraphy.text.extract_text import extract_text_lines_from_bbox
 
 
 def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataResponse:
