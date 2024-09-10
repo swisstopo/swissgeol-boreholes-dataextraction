@@ -267,7 +267,7 @@ def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd
         predictions (dict): The FilePredictions objects.
 
     Returns:
-        tuple[dict, pd.DataFrame]: The overall coordinate accuracy and the individual document metrics as a DataFrame.
+        tuple[dict, pd.DataFrame]: The overall coordinate metrics as a DataFrame.
     """
     document_level_metrics_coordinates, metrics_coordinates = get_metadata_metrics(predictions, "coordinates")
     document_level_metrics_elevation, metrics_elevation = get_metadata_metrics(predictions, "elevation")
