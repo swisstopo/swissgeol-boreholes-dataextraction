@@ -13,9 +13,9 @@ from app.common.config import config
 from botocore.exceptions import ClientError
 from fastapi.testclient import TestClient
 
-TEST_PDF_KEY = "pdfs/sample.pdf"
+TEST_PDF_KEY = "sample.pdf"
 TEST_PDF_PATH = Path(__file__).parent.parent / "example" / "example_borehole_profile.pdf"
-TEST_PNG_KEY = "pngs/sample-1.png"
+TEST_PNG_KEY = "dataextraction/sample-1.png"
 TEST_PNG_PATH = Path(__file__).parent.parent / "example" / "sample-1.png"
 
 

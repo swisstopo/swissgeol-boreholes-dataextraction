@@ -16,9 +16,9 @@ from app.common.config import config
 from app.common.schemas import ExtractDataRequest, FormatTypes
 from fastapi.testclient import TestClient
 
-TEST_PDF_KEY = Path("pdfs/sample.pdf")
+TEST_PDF_KEY = Path("sample.pdf")
 TEST_PDF_PATH = Path(__file__).parent.parent / "example" / "example_borehole_profile.pdf"
-TEST_PNG_KEY = Path("pngs/sample-1.png")
+TEST_PNG_KEY = Path("dataextraction/sample-1.png")
 TEST_PNG_PATH = Path(__file__).parent.parent / "example" / "sample-1.png"
 
 

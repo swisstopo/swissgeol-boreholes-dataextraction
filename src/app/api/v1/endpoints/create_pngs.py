@@ -14,7 +14,7 @@ def create_pngs(aws_filename: Path):
     """Convert a PDF document to PNG images. Please note that this function will overwrite any existing PNG files.
 
     Args:
-        aws_filename (str): The name of the PDF document in the S3 bucket. For example, "pdfs/10012.pdf".
+        aws_filename (str): The key of the PDF document in the S3 bucket. For example, "10012.pdf".
 
     Returns:
         PNGResponse: The URLs of the PNG images in the S3 bucket.
@@ -38,7 +38,7 @@ def create_pngs(aws_filename: Path):
             pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))
             png_filename = f"{filename}-{page_number + 1}.png"
             png_path = f"/tmp/{png_filename}"  # Local path to save the PNG
-            s3_bucket_png_path = f"pngs/{png_filename}"
+            s3_bucket_png_path = f"dataextraction/{png_filename}"
 
             pix.save(png_path)
 
