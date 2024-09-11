@@ -13,9 +13,9 @@ from app.common.config import config
 from botocore.exceptions import ClientError
 from fastapi.testclient import TestClient
 
-TEST_PDF_KEY = "pdfs/sample.pdf"
+TEST_PDF_KEY = "sample.pdf"
 TEST_PDF_PATH = Path(__file__).parent.parent / "example" / "example_borehole_profile.pdf"
-TEST_PNG_KEY = "pngs/sample-1.png"
+TEST_PNG_KEY = "dataextraction/sample-1.png"
 TEST_PNG_PATH = Path(__file__).parent.parent / "example" / "sample-1.png"
 
 
@@ -61,7 +61,7 @@ def test_create_pngs_invalid_filename(test_client: TestClient):
     response = test_client.post("/api/V1/create_pngs", json={"filename": ""})
     assert response.status_code == 400
     assert response.json() == {
-        "detail": "filename field - String should have at least 1 character",
+        "detail": "Filename must not be empty.",
     }
 
 

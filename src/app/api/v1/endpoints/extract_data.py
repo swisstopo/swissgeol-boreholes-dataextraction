@@ -1,6 +1,7 @@
 """This module defines the FastAPI endpoint for extracting information from PDF borehole document."""
 
 import re
+from pathlib import Path
 
 import fitz
 from app.common.aws import load_pdf_from_aws, load_png_from_aws
@@ -43,10 +44,10 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
     pdf_page_height = pdf_page.rect.height
 
     # Load the PNG image the boreholes app is showing to the user
-    # Convert the PDF filename to a PNG filename: "pdfs/geoquat/train/10012.pdf" -> 'pngs/geoquat/train/10012_0.png'
+    # Convert the PDF filename to a PNG filename: "10012.pdf" -> 'dataextraction/10012-1.png'
     # Remove the file extension and replace it with '.png'
-    base_filename = extract_data_request.filename.rsplit(".", 1)[0]
-    png_filename = f"{base_filename}-{extract_data_request.page_number}.png"
+    base_filename = extract_data_request.filename.stem
+    png_filename = Path(f"{base_filename}-{extract_data_request.page_number}.png")
 
     # Load the PNG file from AWS
     png_page = load_png_from_aws(png_filename)
