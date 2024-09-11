@@ -38,7 +38,7 @@ def create_pngs(aws_filename: Path):
             pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))
             png_filename = f"{filename}-{page_number + 1}.png"
             png_path = f"/tmp/{png_filename}"  # Local path to save the PNG
-            s3_bucket_png_path = f"pngs/{png_filename}"
+            s3_bucket_png_path = f"dataextraction/{png_filename}"
 
             pix.save(png_path)
 
