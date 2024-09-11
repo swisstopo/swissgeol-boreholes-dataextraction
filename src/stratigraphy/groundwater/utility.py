@@ -16,8 +16,8 @@ def extract_date(text: str) -> tuple[date | None, str | None]:
 
     for date_format in ("%d.%m.%Y", "%d.%m.%y"):
         try:
-            measurement_date = datetime.strptime(date_str, date_format).date()
-            return measurement_date, date_str
+            date = datetime.strptime(date_str, date_format).date()
+            return date, date_str
         except ValueError:
             continue
 
