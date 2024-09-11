@@ -13,7 +13,7 @@ import fitz
 import numpy as np
 from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature
 from stratigraphy.groundwater.utility import extract_elevation
-from stratigraphy.util.extract_text import extract_text_lines
+from stratigraphy.util.extract_text import extract_text_lines_from_bbox
 from stratigraphy.util.line import TextLine
 
 logger = logging.getLogger(__name__)
@@ -165,6 +165,29 @@ class ElevationExtractor(DataExtractor):
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
 
+    def extract_elevation_from_bbox(
+        self, pdf_page: fitz.Page, page_number: int, bbox: fitz.Rect
+    ) -> ElevationInformation | None:
+        """Extract the elevation information from a bounding box.
+
+        Args:
+            pdf_page (fitz.Page): The PDF page.
+            bbox (fitz.Rect): The bounding box.
+            page_number (int): The page number.
+
+        Returns:
+            ElevationInformation | None: The extracted elevation information.
+        """
+        lines = extract_text_lines_from_bbox(pdf_page, bbox)
+
+        found_elevation_value = self.get_elevation_near_key(lines, page_number)
+
+        if found_elevation_value:
+            logger.info("Found elevation in the bounding box: %s", found_elevation_value.elevation)
+            return found_elevation_value
+
+        logger.info("No elevation found in the bounding box.")
+
     def extract_elevation(self) -> ElevationInformation | None:
         """Extracts the elevation information from a borehole profile.
 
@@ -172,17 +195,6 @@ class ElevationExtractor(DataExtractor):
         page.
         """
         for page in self.doc:
-            lines = extract_text_lines(page)
             page_number = page.number + 1  # page.number is 0-based
 
-            found_elevation_value = (
-                self.get_elevation_near_key(lines, page_number)
-                # or XXXX # Add other techniques here
-            )
-
-            if found_elevation_value:
-                logger.info("Found elevation on page %s: %s", page_number, found_elevation_value.elevation)
-                return found_elevation_value
-
-        logger.info("No elevation found in this borehole profile.")
-        return None
+            return self.extract_elevation_from_bbox(page, page_number, page.rect)
