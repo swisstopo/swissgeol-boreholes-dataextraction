@@ -13,12 +13,12 @@ RUN pip install --no-cache-dir pip-tools \
     && pip-sync
 
 # Copy the rest of the application source code into the container
-COPY ./src /app
+COPY ./src /app/src
 COPY ./config /app/config
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV COMPUTING_ENVIRONMENT="API"
+ENV PYTHONPATH=/app/src 
 
 # Expose port 8000 for the FastAPI Borehole app
 EXPOSE 8000

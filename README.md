@@ -336,7 +336,7 @@ If you have the AWS credentials configured locally in the `~/.aws` file, you can
 
     ```bash
 
-    docker run -v ~/.aws:/root/.aws -d -p 8000:8000 `boreholeapi` 
+    docker run -v ~/.aws:/root/.aws -d -p 8000:8000 boreholeapi
     ```
 
 5. **Access the API**
