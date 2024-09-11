@@ -258,7 +258,7 @@ class FilePredictions:
             )
 
     @staticmethod
-    def count_against_ground_truth(values: list, ground_truth: list) -> dict:
+    def count_against_ground_truth(values: list, ground_truth: list) -> Metrics:
         # Counter deals with duplicates when doing intersection
         values_counter = Counter(values)
         ground_truth_counter = Counter(ground_truth)
