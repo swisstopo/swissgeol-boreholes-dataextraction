@@ -133,6 +133,11 @@ def get_scores(
         }
 
 
+def evaluate_metadata_extraction(borehole_metadata: BoreholeMetadataList, ground_truth_path: Path) -> None:
+    """Evaluate the metadata extraction."""
+    return MetadataEvaluator(borehole_metadata, ground_truth_path).evaluate()
+
+
 def evaluate_borehole_extraction(
     predictions: dict[str, FilePredictions], number_of_truth_values: dict
 ) -> tuple[dict, pd.DataFrame]:

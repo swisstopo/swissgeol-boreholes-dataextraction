@@ -54,6 +54,25 @@ class Metrics(metaclass=abc.ABCMeta):
             f"{self.feature_name}_f1_score": self.f1_score(),
         }
 
+    @staticmethod
+    def from_metric_list(metric_list: list["Metrics"]) -> "Metrics":
+        """Converts a list of metrics to a metric.
+
+        Args:
+            metric_list (list): The list of metrics.
+
+        Returns:
+            Metrics: Combined metrics.
+        """
+        tp = sum([metric.tp for metric in metric_list])
+        fp = sum([metric.fp for metric in metric_list])
+        fn = sum([metric.fn for metric in metric_list])
+
+        # assert that the feature name is the same for all metrics
+        assert all([metric.feature_name == metric_list[0].feature_name for metric in metric_list])
+
+        return Metrics(tp=tp, fp=fp, fn=fn, feature_name=metric_list[0].feature_name)
+
 
 @dataclass
 class BoreholeMetadataMetrics(metaclass=abc.ABCMeta):
@@ -61,10 +80,35 @@ class BoreholeMetadataMetrics(metaclass=abc.ABCMeta):
 
     elevation_metrics: Metrics
     coordinates_metrics: Metrics
+    filename: str
+
+    def get_document_level_metrics(self):
+        """Get the document level metrics."""
+        return {
+            self.filename: {
+                "elevation": self.elevation_metrics.f1_score(),
+                "coordinates": self.coordinates_metrics.f1_score(),
+            }
+        }
 
 
 @dataclass
-class FileBoreholeMetadataMetrics(BoreholeMetadataMetrics):
+class FileBoreholeMetadataMetrics(metaclass=abc.ABCMeta):
     """Metrics for borehole metadata."""
 
-    filename: str
+    borehole_metadata_metrics: list[BoreholeMetadataMetrics] = None
+
+    def evaluate(self):
+        """Evaluate the metadata metrics."""
+        elevation_metrics = Metrics.from_metric_list(
+            [metadata.elevation_metrics for metadata in self.borehole_metadata_metrics]
+        )
+        coordinates_metrics = Metrics.from_metric_list(
+            [metadata.coordinates_metrics for metadata in self.borehole_metadata_metrics]
+        )
+
+        document_level_metrics = {}
+        for metadata in self.borehole_metadata_metrics:
+            document_level_metrics.update(metadata.get_document_level_metrics())
+
+        return elevation_metrics, coordinates_metrics, document_level_metrics

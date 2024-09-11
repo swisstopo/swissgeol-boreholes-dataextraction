@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformationOnPage
 from stratigraphy.layer.layer import LayerPrediction
 from stratigraphy.metadata.coordinate_extraction import Coordinate
-from stratigraphy.metadata.elevation_extraction import ElevationInformation
+from stratigraphy.metadata.elevation_extraction import Elevation
 from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.interval import BoundaryInterval
 from stratigraphy.util.predictions import FilePredictions
@@ -107,7 +107,7 @@ def draw_metadata(
     rotation: float,
     coordinates: Coordinate | None,
     coordinates_is_correct: bool,
-    elevation_info: ElevationInformation | None,
+    elevation_info: Elevation | None,
     elevation_is_correct: bool,
 ) -> None:
     """Draw the extracted metadata on the top of the given PDF page.
@@ -121,7 +121,7 @@ def draw_metadata(
         rotation (float): The rotation of the page.
         coordinates (Coordinate | None): The coordinate object to draw.
         coordinates_is_correct (bool): Whether the coordinates are correct.
-        elevation_info (ElevationInformation | None): The elevation information to draw.
+        elevation_info (Elevation | None): The elevation information to draw.
         elevation_is_correct (bool): Whether the elevation information is correct.
     """
     # TODO associate correctness with the extracted coordinates in a better way
@@ -184,12 +184,12 @@ def draw_groundwater(shape: fitz.Shape, groundwater_entry: GroundwaterInformatio
     shape.finish(color=fitz.utils.getColor("pink"))
 
 
-def draw_elevation(shape: fitz.Shape, elevation: ElevationInformation) -> None:
+def draw_elevation(shape: fitz.Shape, elevation: Elevation) -> None:
     """Draw a bounding box around the area of the page where the coordinates were extracted from.
 
     Args:
         shape (fitz.Shape): The shape object for drawing.
-        elevation (ElevationInformation): The elevation information to draw.
+        elevation (Elevation): The elevation information to draw.
     """
     shape.draw_rect(elevation.rect)
     shape.finish(color=fitz.utils.getColor("blue"))

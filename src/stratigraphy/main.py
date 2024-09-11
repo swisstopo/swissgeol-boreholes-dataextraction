@@ -25,6 +25,9 @@ from stratigraphy.util.util import flatten, read_params
 load_dotenv()
 
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
+if mlflow_tracking:
+    import mlflow
+
 logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
 
@@ -111,6 +114,109 @@ def click_pipeline(
     )
 
 
+# Add command to extract metadata
+@click.command()
+@click.option(
+    "-i",
+    "--input-directory",
+    required=True,
+    type=click.Path(exists=True, path_type=Path),
+    help="Path to the input directory, or path to a single pdf file.",
+)
+@click.option(
+    "-m",
+    "--metadata-path",
+    type=click.Path(path_type=Path),
+    default=DATAPATH / "output" / "metadata.json",
+    help="Path to the metadata file.",
+)
+@click.option(
+    "-g",
+    "--ground-truth-path",
+    type=click.Path(exists=True, path_type=Path),
+    help="Path to the ground truth file.",
+)
+def click_metadata_pipeline(input_directory: Path, metadata_path: Path, ground_truth_path: Path):
+    """Run the metadata extraction pipeline.
+
+    The pipeline will extract metadata from boreholes data. The input directory should contain pdf files with boreholes data.
+    The algorithm can deal with borehole profiles of multiple pages.
+
+    Args:
+        input_directory (Path): The directory containing the pdf files. Can also be the path to a single pdf file.
+        metadata_path (Path): The path to the metadata file.
+    """
+    start_metadata_pipeline(input_directory, metadata_path, ground_truth_path)
+
+
+def setup_mlflow_tracking(
+    input_directory: Path,
+    ground_truth_path: Path,
+    out_directory: Path,
+    predictions_path: Path,
+    metadata_path: Path,
+):
+    """Set up MLFlow tracking."""
+    mlflow.set_experiment("Boreholes Stratigraphy")
+    mlflow.start_run()
+    mlflow.set_tag("input_directory", str(input_directory))
+    mlflow.set_tag("ground_truth_path", str(ground_truth_path))
+    mlflow.set_tag("out_directory", str(out_directory))
+    mlflow.set_tag("predictions_path", str(predictions_path))
+    mlflow.set_tag("metadata_path", str(metadata_path))
+    mlflow.log_params(flatten(line_detection_params))
+    mlflow.log_params(flatten(matching_params))
+
+
+def start_metadata_pipeline(input_directory: Path, metadata_path: Path) -> list[dict]:
+    """Run the metadata extraction pipeline.
+
+    The pipeline will extract metadata from boreholes data. The input directory should contain pdf files with boreholes data.
+    The algorithm can deal with borehole profiles of multiple pages.
+
+    Args:
+        input_directory (Path): The directory containing the pdf files. Can also be the path to a single pdf file.
+        metadata_path (Path): The path to the metadata file.
+
+    Returns:
+        list[dict]: The metadata of the pipeline.
+    """  # noqa: D301
+    temp_directory = DATAPATH / "_temp"  # temporary directory to dump files for mlflow artifact logging
+
+    # check if directories exist and create them when necessary
+    temp_directory.mkdir(parents=True, exist_ok=True)
+
+    # if a file is specified instead of an input directory, copy the file to a temporary directory and work with that.
+    if input_directory.is_file():
+        file_iterator = [(input_directory.parent, None, [input_directory.name])]
+    else:
+        file_iterator = os.walk(input_directory)
+    # process the individual pdf files
+    metadata_per_file = BoreholeMetadataList()
+
+    for root, _dirs, files in file_iterator:
+        for filename in tqdm(files, desc="Processing files", unit="file"):
+            if filename.endswith(".pdf"):
+                in_path = os.path.join(root, filename)
+                logger.info("Processing file: %s", in_path)
+
+                with fitz.Document(in_path) as doc:
+                    # Extract metadata
+                    metadata = BoreholeMetadata(doc)
+
+                    # Add metadata to the metadata list
+                    metadata_per_file.metadata_per_file.append(metadata)
+
+    logger.info("Metadata written to %s", metadata_path)
+    with open(metadata_path, "w", encoding="utf8") as file:
+        json.dump(metadata_per_file.to_json(), file, ensure_ascii=False)
+
+    (
+        metadata_metrics,
+        document_level_metrics_metadata,
+    ) = evaluate_metadata(predictions)
+
+
 def start_pipeline(
     input_directory: Path,
     ground_truth_path: Path,
@@ -142,16 +248,7 @@ def start_pipeline(
         list[dict]: The predictions of the pipeline.
     """  # noqa: D301
     if mlflow_tracking:
-        import mlflow
-
-        mlflow.set_experiment("Boreholes Stratigraphy")
-        mlflow.start_run()
-        mlflow.set_tag("input_directory", str(input_directory))
-        mlflow.set_tag("ground_truth_path", str(ground_truth_path))
-        mlflow.set_tag("out_directory", str(out_directory))
-        mlflow.set_tag("predictions_path", str(predictions_path))
-        mlflow.log_params(flatten(line_detection_params))
-        mlflow.log_params(flatten(matching_params))
+        setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
 
     temp_directory = DATAPATH / "_temp"  # temporary directory to dump files for mlflow artifact logging
 

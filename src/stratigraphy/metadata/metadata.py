@@ -7,7 +7,7 @@ from typing import NamedTuple
 
 import fitz
 from stratigraphy.metadata.coordinate_extraction import Coordinate, CoordinateExtractor
-from stratigraphy.metadata.elevation_extraction import ElevationExtractor, ElevationInformation
+from stratigraphy.metadata.elevation_extraction import Elevation, ElevationExtractor
 from stratigraphy.metadata.language_detection import detect_language_of_document
 from stratigraphy.util.util import read_params
 
@@ -31,7 +31,7 @@ class PageDimensions(NamedTuple):
 class BoreholeMetadata(metaclass=abc.ABCMeta):
     """Metadata for stratigraphy data."""
 
-    elevation: ElevationInformation | None = None
+    elevation: Elevation | None = None
     coordinates: Coordinate | None = None
     language: str | None = None  # TODO: Change to Enum for the supported languages
     filename: Path = None
