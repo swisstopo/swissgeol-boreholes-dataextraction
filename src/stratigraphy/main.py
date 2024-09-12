@@ -13,7 +13,11 @@ from tqdm import tqdm
 from stratigraphy import DATAPATH
 from stratigraphy.annotations.draw import draw_predictions
 from stratigraphy.annotations.plot_utils import plot_lines
-from stratigraphy.benchmark.score import create_predictions_objects, evaluate_borehole_extraction
+from stratigraphy.benchmark.score import (
+    create_predictions_objects,
+    evaluate_borehole_extraction,
+    evaluate_metadata_extraction,
+)
 from stratigraphy.extract import process_page
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterLevelExtractor
 from stratigraphy.layer.duplicate_detection import remove_duplicate_layers
@@ -139,12 +143,13 @@ def click_pipeline(
 def click_metadata_pipeline(input_directory: Path, metadata_path: Path, ground_truth_path: Path):
     """Run the metadata extraction pipeline.
 
-    The pipeline will extract metadata from boreholes data. The input directory should contain pdf files with boreholes data.
-    The algorithm can deal with borehole profiles of multiple pages.
+    The pipeline will extract metadata from boreholes data. The input directory should contain pdf files
+    with boreholes data. The algorithm can deal with borehole profiles of multiple pages.
 
     Args:
         input_directory (Path): The directory containing the pdf files. Can also be the path to a single pdf file.
         metadata_path (Path): The path to the metadata file.
+        ground_truth_path (Path): The path to the ground truth file.
     """
     start_metadata_pipeline(input_directory, metadata_path, ground_truth_path)
 
@@ -152,35 +157,49 @@ def click_metadata_pipeline(input_directory: Path, metadata_path: Path, ground_t
 def setup_mlflow_tracking(
     input_directory: Path,
     ground_truth_path: Path,
-    out_directory: Path,
-    predictions_path: Path,
-    metadata_path: Path,
+    out_directory: Path = None,
+    predictions_path: Path = None,
+    metadata_path: Path = None,
+    experiment_name: str = "Boreholes Stratigraphy",
 ):
     """Set up MLFlow tracking."""
-    mlflow.set_experiment("Boreholes Stratigraphy")
+    mlflow.set_experiment(experiment_name)
     mlflow.start_run()
     mlflow.set_tag("input_directory", str(input_directory))
     mlflow.set_tag("ground_truth_path", str(ground_truth_path))
-    mlflow.set_tag("out_directory", str(out_directory))
-    mlflow.set_tag("predictions_path", str(predictions_path))
-    mlflow.set_tag("metadata_path", str(metadata_path))
+    if out_directory:
+        mlflow.set_tag("out_directory", str(out_directory))
+    if predictions_path:
+        mlflow.set_tag("predictions_path", str(predictions_path))
+    if metadata_path:
+        mlflow.set_tag("metadata_path", str(metadata_path))
     mlflow.log_params(flatten(line_detection_params))
     mlflow.log_params(flatten(matching_params))
 
 
-def start_metadata_pipeline(input_directory: Path, metadata_path: Path) -> list[dict]:
+def start_metadata_pipeline(input_directory: Path, metadata_path: Path, ground_truth_path: Path) -> list[dict]:
     """Run the metadata extraction pipeline.
 
-    The pipeline will extract metadata from boreholes data. The input directory should contain pdf files with boreholes data.
-    The algorithm can deal with borehole profiles of multiple pages.
+    The pipeline will extract metadata from boreholes data. The input directory should contain pdf files
+    with boreholes data. The algorithm can deal with borehole profiles of multiple pages.
 
     Args:
         input_directory (Path): The directory containing the pdf files. Can also be the path to a single pdf file.
         metadata_path (Path): The path to the metadata file.
+        ground_truth_path (Path): The path to the ground truth file.
 
     Returns:
         list[dict]: The metadata of the pipeline.
     """  # noqa: D301
+    if mlflow_tracking:
+        setup_mlflow_tracking(
+            input_directory=input_directory,
+            ground_truth_path=ground_truth_path,
+            out_directory=None,
+            predictions_path=None,
+            metadata_path=metadata_path,
+        )
+
     temp_directory = DATAPATH / "_temp"  # temporary directory to dump files for mlflow artifact logging
 
     # check if directories exist and create them when necessary
@@ -211,10 +230,24 @@ def start_metadata_pipeline(input_directory: Path, metadata_path: Path) -> list[
     with open(metadata_path, "w", encoding="utf8") as file:
         json.dump(metadata_per_file.to_json(), file, ensure_ascii=False)
 
-    (
-        metadata_metrics,
-        document_level_metrics_metadata,
-    ) = evaluate_metadata(predictions)
+    # Evaluate the metadata
+    metadata_metrics_list = evaluate_metadata_extraction(metadata_per_file, ground_truth_path)
+    metadata_metrics = metadata_metrics_list.get_cumulated_metrics()
+    document_level_metrics = metadata_metrics_list.get_document_level_metrics()
+
+    document_level_metrics.to_csv(
+        temp_directory / "document_level_metadata_metrics.csv"
+    )  # mlflow.log_artifact expects a file
+
+    # print the metrics
+    logger.info("Performance metrics:")
+    logger.info(metadata_metrics)
+
+    if mlflow_tracking:
+        mlflow.log_metrics(metadata_metrics)
+        mlflow.log_artifact(temp_directory / "document_level_metadata_metrics.csv")
+    else:
+        logger.warning("Ground truth file not found. Skipping evaluation.")
 
 
 def start_pipeline(
@@ -347,7 +380,9 @@ def start_pipeline(
         draw_predictions(predictions, input_directory, draw_directory)
 
     if number_of_truth_values:  # only evaluate if ground truth is available
-        metrics, document_level_metrics = evaluate_borehole_extraction(predictions, number_of_truth_values)
+        metrics, document_level_metrics = evaluate_borehole_extraction(
+            predictions, metadata_per_file, ground_truth_path, number_of_truth_values
+        )
         document_level_metrics.to_csv(
             temp_directory / "document_level_metrics.csv"
         )  # mlflow.log_artifact expects a file
@@ -367,3 +402,4 @@ def start_pipeline(
 
 if __name__ == "__main__":
     click_pipeline()
+    # click_metadata_pipeline()

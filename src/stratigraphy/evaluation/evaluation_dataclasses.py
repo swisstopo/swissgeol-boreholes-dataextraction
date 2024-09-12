@@ -3,6 +3,8 @@
 import abc
 from dataclasses import dataclass
 
+import pandas as pd
+
 
 @dataclass
 class Metrics(metaclass=abc.ABCMeta):
@@ -51,7 +53,7 @@ class Metrics(metaclass=abc.ABCMeta):
             f"{self.feature_name}_fn": self.fn,
             f"{self.feature_name}_precision": self.precision(),
             f"{self.feature_name}_recall": self.recall(),
-            f"{self.feature_name}_f1_score": self.f1_score(),
+            f"{self.feature_name}_f1": self.f1_score(),
         }
 
     @staticmethod
@@ -76,29 +78,51 @@ class Metrics(metaclass=abc.ABCMeta):
 
 @dataclass
 class BoreholeMetadataMetrics(metaclass=abc.ABCMeta):
-    """Metrics for borehole metadata."""
+    """Metrics for metadata."""
 
     elevation_metrics: Metrics
     coordinates_metrics: Metrics
-    filename: str
 
-    def get_document_level_metrics(self):
-        """Get the document level metrics."""
+    def to_json(self) -> dict:
+        """Converts the object to a dictionary.
+
+        Returns:
+            dict: The object as a dictionary.
+        """
         return {
-            self.filename: {
-                "elevation": self.elevation_metrics.f1_score(),
-                "coordinates": self.coordinates_metrics.f1_score(),
-            }
+            **self.elevation_metrics.to_json(),
+            **self.coordinates_metrics.to_json(),
         }
 
 
 @dataclass
-class FileBoreholeMetadataMetrics(metaclass=abc.ABCMeta):
+class FileBoreholeMetadataMetrics(BoreholeMetadataMetrics):
+    """Single file Metrics for borehole metadata."""
+
+    filename: str
+
+    def get_document_level_metrics(self) -> pd.DataFrame:
+        """Get the document level metrics."""
+        return pd.DataFrame(
+            data={
+                "document_name": [self.filename],
+                "elevation": [self.elevation_metrics.f1_score()],
+                "coordinates": [self.coordinates_metrics.f1_score()],
+            }
+        )
+
+
+@dataclass
+class OverallBoreholeMetadataMetrics(metaclass=abc.ABCMeta):
     """Metrics for borehole metadata."""
 
     borehole_metadata_metrics: list[BoreholeMetadataMetrics] = None
 
-    def evaluate(self):
+    def __init__(self):
+        """Initializes the FileBoreholeMetadataMetrics object."""
+        self.borehole_metadata_metrics = []
+
+    def get_cumulated_metrics(self) -> dict:
         """Evaluate the metadata metrics."""
         elevation_metrics = Metrics.from_metric_list(
             [metadata.elevation_metrics for metadata in self.borehole_metadata_metrics]
@@ -106,9 +130,14 @@ class FileBoreholeMetadataMetrics(metaclass=abc.ABCMeta):
         coordinates_metrics = Metrics.from_metric_list(
             [metadata.coordinates_metrics for metadata in self.borehole_metadata_metrics]
         )
+        return BoreholeMetadataMetrics(
+            elevation_metrics=elevation_metrics, coordinates_metrics=coordinates_metrics
+        ).to_json()
 
-        document_level_metrics = {}
+    def get_document_level_metrics(self) -> pd.DataFrame:
+        """Get the document level metrics."""
+        document_level_metrics = pd.DataFrame(columns=["document_name", "elevation", "coordinates"])
         for metadata in self.borehole_metadata_metrics:
-            document_level_metrics.update(metadata.get_document_level_metrics())
+            document_level_metrics = pd.concat([document_level_metrics, metadata.get_document_level_metrics()])
 
-        return elevation_metrics, coordinates_metrics, document_level_metrics
+        return document_level_metrics

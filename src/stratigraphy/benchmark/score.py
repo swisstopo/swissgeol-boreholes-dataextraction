@@ -9,6 +9,8 @@ import pandas as pd
 from dotenv import load_dotenv
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.ground_truth import GroundTruth
+from stratigraphy.evaluation.evaluation_dataclasses import OverallBoreholeMetadataMetrics
+from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
 from stratigraphy.metadata.metadata import BoreholeMetadataList
 from stratigraphy.util.predictions import FilePredictions
 from stratigraphy.util.util import parse_text
@@ -133,29 +135,35 @@ def get_scores(
         }
 
 
-def evaluate_metadata_extraction(borehole_metadata: BoreholeMetadataList, ground_truth_path: Path) -> None:
+def evaluate_metadata_extraction(
+    borehole_metadata: BoreholeMetadataList, ground_truth_path: Path
+) -> OverallBoreholeMetadataMetrics:
     """Evaluate the metadata extraction."""
     return MetadataEvaluator(borehole_metadata, ground_truth_path).evaluate()
 
 
 def evaluate_borehole_extraction(
-    predictions: dict[str, FilePredictions], number_of_truth_values: dict
+    predictions: dict[str, FilePredictions],
+    borehole_metadata: BoreholeMetadataList,
+    ground_truth_path: Path,
+    number_of_truth_values: dict,
 ) -> tuple[dict, pd.DataFrame]:
     """Evaluate the borehole extraction predictions.
 
     Args:
-       predictions (dict): The FilePredictions objects.
-       number_of_truth_values (dict): The number of layer ground truth values per file.
+        predictions (dict): The FilePredictions objects.
+        number_of_truth_values (dict): The number of layer ground truth values per file.
+        borehole_metadata (BoreholeMetadataList): The metadata for the files.
+        ground_truth_path (Path): The path to the ground truth file.
 
     Returns:
         tuple[dict, pd.DataFrame]: A tuple containing the overall metrics as a dictionary and the
         individual document metrics as a DataFrame.
     """
     layer_metrics, layer_document_level_metrics = evaluate_layer_extraction(predictions, number_of_truth_values)
-    (
-        metadata_metrics,
-        document_level_metrics_metadata,
-    ) = evaluate_metadata(predictions)
+    metadata_metrics, document_level_metrics_metadata = evaluate_metadata_extraction(
+        borehole_metadata, ground_truth_path
+    )
     (
         metrics_groundwater,
         document_level_metrics_groundwater,
@@ -264,41 +272,6 @@ def evaluate_groundwater(predictions: dict[str, FilePredictions]) -> tuple[dict,
         pd.DataFrame(document_level_metrics_groundwater),
         pd.DataFrame(document_level_metrics_groundwater_depth),
     )
-
-
-def evaluate_metadata(predictions: dict[str, FilePredictions]) -> tuple[dict, pd.DataFrame]:
-    """Evaluate the metadata predictions.
-
-    Args:
-        predictions (dict): The FilePredictions objects.
-
-    Returns:
-        tuple[dict, pd.DataFrame]: The overall coordinate metrics as a DataFrame.
-    """
-    document_level_metrics_coordinates, metrics_coordinates = get_metadata_metrics(predictions, "coordinates")
-    document_level_metrics_elevation, metrics_elevation = get_metadata_metrics(predictions, "elevation")
-    metrics = {
-        "coordinate_precision": metrics_coordinates["coordinates_precision"],
-        "coordinate_recall": metrics_coordinates["coordinates_recall"],
-        "coordinate_f1": metrics_coordinates["coordinates_f1"],
-        "coordinates_tp": metrics_coordinates["coordinates_tp"],
-        "coordinates_fp": metrics_coordinates["coordinates_fp"],
-        "coordinates_fn": metrics_coordinates["coordinates_fn"],
-        "elevation_precision": metrics_elevation["elevation_precision"],
-        "elevation_recall": metrics_elevation["elevation_recall"],
-        "elevation_f1": metrics_elevation["elevation_f1"],
-        "elevation_tp": metrics_elevation["elevation_tp"],
-        "elevation_fp": metrics_elevation["elevation_fp"],
-        "elevation_fn": metrics_elevation["elevation_fn"],
-    }
-    document_level_metrics_metadata = pd.merge(
-        pd.DataFrame(document_level_metrics_coordinates),
-        pd.DataFrame(document_level_metrics_elevation),
-        on="document_name",
-        how="outer",
-    )
-
-    return (metrics, document_level_metrics_metadata)
 
 
 def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -> tuple[dict, pd.DataFrame]:

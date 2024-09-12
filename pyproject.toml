@@ -57,6 +57,7 @@ all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visu
 
 [project.scripts]
 boreholes-extract-all = "stratigraphy.main:click_pipeline"
+boreholes-extract-metadata = "stratigraphy.main:click_metadata_pipeline"
 boreholes-download-profiles = "stratigraphy.get_files:download_directory_froms3"
 
 [tool.ruff.lint]

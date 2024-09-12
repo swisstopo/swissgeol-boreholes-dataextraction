@@ -4,7 +4,11 @@ import math
 from typing import Any
 
 from stratigraphy.benchmark.ground_truth import GroundTruth
-from stratigraphy.evaluation.evaluation_dataclasses import FileBoreholeMetadataMetrics, Metrics
+from stratigraphy.evaluation.evaluation_dataclasses import (
+    FileBoreholeMetadataMetrics,
+    Metrics,
+    OverallBoreholeMetadataMetrics,
+)
 from stratigraphy.metadata.metadata import BoreholeMetadataList
 
 
@@ -18,7 +22,7 @@ class MetadataEvaluator:
         """Initializes the MetadataEvaluator object.
 
         Args:
-            metadata (BoreholeMetaData): The metadata of the borehole.
+            metadata_list (BoreholeMetadataList): The metadata to evaluate.
             ground_truth_path (str): The path to the ground truth file.
         """
         self.metadata_list = metadata_list
@@ -26,14 +30,14 @@ class MetadataEvaluator:
         # Load the ground truth data for the metadata
         self.metadata_ground_truth = GroundTruth(ground_truth_path)
 
-    def evaluate(self) -> FileBoreholeMetadataMetrics:
+    def evaluate(self) -> OverallBoreholeMetadataMetrics:
         """Evaluate the metadata of the file against the ground truth.
 
         Args:
             ground_truth_path (str): The path to the ground truth file.
         """
         # Initialize the metadata correctness metrics
-        metadata_metrics_list = FileBoreholeMetadataMetrics()
+        metadata_metrics_list = OverallBoreholeMetadataMetrics()
 
         for metadata in self.metadata_list.metadata_per_file:
             ###########################################################################################################
@@ -41,7 +45,7 @@ class MetadataEvaluator:
             ###########################################################################################################
             extracted_coordinates = metadata.coordinates
             ground_truth_coordinates = (
-                self.metadata_ground_truth.for_file(metadata.filename).get("metadata", {}).get("coordinates")
+                self.metadata_ground_truth.for_file(metadata.filename.name).get("metadata", {}).get("coordinates")
             )
 
             if extracted_coordinates and ground_truth_coordinates:
@@ -84,7 +88,9 @@ class MetadataEvaluator:
             ############################################################################################################
             extracted_elevation = None if metadata.elevation is None else metadata.elevation.elevation
             ground_truth_elevation = (
-                self.metadata_ground_truth.for_file(metadata.filename).get("metadata", {}).get("reference_elevation")
+                self.metadata_ground_truth.for_file(metadata.filename.name)
+                .get("metadata", {})
+                .get("reference_elevation")
             )
 
             if extracted_elevation is not None and ground_truth_elevation is not None:
@@ -114,8 +120,8 @@ class MetadataEvaluator:
                 FileBoreholeMetadataMetrics(
                     elevation_metrics=elevation_metrics,
                     coordinates_metrics=coordinate_metrics,
-                    filename=metadata.filename,
+                    filename=metadata.filename.name,
                 )
             )
 
-        return metadata_metrics_list.evaluate()
+        return metadata_metrics_list
