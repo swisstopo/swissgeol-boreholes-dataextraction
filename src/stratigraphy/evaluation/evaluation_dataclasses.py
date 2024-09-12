@@ -107,7 +107,7 @@ class FileBoreholeMetadataMetrics(BoreholeMetadataMetrics):
             data={
                 "document_name": [self.filename],
                 "elevation": [self.elevation_metrics.f1_score()],
-                "coordinates": [self.coordinates_metrics.f1_score()],
+                "coordinate": [self.coordinates_metrics.f1_score()],
             }
         )
 

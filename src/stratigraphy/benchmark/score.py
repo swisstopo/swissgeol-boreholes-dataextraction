@@ -161,9 +161,9 @@ def evaluate_borehole_extraction(
         individual document metrics as a DataFrame.
     """
     layer_metrics, layer_document_level_metrics = evaluate_layer_extraction(predictions, number_of_truth_values)
-    metadata_metrics, document_level_metrics_metadata = evaluate_metadata_extraction(
-        borehole_metadata, ground_truth_path
-    )
+    metadata_metrics_list = evaluate_metadata_extraction(borehole_metadata, ground_truth_path)
+    metadata_metrics = metadata_metrics_list.get_cumulated_metrics()
+    document_level_metrics_metadata = metadata_metrics_list.get_document_level_metrics()
     (
         metrics_groundwater,
         document_level_metrics_groundwater,

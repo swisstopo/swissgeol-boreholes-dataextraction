@@ -66,21 +66,21 @@ class MetadataEvaluator:
                         tp=1,
                         fp=0,
                         fn=0,
-                        feature_name="coordinates",
+                        feature_name="coordinate",
                     )
                 else:
                     coordinate_metrics = Metrics(
                         tp=0,
                         fp=1,
                         fn=1,
-                        feature_name="coordinates",
+                        feature_name="coordinate",
                     )
             else:
                 coordinate_metrics = Metrics(
                     tp=0,
                     fp=1 if extracted_coordinates is not None else 0,
                     fn=1 if ground_truth_coordinates is not None else 0,
-                    feature_name="coordinates",
+                    feature_name="coordinate",
                 )
 
             ############################################################################################################
