@@ -305,10 +305,14 @@ The borehole application offers a given amount of functionalities (extract text,
     Build the Docker image using the following command:
 
     ```bash
-    docker build -t boreholeapi .
+    docker build -t borehole-api . -f Dockerfile
     ```
 
-    This command will build the Docker image with the tag `boreholeapi`.
+    ```bash
+    docker build --platform linux/amd64 -t borehole-api:test .
+    ```
+
+    This command will build the Docker image with the tag `borehole-api`.
 
 3. **Verify the Docker image**
 
@@ -318,14 +322,14 @@ The borehole application offers a given amount of functionalities (extract text,
     docker images
     ```
 
-    You should see the `boreholeapi` image listed in the output.
+    You should see the `borehole-api` image listed in the output.
 
 4. **Run the Docker container**
 
     To run the Docker container, use the following command:
 
     ```bash
-    docker run -p 8000:8000 boreholeapi
+    docker run -p 8000:8000 borehole-api
     ```
 
     This command will start the container and map port 8000 of the container to port 8000 of the host machine.
@@ -336,10 +340,15 @@ If you have the AWS credentials configured locally in the `~/.aws` file, you can
 
     ```bash
 
-    docker run -v ~/.aws:/root/.aws -d -p 8000:8000 boreholeapi
+    docker run -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api
     ```
 
-5. **Access the API**
+    ```bash 
+    docker run --platform linux/amd64 -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api:test
+    ```
+
+
+6. **Access the API**
 
     Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
 
@@ -347,7 +356,20 @@ If you have the AWS credentials configured locally in the `~/.aws` file, you can
 
     **Note:** If you are running Docker on a remote machine, replace `localhost` with the appropriate hostname or IP address.
 
-6. **Stop the Docker container**
+
+7. **Query the API**
+
+```bash
+    curl -X 'POST' \
+    'http://localhost:8000/api/V1/create_pngs' \
+    -H 'accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d '{
+    "filename": "10021.pdf"
+    }'
+```
+
+8. **Stop the Docker container**
 
     To stop the Docker container, press `Ctrl + C` in the terminal where the container is running.
 
@@ -358,6 +380,25 @@ If you have the AWS credentials configured locally in the `~/.aws` file, you can
     ```
 
     Replace `<container_id>` with the ID of the running container, which can be obtained by running `docker ps`.
+
+
+## AWS Lambda Deployment
+
+AWS Lambda is a serverless computing service provided by Amazon Web Services that allows you to run code without managing servers. It automatically scales your applications by executing code in response to triggers. You only pay for the compute time used.
+
+In this project we are using Mangum to wrap the FastAPI with a handler that we will package and deploy as a Lambda function in AWS. Then using AWS API Gateway we will route all incoming requests to invoke the lambda and handle the routing internally within our application.
+
+We created a script that should make it possible for you to deploy the FastAPI in AWS lambda using a single command. The script is creating all the required AWS resources to run the API. The resources that will be created for you are: 
+- AWS Lambda Function
+- AWS IAM user with the right to execute lambda functions and to read & write on S3 buckets
+- AWS CloudWatch to monitor the API
+- AWS API Gateway
+
+To deploy the staging version of the FastPI, run the following command: 
+
+```shell
+IMAGE=borehole-fastapi ENV=stage AWS_PROFILE=dcleres-visium ./deploy_api_aws_lamdba.sh
+```
 
 
 ## Experiment Tracking

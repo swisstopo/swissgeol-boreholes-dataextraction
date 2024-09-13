@@ -23,6 +23,8 @@ dependencies = [
     "httpx",
     "moto",
     "pillow",
+    "mangum",
+    "awslambdaric",
     "scikit-learn>=1.4.0",
     "click>=8.0.0",
     "PyYAML>=6.0.1",
