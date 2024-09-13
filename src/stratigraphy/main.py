@@ -189,7 +189,7 @@ def start_pipeline(
 
                     # Extract the groundwater levels
                     groundwater_extractor = GroundwaterLevelExtractor(document=doc)
-                    groundwater = groundwater_extractor.extract_groundwater()
+                    groundwater = groundwater_extractor.extract_groundwater(elevation)
                     if groundwater:
                         predictions[filename]["groundwater"] = [
                             groundwater_entry.to_dict() for groundwater_entry in groundwater

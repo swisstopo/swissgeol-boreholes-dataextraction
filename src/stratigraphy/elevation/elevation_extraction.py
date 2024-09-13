@@ -70,7 +70,7 @@ class ElevationExtractor(DataExtractor):
 
     # look for elevation values to the right and/or immediately below the key
     search_right_factor: float = 5
-    search_below_factor: float = 1
+    search_below_factor: float = 4
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ate": "ote"}
 

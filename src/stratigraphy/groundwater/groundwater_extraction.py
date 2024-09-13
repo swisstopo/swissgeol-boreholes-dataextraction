@@ -9,6 +9,7 @@ from datetime import datetime
 import fitz
 import numpy as np
 from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature
+from stratigraphy.elevation.elevation_extraction import ElevationInformation
 from stratigraphy.groundwater.utility import extract_date, extract_depth, extract_elevation
 from stratigraphy.util.extract_text import extract_text_lines
 from stratigraphy.util.line import TextLine
@@ -138,7 +139,7 @@ class GroundwaterLevelExtractor(DataExtractor):
     # look for elevation values to the left, right and/or immediately below the key
     search_left_factor: float = 2
     search_right_factor: float = 10
-    search_below_factor: float = 3
+    search_below_factor: float = 4
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ü": "u"}
 
@@ -168,7 +169,8 @@ class GroundwaterLevelExtractor(DataExtractor):
 
             try:
                 extracted_gw = self.get_groundwater_info_from_lines(groundwater_info_lines, page)
-                if extracted_gw.groundwater.depth:
+                if extracted_gw.groundwater.depth or extracted_gw.groundwater.elevation:
+                    # if the depth or elevation is extracted, add the extracted groundwater information to the list
                     extracted_groundwater_list.append(extracted_gw)
             except ValueError as error:
                 logger.warning("ValueError: %s", error)
@@ -258,7 +260,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         # if date and depth:  # elevation is optional
         #   # TODO: IF the date is not provided for the groundwater (most of the time because there was only one
         # drilling date - chose the date of the document. Date needs to be extracted from the document separately)
-        if depth:
+        if depth or elevation:
             return GroundwaterInformationOnPage(
                 groundwater=GroundwaterInformation(depth=depth, date=date, elevation=elevation),
                 rect=rect_union,
@@ -267,7 +269,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
 
-    def extract_groundwater(self) -> list[GroundwaterInformationOnPage]:
+    def extract_groundwater(self, elevation: ElevationInformation | None) -> list[GroundwaterInformationOnPage]:
         """Extracts the groundwater information from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
@@ -286,6 +288,14 @@ class GroundwaterLevelExtractor(DataExtractor):
                 self.get_groundwater_near_key(lines, page_number)
                 # or XXXX # Add other techniques here
             )
+
+            if elevation:
+                # If the elevation is provided, calculate the depth of the groundwater
+                for entry in found_groundwater:
+                    if not entry.groundwater.depth and entry.groundwater.elevation:
+                        entry.groundwater.depth = round(elevation.elevation - entry.groundwater.elevation, 2)
+                    if not entry.groundwater.elevation and entry.groundwater.depth:
+                        entry.groundwater.elevation = round(elevation.elevation - entry.groundwater.depth, 2)
 
             if found_groundwater:
                 groundwater_output = ", ".join([str(entry.groundwater) for entry in found_groundwater])
