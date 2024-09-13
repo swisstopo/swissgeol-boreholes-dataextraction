@@ -87,7 +87,7 @@ class DatasetMetrics:
 
         TODO: we probably should not use this metric, and use the proper macro F1 score instead.
         """
-        if self.metrics:
+        if self.metrics and self.macro_precision() + self.macro_recall() > 0:
             return 2 * self.macro_precision() * self.macro_recall() / (self.macro_precision() + self.macro_recall())
         else:
             return 0
