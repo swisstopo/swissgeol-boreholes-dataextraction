@@ -19,7 +19,6 @@ class Config(BaseSettings):
     # AWS
     ###########################################################
     bucket_name: str = "stijnvermeeren-boreholes-integration-tmp"
-    # bucket_name: str = "dcleres-boreholes-integration-tmp"
     test_bucket_name: str = "test-bucket"
 
     # TODO: check how this is used on the VM

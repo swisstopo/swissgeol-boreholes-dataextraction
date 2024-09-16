@@ -72,8 +72,6 @@ class DatasetMetricsCatalog:
             self.metrics["depth_interval"].to_dataframe("Depth_interval_accuracy", lambda metric: metric.precision),
             self.metrics["layer"].to_dataframe("Number Elements", lambda metric: metric.tp + metric.fn),
             self.metrics["layer"].to_dataframe("Number wrong elements", lambda metric: metric.fp + metric.fn),
-            # self.metrics["coordinates"].to_dataframe("coordinates", lambda metric: metric.f1),
-            # self.metrics["elevation"].to_dataframe("elevation", lambda metric: metric.f1),
             self.metrics["groundwater"].to_dataframe("groundwater", lambda metric: metric.f1),
             self.metrics["groundwater_depth"].to_dataframe("groundwater_depth", lambda metric: metric.f1),
         ]
@@ -84,9 +82,6 @@ class DatasetMetricsCatalog:
 
     def metrics_dict(self) -> dict[str, float]:
         """Return a dictionary with the overall metrics."""
-        # coordinates_metrics = self.metrics["coordinates"].overall_metrics()
-        # elevation_metrics = self.metrics["elevation"].overall_metrics()
-
         groundwater_metrics = self.metrics["groundwater"].overall_metrics()
         groundwater_depth_metrics = self.metrics["groundwater_depth"].overall_metrics()
 
@@ -103,16 +98,10 @@ class DatasetMetricsCatalog:
             "fr_recall": self.metrics["fr_layer"].macro_recall(),
             "fr_precision": self.metrics["fr_layer"].macro_precision(),
             "fr_depth_interval_accuracy": self.metrics["fr_depth_interval"].macro_precision(),
-            # "coordinate_f1": coordinates_metrics.f1,
-            # "coordinate_recall": coordinates_metrics.recall,
-            # "coordinate_precision": coordinates_metrics.precision,
             "groundwater_f1": groundwater_metrics.f1,
             "groundwater_recall": groundwater_metrics.recall,
             "groundwater_precision": groundwater_metrics.precision,
             "groundwater_depth_f1": groundwater_depth_metrics.f1,
             "groundwater_depth_recall": groundwater_depth_metrics.recall,
             "groundwater_depth_precision": groundwater_depth_metrics.precision,
-            # "elevation_f1": elevation_metrics.f1,
-            # "elevation_recall": elevation_metrics.recall,
-            # "elevation_precision": elevation_metrics.precision,
         }

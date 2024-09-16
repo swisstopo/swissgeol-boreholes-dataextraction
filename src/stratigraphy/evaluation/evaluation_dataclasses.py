@@ -50,9 +50,6 @@ class Metrics(metaclass=abc.ABCMeta):
             dict: The object as a dictionary.
         """
         return {
-            f"{feature_name}_tp": self.tp,
-            f"{feature_name}_fp": self.fp,
-            f"{feature_name}_fn": self.fn,
             f"{feature_name}_precision": self.precision,
             f"{feature_name}_recall": self.recall,
             f"{feature_name}_f1": self.f1,
