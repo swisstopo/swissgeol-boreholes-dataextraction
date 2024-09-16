@@ -164,10 +164,11 @@ def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -
 
     logging.info("Macro avg:")
     logging.info(
-        f"F1: {all_metrics.metrics['layer'].macro_f1():.1%}, "
-        f"precision: {all_metrics.metrics['layer'].macro_precision():.1%}, "
-        f"recall: {all_metrics.metrics['layer'].macro_recall():.1%}, "
-        f"depth_interval_accuracy: {all_metrics.metrics['depth_interval'].macro_precision():.1%}"
+        "F1: %.1f%%, precision: %.1f%%, recall: %.1f%%, depth_interval_accuracy: %.1f%%",
+        all_metrics.metrics["layer"].macro_f1() * 100,
+        all_metrics.metrics["layer"].macro_precision() * 100,
+        all_metrics.metrics["layer"].macro_recall() * 100,
+        all_metrics.metrics["depth_interval"].macro_precision() * 100,
     )
 
     return all_metrics
