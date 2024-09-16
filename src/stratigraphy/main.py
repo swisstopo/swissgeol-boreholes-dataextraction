@@ -11,13 +11,12 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 
 from stratigraphy import DATAPATH
-from stratigraphy.benchmark.score import create_predictions_objects, evaluate_borehole_extraction
+from stratigraphy.benchmark.score import evaluate
 from stratigraphy.coordinates.coordinate_extraction import CoordinateExtractor
 from stratigraphy.elevation.elevation_extraction import ElevationExtractor
 from stratigraphy.extract import process_page
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterLevelExtractor
 from stratigraphy.line_detection import extract_lines, line_detection_params
-from stratigraphy.util.draw import draw_predictions
 from stratigraphy.util.duplicate_detection import remove_duplicate_layers
 from stratigraphy.util.extract_text import extract_text_lines
 from stratigraphy.util.language_detection import detect_language_of_document
@@ -111,7 +110,7 @@ def start_pipeline(
     predictions_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
-) -> list[dict]:
+):
     """Run the boreholes data extraction pipeline.
 
     The pipeline will extract material description of all found layers and assign them to the corresponding
@@ -128,9 +127,6 @@ def start_pipeline(
         predictions_path (Path): The path to the predictions file.
         skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
         draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.
-
-    Returns:
-        list[dict]: The predictions of the pipeline.
     """  # noqa: D301
     if mlflow_tracking:
         import mlflow
@@ -245,29 +241,9 @@ def start_pipeline(
     with open(predictions_path, "w", encoding="utf8") as file:
         json.dump(predictions, file, ensure_ascii=False)
 
-    # evaluate the predictions; if file does not exist, the predictions are not changed.
-    predictions, number_of_truth_values = create_predictions_objects(predictions, ground_truth_path)
-
-    if not skip_draw_predictions:
-        draw_predictions(predictions, input_directory, draw_directory)
-
-    if number_of_truth_values:  # only evaluate if ground truth is available
-        metrics, document_level_metrics = evaluate_borehole_extraction(predictions, number_of_truth_values)
-        document_level_metrics.to_csv(
-            temp_directory / "document_level_metrics.csv"
-        )  # mlflow.log_artifact expects a file
-
-        # print the metrics
-        logger.info("Performance metrics:")
-        logger.info(metrics)
-
-        if mlflow_tracking:
-            mlflow.log_metrics(metrics)
-            mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
-    else:
-        logger.warning("Ground truth file not found. Skipping evaluation.")
-
-    return predictions
+    if skip_draw_predictions:
+        draw_directory = None
+    evaluate(predictions, ground_truth_path, temp_directory, input_directory, draw_directory)
 
 
 if __name__ == "__main__":
