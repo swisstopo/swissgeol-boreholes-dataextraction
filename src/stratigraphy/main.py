@@ -11,11 +11,9 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 
 from stratigraphy import DATAPATH
-from stratigraphy.annotations.draw import draw_predictions
 from stratigraphy.annotations.plot_utils import plot_lines
 from stratigraphy.benchmark.score import (
-    create_predictions_objects,
-    evaluate_borehole_extraction,
+    evaluate,
     evaluate_metadata_extraction,
 )
 from stratigraphy.extract import process_page
@@ -258,7 +256,7 @@ def start_pipeline(
     metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
-) -> list[dict]:
+):
     """Run the boreholes data extraction pipeline.
 
     The pipeline will extract material description of all found layers and assign them to the corresponding
@@ -276,19 +274,19 @@ def start_pipeline(
         skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
         draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.
         metadata_path (Path): The path to the metadata file.
-
-    Returns:
-        list[dict]: The predictions of the pipeline.
     """  # noqa: D301
     if mlflow_tracking:
         setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
 
     temp_directory = DATAPATH / "_temp"  # temporary directory to dump files for mlflow artifact logging
-
-    # check if directories exist and create them when necessary
-    draw_directory = out_directory / "draw"
-    draw_directory.mkdir(parents=True, exist_ok=True)
     temp_directory.mkdir(parents=True, exist_ok=True)
+
+    if skip_draw_predictions:
+        draw_directory = None
+    else:
+        # check if directories exist and create them when necessary
+        draw_directory = out_directory / "draw"
+        draw_directory.mkdir(parents=True, exist_ok=True)
 
     # if a file is specified instead of an input directory, copy the file to a temporary directory and work with that.
     if input_directory.is_file():
@@ -373,31 +371,14 @@ def start_pipeline(
     with open(metadata_path, "w", encoding="utf8") as file:
         json.dump(metadata_per_file.to_json(), file, ensure_ascii=False)
 
-    # evaluate the predictions; if file does not exist, the predictions are not changed.
-    predictions, number_of_truth_values = create_predictions_objects(predictions, metadata_per_file, ground_truth_path)
-
-    if not skip_draw_predictions:
-        draw_predictions(predictions, input_directory, draw_directory)
-
-    if number_of_truth_values:  # only evaluate if ground truth is available
-        metrics, document_level_metrics = evaluate_borehole_extraction(
-            predictions, metadata_per_file, ground_truth_path, number_of_truth_values
-        )
-        document_level_metrics.to_csv(
-            temp_directory / "document_level_metrics.csv"
-        )  # mlflow.log_artifact expects a file
-
-        # print the metrics
-        logger.info("Performance metrics:")
-        logger.info(metrics)
-
-        if mlflow_tracking:
-            mlflow.log_metrics(metrics)
-            mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
-    else:
-        logger.warning("Ground truth file not found. Skipping evaluation.")
-
-    return predictions
+    evaluate(
+        predictions=predictions,
+        metadata_per_file=metadata_per_file,
+        ground_truth_path=ground_truth_path,
+        temp_directory=temp_directory,
+        input_directory=input_directory,
+        draw_directory=draw_directory,
+    )
 
 
 if __name__ == "__main__":

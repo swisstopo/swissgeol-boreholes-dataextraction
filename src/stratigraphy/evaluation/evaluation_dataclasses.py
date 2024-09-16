@@ -13,8 +13,8 @@ class Metrics(metaclass=abc.ABCMeta):
     tp: int
     fp: int
     fn: int
-    feature_name: str
 
+    @property
     def precision(self) -> float:
         """Calculates the precision.
 
@@ -23,6 +23,7 @@ class Metrics(metaclass=abc.ABCMeta):
         """
         return self.tp / (self.tp + self.fp) if self.tp + self.fp > 0 else 0
 
+    @property
     def recall(self) -> float:
         """Calculates the recall.
 
@@ -31,29 +32,30 @@ class Metrics(metaclass=abc.ABCMeta):
         """
         return self.tp / (self.tp + self.fn) if self.tp + self.fn > 0 else 0
 
-    def f1_score(self) -> float:
+    @property
+    def f1(self) -> float:
         """Calculates the F1 score.
 
         Returns:
             float: The F1 score.
         """
-        precision = self.precision()
-        recall = self.recall()
+        precision = self.precision
+        recall = self.recall
         return 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
 
-    def to_json(self) -> dict:
+    def to_json(self, feature_name) -> dict:
         """Converts the object to a dictionary.
 
         Returns:
             dict: The object as a dictionary.
         """
         return {
-            f"{self.feature_name}_tp": self.tp,
-            f"{self.feature_name}_fp": self.fp,
-            f"{self.feature_name}_fn": self.fn,
-            f"{self.feature_name}_precision": self.precision(),
-            f"{self.feature_name}_recall": self.recall(),
-            f"{self.feature_name}_f1": self.f1_score(),
+            f"{feature_name}_tp": self.tp,
+            f"{feature_name}_fp": self.fp,
+            f"{feature_name}_fn": self.fn,
+            f"{feature_name}_precision": self.precision,
+            f"{feature_name}_recall": self.recall,
+            f"{feature_name}_f1": self.f1,
         }
 
     @staticmethod
@@ -69,11 +71,7 @@ class Metrics(metaclass=abc.ABCMeta):
         tp = sum([metric.tp for metric in metric_list])
         fp = sum([metric.fp for metric in metric_list])
         fn = sum([metric.fn for metric in metric_list])
-
-        # assert that the feature name is the same for all metrics
-        assert all([metric.feature_name == metric_list[0].feature_name for metric in metric_list])
-
-        return Metrics(tp=tp, fp=fp, fn=fn, feature_name=metric_list[0].feature_name)
+        return Metrics(tp=tp, fp=fp, fn=fn)
 
 
 @dataclass
@@ -90,8 +88,8 @@ class BoreholeMetadataMetrics(metaclass=abc.ABCMeta):
             dict: The object as a dictionary.
         """
         return {
-            **self.elevation_metrics.to_json(),
-            **self.coordinates_metrics.to_json(),
+            **self.elevation_metrics.to_json("elevation"),
+            **self.coordinates_metrics.to_json("coordinate"),
         }
 
 
@@ -106,8 +104,8 @@ class FileBoreholeMetadataMetrics(BoreholeMetadataMetrics):
         return pd.DataFrame(
             data={
                 "document_name": [self.filename],
-                "elevation": [self.elevation_metrics.f1_score()],
-                "coordinate": [self.coordinates_metrics.f1_score()],
+                "elevation": [self.elevation_metrics.f1],
+                "coordinate": [self.coordinates_metrics.f1],
             }
         )
 

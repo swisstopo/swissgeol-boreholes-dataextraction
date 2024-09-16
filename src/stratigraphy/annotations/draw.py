@@ -6,6 +6,7 @@ from pathlib import Path
 
 import fitz
 from dotenv import load_dotenv
+from stratigraphy.benchmark.metrics import Metrics
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformationOnPage
 from stratigraphy.layer.layer import LayerPrediction
 from stratigraphy.metadata.coordinate_extraction import Coordinate
@@ -23,7 +24,7 @@ colors = ["purple", "blue"]
 logger = logging.getLogger(__name__)
 
 
-def draw_predictions(predictions: list[FilePredictions], directory: Path, out_directory: Path) -> None:
+def draw_predictions(predictions: dict[str, FilePredictions], directory: Path, out_directory: Path) -> None:
     """Draw predictions on pdf pages.
 
     Draws various recognized information on the pdf pages present at directory and saves
@@ -106,9 +107,9 @@ def draw_metadata(
     derotation_matrix: fitz.Matrix,
     rotation: float,
     coordinates: Coordinate | None,
-    coordinates_is_correct: bool,
+    coordinates_is_correct: Metrics,
     elevation_info: Elevation | None,
-    elevation_is_correct: bool,
+    elevation_is_correct: Metrics,
 ) -> None:
     """Draw the extracted metadata on the top of the given PDF page.
 
@@ -120,16 +121,16 @@ def draw_metadata(
         derotation_matrix (fitz.Matrix): The derotation matrix of the page.
         rotation (float): The rotation of the page.
         coordinates (Coordinate | None): The coordinate object to draw.
-        coordinates_is_correct (bool): Whether the coordinates are correct.
-        elevation_info (Elevation | None): The elevation information to draw.
-        elevation_is_correct (bool): Whether the elevation information is correct.
+        coordinates_is_correct (Metrics): Whether the coordinates are correct.
+        elevation_info (ElevationInformation | None): The elevation information to draw.
+        elevation_is_correct (Metrics): Whether the elevation information is correct.
     """
     # TODO associate correctness with the extracted coordinates in a better way
-    coordinate_correct = coordinates_is_correct is not None and coordinates_is_correct["tp"] > 0
+    coordinate_correct = coordinates_is_correct is not None and coordinates_is_correct.tp > 0
     coordinate_color = "green" if coordinate_correct else "red"
     coordinate_rect = fitz.Rect([5, 5, 200, 25])
 
-    elevation_correct = elevation_is_correct is not None and elevation_is_correct["tp"] > 0
+    elevation_correct = elevation_is_correct is not None and elevation_is_correct.tp > 0
     elevation_color = "green" if elevation_correct else "red"
     elevation_rect = fitz.Rect([5, 25, 200, 45])
 

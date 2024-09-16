@@ -16,24 +16,21 @@ def extract_text_lines(page: fitz.Page) -> list[TextLine]:
     Returns:
         list[TextLine]: A list of text lines.
     """
-    return extract_text_lines_from_bbox(page, fitz.Rect(0, 0, page.rect.width, page.rect.height))
+    return extract_text_lines_from_bbox(page, bbox=None)
 
 
-def extract_text_lines_from_bbox(page: fitz.Page, bbox: fitz.Rect) -> list[TextLine]:
+def extract_text_lines_from_bbox(page: fitz.Page, bbox: fitz.Rect | None) -> list[TextLine]:
     """Extract all text lines from the page.
 
     Sometimes, a single lines as identified by PyMuPDF, is still split into separate lines.
 
     Args:
         page (fitz.page): the page to extract text from
-        bbox (BoundingBox): the bounding box to extract text from
+        bbox (fitz.Rect | None): the bounding box to extract text from
 
     Returns:
         list[TextLine]: A list of text lines.
     """
-    if not isinstance(bbox, fitz.Rect):
-        raise ValueError("The bbox parameter must be a fitz.Rect object.")
-
     words = []
     words_by_line = {}
     for x0, y0, x1, y1, word, block_no, line_no, _word_no in page.get_text("words", clip=bbox):

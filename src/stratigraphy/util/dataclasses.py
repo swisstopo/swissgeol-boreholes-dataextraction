@@ -38,11 +38,17 @@ class Line:
             self.start = self.end
             self.end = end
 
-        self.slope = self.slope()
-        self.intercept = self.intercept()
         self.length = self.start.distance_to(self.end)
 
     def distance_to(self, point: Point) -> float:
+        """Calculate the distance of a point to the line.
+
+        Args:
+            point (Point): The point to calculate the distance to.
+
+        Returns:
+            float: The distance of the point to the line.
+        """
         # Calculate the distance of the point to the line:
         #  Taken from https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
         return np.abs(
@@ -50,8 +56,12 @@ class Line:
             - (self.start.x - point.x) * (self.end.y - self.start.y)
         ) / np.sqrt((self.end.x - self.start.x) ** 2 + (self.end.y - self.start.y) ** 2)
 
+    @property
     def slope(self) -> float:
+        """Calculate the slope of the line."""
         return (self.end.y - self.start.y) / (self.end.x - self.start.x) if self.end.x - self.start.x != 0 else np.inf
 
+    @property
     def intercept(self) -> float:
+        """Calculate the y-intercept of the line."""
         return self.start.y - self.slope * self.start.x

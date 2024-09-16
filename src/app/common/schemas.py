@@ -106,6 +106,7 @@ class BoundingBox(BaseModel):
         """
         return fitz.Rect(self.x0, self.y0, self.x1, self.y1)
 
+    @staticmethod
     def load_from_fitz_rect(rect: fitz.Rect) -> "BoundingBox":
         """Load the bounding box from a PyMuPDF rectangle.
 

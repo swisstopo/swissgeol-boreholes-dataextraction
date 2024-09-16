@@ -266,7 +266,9 @@ class CoordinateExtractor(DataExtractor):
             results.append((match, rect))
         return results
 
-    def extract_coordinates_from_bbox(self, page: fitz.Page, page_number: int, bbox: fitz.Rect) -> Coordinate | None:
+    def extract_coordinates_from_bbox(
+        self, page: fitz.Page, page_number: int, bbox: fitz.Rect | None = None
+    ) -> Coordinate | None:
         """Extracts the coordinates from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
@@ -310,4 +312,4 @@ class CoordinateExtractor(DataExtractor):
         for page in self.doc:
             page_number = page.number + 1  # page.number is 0-based
 
-            return self.extract_coordinates_from_bbox(page, page_number, page.rect)
+            return self.extract_coordinates_from_bbox(page, page_number)

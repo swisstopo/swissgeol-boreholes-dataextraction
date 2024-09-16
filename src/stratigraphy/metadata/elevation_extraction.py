@@ -168,7 +168,7 @@ class ElevationExtractor(DataExtractor):
 
         Args:
             pdf_page (fitz.Page): The PDF page.
-            bbox (fitz.Rect): The bounding box.
+            bbox (fitz.Rect | None): The bounding box.
             page_number (int): The page number.
 
         Returns:

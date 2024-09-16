@@ -8,6 +8,7 @@ import fitz
 import Levenshtein
 
 from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
+from stratigraphy.evaluation.evaluation_dataclasses import Metrics
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformation, GroundwaterInformationOnPage
 from stratigraphy.layer.layer import LayerPrediction
 from stratigraphy.lines.line import TextLine, TextWord
@@ -197,15 +198,15 @@ class FilePredictions:
             if (math.isclose(int(extracted_coordinates.east.coordinate_value), ground_truth_east, abs_tol=2)) and (
                 math.isclose(int(extracted_coordinates.north.coordinate_value), ground_truth_north, abs_tol=2)
             ):
-                self.metadata_is_correct["coordinates"] = {"tp": 1, "fp": 0, "fn": 0}
+                self.metadata_is_correct["coordinates"] = Metrics(tp=1, fp=0, fn=0)
             else:
-                self.metadata_is_correct["coordinates"] = {"tp": 0, "fp": 1, "fn": 1}
+                self.metadata_is_correct["coordinates"] = Metrics(tp=0, fp=1, fn=1)
         else:
-            self.metadata_is_correct["coordinates"] = {
-                "tp": 0,
-                "fp": 1 if extracted_coordinates is not None else 0,
-                "fn": 1 if ground_truth_coordinates is not None else 0,
-            }
+            self.metadata_is_correct["coordinates"] = Metrics(
+                tp=0,
+                fp=1 if extracted_coordinates is not None else 0,
+                fn=1 if ground_truth_coordinates is not None else 0,
+            )
 
         ############################################################################################################
         ### Compute the metadata correctness for the elevation.
@@ -215,24 +216,31 @@ class FilePredictions:
 
         if extracted_elevation is not None and ground_truth_elevation is not None:
             if math.isclose(extracted_elevation, ground_truth_elevation, abs_tol=0.1):
-                self.metadata_is_correct["elevation"] = {"tp": 1, "fp": 0, "fn": 0}
+                self.metadata_is_correct["elevation"] = Metrics(tp=1, fp=0, fn=0)
             else:
-                self.metadata_is_correct["elevation"] = {"tp": 0, "fp": 1, "fn": 1}
+                self.metadata_is_correct["elevation"] = Metrics(tp=0, fp=1, fn=1)
         else:
-            self.metadata_is_correct["elevation"] = {
-                "tp": 0,
-                "fp": 1 if extracted_elevation is not None else 0,
-                "fn": 1 if ground_truth_elevation is not None else 0,
-            }
+            self.metadata_is_correct["elevation"] = Metrics(
+                tp=0, fp=1 if extracted_elevation is not None else 0, fn=1 if ground_truth_elevation is not None else 0
+            )
 
     @staticmethod
-    def count_against_ground_truth(values: list, ground_truth: list) -> dict:
+    def count_against_ground_truth(values: list, ground_truth: list) -> Metrics:
+        """Count the number of true positives, false positives and false negatives.
+
+        Args:
+            values (list): The values to count.
+            ground_truth (list): The ground truth values.
+
+        Returns:
+            Metrics: The metrics for the values.
+        """
         # Counter deals with duplicates when doing intersection
         values_counter = Counter(values)
         ground_truth_counter = Counter(ground_truth)
 
         tp = (values_counter & ground_truth_counter).total()  # size of intersection
-        return {"tp": tp, "fp": len(values) - tp, "fn": len(ground_truth) - tp}
+        return Metrics(tp=tp, fp=len(values) - tp, fn=len(ground_truth) - tp)
 
     def evaluate_groundwater(self, groundwater_ground_truth: list):
         """Evaluate the groundwater information of the file against the ground truth.
@@ -246,7 +254,7 @@ class FilePredictions:
         gt_groundwater = [
             GroundwaterInformation.from_json_values(
                 depth=json_gt_data["depth"],
-                measurement_date=json_gt_data["date"],
+                date=json_gt_data["date"],
                 elevation=json_gt_data["elevation"],
             )
             for json_gt_data in groundwater_ground_truth
@@ -256,12 +264,12 @@ class FilePredictions:
             [
                 (
                     entry.groundwater.depth,
-                    entry.groundwater.format_measurement_date(),
+                    entry.groundwater.format_date(),
                     entry.groundwater.elevation,
                 )
                 for entry in self.groundwater_entries
             ],
-            [(entry.depth, entry.format_measurement_date(), entry.elevation) for entry in gt_groundwater],
+            [(entry.depth, entry.format_date(), entry.elevation) for entry in gt_groundwater],
         )
         self.groundwater_is_correct["groundwater_depth"] = self.count_against_ground_truth(
             [entry.groundwater.depth for entry in self.groundwater_entries],
@@ -272,8 +280,8 @@ class FilePredictions:
             [entry.elevation for entry in gt_groundwater],
         )
         self.groundwater_is_correct["groundwater_date"] = self.count_against_ground_truth(
-            [entry.groundwater.measurement_date for entry in self.groundwater_entries],
-            [entry.measurement_date for entry in gt_groundwater],
+            [entry.groundwater.date for entry in self.groundwater_entries],
+            [entry.date for entry in gt_groundwater],
         )
 
     @staticmethod

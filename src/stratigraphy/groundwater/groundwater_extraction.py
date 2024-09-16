@@ -3,7 +3,8 @@
 import abc
 import logging
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date as dt
+from datetime import datetime
 
 import fitz
 import numpy as np
@@ -26,7 +27,7 @@ class GroundwaterInformation(metaclass=abc.ABCMeta):
     """Abstract class for Groundwater Information."""
 
     depth: float  # Depth of the groundwater relative to the surface
-    measurement_date: date | None = (
+    date: dt | None = (
         None  # Date of the groundwater measurement, if several dates
         # are present, the date of the document the last measurement is taken
     )
@@ -48,24 +49,34 @@ class GroundwaterInformation(metaclass=abc.ABCMeta):
         """
         return (
             f"GroundwaterInformation("
-            f"measurement_date={self.format_measurement_date()}, "
+            f"date={self.format_date()}, "
             f"depth={self.depth}, "
             f"elevation={self.elevation})"
         )
 
     @staticmethod
-    def from_json_values(depth: float | None, measurement_date: str | None, elevation: float | None):
-        if measurement_date is not None and measurement_date != "":
-            # convert to datetime object
-            measurement_date = datetime.strptime(measurement_date, DATE_FORMAT).date()
-        else:
-            measurement_date = None
+    def from_json_values(depth: float | None, date: str | None, elevation: float | None):
+        """Converts the object from a dictionary.
 
-        return GroundwaterInformation(depth=depth, measurement_date=measurement_date, elevation=elevation)
+        Args:
+            depth (float | None): The depth of the groundwater.
+            date (str | None): The measurement date of the groundwater.
+            elevation (float | None): The elevation of the groundwater.
 
-    def format_measurement_date(self) -> str | None:
-        if self.measurement_date is not None:
-            return self.measurement_date.strftime(DATE_FORMAT)
+        Returns:
+            GroundwaterInformation: The object created from the dictionary.
+        """
+        date = datetime.strptime(date, DATE_FORMAT).date() if date is not None and date != "" else None
+        return GroundwaterInformation(depth=depth, date=date, elevation=elevation)
+
+    def format_date(self) -> str | None:
+        """Formats the date of the groundwater measurement.
+
+        Returns:
+            str | None: The formatted date of the groundwater measurement.
+        """
+        if self.date is not None:
+            return self.date.strftime(DATE_FORMAT)
         else:
             return None
 
@@ -91,7 +102,7 @@ class GroundwaterInformationOnPage(ExtractedFeature):
             dict: The object as a dictionary.
         """
         return {
-            "measurement_date": self.groundwater.format_measurement_date(),
+            "date": self.groundwater.format_date(),
             "depth": self.groundwater.depth,
             "elevation": self.groundwater.elevation,
             "page": self.page if self.page else None,
@@ -99,13 +110,11 @@ class GroundwaterInformationOnPage(ExtractedFeature):
         }
 
     @staticmethod
-    def from_json_values(
-        measurement_date: str | None, depth: float | None, elevation: float | None, page: int, rect: list[float]
-    ):
+    def from_json_values(date: str | None, depth: float | None, elevation: float | None, page: int, rect: list[float]):
         """Converts the object from a dictionary.
 
         Args:
-            measurement_date (str | None): The measurement date of the groundwater.
+            date (str | None): The measurement date of the groundwater.
             depth (float | None): The depth of the groundwater.
             elevation (float | None): The elevation of the groundwater.
             page (int): The page number of the PDF document.
@@ -115,9 +124,7 @@ class GroundwaterInformationOnPage(ExtractedFeature):
             GroundwaterInformationOnPage: The object created from the dictionary.
         """
         return GroundwaterInformationOnPage(
-            groundwater=GroundwaterInformation.from_json_values(
-                depth=depth, measurement_date=measurement_date, elevation=elevation
-            ),
+            groundwater=GroundwaterInformation.from_json_values(depth=depth, date=date, elevation=elevation),
             page=page,
             rect=fitz.Rect(rect),
         )
@@ -178,7 +185,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         Returns:
             GroundwaterInformationOnPage: the extracted groundwater information
         """
-        datetime_date: date | None = None
+        date: dt | None = None
         depth: float | None = None
         elevation: float | None = None
 
@@ -193,7 +200,7 @@ class GroundwaterLevelExtractor(DataExtractor):
                 extracted_date, extracted_date_str = extract_date(text)
                 if extracted_date_str:
                     text = text.replace(extracted_date_str, "").strip()
-                    datetime_date = extracted_date
+                    date = extracted_date
 
                 depth = extract_depth(text, MAX_DEPTH)
                 if depth:
@@ -205,11 +212,11 @@ class GroundwaterLevelExtractor(DataExtractor):
                 matched_lines_rect.append(line.rect)
             else:
                 # Pattern for matching date
-                if not datetime_date:
+                if not date:
                     extracted_date, extracted_date_str = extract_date(text)
                     if extracted_date_str:
                         text = text.replace(extracted_date_str, "").strip()
-                        datetime_date = extracted_date
+                        date = extracted_date
 
                 # Pattern for matching depth (e.g., "1,48 m u.T.")
                 if not depth:
@@ -225,7 +232,7 @@ class GroundwaterLevelExtractor(DataExtractor):
                         matched_lines_rect.append(line.rect)
 
             # If all required data is found, break early
-            if datetime_date and depth and elevation:
+            if date and depth and elevation:
                 break
 
         # Get the union of all matched lines' rectangles
@@ -253,7 +260,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         # drilling date - chose the date of the document. Date needs to be extracted from the document separately)
         if depth:
             return GroundwaterInformationOnPage(
-                groundwater=GroundwaterInformation(depth=depth, measurement_date=datetime_date, elevation=elevation),
+                groundwater=GroundwaterInformation(depth=depth, date=date, elevation=elevation),
                 rect=rect_union,
                 page=page,
             )
