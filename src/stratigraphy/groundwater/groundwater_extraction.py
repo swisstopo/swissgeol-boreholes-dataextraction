@@ -269,13 +269,18 @@ class GroundwaterLevelExtractor(DataExtractor):
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
 
-    def extract_groundwater(self, elevation: ElevationInformation | None) -> list[GroundwaterInformationOnPage]:
+    def extract_groundwater(
+        self, terrain_elevation: ElevationInformation | None
+    ) -> list[GroundwaterInformationOnPage]:
         """Extracts the groundwater information from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
         page.
         Algorithm description:
             1. if that gives no results, search for coordinates close to an explicit "groundwater" label (e.g. "Gswp")
+
+        Args:
+            terrain_elevation (ElevationInformation | None): The elevation of the borehole.
 
         Returns:
             list[GroundwaterInformationOnPage]: the extracted coordinates (if any)
@@ -289,13 +294,13 @@ class GroundwaterLevelExtractor(DataExtractor):
                 # or XXXX # Add other techniques here
             )
 
-            if elevation:
+            if terrain_elevation:
                 # If the elevation is provided, calculate the depth of the groundwater
                 for entry in found_groundwater:
                     if not entry.groundwater.depth and entry.groundwater.elevation:
-                        entry.groundwater.depth = round(elevation.elevation - entry.groundwater.elevation, 2)
+                        entry.groundwater.depth = round(terrain_elevation.elevation - entry.groundwater.elevation, 2)
                     if not entry.groundwater.elevation and entry.groundwater.depth:
-                        entry.groundwater.elevation = round(elevation.elevation - entry.groundwater.depth, 2)
+                        entry.groundwater.elevation = round(terrain_elevation.elevation - entry.groundwater.depth, 2)
 
             if found_groundwater:
                 groundwater_output = ", ".join([str(entry.groundwater) for entry in found_groundwater])
