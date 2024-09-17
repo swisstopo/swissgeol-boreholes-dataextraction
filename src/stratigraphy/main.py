@@ -280,9 +280,6 @@ def start_pipeline(
                                 )
                                 mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
-                # Add metadata to the metadata list
-                metadata_per_file.metadata_per_file.append(metadata)
-
                 if part == "all":
                     predictions[filename]["layers"] = layer_predictions_list
                     predictions[filename]["depths_materials_column_pairs"] = depths_materials_column_pairs_list

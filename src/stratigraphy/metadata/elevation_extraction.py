@@ -193,4 +193,8 @@ class ElevationExtractor(DataExtractor):
         for page in self.doc:
             page_number = page.number + 1  # page.number is 0-based
 
-            return self.extract_elevation_from_bbox(page, page_number, page.rect)
+            # Extract the elevation information from the page
+            # Make the search area a bit larger than the page itself - This is needed for "267123120-bp.pdf" where the
+            # elevation is located outside the page boundaries apparently.
+            search_area = page.rect * 1.25
+            return self.extract_elevation_from_bbox(page, page_number, search_area)
