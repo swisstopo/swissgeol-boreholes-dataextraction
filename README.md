@@ -391,13 +391,13 @@ In this project we are using Mangum to wrap the FastAPI with a handler that we w
 We created a script that should make it possible for you to deploy the FastAPI in AWS lambda using a single command. The script is creating all the required AWS resources to run the API. The resources that will be created for you are: 
 - AWS Lambda Function
 - AWS IAM user with the right to execute lambda functions and to read & write on S3 buckets
-- AWS CloudWatch to monitor the API
+- AWS CloudWatch log group to monitor the API
 - AWS API Gateway
 
 To deploy the staging version of the FastPI, run the following command: 
 
 ```shell
-IMAGE=borehole-fastapi ENV=stage AWS_PROFILE=dcleres-visium ./deploy_api_aws_lamdba.sh
+IMAGE=borehole-fastapi ENV=stage AWS_PROFILE=dcleres-visium AWS_S3_BUCKET=dcleres-boreholes-integration-tmp ./deploy_api_aws_lamdba.sh
 ```
 
 

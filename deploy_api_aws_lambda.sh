@@ -26,6 +26,13 @@ check_arg() {
         exit 1
     fi
 
+     # Must provide AWS_S3_BUCKET
+    if [ "$AWS_S3_BUCKET" == "" ]; 
+    then
+        echo -e "${BRed}AWS_S3_BUCKET cannot be empty${ColorOff}\n"
+        exit 1
+    fi
+
     # Default ENV is "stage" unless specified as "prod"
     if [ "$ENV" == "" ];
     then
@@ -82,11 +89,12 @@ config_ecr() {
     echo -e "${BWhite}Building the docker image...${ColorOff}\n"
     docker build --platform linux/amd64 -f Dockerfile.aws.lambda -t $IMAGE:latest .
     docker tag $IMAGE:latest $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE:$TAG
-
+    docker tag $IMAGE:latest $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE:latest
 
     # Push image to ECR
     echo -e "${BWhite}Pushing the image to ECR...${ColorOff}\n"
     docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE:$TAG
+    docker push $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE:latest
 }
 
 
@@ -97,7 +105,7 @@ config_lambda() {
         echo -e "${BGreen}Function $AWS_LAMBDA_FUNC_NAME already exists on lambda; proceed to update...${ColorOff}\n"
         aws lambda update-function-code \
             --function-name $AWS_LAMBDA_FUNC_NAME \
-            --image-uri $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE:$TAG
+            --image-uri $AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE:latest
     else
         # To create a lambda function, one must first create a role to execute the function
         # if such role does not exist
@@ -110,7 +118,6 @@ config_lambda() {
             aws iam create-role --role-name $AWS_LAMBDA_ROLE_NAME --assume-role-policy-document '{"Version": "2012-10-17","Statement": [{ "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}, "Action": "sts:AssumeRole"}]}'
             aws iam attach-role-policy --role-name $AWS_LAMBDA_ROLE_NAME --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
             aws iam attach-role-policy --role-name $AWS_LAMBDA_ROLE_NAME --policy-arn arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
-            aws iam attach-role-policy --role-name $AWS_LAMBDA_ROLE_NAME --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
             aws iam attach-role-policy --role-name $AWS_LAMBDA_ROLE_NAME --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess
 
         fi
@@ -118,7 +125,7 @@ config_lambda() {
         until aws lambda create-function \
             --function-name $AWS_LAMBDA_FUNC_NAME \
             --package-type Image \
-            --code ImageUri=$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE:$TAG \
+            --code ImageUri=$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE:latest \
             --timeout 15 \
             --memory-size 512 \
             --role $(aws iam get-role --role-name $AWS_LAMBDA_ROLE_NAME --query 'Role.Arn' --output text) 2> /dev/null
@@ -142,7 +149,7 @@ config_lambda() {
             VARIABLES+="$trimmed,"
         fi
     done < .env.$ENV
-    VARIABLES+="ENV=$ENV}"
+    VARIABLES+="ENV=$ENV,AWS_S3_BUCKET=$AWS_S3_BUCKET}"
 
     echo -e "${BWhite}Update environment variables...${ColorOff}\n"
     until aws lambda update-function-configuration \

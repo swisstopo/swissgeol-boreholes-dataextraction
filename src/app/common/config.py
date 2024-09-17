@@ -1,8 +1,14 @@
 """Backend configurations."""
 
 import logging
+import os
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def get_aws_bucket_name() -> str:
+    """Get the AWS bucket name."""
+    return os.getenv("AWS_S3_BUCKET") if os.getenv("AWS_S3_BUCKET") else "stijnvermeeren-boreholes-integration-tmp"
 
 
 class Config(BaseSettings):
@@ -18,7 +24,7 @@ class Config(BaseSettings):
     ###########################################################
     # AWS
     ###########################################################
-    bucket_name: str = "stijnvermeeren-boreholes-integration-tmp"
+    bucket_name: str = get_aws_bucket_name()
     test_bucket_name: str = "test-bucket"
 
     # TODO: check how this is used on the VM
