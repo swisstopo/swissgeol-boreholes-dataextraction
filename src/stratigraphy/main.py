@@ -149,93 +149,92 @@ def start_pipeline(
 
     # if a file is specified instead of an input directory, copy the file to a temporary directory and work with that.
     if input_directory.is_file():
-        file_iterator = [(input_directory.parent, None, [input_directory.name])]
+        root = input_directory.parent
+        files = [input_directory.name]
     else:
-        file_iterator = os.walk(input_directory)
+        root = input_directory
+        _, _, files = next(os.walk(input_directory))
     # process the individual pdf files
     predictions = {}
-    for root, _dirs, files in file_iterator:
-        for filename in tqdm(files, desc="Processing files", unit="file"):
-            if filename.endswith(".pdf"):
-                in_path = os.path.join(root, filename)
-                logger.info("Processing file: %s", in_path)
-                predictions[filename] = {}
+    for filename in tqdm(files, desc="Processing files", unit="file"):
+        if filename.endswith(".pdf"):
+            in_path = os.path.join(root, filename)
+            logger.info("Processing file: %s", in_path)
+            predictions[filename] = {}
 
-                with fitz.Document(in_path) as doc:
-                    language = detect_language_of_document(
-                        doc, matching_params["default_language"], matching_params["material_description"].keys()
+            with fitz.Document(in_path) as doc:
+                language = detect_language_of_document(
+                    doc, matching_params["default_language"], matching_params["material_description"].keys()
+                )
+                predictions[filename]["language"] = language
+
+                # Extract the coordinates of the borehole
+                coordinate_extractor = CoordinateExtractor(document=doc)
+                coordinates = coordinate_extractor.extract_coordinates()
+                if coordinates:
+                    predictions[filename]["metadata"] = {"coordinates": coordinates.to_json()}
+                else:
+                    predictions[filename]["metadata"] = {"coordinates": None}
+
+                # Extract the elevation information
+                elevation_extractor = ElevationExtractor(document=doc)
+                elevation = elevation_extractor.extract_elevation()
+                if elevation:
+                    predictions[filename]["metadata"]["elevation"] = elevation.to_dict()
+                else:
+                    predictions[filename]["metadata"]["elevation"] = None
+
+                # Extract the groundwater levels
+                groundwater_extractor = GroundwaterLevelExtractor(document=doc)
+                groundwater = groundwater_extractor.extract_groundwater(terrain_elevation=elevation)
+                if groundwater:
+                    predictions[filename]["groundwater"] = [
+                        groundwater_entry.to_dict() for groundwater_entry in groundwater
+                    ]
+                else:
+                    predictions[filename]["groundwater"] = None
+
+                layer_predictions_list = []
+                depths_materials_column_pairs_list = []
+                page_dimensions = []
+                for page_index, page in enumerate(doc):
+                    page_number = page_index + 1
+                    logger.info("Processing page %s", page_number)
+
+                    text_lines = extract_text_lines(page)
+                    geometric_lines = extract_lines(page, line_detection_params)
+                    layer_predictions, depths_materials_column_pairs = process_page(
+                        text_lines, geometric_lines, language, page_number, **matching_params
                     )
-                    predictions[filename]["language"] = language
 
-                    # Extract the coordinates of the borehole
-                    coordinate_extractor = CoordinateExtractor(document=doc)
-                    coordinates = coordinate_extractor.extract_coordinates()
-                    if coordinates:
-                        predictions[filename]["metadata"] = {"coordinates": coordinates.to_json()}
-                    else:
-                        predictions[filename]["metadata"] = {"coordinates": None}
-
-                    # Extract the elevation information
-                    elevation_extractor = ElevationExtractor(document=doc)
-                    elevation = elevation_extractor.extract_elevation()
-                    if elevation:
-                        predictions[filename]["metadata"]["elevation"] = elevation.to_dict()
-                    else:
-                        predictions[filename]["metadata"]["elevation"] = None
-
-                    # Extract the groundwater levels
-                    groundwater_extractor = GroundwaterLevelExtractor(document=doc)
-                    groundwater = groundwater_extractor.extract_groundwater(elevation)
-                    if groundwater:
-                        predictions[filename]["groundwater"] = [
-                            groundwater_entry.to_dict() for groundwater_entry in groundwater
-                        ]
-                    else:
-                        predictions[filename]["groundwater"] = None
-
-                    layer_predictions_list = []
-                    depths_materials_column_pairs_list = []
-                    page_dimensions = []
-                    for page_index, page in enumerate(doc):
-                        page_number = page_index + 1
-                        logger.info("Processing page %s", page_number)
-
-                        text_lines = extract_text_lines(page)
-                        geometric_lines = extract_lines(page, line_detection_params)
-                        layer_predictions, depths_materials_column_pairs = process_page(
-                            text_lines, geometric_lines, language, page_number, **matching_params
+                    # TODO: Add remove duplicates here!
+                    if page_index > 0:
+                        layer_predictions = remove_duplicate_layers(
+                            doc[page_index - 1],
+                            page,
+                            layer_predictions_list,
+                            layer_predictions,
+                            matching_params["img_template_probability_threshold"],
                         )
 
-                        # TODO: Add remove duplicates here!
-                        if page_index > 0:
-                            layer_predictions = remove_duplicate_layers(
-                                doc[page_index - 1],
-                                page,
-                                layer_predictions_list,
-                                layer_predictions,
-                                matching_params["img_template_probability_threshold"],
+                    layer_predictions_list.extend(layer_predictions)
+                    depths_materials_column_pairs_list.extend(depths_materials_column_pairs)
+                    page_dimensions.append({"height": page.rect.height, "width": page.rect.width})
+
+                    if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
+                        if not mlflow_tracking:
+                            logger.warning("MLFlow tracking is not enabled. MLFLow is required to store the images.")
+                        else:
+                            img = plot_lines(
+                                page, geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"]
                             )
+                            mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
-                        layer_predictions_list.extend(layer_predictions)
-                        depths_materials_column_pairs_list.extend(depths_materials_column_pairs)
-                        page_dimensions.append({"height": page.rect.height, "width": page.rect.width})
+                predictions[filename]["layers"] = layer_predictions_list
+                predictions[filename]["depths_materials_column_pairs"] = depths_materials_column_pairs_list
+                predictions[filename]["page_dimensions"] = page_dimensions
 
-                        if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
-                            if not mlflow_tracking:
-                                logger.warning(
-                                    "MLFlow tracking is not enabled. MLFLow is required to store the images."
-                                )
-                            else:
-                                img = plot_lines(
-                                    page, geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"]
-                                )
-                                mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
-
-                    predictions[filename]["layers"] = layer_predictions_list
-                    predictions[filename]["depths_materials_column_pairs"] = depths_materials_column_pairs_list
-                    predictions[filename]["page_dimensions"] = page_dimensions
-
-                    assert len(page_dimensions) == doc.page_count, "Page count mismatch."
+                assert len(page_dimensions) == doc.page_count, "Page count mismatch."
 
     logger.info("Writing predictions to JSON file %s", predictions_path)
     with open(predictions_path, "w", encoding="utf8") as file:

@@ -8,6 +8,7 @@ from stratigraphy.util.boundarydepthcolumnvalidator import BoundaryDepthColumnVa
 from stratigraphy.util.depthcolumn import BoundaryDepthColumn, LayerDepthColumn
 from stratigraphy.util.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
 from stratigraphy.util.line import TextWord
+from stratigraphy.util.textblock import TextBlock
 
 
 def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> list[DepthColumnEntry]:
@@ -206,3 +207,40 @@ def find_depth_columns(
         [column for column in numeric_columns if column and boundary_depth_column_validator.is_valid(column)],
         key=lambda column: len(column.entries),
     )
+
+
+def get_depth_interval_from_textblock(block: TextBlock) -> LayerDepthColumnEntry | None:
+    """Extract depth interval from a material description block.
+
+    For borehole profiles in the Deriaz layout, the depth interval is usually found in the text description
+    of the material. Often, these text descriptions contain a further separation into multiple sub layers.
+    These sub layers have their own depth intervals. This function extracts the overall depth interval,
+    spanning across all mentioned sub layers.
+
+    Args:
+        block (TextBlock): The block to calculate the depth interval for.
+
+    Returns:
+        LayerDepthColumnEntry | None: The depth interval.
+    """
+    depth_entries = []
+    for line in block.lines:
+        try:
+            layer_depth_entry = extract_layer_depth_interval(
+                line.text, line.rect, line.page_number, require_start_of_string=False
+            )
+            # require_start_of_string = False because the depth interval may not always start at the beginning
+            # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
+            if layer_depth_entry:
+                depth_entries.append(layer_depth_entry)
+        except ValueError:
+            pass
+
+    if depth_entries:
+        # Merge the sub layers into one depth interval.
+        start = min([entry.start for entry in depth_entries], key=lambda start_entry: start_entry.value)
+        end = max([entry.end for entry in depth_entries], key=lambda end_entry: end_entry.value)
+
+        return LayerDepthColumnEntry(start, end)
+    else:
+        return None
