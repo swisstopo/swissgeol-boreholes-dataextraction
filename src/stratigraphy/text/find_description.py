@@ -1,6 +1,7 @@
 """This module contains functions to find the description (blocks) of a material in a pdf page."""
 
 import fitz
+from stratigraphy.layer.layer_identifier_column import LayerIdentifierEntry
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.description_block_splitter import (
     SplitDescriptionBlockByLeftHandSideSeparator,
@@ -35,12 +36,12 @@ def get_description_lines(lines: list[TextLine], material_description_rect: fitz
 
 
 def get_description_blocks_from_layer_identifier(
-    layer_identifier_entries: list[TextLine], description_lines: list[TextLine]
+    layer_identifier_entries: list[LayerIdentifierEntry], description_lines: list[TextLine]
 ) -> list[TextBlock]:
     """Divide the description lines into blocks based on the layer identifier entries.
 
     Args:
-        layer_identifier_entries (list[TextLine]): The layer identifier entries.
+        layer_identifier_entries (list[LayerIdentifierEntry]): The layer identifier entries.
         description_lines (list[TextLine]): All lines constituting the material description.
 
     Returns:

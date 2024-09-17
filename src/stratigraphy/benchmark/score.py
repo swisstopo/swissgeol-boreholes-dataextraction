@@ -225,12 +225,9 @@ def evaluate(
     draw_directory: Path | None,
 ):
     """Computes all the metrics, logs them, and creates corresponding MLFlow artifacts (when enabled)."""
-    predictions, number_of_truth_values = create_predictions_objects(predictions, metadata_per_file, ground_truth_path)
-
-    if input_directory and draw_directory:
-        draw_predictions(predictions, input_directory, draw_directory)
-
-    # evaluate the borehole extraction metadata
+    #############################
+    # Evaluate the borehole extraction metadata
+    #############################
     metadata_metrics_list = evaluate_metadata_extraction(metadata_per_file, ground_truth_path)
     metadata_metrics = metadata_metrics_list.get_cumulated_metrics()
     document_level_metrics = metadata_metrics_list.get_document_level_metrics()
@@ -243,28 +240,42 @@ def evaluate(
     logger.info("Metadata Performance metrics:\n\n")
     logger.info(metadata_metrics)
 
-    # evaluate the borehole extraction
-    if number_of_truth_values:  # only evaluate if ground truth is available
-        metrics = evaluate_borehole_extraction(predictions, number_of_truth_values)
+    if mlflow_tracking:
+        import mlflow
 
-        metrics.document_level_metrics_df().to_csv(
-            temp_directory / "document_level_metrics.csv", index_label="document_name"
-        )  # mlflow.log_artifact expects a file
-        metrics_dict = metrics.metrics_dict()
+        mlflow.log_metrics(metadata_metrics)
+        mlflow.log_artifact(temp_directory / "document_level_metadata_metrics.csv")
 
-        # Format the metrics dictionary to limit to three digits
-        formatted_metrics = {k: f"{v:.3f}" for k, v in metrics_dict.items()}
-        logger.info("Performance metrics:\n\n %s", formatted_metrics)
+    #############################
+    # Evaluate the borehole extraction
+    #############################
+    if predictions:
+        predictions, number_of_truth_values = create_predictions_objects(
+            predictions, metadata_per_file, ground_truth_path
+        )
 
-        if mlflow_tracking:
-            import mlflow
+        if input_directory and draw_directory:
+            draw_predictions(predictions, input_directory, draw_directory)
 
-            mlflow.log_metrics(metrics_dict)
-            mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
-            mlflow.log_metrics(metadata_metrics)
-            mlflow.log_artifact(temp_directory / "document_level_metadata_metrics.csv")
-    else:
-        logger.warning("Ground truth file not found. Skipping evaluation.")
+        # evaluate the borehole extraction
+        if number_of_truth_values:  # only evaluate if ground truth is available
+            metrics = evaluate_borehole_extraction(predictions, number_of_truth_values)
+
+            metrics.document_level_metrics_df().to_csv(
+                temp_directory / "document_level_metrics.csv", index_label="document_name"
+            )  # mlflow.log_artifact expects a file
+            metrics_dict = metrics.metrics_dict()
+
+            # Format the metrics dictionary to limit to three digits
+            formatted_metrics = {k: f"{v:.3f}" for k, v in metrics_dict.items()}
+            logger.info("Performance metrics:\n\n %s", formatted_metrics)
+
+            if mlflow_tracking:
+                mlflow.log_metrics(metrics_dict)
+                mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
+
+        else:
+            logger.warning("Ground truth file not found. Skipping evaluation.")
 
 
 if __name__ == "__main__":

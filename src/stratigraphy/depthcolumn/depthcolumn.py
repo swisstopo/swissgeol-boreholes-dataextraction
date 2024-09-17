@@ -296,7 +296,7 @@ class BoundaryDepthColumn(DepthColumn):
             intersection = fitz.Rect(other_rect).intersect(self.rect())
             return intersection.is_valid and intersection.width > 0.25 * self.rect().width
 
-        return len([line for line in all_words if significant_intersection(line.rect)]) - len(self.entries)
+        return len([word for word in all_words if significant_intersection(word.rect)]) - len(self.entries)
 
     def pearson_correlation_coef(self) -> float:
         # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with

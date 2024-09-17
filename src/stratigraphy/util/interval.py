@@ -88,7 +88,9 @@ class BoundaryInterval(Interval):
         if self.start and self.end:
             return fitz.Rect(self.start.rect.x0, self.start.rect.y1, self.start.rect.x1, self.end.rect.y0)
 
-    def matching_blocks(self, all_blocks: list[TextBlock], block_index: int) -> tuple[list[TextBlock]]:
+    def matching_blocks(
+        self, all_blocks: list[TextBlock], block_index: int
+    ) -> tuple[list[TextBlock], list[TextBlock], list[TextBlock]]:
         """Calculates pre, exact and post blocks for the boundary interval.
 
         Pre contains all the blocks that are supposed to come before the interval.
@@ -100,7 +102,7 @@ class BoundaryInterval(Interval):
             block_index (int): Index of the current block.
 
         Returns:
-            tuple[list[TextBlock]]: Pre, exact and post blocks.
+            tuple[list[TextBlock], list[TextBlock], list[TextBlock]]: Pre, exact and post blocks.
         """
         pre, exact, post = [], [], []
 

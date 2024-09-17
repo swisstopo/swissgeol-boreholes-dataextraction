@@ -12,7 +12,7 @@ from stratigraphy.layer.layer_identifier_column import (
     find_layer_identifier_column,
     find_layer_identifier_column_entries,
 )
-from stratigraphy.lines.line import TextLine
+from stratigraphy.lines.line import TextLine, TextWord
 from stratigraphy.text.find_description import (
     get_description_blocks,
     get_description_blocks_from_layer_identifier,
@@ -101,10 +101,8 @@ def process_page(
 
     to_delete = []
     for i, (_depth_column, material_description_rect) in enumerate(pairs):
-        for _depth_column_2, material_description_rect_2 in pairs[i + 1 :]:
-            if material_description_rect.intersects(material_description_rect_2):
-                to_delete.append(i)
-                continue
+        if any(material_description_rect.intersects(other_rect) for _, other_rect in pairs[i + 1 :]):
+            to_delete.append(i)
     filtered_pairs = [item for index, item in enumerate(pairs) if index not in to_delete]
 
     groups = []  # list of matched depth intervals and text blocks
@@ -114,7 +112,7 @@ def process_page(
             description_lines = get_description_lines(lines, material_description_rect)
             if len(description_lines) > 1:
                 new_groups = match_columns(
-                    depth_column, description_lines, geometric_lines, material_description_rect, page_number, **params
+                    depth_column, description_lines, geometric_lines, material_description_rect, **params
                 )
                 groups.extend(new_groups)
         json_filtered_pairs = [
@@ -174,10 +172,7 @@ def process_page(
 
 
 def score_column_match(
-    depth_column: DepthColumn,
-    material_description_rect: fitz.Rect,
-    all_words: list[TextLine] | None = None,
-    **params: dict,
+    depth_column: DepthColumn, material_description_rect: fitz.Rect, all_words: list[TextWord] | None = None
 ) -> float:
     """Scores the match between a depth column and a material description.
 
@@ -185,7 +180,6 @@ def score_column_match(
         depth_column (DepthColumn): The depth column.
         material_description_rect (fitz.Rect): The material description rectangle.
         all_words (list[TextLine] | None, optional): List of the available textlines. Defaults to None.
-        **params (dict): Additional parameters for the matching pipeline. Kept for compatibility with the pipeline.
 
     Returns:
         float: The score of the match.
@@ -212,7 +206,6 @@ def match_columns(
     description_lines: list[TextLine],
     geometric_lines: list[Line],
     material_description_rect: fitz.Rect,
-    page_number: int,
     **params: dict,
 ) -> list:
     """Match the depth column entries with the description lines.
@@ -226,7 +219,6 @@ def match_columns(
         description_lines (list[TextLine]): The description lines.
         geometric_lines (list[Line]): The geometric lines.
         material_description_rect (fitz.Rect): The material description rectangle.
-        page_number (int): The page number.
         **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
@@ -244,7 +236,7 @@ def match_columns(
         blocks = get_description_blocks_from_layer_identifier(depth_column.entries, description_lines)
         groups = []
         for block in blocks:
-            depth_interval = depth_column.get_depth_interval(block)
+            depth_interval = find_depth_columns.get_depth_interval_from_textblock(block)
             if depth_interval:
                 groups.append({"depth_interval": depth_interval, "block": block})
             else:
@@ -375,13 +367,13 @@ def split_blocks_by_textline_length(blocks: list[TextBlock], target_split_count:
 
 
 def find_material_description_column(
-    lines: list[TextLine], depth_column: DepthColumn, language: str, **params: dict
+    lines: list[TextLine], depth_column: DepthColumn | None, language: str, **params: dict
 ) -> fitz.Rect | None:
     """Find the material description column given a depth column.
 
     Args:
         lines (list[TextLine]): The text lines of the page.
-        depth_column (DepthColumn): The depth column.
+        depth_column (DepthColumn | None): The depth column.
         language (str): The language of the page.
         **params (dict): Additional parameters for the matching pipeline.
 

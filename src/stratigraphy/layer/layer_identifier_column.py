@@ -3,10 +3,7 @@
 import re
 
 import fitz
-from stratigraphy.depthcolumn.depthcolumn import LayerDepthColumnEntry
-from stratigraphy.depthcolumn.find_depth_columns import extract_layer_depth_interval
 from stratigraphy.lines.line import TextLine
-from stratigraphy.text.textblock import TextBlock
 
 
 class LayerIdentifierEntry:
@@ -23,6 +20,11 @@ class LayerIdentifierEntry:
         return str(self.text)
 
     def to_json(self):
+        """Convert the layer identifier entry to a JSON serializable format.
+
+        Returns:
+            dict: The JSON serializable format of the layer identifier entry.
+        """
         return {
             "text": self.text,
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
@@ -113,42 +115,6 @@ class LayerIdentifierColumn:
             and rect.y0 <= self.rect().y0
             and self.rect().y1 <= rect.y1
         )
-
-    def get_depth_interval(self, block: TextBlock) -> LayerDepthColumnEntry:
-        """Extract depth interval from a material description block.
-
-        For borehole profiles in the Deriaz layout, the depth interval is usually found in the text description
-        of the material. Often, these text descriptions contain a further separation into multiple sub layers.
-        These sub layers have their own depth intervals. This function extracts the overall depth interval,
-        spanning across all mentioned sub layers.
-
-        Args:
-            block (TextBlock): The block to calculate the depth interval for.
-
-        Returns:
-            LayerDepthColumnEntry: The depth interval.
-        """
-        depth_entries = []
-        for line in block.lines:
-            try:
-                layer_depth_entry = extract_layer_depth_interval(
-                    line.text, line.rect, line.page_number, require_start_of_string=False
-                )
-                # require_start_of_string = False because the depth interval may not always start at the beginning
-                # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
-                if layer_depth_entry:
-                    depth_entries.append(layer_depth_entry)
-            except ValueError:
-                pass
-
-        if depth_entries:
-            # Merge the sub layers into one depth interval.
-            start = min([entry.start for entry in depth_entries], key=lambda start_entry: start_entry.value)
-            end = max([entry.end for entry in depth_entries], key=lambda end_entry: end_entry.value)
-
-            return LayerDepthColumnEntry(start, end)
-        else:
-            return None
 
     def to_json(self):
         """Convert the layer identifier column to a JSON serializable format.
