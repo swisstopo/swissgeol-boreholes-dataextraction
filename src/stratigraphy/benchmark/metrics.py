@@ -12,14 +12,6 @@ class DatasetMetrics:
     def __init__(self):
         self.metrics: dict[str, Metrics] = {}
 
-    def overall_metrics(self) -> Metrics:
-        """Can be used to compute micro averages."""
-        return Metrics(
-            tp=sum(metric.tp for metric in self.metrics.values()),
-            fp=sum(metric.fp for metric in self.metrics.values()),
-            fn=sum(metric.fn for metric in self.metrics.values()),
-        )
-
     def macro_f1(self) -> float:
         """Compute the macro F1 score."""
         if self.metrics:
@@ -82,8 +74,8 @@ class DatasetMetricsCatalog:
 
     def metrics_dict(self) -> dict[str, float]:
         """Return a dictionary with the overall metrics."""
-        groundwater_metrics = self.metrics["groundwater"].overall_metrics()
-        groundwater_depth_metrics = self.metrics["groundwater_depth"].overall_metrics()
+        groundwater_metrics = Metrics.from_metric_list(self.metrics["groundwater"].metrics.values())
+        groundwater_depth_metrics = Metrics.from_metric_list(self.metrics["groundwater_depth"].metrics.values())
 
         return {
             "F1": self.metrics["layer"].pseudo_macro_f1(),

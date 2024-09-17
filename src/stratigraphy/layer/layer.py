@@ -26,17 +26,3 @@ class LayerPrediction:
         return (
             f"LayerPrediction(material_description={self.material_description}, depth_interval={self.depth_interval})"
         )
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "material_description": self.material_description.to_json() if self.material_description else None,
-            "depth_interval": self.depth_interval.to_json() if self.depth_interval else None,
-            "material_is_correct": self.material_is_correct,
-            "depth_interval_is_correct": self.depth_interval_is_correct,
-            "id": str(self.id),
-        }

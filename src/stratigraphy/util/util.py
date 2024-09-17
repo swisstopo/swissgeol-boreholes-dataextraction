@@ -28,7 +28,7 @@ def x_overlap(rect1: fitz.Rect, rect2: fitz.Rect) -> float:  # noqa: D103
 
 
 def x_overlap_significant_smallest(rect1: fitz.Rect, rect2: fitz.Rect, level: float) -> bool:  # noqa: D103
-    """Check if the x overlap between two rectangles is significant.
+    """Check if the x overlap between two rectangles is significant relative to the width of the narrowest one.
 
     Args:
         rect1 (fitz.Rect): First rectangle.
@@ -42,7 +42,7 @@ def x_overlap_significant_smallest(rect1: fitz.Rect, rect2: fitz.Rect, level: fl
 
 
 def x_overlap_significant_largest(rect1: fitz.Rect, rect2: fitz.Rect, level: float) -> bool:  # noqa: D103
-    """Check if the x overlap between two rectangles is significant.
+    """Check if the x overlap between two rectangles is significant relative to the width of the widest one.
 
     Args:
         rect1 (fitz.Rect): First rectangle.

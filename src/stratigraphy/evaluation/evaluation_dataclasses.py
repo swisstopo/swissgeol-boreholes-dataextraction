@@ -8,7 +8,7 @@ import pandas as pd
 
 @dataclass
 class Metrics(metaclass=abc.ABCMeta):
-    """Metrics for metadata."""
+    """Metrics for the evaluation of extracted features (e.g., Groundwater, Elevation, Coordinates)."""
 
     tp: int
     fp: int
