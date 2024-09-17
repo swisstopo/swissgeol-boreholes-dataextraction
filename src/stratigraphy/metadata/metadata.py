@@ -38,7 +38,7 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
     page_dimensions: list[PageDimensions] = None
 
     def __init__(self, document: fitz.Document):
-        """Initializes the StratigraphyMetadata object.
+        """Initializes the BoreholeMetadata object.
 
         Args:
             document (fitz.Document): A PDF document.
