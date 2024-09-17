@@ -89,7 +89,7 @@ def common_options(f):
 @click.command()
 @common_options
 @click.option(
-    "-p", "--part", type=click.Choice(["all", "metadata"]), default="all", help="The part of the pipeline to run."
+    "-pa", "--part", type=click.Choice(["all", "metadata"]), default="all", help="The part of the pipeline to run."
 )
 def click_pipeline(
     input_directory: Path,
