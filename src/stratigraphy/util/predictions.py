@@ -259,6 +259,15 @@ class FilePredictions:
 
     @staticmethod
     def count_against_ground_truth(values: list, ground_truth: list) -> Metrics:
+        """Count the number of true positives, false positives and false negatives.
+
+        Args:
+            values (list): The values to count.
+            ground_truth (list): The ground truth values.
+
+        Returns:
+            dict: The number of true positives, false positives and false negatives.
+        """
         # Counter deals with duplicates when doing intersection
         values_counter = Counter(values)
         ground_truth_counter = Counter(ground_truth)

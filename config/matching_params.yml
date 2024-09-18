@@ -134,6 +134,9 @@ groundwater_keys:
   - GrW Sp
   - Wsp.
   - Wsp
+  - GW-Spiegel
+  - Grundwasser
+  - Spiegel
 
   # French
   - nappe phréatique
