@@ -3,14 +3,14 @@
 import fitz
 import pytest
 from stratigraphy import DATAPATH
-from stratigraphy.coordinates.coordinate_extraction import (
+from stratigraphy.lines.line import TextLine, TextWord
+from stratigraphy.metadata.coordinate_extraction import (
     Coordinate,
     CoordinateEntry,
     CoordinateExtractor,
     LV03Coordinate,
     LV95Coordinate,
 )
-from stratigraphy.util.line import TextLine, TextWord
 
 
 def test_strLV95():  # noqa: D103

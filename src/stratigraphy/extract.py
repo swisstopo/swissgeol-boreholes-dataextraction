@@ -5,23 +5,22 @@ import math
 
 import fitz
 
-from stratigraphy.util import find_depth_columns
-from stratigraphy.util.dataclasses import Line
-from stratigraphy.util.depthcolumn import DepthColumn
-from stratigraphy.util.find_depth_columns import get_depth_interval_from_textblock
-from stratigraphy.util.find_description import (
-    get_description_blocks,
-    get_description_blocks_from_layer_identifier,
-    get_description_lines,
-)
-from stratigraphy.util.interval import BoundaryInterval, Interval
-from stratigraphy.util.layer_identifier_column import (
+from stratigraphy.depthcolumn import find_depth_columns
+from stratigraphy.depthcolumn.depthcolumn import DepthColumn
+from stratigraphy.layer.layer_identifier_column import (
     LayerIdentifierColumn,
     find_layer_identifier_column,
     find_layer_identifier_column_entries,
 )
-from stratigraphy.util.line import TextLine, TextWord
-from stratigraphy.util.textblock import TextBlock, block_distance
+from stratigraphy.lines.line import TextLine, TextWord
+from stratigraphy.text.find_description import (
+    get_description_blocks,
+    get_description_blocks_from_layer_identifier,
+    get_description_lines,
+)
+from stratigraphy.text.textblock import TextBlock, block_distance
+from stratigraphy.util.dataclasses import Line
+from stratigraphy.util.interval import BoundaryInterval, Interval
 from stratigraphy.util.util import (
     remove_empty_predictions,
     x_overlap,
@@ -237,7 +236,7 @@ def match_columns(
         blocks = get_description_blocks_from_layer_identifier(depth_column.entries, description_lines)
         groups = []
         for block in blocks:
-            depth_interval = get_depth_interval_from_textblock(block)
+            depth_interval = find_depth_columns.get_depth_interval_from_textblock(block)
             if depth_interval:
                 groups.append({"depth_interval": depth_interval, "block": block})
             else:

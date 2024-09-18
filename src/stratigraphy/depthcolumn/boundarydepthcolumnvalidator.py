@@ -2,9 +2,9 @@
 
 import dataclasses
 
-from stratigraphy.util.depthcolumn import BoundaryDepthColumn
-from stratigraphy.util.depthcolumnentry import DepthColumnEntry
-from stratigraphy.util.line import TextWord
+from stratigraphy.depthcolumn.depthcolumn import BoundaryDepthColumn
+from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
+from stratigraphy.lines.line import TextWord
 
 
 @dataclasses.dataclass

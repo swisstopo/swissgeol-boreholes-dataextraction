@@ -6,12 +6,11 @@ import abc
 
 import fitz
 import numpy as np
-
+from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
+from stratigraphy.lines.line import TextLine, TextWord
+from stratigraphy.text.find_description import get_description_blocks
 from stratigraphy.util.dataclasses import Line
-from stratigraphy.util.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
-from stratigraphy.util.find_description import get_description_blocks
 from stratigraphy.util.interval import BoundaryInterval, Interval, LayerInterval
-from stratigraphy.util.line import TextLine, TextWord
 
 
 class DepthColumn(metaclass=abc.ABCMeta):

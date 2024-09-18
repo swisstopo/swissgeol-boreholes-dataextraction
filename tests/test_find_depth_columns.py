@@ -2,9 +2,13 @@
 
 import fitz
 import pytest
-from stratigraphy.util.depthcolumnentry import DepthColumnEntry
-from stratigraphy.util.find_depth_columns import depth_column_entries, find_depth_columns, find_layer_depth_columns
-from stratigraphy.util.line import TextLine, TextWord
+from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
+from stratigraphy.depthcolumn.find_depth_columns import (
+    depth_column_entries,
+    find_depth_columns,
+    find_layer_depth_columns,
+)
+from stratigraphy.lines.line import TextLine, TextWord
 
 PAGE_NUMBER = 1
 ALL_WORDS_FIND_DEPTH_COLUMN = [

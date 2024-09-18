@@ -12,6 +12,15 @@ from stratigraphy.util.dataclasses import Line, Point
 
 
 def x_overlap(rect1: fitz.Rect, rect2: fitz.Rect) -> float:  # noqa: D103
+    """Calculate the x overlap between two rectangles.
+
+    Args:
+        rect1 (fitz.Rect): First rectangle.
+        rect2 (fitz.Rect): Second rectangle.
+
+    Returns:
+        float: The x overlap between the two rectangles.
+    """
     if (rect1.x0 < rect2.x1) and (rect2.x0 < rect1.x1):
         return min(rect1.x1, rect2.x1) - max(rect1.x0, rect2.x0)
     else:
@@ -19,10 +28,30 @@ def x_overlap(rect1: fitz.Rect, rect2: fitz.Rect) -> float:  # noqa: D103
 
 
 def x_overlap_significant_smallest(rect1: fitz.Rect, rect2: fitz.Rect, level: float) -> bool:  # noqa: D103
+    """Check if the x overlap between two rectangles is significant relative to the width of the narrowest one.
+
+    Args:
+        rect1 (fitz.Rect): First rectangle.
+        rect2 (fitz.Rect): Second rectangle.
+        level (float): Level of significance.
+
+    Returns:
+        bool: True if the x overlap is significant, otherwise False.
+    """
     return x_overlap(rect1, rect2) > level * min(rect1.width, rect2.width)
 
 
 def x_overlap_significant_largest(rect1: fitz.Rect, rect2: fitz.Rect, level: float) -> bool:  # noqa: D103
+    """Check if the x overlap between two rectangles is significant relative to the width of the widest one.
+
+    Args:
+        rect1 (fitz.Rect): First rectangle.
+        rect2 (fitz.Rect): Second rectangle.
+        level (float): Level of significance.
+
+    Returns:
+        bool: True if the x overlap is significant, otherwise False.
+    """
     return x_overlap(rect1, rect2) > level * max(rect1.width, rect2.width)
 
 

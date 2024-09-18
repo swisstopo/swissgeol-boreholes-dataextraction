@@ -1,8 +1,7 @@
 """Methods for extracting plain text from a PDF document."""
 
 import fitz
-
-from stratigraphy.util.line import TextLine, TextWord
+from stratigraphy.lines.line import TextLine, TextWord
 
 
 def extract_text_lines(page: fitz.Page) -> list[TextLine]:

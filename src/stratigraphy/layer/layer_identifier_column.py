@@ -3,8 +3,7 @@
 import re
 
 import fitz
-
-from stratigraphy.util.line import TextLine
+from stratigraphy.lines.line import TextLine
 
 
 class LayerIdentifierEntry:
@@ -21,6 +20,11 @@ class LayerIdentifierEntry:
         return str(self.text)
 
     def to_json(self):
+        """Convert the layer identifier entry to a JSON serializable format.
+
+        Returns:
+            dict: The JSON serializable format of the layer identifier entry.
+        """
         return {
             "text": self.text,
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],

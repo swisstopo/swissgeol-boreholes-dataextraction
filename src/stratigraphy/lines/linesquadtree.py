@@ -3,7 +3,6 @@
 import uuid
 
 import quads
-
 from stratigraphy.util.dataclasses import Line, Point
 
 
