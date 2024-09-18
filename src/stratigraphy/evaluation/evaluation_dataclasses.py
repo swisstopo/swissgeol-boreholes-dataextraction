@@ -10,9 +10,6 @@ import pandas as pd
 class Metrics(metaclass=abc.ABCMeta):
     """Metrics for the evaluation of extracted features (e.g., Groundwater, Elevation, Coordinates)."""
 
-    # TODO: Currently, part of the metrics computation is also done in the DatasetMetrics class.
-    # On the long run, we should refactor this to have a single place where the metrics are computed.
-
     tp: int
     fp: int
     fn: int
@@ -58,6 +55,9 @@ class Metrics(metaclass=abc.ABCMeta):
             f"{feature_name}_f1": self.f1,
         }
 
+    # TODO: Currently, some other methods for averaging metrics are in the DatasetMetrics class.
+    # On the long run, we should refactor this to have a single place where these averaging computations are
+    # implemented.
     @staticmethod
     def micro_average(metric_list: list["Metrics"]) -> "Metrics":
         """Converts a list of metrics to a metric.

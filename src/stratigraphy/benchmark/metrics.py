@@ -9,9 +9,9 @@ from stratigraphy.evaluation.evaluation_dataclasses import Metrics
 class DatasetMetrics:
     """Keeps track of a particular metrics for all documents in a dataset."""
 
-    # TODO: Currently, part of the metrics computation is also done in the Metrics class.
-    # (see micro_average(metric_list: list["Metrics"]) On the long run, we should refactor
-    # this to have a single place where the metrics are computed.
+    # TODO: Currently, some methods for averaging metrics are in the Metrics class.
+    # (see micro_average(metric_list: list["Metrics"]). On the long run, we should refactor
+    # this to have a single place where these averaging computations are implemented.
 
     def __init__(self):
         self.metrics: dict[str, Metrics] = {}
