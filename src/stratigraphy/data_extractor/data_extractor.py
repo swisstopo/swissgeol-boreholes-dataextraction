@@ -122,14 +122,28 @@ class DataExtractor(ABC):
             list[TextLine]: The lines close to the key.
         """
         key_rect = key_line.rect
-        elevation_search_rect = fitz.Rect(
-            key_rect.x0 - self.search_left_factor * key_rect.width,
-            key_rect.y0,
-            key_rect.x1 + self.search_right_factor * key_rect.width,
-            key_rect.y1 + self.search_below_factor * key_rect.height,
-        )
-        feature_lines = [line for line in lines if line.rect.intersects(elevation_search_rect)]
+        feature_lines = self.get_lines_near_rect(lines, key_rect)
 
         # makes sure the line with the key is included first in the extracted information and the duplicate removed
         feature_lines.insert(0, key_line)
         return list(dict.fromkeys(feature_lines))
+
+    def get_lines_near_rect(self, lines, rect: fitz.Rect) -> list[TextLine]:
+        """Find the lines of the text that are close to a given rectangle.
+
+        Args:
+            lines (list[TextLine]): Arbitrary text lines to search in.
+            rect (fitz.Rect): The rectangle to search around.
+
+        Returns:
+            list[TextLine]: The lines close to the rectangle.
+        """
+        search_rect = fitz.Rect(
+            rect.x0 - self.search_left_factor * rect.width,
+            rect.y0,
+            rect.x1 + self.search_right_factor * rect.width,
+            rect.y1 + self.search_below_factor * rect.height,
+        )
+        feature_lines = [line for line in lines if line.rect.intersects(search_rect)]
+
+        return feature_lines
