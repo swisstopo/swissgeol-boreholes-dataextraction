@@ -397,7 +397,7 @@ We created a script that should make it possible for you to deploy the FastAPI i
 To deploy the staging version of the FastPI, run the following command: 
 
 ```shell
-IMAGE=borehole-fastapi ENV=stage AWS_PROFILE=dcleres-visium AWS_S3_BUCKET=dcleres-boreholes-integration-tmp ./deploy_api_aws_lamdba.sh
+IMAGE=borehole-fastapi ENV=stage AWS_PROFILE=dcleres-visium AWS_S3_BUCKET=dcleres-boreholes-integration-tmp ./deploy_api_aws_lambda.sh
 ```
 
 
