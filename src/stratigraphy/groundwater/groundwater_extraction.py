@@ -337,8 +337,8 @@ class GroundwaterLevelExtractor(DataExtractor):
             key_center = (illustration_rect.x0 + illustration_rect.x1) / 2
             groundwater_info_lines.sort(key=lambda line: abs((line.rect.x0 + line.rect.x1) / 2 - key_center))
             try:
-                extracted_gw = self.get_groundwater_info_from_lines(groundwater_info_lines, page)
-                if extracted_gw.groundwater.depth:
+                extracted_gw = self.get_groundwater_info_from_lines(groundwater_info_lines, page_number)
+                if extracted_gw.groundwater.depth or extracted_gw.groundwater.elevation:
                     extracted_groundwater_list.append(extracted_gw)
             except ValueError as error:
                 logger.warning("ValueError: %s", error)
@@ -370,6 +370,8 @@ class GroundwaterLevelExtractor(DataExtractor):
             if not found_groundwater:
                 logger.info("No groundwater found near the key on page %s.", page_number)
                 found_groundwater = self.get_groundwater_from_illustration(lines, page_number)
+                if not found_groundwater:
+                    logger.info("No groundwater found in the illustration on page %s.", page_number)
 
             if terrain_elevation:
                 # If the elevation is provided, calculate the depth of the groundwater
