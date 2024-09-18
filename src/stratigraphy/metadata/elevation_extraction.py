@@ -163,7 +163,9 @@ class ElevationExtractor(DataExtractor):
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
 
-    def extract_elevation_from_bbox(self, pdf_page: fitz.Page, page_number: int, bbox: fitz.Rect) -> Elevation | None:
+    def extract_elevation_from_bbox(
+        self, pdf_page: fitz.Page, page_number: int, bbox: fitz.Rect | None = None
+    ) -> Elevation | None:
         """Extract the elevation information from a bounding box.
 
         Args:
@@ -193,8 +195,5 @@ class ElevationExtractor(DataExtractor):
         for page in self.doc:
             page_number = page.number + 1  # page.number is 0-based
 
-            # Extract the elevation information from the page
-            # Make the search area a bit larger than the page itself - This is needed for "267123120-bp.pdf" where the
-            # elevation is located outside the page boundaries apparently.
-            search_area = page.rect * 1.25
-            return self.extract_elevation_from_bbox(page, page_number, search_area)
+            # TODO: This return the first found elevation, but we might want to check all pages.
+            return self.extract_elevation_from_bbox(page, page_number)
