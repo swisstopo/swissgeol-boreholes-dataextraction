@@ -66,6 +66,9 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
         for page in document:
             self.page_dimensions.append(PageDimensions(width=page.rect.width, height=page.rect.height))
 
+        # Sanity check
+        assert len(self.page_dimensions) == document.page_count, "Page count mismatch."
+
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
 

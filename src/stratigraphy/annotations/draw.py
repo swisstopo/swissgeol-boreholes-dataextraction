@@ -5,8 +5,8 @@ import os
 from pathlib import Path
 
 import fitz
+import pandas as pd
 from dotenv import load_dotenv
-from stratigraphy.benchmark.metrics import Metrics
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformationOnPage
 from stratigraphy.layer.layer import LayerPrediction
 from stratigraphy.metadata.coordinate_extraction import Coordinate
@@ -24,7 +24,12 @@ colors = ["purple", "blue"]
 logger = logging.getLogger(__name__)
 
 
-def draw_predictions(predictions: dict[str, FilePredictions], directory: Path, out_directory: Path) -> None:
+def draw_predictions(
+    predictions: dict[str, FilePredictions],
+    directory: Path,
+    out_directory: Path,
+    document_level_metadata_metrics: pd.DataFrame,
+) -> None:
     """Draw predictions on pdf pages.
 
     Draws various recognized information on the pdf pages present at directory and saves
@@ -42,6 +47,7 @@ def draw_predictions(predictions: dict[str, FilePredictions], directory: Path, o
         predictions (dict): Content of the predictions.json file.
         directory (Path): Path to the directory containing the pdf files.
         out_directory (Path): Path to the output directory where the images are saved.
+        document_level_metadata_metrics (pd.DataFrame): Document level metadata metrics.
     """
     if directory.is_file():  # deal with the case when we pass a file instead of a directory
         directory = directory.parent
@@ -51,6 +57,15 @@ def draw_predictions(predictions: dict[str, FilePredictions], directory: Path, o
         depths_materials_column_pairs = file_prediction.depths_materials_columns_pairs
         coordinates = file_prediction.metadata.coordinates
         elevation = file_prediction.metadata.elevation
+
+        # Assess the correctness of the metadata
+        is_coordinates_correct = document_level_metadata_metrics[
+            document_level_metadata_metrics.document_name == file_name
+        ].coordinate.values[0]
+        is_elevation_correct = document_level_metadata_metrics[
+            document_level_metadata_metrics.document_name == file_name
+        ].elevation.values[0]
+
         with fitz.Document(directory / file_name) as doc:
             for page_index, page in enumerate(doc):
                 page_number = page_index + 1
@@ -61,9 +76,9 @@ def draw_predictions(predictions: dict[str, FilePredictions], directory: Path, o
                         page.derotation_matrix,
                         page.rotation,
                         coordinates,
-                        file_prediction.metadata_is_correct.get("coordinates"),
+                        is_coordinates_correct,
                         elevation,
-                        file_prediction.metadata_is_correct.get("elevation"),
+                        is_elevation_correct,
                     )
                 if coordinates is not None and page_number == coordinates.page:
                     draw_coordinates(shape, coordinates)
@@ -107,9 +122,9 @@ def draw_metadata(
     derotation_matrix: fitz.Matrix,
     rotation: float,
     coordinates: Coordinate | None,
-    coordinates_is_correct: Metrics,
+    is_coordinate_correct: bool,
     elevation_info: Elevation | None,
-    elevation_is_correct: Metrics,
+    is_elevation_correct: bool,
 ) -> None:
     """Draw the extracted metadata on the top of the given PDF page.
 
@@ -121,17 +136,15 @@ def draw_metadata(
         derotation_matrix (fitz.Matrix): The derotation matrix of the page.
         rotation (float): The rotation of the page.
         coordinates (Coordinate | None): The coordinate object to draw.
-        coordinates_is_correct (Metrics): Whether the coordinates are correct.
+        is_coordinate_correct (Metrics): Whether the coordinate information is correct.
         elevation_info (ElevationInformation | None): The elevation information to draw.
-        elevation_is_correct (Metrics): Whether the elevation information is correct.
+        is_elevation_correct (Metrics): Whether the elevation information is correct.
     """
     # TODO associate correctness with the extracted coordinates in a better way
-    coordinate_correct = coordinates_is_correct is not None and coordinates_is_correct.tp > 0
-    coordinate_color = "green" if coordinate_correct else "red"
+    coordinate_color = "green" if is_coordinate_correct else "red"
     coordinate_rect = fitz.Rect([5, 5, 200, 25])
 
-    elevation_correct = elevation_is_correct is not None and elevation_is_correct.tp > 0
-    elevation_color = "green" if elevation_correct else "red"
+    elevation_color = "green" if is_elevation_correct else "red"
     elevation_rect = fitz.Rect([5, 25, 200, 45])
 
     shape.draw_rect(coordinate_rect * derotation_matrix)

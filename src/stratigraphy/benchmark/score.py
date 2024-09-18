@@ -230,14 +230,14 @@ def evaluate(
     #############################
     metadata_metrics_list = evaluate_metadata_extraction(metadata_per_file, ground_truth_path)
     metadata_metrics = metadata_metrics_list.get_cumulated_metrics()
-    document_level_metrics = metadata_metrics_list.get_document_level_metrics()
+    document_level_metadata_metrics = metadata_metrics_list.get_document_level_metrics()
 
-    document_level_metrics.to_csv(
+    document_level_metadata_metrics.to_csv(
         temp_directory / "document_level_metadata_metrics.csv"
     )  # mlflow.log_artifact expects a file
 
     # print the metrics
-    logger.info("Metadata Performance metrics:\n\n")
+    logger.info("Metadata Performance metrics:")
     logger.info(metadata_metrics)
 
     if mlflow_tracking:
@@ -255,7 +255,7 @@ def evaluate(
         )
 
         if input_directory and draw_directory:
-            draw_predictions(predictions, input_directory, draw_directory)
+            draw_predictions(predictions, input_directory, draw_directory, document_level_metadata_metrics)
 
         # evaluate the borehole extraction
         if number_of_truth_values:  # only evaluate if ground truth is available
@@ -268,7 +268,7 @@ def evaluate(
 
             # Format the metrics dictionary to limit to three digits
             formatted_metrics = {k: f"{v:.3f}" for k, v in metrics_dict.items()}
-            logger.info("Performance metrics:\n\n %s", formatted_metrics)
+            logger.info("Performance metrics: %s", formatted_metrics)
 
             if mlflow_tracking:
                 mlflow.log_metrics(metrics_dict)

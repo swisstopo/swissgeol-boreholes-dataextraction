@@ -9,6 +9,10 @@ from stratigraphy.evaluation.evaluation_dataclasses import Metrics
 class DatasetMetrics:
     """Keeps track of a particular metrics for all documents in a dataset."""
 
+    # TODO: Currently, part of the metrics computation is also done in the Metrics class.
+    # (see micro_average(metric_list: list["Metrics"]) On the long run, we should refactor
+    # this to have a single place where the metrics are computed.
+
     def __init__(self):
         self.metrics: dict[str, Metrics] = {}
 
@@ -74,8 +78,8 @@ class DatasetMetricsCatalog:
 
     def metrics_dict(self) -> dict[str, float]:
         """Return a dictionary with the overall metrics."""
-        groundwater_metrics = Metrics.from_metric_list(self.metrics["groundwater"].metrics.values())
-        groundwater_depth_metrics = Metrics.from_metric_list(self.metrics["groundwater_depth"].metrics.values())
+        groundwater_metrics = Metrics.micro_average(self.metrics["groundwater"].metrics.values())
+        groundwater_depth_metrics = Metrics.micro_average(self.metrics["groundwater_depth"].metrics.values())
 
         return {
             "F1": self.metrics["layer"].pseudo_macro_f1(),

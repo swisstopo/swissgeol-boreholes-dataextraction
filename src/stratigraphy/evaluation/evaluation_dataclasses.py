@@ -10,6 +10,9 @@ import pandas as pd
 class Metrics(metaclass=abc.ABCMeta):
     """Metrics for the evaluation of extracted features (e.g., Groundwater, Elevation, Coordinates)."""
 
+    # TODO: Currently, part of the metrics computation is also done in the DatasetMetrics class.
+    # On the long run, we should refactor this to have a single place where the metrics are computed.
+
     tp: int
     fp: int
     fn: int
@@ -56,7 +59,7 @@ class Metrics(metaclass=abc.ABCMeta):
         }
 
     @staticmethod
-    def from_metric_list(metric_list: list["Metrics"]) -> "Metrics":
+    def micro_average(metric_list: list["Metrics"]) -> "Metrics":
         """Converts a list of metrics to a metric.
 
         Args:
@@ -111,18 +114,18 @@ class FileBoreholeMetadataMetrics(BoreholeMetadataMetrics):
 class OverallBoreholeMetadataMetrics(metaclass=abc.ABCMeta):
     """Metrics for borehole metadata."""
 
-    borehole_metadata_metrics: list[BoreholeMetadataMetrics] = None
+    borehole_metadata_metrics: list[FileBoreholeMetadataMetrics] = None
 
     def __init__(self):
-        """Initializes the FileBoreholeMetadataMetrics object."""
+        """Initializes the OverallBoreholeMetadataMetrics object."""
         self.borehole_metadata_metrics = []
 
     def get_cumulated_metrics(self) -> dict:
         """Evaluate the metadata metrics."""
-        elevation_metrics = Metrics.from_metric_list(
+        elevation_metrics = Metrics.micro_average(
             [metadata.elevation_metrics for metadata in self.borehole_metadata_metrics]
         )
-        coordinates_metrics = Metrics.from_metric_list(
+        coordinates_metrics = Metrics.micro_average(
             [metadata.coordinates_metrics for metadata in self.borehole_metadata_metrics]
         )
         return BoreholeMetadataMetrics(

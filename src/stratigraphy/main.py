@@ -283,9 +283,9 @@ def start_pipeline(
                 if part == "all":
                     predictions[filename]["layers"] = layer_predictions_list
                     predictions[filename]["depths_materials_column_pairs"] = depths_materials_column_pairs_list
-                    predictions[filename]["page_dimensions"] = metadata.page_dimensions
-
-                    assert len(metadata.page_dimensions) == doc.page_count, "Page count mismatch."
+                    predictions[filename]["page_dimensions"] = (
+                        metadata.page_dimensions
+                    )  # TODO: Remove this as it is already stored in the metadata
 
     logger.info("Metadata written to %s", metadata_path)
     with open(metadata_path, "w", encoding="utf8") as file:

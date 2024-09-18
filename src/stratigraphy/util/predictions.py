@@ -37,7 +37,6 @@ class FilePredictions:
         self.file_name = file_name
         self.language = language
         self.metadata = metadata
-        self.metadata_is_correct: dict = {}
         self.page_sizes: list[dict[str, float]] = page_sizes
         self.groundwater_entries = groundwater_entries
         self.groundwater_is_correct: dict = {}
