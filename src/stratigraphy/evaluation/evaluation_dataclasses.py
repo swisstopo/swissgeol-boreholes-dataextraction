@@ -134,8 +134,15 @@ class OverallBoreholeMetadataMetrics(metaclass=abc.ABCMeta):
 
     def get_document_level_metrics(self) -> pd.DataFrame:
         """Get the document level metrics."""
-        # Collect all the data frames in a list
-        frames = [metadata.get_document_level_metrics() for metadata in self.borehole_metadata_metrics]
+        document_level_metrics_list = []
+        for metadata in self.borehole_metadata_metrics:
+            document_level_metrics_list.append(metadata.get_document_level_metrics())  # Append each DataFrame
 
-        # Concatenate them once at the end
-        return pd.concat(frames, ignore_index=True)
+        # Concatenate all DataFrames at once
+        document_level_metrics = pd.concat(document_level_metrics_list, ignore_index=True)
+
+        # assert that the order of the files is preserved
+        assert document_level_metrics["document_name"].tolist() == [
+            metadata.filename for metadata in self.borehole_metadata_metrics
+        ]
+        return document_level_metrics
