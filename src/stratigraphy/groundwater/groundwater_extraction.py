@@ -12,10 +12,10 @@ import fitz
 import numpy as np
 import skimage as ski
 from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature
-from stratigraphy.elevation.elevation_extraction import ElevationInformation
 from stratigraphy.groundwater.utility import extract_date, extract_depth, extract_elevation
-from stratigraphy.util.extract_text import extract_text_lines
-from stratigraphy.util.line import TextLine
+from stratigraphy.lines.line import TextLine
+from stratigraphy.metadata.elevation_extraction import Elevation
+from stratigraphy.text.extract_text import extract_text_lines
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +99,7 @@ class GroundwaterInformationOnPage(ExtractedFeature):
         """
         return self.groundwater > 0
 
-    def to_dict(self) -> dict:
+    def to_json(self) -> dict:
         """Converts the object to a dictionary.
 
         Returns:
@@ -346,9 +346,7 @@ class GroundwaterLevelExtractor(DataExtractor):
 
         return extracted_groundwater_list
 
-    def extract_groundwater(
-        self, terrain_elevation: ElevationInformation | None
-    ) -> list[GroundwaterInformationOnPage]:
+    def extract_groundwater(self, terrain_elevation: Elevation | None) -> list[GroundwaterInformationOnPage]:
         """Extracts the groundwater information from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the coordinates in the respective text of the

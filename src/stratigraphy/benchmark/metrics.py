@@ -1,65 +1,20 @@
 """Classes for keeping track of metrics such as the F1-score, precision and recall."""
 
 from collections.abc import Callable
-from dataclasses import dataclass
 
 import pandas as pd
-
-
-@dataclass
-class Metrics:
-    """Computes F-score metrics.
-
-    See also https://en.wikipedia.org/wiki/F-score
-
-    Args:
-        tp (int): The true positive count
-        fp (int): The false positive count
-        fn (int): The false negative count
-    """
-
-    tp: int
-    fp: int
-    fn: int
-
-    @property
-    def precision(self) -> float:
-        """Calculate the precision."""
-        if self.tp + self.fp > 0:
-            return self.tp / (self.tp + self.fp)
-        else:
-            return 0
-
-    @property
-    def recall(self) -> float:
-        """Calculate the recall."""
-        if self.tp + self.fn > 0:
-            return self.tp / (self.tp + self.fn)
-        else:
-            return 0
-
-    @property
-    def f1(self) -> float:
-        """Calculate the F1 score."""
-        if self.precision + self.recall > 0:
-            return 2 * self.precision * self.recall / (self.precision + self.recall)
-        else:
-            return 0
+from stratigraphy.evaluation.evaluation_dataclasses import Metrics
 
 
 class DatasetMetrics:
     """Keeps track of a particular metrics for all documents in a dataset."""
 
+    # TODO: Currently, some methods for averaging metrics are in the Metrics class.
+    # (see micro_average(metric_list: list["Metrics"]). On the long run, we should refactor
+    # this to have a single place where these averaging computations are implemented.
+
     def __init__(self):
         self.metrics: dict[str, Metrics] = {}
-
-    def overall_metrics(self) -> Metrics:
-        """Can be used to compute micro averages."""
-        return Metrics(
-            tp=sum(metric.tp for metric in self.metrics.values()),
-            fp=sum(metric.fp for metric in self.metrics.values()),
-            fn=sum(metric.fn for metric in self.metrics.values()),
-        )
 
     def macro_f1(self) -> float:
         """Compute the macro F1 score."""
@@ -93,6 +48,7 @@ class DatasetMetrics:
             return 0
 
     def to_dataframe(self, name: str, fn: Callable[[Metrics], float]) -> pd.DataFrame:
+        """Convert the metrics to a DataFrame."""
         series = pd.Series({filename: fn(metric) for filename, metric in self.metrics.items()})
         return series.to_frame(name=name)
 
@@ -104,6 +60,7 @@ class DatasetMetricsCatalog:
         self.metrics: dict[str, DatasetMetrics] = {}
 
     def document_level_metrics_df(self) -> pd.DataFrame:
+        """Return a DataFrame with all the document level metrics."""
         all_series = [
             self.metrics["layer"].to_dataframe("F1", lambda metric: metric.f1),
             self.metrics["layer"].to_dataframe("precision", lambda metric: metric.precision),
@@ -111,8 +68,6 @@ class DatasetMetricsCatalog:
             self.metrics["depth_interval"].to_dataframe("Depth_interval_accuracy", lambda metric: metric.precision),
             self.metrics["layer"].to_dataframe("Number Elements", lambda metric: metric.tp + metric.fn),
             self.metrics["layer"].to_dataframe("Number wrong elements", lambda metric: metric.fp + metric.fn),
-            self.metrics["coordinates"].to_dataframe("coordinates", lambda metric: metric.f1),
-            self.metrics["elevation"].to_dataframe("elevation", lambda metric: metric.f1),
             self.metrics["groundwater"].to_dataframe("groundwater", lambda metric: metric.f1),
             self.metrics["groundwater_depth"].to_dataframe("groundwater_depth", lambda metric: metric.f1),
         ]
@@ -122,10 +77,9 @@ class DatasetMetricsCatalog:
         return document_level_metrics
 
     def metrics_dict(self) -> dict[str, float]:
-        coordinates_metrics = self.metrics["coordinates"].overall_metrics()
-        groundwater_metrics = self.metrics["groundwater"].overall_metrics()
-        groundwater_depth_metrics = self.metrics["groundwater_depth"].overall_metrics()
-        elevation_metrics = self.metrics["elevation"].overall_metrics()
+        """Return a dictionary with the overall metrics."""
+        groundwater_metrics = Metrics.micro_average(self.metrics["groundwater"].metrics.values())
+        groundwater_depth_metrics = Metrics.micro_average(self.metrics["groundwater_depth"].metrics.values())
 
         return {
             "F1": self.metrics["layer"].pseudo_macro_f1(),
@@ -140,16 +94,10 @@ class DatasetMetricsCatalog:
             "fr_recall": self.metrics["fr_layer"].macro_recall(),
             "fr_precision": self.metrics["fr_layer"].macro_precision(),
             "fr_depth_interval_accuracy": self.metrics["fr_depth_interval"].macro_precision(),
-            "coordinate_f1": coordinates_metrics.f1,
-            "coordinate_recall": coordinates_metrics.recall,
-            "coordinate_precision": coordinates_metrics.precision,
             "groundwater_f1": groundwater_metrics.f1,
             "groundwater_recall": groundwater_metrics.recall,
             "groundwater_precision": groundwater_metrics.precision,
             "groundwater_depth_f1": groundwater_depth_metrics.f1,
             "groundwater_depth_recall": groundwater_depth_metrics.recall,
             "groundwater_depth_precision": groundwater_depth_metrics.precision,
-            "elevation_f1": elevation_metrics.f1,
-            "elevation_recall": elevation_metrics.recall,
-            "elevation_precision": elevation_metrics.precision,
         }

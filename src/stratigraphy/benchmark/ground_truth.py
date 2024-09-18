@@ -16,8 +16,11 @@ class GroundTruth:
     def __init__(self, path: Path):
         self.ground_truth = defaultdict(dict)
 
-        with open(path) as in_file:
+        # Load the ground truth data
+        with open(path, encoding="utf-8") as in_file:
             ground_truth = json.load(in_file)
+
+        # Parse the ground truth data
         for borehole_profile, ground_truth_item in ground_truth.items():
             layers = ground_truth_item["layers"]
             self.ground_truth[borehole_profile]["layers"] = [
@@ -42,6 +45,6 @@ class GroundTruth:
         """
         if file_name in self.ground_truth:
             return self.ground_truth[file_name]
-        else:
-            logger.warning(f"No ground truth data found for {file_name}.")
-            return {}
+
+        logger.warning("No ground truth data found for %s.", file_name)
+        return {}

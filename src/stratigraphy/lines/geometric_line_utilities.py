@@ -7,9 +7,8 @@ from math import atan, cos, pi, sin
 
 import numpy as np
 from numpy.typing import ArrayLike
-
+from stratigraphy.lines.linesquadtree import LinesQuadTree
 from stratigraphy.util.dataclasses import Line, Point
-from stratigraphy.util.linesquadtree import LinesQuadTree
 
 logger = logging.getLogger(__name__)
 

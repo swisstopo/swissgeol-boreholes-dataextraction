@@ -7,8 +7,7 @@ from typing import Any
 
 import fitz
 import numpy as np
-
-from stratigraphy.util.line import TextLine
+from stratigraphy.lines.line import TextLine
 
 
 @dataclass

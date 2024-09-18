@@ -9,10 +9,11 @@ from typing import Any
 
 import click
 import fitz
-from stratigraphy.coordinates.coordinate_extraction import Coordinate
+from stratigraphy.layer.layer import LayerPrediction
+from stratigraphy.metadata.coordinate_extraction import Coordinate
+from stratigraphy.text.textblock import MaterialDescription
 from stratigraphy.util.interval import AnnotatedInterval
-from stratigraphy.util.predictions import BoreholeMetaData, FilePredictions, LayerPrediction
-from stratigraphy.util.textblock import MaterialDescription
+from stratigraphy.util.predictions import BoreholeMetaData, FilePredictions
 
 logger = logging.getLogger(__name__)
 

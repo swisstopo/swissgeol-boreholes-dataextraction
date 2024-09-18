@@ -1,7 +1,7 @@
 """Test suite for the interval module."""
 
 import fitz
-from stratigraphy.util.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
+from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
 from stratigraphy.util.interval import BoundaryInterval, LayerInterval
 
 

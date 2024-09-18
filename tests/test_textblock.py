@@ -1,8 +1,8 @@
 """Test suite for the textblock module."""
 
 import fitz
-from stratigraphy.util.line import TextLine, TextWord
-from stratigraphy.util.textblock import TextBlock, block_distance
+from stratigraphy.lines.line import TextLine, TextWord
+from stratigraphy.text.textblock import TextBlock, block_distance
 
 
 def test_concatenate():  # noqa: D103

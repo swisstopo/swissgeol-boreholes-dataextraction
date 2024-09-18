@@ -1,8 +1,8 @@
 """Test suite for the find_depth_columns module."""
 
 import fitz
-from stratigraphy.util.depthcolumn import BoundaryDepthColumn
-from stratigraphy.util.depthcolumnentry import DepthColumnEntry
+from stratigraphy.depthcolumn.depthcolumn import BoundaryDepthColumn
+from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
 
 
 def test_boundarydepthcolumn_isarithmeticprogression():  # noqa: D103

@@ -6,9 +6,13 @@ import abc
 
 import fitz
 
-from stratigraphy.util.depthcolumnentry import AnnotatedDepthColumnEntry, DepthColumnEntry, LayerDepthColumnEntry
-from stratigraphy.util.line import TextLine
-from stratigraphy.util.textblock import TextBlock
+from stratigraphy.depthcolumn.depthcolumnentry import (
+    AnnotatedDepthColumnEntry,
+    DepthColumnEntry,
+    LayerDepthColumnEntry,
+)
+from stratigraphy.lines.line import TextLine
+from stratigraphy.text.textblock import TextBlock
 
 
 class Interval(metaclass=abc.ABCMeta):

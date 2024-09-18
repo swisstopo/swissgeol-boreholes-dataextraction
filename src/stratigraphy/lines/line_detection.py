@@ -8,12 +8,11 @@ import fitz
 import numpy as np
 from dotenv import load_dotenv
 from numpy.typing import ArrayLike
-
-from stratigraphy.util.dataclasses import Line
-from stratigraphy.util.geometric_line_utilities import (
+from stratigraphy.lines.geometric_line_utilities import (
     drop_vertical_lines,
     merge_parallel_lines_quadtree,
 )
+from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.util import line_from_array, read_params
 
 load_dotenv()

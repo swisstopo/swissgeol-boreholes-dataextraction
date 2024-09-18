@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 import fitz
 import regex
-from stratigraphy.util.line import TextLine
+from stratigraphy.lines.line import TextLine
 from stratigraphy.util.util import read_params
 
 logger = logging.getLogger(__name__)

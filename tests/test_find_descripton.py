@@ -1,9 +1,9 @@
 """Test suite for the find_description module."""
 
 import fitz
+from stratigraphy.lines.line import TextLine, TextWord
+from stratigraphy.text.find_description import get_description_blocks
 from stratigraphy.util.dataclasses import Line, Point
-from stratigraphy.util.find_description import get_description_blocks
-from stratigraphy.util.line import TextLine, TextWord
 
 page_number = 1
 textline1 = TextLine([TextWord(fitz.Rect([0, 0, 10, 10]), "Hello", page_number)])

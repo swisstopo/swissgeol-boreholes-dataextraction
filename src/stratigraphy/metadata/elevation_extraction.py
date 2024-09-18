@@ -13,14 +13,14 @@ import fitz
 import numpy as np
 from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature
 from stratigraphy.groundwater.utility import extract_elevation
-from stratigraphy.util.extract_text import extract_text_lines_from_bbox
-from stratigraphy.util.line import TextLine
+from stratigraphy.lines.line import TextLine
+from stratigraphy.text.extract_text import extract_text_lines_from_bbox
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class ElevationInformation(ExtractedFeature):
+class Elevation(ExtractedFeature):
     """Abstract class for Elevation Information."""
 
     elevation: float | None = None  # Elevation relative to the mean sea level
@@ -39,9 +39,9 @@ class ElevationInformation(ExtractedFeature):
         Returns:
             str: The object as a string.
         """
-        return f"ElevationInformation(" f"elevation={self.elevation}, " f"page={self.page})"
+        return f"Elevation(" f"elevation={self.elevation}, " f"page={self.page})"
 
-    def to_dict(self) -> dict:
+    def to_json(self) -> dict:
         """Converts the object to a dictionary.
 
         Returns:
@@ -74,7 +74,7 @@ class ElevationExtractor(DataExtractor):
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ate": "ote"}
 
-    def get_elevation_near_key(self, lines: list[TextLine], page: int) -> ElevationInformation | None:
+    def get_elevation_near_key(self, lines: list[TextLine], page: int) -> Elevation | None:
         """Find elevation from text lines that are close to an explicit "elevation" label.
 
         Also apply some preprocessing to the text of those text lines, to deal with some common (OCR) errors.
@@ -85,7 +85,7 @@ class ElevationExtractor(DataExtractor):
             page_width (float): the width of the current page (in points / PyMuPDF coordinates)
 
         Returns:
-            ElevationInformation | None: the found elevation
+            Elevation | None: the found elevation
         """
         # find the key that indicates the elevation information
         elevation_key_lines = self.find_feature_key(lines)
@@ -104,16 +104,14 @@ class ElevationExtractor(DataExtractor):
 
         return self.select_best_elevation_information(extracted_elevation_informations)
 
-    def select_best_elevation_information(
-        self, extracted_elevation_informations: list[ElevationInformation]
-    ) -> ElevationInformation | None:
+    def select_best_elevation_information(self, extracted_elevation_informations: list[Elevation]) -> Elevation | None:
         """Select the best elevation information from a list of extracted elevation information.
 
         Args:
-            extracted_elevation_informations (list[ElevationInformation]): A list of extracted elevation information.
+            extracted_elevation_informations (list[Elevation]): A list of extracted elevation information.
 
         Returns:
-            ElevationInformation | None: The best extracted elevation information.
+            Elevation | None: The best extracted elevation information.
         """
         # Sort the extracted elevation information by elevation with the highest elevation first
         extracted_elevation_informations.sort(key=lambda x: x.elevation, reverse=True)
@@ -121,7 +119,7 @@ class ElevationExtractor(DataExtractor):
         # Return the first element of the sorted list
         return extracted_elevation_informations[0] if extracted_elevation_informations else None
 
-    def get_elevation_from_lines(self, lines: list[TextLine], page: int) -> ElevationInformation:
+    def get_elevation_from_lines(self, lines: list[TextLine], page: int) -> Elevation:
         r"""Matches the elevation in a string of text.
 
         Args:
@@ -129,7 +127,7 @@ class ElevationExtractor(DataExtractor):
             page (int): the page number (1-based) of the PDF document
 
         Returns:
-            ElevationInformation: A list of potential elevation
+            Elevation: A list of potential elevation
         """
         matched_lines_rect = []
 
@@ -161,13 +159,13 @@ class ElevationExtractor(DataExtractor):
             rect_union = None
 
         if elevation:
-            return ElevationInformation(elevation=elevation, rect=rect_union, page=page)
+            return Elevation(elevation=elevation, rect=rect_union, page=page)
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
 
     def extract_elevation_from_bbox(
         self, pdf_page: fitz.Page, page_number: int, bbox: fitz.Rect | None = None
-    ) -> ElevationInformation | None:
+    ) -> Elevation | None:
         """Extract the elevation information from a bounding box.
 
         Args:
@@ -176,7 +174,7 @@ class ElevationExtractor(DataExtractor):
             page_number (int): The page number.
 
         Returns:
-            ElevationInformation | None: The extracted elevation information.
+            Elevation | None: The extracted elevation information.
         """
         lines = extract_text_lines_from_bbox(pdf_page, bbox)
 
@@ -188,7 +186,7 @@ class ElevationExtractor(DataExtractor):
 
         logger.info("No elevation found in the bounding box.")
 
-    def extract_elevation(self) -> ElevationInformation | None:
+    def extract_elevation(self) -> Elevation | None:
         """Extracts the elevation information from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the feature key in the respective text of the
@@ -197,4 +195,5 @@ class ElevationExtractor(DataExtractor):
         for page in self.doc:
             page_number = page.number + 1  # page.number is 0-based
 
+            # TODO: This return the first found elevation, but we might want to check all pages.
             return self.extract_elevation_from_bbox(page, page_number)

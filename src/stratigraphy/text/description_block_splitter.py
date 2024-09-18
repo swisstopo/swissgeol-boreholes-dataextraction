@@ -4,10 +4,9 @@ import abc
 
 import fitz
 import numpy as np
-
+from stratigraphy.lines.line import TextLine
+from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.dataclasses import Line
-from stratigraphy.util.line import TextLine
-from stratigraphy.util.textblock import TextBlock
 
 
 class DescriptionBlockSplitter(metaclass=abc.ABCMeta):
