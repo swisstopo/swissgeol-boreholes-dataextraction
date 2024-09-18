@@ -103,10 +103,10 @@ class FileBoreholeMetadataMetrics(BoreholeMetadataMetrics):
         """Get the document level metrics."""
         return pd.DataFrame(
             data={
-                "document_name": [self.filename],
                 "elevation": [self.elevation_metrics.f1],
                 "coordinate": [self.coordinates_metrics.f1],
-            }
+            },
+            index=[self.filename],
         )
 
 
@@ -133,16 +133,7 @@ class OverallBoreholeMetadataMetrics(metaclass=abc.ABCMeta):
         ).to_json()
 
     def get_document_level_metrics(self) -> pd.DataFrame:
-        """Get the document level metrics."""
-        document_level_metrics_list = []
-        for metadata in self.borehole_metadata_metrics:
-            document_level_metrics_list.append(metadata.get_document_level_metrics())  # Append each DataFrame
-
-        # Concatenate all DataFrames at once
-        document_level_metrics = pd.concat(document_level_metrics_list, ignore_index=True)
-
-        # assert that the order of the files is preserved
-        assert document_level_metrics["document_name"].tolist() == [
-            metadata.filename for metadata in self.borehole_metadata_metrics
-        ]
-        return document_level_metrics
+        # Get a dataframe per document, concatenate, and sort by index (document name)
+        return pd.concat(
+            [metadata.get_document_level_metrics() for metadata in self.borehole_metadata_metrics]
+        ).sort_index()

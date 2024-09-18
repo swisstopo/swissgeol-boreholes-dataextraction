@@ -233,7 +233,7 @@ def evaluate(
     document_level_metadata_metrics = metadata_metrics_list.get_document_level_metrics()
 
     document_level_metadata_metrics.to_csv(
-        temp_directory / "document_level_metadata_metrics.csv"
+        temp_directory / "document_level_metadata_metrics.csv", index_label="document_name"
     )  # mlflow.log_artifact expects a file
 
     # print the metrics
@@ -296,4 +296,5 @@ if __name__ == "__main__":
     with open(predictions_path, encoding="utf8") as file:
         predictions = json.load(file)
 
+    # TODO read BoreholeMetadataList from JSON file and pass to the evaluate method
     evaluate(predictions, ground_truth_path, temp_directory, input_directory=None, draw_directory=None)

@@ -59,12 +59,8 @@ def draw_predictions(
         elevation = file_prediction.metadata.elevation
 
         # Assess the correctness of the metadata
-        is_coordinates_correct = document_level_metadata_metrics[
-            document_level_metadata_metrics.document_name == file_name
-        ].coordinate.values[0]
-        is_elevation_correct = document_level_metadata_metrics[
-            document_level_metadata_metrics.document_name == file_name
-        ].elevation.values[0]
+        is_coordinates_correct = document_level_metadata_metrics.loc[file_name].coordinate
+        is_elevation_correct = document_level_metadata_metrics.loc[file_name].elevation
 
         with fitz.Document(directory / file_name) as doc:
             for page_index, page in enumerate(doc):
