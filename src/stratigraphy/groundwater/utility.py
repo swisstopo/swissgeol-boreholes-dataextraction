@@ -45,12 +45,15 @@ def extract_depth(text: str, max_depth: int) -> float | None:
     for pattern in depth_patterns:
         depth_match = regex.search(pattern, corrected_text)
         if depth_match:
-            depth = float(depth_match.group(1).replace(",", "."))
-            if depth > max_depth:
-                # If the extracted depth is greater than the max depth, set it to None and continue searching.
-                depth = None
-            else:
-                break
+            try:
+                depth = float(depth_match.group(1).replace(",", "."))
+                if depth > max_depth:
+                    # If the extracted depth is greater than the max depth, set it to None and continue searching.
+                    depth = None
+                else:
+                    break
+            except ValueError:
+                continue
     return depth
 
 

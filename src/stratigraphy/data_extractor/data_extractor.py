@@ -48,6 +48,8 @@ class DataExtractor(ABC):
     search_right_factor: float = 0
     # How much below a key do we look for the feature information, as a multiple of the key line height
     search_below_factor: float = 0
+    # How much above a key do we look for the feature information, as a multiple of the key line height
+    search_above_factor: float = 0
 
     preprocess_replacements: dict[str, str] = {}
 
@@ -140,7 +142,7 @@ class DataExtractor(ABC):
         """
         search_rect = fitz.Rect(
             rect.x0 - self.search_left_factor * rect.width,
-            rect.y0,
+            rect.y0 - self.search_above_factor * rect.height,
             rect.x1 + self.search_right_factor * rect.width,
             rect.y1 + self.search_below_factor * rect.height,
         )
