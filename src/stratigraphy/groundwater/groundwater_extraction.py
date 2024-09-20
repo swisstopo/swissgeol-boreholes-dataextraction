@@ -288,7 +288,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         templates = []
         template_dir = os.path.join(os.path.dirname(__file__), "assets")
         for template in os.listdir(template_dir):
-            if template.endswith(".npy"):
+            if template.endswith(".npy"):  # and template.startswith("700246002-bp_page1_template"):
                 templates.append(np.load(os.path.join(template_dir, template)))
         return templates
 
@@ -447,7 +447,8 @@ class GroundwaterLevelExtractor(DataExtractor):
                                 if line.rect.intersects(extracted_gw.rect):
                                     lines.remove(line)
 
-                except ValueError:
+                except ValueError as error:
+                    logger.warning("ValueError: %s", error)
                     continue
 
             # TODO: Maybe we could stop the search if we found a good match with one of the templates

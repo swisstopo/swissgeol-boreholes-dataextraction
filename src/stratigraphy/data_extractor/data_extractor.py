@@ -40,6 +40,7 @@ class DataExtractor(ABC):
 
     doc: fitz.Document = None
     feature_keys: list[str] = None
+    feature_fp_keys: list[str] = None
     feature_name: str = None
 
     # How much to the left of a key do we look for the feature information, as a multiple of the key line width
@@ -65,6 +66,11 @@ class DataExtractor(ABC):
 
         self.doc = document
         self.feature_keys = read_params("matching_params.yml")[f"{self.feature_name}_keys"]
+        self.feature_fp_keys = (
+            read_params("matching_params.yml")[f"{self.feature_name}_fp_keys"]
+            if read_params("matching_params.yml")[f"{self.feature_name}_fp_keys"]
+            else []
+        )
 
     def preprocess(self, value: str) -> str:
         for old, new in self.preprocess_replacements.items():
@@ -107,7 +113,15 @@ class DataExtractor(ABC):
             for line in lines:
                 match = pattern.search(line.text)
                 if match:
-                    matches.add(line)
+                    # Make sure the key is not in the false positive list
+                    is_fp_key = False
+                    for fp_key in self.feature_fp_keys:
+                        if fp_key in line.text:
+                            is_fp_key = True
+                            break
+
+                    if not is_fp_key:
+                        matches.add(line)
 
         return list(matches)
 
