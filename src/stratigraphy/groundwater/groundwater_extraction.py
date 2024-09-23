@@ -141,7 +141,8 @@ class GroundwaterLevelExtractor(DataExtractor):
     feature_name = "groundwater"
 
     # look for elevation values to the left, right and/or immediately below the key
-    search_left_factor: float = 12
+    search_left_factor: float = 3  # NOTE: check files 267125334-bp.pdf, 267125338-bp.pdf, and 267125339-bp.pdf if this
+    # value is too high, as it might lead to false positives
     search_right_factor: float = 10
     search_below_factor: float = 4
     search_above_factor: float = 4
@@ -337,9 +338,12 @@ class GroundwaterLevelExtractor(DataExtractor):
                 )
 
                 # remove the matched area from the result to avoid finding the same area again
+                x_area_to_remove = int(0.75 * template.shape[1])
+                y_area_to_remove = int(0.75 * template.shape[0])
                 result[
-                    top_left[0] : top_left[0] + template.shape[0], top_left[1] : top_left[1] + template.shape[1]
-                ] = 0
+                    int(illustration_rect.y0) - y_area_to_remove : int(illustration_rect.y1) + y_area_to_remove,
+                    int(illustration_rect.x0) - x_area_to_remove : int(illustration_rect.x1) + x_area_to_remove,
+                ] = float("-inf")
 
                 # convert the illustration_rect to the coordinate system of the PDF
                 horizontal_scaling = page.rect.width / img.shape[1]
@@ -435,10 +439,9 @@ class GroundwaterLevelExtractor(DataExtractor):
                                             continue
 
                         # Only if the groundwater information is not already in the list
-                        if extracted_gw not in extracted_groundwater_list:
-                            if extracted_gw.groundwater.date:
-                                extracted_groundwater_list.append(extracted_gw)
-                                confidence_list.append(confidence)
+                        if extracted_gw not in extracted_groundwater_list and extracted_gw.groundwater.date:
+                            extracted_groundwater_list.append(extracted_gw)
+                            confidence_list.append(confidence)
 
                             # Remove the extracted groundwater information from the lines to avoid double extraction
                             for line in groundwater_info_lines:

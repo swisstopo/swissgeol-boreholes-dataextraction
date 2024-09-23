@@ -120,6 +120,8 @@ coordinate_fp_keys:
 
 groundwater_fp_keys:
   - Wasserstau
+  - Grundwasser-
+  - Grundwasserfassung
 
 groundwater_keys:
   # German
