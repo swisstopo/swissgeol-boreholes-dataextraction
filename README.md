@@ -230,6 +230,8 @@ The project structure and the most important files are as follows:
       - `predictions.json` : The output file of the project, containing the results of the data extraction process.
   - `tests/` : The tests for the project.
   - `README.md` : The README file for the project.
+  - `pyproject.toml`: Contain the python requirements and provides specific for a python environment.
+  - `Dockerfile`: Dockerfile to launch the Borehole App as API.
 
 
 ## Main scripts
@@ -284,6 +286,119 @@ To launch the API and access its endpoints, follow these steps:
 5. **Stop the server**
 
     To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is running. Please refer to the [FastAPI documentation](https://fastapi.tiangolo.com) for more information on how to work with FastAPI and build APIs using this framework.
+
+
+## API as Docker Image
+
+The borehole application offers a given amount of functionalities (extract text, number, and coordinates) through an API. To build this API using a Docker Container, you can run the following commands. 
+
+1. **Navigate to the project directory**
+
+    Change your current directory to the project directory:
+
+    ```bash
+    cd swissgeol-boreholes-dataextraction
+    ```
+
+2. **Build the Docker image**
+
+    Build the Docker image using the following command:
+
+    ```bash
+    docker build -t borehole-api . -f Dockerfile
+    ```
+
+    ```bash
+    docker build --platform linux/amd64 -t borehole-api:test .
+    ```
+
+    This command will build the Docker image with the tag `borehole-api`.
+
+3. **Verify the Docker image**
+
+    Verify that the Docker image has been successfully built by running the following command:
+
+    ```bash
+    docker images
+    ```
+
+    You should see the `borehole-api` image listed in the output.
+
+4. **Run the Docker container**
+
+    To run the Docker container, use the following command:
+
+    ```bash
+    docker run -p 8000:8000 borehole-api
+    ```
+
+    This command will start the container and map port 8000 of the container to port 8000 of the host machine.
+
+5. **Run the docker image with the AWS credentials**
+
+If you have the AWS credentials configured locally in the `~/.aws` file, you can run the following command to forward your AWS credentials to the docker container 
+
+    ```bash
+
+    docker run -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api
+    ```
+
+    ```bash 
+    docker run --platform linux/amd64 -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api:test
+    ```
+
+
+6. **Access the API**
+
+    Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
+
+    You can also use an API testing tool like Postman to send requests to the API endpoints.
+
+    **Note:** If you are running Docker on a remote machine, replace `localhost` with the appropriate hostname or IP address.
+
+
+7. **Query the API**
+
+```bash
+    curl -X 'POST' \
+    'http://localhost:8000/api/V1/create_pngs' \
+    -H 'accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d '{
+    "filename": "10021.pdf"
+    }'
+```
+
+8. **Stop the Docker container**
+
+    To stop the Docker container, press `Ctrl + C` in the terminal where the container is running.
+
+    Alternatively, you can use the following command to stop the container:
+
+    ```bash
+    docker stop <container_id>
+    ```
+
+    Replace `<container_id>` with the ID of the running container, which can be obtained by running `docker ps`.
+
+
+## AWS Lambda Deployment
+
+AWS Lambda is a serverless computing service provided by Amazon Web Services that allows you to run code without managing servers. It automatically scales your applications by executing code in response to triggers. You only pay for the compute time used.
+
+In this project we are using Mangum to wrap the FastAPI with a handler that we will package and deploy as a Lambda function in AWS. Then using AWS API Gateway we will route all incoming requests to invoke the lambda and handle the routing internally within our application.
+
+We created a script that should make it possible for you to deploy the FastAPI in AWS lambda using a single command. The script is creating all the required AWS resources to run the API. The resources that will be created for you are: 
+- AWS Lambda Function
+- AWS IAM user with the right to execute lambda functions and to read & write on S3 buckets
+- AWS CloudWatch log group to monitor the API
+- AWS API Gateway
+
+To deploy the staging version of the FastPI, run the following command: 
+
+```shell
+IMAGE=borehole-fastapi ENV=stage AWS_PROFILE=dcleres-visium AWS_S3_BUCKET=dcleres-boreholes-integration-tmp ./deploy_api_aws_lambda.sh
+```
 
 
 ## Experiment Tracking
