@@ -13,7 +13,7 @@ from stratigraphy.metadata.coordinate_extraction import Coordinate
 from stratigraphy.metadata.elevation_extraction import Elevation
 from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.interval import BoundaryInterval
-from stratigraphy.util.predictions import FilePredictions
+from stratigraphy.util.predictions import OverallFilePredictions
 
 load_dotenv()
 
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 def draw_predictions(
-    predictions: dict[str, FilePredictions],
+    predictions: OverallFilePredictions,
     directory: Path,
     out_directory: Path,
     document_level_metadata_metrics: pd.DataFrame,
@@ -51,18 +51,18 @@ def draw_predictions(
     """
     if directory.is_file():  # deal with the case when we pass a file instead of a directory
         directory = directory.parent
-    for file_name, file_prediction in predictions.items():
-        logger.info("Drawing predictions for file %s", file_name)
+    for file_prediction in predictions.file_predictions_list:
+        logger.info("Drawing predictions for file %s", file_prediction.file_name)
 
         depths_materials_column_pairs = file_prediction.depths_materials_columns_pairs
         coordinates = file_prediction.metadata.coordinates
         elevation = file_prediction.metadata.elevation
 
         # Assess the correctness of the metadata
-        is_coordinates_correct = document_level_metadata_metrics.loc[file_name].coordinate
-        is_elevation_correct = document_level_metadata_metrics.loc[file_name].elevation
+        is_coordinates_correct = document_level_metadata_metrics.loc[file_prediction.file_name].coordinate
+        is_elevation_correct = document_level_metadata_metrics.loc[file_prediction.file_name].elevation
 
-        with fitz.Document(directory / file_name) as doc:
+        with fitz.Document(directory / file_prediction.file_name) as doc:
             for page_index, page in enumerate(doc):
                 page_number = page_index + 1
                 shape = page.new_shape()  # Create a shape object for drawing
@@ -99,7 +99,7 @@ def draw_predictions(
                 )
                 shape.commit()  # Commit all the drawing operations to the page
 
-                tmp_file_path = out_directory / f"{file_name}_page{page_number}.png"
+                tmp_file_path = out_directory / f"{file_prediction.file_name}_page{page_number}.png"
                 fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
 
                 if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
@@ -110,7 +110,7 @@ def draw_predictions(
                     except NameError:
                         logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
 
-        logger.info("Finished drawing predictions for file %s", file_name)
+        logger.info("Finished drawing predictions for file %s", file_prediction.file_name)
 
 
 def draw_metadata(

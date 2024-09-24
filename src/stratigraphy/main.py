@@ -219,7 +219,7 @@ def start_pipeline(
     # process the individual pdf files
     # metadata_per_file = BoreholeMetadataList()
 
-    for filename in tqdm(files[:5], desc="Processing files", unit="file"):
+    for filename in tqdm(files, desc="Processing files", unit="file"):
         if filename.endswith(".pdf"):
             in_path = os.path.join(root, filename)
             logger.info("Processing file: %s", in_path)

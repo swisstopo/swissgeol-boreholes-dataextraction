@@ -10,7 +10,7 @@ from stratigraphy import DATAPATH
 from stratigraphy.annotations.draw import draw_predictions
 from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.benchmark.metrics import DatasetMetrics, DatasetMetricsCatalog, Metrics
-from stratigraphy.util.predictions import FilePredictions, OverallFilePredictions
+from stratigraphy.util.predictions import OverallFilePredictions
 from stratigraphy.util.util import parse_text
 
 load_dotenv()
@@ -100,7 +100,7 @@ def evaluate_borehole_extraction(
     return all_metrics
 
 
-def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_name: str) -> DatasetMetrics:
+def get_metrics(predictions: OverallFilePredictions, field_key: str, field_name: str) -> DatasetMetrics:
     """Get the metrics for a specific field in the predictions.
 
     Args:
@@ -113,8 +113,8 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
     """
     dataset_metrics = DatasetMetrics()
 
-    for file_name, file_prediction in predictions.items():
-        dataset_metrics.metrics[file_name] = getattr(file_prediction, field_key)[field_name]
+    for file_prediction in predictions.file_predictions_list:
+        dataset_metrics.metrics[file_prediction.file_name] = getattr(file_prediction, field_key)[field_name]
 
     return dataset_metrics
 
@@ -150,7 +150,8 @@ def evaluate_layer_extraction(
 
     for language, language_predictions in predictions_by_language.items():
         language_number_of_truth_values = {
-            file_name: number_of_truth_values[file_name] for file_name in language_predictions.file_predictions_list
+            prediction.file_name: number_of_truth_values[prediction.file_name]
+            for prediction in language_predictions.file_predictions_list
         }
         all_metrics.metrics[f"{language}_layer"] = get_layer_metrics(
             language_predictions, language_number_of_truth_values
