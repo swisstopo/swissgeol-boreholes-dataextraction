@@ -232,7 +232,6 @@ def start_pipeline(
 
                     layer_predictions_list = []
                     depths_materials_column_pairs_list = []
-                    page_dimensions = []
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
                         logger.info("Processing page %s", page_number)
@@ -255,7 +254,6 @@ def start_pipeline(
 
                         layer_predictions_list.extend(layer_predictions)
                         depths_materials_column_pairs_list.extend(depths_materials_column_pairs)
-                        page_dimensions.append({"height": page.rect.height, "width": page.rect.width})
 
                         if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
                             if not mlflow_tracking:
