@@ -6,6 +6,7 @@ from pathlib import Path
 
 import Levenshtein
 
+from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
 from stratigraphy.evaluation.evaluation_dataclasses import Metrics, OverallBoreholeMetadataMetrics
 from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformation, GroundwaterInformationOnPage
@@ -25,10 +26,10 @@ class FilePredictions:
         file_name: str,
         metadata: BoreholeMetadata,
         groundwater_entries: list[GroundwaterInformationOnPage],
-        depths_materials_columns_pairs: list[dict],
+        depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs],
     ):
         self.layers: list[LayerPrediction] = layers
-        self.depths_materials_columns_pairs: list[dict] = depths_materials_columns_pairs
+        self.depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs] = depths_materials_columns_pairs
         self.file_name = file_name
         self.metadata = metadata
         self.groundwater_entries = groundwater_entries
@@ -211,8 +212,12 @@ class FilePredictions:
             self.file_name: {
                 "metadata": self.metadata.to_json(),
                 "layers": [layer.to_json() for layer in self.layers],
-                "depths_materials_column_pairs": self.depths_materials_columns_pairs,
-                "page_dimensions": self.metadata.page_dimensions,  # TODO: This should be removed. As already in metadata.
+                "depths_materials_column_pairs": [
+                    depths_materials_columns_pairs.to_json()
+                    for depths_materials_columns_pairs in self.depths_materials_columns_pairs
+                ],
+                "page_dimensions": self.metadata.page_dimensions,
+                # TODO: This should be removed. As already in metadata.
                 "groundwater": [entry.to_json() for entry in self.groundwater_entries],
                 "file_name": self.file_name,
             }

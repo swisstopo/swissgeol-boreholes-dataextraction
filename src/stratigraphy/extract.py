@@ -7,6 +7,7 @@ import fitz
 
 from stratigraphy.depthcolumn import find_depth_columns
 from stratigraphy.depthcolumn.depthcolumn import DepthColumn
+from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
 from stratigraphy.layer.layer_identifier_column import (
     LayerIdentifierColumn,
     find_layer_identifier_column,
@@ -116,16 +117,9 @@ def process_page(
                 )
                 groups.extend(new_groups)
         json_filtered_pairs = [
-            {
-                "depth_column": depth_column.to_json(),
-                "material_description_rect": [
-                    material_description_rect.x0,
-                    material_description_rect.y0,
-                    material_description_rect.x1,
-                    material_description_rect.y1,
-                ],
-                "page": page_number,
-            }
+            DepthsMaterialsColumnPairs(
+                depth_column=depth_column, material_description_rect=material_description_rect, page=page_number
+            )
             for depth_column, material_description_rect in filtered_pairs
         ]
 
@@ -147,16 +141,9 @@ def process_page(
             groups.extend([{"block": block} for block in description_blocks])
             json_filtered_pairs.extend(
                 [
-                    {
-                        "depth_column": None,
-                        "material_description_rect": [
-                            material_description_rect.x0,
-                            material_description_rect.y0,
-                            material_description_rect.x1,
-                            material_description_rect.y1,
-                        ],
-                        "page": page_number,
-                    }
+                    DepthsMaterialsColumnPairs(
+                        depth_column=None, material_description_rect=material_description_rect, page=page_number
+                    )
                 ]
             )
     predictions = [

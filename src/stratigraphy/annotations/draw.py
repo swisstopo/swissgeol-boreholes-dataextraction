@@ -7,6 +7,8 @@ from pathlib import Path
 import fitz
 import pandas as pd
 from dotenv import load_dotenv
+from stratigraphy.depthcolumn.depthcolumn import DepthColumn
+from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformationOnPage
 from stratigraphy.layer.layer import LayerPrediction
 from stratigraphy.metadata.coordinate_extraction import Coordinate
@@ -86,7 +88,7 @@ def draw_predictions(
                 draw_depth_columns_and_material_rect(
                     shape,
                     page.derotation_matrix,
-                    [pair for pair in depths_materials_column_pairs if pair["page"] == page_number],
+                    [pair for pair in depths_materials_column_pairs if pair.page == page_number],
                 )
                 draw_material_descriptions(
                     shape,
@@ -238,7 +240,7 @@ def draw_material_descriptions(
 
 
 def draw_depth_columns_and_material_rect(
-    shape: fitz.Shape, derotation_matrix: fitz.Matrix, depths_materials_column_pairs: list
+    shape: fitz.Shape, derotation_matrix: fitz.Matrix, depths_materials_column_pairs: list[DepthsMaterialsColumnPairs]
 ):
     """Draw depth columns as well as the material rects on a pdf page.
 
@@ -253,17 +255,17 @@ def draw_depth_columns_and_material_rect(
         depths_materials_column_pairs (list): List of depth column entries.
     """
     for pair in depths_materials_column_pairs:
-        depth_column = pair["depth_column"]
-        material_description_rect = pair["material_description_rect"]
+        depth_column: DepthColumn = pair.depth_column
+        material_description_rect = pair.material_description_rect
 
-        if depth_column is not None:  # Draw rectangle for depth columns
+        if depth_column:  # Draw rectangle for depth columns
             shape.draw_rect(
-                fitz.Rect(depth_column["rect"]) * derotation_matrix,
+                fitz.Rect(depth_column.rect()) * derotation_matrix,
             )
             shape.finish(color=fitz.utils.getColor("green"))
-            for depth_column_entry in depth_column["entries"]:  # Draw rectangle for depth column entries
+            for depth_column_entry in depth_column.entries:  # Draw rectangle for depth column entries
                 shape.draw_rect(
-                    fitz.Rect(depth_column_entry["rect"]) * derotation_matrix,
+                    fitz.Rect(depth_column_entry.rect) * derotation_matrix,
                 )
             shape.finish(color=fitz.utils.getColor("purple"))
 
