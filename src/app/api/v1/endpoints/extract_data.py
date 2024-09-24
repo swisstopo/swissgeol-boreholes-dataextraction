@@ -14,8 +14,8 @@ from app.common.schemas import (
     ExtractNumberResponse,
     ExtractTextResponse,
     FormatTypes,
-    NotFoundResponse,
 )
+from fastapi import HTTPException
 from stratigraphy.metadata.coordinate_extraction import CoordinateExtractor, LV03Coordinate, LV95Coordinate
 from stratigraphy.text.extract_text import extract_text_lines_from_bbox
 
@@ -69,11 +69,8 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
             extract_data_request, pdf_page, user_defined_bbox.to_fitz_rect()
         )
 
-        if extracted_coords is None:
-            return NotFoundResponse(
-                detail="Coordinates not found.",
-                bbox=extract_data_request.bbox,
-            )
+        if not extracted_coords:
+            return HTTPException(status_code=404, detail="Coordinates not found.")
 
         # Convert the bounding box to PNG coordinates and return the response
         return ExtractCoordinatesResponse(
@@ -93,6 +90,9 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
     elif extract_data_request.format == FormatTypes.TEXT:
         extracted_text: ExtractTextResponse = extract_text(pdf_page, user_defined_bbox.to_fitz_rect())
 
+        if isinstance(extracted_text, HTTPException):
+            return extracted_text
+
         # Convert the bounding box to PNG coordinates and return the response
         return ExtractTextResponse(
             bbox=extracted_text.bbox.rescale(
@@ -105,6 +105,9 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
         )
     elif extract_data_request.format == FormatTypes.NUMBER:
         extracted_number = extract_number(pdf_page, user_defined_bbox.to_fitz_rect())
+
+        if isinstance(extracted_number, HTTPException):
+            return extracted_number
 
         # Convert the bounding box to PNG coordinates and return the response
         return ExtractNumberResponse(
@@ -168,7 +171,7 @@ def extract_coordinates(
     return None
 
 
-def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDataResponse:
+def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDataResponse | HTTPException:
     """Extract text from a PDF Document. The text is extracted from the user-defined bounding box.
 
     Args:
@@ -189,11 +192,14 @@ def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDa
         text += text_line.text + " "
         text_based_bbox = text_based_bbox + text_line.rect
 
-    bbox = BoundingBox.load_from_fitz_rect(text_based_bbox)
-    return ExtractTextResponse(bbox=bbox, text=text)
+    if text:
+        bbox = BoundingBox.load_from_fitz_rect(text_based_bbox)
+        return ExtractTextResponse(bbox=bbox, text=text)
+    else:
+        return HTTPException(status_code=404, detail="Text not found.")
 
 
-def extract_number(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractNumberResponse:
+def extract_number(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractNumberResponse | HTTPException:
     """Extract numbers from a PDF document. The numbers are extracted from the user-defined bounding box.
 
     Args:
@@ -219,6 +225,8 @@ def extract_number(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> Extract
                 y1=text_line.rect.y1,
             )
             return ExtractNumberResponse(bbox=bbox, number=number[0])
+
+    return HTTPException(status_code=404, detail="Number not found.")
 
 
 def extract_number_from_text(text: str) -> list[float]:

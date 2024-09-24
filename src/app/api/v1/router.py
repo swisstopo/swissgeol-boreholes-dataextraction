@@ -5,10 +5,8 @@ from app.api.v1.endpoints.extract_data import extract_data
 from app.common.schemas import (
     ExtractCoordinatesResponse,
     ExtractDataRequest,
-    ExtractDataResponse,
     ExtractNumberResponse,
     ExtractTextResponse,
-    NotFoundResponse,
     PNGRequest,
     PNGResponse,
 )
@@ -32,11 +30,21 @@ def post_create_pngs(request: PNGRequest) -> PNGResponse:
 @router.post(
     "/extract_data",
     tags=["extract_data"],
-    response_model=ExtractCoordinatesResponse | ExtractTextResponse | ExtractNumberResponse | NotFoundResponse,
+    response_model=ExtractCoordinatesResponse | ExtractTextResponse | ExtractNumberResponse,
 )
-def post_extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataResponse:
+def post_extract_data(
+    extract_data_request: ExtractDataRequest,
+) -> ExtractCoordinatesResponse | ExtractTextResponse | ExtractNumberResponse:
     """Extract data from the given PNGs."""
     try:
-        return extract_data(extract_data_request)
+        # Extract the data based on the request
+        response = extract_data(extract_data_request)
+        if isinstance(response, ExtractCoordinatesResponse | ExtractTextResponse | ExtractNumberResponse):
+            return response  # Ensure this is a valid response model
+        else:
+            # Handle an HTTPException response type
+            raise response
+
     except ValueError as e:
+        # Handle a known ValueError and return a 400 status
         raise HTTPException(status_code=400, detail=str(e)) from None
