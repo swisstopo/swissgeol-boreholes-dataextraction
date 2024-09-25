@@ -62,11 +62,14 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
         target_width=pdf_page_width,
     )  # bbox in PDF coordinates
 
+    # If the PDF page is rotated, rotate the bounding box
+    user_defined_rect_with_rotation = user_defined_bbox.to_fitz_rect() * pdf_page.derotation_matrix
+
     # Extract the information based on the format type
     if extract_data_request.format == FormatTypes.COORDINATES:
         # Extract the coordinates and bounding box
         extracted_coords: ExtractCoordinatesResponse | None = extract_coordinates(
-            extract_data_request, pdf_page, user_defined_bbox.to_fitz_rect()
+            extract_data_request, pdf_page, user_defined_rect_with_rotation
         )
 
         if extracted_coords is None:
@@ -91,7 +94,7 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
         )
 
     elif extract_data_request.format == FormatTypes.TEXT:
-        extracted_text: ExtractTextResponse = extract_text(pdf_page, user_defined_bbox.to_fitz_rect())
+        extracted_text: ExtractTextResponse = extract_text(pdf_page, user_defined_rect_with_rotation)
 
         # Convert the bounding box to PNG coordinates and return the response
         return ExtractTextResponse(
@@ -104,7 +107,7 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
             text=extracted_text.text,
         )
     elif extract_data_request.format == FormatTypes.NUMBER:
-        extracted_number = extract_number(pdf_page, user_defined_bbox.to_fitz_rect())
+        extracted_number = extract_number(pdf_page, user_defined_rect_with_rotation)
 
         # Convert the bounding box to PNG coordinates and return the response
         return ExtractNumberResponse(
