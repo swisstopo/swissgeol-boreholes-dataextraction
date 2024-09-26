@@ -14,7 +14,7 @@ from stratigraphy import DATAPATH
 from stratigraphy.annotations.plot_utils import plot_lines
 from stratigraphy.benchmark.score import evaluate
 from stratigraphy.extract import process_page
-from stratigraphy.groundwater.groundwater_extraction import GroundwaterLevelExtractor
+from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument, GroundwaterLevelExtractor
 from stratigraphy.layer.duplicate_detection import remove_duplicate_layers
 from stratigraphy.layer.layer import LayerPrediction
 from stratigraphy.lines.line_detection import extract_lines, line_detection_params
@@ -227,8 +227,11 @@ def start_pipeline(
 
                 if part == "all":
                     # Extract the groundwater levels
+                    groundwater_in_document = GroundwaterInDocument(filename)
                     groundwater_extractor = GroundwaterLevelExtractor(document=doc)
-                    groundwater = groundwater_extractor.extract_groundwater(terrain_elevation=metadata.elevation)
+                    groundwater_in_document.add_groundwater_from_page(
+                        groundwater_extractor.extract_groundwater(terrain_elevation=metadata.elevation)
+                    )
 
                     layer_predictions_list = []
                     depths_materials_column_pairs_list = []
@@ -277,17 +280,17 @@ def start_pipeline(
                             layers=page_layer_predictions_list,
                             depths_materials_columns_pairs=depths_materials_column_pairs_list,
                             metadata=metadata,
-                            groundwater_entries=groundwater,
+                            groundwater=groundwater_in_document,
                         )
                     )
                 else:
                     predictions.add_file_predictions(
                         FilePredictions(
                             file_name=filename,
-                            metadata=metadata,
-                            groundwater_entries=None,
                             layers=None,
                             depths_materials_columns_pairs=None,
+                            metadata=metadata,
+                            groundwater=None,
                         )
                     )
 

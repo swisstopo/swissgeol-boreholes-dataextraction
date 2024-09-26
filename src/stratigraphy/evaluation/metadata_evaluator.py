@@ -25,7 +25,7 @@ class MetadataEvaluator:
             metadata_list (BoreholeMetadataList): The metadata to evaluate.
             ground_truth_path (str): The path to the ground truth file.
         """
-        self.metadata_list = metadata_list
+        self.metadata_list: BoreholeMetadataList = metadata_list
 
         # Load the ground truth data for the metadata
         self.metadata_ground_truth = GroundTruth(ground_truth_path)

@@ -128,11 +128,10 @@ class OverallBoreholeMetadataMetrics(metaclass=abc.ABCMeta):
         coordinates_metrics = Metrics.micro_average(
             [metadata.coordinates_metrics for metadata in self.borehole_metadata_metrics]
         )
-        return BoreholeMetadataMetrics(
-            elevation_metrics=elevation_metrics, coordinates_metrics=coordinates_metrics
-        ).to_json()
+        return BoreholeMetadataMetrics(elevation_metrics=elevation_metrics, coordinates_metrics=coordinates_metrics)
 
     def get_document_level_metrics(self) -> pd.DataFrame:
+        """Get the document level metrics."""
         # Get a dataframe per document, concatenate, and sort by index (document name)
         return pd.concat(
             [metadata.get_document_level_metrics() for metadata in self.borehole_metadata_metrics]
