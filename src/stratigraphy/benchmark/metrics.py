@@ -56,20 +56,59 @@ class DatasetMetrics:
 class DatasetMetricsCatalog:
     """Keeps track of all different relevant metrics that are computed for a dataset."""
 
-    def __init__(self):
-        self.metrics: dict[str, DatasetMetrics] = {}
+    layer_metrics: DatasetMetrics = None
+    depth_interval_metrics: DatasetMetrics = None
+    de_layer_metrics: DatasetMetrics = None
+    de_depth_interval_metrics: DatasetMetrics = None
+    fr_layer_metrics: DatasetMetrics = None
+    fr_depth_interval_metrics: DatasetMetrics = None
+    groundwater_metrics: DatasetMetrics = None
+    groundwater_depth_metrics: DatasetMetrics = None
+
+    def set_layer_metrics(self, metrics: DatasetMetrics):
+        """Set the layer metrics."""
+        self.layer_metrics = metrics
+
+    def set_depth_interval_metrics(self, metrics: DatasetMetrics):
+        """Set the depth interval metrics."""
+        self.depth_interval_metrics = metrics
+
+    def set_de_layer_metrics(self, metrics: DatasetMetrics):
+        """Set the de layer metrics."""
+        self.de_layer_metrics = metrics
+        # TODO: Add the possibility to compute the metrics for the language layers
+
+    def set_de_depth_interval_metrics(self, metrics: DatasetMetrics):
+        """Set the de depth interval metrics."""
+        self.de_depth_interval_metrics = metrics
+
+    def set_fr_layer_metrics(self, metrics: DatasetMetrics):
+        """Set the fr layer metrics."""
+        self.fr_layer_metrics = metrics
+
+    def set_fr_depth_interval_metrics(self, metrics: DatasetMetrics):
+        """Set the fr depth interval metrics."""
+        self.fr_depth_interval_metrics = metrics
+
+    def set_groundwater_metrics(self, metrics: DatasetMetrics):
+        """Set the groundwater metrics."""
+        self.groundwater_metrics = metrics
+
+    def set_groundwater_depth_metrics(self, metrics: DatasetMetrics):
+        """Set the groundwater depth metrics."""
+        self.groundwater_depth_metrics = metrics
 
     def document_level_metrics_df(self) -> pd.DataFrame:
         """Return a DataFrame with all the document level metrics."""
         all_series = [
-            self.metrics["layer"].to_dataframe("F1", lambda metric: metric.f1),
-            self.metrics["layer"].to_dataframe("precision", lambda metric: metric.precision),
-            self.metrics["layer"].to_dataframe("recall", lambda metric: metric.recall),
-            self.metrics["depth_interval"].to_dataframe("Depth_interval_accuracy", lambda metric: metric.precision),
-            self.metrics["layer"].to_dataframe("Number Elements", lambda metric: metric.tp + metric.fn),
-            self.metrics["layer"].to_dataframe("Number wrong elements", lambda metric: metric.fp + metric.fn),
-            self.metrics["groundwater"].to_dataframe("groundwater", lambda metric: metric.f1),
-            self.metrics["groundwater_depth"].to_dataframe("groundwater_depth", lambda metric: metric.f1),
+            self.layer_metrics.to_dataframe("F1", lambda metric: metric.f1),
+            self.layer_metrics.to_dataframe("precision", lambda metric: metric.precision),
+            self.layer_metrics.to_dataframe("recall", lambda metric: metric.recall),
+            self.depth_interval_metrics.to_dataframe("Depth_interval_accuracy", lambda metric: metric.precision),
+            self.layer_metrics.to_dataframe("Number Elements", lambda metric: metric.tp + metric.fn),
+            self.layer_metrics.to_dataframe("Number wrong elements", lambda metric: metric.fp + metric.fn),
+            self.groundwater_metrics.to_dataframe("groundwater", lambda metric: metric.f1),
+            self.groundwater_depth_metrics.to_dataframe("groundwater_depth", lambda metric: metric.f1),
         ]
         document_level_metrics = pd.DataFrame()
         for series in all_series:
@@ -78,22 +117,22 @@ class DatasetMetricsCatalog:
 
     def metrics_dict(self) -> dict[str, float]:
         """Return a dictionary with the overall metrics."""
-        groundwater_metrics = Metrics.micro_average(self.metrics["groundwater"].metrics.values())
-        groundwater_depth_metrics = Metrics.micro_average(self.metrics["groundwater_depth"].metrics.values())
+        groundwater_metrics = Metrics.micro_average(self.groundwater_metrics.metrics.values())
+        groundwater_depth_metrics = Metrics.micro_average(self.groundwater_depth_metrics.metrics.values())
 
         return {
-            "F1": self.metrics["layer"].pseudo_macro_f1(),
-            "recall": self.metrics["layer"].macro_recall(),
-            "precision": self.metrics["layer"].macro_precision(),
-            "depth_interval_accuracy": self.metrics["depth_interval"].macro_precision(),
-            "de_F1": self.metrics["de_layer"].pseudo_macro_f1(),
-            "de_recall": self.metrics["de_layer"].macro_recall(),
-            "de_precision": self.metrics["de_layer"].macro_precision(),
-            "de_depth_interval_accuracy": self.metrics["de_depth_interval"].macro_precision(),
-            "fr_F1": self.metrics["fr_layer"].pseudo_macro_f1(),
-            "fr_recall": self.metrics["fr_layer"].macro_recall(),
-            "fr_precision": self.metrics["fr_layer"].macro_precision(),
-            "fr_depth_interval_accuracy": self.metrics["fr_depth_interval"].macro_precision(),
+            "F1": self.layer_metrics.pseudo_macro_f1(),
+            "recall": self.layer_metrics.macro_recall(),
+            "precision": self.layer_metrics.macro_precision(),
+            "depth_interval_accuracy": self.depth_interval_metrics.macro_precision(),
+            "de_F1": self.de_layer_metrics.pseudo_macro_f1(),
+            "de_recall": self.de_layer_metrics.macro_recall(),
+            "de_precision": self.de_layer_metrics.macro_precision(),
+            "de_depth_interval_accuracy": self.de_depth_interval_metrics.macro_precision(),
+            "fr_F1": self.fr_layer_metrics.pseudo_macro_f1(),
+            "fr_recall": self.fr_layer_metrics.macro_recall(),
+            "fr_precision": self.fr_layer_metrics.macro_precision(),
+            "fr_depth_interval_accuracy": self.fr_depth_interval_metrics.macro_precision(),
             "groundwater_f1": groundwater_metrics.f1,
             "groundwater_recall": groundwater_metrics.recall,
             "groundwater_precision": groundwater_metrics.precision,

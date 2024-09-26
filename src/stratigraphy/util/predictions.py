@@ -214,8 +214,8 @@ class OverallFilePredictions:
             overall_groundwater_metrics = GroundwaterEvaluator(
                 self.get_groundwater_entries(), ground_truth_path
             ).evaluate()
-            all_metrics.metrics["groundwater"] = overall_groundwater_metrics.groundwater_metrics_to_dataset_metrics()
-            all_metrics.metrics["groundwater_depth"] = (
+            all_metrics.groundwater_metrics = overall_groundwater_metrics.groundwater_metrics_to_dataset_metrics()
+            all_metrics.groundwater_depth_metrics = (
                 overall_groundwater_metrics.groundwater_depth_metrics_to_dataset_metrics()
             )
             return all_metrics
@@ -237,8 +237,8 @@ class OverallFilePredictions:
             DatasetMetricsCatalogue: A dictionary that maps a metrics name to the corresponding DatasetMetrics object
         """
         all_metrics = DatasetMetricsCatalog()
-        all_metrics.metrics["layer"] = get_layer_metrics(self, number_of_truth_values)
-        all_metrics.metrics["depth_interval"] = get_depth_interval_metrics(self)
+        all_metrics.set_layer_metrics(get_layer_metrics(self, number_of_truth_values))
+        all_metrics.set_depth_interval_metrics(get_depth_interval_metrics(self))
 
         # create predictions by language
         predictions_by_language = {
@@ -255,18 +255,24 @@ class OverallFilePredictions:
                 prediction.file_name: number_of_truth_values[prediction.file_name]
                 for prediction in language_predictions.file_predictions_list
             }
-            all_metrics.metrics[f"{language}_layer"] = get_layer_metrics(
-                language_predictions, language_number_of_truth_values
-            )
-            all_metrics.metrics[f"{language}_depth_interval"] = get_depth_interval_metrics(language_predictions)
+            if language == "de":
+                all_metrics.set_de_layer_metrics(
+                    get_layer_metrics(language_predictions, language_number_of_truth_values)
+                )
+                all_metrics.set_de_depth_interval_metrics(get_depth_interval_metrics(language_predictions))
+            elif language == "fr":
+                all_metrics.set_fr_layer_metrics(
+                    get_layer_metrics(language_predictions, language_number_of_truth_values)
+                )
+                all_metrics.set_fr_depth_interval_metrics(get_depth_interval_metrics(language_predictions))
 
         logging.info("Macro avg:")
         logging.info(
             "F1: %.1f%%, precision: %.1f%%, recall: %.1f%%, depth_interval_accuracy: %.1f%%",
-            all_metrics.metrics["layer"].macro_f1() * 100,
-            all_metrics.metrics["layer"].macro_precision() * 100,
-            all_metrics.metrics["layer"].macro_recall() * 100,
-            all_metrics.metrics["depth_interval"].macro_precision() * 100,
+            all_metrics.layer_metrics.macro_f1() * 100,
+            all_metrics.layer_metrics.macro_precision() * 100,
+            all_metrics.layer_metrics.macro_recall() * 100,
+            all_metrics.depth_interval_metrics.macro_precision() * 100,
         )
 
         return all_metrics
