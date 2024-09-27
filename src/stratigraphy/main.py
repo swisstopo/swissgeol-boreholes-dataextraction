@@ -16,7 +16,7 @@ from stratigraphy.benchmark.score import evaluate
 from stratigraphy.extract import process_page
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument
 from stratigraphy.layer.duplicate_detection import remove_duplicate_layers
-from stratigraphy.layer.layer import LayerPrediction
+from stratigraphy.layer.layer import LayersInDocument
 from stratigraphy.lines.line_detection import extract_lines, line_detection_params
 from stratigraphy.metadata.metadata import BoreholeMetadata
 from stratigraphy.text.extract_text import extract_text_lines
@@ -229,7 +229,7 @@ def start_pipeline(
                     # Extract the groundwater levels
                     groundwater_in_document = GroundwaterInDocument(doc, metadata.elevation)
 
-                    layer_predictions_list = []
+                    layer_predictions_list: LayersInDocument = LayersInDocument([], filename)
                     depths_materials_column_pairs_list = []
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
@@ -244,14 +244,16 @@ def start_pipeline(
                         # TODO: Add remove duplicates here!
                         if page_index > 0:
                             layer_predictions = remove_duplicate_layers(
-                                doc[page_index - 1],
-                                page,
-                                layer_predictions_list,
-                                layer_predictions,
-                                matching_params["img_template_probability_threshold"],
+                                previous_page=doc[page_index - 1],
+                                current_page=page,
+                                previous_layers=layer_predictions_list,
+                                current_layers=layer_predictions,
+                                img_template_probability_threshold=matching_params[
+                                    "img_template_probability_threshold"
+                                ],
                             )
 
-                        layer_predictions_list.extend(layer_predictions)
+                        layer_predictions_list.add_layers_on_page(layer_predictions)
                         depths_materials_column_pairs_list.extend(depths_materials_column_pairs)
 
                         if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
@@ -266,12 +268,12 @@ def start_pipeline(
                                 mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
                     # Convert the layer dict to a layer object
-                    page_layer_predictions_list = LayerPrediction.from_json(layer_predictions_list)
+                    # page_layer_predictions_list = LayerPrediction.from_json(layer_predictions_list)
 
                     predictions.add_file_predictions(
                         FilePredictions(
                             file_name=filename,
-                            layers=page_layer_predictions_list,
+                            layers=layer_predictions_list,
                             depths_materials_columns_pairs=depths_materials_column_pairs_list,
                             metadata=metadata,
                             groundwater=groundwater_in_document,

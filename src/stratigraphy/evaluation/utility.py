@@ -4,7 +4,7 @@ from collections import Counter
 
 import Levenshtein
 from stratigraphy.evaluation.evaluation_dataclasses import Metrics
-from stratigraphy.layer.layer import LayerPrediction
+from stratigraphy.layer.layer import Layer
 from stratigraphy.util.util import parse_text
 
 
@@ -26,7 +26,7 @@ def count_against_ground_truth(values: list, ground_truth: list) -> Metrics:
     return Metrics(tp=tp, fp=len(values) - tp, fn=len(ground_truth) - tp)
 
 
-def find_matching_layer(layer: LayerPrediction, unmatched_layers: list[dict]) -> tuple[dict, bool] | tuple[None, None]:
+def find_matching_layer(layer: Layer, unmatched_layers: list[dict]) -> tuple[dict, bool] | tuple[None, None]:
     """Find the matching layer in the ground truth.
 
     Args:

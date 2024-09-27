@@ -12,7 +12,7 @@ from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
 from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
 from stratigraphy.evaluation.utility import find_matching_layer
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument
-from stratigraphy.layer.layer import LayerPrediction
+from stratigraphy.layer.layer import LayersInDocument
 from stratigraphy.metadata.metadata import BoreholeMetadata, BoreholeMetadataList
 from stratigraphy.util.util import parse_text
 
@@ -24,13 +24,13 @@ class FilePredictions:
 
     def __init__(
         self,
-        layers: list[LayerPrediction],
+        layers: LayersInDocument,
         file_name: str,
         metadata: BoreholeMetadata,
         groundwater: GroundwaterInDocument,
         depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs],
     ):
-        self.layers: list[LayerPrediction] = layers
+        self.layers: LayersInDocument = layers
         self.depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs] = depths_materials_columns_pairs
         self.file_name = file_name
         self.metadata = metadata
@@ -49,7 +49,7 @@ class FilePredictions:
         """
         ground_truth = {self.file_name: {"metadata": self.metadata}}
         layers = []
-        for layer in self.layers:
+        for layer in self.layers.get_all_layers():
             material_description = layer.material_description.text
             depth_interval = {
                 "start": layer.depth_interval.start.value if layer.depth_interval.start else None,
@@ -82,7 +82,7 @@ class FilePredictions:
             ground_truth_layers (list): The ground truth layers for the file.
         """
         unmatched_layers = ground_truth_layers.copy()
-        for layer in self.layers:
+        for layer in self.layers.get_all_layers():
             match, depth_interval_is_correct = find_matching_layer(layer, unmatched_layers)
             if match:
                 layer.material_is_correct = True
@@ -100,7 +100,7 @@ class FilePredictions:
         return {
             self.file_name: {
                 "metadata": self.metadata.to_json(),
-                "layers": [layer.to_json() for layer in self.layers],
+                "layers": [layer.to_json() for layer in self.layers.get_all_layers()],
                 "depths_materials_column_pairs": [
                     depths_materials_columns_pairs.to_json()
                     for depths_materials_columns_pairs in self.depths_materials_columns_pairs
@@ -314,13 +314,15 @@ def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_value
 
     for file_prediction in predictions.file_predictions_list:
         hits = 0
-        for layer in file_prediction.layers:
+        for layer in file_prediction.layers.get_all_layers():
             if layer.material_is_correct:
                 hits += 1
             if parse_text(layer.material_description.text) == "":
                 logger.warning("Empty string found in predictions")
         layer_metrics.metrics[file_prediction.file_name] = Metrics(
-            tp=hits, fp=len(file_prediction.layers) - hits, fn=number_of_truth_values[file_prediction.file_name] - hits
+            tp=hits,
+            fp=len(file_prediction.layers.get_all_layers()) - hits,
+            fn=number_of_truth_values[file_prediction.file_name] - hits,
         )
 
     return layer_metrics
@@ -346,7 +348,7 @@ def get_depth_interval_metrics(predictions: OverallFilePredictions) -> OverallMe
     for file_prediction in predictions.file_predictions_list:
         depth_interval_hits = 0
         depth_interval_occurrences = 0
-        for layer in file_prediction.layers:
+        for layer in file_prediction.layers.get_all_layers():
             if layer.material_is_correct:
                 if layer.depth_interval_is_correct is not None:
                     depth_interval_occurrences += 1

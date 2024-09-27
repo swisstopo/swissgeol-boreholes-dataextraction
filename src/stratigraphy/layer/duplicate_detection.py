@@ -7,6 +7,7 @@ import fitz
 import Levenshtein
 import numpy as np
 from stratigraphy.annotations.plot_utils import convert_page_to_opencv_img
+from stratigraphy.layer.layer import LayersInDocument, LayersOnPage
 
 logger = logging.getLogger(__name__)
 
@@ -14,10 +15,10 @@ logger = logging.getLogger(__name__)
 def remove_duplicate_layers(
     previous_page: fitz.Page,
     current_page: fitz.Page,
-    previous_layers: list[dict],
-    current_layers: list[dict],
+    previous_layers: LayersInDocument,
+    current_layers: LayersOnPage,
     img_template_probability_threshold: float,
-) -> list[dict]:
+) -> LayersOnPage:
     """Remove duplicate layers from the current page based on the layers of the previous page.
 
     We check if a layer on the current page is present on the previous page. If we have 3 consecutive layers that are
@@ -30,14 +31,14 @@ def remove_duplicate_layers(
     Args:
         previous_page (fitz.Page): The previous page.
         current_page (fitz.Page): The current page containing the layers to check for duplicates.
-        previous_layers (list[dict]): The layers of the previous page.
-        current_layers (list[dict]): The layers of the current page.
+        previous_layers (LayersInDocument): The layers of the previous page.
+        current_layers (LayersOnPage): The layers of the current page.
         img_template_probability_threshold (float): The threshold for the template matching probability
 
     Returns:
         list[dict]: The layers of the current page without duplicates.
     """
-    sorted_layers = sorted(current_layers, key=lambda x: x["material_description"]["rect"][1])
+    sorted_layers = sorted(current_layers.layers_on_page, key=lambda x: x.material_description.rect.y0)
     first_non_duplicated_layer_index = 0
     count_consecutive_non_duplicate_layers = 0
     for layer_index, layer in enumerate(sorted_layers):
@@ -49,38 +50,37 @@ def remove_duplicate_layers(
         # check if current layer has an overlapping layer on the previous page.
         # for that purpose compare depth interval as well as material description text.
         duplicate_condition = False
-        if "depth_interval" not in layer:  # in this case we use template matching
+        if not hasattr(layer, "depth_interval"):  # in this case we use template matching
             duplicate_condition = check_duplicate_layer_by_template_matching(
                 previous_page, current_page, layer, img_template_probability_threshold
             )
 
         else:  # in this case we compare the depth interval and material description
-            current_material_description = layer["material_description"]
-            current_depth_interval = layer["depth_interval"]
-            for previous_layer in previous_layers:
-                if "depth_interval" not in previous_layer:
+            current_material_description = layer.material_description
+            current_depth_interval = layer.depth_interval
+            for previous_layer in previous_layers.get_all_layers():
+                if not hasattr(previous_layer, "depth_interval"):
                     # It may happen, that a layer on the previous page does not have depth interval assigned.
                     # In this case we skip the comparison. This should only happen in some edge cases, as we
                     # assume that when the current page has a depth column, that the previous page also contains a
                     # depth column. We assume overlapping pages and a depth column should extend over both pages.
                     continue
 
-                previous_material_description = previous_layer["material_description"]
-                previous_depth_interval = previous_layer["depth_interval"]
+                previous_material_description = previous_layer.material_description
+                previous_depth_interval = previous_layer.depth_interval
 
                 # start values for the depth intervals may be None. End values are always explicitly set.
                 current_depth_interval_start = (
-                    current_depth_interval["start"]["value"] if current_depth_interval["start"] is not None else None
+                    current_depth_interval.start.value if current_depth_interval.start is not None else None
                 )
                 previous_depth_interval_start = (
-                    previous_depth_interval["start"]["value"] if previous_depth_interval["start"] is not None else None
+                    previous_depth_interval.start.value if previous_depth_interval.start is not None else None
                 )
                 # check if material description is the same
                 if (
-                    Levenshtein.ratio(current_material_description["text"], previous_material_description["text"])
-                    > 0.9
+                    Levenshtein.ratio(current_material_description.text, previous_material_description.text) > 0.9
                     and current_depth_interval_start == previous_depth_interval_start
-                    and current_depth_interval["end"].get("value") == previous_depth_interval["end"].get("value")
+                    and current_depth_interval.end.value == previous_depth_interval.end.value
                 ):
                     duplicate_condition = True
                     logger.info("Removing duplicate layer.")
@@ -91,7 +91,7 @@ def remove_duplicate_layers(
             count_consecutive_non_duplicate_layers = 0
         else:
             count_consecutive_non_duplicate_layers += 1
-    return sorted_layers[first_non_duplicated_layer_index:]
+    return LayersOnPage(sorted_layers[first_non_duplicated_layer_index:])
 
 
 def check_duplicate_layer_by_template_matching(

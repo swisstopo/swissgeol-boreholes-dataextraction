@@ -2,13 +2,13 @@
 
 import logging
 import math
-from typing import Any
 
 import fitz
 
 from stratigraphy.depthcolumn import find_depth_columns
 from stratigraphy.depthcolumn.depthcolumn import DepthColumn
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
+from stratigraphy.layer.layer import Layer, LayersOnPage
 from stratigraphy.layer.layer_identifier_column import (
     LayerIdentifierColumn,
     find_layer_identifier_column,
@@ -24,7 +24,6 @@ from stratigraphy.text.textblock import TextBlock, block_distance
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.interval import BoundaryInterval, Interval
 from stratigraphy.util.util import (
-    remove_empty_predictions,
     x_overlap,
     x_overlap_significant_smallest,
 )
@@ -34,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 def process_page(
     lines: list[TextLine], geometric_lines, language: str, page_number: int, **params: dict
-) -> tuple[list[dict[str, Any]], list[DepthsMaterialsColumnPairs]]:
+) -> tuple[LayersOnPage, list[DepthsMaterialsColumnPairs]]:
     """Process a single page of a pdf.
 
     # TODO: Ideally, one function does one thing. This function does a lot of things. It should be split into
@@ -152,17 +151,17 @@ def process_page(
                 ]
             )
 
-    # TODO: Load directly the predictions into the dataclass
-    predictions = [
-        (
-            {"material_description": group["block"].to_json(), "depth_interval": group["depth_interval"].to_json()}
-            if "depth_interval" in group
-            else {"material_description": group["block"].to_json()}
-        )
-        for group in groups
-    ]
-    predictions = remove_empty_predictions(predictions)
-    return predictions, json_filtered_pairs
+    layer_predictions = LayersOnPage(
+        [
+            Layer(
+                material_description=group["block"],
+                depth_interval=group["depth_interval"] if "depth_interval" in group else None,
+            )
+            for group in groups
+        ]
+    )
+    layer_predictions.remove_empty_predictions()
+    return layer_predictions, json_filtered_pairs
 
 
 def score_column_match(

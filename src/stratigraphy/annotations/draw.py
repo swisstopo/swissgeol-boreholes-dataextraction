@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from stratigraphy.depthcolumn.depthcolumn import DepthColumn
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterOnPage
-from stratigraphy.layer.layer import LayerPrediction
+from stratigraphy.layer.layer import Layer
 from stratigraphy.metadata.coordinate_extraction import Coordinate
 from stratigraphy.metadata.elevation_extraction import Elevation
 from stratigraphy.text.textblock import TextBlock
@@ -96,7 +96,7 @@ def draw_predictions(
                     page.derotation_matrix,
                     [
                         layer
-                        for layer in file_prediction.layers
+                        for layer in file_prediction.layers.get_all_layers()
                         if layer.material_description.page_number == page_number
                     ],
                 )
@@ -208,9 +208,7 @@ def draw_elevation(shape: fitz.Shape, elevation: Elevation) -> None:
     shape.finish(color=fitz.utils.getColor("blue"))
 
 
-def draw_material_descriptions(
-    shape: fitz.Shape, derotation_matrix: fitz.Matrix, layers: list[LayerPrediction]
-) -> None:
+def draw_material_descriptions(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layers: list[Layer]) -> None:
     """Draw information about material descriptions on a pdf page.
 
     In particular, this function:
