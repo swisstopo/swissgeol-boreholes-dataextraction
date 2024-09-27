@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from stratigraphy.benchmark.ground_truth import GroundTruth
-from stratigraphy.benchmark.metrics import DatasetMetrics, DatasetMetricsCatalog
+from stratigraphy.benchmark.metrics import OverallMetrics, OverallMetricsCatalog
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
 from stratigraphy.evaluation.evaluation_dataclasses import Metrics, OverallBoreholeMetadataMetrics
 from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
@@ -175,15 +175,15 @@ class OverallFilePredictions:
             metadata_per_file.add_metadata(file_prediction.metadata)
         return MetadataEvaluator(metadata_per_file, ground_truth_path).evaluate()
 
-    def evaluate_borehole_extraction(self, ground_truth_path: str) -> DatasetMetricsCatalog:
+    def evaluate_borehole_extraction(self, ground_truth_path: str) -> OverallMetricsCatalog:
         """Evaluate the borehole extraction predictions.
 
         Args:
             ground_truth_path (str): The path to the ground truth file.
 
         Returns:
-            DatasetMetricsCatalogue: A DatasetMetricsCatalogue that maps a metrics name to the corresponding
-            DatasetMetrics object
+            OverallMetricsCatalogue: A OverallMetricsCatalog that maps a metrics name to the corresponding
+            OverallMetrics object
         """
         ############################################################################################################
         ### Load the ground truth data for the borehole extraction
@@ -214,16 +214,16 @@ class OverallFilePredictions:
             overall_groundwater_metrics = GroundwaterEvaluator(
                 self.get_groundwater_entries(), ground_truth_path
             ).evaluate()
-            all_metrics.groundwater_metrics = overall_groundwater_metrics.groundwater_metrics_to_dataset_metrics()
+            all_metrics.groundwater_metrics = overall_groundwater_metrics.groundwater_metrics_to_overall_metrics()
             all_metrics.groundwater_depth_metrics = (
-                overall_groundwater_metrics.groundwater_depth_metrics_to_dataset_metrics()
+                overall_groundwater_metrics.groundwater_depth_metrics_to_overall_metrics()
             )
             return all_metrics
         else:
             logger.warning("Ground truth file not found. Skipping evaluation.")
             return None
 
-    def evaluate_layer_extraction(self, number_of_truth_values: dict) -> DatasetMetricsCatalog:
+    def evaluate_layer_extraction(self, number_of_truth_values: dict) -> OverallMetricsCatalog:
         """Calculate F1, precision and recall for the predictions.
 
         Calculate F1, precision and recall for the individual documents as well as overall.
@@ -234,9 +234,9 @@ class OverallFilePredictions:
             number_of_truth_values (dict): The number of layer ground truth values per file.
 
         Returns:
-            DatasetMetricsCatalogue: A dictionary that maps a metrics name to the corresponding DatasetMetrics object
+            OverallMetricsCatalog: A dictionary that maps a metrics name to the corresponding OverallMetrics object
         """
-        all_metrics = DatasetMetricsCatalog()
+        all_metrics = OverallMetricsCatalog()
         all_metrics.set_layer_metrics(get_layer_metrics(self, number_of_truth_values))
         all_metrics.set_depth_interval_metrics(get_depth_interval_metrics(self))
 
@@ -277,7 +277,7 @@ class OverallFilePredictions:
 
         return all_metrics
 
-    def get_metrics(self, field_key: str, field_name: str) -> DatasetMetrics:
+    def get_metrics(self, field_key: str, field_name: str) -> OverallMetrics:
         """Get the metrics for a specific field in the predictions.
 
         Args:
@@ -286,17 +286,17 @@ class OverallFilePredictions:
             field_name (str): The name of the field being evaluated.
 
         Returns:
-            DatasetMetrics: The requested DatasetMetrics object.
+            OverallMetrics: The requested OverallMetrics object.
         """
-        dataset_metrics = DatasetMetrics()
+        overall_metrics = OverallMetrics()
 
         for file_prediction in self.file_predictions_list:
-            dataset_metrics.metrics[file_prediction.file_name] = getattr(file_prediction, field_key)[field_name]
+            overall_metrics.metrics[file_prediction.file_name] = getattr(file_prediction, field_key)[field_name]
 
-        return dataset_metrics
+        return overall_metrics
 
 
-def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_values: dict) -> DatasetMetrics:
+def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_values: dict) -> OverallMetrics:
     """Calculate F1, precision and recall for the layer predictions.
 
     Calculate F1, precision and recall for the individual documents as well as overall.
@@ -308,9 +308,9 @@ def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_value
         number_of_truth_values (dict): The number of ground truth values per file.
 
     Returns:
-        DatasetMetrics: the metrics for the layers
+        OverallMetrics: the metrics for the layers
     """
-    layer_metrics = DatasetMetrics()
+    layer_metrics = OverallMetrics()
 
     for file_prediction in predictions.file_predictions_list:
         hits = 0
@@ -326,7 +326,7 @@ def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_value
     return layer_metrics
 
 
-def get_depth_interval_metrics(predictions: OverallFilePredictions) -> DatasetMetrics:
+def get_depth_interval_metrics(predictions: OverallFilePredictions) -> OverallMetrics:
     """Calculate F1, precision and recall for the depth interval predictions.
 
     # TODO: Try to mode this to the LayerPrediction class
@@ -339,9 +339,9 @@ def get_depth_interval_metrics(predictions: OverallFilePredictions) -> DatasetMe
         predictions (dict): The predictions.
 
     Returns:
-        DatasetMetrics: the metrics for the depth intervals
+        OverallMetrics: the metrics for the depth intervals
     """
-    depth_interval_metrics = DatasetMetrics()
+    depth_interval_metrics = OverallMetrics()
 
     for file_prediction in predictions.file_predictions_list:
         depth_interval_hits = 0

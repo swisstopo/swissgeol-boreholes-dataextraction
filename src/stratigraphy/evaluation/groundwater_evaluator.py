@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from stratigraphy.benchmark.ground_truth import GroundTruth
-from stratigraphy.benchmark.metrics import DatasetMetrics
+from stratigraphy.benchmark.metrics import OverallMetrics
 from stratigraphy.evaluation.evaluation_dataclasses import Metrics
 from stratigraphy.evaluation.utility import count_against_ground_truth
 from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument
@@ -37,19 +37,19 @@ class OverallGroundwaterMetrics:
         """
         self.groundwater_metrics.append(groundwater_metrics)
 
-    def groundwater_metrics_to_dataset_metrics(self):
-        """Convert the overall groundwater metrics to a DatasetMetrics object."""
-        dataset_metrics = DatasetMetrics()
+    def groundwater_metrics_to_overall_metrics(self):
+        """Convert the overall groundwater metrics to a OverallMetrics object."""
+        overall_metrics = OverallMetrics()
         for groundwater_metrics in self.groundwater_metrics:
-            dataset_metrics.metrics[groundwater_metrics.filename] = groundwater_metrics.groundwater_metrics
-        return dataset_metrics
+            overall_metrics.metrics[groundwater_metrics.filename] = groundwater_metrics.groundwater_metrics
+        return overall_metrics
 
-    def groundwater_depth_metrics_to_dataset_metrics(self):
-        """Convert the overall groundwater depth metrics to a DatasetMetrics object."""
-        dataset_metrics = DatasetMetrics()
+    def groundwater_depth_metrics_to_overall_metrics(self):
+        """Convert the overall groundwater depth metrics to a OverallMetrics object."""
+        overall_metrics = OverallMetrics()
         for groundwater_metrics in self.groundwater_metrics:
-            dataset_metrics.metrics[groundwater_metrics.filename] = groundwater_metrics.groundwater_depth_metrics
-        return dataset_metrics
+            overall_metrics.metrics[groundwater_metrics.filename] = groundwater_metrics.groundwater_depth_metrics
+        return overall_metrics
 
 
 class GroundwaterEvaluator:
@@ -128,7 +128,7 @@ class GroundwaterEvaluator:
                 groundwater_elevation_metrics=groundwater_elevation_metrics,
                 groundwater_date_metrics=groundwater_date_metrics,
                 filename=filename,
-            )  # TODO: This clashes with the DatasetMetrics object
+            )  # TODO: This clashes with the OverallMetrics object
 
             overall_groundwater_metrics.add_groundwater_metrics(file_groundwater_metrics)
 

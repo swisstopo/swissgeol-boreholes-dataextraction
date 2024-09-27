@@ -55,7 +55,7 @@ class Metrics(metaclass=abc.ABCMeta):
             f"{feature_name}_f1": self.f1,
         }
 
-    # TODO: Currently, some other methods for averaging metrics are in the DatasetMetrics class.
+    # TODO: Currently, some other methods for averaging metrics are in the OverallMetrics class.
     # On the long run, we should refactor this to have a single place where these averaging computations are
     # implemented.
     @staticmethod

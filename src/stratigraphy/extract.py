@@ -2,6 +2,7 @@
 
 import logging
 import math
+from typing import Any
 
 import fitz
 
@@ -33,8 +34,12 @@ logger = logging.getLogger(__name__)
 
 def process_page(
     lines: list[TextLine], geometric_lines, language: str, page_number: int, **params: dict
-) -> list[dict]:
+) -> tuple[list[dict[str, Any]], list[DepthsMaterialsColumnPairs]]:
     """Process a single page of a pdf.
+
+    # TODO: Ideally, one function does one thing. This function does a lot of things. It should be split into
+    # smaller functions.
+    # TODO: Return objects instead of dictionaries. This will make the code more readable and easier to understand.
 
     Finds all descriptions and depth intervals on the page and matches them.
 

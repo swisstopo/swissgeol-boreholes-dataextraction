@@ -6,7 +6,7 @@ import pandas as pd
 from stratigraphy.evaluation.evaluation_dataclasses import Metrics
 
 
-class DatasetMetrics:
+class OverallMetrics:
     """Keeps track of a particular metrics for all documents in a dataset."""
 
     # TODO: Currently, some methods for averaging metrics are in the Metrics class.
@@ -53,48 +53,48 @@ class DatasetMetrics:
         return series.to_frame(name=name)
 
 
-class DatasetMetricsCatalog:
+class OverallMetricsCatalog:
     """Keeps track of all different relevant metrics that are computed for a dataset."""
 
-    layer_metrics: DatasetMetrics = None
-    depth_interval_metrics: DatasetMetrics = None
-    de_layer_metrics: DatasetMetrics = None
-    de_depth_interval_metrics: DatasetMetrics = None
-    fr_layer_metrics: DatasetMetrics = None
-    fr_depth_interval_metrics: DatasetMetrics = None
-    groundwater_metrics: DatasetMetrics = None
-    groundwater_depth_metrics: DatasetMetrics = None
+    layer_metrics: OverallMetrics = None
+    depth_interval_metrics: OverallMetrics = None
+    de_layer_metrics: OverallMetrics = None
+    de_depth_interval_metrics: OverallMetrics = None
+    fr_layer_metrics: OverallMetrics = None
+    fr_depth_interval_metrics: OverallMetrics = None
+    groundwater_metrics: OverallMetrics = None
+    groundwater_depth_metrics: OverallMetrics = None
 
-    def set_layer_metrics(self, metrics: DatasetMetrics):
+    def set_layer_metrics(self, metrics: OverallMetrics):
         """Set the layer metrics."""
         self.layer_metrics = metrics
 
-    def set_depth_interval_metrics(self, metrics: DatasetMetrics):
+    def set_depth_interval_metrics(self, metrics: OverallMetrics):
         """Set the depth interval metrics."""
         self.depth_interval_metrics = metrics
 
-    def set_de_layer_metrics(self, metrics: DatasetMetrics):
+    def set_de_layer_metrics(self, metrics: OverallMetrics):
         """Set the de layer metrics."""
         self.de_layer_metrics = metrics
         # TODO: Add the possibility to compute the metrics for the language layers
 
-    def set_de_depth_interval_metrics(self, metrics: DatasetMetrics):
+    def set_de_depth_interval_metrics(self, metrics: OverallMetrics):
         """Set the de depth interval metrics."""
         self.de_depth_interval_metrics = metrics
 
-    def set_fr_layer_metrics(self, metrics: DatasetMetrics):
+    def set_fr_layer_metrics(self, metrics: OverallMetrics):
         """Set the fr layer metrics."""
         self.fr_layer_metrics = metrics
 
-    def set_fr_depth_interval_metrics(self, metrics: DatasetMetrics):
+    def set_fr_depth_interval_metrics(self, metrics: OverallMetrics):
         """Set the fr depth interval metrics."""
         self.fr_depth_interval_metrics = metrics
 
-    def set_groundwater_metrics(self, metrics: DatasetMetrics):
+    def set_groundwater_metrics(self, metrics: OverallMetrics):
         """Set the groundwater metrics."""
         self.groundwater_metrics = metrics
 
-    def set_groundwater_depth_metrics(self, metrics: DatasetMetrics):
+    def set_groundwater_depth_metrics(self, metrics: OverallMetrics):
         """Set the groundwater depth metrics."""
         self.groundwater_depth_metrics = metrics
 
