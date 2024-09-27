@@ -151,6 +151,8 @@ def process_page(
                     )
                 ]
             )
+
+    # TODO: Load directly the predictions into the dataclass
     predictions = [
         (
             {"material_description": group["block"].to_json(), "depth_interval": group["depth_interval"].to_json()}

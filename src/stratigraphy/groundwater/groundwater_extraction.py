@@ -5,6 +5,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date as dt
 from datetime import datetime
+from pathlib import Path
 
 import fitz
 import numpy as np
@@ -133,25 +134,23 @@ class GroundwaterInDocument:
     groundwater: list[GroundwaterOnPage]
     filename: str
 
-    def __init__(self, filename: str):
-        """Initializes the GroundwaterInDocument object.
+    def __init__(self, doc: fitz.Document, terrain_elevation: Elevation | None = None):
+        """Initializes the GroundwaterInDocument object and extracts the groundwater from the document.
 
         Args:
-            filename (str): The name of the document.
+            doc (fitz.Document): The PDF document.
+            terrain_elevation (Elevation | None): The elevation of the terrain.
         """
         self.groundwater = []
-        self.filename = filename
+        self.filename = Path(doc.name).name
 
-    def add_groundwater_from_page(self, groundwater_on_page: GroundwaterOnPage | list[GroundwaterOnPage]):
-        """Adds groundwater information from a page to the groundwater list.
+        groundwater_extractor = GroundwaterLevelExtractor(document=doc)
+        groundwater_in_doc = groundwater_extractor.extract_groundwater(terrain_elevation)
 
-        Args:
-            groundwater_on_page (GroundwaterOnPage): The groundwater information from a page.
-        """
-        if isinstance(groundwater_on_page, list):
-            self.groundwater.extend(groundwater_on_page)
+        if isinstance(groundwater_in_doc, list):
+            self.groundwater.extend(groundwater_in_doc)
         else:
-            self.groundwater.append(groundwater_on_page)
+            self.groundwater.append(groundwater_in_doc)
 
     def get_groundwater_in_doc(self) -> list[Groundwater]:
         """Returns the groundwater information in the document.
