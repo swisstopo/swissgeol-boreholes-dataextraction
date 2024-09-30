@@ -175,7 +175,6 @@ def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDa
     """Extract text from a PDF Document. The text is extracted from the user-defined bounding box.
 
     Args:
-        extract_data_request (ExtractDataRequest): The request data. The page number is 1-based.
         pdf_page (fitz.Page): The PDF page.
         user_defined_bbox (fitz.Rect): The user-defined bounding box. The bounding box is in PDF coordinates.
 
@@ -186,11 +185,11 @@ def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDa
     text_lines = extract_text_lines_from_bbox(pdf_page, user_defined_bbox)
 
     # Convert the text lines to a string
-    text = ""
+    text = " ".join([text_line.text for text_line in text_lines])
+
     text_based_bbox = fitz.Rect()
     for text_line in text_lines:
-        text += text_line.text + " "
-        text_based_bbox = text_based_bbox + text_line.rect
+        text_based_bbox = text_based_bbox.include_rect(text_line.rect)
 
     bbox = BoundingBox.load_from_fitz_rect(text_based_bbox)
     return ExtractTextResponse(bbox=bbox, text=text)
@@ -200,7 +199,6 @@ def extract_number(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> Extract
     """Extract numbers from a PDF document. The numbers are extracted from the user-defined bounding box.
 
     Args:
-        extract_data_request (ExtractDataRequest): The request data. The page number is 1-based.
         pdf_page (fitz.Page): The PDF page.
         user_defined_bbox (fitz.Rect): The user-defined bounding box. The bounding box is in PDF coordinates.
 
@@ -211,7 +209,6 @@ def extract_number(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> Extract
     text_lines = extract_text_lines_from_bbox(pdf_page, user_defined_bbox)
 
     # Extract the number
-    number = None
     for text_line in text_lines:
         number = extract_number_from_text(text_line.text)
         if number:
