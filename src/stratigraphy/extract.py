@@ -7,6 +7,7 @@ import fitz
 
 from stratigraphy.depthcolumn import find_depth_columns
 from stratigraphy.depthcolumn.depthcolumn import DepthColumn
+from stratigraphy.depthcolumn.depthcolumnentry import LayerDepthColumnEntry
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
 from stratigraphy.layer.layer import Layer, LayersOnPage
 from stratigraphy.layer.layer_identifier_column import (
@@ -126,7 +127,6 @@ def process_page(
             )
             for depth_column, material_description_rect in filtered_pairs
         ]
-
     else:
         json_filtered_pairs = []
         # Fallback when no depth column was found
@@ -151,17 +151,38 @@ def process_page(
                 ]
             )
 
+    # Add boundary interval here !!!!!!!!! see https://github.com/swisstopo/swissgeol-boreholes-dataextraction/blob/main/src/stratigraphy/util/predictions.py
+
+    # TODO: Groups should become an object instead of a list of dictionaries.
+
     layer_predictions = LayersOnPage(
         [
             Layer(
                 material_description=group["block"],
-                depth_interval=group["depth_interval"] if "depth_interval" in group else None,
+                depth_interval=convert_to_boundary_interval(group["depth_interval"])
+                if "depth_interval" in group
+                else None,
             )
             for group in groups
         ]
     )
     layer_predictions.remove_empty_predictions()
     return layer_predictions, json_filtered_pairs
+
+
+def convert_to_boundary_interval(layer_depth_column: LayerDepthColumnEntry) -> BoundaryInterval:
+    """Convert a dictionary to a BoundaryInterval object.
+
+    Args:
+        layer_depth_column (LayerDepthColumnEntry): The dictionary to convert.
+
+    Returns:
+        BoundaryInterval: The converted object.
+    """
+    start = layer_depth_column.start if layer_depth_column.start is not None else None
+    end = layer_depth_column.end if layer_depth_column.end is not None else None
+
+    return BoundaryInterval(start=start, end=end)
 
 
 def score_column_match(

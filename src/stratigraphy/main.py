@@ -218,6 +218,9 @@ def start_pipeline(
 
     for filename in tqdm(files, desc="Processing files", unit="file"):
         if filename.endswith(".pdf"):
+            # if not filename == "684252058-bp.pdf":
+            #     continue
+
             in_path = os.path.join(root, filename)
             logger.info("Processing file: %s", in_path)
 
