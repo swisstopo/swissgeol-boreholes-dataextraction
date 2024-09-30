@@ -7,7 +7,7 @@ import fitz
 from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
 from stratigraphy.lines.line import TextLine, TextWord
 from stratigraphy.text.textblock import MaterialDescription, TextBlock
-from stratigraphy.util.interval import AnnotatedInterval, BoundaryInterval
+from stratigraphy.util.interval import AnnotatedInterval, BoundaryInterval, Interval
 from stratigraphy.util.util import parse_text
 
 
@@ -152,3 +152,11 @@ class LayersInDocument:
         for layers_on_page in self.layers_in_document:
             all_layers.extend(layers_on_page.layers_on_page)
         return all_layers
+
+
+@dataclass
+class IntervalBlockGroup:
+    """A class to represent a group of depth interval blocks."""
+
+    depth_interval: Interval | list[Interval] | None
+    block: TextBlock | list[TextBlock]

@@ -7,6 +7,7 @@ import abc
 import fitz
 import numpy as np
 from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
+from stratigraphy.layer.layer import IntervalBlockGroup
 from stratigraphy.lines.line import TextLine, TextWord
 from stratigraphy.text.find_description import get_description_blocks
 from stratigraphy.util.dataclasses import Line
@@ -130,10 +131,10 @@ class LayerDepthColumn(DepthColumn):
     def identify_groups(
         self,
         description_lines: list[TextLine],
-        geometric_lines: list[Line],
-        material_description_rect: fitz.Rect,
+        geometric_lines: list[Line],  # TODO: Parameter not used. Shall we keep?
+        material_description_rect: fitz.Rect,  #  # TODO: Parameter not used. Shall we keep?
         **params,
-    ) -> list[dict]:
+    ) -> list[IntervalBlockGroup]:
         depth_intervals = self.depth_intervals()
 
         groups = []
@@ -148,8 +149,11 @@ class LayerDepthColumn(DepthColumn):
 
             matched_blocks = interval.matching_blocks(description_lines, line_index, next_interval)
             line_index += sum([len(block.lines) for block in matched_blocks])
-            groups.append({"depth_intervals": [interval], "blocks": matched_blocks})
-
+            groups.append(
+                # TODO: This seems to be the only case where a list is passed and most of the time it is a list of one
+                # element. Seem to need the function: transform_groups().
+                IntervalBlockGroup(depth_interval=[interval], block=matched_blocks)
+            )
         return groups
 
 
@@ -348,7 +352,7 @@ class BoundaryDepthColumn(DepthColumn):
         geometric_lines: list[Line],
         material_description_rect: fitz.Rect,
         **params,
-    ) -> list[dict]:
+    ) -> list[IntervalBlockGroup]:
         """Identifies groups of description blocks that correspond to depth intervals.
 
         Note: includes a heuristic of whether there should be a group corresponding to a final depth interval
@@ -361,8 +365,7 @@ class BoundaryDepthColumn(DepthColumn):
             params (dict): A dictionary of parameters used for line detection.
 
         Returns:
-            list[dict]: A list of groups, where each group is a dictionary
-                        with the keys "depth_intervals" and "blocks".
+            list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
 
         Example:
             [
@@ -405,9 +408,8 @@ class BoundaryDepthColumn(DepthColumn):
             current_blocks.extend(pre)
             if len(exact):
                 if len(current_intervals) > 0 or len(current_blocks) > 0:
-                    groups.append({"depth_intervals": current_intervals, "blocks": current_blocks})
-
-                groups.append({"depth_intervals": [interval], "blocks": exact})
+                    groups.append(IntervalBlockGroup(depth_interval=current_intervals, block=current_blocks))
+                groups.append(IntervalBlockGroup(depth_interval=[interval], block=exact))
                 current_blocks = post
                 current_intervals = []
             else:
@@ -417,6 +419,6 @@ class BoundaryDepthColumn(DepthColumn):
                     current_intervals.append(interval)
 
         if len(current_intervals) > 0 or len(current_blocks) > 0:
-            groups.append({"depth_intervals": current_intervals, "blocks": current_blocks})
+            groups.append(IntervalBlockGroup(depth_interval=current_intervals, block=current_blocks))
 
         return groups
