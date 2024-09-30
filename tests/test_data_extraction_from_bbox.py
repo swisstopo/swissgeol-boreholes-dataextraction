@@ -122,8 +122,8 @@ def test_extract_text_success(test_client: TestClient, upload_test_pdf, upload_t
     ### Extract Data on Rotated PDF
     ####################################################################################################
     target_text = "OUVRAGE EMPLACEMENT Le Mégaror Lancy ENTREPRISE ISR Injectobohr SA"
-    reqest = get_text_request_on_rotated_pdf()
-    response = test_client.post("/api/V1/extract_data", content=reqest.model_dump_json())
+    request = get_text_request_on_rotated_pdf()
+    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
     assert response.status_code == 200
     json_response = response.json()
     assert "bbox" in json_response
