@@ -70,7 +70,7 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
         )
 
         if not extracted_coords:
-            return HTTPException(status_code=404, detail="Coordinates not found.")
+            raise HTTPException(status_code=404, detail="Coordinates not found.")
 
         # Convert the bounding box to PNG coordinates and return the response
         return ExtractCoordinatesResponse(
@@ -196,7 +196,7 @@ def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDa
         bbox = BoundingBox.load_from_fitz_rect(text_based_bbox)
         return ExtractTextResponse(bbox=bbox, text=text)
     else:
-        return HTTPException(status_code=404, detail="Text not found.")
+        raise HTTPException(status_code=404, detail="Text not found.")
 
 
 def extract_number(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractNumberResponse | HTTPException:
@@ -226,7 +226,7 @@ def extract_number(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> Extract
             )
             return ExtractNumberResponse(bbox=bbox, number=number[0])
 
-    return HTTPException(status_code=404, detail="Number not found.")
+    raise HTTPException(status_code=404, detail="Number not found.")
 
 
 def extract_number_from_text(text: str) -> list[float]:
