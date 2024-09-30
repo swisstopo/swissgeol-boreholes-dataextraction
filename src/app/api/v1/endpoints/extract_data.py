@@ -86,11 +86,7 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
                 target_height=png_page_height,
                 target_width=png_page_width,
             ),
-            coordinates=Coordinates(
-                east=extracted_coords.coordinates.east,
-                north=extracted_coords.coordinates.north,
-                projection=extracted_coords.coordinates.projection,
-            ),
+            coordinates=extracted_coords,
         )
 
     elif extract_data_request.format == FormatTypes.TEXT:
