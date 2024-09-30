@@ -13,7 +13,7 @@ from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
 from stratigraphy.evaluation.utility import find_matching_layer
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument
 from stratigraphy.layer.layer import LayersInDocument
-from stratigraphy.metadata.metadata import BoreholeMetadata, BoreholeMetadataList
+from stratigraphy.metadata.metadata import BoreholeMetadata, OverallBoreholeMetadata
 from stratigraphy.util.util import parse_text
 
 logger = logging.getLogger(__name__)
@@ -169,7 +169,7 @@ class OverallFilePredictions:
         Args:
             ground_truth_path (Path): The path to the ground truth file.
         """
-        metadata_per_file = BoreholeMetadataList()
+        metadata_per_file = OverallBoreholeMetadata()
 
         for file_prediction in self.file_predictions_list:
             metadata_per_file.add_metadata(file_prediction.metadata)

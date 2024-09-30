@@ -98,7 +98,7 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
 
 
 @dataclass
-class BoreholeMetadataList(metaclass=abc.ABCMeta):
+class OverallBoreholeMetadata(metaclass=abc.ABCMeta):
     """Metadata for stratigraphy data."""
 
     metadata_per_file: list[BoreholeMetadata] = None

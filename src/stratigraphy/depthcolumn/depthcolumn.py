@@ -23,10 +23,12 @@ class DepthColumn(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def depth_intervals(self) -> list[Interval]:
+        """Get the depth intervals of the depth column."""
         pass
 
     @abc.abstractmethod
     def rects(self) -> list[fitz.Rect]:
+        """Get the rectangles of the depth column entries."""
         pass
 
     """Used for scoring how well a depth column corresponds to a material description bbox."""
@@ -40,23 +42,44 @@ class DepthColumn(metaclass=abc.ABCMeta):
 
     @property
     def max_x0(self) -> float:
+        """Get the maximum x0 value of the depth column entries."""
         return max([rect.x0 for rect in self.rects()])
 
     @property
     def min_x1(self) -> float:
+        """Get the minimum x1 value of the depth column entries."""
         return min([rect.x1 for rect in self.rects()])
 
     @abc.abstractmethod
     def noise_count(self, all_words: list[TextWord]) -> int:
+        """Count the number of words that intersect with the depth column entries.
+
+        Args:
+            all_words (list[TextWord]): A list of all text lines on the page.
+
+        Returns:
+            int: The number of words that intersect with the depth column entries but are not part of it.
+        """
         pass
 
     @abc.abstractmethod
     def identify_groups(
         self, description_lines: list[TextLine], geometric_lines: list[Line], material_description_rect: fitz.Rect
     ) -> list[dict]:
+        """Identifies groups of description blocks that correspond to depth intervals.
+
+        Args:
+            description_lines (list[TextLine]): A list of text lines that are part of the description.
+            geometric_lines (list[Line]): A list of geometric lines that are part of the description.
+            material_description_rect (fitz.Rect): The bounding box of the material description.
+
+        Returns:
+            list[dict]: A list of groups, where each group is a dictionary.
+        """
         pass
 
     def to_json(self):
+        """Convert the depth column to a JSON serializable format."""
         rect = self.rect()
         return {
             "rect": [rect.x0, rect.y0, rect.x1, rect.y1],
@@ -88,6 +111,14 @@ class LayerDepthColumn(DepthColumn):
         return "LayerDepthColumn({})".format(", ".join([str(entry) for entry in self.entries]))
 
     def add_entry(self, entry: LayerDepthColumnEntry) -> LayerDepthColumn:
+        """Adds a depth column entry to the depth column.
+
+        Args:
+            entry (LayerDepthColumnEntry): The depth column entry to add.
+
+        Returns:
+            LayerDepthColumn: The depth column with the new entry.
+        """
         self.entries.append(entry)
         return self
 
@@ -102,6 +133,11 @@ class LayerDepthColumn(DepthColumn):
         return 0
 
     def break_on_mismatch(self) -> list[LayerDepthColumn]:
+        """Breaks the depth column into segments where the depth intervals are not in an arithmetic progression.
+
+        Returns:
+            list[LayerDepthColumn]: A list of depth column segments.
+        """
         segments = []
         segment_start = 0
         for index, current_entry in enumerate(self.entries):
@@ -117,6 +153,13 @@ class LayerDepthColumn(DepthColumn):
         return [LayerDepthColumn(segment) for segment in segments]
 
     def is_valid(self) -> bool:
+        """Checks if the depth column is valid.
+
+        A depth column is valid if it is strictly increasing and the depth intervals are significant.
+
+        Returns:
+            bool: True if the depth column is valid, False otherwise.
+        """
         if len(self.entries) <= 2:
             return False
 
@@ -132,9 +175,20 @@ class LayerDepthColumn(DepthColumn):
         self,
         description_lines: list[TextLine],
         geometric_lines: list[Line],  # TODO: Parameter not used. Shall we keep?
-        material_description_rect: fitz.Rect,  #  # TODO: Parameter not used. Shall we keep?
+        material_description_rect: fitz.Rect,  # TODO: Parameter not used. Shall we keep?
         **params,
     ) -> list[IntervalBlockGroup]:
+        """Identifies groups of description blocks that correspond to depth intervals.
+
+        Args:
+            description_lines (list[TextLine]): A list of text lines that are part of the description.
+            geometric_lines (list[Line]): A list of geometric lines that are part of the description.
+            material_description_rect (fitz.Rect): The bounding box of the material description.
+            params (dict): A dictionary of parameters used for line detection.
+
+        Returns:
+            list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
+        """
         depth_intervals = self.depth_intervals()
 
         groups = []
@@ -195,6 +249,14 @@ class BoundaryDepthColumn(DepthColumn):
         return "DepthColumn({})".format(", ".join([str(entry) for entry in self.entries]))
 
     def add_entry(self, entry: DepthColumnEntry) -> BoundaryDepthColumn:
+        """Adds a depth column entry to the depth column.
+
+        Args:
+            entry (DepthColumnEntry): The depth column entry to add.
+
+        Returns:
+            BoundaryDepthColumn: The depth column with the new entry.
+        """
         self.entries.append(entry)
         return self
 

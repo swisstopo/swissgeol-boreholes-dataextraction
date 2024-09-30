@@ -9,23 +9,23 @@ from stratigraphy.evaluation.evaluation_dataclasses import (
     Metrics,
     OverallBoreholeMetadataMetrics,
 )
-from stratigraphy.metadata.metadata import BoreholeMetadataList
+from stratigraphy.metadata.metadata import OverallBoreholeMetadata
 
 
 class MetadataEvaluator:
     """Class for evaluating the metadata of a borehole."""
 
-    metadata_list: BoreholeMetadataList = None
+    metadata_list: OverallBoreholeMetadata = None
     ground_truth: dict[str, Any] = None
 
-    def __init__(self, metadata_list: BoreholeMetadataList, ground_truth_path: str):
+    def __init__(self, metadata_list: OverallBoreholeMetadata, ground_truth_path: str):
         """Initializes the MetadataEvaluator object.
 
         Args:
-            metadata_list (BoreholeMetadataList): The metadata to evaluate.
+            metadata_list (OverallBoreholeMetadata): The metadata to evaluate.
             ground_truth_path (str): The path to the ground truth file.
         """
-        self.metadata_list: BoreholeMetadataList = metadata_list
+        self.metadata_list: OverallBoreholeMetadata = metadata_list
 
         # Load the ground truth data for the metadata
         self.metadata_ground_truth = GroundTruth(ground_truth_path)
