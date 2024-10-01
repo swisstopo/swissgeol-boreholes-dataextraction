@@ -20,6 +20,10 @@ TEST_PDF_KEY = Path("sample.pdf")
 TEST_PDF_PATH = Path(__file__).parent.parent / "example" / "example_borehole_profile.pdf"
 TEST_PNG_KEY = Path("dataextraction/sample-1.png")
 TEST_PNG_PATH = Path(__file__).parent.parent / "example" / "sample-1.png"
+TEST_ROTATED_PNG_KEY = Path("dataextraction/16132-1.png")
+TEST_ROTATED_PNG_PATH = Path(__file__).parent.parent / "example" / "16132-1.png"
+TEST_ROTATED_PDF_KEY = Path("16132.pdf")
+TEST_ROTATED_PDF_PATH = Path(__file__).parent.parent / "example" / "16132.pdf"  # Rotated PDF of 270 degrees
 
 
 def get_default_small_coordinate_request():
@@ -42,16 +46,32 @@ def get_default_coordinate_request():
     )
 
 
+def get_text_request_on_rotated_pdf():
+    """Return a default ExtractDataRequest for text on a rotated PDF."""
+    return ExtractDataRequest(
+        filename=TEST_ROTATED_PDF_KEY.name,
+        page_number=1,
+        bbox={"x0": 0, "y0": 0, "x1": 600, "y1": 150},
+        format=FormatTypes.TEXT,
+    )
+
+
 @pytest.fixture(scope="function")
 def upload_test_pdf(s3_client):
     """Upload a test PDF file to S3."""
     s3_client.upload_file(Filename=str(TEST_PDF_PATH), Bucket=config.test_bucket_name, Key=str(TEST_PDF_KEY))
+    s3_client.upload_file(
+        Filename=str(TEST_ROTATED_PDF_PATH), Bucket=config.test_bucket_name, Key=str(TEST_ROTATED_PDF_KEY)
+    )
 
 
 @pytest.fixture(scope="function")
 def upload_test_png(s3_client, upload_test_pdf):
     """Upload a test PNG file to S3."""
     s3_client.upload_file(Filename=str(TEST_PNG_PATH), Bucket=config.test_bucket_name, Key=str(TEST_PNG_KEY))
+    s3_client.upload_file(
+        Filename=str(TEST_ROTATED_PNG_PATH), Bucket=config.test_bucket_name, Key=str(TEST_ROTATED_PNG_KEY)
+    )
 
 
 def test_load_pdf_from_aws(upload_test_pdf):
@@ -73,6 +93,9 @@ def test_extract_coordinate_fail(test_client: TestClient, upload_test_pdf, uploa
 
 def test_extract_text_success(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test the extract_data endpoint with a valid request."""
+    ####################################################################################################
+    ### Extract Data on Normal PDF
+    ####################################################################################################
     target_text = (
         "BLS AlpTransit AG Lötschberg-Basislinie Sondierbohrung : SST KB 5 "
         "Bauherrschaft: BLS AlpTransit "
@@ -80,7 +103,7 @@ def test_extract_text_success(test_client: TestClient, upload_test_pdf, upload_t
         "Bohrmeister : Dragnic "
         "Ausführungsdatum 2.-3. 9. 1995 "
         "Koordinaten : 615 790 / 157 500 "
-        "Kote Bezugspunkt: ~788,6 m ü. M. "
+        "Kote Bezugspunkt: ~788,6 m ü. M."
     )
 
     request = ExtractDataRequest(
@@ -89,6 +112,17 @@ def test_extract_text_success(test_client: TestClient, upload_test_pdf, upload_t
         bbox={"x0": 0, "y0": 0, "x1": 1000, "y1": 1000},
         format=FormatTypes.TEXT,
     )
+    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    assert response.status_code == 200
+    json_response = response.json()
+    assert "bbox" in json_response
+    assert json_response["text"] == target_text
+
+    ####################################################################################################
+    ### Extract Data on Rotated PDF
+    ####################################################################################################
+    target_text = "OUVRAGE EMPLACEMENT Le Mégaror Lancy ENTREPRISE ISR Injectobohr SA"
+    request = get_text_request_on_rotated_pdf()
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
     assert response.status_code == 200
     json_response = response.json()
@@ -181,6 +215,9 @@ def test_invalid_pdf(test_client: TestClient, upload_test_pdf, upload_test_png):
 
 def test_number_extraction(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test the extract_data endpoint with a valid request."""
+    ####################################################################################################
+    ### Extract Data on Normal PDF
+    ####################################################################################################
     request = get_default_coordinate_request()
     request.format = FormatTypes.NUMBER
 
@@ -190,6 +227,20 @@ def test_number_extraction(test_client: TestClient, upload_test_pdf, upload_test
     assert "bbox" in json_response
     assert "number" in json_response
     assert json_response["number"] == 5  # from STT KB5
+
+    ####################################################################################################
+    ### Extract Data on Rotated PDF
+    ####################################################################################################
+    request = get_text_request_on_rotated_pdf()
+    request.format = FormatTypes.NUMBER
+    request.bbox = {"x0": 0, "y0": 0, "x1": 300, "y1": 300}
+
+    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    assert response.status_code == 200
+    json_response = response.json()
+    assert "bbox" in json_response
+    assert "number" in json_response
+    assert json_response["number"] == 0.0
 
 
 def test_number_extraction_failure(test_client: TestClient, upload_test_pdf, upload_test_png):
