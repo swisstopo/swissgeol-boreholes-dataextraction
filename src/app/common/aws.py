@@ -68,7 +68,7 @@ def load_data_from_aws(filename: Path, prefix: str = "") -> bytes:
     try:
         png_object = s3_client.get_object(Bucket=config.bucket_name, Key=str(prefix / filename))
     except s3_client.exceptions.NoSuchKey:
-        raise HTTPException(status_code=404, detail=f"Document {prefix + filename} not found in S3 bucket.") from None
+        raise HTTPException(status_code=404, detail=f"Document {prefix / filename} not found in S3 bucket.") from None
 
     # Load the PNG from the S3 object
     try:

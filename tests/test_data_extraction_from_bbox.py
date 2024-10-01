@@ -65,10 +65,10 @@ def test_extract_coordinate_fail(test_client: TestClient, upload_test_pdf, uploa
     """Test the extract_data endpoint with a valid request."""
     request = get_default_small_coordinate_request()
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
-    assert response.status_code == 200
+    assert response.status_code == 404
     json_response = response.json()
-    assert "bbox" in json_response
     assert "detail" in json_response
+    assert json_response["detail"] == "Coordinates not found."
 
 
 def test_extract_text_success(test_client: TestClient, upload_test_pdf, upload_test_png):
@@ -98,8 +98,6 @@ def test_extract_text_success(test_client: TestClient, upload_test_pdf, upload_t
 
 def test_extract_text_empty(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test the extract_data endpoint with a valid request."""
-    target_text = ""
-
     request = ExtractDataRequest(
         filename=TEST_PDF_KEY.name,
         page_number=1,
@@ -107,10 +105,10 @@ def test_extract_text_empty(test_client: TestClient, upload_test_pdf, upload_tes
         format=FormatTypes.TEXT,
     )
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
-    assert response.status_code == 200
+    assert response.status_code == 404
     json_response = response.json()
-    assert "bbox" in json_response
-    assert json_response["text"] == target_text
+    assert "detail" in json_response
+    assert json_response["detail"] == "Text not found."
 
 
 def test_extract_coordinate_success(test_client: TestClient, upload_test_pdf, upload_test_png):
