@@ -14,10 +14,7 @@ from stratigraphy.text.extract_text import extract_text_lines_from_bbox
 
 logger = logging.getLogger(__name__)
 
-# COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})\.?\d?"
-# COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{1,3}))?"
 COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})\.?(\d{1,})?"
-# COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})(?:\.(\d{1,}))?"
 
 
 @dataclass(kw_only=True)
