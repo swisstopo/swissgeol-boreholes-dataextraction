@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 # COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})\.?\d?"
 # COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{1,3}))?"
 COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})\.?(\d{1,})?"
+# COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})(?:\.(\d{1,}))?"
 
 
 @dataclass(kw_only=True)
@@ -262,6 +263,18 @@ class CoordinateExtractor(DataExtractor):
         lines_with_position = []
         for line in lines:
             preprocessed_text = preprocess(line.text)
+
+            # Special case for coordinates in the file: 269126143-bp.pdf. The matched string is 269578211260032 because
+            # the OCR has made a mistake between '11' and '/1'.
+            # Regex pattern to match exactly 7 digits and no '/'
+            pattern_ = r"^(?!.*\/)(?=.*\d{7})[A-Za-z0-9]*\d{7}[A-Za-z0-9]*$"
+
+            # Find all matches in the string
+            matches = regex.findall(pattern_, preprocessed_text)
+
+            if matches:
+                preprocessed_text = preprocessed_text.replace("11", "/1")
+
             lines_with_position.append(
                 {"line": line, "start": len(full_text), "end": len(full_text) + len(preprocessed_text)}
             )

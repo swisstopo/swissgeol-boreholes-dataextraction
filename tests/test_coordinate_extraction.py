@@ -21,7 +21,7 @@ def test_strLV95():  # noqa: D103
         rect=fitz.Rect(),
         page=1,
     )
-    assert str(coord) == "E: 2'789'456, N: 1'123'012"
+    assert str(coord) == "E: 2789456, N: 1123012"
 
 
 def test_to_jsonLV95():  # noqa: D103
@@ -52,7 +52,7 @@ def test_strLV03():  # noqa: D103
         rect=fitz.Rect(),
         page=1,
     )
-    assert str(coord) == "E: 789'456, N: 123'012"
+    assert str(coord) == "E: 789456, N: 123012"
 
 
 def test_to_jsonLV03():  # noqa: D103
@@ -67,6 +67,7 @@ def test_to_jsonLV03():  # noqa: D103
 
 
 doc = fitz.open(DATAPATH.parent / "example" / "example_borehole_profile.pdf")
+doc_with_digits_in_coordinates = fitz.open(DATAPATH.parent / "example" / "A7367.pdf")
 extractor = CoordinateExtractor(doc)
 
 
@@ -76,8 +77,18 @@ def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
     coordinates = extractor.extract_coordinates()
     # Check if the returned value is a list
     assert isinstance(coordinates, Coordinate)
-    assert repr(coordinates.east) == "615'790"
-    assert repr(coordinates.north) == "157'500"
+    assert repr(coordinates.east) == "615'790.0"
+    assert repr(coordinates.north) == "157'500.0"
+
+
+def test_CoordinateExtractor_extract_coordinates_with_digits_in_coordinates():  # noqa: D103
+    """Test the extraction of coordinates from a PDF document with digits in the coordinates."""
+    # Assuming there is a method called 'extract' in CoordinateExtractor class
+    coordinates = CoordinateExtractor(doc_with_digits_in_coordinates).extract_coordinates()
+    # Check if the returned value is a list
+    assert isinstance(coordinates, Coordinate)
+    assert repr(coordinates.east) == "607'562.0"
+    assert repr(coordinates.north) == "187'087.5"
 
 
 def _create_simple_lines(text_lines: list[str]) -> list[TextLine]:

@@ -218,9 +218,6 @@ def start_pipeline(
     metadata_per_file = BoreholeMetadataList()
 
     for filename in tqdm(files, desc="Processing files", unit="file"):
-        # if not filename == "268124587-bp.pdf":
-        #     continue
-
         if filename.endswith(".pdf"):
             in_path = os.path.join(root, filename)
             logger.info("Processing file: %s", in_path)
