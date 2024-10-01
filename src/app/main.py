@@ -24,7 +24,11 @@ app = FastAPI(root_path=f"/{root_path}")
 
 
 def custom_openapi():
-    """Custom function to modify the OpenAPI schema and remove 422 errors."""
+    """Custom function to modify the OpenAPI schema and remove 422 errors.
+
+    This is the implementation suggested by the FastAPI documentation to remove the 422 error from the OpenAPI schema.
+    Source: https://github.com/fastapi/fastapi/discussions/6695.
+    """
     if not app.openapi_schema:
         app.openapi_schema = get_openapi(
             title=app.title,

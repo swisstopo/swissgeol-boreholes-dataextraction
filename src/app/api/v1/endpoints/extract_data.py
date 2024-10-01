@@ -69,9 +69,6 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
             extract_data_request, pdf_page, user_defined_bbox.to_fitz_rect()
         )
 
-        if not extracted_coords:
-            raise HTTPException(status_code=404, detail="Coordinates not found.")
-
         # Convert the bounding box to PNG coordinates and return the response
         return ExtractCoordinatesResponse(
             bbox=extracted_coords.bbox.rescale(
@@ -90,9 +87,6 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
     elif extract_data_request.format == FormatTypes.TEXT:
         extracted_text: ExtractTextResponse = extract_text(pdf_page, user_defined_bbox.to_fitz_rect())
 
-        if isinstance(extracted_text, HTTPException):
-            return extracted_text
-
         # Convert the bounding box to PNG coordinates and return the response
         return ExtractTextResponse(
             bbox=extracted_text.bbox.rescale(
@@ -105,9 +99,6 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
         )
     elif extract_data_request.format == FormatTypes.NUMBER:
         extracted_number = extract_number(pdf_page, user_defined_bbox.to_fitz_rect())
-
-        if isinstance(extracted_number, HTTPException):
-            return extracted_number
 
         # Convert the bounding box to PNG coordinates and return the response
         return ExtractNumberResponse(
@@ -125,7 +116,7 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
 
 def extract_coordinates(
     extract_data_request: ExtractDataRequest, pdf_page: fitz.Page, user_defined_bbox: fitz.Rect
-) -> ExtractDataResponse | None:
+) -> ExtractDataResponse:
     """Extract coordinates from a PDF document.
 
     The coordinates are extracted from the user-defined bounding box. The coordinates are extracted in the
@@ -168,10 +159,10 @@ def extract_coordinates(
     if isinstance(extracted_coord, LV95Coordinate):
         return create_response(extracted_coord, "LV95")
 
-    return None
+    raise HTTPException(status_code=404, detail="Coordinates not found.")
 
 
-def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDataResponse | HTTPException:
+def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDataResponse:
     """Extract text from a PDF Document. The text is extracted from the user-defined bounding box.
 
     Args:
@@ -199,7 +190,7 @@ def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDa
         raise HTTPException(status_code=404, detail="Text not found.")
 
 
-def extract_number(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractNumberResponse | HTTPException:
+def extract_number(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractNumberResponse:
     """Extract numbers from a PDF document. The numbers are extracted from the user-defined bounding box.
 
     Args:
