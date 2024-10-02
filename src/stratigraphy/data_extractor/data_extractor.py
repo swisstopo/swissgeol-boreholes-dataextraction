@@ -10,7 +10,7 @@ from dataclasses import dataclass
 import fitz
 import regex
 from stratigraphy.lines.line import TextLine
-from stratigraphy.util.util import calculate_distance, read_params
+from stratigraphy.util.util import read_params
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +160,7 @@ class DataExtractor(ABC):
         feature_lines = list(dict.fromkeys(feature_lines))
 
         # Sort by distance from key_line
-        feature_lines_sorted = sorted(feature_lines, key=lambda line: calculate_distance(key_line.rect, line.rect))
+        # feature_lines_sorted = sorted(feature_lines, key=lambda line: calculate_distance(key_line.rect, line.rect))
+        feature_lines_sorted = sorted(feature_lines, key=lambda line: abs(line.rect.y0 - key_line.rect.y0))
 
         return feature_lines_sorted
