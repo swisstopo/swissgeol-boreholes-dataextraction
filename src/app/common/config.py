@@ -22,16 +22,17 @@ class Config(BaseSettings):
     logging_level: int = logging.DEBUG
 
     ###########################################################
-    # AWS
+    # AWS Settings
     ###########################################################
     bucket_name: str = get_aws_bucket_name()
     test_bucket_name: str = "test-bucket"
 
-    # TODO: check how this is used on the VM
-    # aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
-    # aws_secret_key_access = os.environ.get("AWS_SECRET_ACCESS_KEY")
-    # aws_session_token = os.environ.get("AWS_SESSION_TOKEN")
-    # aws_endpoint = os.environ.get("AWS_ENDPOINT")
+    ###########################################################
+    # AWS Credentials
+    ###########################################################
+    aws_access_key_id: str | None = os.environ.get("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: str | None = os.environ.get("AWS_SECRET_ACCESS_KEY")
+    aws_region: str | None = os.environ.get("AWS_REGION")
 
 
 config = Config()

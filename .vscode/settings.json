@@ -5,6 +5,7 @@
         "depthcolumn",
         "depthcolumnentry",
         "dotenv",
+        "fastapi",
         "fitz",
         "mlflow",
         "pixmap",

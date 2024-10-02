@@ -7,12 +7,45 @@ import boto3
 import fitz
 import numpy as np
 from app.common.config import config
+from botocore.exceptions import ClientError, NoCredentialsError
+from dotenv import load_dotenv
 from fastapi import HTTPException
 from PIL import Image
 
+load_dotenv()
+
+
+def create_s3_client():
+    """Create an S3 client using default or custom credentials.
+
+    Returns:
+        boto3.client: The S3 client.
+    """
+    try:
+        # Attempt to use default AWS credentials
+        s3_client = boto3.client("s3")
+        # Perform a quick test to ensure credentials are valid
+        s3_client.list_buckets()
+        return s3_client
+    except (NoCredentialsError, ClientError):
+        # Fallback to custom credentials if no credentials are found
+        try:
+            s3_client = boto3.client(
+                "s3",
+                aws_access_key_id=config.aws_access_key_id,
+                aws_secret_access_key=config.aws_secret_access_key,
+                region_name=config.aws_region,
+            )
+            # Test the fallback client
+            s3_client.list_buckets()
+            return s3_client
+        except ClientError as e:
+            print(f"Error accessing S3 with custom credentials: {e}")
+            raise e
+
+
 # Initialize the S3 client
-# AWS S3 Configuration
-s3_client = boto3.client("s3")
+s3_client = create_s3_client()
 
 
 def load_pdf_from_aws(filename: Path) -> fitz.Document:

@@ -326,6 +326,8 @@ The borehole application offers a given amount of functionalities (extract text,
 
 4. **Run the Docker container**
 
+4.1. **Run the Docker Container without concerning about AWS Credentials**
+
     To run the Docker container, use the following command:
 
     ```bash
@@ -334,21 +336,81 @@ The borehole application offers a given amount of functionalities (extract text,
 
     This command will start the container and map port 8000 of the container to port 8000 of the host machine.
 
-5. **Run the docker image with the AWS credentials**
+4.2. **Run the docker image with the AWS credentials**
+
+4.2.1. **Using a `~/.aws` file**
 
 If you have the AWS credentials configured locally in the `~/.aws` file, you can run the following command to forward your AWS credentials to the docker container 
+
+    To run the docker image from `Dockerfile` locally: 
 
     ```bash
 
     docker run -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api
     ```
 
+    To run the Docker image from `Dockerfile` with the environment variables from the `.env` file
+
+    ```bash
+    docker run --env-file .env -d -p 8000:8000 borehole-api
+    ```
+
+    To run the docker image used for AWS Lambda: `Dockerfile.aws.lambda`: 
+
     ```bash 
     docker run --platform linux/amd64 -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api:test
     ```
 
+4.2.2. **Passing the AWS credentials as Environment Variables**
 
-6. **Access the API**
+It is also possible to set the AWS credentials as you environment variables and the environment variables of the Docker image you are trying to run. 
+
+Unix-based Systems (Linux/macOS)
+
+Add the following lines to your `~/.bashrc`, `~/.bash_profile`, or `~/.zshrc` (depending on your shell):
+
+```bash
+export AWS_ACCESS_KEY_ID=your_access_key_id
+export AWS_SECRET_ACCESS_KEY=your_secret_access_key
+export AWS_DEFAULT_REGION=your_region 
+```
+After editing, run the following command to apply the changes:
+
+```bash
+source ~/.bashrc  # Or ~/.bash_profile, ~/.zshrc based on your configuration
+```
+
+Windows (Command Prompt or PowerShell)
+
+For Command Prompt:
+
+```bash
+setx AWS_ACCESS_KEY_ID your_access_key_id
+setx AWS_SECRET_ACCESS_KEY your_secret_access_key
+setx AWS_DEFAULT_REGION your_region
+```
+
+For PowerShell:
+
+```bash
+$env:AWS_ACCESS_KEY_ID="your_access_key_id"
+$env:AWS_SECRET_ACCESS_KEY="your_secret_access_key"
+$env:AWS_DEFAULT_REGION="your_region"
+```
+
+4.2.3. **Passing the AWS credentials in an Environment File**
+
+Another option is to store the credentials in a .env file and load them into your Python environment using the `python-dotenv` package:
+
+```bash
+AWS_ACCESS_KEY_ID=your_access_key_id
+AWS_SECRET_ACCESS_KEY=your_secret_access_key
+AWS_DEFAULT_REGION=your_region
+```
+
+You can find an example for such a `.env` file in `.env.template`. If you rename this file to `.env` and add your AWS credentials you should be good to go. 
+
+5. **Access the API**
 
     Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
 
@@ -357,7 +419,7 @@ If you have the AWS credentials configured locally in the `~/.aws` file, you can
     **Note:** If you are running Docker on a remote machine, replace `localhost` with the appropriate hostname or IP address.
 
 
-7. **Query the API**
+6. **Query the API**
 
 ```bash
     curl -X 'POST' \
@@ -369,7 +431,7 @@ If you have the AWS credentials configured locally in the `~/.aws` file, you can
     }'
 ```
 
-8. **Stop the Docker container**
+7. **Stop the Docker container**
 
     To stop the Docker container, press `Ctrl + C` in the terminal where the container is running.
 
@@ -386,7 +448,7 @@ If you have the AWS credentials configured locally in the `~/.aws` file, you can
 
 AWS Lambda is a serverless computing service provided by Amazon Web Services that allows you to run code without managing servers. It automatically scales your applications by executing code in response to triggers. You only pay for the compute time used.
 
-In this project we are using Mangum to wrap the FastAPI with a handler that we will package and deploy as a Lambda function in AWS. Then using AWS API Gateway we will route all incoming requests to invoke the lambda and handle the routing internally within our application.
+In this project we are using `Mangum` to wrap the FastAPI with a handler that we will package and deploy as a Lambda function in AWS. Then using AWS API Gateway we will route all incoming requests to invoke the lambda and handle the routing internally within our application.
 
 We created a script that should make it possible for you to deploy the FastAPI in AWS lambda using a single command. The script is creating all the required AWS resources to run the API. The resources that will be created for you are: 
 - AWS Lambda Function
