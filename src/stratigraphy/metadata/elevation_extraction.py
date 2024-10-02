@@ -92,7 +92,8 @@ class ElevationExtractor(DataExtractor):
         extracted_elevation_informations = []
 
         for elevation_key_line in elevation_key_lines:
-            elevation_lines = self.get_lines_near_key(lines, elevation_key_line)
+            # elevation_lines = self.get_lines_near_key(lines, elevation_key_line)  # Check the sorting of the lines
+            elevation_lines = self.sorted_feature_lines(elevation_key_line, lines)
 
             try:
                 extracted_elevation_information = self.get_elevation_from_lines(elevation_lines, page)
