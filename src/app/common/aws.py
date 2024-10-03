@@ -34,7 +34,7 @@ def create_s3_client():
                 "s3",
                 aws_access_key_id=config.aws_access_key_id,
                 aws_secret_access_key=config.aws_secret_access_key,
-                region_name=config.aws_region,
+                endpoint_url=config.aws_endpoint,
             )
             # Test the fallback client
             s3_client.list_buckets()

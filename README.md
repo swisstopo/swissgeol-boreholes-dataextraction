@@ -259,7 +259,6 @@ To launch the API and access its endpoints, follow these steps:
     ```python
     aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
     aws_secret_key_access = os.environ.get("AWS_SECRET_ACCESS_KEY")
-    aws_session_token = os.environ.get("AWS_SESSION_TOKEN")
     aws_endpoint = os.environ.get("AWS_ENDPOINT")
     ```
 
@@ -372,8 +371,11 @@ Add the following lines to your `~/.bashrc`, `~/.bash_profile`, or `~/.zshrc` (d
 ```bash
 export AWS_ACCESS_KEY_ID=your_access_key_id
 export AWS_SECRET_ACCESS_KEY=your_secret_access_key
-export AWS_DEFAULT_REGION=your_region 
+export AWS_ENDPOINT=your_endpoint_url
 ```
+
+Please note that the endpoint url is in the following format: `https://{bucket}.s3.<RegionName>.amazonaws.com`. This URL can be found in AWS when you go to your target S3 bucket, select and item in the bucket and look into the Properties under `Object URL`. Please remove the file specific extension and you will end up with your object URL.  
+
 After editing, run the following command to apply the changes:
 
 ```bash
@@ -387,15 +389,15 @@ For Command Prompt:
 ```bash
 setx AWS_ACCESS_KEY_ID your_access_key_id
 setx AWS_SECRET_ACCESS_KEY your_secret_access_key
-setx AWS_DEFAULT_REGION your_region
+setx AWS_ENDPOINT your_endpoint_url
 ```
 
 For PowerShell:
 
 ```bash
-$env:AWS_ACCESS_KEY_ID="your_access_key_id"
-$env:AWS_SECRET_ACCESS_KEY="your_secret_access_key"
-$env:AWS_DEFAULT_REGION="your_region"
+$env:AWS_ACCESS_KEY_ID=your_access_key_id
+$env:AWS_SECRET_ACCESS_KEY=your_secret_access_key
+$env:AWS_ENDPOINT=your_endpoint_url
 ```
 
 4.2.3. **Passing the AWS credentials in an Environment File**
@@ -405,12 +407,12 @@ Another option is to store the credentials in a .env file and load them into you
 ```bash
 AWS_ACCESS_KEY_ID=your_access_key_id
 AWS_SECRET_ACCESS_KEY=your_secret_access_key
-AWS_DEFAULT_REGION=your_region
+AWS_ENDPOINT=your_endpoint_url
 ```
 
 You can find an example for such a `.env` file in `.env.template`. If you rename this file to `.env` and add your AWS credentials you should be good to go. 
 
-5. **Access the API**
+1. **Access the API**
 
     Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
 
