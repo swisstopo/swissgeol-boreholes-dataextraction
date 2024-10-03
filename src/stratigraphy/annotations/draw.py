@@ -9,8 +9,8 @@ import pandas as pd
 from dotenv import load_dotenv
 from stratigraphy.depthcolumn.depthcolumn import DepthColumn
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
-from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformationOnPage
-from stratigraphy.layer.layer import LayerPrediction
+from stratigraphy.groundwater.groundwater_extraction import GroundwaterOnPage
+from stratigraphy.layer.layer import Layer
 from stratigraphy.metadata.coordinate_extraction import Coordinate
 from stratigraphy.metadata.elevation_extraction import Elevation
 from stratigraphy.text.textblock import TextBlock
@@ -82,9 +82,10 @@ def draw_predictions(
                     draw_coordinates(shape, coordinates)
                 if elevation is not None and page_number == elevation.page:
                     draw_elevation(shape, elevation)
-                for groundwater_entry in file_prediction.groundwater_entries:
-                    if page_number == groundwater_entry.page:
-                        draw_groundwater(shape, groundwater_entry)
+                for groundwater_on_page in file_prediction.groundwater.groundwater:
+                    # TODO: Adapt this to the structures above -> List the groundwater in the function
+                    if page_number == groundwater_on_page.page:
+                        draw_groundwater(shape, groundwater_on_page)
                 draw_depth_columns_and_material_rect(
                     shape,
                     page.derotation_matrix,
@@ -95,7 +96,7 @@ def draw_predictions(
                     page.derotation_matrix,
                     [
                         layer
-                        for layer in file_prediction.layers
+                        for layer in file_prediction.layers.get_all_layers()
                         if layer.material_description.page_number == page_number
                     ],
                 )
@@ -185,12 +186,12 @@ def draw_coordinates(shape: fitz.Shape, coordinates: Coordinate) -> None:
     shape.finish(color=fitz.utils.getColor("purple"))
 
 
-def draw_groundwater(shape: fitz.Shape, groundwater_entry: GroundwaterInformationOnPage) -> None:
+def draw_groundwater(shape: fitz.Shape, groundwater_entry: GroundwaterOnPage) -> None:
     """Draw a bounding box around the area of the page where the coordinates were extracted from.
 
     Args:
         shape (fitz.Shape): The shape object for drawing.
-        groundwater_entry (GroundwaterInformationOnPage): The groundwater information to draw.
+        groundwater_entry (GroundwaterOnPage): The groundwater information to draw.
     """
     shape.draw_rect(groundwater_entry.rect)
     shape.finish(color=fitz.utils.getColor("pink"))
@@ -207,9 +208,7 @@ def draw_elevation(shape: fitz.Shape, elevation: Elevation) -> None:
     shape.finish(color=fitz.utils.getColor("blue"))
 
 
-def draw_material_descriptions(
-    shape: fitz.Shape, derotation_matrix: fitz.Matrix, layers: list[LayerPrediction]
-) -> None:
+def draw_material_descriptions(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layers: list[Layer]) -> None:
     """Draw information about material descriptions on a pdf page.
 
     In particular, this function:
