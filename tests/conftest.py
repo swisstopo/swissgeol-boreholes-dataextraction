@@ -49,6 +49,6 @@ def s3_client(monkeypatch):
         monkeypatch.setattr(conn, "upload_file", mock_upload_file)
 
         # Patch the s3_client in the aws module to use the mock
-        monkeypatch.setattr("app.common.aws.s3_client", conn)
+        monkeypatch.setattr("app.common.aws.create_s3_client", conn)
 
         yield conn
