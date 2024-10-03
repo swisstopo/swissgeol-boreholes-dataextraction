@@ -45,10 +45,19 @@ def s3_client(monkeypatch):
             # Call the original upload_file with the modified or original arguments
             return original_upload_file(*args, Filename=Filename, Bucket=Bucket, Key=Key, **kwargs)
 
+        # Mock the list_buckets method with the test bucket name
+        original_list_buckets = conn.list_buckets
+
+        def mock_list_buckets(*args, **kwargs):
+            response = original_list_buckets(*args, **kwargs)
+            response["Buckets"] = [{"Name": config.test_bucket_name}]
+            return response
+
         monkeypatch.setattr(conn, "get_object", mock_get_object)
         monkeypatch.setattr(conn, "upload_file", mock_upload_file)
+        monkeypatch.setattr(conn, "list_buckets", mock_list_buckets)
 
         # Patch the s3_client in the aws module to use the mock
-        monkeypatch.setattr("app.common.aws.create_s3_client", conn)
+        monkeypatch.setattr("app.common.aws.s3_client", conn)
 
         yield conn
