@@ -130,37 +130,11 @@ class DataExtractor(ABC):
         )
         feature_lines = [line for line in lines if line.rect.intersects(elevation_search_rect)]
 
-        # makes sure the line with the key is included first in the extracted information and the duplicate removed
-        feature_lines.insert(0, key_line)
-        return list(dict.fromkeys(feature_lines))
-
-    def sorted_feature_lines(self, key_line: TextLine, lines):
-        """Sort the lines of the text that are close to an identified key.
-
-        The line of the identified key is always returned as the first item in the list.
-
-        Args:
-            lines (list[TextLine]): Arbitrary text lines to search in.
-            key_line (TextLine): The line of the identified key.
-
-        Returns:
-            list[TextLine]: The lines close to the key.
-        """
-        key_rect = key_line.rect
-        elevation_search_rect = fitz.Rect(
-            key_rect.x0 - self.search_left_factor * key_rect.width,
-            key_rect.y0,
-            key_rect.x1 + self.search_right_factor * key_rect.width,
-            key_rect.y1 + self.search_below_factor * key_rect.height,
-        )
-        feature_lines = [line for line in lines if line.rect.intersects(elevation_search_rect)]
-
         # Insert key_line first and remove duplicates
         feature_lines.insert(0, key_line)
         feature_lines = list(dict.fromkeys(feature_lines))
 
         # Sort by distance from key_line
-        # feature_lines_sorted = sorted(feature_lines, key=lambda line: calculate_distance(key_line.rect, line.rect))
         feature_lines_sorted = sorted(feature_lines, key=lambda line: abs(line.rect.y0 - key_line.rect.y0))
 
         return feature_lines_sorted

@@ -89,36 +89,35 @@ class ElevationExtractor(DataExtractor):
         """
         # find the key that indicates the elevation information
         elevation_key_lines = self.find_feature_key(lines)
-        extracted_elevation_informations = []
+        extracted_elevation_information = []
 
         for elevation_key_line in elevation_key_lines:
-            # elevation_lines = self.get_lines_near_key(lines, elevation_key_line)  # Check the sorting of the lines
-            elevation_lines = self.sorted_feature_lines(elevation_key_line, lines)
+            elevation_lines = self.get_lines_near_key(lines, elevation_key_line)  # Check the sorting of the lines
 
             try:
                 extracted_elevation_information = self.get_elevation_from_lines(elevation_lines, page)
                 if extracted_elevation_information.elevation:
-                    extracted_elevation_informations.append(extracted_elevation_information)
+                    extracted_elevation_information.append(extracted_elevation_information)
             except ValueError as error:
                 logger.warning("ValueError: %s", error)
                 logger.warning("Could not extract all required information from the lines provided.")
 
-        return self.select_best_elevation_information(extracted_elevation_informations)
+        return self.select_best_elevation_information(extracted_elevation_information)
 
-    def select_best_elevation_information(self, extracted_elevation_informations: list[Elevation]) -> Elevation | None:
+    def select_best_elevation_information(self, extracted_elevation_information: list[Elevation]) -> Elevation | None:
         """Select the best elevation information from a list of extracted elevation information.
 
         Args:
-            extracted_elevation_informations (list[Elevation]): A list of extracted elevation information.
+            extracted_elevation_information (list[Elevation]): A list of extracted elevation information.
 
         Returns:
             Elevation | None: The best extracted elevation information.
         """
         # Sort the extracted elevation information by elevation with the highest elevation first
-        extracted_elevation_informations.sort(key=lambda x: x.elevation, reverse=True)
+        extracted_elevation_information.sort(key=lambda x: x.elevation, reverse=True)
 
         # Return the first element of the sorted list
-        return extracted_elevation_informations[0] if extracted_elevation_informations else None
+        return extracted_elevation_information[0] if extracted_elevation_information else None
 
     def get_elevation_from_lines(self, lines: list[TextLine], page: int) -> Elevation:
         r"""Matches the elevation in a string of text.

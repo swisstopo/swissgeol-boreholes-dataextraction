@@ -1,6 +1,5 @@
 """This module contains general utility functions for the stratigraphy module."""
 
-import math
 import re
 from collections.abc import MutableMapping
 
@@ -132,19 +131,3 @@ def remove_empty_predictions(predictions: dict) -> dict:
             predictions.remove(layer)
 
     return predictions
-
-
-def calculate_distance(rect1: fitz.Rect, rect2: fitz.Rect) -> float:
-    """Calculate the Euclidean distance between the centers of two rectangles.
-
-    Args:
-        rect1 (fitz.Rect): First rectangle.
-        rect2 (fitz.Rect): Second rectangle.
-
-    Returns:
-        float: The Euclidean distance between the centers of the two rectangles.
-    """
-    # Calculate the Euclidean distance between the centers of two rectangles
-    center1 = ((rect1.x0 + rect1.x1) / 2, (rect1.y0 + rect1.y1) / 2)
-    center2 = ((rect2.x0 + rect2.x1) / 2, (rect2.y0 + rect2.y1) / 2)
-    return math.sqrt((center1[0] - center2[0]) ** 2 + (center1[1] - center2[1]) ** 2)
