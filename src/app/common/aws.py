@@ -108,10 +108,12 @@ def load_data_from_aws(filename: Path, prefix: str = "") -> bytes:
     Returns:
         bytes: The loaded PNG image.
     """
+    s3_client = get_s3_client()
+
     # Check if the PNG exists in S3
     try:
-        png_object = get_s3_client().get_object(Bucket=config.bucket_name, Key=str(prefix / filename))
-    except get_s3_client().exceptions.NoSuchKey:
+        png_object = s3_client.get_object(Bucket=config.bucket_name, Key=str(prefix / filename))
+    except s3_client.exceptions.NoSuchKey:
         raise HTTPException(status_code=404, detail=f"Document {prefix / filename} not found in S3 bucket.") from None
 
     # Load the PNG from the S3 object

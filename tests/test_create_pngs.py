@@ -64,7 +64,7 @@ def test_create_pngs_invalid_filename(test_client: TestClient):
     }
 
 
-def test_create_pngs_nonexistent_pdf(test_client: TestClient):
+def test_create_pngs_nonexistent_pdf(test_client: TestClient, s3_client):
     """Test the create_pngs endpoint with a nonexistent PDF file."""
     response = test_client.post("/api/V1/create_pngs", json={"filename": "nonexistent.pdf"})
     assert response.status_code == 404
