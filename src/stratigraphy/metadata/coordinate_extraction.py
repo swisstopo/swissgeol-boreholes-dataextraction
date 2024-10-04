@@ -237,7 +237,11 @@ class CoordinateExtractor(DataExtractor):
             list[Coordinate]: A list of potential coordinates
         """
         full_regex = regex.compile(
-            r"(?:[XY][=:\s]{0,2})?" + COORDINATE_ENTRY_REGEX + r".{0,4}?[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX
+            r"(?:[XY][=:\s]{0,2})?"
+            + COORDINATE_ENTRY_REGEX
+            + r".{0,4}?[XY]?[=:\s]{0,2}"
+            + COORDINATE_ENTRY_REGEX
+            + r"\b"
         )
         potential_coordinates = [
             Coordinate.from_values(

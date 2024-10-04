@@ -222,3 +222,9 @@ def test_CoordinateExtractor_get_coordinates_from_lines_rect():  # noqa: D103
     expected_rect.include_rect(lines[2].rect)
     assert coordinates[0].rect == expected_rect
     assert coordinates[0].page == 1
+
+    # Example from 269126143-bp.pdf (a slash in the middle of the coordinates as misread by OCR as the digit 1)
+    lines = _create_simple_lines(["269578211260032"])
+    coordinates = extractor.get_coordinates_from_lines(lines, page=1)
+    assert coordinates[0].east.coordinate_value == 2695782
+    assert coordinates[0].north.coordinate_value == 1260032
