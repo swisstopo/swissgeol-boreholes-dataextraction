@@ -68,7 +68,7 @@ def test_create_pngs_nonexistent_pdf(test_client: TestClient):
     """Test the create_pngs endpoint with a nonexistent PDF file."""
     response = test_client.post("/api/V1/create_pngs", json={"filename": "nonexistent.pdf"})
     assert response.status_code == 404
-    assert response.json() == {"detail": "Failed to load PDF document. The filename is not found in the bucket."}
+    assert response.json() == {"detail": "Document nonexistent.pdf not found in S3 bucket."}
 
 
 def test_create_pngs_missing_pdf_extension(test_client: TestClient):

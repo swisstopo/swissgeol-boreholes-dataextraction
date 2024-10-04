@@ -59,6 +59,8 @@ def get_text_request_on_rotated_pdf():
 @pytest.fixture(scope="function")
 def upload_test_pdf(s3_client):
     """Upload a test PDF file to S3."""
+    s3_client.list_buckets()
+
     s3_client.upload_file(Filename=str(TEST_PDF_PATH), Bucket=config.test_bucket_name, Key=str(TEST_PDF_KEY))
     s3_client.upload_file(
         Filename=str(TEST_ROTATED_PDF_PATH), Bucket=config.test_bucket_name, Key=str(TEST_ROTATED_PDF_KEY)
@@ -210,7 +212,7 @@ def test_invalid_pdf(test_client: TestClient, upload_test_pdf, upload_test_png):
     request_json["filename"] = "invalid.pdf"
     response = test_client.post("/api/V1/extract_data", json=request_json)
     assert response.status_code == 404
-    assert response.json() == {"detail": "Failed to load PDF document. The filename is not found in the bucket."}
+    assert response.json() == {"detail": "Document invalid.pdf not found in S3 bucket."}
 
 
 def test_number_extraction(test_client: TestClient, upload_test_pdf, upload_test_png):

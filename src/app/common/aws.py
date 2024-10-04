@@ -14,6 +14,20 @@ from PIL import Image
 
 load_dotenv()
 
+_s3_client = None  # Global reference to the S3 client
+
+
+def get_s3_client():
+    """Lazy initialization of the S3 client.
+
+    Returns:
+        boto3.client: The S3 client.
+    """
+    global _s3_client
+    if _s3_client is None:
+        _s3_client = create_s3_client()
+    return _s3_client
+
 
 def create_s3_client():
     """Create an S3 client using default or custom credentials.
@@ -39,13 +53,9 @@ def create_s3_client():
             # Test the fallback client
             s3_client.list_buckets()
             return s3_client
-        except ClientError as e:
+        except (NoCredentialsError, ClientError) as e:
             print(f"Error accessing S3 with custom credentials: {e}")
-            raise e
-
-
-# Initialize the S3 client
-s3_client = create_s3_client()
+            raise HTTPException(status_code=500, detail="Failed to access S3.") from None
 
 
 def load_pdf_from_aws(filename: Path) -> fitz.Document:
@@ -58,10 +68,11 @@ def load_pdf_from_aws(filename: Path) -> fitz.Document:
         fitz.Document: The loaded PDF document.
     """
     # Load the PDF from the S3 object
+    data = load_data_from_aws(filename)
+
     try:
-        data = load_data_from_aws(filename)
         pdf_document = fitz.open(stream=data, filetype="pdf")
-    except Exception:
+    except Exception:  # TODO: Specify the exception
         raise HTTPException(
             status_code=404, detail="Failed to load PDF document. The filename is not found in the bucket."
         ) from None
@@ -99,8 +110,8 @@ def load_data_from_aws(filename: Path, prefix: str = "") -> bytes:
     """
     # Check if the PNG exists in S3
     try:
-        png_object = s3_client.get_object(Bucket=config.bucket_name, Key=str(prefix / filename))
-    except s3_client.exceptions.NoSuchKey:
+        png_object = get_s3_client().get_object(Bucket=config.bucket_name, Key=str(prefix / filename))
+    except get_s3_client().exceptions.NoSuchKey:
         raise HTTPException(status_code=404, detail=f"Document {prefix / filename} not found in S3 bucket.") from None
 
     # Load the PNG from the S3 object
@@ -119,4 +130,4 @@ def upload_file_to_s3(file_path: str, key: str):
         file_path (str): The local path to the file to upload.
         key (str): The key (name) of the file in the bucket.
     """
-    s3_client.upload_file(file_path, config.bucket_name, key)
+    get_s3_client().upload_file(file_path, config.bucket_name, key)
