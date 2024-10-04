@@ -51,7 +51,7 @@ jobs:
       - name: Build and push Docker image (api)
         uses: docker/build-push-action@v5
         with:
-          context: ./src
+          context: ./
           push: true
           build-args: |
             VERSION=${{ env.VERSION }}
