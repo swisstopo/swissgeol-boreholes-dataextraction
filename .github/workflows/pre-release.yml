@@ -34,7 +34,7 @@ jobs:
           labels: |
             org.opencontainers.image.created=${{ env.COMMITED_AT }}
             org.opencontainers.image.version=v${{ env.VERSION }}
-            org.opencontainers.image.maintainer=GeoWerkstatt GmbH <support@geowerkstatt.ch>
+            org.opencontainers.image.maintainer=Stijn Vermeeren <stijn.vermeeren@swisstopo.ch>
           flavor: |
             latest=false
           tags: |
