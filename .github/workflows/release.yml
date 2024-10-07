@@ -92,7 +92,7 @@ jobs:
       - name: Commit, push and create pull request
         run: |
           git config --global user.email "office@geowerkstatt.ch"
-          git config --global user.name "GeoWerkstatt-Build"
+          git config --global user.name "SwissTopo-Build"
           git commit -am "$GIT_COMMIT_MESSAGE"
           git push --set-upstream origin $GIT_BRANCH_NAME
           gh pr create --title "$GIT_COMMIT_MESSAGE" --body ""

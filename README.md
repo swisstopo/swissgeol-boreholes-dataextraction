@@ -390,13 +390,13 @@ This repository provides a Docker image hosted in the GitHub Container Registry 
 1. Pull the Docker Image
 
 ```bash
-docker pull ghcr.io/dcleres/swissgeol-boreholes-dataextraction-api:edge
+docker pull ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:edge
 ```
 
 2. a. Run the docker image from the Terminal
 
 ```bash
-docker run -d --name swissgeol-boreholes-dataextraction-api -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e AWS_ENDPOINT=ZZZ -p 8080:8080 ghcr.io/dcleres/swissgeol-boreholes-dataextraction-api:TAG
+docker run -d --name swissgeol-boreholes-dataextraction-api -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e AWS_ENDPOINT=ZZZ -p 8080:8080 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
 ```
 
 Adjust the port mapping (8080:8080) based on the app's requirements.
