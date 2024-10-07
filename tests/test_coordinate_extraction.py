@@ -230,14 +230,14 @@ def test_CoordinateExtractor_get_coordinates_from_lines_rect():  # noqa: D103
     assert coordinates[0].north.coordinate_value == 1260032
 
 
-def test_get_signle_decimal_coordinates():
+def test_get_single_decimal_coordinates():
     """Test the extraction of decimal coordinates from a list of text lines."""
-    lines = _create_simple_lines(["start", "615.790.6 / 157.500.5", "end"])
+    lines = _create_simple_lines(["615.790.6 / 157.500.5"])
     coordinates = extractor.get_coordinates_from_lines(lines, page=1)
     assert coordinates[0].east.coordinate_value == 615790.6
     assert coordinates[0].north.coordinate_value == 157500.5
 
-    lines = _create_simple_lines(["start", "2600000.6 / 1200000.5", "end"])
+    lines = _create_simple_lines(["2600000.6 / 1200000.5"])
     coordinates = extractor.get_coordinates_from_lines(lines, page=1)
     assert coordinates[0].east.coordinate_value == 2600000.6
     assert coordinates[0].north.coordinate_value == 1200000.5
@@ -245,12 +245,12 @@ def test_get_signle_decimal_coordinates():
 
 def test_get_double_decimal_coordinates():
     """Test the extraction of decimal coordinates from a list of text lines."""
-    lines = _create_simple_lines(["start", "615.790.64 / 157.500.55", "end"])
+    lines = _create_simple_lines(["615.790.64 / 157.500.55"])
     coordinates = extractor.get_coordinates_from_lines(lines, page=1)
     assert coordinates[0].east.coordinate_value == 615790.64
     assert coordinates[0].north.coordinate_value == 157500.55
 
-    lines = _create_simple_lines(["start", "2600000.64 / 1200000.55", "end"])
+    lines = _create_simple_lines(["2600000.64 / 1200000.55"])
     coordinates = extractor.get_coordinates_from_lines(lines, page=1)
     assert coordinates[0].east.coordinate_value == 2600000.64
     assert coordinates[0].north.coordinate_value == 1200000.55
