@@ -94,7 +94,7 @@ def load_data_from_aws(filename: Path, prefix: str = "") -> bytes:
     """Load a document from AWS S3.
 
     Args:
-        filename (str): The filename of the PDF image.
+        filename (str): The filename of the document.
         prefix (str): The prefix of the file in the bucket.
 
     Returns:
