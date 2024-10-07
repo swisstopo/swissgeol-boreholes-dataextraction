@@ -396,10 +396,10 @@ docker pull ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:edge
 2. a. Run the docker image from the Terminal
 
 ```bash
-docker run -d --name swissgeol-boreholes-dataextraction-api -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e AWS_ENDPOINT=ZZZ -p 8080:8080 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
+docker run -d --name swissgeol-boreholes-dataextraction-api -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e AWS_ENDPOINT=ZZZ -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
 ```
 
-Adjust the port mapping (8080:8080) based on the app's requirements.
+Adjust the port mapping (8000:8000) based on the app's requirements.
 
 NOTE: Do not forget to specify your AWS Credentials.
 

@@ -1,6 +1,9 @@
 # Use an official Python runtime as a parent image - Use the latest slim version as the base image
 FROM python:3.12-slim
 
+# Set arguments to be passed from build-args
+ARG VERSION
+
 # Set the working directory in the container
 WORKDIR /app
 
@@ -19,6 +22,7 @@ COPY ./config /app/config
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src 
+ENV APP_VERSION=$VERSION
 
 # Expose port 8000 for the FastAPI Borehole app
 EXPOSE 8000
