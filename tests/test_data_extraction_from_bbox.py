@@ -59,8 +59,6 @@ def get_text_request_on_rotated_pdf():
 @pytest.fixture(scope="function")
 def upload_test_pdf(s3_client):
     """Upload a test PDF file to S3."""
-    s3_client.list_buckets()
-
     s3_client.upload_file(Filename=str(TEST_PDF_PATH), Bucket=config.test_bucket_name, Key=str(TEST_PDF_KEY))
     s3_client.upload_file(
         Filename=str(TEST_ROTATED_PDF_PATH), Bucket=config.test_bucket_name, Key=str(TEST_ROTATED_PDF_KEY)

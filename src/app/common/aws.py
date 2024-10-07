@@ -69,15 +69,7 @@ def load_pdf_from_aws(filename: Path) -> fitz.Document:
     """
     # Load the PDF from the S3 object
     data = load_data_from_aws(filename)
-
-    try:
-        pdf_document = fitz.open(stream=data, filetype="pdf")
-    except Exception:  # TODO: Specify the exception
-        raise HTTPException(
-            status_code=404, detail="Failed to load PDF document. The filename is not found in the bucket."
-        ) from None
-
-    return pdf_document
+    return fitz.open(stream=data, filetype="pdf")
 
 
 def load_png_from_aws(filename: Path) -> np.ndarray:
@@ -102,23 +94,23 @@ def load_data_from_aws(filename: Path, prefix: str = "") -> bytes:
     """Load a document from AWS S3.
 
     Args:
-        filename (str): The filename of the PNG image.
+        filename (str): The filename of the PDF image.
         prefix (str): The prefix of the file in the bucket.
 
     Returns:
-        bytes: The loaded PNG image.
+        bytes: The loaded document.
     """
     s3_client = get_s3_client()
 
-    # Check if the PNG exists in S3
+    # Check if the document exists in S3
     try:
-        png_object = s3_client.get_object(Bucket=config.bucket_name, Key=str(prefix / filename))
+        s3_object = s3_client.get_object(Bucket=config.bucket_name, Key=str(prefix / filename))
     except s3_client.exceptions.NoSuchKey:
         raise HTTPException(status_code=404, detail=f"Document {prefix / filename} not found in S3 bucket.") from None
 
-    # Load the PNG from the S3 object
+    # Load the document from the S3 object
     try:
-        data = png_object["Body"].read()
+        data = s3_object["Body"].read()
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to load data.") from None
 

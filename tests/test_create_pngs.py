@@ -4,6 +4,10 @@ To see the objects that are being created before the tests are run, you can look
 test_client fixture is created by the TestClient(app) call, which creates a test client for the FastAPI app.
 The s3_client fixture is created by the mock_aws decorator, which mocks the AWS S3 client using Moto.
 
+NOTE: Please note that the code in tests/conftest.py is called before the tests are run. This is where the AWS S3
+client is mocked using Moto. The s3_client fixture is then used in the test functions to interact with the mocked
+S3 client. Furthermore, the upload_test_pdf fixture is used to upload a test PDF file to the S3 bucket before
+running the tests.
 """
 
 from pathlib import Path
