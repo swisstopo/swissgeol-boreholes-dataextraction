@@ -103,13 +103,14 @@ Use `boreholes-download-profiles` to download the files to be processed from an 
 
 The main script for the extraction pipeline is located at `src/stratigraphy/main.py`. A cli command is created to run this script.
 
-Run `boreholes-extract-all` to run the main extraction script. With the default options, the command will source all PDFs from the `data/Benchmark` directory and create PNG files in the `data/Benchmark/extract` directory.
+Run `boreholes-extract-all` to run the main extraction script. You need to specify the input directory or a single PDF file using the `-i` or `--input-directory` flag. 
+The script will source all PDFs from the specified directory and create PNG files in the `data/output/draw` directory.
 
 Use `boreholes-extract-all --help` to see all options for the extraction script.
 
 4. **Check the results**
 
-Once the script has finished running, you can check the results in the `data/Benchmark/extract` directory. The result is a `predictions.json` file as well as a png file for each page of each PDF in the `data/Benchmark` directory.
+Once the script has finished running, you can check the results in the `data/output/draw` directory. The result is a `predictions.json` file as well as a png file for each page of each PDF in the specified input directory.
 
 ### Output Structure
 The `predictions.json` file contains the results of a data extraction process from PDF files. Each key in the JSON object is the name of a PDF file, and the value is a list of extracted items in a dictionary like object. The extracted items for now are the material descriptions in their correct order (given by their depths).
