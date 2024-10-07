@@ -89,27 +89,27 @@ To execute the data extraction pipeline, follow these steps:
 
 1. **Activate the virtual environment**
 
-    Activate your virtual environment. On unix systems this is
+Activate your virtual environment. On unix systems this is
 
-    ``` bash
-    source env/bin/activate
-    ```
+``` bash
+source env/bin/activate
+```
 
 2. **Download the borehole profiles, optional**
 
-    Use `boreholes-download-profiles` to download the files to be processed from an AWS S3 storage. In order to do so, you need to authenticate with aws first. We recommend to use the aws CLI for that purpose. This step is optional, you can continue with step 3 on your own set of borehole profiles.
+Use `boreholes-download-profiles` to download the files to be processed from an AWS S3 storage. In order to do so, you need to authenticate with aws first. We recommend to use the aws CLI for that purpose. This step is optional, you can continue with step 3 on your own set of borehole profiles.
 
 3. **Run the extraction script**
 
-    The main script for the extraction pipeline is located at `src/stratigraphy/main.py`. A cli command is created to run this script.
+The main script for the extraction pipeline is located at `src/stratigraphy/main.py`. A cli command is created to run this script.
 
-    Run `boreholes-extract-all` to run the main extraction script. With the default options, the command will source all PDFs from the `data/Benchmark` directory and create PNG files in the `data/Benchmark/extract` directory.
+Run `boreholes-extract-all` to run the main extraction script. With the default options, the command will source all PDFs from the `data/Benchmark` directory and create PNG files in the `data/Benchmark/extract` directory.
 
-    Use `boreholes-extract-all --help` to see all options for the extraction script.
+Use `boreholes-extract-all --help` to see all options for the extraction script.
 
 4. **Check the results**
 
-    Once the script has finished running, you can check the results in the `data/Benchmark/extract` directory. The result is a `predictions.json` file as well as a png file for each page of each PDF in the `data/Benchmark` directory.
+Once the script has finished running, you can check the results in the `data/Benchmark/extract` directory. The result is a `predictions.json` file as well as a png file for each page of each PDF in the `data/Benchmark` directory.
 
 ### Output Structure
 The `predictions.json` file contains the results of a data extraction process from PDF files. Each key in the JSON object is the name of a PDF file, and the value is a list of extracted items in a dictionary like object. The extracted items for now are the material descriptions in their correct order (given by their depths).
@@ -246,45 +246,45 @@ To launch the API and access its endpoints, follow these steps:
 
 1. **Activate the virtual environment**
 
-    Activate your virtual environment. On Unix systems, this can be done with the following command:
+Activate your virtual environment. On Unix systems, this can be done with the following command:
 
-    ```bash
-    source env/bin/activate
-    ```
+```bash
+source env/bin/activate
+```
 
 2. **Environment variables**
 
-    Please make sure to define the environment variables needed for the API to access the S3 Bucket of interest.
+Please make sure to define the environment variables needed for the API to access the S3 Bucket of interest.
 
-    ```python
-    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
-    aws_secret_key_access = os.environ.get("AWS_SECRET_ACCESS_KEY")
-    aws_endpoint = os.environ.get("AWS_ENDPOINT")
-    ```
+```python
+aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+aws_secret_key_access = os.environ.get("AWS_SECRET_ACCESS_KEY")
+aws_endpoint = os.environ.get("AWS_ENDPOINT")
+```
 
 3. **Start the FastAPI server**
 
-    Run the following command to start the FastAPI server:
+Run the following command to start the FastAPI server:
 
-    ```bash
-    uvicorn src.app.main:app --reload --host 0.0.0.0 --port 8002
-    ```
+```bash
+uvicorn src.app.main:app --reload --host 0.0.0.0 --port 8002
+```
 
-    This will start the server on port 8002 of the localhost and enable automatic reloading whenever changes are made to the code. You can see the OpenAPI Specification (formerly Swagger Specification) by opening: `http://127.0.0.1:8002/docs#/` in your favorite browser. 
+This will start the server on port 8002 of the localhost and enable automatic reloading whenever changes are made to the code. You can see the OpenAPI Specification (formerly Swagger Specification) by opening: `http://127.0.0.1:8002/docs#/` in your favorite browser. 
 
 4. **Access the API endpoints**
 
-    Once the server is running, you can access the API endpoints using a web browser or an API testing tool like Postman.
+Once the server is running, you can access the API endpoints using a web browser or an API testing tool like Postman.
 
-    The main endpoint for the data extraction pipeline is `http://localhost:8000/extract-data`. You can send a POST request to this endpoint with the PDF file you want to extract data from.
+The main endpoint for the data extraction pipeline is `http://localhost:8000/extract-data`. You can send a POST request to this endpoint with the PDF file you want to extract data from.
 
-    Additional endpoints and their functionalities can be found in the project's source code.
+Additional endpoints and their functionalities can be found in the project's source code.
 
-    **Note:** Make sure to replace `localhost` with the appropriate hostname or IP address if you are running the server on a remote machine.
+**Note:** Make sure to replace `localhost` with the appropriate hostname or IP address if you are running the server on a remote machine.
 
 5. **Stop the server**
 
-    To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is running. Please refer to the [FastAPI documentation](https://fastapi.tiangolo.com) for more information on how to work with FastAPI and build APIs using this framework.
+To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is running. Please refer to the [FastAPI documentation](https://fastapi.tiangolo.com) for more information on how to work with FastAPI and build APIs using this framework.
 
 
 ## API as Docker Image
@@ -293,47 +293,47 @@ The borehole application offers a given amount of functionalities (extract text,
 
 1. **Navigate to the project directory**
 
-    Change your current directory to the project directory:
+Change your current directory to the project directory:
 
-    ```bash
-    cd swissgeol-boreholes-dataextraction
-    ```
+```bash
+cd swissgeol-boreholes-dataextraction
+```
 
 2. **Build the Docker image**
 
-    Build the Docker image using the following command:
+Build the Docker image using the following command:
 
-    ```bash
-    docker build -t borehole-api . -f Dockerfile
-    ```
+```bash
+docker build -t borehole-api . -f Dockerfile
+```
 
-    ```bash
-    docker build --platform linux/amd64 -t borehole-api:test .
-    ```
+```bash
+docker build --platform linux/amd64 -t borehole-api:test .
+```
 
-    This command will build the Docker image with the tag `borehole-api`.
+This command will build the Docker image with the tag `borehole-api`.
 
 3. **Verify the Docker image**
 
-    Verify that the Docker image has been successfully built by running the following command:
+Verify that the Docker image has been successfully built by running the following command:
 
-    ```bash
-    docker images
-    ```
+```bash
+docker images
+```
 
-    You should see the `borehole-api` image listed in the output.
+You should see the `borehole-api` image listed in the output.
 
 4. **Run the Docker container**
 
 4.1. **Run the Docker Container without concerning about AWS Credentials**
 
-    To run the Docker container, use the following command:
+To run the Docker container, use the following command:
 
-    ```bash
-    docker run -p 8000:8000 borehole-api
-    ```
+```bash
+docker run -p 8000:8000 borehole-api
+```
 
-    This command will start the container and map port 8000 of the container to port 8000 of the host machine.
+This command will start the container and map port 8000 of the container to port 8000 of the host machine.
 
 4.2. **Run the docker image with the AWS credentials**
 
@@ -416,36 +416,36 @@ You can find an example for such a `.env` file in `.env.template`. If you rename
 
 5. **Access the API**
 
-    Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
+Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
 
-    You can also use an API testing tool like Postman to send requests to the API endpoints.
+You can also use an API testing tool like Postman to send requests to the API endpoints.
 
-    **Note:** If you are running Docker on a remote machine, replace `localhost` with the appropriate hostname or IP address.
+**Note:** If you are running Docker on a remote machine, replace `localhost` with the appropriate hostname or IP address.
 
 
 6. **Query the API**
 
 ```bash
-    curl -X 'POST' \
-    'http://localhost:8000/api/V1/create_pngs' \
-    -H 'accept: application/json' \
-    -H 'Content-Type: application/json' \
-    -d '{
-    "filename": "10021.pdf"
-    }'
+curl -X 'POST' \
+'http://localhost:8000/api/V1/create_pngs' \
+-H 'accept: application/json' \
+-H 'Content-Type: application/json' \
+-d '{
+"filename": "10021.pdf"
+}'
 ```
 
 7. **Stop the Docker container**
 
-    To stop the Docker container, press `Ctrl + C` in the terminal where the container is running.
+To stop the Docker container, press `Ctrl + C` in the terminal where the container is running.
 
-    Alternatively, you can use the following command to stop the container:
+Alternatively, you can use the following command to stop the container:
 
-    ```bash
-    docker stop <container_id>
-    ```
+```bash
+docker stop <container_id>
+```
 
-    Replace `<container_id>` with the ID of the running container, which can be obtained by running `docker ps`.
+Replace `<container_id>` with the ID of the running container, which can be obtained by running `docker ps`.
 
 
 ## AWS Lambda Deployment
@@ -462,10 +462,9 @@ We created a script that should make it possible for you to deploy the FastAPI i
 
 To deploy the staging version of the FastPI, run the following command: 
 
-```shell
+```bash
 IMAGE=borehole-fastapi ENV=stage AWS_PROFILE=dcleres-visium AWS_S3_BUCKET=dcleres-boreholes-integration-tmp ./deploy_api_aws_lambda.sh
 ```
-
 
 ## Experiment Tracking
 We perform experiment tracking using MLFlow. Each developer has his own local MLFlow instance. 
