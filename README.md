@@ -341,24 +341,24 @@ The borehole application offers a given amount of functionalities (extract text,
 
 If you have the AWS credentials configured locally in the `~/.aws` file, you can run the following command to forward your AWS credentials to the docker container 
 
-    To run the docker image from `Dockerfile` locally: 
+To run the docker image from `Dockerfile` locally: 
 
-    ```bash
+```bash
 
-    docker run -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api
-    ```
+docker run -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api
+```
 
-    To run the Docker image from `Dockerfile` with the environment variables from the `.env` file
+To run the Docker image from `Dockerfile` with the environment variables from the `.env` file
 
-    ```bash
-    docker run --env-file .env -d -p 8000:8000 borehole-api
-    ```
+```bash
+docker run --env-file .env -d -p 8000:8000 borehole-api
+```
 
-    To run the docker image used for AWS Lambda: `Dockerfile.aws.lambda`: 
+To run the docker image used for AWS Lambda: `Dockerfile.aws.lambda`: 
 
-    ```bash 
-    docker run --platform linux/amd64 -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api:test
-    ```
+```bash 
+docker run --platform linux/amd64 -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api:test
+```
 
 4.2.2. **Passing the AWS credentials as Environment Variables**
 
@@ -374,7 +374,9 @@ export AWS_SECRET_ACCESS_KEY=your_secret_access_key
 export AWS_ENDPOINT=your_endpoint_url
 ```
 
-Please note that the endpoint url is in the following format: `https://{bucket}.s3.<RegionName>.amazonaws.com`. This URL can be found in AWS when you go to your target S3 bucket, select and item in the bucket and look into the Properties under `Object URL`. Please remove the file specific extension and you will end up with your object URL.  
+Please note that the endpoint url is in the following format: `https://{bucket}.s3.<RegionName>.amazonaws.com`. This 
+URL can be found in AWS when you go to your target S3 bucket, select any item in the bucket and look into the 
+Properties under `Object URL`. Please remove the file specific extension and you will end up with your endpoint URL. 
 
 After editing, run the following command to apply the changes:
 
@@ -412,7 +414,7 @@ AWS_ENDPOINT=your_endpoint_url
 
 You can find an example for such a `.env` file in `.env.template`. If you rename this file to `.env` and add your AWS credentials you should be good to go. 
 
-1. **Access the API**
+5. **Access the API**
 
     Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
 
