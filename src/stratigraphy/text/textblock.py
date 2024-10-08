@@ -90,17 +90,17 @@ class TextBlock:
 
         line_starts = [line.rect.x0 for line in self.lines]
         min_line_start = min(line_starts)
-        max_line_width = max([line.rect.width for line in self.lines])
+        avg_line_height = sum([line.rect.height for line in self.lines]) / len(self.lines)
 
         first_line_start = self.lines[0].rect.x0
-        indentation_low = min_line_start + 0.02 * max_line_width
-        indentation_high = min_line_start + 0.2 * max_line_width
+        indentation_low = min_line_start + 0.6 * avg_line_height
+        indentation_high = min_line_start + 4 * avg_line_height
 
         # don't do anything if the first line already indented (e.g. centered text)
         if first_line_start > indentation_low:
             return [self]
         # don't do anything if we don't have any lines at a reasonable indentation
-        # (2%-20% of max width from leftmost edge)
+        # (0.6 to 4 times the average line height)
         if all(line.rect.x0 < indentation_low or line.rect.x0 > indentation_high for line in self.lines):
             return [self]
 
