@@ -40,6 +40,7 @@ class DataExtractor(ABC):
 
     doc: fitz.Document = None
     feature_keys: list[str] = None
+    feature_fp_keys: list[str] = None
     feature_name: str = None
 
     # How much to the left of a key do we look for the feature information, as a multiple of the key line width
@@ -48,6 +49,8 @@ class DataExtractor(ABC):
     search_right_factor: float = 0
     # How much below a key do we look for the feature information, as a multiple of the key line height
     search_below_factor: float = 0
+    # How much above a key do we look for the feature information, as a multiple of the key line height
+    search_above_factor: float = 0
 
     preprocess_replacements: dict[str, str] = {}
 
@@ -63,6 +66,11 @@ class DataExtractor(ABC):
 
         self.doc = document
         self.feature_keys = read_params("matching_params.yml")[f"{self.feature_name}_keys"]
+        self.feature_fp_keys = (
+            read_params("matching_params.yml")[f"{self.feature_name}_fp_keys"]
+            if read_params("matching_params.yml")[f"{self.feature_name}_fp_keys"]
+            else []
+        )
 
     def preprocess(self, value: str) -> str:
         for old, new in self.preprocess_replacements.items():
@@ -105,7 +113,15 @@ class DataExtractor(ABC):
             for line in lines:
                 match = pattern.search(line.text)
                 if match:
-                    matches.add(line)
+                    # Make sure the key is not in the false positive list
+                    is_fp_key = False
+                    for fp_key in self.feature_fp_keys:
+                        if fp_key in line.text:
+                            is_fp_key = True
+                            break
+
+                    if not is_fp_key:
+                        matches.add(line)
 
         return list(matches)
 
@@ -122,14 +138,28 @@ class DataExtractor(ABC):
             list[TextLine]: The lines close to the key.
         """
         key_rect = key_line.rect
-        elevation_search_rect = fitz.Rect(
-            key_rect.x0 - self.search_left_factor * key_rect.width,
-            key_rect.y0,
-            key_rect.x1 + self.search_right_factor * key_rect.width,
-            key_rect.y1 + self.search_below_factor * key_rect.height,
-        )
-        feature_lines = [line for line in lines if line.rect.intersects(elevation_search_rect)]
+        feature_lines = self.get_lines_near_rect(lines, key_rect)
 
         # makes sure the line with the key is included first in the extracted information and the duplicate removed
         feature_lines.insert(0, key_line)
         return list(dict.fromkeys(feature_lines))
+
+    def get_lines_near_rect(self, lines, rect: fitz.Rect) -> list[TextLine]:
+        """Find the lines of the text that are close to a given rectangle.
+
+        Args:
+            lines (list[TextLine]): Arbitrary text lines to search in.
+            rect (fitz.Rect): The rectangle to search around.
+
+        Returns:
+            list[TextLine]: The lines close to the rectangle.
+        """
+        search_rect = fitz.Rect(
+            rect.x0 - self.search_left_factor * rect.width,
+            rect.y0 - self.search_above_factor * rect.height,
+            rect.x1 + self.search_right_factor * rect.width,
+            rect.y1 + self.search_below_factor * rect.height,
+        )
+        feature_lines = [line for line in lines if line.rect.intersects(search_rect)]
+
+        return feature_lines

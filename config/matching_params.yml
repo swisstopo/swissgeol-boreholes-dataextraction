@@ -115,6 +115,13 @@ coordinate_keys:
   - coordonnées
   - coordonn
 
+coordinate_fp_keys:
+
+
+groundwater_fp_keys:
+  - Wasserstau
+  - Grundwasser-
+  - Grundwasserfassung
 
 groundwater_keys:
   # German
@@ -132,7 +139,6 @@ groundwater_keys:
   - W SP
   - Gr.W.spiegel
   - GrW Sp
-  - Wsp.
   - Wsp
   - GW-Spiegel
   - Grundwasser
@@ -169,4 +175,6 @@ elevation_keys:
   - OKT
   - Ansatzhöhe
   - Terrainkote
+
+elevation_fp_keys:
 
