@@ -77,7 +77,7 @@ app.add_middleware(
 @app.get("/health", tags=["health"])
 def get_health():
     """Check the health of the application."""
-    return {"status": "ok"}
+    return "Healthy"
 
 
 ####################################################################################################
