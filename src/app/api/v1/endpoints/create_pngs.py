@@ -5,7 +5,6 @@ from pathlib import Path
 
 import fitz
 from app.common.aws import load_pdf_from_aws, upload_file_to_s3
-from app.common.config import config
 from app.common.schemas import PNGResponse
 from fastapi import HTTPException
 
@@ -49,8 +48,7 @@ def create_pngs(aws_filename: Path):
             )
 
             # Generate the S3 URL
-            png_url = f"https://{config.bucket_name}.s3.amazonaws.com/{s3_bucket_png_path}"
-            png_urls.append(png_url)
+            png_urls.append(s3_bucket_png_path)
 
             # Clean up the local file
             os.remove(png_path)

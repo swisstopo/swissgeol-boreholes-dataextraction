@@ -210,7 +210,7 @@ def test_invalid_pdf(test_client: TestClient, upload_test_pdf, upload_test_png):
     request_json["filename"] = "invalid.pdf"
     response = test_client.post("/api/V1/extract_data", json=request_json)
     assert response.status_code == 404
-    assert response.json() == {"detail": "Failed to load PDF document. The filename is not found in the bucket."}
+    assert response.json() == {"detail": "Document invalid.pdf not found in S3 bucket."}
 
 
 def test_number_extraction(test_client: TestClient, upload_test_pdf, upload_test_png):
