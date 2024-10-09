@@ -134,7 +134,7 @@ class DataExtractor(ABC):
         feature_lines.insert(0, key_line)
         feature_lines = list(dict.fromkeys(feature_lines))
 
-        # Sort by distance from key_line
+        # Sort by vertical distance between the top of the feature line and the top of key_line
         feature_lines_sorted = sorted(feature_lines, key=lambda line: abs(line.rect.y0 - key_line.rect.y0))
 
         return feature_lines_sorted
