@@ -288,7 +288,7 @@ Additional endpoints and their functionalities can be found in the project's sou
 To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is running. Please refer to the [FastAPI documentation](https://fastapi.tiangolo.com) for more information on how to work with FastAPI and build APIs using this framework.
 
 
-## API as Docker Image
+## Build API as Local Docker Image
 
 The borehole application offers a given amount of functionalities (extract text, number, and coordinates) through an API. To build this API using a Docker Container, you can run the following commands. 
 
@@ -447,6 +447,46 @@ docker stop <container_id>
 ```
 
 Replace `<container_id>` with the ID of the running container, which can be obtained by running `docker ps`.
+
+
+## Use the Docker Image from the GitHub Container Registry
+ 
+This repository provides a Docker image hosted in the GitHub Container Registry (GHCR) that can be used to run the application easily. Below are the steps to pull and run the Docker image.
+
+1. **Pull the Docker Image from the GitHub Container Registry**
+   
+```bash
+docker pull ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:edge
+```
+
+1. a. **Run the docker image from the Terminal**
+   
+```bash
+docker run -d --name swissgeol-boreholes-dataextraction-api -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e AWS_ENDPOINT=ZZZ -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
+```
+
+Adjust the port mapping (8000:8000) based on the app's requirements.
+
+NOTE: Do not forget to specify your AWS Credentials.
+
+1. b. **Run the docker image from the Docker Desktop App**
+
+Open the Docker Desktop app and navigate to `Images`, you should be able to see the image you just pulled from GHCR. Click on the image and click on the `Run` button on the top right of the screen. 
+
+![](assets/img/docker-1.png){ width=400px }
+
+Then open the `Optional Settings` menu and specify the port and the AWS credentials
+
+![](assets/img/docker-2.png){ width=800px }
+
+
+2.  **Verify the Container is Running**
+
+To check if the container is running, use:
+
+```bash
+docker ps
+```
 
 
 ## AWS Lambda Deployment
