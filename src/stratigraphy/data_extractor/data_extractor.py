@@ -130,6 +130,11 @@ class DataExtractor(ABC):
         )
         feature_lines = [line for line in lines if line.rect.intersects(elevation_search_rect)]
 
-        # makes sure the line with the key is included first in the extracted information and the duplicate removed
+        # Insert key_line first and remove duplicates
         feature_lines.insert(0, key_line)
-        return list(dict.fromkeys(feature_lines))
+        feature_lines = list(dict.fromkeys(feature_lines))
+
+        # Sort by vertical distance between the top of the feature line and the top of key_line
+        feature_lines_sorted = sorted(feature_lines, key=lambda line: abs(line.rect.y0 - key_line.rect.y0))
+
+        return feature_lines_sorted
