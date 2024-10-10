@@ -37,7 +37,7 @@ jobs:
           labels: |
             org.opencontainers.image.created=${{ env.COMMITED_AT }}
             org.opencontainers.image.version=v${{ env.VERSION }}
-            org.opencontainers.image.author=Stijn Vermeeren <stijn.vermeeren@swisstopo.ch>
+            org.opencontainers.image.authors=Stijn Vermeeren <stijn.vermeeren@swisstopo.ch>
           tags: |
             type=semver,pattern=v{{version}}
 
