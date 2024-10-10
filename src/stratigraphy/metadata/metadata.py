@@ -107,6 +107,14 @@ class BoreholeMetadataList(metaclass=abc.ABCMeta):
         """Initializes the StratigraphyMetadata object."""
         self.metadata_per_file = []
 
+    def add_metadata(self, metadata: BoreholeMetadata):
+        """Add metadata to the list.
+
+        Args:
+            metadata (BoreholeMetadata): The metadata to add.
+        """
+        self.metadata_per_file.append(metadata)
+
     def get_metadata(self, filename: str) -> BoreholeMetadata:
         """Get the metadata for a specific file.
 
