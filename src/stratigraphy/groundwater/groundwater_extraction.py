@@ -143,11 +143,10 @@ class GroundwaterLevelExtractor(DataExtractor):
     is_searching_groundwater_illustration: bool = False
 
     # look for elevation values to the left, right and/or immediately below the key
-    search_left_factor: float = 3  # NOTE: check files 267125334-bp.pdf, 267125338-bp.pdf, and 267125339-bp.pdf if this
-    # value is too high, as it might lead to false positives
+    search_left_factor: float = 2
     search_right_factor: float = 10
     search_below_factor: float = 4
-    search_above_factor: float = 4
+    search_above_factor: float = 0
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ü": "u"}
 
