@@ -232,9 +232,13 @@ class GroundwaterLevelExtractor(DataExtractor):
                     if extracted_date_str:
                         text = text.replace(extracted_date_str, "").strip()
                         date = extracted_date
-                        matched_lines_rect.append(line.rect)
+                        matched_lines_rect.append(
+                            line.rect
+                        )  # Add the rectangle of the line to the matched lines list to make sure it is drawn
+                        # in the output image.
                 else:
-                    # in case several dates are present, we skip the other dates
+                    # If a second date is present in the lines around the groundwater key, then we skip this line,
+                    # instead of potentially falsely extracting a depth value from the date.
                     extracted_date, extracted_date_str = extract_date(text)
                     if extracted_date_str:
                         continue
@@ -345,7 +349,8 @@ class GroundwaterLevelExtractor(DataExtractor):
                     top_left[0], top_left[1], top_left[0] + template.shape[1], top_left[1] + template.shape[0]
                 )
 
-                # remove the matched area from the result to avoid finding the same area again
+                # Remove the matched area from the template matching result to avoid finding the same area again
+                # for the same template
                 x_area_to_remove = int(0.75 * template.shape[1])
                 y_area_to_remove = int(0.75 * template.shape[0])
                 result[
@@ -485,21 +490,14 @@ class GroundwaterLevelExtractor(DataExtractor):
             page_number = page.number + 1  # NOTE: page.number is 0-based
 
             found_groundwater = self.get_groundwater_near_key(lines, page_number)
-            if not found_groundwater:
-                logger.info("No groundwater found near the key on page %s.", page_number)
-
-                ### Extract groundwater from illustration
-                if self.is_searching_groundwater_illustration:
-                    found_groundwater, confidence_list = self.get_groundwater_from_illustration(
-                        lines, page_number, terrain_elevation
-                    )
-                    if found_groundwater:
-                        logger.info("Confidence list: %s", confidence_list)
-                        logger.info(
-                            "Found groundwater from illustration on page %s: %s", page_number, found_groundwater
-                        )
-                    else:
-                        logger.info("No groundwater illustration found on page %s.", page_number)
+            if not found_groundwater and self.is_searching_groundwater_illustration:
+                # Extract groundwater from illustration
+                found_groundwater, confidence_list = self.get_groundwater_from_illustration(
+                    lines, page_number, terrain_elevation
+                )
+                if found_groundwater:
+                    logger.info("Confidence list: %s", confidence_list)
+                    logger.info("Found groundwater from illustration on page %s: %s", page_number, found_groundwater)
 
             if terrain_elevation:
                 # If the elevation is provided, calculate the depth of the groundwater

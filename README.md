@@ -72,6 +72,8 @@ Add the following line to the `.env` document to turn on the groundwater detecti
 IS_SEARCHING_GROUNDWATER_ILLUSTRATION="True"
 ```
 
+The extraction of groundwater relies on the `scikit-image` library. This library is part of the optional dependencies of this project as part of the `groundwater_illustration_matching` dependencies in the `pyproject.toml` file. If you wish to use the template matching algorithm to determine the groundwater elevation, depth, and date, please install this dependency before running the code. 
+
 ## Main contributors
 
 * Stijn Vermeeren [@stijnvermeeren-swisstopo](https://www.github.com/stijnvermeeren-swisstopo) (swisstopo) - Project Lead

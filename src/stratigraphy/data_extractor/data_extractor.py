@@ -66,11 +66,7 @@ class DataExtractor(ABC):
 
         self.doc = document
         self.feature_keys = read_params("matching_params.yml")[f"{self.feature_name}_keys"]
-        self.feature_fp_keys = (
-            read_params("matching_params.yml")[f"{self.feature_name}_fp_keys"]
-            if read_params("matching_params.yml")[f"{self.feature_name}_fp_keys"]
-            else []
-        )
+        self.feature_fp_keys = read_params("matching_params.yml")[f"{self.feature_name}_fp_keys"] or []
 
     def preprocess(self, value: str) -> str:
         for old, new in self.preprocess_replacements.items():
@@ -112,16 +108,9 @@ class DataExtractor(ABC):
 
             for line in lines:
                 match = pattern.search(line.text)
-                if match:
-                    # Make sure the key is not in the false positive list
-                    is_fp_key = False
-                    for fp_key in self.feature_fp_keys:
-                        if fp_key in line.text:
-                            is_fp_key = True
-                            break
-
-                    if not is_fp_key:
-                        matches.add(line)
+                if match and (not any(fp_key in line.text for fp_key in self.feature_fp_keys)):
+                    # Check if there is a match and the matched string is not in the false positive list
+                    matches.add(line)
 
         return list(matches)
 
