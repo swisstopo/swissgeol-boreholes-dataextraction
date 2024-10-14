@@ -154,6 +154,8 @@ class GroundwaterLevelExtractor(DataExtractor):
         super().__init__(document)
 
         self.is_searching_groundwater_illustration = os.getenv("IS_SEARCHING_GROUNDWATER_ILLUSTRATION") == "True"
+        if self.is_searching_groundwater_illustration:
+            logger.info("Searching for groundwater information in illustrations.")
 
     def get_groundwater_near_key(self, lines: list[TextLine], page: int) -> list[GroundwaterInformationOnPage]:
         """Find groundwater information from text lines that are close to an explicit "groundwater" label.

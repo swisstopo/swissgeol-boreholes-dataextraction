@@ -122,6 +122,7 @@ groundwater_fp_keys:
   - Wasserstau
   - Grundwasser-
   - Grundwasserfassung
+  - GW/  # makes it possible to avoid false positives like "GW/" from the USCS Nomenclature columns
 
 groundwater_keys:
   # German
