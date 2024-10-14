@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 import fitz
 import regex
+from stratigraphy.data_extractor.utility import get_lines_near_rect
 from stratigraphy.lines.line import TextLine
 from stratigraphy.util.util import read_params
 
@@ -148,12 +149,11 @@ class DataExtractor(ABC):
         Returns:
             list[TextLine]: The lines close to the rectangle.
         """
-        search_rect = fitz.Rect(
-            rect.x0 - self.search_left_factor * rect.width,
-            rect.y0 - self.search_above_factor * rect.height,
-            rect.x1 + self.search_right_factor * rect.width,
-            rect.y1 + self.search_below_factor * rect.height,
+        return get_lines_near_rect(
+            self.search_left_factor,
+            self.search_right_factor,
+            self.search_above_factor,
+            self.search_below_factor,
+            lines,
+            rect,
         )
-        feature_lines = [line for line in lines if line.rect.intersects(search_rect)]
-
-        return feature_lines
