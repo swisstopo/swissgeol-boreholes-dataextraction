@@ -140,6 +140,8 @@ class GroundwaterLevelExtractor(DataExtractor):
 
     feature_name = "groundwater"
 
+    is_searching_groundwater_illustration: bool = False
+
     # look for elevation values to the left, right and/or immediately below the key
     search_left_factor: float = 3  # NOTE: check files 267125334-bp.pdf, 267125338-bp.pdf, and 267125339-bp.pdf if this
     # value is too high, as it might lead to false positives
@@ -148,6 +150,11 @@ class GroundwaterLevelExtractor(DataExtractor):
     search_above_factor: float = 4
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ü": "u"}
+
+    def __init__(self, document):
+        super().__init__(document)
+
+        self.is_searching_groundwater_illustration = os.getenv("IS_SEARCHING_GROUNDWATER_ILLUSTRATION") == "True"
 
     def get_groundwater_near_key(self, lines: list[TextLine], page: int) -> list[GroundwaterInformationOnPage]:
         """Find groundwater information from text lines that are close to an explicit "groundwater" label.
@@ -289,7 +296,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         templates = []
         template_dir = os.path.join(os.path.dirname(__file__), "assets")
         for template in os.listdir(template_dir):
-            if template.endswith(".npy"):  # and template.startswith("700246002-bp_page1_template"):
+            if template.endswith(".npy"):
                 templates.append(np.load(os.path.join(template_dir, template)))
         return templates
 
@@ -474,20 +481,24 @@ class GroundwaterLevelExtractor(DataExtractor):
         """
         for page in self.doc:
             lines = extract_text_lines(page)
-            page_number = page.number + 1  # page.number is 0-based
+            page_number = page.number + 1  # NOTE: page.number is 0-based
 
             found_groundwater = self.get_groundwater_near_key(lines, page_number)
             if not found_groundwater:
                 logger.info("No groundwater found near the key on page %s.", page_number)
-                found_groundwater, confidence_list = self.get_groundwater_from_illustration(
-                    lines, page_number, terrain_elevation
-                )
-                logger.info("Confidence list: %s", confidence_list)
-                print("Confidence list: %s", confidence_list)
-                logger.info("Found groundwater from illustration on page %s: %s", page_number, found_groundwater)
-                print("Found groundwater from illustration on page %s: %s", page_number, found_groundwater)
-                if not found_groundwater:
-                    logger.info("No groundwater found in the illustration on page %s.", page_number)
+
+                ### Extract groundwater from illustration
+                if self.is_searching_groundwater_illustration:
+                    found_groundwater, confidence_list = self.get_groundwater_from_illustration(
+                        lines, page_number, terrain_elevation
+                    )
+                    if found_groundwater:
+                        logger.info("Confidence list: %s", confidence_list)
+                        logger.info(
+                            "Found groundwater from illustration on page %s: %s", page_number, found_groundwater
+                        )
+                    else:
+                        logger.info("No groundwater illustration found on page %s.", page_number)
 
             if terrain_elevation:
                 # If the elevation is provided, calculate the depth of the groundwater
