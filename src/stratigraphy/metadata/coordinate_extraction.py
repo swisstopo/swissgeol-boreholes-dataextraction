@@ -14,14 +14,14 @@ from stratigraphy.text.extract_text import extract_text_lines_from_bbox
 
 logger = logging.getLogger(__name__)
 
-COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})\.?\d?"
+COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})(?:\.(\d{1,}))?"
 
 
 @dataclass(kw_only=True)
 class CoordinateEntry:
     """Dataclass to represent a coordinate entry."""
 
-    coordinate_value: int
+    coordinate_value: float
 
     def __repr__(self):
         if self.coordinate_value > 1e5:
@@ -44,7 +44,7 @@ class Coordinate(ExtractedFeature):
             self.north, self.east = self.east, self.north
 
     def __str__(self):
-        return f"E: {self.east}, N: {self.north}"
+        return f"E: {self.east.coordinate_value}, N: {self.north.coordinate_value}"
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -64,7 +64,18 @@ class Coordinate(ExtractedFeature):
         pass
 
     @staticmethod
-    def from_values(east: int, north: int, rect: fitz.Rect, page: int) -> Coordinate | None:
+    def from_values(east: float, north: float, rect: fitz.Rect, page: int) -> Coordinate | None:
+        """Creates a Coordinate object from the given values.
+
+        Args:
+            east (float): The east coordinate value.
+            north (float): The north coordinate value.
+            rect (fitz.Rect): The rectangle that contains the extracted information.
+            page (int): The page number of the PDF document.
+
+        Returns:
+            Coordinate | None: The coordinate object.
+        """
         if 1e6 < east < 1e7:
             return LV95Coordinate(
                 east=CoordinateEntry(coordinate_value=east),
@@ -104,7 +115,9 @@ class LV95Coordinate(Coordinate):
 
     def is_valid(self):
         """Reference: https://de.wikipedia.org/wiki/Schweizer_Landeskoordinaten#Beispielkoordinaten."""
-        return 2324800 < self.east.coordinate_value < 2847500 and 1074000 < self.north.coordinate_value < 1302000
+        return (
+            2324800.0 < self.east.coordinate_value < 2847500.0 and 1074000.0 < self.north.coordinate_value < 1302000.0
+        )
 
 
 @dataclass
@@ -116,7 +129,7 @@ class LV03Coordinate(Coordinate):
 
         To account for uncertainties in the conversion of LV03 to LV95, we allow a margin of 2.
         """
-        return 324798 < self.east.coordinate_value < 847502 and 73998 < self.north.coordinate_value < 302002
+        return 324798.0 < self.east.coordinate_value < 847502.0 and 73998.0 < self.north.coordinate_value < 302002.0
 
 
 class CoordinateExtractor(DataExtractor):
@@ -224,12 +237,16 @@ class CoordinateExtractor(DataExtractor):
             list[Coordinate]: A list of potential coordinates
         """
         full_regex = regex.compile(
-            r"(?:[XY][=:\s]{0,2})?" + COORDINATE_ENTRY_REGEX + r".{0,4}?[XY]?[=:\s]{0,2}" + COORDINATE_ENTRY_REGEX
+            r"(?:[XY][=:\s]{0,2})?"
+            + COORDINATE_ENTRY_REGEX
+            + r".{0,4}?[XY]?[=:\s]{0,2}"
+            + COORDINATE_ENTRY_REGEX
+            + r"\b"
         )
         potential_coordinates = [
             Coordinate.from_values(
-                east=int("".join(match.groups(default="")[:3])),
-                north=int("".join(match.groups(default="")[3:])),
+                east=float("{}.{}".format("".join(match.groups(default="")[:3]), match.groups(default="")[3])),
+                north=float("{}.{}".format("".join(match.groups(default="")[4:-1]), match.groups(default="")[-1])),
                 rect=rect,
                 page=page,
             )

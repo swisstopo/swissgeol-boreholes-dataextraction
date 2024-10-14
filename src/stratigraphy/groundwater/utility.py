@@ -62,7 +62,7 @@ def extract_elevation(text: str) -> float | None:
     elevation_patterns = [
         r"(\d+(\.\d+)?)\s*m\s*u\.m\.",
         r"(\d+(\.\d+)?)\s*m\s*ur.",
-        r"(\d{3,}\.\d+)",
+        r"(\d{3,}\.\d{1,2})(?!\d)",  # Matches a float number with less than 2 digits after the decimal point
         r"(\d{3,})\s*m",
     ]
 

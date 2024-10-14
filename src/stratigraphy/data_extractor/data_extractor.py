@@ -140,9 +140,14 @@ class DataExtractor(ABC):
         key_rect = key_line.rect
         feature_lines = self.get_lines_near_rect(lines, key_rect)
 
-        # makes sure the line with the key is included first in the extracted information and the duplicate removed
+        # Insert key_line first and remove duplicates
         feature_lines.insert(0, key_line)
-        return list(dict.fromkeys(feature_lines))
+        feature_lines = list(dict.fromkeys(feature_lines))
+
+        # Sort by vertical distance between the top of the feature line and the top of key_line
+        feature_lines_sorted = sorted(feature_lines, key=lambda line: abs(line.rect.y0 - key_line.rect.y0))
+
+        return feature_lines_sorted
 
     def get_lines_near_rect(self, lines, rect: fitz.Rect) -> list[TextLine]:
         """Find the lines of the text that are close to a given rectangle.

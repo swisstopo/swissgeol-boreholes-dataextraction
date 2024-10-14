@@ -138,10 +138,10 @@ def draw_metadata(
     """
     # TODO associate correctness with the extracted coordinates in a better way
     coordinate_color = "green" if is_coordinate_correct else "red"
-    coordinate_rect = fitz.Rect([5, 5, 200, 25])
+    coordinate_rect = fitz.Rect([5, 5, 250, 30])
 
     elevation_color = "green" if is_elevation_correct else "red"
-    elevation_rect = fitz.Rect([5, 25, 200, 45])
+    elevation_rect = fitz.Rect([5, 30, 250, 55])
 
     shape.draw_rect(coordinate_rect * derotation_matrix)
     shape.finish(fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
