@@ -16,7 +16,7 @@ def create_pngs(aws_filename: Path) -> PNGResponse:
         aws_filename (str): The key of the PDF document in the S3 bucket. For example, "10012.pdf".
 
     Returns:
-        PNGResponse: The URLs of the PNG images in the S3 bucket.
+        PNGResponse: The S3 keys of the PNG images in the S3 bucket.
     """
     # Check if the PDF name is valid
     if not aws_filename.suffix == ".pdf":
@@ -47,7 +47,7 @@ def create_pngs(aws_filename: Path) -> PNGResponse:
                 s3_bucket_png_path,  # The key (name) of the file in the bucket
             )
 
-            # Generate the S3 URL
+            # Generate the S3 key
             s3_keys.append(s3_bucket_png_path)
 
             # Clean up the local file
