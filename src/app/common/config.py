@@ -11,12 +11,13 @@ def get_aws_bucket_name() -> str:
     return os.getenv("AWS_S3_BUCKET") if os.getenv("AWS_S3_BUCKET") else "stijnvermeeren-boreholes-integration-tmp"
 
 
-def get_aws_endpoint() -> str:
+def get_aws_endpoint() -> str | None:
     """Get the AWS endpoint."""
     bucket_name = get_aws_bucket_name()
     endpoint_name = os.getenv("AWS_ENDPOINT")
-    endpoint_str = f"https://{bucket_name}.{endpoint_name.replace('https://', '')}" if endpoint_name else None
-    return endpoint_str
+    if endpoint_name:
+        return f"https://{bucket_name}.{endpoint_name.removeprefix('https://')}"
+    return None
 
 
 class Config(BaseSettings):
