@@ -48,7 +48,8 @@
                 "8002",
             ],
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": true,
+            "python": "./swisstopo/bin/python3",
         },
         {
             "name": "Python: Run pytests",
