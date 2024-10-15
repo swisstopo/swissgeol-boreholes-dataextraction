@@ -9,7 +9,7 @@ from app.common.schemas import PNGResponse
 from fastapi import HTTPException
 
 
-def create_pngs(aws_filename: Path):
+def create_pngs(aws_filename: Path) -> PNGResponse:
     """Convert a PDF document to PNG images. Please note that this function will overwrite any existing PNG files.
 
     Args:
@@ -28,7 +28,7 @@ def create_pngs(aws_filename: Path):
     # Initialize the S3 client
     pdf_document = load_pdf_from_aws(aws_filename)
 
-    png_urls = []
+    s3_keys = []
 
     # Convert each page of the PDF to PNG
     try:
@@ -48,11 +48,11 @@ def create_pngs(aws_filename: Path):
             )
 
             # Generate the S3 URL
-            png_urls.append(s3_bucket_png_path)
+            s3_keys.append(s3_bucket_png_path)
 
             # Clean up the local file
             os.remove(png_path)
     except Exception:
         raise HTTPException(status_code=500, detail="An error occurred while processing the PDF.") from None
 
-    return PNGResponse(png_urls=png_urls)
+    return PNGResponse(key=s3_keys)
