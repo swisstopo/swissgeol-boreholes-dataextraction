@@ -99,12 +99,13 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
 
 @dataclass
 class BoreholeMetadataList(metaclass=abc.ABCMeta):
-    """Metadata for stratigraphy data."""
+    """Metadata for stratigraphy data. This class is a list of BoreholeMetadata objects. Each object corresponds to a
+    single file."""
 
     metadata_per_file: list[BoreholeMetadata] = None
 
     def __init__(self):
-        """Initializes the StratigraphyMetadata object."""
+        """Initializes the BoreholeMetadataList object."""
         self.metadata_per_file = []
 
     def add_metadata(self, metadata: BoreholeMetadata):

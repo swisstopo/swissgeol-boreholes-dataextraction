@@ -194,9 +194,6 @@ def create_predictions_objects(
 
     number_of_truth_values = {}
     for file_predictions in predictions.file_predictions_list:
-        # prediction_object = FilePredictions.create_from_json(file_predictions, file_predictions.file_name)
-
-        # predictions_objects[file_name] = prediction_object
         if ground_truth_is_present:
             ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
             if ground_truth_for_file:

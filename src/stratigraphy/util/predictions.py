@@ -22,17 +22,17 @@ class FilePredictions:
 
     def __init__(
         self,
-        layers: list[LayerPrediction],
+        layers: list[LayerPrediction] | None,
         file_name: str,
         metadata: BoreholeMetadata,
-        groundwater_entries: list[GroundwaterInformationOnPage],
-        depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs],
+        groundwater_entries: list[GroundwaterInformationOnPage] | None,
+        depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs]  | None,
     ):
-        self.layers: list[LayerPrediction] = layers
-        self.depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs] = depths_materials_columns_pairs
-        self.file_name = file_name
-        self.metadata = metadata
-        self.groundwater_entries = groundwater_entries
+        self.layers: list[LayerPrediction] | None = layers
+        self.depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs] | None = depths_materials_columns_pairs
+        self.file_name: str = file_name
+        self.metadata: BoreholeMetadata = metadata
+        self.groundwater_entries: list[GroundwaterInformationOnPage] | None = groundwater_entries
         self.groundwater_is_correct: dict = {}
 
     def convert_to_ground_truth(self):

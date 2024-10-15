@@ -2,6 +2,7 @@
 
 import logging
 import math
+from typing import List, Tuple
 
 import fitz
 
@@ -33,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 def process_page(
     lines: list[TextLine], geometric_lines, language: str, page_number: int, **params: dict
-) -> list[dict]:
+) -> Tuple[List[dict], List[DepthsMaterialsColumnPairs]]:
     """Process a single page of a pdf.
 
     Finds all descriptions and depth intervals on the page and matches them.
@@ -116,7 +117,7 @@ def process_page(
                     depth_column, description_lines, geometric_lines, material_description_rect, **params
                 )
                 groups.extend(new_groups)
-        json_filtered_pairs = [
+        filtered_depth_material_column_pairs = [
             DepthsMaterialsColumnPairs(
                 depth_column=depth_column, material_description_rect=material_description_rect, page=page_number
             )
@@ -124,7 +125,7 @@ def process_page(
         ]
 
     else:
-        json_filtered_pairs = []
+        filtered_depth_material_column_pairs = []
         # Fallback when no depth column was found
         material_description_rect = find_material_description_column(
             lines, depth_column=None, language=language, **params["material_description"]
@@ -139,7 +140,7 @@ def process_page(
                 params["left_line_length_threshold"],
             )
             groups.extend([{"block": block} for block in description_blocks])
-            json_filtered_pairs.extend(
+            filtered_depth_material_column_pairs.extend(
                 [
                     DepthsMaterialsColumnPairs(
                         depth_column=None, material_description_rect=material_description_rect, page=page_number
@@ -155,7 +156,7 @@ def process_page(
         for group in groups
     ]
     predictions = remove_empty_predictions(predictions)
-    return predictions, json_filtered_pairs
+    return predictions, filtered_depth_material_column_pairs
 
 
 def score_column_match(
