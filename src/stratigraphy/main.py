@@ -223,7 +223,7 @@ def start_pipeline(
 
             with fitz.Document(in_path) as doc:
                 # Extract metadata
-                metadata = BoreholeMetadata(doc)
+                metadata = BoreholeMetadata.from_document(doc)
 
                 if part == "all":
                     # Extract the groundwater levels

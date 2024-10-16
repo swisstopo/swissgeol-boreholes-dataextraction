@@ -41,3 +41,19 @@ class DepthsMaterialsColumnPairs:
             ],
             "page": self.page,
         }
+
+    @classmethod
+    def from_json(cls, json_depths_materials_column_pairs: dict) -> "DepthsMaterialsColumnPairs":
+        """Converts a dictionary to an object.
+
+        Args:
+            json_depths_materials_column_pairs (dict): A dictionary representing the depths materials column pairs.
+
+        Returns:
+            DepthsMaterialsColumnPairs: The depths materials column pairs object.
+        """
+        depth_column = DepthColumn.from_json(json_depths_materials_column_pairs["depth_column"])
+        material_description_rect = fitz.Rect(json_depths_materials_column_pairs["material_description_rect"])
+        page = json_depths_materials_column_pairs["page"]
+
+        return cls(depth_column, material_description_rect, page)

@@ -59,7 +59,7 @@ class LayerPrediction:
         # Extract the layer predictions.
         for layer in json_layer_list:
             material_prediction = _create_textblock_object(layer["material_description"]["lines"])
-            if "depth_interval" in layer:
+            if "depth_interval" in layer and layer["depth_interval"] is not None:
                 depth_interval = layer.get("depth_interval", {})
                 start_data = depth_interval.get("start")
                 end_data = depth_interval.get("end")

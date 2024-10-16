@@ -1,5 +1,6 @@
 """Evaluate the predictions against the ground truth."""
 
+import argparse
 import json
 import logging
 import os
@@ -269,23 +270,62 @@ def evaluate(
             draw_predictions(predictions, input_directory, draw_directory, document_level_metadata_metrics)
 
 
-if __name__ == "__main__":
+def main():
+    """Main function to evaluate the predictions against the ground truth."""
+    args = parse_cli()
+
     # setup mlflow tracking; should be started before any other code
     # such that tracking is enabled in other parts of the code.
     # This does not create any scores, but will log all the created images to mlflow.
-    if mlflow_tracking:
+    if args.mlflow_tracking:
         import mlflow
 
         mlflow.set_experiment("Boreholes Stratigraphy")
         mlflow.start_run()
 
-    # TODO: make configurable
-    ground_truth_path = DATAPATH.parent.parent / "data" / "zurich_ground_truth.json"
-    predictions_path = DATAPATH / "output" / "predictions.json"
-    temp_directory = DATAPATH / "_temp"
-
-    with open(predictions_path, encoding="utf8") as file:
+    with open(args.predictions_path, encoding="utf8") as file:
         predictions = json.load(file)
 
-    # TODO read BoreholeMetadataList from JSON file and pass to the evaluate method
-    evaluate(predictions, ground_truth_path, temp_directory, input_directory=None, draw_directory=None)
+    predictions = OverallFilePredictions.from_json(predictions)
+
+    # Customize these as needed
+    evaluate(predictions, args.ground_truth_path, args.temp_directory, input_directory=None, draw_directory=None)
+
+
+def parse_cli() -> argparse.Namespace:
+    """Parse the command line arguments and pass them to the main function."""
+    parser = argparse.ArgumentParser(description="Borehole Stratigraphy Evaluation Script")
+
+    # Add arguments with defaults
+    parser.add_argument(
+        "--ground-truth-path",
+        type=Path,
+        default=DATAPATH.parent / "data" / "zurich_ground_truth.json",
+        help="Path to the ground truth JSON file (default: '../data/zurich_ground_truth.json').",
+    )
+    parser.add_argument(
+        "--predictions-path",
+        type=Path,
+        default=DATAPATH / "output" / "predictions.json",
+        help="Path to the predictions JSON file (default: './output/predictions.json').",
+    )
+    parser.add_argument(
+        "--temp-directory",
+        type=Path,
+        default=DATAPATH / "_temp",
+        help="Directory for storing temporary data (default: './_temp').",
+    )
+    parser.add_argument(
+        "--no-mlflow-tracking",
+        action="store_false",
+        dest="mlflow_tracking",
+        help="Disable MLflow tracking (enabled by default).",
+    )
+
+    # Parse arguments and pass to main
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    # Parse arguments and pass to main
+    main()
