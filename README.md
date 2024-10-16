@@ -70,6 +70,10 @@ With the current version of the code, groundwater can only be found at depth sma
 * David Cleres [@dcleres](https://www.github.com/dcleres) (Visium)
 * Renato Durrer [@redur](https://www.github.com/redur) (Visium)
 
+## License
+
+The source code of this project is open source software, licensed under the [MIT License](LICENSE). Certain libraries in the project dependencies might be distributed under more restrictive open source licences. Most notably, [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright) is available under either the AGPL license or a commercial license. These more restrictive licenses would apply when distributing this project in a single package together with its dependencies.
+
 ## Installation
 We use pip to manage the packages dependencies. We recommend using a virtual environment within which to install all dependencies.
 
