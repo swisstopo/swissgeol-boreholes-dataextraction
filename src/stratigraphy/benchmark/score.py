@@ -139,10 +139,9 @@ def evaluate_layer_extraction(
     all_metrics.metrics["depth_interval"] = get_depth_interval_metrics(predictions)
 
     # create predictions by language
-    predictions_by_language = {
-        "de": OverallFilePredictions(),
-        "fr": OverallFilePredictions(),
-    }  # TODO: make this dynamic and why is this hardcoded?
+    languages = set(fp.metadata.language for fp in predictions.file_predictions_list)
+    predictions_by_language = {language: OverallFilePredictions() for language in languages}
+
     for file_predictions in predictions.file_predictions_list:
         language = file_predictions.metadata.language
         if language in predictions_by_language:
@@ -179,10 +178,9 @@ def create_predictions_objects(
     Args:
         predictions (dict): The predictions from the predictions.json file.
         ground_truth_path (Path | None): The path to the ground truth file.
-        metadata_per_file (BoreholeMetadataList): The metadata for the files.
 
     Returns:
-        tuple[dict[str, FilePredictions], dict]: The predictions objects and the number of ground truth values per
+        tuple[OverallFilePredictions, dict]: The predictions objects and the number of ground truth values per
                                                  file.
     """
     if ground_truth_path and os.path.exists(ground_truth_path):  # for inference no ground truth is available

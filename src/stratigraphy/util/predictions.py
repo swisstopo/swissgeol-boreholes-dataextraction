@@ -26,7 +26,7 @@ class FilePredictions:
         file_name: str,
         metadata: BoreholeMetadata,
         groundwater_entries: list[GroundwaterInformationOnPage] | None,
-        depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs]  | None,
+        depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs] | None,
     ):
         self.layers: list[LayerPrediction] | None = layers
         self.depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs] | None = depths_materials_columns_pairs
@@ -211,14 +211,14 @@ class FilePredictions:
         return {
             self.file_name: {
                 "metadata": self.metadata.to_json(),
-                "layers": [layer.to_json() for layer in self.layers],
+                "layers": [layer.to_json() for layer in self.layers] if self.layers is not None else [],
                 "depths_materials_column_pairs": [
-                    depths_materials_columns_pairs.to_json()
-                    for depths_materials_columns_pairs in self.depths_materials_columns_pairs
+                    dmc_pair.to_json() for dmc_pair in self.depths_materials_columns_pairs
                 ],
-                "page_dimensions": self.metadata.page_dimensions,
-                # TODO: This should be removed. As already in metadata.
-                "groundwater": [entry.to_json() for entry in self.groundwater_entries],
+                "page_dimensions": self.metadata.page_dimensions,  # TODO: Remove, already in metadata
+                "groundwater": [entry.to_json() for entry in self.groundwater_entries]
+                if self.groundwater_entries is not None
+                else [],
                 "file_name": self.file_name,
             }
         }
@@ -227,11 +227,9 @@ class FilePredictions:
 class OverallFilePredictions:
     """A class to represent predictions for all files."""
 
-    file_predictions_list: list[FilePredictions] = None
-
     def __init__(self):
         """Initializes the OverallFilePredictions object."""
-        self.file_predictions_list = []
+        self.file_predictions_list: list[FilePredictions] = []
 
     def add_file_predictions(self, file_predictions: FilePredictions):
         """Add file predictions to the list of file predictions.
@@ -241,12 +239,8 @@ class OverallFilePredictions:
         """
         self.file_predictions_list.append(file_predictions)
 
-    def export_metadata_to_json(self):
-        """Export the metadata of the predictions to a json file.
-
-        Args:
-            output_file (str): The path to the output file.
-        """
+    def get_metadata_as_dict(self):
+        """Returns the metadata of the predictions as a dictionary."""
         return {
             file_prediction.file_name: file_prediction.metadata.to_json()
             for file_prediction in self.file_predictions_list

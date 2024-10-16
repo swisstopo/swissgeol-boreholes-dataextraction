@@ -267,33 +267,32 @@ def start_pipeline(
                                 mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
                 # Save the predictions to the overall predictions object
-                if part == "all":
-                    # Convert the layer dict to a layer object
-                    page_layer_predictions_list = LayerPrediction.from_json(layer_predictions_list)
+                # Initialize common variables
+                groundwater_entries = None
+                layers = None
+                depths_materials_columns_pairs = None
 
-                    predictions.add_file_predictions(
-                        FilePredictions(
-                            file_name=filename,
-                            layers=page_layer_predictions_list,
-                            depths_materials_columns_pairs=depths_materials_column_pairs_list,
-                            metadata=metadata,
-                            groundwater_entries=groundwater,
-                        )
+                if part == "all":
+                    # Convert the layer dicts to LayerPrediction objects
+                    page_layer_predictions_list = LayerPrediction.from_json(layer_predictions_list)
+                    groundwater_entries = groundwater
+                    layers = page_layer_predictions_list
+                    depths_materials_columns_pairs = depths_materials_column_pairs_list
+
+                # Add file predictions
+                predictions.add_file_predictions(
+                    FilePredictions(
+                        file_name=filename,
+                        metadata=metadata,
+                        groundwater_entries=groundwater_entries,
+                        layers=layers,
+                        depths_materials_columns_pairs=depths_materials_columns_pairs,
                     )
-                else:
-                    predictions.add_file_predictions(
-                        FilePredictions(
-                            file_name=filename,
-                            metadata=metadata,
-                            groundwater_entries=None,
-                            layers=None,
-                            depths_materials_columns_pairs=None,
-                        )
-                    )
+                )
 
     logger.info("Metadata written to %s", metadata_path)
     with open(metadata_path, "w", encoding="utf8") as file:
-        json.dump(predictions.export_metadata_to_json(), file, ensure_ascii=False)
+        json.dump(predictions.get_metadata_as_dict(), file, ensure_ascii=False)
 
     if part == "all":
         logger.info("Writing predictions to JSON file %s", predictions_path)

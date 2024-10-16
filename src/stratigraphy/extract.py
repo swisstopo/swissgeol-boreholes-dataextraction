@@ -2,7 +2,6 @@
 
 import logging
 import math
-from typing import List, Tuple
 
 import fitz
 
@@ -34,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 def process_page(
     lines: list[TextLine], geometric_lines, language: str, page_number: int, **params: dict
-) -> Tuple[List[dict], List[DepthsMaterialsColumnPairs]]:
+) -> tuple[list[dict], list[DepthsMaterialsColumnPairs]]:
     """Process a single page of a pdf.
 
     Finds all descriptions and depth intervals on the page and matches them.
@@ -140,7 +139,7 @@ def process_page(
                 params["left_line_length_threshold"],
             )
             groups.extend([{"block": block} for block in description_blocks])
-            filtered_depth_material_column_pairs.extend(
+            filtered_depth_material_column_pairs.append(
                 [
                     DepthsMaterialsColumnPairs(
                         depth_column=None, material_description_rect=material_description_rect, page=page_number

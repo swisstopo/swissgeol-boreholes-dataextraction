@@ -45,14 +45,14 @@ class LayerPrediction:
         }
 
     @staticmethod
-    def from_json(json_dict: dict) -> list["LayerPrediction"]:
+    def from_json(json_dict: list[dict]) -> list["LayerPrediction"]:
         """Converts a dictionary to an object.
 
         Args:
-            json_dict (dict): The dictionary to convert.
+            json_dict (list[dict]): A list of dictionaries representing the layer predictions.
 
         Returns:
-            LayerPrediction: The object.
+            list[LayerPrediction]: A list of LayerPrediction objects.
         """
         page_layer_predictions_list: list[LayerPrediction] = []
 
@@ -60,22 +60,25 @@ class LayerPrediction:
         for layer in json_dict:
             material_prediction = _create_textblock_object(layer["material_description"]["lines"])
             if "depth_interval" in layer:
+                depth_interval = layer.get("depth_interval", {})
+                start_data = depth_interval.get("start")
+                end_data = depth_interval.get("end")
                 start = (
                     DepthColumnEntry(
-                        value=layer["depth_interval"]["start"]["value"],
-                        rect=fitz.Rect(layer["depth_interval"]["start"]["rect"]),
-                        page_number=layer["depth_interval"]["start"]["page"],
+                        value=start_data["value"],
+                        rect=fitz.Rect(start_data["rect"]),
+                        page_number=start_data["page"],
                     )
-                    if layer["depth_interval"]["start"] is not None
+                    if start_data is not None
                     else None
                 )
                 end = (
                     DepthColumnEntry(
-                        value=layer["depth_interval"]["end"]["value"],
-                        rect=fitz.Rect(layer["depth_interval"]["end"]["rect"]),
-                        page_number=layer["depth_interval"]["end"]["page"],
+                        value=end_data["value"],
+                        rect=fitz.Rect(end_data["rect"]),
+                        page_number=end_data["page"],
                     )
-                    if layer["depth_interval"]["end"] is not None
+                    if end_data is not None
                     else None
                 )
 
@@ -91,14 +94,14 @@ class LayerPrediction:
         return page_layer_predictions_list
 
 
-def _create_textblock_object(lines: dict) -> TextBlock:
+def _create_textblock_object(lines: list[dict]) -> TextBlock:
     """Creates a TextBlock object from a dictionary.
 
     Args:
-        lines (dict): The dictionary to convert.
+        lines (list[dict]): A list of dictionaries representing the lines.
 
     Returns:
         TextBlock: The object.
     """
-    lines = [TextLine([TextWord(**line)]) for line in lines]
-    return TextBlock(lines)
+    text_lines = [TextLine([TextWord(**line)]) for line in lines]
+    return TextBlock(text_lines)

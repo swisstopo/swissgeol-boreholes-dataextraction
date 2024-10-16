@@ -64,53 +64,58 @@ def draw_predictions(
         is_coordinates_correct = document_level_metadata_metrics.loc[file_prediction.file_name].coordinate
         is_elevation_correct = document_level_metadata_metrics.loc[file_prediction.file_name].elevation
 
-        with fitz.Document(directory / file_prediction.file_name) as doc:
-            for page_index, page in enumerate(doc):
-                page_number = page_index + 1
-                shape = page.new_shape()  # Create a shape object for drawing
-                if page_number == 1:
-                    draw_metadata(
+        try:
+            with fitz.Document(directory / file_prediction.file_name) as doc:
+                for page_index, page in enumerate(doc):
+                    page_number = page_index + 1
+                    shape = page.new_shape()  # Create a shape object for drawing
+                    if page_number == 1:
+                        draw_metadata(
+                            shape,
+                            page.derotation_matrix,
+                            page.rotation,
+                            coordinates,
+                            is_coordinates_correct,
+                            elevation,
+                            is_elevation_correct,
+                        )
+                    if coordinates is not None and page_number == coordinates.page:
+                        draw_coordinates(shape, coordinates)
+                    if elevation is not None and page_number == elevation.page:
+                        draw_elevation(shape, elevation)
+                    for groundwater_entry in file_prediction.groundwater_entries:
+                        if page_number == groundwater_entry.page:
+                            draw_groundwater(shape, groundwater_entry)
+                    draw_depth_columns_and_material_rect(
                         shape,
                         page.derotation_matrix,
-                        page.rotation,
-                        coordinates,
-                        is_coordinates_correct,
-                        elevation,
-                        is_elevation_correct,
+                        [pair for pair in depths_materials_column_pairs if pair.page == page_number],
                     )
-                if coordinates is not None and page_number == coordinates.page:
-                    draw_coordinates(shape, coordinates)
-                if elevation is not None and page_number == elevation.page:
-                    draw_elevation(shape, elevation)
-                for groundwater_entry in file_prediction.groundwater_entries:
-                    if page_number == groundwater_entry.page:
-                        draw_groundwater(shape, groundwater_entry)
-                draw_depth_columns_and_material_rect(
-                    shape,
-                    page.derotation_matrix,
-                    [pair for pair in depths_materials_column_pairs if pair.page == page_number],
-                )
-                draw_material_descriptions(
-                    shape,
-                    page.derotation_matrix,
-                    [
-                        layer
-                        for layer in file_prediction.layers
-                        if layer.material_description.page_number == page_number
-                    ],
-                )
-                shape.commit()  # Commit all the drawing operations to the page
+                    draw_material_descriptions(
+                        shape,
+                        page.derotation_matrix,
+                        [
+                            layer
+                            for layer in file_prediction.layers
+                            if layer.material_description.page_number == page_number
+                        ],
+                    )
+                    shape.commit()  # Commit all the drawing operations to the page
 
-                tmp_file_path = out_directory / f"{file_prediction.file_name}_page{page_number}.png"
-                fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
+                    tmp_file_path = out_directory / f"{file_prediction.file_name}_page{page_number}.png"
+                    fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
 
-                if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
-                    try:
-                        import mlflow
+                    if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
+                        try:
+                            import mlflow
 
-                        mlflow.log_artifact(tmp_file_path, artifact_path="pages")
-                    except NameError:
-                        logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
+                            mlflow.log_artifact(tmp_file_path, artifact_path="pages")
+                        except NameError:
+                            logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
+
+        except (FileNotFoundError, fitz.FileDataError) as e:
+            logger.error("Error opening file %s: %s", file_prediction.file_name, e)
+            continue
 
         logger.info("Finished drawing predictions for file %s", file_prediction.file_name)
 
