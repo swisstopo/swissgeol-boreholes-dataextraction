@@ -61,8 +61,15 @@ def draw_predictions(
         elevation = file_prediction.metadata.elevation
 
         # Assess the correctness of the metadata
-        is_coordinates_correct = document_level_metadata_metrics.loc[file_prediction.file_name].coordinate
-        is_elevation_correct = document_level_metadata_metrics.loc[file_prediction.file_name].elevation
+        if file_prediction.file_name in document_level_metadata_metrics.index:
+            is_coordinates_correct = document_level_metadata_metrics.loc[file_prediction.file_name].coordinate
+            is_elevation_correct = document_level_metadata_metrics.loc[file_prediction.file_name].elevation
+        else:
+            logger.warning(
+                "Metrics for file %s not found in document_level_metadata_metrics.", file_prediction.file_name
+            )
+            is_coordinates_correct = False
+            is_elevation_correct = False
 
         try:
             with fitz.Document(directory / file_prediction.file_name) as doc:

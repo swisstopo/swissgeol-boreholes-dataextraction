@@ -42,7 +42,9 @@ def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_value
             if parse_text(layer.material_description.text) == "":
                 logger.warning("Empty string found in predictions")
         layer_metrics.metrics[file_prediction.file_name] = Metrics(
-            tp=hits, fp=len(file_prediction.layers) - hits, fn=number_of_truth_values[file_prediction.file_name] - hits
+            tp=hits,
+            fp=len(file_prediction.layers) - hits,
+            fn=number_of_truth_values.get(file_prediction.file_name, 0) - hits,
         )
 
     return layer_metrics
@@ -114,7 +116,13 @@ def get_metrics(predictions: OverallFilePredictions, field_key: str, field_name:
     dataset_metrics = DatasetMetrics()
 
     for file_prediction in predictions.file_predictions_list:
-        dataset_metrics.metrics[file_prediction.file_name] = getattr(file_prediction, field_key)[field_name]
+        attribute = getattr(file_prediction, field_key, None)
+        if attribute and field_name in attribute:
+            dataset_metrics.metrics[file_prediction.file_name] = attribute[field_name]
+        else:
+            logger.warning(
+                "Missing attribute '%s' or key '%s' in file '%s'", field_key, field_name, file_prediction.file_name
+            )
 
     return dataset_metrics
 

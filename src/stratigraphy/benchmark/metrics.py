@@ -97,10 +97,10 @@ class DatasetMetricsCatalog:
         # Populate the basic metrics
         result.update(
             {
-                "F1": self.metrics["layer"].pseudo_macro_f1(),
-                "recall": self.metrics["layer"].macro_recall(),
-                "precision": self.metrics["layer"].macro_precision(),
-                "depth_interval_accuracy": self.metrics["depth_interval"].macro_precision(),
+                "F1": self.metrics.get("layer", DatasetMetrics()).pseudo_macro_f1(),
+                "recall": self.metrics.get("layer", DatasetMetrics()).macro_recall(),
+                "precision": self.metrics.get("layer", DatasetMetrics()).macro_precision(),
+                "depth_interval_accuracy": self.metrics.get("depth_interval", DatasetMetrics()).macro_precision(),
                 "groundwater_f1": groundwater_metrics.f1,
                 "groundwater_recall": groundwater_metrics.recall,
                 "groundwater_precision": groundwater_metrics.precision,

@@ -45,11 +45,11 @@ class LayerPrediction:
         }
 
     @staticmethod
-    def from_json(json_dict: list[dict]) -> list["LayerPrediction"]:
+    def from_json(json_layer_list: list[dict]) -> list["LayerPrediction"]:
         """Converts a dictionary to an object.
 
         Args:
-            json_dict (list[dict]): A list of dictionaries representing the layer predictions.
+            json_layer_list (list[dict]): A list of dictionaries representing the layers.
 
         Returns:
             list[LayerPrediction]: A list of LayerPrediction objects.
@@ -57,7 +57,7 @@ class LayerPrediction:
         page_layer_predictions_list: list[LayerPrediction] = []
 
         # Extract the layer predictions.
-        for layer in json_dict:
+        for layer in json_layer_list:
             material_prediction = _create_textblock_object(layer["material_description"]["lines"])
             if "depth_interval" in layer:
                 depth_interval = layer.get("depth_interval", {})

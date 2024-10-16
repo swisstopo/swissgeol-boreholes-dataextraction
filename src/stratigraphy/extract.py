@@ -140,11 +140,9 @@ def process_page(
             )
             groups.extend([{"block": block} for block in description_blocks])
             filtered_depth_material_column_pairs.append(
-                [
-                    DepthsMaterialsColumnPairs(
-                        depth_column=None, material_description_rect=material_description_rect, page=page_number
-                    )
-                ]
+                DepthsMaterialsColumnPairs(
+                    depth_column=None, material_description_rect=material_description_rect, page=page_number
+                )
             )
     predictions = [
         (

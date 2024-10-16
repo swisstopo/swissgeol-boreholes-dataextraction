@@ -260,7 +260,7 @@ class OverallFilePredictions:
         Args:
             ground_truth_path (Path): The path to the ground truth file.
         """
-        metadata_per_file = BoreholeMetadataList()
+        metadata_per_file: BoreholeMetadataList = BoreholeMetadataList()
 
         for file_prediction in self.file_predictions_list:
             metadata_per_file.add_metadata(file_prediction.metadata)
