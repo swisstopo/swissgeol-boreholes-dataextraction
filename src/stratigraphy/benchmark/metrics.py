@@ -1,5 +1,6 @@
 """Classes for keeping track of metrics such as the F1-score, precision and recall."""
 
+from collections import defaultdict
 from collections.abc import Callable
 
 import pandas as pd
@@ -52,6 +53,10 @@ class DatasetMetrics:
         series = pd.Series({filename: fn(metric) for filename, metric in self.metrics.items()})
         return series.to_frame(name=name)
 
+    def get_metrics_list(self) -> list[Metrics]:
+        """Return a list of all metrics."""
+        return list(self.metrics.values())
+
 
 class DatasetMetricsCatalog:
     """Keeps track of all different relevant metrics that are computed for a dataset."""
@@ -78,26 +83,44 @@ class DatasetMetricsCatalog:
 
     def metrics_dict(self) -> dict[str, float]:
         """Return a dictionary with the overall metrics."""
-        groundwater_metrics = Metrics.micro_average(self.metrics["groundwater"].metrics.values())
-        groundwater_depth_metrics = Metrics.micro_average(self.metrics["groundwater_depth"].metrics.values())
+        # Initialize a defaultdict to automatically return 0.0 for missing keys
+        result = defaultdict(lambda: None)
 
-        return {
-            "F1": self.metrics["layer"].pseudo_macro_f1(),
-            "recall": self.metrics["layer"].macro_recall(),
-            "precision": self.metrics["layer"].macro_precision(),
-            "depth_interval_accuracy": self.metrics["depth_interval"].macro_precision(),
-            "de_F1": self.metrics["de_layer"].pseudo_macro_f1(),
-            "de_recall": self.metrics["de_layer"].macro_recall(),
-            "de_precision": self.metrics["de_layer"].macro_precision(),
-            "de_depth_interval_accuracy": self.metrics["de_depth_interval"].macro_precision(),
-            "fr_F1": self.metrics["fr_layer"].pseudo_macro_f1(),
-            "fr_recall": self.metrics["fr_layer"].macro_recall(),
-            "fr_precision": self.metrics["fr_layer"].macro_precision(),
-            "fr_depth_interval_accuracy": self.metrics["fr_depth_interval"].macro_precision(),
-            "groundwater_f1": groundwater_metrics.f1,
-            "groundwater_recall": groundwater_metrics.recall,
-            "groundwater_precision": groundwater_metrics.precision,
-            "groundwater_depth_f1": groundwater_depth_metrics.f1,
-            "groundwater_depth_recall": groundwater_depth_metrics.recall,
-            "groundwater_depth_precision": groundwater_depth_metrics.precision,
-        }
+        # Safely compute groundwater metrics using .get() to avoid KeyErrors
+        groundwater_metrics = Metrics.micro_average(
+            self.metrics.get("groundwater", DatasetMetrics()).get_metrics_list()
+        )
+        groundwater_depth_metrics = Metrics.micro_average(
+            self.metrics.get("groundwater_depth", DatasetMetrics()).get_metrics_list()
+        )
+
+        # Populate the basic metrics
+        result.update(
+            {
+                "F1": self.metrics["layer"].pseudo_macro_f1(),
+                "recall": self.metrics["layer"].macro_recall(),
+                "precision": self.metrics["layer"].macro_precision(),
+                "depth_interval_accuracy": self.metrics["depth_interval"].macro_precision(),
+                "groundwater_f1": groundwater_metrics.f1,
+                "groundwater_recall": groundwater_metrics.recall,
+                "groundwater_precision": groundwater_metrics.precision,
+                "groundwater_depth_f1": groundwater_depth_metrics.f1,
+                "groundwater_depth_recall": groundwater_depth_metrics.recall,
+                "groundwater_depth_precision": groundwater_depth_metrics.precision,
+            }
+        )
+
+        # Add dynamic language-specific metrics only if they exist
+        for lang in ["de", "fr"]:
+            layer_key = f"{lang}_layer"
+            depth_key = f"{lang}_depth_interval"
+
+            if layer_key in self.metrics:
+                result[f"{lang}_F1"] = self.metrics[layer_key].pseudo_macro_f1()
+                result[f"{lang}_recall"] = self.metrics[layer_key].macro_recall()
+                result[f"{lang}_precision"] = self.metrics[layer_key].macro_precision()
+
+            if depth_key in self.metrics:
+                result[f"{lang}_depth_interval_accuracy"] = self.metrics[depth_key].macro_precision()
+
+        return dict(result)  # Convert defaultdict back to a regular dict
