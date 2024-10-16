@@ -251,6 +251,8 @@ def start_pipeline(
                                 process_page_results.predictions,
                                 matching_params["img_template_probability_threshold"],
                             )
+                        else:
+                            layer_predictions = process_page_results.predictions
 
                         layer_predictions_list.extend(layer_predictions)
                         depths_materials_column_pairs_list.extend(process_page_results.depth_material_pairs)
