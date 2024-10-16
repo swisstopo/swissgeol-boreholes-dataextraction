@@ -153,8 +153,7 @@ def evaluate_layer_extraction(
 
     for file_predictions in predictions.file_predictions_list:
         language = file_predictions.metadata.language
-        if language in predictions_by_language:
-            predictions_by_language[language].add_file_predictions(file_predictions)
+        predictions_by_language[language].add_file_predictions(file_predictions)
 
     for language, language_predictions in predictions_by_language.items():
         language_number_of_truth_values = {
@@ -283,8 +282,16 @@ def main():
         mlflow.set_experiment("Boreholes Stratigraphy")
         mlflow.start_run()
 
-    with open(args.predictions_path, encoding="utf8") as file:
-        predictions = json.load(file)
+    # Load the predictions
+    try:
+        with open(args.predictions_path, encoding="utf8") as file:
+            predictions = json.load(file)
+    except FileNotFoundError:
+        logger.error("Predictions file not found: %s", args.predictions_path)
+        return
+    except json.JSONDecodeError as e:
+        logger.error("Error decoding JSON from predictions file: %s", e)
+        return
 
     predictions = OverallFilePredictions.from_json(predictions)
 

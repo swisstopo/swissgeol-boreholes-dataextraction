@@ -252,10 +252,12 @@ class BoundaryDepthColumn(DepthColumn):
         Returns:
             BoundaryDepthColumn: The depth column object.
         """
-        entries = [DepthColumnEntry.from_json(entry) for entry in json_depth_column["entries"]]
+        entries_data = json_depth_column.get("entries", [])
+        entries = [DepthColumnEntry.from_json(entry) for entry in entries_data]
         return BoundaryDepthColumn(entries)
 
     def add_entry(self, entry: DepthColumnEntry) -> BoundaryDepthColumn:
+        """Adds a depth column entry to the depth column."""
         self.entries.append(entry)
         return self
 

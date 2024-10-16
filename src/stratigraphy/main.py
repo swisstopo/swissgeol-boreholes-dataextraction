@@ -238,7 +238,7 @@ def start_pipeline(
 
                         text_lines = extract_text_lines(page)
                         geometric_lines = extract_lines(page, line_detection_params)
-                        layer_predictions, depths_materials_column_pairs = process_page(
+                        process_page_results = process_page(
                             text_lines, geometric_lines, metadata.language, page_number, **matching_params
                         )
 
@@ -248,12 +248,12 @@ def start_pipeline(
                                 doc[page_index - 1],
                                 page,
                                 layer_predictions_list,
-                                layer_predictions,
+                                process_page_results.predictions,
                                 matching_params["img_template_probability_threshold"],
                             )
 
                         layer_predictions_list.extend(layer_predictions)
-                        depths_materials_column_pairs_list.extend(depths_materials_column_pairs)
+                        depths_materials_column_pairs_list.extend(process_page_results.depth_material_pairs)
 
                         if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
                             if not mlflow_tracking:

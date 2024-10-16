@@ -48,11 +48,12 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
         """Initializes the BoreholeMetadata object.
 
         Args:
-            language (str): The language of the document.
-            elevation (Elevation): The elevation information.
-            coordinates (Coordinate): The coordinates of the borehole.
-            page_dimensions (list[PageDimensions]): The dimensions of the pages in the document.
-            filename (Path): The name of the file.
+            Args:
+            language (str | None): The language of the document.
+            elevation (Elevation | None): The elevation information.
+            coordinates (Coordinate | None): The coordinates of the borehole.
+            page_dimensions (list[PageDimensions] | None): The dimensions of the pages in the document.
+            filename (Path | None): The name of the file.
         """
         self.language = language
         self.elevation = elevation

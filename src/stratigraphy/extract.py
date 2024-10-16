@@ -2,6 +2,7 @@
 
 import logging
 import math
+from dataclasses import dataclass
 
 import fitz
 
@@ -31,9 +32,17 @@ from stratigraphy.util.util import (
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class ProcessPageResult:
+    """The result of processing a single page of a pdf."""
+
+    predictions: list[dict]
+    depth_material_pairs: list[DepthsMaterialsColumnPairs]
+
+
 def process_page(
     lines: list[TextLine], geometric_lines, language: str, page_number: int, **params: dict
-) -> tuple[list[dict], list[DepthsMaterialsColumnPairs]]:
+) -> ProcessPageResult:
     """Process a single page of a pdf.
 
     Finds all descriptions and depth intervals on the page and matches them.
@@ -153,7 +162,7 @@ def process_page(
         for group in groups
     ]
     predictions = remove_empty_predictions(predictions)
-    return predictions, filtered_depth_material_column_pairs
+    return ProcessPageResult(predictions, filtered_depth_material_column_pairs)
 
 
 def score_column_match(

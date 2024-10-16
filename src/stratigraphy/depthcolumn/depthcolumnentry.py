@@ -95,15 +95,6 @@ class LayerDepthColumnEntry:  # noqa: D101
         Returns:
             LayerDepthColumnEntry: The layer depth column entry object.
         """
-        start = DepthColumnEntry(
-            rect=fitz.Rect(json_layer_depth_column_entry["start"]["rect"]),
-            value=json_layer_depth_column_entry["start"]["value"],
-            page_number=json_layer_depth_column_entry["start"]["page"],
-        )
-        end = DepthColumnEntry(
-            rect=fitz.Rect(json_layer_depth_column_entry["end"]["rect"]),
-            value=json_layer_depth_column_entry["end"]["value"],
-            page_number=json_layer_depth_column_entry["end"]["page"],
-        )
-
+        start = DepthColumnEntry.from_json(json_layer_depth_column_entry["start"])
+        end = DepthColumnEntry.from_json(json_layer_depth_column_entry["end"])
         return cls(start, end)
