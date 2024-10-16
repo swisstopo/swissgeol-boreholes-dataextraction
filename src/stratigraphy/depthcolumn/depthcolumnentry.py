@@ -24,6 +24,22 @@ class DepthColumnEntry:  # noqa: D101
             "page": self.page_number,
         }
 
+    @classmethod
+    def from_json(cls, json_depth_column_entry: dict) -> "DepthColumnEntry":
+        """Converts a dictionary to an object.
+
+        Args:
+            json_depth_column_entry (dict): A dictionary representing the depth column entry.
+
+        Returns:
+            DepthColumnEntry: The depth column entry object.
+        """
+        return cls(
+            rect=fitz.Rect(json_depth_column_entry["rect"]),
+            value=json_depth_column_entry["value"],
+            page_number=json_depth_column_entry["page"],
+        )
+
 
 class AnnotatedDepthColumnEntry(DepthColumnEntry):  # noqa: D101
     """Class to represent a depth column entry obtained from LabelStudio.
@@ -68,3 +84,17 @@ class LayerDepthColumnEntry:  # noqa: D101
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
             "page": self.start.page_number,
         }
+
+    @classmethod
+    def from_json(cls, json_layer_depth_column_entry: dict) -> "LayerDepthColumnEntry":
+        """Converts a dictionary to an object.
+
+        Args:
+            json_layer_depth_column_entry (dict): A dictionary representing the layer depth column entry.
+
+        Returns:
+            LayerDepthColumnEntry: The layer depth column entry object.
+        """
+        start = DepthColumnEntry.from_json(json_layer_depth_column_entry["start"])
+        end = DepthColumnEntry.from_json(json_layer_depth_column_entry["end"])
+        return cls(start, end)

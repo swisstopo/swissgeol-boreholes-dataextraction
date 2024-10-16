@@ -53,6 +53,21 @@ class Elevation(ExtractedFeature):
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
         }
 
+    @classmethod
+    def from_json(cls, json_elevation: dict) -> "Elevation":
+        """Converts a dictionary to an object.
+
+        Args:
+            json_elevation (dict): A dictionary representing the elevation information.
+
+        Returns:
+            Elevation: The elevation information object.
+        """
+        elevation = json_elevation["elevation"]
+        page = json_elevation["page"]
+        rect = json_elevation["rect"]
+        return cls(elevation=elevation, page=page, rect=rect)
+
 
 class ElevationExtractor(DataExtractor):
     """Class for extracting elevation data from text.

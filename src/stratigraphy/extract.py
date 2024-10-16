@@ -2,11 +2,13 @@
 
 import logging
 import math
+from dataclasses import dataclass
 
 import fitz
 
 from stratigraphy.depthcolumn import find_depth_columns
 from stratigraphy.depthcolumn.depthcolumn import DepthColumn
+from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
 from stratigraphy.layer.layer_identifier_column import (
     LayerIdentifierColumn,
     find_layer_identifier_column,
@@ -30,9 +32,17 @@ from stratigraphy.util.util import (
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class ProcessPageResult:
+    """The result of processing a single page of a pdf."""
+
+    predictions: list[dict]
+    depth_material_pairs: list[DepthsMaterialsColumnPairs]
+
+
 def process_page(
     lines: list[TextLine], geometric_lines, language: str, page_number: int, **params: dict
-) -> list[dict]:
+) -> ProcessPageResult:
     """Process a single page of a pdf.
 
     Finds all descriptions and depth intervals on the page and matches them.
@@ -115,22 +125,15 @@ def process_page(
                     depth_column, description_lines, geometric_lines, material_description_rect, **params
                 )
                 groups.extend(new_groups)
-        json_filtered_pairs = [
-            {
-                "depth_column": depth_column.to_json(),
-                "material_description_rect": [
-                    material_description_rect.x0,
-                    material_description_rect.y0,
-                    material_description_rect.x1,
-                    material_description_rect.y1,
-                ],
-                "page": page_number,
-            }
+        filtered_depth_material_column_pairs = [
+            DepthsMaterialsColumnPairs(
+                depth_column=depth_column, material_description_rect=material_description_rect, page=page_number
+            )
             for depth_column, material_description_rect in filtered_pairs
         ]
 
     else:
-        json_filtered_pairs = []
+        filtered_depth_material_column_pairs = []
         # Fallback when no depth column was found
         material_description_rect = find_material_description_column(
             lines, depth_column=None, language=language, **params["material_description"]
@@ -145,19 +148,10 @@ def process_page(
                 params["left_line_length_threshold"],
             )
             groups.extend([{"block": block} for block in description_blocks])
-            json_filtered_pairs.extend(
-                [
-                    {
-                        "depth_column": None,
-                        "material_description_rect": [
-                            material_description_rect.x0,
-                            material_description_rect.y0,
-                            material_description_rect.x1,
-                            material_description_rect.y1,
-                        ],
-                        "page": page_number,
-                    }
-                ]
+            filtered_depth_material_column_pairs.append(
+                DepthsMaterialsColumnPairs(
+                    depth_column=None, material_description_rect=material_description_rect, page=page_number
+                )
             )
     predictions = [
         (
@@ -168,7 +162,7 @@ def process_page(
         for group in groups
     ]
     predictions = remove_empty_predictions(predictions)
-    return predictions, json_filtered_pairs
+    return ProcessPageResult(predictions, filtered_depth_material_column_pairs)
 
 
 def score_column_match(
