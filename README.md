@@ -262,6 +262,7 @@ aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
 aws_secret_key_access = os.environ.get("AWS_SECRET_ACCESS_KEY")
 aws_endpoint = os.environ.get("AWS_ENDPOINT")
 aws_s3_bucket = os.environ.get("AWS_S3_BUCKET")
+aws_s3_region = os.environ.get("AWS_S3_REGION")
 ```
 
 3. **Start the FastAPI server**
@@ -375,6 +376,7 @@ export AWS_ACCESS_KEY_ID=your_access_key_id
 export AWS_SECRET_ACCESS_KEY=your_secret_access_key
 export AWS_ENDPOINT=your_endpoint_url
 export AWS_S3_BUCKET=your_bucket_name
+export AWS_S3_REGION=your_region_name
 ```
 
 Please note that the endpoint url is in the following format: `https://{bucket}.s3.<RegionName>.amazonaws.com`. This 
@@ -396,6 +398,7 @@ setx AWS_ACCESS_KEY_ID your_access_key_id
 setx AWS_SECRET_ACCESS_KEY your_secret_access_key
 setx AWS_ENDPOINT your_endpoint_url
 setx AWS_S3_BUCKET your_bucket_name
+setx AWS_S3_REGION your_region_name
 ```
 
 For PowerShell:
@@ -405,6 +408,7 @@ $env:AWS_ACCESS_KEY_ID=your_access_key_id
 $env:AWS_SECRET_ACCESS_KEY=your_secret_access_key
 $env:AWS_ENDPOINT=your_endpoint_url
 $env:AWS_S3_BUCKET=your_bucket_name
+$env:AWS_S3_REGION=your_region_name
 ```
 
 4.2.3. **Passing the AWS credentials in an Environment File**
@@ -416,6 +420,7 @@ AWS_ACCESS_KEY_ID=your_access_key_id
 AWS_SECRET_ACCESS_KEY=your_secret_access_key
 AWS_ENDPOINT=your_endpoint_url
 AWS_S3_BUCKET=your_bucket_name
+AWS_S3_REGION=your_region_name
 ```
 
 You can find an example for such a `.env` file in `.env.template`. If you rename this file to `.env` and add your AWS credentials you should be good to go. 
@@ -467,7 +472,7 @@ docker pull ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:edge
 1. a. **Run the docker image from the Terminal**
    
 ```bash
-docker run -d --name swissgeol-boreholes-dataextraction-api -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e AWS_S3_BUCKET=AAA -e AWS_ENDPOINT=ZZZ -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
+docker run -d --name swissgeol-boreholes-dataextraction-api -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e AWS_S3_BUCKET=AAA -e AWS_ENDPOINT=ZZZ -e AWS_S3_REGION=BBB -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
 ```
 
 Where XXX, YYY, AAA, ZZZ, and TAG are placeholder values that users should replace with their actual credentials and desired tag. 
