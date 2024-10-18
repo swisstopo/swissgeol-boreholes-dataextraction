@@ -52,7 +52,7 @@ def create_s3_client():
                 region_name=config.aws_region,
             )
             # Test the fallback client
-            s3_client.list_buckets()
+            # s3_client.list_buckets()
             return s3_client
         except (NoCredentialsError, ClientError) as e:
             print(f"Error accessing S3 with custom credentials: {e}")
