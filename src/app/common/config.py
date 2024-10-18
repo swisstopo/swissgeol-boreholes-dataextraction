@@ -13,10 +13,12 @@ def get_aws_bucket_name() -> str:
 
 def get_aws_endpoint() -> str | None:
     """Get the AWS endpoint."""
-    bucket_name = get_aws_bucket_name()
+    # bucket_name = get_aws_bucket_name()
     endpoint_name = os.getenv("AWS_ENDPOINT")
     if endpoint_name:
-        return f"https://{bucket_name}.{endpoint_name.removeprefix('https://')}"
+        return endpoint_name
+    # if endpoint_name:
+    #     return f"https://{bucket_name}.{endpoint_name.removeprefix('https://')}"
     return None
 
 
