@@ -85,9 +85,9 @@ class DepthColumnFactory:
     def create(data: dict) -> DepthColumn:
         column_type = data.get("type")
         if column_type == "BoundaryDepthColumn":
-            return BoundaryDepthColumn.from_json(data["data"])
+            return BoundaryDepthColumn.from_json(data)
         elif column_type == "LayerDepthColumn":
-            return LayerDepthColumn.from_json(data["data"])
+            return LayerDepthColumn.from_json(data)
         else:
             raise ValueError(f"Unknown depth column type: {column_type}")
 

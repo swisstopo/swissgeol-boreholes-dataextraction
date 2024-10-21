@@ -268,15 +268,13 @@ class OverallFilePredictions:
         """
         overall_file_predictions = OverallFilePredictions()
         for file_name, file_data in prediction_from_file.items():
-            metadata = BoreholeMetadata.from_json(file_data.get(file_name)["metadata"], file_name)
-            layers = LayerPrediction.from_json(file_data.get(file_name)["layers"])
+            metadata = BoreholeMetadata.from_json(file_data["metadata"], file_name)
+            layers = LayerPrediction.from_json(file_data["layers"])
             depths_materials_columns_pairs = [
                 DepthsMaterialsColumnPairs.from_json(dmc_pair)
-                for dmc_pair in file_data.get(file_name)["depths_materials_column_pairs"]
+                for dmc_pair in file_data["depths_materials_column_pairs"]
             ]
-            groundwater_entries = [
-                GroundwaterInformationOnPage.from_json(entry) for entry in file_data.get(file_name)["groundwater"]
-            ]
+            groundwater_entries = [GroundwaterInformationOnPage.from_json(entry) for entry in file_data["groundwater"]]
             overall_file_predictions.add_file_predictions(
                 FilePredictions(
                     layers=layers,
