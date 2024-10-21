@@ -5,6 +5,7 @@
         "depthcolumn",
         "depthcolumnentry",
         "dotenv",
+        "fastapi",
         "fitz",
         "mlflow",
         "pixmap",
@@ -13,6 +14,7 @@
         "swissgeol",
         "swisstopo",
         "textblock",
+        "USCS",
         "venv"
     ]
 }

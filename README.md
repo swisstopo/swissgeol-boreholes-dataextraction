@@ -64,11 +64,25 @@ With regard to the extraction of coordinates, the [Swiss coordinate systems](htt
 #### Groundwater
 With the current version of the code, groundwater can only be found at depth smaller than 200 meters. This threshold is defined in `src/stratigraphy/groundwater/groundwater_extraction.py` by the constant `MAX_DEPTH`. 
 
+The groundwater is extracted in two main ways from the borehole documents. The first one aims to match a groundwater-related keyword in the text extracted from the document (e.g., groundwater, groundwater-level). The second technique focuses on extracting the groundwater-related illustration from the document by using template matching. The matching of the groundwater illustration is disabled by default as it significantly increases the runtime of the data extraction pipeline. You can control the activation of this feature by using the `IS_SEARCHING_GROUNDWATER_ILLUSTRATION` environment variable.
+
+Add the following line to the `.env` document to turn on the groundwater detection:
+
+```
+IS_SEARCHING_GROUNDWATER_ILLUSTRATION="True"
+```
+
+The extraction of groundwater relies on the `scikit-image` library. This library is part of the optional dependencies of this project as part of the `groundwater_illustration_matching` dependencies in the `pyproject.toml` file. If you wish to use the template matching algorithm to determine the groundwater elevation, depth, and date, please install this dependency before running the code. 
+
 ## Main contributors
 
 * Stijn Vermeeren [@stijnvermeeren-swisstopo](https://www.github.com/stijnvermeeren-swisstopo) (swisstopo) - Project Lead
 * David Cleres [@dcleres](https://www.github.com/dcleres) (Visium)
 * Renato Durrer [@redur](https://www.github.com/redur) (Visium)
+
+## License
+
+The source code of this project is open source software, licensed under the [MIT License](LICENSE). Certain libraries in the project dependencies might be distributed under more restrictive open source licences. Most notably, [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright) is available under either the AGPL license or a commercial license. These more restrictive licenses would apply when distributing this project in a single package together with its dependencies.
 
 ## Installation
 We use pip to manage the packages dependencies. We recommend using a virtual environment within which to install all dependencies.
@@ -89,27 +103,28 @@ To execute the data extraction pipeline, follow these steps:
 
 1. **Activate the virtual environment**
 
-    Activate your virtual environment. On unix systems this is
+Activate your virtual environment. On unix systems this is
 
-    ``` bash
-    source env/bin/activate
-    ```
+``` bash
+source env/bin/activate
+```
 
 2. **Download the borehole profiles, optional**
 
-    Use `boreholes-download-profiles` to download the files to be processed from an AWS S3 storage. In order to do so, you need to authenticate with aws first. We recommend to use the aws CLI for that purpose. This step is optional, you can continue with step 3 on your own set of borehole profiles.
+Use `boreholes-download-profiles` to download the files to be processed from an AWS S3 storage. In order to do so, you need to authenticate with aws first. We recommend to use the aws CLI for that purpose. This step is optional, you can continue with step 3 on your own set of borehole profiles.
 
 3. **Run the extraction script**
 
-    The main script for the extraction pipeline is located at `src/stratigraphy/main.py`. A cli command is created to run this script.
+The main script for the extraction pipeline is located at `src/stratigraphy/main.py`. A cli command is created to run this script.
 
-    Run `boreholes-extract-all` to run the main extraction script. With the default options, the command will source all PDFs from the `data/Benchmark` directory and create PNG files in the `data/Benchmark/extract` directory.
+Run `boreholes-extract-all` to run the main extraction script. You need to specify the input directory or a single PDF file using the `-i` or `--input-directory` flag. 
+The script will source all PDFs from the specified directory and create PNG files in the `data/output/draw` directory.
 
-    Use `boreholes-extract-all --help` to see all options for the extraction script.
+Use `boreholes-extract-all --help` to see all options for the extraction script.
 
 4. **Check the results**
 
-    Once the script has finished running, you can check the results in the `data/Benchmark/extract` directory. The result is a `predictions.json` file as well as a png file for each page of each PDF in the `data/Benchmark` directory.
+Once the script has finished running, you can check the results in the `data/output/draw` directory. The result is a `predictions.json` file as well as a png file for each page of each PDF in the specified input directory.
 
 ### Output Structure
 The `predictions.json` file contains the results of a data extraction process from PDF files. Each key in the JSON object is the name of a PDF file, and the value is a list of extracted items in a dictionary like object. The extracted items for now are the material descriptions in their correct order (given by their depths).
@@ -246,147 +261,253 @@ To launch the API and access its endpoints, follow these steps:
 
 1. **Activate the virtual environment**
 
-    Activate your virtual environment. On Unix systems, this can be done with the following command:
+Activate your virtual environment. On Unix systems, this can be done with the following command:
 
-    ```bash
-    source env/bin/activate
-    ```
+```bash
+source env/bin/activate
+```
 
 2. **Environment variables**
 
-    Please make sure to define the environment variables needed for the API to access the S3 Bucket of interest.
+Please make sure to define the environment variables needed for the API to access the S3 Bucket of interest.
 
-    ```python
-    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
-    aws_secret_key_access = os.environ.get("AWS_SECRET_ACCESS_KEY")
-    aws_session_token = os.environ.get("AWS_SESSION_TOKEN")
-    aws_endpoint = os.environ.get("AWS_ENDPOINT")
-    ```
+```python
+aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+aws_secret_key_access = os.environ.get("AWS_SECRET_ACCESS_KEY")
+aws_endpoint = os.environ.get("AWS_ENDPOINT")
+```
 
 3. **Start the FastAPI server**
 
-    Run the following command to start the FastAPI server:
+Run the following command to start the FastAPI server:
 
-    ```bash
-    uvicorn src.app.main:app --reload --host 0.0.0.0 --port 8002
-    ```
+```bash
+uvicorn src.app.main:app --reload --host 0.0.0.0 --port 8002
+```
 
-    This will start the server on port 8002 of the localhost and enable automatic reloading whenever changes are made to the code. You can see the OpenAPI Specification (formerly Swagger Specification) by opening: `http://127.0.0.1:8002/docs#/` in your favorite browser. 
+This will start the server on port 8002 of the localhost and enable automatic reloading whenever changes are made to the code. You can see the OpenAPI Specification (formerly Swagger Specification) by opening: `http://127.0.0.1:8002/docs#/` in your favorite browser. 
 
 4. **Access the API endpoints**
 
-    Once the server is running, you can access the API endpoints using a web browser or an API testing tool like Postman.
+Once the server is running, you can access the API endpoints using a web browser or an API testing tool like Postman.
 
-    The main endpoint for the data extraction pipeline is `http://localhost:8000/extract-data`. You can send a POST request to this endpoint with the PDF file you want to extract data from.
+The main endpoint for the data extraction pipeline is `http://localhost:8000/extract-data`. You can send a POST request to this endpoint with the PDF file you want to extract data from.
 
-    Additional endpoints and their functionalities can be found in the project's source code.
+Additional endpoints and their functionalities can be found in the project's source code.
 
-    **Note:** Make sure to replace `localhost` with the appropriate hostname or IP address if you are running the server on a remote machine.
+**Note:** Make sure to replace `localhost` with the appropriate hostname or IP address if you are running the server on a remote machine.
 
 5. **Stop the server**
 
-    To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is running. Please refer to the [FastAPI documentation](https://fastapi.tiangolo.com) for more information on how to work with FastAPI and build APIs using this framework.
+To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is running. Please refer to the [FastAPI documentation](https://fastapi.tiangolo.com) for more information on how to work with FastAPI and build APIs using this framework.
 
 
-## API as Docker Image
+## Build API as Local Docker Image
 
 The borehole application offers a given amount of functionalities (extract text, number, and coordinates) through an API. To build this API using a Docker Container, you can run the following commands. 
 
 1. **Navigate to the project directory**
 
-    Change your current directory to the project directory:
+Change your current directory to the project directory:
 
-    ```bash
-    cd swissgeol-boreholes-dataextraction
-    ```
+```bash
+cd swissgeol-boreholes-dataextraction
+```
 
 2. **Build the Docker image**
 
-    Build the Docker image using the following command:
+Build the Docker image using the following command:
 
-    ```bash
-    docker build -t borehole-api . -f Dockerfile
-    ```
+```bash
+docker build -t borehole-api . -f Dockerfile
+```
 
-    ```bash
-    docker build --platform linux/amd64 -t borehole-api:test .
-    ```
+```bash
+docker build --platform linux/amd64 -t borehole-api:test .
+```
 
-    This command will build the Docker image with the tag `borehole-api`.
+This command will build the Docker image with the tag `borehole-api`.
 
 3. **Verify the Docker image**
 
-    Verify that the Docker image has been successfully built by running the following command:
+Verify that the Docker image has been successfully built by running the following command:
 
-    ```bash
-    docker images
-    ```
+```bash
+docker images
+```
 
-    You should see the `borehole-api` image listed in the output.
+You should see the `borehole-api` image listed in the output.
 
 4. **Run the Docker container**
 
-    To run the Docker container, use the following command:
+4.1. **Run the Docker Container without concerning about AWS Credentials**
 
-    ```bash
-    docker run -p 8000:8000 borehole-api
-    ```
+To run the Docker container, use the following command:
 
-    This command will start the container and map port 8000 of the container to port 8000 of the host machine.
+```bash
+docker run -p 8000:8000 borehole-api
+```
 
-5. **Run the docker image with the AWS credentials**
+This command will start the container and map port 8000 of the container to port 8000 of the host machine.
+
+4.2. **Run the docker image with the AWS credentials**
+
+4.2.1. **Using a `~/.aws` file**
 
 If you have the AWS credentials configured locally in the `~/.aws` file, you can run the following command to forward your AWS credentials to the docker container 
 
-    ```bash
-
-    docker run -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api
-    ```
-
-    ```bash 
-    docker run --platform linux/amd64 -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api:test
-    ```
-
-
-6. **Access the API**
-
-    Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
-
-    You can also use an API testing tool like Postman to send requests to the API endpoints.
-
-    **Note:** If you are running Docker on a remote machine, replace `localhost` with the appropriate hostname or IP address.
-
-
-7. **Query the API**
+To run the docker image from `Dockerfile` locally: 
 
 ```bash
-    curl -X 'POST' \
-    'http://localhost:8000/api/V1/create_pngs' \
-    -H 'accept: application/json' \
-    -H 'Content-Type: application/json' \
-    -d '{
-    "filename": "10021.pdf"
-    }'
+
+docker run -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api
 ```
 
-8. **Stop the Docker container**
+To run the Docker image from `Dockerfile` with the environment variables from the `.env` file
 
-    To stop the Docker container, press `Ctrl + C` in the terminal where the container is running.
+```bash
+docker run --env-file .env -d -p 8000:8000 borehole-api
+```
 
-    Alternatively, you can use the following command to stop the container:
+To run the docker image used for AWS Lambda: `Dockerfile.aws.lambda`: 
 
-    ```bash
-    docker stop <container_id>
-    ```
+```bash 
+docker run --platform linux/amd64 -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api:test
+```
 
-    Replace `<container_id>` with the ID of the running container, which can be obtained by running `docker ps`.
+4.2.2. **Passing the AWS credentials as Environment Variables**
+
+It is also possible to set the AWS credentials as you environment variables and the environment variables of the Docker image you are trying to run. 
+
+Unix-based Systems (Linux/macOS)
+
+Add the following lines to your `~/.bashrc`, `~/.bash_profile`, or `~/.zshrc` (depending on your shell):
+
+```bash
+export AWS_ACCESS_KEY_ID=your_access_key_id
+export AWS_SECRET_ACCESS_KEY=your_secret_access_key
+export AWS_ENDPOINT=your_endpoint_url
+```
+
+Please note that the endpoint url is in the following format: `https://{bucket}.s3.<RegionName>.amazonaws.com`. This 
+URL can be found in AWS when you go to your target S3 bucket, select any item in the bucket and look into the 
+Properties under `Object URL`. Please remove the file specific extension and you will end up with your endpoint URL. 
+
+After editing, run the following command to apply the changes:
+
+```bash
+source ~/.bashrc  # Or ~/.bash_profile, ~/.zshrc based on your configuration
+```
+
+Windows (Command Prompt or PowerShell)
+
+For Command Prompt:
+
+```bash
+setx AWS_ACCESS_KEY_ID your_access_key_id
+setx AWS_SECRET_ACCESS_KEY your_secret_access_key
+setx AWS_ENDPOINT your_endpoint_url
+```
+
+For PowerShell:
+
+```bash
+$env:AWS_ACCESS_KEY_ID=your_access_key_id
+$env:AWS_SECRET_ACCESS_KEY=your_secret_access_key
+$env:AWS_ENDPOINT=your_endpoint_url
+```
+
+4.2.3. **Passing the AWS credentials in an Environment File**
+
+Another option is to store the credentials in a .env file and load them into your Python environment using the `python-dotenv` package:
+
+```bash
+AWS_ACCESS_KEY_ID=your_access_key_id
+AWS_SECRET_ACCESS_KEY=your_secret_access_key
+AWS_ENDPOINT=your_endpoint_url
+```
+
+You can find an example for such a `.env` file in `.env.template`. If you rename this file to `.env` and add your AWS credentials you should be good to go. 
+
+5. **Access the API**
+
+Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
+
+You can also use an API testing tool like Postman to send requests to the API endpoints.
+
+**Note:** If you are running Docker on a remote machine, replace `localhost` with the appropriate hostname or IP address.
+
+
+6. **Query the API**
+
+```bash
+curl -X 'POST' \
+'http://localhost:8000/api/V1/create_pngs' \
+-H 'accept: application/json' \
+-H 'Content-Type: application/json' \
+-d '{
+"filename": "10021.pdf"
+}'
+```
+
+7. **Stop the Docker container**
+
+To stop the Docker container, press `Ctrl + C` in the terminal where the container is running.
+
+Alternatively, you can use the following command to stop the container:
+
+```bash
+docker stop <container_id>
+```
+
+Replace `<container_id>` with the ID of the running container, which can be obtained by running `docker ps`.
+
+
+## Use the Docker Image from the GitHub Container Registry
+ 
+This repository provides a Docker image hosted in the GitHub Container Registry (GHCR) that can be used to run the application easily. Below are the steps to pull and run the Docker image.
+
+1. **Pull the Docker Image from the GitHub Container Registry**
+   
+```bash
+docker pull ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:edge
+```
+
+1. a. **Run the docker image from the Terminal**
+   
+```bash
+docker run -d --name swissgeol-boreholes-dataextraction-api -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e AWS_ENDPOINT=ZZZ -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
+```
+
+Adjust the port mapping (8000:8000) based on the app's requirements.
+
+NOTE: Do not forget to specify your AWS Credentials.
+
+1. b. **Run the docker image from the Docker Desktop App**
+
+Open the Docker Desktop app and navigate to `Images`, you should be able to see the image you just pulled from GHCR. Click on the image and click on the `Run` button on the top right of the screen. 
+
+![](assets/img/docker-1.png){ width=400px }
+
+Then open the `Optional Settings` menu and specify the port and the AWS credentials
+
+![](assets/img/docker-2.png){ width=800px }
+
+
+2.  **Verify the Container is Running**
+
+To check if the container is running, use:
+
+```bash
+docker ps
+```
 
 
 ## AWS Lambda Deployment
 
 AWS Lambda is a serverless computing service provided by Amazon Web Services that allows you to run code without managing servers. It automatically scales your applications by executing code in response to triggers. You only pay for the compute time used.
 
-In this project we are using Mangum to wrap the FastAPI with a handler that we will package and deploy as a Lambda function in AWS. Then using AWS API Gateway we will route all incoming requests to invoke the lambda and handle the routing internally within our application.
+In this project we are using `Mangum` to wrap the FastAPI with a handler that we will package and deploy as a Lambda function in AWS. Then using AWS API Gateway we will route all incoming requests to invoke the lambda and handle the routing internally within our application.
 
 We created a script that should make it possible for you to deploy the FastAPI in AWS lambda using a single command. The script is creating all the required AWS resources to run the API. The resources that will be created for you are: 
 - AWS Lambda Function
@@ -396,10 +517,9 @@ We created a script that should make it possible for you to deploy the FastAPI i
 
 To deploy the staging version of the FastPI, run the following command: 
 
-```shell
+```bash
 IMAGE=borehole-fastapi ENV=stage AWS_PROFILE=dcleres-visium AWS_S3_BUCKET=dcleres-boreholes-integration-tmp ./deploy_api_aws_lambda.sh
 ```
-
 
 ## Experiment Tracking
 We perform experiment tracking using MLFlow. Each developer has his own local MLFlow instance. 
