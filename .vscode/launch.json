@@ -65,7 +65,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "pytest",
-            "args": ["tests/test_predictions.py"],
+            "args": [],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
             "python": "./swisstopo/bin/python3",
