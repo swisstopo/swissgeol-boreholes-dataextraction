@@ -256,6 +256,38 @@ class OverallFilePredictions:
         """
         return {k: v for fp in self.file_predictions_list for k, v in fp.to_json().items()}
 
+    @classmethod
+    def from_json(cls, prediction_from_file: dict) -> "OverallFilePredictions":
+        """Converts a dictionary to an object.
+
+        Args:
+            prediction_from_file (dict): A dictionary representing the predictions.
+
+        Returns:
+            OverallFilePredictions: The object.
+        """
+        overall_file_predictions = OverallFilePredictions()
+        for file_name, file_data in prediction_from_file.items():
+            metadata = BoreholeMetadata.from_json(file_data.get(file_name)["metadata"], file_name)
+            layers = LayerPrediction.from_json(file_data.get(file_name)["layers"])
+            depths_materials_columns_pairs = [
+                DepthsMaterialsColumnPairs.from_json(dmc_pair)
+                for dmc_pair in file_data.get(file_name)["depths_materials_column_pairs"]
+            ]
+            groundwater_entries = [
+                GroundwaterInformationOnPage.from_json(entry) for entry in file_data.get(file_name)["groundwater"]
+            ]
+            overall_file_predictions.add_file_predictions(
+                FilePredictions(
+                    layers=layers,
+                    file_name=file_name,
+                    metadata=metadata,
+                    depths_materials_columns_pairs=depths_materials_columns_pairs,
+                    groundwater_entries=groundwater_entries,
+                )
+            )
+        return overall_file_predictions
+
     def evaluate_metadata_extraction(self, ground_truth_path: Path) -> OverallBoreholeMetadataMetrics:
         """Evaluate the metadata extraction of the predictions against the ground truth.
 

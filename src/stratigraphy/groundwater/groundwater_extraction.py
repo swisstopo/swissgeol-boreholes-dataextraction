@@ -111,6 +111,27 @@ class GroundwaterInformationOnPage(ExtractedFeature):
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
         }
 
+    @classmethod
+    def from_json(cls, json_groundwater_information_on_page: dict) -> "GroundwaterInformationOnPage":
+        """Converts a dictionary to an object.
+
+        Args:
+            json_groundwater_information_on_page (dict): A dictionary representing the groundwater information on a
+            page.
+
+        Returns:
+            GroundwaterInformationOnPage: The groundwater information on a page object.
+        """
+        return GroundwaterInformationOnPage(
+            groundwater=GroundwaterInformation.from_json_values(
+                depth=json_groundwater_information_on_page["depth"],
+                date=json_groundwater_information_on_page["date"],
+                elevation=json_groundwater_information_on_page["elevation"],
+            ),
+            page=json_groundwater_information_on_page["page"],
+            rect=fitz.Rect(json_groundwater_information_on_page["rect"]),
+        )
+
 
 class GroundwaterLevelExtractor(DataExtractor):
     """Extracts coordinates from a PDF document."""
