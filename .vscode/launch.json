@@ -17,7 +17,7 @@
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
-            "python": "./swisstopo/bin/python3",
+            "python": "${workspaceFolder}/swisstopo/bin/python3",
         },
         {
             "name": "Python: Run label studio to GT",
@@ -31,7 +31,7 @@
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
-            "python": "./swisstopo/bin/python3",
+            "python": "${workspaceFolder}/swisstopo/bin/python3",
         },
         {
             "name": "API",
@@ -48,7 +48,8 @@
                 "8002",
             ],
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": true,
+            "python": "${workspaceFolder}/swisstopo/bin/python3",
         },
         {
             "name": "Python: Run pytests",
@@ -58,7 +59,7 @@
             "args": [],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
-            "python": "./swisstopo/bin/python3",
+            "python": "${workspaceFolder}/swisstopo/bin/python3",
         }
     ]
 }

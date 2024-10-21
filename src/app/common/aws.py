@@ -36,26 +36,16 @@ def create_s3_client():
         boto3.client: The S3 client.
     """
     try:
-        # Attempt to use default AWS credentials
-        s3_client = boto3.client("s3")
-        # Perform a quick test to ensure credentials are valid
-        s3_client.list_buckets()
+        s3_client = boto3.client(
+            "s3",
+            aws_access_key_id=config.aws_access_key_id,
+            aws_secret_access_key=config.aws_secret_access_key,
+            endpoint_url=config.aws_endpoint,
+        )
         return s3_client
-    except (NoCredentialsError, ClientError):
-        # Fallback to custom credentials if no credentials are found
-        try:
-            s3_client = boto3.client(
-                "s3",
-                aws_access_key_id=config.aws_access_key_id,
-                aws_secret_access_key=config.aws_secret_access_key,
-                endpoint_url=config.aws_endpoint,
-            )
-            # Test the fallback client
-            s3_client.list_buckets()
-            return s3_client
-        except (NoCredentialsError, ClientError) as e:
-            print(f"Error accessing S3 with custom credentials: {e}")
-            raise HTTPException(status_code=500, detail="Failed to access S3.") from None
+    except (NoCredentialsError, ClientError) as e:
+        print(f"Error accessing S3 with custom credentials: {e}")
+        raise HTTPException(status_code=500, detail="Failed to access S3.") from None
 
 
 def load_pdf_from_aws(filename: Path) -> fitz.Document:
