@@ -421,7 +421,7 @@ AWS_S3_BUCKET=your_bucket_name
 
 You can find an example for such a `.env` file in `.env.template`. If you rename this file to `.env` and add your AWS credentials you should be good to go. 
 
-1. **Access the API**
+5. **Access the API**
 
 Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
 
