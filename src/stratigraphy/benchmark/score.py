@@ -27,7 +27,7 @@ def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_value
     Calculate F1, precision and recall for the individual documents as well as overall.
 
     Args:
-        predictions (dict): The predictions.
+        predictions (OverallFilePredictions): The predictions.
         number_of_truth_values (dict): The number of ground truth values per file.
 
     Returns:
@@ -59,7 +59,7 @@ def get_depth_interval_metrics(predictions: OverallFilePredictions) -> DatasetMe
     Depth interval accuracy is not calculated for layers with incorrect material predictions.
 
     Args:
-        predictions (dict): The predictions.
+        predictions (OverallFilePredictions): The predictions.
 
     Returns:
         DatasetMetrics: the metrics for the depth intervals
@@ -90,7 +90,7 @@ def evaluate_borehole_extraction(
     """Evaluate the borehole extraction predictions.
 
     Args:
-       predictions (dict): The FilePredictions objects.
+       predictions (OverallFilePredictions): The FilePredictions objects.
        number_of_truth_values (dict): The number of layer ground truth values per file.
 
     Returns:
@@ -107,7 +107,7 @@ def get_metrics(predictions: OverallFilePredictions, field_key: str, field_name:
     """Get the metrics for a specific field in the predictions.
 
     Args:
-        predictions (dict): The FilePredictions objects.
+        predictions (OverallFilePredictions): The FilePredictions objects.
         field_key (str): The key to access the specific field in the prediction objects.
         field_name (str): The name of the field being evaluated.
 
@@ -137,7 +137,7 @@ def evaluate_layer_extraction(
     The individual document metrics are returned as a DataFrame.
 
     Args:
-        predictions (dict): The FilePredictions objects.
+        predictions (OverallFilePredictions): The OverallFilePredictions objects.
         number_of_truth_values (dict): The number of layer ground truth values per file.
 
     Returns:
@@ -184,7 +184,7 @@ def create_predictions_objects(
     """Create predictions objects from the predictions and evaluate them against the ground truth.
 
     Args:
-        predictions (dict): The predictions from the predictions.json file.
+        predictions (OverallFilePredictions): The predictions objects.
         ground_truth_path (Path | None): The path to the ground truth file.
 
     Returns:
@@ -215,8 +215,19 @@ def evaluate(
     temp_directory: Path,
     input_directory: Path | None,
     draw_directory: Path | None,
-):
-    """Computes all the metrics, logs them, and creates corresponding MLFlow artifacts (when enabled)."""
+) -> None:
+    """Computes all the metrics, logs them, and creates corresponding MLFlow artifacts (when enabled).
+
+    Args:
+        predictions (OverallFilePredictions): The predictions objects.
+        ground_truth_path (Path): The path to the ground truth file.
+        temp_directory (Path): The path to the temporary directory.
+        input_directory (Path | None): The path to the input directory.
+        draw_directory (Path | None): The path to the draw directory.
+
+    Returns:
+        None
+    """
     #############################
     # Evaluate the borehole extraction metadata
     #############################

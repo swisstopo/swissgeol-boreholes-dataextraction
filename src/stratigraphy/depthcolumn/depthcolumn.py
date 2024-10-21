@@ -78,6 +78,20 @@ class DepthColumn(metaclass=abc.ABCMeta):
         pass
 
 
+class DepthColumnFactory:
+    """Factory class for creating DepthColumn objects."""
+
+    @staticmethod
+    def create(data: dict) -> DepthColumn:
+        column_type = data.get("type")
+        if column_type == "BoundaryDepthColumn":
+            return BoundaryDepthColumn.from_json(data["data"])
+        elif column_type == "LayerDepthColumn":
+            return LayerDepthColumn.from_json(data["data"])
+        else:
+            raise ValueError(f"Unknown depth column type: {column_type}")
+
+
 class LayerDepthColumn(DepthColumn):
     """Represents a depth column where the upper and lower depths of each layer are explicitly specified.
 
@@ -111,6 +125,7 @@ class LayerDepthColumn(DepthColumn):
         return {
             "rect": [rect.x0, rect.y0, rect.x1, rect.y1],
             "entries": [entry.to_json() for entry in self.entries],
+            "type": "LayerDepthColumn",
         }
 
     @classmethod
@@ -123,7 +138,8 @@ class LayerDepthColumn(DepthColumn):
         Returns:
             LayerDepthColumn: The depth column object.
         """
-        entries = [LayerDepthColumnEntry.from_json(entry) for entry in json_depth_column["entries"]]
+        entries_data = json_depth_column.get("entries", [])
+        entries = [LayerDepthColumnEntry.from_json(entry) for entry in entries_data]
         return LayerDepthColumn(entries)
 
     def add_entry(self, entry: LayerDepthColumnEntry) -> LayerDepthColumn:
@@ -240,6 +256,7 @@ class BoundaryDepthColumn(DepthColumn):
         return {
             "rect": [rect.x0, rect.y0, rect.x1, rect.y1],
             "entries": [entry.to_json() for entry in self.entries],
+            "type": "BoundaryDepthColumn",
         }
 
     @classmethod
