@@ -32,7 +32,7 @@ class Config(BaseSettings):
     ###########################################################
     aws_access_key_id: str | None = os.environ.get("AWS_ACCESS_KEY_ID")
     aws_secret_access_key: str | None = os.environ.get("AWS_SECRET_ACCESS_KEY")
-    aws_endpoint: str | None = os.environ.get("AWS_ENDPOINT")
+    aws_endpoint: str | None = os.getenv("AWS_ENDPOINT")
 
 
 config = Config()

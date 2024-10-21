@@ -275,6 +275,7 @@ Please make sure to define the environment variables needed for the API to acces
 aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
 aws_secret_key_access = os.environ.get("AWS_SECRET_ACCESS_KEY")
 aws_endpoint = os.environ.get("AWS_ENDPOINT")
+aws_s3_bucket = os.environ.get("AWS_S3_BUCKET")
 ```
 
 3. **Start the FastAPI server**
@@ -352,27 +353,14 @@ This command will start the container and map port 8000 of the container to port
 
 4.2. **Run the docker image with the AWS credentials**
 
-4.2.1. **Using a `~/.aws` file**
+4.2.1. **Using a `.env` file**
 
-If you have the AWS credentials configured locally in the `~/.aws` file, you can run the following command to forward your AWS credentials to the docker container 
+Before being able to run the command below, please adapt the `.env.template` to your needs. The easiest way to do this is to rename the file `.env` and to add your AWS credentials to the file. 
 
-To run the docker image from `Dockerfile` locally: 
-
-```bash
-
-docker run -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api
-```
-
-To run the Docker image from `Dockerfile` with the environment variables from the `.env` file
+To run the Docker image from `Dockerfile` with the environment variables from the `.env` file:
 
 ```bash
 docker run --env-file .env -d -p 8000:8000 borehole-api
-```
-
-To run the docker image used for AWS Lambda: `Dockerfile.aws.lambda`: 
-
-```bash 
-docker run --platform linux/amd64 -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api:test
 ```
 
 4.2.2. **Passing the AWS credentials as Environment Variables**
@@ -387,6 +375,7 @@ Add the following lines to your `~/.bashrc`, `~/.bash_profile`, or `~/.zshrc` (d
 export AWS_ACCESS_KEY_ID=your_access_key_id
 export AWS_SECRET_ACCESS_KEY=your_secret_access_key
 export AWS_ENDPOINT=your_endpoint_url
+export AWS_S3_BUCKET=your_bucket_name
 ```
 
 Please note that the endpoint url is in the following format: `https://{bucket}.s3.<RegionName>.amazonaws.com`. This 
@@ -407,6 +396,7 @@ For Command Prompt:
 setx AWS_ACCESS_KEY_ID your_access_key_id
 setx AWS_SECRET_ACCESS_KEY your_secret_access_key
 setx AWS_ENDPOINT your_endpoint_url
+setx AWS_S3_BUCKET your_bucket_name
 ```
 
 For PowerShell:
@@ -415,6 +405,7 @@ For PowerShell:
 $env:AWS_ACCESS_KEY_ID=your_access_key_id
 $env:AWS_SECRET_ACCESS_KEY=your_secret_access_key
 $env:AWS_ENDPOINT=your_endpoint_url
+$env:AWS_S3_BUCKET=your_bucket_name
 ```
 
 4.2.3. **Passing the AWS credentials in an Environment File**
@@ -425,11 +416,12 @@ Another option is to store the credentials in a .env file and load them into you
 AWS_ACCESS_KEY_ID=your_access_key_id
 AWS_SECRET_ACCESS_KEY=your_secret_access_key
 AWS_ENDPOINT=your_endpoint_url
+AWS_S3_BUCKET=your_bucket_name
 ```
 
 You can find an example for such a `.env` file in `.env.template`. If you rename this file to `.env` and add your AWS credentials you should be good to go. 
 
-5. **Access the API**
+1. **Access the API**
 
 Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
 
@@ -476,8 +468,10 @@ docker pull ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:edge
 1. a. **Run the docker image from the Terminal**
    
 ```bash
-docker run -d --name swissgeol-boreholes-dataextraction-api -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e AWS_ENDPOINT=ZZZ -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
+docker run -d --name swissgeol-boreholes-dataextraction-api -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e AWS_ENDPOINT=ZZZ -e AWS_S3_BUCKET=AAA -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
 ```
+
+Where XXX, YYY, ZZZ, AAA, and TAG are placeholder values that users should replace with their actual credentials and desired tag. 
 
 Adjust the port mapping (8000:8000) based on the app's requirements.
 
@@ -500,25 +494,6 @@ To check if the container is running, use:
 
 ```bash
 docker ps
-```
-
-
-## AWS Lambda Deployment
-
-AWS Lambda is a serverless computing service provided by Amazon Web Services that allows you to run code without managing servers. It automatically scales your applications by executing code in response to triggers. You only pay for the compute time used.
-
-In this project we are using `Mangum` to wrap the FastAPI with a handler that we will package and deploy as a Lambda function in AWS. Then using AWS API Gateway we will route all incoming requests to invoke the lambda and handle the routing internally within our application.
-
-We created a script that should make it possible for you to deploy the FastAPI in AWS lambda using a single command. The script is creating all the required AWS resources to run the API. The resources that will be created for you are: 
-- AWS Lambda Function
-- AWS IAM user with the right to execute lambda functions and to read & write on S3 buckets
-- AWS CloudWatch log group to monitor the API
-- AWS API Gateway
-
-To deploy the staging version of the FastPI, run the following command: 
-
-```bash
-IMAGE=borehole-fastapi ENV=stage AWS_PROFILE=dcleres-visium AWS_S3_BUCKET=dcleres-boreholes-integration-tmp ./deploy_api_aws_lambda.sh
 ```
 
 ## Experiment Tracking
