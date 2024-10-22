@@ -365,9 +365,9 @@ docker run --env-file .env -d -p 8000:8000 borehole-api
 
 4.2.2. **Passing the AWS credentials as Environment Variables**
 
-It is also possible to set the AWS credentials as you environment variables and the environment variables of the Docker image you are trying to run. 
+It is possible to set AWS credentials as environment variables and also pass them to the Docker image you are running.
 
-Unix-based Systems (Linux/macOS)
+**Unix-based Systems (Linux/macOS)**
 
 Add the following lines to your `~/.bashrc`, `~/.bash_profile`, or `~/.zshrc` (depending on your shell):
 
@@ -378,9 +378,33 @@ export AWS_ENDPOINT=your_endpoint_url
 export AWS_S3_BUCKET=your_bucket_name
 ```
 
-Please note that the endpoint url is in the following format: `https://{bucket}.s3.<RegionName>.amazonaws.com`. This 
-URL can be found in AWS when you go to your target S3 bucket, select any item in the bucket and look into the 
-Properties under `Object URL`. Please remove the file specific extension and you will end up with your endpoint URL. 
+Notes:
+
+- The data extraction API in this repository is designed to be integrated into [swissgeol-boreholes-suite](https://github.com/swisstopo/swissgeol-boreholes-suite) that is configure by [swissgeol-boreholes-config](https://github.com/swisstopo/swissgeol-boreholes-config). [Here](https://github.com/swisstopo/swissgeol-boreholes-config/blob/ac293abe1c489044b3b15efa30c2238d456ded26/charts/swissgeol-boreholes/values.yaml#L65) you can find more information about the AWS S3 Bucket Configuration and the environment variables defined for it. 
+- The `AWS_ENDPOINT` follows the format: `https://s3.<RegionName>.amazonaws.com`. You can find this URL in AWS by navigating to your target S3 bucket, selecting any item, and checking its Properties under "Object URL." Remove the file-specific extension to obtain the correct endpoint URL.
+- In some environments, the `AWS_ENDPOINT` may look like this:
+    
+    a. **Kubernetes cluster environment**
+
+    ```bash
+    AWS_ENDPOINT=https://s3.<region>.amazonaws.com
+    AWS_S3_BUCKET=your-[dev|prod]-bucket
+    ```
+
+    b. **In local boreholes development**, a local S3-compatible service like [MinIO](https://min.io/) is used, configured as:
+
+    ```bash
+    AWS_ENDPOINT=http://minio:9000
+    AWS_S3_BUCKET=your_bucket_name
+    ```
+
+These values are configured differently depending on the environment (e.g., development, production). While `AWS_ENDPOINT` and `AWS_S3_BUCKET` are distinct, you could potentially combine them by including the bucket in the endpoint, like:
+
+```bash
+AWS_ENDPOINT=https://s3.<region>.amazonaws.com/<bucket>
+```
+
+This change can easily be tested in your Kubernetes deployment by updating the Helm chart and building a new Docker image for testing in the relevant repository.
 
 After editing, run the following command to apply the changes:
 
@@ -388,7 +412,7 @@ After editing, run the following command to apply the changes:
 source ~/.bashrc  # Or ~/.bash_profile, ~/.zshrc based on your configuration
 ```
 
-Windows (Command Prompt or PowerShell)
+**Windows (Command Prompt or PowerShell)**
 
 For Command Prompt:
 
@@ -421,7 +445,7 @@ AWS_S3_BUCKET=your_bucket_name
 
 You can find an example for such a `.env` file in `.env.template`. If you rename this file to `.env` and add your AWS credentials you should be good to go. 
 
-5. **Access the API**
+1. **Access the API**
 
 Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
 
