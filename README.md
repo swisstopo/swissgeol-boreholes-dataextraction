@@ -267,16 +267,18 @@ Activate your virtual environment. On Unix systems, this can be done with the fo
 source env/bin/activate
 ```
 
+<a name="env"></a>
 2. **Environment variables**
 
 Please make sure to define the environment variables needed for the API to access the S3 Bucket of interest.
 
-```python
-aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
-aws_secret_key_access = os.environ.get("AWS_SECRET_ACCESS_KEY")
-aws_endpoint = os.environ.get("AWS_ENDPOINT")
-aws_s3_bucket = os.environ.get("AWS_S3_BUCKET")
-```
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_ENDPOINT`, in the format `https://s3.<RegionName>.amazonaws.com`
+  - During local development, a S3-compatible service like [MinIO](https://min.io/) can be used. In this case, the endpoint will look like `http://minio:9000`. 
+- `AWS_S3_BUCKET`
+
+The data extraction API in this repository is designed to be integrated into [swissgeol-boreholes-suite](https://github.com/swisstopo/swissgeol-boreholes-suite) that is configured by [swissgeol-boreholes-config](https://github.com/swisstopo/swissgeol-boreholes-config). You can find the AWS S3 bucket configuration used for that deployment in [charts/swissgeol-boreholes/values.yaml](https://github.com/swisstopo/swissgeol-boreholes-config/blob/ac293abe1c489044b3b15efa30c2238d456ded26/charts/swissgeol-boreholes/values.yaml#L65).
 
 3. **Start the FastAPI server**
 
@@ -353,23 +355,23 @@ This command will start the container and map port 8000 of the container to port
 
 4.2. **Run the docker image with the AWS credentials**
 
+You should pass AWS credentials and S3 configuration as [environment variables](#env) when starting the Docker container.
+
 4.2.1. **Using a `.env` file**
 
-Before being able to run the command below, please adapt the `.env.template` file to your needs. The easiest way to do this is to rename the file `.env` and to add your AWS credentials to the file. 
+Adapt the `.env.template` file to your needs, by renaming the file to `.env` and adding your AWS credentials to the file.
 
-To run the Docker image from `Dockerfile` with the environment variables from the `.env` file:
+The values from the `.env` file are automatically loaded into your Python environment thanks to the `python-dotenv` package.
+
+To ensure that the valus from the `.env` file are also passed along when starting a Docker container, you can use the `--env-file` argument, for example:
 
 ```bash
 docker run --env-file .env -d -p 8000:8000 borehole-api
 ```
 
-4.2.2. **Passing the AWS credentials as Environment Variables**
+4.2.2. **Defining the environment variables in your shell**
 
-It is possible to set AWS credentials as environment variables and also pass them to the Docker image you are running.
-
-**Unix-based Systems (Linux/macOS)**
-
-Add the following lines to your `~/.bashrc`, `~/.bash_profile`, or `~/.zshrc` (depending on your shell):
+For example, on Unix-based systems (Linux/macOS), add the following lines to your `~/.bashrc`, `~/.bash_profile`, or `~/.zshrc` (depending on your shell):
 
 ```bash
 export AWS_ACCESS_KEY_ID=your_access_key_id
@@ -378,72 +380,12 @@ export AWS_ENDPOINT=your_endpoint_url
 export AWS_S3_BUCKET=your_bucket_name
 ```
 
-Notes:
-
-- The data extraction API in this repository is designed to be integrated into [swissgeol-boreholes-suite](https://github.com/swisstopo/swissgeol-boreholes-suite) that is configure by [swissgeol-boreholes-config](https://github.com/swisstopo/swissgeol-boreholes-config). [Here](https://github.com/swisstopo/swissgeol-boreholes-config/blob/ac293abe1c489044b3b15efa30c2238d456ded26/charts/swissgeol-boreholes/values.yaml#L65) you can find more information about the AWS S3 Bucket Configuration and the environment variables defined for it. 
-- The `AWS_ENDPOINT` follows the format: `https://s3.<RegionName>.amazonaws.com`. You can find this URL in AWS by navigating to your target S3 bucket, selecting any item, and checking its Properties under "Object URL." Remove the file-specific extension to obtain the correct endpoint URL.
-- In some environments, the `AWS_ENDPOINT` may look like this:
-    
-    a. **Kubernetes cluster environment**
-
-    ```bash
-    AWS_ENDPOINT=https://s3.<region>.amazonaws.com
-    AWS_S3_BUCKET=your-[dev|prod]-bucket
-    ```
-
-    b. **In local boreholes development**, a local S3-compatible service like [MinIO](https://min.io/) is used, configured as:
-
-    ```bash
-    AWS_ENDPOINT=http://minio:9000
-    AWS_S3_BUCKET=your_bucket_name
-    ```
-
-These values are configured differently depending on the environment (e.g., development, production). While `AWS_ENDPOINT` and `AWS_S3_BUCKET` are distinct, you could potentially combine them by including the bucket in the endpoint, like:
-
-```bash
-AWS_ENDPOINT=https://s3.<region>.amazonaws.com/<bucket>
-```
-
-This change can easily be tested in your Kubernetes deployment by updating the Helm chart and building a new Docker image for testing in the relevant repository.
-
 After editing, run the following command to apply the changes:
 
 ```bash
 source ~/.bashrc  # Or ~/.bash_profile, ~/.zshrc based on your configuration
 ```
 
-**Windows (Command Prompt or PowerShell)**
-
-For Command Prompt:
-
-```bash
-setx AWS_ACCESS_KEY_ID your_access_key_id
-setx AWS_SECRET_ACCESS_KEY your_secret_access_key
-setx AWS_ENDPOINT your_endpoint_url
-setx AWS_S3_BUCKET your_bucket_name
-```
-
-For PowerShell:
-
-```bash
-$env:AWS_ACCESS_KEY_ID=your_access_key_id
-$env:AWS_SECRET_ACCESS_KEY=your_secret_access_key
-$env:AWS_ENDPOINT=your_endpoint_url
-$env:AWS_S3_BUCKET=your_bucket_name
-```
-
-4.2.3. **Passing the AWS credentials in an Environment File**
-
-Another option is to store the credentials in a .env file and load them into your Python environment using the `python-dotenv` package:
-
-```bash
-AWS_ACCESS_KEY_ID=your_access_key_id
-AWS_SECRET_ACCESS_KEY=your_secret_access_key
-AWS_ENDPOINT=your_endpoint_url
-AWS_S3_BUCKET=your_bucket_name
-```
-
-You can find an example for such a `.env` file in `.env.template`. If you rename this file to `.env` and add your AWS credentials you should be good to go. 
 
 1. **Access the API**
 
