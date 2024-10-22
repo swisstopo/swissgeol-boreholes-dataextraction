@@ -16,9 +16,11 @@ from stratigraphy.benchmark.score import evaluate
 from stratigraphy.extract import process_page
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterLevelExtractor
 from stratigraphy.layer.duplicate_detection import remove_duplicate_layers
+from stratigraphy.layer.layer import LayerPrediction
 from stratigraphy.lines.line_detection import extract_lines, line_detection_params
-from stratigraphy.metadata.metadata import BoreholeMetadata, BoreholeMetadataList
+from stratigraphy.metadata.metadata import BoreholeMetadata
 from stratigraphy.text.extract_text import extract_text_lines
+from stratigraphy.util.predictions import FilePredictions, OverallFilePredictions
 from stratigraphy.util.util import flatten, read_params
 
 load_dotenv()
@@ -212,10 +214,7 @@ def start_pipeline(
         _, _, files = next(os.walk(input_directory))
 
     # process the individual pdf files
-    predictions = {}
-
-    # process the individual pdf files
-    metadata_per_file = BoreholeMetadataList()
+    predictions = OverallFilePredictions()
 
     for filename in tqdm(files, desc="Processing files", unit="file"):
         if filename.endswith(".pdf"):
@@ -224,23 +223,12 @@ def start_pipeline(
 
             with fitz.Document(in_path) as doc:
                 # Extract metadata
-                metadata = BoreholeMetadata(doc)
-
-                # Add metadata to the metadata list
-                metadata_per_file.metadata_per_file.append(metadata)
+                metadata = BoreholeMetadata.from_document(doc)
 
                 if part == "all":
-                    predictions[filename] = {}
-
                     # Extract the groundwater levels
                     groundwater_extractor = GroundwaterLevelExtractor(document=doc)
                     groundwater = groundwater_extractor.extract_groundwater(terrain_elevation=metadata.elevation)
-                    if groundwater:
-                        predictions[filename]["groundwater"] = [
-                            groundwater_entry.to_json() for groundwater_entry in groundwater
-                        ]
-                    else:
-                        predictions[filename]["groundwater"] = None
 
                     layer_predictions_list = []
                     depths_materials_column_pairs_list = []
@@ -250,7 +238,7 @@ def start_pipeline(
 
                         text_lines = extract_text_lines(page)
                         geometric_lines = extract_lines(page, line_detection_params)
-                        layer_predictions, depths_materials_column_pairs = process_page(
+                        process_page_results = process_page(
                             text_lines, geometric_lines, metadata.language, page_number, **matching_params
                         )
 
@@ -260,12 +248,14 @@ def start_pipeline(
                                 doc[page_index - 1],
                                 page,
                                 layer_predictions_list,
-                                layer_predictions,
+                                process_page_results.predictions,
                                 matching_params["img_template_probability_threshold"],
                             )
+                        else:
+                            layer_predictions = process_page_results.predictions
 
                         layer_predictions_list.extend(layer_predictions)
-                        depths_materials_column_pairs_list.extend(depths_materials_column_pairs)
+                        depths_materials_column_pairs_list.extend(process_page_results.depth_material_pairs)
 
                         if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
                             if not mlflow_tracking:
@@ -278,25 +268,41 @@ def start_pipeline(
                                 )
                                 mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
+                # Save the predictions to the overall predictions object
+                # Initialize common variables
+                groundwater_entries = None
+                layers = None
+                depths_materials_columns_pairs = None
+
                 if part == "all":
-                    predictions[filename]["layers"] = layer_predictions_list
-                    predictions[filename]["depths_materials_column_pairs"] = depths_materials_column_pairs_list
-                    predictions[filename]["page_dimensions"] = (
-                        metadata.page_dimensions
-                    )  # TODO: Remove this as it is already stored in the metadata
+                    # Convert the layer dicts to LayerPrediction objects
+                    page_layer_predictions_list = LayerPrediction.from_json(layer_predictions_list)
+                    groundwater_entries = groundwater
+                    layers = page_layer_predictions_list
+                    depths_materials_columns_pairs = depths_materials_column_pairs_list
+
+                # Add file predictions
+                predictions.add_file_predictions(
+                    FilePredictions(
+                        file_name=filename,
+                        metadata=metadata,
+                        groundwater_entries=groundwater_entries,
+                        layers=layers,
+                        depths_materials_columns_pairs=depths_materials_columns_pairs,
+                    )
+                )
 
     logger.info("Metadata written to %s", metadata_path)
     with open(metadata_path, "w", encoding="utf8") as file:
-        json.dump(metadata_per_file.to_json(), file, ensure_ascii=False)
+        json.dump(predictions.get_metadata_as_dict(), file, ensure_ascii=False)
 
     if part == "all":
         logger.info("Writing predictions to JSON file %s", predictions_path)
         with open(predictions_path, "w", encoding="utf8") as file:
-            json.dump(predictions, file, ensure_ascii=False)
+            json.dump(predictions.to_json(), file, ensure_ascii=False)
 
     evaluate(
         predictions=predictions,
-        metadata_per_file=metadata_per_file,
         ground_truth_path=ground_truth_path,
         temp_directory=temp_directory,
         input_directory=input_directory,

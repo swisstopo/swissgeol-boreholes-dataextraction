@@ -37,37 +37,29 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
     filename: Path = None
     page_dimensions: list[PageDimensions] = None
 
-    def __init__(self, document: fitz.Document):
+    def __init__(
+        self,
+        language: str = None,
+        elevation: Elevation = None,
+        coordinates: Coordinate = None,
+        page_dimensions: list[PageDimensions] = None,
+        filename: Path = None,
+    ):
         """Initializes the BoreholeMetadata object.
 
         Args:
-            document (fitz.Document): A PDF document.
+            Args:
+            language (str | None): The language of the document.
+            elevation (Elevation | None): The elevation information.
+            coordinates (Coordinate | None): The coordinates of the borehole.
+            page_dimensions (list[PageDimensions] | None): The dimensions of the pages in the document.
+            filename (Path | None): The name of the file.
         """
-        matching_params = read_params("matching_params.yml")
-
-        # Detect the language of the document
-        self.language = detect_language_of_document(
-            document, matching_params["default_language"], matching_params["material_description"].keys()
-        )
-
-        # Extract the coordinates of the borehole
-        coordinate_extractor = CoordinateExtractor(document=document)
-        self.coordinates = coordinate_extractor.extract_coordinates()
-
-        # Extract the elevation information
-        elevation_extractor = ElevationExtractor(document=document)
-        self.elevation = elevation_extractor.extract_elevation()
-
-        # Get the name of the document
-        self.filename = Path(document.name)
-
-        # Get the dimensions of the document's pages
-        self.page_dimensions = []
-        for page in document:
-            self.page_dimensions.append(PageDimensions(width=page.rect.width, height=page.rect.height))
-
-        # Sanity check
-        assert len(self.page_dimensions) == document.page_count, "Page count mismatch."
+        self.language = language
+        self.elevation = elevation
+        self.coordinates = coordinates
+        self.page_dimensions = page_dimensions
+        self.filename = filename
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -96,16 +88,100 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
             f"page_dimensions={self.page_dimensions})"
         )
 
+    @classmethod
+    def from_document(cls, document: fitz.Document) -> "BoreholeMetadata":
+        """Create a BoreholeMetadata object from a document.
+
+        Args:
+            document (fitz.Document): The document.
+
+        Returns:
+            BoreholeMetadata: The metadata object.
+        """
+        matching_params = read_params("matching_params.yml")
+
+        # Detect the language of the document
+        language = detect_language_of_document(
+            document, matching_params["default_language"], matching_params["material_description"].keys()
+        )
+
+        # Extract the coordinates of the borehole
+        coordinate_extractor = CoordinateExtractor(document=document)
+        coordinates = coordinate_extractor.extract_coordinates()
+
+        # Extract the elevation information
+        elevation_extractor = ElevationExtractor(document=document)
+        elevation = elevation_extractor.extract_elevation()
+
+        # Get the name of the document
+        filename = Path(document.name)
+
+        # Get the dimensions of the document's pages
+        page_dimensions = []
+        for page in document:
+            page_dimensions.append(PageDimensions(width=page.rect.width, height=page.rect.height))
+
+        # Sanity check
+        assert len(page_dimensions) == document.page_count, "Page count mismatch."
+
+        return cls(
+            language=language,
+            elevation=elevation,
+            coordinates=coordinates,
+            filename=filename,
+            page_dimensions=page_dimensions,
+        )
+
+    @classmethod
+    def from_json(cls, json_metadata: dict, filename: str) -> "BoreholeMetadata":
+        """Converts a dictionary to an object.
+
+        Args:
+            json_metadata (dict): A dictionary representing the metadata.
+            filename (str): The name of the file.
+
+        Returns:
+            BoreholeMetadata: The metadata object.
+        """
+        elevation = Elevation.from_json(json_metadata["elevation"]) if json_metadata["elevation"] is not None else None
+        coordinates = (
+            Coordinate.from_json(json_metadata["coordinates"]) if json_metadata["coordinates"] is not None else None
+        )
+        language = json_metadata["language"]
+        page_dimensions = [
+            PageDimensions(width=page["width"], height=page["height"]) for page in json_metadata["page_dimensions"]
+        ]
+
+        return cls(
+            elevation=elevation,
+            coordinates=coordinates,
+            language=language,
+            page_dimensions=page_dimensions,
+            filename=Path(filename),
+        )
+
 
 @dataclass
 class BoreholeMetadataList(metaclass=abc.ABCMeta):
-    """Metadata for stratigraphy data."""
+    """Metadata for stratigraphy data.
+
+    This class is a list of BoreholeMetadata objects. Each object corresponds to a
+    single file.
+    """
 
     metadata_per_file: list[BoreholeMetadata] = None
 
     def __init__(self):
-        """Initializes the StratigraphyMetadata object."""
+        """Initializes the BoreholeMetadataList object."""
         self.metadata_per_file = []
+
+    def add_metadata(self, metadata: BoreholeMetadata) -> None:
+        """Add metadata to the list.
+
+        Args:
+            metadata (BoreholeMetadata): The metadata to add.
+        """
+        self.metadata_per_file.append(metadata)
 
     def get_metadata(self, filename: str) -> BoreholeMetadata:
         """Get the metadata for a specific file.

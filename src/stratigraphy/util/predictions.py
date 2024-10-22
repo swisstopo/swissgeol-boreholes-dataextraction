@@ -2,18 +2,16 @@
 
 import logging
 from collections import Counter
+from pathlib import Path
 
-import fitz
 import Levenshtein
 
-from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
-from stratigraphy.evaluation.evaluation_dataclasses import Metrics
+from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
+from stratigraphy.evaluation.evaluation_dataclasses import Metrics, OverallBoreholeMetadataMetrics
+from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformation, GroundwaterInformationOnPage
 from stratigraphy.layer.layer import LayerPrediction
-from stratigraphy.lines.line import TextLine, TextWord
-from stratigraphy.metadata.metadata import BoreholeMetadata
-from stratigraphy.text.textblock import TextBlock
-from stratigraphy.util.interval import BoundaryInterval
+from stratigraphy.metadata.metadata import BoreholeMetadata, BoreholeMetadataList
 from stratigraphy.util.util import parse_text
 
 logger = logging.getLogger(__name__)
@@ -24,90 +22,18 @@ class FilePredictions:
 
     def __init__(
         self,
-        layers: list[LayerPrediction],
+        layers: list[LayerPrediction] | None,
         file_name: str,
-        language: str,
         metadata: BoreholeMetadata,
-        groundwater_entries: list[GroundwaterInformationOnPage],
-        depths_materials_columns_pairs: list[dict],
-        page_sizes: list[dict[str, float]],
+        groundwater_entries: list[GroundwaterInformationOnPage] | None,
+        depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs] | None,
     ):
-        self.layers: list[LayerPrediction] = layers
-        self.depths_materials_columns_pairs: list[dict] = depths_materials_columns_pairs
-        self.file_name = file_name
-        self.language = language
-        self.metadata = metadata
-        self.page_sizes: list[dict[str, float]] = page_sizes
-        self.groundwater_entries = groundwater_entries
+        self.layers: list[LayerPrediction] | None = layers
+        self.depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs] | None = depths_materials_columns_pairs
+        self.file_name: str = file_name
+        self.metadata: BoreholeMetadata = metadata
+        self.groundwater_entries: list[GroundwaterInformationOnPage] | None = groundwater_entries
         self.groundwater_is_correct: dict = {}
-
-    @staticmethod
-    def create_from_json(predictions_for_file: dict, metadata: BoreholeMetadata, file_name: str):
-        """Create predictions class for a file given the predictions.json file.
-
-        Args:
-            predictions_for_file (dict): The predictions for the file in json format.
-            metadata (BoreholeMetadata): The metadata for the file.
-            file_name (str): The name of the file.
-        """
-        page_layer_predictions_list: list[LayerPrediction] = []
-        pages_dimensions_list: list[dict[str, float]] = []
-        depths_materials_columns_pairs_list: list[dict] = []
-
-        # Extract groundwater information if available.
-        if "groundwater" in predictions_for_file and predictions_for_file["groundwater"] is not None:
-            groundwater_entries = [
-                GroundwaterInformationOnPage.from_json_values(**entry) for entry in predictions_for_file["groundwater"]
-            ]
-        else:
-            groundwater_entries = []
-
-        # Extract the layer predictions.
-        for layer in predictions_for_file["layers"]:
-            material_prediction = _create_textblock_object(layer["material_description"]["lines"])
-            if "depth_interval" in layer:
-                start = (
-                    DepthColumnEntry(
-                        value=layer["depth_interval"]["start"]["value"],
-                        rect=fitz.Rect(layer["depth_interval"]["start"]["rect"]),
-                        page_number=layer["depth_interval"]["start"]["page"],
-                    )
-                    if layer["depth_interval"]["start"] is not None
-                    else None
-                )
-                end = (
-                    DepthColumnEntry(
-                        value=layer["depth_interval"]["end"]["value"],
-                        rect=fitz.Rect(layer["depth_interval"]["end"]["rect"]),
-                        page_number=layer["depth_interval"]["end"]["page"],
-                    )
-                    if layer["depth_interval"]["end"] is not None
-                    else None
-                )
-
-                depth_interval_prediction = BoundaryInterval(start=start, end=end)
-                layer_predictions = LayerPrediction(
-                    material_description=material_prediction, depth_interval=depth_interval_prediction
-                )
-            else:
-                layer_predictions = LayerPrediction(material_description=material_prediction, depth_interval=None)
-
-            page_layer_predictions_list.append(layer_predictions)
-
-        if "depths_materials_column_pairs" in predictions_for_file:
-            depths_materials_columns_pairs_list.extend(predictions_for_file["depths_materials_column_pairs"])
-
-        pages_dimensions_list.extend(predictions_for_file["page_dimensions"])
-
-        return FilePredictions(
-            layers=page_layer_predictions_list,
-            file_name=file_name,
-            language=metadata.language,
-            metadata=metadata,
-            depths_materials_columns_pairs=depths_materials_columns_pairs_list,
-            page_sizes=pages_dimensions_list,
-            groundwater_entries=groundwater_entries,
-        )
 
     def convert_to_ground_truth(self):
         """Convert the predictions to ground truth format.
@@ -276,7 +202,94 @@ class FilePredictions:
         unmatched_layers.remove(match)
         return match, False
 
+    def to_json(self) -> dict:
+        """Converts the object to a dictionary.
 
-def _create_textblock_object(lines: dict) -> TextBlock:
-    lines = [TextLine([TextWord(**line)]) for line in lines]
-    return TextBlock(lines)
+        Returns:
+            dict: The object as a dictionary.
+        """
+        return {
+            "metadata": self.metadata.to_json(),
+            "layers": [layer.to_json() for layer in self.layers] if self.layers is not None else [],
+            "depths_materials_column_pairs": [dmc_pair.to_json() for dmc_pair in self.depths_materials_columns_pairs]
+            if self.depths_materials_columns_pairs is not None
+            else [],
+            "page_dimensions": self.metadata.page_dimensions,  # TODO: Remove, already in metadata
+            "groundwater": [entry.to_json() for entry in self.groundwater_entries]
+            if self.groundwater_entries is not None
+            else [],
+            "file_name": self.file_name,
+        }
+
+
+class OverallFilePredictions:
+    """A class to represent predictions for all files."""
+
+    def __init__(self):
+        """Initializes the OverallFilePredictions object."""
+        self.file_predictions_list: list[FilePredictions] = []
+
+    def add_file_predictions(self, file_predictions: FilePredictions):
+        """Add file predictions to the list of file predictions.
+
+        Args:
+            file_predictions (FilePredictions): The file predictions to add.
+        """
+        self.file_predictions_list.append(file_predictions)
+
+    def get_metadata_as_dict(self):
+        """Returns the metadata of the predictions as a dictionary."""
+        return {
+            file_prediction.file_name: file_prediction.metadata.to_json()
+            for file_prediction in self.file_predictions_list
+        }
+
+    def to_json(self) -> dict:
+        """Converts the object to a dictionary by merging individual file predictions.
+
+        Returns:
+            dict: A dictionary representation of the object.
+        """
+        return {fp.file_name: fp.to_json() for fp in self.file_predictions_list}
+
+    @classmethod
+    def from_json(cls, prediction_from_file: dict) -> "OverallFilePredictions":
+        """Converts a dictionary to an object.
+
+        Args:
+            prediction_from_file (dict): A dictionary representing the predictions.
+
+        Returns:
+            OverallFilePredictions: The object.
+        """
+        overall_file_predictions = OverallFilePredictions()
+        for file_name, file_data in prediction_from_file.items():
+            metadata = BoreholeMetadata.from_json(file_data["metadata"], file_name)
+            layers = LayerPrediction.from_json(file_data["layers"])
+            depths_materials_columns_pairs = [
+                DepthsMaterialsColumnPairs.from_json(dmc_pair)
+                for dmc_pair in file_data["depths_materials_column_pairs"]
+            ]
+            groundwater_entries = [GroundwaterInformationOnPage.from_json(entry) for entry in file_data["groundwater"]]
+            overall_file_predictions.add_file_predictions(
+                FilePredictions(
+                    layers=layers,
+                    file_name=file_name,
+                    metadata=metadata,
+                    depths_materials_columns_pairs=depths_materials_columns_pairs,
+                    groundwater_entries=groundwater_entries,
+                )
+            )
+        return overall_file_predictions
+
+    def evaluate_metadata_extraction(self, ground_truth_path: Path) -> OverallBoreholeMetadataMetrics:
+        """Evaluate the metadata extraction of the predictions against the ground truth.
+
+        Args:
+            ground_truth_path (Path): The path to the ground truth file.
+        """
+        metadata_per_file: BoreholeMetadataList = BoreholeMetadataList()
+
+        for file_prediction in self.file_predictions_list:
+            metadata_per_file.add_metadata(file_prediction.metadata)
+        return MetadataEvaluator(metadata_per_file, ground_truth_path).evaluate()

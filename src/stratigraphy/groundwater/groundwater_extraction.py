@@ -111,24 +111,25 @@ class GroundwaterInformationOnPage(ExtractedFeature):
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
         }
 
-    @staticmethod
-    def from_json_values(date: str | None, depth: float | None, elevation: float | None, page: int, rect: list[float]):
-        """Converts the object from a dictionary.
+    @classmethod
+    def from_json(cls, json_groundwater_information_on_page: dict) -> "GroundwaterInformationOnPage":
+        """Converts a dictionary to an object.
 
         Args:
-            date (str | None): The measurement date of the groundwater.
-            depth (float | None): The depth of the groundwater.
-            elevation (float | None): The elevation of the groundwater.
-            page (int): The page number of the PDF document.
-            rect (list[float]): The rectangle that contains the extracted information.
+            json_groundwater_information_on_page (dict): A dictionary representing the groundwater information on a
+            page.
 
         Returns:
-            GroundwaterInformationOnPage: The object created from the dictionary.
+            GroundwaterInformationOnPage: The groundwater information on a page object.
         """
         return GroundwaterInformationOnPage(
-            groundwater=GroundwaterInformation.from_json_values(depth=depth, date=date, elevation=elevation),
-            page=page,
-            rect=fitz.Rect(rect),
+            groundwater=GroundwaterInformation.from_json_values(
+                depth=json_groundwater_information_on_page["depth"],
+                date=json_groundwater_information_on_page["date"],
+                elevation=json_groundwater_information_on_page["elevation"],
+            ),
+            page=json_groundwater_information_on_page["page"],
+            rect=fitz.Rect(json_groundwater_information_on_page["rect"]),
         )
 
 

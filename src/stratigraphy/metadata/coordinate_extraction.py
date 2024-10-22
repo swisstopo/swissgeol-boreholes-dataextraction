@@ -94,8 +94,8 @@ class Coordinate(ExtractedFeature):
             logger.warning("Invalid coordinates format. Got E: %s, N: %s", east, north)
             return None
 
-    @staticmethod
-    def from_json(input: dict):
+    @classmethod
+    def from_json(cls, input: dict) -> Coordinate:
         """Converts a dictionary to a Coordinate object.
 
         Args:

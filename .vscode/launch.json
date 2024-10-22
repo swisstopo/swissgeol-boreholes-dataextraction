@@ -20,6 +20,16 @@
             "python": "${workspaceFolder}/swisstopo/bin/python3",
         },
         {
+            "name": "Python: Run scoring",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.stratigraphy.benchmark.score",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "./swisstopo/bin/python3",
+        },
+        {
             "name": "Python: Run label studio to GT",
             "type": "debugpy",
             "request": "launch",

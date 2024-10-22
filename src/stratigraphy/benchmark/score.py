@@ -1,5 +1,6 @@
 """Evaluate the predictions against the ground truth."""
 
+import argparse
 import json
 import logging
 import os
@@ -10,10 +11,7 @@ from stratigraphy import DATAPATH
 from stratigraphy.annotations.draw import draw_predictions
 from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.benchmark.metrics import DatasetMetrics, DatasetMetricsCatalog, Metrics
-from stratigraphy.evaluation.evaluation_dataclasses import OverallBoreholeMetadataMetrics
-from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
-from stratigraphy.metadata.metadata import BoreholeMetadataList
-from stratigraphy.util.predictions import FilePredictions
+from stratigraphy.util.predictions import OverallFilePredictions
 from stratigraphy.util.util import parse_text
 
 load_dotenv()
@@ -23,13 +21,13 @@ logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logg
 logger = logging.getLogger(__name__)
 
 
-def get_layer_metrics(predictions: dict, number_of_truth_values: dict) -> DatasetMetrics:
+def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_values: dict) -> DatasetMetrics:
     """Calculate F1, precision and recall for the layer predictions.
 
     Calculate F1, precision and recall for the individual documents as well as overall.
 
     Args:
-        predictions (dict): The predictions.
+        predictions (OverallFilePredictions): The predictions.
         number_of_truth_values (dict): The number of ground truth values per file.
 
     Returns:
@@ -37,21 +35,23 @@ def get_layer_metrics(predictions: dict, number_of_truth_values: dict) -> Datase
     """
     layer_metrics = DatasetMetrics()
 
-    for filename, file_prediction in predictions.items():
+    for file_prediction in predictions.file_predictions_list:
         hits = 0
         for layer in file_prediction.layers:
             if layer.material_is_correct:
                 hits += 1
             if parse_text(layer.material_description.text) == "":
                 logger.warning("Empty string found in predictions")
-        layer_metrics.metrics[filename] = Metrics(
-            tp=hits, fp=len(file_prediction.layers) - hits, fn=number_of_truth_values[filename] - hits
+        layer_metrics.metrics[file_prediction.file_name] = Metrics(
+            tp=hits,
+            fp=len(file_prediction.layers) - hits,
+            fn=number_of_truth_values.get(file_prediction.file_name, 0) - hits,
         )
 
     return layer_metrics
 
 
-def get_depth_interval_metrics(predictions: dict) -> DatasetMetrics:
+def get_depth_interval_metrics(predictions: OverallFilePredictions) -> DatasetMetrics:
     """Calculate F1, precision and recall for the depth interval predictions.
 
     Calculate F1, precision and recall for the individual documents as well as overall.
@@ -59,14 +59,14 @@ def get_depth_interval_metrics(predictions: dict) -> DatasetMetrics:
     Depth interval accuracy is not calculated for layers with incorrect material predictions.
 
     Args:
-        predictions (dict): The predictions.
+        predictions (OverallFilePredictions): The predictions.
 
     Returns:
         DatasetMetrics: the metrics for the depth intervals
     """
     depth_interval_metrics = DatasetMetrics()
 
-    for filename, file_prediction in predictions.items():
+    for file_prediction in predictions.file_predictions_list:
         depth_interval_hits = 0
         depth_interval_occurrences = 0
         for layer in file_prediction.layers:
@@ -77,27 +77,20 @@ def get_depth_interval_metrics(predictions: dict) -> DatasetMetrics:
                     depth_interval_hits += 1
 
         if depth_interval_occurrences > 0:
-            depth_interval_metrics.metrics[filename] = Metrics(
+            depth_interval_metrics.metrics[file_prediction.file_name] = Metrics(
                 tp=depth_interval_hits, fp=depth_interval_occurrences - depth_interval_hits, fn=0
             )
 
     return depth_interval_metrics
 
 
-def evaluate_metadata_extraction(
-    borehole_metadata: BoreholeMetadataList, ground_truth_path: Path
-) -> OverallBoreholeMetadataMetrics:
-    """Evaluate the metadata extraction."""
-    return MetadataEvaluator(borehole_metadata, ground_truth_path).evaluate()
-
-
 def evaluate_borehole_extraction(
-    predictions: dict[str, FilePredictions], number_of_truth_values: dict
+    predictions: OverallFilePredictions, number_of_truth_values: dict
 ) -> DatasetMetricsCatalog:
     """Evaluate the borehole extraction predictions.
 
     Args:
-       predictions (dict): The FilePredictions objects.
+       predictions (OverallFilePredictions): The FilePredictions objects.
        number_of_truth_values (dict): The number of layer ground truth values per file.
 
     Returns:
@@ -110,11 +103,11 @@ def evaluate_borehole_extraction(
     return all_metrics
 
 
-def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_name: str) -> DatasetMetrics:
+def get_metrics(predictions: OverallFilePredictions, field_key: str, field_name: str) -> DatasetMetrics:
     """Get the metrics for a specific field in the predictions.
 
     Args:
-        predictions (dict): The FilePredictions objects.
+        predictions (OverallFilePredictions): The FilePredictions objects.
         field_key (str): The key to access the specific field in the prediction objects.
         field_name (str): The name of the field being evaluated.
 
@@ -123,20 +116,28 @@ def get_metrics(predictions: dict[str, FilePredictions], field_key: str, field_n
     """
     dataset_metrics = DatasetMetrics()
 
-    for file_name, file_prediction in predictions.items():
-        dataset_metrics.metrics[file_name] = getattr(file_prediction, field_key)[field_name]
+    for file_prediction in predictions.file_predictions_list:
+        attribute = getattr(file_prediction, field_key, None)
+        if attribute and field_name in attribute:
+            dataset_metrics.metrics[file_prediction.file_name] = attribute[field_name]
+        else:
+            logger.warning(
+                "Missing attribute '%s' or key '%s' in file '%s'", field_key, field_name, file_prediction.file_name
+            )
 
     return dataset_metrics
 
 
-def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -> DatasetMetricsCatalog:
+def evaluate_layer_extraction(
+    predictions: OverallFilePredictions, number_of_truth_values: dict
+) -> DatasetMetricsCatalog:
     """Calculate F1, precision and recall for the predictions.
 
     Calculate F1, precision and recall for the individual documents as well as overall.
     The individual document metrics are returned as a DataFrame.
 
     Args:
-        predictions (dict): The FilePredictions objects.
+        predictions (OverallFilePredictions): The OverallFilePredictions objects.
         number_of_truth_values (dict): The number of layer ground truth values per file.
 
     Returns:
@@ -147,15 +148,17 @@ def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -
     all_metrics.metrics["depth_interval"] = get_depth_interval_metrics(predictions)
 
     # create predictions by language
-    predictions_by_language = {"de": {}, "fr": {}}
-    for file_name, file_predictions in predictions.items():
-        language = file_predictions.language
-        if language in predictions_by_language:
-            predictions_by_language[language][file_name] = file_predictions
+    languages = set(fp.metadata.language for fp in predictions.file_predictions_list)
+    predictions_by_language = {language: OverallFilePredictions() for language in languages}
+
+    for file_predictions in predictions.file_predictions_list:
+        language = file_predictions.metadata.language
+        predictions_by_language[language].add_file_predictions(file_predictions)
 
     for language, language_predictions in predictions_by_language.items():
         language_number_of_truth_values = {
-            file_name: number_of_truth_values[file_name] for file_name in language_predictions
+            prediction.file_name: number_of_truth_values[prediction.file_name]
+            for prediction in language_predictions.file_predictions_list
         }
         all_metrics.metrics[f"{language}_layer"] = get_layer_metrics(
             language_predictions, language_number_of_truth_values
@@ -175,19 +178,17 @@ def evaluate_layer_extraction(predictions: dict, number_of_truth_values: dict) -
 
 
 def create_predictions_objects(
-    predictions: dict,
-    metadata_per_file: BoreholeMetadataList,
+    predictions: OverallFilePredictions,
     ground_truth_path: Path | None,
-) -> tuple[dict[str, FilePredictions], dict]:
+) -> tuple[OverallFilePredictions, dict]:
     """Create predictions objects from the predictions and evaluate them against the ground truth.
 
     Args:
-        predictions (dict): The predictions from the predictions.json file.
+        predictions (OverallFilePredictions): The predictions objects.
         ground_truth_path (Path | None): The path to the ground truth file.
-        metadata_per_file (BoreholeMetadataList): The metadata for the files.
 
     Returns:
-        tuple[dict[str, FilePredictions], dict]: The predictions objects and the number of ground truth values per
+        tuple[OverallFilePredictions, dict]: The predictions objects and the number of ground truth values per
                                                  file.
     """
     if ground_truth_path and os.path.exists(ground_truth_path):  # for inference no ground truth is available
@@ -198,40 +199,41 @@ def create_predictions_objects(
         ground_truth_is_present = False
 
     number_of_truth_values = {}
-    predictions_objects = {}
-    for file_name, file_predictions in predictions.items():
-        metadata = metadata_per_file.get_metadata(file_name)
-        if not metadata:
-            raise ValueError(f"Metadata for file {file_name} not found.")
-
-        prediction_object = FilePredictions.create_from_json(file_predictions, metadata, file_name)
-
-        predictions_objects[file_name] = prediction_object
+    for file_predictions in predictions.file_predictions_list:
         if ground_truth_is_present:
-            ground_truth_for_file = ground_truth.for_file(file_name)
+            ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
             if ground_truth_for_file:
-                predictions_objects[file_name].evaluate(ground_truth_for_file)
-                number_of_truth_values[file_name] = len(ground_truth_for_file["layers"])
+                file_predictions.evaluate(ground_truth_for_file)
+                number_of_truth_values[file_predictions.file_name] = len(ground_truth_for_file["layers"])
 
-    return predictions_objects, number_of_truth_values
+    return predictions, number_of_truth_values
 
 
 def evaluate(
-    predictions,
-    metadata_per_file: BoreholeMetadataList,
+    predictions: OverallFilePredictions,
     ground_truth_path: Path,
     temp_directory: Path,
     input_directory: Path | None,
     draw_directory: Path | None,
-):
-    """Computes all the metrics, logs them, and creates corresponding MLFlow artifacts (when enabled)."""
+) -> None:
+    """Computes all the metrics, logs them, and creates corresponding MLFlow artifacts (when enabled).
+
+    Args:
+        predictions (OverallFilePredictions): The predictions objects.
+        ground_truth_path (Path): The path to the ground truth file.
+        temp_directory (Path): The path to the temporary directory.
+        input_directory (Path | None): The path to the input directory.
+        draw_directory (Path | None): The path to the draw directory.
+
+    Returns:
+        None
+    """
     #############################
     # Evaluate the borehole extraction metadata
     #############################
-    metadata_metrics_list = evaluate_metadata_extraction(metadata_per_file, ground_truth_path)
+    metadata_metrics_list = predictions.evaluate_metadata_extraction(ground_truth_path)
     metadata_metrics = metadata_metrics_list.get_cumulated_metrics()
     document_level_metadata_metrics = metadata_metrics_list.get_document_level_metrics()
-
     document_level_metadata_metrics.to_csv(
         temp_directory / "document_level_metadata_metrics.csv", index_label="document_name"
     )  # mlflow.log_artifact expects a file
@@ -250,14 +252,8 @@ def evaluate(
     # Evaluate the borehole extraction
     #############################
     if predictions:
-        predictions, number_of_truth_values = create_predictions_objects(
-            predictions, metadata_per_file, ground_truth_path
-        )
+        predictions, number_of_truth_values = create_predictions_objects(predictions, ground_truth_path)
 
-        if input_directory and draw_directory:
-            draw_predictions(predictions, input_directory, draw_directory, document_level_metadata_metrics)
-
-        # evaluate the borehole extraction
         if number_of_truth_values:  # only evaluate if ground truth is available
             metrics = evaluate_borehole_extraction(predictions, number_of_truth_values)
 
@@ -277,24 +273,77 @@ def evaluate(
         else:
             logger.warning("Ground truth file not found. Skipping evaluation.")
 
+        #############################
+        # Draw the prediction
+        #############################
+        if input_directory and draw_directory:
+            draw_predictions(predictions, input_directory, draw_directory, document_level_metadata_metrics)
 
-if __name__ == "__main__":
+
+def main():
+    """Main function to evaluate the predictions against the ground truth."""
+    args = parse_cli()
+
     # setup mlflow tracking; should be started before any other code
     # such that tracking is enabled in other parts of the code.
     # This does not create any scores, but will log all the created images to mlflow.
-    if mlflow_tracking:
+    if args.mlflow_tracking:
         import mlflow
 
         mlflow.set_experiment("Boreholes Stratigraphy")
         mlflow.start_run()
 
-    # TODO: make configurable
-    ground_truth_path = DATAPATH.parent.parent / "data" / "zurich_ground_truth.json"
-    predictions_path = DATAPATH / "output" / "predictions.json"
-    temp_directory = DATAPATH / "_temp"
+    # Load the predictions
+    try:
+        with open(args.predictions_path, encoding="utf8") as file:
+            predictions = json.load(file)
+    except FileNotFoundError:
+        logger.error("Predictions file not found: %s", args.predictions_path)
+        return
+    except json.JSONDecodeError as e:
+        logger.error("Error decoding JSON from predictions file: %s", e)
+        return
 
-    with open(predictions_path, encoding="utf8") as file:
-        predictions = json.load(file)
+    predictions = OverallFilePredictions.from_json(predictions)
 
-    # TODO read BoreholeMetadataList from JSON file and pass to the evaluate method
-    evaluate(predictions, ground_truth_path, temp_directory, input_directory=None, draw_directory=None)
+    # Customize these as needed
+    evaluate(predictions, args.ground_truth_path, args.temp_directory, input_directory=None, draw_directory=None)
+
+
+def parse_cli() -> argparse.Namespace:
+    """Parse the command line arguments and pass them to the main function."""
+    parser = argparse.ArgumentParser(description="Borehole Stratigraphy Evaluation Script")
+
+    # Add arguments with defaults
+    parser.add_argument(
+        "--ground-truth-path",
+        type=Path,
+        default=DATAPATH.parent / "data" / "zurich_ground_truth.json",
+        help="Path to the ground truth JSON file (default: '../data/zurich_ground_truth.json').",
+    )
+    parser.add_argument(
+        "--predictions-path",
+        type=Path,
+        default=DATAPATH / "output" / "predictions.json",
+        help="Path to the predictions JSON file (default: './output/predictions.json').",
+    )
+    parser.add_argument(
+        "--temp-directory",
+        type=Path,
+        default=DATAPATH / "_temp",
+        help="Directory for storing temporary data (default: './_temp').",
+    )
+    parser.add_argument(
+        "--no-mlflow-tracking",
+        action="store_false",
+        dest="mlflow_tracking",
+        help="Disable MLflow tracking (enabled by default).",
+    )
+
+    # Parse arguments and pass to main
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    # Parse arguments and pass to main
+    main()
