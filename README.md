@@ -82,7 +82,7 @@ The extraction of groundwater relies on the `scikit-image` library. This library
 
 ## License
 
-The source code of this project is open source software, licensed under the [MIT License](LICENSE). Certain libraries in the project dependencies might be distributed under more restrictive open source licences. Most notably, [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright) is available under either the AGPL license or a commercial license. These more restrictive licenses would apply when distributing this project in a single package together with its dependencies.
+The source code of this project is open source software, licensed under the [MIT License](LICENSE). Certain libraries in the project dependencies might be distributed under more restrictive open source licenses. Most notably, [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright) is available under either the AGPL license or a commercial license. These more restrictive licenses would apply when distributing this project in a single package together with its dependencies.
 
 ## Installation
 We use pip to manage the packages dependencies. We recommend using a virtual environment within which to install all dependencies.
@@ -363,7 +363,7 @@ Adapt the `.env.template` file to your needs, by renaming the file to `.env` and
 
 The values from the `.env` file are automatically loaded into your Python environment thanks to the `python-dotenv` package.
 
-To ensure that the valus from the `.env` file are also passed along when starting a Docker container, you can use the `--env-file` argument, for example:
+To ensure that the values from the `.env` file are also passed along when starting a Docker container, you can use the `--env-file` argument, for example:
 
 ```bash
 docker run --env-file .env -d -p 8000:8000 borehole-api
