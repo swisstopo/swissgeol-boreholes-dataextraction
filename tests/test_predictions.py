@@ -57,9 +57,9 @@ def test_to_json(sample_file_prediction):
     result = sample_file_prediction.to_json()
 
     assert isinstance(result, dict)
-    assert result["test_file"]["file_name"] == "test_file"
-    assert len(result["test_file"]["layers"]) == 2
-    assert result["test_file"]["metadata"]["coordinates"]["E"] == 2789456
+    assert result["file_name"] == "test_file"
+    assert len(result["layers"]) == 2
+    assert result["metadata"]["coordinates"]["E"] == 2789456
 
 
 def test_count_against_ground_truth():
@@ -76,13 +76,13 @@ def test_count_against_ground_truth():
 def test_overall_file_predictions():
     """Test OverallFilePredictions class functionality."""
     overall_predictions = OverallFilePredictions()
-    file_prediction = Mock(to_json=lambda: {"test_file": "some_data"})
+    file_prediction = Mock(to_json=lambda: {"some_data": "test"}, file_name="test_file")
 
     overall_predictions.add_file_predictions(file_prediction)
     result = overall_predictions.to_json()
 
     assert len(result) == 1
-    assert result == {"test_file": "some_data"}
+    assert result == {"test_file": {"some_data": "test"}}
 
 
 def test_evaluate_groundwater(sample_file_prediction):

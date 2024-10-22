@@ -209,20 +209,16 @@ class FilePredictions:
             dict: The object as a dictionary.
         """
         return {
-            self.file_name: {
-                "metadata": self.metadata.to_json(),
-                "layers": [layer.to_json() for layer in self.layers] if self.layers is not None else [],
-                "depths_materials_column_pairs": [
-                    dmc_pair.to_json() for dmc_pair in self.depths_materials_columns_pairs
-                ]
-                if self.depths_materials_columns_pairs is not None
-                else [],
-                "page_dimensions": self.metadata.page_dimensions,  # TODO: Remove, already in metadata
-                "groundwater": [entry.to_json() for entry in self.groundwater_entries]
-                if self.groundwater_entries is not None
-                else [],
-                "file_name": self.file_name,
-            }
+            "metadata": self.metadata.to_json(),
+            "layers": [layer.to_json() for layer in self.layers] if self.layers is not None else [],
+            "depths_materials_column_pairs": [dmc_pair.to_json() for dmc_pair in self.depths_materials_columns_pairs]
+            if self.depths_materials_columns_pairs is not None
+            else [],
+            "page_dimensions": self.metadata.page_dimensions,  # TODO: Remove, already in metadata
+            "groundwater": [entry.to_json() for entry in self.groundwater_entries]
+            if self.groundwater_entries is not None
+            else [],
+            "file_name": self.file_name,
         }
 
 
@@ -254,7 +250,7 @@ class OverallFilePredictions:
         Returns:
             dict: A dictionary representation of the object.
         """
-        return {k: v for fp in self.file_predictions_list for k, v in fp.to_json().items()}
+        return {fp.file_name: fp.to_json() for fp in self.file_predictions_list}
 
     @classmethod
     def from_json(cls, prediction_from_file: dict) -> "OverallFilePredictions":
