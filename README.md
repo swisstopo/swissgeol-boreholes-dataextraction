@@ -82,7 +82,7 @@ The extraction of groundwater relies on the `scikit-image` library. This library
 
 ## License
 
-The source code of this project is open source software, licensed under the [MIT License](LICENSE). Certain libraries in the project dependencies might be distributed under more restrictive open source licences. Most notably, [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright) is available under either the AGPL license or a commercial license. These more restrictive licenses would apply when distributing this project in a single package together with its dependencies.
+The source code of this project is open source software, licensed under the [MIT License](LICENSE). Certain libraries in the project dependencies might be distributed under more restrictive open source licenses. Most notably, [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright) is available under either the AGPL license or a commercial license. These more restrictive licenses would apply when distributing this project in a single package together with its dependencies.
 
 ## Installation
 We use pip to manage the packages dependencies. We recommend using a virtual environment within which to install all dependencies.
@@ -267,15 +267,18 @@ Activate your virtual environment. On Unix systems, this can be done with the fo
 source env/bin/activate
 ```
 
+<a name="env"></a>
 2. **Environment variables**
 
 Please make sure to define the environment variables needed for the API to access the S3 Bucket of interest.
 
-```python
-aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
-aws_secret_key_access = os.environ.get("AWS_SECRET_ACCESS_KEY")
-aws_endpoint = os.environ.get("AWS_ENDPOINT")
-```
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_ENDPOINT`, in the format `https://s3.<RegionName>.amazonaws.com`
+  - During local development, a S3-compatible service like [MinIO](https://min.io/) can be used. In this case, the endpoint will look like `http://minio:9000`. 
+- `AWS_S3_BUCKET`
+
+The data extraction API in this repository is designed to be integrated into [swissgeol-boreholes-suite](https://github.com/swisstopo/swissgeol-boreholes-suite) that is configured by [swissgeol-boreholes-config](https://github.com/swisstopo/swissgeol-boreholes-config). You can find the AWS S3 bucket configuration used for that deployment in [charts/swissgeol-boreholes/values.yaml](https://github.com/swisstopo/swissgeol-boreholes-config/blob/ac293abe1c489044b3b15efa30c2238d456ded26/charts/swissgeol-boreholes/values.yaml#L65).
 
 3. **Start the FastAPI server**
 
@@ -352,46 +355,30 @@ This command will start the container and map port 8000 of the container to port
 
 4.2. **Run the docker image with the AWS credentials**
 
-4.2.1. **Using a `~/.aws` file**
+You should pass AWS credentials and S3 configuration as [environment variables](#env) when starting the Docker container.
 
-If you have the AWS credentials configured locally in the `~/.aws` file, you can run the following command to forward your AWS credentials to the docker container 
+4.2.1. **Using a `.env` file**
 
-To run the docker image from `Dockerfile` locally: 
+Adapt the `.env.template` file to your needs, by renaming the file to `.env` and adding your AWS credentials to the file.
 
-```bash
+The values from the `.env` file are automatically loaded into your Python environment thanks to the `python-dotenv` package.
 
-docker run -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api
-```
-
-To run the Docker image from `Dockerfile` with the environment variables from the `.env` file
+To ensure that the values from the `.env` file are also passed along when starting a Docker container, you can use the `--env-file` argument, for example:
 
 ```bash
 docker run --env-file .env -d -p 8000:8000 borehole-api
 ```
 
-To run the docker image used for AWS Lambda: `Dockerfile.aws.lambda`: 
+4.2.2. **Defining the environment variables in your shell**
 
-```bash 
-docker run --platform linux/amd64 -v ~/.aws:/root/.aws -d -p 8000:8000 borehole-api:test
-```
-
-4.2.2. **Passing the AWS credentials as Environment Variables**
-
-It is also possible to set the AWS credentials as you environment variables and the environment variables of the Docker image you are trying to run. 
-
-Unix-based Systems (Linux/macOS)
-
-Add the following lines to your `~/.bashrc`, `~/.bash_profile`, or `~/.zshrc` (depending on your shell):
+For example, on Unix-based systems (Linux/macOS), add the following lines to your `~/.bashrc`, `~/.bash_profile`, or `~/.zshrc` (depending on your shell):
 
 ```bash
 export AWS_ACCESS_KEY_ID=your_access_key_id
 export AWS_SECRET_ACCESS_KEY=your_secret_access_key
 export AWS_ENDPOINT=your_endpoint_url
+export AWS_S3_BUCKET=your_bucket_name
 ```
-
-Please note that the endpoint url is in the following format: `https://{bucket}.s3.<RegionName>.amazonaws.com`. This 
-URL can be found in AWS when you go to your target S3 bucket, select any item in the bucket and look into the 
-Properties under `Object URL`. Please remove the file specific extension and you will end up with your endpoint URL. 
 
 After editing, run the following command to apply the changes:
 
@@ -399,37 +386,8 @@ After editing, run the following command to apply the changes:
 source ~/.bashrc  # Or ~/.bash_profile, ~/.zshrc based on your configuration
 ```
 
-Windows (Command Prompt or PowerShell)
 
-For Command Prompt:
-
-```bash
-setx AWS_ACCESS_KEY_ID your_access_key_id
-setx AWS_SECRET_ACCESS_KEY your_secret_access_key
-setx AWS_ENDPOINT your_endpoint_url
-```
-
-For PowerShell:
-
-```bash
-$env:AWS_ACCESS_KEY_ID=your_access_key_id
-$env:AWS_SECRET_ACCESS_KEY=your_secret_access_key
-$env:AWS_ENDPOINT=your_endpoint_url
-```
-
-4.2.3. **Passing the AWS credentials in an Environment File**
-
-Another option is to store the credentials in a .env file and load them into your Python environment using the `python-dotenv` package:
-
-```bash
-AWS_ACCESS_KEY_ID=your_access_key_id
-AWS_SECRET_ACCESS_KEY=your_secret_access_key
-AWS_ENDPOINT=your_endpoint_url
-```
-
-You can find an example for such a `.env` file in `.env.template`. If you rename this file to `.env` and add your AWS credentials you should be good to go. 
-
-5. **Access the API**
+1. **Access the API**
 
 Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
 
@@ -476,8 +434,10 @@ docker pull ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:edge
 1. a. **Run the docker image from the Terminal**
    
 ```bash
-docker run -d --name swissgeol-boreholes-dataextraction-api -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e AWS_ENDPOINT=ZZZ -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
+docker run -d --name swissgeol-boreholes-dataextraction-api -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e AWS_ENDPOINT=ZZZ -e AWS_S3_BUCKET=AAA -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
 ```
+
+Where XXX, YYY, ZZZ, AAA, and TAG are placeholder values that users should replace with their actual credentials and desired tag. 
 
 Adjust the port mapping (8000:8000) based on the app's requirements.
 
@@ -500,25 +460,6 @@ To check if the container is running, use:
 
 ```bash
 docker ps
-```
-
-
-## AWS Lambda Deployment
-
-AWS Lambda is a serverless computing service provided by Amazon Web Services that allows you to run code without managing servers. It automatically scales your applications by executing code in response to triggers. You only pay for the compute time used.
-
-In this project we are using `Mangum` to wrap the FastAPI with a handler that we will package and deploy as a Lambda function in AWS. Then using AWS API Gateway we will route all incoming requests to invoke the lambda and handle the routing internally within our application.
-
-We created a script that should make it possible for you to deploy the FastAPI in AWS lambda using a single command. The script is creating all the required AWS resources to run the API. The resources that will be created for you are: 
-- AWS Lambda Function
-- AWS IAM user with the right to execute lambda functions and to read & write on S3 buckets
-- AWS CloudWatch log group to monitor the API
-- AWS API Gateway
-
-To deploy the staging version of the FastPI, run the following command: 
-
-```bash
-IMAGE=borehole-fastapi ENV=stage AWS_PROFILE=dcleres-visium AWS_S3_BUCKET=dcleres-boreholes-integration-tmp ./deploy_api_aws_lambda.sh
 ```
 
 ## Experiment Tracking
