@@ -90,7 +90,7 @@ def draw_predictions(
                         draw_coordinates(shape, coordinates)
                     if elevation is not None and page_number == elevation.page:
                         draw_elevation(shape, elevation)
-                    for groundwater_entry in file_prediction.groundwater_entries:
+                    for groundwater_entry in file_prediction.groundwater.groundwater:
                         if page_number == groundwater_entry.page:
                             draw_groundwater(shape, groundwater_entry)
                     draw_depth_columns_and_material_rect(
@@ -103,7 +103,7 @@ def draw_predictions(
                         page.derotation_matrix,
                         [
                             layer
-                            for layer in file_prediction.layers
+                            for layer in file_prediction.layers.get_all_layers()
                             if layer.material_description.page_number == page_number
                         ],
                     )

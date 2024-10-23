@@ -71,10 +71,14 @@ def remove_duplicate_layers(
 
                 # start values for the depth intervals may be None. End values are always explicitly set.
                 current_depth_interval_start = (
-                    current_depth_interval.start.value if current_depth_interval.start is not None else None
+                    current_depth_interval.start.value
+                    if ((current_depth_interval is not None) and (current_depth_interval.start is not None))
+                    else None
                 )
                 previous_depth_interval_start = (
-                    previous_depth_interval.start.value if previous_depth_interval.start is not None else None
+                    previous_depth_interval.start.value
+                    if ((previous_depth_interval is not None) and (previous_depth_interval.start is not None))
+                    else None
                 )
                 # check if material description is the same
                 if (
