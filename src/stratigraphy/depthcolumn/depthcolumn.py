@@ -74,17 +74,35 @@ class DepthColumn(metaclass=abc.ABCMeta):
             material_description_rect (fitz.Rect): The bounding box of the material description.
 
         Returns:
-            list[dict]: A list of groups, where each group is a dictionary.
+            list[dict]: A list of groups, where each group is a dictionary
+                        with the keys "depth_intervals" and "blocks".
         """
         pass
 
+    @abc.abstractmethod
     def to_json(self):
-        """Convert the depth column to a JSON serializable format."""
-        rect = self.rect()
-        return {
-            "rect": [rect.x0, rect.y0, rect.x1, rect.y1],
-            "entries": [entry.to_json() for entry in self.entries],
-        }
+        """Converts the object to a dictionary."""
+        pass
+
+    @classmethod
+    @abc.abstractmethod
+    def from_json(cls, json_depth_column: dict) -> DepthColumn:
+        """Converts a dictionary to an object."""
+        pass
+
+
+class DepthColumnFactory:
+    """Factory class for creating DepthColumn objects."""
+
+    @staticmethod
+    def create(data: dict) -> DepthColumn:
+        column_type = data.get("type")
+        if column_type == "BoundaryDepthColumn":
+            return BoundaryDepthColumn.from_json(data)
+        elif column_type == "LayerDepthColumn":
+            return LayerDepthColumn.from_json(data)
+        else:
+            raise ValueError(f"Unknown depth column type: {column_type}")
 
 
 class LayerDepthColumn(DepthColumn):
@@ -109,6 +127,33 @@ class LayerDepthColumn(DepthColumn):
 
     def __repr__(self):
         return "LayerDepthColumn({})".format(", ".join([str(entry) for entry in self.entries]))
+
+    def to_json(self) -> dict:
+        """Converts the object to a dictionary.
+
+        Returns:
+            dict: The object as a dictionary.
+        """
+        rect = self.rect()
+        return {
+            "rect": [rect.x0, rect.y0, rect.x1, rect.y1],
+            "entries": [entry.to_json() for entry in self.entries],
+            "type": "LayerDepthColumn",
+        }
+
+    @classmethod
+    def from_json(cls, json_depth_column: dict) -> LayerDepthColumn:
+        """Converts a dictionary to an object.
+
+        Args:
+            json_depth_column (dict): A dictionary representing the depth column.
+
+        Returns:
+            LayerDepthColumn: The depth column object.
+        """
+        entries_data = json_depth_column.get("entries", [])
+        entries = [LayerDepthColumnEntry.from_json(entry) for entry in entries_data]
+        return LayerDepthColumn(entries)
 
     def add_entry(self, entry: LayerDepthColumnEntry) -> LayerDepthColumn:
         """Adds a depth column entry to the depth column.
@@ -247,6 +292,33 @@ class BoundaryDepthColumn(DepthColumn):
 
     def __repr__(self):
         return "DepthColumn({})".format(", ".join([str(entry) for entry in self.entries]))
+
+    def to_json(self) -> dict:
+        """Converts the object to a dictionary.
+
+        Returns:
+            dict: The object as a dictionary.
+        """
+        rect = self.rect()
+        return {
+            "rect": [rect.x0, rect.y0, rect.x1, rect.y1],
+            "entries": [entry.to_json() for entry in self.entries],
+            "type": "BoundaryDepthColumn",
+        }
+
+    @classmethod
+    def from_json(cls, json_depth_column: dict) -> BoundaryDepthColumn:
+        """Converts a dictionary to an object.
+
+        Args:
+            json_depth_column (dict): A dictionary representing the depth column.
+
+        Returns:
+            BoundaryDepthColumn: The depth column object.
+        """
+        entries_data = json_depth_column.get("entries", [])
+        entries = [DepthColumnEntry.from_json(entry) for entry in entries_data]
+        return BoundaryDepthColumn(entries)
 
     def add_entry(self, entry: DepthColumnEntry) -> BoundaryDepthColumn:
         """Adds a depth column entry to the depth column.

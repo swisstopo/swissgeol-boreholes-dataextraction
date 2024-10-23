@@ -22,3 +22,6 @@ jobs:
         pip install -e .
         echo "Running pipeline"
         boreholes-extract-all -l -i example/example_borehole_profile.pdf -o example/ -p example/predictions.json -m example/metadata.json -g example/example_groundtruth.json -pa all
+
+        echo "Running scoring script"
+        boreholes-score --ground-truth-path example/example_groundtruth.json --predictions-path example/predictions.json --no-mlflow-tracking

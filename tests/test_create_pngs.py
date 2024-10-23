@@ -4,6 +4,10 @@ To see the objects that are being created before the tests are run, you can look
 test_client fixture is created by the TestClient(app) call, which creates a test client for the FastAPI app.
 The s3_client fixture is created by the mock_aws decorator, which mocks the AWS S3 client using Moto.
 
+NOTE: Please note that the code in tests/conftest.py is called before the tests are run. This is where the AWS S3
+client is mocked using Moto. The s3_client fixture is then used in the test functions to interact with the mocked
+S3 client. Furthermore, the upload_test_pdf fixture is used to upload a test PDF file to the S3 bucket before
+running the tests.
 """
 
 from pathlib import Path
@@ -49,11 +53,10 @@ def test_create_pngs_success(test_client: TestClient, s3_client, upload_test_pdf
 
     # Verify that PNG files are uploaded to S3
     for png_url in json_response["png_urls"]:
-        png_key = png_url.split("/", 3)[-1]
         try:
-            s3_client.head_object(Bucket=config.test_bucket_name, Key=png_key)
+            s3_client.head_object(Bucket=config.test_bucket_name, Key=png_url)
         except ClientError:
-            pytest.fail(f"PNG file {png_key} not found in S3.")
+            pytest.fail(f"PNG file {png_url} not found in S3.")
 
 
 def test_create_pngs_invalid_filename(test_client: TestClient):
@@ -65,11 +68,11 @@ def test_create_pngs_invalid_filename(test_client: TestClient):
     }
 
 
-def test_create_pngs_nonexistent_pdf(test_client: TestClient):
+def test_create_pngs_nonexistent_pdf(test_client: TestClient, s3_client):
     """Test the create_pngs endpoint with a nonexistent PDF file."""
     response = test_client.post("/api/V1/create_pngs", json={"filename": "nonexistent.pdf"})
     assert response.status_code == 404
-    assert response.json() == {"detail": "Failed to load PDF document. The filename is not found in the bucket."}
+    assert response.json() == {"detail": "Document nonexistent.pdf not found in S3 bucket."}
 
 
 def test_create_pngs_missing_pdf_extension(test_client: TestClient):

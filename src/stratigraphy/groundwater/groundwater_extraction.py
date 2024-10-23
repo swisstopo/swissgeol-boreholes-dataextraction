@@ -2,6 +2,7 @@
 
 import abc
 import logging
+import os
 from dataclasses import dataclass
 from datetime import date as dt
 from datetime import datetime
@@ -52,7 +53,7 @@ class Groundwater(metaclass=abc.ABCMeta):
         return f"Groundwater(" f"date={self.format_date()}, " f"depth={self.depth}, " f"elevation={self.elevation})"
 
     @staticmethod
-    def from_json_values(depth: float | None, date: str | None, elevation: float | None):
+    def from_json_values(depth: float | None, date: str | None, elevation: float | None) -> "Groundwater":
         """Converts the object from a dictionary.
 
         Args:
@@ -76,6 +77,18 @@ class Groundwater(metaclass=abc.ABCMeta):
             return self.date.strftime(DATE_FORMAT)
         else:
             return None
+        
+    def to_json(self) -> dict:
+        """Converts the object to a dictionary.
+
+        Returns:
+            dict: The object as a dictionary.
+        """
+        return {
+            "date": self.format_date(),
+            "depth": self.depth,
+            "elevation": self.elevation,
+        }
 
 
 @dataclass(kw_only=True)
@@ -106,24 +119,25 @@ class GroundwaterOnPage(ExtractedFeature):
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
         }
 
-    @staticmethod
-    def from_json_values(date: str | None, depth: float | None, elevation: float | None, page: int, rect: list[float]):
-        """Converts the object from a dictionary.
+    @classmethod
+    def from_json(cls, json_groundwater_information_on_page: dict) -> "GroundwaterOnPage":
+        """Converts a dictionary to an object.
 
         Args:
-            date (str | None): The measurement date of the groundwater.
-            depth (float | None): The depth of the groundwater.
-            elevation (float | None): The elevation of the groundwater.
-            page (int): The page number of the PDF document.
-            rect (list[float]): The rectangle that contains the extracted information.
+            json_groundwater_information_on_page (dict): A dictionary representing the groundwater information on a
+            page.
 
         Returns:
-            GroundwaterOnPage: The object created from the dictionary.
+            GroundwaterInformationOnPage: The groundwater information on a page object.
         """
         return GroundwaterOnPage(
-            groundwater=Groundwater.from_json_values(depth=depth, date=date, elevation=elevation),
-            page=page,
-            rect=fitz.Rect(rect),
+            groundwater=Groundwater.from_json_values(
+                depth=json_groundwater_information_on_page["depth"],
+                date=json_groundwater_information_on_page["date"],
+                elevation=json_groundwater_information_on_page["elevation"],
+            ),
+            page=json_groundwater_information_on_page["page"],
+            rect=fitz.Rect(json_groundwater_information_on_page["rect"]),
         )
 
 
@@ -166,12 +180,22 @@ class GroundwaterLevelExtractor(DataExtractor):
 
     feature_name = "groundwater"
 
+    is_searching_groundwater_illustration: bool = False
+
     # look for elevation values to the left, right and/or immediately below the key
     search_left_factor: float = 2
     search_right_factor: float = 10
     search_below_factor: float = 4
+    search_above_factor: float = 0
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ü": "u"}
+
+    def __init__(self, document):
+        super().__init__(document)
+
+        self.is_searching_groundwater_illustration = os.getenv("IS_SEARCHING_GROUNDWATER_ILLUSTRATION") == "True"
+        if self.is_searching_groundwater_illustration:
+            logger.info("Searching for groundwater information in illustrations.")
 
     def get_groundwater_near_key(self, lines: list[TextLine], page: int) -> list[GroundwaterOnPage]:
         """Find groundwater information from text lines that are close to an explicit "groundwater" label.
@@ -240,7 +264,6 @@ class GroundwaterLevelExtractor(DataExtractor):
 
                 elevation = extract_elevation(text)
 
-                # Pattern for matching depth (e.g., "1,48 m u.T.")
                 matched_lines_rect.append(line.rect)
             else:
                 # Pattern for matching date
@@ -249,6 +272,16 @@ class GroundwaterLevelExtractor(DataExtractor):
                     if extracted_date_str:
                         text = text.replace(extracted_date_str, "").strip()
                         date = extracted_date
+                        matched_lines_rect.append(
+                            line.rect
+                        )  # Add the rectangle of the line to the matched lines list to make sure it is drawn
+                        # in the output image.
+                else:
+                    # If a second date is present in the lines around the groundwater key, then we skip this line,
+                    # instead of potentially falsely extracting a depth value from the date.
+                    extracted_date, extracted_date_str = extract_date(text)
+                    if extracted_date_str:
+                        continue
 
                 # Pattern for matching depth (e.g., "1,48 m u.T.")
                 if not depth:
@@ -315,12 +348,21 @@ class GroundwaterLevelExtractor(DataExtractor):
         """
         for page in self.doc:
             lines = extract_text_lines(page)
-            page_number = page.number + 1  # page.number is 0-based
+            page_number = page.number + 1  # NOTE: page.number is 0-based
 
-            found_groundwater = (
-                self.get_groundwater_near_key(lines, page_number)
-                # or XXXX # Add other techniques here
-            )
+            found_groundwater = self.get_groundwater_near_key(lines, page_number)
+            if not found_groundwater and self.is_searching_groundwater_illustration:
+                from stratigraphy.groundwater.gw_illustration_template_matching import (
+                    get_groundwater_from_illustration,
+                )
+
+                # Extract groundwater from illustration
+                found_groundwater, confidence_list = get_groundwater_from_illustration(
+                    self, lines, page_number, terrain_elevation
+                )
+                if found_groundwater:
+                    logger.info("Confidence list: %s", confidence_list)
+                    logger.info("Found groundwater from illustration on page %s: %s", page_number, found_groundwater)
 
             if terrain_elevation:
                 # If the elevation is provided, calculate the depth of the groundwater

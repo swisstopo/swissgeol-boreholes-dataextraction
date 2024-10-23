@@ -32,9 +32,9 @@ class FilePredictions:
     ):
         self.layers: LayersInDocument = layers
         self.depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs] = depths_materials_columns_pairs
-        self.file_name = file_name
-        self.metadata = metadata
-        self.groundwater = groundwater
+        self.file_name: str = file_name
+        self.metadata: BoreholeMetadata = metadata
+        self.groundwater: GroundwaterInDocument = groundwater
 
     def convert_to_ground_truth(self):
         """Convert the predictions to ground truth format.
@@ -98,29 +98,25 @@ class FilePredictions:
             dict: The object as a dictionary.
         """
         return {
-            self.file_name: {
-                "metadata": self.metadata.to_json(),
-                "layers": [layer.to_json() for layer in self.layers.get_all_layers()],
-                "depths_materials_column_pairs": [
-                    depths_materials_columns_pairs.to_json()
-                    for depths_materials_columns_pairs in self.depths_materials_columns_pairs
-                ],
-                "page_dimensions": self.metadata.page_dimensions,
-                # TODO: This should be removed. As already in metadata.
-                "groundwater": [entry.to_json() for entry in self.groundwater.groundwater],
-                "file_name": self.file_name,
-            }
+            "metadata": self.metadata.to_json(),
+            "layers": [layer.to_json() for layer in self.layers.get_all_layers()] if self.layers is not None else [],
+            "depths_materials_column_pairs": [dmc_pair.to_json() for dmc_pair in self.depths_materials_columns_pairs]
+            if self.depths_materials_columns_pairs is not None
+            else [],
+            "page_dimensions": self.metadata.page_dimensions,  # TODO: Remove, already in metadata
+            "groundwater": [entry.to_json() for entry in self.groundwater.get_groundwater_in_doc()]
+            if self.groundwater is not None
+            else [],
+            "file_name": self.file_name,
         }
 
 
 class OverallFilePredictions:
     """A class to represent predictions for all files."""
 
-    file_predictions_list: list[FilePredictions] = None
-
     def __init__(self):
         """Initializes the OverallFilePredictions object."""
-        self.file_predictions_list = []
+        self.file_predictions_list: list[FilePredictions] = []
 
     def add_file_predictions(self, file_predictions: FilePredictions):
         """Add file predictions to the list of file predictions.
@@ -130,24 +126,50 @@ class OverallFilePredictions:
         """
         self.file_predictions_list.append(file_predictions)
 
-    def export_metadata_to_json(self):
-        """Export the metadata of the predictions to a json file.
-
-        Args:
-            output_file (str): The path to the output file.
-        """
+    def get_metadata_as_dict(self):
+        """Returns the metadata of the predictions as a dictionary."""
         return {
             file_prediction.file_name: file_prediction.metadata.to_json()
             for file_prediction in self.file_predictions_list
         }
 
-    def to_json(self):
-        """Converts the object to a dictionary.
+    def to_json(self) -> dict:
+        """Converts the object to a dictionary by merging individual file predictions.
 
         Returns:
-            dict: The object as a dictionary.
+            dict: A dictionary representation of the object.
         """
-        return {file_prediction.file_name: file_prediction.to_json() for file_prediction in self.file_predictions_list}
+        return {fp.file_name: fp.to_json() for fp in self.file_predictions_list}
+
+    @classmethod
+    def from_json(cls, prediction_from_file: dict) -> "OverallFilePredictions":
+        """Converts a dictionary to an object.
+
+        Args:
+            prediction_from_file (dict): A dictionary representing the predictions.
+
+        Returns:
+            OverallFilePredictions: The object.
+        """
+        overall_file_predictions = OverallFilePredictions()
+        for file_name, file_data in prediction_from_file.items():
+            metadata = BoreholeMetadata.from_json(file_data["metadata"], file_name)
+            layers = LayerPrediction.from_json(file_data["layers"])
+            depths_materials_columns_pairs = [
+                DepthsMaterialsColumnPairs.from_json(dmc_pair)
+                for dmc_pair in file_data["depths_materials_column_pairs"]
+            ]
+            groundwater_entries = [GroundwaterInformationOnPage.from_json(entry) for entry in file_data["groundwater"]]
+            overall_file_predictions.add_file_predictions(
+                FilePredictions(
+                    layers=layers,
+                    file_name=file_name,
+                    metadata=metadata,
+                    depths_materials_columns_pairs=depths_materials_columns_pairs,
+                    groundwater_entries=groundwater_entries,
+                )
+            )
+        return overall_file_predictions
 
     def get_groundwater_entries(self) -> list[GroundwaterInDocument]:
         """Get the groundwater extractions from the predictions.
@@ -169,7 +191,7 @@ class OverallFilePredictions:
         Args:
             ground_truth_path (Path): The path to the ground truth file.
         """
-        metadata_per_file = OverallBoreholeMetadata()
+        metadata_per_file: OverallBoreholeMetadata = OverallBoreholeMetadata()
 
         for file_prediction in self.file_predictions_list:
             metadata_per_file.add_metadata(file_prediction.metadata)

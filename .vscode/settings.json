@@ -1,11 +1,14 @@
 {
     "cSpell.words": [
+        "dataextraction",
         "dataframe",
         "DATAPATH",
         "depthcolumn",
         "depthcolumnentry",
         "dotenv",
+        "fastapi",
         "fitz",
+        "geoinformation",
         "mlflow",
         "pixmap",
         "pydantic",
@@ -13,6 +16,7 @@
         "swissgeol",
         "swisstopo",
         "textblock",
+        "USCS",
         "venv"
     ]
 }

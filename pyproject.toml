@@ -34,7 +34,7 @@ dependencies = [
     "PyMuPDF>=1.23.26",
     "opencv-python-headless",
     "quads>=1.1.0",
-    "numpy<2",
+    "numpy<2"
 ]
 
 [project.optional-dependencies]
@@ -54,13 +54,17 @@ visualize = [
 devtools = [
     "tqdm"
 ]
+groundwater-illustration-matching = [
+    "scikit-image==0.24.0"
+]
 
-all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize, devtools]"]
+all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize, devtools, groundwater-illustration-matching]"]
 
 [project.scripts]
 boreholes-extract-all = "stratigraphy.main:click_pipeline"
 boreholes-extract-metadata = "stratigraphy.main:click_pipeline_metadata"
 boreholes-download-profiles = "stratigraphy.get_files:download_directory_froms3"
+boreholes-score = "stratigraphy.benchmark.score:main"
 
 [tool.ruff.lint]
 select = [

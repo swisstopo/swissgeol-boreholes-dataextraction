@@ -13,15 +13,8 @@ def extract_date(text: str) -> tuple[date | None, str | None]:
         return None, None
 
     date_str = date_match.group(1)
-
-    for date_format in ("%d.%m.%Y", "%d.%m.%y"):
-        try:
-            date = datetime.strptime(date_str, date_format).date()
-            return date, date_str
-        except ValueError:
-            continue
-
-    return None, None
+    date_format = "%d.%m.%y" if len(date_str.split(".")[2]) == 2 else "%d.%m.%Y"
+    return datetime.strptime(date_str, date_format).date(), date_str
 
 
 def extract_depth(text: str, max_depth: int) -> float | None:
@@ -66,7 +59,7 @@ def extract_elevation(text: str) -> float | None:
     elevation_patterns = [
         r"(\d+(\.\d+)?)\s*m\s*u\.m\.",
         r"(\d+(\.\d+)?)\s*m\s*ur.",
-        r"(\d{3,}\.\d+)",
+        r"(\d{3,}\.\d{1,2})(?!\d)",  # Matches a float number with less than 2 digits after the decimal point
         r"(\d{3,})\s*m",
     ]
 

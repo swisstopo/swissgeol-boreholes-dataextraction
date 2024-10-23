@@ -16,7 +16,7 @@ from stratigraphy.benchmark.score import evaluate
 from stratigraphy.extract import process_page
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument
 from stratigraphy.layer.duplicate_detection import remove_duplicate_layers
-from stratigraphy.layer.layer import LayersInDocument
+from stratigraphy.layer.layer import Layer, LayersInDocument
 from stratigraphy.lines.line_detection import extract_lines, line_detection_params
 from stratigraphy.metadata.metadata import BoreholeMetadata
 from stratigraphy.text.extract_text import extract_text_lines
@@ -226,7 +226,7 @@ def start_pipeline(
 
             with fitz.Document(in_path) as doc:
                 # Extract metadata
-                metadata = BoreholeMetadata(doc)
+                metadata = BoreholeMetadata.from_document(doc)
 
                 if part == "all":
                     # Extract the groundwater levels
@@ -240,7 +240,7 @@ def start_pipeline(
 
                         text_lines = extract_text_lines(page)
                         geometric_lines = extract_lines(page, line_detection_params)
-                        layer_predictions, depths_materials_column_pairs = process_page(
+                        process_page_results = process_page(
                             text_lines, geometric_lines, metadata.language, page_number, **matching_params
                         )
 
@@ -250,14 +250,14 @@ def start_pipeline(
                                 previous_page=doc[page_index - 1],
                                 current_page=page,
                                 previous_layers=layer_predictions_list,
-                                current_layers=layer_predictions,
-                                img_template_probability_threshold=matching_params[
-                                    "img_template_probability_threshold"
-                                ],
+                                current_layers=process_page_results.predictions,
+                                img_template_probability_threshold=matching_params["img_template_probability_threshold"],
                             )
+                        else:
+                            layer_predictions = process_page_results.predictions
 
                         layer_predictions_list.add_layers_on_page(layer_predictions)
-                        depths_materials_column_pairs_list.extend(depths_materials_column_pairs)
+                        depths_materials_column_pairs_list.extend(process_page_results.depth_material_pairs)
 
                         if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
                             if not mlflow_tracking:
@@ -270,32 +270,31 @@ def start_pipeline(
                                 )
                                 mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
-                    # Convert the layer dict to a layer object
-                    # page_layer_predictions_list = LayerPrediction.from_json(layer_predictions_list)
+                # Save the predictions to the overall predictions object
+                # Initialize common variables
+                groundwater_entries = None
+                layers = None
+                depths_materials_columns_pairs = None
 
-                    predictions.add_file_predictions(
-                        FilePredictions(
-                            file_name=filename,
-                            layers=layer_predictions_list,
-                            depths_materials_columns_pairs=depths_materials_column_pairs_list,
-                            metadata=metadata,
-                            groundwater=groundwater_in_document,
-                        )
+                if part == "all":
+                    groundwater_entries = groundwater_in_document
+                    layers = layer_predictions_list
+                    depths_materials_columns_pairs = depths_materials_column_pairs_list
+
+                # Add file predictions
+                predictions.add_file_predictions(
+                    FilePredictions(
+                        file_name=filename,
+                        metadata=metadata,
+                        groundwater=groundwater_entries,
+                        layers=layers,
+                        depths_materials_columns_pairs=depths_materials_columns_pairs,
                     )
-                else:
-                    predictions.add_file_predictions(
-                        FilePredictions(
-                            file_name=filename,
-                            layers=None,
-                            depths_materials_columns_pairs=None,
-                            metadata=metadata,
-                            groundwater=None,
-                        )
-                    )
+                )
 
     logger.info("Metadata written to %s", metadata_path)
     with open(metadata_path, "w", encoding="utf8") as file:
-        json.dump(predictions.export_metadata_to_json(), file, ensure_ascii=False)
+        json.dump(predictions.get_metadata_as_dict(), file, ensure_ascii=False)
 
     if part == "all":
         logger.info("Writing predictions to JSON file %s", predictions_path)

@@ -2,6 +2,7 @@
 
 import logging
 import math
+from dataclasses import dataclass
 
 import fitz
 
@@ -32,9 +33,17 @@ from stratigraphy.util.util import (
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class ProcessPageResult:
+    """The result of processing a single page of a pdf."""
+
+    predictions: LayersOnPage
+    depth_material_pairs: list[DepthsMaterialsColumnPairs]
+
+
 def process_page(
     lines: list[TextLine], geometric_lines, language: str, page_number: int, **params: dict
-) -> tuple[LayersOnPage, list[DepthsMaterialsColumnPairs]]:
+) -> ProcessPageResult:
     """Process a single page of a pdf.
 
     # TODO: Ideally, one function does one thing. This function does a lot of things. It should be split into
@@ -121,14 +130,14 @@ def process_page(
                     depth_column, description_lines, geometric_lines, material_description_rect, **params
                 )
                 groups.extend(new_groups)
-        json_filtered_pairs = [
+        filtered_depth_material_column_pairs = [
             DepthsMaterialsColumnPairs(
                 depth_column=depth_column, material_description_rect=material_description_rect, page=page_number
             )
             for depth_column, material_description_rect in filtered_pairs
         ]
     else:
-        json_filtered_pairs = []
+        filtered_depth_material_column_pairs = []
         # Fallback when no depth column was found
         material_description_rect = find_material_description_column(
             lines, depth_column=None, language=language, **params["material_description"]
@@ -143,13 +152,25 @@ def process_page(
                 params["left_line_length_threshold"],
             )
             groups.extend([IntervalBlockGroup(block=block, depth_interval=None) for block in description_blocks])
-            json_filtered_pairs.extend(
+            filtered_depth_material_column_pairs.extend(
                 [
                     DepthsMaterialsColumnPairs(
                         depth_column=None, material_description_rect=material_description_rect, page=page_number
                     )
                 ]
             )
+
+
+    # predictions = [
+    #     (
+    #         {"material_description": group["block"].to_json(), "depth_interval": group["depth_interval"].to_json()}
+    #         if "depth_interval" in group
+    #         else {"material_description": group["block"].to_json()}
+    #     )
+    #     for group in groups
+    # ]
+    # predictions = remove_empty_predictions(predictions)
+    # return ProcessPageResult(predictions, filtered_depth_material_column_pairs)
 
     layer_predictions = LayersOnPage(
         [
@@ -161,7 +182,7 @@ def process_page(
         ]
     )
     layer_predictions.remove_empty_predictions()
-    return layer_predictions, json_filtered_pairs
+    return ProcessPageResult(layer_predictions, filtered_depth_material_column_pairs)
 
 
 def convert_to_boundary_interval(layer_depth_column: LayerDepthColumnEntry) -> BoundaryInterval:

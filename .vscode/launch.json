@@ -17,6 +17,16 @@
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
+            "python": "${workspaceFolder}/swisstopo/bin/python3",
+        },
+        {
+            "name": "Python: Run scoring",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.stratigraphy.benchmark.score",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
             "python": "./swisstopo/bin/python3",
         },
         {
@@ -31,7 +41,7 @@
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
-            "python": "./swisstopo/bin/python3",
+            "python": "${workspaceFolder}/swisstopo/bin/python3",
         },
         {
             "name": "API",
@@ -48,7 +58,8 @@
                 "8002",
             ],
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": true,
+            "python": "${workspaceFolder}/swisstopo/bin/python3",
         },
         {
             "name": "Python: Run pytests",
@@ -58,7 +69,7 @@
             "args": [],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
-            "python": "./swisstopo/bin/python3",
+            "python": "${workspaceFolder}/swisstopo/bin/python3",
         }
     ]
 }
