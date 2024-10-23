@@ -16,7 +16,7 @@ from stratigraphy.benchmark.score import evaluate
 from stratigraphy.extract import process_page
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument
 from stratigraphy.layer.duplicate_detection import remove_duplicate_layers
-from stratigraphy.layer.layer import Layer, LayersInDocument
+from stratigraphy.layer.layer import LayersInDocument
 from stratigraphy.lines.line_detection import extract_lines, line_detection_params
 from stratigraphy.metadata.metadata import BoreholeMetadata
 from stratigraphy.text.extract_text import extract_text_lines
@@ -218,9 +218,6 @@ def start_pipeline(
 
     for filename in tqdm(files, desc="Processing files", unit="file"):
         if filename.endswith(".pdf"):
-            # if not filename == "684252058-bp.pdf":
-            #     continue
-
             in_path = os.path.join(root, filename)
             logger.info("Processing file: %s", in_path)
 
@@ -251,7 +248,9 @@ def start_pipeline(
                                 current_page=page,
                                 previous_layers=layer_predictions_list,
                                 current_layers=process_page_results.predictions,
-                                img_template_probability_threshold=matching_params["img_template_probability_threshold"],
+                                img_template_probability_threshold=matching_params[
+                                    "img_template_probability_threshold"
+                                ],
                             )
                         else:
                             layer_predictions = process_page_results.predictions

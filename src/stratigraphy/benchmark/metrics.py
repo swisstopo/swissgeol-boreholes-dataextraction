@@ -150,10 +150,14 @@ class OverallMetricsCatalog:
             layer_key = f"{lang}_layer_metrics"
             depth_key = f"{lang}_depth_interval_metrics"
 
-            result[f"{lang}_F1"] = self.__getattribute__(layer_key).pseudo_macro_f1()
-            result[f"{lang}_recall"] = self.__getattribute__(layer_key).macro_recall()
-            result[f"{lang}_precision"] = self.__getattribute__(layer_key).macro_precision()
+            # TODO: Sync with Stijn whether the metrics should be shown even if they are not metrics for the given
+            # language (currently, they are not shown)
+            if self.__getattribute__(layer_key).metrics:
+                result[f"{lang}_F1"] = self.__getattribute__(layer_key).pseudo_macro_f1()
+                result[f"{lang}_recall"] = self.__getattribute__(layer_key).macro_recall()
+                result[f"{lang}_precision"] = self.__getattribute__(layer_key).macro_precision()
 
-            result[f"{lang}_depth_interval_accuracy"] = self.__getattribute__(depth_key).macro_precision()
+            if self.__getattribute__(depth_key).metrics:
+                result[f"{lang}_depth_interval_accuracy"] = self.__getattribute__(depth_key).macro_precision()
 
         return dict(result)  # Convert defaultdict back to a regular dict
