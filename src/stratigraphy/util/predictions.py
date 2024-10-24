@@ -294,7 +294,7 @@ class OverallFilePredictions:
                 all_metrics.de_layer_metrics = get_layer_metrics(language_predictions, language_number_of_truth_values)
                 all_metrics.de_depth_interval_metrics = get_depth_interval_metrics(language_predictions)
             elif language == "fr":
-                all_metrics.de_layer_metrics = get_layer_metrics(language_predictions, language_number_of_truth_values)
+                all_metrics.fr_layer_metrics = get_layer_metrics(language_predictions, language_number_of_truth_values)
                 all_metrics.fr_depth_interval_metrics = get_depth_interval_metrics(language_predictions)
 
         logger.info("Macro avg:")
