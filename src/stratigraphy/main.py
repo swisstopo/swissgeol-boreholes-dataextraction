@@ -227,7 +227,7 @@ def start_pipeline(
 
                 if part == "all":
                     # Extract the groundwater levels
-                    groundwater_in_document = GroundwaterInDocument(doc, metadata.elevation)
+                    groundwater_in_document = GroundwaterInDocument.from_document(doc, metadata.elevation)
 
                     # Extract the layers
                     layer_predictions_list = LayersInDocument([], filename)

@@ -8,6 +8,7 @@ import fitz
 import numpy as np
 from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
 from stratigraphy.layer.layer import IntervalBlockGroup
+from stratigraphy.layer.layer_identifier_column import LayerIdentifierColumn
 from stratigraphy.lines.line import TextLine, TextWord
 from stratigraphy.text.find_description import get_description_blocks
 from stratigraphy.util.dataclasses import Line
@@ -34,6 +35,7 @@ class DepthColumn(metaclass=abc.ABCMeta):
     """Used for scoring how well a depth column corresponds to a material description bbox."""
 
     def rect(self) -> fitz.Rect:
+        """Get the bounding box of the depth column entries."""
         x0 = min([rect.x0 for rect in self.rects()])
         x1 = max([rect.x1 for rect in self.rects()])
         y0 = min([rect.y0 for rect in self.rects()])
@@ -96,11 +98,21 @@ class DepthColumnFactory:
 
     @staticmethod
     def create(data: dict) -> DepthColumn:
+        """Creates a DepthColumn object from a dictionary.
+
+        Args:
+            data (dict): A dictionary representing the depth column.
+
+        Returns:
+            DepthColumn: The depth column object.
+        """
         column_type = data.get("type")
         if column_type == "BoundaryDepthColumn":
             return BoundaryDepthColumn.from_json(data)
         elif column_type == "LayerDepthColumn":
             return LayerDepthColumn.from_json(data)
+        elif column_type == "LayerIdentifierColumn":
+            return LayerIdentifierColumn.from_json(data)
         else:
             raise ValueError(f"Unknown depth column type: {column_type}")
 
@@ -126,6 +138,11 @@ class LayerDepthColumn(DepthColumn):
             self.entries = []
 
     def __repr__(self):
+        """Converts the object to a string.
+
+        Returns:
+            str: The object as a string.
+        """
         return "LayerDepthColumn({})".format(", ".join([str(entry) for entry in self.entries]))
 
     def to_json(self) -> dict:

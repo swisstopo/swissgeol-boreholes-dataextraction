@@ -148,20 +148,26 @@ class GroundwaterInDocument:
     groundwater: list[GroundwaterOnPage]
     filename: str
 
-    def __init__(self, doc: fitz.Document, terrain_elevation: Elevation | None = None):
+    @classmethod
+    def from_document(cls, doc: fitz.Document, terrain_elevation: Elevation | None = None) -> "GroundwaterInDocument":
         """Initializes the GroundwaterInDocument object and extracts the groundwater from the document.
 
         Args:
             doc (fitz.Document): The PDF document.
             terrain_elevation (Elevation | None): The elevation of the terrain.
+
+        Returns:
+            GroundwaterInDocument: The extracted groundwater information from the document.
         """
-        self.groundwater = []
-        self.filename = Path(doc.name).name
+        groundwater: list[GroundwaterOnPage] = []
+        filename = Path(doc.name).name
 
         groundwater_extractor = GroundwaterLevelExtractor(document=doc)
         groundwater_in_doc = groundwater_extractor.extract_groundwater(terrain_elevation)
 
-        self.groundwater.extend(groundwater_in_doc)
+        groundwater.extend(groundwater_in_doc)
+
+        return GroundwaterInDocument(groundwater=groundwater, filename=filename)
 
     def get_groundwater_in_doc(self) -> list[Groundwater]:
         """Returns the groundwater information in the document.

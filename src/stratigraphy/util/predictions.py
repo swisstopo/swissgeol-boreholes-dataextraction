@@ -12,7 +12,7 @@ from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
 from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
 from stratigraphy.evaluation.utility import find_matching_layer
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument, GroundwaterOnPage
-from stratigraphy.layer.layer import Layer, LayersInDocument
+from stratigraphy.layer.layer import Layer, LayersInDocument, LayersOnPage
 from stratigraphy.metadata.metadata import BoreholeMetadata, OverallBoreholeMetadata
 from stratigraphy.util.util import parse_text
 
@@ -104,7 +104,7 @@ class FilePredictions:
             if self.depths_materials_columns_pairs is not None
             else [],
             "page_dimensions": self.metadata.page_dimensions,  # TODO: Remove, already in metadata
-            "groundwater": [entry.to_json() for entry in self.groundwater.get_groundwater_in_doc()]
+            "groundwater": [entry.to_json() for entry in self.groundwater.get_groundwater_per_page()]
             if self.groundwater is not None
             else [],
             "file_name": self.file_name,
@@ -162,19 +162,27 @@ class OverallFilePredictions:
         overall_file_predictions = OverallFilePredictions()
         for file_name, file_data in prediction_from_file.items():
             metadata = BoreholeMetadata.from_json(file_data["metadata"], file_name)
+
             layers = Layer.from_json(file_data["layers"])
+            layers_on_page = LayersOnPage(layers_on_page=layers)
+            layers_in_doc = LayersInDocument(
+                layers_in_document=[layers_on_page], filename=file_name
+            )  # TODO: This is a bit of a hack as we do not seem to save the page of the payer
+
             depths_materials_columns_pairs = [
                 DepthsMaterialsColumnPairs.from_json(dmc_pair)
                 for dmc_pair in file_data["depths_materials_column_pairs"]
             ]
+
             groundwater_entries = [GroundwaterOnPage.from_json(entry) for entry in file_data["groundwater"]]
+            groundwater_in_document = GroundwaterInDocument(groundwater=groundwater_entries, filename=file_name)
             overall_file_predictions.add_file_predictions(
                 FilePredictions(
-                    layers=layers,
+                    layers=layers_in_doc,
                     file_name=file_name,
                     metadata=metadata,
                     depths_materials_columns_pairs=depths_materials_columns_pairs,
-                    groundwater=groundwater_entries,
+                    groundwater=groundwater_in_document,
                 )
             )
         return overall_file_predictions

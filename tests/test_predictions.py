@@ -1,10 +1,13 @@
 """Test suite for the prediction module."""
 
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock
 
 import fitz
 import pytest
+from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument, GroundwaterOnPage
+from stratigraphy.layer.layer import LayersInDocument, LayersOnPage
 from stratigraphy.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
 from stratigraphy.metadata.metadata import BoreholeMetadata
 from stratigraphy.util.predictions import FilePredictions, OverallFilePredictions
@@ -16,7 +19,7 @@ DepthsMaterialsColumnPairs = Mock()
 
 
 @pytest.fixture
-def sample_file_prediction():
+def sample_file_prediction() -> FilePredictions:
     """Fixture to create a sample FilePredictions object."""
     coord = LV95Coordinate(
         east=CoordinateEntry(coordinate_value=2789456),
@@ -31,18 +34,29 @@ def sample_file_prediction():
     layer2 = Mock(
         material_description=Mock(text="Clay"), depth_interval=Mock(start=Mock(value=30), end=Mock(value=50))
     )
+    layer_on_page = LayersOnPage(layers_on_page=[layer1, layer2])
+    layers_in_document = LayersInDocument(layers_in_document=[layer_on_page], filename="test_file")
+
+    dt_date = datetime(2024, 10, 1)
+    groundwater_on_page = GroundwaterOnPage(
+        groundwater=Groundwater(depth=100, date=dt_date, elevation=20),
+        page=1,
+        rect=fitz.Rect(0, 0, 100, 100),
+    )
+    groundwater_in_doc = GroundwaterInDocument(groundwater=[groundwater_on_page], filename="test_file")
+
     metadata = BoreholeMetadata(coordinates=coord, page_dimensions=[Mock(width=10, height=20)], language="en")
 
     return FilePredictions(
-        layers=[layer1, layer2],
+        layers=layers_in_document,
         file_name="test_file",
         metadata=metadata,
-        groundwater=None,
+        groundwater=groundwater_in_doc,
         depths_materials_columns_pairs=None,
     )
 
 
-def test_convert_to_ground_truth(sample_file_prediction):
+def test_convert_to_ground_truth(sample_file_prediction: FilePredictions):
     """Test the convert_to_ground_truth method."""
     ground_truth = sample_file_prediction.convert_to_ground_truth()
 
@@ -52,7 +66,7 @@ def test_convert_to_ground_truth(sample_file_prediction):
     assert ground_truth["test_file"]["layers"][0]["material_description"] == "Sand"
 
 
-def test_to_json(sample_file_prediction):
+def test_to_json(sample_file_prediction: FilePredictions):
     """Test the to_json method."""
     result = sample_file_prediction.to_json()
 
@@ -60,19 +74,6 @@ def test_to_json(sample_file_prediction):
     assert result["file_name"] == "test_file"
     assert len(result["layers"]) == 2
     assert result["metadata"]["coordinates"]["E"] == 2789456
-
-
-def test_count_against_ground_truth():
-    """Test the count_against_ground_truth static method."""
-    values = [1, 2, 2, 3]
-    ground_truth = [2, 3, 4]
-
-    # TODO: This is deprecated, and should be removed
-    metrics = FilePredictions.count_against_ground_truth(values, ground_truth)
-
-    assert metrics.tp == 2
-    assert metrics.fp == 2
-    assert metrics.fn == 1
 
 
 def test_overall_file_predictions():
@@ -85,20 +86,6 @@ def test_overall_file_predictions():
 
     assert len(result) == 1
     assert result == {"test_file": {"some_data": "test"}}
-
-
-def test_evaluate_groundwater(sample_file_prediction):
-    """Test the evaluate_groundwater method."""
-    sample_file_prediction.groundwater = [
-        Mock(groundwater=Mock(depth=100, format_date=lambda: "2024-10-01", elevation=20))
-    ]
-    groundwater_gt = [{"depth": 100, "date": "2024-10-01", "elevation": 20}]
-
-    # TODO: This is deprecated, and should be removed
-    sample_file_prediction.evaluate_groundwater(groundwater_gt)
-
-    assert sample_file_prediction.groundwater_is_correct["groundwater"].tp == 1
-    assert sample_file_prediction.groundwater_is_correct["groundwater_depth"].tp == 1
 
 
 def test_evaluate_metadata_extraction():
