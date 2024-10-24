@@ -131,7 +131,18 @@ class OverallBoreholeMetadataMetrics(metaclass=abc.ABCMeta):
         return BoreholeMetadataMetrics(elevation_metrics=elevation_metrics, coordinates_metrics=coordinates_metrics)
 
     def get_document_level_metrics(self) -> pd.DataFrame:
-        """Get the document level metrics."""
+        """Get metrics aggregated at the document level.
+
+        Returns:
+            pd.DataFrame: A DataFrame indexed by document names with columns:
+                - elevation: F1 score for elevation predictions
+                - coordinate: F1 score for coordinate predictions
+
+        Example:
+                         elevation  coordinate
+            doc1.pdf     1.00      1.00
+            doc2.pdf     1.00      0.00
+        """
         # Get a dataframe per document, concatenate, and sort by index (document name)
         return pd.concat(
             [metadata.get_document_level_metrics() for metadata in self.borehole_metadata_metrics]

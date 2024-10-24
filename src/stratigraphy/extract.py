@@ -48,7 +48,6 @@ def process_page(
 
     # TODO: Ideally, one function does one thing. This function does a lot of things. It should be split into
     # smaller functions.
-    # TODO: Return objects instead of dictionaries. This will make the code more readable and easier to understand.
 
     Finds all descriptions and depth intervals on the page and matches them.
 
@@ -160,18 +159,6 @@ def process_page(
                 ]
             )
 
-
-    # predictions = [
-    #     (
-    #         {"material_description": group["block"].to_json(), "depth_interval": group["depth_interval"].to_json()}
-    #         if "depth_interval" in group
-    #         else {"material_description": group["block"].to_json()}
-    #     )
-    #     for group in groups
-    # ]
-    # predictions = remove_empty_predictions(predictions)
-    # return ProcessPageResult(predictions, filtered_depth_material_column_pairs)
-
     layer_predictions = LayersOnPage(
         [
             Layer(
@@ -186,13 +173,13 @@ def process_page(
 
 
 def convert_to_boundary_interval(layer_depth_column: LayerDepthColumnEntry) -> BoundaryInterval:
-    """Convert a dictionary to a BoundaryInterval object.
+    """Converts a LayerDepthColumnEntry to a BoundaryInterval.
 
     Args:
-        layer_depth_column (LayerDepthColumnEntry): The dictionary to convert.
+        layer_depth_column (LayerDepthColumnEntry): The layer depth column entry.
 
     Returns:
-        BoundaryInterval: The converted object.
+        BoundaryInterval: The converted boundary interval.
     """
     start = layer_depth_column.start if layer_depth_column.start is not None else None
     end = layer_depth_column.end if layer_depth_column.end is not None else None
@@ -208,7 +195,7 @@ def score_column_match(
     Args:
         depth_column (DepthColumn): The depth column.
         material_description_rect (fitz.Rect): The material description rectangle.
-        all_words (list[TextLine] | None, optional): List of the available textlines. Defaults to None.
+        all_words (list[TextWord] | None, optional): List of the available text words. Defaults to None.
 
     Returns:
         float: The score of the match.
@@ -267,7 +254,6 @@ def match_columns(
         for block in blocks:
             depth_interval = find_depth_columns.get_depth_interval_from_textblock(block)
             if depth_interval:
-                IntervalBlockGroup(depth_interval=depth_interval, block=block)
                 groups.append(IntervalBlockGroup(depth_interval=depth_interval, block=block))
             else:
                 groups.append(IntervalBlockGroup(depth_interval=None, block=block))

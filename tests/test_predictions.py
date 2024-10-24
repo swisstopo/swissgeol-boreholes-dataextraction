@@ -37,7 +37,7 @@ def sample_file_prediction():
         layers=[layer1, layer2],
         file_name="test_file",
         metadata=metadata,
-        groundwater_entries=None,
+        groundwater=None,
         depths_materials_columns_pairs=None,
     )
 
@@ -66,6 +66,8 @@ def test_count_against_ground_truth():
     """Test the count_against_ground_truth static method."""
     values = [1, 2, 2, 3]
     ground_truth = [2, 3, 4]
+
+    # TODO: This is deprecated, and should be removed
     metrics = FilePredictions.count_against_ground_truth(values, ground_truth)
 
     assert metrics.tp == 2
@@ -87,11 +89,12 @@ def test_overall_file_predictions():
 
 def test_evaluate_groundwater(sample_file_prediction):
     """Test the evaluate_groundwater method."""
-    sample_file_prediction.groundwater_entries = [
+    sample_file_prediction.groundwater = [
         Mock(groundwater=Mock(depth=100, format_date=lambda: "2024-10-01", elevation=20))
     ]
     groundwater_gt = [{"depth": 100, "date": "2024-10-01", "elevation": 20}]
 
+    # TODO: This is deprecated, and should be removed
     sample_file_prediction.evaluate_groundwater(groundwater_gt)
 
     assert sample_file_prediction.groundwater_is_correct["groundwater"].tp == 1

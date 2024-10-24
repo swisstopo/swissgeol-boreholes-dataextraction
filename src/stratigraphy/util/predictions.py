@@ -11,8 +11,8 @@ from stratigraphy.evaluation.evaluation_dataclasses import Metrics, OverallBoreh
 from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
 from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
 from stratigraphy.evaluation.utility import find_matching_layer
-from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument
-from stratigraphy.layer.layer import LayersInDocument
+from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument, GroundwaterOnPage
+from stratigraphy.layer.layer import Layer, LayersInDocument
 from stratigraphy.metadata.metadata import BoreholeMetadata, OverallBoreholeMetadata
 from stratigraphy.util.util import parse_text
 
@@ -110,6 +110,14 @@ class FilePredictions:
             "file_name": self.file_name,
         }
 
+    def get_groundwater_entries(self) -> list[GroundwaterOnPage]:
+        """Get the groundwater extractions from the predictions.
+
+        Returns:
+            List[GroundwaterOnPage]: The groundwater extractions.
+        """
+        return self.groundwater.get_groundwater_per_page()
+
 
 class OverallFilePredictions:
     """A class to represent predictions for all files."""
@@ -154,19 +162,19 @@ class OverallFilePredictions:
         overall_file_predictions = OverallFilePredictions()
         for file_name, file_data in prediction_from_file.items():
             metadata = BoreholeMetadata.from_json(file_data["metadata"], file_name)
-            layers = LayerPrediction.from_json(file_data["layers"])
+            layers = Layer.from_json(file_data["layers"])
             depths_materials_columns_pairs = [
                 DepthsMaterialsColumnPairs.from_json(dmc_pair)
                 for dmc_pair in file_data["depths_materials_column_pairs"]
             ]
-            groundwater_entries = [GroundwaterInformationOnPage.from_json(entry) for entry in file_data["groundwater"]]
+            groundwater_entries = [GroundwaterOnPage.from_json(entry) for entry in file_data["groundwater"]]
             overall_file_predictions.add_file_predictions(
                 FilePredictions(
                     layers=layers,
                     file_name=file_name,
                     metadata=metadata,
                     depths_materials_columns_pairs=depths_materials_columns_pairs,
-                    groundwater_entries=groundwater_entries,
+                    groundwater=groundwater_entries,
                 )
             )
         return overall_file_predictions
@@ -197,7 +205,7 @@ class OverallFilePredictions:
             metadata_per_file.add_metadata(file_prediction.metadata)
         return MetadataEvaluator(metadata_per_file, ground_truth_path).evaluate()
 
-    def evaluate_borehole_extraction(self, ground_truth_path: str) -> OverallMetricsCatalog:
+    def evaluate_borehole_extraction(self, ground_truth_path: str) -> OverallMetricsCatalog | None:
         """Evaluate the borehole extraction predictions.
 
         Args:
@@ -205,7 +213,7 @@ class OverallFilePredictions:
 
         Returns:
             OverallMetricsCatalogue: A OverallMetricsCatalog that maps a metrics name to the corresponding
-            OverallMetrics object
+            OverallMetrics object. If no ground truth is available, None is returned.
         """
         ############################################################################################################
         ### Load the ground truth data for the borehole extraction
@@ -259,14 +267,13 @@ class OverallFilePredictions:
             OverallMetricsCatalog: A dictionary that maps a metrics name to the corresponding OverallMetrics object
         """
         all_metrics = OverallMetricsCatalog()
-        all_metrics.set_layer_metrics(get_layer_metrics(self, number_of_truth_values))
-        all_metrics.set_depth_interval_metrics(get_depth_interval_metrics(self))
+        all_metrics.layer_metrics = get_layer_metrics(self, number_of_truth_values)
+        all_metrics.depth_interval_metrics = get_depth_interval_metrics(self)
 
         # create predictions by language
-        predictions_by_language = {
-            "de": OverallFilePredictions(),
-            "fr": OverallFilePredictions(),
-        }  # TODO: make this dynamic and why is this hardcoded?
+        languages = set(fp.metadata.language for fp in self.file_predictions_list)
+        predictions_by_language = {language: OverallFilePredictions() for language in languages}
+
         for file_predictions in self.file_predictions_list:
             language = file_predictions.metadata.language
             if language in predictions_by_language:
@@ -278,15 +285,11 @@ class OverallFilePredictions:
                 for prediction in language_predictions.file_predictions_list
             }
             if language == "de":
-                all_metrics.set_de_layer_metrics(
-                    get_layer_metrics(language_predictions, language_number_of_truth_values)
-                )
-                all_metrics.set_de_depth_interval_metrics(get_depth_interval_metrics(language_predictions))
+                all_metrics.de_layer_metrics = get_layer_metrics(language_predictions, language_number_of_truth_values)
+                all_metrics.de_depth_interval_metrics = get_depth_interval_metrics(language_predictions)
             elif language == "fr":
-                all_metrics.set_fr_layer_metrics(
-                    get_layer_metrics(language_predictions, language_number_of_truth_values)
-                )
-                all_metrics.set_fr_depth_interval_metrics(get_depth_interval_metrics(language_predictions))
+                all_metrics.de_layer_metrics = get_layer_metrics(language_predictions, language_number_of_truth_values)
+                all_metrics.fr_depth_interval_metrics = get_depth_interval_metrics(language_predictions)
 
         logging.info("Macro avg:")
         logging.info(
@@ -323,7 +326,7 @@ def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_value
 
     Calculate F1, precision and recall for the individual documents as well as overall.
 
-    # TODO: Try to mode this to the LayerPrediction class
+    # TODO: Try to move this to the LayerPrediction class
 
     Args:
         predictions (dict): The predictions.

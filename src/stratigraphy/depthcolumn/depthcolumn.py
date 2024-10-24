@@ -219,8 +219,8 @@ class LayerDepthColumn(DepthColumn):
     def identify_groups(
         self,
         description_lines: list[TextLine],
-        geometric_lines: list[Line],  # TODO: Parameter not used. Shall we keep?
-        material_description_rect: fitz.Rect,  # TODO: Parameter not used. Shall we keep?
+        geometric_lines: list[Line],
+        material_description_rect: fitz.Rect,
         **params,
     ) -> list[IntervalBlockGroup]:
         """Identifies groups of description blocks that correspond to depth intervals.

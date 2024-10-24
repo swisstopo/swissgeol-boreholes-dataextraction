@@ -229,7 +229,8 @@ def start_pipeline(
                     # Extract the groundwater levels
                     groundwater_in_document = GroundwaterInDocument(doc, metadata.elevation)
 
-                    layer_predictions_list: LayersInDocument = LayersInDocument([], filename)
+                    # Extract the layers
+                    layer_predictions_list = LayersInDocument([], filename)
                     depths_materials_column_pairs_list = []
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1

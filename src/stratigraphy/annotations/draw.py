@@ -90,7 +90,7 @@ def draw_predictions(
                         draw_coordinates(shape, coordinates)
                     if elevation is not None and page_number == elevation.page:
                         draw_elevation(shape, elevation)
-                    for groundwater_entry in file_prediction.groundwater.groundwater:
+                    for groundwater_entry in file_prediction.get_groundwater_entries():
                         if page_number == groundwater_entry.page:
                             draw_groundwater(shape, groundwater_entry)
                     draw_depth_columns_and_material_rect(
@@ -198,7 +198,7 @@ def draw_coordinates(shape: fitz.Shape, coordinates: Coordinate) -> None:
 
 
 def draw_groundwater(shape: fitz.Shape, groundwater_entry: GroundwaterOnPage) -> None:
-    """Draw a bounding box around the area of the page where the coordinates were extracted from.
+    """Draw a bounding box around the area of the page where the groundwater information was extracted from.
 
     Args:
         shape (fitz.Shape): The shape object for drawing.
@@ -209,7 +209,7 @@ def draw_groundwater(shape: fitz.Shape, groundwater_entry: GroundwaterOnPage) ->
 
 
 def draw_elevation(shape: fitz.Shape, elevation: Elevation) -> None:
-    """Draw a bounding box around the area of the page where the coordinates were extracted from.
+    """Draw a bounding box around the area of the page where the elevation were extracted from.
 
     Args:
         shape (fitz.Shape): The shape object for drawing.

@@ -77,7 +77,7 @@ class Groundwater(metaclass=abc.ABCMeta):
             return self.date.strftime(DATE_FORMAT)
         else:
             return None
-        
+
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
 
@@ -161,10 +161,7 @@ class GroundwaterInDocument:
         groundwater_extractor = GroundwaterLevelExtractor(document=doc)
         groundwater_in_doc = groundwater_extractor.extract_groundwater(terrain_elevation)
 
-        if isinstance(groundwater_in_doc, list):
-            self.groundwater.extend(groundwater_in_doc)
-        else:
-            self.groundwater.append(groundwater_in_doc)
+        self.groundwater.extend(groundwater_in_doc)
 
     def get_groundwater_in_doc(self) -> list[Groundwater]:
         """Returns the groundwater information in the document.
@@ -173,6 +170,14 @@ class GroundwaterInDocument:
             list[Groundwater]: The groundwater information in the document.
         """
         return [entry.groundwater for entry in self.groundwater]
+
+    def get_groundwater_per_page(self) -> list[GroundwaterOnPage]:
+        """Returns the groundwater information in the document.
+
+        Returns:
+            list[GroundwaterOnPage]: The groundwater information in the document.
+        """
+        return self.groundwater
 
 
 class GroundwaterLevelExtractor(DataExtractor):

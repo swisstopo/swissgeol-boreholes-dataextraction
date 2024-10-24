@@ -61,47 +61,15 @@ class OverallMetrics:
 class OverallMetricsCatalog:
     """Keeps track of all different relevant metrics that are computed for a dataset."""
 
-    layer_metrics: OverallMetrics = None
-    depth_interval_metrics: OverallMetrics = None
-    de_layer_metrics: OverallMetrics = None
-    de_depth_interval_metrics: OverallMetrics = None
-    fr_layer_metrics: OverallMetrics = None
-    fr_depth_interval_metrics: OverallMetrics = None
-    groundwater_metrics: OverallMetrics = None
-    groundwater_depth_metrics: OverallMetrics = None
-
-    def set_layer_metrics(self, metrics: OverallMetrics):
-        """Set the layer metrics."""
-        self.layer_metrics = metrics
-
-    def set_depth_interval_metrics(self, metrics: OverallMetrics):
-        """Set the depth interval metrics."""
-        self.depth_interval_metrics = metrics
-
-    def set_de_layer_metrics(self, metrics: OverallMetrics):
-        """Set the de layer metrics."""
-        self.de_layer_metrics = metrics
-        # TODO: Add the possibility to compute the metrics for the language layers
-
-    def set_de_depth_interval_metrics(self, metrics: OverallMetrics):
-        """Set the de depth interval metrics."""
-        self.de_depth_interval_metrics = metrics
-
-    def set_fr_layer_metrics(self, metrics: OverallMetrics):
-        """Set the fr layer metrics."""
-        self.fr_layer_metrics = metrics
-
-    def set_fr_depth_interval_metrics(self, metrics: OverallMetrics):
-        """Set the fr depth interval metrics."""
-        self.fr_depth_interval_metrics = metrics
-
-    def set_groundwater_metrics(self, metrics: OverallMetrics):
-        """Set the groundwater metrics."""
-        self.groundwater_metrics = metrics
-
-    def set_groundwater_depth_metrics(self, metrics: OverallMetrics):
-        """Set the groundwater depth metrics."""
-        self.groundwater_depth_metrics = metrics
+    def __init__(self):
+        self.layer_metrics: OverallMetrics = None
+        self.depth_interval_metrics: OverallMetrics = None
+        self.de_layer_metrics: OverallMetrics = None
+        self.de_depth_interval_metrics: OverallMetrics = None
+        self.fr_layer_metrics: OverallMetrics = None
+        self.fr_depth_interval_metrics: OverallMetrics = None
+        self.groundwater_metrics: OverallMetrics = None
+        self.groundwater_depth_metrics: OverallMetrics = None
 
     def document_level_metrics_df(self) -> pd.DataFrame:
         """Return a DataFrame with all the document level metrics."""
@@ -132,10 +100,12 @@ class OverallMetricsCatalog:
         # Populate the basic metrics
         result.update(
             {
-                "F1": self.layer_metrics.pseudo_macro_f1(),
-                "recall": self.layer_metrics.macro_recall(),
-                "precision": self.layer_metrics.macro_precision(),
-                "depth_interval_accuracy": self.depth_interval_metrics.macro_precision(),
+                "F1": self.layer_metrics.pseudo_macro_f1() if self.layer_metrics else None,
+                "recall": self.layer_metrics.macro_recall() if self.layer_metrics else None,
+                "precision": self.layer_metrics.macro_precision() if self.layer_metrics else None,
+                "depth_interval_accuracy": self.depth_interval_metrics.macro_precision()
+                if self.layer_metrics
+                else None,
                 "groundwater_f1": groundwater_metrics.f1,
                 "groundwater_recall": groundwater_metrics.recall,
                 "groundwater_precision": groundwater_metrics.precision,
@@ -152,12 +122,12 @@ class OverallMetricsCatalog:
 
             # TODO: Sync with Stijn whether the metrics should be shown even if they are not metrics for the given
             # language (currently, they are not shown)
-            if self.__getattribute__(layer_key).metrics:
-                result[f"{lang}_F1"] = self.__getattribute__(layer_key).pseudo_macro_f1()
-                result[f"{lang}_recall"] = self.__getattribute__(layer_key).macro_recall()
-                result[f"{lang}_precision"] = self.__getattribute__(layer_key).macro_precision()
+            if getattr(self, layer_key) and getattr(self, layer_key).metrics:
+                result[f"{lang}_F1"] = getattr(self, layer_key).pseudo_macro_f1()
+                result[f"{lang}_recall"] = getattr(self, layer_key).macro_recall()
+                result[f"{lang}_precision"] = getattr(self, layer_key).macro_precision()
 
-            if self.__getattribute__(depth_key).metrics:
-                result[f"{lang}_depth_interval_accuracy"] = self.__getattribute__(depth_key).macro_precision()
+            if getattr(self, depth_key) and getattr(self, depth_key).metrics:
+                result[f"{lang}_depth_interval_accuracy"] = getattr(self, depth_key).macro_precision()
 
         return dict(result)  # Convert defaultdict back to a regular dict

@@ -1,7 +1,6 @@
 """Classes for evaluating the groundwater levels of a borehole."""
 
 from dataclasses import dataclass
-from typing import Any
 
 from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.benchmark.metrics import OverallMetrics
@@ -24,10 +23,8 @@ class GroundwaterMetrics:
 class OverallGroundwaterMetrics:
     """Class for storing the overall metrics of the groundwater information."""
 
-    groundwater_metrics: list[GroundwaterMetrics] = None
-
     def __init__(self):
-        self.groundwater_metrics = []
+        self.groundwater_metrics: list[GroundwaterMetrics] = []
 
     def add_groundwater_metrics(self, groundwater_metrics: GroundwaterMetrics):
         """Add groundwater metrics to the list.
@@ -55,9 +52,6 @@ class OverallGroundwaterMetrics:
 class GroundwaterEvaluator:
     """Class for evaluating the extracted groundwater information of a borehole."""
 
-    groundwater_entries: list[GroundwaterInDocument] = None
-    groundwater_ground_truth: dict[str, Any] = None
-
     def __init__(self, groundwater_entries: list[GroundwaterInDocument], ground_truth_path: str):
         """Initializes the GroundwaterEvaluator object.
 
@@ -67,33 +61,32 @@ class GroundwaterEvaluator:
         """
         # Load the ground truth data for the metadata
         self.groundwater_ground_truth = GroundTruth(ground_truth_path)
-        if self.groundwater_ground_truth is None:
-            self.groundwater_ground_truth = []
+        self.groundwater_entries: list[GroundwaterInDocument] = groundwater_entries
 
-        self.groundwater_entries = groundwater_entries
-
-    def evaluate(self):
+    def evaluate(self) -> OverallGroundwaterMetrics:
         """Evaluate the groundwater information of the file against the ground truth.
 
-        Args:
-            groundwater_ground_truth (list): The ground truth for the file.
+        Returns:
+            OverallGroundwaterMetrics: The overall groundwater metrics.
         """
         overall_groundwater_metrics = OverallGroundwaterMetrics()
 
         for groundwater_in_doc in self.groundwater_entries:
             filename = groundwater_in_doc.filename
-            ground_truth = self.groundwater_ground_truth.for_file(filename).get("groundwater", [])
-            if ground_truth is None:
+            ground_truth_data = self.groundwater_ground_truth.for_file(filename)
+            if ground_truth_data is None or ground_truth_data.get("groundwater") is None:
                 ground_truth = []  # If no ground truth is available, set it to an empty list
+            else:
+                ground_truth = ground_truth_data.get("groundwater")
 
             ############################################################################################################
             ### Compute the metadata correctness for the groundwater information.
             ############################################################################################################
             gt_groundwater = [
                 Groundwater.from_json_values(
-                    depth=json_gt_data["depth"],
-                    date=json_gt_data["date"],
-                    elevation=json_gt_data["elevation"],
+                    depth=json_gt_data.get("depth"),
+                    date=json_gt_data.get("date"),
+                    elevation=json_gt_data.get("elevation"),
                 )
                 for json_gt_data in ground_truth
             ]
@@ -118,8 +111,8 @@ class GroundwaterEvaluator:
                 [entry.elevation for entry in gt_groundwater],
             )
             groundwater_date_metrics = count_against_ground_truth(
-                [entry.groundwater.date for entry in groundwater_in_doc.groundwater],
-                [entry.date for entry in gt_groundwater],
+                [entry.groundwater.format_date() for entry in groundwater_in_doc.groundwater],
+                [entry.format_date() for entry in gt_groundwater],
             )
 
             file_groundwater_metrics = GroundwaterMetrics(

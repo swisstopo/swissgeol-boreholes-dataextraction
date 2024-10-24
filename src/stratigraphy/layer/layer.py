@@ -46,7 +46,7 @@ class Layer:
         }
 
     @staticmethod
-    def from_json(json_layer_list: list[dict]) -> list['Layer']:
+    def from_json(json_layer_list: list[dict]) -> list["Layer"]:
         """Converts a dictionary to an object.
 
         Args:
@@ -116,18 +116,11 @@ class LayersOnPage:
 
     layers_on_page: list[Layer]
 
-    def remove_empty_predictions(self):
-        """Remove empty predictions from the predictions dictionary.
-
-        Args:
-            predictions (dict): Predictions dictionary.
-
-        Returns:
-            dict: Predictions dictionary without empty predictions.
-        """
-        for layer in self.layers_on_page:
-            if parse_text(layer.material_description.text) == "":
-                self.layers_on_page.remove(layer)
+    def remove_empty_predictions(self) -> None:
+        """Remove empty predictions from the layers on the page."""
+        self.layers_on_page = [
+            layer for layer in self.layers_on_page if parse_text(layer.material_description.text) != ""
+        ]
 
 
 @dataclass

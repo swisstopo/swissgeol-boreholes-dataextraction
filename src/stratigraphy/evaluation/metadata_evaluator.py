@@ -18,11 +18,12 @@ class MetadataEvaluator:
     metadata_list: OverallBoreholeMetadata = None
     ground_truth: dict[str, Any] = None
 
-    def __init__(self, metadata_list: OverallBoreholeMetadata, ground_truth_path: str):
+    def __init__(self, metadata_list: OverallBoreholeMetadata, ground_truth_path: str) -> None:
         """Initializes the MetadataEvaluator object.
 
         Args:
-            metadata_list (OverallBoreholeMetadata): The metadata to evaluate.
+            metadata_list (OverallBoreholeMetadata): Container for multiple borehole metadata
+                objects to evaluate. Contains metadata_per_file for individual boreholes.
             ground_truth_path (str): The path to the ground truth file.
         """
         self.metadata_list: OverallBoreholeMetadata = metadata_list

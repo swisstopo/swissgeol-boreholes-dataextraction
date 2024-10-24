@@ -8,13 +8,13 @@ from pathlib import Path
 
 import pandas as pd
 from dotenv import load_dotenv
-from stratigraphy.benchmark.ground_truth import GroundTruth
-from stratigraphy.benchmark.metrics import OverallMetrics, OverallMetricsCatalog
-from stratigraphy.util.util import parse_text
 from stratigraphy import DATAPATH
 from stratigraphy.annotations.draw import draw_predictions
+from stratigraphy.benchmark.ground_truth import GroundTruth
+from stratigraphy.benchmark.metrics import OverallMetrics, OverallMetricsCatalog
 from stratigraphy.evaluation.evaluation_dataclasses import BoreholeMetadataMetrics, Metrics
 from stratigraphy.util.predictions import OverallFilePredictions
+from stratigraphy.util.util import parse_text
 
 load_dotenv()
 
@@ -96,12 +96,12 @@ def evaluate_borehole_extraction(
        number_of_truth_values (dict): The number of layer ground truth values per file.
 
     Returns:
-        OverallMetricsCatalog: A OverallMetricsCatalog that maps a metrics name to the corresponding DatasetMetrics
+        OverallMetricsCatalog: A OverallMetricsCatalog that maps a metrics name to the corresponding OverallMetrics
                                  object
     """
     all_metrics = evaluate_layer_extraction(predictions, number_of_truth_values)
-    all_metrics.metrics["groundwater"] = get_metrics(predictions, "groundwater_is_correct", "groundwater")
-    all_metrics.metrics["groundwater_depth"] = get_metrics(predictions, "groundwater_is_correct", "groundwater_depth")
+    all_metrics.groundwater_metrics = get_metrics(predictions, "groundwater_is_correct", "groundwater")
+    all_metrics.groundwater_depth_metrics = get_metrics(predictions, "groundwater_is_correct", "groundwater_depth")
     return all_metrics
 
 
@@ -116,18 +116,18 @@ def get_metrics(predictions: OverallFilePredictions, field_key: str, field_name:
     Returns:
         OverallMetrics: The requested OverallMetrics object.
     """
-    dataset_metrics = OverallMetrics()
+    overall_metrics = OverallMetrics()
 
     for file_prediction in predictions.file_predictions_list:
         attribute = getattr(file_prediction, field_key, None)
         if attribute and field_name in attribute:
-            dataset_metrics.metrics[file_prediction.file_name] = attribute[field_name]
+            overall_metrics.metrics[file_prediction.file_name] = attribute[field_name]
         else:
             logger.warning(
                 "Missing attribute '%s' or key '%s' in file '%s'", field_key, field_name, file_prediction.file_name
             )
 
-    return dataset_metrics
+    return overall_metrics
 
 
 def evaluate_layer_extraction(
@@ -143,11 +143,11 @@ def evaluate_layer_extraction(
         number_of_truth_values (dict): The number of layer ground truth values per file.
 
     Returns:
-        OverallMetricsCatalog: A dictionary that maps a metrics name to the corresponding DatasetMetrics object
+        OverallMetricsCatalog: A dictionary that maps a metrics name to the corresponding OverallMetrics object
     """
     all_metrics = OverallMetricsCatalog()
-    all_metrics.metrics["layer"] = get_layer_metrics(predictions, number_of_truth_values)
-    all_metrics.metrics["depth_interval"] = get_depth_interval_metrics(predictions)
+    all_metrics.layer_metrics = get_layer_metrics(predictions, number_of_truth_values)
+    all_metrics.depth_interval_metrics = get_depth_interval_metrics(predictions)
 
     # create predictions by language
     languages = set(fp.metadata.language for fp in predictions.file_predictions_list)
@@ -162,18 +162,18 @@ def evaluate_layer_extraction(
             prediction.file_name: number_of_truth_values[prediction.file_name]
             for prediction in language_predictions.file_predictions_list
         }
-        all_metrics.metrics[f"{language}_layer"] = get_layer_metrics(
-            language_predictions, language_number_of_truth_values
+        setattr(
+            all_metrics, f"{language}_layer", get_layer_metrics(language_predictions, language_number_of_truth_values)
         )
-        all_metrics.metrics[f"{language}_depth_interval"] = get_depth_interval_metrics(language_predictions)
+        setattr(all_metrics, f"{language}_depth_interval", get_depth_interval_metrics(language_predictions))
 
     logging.info("Macro avg:")
     logging.info(
         "F1: %.1f%%, precision: %.1f%%, recall: %.1f%%, depth_interval_accuracy: %.1f%%",
-        all_metrics.metrics["layer"].macro_f1() * 100,
-        all_metrics.metrics["layer"].macro_precision() * 100,
-        all_metrics.metrics["layer"].macro_recall() * 100,
-        all_metrics.metrics["depth_interval"].macro_precision() * 100,
+        all_metrics.layer_metrics.macro_f1() * 100,
+        all_metrics.layer_metrics.macro_precision() * 100,
+        all_metrics.layer_metrics.macro_recall() * 100,
+        all_metrics.depth_interval_metrics.macro_precision() * 100,
     )
 
     return all_metrics
@@ -199,6 +199,7 @@ def create_predictions_objects(
     else:
         logging.warning("Ground truth file not found.")
         ground_truth_is_present = False
+        return predictions, {}
 
     number_of_truth_values = {}
     for file_predictions in predictions.file_predictions_list:

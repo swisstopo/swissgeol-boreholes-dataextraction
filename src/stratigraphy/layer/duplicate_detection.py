@@ -50,16 +50,15 @@ def remove_duplicate_layers(
         # check if current layer has an overlapping layer on the previous page.
         # for that purpose compare depth interval as well as material description text.
         duplicate_condition = False
-        if not hasattr(layer, "depth_interval"):  # in this case we use template matching
+        if layer.depth_interval is None:
             duplicate_condition = check_duplicate_layer_by_template_matching(
                 previous_page, current_page, layer, img_template_probability_threshold
             )
-
         else:  # in this case we compare the depth interval and material description
             current_material_description = layer.material_description
             current_depth_interval = layer.depth_interval
             for previous_layer in previous_layers.get_all_layers():
-                if not hasattr(previous_layer, "depth_interval"):
+                if previous_layer.depth_interval is None:
                     # It may happen, that a layer on the previous page does not have depth interval assigned.
                     # In this case we skip the comparison. This should only happen in some edge cases, as we
                     # assume that when the current page has a depth column, that the previous page also contains a
@@ -81,14 +80,18 @@ def remove_duplicate_layers(
                     else None
                 )
                 # check if material description is the same
-                if (
+                text_similarity = (
                     Levenshtein.ratio(current_material_description.text, previous_material_description.text) > 0.9
-                    and current_depth_interval_start == previous_depth_interval_start
-                    and current_depth_interval.end.value == previous_depth_interval.end.value
-                ):
-                    duplicate_condition = True
-                    logger.info("Removing duplicate layer.")
-                    break
+                )
+
+                same_start_depth = current_depth_interval_start == previous_depth_interval_start
+                if current_depth_interval.end and previous_depth_interval.end:
+                    same_end_depth = current_depth_interval.end.value == previous_depth_interval.end.value
+
+                    if text_similarity and same_start_depth and same_end_depth:
+                        duplicate_condition = True
+                        logger.info("Removing duplicate layer.")
+                        break
 
         if duplicate_condition:
             first_non_duplicated_layer_index = layer_index + 1  # all layers before this layer are duplicates
@@ -125,7 +128,7 @@ def check_duplicate_layer_by_template_matching(
         previous_page, scale_factor=scale_factor, color_mode=cv2.COLOR_BGR2GRAY
     )
 
-    [x0, y_start, x1, y_end] = current_layer["material_description"]["rect"]
+    [x0, y_start, x1, y_end] = current_layer.material_description.rect
     x_start = int(scale_factor * min(x0, current_page.rect.width * 0.2))  # 0.2 is a magic number that works well
     x_end = int(scale_factor * min(max(x1, current_page.rect.width * 0.8), previous_page.rect.width - 1))
     y_start = int(scale_factor * max(y_start, 0))  # do not go higher up as otherwise we remove too many layers.
