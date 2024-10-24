@@ -110,7 +110,7 @@ class LayerIdentifierColumn:
             return True
         return False
 
-    def strictly_contains(self, other):
+    def strictly_contains(self, other: "LayerIdentifierColumn") -> bool:
         """Check if the layer identifier column strictly contains another layer identifier column.
 
         Args:
@@ -154,15 +154,21 @@ class LayerIdentifierColumn:
         }
 
     @classmethod
-    def from_json(cls, data):
+    def from_json(cls, data: dict) -> "LayerIdentifierColumn":
         """Converts a dictionary to an object.
 
         Args:
-            data (dict): A dictionary representing the layer identifier column.
+            data (dict): A dictionary containing 'entries' list with 'rect' and 'text' fields.
+
+        Raises:
+             ValueError: If the input dictionary is missing required fields or has invalid data.
 
         Returns:
             LayerIdentifierColumn: The layer identifier column object.
         """
+        if not isinstance(data, dict) or "entries" not in data:
+            raise ValueError("Invalid input: data must be a dictionary with 'entries' field")
+
         return LayerIdentifierColumn(
             entries=[
                 LayerIdentifierEntry(rect=fitz.Rect(entry["rect"]), text=entry["text"]) for entry in data["entries"]

@@ -122,11 +122,11 @@ class FilePredictions:
 class OverallFilePredictions:
     """A class to represent predictions for all files."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initializes the OverallFilePredictions object."""
         self.file_predictions_list: list[FilePredictions] = []
 
-    def add_file_predictions(self, file_predictions: FilePredictions):
+    def add_file_predictions(self, file_predictions: FilePredictions) -> None:
         """Add file predictions to the list of file predictions.
 
         Args:
@@ -134,7 +134,7 @@ class OverallFilePredictions:
         """
         self.file_predictions_list.append(file_predictions)
 
-    def get_metadata_as_dict(self):
+    def get_metadata_as_dict(self) -> None:
         """Returns the metadata of the predictions as a dictionary."""
         return {
             file_prediction.file_name: file_prediction.metadata.to_json()
@@ -167,7 +167,7 @@ class OverallFilePredictions:
             layers_on_page = LayersOnPage(layers_on_page=layers)
             layers_in_doc = LayersInDocument(
                 layers_in_document=[layers_on_page], filename=file_name
-            )  # TODO: This is a bit of a hack as we do not seem to save the page of the payer
+            )  # TODO: This is a bit of a hack as we do not seem to save the page of the layer
 
             depths_materials_columns_pairs = [
                 DepthsMaterialsColumnPairs.from_json(dmc_pair)
@@ -216,6 +216,8 @@ class OverallFilePredictions:
     def evaluate_borehole_extraction(self, ground_truth_path: str) -> OverallMetricsCatalog | None:
         """Evaluate the borehole extraction predictions.
 
+        # TODO: Use path as in the function above
+
         Args:
             ground_truth_path (str): The path to the ground truth file.
 
@@ -230,16 +232,13 @@ class OverallFilePredictions:
         if ground_truth_path and os.path.exists(ground_truth_path):  # for inference no ground truth is available
             ground_truth = GroundTruth(ground_truth_path)
         else:
-            logging.warning("Ground truth file not found.")
+            logger.warning("Ground truth file not found.")
 
         ############################################################################################################
         ### Evaluate the borehole extraction
         ############################################################################################################
         number_of_truth_values = {}
         for file_predictions in self.file_predictions_list:
-            # prediction_object = FilePredictions.create_from_json(file_predictions, file_predictions.file_name)
-
-            # predictions_objects[file_name] = prediction_object
             if ground_truth:
                 ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
                 if ground_truth_for_file:
@@ -268,7 +267,6 @@ class OverallFilePredictions:
         The individual document metrics are returned as a DataFrame.
 
         Args:
-            predictions (dict): The FilePredictions objects.
             number_of_truth_values (dict): The number of layer ground truth values per file.
 
         Returns:
@@ -299,8 +297,8 @@ class OverallFilePredictions:
                 all_metrics.de_layer_metrics = get_layer_metrics(language_predictions, language_number_of_truth_values)
                 all_metrics.fr_depth_interval_metrics = get_depth_interval_metrics(language_predictions)
 
-        logging.info("Macro avg:")
-        logging.info(
+        logger.info("Macro avg:")
+        logger.info(
             "F1: %.1f%%, precision: %.1f%%, recall: %.1f%%, depth_interval_accuracy: %.1f%%",
             all_metrics.layer_metrics.macro_f1() * 100,
             all_metrics.layer_metrics.macro_precision() * 100,
@@ -314,7 +312,6 @@ class OverallFilePredictions:
         """Get the metrics for a specific field in the predictions.
 
         Args:
-            predictions (dict): The FilePredictions objects.
             field_key (str): The key to access the specific field in the prediction objects.
             field_name (str): The name of the field being evaluated.
 
@@ -337,7 +334,7 @@ def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_value
     # TODO: Try to move this to the LayerPrediction class
 
     Args:
-        predictions (dict): The predictions.
+        predictions (OverallFilePredictions): The predictions.
         number_of_truth_values (dict): The number of ground truth values per file.
 
     Returns:
@@ -364,14 +361,14 @@ def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_value
 def get_depth_interval_metrics(predictions: OverallFilePredictions) -> OverallMetrics:
     """Calculate F1, precision and recall for the depth interval predictions.
 
-    # TODO: Try to mode this to the LayerPrediction class
+    # TODO: Try to move this to the LayerPrediction class
 
     Calculate F1, precision and recall for the individual documents as well as overall.
 
     Depth interval accuracy is not calculated for layers with incorrect material predictions.
 
     Args:
-        predictions (dict): The predictions.
+        predictions (OverallFilePredictions): The predictions.
 
     Returns:
         OverallMetrics: the metrics for the depth intervals
