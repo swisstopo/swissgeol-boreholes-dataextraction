@@ -55,4 +55,4 @@ def create_pngs(aws_filename: Path) -> PNGResponse:
     except Exception:
         raise HTTPException(status_code=500, detail="An error occurred while processing the PDF.") from None
 
-    return PNGResponse(key=s3_keys)
+    return PNGResponse(keys=s3_keys)
