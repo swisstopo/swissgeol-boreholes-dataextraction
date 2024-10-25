@@ -47,7 +47,7 @@ def create_pngs(aws_filename: Path) -> PNGResponse:
                 s3_bucket_png_path,  # The key (name) of the file in the bucket
             )
 
-            # Generate the S3 key
+            # Save the generated the S3 keys as a list to return through the API
             s3_keys.append(s3_bucket_png_path)
 
             # Clean up the local file
