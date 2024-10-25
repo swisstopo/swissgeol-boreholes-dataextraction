@@ -48,11 +48,11 @@ def test_create_pngs_success(test_client: TestClient, s3_client, upload_test_pdf
     response = test_client.post("/api/V1/create_pngs", json={"filename": TEST_PDF_KEY.rsplit("/", 1)[-1]})
     assert response.status_code == 200
     json_response = response.json()
-    assert "png_urls" in json_response
-    assert len(json_response["png_urls"]) > 0
+    assert "keys" in json_response
+    assert len(json_response["keys"]) > 0
 
     # Verify that PNG files are uploaded to S3
-    for png_url in json_response["png_urls"]:
+    for png_url in json_response["keys"]:
         try:
             s3_client.head_object(Bucket=config.test_bucket_name, Key=png_url)
         except ClientError:

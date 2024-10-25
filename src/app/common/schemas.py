@@ -42,7 +42,7 @@ class PNGRequest(BaseModel):
 class PNGResponse(BaseModel):
     """Response schema for the create_pngs endpoint."""
 
-    png_urls: list[str]
+    keys: list[str]  # keys in the S3 bucket
 
 
 ########################################################################################################################
