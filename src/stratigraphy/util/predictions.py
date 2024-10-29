@@ -167,9 +167,7 @@ class OverallFilePredictions:
                 for dmc_pair in file_data["depths_materials_column_pairs"]
             ]
 
-            groundwater_entries = [
-                FeatureOnPage.from_json(entry, Groundwater.from_json(entry)) for entry in file_data["groundwater"]
-            ]
+            groundwater_entries = [FeatureOnPage.from_json(entry, Groundwater) for entry in file_data["groundwater"]]
             groundwater_in_document = GroundwaterInDocument(groundwater=groundwater_entries, filename=file_name)
             overall_file_predictions.add_file_predictions(
                 FilePredictions(

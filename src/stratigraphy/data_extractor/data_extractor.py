@@ -79,18 +79,18 @@ class FeatureOnPage(Generic[T]):
         return result
 
     @classmethod
-    def from_json(cls, json: dict, feature: T) -> Self:
+    def from_json(cls, json: dict, feature_cls: type[T]) -> Self:
         """Converts a dictionary to an object.
 
         Args:
             json (dict): A dictionary representing the feature on a page information.
-            feature (T): The extracted feature
+            feature_cls (T): The extracted feature
 
         Returns:
             Self: The resulting FeatureOnPage object.
         """
         return cls(
-            feature=feature,
+            feature=feature_cls.from_json(json),
             page=json["page"],
             rect=fitz.Rect(json["rect"]),
         )
