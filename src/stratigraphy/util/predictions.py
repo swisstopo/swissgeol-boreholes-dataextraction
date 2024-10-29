@@ -6,12 +6,13 @@ from pathlib import Path
 
 from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.benchmark.metrics import OverallMetrics, OverallMetricsCatalog
+from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
 from stratigraphy.evaluation.evaluation_dataclasses import Metrics, OverallBoreholeMetadataMetrics
 from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
 from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
 from stratigraphy.evaluation.utility import find_matching_layer
-from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument, GroundwaterOnPage
+from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument
 from stratigraphy.layer.layer import Layer, LayersInDocument, LayersOnPage
 from stratigraphy.metadata.metadata import BoreholeMetadata, OverallBoreholeMetadata
 from stratigraphy.util.util import parse_text
@@ -104,19 +105,11 @@ class FilePredictions:
             if self.depths_materials_columns_pairs is not None
             else [],
             "page_dimensions": self.metadata.page_dimensions,  # TODO: Remove, already in metadata
-            "groundwater": [entry.to_json() for entry in self.groundwater.get_groundwater_per_page()]
+            "groundwater": [entry.to_json() for entry in self.groundwater.groundwater]
             if self.groundwater is not None
             else [],
             "file_name": self.file_name,
         }
-
-    def get_groundwater_entries(self) -> list[GroundwaterOnPage]:
-        """Get the groundwater extractions from the predictions.
-
-        Returns:
-            List[GroundwaterOnPage]: The groundwater extractions.
-        """
-        return self.groundwater.get_groundwater_per_page()
 
 
 class OverallFilePredictions:
@@ -174,7 +167,9 @@ class OverallFilePredictions:
                 for dmc_pair in file_data["depths_materials_column_pairs"]
             ]
 
-            groundwater_entries = [GroundwaterOnPage.from_json(entry) for entry in file_data["groundwater"]]
+            groundwater_entries = [
+                FeatureOnPage.from_json(entry, Groundwater.from_json(entry)) for entry in file_data["groundwater"]
+            ]
             groundwater_in_document = GroundwaterInDocument(groundwater=groundwater_entries, filename=file_name)
             overall_file_predictions.add_file_predictions(
                 FilePredictions(

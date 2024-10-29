@@ -37,6 +37,10 @@ class Coordinate(ExtractedFeature):
     east: CoordinateEntry
     north: CoordinateEntry
 
+    # TODO remove after refactoring to use FeatureOnPage also for coordinates
+    rect: fitz.Rect  # The rectangle that contains the extracted information
+    page: int  # The page number of the PDF document
+
     def __post_init__(self):
         # east always greater than north by definition. Irrespective of the leading 1 or 2
         if self.east.coordinate_value < self.north.coordinate_value:

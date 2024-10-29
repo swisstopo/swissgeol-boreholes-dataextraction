@@ -6,7 +6,8 @@ from unittest.mock import Mock
 
 import fitz
 import pytest
-from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument, GroundwaterOnPage
+from stratigraphy.data_extractor.data_extractor import FeatureOnPage
+from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument
 from stratigraphy.layer.layer import LayersInDocument, LayersOnPage
 from stratigraphy.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
 from stratigraphy.metadata.metadata import BoreholeMetadata
@@ -14,7 +15,6 @@ from stratigraphy.util.predictions import FilePredictions, OverallFilePrediction
 
 # Mock classes used in the FilePredictions constructor
 LayerPrediction = Mock()
-GroundwaterInformationOnPage = Mock()
 DepthsMaterialsColumnPairs = Mock()
 
 
@@ -38,8 +38,8 @@ def sample_file_prediction() -> FilePredictions:
     layers_in_document = LayersInDocument(layers_in_document=[layer_on_page], filename="test_file")
 
     dt_date = datetime(2024, 10, 1)
-    groundwater_on_page = GroundwaterOnPage(
-        groundwater=Groundwater(depth=100, date=dt_date, elevation=20),
+    groundwater_on_page = FeatureOnPage(
+        feature=Groundwater(depth=100, date=dt_date, elevation=20),
         page=1,
         rect=fitz.Rect(0, 0, 100, 100),
     )

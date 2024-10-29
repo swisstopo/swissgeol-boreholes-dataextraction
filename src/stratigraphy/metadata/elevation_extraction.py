@@ -23,7 +23,11 @@ logger = logging.getLogger(__name__)
 class Elevation(ExtractedFeature):
     """Abstract class for Elevation Information."""
 
-    elevation: float | None = None  # Elevation relative to the mean sea level
+    elevation: float  # Elevation relative to the mean sea level
+
+    # TODO remove after refactoring to use FeatureOnPage also for elevation
+    rect: fitz.Rect  # The rectangle that contains the extracted information
+    page: int  # The page number of the PDF document
 
     def is_valid(self) -> bool:
         """Checks if the information is valid.
