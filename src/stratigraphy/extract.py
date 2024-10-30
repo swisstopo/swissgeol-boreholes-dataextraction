@@ -8,7 +8,6 @@ import fitz
 
 from stratigraphy.depthcolumn import find_depth_columns
 from stratigraphy.depthcolumn.depthcolumn import DepthColumn
-from stratigraphy.depthcolumn.depthcolumnentry import LayerDepthColumnEntry
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
 from stratigraphy.layer.layer import IntervalBlockGroup, Layer, LayersOnPage
 from stratigraphy.layer.layer_identifier_column import (
@@ -163,28 +162,15 @@ def process_page(
         [
             Layer(
                 material_description=group.block,
-                depth_interval=convert_to_boundary_interval(group.depth_interval) if group.depth_interval else None,
+                depth_interval=BoundaryInterval(start=group.depth_interval.start, end=group.depth_interval.end)
+                if group.depth_interval
+                else None,
             )
             for group in groups
         ]
     )
     layer_predictions.remove_empty_predictions()
     return ProcessPageResult(layer_predictions, filtered_depth_material_column_pairs)
-
-
-def convert_to_boundary_interval(layer_depth_column: LayerDepthColumnEntry) -> BoundaryInterval:
-    """Converts a LayerDepthColumnEntry to a BoundaryInterval.
-
-    Args:
-        layer_depth_column (LayerDepthColumnEntry): The layer depth column entry.
-
-    Returns:
-        BoundaryInterval: The converted boundary interval.
-    """
-    start = layer_depth_column.start if layer_depth_column.start is not None else None
-    end = layer_depth_column.end if layer_depth_column.end is not None else None
-
-    return BoundaryInterval(start=start, end=end)
 
 
 def score_column_match(

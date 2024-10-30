@@ -225,6 +225,12 @@ def start_pipeline(
                 # Extract metadata
                 metadata = BoreholeMetadata.from_document(doc)
 
+                # Save the predictions to the overall predictions object
+                # Initialize common variables
+                groundwater_entries = None
+                layers = None
+                depths_materials_columns_pairs = None
+
                 if part == "all":
                     # Extract the groundwater levels
                     groundwater_in_document = GroundwaterInDocument.from_document(doc, metadata.elevation)
@@ -270,13 +276,6 @@ def start_pipeline(
                                 )
                                 mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
-                # Save the predictions to the overall predictions object
-                # Initialize common variables
-                groundwater_entries = None
-                layers = None
-                depths_materials_columns_pairs = None
-
-                if part == "all":
                     groundwater_entries = groundwater_in_document
                     layers = layer_predictions_list
                     depths_materials_columns_pairs = depths_materials_column_pairs_list

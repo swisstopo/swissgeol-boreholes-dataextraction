@@ -254,13 +254,13 @@ class OverallFilePredictions:
         Returns:
             OverallMetricsCatalog: A dictionary that maps a metrics name to the corresponding OverallMetrics object
         """
-        all_metrics = OverallMetricsCatalog()
-        all_metrics.layer_metrics = get_layer_metrics(self, number_of_truth_values)
-        all_metrics.depth_interval_metrics = get_depth_interval_metrics(self)
-
         # create predictions by language
         languages = set(fp.metadata.language for fp in self.file_predictions_list)
         predictions_by_language = {language: OverallFilePredictions() for language in languages}
+
+        all_metrics = OverallMetricsCatalog(languages=languages)
+        all_metrics.layer_metrics = get_layer_metrics(self, number_of_truth_values)
+        all_metrics.depth_interval_metrics = get_depth_interval_metrics(self)
 
         for file_predictions in self.file_predictions_list:
             language = file_predictions.metadata.language
@@ -272,12 +272,15 @@ class OverallFilePredictions:
                 prediction.file_name: number_of_truth_values[prediction.file_name]
                 for prediction in language_predictions.file_predictions_list
             }
-            if language == "de":
-                all_metrics.de_layer_metrics = get_layer_metrics(language_predictions, language_number_of_truth_values)
-                all_metrics.de_depth_interval_metrics = get_depth_interval_metrics(language_predictions)
-            elif language == "fr":
-                all_metrics.fr_layer_metrics = get_layer_metrics(language_predictions, language_number_of_truth_values)
-                all_metrics.fr_depth_interval_metrics = get_depth_interval_metrics(language_predictions)
+
+            setattr(
+                all_metrics,
+                f"{language}_layer_metrics",
+                get_layer_metrics(language_predictions, language_number_of_truth_values),
+            )
+            setattr(
+                all_metrics, f"{language}_depth_interval_metrics", get_depth_interval_metrics(language_predictions)
+            )
 
         logger.info("Macro avg:")
         logger.info(

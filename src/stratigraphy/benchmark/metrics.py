@@ -61,15 +61,17 @@ class OverallMetrics:
 class OverallMetricsCatalog:
     """Keeps track of all different relevant metrics that are computed for a dataset."""
 
-    def __init__(self):
-        self.layer_metrics: OverallMetrics = None
-        self.depth_interval_metrics: OverallMetrics = None
-        self.de_layer_metrics: OverallMetrics = None
-        self.de_depth_interval_metrics: OverallMetrics = None
-        self.fr_layer_metrics: OverallMetrics = None
-        self.fr_depth_interval_metrics: OverallMetrics = None
-        self.groundwater_metrics: OverallMetrics = None
-        self.groundwater_depth_metrics: OverallMetrics = None
+    def __init__(self, languages: list[str]):
+        self.layer_metrics = OverallMetrics()
+        self.depth_interval_metrics = OverallMetrics()
+        self.groundwater_metrics = OverallMetrics()
+        self.groundwater_depth_metrics = OverallMetrics()
+        self.languages = languages
+
+        # Initialize language-specific metrics
+        for lang in languages:
+            setattr(self, f"{lang}_layer_metrics", OverallMetrics())
+            setattr(self, f"{lang}_depth_interval_metrics", OverallMetrics())
 
     def document_level_metrics_df(self) -> pd.DataFrame:
         """Return a DataFrame with all the document level metrics."""
@@ -93,7 +95,7 @@ class OverallMetricsCatalog:
         # Initialize a defaultdict to automatically return 0.0 for missing keys
         result = defaultdict(lambda: None)
 
-        # Safely compute groundwater metrics using .get() to avoid KeyErrors
+        # Compute the micro-average metrics for the groundwater and groundwater depth metrics
         groundwater_metrics = Metrics.micro_average(self.groundwater_metrics.metrics.values())
         groundwater_depth_metrics = Metrics.micro_average(self.groundwater_depth_metrics.metrics.values())
 
@@ -104,7 +106,7 @@ class OverallMetricsCatalog:
                 "recall": self.layer_metrics.macro_recall() if self.layer_metrics else None,
                 "precision": self.layer_metrics.macro_precision() if self.layer_metrics else None,
                 "depth_interval_accuracy": self.depth_interval_metrics.macro_precision()
-                if self.layer_metrics
+                if self.depth_interval_metrics
                 else None,
                 "groundwater_f1": groundwater_metrics.f1,
                 "groundwater_recall": groundwater_metrics.recall,
@@ -116,12 +118,10 @@ class OverallMetricsCatalog:
         )
 
         # Add dynamic language-specific metrics only if they exist
-        for lang in ["de", "fr"]:
+        for lang in self.languages:
             layer_key = f"{lang}_layer_metrics"
             depth_key = f"{lang}_depth_interval_metrics"
 
-            # TODO: Sync with Stijn whether the metrics should be shown even if they are not metrics for the given
-            # language (currently, they are not shown)
             if getattr(self, layer_key) and getattr(self, layer_key).metrics:
                 result[f"{lang}_F1"] = getattr(self, layer_key).pseudo_macro_f1()
                 result[f"{lang}_recall"] = getattr(self, layer_key).macro_recall()

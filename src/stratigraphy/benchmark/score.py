@@ -145,13 +145,13 @@ def evaluate_layer_extraction(
     Returns:
         OverallMetricsCatalog: A dictionary that maps a metrics name to the corresponding OverallMetrics object
     """
-    all_metrics = OverallMetricsCatalog()
-    all_metrics.layer_metrics = get_layer_metrics(predictions, number_of_truth_values)
-    all_metrics.depth_interval_metrics = get_depth_interval_metrics(predictions)
-
     # create predictions by language
     languages = set(fp.metadata.language for fp in predictions.file_predictions_list)
     predictions_by_language = {language: OverallFilePredictions() for language in languages}
+
+    all_metrics = OverallMetricsCatalog(languages=predictions_by_language.items())
+    all_metrics.layer_metrics = get_layer_metrics(predictions, number_of_truth_values)
+    all_metrics.depth_interval_metrics = get_depth_interval_metrics(predictions)
 
     for file_predictions in predictions.file_predictions_list:
         language = file_predictions.metadata.language
