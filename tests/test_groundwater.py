@@ -17,6 +17,12 @@ def sample_metrics():
     return Metrics(tp=3, fn=2, fp=1)
 
 
+@pytest.fixture
+def groundtruth_path():
+    """Path to the ground truth file."""
+    return "example/example_gw_groundtruth.json"
+
+
 def test_add_groundwater_metrics(sample_metrics):
     """Test adding GroundwaterMetrics to OverallGroundwaterMetrics."""
     overall_metrics = OverallGroundwaterMetrics()
@@ -56,33 +62,8 @@ def test_groundwater_depth_metrics_to_overall_metrics(sample_metrics):
     assert overall.metrics["file_depth"] == gw_metrics.groundwater_depth_metrics
 
 
-def test_evaluate_with_ground_truth():
+def test_evaluate_with_ground_truth(groundtruth_path):
     """Test the evaluate method with available ground truth data."""
-    ############################################################################################################
-    ### Test the from_json_values method of the Groundwater class.
-    ############################################################################################################
-
-    # # Sample groundwater entries
-    # groundwater_entries = [
-    #     GroundwaterInDocument(
-    #         filename="example_borehole_profile.pdf",
-    #         groundwater=[Groundwater.from_json_values(depth=2.22, date="2016-04-18", elevation=448.07)],
-    #     )
-    # ]
-
-    # evaluator = GroundwaterEvaluator(groundwater_entries, "example/example_gw_groundtruth.json")
-    # overall_metrics = evaluator.evaluate()
-
-    # # Assertions
-    # assert isinstance(overall_metrics, OverallGroundwaterMetrics)
-    # assert len(overall_metrics.groundwater_metrics) == 1
-    # assert overall_metrics.groundwater_metrics[0].filename == "example_borehole_profile.pdf"
-    # assert overall_metrics.groundwater_metrics[0].groundwater_metrics.precision == 1.0
-
-    ############################################################################################################
-    ### Test the from_json method of the Groundwater class.
-    ############################################################################################################
-
     # Sample groundwater entries
     groundwater_entries = [
         GroundwaterInDocument(
@@ -96,7 +77,7 @@ def test_evaluate_with_ground_truth():
         )
     ]
 
-    evaluator = GroundwaterEvaluator(groundwater_entries, "example/example_gw_groundtruth.json")
+    evaluator = GroundwaterEvaluator(groundwater_entries, groundtruth_path)
     overall_metrics = evaluator.evaluate()
 
     # Assertions
@@ -106,7 +87,7 @@ def test_evaluate_with_ground_truth():
     assert overall_metrics.groundwater_metrics[0].groundwater_metrics.precision == 1.0
 
 
-def test_evaluate_multiple_entries():
+def test_evaluate_multiple_entries(groundtruth_path):
     """Test the evaluate method with multiple groundwater entries."""
     # Sample groundwater entries
     groundwater_entries = [
@@ -134,7 +115,7 @@ def test_evaluate_multiple_entries():
         ),
     ]
 
-    evaluator = GroundwaterEvaluator(groundwater_entries, "example/example_gw_groundtruth.json")
+    evaluator = GroundwaterEvaluator(groundwater_entries, groundtruth_path)
     overall_metrics = evaluator.evaluate()
 
     # Assertions
