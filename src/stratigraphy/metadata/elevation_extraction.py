@@ -67,18 +67,23 @@ class Elevation(ExtractedFeature):
         }
 
     @classmethod
-    def from_json(cls, json_elevation: dict) -> "Elevation":
+    def from_json(cls, data: dict) -> "Elevation":
         """Converts a dictionary to an object.
 
         Args:
-            json_elevation (dict): A dictionary representing the elevation information.
+            data (dict): A dictionary representing the elevation information.
 
         Returns:
             Elevation: The elevation information object.
         """
-        elevation = json_elevation["elevation"]
-        page = json_elevation["page"]
-        rect = json_elevation["rect"]
+        elevation = data["elevation"]
+        page = data["page"]
+        rect = data["rect"]
+
+        # Convert to fitz.Rect
+        if rect:
+            rect = fitz.Rect(rect[0], rect[1], rect[2], rect[3])
+
         return cls(elevation=elevation, page=page, rect=rect)
 
 

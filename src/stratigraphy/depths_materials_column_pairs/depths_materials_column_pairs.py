@@ -52,7 +52,8 @@ class DepthsMaterialsColumnPairs:
         Returns:
             DepthsMaterialsColumnPairs: The depths materials column pairs object.
         """
-        depth_column = DepthColumnFactory.create(json_depths_materials_column_pairs["depth_column"])
+        depth_column_entry = json_depths_materials_column_pairs["depth_column"]
+        depth_column = DepthColumnFactory.create(depth_column_entry) if depth_column_entry else None
         material_description_rect = fitz.Rect(json_depths_materials_column_pairs["material_description_rect"])
         page = json_depths_materials_column_pairs["page"]
 
