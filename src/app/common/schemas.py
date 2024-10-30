@@ -141,7 +141,11 @@ class ExtractDataRequest(ABC, BaseModel):
 
     filename: Path = Field(..., example=Path("document.png"))
     page_number: int = Field(..., example=1)  # 1-based index
-    bbox: BoundingBox = Field(..., example={"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0})
+    bbox: BoundingBox = Field(
+        ...,
+        description="Bounding box in pixels for the PNG image, not for PDF coordinates.",
+        example={"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0},
+    )
     format: FormatTypes = Field(..., example=FormatTypes.COORDINATES.value)
 
     @field_validator("filename", mode="before")
