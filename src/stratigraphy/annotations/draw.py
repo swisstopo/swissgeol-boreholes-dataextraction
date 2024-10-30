@@ -7,9 +7,10 @@ from pathlib import Path
 import fitz
 import pandas as pd
 from dotenv import load_dotenv
+from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.depthcolumn.depthcolumn import DepthColumn
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
-from stratigraphy.groundwater.groundwater_extraction import GroundwaterOnPage
+from stratigraphy.groundwater.groundwater_extraction import Groundwater
 from stratigraphy.layer.layer import Layer
 from stratigraphy.metadata.coordinate_extraction import Coordinate
 from stratigraphy.metadata.elevation_extraction import Elevation
@@ -90,7 +91,7 @@ def draw_predictions(
                         draw_coordinates(shape, coordinates)
                     if elevation is not None and page_number == elevation.page:
                         draw_elevation(shape, elevation)
-                    for groundwater_entry in file_prediction.get_groundwater_entries():
+                    for groundwater_entry in file_prediction.groundwater.groundwater:
                         if page_number == groundwater_entry.page:
                             draw_groundwater(shape, groundwater_entry)
                     draw_depth_columns_and_material_rect(
@@ -197,12 +198,12 @@ def draw_coordinates(shape: fitz.Shape, coordinates: Coordinate) -> None:
     shape.finish(color=fitz.utils.getColor("purple"))
 
 
-def draw_groundwater(shape: fitz.Shape, groundwater_entry: GroundwaterOnPage) -> None:
+def draw_groundwater(shape: fitz.Shape, groundwater_entry: FeatureOnPage[Groundwater]) -> None:
     """Draw a bounding box around the area of the page where the groundwater information was extracted from.
 
     Args:
         shape (fitz.Shape): The shape object for drawing.
-        groundwater_entry (GroundwaterOnPage): The groundwater information to draw.
+        groundwater_entry (FeatureOnPage[Groundwater]): The groundwater information to draw.
     """
     shape.draw_rect(groundwater_entry.rect)
     shape.finish(color=fitz.utils.getColor("pink"))
