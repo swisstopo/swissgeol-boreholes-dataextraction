@@ -105,9 +105,7 @@ class FilePredictions:
             if self.depths_materials_columns_pairs is not None
             else [],
             "page_dimensions": self.metadata.page_dimensions,  # TODO: Remove, already in metadata
-            "groundwater": [entry.to_json() for entry in self.groundwater.groundwater]
-            if self.groundwater is not None
-            else [],
+            "groundwater": self.groundwater.to_json() if self.groundwater is not None else [],
             "file_name": self.file_name,
         }
 
@@ -180,14 +178,6 @@ class OverallFilePredictions:
             )
         return overall_file_predictions
 
-    def get_groundwater_entries(self) -> list[GroundwaterInDocument]:
-        """Get the groundwater extractions from the predictions.
-
-        Returns:
-            List[GroundwaterInDocument]: The groundwater extractions.
-        """
-        return [file_prediction.groundwater for file_prediction in self.file_predictions_list]
-
     ############################################################################################################
     ### Evaluation methods
     ############################################################################################################
@@ -241,9 +231,8 @@ class OverallFilePredictions:
         if number_of_truth_values:
             all_metrics = self.evaluate_layer_extraction(number_of_truth_values)
 
-            overall_groundwater_metrics = GroundwaterEvaluator(
-                self.get_groundwater_entries(), ground_truth_path
-            ).evaluate()
+            groundwater_entries = [file_prediction.groundwater for file_prediction in self.file_predictions_list]
+            overall_groundwater_metrics = GroundwaterEvaluator(groundwater_entries, ground_truth_path).evaluate()
             all_metrics.groundwater_metrics = overall_groundwater_metrics.groundwater_metrics_to_overall_metrics()
             all_metrics.groundwater_depth_metrics = (
                 overall_groundwater_metrics.groundwater_depth_metrics_to_overall_metrics()

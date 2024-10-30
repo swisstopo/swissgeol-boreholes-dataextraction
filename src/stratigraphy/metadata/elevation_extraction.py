@@ -29,6 +29,15 @@ class Elevation(ExtractedFeature):
     rect: fitz.Rect  # The rectangle that contains the extracted information
     page: int  # The page number of the PDF document
 
+    def __post_init__(self):
+        """Checks if the information is valid."""
+        if not isinstance(self.elevation, float):
+            raise ValueError("Elevation must be a float")
+        if not isinstance(self.page, int):
+            raise ValueError("Page must be an integer")
+        if not isinstance(self.rect, fitz.Rect):
+            raise ValueError("Rect must be a fitz.Rect")
+
     def is_valid(self) -> bool:
         """Checks if the information is valid.
 

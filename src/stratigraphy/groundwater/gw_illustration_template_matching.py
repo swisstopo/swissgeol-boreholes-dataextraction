@@ -40,7 +40,7 @@ def get_groundwater_from_illustration(
     lines: list[TextLine],
     page_number: int,
     terrain_elevation: Elevation | None,
-) -> list[FeatureOnPage[Groundwater]]:
+) -> tuple[list[FeatureOnPage[Groundwater]], list[float]]:
     """Extracts the groundwater information from an illustration.
 
     Args:
@@ -50,7 +50,8 @@ def get_groundwater_from_illustration(
         terrain_elevation (Elevation | None): The elevation of the terrain.
 
     Returns:
-        list[GroundwaterInformationOnPage]: the extracted groundwater information
+        list[FeatureOnPage[Groundwater]]: the extracted groundwater information
+        list[float]: the confidence of the extraction
     """
     extracted_groundwater_list = []
     confidence_list = []

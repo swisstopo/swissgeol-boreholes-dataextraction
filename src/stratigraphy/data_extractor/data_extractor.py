@@ -40,14 +40,14 @@ class ExtractedFeature(metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def from_json(cls, json: dict) -> Self:
+    def from_json(cls, data: dict) -> Self:
         """Converts a dictionary to an object.
 
         Args:
-            json (dict): A dictionary representing the information.
+            data (dict): A dictionary representing the information.
 
         Returns:
-            The object.
+            Self: An instance of the class.
         """
         pass
 
@@ -79,20 +79,20 @@ class FeatureOnPage(Generic[T]):
         return result
 
     @classmethod
-    def from_json(cls, json: dict, feature_cls: type[T]) -> Self:
+    def from_json(cls, data: dict, feature_cls: type[T]) -> Self:
         """Converts a dictionary to an object.
 
         Args:
-            json (dict): A dictionary representing the feature on a page information.
+            data (dict): A dictionary representing the feature on a page information.
             feature_cls (T): The extracted feature
 
         Returns:
             Self: The resulting FeatureOnPage object.
         """
         return cls(
-            feature=feature_cls.from_json(json),
-            page=json["page"],
-            rect=fitz.Rect(json["rect"]),
+            feature=feature_cls.from_json(data),
+            page=data["page"],
+            rect=fitz.Rect(data["rect"]),
         )
 
 
@@ -133,6 +133,14 @@ class DataExtractor(ABC):
         self.feature_fp_keys = read_params("matching_params.yml")[f"{self.feature_name}_fp_keys"] or []
 
     def preprocess(self, value: str) -> str:
+        """Preprocesses the value before searching for the feature.
+
+        Args:
+            value (str): The value to preprocess.
+
+        Returns:
+            str: The preprocessed value.
+        """
         for old, new in self.preprocess_replacements.items():
             value = value.replace(old, new)
         return value

@@ -139,6 +139,14 @@ class GroundwaterInDocument:
         """
         return self.groundwater
 
+    def to_json(self) -> list[dict]:
+        """Converts the object to a list of dictionaries.
+
+        Returns:
+            list[dict]: The object as a list of dictionaries.
+        """
+        return [entry.to_json() for entry in self.groundwater]
+
 
 class GroundwaterLevelExtractor(DataExtractor):
     """Extracts coordinates from a PDF document."""

@@ -203,7 +203,7 @@ def draw_groundwater(shape: fitz.Shape, groundwater_entry: FeatureOnPage[Groundw
 
     Args:
         shape (fitz.Shape): The shape object for drawing.
-        groundwater_entry (GroundwaterOnPage): The groundwater information to draw.
+        groundwater_entry (FeatureOnPage[Groundwater]): The groundwater information to draw.
     """
     shape.draw_rect(groundwater_entry.rect)
     shape.finish(color=fitz.utils.getColor("pink"))
