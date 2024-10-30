@@ -14,10 +14,6 @@ from stratigraphy.metadata.coordinate_extraction import CoordinateEntry, LV95Coo
 from stratigraphy.metadata.metadata import BoreholeMetadata
 from stratigraphy.util.predictions import FilePredictions, OverallFilePredictions
 
-# Mock classes used in the FilePredictions constructor
-LayerPrediction = Mock()
-DepthsMaterialsColumnPairs = Mock()
-
 
 @pytest.fixture
 def sample_file_prediction() -> FilePredictions:
@@ -101,12 +97,22 @@ def test_evaluate_metadata_extraction():
     assert metadata_metrics is not None  # Ensure the evaluation returns a result
 
 
-def test_count_against_ground_truth():
-    """Test the count_against_ground_truth static method."""
-    values = [1, 2, 2, 3]
-    ground_truth = [2, 3, 4]
+@pytest.mark.parametrize(
+    "values,ground_truth,expected",
+    [
+        # Current case
+        ([1, 2, 2, 3], [2, 3, 4], (2, 2, 1)),
+        # Empty lists
+        ([], [], (0, 0, 0)),
+        ([], [1, 2], (0, 0, 2)),
+        ([1, 2], [], (0, 2, 0)),
+        # Exact match
+        ([1, 2], [1, 2], (2, 0, 0)),
+        # No matches
+        ([1, 2], [3, 4], (0, 2, 2)),
+    ],
+)
+def test_count_against_ground_truth_cases(values, ground_truth, expected):
+    """Test count_against_ground_truth with various scenarios."""
     metrics = count_against_ground_truth(values, ground_truth)
-
-    assert metrics.tp == 2
-    assert metrics.fp == 2
-    assert metrics.fn == 1
+    assert (metrics.tp, metrics.fp, metrics.fn) == expected

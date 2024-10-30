@@ -35,14 +35,14 @@ class OverallGroundwaterMetrics:
         self.groundwater_metrics.append(groundwater_metrics)
 
     def groundwater_metrics_to_overall_metrics(self):
-        """Convert the overall groundwater metrics to a OverallMetrics object."""
+        """Convert the overall groundwater metrics to an OverallMetrics object."""
         overall_metrics = OverallMetrics()
         for groundwater_metrics in self.groundwater_metrics:
             overall_metrics.metrics[groundwater_metrics.filename] = groundwater_metrics.groundwater_metrics
         return overall_metrics
 
     def groundwater_depth_metrics_to_overall_metrics(self):
-        """Convert the overall groundwater depth metrics to a OverallMetrics object."""
+        """Convert the overall groundwater depth metrics to an OverallMetrics object."""
         overall_metrics = OverallMetrics()
         for groundwater_metrics in self.groundwater_metrics:
             overall_metrics.metrics[groundwater_metrics.filename] = groundwater_metrics.groundwater_depth_metrics
@@ -94,24 +94,24 @@ class GroundwaterEvaluator:
             groundwater_metrics = count_against_ground_truth(
                 [
                     (
-                        entry.depth,
-                        entry.format_date(),
-                        entry.elevation,
+                        entry.feature.depth,
+                        entry.feature.format_date(),
+                        entry.feature.elevation,
                     )
                     for entry in groundwater_in_doc.groundwater
                 ],
                 [(entry.depth, entry.format_date(), entry.elevation) for entry in gt_groundwater],
             )
             groundwater_depth_metrics = count_against_ground_truth(
-                [entry.depth for entry in groundwater_in_doc.groundwater],
+                [entry.feature.depth for entry in groundwater_in_doc.groundwater],
                 [entry.depth for entry in gt_groundwater],
             )
             groundwater_elevation_metrics = count_against_ground_truth(
-                [entry.elevation for entry in groundwater_in_doc.groundwater],
+                [entry.feature.elevation for entry in groundwater_in_doc.groundwater],
                 [entry.elevation for entry in gt_groundwater],
             )
             groundwater_date_metrics = count_against_ground_truth(
-                [entry.format_date() for entry in groundwater_in_doc.groundwater],
+                [entry.feature.format_date() for entry in groundwater_in_doc.groundwater],
                 [entry.format_date() for entry in gt_groundwater],
             )
 

@@ -2,6 +2,7 @@
 
 import logging
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 from stratigraphy.benchmark.ground_truth import GroundTruth
@@ -125,8 +126,12 @@ class OverallFilePredictions:
         """
         self.file_predictions_list.append(file_predictions)
 
-    def get_metadata_as_dict(self) -> None:
-        """Returns the metadata of the predictions as a dictionary."""
+    def get_metadata_as_dict(self) -> dict:
+        """Returns the metadata of the predictions as a dictionary.
+
+        Returns:
+            dict: The metadata of the predictions as a dictionary.
+        """
         return {
             file_prediction.file_name: file_prediction.metadata.to_json()
             for file_prediction in self.file_predictions_list
@@ -201,7 +206,7 @@ class OverallFilePredictions:
             ground_truth_path (Path): The path to the ground truth file.
 
         Returns:
-            OverallMetricsCatalogue: A OverallMetricsCatalog that maps a metrics name to the corresponding
+            OverallMetricsCatalog: A OverallMetricsCatalog that maps a metrics name to the corresponding
             OverallMetrics object. If no ground truth is available, None is returned.
         """
         ############################################################################################################
@@ -280,7 +285,7 @@ class OverallFilePredictions:
 
         logger.info("Macro avg:")
         logger.info(
-            "F1: %.1f%%, precision: %.1f%%, recall: %.1f%%, depth_interval_accuracy: %.1f%%",
+            "F1: %.1f%%, precision: %.1f%%, recall: %.1f%%, depth_interval_precision: %.1f%%",
             all_metrics.layer_metrics.macro_f1() * 100,
             all_metrics.layer_metrics.macro_precision() * 100,
             all_metrics.layer_metrics.macro_recall() * 100,
@@ -290,68 +295,74 @@ class OverallFilePredictions:
         return all_metrics
 
 
-def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_values: dict) -> OverallMetrics:
-    """Calculate F1, precision and recall for the layer predictions.
-
-    Calculate F1, precision and recall for the individual documents as well as overall.
-
-    # TODO: Try to move this to the LayerPrediction class
+def calculate_metrics(
+    predictions: OverallFilePredictions,
+    per_layer_filter: Callable[[Layer], bool],
+    per_layer_condition: Callable[[Layer], bool],
+    number_of_truth_values: dict[str, int] | None = None,
+    per_layer_action: Callable[[Layer], None] | None = None,
+) -> OverallMetrics:
+    """Calculate metrics based on a condition per layer, after applying a filter.
 
     Args:
         predictions (OverallFilePredictions): The predictions.
-        number_of_truth_values (dict): The number of ground truth values per file.
+        per_layer_filter (Callable[[LayerPrediction], bool]): Function to filter layers to consider.
+        per_layer_condition (Callable[[LayerPrediction], bool]): Function that returns True if the layer is a hit.
+        number_of_truth_values (Optional[Dict[str, int]]): Ground truth counts per file (required for 'fn'
+            calculation).
+        per_layer_action (Optional[Callable[[LayerPrediction], None]]): Optional action to perform per layer.
 
     Returns:
-        OverallMetrics: the metrics for the layers
+        OverallMetrics: The calculated metrics.
     """
-    layer_metrics = OverallMetrics()
+    overall_metrics = OverallMetrics()
 
     for file_prediction in predictions.file_predictions_list:
         hits = 0
-        for layer in file_prediction.layers.get_all_layers():
-            if layer.material_is_correct:
-                hits += 1
-            if parse_text(layer.material_description.text) == "":
-                logger.warning("Empty string found in predictions")
-        layer_metrics.metrics[file_prediction.file_name] = Metrics(
-            tp=hits,
-            fp=len(file_prediction.layers.get_all_layers()) - hits,
-            fn=number_of_truth_values[file_prediction.file_name] - hits,
-        )
+        total_predictions = 0
 
-    return layer_metrics
+        for layer in file_prediction.layers.get_all_layers():
+            if per_layer_action:
+                per_layer_action(layer)
+            if per_layer_filter(layer):
+                total_predictions += 1
+                if per_layer_condition(layer):
+                    hits += 1
+
+        fn = 0
+        if number_of_truth_values is not None:
+            fn = number_of_truth_values.get(file_prediction.file_name, 0) - hits
+
+        if total_predictions > 0:
+            overall_metrics.metrics[file_prediction.file_name] = Metrics(
+                tp=hits,
+                fp=total_predictions - hits,
+                fn=fn,
+            )
+
+    return overall_metrics
+
+
+def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_values: dict) -> OverallMetrics:
+    """Calculate metrics for layer predictions."""
+
+    def per_layer_action(layer):
+        if parse_text(layer.material_description.text) == "":
+            logger.warning("Empty string found in predictions")
+
+    return calculate_metrics(
+        predictions=predictions,
+        per_layer_filter=lambda layer: True,
+        per_layer_condition=lambda layer: layer.material_is_correct,
+        number_of_truth_values=number_of_truth_values,
+        per_layer_action=per_layer_action,
+    )
 
 
 def get_depth_interval_metrics(predictions: OverallFilePredictions) -> OverallMetrics:
-    """Calculate F1, precision and recall for the depth interval predictions.
-
-    # TODO: Try to move this to the LayerPrediction class
-
-    Calculate F1, precision and recall for the individual documents as well as overall.
-
-    Depth interval accuracy is not calculated for layers with incorrect material predictions.
-
-    Args:
-        predictions (OverallFilePredictions): The predictions.
-
-    Returns:
-        OverallMetrics: the metrics for the depth intervals
-    """
-    depth_interval_metrics = OverallMetrics()
-
-    for file_prediction in predictions.file_predictions_list:
-        depth_interval_hits = 0
-        depth_interval_occurrences = 0
-        for layer in file_prediction.layers.get_all_layers():
-            if layer.material_is_correct:
-                if layer.depth_interval_is_correct is not None:
-                    depth_interval_occurrences += 1
-                if layer.depth_interval_is_correct:
-                    depth_interval_hits += 1
-
-        if depth_interval_occurrences > 0:
-            depth_interval_metrics.metrics[file_prediction.file_name] = Metrics(
-                tp=depth_interval_hits, fp=depth_interval_occurrences - depth_interval_hits, fn=0
-            )
-
-    return depth_interval_metrics
+    """Calculate metrics for depth interval predictions."""
+    return calculate_metrics(
+        predictions=predictions,
+        per_layer_filter=lambda layer: layer.material_is_correct and layer.depth_interval_is_correct is not None,
+        per_layer_condition=lambda layer: layer.depth_interval_is_correct,
+    )
