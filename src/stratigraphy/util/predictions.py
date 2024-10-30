@@ -185,8 +185,6 @@ class OverallFilePredictions:
     def evaluate_metadata_extraction(self, ground_truth_path: Path) -> OverallBoreholeMetadataMetrics:
         """Evaluate the metadata extraction of the predictions against the ground truth.
 
-        # TODO: Move to evaluator class
-
         Args:
             ground_truth_path (Path): The path to the ground truth file.
         """
@@ -196,13 +194,11 @@ class OverallFilePredictions:
             metadata_per_file.add_metadata(file_prediction.metadata)
         return MetadataEvaluator(metadata_per_file, ground_truth_path).evaluate()
 
-    def evaluate_borehole_extraction(self, ground_truth_path: str) -> OverallMetricsCatalog | None:
+    def evaluate_borehole_extraction(self, ground_truth_path: Path) -> OverallMetricsCatalog | None:
         """Evaluate the borehole extraction predictions.
 
-        # TODO: Use path as in the function above
-
         Args:
-            ground_truth_path (str): The path to the ground truth file.
+            ground_truth_path (Path): The path to the ground truth file.
 
         Returns:
             OverallMetricsCatalogue: A OverallMetricsCatalog that maps a metrics name to the corresponding
@@ -292,23 +288,6 @@ class OverallFilePredictions:
         )
 
         return all_metrics
-
-    def get_metrics(self, field_key: str, field_name: str) -> OverallMetrics:
-        """Get the metrics for a specific field in the predictions.
-
-        Args:
-            field_key (str): The key to access the specific field in the prediction objects.
-            field_name (str): The name of the field being evaluated.
-
-        Returns:
-            OverallMetrics: The requested OverallMetrics object.
-        """
-        overall_metrics = OverallMetrics()
-
-        for file_prediction in self.file_predictions_list:
-            overall_metrics.metrics[file_prediction.file_name] = getattr(file_prediction, field_key)[field_name]
-
-        return overall_metrics
 
 
 def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_values: dict) -> OverallMetrics:

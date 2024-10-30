@@ -7,6 +7,7 @@ from unittest.mock import Mock
 import fitz
 import pytest
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
+from stratigraphy.evaluation.utility import count_against_ground_truth
 from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument
 from stratigraphy.layer.layer import LayersInDocument, LayersOnPage
 from stratigraphy.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
@@ -98,3 +99,14 @@ def test_evaluate_metadata_extraction():
     metadata_metrics = overall_predictions.evaluate_metadata_extraction(ground_truth_path)
 
     assert metadata_metrics is not None  # Ensure the evaluation returns a result
+
+
+def test_count_against_ground_truth():
+    """Test the count_against_ground_truth static method."""
+    values = [1, 2, 2, 3]
+    ground_truth = [2, 3, 4]
+    metrics = count_against_ground_truth(values, ground_truth)
+
+    assert metrics.tp == 2
+    assert metrics.fp == 2
+    assert metrics.fn == 1

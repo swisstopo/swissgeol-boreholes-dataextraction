@@ -94,24 +94,24 @@ class GroundwaterEvaluator:
             groundwater_metrics = count_against_ground_truth(
                 [
                     (
-                        entry.feature.depth,
-                        entry.feature.format_date(),
-                        entry.feature.elevation,
+                        entry.depth,
+                        entry.format_date(),
+                        entry.elevation,
                     )
                     for entry in groundwater_in_doc.groundwater
                 ],
                 [(entry.depth, entry.format_date(), entry.elevation) for entry in gt_groundwater],
             )
             groundwater_depth_metrics = count_against_ground_truth(
-                [entry.feature.depth for entry in groundwater_in_doc.groundwater],
+                [entry.depth for entry in groundwater_in_doc.groundwater],
                 [entry.depth for entry in gt_groundwater],
             )
             groundwater_elevation_metrics = count_against_ground_truth(
-                [entry.feature.elevation for entry in groundwater_in_doc.groundwater],
+                [entry.elevation for entry in groundwater_in_doc.groundwater],
                 [entry.elevation for entry in gt_groundwater],
             )
             groundwater_date_metrics = count_against_ground_truth(
-                [entry.feature.format_date() for entry in groundwater_in_doc.groundwater],
+                [entry.format_date() for entry in groundwater_in_doc.groundwater],
                 [entry.format_date() for entry in gt_groundwater],
             )
 
