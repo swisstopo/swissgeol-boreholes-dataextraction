@@ -178,7 +178,7 @@ class Coordinates(BaseModel):
     """Coordinates schema for representing geographical data points.
 
     This schema defines the format for specifying location data using east/north coordinates
-    along with the projection system used for georeferencing.
+    along with the projection system used for geo-referencing.
     """
 
     east: float = Field(
@@ -327,7 +327,7 @@ class ExtractDataResponse(ABC, BaseModel):
         ...,
         description="""
             Bounding box coordinates that define the area within the document where data was extracted. The box
-            is specified in PNG coordinates, with the origin at the top-left corner (0,0).$
+            is specified in PNG coordinates, with the origin at the top-left corner (0,0).
         """,
         example={"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0},
     )
