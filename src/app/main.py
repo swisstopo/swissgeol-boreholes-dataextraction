@@ -76,7 +76,18 @@ app.add_middleware(
 ####################################################################################################
 @app.get("/health", tags=["health"])
 def get_health():
-    """Check the health of the application."""
+    """Check the health of the application.
+
+    This endpoint provides a simple health check to verify that the application is up and running.
+    It can be used for monitoring purposes to ensure the API is responsive.
+
+    ### Returns
+    - **200 OK**: The application is running and responsive.
+    - **Response Body**: Returns a plain text message indicating the health status, typically `"Healthy"`.
+
+    ### Usage
+    Use this endpoint as a basic check in monitoring or load balancer setups to assess application uptime.
+    """
     return "Healthy"
 
 
@@ -85,7 +96,19 @@ def get_health():
 ####################################################################################################
 @app.get("/version")
 def get_version():
-    """Return the version of the application."""
+    """Return the current version of the application.
+
+    This endpoint provides the current application version as specified in the environment variables.
+    Useful for tracking deployed versions in staging or production environments.
+
+    ### Returns
+    - **200 OK**: The version information was successfully retrieved.
+    - **Response Body**: JSON object with the application version, e.g., `{"version": "1.0.0"}`.
+
+    ### Notes
+    Ensure the `APP_VERSION` environment variable is set; otherwise, the response may contain `null` or an
+    empty version value.
+    """
     return {"version": os.getenv("APP_VERSION")}
 
 
