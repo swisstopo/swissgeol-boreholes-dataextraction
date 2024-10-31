@@ -120,8 +120,8 @@ class BoundingBox(BaseModel):
     @classmethod
     def page_number_must_be_positive(cls, v: int) -> int:
         """Validate that the page number is positive."""
-        if v < 0.0:
-            raise ValueError("Bounding box coordinate must be a positive integer")
+        if v < 1.0:
+            raise ValueError("The page number must be a positive number.")
         return v
 
     def rescale(
