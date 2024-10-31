@@ -83,6 +83,11 @@ def post_extract_data(
 ) -> ExtractCoordinatesResponse | ExtractTextResponse | ExtractNumberResponse:
     """Extract specified data from a given document based on the bounding box coordinates and format.
 
+    Behavior of the data extraction from the specified bounding box is the following: extraction on a per-letter
+    basis, which means that as soon as the specified bounding box overlaps (partially or fully) with a letter
+    or number, then this character is added to the extracted text. This behavior is consistent with the
+    clipping behavior of the `PyMuPDF` library.
+
     ### Request Body
     - **extract_data_request**: Instance of `ExtractDataRequest`, containing file details, page number, bounding
     box, and data format. The bounding box in PNG coordinates helps locate the region to extract data from.
