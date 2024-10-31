@@ -54,7 +54,7 @@ def post_create_pngs(request: PNGRequest) -> PNGResponse:
     ### Status Codes
     - **200 OK**: PNG images were successfully created and stored in the S3 bucket.
     - **400 Bad Request**: The request format or content is invalid. Verify that `filename` is correctly specified.
-    - **404 Not Found**: The specified PDF file could not be found in the S3 bucket.
+    - **404 Not Found**: PDF file not found in S3 bucket.
     - **500 Internal Server Error**: An error occurred on the server while creating PNGs.
 
     ### Additional Information

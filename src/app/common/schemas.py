@@ -17,7 +17,17 @@ from pydantic import BaseModel, Field, field_validator
 
 
 def validate_filename(value: str) -> str:
-    """Ensure the filename is not empty."""
+    """Ensure the filename is not empty.
+
+    Args:
+        value (str): The filename to validate.
+
+    Returns:
+        str: The validated filename.
+
+    Raises:
+        ValueError: If the filename is empty
+    """
     if value == "":
         raise ValueError("Filename must not be empty.")
     return value
@@ -118,10 +128,10 @@ class BoundingBox(BaseModel):
 
     @field_validator("x0", "y0", "x1", "y1")
     @classmethod
-    def page_number_must_be_positive(cls, v: int) -> int:
-        """Validate that the page number is positive."""
-        if v < 1.0:
-            raise ValueError("The page number must be a positive number.")
+    def bbox_corners_must_be_positive(cls, v: int) -> int:
+        """Validate that the edges of the bounding box are positive."""
+        if v < 0.0:
+            raise ValueError("Bounding box coordinates must be positive")
         return v
 
     def rescale(
