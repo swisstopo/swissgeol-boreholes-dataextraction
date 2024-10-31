@@ -360,7 +360,7 @@ def test_invalid_bbox(test_client: TestClient, upload_test_pdf, upload_test_png)
     request_json["bbox"] = {"x0": 0, "y0": 0, "x1": 100, "y1": -100.0}
     response = test_client.post("/api/V1/extract_data", json=request_json)
     assert response.status_code == 400
-    assert response.json() == {"detail": "Bounding box coordinate must be a positive integer"}
+    assert response.json() == {"detail": "Bounding box coordinates must be positive"}
 
 
 def test_invalid_pdf(test_client: TestClient, upload_test_pdf, upload_test_png):
