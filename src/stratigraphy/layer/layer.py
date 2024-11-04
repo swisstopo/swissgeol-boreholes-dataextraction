@@ -11,6 +11,7 @@ from stratigraphy.util.interval import AnnotatedInterval, BoundaryInterval, Inte
 from stratigraphy.util.util import parse_text
 
 
+# TODO: make this a subclass of ExtractedFeature (cf. ticket LGVISIUM-79)
 @dataclass
 class Layer:
     """A class to represent predictions for a single layer."""
@@ -108,8 +109,7 @@ def _create_textblock_object(lines: list[dict]) -> TextBlock:
     return TextBlock(lines)
 
 
-# @dataclass(kw_only=True)
-# TODO: check if this makes more sense: class LayersOnPage(ExtractedFeature):
+# TODO: convert to FeatureOnPage[Layer] (cf. ticket LGVISIUM-79)
 @dataclass
 class LayersOnPage:
     """A class to represent predictions for a single page."""
