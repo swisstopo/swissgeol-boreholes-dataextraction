@@ -35,21 +35,18 @@ def create_predictions_objects(
         tuple[OverallFilePredictions, dict]: The predictions objects and the number of ground truth values per
                                                  file.
     """
-    if ground_truth_path and ground_truth_path.exists():  # for inference no ground truth is available
-        ground_truth = GroundTruth(ground_truth_path)
-        ground_truth_is_present = True
-    else:
+    if not (ground_truth_path and ground_truth_path.exists()):  # for inference no ground truth is available
         logging.warning("Ground truth file not found.")
-        ground_truth_is_present = False
         return predictions, {}
+
+    ground_truth = GroundTruth(ground_truth_path)
 
     number_of_truth_values = {}
     for file_predictions in predictions.file_predictions_list:
-        if ground_truth_is_present:
-            ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
-            if ground_truth_for_file:
-                file_predictions.evaluate(ground_truth_for_file)
-                number_of_truth_values[file_predictions.file_name] = len(ground_truth_for_file["layers"])
+        ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
+        if ground_truth_for_file:
+            file_predictions.evaluate(ground_truth_for_file)
+            number_of_truth_values[file_predictions.file_name] = len(ground_truth_for_file["layers"])
 
     return predictions, number_of_truth_values
 

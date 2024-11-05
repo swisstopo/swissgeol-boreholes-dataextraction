@@ -141,7 +141,7 @@ class OverallFilePredictions:
             groundwater_in_document = GroundwaterInDocument(groundwater=groundwater_entries, filename=file_name)
             overall_file_predictions.add_file_predictions(
                 FilePredictions(
-                    layers=layers_in_doc,
+                    layers_in_document=layers_in_doc,
                     file_name=file_name,
                     metadata=metadata,
                     depths_materials_columns_pairs=depths_materials_columns_pairs,
