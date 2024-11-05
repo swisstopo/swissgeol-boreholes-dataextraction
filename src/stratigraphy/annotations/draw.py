@@ -29,7 +29,7 @@ def draw_predictions(
     predictions: OverallFilePredictions,
     directory: Path,
     out_directory: Path,
-    document_level_metadata_metrics: pd.DataFrame,
+    document_level_metadata_metrics: None | pd.DataFrame,
 ) -> None:
     """Draw predictions on pdf pages.
 
@@ -48,7 +48,7 @@ def draw_predictions(
         predictions (dict): Content of the predictions.json file.
         directory (Path): Path to the directory containing the pdf files.
         out_directory (Path): Path to the output directory where the images are saved.
-        document_level_metadata_metrics (pd.DataFrame): Document level metadata metrics.
+        document_level_metadata_metrics (None | pd.DataFrame): Document level metadata metrics.
     """
     if directory.is_file():  # deal with the case when we pass a file instead of a directory
         directory = directory.parent
@@ -60,15 +60,18 @@ def draw_predictions(
         elevation = file_prediction.metadata.elevation
 
         # Assess the correctness of the metadata
-        if file_prediction.file_name in document_level_metadata_metrics.index:
+        if (
+            document_level_metadata_metrics is not None
+            and file_prediction.file_name in document_level_metadata_metrics.index
+        ):
             is_coordinates_correct = document_level_metadata_metrics.loc[file_prediction.file_name].coordinate
             is_elevation_correct = document_level_metadata_metrics.loc[file_prediction.file_name].elevation
         else:
             logger.warning(
                 "Metrics for file %s not found in document_level_metadata_metrics.", file_prediction.file_name
             )
-            is_coordinates_correct = False
-            is_elevation_correct = False
+            is_coordinates_correct = None
+            is_elevation_correct = None
 
         try:
             with fitz.Document(directory / file_prediction.file_name) as doc:
@@ -131,9 +134,9 @@ def draw_metadata(
     derotation_matrix: fitz.Matrix,
     rotation: float,
     coordinates: Coordinate | None,
-    is_coordinate_correct: bool,
+    is_coordinate_correct: bool | None,
     elevation_info: Elevation | None,
-    is_elevation_correct: bool,
+    is_elevation_correct: bool | None,
 ) -> None:
     """Draw the extracted metadata on the top of the given PDF page.
 
@@ -145,44 +148,45 @@ def draw_metadata(
         derotation_matrix (fitz.Matrix): The derotation matrix of the page.
         rotation (float): The rotation of the page.
         coordinates (Coordinate | None): The coordinate object to draw.
-        is_coordinate_correct (Metrics): Whether the coordinate information is correct.
-        elevation_info (ElevationInformation | None): The elevation information to draw.
-        is_elevation_correct (Metrics): Whether the elevation information is correct.
+        is_coordinate_correct (bool  | None): Whether the coordinate information is correct.
+        elevation_info (Elevation | None): The elevation information to draw.
+        is_elevation_correct (bool | None): Whether the elevation information is correct.
     """
-    # TODO associate correctness with the extracted coordinates in a better way
-    coordinate_color = "green" if is_coordinate_correct else "red"
     coordinate_rect = fitz.Rect([5, 5, 250, 30])
-
-    elevation_color = "green" if is_elevation_correct else "red"
     elevation_rect = fitz.Rect([5, 30, 250, 55])
 
     shape.draw_rect(coordinate_rect * derotation_matrix)
     shape.finish(fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
     shape.insert_textbox(coordinate_rect * derotation_matrix, f"Coordinates: {coordinates}", rotate=rotation)
-    shape.draw_line(
-        coordinate_rect.top_left * derotation_matrix,
-        coordinate_rect.bottom_left * derotation_matrix,
-    )
-    shape.finish(
-        color=fitz.utils.getColor(coordinate_color),
-        width=6,
-        stroke_opacity=0.5,
-    )
+    if is_coordinate_correct is not None:
+        # TODO associate correctness with the extracted coordinates in a better way
+        coordinate_color = "green" if is_coordinate_correct else "red"
+        shape.draw_line(
+            coordinate_rect.top_left * derotation_matrix,
+            coordinate_rect.bottom_left * derotation_matrix,
+        )
+        shape.finish(
+            color=fitz.utils.getColor(coordinate_color),
+            width=6,
+            stroke_opacity=0.5,
+        )
 
     # Draw the bounding box around the elevation information
     elevation_txt = f"Elevation: {elevation_info.elevation} m" if elevation_info is not None else "Elevation: N/A"
     shape.draw_rect(elevation_rect * derotation_matrix)
     shape.finish(fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
     shape.insert_textbox(elevation_rect * derotation_matrix, elevation_txt, rotate=rotation)
-    shape.draw_line(
-        elevation_rect.top_left * derotation_matrix,
-        elevation_rect.bottom_left * derotation_matrix,
-    )
-    shape.finish(
-        color=fitz.utils.getColor(elevation_color),
-        width=6,
-        stroke_opacity=0.5,
-    )
+    if is_elevation_correct is not None:
+        elevation_color = "green" if is_elevation_correct else "red"
+        shape.draw_line(
+            elevation_rect.top_left * derotation_matrix,
+            elevation_rect.bottom_left * derotation_matrix,
+        )
+        shape.finish(
+            color=fitz.utils.getColor(elevation_color),
+            width=6,
+            stroke_opacity=0.5,
+        )
 
 
 def draw_coordinates(shape: fitz.Shape, coordinates: Coordinate) -> None:

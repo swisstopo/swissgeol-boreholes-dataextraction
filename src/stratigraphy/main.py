@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 
 from stratigraphy import DATAPATH
+from stratigraphy.annotations.draw import draw_predictions
 from stratigraphy.annotations.plot_utils import plot_lines
 from stratigraphy.benchmark.score import evaluate
 from stratigraphy.extract import process_page
@@ -298,13 +299,12 @@ def start_pipeline(
         with open(predictions_path, "w", encoding="utf8") as file:
             json.dump(predictions.to_json(), file, ensure_ascii=False)
 
-    evaluate(
-        predictions=predictions,
-        ground_truth_path=ground_truth_path,
-        temp_directory=temp_directory,
-        input_directory=input_directory,
-        draw_directory=draw_directory,
+    document_level_metadata_metrics = evaluate(
+        predictions=predictions, ground_truth_path=ground_truth_path, temp_directory=temp_directory
     )
+
+    if input_directory and draw_directory:
+        draw_predictions(predictions, input_directory, draw_directory, document_level_metadata_metrics)
 
 
 if __name__ == "__main__":

@@ -1,8 +1,6 @@
 """Classes for evaluating the metadata of a borehole."""
 
 import math
-from pathlib import Path
-from typing import Any
 
 from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.evaluation.evaluation_dataclasses import (
@@ -16,21 +14,19 @@ from stratigraphy.metadata.metadata import OverallBoreholeMetadata
 class MetadataEvaluator:
     """Class for evaluating the metadata of a borehole."""
 
-    metadata_list: OverallBoreholeMetadata = None
-    ground_truth: dict[str, Any] = None
+    metadata_list: OverallBoreholeMetadata
+    ground_truth: GroundTruth
 
-    def __init__(self, metadata_list: OverallBoreholeMetadata, ground_truth_path: Path) -> None:
+    def __init__(self, metadata_list: OverallBoreholeMetadata, ground_truth: GroundTruth) -> None:
         """Initializes the MetadataEvaluator object.
 
         Args:
             metadata_list (OverallBoreholeMetadata): Container for multiple borehole metadata
                 objects to evaluate. Contains metadata_per_file for individual boreholes.
-            ground_truth_path (Path): The path to the ground truth file.
+            ground_truth (GroundTruth): The ground truth.
         """
         self.metadata_list: OverallBoreholeMetadata = metadata_list
-
-        # Load the ground truth data for the metadata
-        self.metadata_ground_truth = GroundTruth(ground_truth_path)
+        self.ground_truth = ground_truth
 
     def evaluate(self) -> OverallBoreholeMetadataMetrics:
         """Evaluate the metadata of the file against the ground truth."""
@@ -43,7 +39,7 @@ class MetadataEvaluator:
             ###########################################################################################################
             extracted_coordinates = metadata.coordinates
             ground_truth_coordinates = (
-                self.metadata_ground_truth.for_file(metadata.filename.name).get("metadata", {}).get("coordinates")
+                self.ground_truth.for_file(metadata.filename.name).get("metadata", {}).get("coordinates")
             )
 
             if extracted_coordinates and ground_truth_coordinates:
@@ -83,9 +79,7 @@ class MetadataEvaluator:
             ############################################################################################################
             extracted_elevation = None if metadata.elevation is None else metadata.elevation.elevation
             ground_truth_elevation = (
-                self.metadata_ground_truth.for_file(metadata.filename.name)
-                .get("metadata", {})
-                .get("reference_elevation")
+                self.ground_truth.for_file(metadata.filename.name).get("metadata", {}).get("reference_elevation")
             )
 
             if extracted_elevation is not None and ground_truth_elevation is not None:

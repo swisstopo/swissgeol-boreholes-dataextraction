@@ -6,6 +6,7 @@ from unittest.mock import Mock
 
 import fitz
 import pytest
+from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.evaluation.utility import count_against_ground_truth
 from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument
@@ -80,8 +81,8 @@ def test_evaluate_metadata_extraction():
     file_prediction = Mock(metadata=Mock(to_json=lambda: {"coordinates": "some_coordinates"}))
     overall_predictions.add_file_predictions(file_prediction)
 
-    ground_truth_path = Path("example/example_groundtruth.json")
-    metadata_metrics = overall_predictions.evaluate_metadata_extraction(ground_truth_path)
+    ground_truth = GroundTruth(Path("example/example_groundtruth.json"))
+    metadata_metrics = overall_predictions.evaluate_metadata_extraction(ground_truth)
 
     assert metadata_metrics is not None  # Ensure the evaluation returns a result
 

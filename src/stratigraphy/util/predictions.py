@@ -1,22 +1,18 @@
 """This module contains classes for predictions."""
 
 import logging
-import os
-from collections.abc import Callable
-from pathlib import Path
 
 from stratigraphy.benchmark.ground_truth import GroundTruth
-from stratigraphy.benchmark.metrics import OverallMetrics, OverallMetricsCatalog
+from stratigraphy.benchmark.metrics import OverallMetricsCatalog
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
-from stratigraphy.evaluation.evaluation_dataclasses import Metrics, OverallBoreholeMetadataMetrics
+from stratigraphy.evaluation.evaluation_dataclasses import OverallBoreholeMetadataMetrics
 from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
+from stratigraphy.evaluation.layer_evaluator import LayerEvaluator
 from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
-from stratigraphy.evaluation.utility import find_matching_layer
 from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument
 from stratigraphy.layer.layer import Layer, LayersInDocument
 from stratigraphy.metadata.metadata import BoreholeMetadata, OverallBoreholeMetadata
-from stratigraphy.util.util import parse_text
 
 logger = logging.getLogger(__name__)
 
@@ -37,31 +33,6 @@ class FilePredictions:
         self.file_name: str = file_name
         self.metadata: BoreholeMetadata = metadata
         self.groundwater: GroundwaterInDocument = groundwater
-
-    def evaluate(self, ground_truth: dict):
-        """Evaluate the predictions against the ground truth.
-
-        Args:
-            ground_truth (dict): The ground truth for the file.
-        """
-        # TODO: Call the evaluator for Layers instead
-        self.evaluate_layers(ground_truth["layers"])
-
-    def evaluate_layers(self, ground_truth_layers: list):
-        """Evaluate all layers of the predictions against the ground truth.
-
-        Args:
-            ground_truth_layers (list): The ground truth layers for the file.
-        """
-        unmatched_layers = ground_truth_layers.copy()
-        for layer in self.layers_in_document.layers:
-            match, depth_interval_is_correct = find_matching_layer(layer, unmatched_layers)
-            if match:
-                layer.material_description.feature.is_correct = True
-                layer.is_correct = depth_interval_is_correct
-            else:
-                layer.material_description.feature.is_correct = False
-                layer.is_correct = None
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -154,101 +125,56 @@ class OverallFilePredictions:
     ### Evaluation methods
     ############################################################################################################
 
-    def evaluate_metadata_extraction(self, ground_truth_path: Path) -> OverallBoreholeMetadataMetrics:
+    def evaluate_metadata_extraction(self, ground_truth: GroundTruth) -> OverallBoreholeMetadataMetrics:
         """Evaluate the metadata extraction of the predictions against the ground truth.
 
         Args:
-            ground_truth_path (Path): The path to the ground truth file.
+            ground_truth (GroundTruth): The ground truth.
         """
         metadata_per_file: OverallBoreholeMetadata = OverallBoreholeMetadata()
 
         for file_prediction in self.file_predictions_list:
             metadata_per_file.add_metadata(file_prediction.metadata)
-        return MetadataEvaluator(metadata_per_file, ground_truth_path).evaluate()
+        return MetadataEvaluator(metadata_per_file, ground_truth).evaluate()
 
-    def evaluate_borehole_extraction(self, ground_truth_path: Path) -> OverallMetricsCatalog | None:
+    def evaluate_geology(self, ground_truth: GroundTruth) -> OverallMetricsCatalog | None:
         """Evaluate the borehole extraction predictions.
 
         Args:
-            ground_truth_path (Path): The path to the ground truth file.
+            ground_truth (GroundTruth): The ground truth.
 
         Returns:
             OverallMetricsCatalog: A OverallMetricsCatalog that maps a metrics name to the corresponding
             OverallMetrics object. If no ground truth is available, None is returned.
         """
-        ############################################################################################################
-        ### Load the ground truth data for the borehole extraction
-        ############################################################################################################
-        ground_truth = None
-        if ground_truth_path and os.path.exists(ground_truth_path):  # for inference no ground truth is available
-            ground_truth = GroundTruth(ground_truth_path)
-        else:
-            logger.warning("Ground truth file not found.")
-
-        ############################################################################################################
-        ### Evaluate the borehole extraction
-        ############################################################################################################
-        number_of_truth_values = {}
         for file_predictions in self.file_predictions_list:
-            if ground_truth:
-                ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
-                if ground_truth_for_file:
-                    file_predictions.evaluate(ground_truth_for_file)
-                    number_of_truth_values[file_predictions.file_name] = len(ground_truth_for_file["layers"])
+            ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
+            if ground_truth_for_file:
+                LayerEvaluator.evaluate_borehole(
+                    file_predictions.layers_in_document.layers, ground_truth_for_file["layers"]
+                )
 
-        if number_of_truth_values:
-            all_metrics = self.evaluate_layer_extraction(number_of_truth_values)
-
-            groundwater_entries = [file_prediction.groundwater for file_prediction in self.file_predictions_list]
-            overall_groundwater_metrics = GroundwaterEvaluator(groundwater_entries, ground_truth_path).evaluate()
-            all_metrics.groundwater_metrics = overall_groundwater_metrics.groundwater_metrics_to_overall_metrics()
-            all_metrics.groundwater_depth_metrics = (
-                overall_groundwater_metrics.groundwater_depth_metrics_to_overall_metrics()
-            )
-            return all_metrics
-        else:
-            logger.warning("Ground truth file not found. Skipping evaluation.")
-            return None
-
-    def evaluate_layer_extraction(self, number_of_truth_values: dict) -> OverallMetricsCatalog:
-        """Calculate F1, precision and recall for the predictions.
-
-        Calculate F1, precision and recall for the individual documents as well as overall.
-        The individual document metrics are returned as a DataFrame.
-
-        Args:
-            number_of_truth_values (dict): The number of layer ground truth values per file.
-
-        Returns:
-            OverallMetricsCatalog: A dictionary that maps a metrics name to the corresponding OverallMetrics object
-        """
-        # create predictions by language
         languages = set(fp.metadata.language for fp in self.file_predictions_list)
-        predictions_by_language = {language: OverallFilePredictions() for language in languages}
-
         all_metrics = OverallMetricsCatalog(languages=languages)
-        all_metrics.layer_metrics = get_layer_metrics(self, number_of_truth_values)
-        all_metrics.depth_interval_metrics = get_depth_interval_metrics(self)
 
-        for file_predictions in self.file_predictions_list:
-            language = file_predictions.metadata.language
-            if language in predictions_by_language:
-                predictions_by_language[language].add_file_predictions(file_predictions)
+        evaluator = LayerEvaluator(
+            [prediction.layers_in_document for prediction in self.file_predictions_list], ground_truth
+        )
+        all_metrics.layer_metrics = evaluator.get_layer_metrics()
+        all_metrics.depth_interval_metrics = evaluator.get_depth_interval_metrics()
 
-        for language, language_predictions in predictions_by_language.items():
-            language_number_of_truth_values = {
-                prediction.file_name: number_of_truth_values[prediction.file_name]
-                for prediction in language_predictions.file_predictions_list
-            }
+        layers_in_doc_by_language = {language: [] for language in languages}
+        for file_prediction in self.file_predictions_list:
+            layers_in_doc_by_language[file_prediction.metadata.language].append(file_prediction.layers_in_document)
 
+        for language, layers_in_doc_list in layers_in_doc_by_language.items():
+            evaluator = LayerEvaluator(layers_in_doc_list, ground_truth)
             setattr(
                 all_metrics,
                 f"{language}_layer_metrics",
-                get_layer_metrics(language_predictions, language_number_of_truth_values),
+                evaluator.get_layer_metrics(),
             )
-            setattr(
-                all_metrics, f"{language}_depth_interval_metrics", get_depth_interval_metrics(language_predictions)
-            )
+            setattr(all_metrics, f"{language}_depth_interval_metrics", evaluator.get_depth_interval_metrics())
 
         logger.info("Macro avg:")
         logger.info(
@@ -259,77 +185,10 @@ class OverallFilePredictions:
             all_metrics.depth_interval_metrics.macro_precision() * 100,
         )
 
+        groundwater_entries = [file_prediction.groundwater for file_prediction in self.file_predictions_list]
+        overall_groundwater_metrics = GroundwaterEvaluator(groundwater_entries, ground_truth).evaluate()
+        all_metrics.groundwater_metrics = overall_groundwater_metrics.groundwater_metrics_to_overall_metrics()
+        all_metrics.groundwater_depth_metrics = (
+            overall_groundwater_metrics.groundwater_depth_metrics_to_overall_metrics()
+        )
         return all_metrics
-
-
-def calculate_metrics(
-    predictions: OverallFilePredictions,
-    per_layer_filter: Callable[[Layer], bool],
-    per_layer_condition: Callable[[Layer], bool],
-    number_of_truth_values: dict[str, int] | None = None,
-    per_layer_action: Callable[[Layer], None] | None = None,
-) -> OverallMetrics:
-    """Calculate metrics based on a condition per layer, after applying a filter.
-
-    Args:
-        predictions (OverallFilePredictions): The predictions.
-        per_layer_filter (Callable[[LayerPrediction], bool]): Function to filter layers to consider.
-        per_layer_condition (Callable[[LayerPrediction], bool]): Function that returns True if the layer is a hit.
-        number_of_truth_values (Optional[Dict[str, int]]): Ground truth counts per file (required for 'fn'
-            calculation).
-        per_layer_action (Optional[Callable[[LayerPrediction], None]]): Optional action to perform per layer.
-
-    Returns:
-        OverallMetrics: The calculated metrics.
-    """
-    overall_metrics = OverallMetrics()
-
-    for file_prediction in predictions.file_predictions_list:
-        hits = 0
-        total_predictions = 0
-
-        for layer in file_prediction.layers_in_document.layers:
-            if per_layer_action:
-                per_layer_action(layer)
-            if per_layer_filter(layer):
-                total_predictions += 1
-                if per_layer_condition(layer):
-                    hits += 1
-
-        fn = 0
-        if number_of_truth_values is not None:
-            fn = number_of_truth_values.get(file_prediction.file_name, 0) - hits
-
-        if total_predictions > 0:
-            overall_metrics.metrics[file_prediction.file_name] = Metrics(
-                tp=hits,
-                fp=total_predictions - hits,
-                fn=fn,
-            )
-
-    return overall_metrics
-
-
-def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_values: dict) -> OverallMetrics:
-    """Calculate metrics for layer predictions."""
-
-    def per_layer_action(layer):
-        if parse_text(layer.material_description.feature.text) == "":
-            logger.warning("Empty string found in predictions")
-
-    return calculate_metrics(
-        predictions=predictions,
-        per_layer_filter=lambda layer: True,
-        per_layer_condition=lambda layer: layer.material_description.feature.is_correct,
-        number_of_truth_values=number_of_truth_values,
-        per_layer_action=per_layer_action,
-    )
-
-
-def get_depth_interval_metrics(predictions: OverallFilePredictions) -> OverallMetrics:
-    """Calculate metrics for depth interval predictions."""
-    return calculate_metrics(
-        predictions=predictions,
-        per_layer_filter=lambda layer: layer.material_description.feature.is_correct and layer.is_correct is not None,
-        per_layer_condition=lambda layer: layer.is_correct,
-    )

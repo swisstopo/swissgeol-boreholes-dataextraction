@@ -52,15 +52,14 @@ class OverallGroundwaterMetrics:
 class GroundwaterEvaluator:
     """Class for evaluating the extracted groundwater information of a borehole."""
 
-    def __init__(self, groundwater_entries: list[GroundwaterInDocument], ground_truth_path: str):
+    def __init__(self, groundwater_entries: list[GroundwaterInDocument], ground_truth: GroundTruth):
         """Initializes the GroundwaterEvaluator object.
 
         Args:
             groundwater_entries (list[GroundwaterInDocument]): The metadata to evaluate.
-            ground_truth_path (str): The path to the ground truth file.
+            ground_truth (GroundTruth): The ground truth.
         """
-        # Load the ground truth data for the metadata
-        self.groundwater_ground_truth = GroundTruth(ground_truth_path)
+        self.ground_truth = ground_truth
         self.groundwater_entries: list[GroundwaterInDocument] = groundwater_entries
 
     def evaluate(self) -> OverallGroundwaterMetrics:
@@ -73,7 +72,7 @@ class GroundwaterEvaluator:
 
         for groundwater_in_doc in self.groundwater_entries:
             filename = groundwater_in_doc.filename
-            ground_truth_data = self.groundwater_ground_truth.for_file(filename)
+            ground_truth_data = self.ground_truth.for_file(filename)
             if ground_truth_data is None or ground_truth_data.get("groundwater") is None:
                 ground_truth = []  # If no ground truth is available, set it to an empty list
             else:

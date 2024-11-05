@@ -114,13 +114,13 @@ class FileBoreholeMetadataMetrics(BoreholeMetadataMetrics):
 class OverallBoreholeMetadataMetrics(metaclass=abc.ABCMeta):
     """Metrics for borehole metadata."""
 
-    borehole_metadata_metrics: list[FileBoreholeMetadataMetrics] = None
+    borehole_metadata_metrics: list[FileBoreholeMetadataMetrics]
 
     def __init__(self):
         """Initializes the OverallBoreholeMetadataMetrics object."""
         self.borehole_metadata_metrics = []
 
-    def get_cumulated_metrics(self) -> dict:
+    def get_cumulated_metrics(self) -> BoreholeMetadataMetrics:
         """Evaluate the metadata metrics."""
         elevation_metrics = Metrics.micro_average(
             [metadata.elevation_metrics for metadata in self.borehole_metadata_metrics]
