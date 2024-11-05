@@ -9,7 +9,7 @@ import pytest
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.evaluation.utility import count_against_ground_truth
 from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument
-from stratigraphy.layer.layer import LayersInDocument, LayersOnPage
+from stratigraphy.layer.layer import LayersInDocument
 from stratigraphy.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
 from stratigraphy.metadata.metadata import BoreholeMetadata
 from stratigraphy.util.predictions import FilePredictions, OverallFilePredictions
@@ -31,8 +31,7 @@ def sample_file_prediction() -> FilePredictions:
     layer2 = Mock(
         material_description=Mock(text="Clay"), depth_interval=Mock(start=Mock(value=30), end=Mock(value=50))
     )
-    layer_on_page = LayersOnPage(layers_on_page=[layer1, layer2])
-    layers_in_document = LayersInDocument(layers_in_document=[layer_on_page], filename="test_file")
+    layers_in_document = LayersInDocument(layers=[layer1, layer2], filename="test_file")
 
     dt_date = datetime(2024, 10, 1)
     groundwater_on_page = FeatureOnPage(
@@ -45,22 +44,12 @@ def sample_file_prediction() -> FilePredictions:
     metadata = BoreholeMetadata(coordinates=coord, page_dimensions=[Mock(width=10, height=20)], language="en")
 
     return FilePredictions(
-        layers=layers_in_document,
+        layers_in_document=layers_in_document,
         file_name="test_file",
         metadata=metadata,
         groundwater=groundwater_in_doc,
-        depths_materials_columns_pairs=None,
+        depths_materials_columns_pairs=[],
     )
-
-
-def test_convert_to_ground_truth(sample_file_prediction: FilePredictions):
-    """Test the convert_to_ground_truth method."""
-    ground_truth = sample_file_prediction.convert_to_ground_truth()
-
-    assert ground_truth["test_file"]["metadata"]["coordinates"]["E"] == 2789456
-    assert ground_truth["test_file"]["metadata"]["coordinates"]["N"] == 1123012
-    assert len(ground_truth["test_file"]["layers"]) == 2
-    assert ground_truth["test_file"]["layers"][0]["material_description"] == "Sand"
 
 
 def test_to_json(sample_file_prediction: FilePredictions):

@@ -14,7 +14,7 @@ from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
 from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
 from stratigraphy.evaluation.utility import find_matching_layer
 from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument
-from stratigraphy.layer.layer import Layer, LayersInDocument, LayersOnPage
+from stratigraphy.layer.layer import Layer, LayersInDocument
 from stratigraphy.metadata.metadata import BoreholeMetadata, OverallBoreholeMetadata
 from stratigraphy.util.util import parse_text
 
@@ -26,47 +26,17 @@ class FilePredictions:
 
     def __init__(
         self,
-        layers: LayersInDocument,
+        layers_in_document: LayersInDocument,
         file_name: str,
         metadata: BoreholeMetadata,
         groundwater: GroundwaterInDocument,
         depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs],
     ):
-        self.layers: LayersInDocument = layers
+        self.layers_in_document: LayersInDocument = layers_in_document
         self.depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs] = depths_materials_columns_pairs
         self.file_name: str = file_name
         self.metadata: BoreholeMetadata = metadata
         self.groundwater: GroundwaterInDocument = groundwater
-
-    def convert_to_ground_truth(self):
-        """Convert the predictions to ground truth format.
-
-        This method is meant to be used in combination with the create_from_label_studio method.
-        It converts the predictions to ground truth format, which can then be used for evaluation.
-
-        NOTE: This method should be tested before using it to create new ground truth.
-
-        Returns:
-            dict: The predictions in ground truth format.
-        """
-        ground_truth = {self.file_name: {"metadata": self.metadata}}
-        layers = []
-        for layer in self.layers.get_all_layers():
-            material_description = layer.material_description.text
-            depth_interval = {
-                "start": layer.depth_interval.start.value if layer.depth_interval.start else None,
-                "end": layer.depth_interval.end.value if layer.depth_interval.end else None,
-            }
-            layers.append({"material_description": material_description, "depth_interval": depth_interval})
-        ground_truth[self.file_name]["layers"] = layers
-        if self.metadata is not None and self.metadata.coordinates is not None:
-            ground_truth[self.file_name]["metadata"] = {
-                "coordinates": {
-                    "E": self.metadata.coordinates.east.coordinate_value,
-                    "N": self.metadata.coordinates.north.coordinate_value,
-                }
-            }
-        return ground_truth
 
     def evaluate(self, ground_truth: dict):
         """Evaluate the predictions against the ground truth.
@@ -84,14 +54,14 @@ class FilePredictions:
             ground_truth_layers (list): The ground truth layers for the file.
         """
         unmatched_layers = ground_truth_layers.copy()
-        for layer in self.layers.get_all_layers():
+        for layer in self.layers_in_document.layers:
             match, depth_interval_is_correct = find_matching_layer(layer, unmatched_layers)
             if match:
-                layer.material_is_correct = True
-                layer.depth_interval_is_correct = depth_interval_is_correct
+                layer.material_description.feature.is_correct = True
+                layer.is_correct = depth_interval_is_correct
             else:
-                layer.material_is_correct = False
-                layer.depth_interval_is_correct = None
+                layer.material_description.feature.is_correct = False
+                layer.is_correct = None
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -101,7 +71,7 @@ class FilePredictions:
         """
         return {
             "metadata": self.metadata.to_json(),
-            "layers": [layer.to_json() for layer in self.layers.get_all_layers()] if self.layers is not None else [],
+            "layers": [layer.to_json() for layer in self.layers_in_document.layers],
             "depths_materials_column_pairs": [dmc_pair.to_json() for dmc_pair in self.depths_materials_columns_pairs]
             if self.depths_materials_columns_pairs is not None
             else [],
@@ -159,11 +129,8 @@ class OverallFilePredictions:
         for file_name, file_data in prediction_from_file.items():
             metadata = BoreholeMetadata.from_json(file_data["metadata"], file_name)
 
-            layers = Layer.from_json(file_data["layers"])
-            layers_on_page = LayersOnPage(layers_on_page=layers)
-            layers_in_doc = LayersInDocument(
-                layers_in_document=[layers_on_page], filename=file_name
-            )  # TODO: This is a bit of a hack as we do not seem to save the page of the layer
+            layers = [Layer.from_json(data) for data in file_data["layers"]]
+            layers_in_doc = LayersInDocument(layers=layers, filename=file_name)
 
             depths_materials_columns_pairs = [
                 DepthsMaterialsColumnPairs.from_json(dmc_pair)
@@ -321,7 +288,7 @@ def calculate_metrics(
         hits = 0
         total_predictions = 0
 
-        for layer in file_prediction.layers.get_all_layers():
+        for layer in file_prediction.layers_in_document.layers:
             if per_layer_action:
                 per_layer_action(layer)
             if per_layer_filter(layer):
@@ -347,13 +314,13 @@ def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_value
     """Calculate metrics for layer predictions."""
 
     def per_layer_action(layer):
-        if parse_text(layer.material_description.text) == "":
+        if parse_text(layer.material_description.feature.text) == "":
             logger.warning("Empty string found in predictions")
 
     return calculate_metrics(
         predictions=predictions,
         per_layer_filter=lambda layer: True,
-        per_layer_condition=lambda layer: layer.material_is_correct,
+        per_layer_condition=lambda layer: layer.material_description.feature.is_correct,
         number_of_truth_values=number_of_truth_values,
         per_layer_action=per_layer_action,
     )
@@ -363,6 +330,6 @@ def get_depth_interval_metrics(predictions: OverallFilePredictions) -> OverallMe
     """Calculate metrics for depth interval predictions."""
     return calculate_metrics(
         predictions=predictions,
-        per_layer_filter=lambda layer: layer.material_is_correct and layer.depth_interval_is_correct is not None,
-        per_layer_condition=lambda layer: layer.depth_interval_is_correct,
+        per_layer_filter=lambda layer: layer.material_description.feature.is_correct and layer.is_correct is not None,
+        per_layer_condition=lambda layer: layer.is_correct,
     )

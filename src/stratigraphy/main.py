@@ -228,7 +228,7 @@ def start_pipeline(
                 # Save the predictions to the overall predictions object
                 # Initialize common variables
                 groundwater_entries = None
-                layers = None
+                layers_in_document = LayersInDocument([], filename)
                 depths_materials_columns_pairs = None
 
                 if part == "all":
@@ -236,7 +236,6 @@ def start_pipeline(
                     groundwater_in_document = GroundwaterInDocument.from_document(doc, metadata.elevation)
 
                     # Extract the layers
-                    layer_predictions_list = LayersInDocument([], filename)
                     depths_materials_column_pairs_list = []
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
@@ -253,7 +252,7 @@ def start_pipeline(
                             layer_predictions = remove_duplicate_layers(
                                 previous_page=doc[page_index - 1],
                                 current_page=page,
-                                previous_layers=layer_predictions_list,
+                                previous_layers=layers_in_document,
                                 current_layers=process_page_results.predictions,
                                 img_template_probability_threshold=matching_params[
                                     "img_template_probability_threshold"
@@ -262,7 +261,7 @@ def start_pipeline(
                         else:
                             layer_predictions = process_page_results.predictions
 
-                        layer_predictions_list.add_layers_on_page(layer_predictions)
+                        layers_in_document.layers.extend(layer_predictions)
                         depths_materials_column_pairs_list.extend(process_page_results.depth_material_pairs)
 
                         if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
@@ -277,7 +276,6 @@ def start_pipeline(
                                 mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
                     groundwater_entries = groundwater_in_document
-                    layers = layer_predictions_list
                     depths_materials_columns_pairs = depths_materials_column_pairs_list
 
                 # Add file predictions
@@ -286,7 +284,7 @@ def start_pipeline(
                         file_name=filename,
                         metadata=metadata,
                         groundwater=groundwater_entries,
-                        layers=layers,
+                        layers_in_document=layers_in_document,
                         depths_materials_columns_pairs=depths_materials_columns_pairs,
                     )
                 )

@@ -6,10 +6,11 @@ from dataclasses import dataclass
 
 import fitz
 
+from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.depthcolumn import find_depth_columns
 from stratigraphy.depthcolumn.depthcolumn import DepthColumn
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
-from stratigraphy.layer.layer import IntervalBlockGroup, Layer, LayersOnPage
+from stratigraphy.layer.layer import IntervalBlockGroup, Layer
 from stratigraphy.layer.layer_identifier_column import (
     LayerIdentifierColumn,
     find_layer_identifier_column,
@@ -21,7 +22,7 @@ from stratigraphy.text.find_description import (
     get_description_blocks_from_layer_identifier,
     get_description_lines,
 )
-from stratigraphy.text.textblock import TextBlock, block_distance
+from stratigraphy.text.textblock import MaterialDescription, MaterialDescriptionLine, TextBlock, block_distance
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.interval import BoundaryInterval, Interval
 from stratigraphy.util.util import (
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 class ProcessPageResult:
     """The result of processing a single page of a pdf."""
 
-    predictions: LayersOnPage
+    predictions: list[Layer]
     depth_material_pairs: list[DepthsMaterialsColumnPairs]
 
 
@@ -158,18 +159,30 @@ def process_page(
                 ]
             )
 
-    layer_predictions = LayersOnPage(
-        [
-            Layer(
-                material_description=group.block,
-                depth_interval=BoundaryInterval(start=group.depth_interval.start, end=group.depth_interval.end)
-                if group.depth_interval
-                else None,
-            )
-            for group in groups
-        ]
-    )
-    layer_predictions.remove_empty_predictions()
+    layer_predictions = [
+        Layer(
+            material_description=FeatureOnPage(
+                feature=MaterialDescription(
+                    text=group.block.text,
+                    lines=[
+                        FeatureOnPage(
+                            feature=MaterialDescriptionLine(text_line.text),
+                            rect=text_line.rect,
+                            page=text_line.page_number,
+                        )
+                        for text_line in group.block.lines
+                    ],
+                ),
+                rect=group.block.rect,
+                page=page_number,
+            ),
+            depth_interval=BoundaryInterval(start=group.depth_interval.start, end=group.depth_interval.end)
+            if group.depth_interval
+            else None,
+        )
+        for group in groups
+    ]
+    layer_predictions = [layer for layer in layer_predictions if layer.description_nonempty()]
     return ProcessPageResult(layer_predictions, filtered_depth_material_column_pairs)
 
 

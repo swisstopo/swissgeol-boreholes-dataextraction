@@ -69,7 +69,7 @@ def find_matching_layer(layer: Layer, unmatched_layers: list[dict]) -> tuple[dic
         tuple[dict, bool] | tuple[None, None]: The matching layer and a boolean indicating if the depth interval
                             is correct. None if no match was found.
     """
-    parsed_text = parse_text(layer.material_description.text)
+    parsed_text = parse_text(layer.material_description.feature.text)
     possible_matches = [
         ground_truth_layer
         for ground_truth_layer in unmatched_layers

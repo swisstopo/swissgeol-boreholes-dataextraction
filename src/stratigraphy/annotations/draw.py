@@ -14,8 +14,6 @@ from stratigraphy.groundwater.groundwater_extraction import Groundwater
 from stratigraphy.layer.layer import Layer
 from stratigraphy.metadata.coordinate_extraction import Coordinate
 from stratigraphy.metadata.elevation_extraction import Elevation
-from stratigraphy.text.textblock import TextBlock
-from stratigraphy.util.interval import BoundaryInterval
 from stratigraphy.util.predictions import OverallFilePredictions
 
 load_dotenv()
@@ -104,8 +102,8 @@ def draw_predictions(
                         page.derotation_matrix,
                         [
                             layer
-                            for layer in file_prediction.layers.get_all_layers()
-                            if layer.material_description.page_number == page_number
+                            for layer in file_prediction.layers_in_document.layers
+                            if layer.material_description.page == page_number
                         ],
                     )
                     shape.commit()  # Commit all the drawing operations to the page
@@ -239,15 +237,7 @@ def draw_material_descriptions(shape: fitz.Shape, derotation_matrix: fitz.Matrix
                 fitz.Rect(layer.material_description.rect) * derotation_matrix,
             )
             shape.finish(color=fitz.utils.getColor("orange"))
-        draw_layer(
-            shape=shape,
-            derotation_matrix=derotation_matrix,
-            interval=layer.depth_interval,  # None if no depth interval
-            layer=layer.material_description,
-            index=index,
-            is_correct=layer.material_is_correct,  # None if no ground truth
-            depth_is_correct=layer.depth_interval_is_correct,  # None if no ground truth
-        )
+        draw_layer(shape=shape, derotation_matrix=derotation_matrix, layer=layer, index=index)
 
 
 def draw_depth_columns_and_material_rect(
@@ -286,15 +276,7 @@ def draw_depth_columns_and_material_rect(
         shape.finish(color=fitz.utils.getColor("red"))
 
 
-def draw_layer(
-    shape: fitz.Shape,
-    derotation_matrix: fitz.Matrix,
-    interval: BoundaryInterval | None,
-    layer: TextBlock,
-    index: int,
-    is_correct: bool,
-    depth_is_correct: bool,
-):
+def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, index: int):
     """Draw layers on a pdf page.
 
     In particular, this function:
@@ -304,18 +286,15 @@ def draw_layer(
     Args:
         shape (fitz.Shape): The shape object for drawing.
         derotation_matrix (fitz.Matrix): The derotation matrix of the page.
-        interval (BoundaryInterval | None): Depth interval for the layer.
-        layer (MaterialDescriptionPrediction): Material description block for the layer.
+        layer (Layer): The layer (depth interval and material description).
         index (int): Index of the layer.
-        is_correct (bool): Whether the text block was correctly identified.
-        depth_is_correct (bool): Whether the depth interval was correctly identified.
     """
-    if layer.lines:
-        layer_rect = fitz.Rect(layer.rect)
+    material_description = layer.material_description.feature
+    if material_description.lines:
         color = colors[index % len(colors)]
 
         # background color for material description
-        for line in [line for line in layer.lines]:
+        for line in [line for line in material_description.lines]:
             shape.draw_rect(line.rect * derotation_matrix)
             shape.finish(
                 color=fitz.utils.getColor(color),
@@ -323,8 +302,8 @@ def draw_layer(
                 fill=fitz.utils.getColor(color),
                 width=0,
             )
-            if is_correct is not None:
-                correct_color = "green" if is_correct else "red"
+            if material_description.is_correct is not None:
+                correct_color = "green" if material_description.is_correct else "red"
                 shape.draw_line(
                     line.rect.top_left * derotation_matrix,
                     line.rect.bottom_left * derotation_matrix,
@@ -335,9 +314,9 @@ def draw_layer(
                     stroke_opacity=0.5,
                 )
 
-        if interval:
+        if layer.depth_interval:
             # background color for depth interval
-            background_rect = interval.background_rect
+            background_rect = layer.depth_interval.background_rect
             if background_rect is not None:
                 shape.draw_rect(
                     background_rect * derotation_matrix,
@@ -350,8 +329,8 @@ def draw_layer(
                 )
 
                 # draw green line if depth interval is correct else red line
-                if depth_is_correct is not None:
-                    depth_is_correct_color = "green" if depth_is_correct else "red"
+                if layer.is_correct is not None:
+                    depth_is_correct_color = "green" if layer.is_correct else "red"
                     shape.draw_line(
                         background_rect.top_left * derotation_matrix,
                         background_rect.bottom_left * derotation_matrix,
@@ -363,11 +342,12 @@ def draw_layer(
                     )
 
             # line from depth interval to material description
-            line_anchor = interval.line_anchor
+            line_anchor = layer.depth_interval.line_anchor
             if line_anchor:
+                rect = layer.material_description.rect
                 shape.draw_line(
                     line_anchor * derotation_matrix,
-                    fitz.Point(layer_rect.x0, (layer_rect.y0 + layer_rect.y1) / 2) * derotation_matrix,
+                    fitz.Point(rect.x0, (rect.y0 + rect.y1) / 2) * derotation_matrix,
                 )
                 shape.finish(
                     color=fitz.utils.getColor(color),

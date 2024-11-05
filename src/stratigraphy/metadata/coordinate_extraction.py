@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import abc
 import logging
 from dataclasses import dataclass
 
@@ -62,10 +61,6 @@ class Coordinate(ExtractedFeature):
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
             "page": self.page,
         }
-
-    @abc.abstractmethod
-    def is_valid(self):
-        pass
 
     @staticmethod
     def from_values(east: float, north: float, rect: fitz.Rect, page: int) -> Coordinate | None:

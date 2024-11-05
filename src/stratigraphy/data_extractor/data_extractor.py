@@ -17,17 +17,11 @@ from stratigraphy.util.util import read_params
 logger = logging.getLogger(__name__)
 
 
+@dataclass
 class ExtractedFeature(metaclass=ABCMeta):
     """Class for extracted feature information."""
 
-    @abstractmethod
-    def is_valid(self) -> bool:
-        """Checks if the information is valid.
-
-        Returns:
-            bool: True if the information is valid, otherwise False.
-        """
-        pass
+    is_correct = None
 
     @abstractmethod
     def to_json(self) -> dict:
