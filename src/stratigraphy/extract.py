@@ -10,7 +10,7 @@ from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.depthcolumn import find_depth_columns
 from stratigraphy.depthcolumn.depthcolumn import DepthColumn
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
-from stratigraphy.layer.layer import IntervalBlockGroup, Layer
+from stratigraphy.layer.layer import IntervalBlockPair, Layer
 from stratigraphy.layer.layer_identifier_column import (
     LayerIdentifierColumn,
     find_layer_identifier_column,
@@ -119,16 +119,16 @@ def process_page(
             to_delete.append(i)
     filtered_pairs = [item for index, item in enumerate(pairs) if index not in to_delete]
 
-    groups: list[IntervalBlockGroup] = []  # list of matched depth intervals and text blocks
+    pairs: list[IntervalBlockPair] = []  # list of matched depth intervals and text blocks
     # groups is of the form: [{"depth_interval": BoundaryInterval, "block": TextBlock}]
     if filtered_pairs:  # match depth column items with material description
         for depth_column, material_description_rect in filtered_pairs:
             description_lines = get_description_lines(lines, material_description_rect)
             if len(description_lines) > 1:
-                new_groups = match_columns(
+                new_pairs = match_columns(
                     depth_column, description_lines, geometric_lines, material_description_rect, **params
                 )
-                groups.extend(new_groups)
+                pairs.extend(new_pairs)
         filtered_depth_material_column_pairs = [
             DepthsMaterialsColumnPairs(
                 depth_column=depth_column, material_description_rect=material_description_rect, page=page_number
@@ -150,7 +150,7 @@ def process_page(
                 params["block_line_ratio"],
                 params["left_line_length_threshold"],
             )
-            groups.extend([IntervalBlockGroup(block=block, depth_interval=None) for block in description_blocks])
+            pairs.extend([IntervalBlockPair(block=block, depth_interval=None) for block in description_blocks])
             filtered_depth_material_column_pairs.extend(
                 [
                     DepthsMaterialsColumnPairs(
@@ -163,24 +163,24 @@ def process_page(
         Layer(
             material_description=FeatureOnPage(
                 feature=MaterialDescription(
-                    text=group.block.text,
+                    text=pair.block.text,
                     lines=[
                         FeatureOnPage(
                             feature=MaterialDescriptionLine(text_line.text),
                             rect=text_line.rect,
                             page=text_line.page_number,
                         )
-                        for text_line in group.block.lines
+                        for text_line in pair.block.lines
                     ],
                 ),
-                rect=group.block.rect,
+                rect=pair.block.rect,
                 page=page_number,
             ),
-            depth_interval=BoundaryInterval(start=group.depth_interval.start, end=group.depth_interval.end)
-            if group.depth_interval
+            depth_interval=BoundaryInterval(start=pair.depth_interval.start, end=pair.depth_interval.end)
+            if pair.depth_interval
             else None,
         )
-        for group in groups
+        for pair in pairs
     ]
     layer_predictions = [layer for layer in layer_predictions if layer.description_nonempty()]
     return ProcessPageResult(layer_predictions, filtered_depth_material_column_pairs)
@@ -222,7 +222,7 @@ def match_columns(
     geometric_lines: list[Line],
     material_description_rect: fitz.Rect,
     **params: dict,
-) -> list[IntervalBlockGroup]:
+) -> list[IntervalBlockPair]:
     """Match the depth column entries with the description lines.
 
     This function identifies groups of depth intervals and text blocks that are likely to match.
@@ -237,7 +237,7 @@ def match_columns(
         **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
-        list[IntervalBlockGroup]: The matched depth intervals and text blocks.
+        list[IntervalBlockPair]: The matched depth intervals and text blocks.
     """
     if isinstance(depth_column, DepthColumn):
         return [
@@ -245,18 +245,18 @@ def match_columns(
             for group in depth_column.identify_groups(
                 description_lines, geometric_lines, material_description_rect, **params
             )
-            for element in transform_groups(group.depth_interval, group.block, **params)
+            for element in transform_groups(group.depth_intervals, group.blocks, **params)
         ]
     elif isinstance(depth_column, LayerIdentifierColumn):
         blocks = get_description_blocks_from_layer_identifier(depth_column.entries, description_lines)
-        groups: list[IntervalBlockGroup] = []
+        pairs: list[IntervalBlockPair] = []
         for block in blocks:
             depth_interval = find_depth_columns.get_depth_interval_from_textblock(block)
             if depth_interval:
-                groups.append(IntervalBlockGroup(depth_interval=depth_interval, block=block))
+                pairs.append(IntervalBlockPair(depth_interval=depth_interval, block=block))
             else:
-                groups.append(IntervalBlockGroup(depth_interval=None, block=block))
-        return groups
+                pairs.append(IntervalBlockPair(depth_interval=None, block=block))
+        return pairs
     else:
         raise ValueError(
             f"depth_column must be a DepthColumn or a LayerIdentifierColumn object. Got {type(depth_column)}."
@@ -265,7 +265,7 @@ def match_columns(
 
 def transform_groups(
     depth_intervals: list[Interval], blocks: list[TextBlock], **params: dict
-) -> list[IntervalBlockGroup]:
+) -> list[IntervalBlockPair]:
     """Transforms the text blocks such that their number equals the number of depth intervals.
 
     If there are more depth intervals than text blocks, text blocks are splitted. When there
@@ -278,7 +278,7 @@ def transform_groups(
         **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
-        List[IntervalBlockGroup]: Pairing of text blocks and depth intervals.
+        List[IntervalBlockPair]: Pairing of text blocks and depth intervals.
     """
     if len(depth_intervals) == 0:
         return []
@@ -286,7 +286,7 @@ def transform_groups(
         concatenated_block = TextBlock(
             [line for block in blocks for line in block.lines]
         )  # concatenate all text lines within a block; line separation flag does not matter here.
-        return [IntervalBlockGroup(depth_interval=depth_intervals[0], block=concatenated_block)]
+        return [IntervalBlockPair(depth_interval=depth_intervals[0], block=concatenated_block)]
     else:
         if len(blocks) < len(depth_intervals):
             blocks = split_blocks_by_textline_length(blocks, target_split_count=len(depth_intervals) - len(blocks))
@@ -296,7 +296,7 @@ def transform_groups(
             depth_intervals.extend([BoundaryInterval(None, None) for _ in range(len(blocks) - len(depth_intervals))])
 
         return [
-            IntervalBlockGroup(depth_interval=depth_interval, block=block)
+            IntervalBlockPair(depth_interval=depth_interval, block=block)
             for depth_interval, block in zip(depth_intervals, blocks, strict=False)
         ]
 
@@ -304,7 +304,7 @@ def transform_groups(
 def merge_blocks_by_vertical_spacing(blocks: list[TextBlock], target_merge_count: int) -> list[TextBlock]:
     """Merge textblocks without any geometric lines that separates them.
 
-    Note: Deprecated. Currently not in use any more. Kept here until we are sure that it is not needed anymore.
+    Note: Deprecated. Currently not in use anymore. Kept here until we are sure that it is not needed anymore.
 
     The logic looks at the distances between the textblocks and merges them if they are closer
     than a certain cutoff.

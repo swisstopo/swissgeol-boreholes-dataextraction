@@ -93,7 +93,15 @@ class LayersInDocument:
 
 @dataclass
 class IntervalBlockGroup:
-    """A class to represent a group of depth interval blocks."""
+    """A class to represent a group of depth intervals and a group of associated text blocks."""
 
-    depth_interval: Interval | list[Interval] | None
-    block: TextBlock | list[TextBlock]
+    depth_intervals: list[Interval]
+    blocks: list[TextBlock]
+
+
+@dataclass
+class IntervalBlockPair:
+    """A class to represent an optional depth interval and an associated text block."""
+
+    depth_interval: Interval | None
+    block: TextBlock

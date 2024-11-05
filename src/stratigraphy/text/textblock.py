@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Self
+from typing import Self
 
 import fitz
 import numpy as np
@@ -163,15 +163,6 @@ class TextBlock:
                 x0_coordinates.append(line.rect.x0)
                 y0_coordinates.append(line.rect.y0)
         return number_horizontally_close > 1 or number_vertically_close > 2
-
-    def to_json(self) -> dict[str, Any]:
-        """Convert the TextBlock object to a JSON serializable dictionary."""
-        return {
-            "text": self.text,
-            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
-            "lines": [line.to_json() for line in self.lines],
-            "page": self.page_number,
-        }
 
 
 def _is_close(a: float, b: list, tolerance: float) -> bool:

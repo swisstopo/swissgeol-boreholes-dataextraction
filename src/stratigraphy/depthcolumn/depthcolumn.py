@@ -67,7 +67,7 @@ class DepthColumn(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def identify_groups(
         self, description_lines: list[TextLine], geometric_lines: list[Line], material_description_rect: fitz.Rect
-    ) -> list[dict]:
+    ) -> list[IntervalBlockGroup]:
         """Identifies groups of description blocks that correspond to depth intervals.
 
         Args:
@@ -76,8 +76,7 @@ class DepthColumn(metaclass=abc.ABCMeta):
             material_description_rect (fitz.Rect): The bounding box of the material description.
 
         Returns:
-            list[dict]: A list of groups, where each group is a dictionary
-                        with the keys "depth_intervals" and "blocks".
+            list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
         """
         pass
 
@@ -265,11 +264,7 @@ class LayerDepthColumn(DepthColumn):
 
             matched_blocks = interval.matching_blocks(description_lines, line_index, next_interval)
             line_index += sum([len(block.lines) for block in matched_blocks])
-            groups.append(
-                # TODO: This seems to be the only case where a list is passed and most of the time it is a list of one
-                # element. Seem to need the function: transform_groups().
-                IntervalBlockGroup(depth_interval=[interval], block=matched_blocks)
-            )
+            groups.append(IntervalBlockGroup(depth_intervals=[interval], blocks=matched_blocks))
         return groups
 
 
@@ -559,8 +554,8 @@ class BoundaryDepthColumn(DepthColumn):
             current_blocks.extend(pre)
             if len(exact):
                 if len(current_intervals) > 0 or len(current_blocks) > 0:
-                    groups.append(IntervalBlockGroup(depth_interval=current_intervals, block=current_blocks))
-                groups.append(IntervalBlockGroup(depth_interval=[interval], block=exact))
+                    groups.append(IntervalBlockGroup(depth_intervals=current_intervals, blocks=current_blocks))
+                groups.append(IntervalBlockGroup(depth_intervals=[interval], blocks=exact))
                 current_blocks = post
                 current_intervals = []
             else:
@@ -570,6 +565,6 @@ class BoundaryDepthColumn(DepthColumn):
                     current_intervals.append(interval)
 
         if len(current_intervals) > 0 or len(current_blocks) > 0:
-            groups.append(IntervalBlockGroup(depth_interval=current_intervals, block=current_blocks))
+            groups.append(IntervalBlockGroup(depth_intervals=current_intervals, blocks=current_blocks))
 
         return groups
