@@ -94,10 +94,8 @@ class BoundingBox(BaseModel):
     )
     y0: float = Field(
         ...,
-        description="""
-            The y-coordinate of the top-left corner of the bounding box. This value marks the vertical starting 
-            point of the box.
-        """,
+        description="""The y-coordinate of the top-left corner of the bounding box. This value marks the vertical 
+        starting point of the box.""",
         example=0.0,
     )
     x1: float = Field(
