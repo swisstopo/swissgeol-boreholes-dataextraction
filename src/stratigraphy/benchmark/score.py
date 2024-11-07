@@ -10,7 +10,6 @@ import pandas as pd
 from dotenv import load_dotenv
 from stratigraphy import DATAPATH
 from stratigraphy.annotations.draw import draw_predictions
-from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.evaluation.evaluation_dataclasses import BoreholeMetadataMetrics
 from stratigraphy.util.predictions import OverallFilePredictions
 
@@ -19,39 +18,6 @@ load_dotenv()
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
-
-
-def create_predictions_objects(
-    predictions: OverallFilePredictions,
-    ground_truth_path: Path | None,
-) -> tuple[OverallFilePredictions, dict]:
-    """Create predictions objects from the predictions and evaluate them against the ground truth.
-
-    Args:
-        predictions (OverallFilePredictions): The predictions objects.
-        ground_truth_path (Path | None): The path to the ground truth file.
-
-    Returns:
-        tuple[OverallFilePredictions, dict]: The predictions objects and the number of ground truth values per
-                                                 file.
-    """
-    if ground_truth_path and ground_truth_path.exists():  # for inference no ground truth is available
-        ground_truth = GroundTruth(ground_truth_path)
-        ground_truth_is_present = True
-    else:
-        logging.warning("Ground truth file not found.")
-        ground_truth_is_present = False
-        return predictions, {}
-
-    number_of_truth_values = {}
-    for file_predictions in predictions.file_predictions_list:
-        if ground_truth_is_present:
-            ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
-            if ground_truth_for_file:
-                file_predictions.evaluate(ground_truth_for_file)
-                number_of_truth_values[file_predictions.file_name] = len(ground_truth_for_file["layers"])
-
-    return predictions, number_of_truth_values
 
 
 def evaluate(
