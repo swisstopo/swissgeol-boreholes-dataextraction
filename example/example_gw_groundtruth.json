@@ -1,0 +1,56 @@
+{
+    "example_borehole_profile.pdf": {
+        "groundwater": [
+            {
+                "date": "2016-04-18",
+                "depth": 2.22,
+                "elevation": 448.07
+            },
+            {
+                "date": "2016-04-20",
+                "depth": 3.22,
+                "elevation": 447.07
+            }
+        ],
+        "layers": [],
+        "metadata": {
+            "coordinates": {
+                "E": 615790,
+                "N": 157500
+            },
+            "drilling_date": "1995-09-03",
+            "drilling_methods": null,
+            "original_name": "",
+            "project_name": "",
+            "reference_elevation": 788.6,
+            "total_depth": null
+        }
+    },
+    "example_borehole_profile_2.pdf": {
+        "groundwater": [
+            {
+                "date": "2016-04-18",
+                "depth": 2.22,
+                "elevation": 448.07
+            },
+            {
+                "date": "2016-04-20",
+                "depth": 3.22,
+                "elevation": 447.07
+            }
+        ],
+        "layers": [],
+        "metadata": {
+            "coordinates": {
+                "E": 615790,
+                "N": 157500
+            },
+            "drilling_date": "1995-09-03",
+            "drilling_methods": null,
+            "original_name": "",
+            "project_name": "",
+            "reference_elevation": 788.6,
+            "total_depth": null
+        }
+    }
+}

@@ -12,8 +12,9 @@ from pathlib import Path
 import fitz
 import numpy as np
 import skimage as ski
+from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.data_extractor.utility import get_lines_near_rect
-from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformationOnPage, GroundwaterLevelExtractor
+from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterLevelExtractor
 from stratigraphy.lines.line import TextLine
 from stratigraphy.metadata.elevation_extraction import Elevation
 
@@ -39,7 +40,7 @@ def get_groundwater_from_illustration(
     lines: list[TextLine],
     page_number: int,
     terrain_elevation: Elevation | None,
-) -> list[GroundwaterInformationOnPage]:
+) -> tuple[list[FeatureOnPage[Groundwater]], list[float]]:
     """Extracts the groundwater information from an illustration.
 
     Args:
@@ -49,7 +50,8 @@ def get_groundwater_from_illustration(
         terrain_elevation (Elevation | None): The elevation of the terrain.
 
     Returns:
-        list[GroundwaterInformationOnPage]: the extracted groundwater information
+        list[FeatureOnPage[Groundwater]]: the extracted groundwater information
+        list[float]: the confidence of the extraction
     """
     extracted_groundwater_list = []
     confidence_list = []

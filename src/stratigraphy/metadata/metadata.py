@@ -162,7 +162,7 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
 
 
 @dataclass
-class BoreholeMetadataList(metaclass=abc.ABCMeta):
+class OverallBoreholeMetadata:
     """Metadata for stratigraphy data.
 
     This class is a list of BoreholeMetadata objects. Each object corresponds to a

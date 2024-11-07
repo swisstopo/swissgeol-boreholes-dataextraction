@@ -9,6 +9,7 @@ import fitz
 from stratigraphy.depthcolumn import find_depth_columns
 from stratigraphy.depthcolumn.depthcolumn import DepthColumn
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
+from stratigraphy.layer.layer import IntervalBlockGroup, Layer, LayersOnPage
 from stratigraphy.layer.layer_identifier_column import (
     LayerIdentifierColumn,
     find_layer_identifier_column,
@@ -24,7 +25,6 @@ from stratigraphy.text.textblock import TextBlock, block_distance
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.interval import BoundaryInterval, Interval
 from stratigraphy.util.util import (
-    remove_empty_predictions,
     x_overlap,
     x_overlap_significant_smallest,
 )
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 class ProcessPageResult:
     """The result of processing a single page of a pdf."""
 
-    predictions: list[dict]
+    predictions: LayersOnPage
     depth_material_pairs: list[DepthsMaterialsColumnPairs]
 
 
@@ -44,6 +44,9 @@ def process_page(
     lines: list[TextLine], geometric_lines, language: str, page_number: int, **params: dict
 ) -> ProcessPageResult:
     """Process a single page of a pdf.
+
+    # TODO: Ideally, one function does one thing. This function does a lot of things. It should be split into
+    # smaller functions.
 
     Finds all descriptions and depth intervals on the page and matches them.
 
@@ -115,7 +118,7 @@ def process_page(
             to_delete.append(i)
     filtered_pairs = [item for index, item in enumerate(pairs) if index not in to_delete]
 
-    groups = []  # list of matched depth intervals and text blocks
+    groups: list[IntervalBlockGroup] = []  # list of matched depth intervals and text blocks
     # groups is of the form: [{"depth_interval": BoundaryInterval, "block": TextBlock}]
     if filtered_pairs:  # match depth column items with material description
         for depth_column, material_description_rect in filtered_pairs:
@@ -131,7 +134,6 @@ def process_page(
             )
             for depth_column, material_description_rect in filtered_pairs
         ]
-
     else:
         filtered_depth_material_column_pairs = []
         # Fallback when no depth column was found
@@ -147,22 +149,28 @@ def process_page(
                 params["block_line_ratio"],
                 params["left_line_length_threshold"],
             )
-            groups.extend([{"block": block} for block in description_blocks])
-            filtered_depth_material_column_pairs.append(
-                DepthsMaterialsColumnPairs(
-                    depth_column=None, material_description_rect=material_description_rect, page=page_number
-                )
+            groups.extend([IntervalBlockGroup(block=block, depth_interval=None) for block in description_blocks])
+            filtered_depth_material_column_pairs.extend(
+                [
+                    DepthsMaterialsColumnPairs(
+                        depth_column=None, material_description_rect=material_description_rect, page=page_number
+                    )
+                ]
             )
-    predictions = [
-        (
-            {"material_description": group["block"].to_json(), "depth_interval": group["depth_interval"].to_json()}
-            if "depth_interval" in group
-            else {"material_description": group["block"].to_json()}
-        )
-        for group in groups
-    ]
-    predictions = remove_empty_predictions(predictions)
-    return ProcessPageResult(predictions, filtered_depth_material_column_pairs)
+
+    layer_predictions = LayersOnPage(
+        [
+            Layer(
+                material_description=group.block,
+                depth_interval=BoundaryInterval(start=group.depth_interval.start, end=group.depth_interval.end)
+                if group.depth_interval
+                else None,
+            )
+            for group in groups
+        ]
+    )
+    layer_predictions.remove_empty_predictions()
+    return ProcessPageResult(layer_predictions, filtered_depth_material_column_pairs)
 
 
 def score_column_match(
@@ -173,7 +181,7 @@ def score_column_match(
     Args:
         depth_column (DepthColumn): The depth column.
         material_description_rect (fitz.Rect): The material description rectangle.
-        all_words (list[TextLine] | None, optional): List of the available textlines. Defaults to None.
+        all_words (list[TextWord] | None, optional): List of the available text words. Defaults to None.
 
     Returns:
         float: The score of the match.
@@ -201,7 +209,7 @@ def match_columns(
     geometric_lines: list[Line],
     material_description_rect: fitz.Rect,
     **params: dict,
-) -> list:
+) -> list[IntervalBlockGroup]:
     """Match the depth column entries with the description lines.
 
     This function identifies groups of depth intervals and text blocks that are likely to match.
@@ -216,7 +224,7 @@ def match_columns(
         **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
-        list: The matched depth intervals and text blocks.
+        list[IntervalBlockGroup]: The matched depth intervals and text blocks.
     """
     if isinstance(depth_column, DepthColumn):
         return [
@@ -224,17 +232,17 @@ def match_columns(
             for group in depth_column.identify_groups(
                 description_lines, geometric_lines, material_description_rect, **params
             )
-            for element in transform_groups(group["depth_intervals"], group["blocks"], **params)
+            for element in transform_groups(group.depth_interval, group.block, **params)
         ]
     elif isinstance(depth_column, LayerIdentifierColumn):
         blocks = get_description_blocks_from_layer_identifier(depth_column.entries, description_lines)
-        groups = []
+        groups: list[IntervalBlockGroup] = []
         for block in blocks:
             depth_interval = find_depth_columns.get_depth_interval_from_textblock(block)
             if depth_interval:
-                groups.append({"depth_interval": depth_interval, "block": block})
+                groups.append(IntervalBlockGroup(depth_interval=depth_interval, block=block))
             else:
-                groups.append({"block": block})
+                groups.append(IntervalBlockGroup(depth_interval=None, block=block))
         return groups
     else:
         raise ValueError(
@@ -244,7 +252,7 @@ def match_columns(
 
 def transform_groups(
     depth_intervals: list[Interval], blocks: list[TextBlock], **params: dict
-) -> list[dict[str, Interval | TextBlock]]:
+) -> list[IntervalBlockGroup]:
     """Transforms the text blocks such that their number equals the number of depth intervals.
 
     If there are more depth intervals than text blocks, text blocks are splitted. When there
@@ -257,7 +265,7 @@ def transform_groups(
         **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
-        List[Dict[str, Union[Interval, TextBlock]]]: Pairing of text blocks and depth intervals.
+        List[IntervalBlockGroup]: Pairing of text blocks and depth intervals.
     """
     if len(depth_intervals) == 0:
         return []
@@ -265,7 +273,7 @@ def transform_groups(
         concatenated_block = TextBlock(
             [line for block in blocks for line in block.lines]
         )  # concatenate all text lines within a block; line separation flag does not matter here.
-        return [{"depth_interval": depth_intervals[0], "block": concatenated_block}]
+        return [IntervalBlockGroup(depth_interval=depth_intervals[0], block=concatenated_block)]
     else:
         if len(blocks) < len(depth_intervals):
             blocks = split_blocks_by_textline_length(blocks, target_split_count=len(depth_intervals) - len(blocks))
@@ -275,7 +283,7 @@ def transform_groups(
             depth_intervals.extend([BoundaryInterval(None, None) for _ in range(len(blocks) - len(depth_intervals))])
 
         return [
-            {"depth_interval": depth_interval, "block": block}
+            IntervalBlockGroup(depth_interval=depth_interval, block=block)
             for depth_interval, block in zip(depth_intervals, blocks, strict=False)
         ]
 

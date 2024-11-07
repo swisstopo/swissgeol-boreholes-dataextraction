@@ -23,7 +23,20 @@ logger = logging.getLogger(__name__)
 class Elevation(ExtractedFeature):
     """Abstract class for Elevation Information."""
 
-    elevation: float | None = None  # Elevation relative to the mean sea level
+    elevation: float  # Elevation relative to the mean sea level
+
+    # TODO remove after refactoring to use FeatureOnPage also for elevation
+    rect: fitz.Rect  # The rectangle that contains the extracted information
+    page: int  # The page number of the PDF document
+
+    def __post_init__(self):
+        """Checks if the information is valid."""
+        if not isinstance(self.elevation, float):
+            raise ValueError("Elevation must be a float")
+        if not isinstance(self.page, int):
+            raise ValueError("Page must be an integer")
+        if not isinstance(self.rect, fitz.Rect):
+            raise ValueError("Rect must be a fitz.Rect")
 
     def is_valid(self) -> bool:
         """Checks if the information is valid.
@@ -54,18 +67,23 @@ class Elevation(ExtractedFeature):
         }
 
     @classmethod
-    def from_json(cls, json_elevation: dict) -> "Elevation":
+    def from_json(cls, data: dict) -> "Elevation":
         """Converts a dictionary to an object.
 
         Args:
-            json_elevation (dict): A dictionary representing the elevation information.
+            data (dict): A dictionary representing the elevation information.
 
         Returns:
             Elevation: The elevation information object.
         """
-        elevation = json_elevation["elevation"]
-        page = json_elevation["page"]
-        rect = json_elevation["rect"]
+        elevation = data["elevation"]
+        page = data["page"]
+        rect = data["rect"]
+
+        # Convert to fitz.Rect
+        if rect:
+            rect = fitz.Rect(rect[0], rect[1], rect[2], rect[3])
+
         return cls(elevation=elevation, page=page, rect=rect)
 
 

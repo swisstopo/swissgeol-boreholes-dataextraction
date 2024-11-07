@@ -7,11 +7,13 @@ import fitz
 from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
 from stratigraphy.lines.line import TextLine, TextWord
 from stratigraphy.text.textblock import MaterialDescription, TextBlock
-from stratigraphy.util.interval import AnnotatedInterval, BoundaryInterval
+from stratigraphy.util.interval import AnnotatedInterval, BoundaryInterval, Interval
+from stratigraphy.util.util import parse_text
 
 
+# TODO: make this a subclass of ExtractedFeature (cf. ticket LGVISIUM-79)
 @dataclass
-class LayerPrediction:
+class Layer:
     """A class to represent predictions for a single layer."""
 
     material_description: TextBlock | MaterialDescription
@@ -45,7 +47,7 @@ class LayerPrediction:
         }
 
     @staticmethod
-    def from_json(json_layer_list: list[dict]) -> list["LayerPrediction"]:
+    def from_json(json_layer_list: list[dict]) -> list["Layer"]:
         """Converts a dictionary to an object.
 
         Args:
@@ -54,7 +56,7 @@ class LayerPrediction:
         Returns:
             list[LayerPrediction]: A list of LayerPrediction objects.
         """
-        page_layer_predictions_list: list[LayerPrediction] = []
+        page_layer_predictions_list: list[Layer] = []
 
         # Extract the layer predictions.
         for layer in json_layer_list:
@@ -83,11 +85,11 @@ class LayerPrediction:
                 )
 
                 depth_interval_prediction = BoundaryInterval(start=start, end=end)
-                layer_predictions = LayerPrediction(
+                layer_predictions = Layer(
                     material_description=material_prediction, depth_interval=depth_interval_prediction
                 )
             else:
-                layer_predictions = LayerPrediction(material_description=material_prediction, depth_interval=None)
+                layer_predictions = Layer(material_description=material_prediction, depth_interval=None)
 
             page_layer_predictions_list.append(layer_predictions)
 
@@ -103,5 +105,54 @@ def _create_textblock_object(lines: list[dict]) -> TextBlock:
     Returns:
         TextBlock: The object.
     """
-    text_lines = [TextLine([TextWord(**line)]) for line in lines]
-    return TextBlock(text_lines)
+    lines = [TextLine([TextWord(**line)]) for line in lines]
+    return TextBlock(lines)
+
+
+# TODO: convert to FeatureOnPage[Layer] (cf. ticket LGVISIUM-79)
+@dataclass
+class LayersOnPage:
+    """A class to represent predictions for a single page."""
+
+    layers_on_page: list[Layer]
+
+    def remove_empty_predictions(self) -> None:
+        """Remove empty predictions from the layers on the page."""
+        self.layers_on_page = [
+            layer for layer in self.layers_on_page if parse_text(layer.material_description.text) != ""
+        ]
+
+
+@dataclass
+class LayersInDocument:
+    """A class to represent predictions for a single document."""
+
+    layers_in_document: list[LayersOnPage]
+    filename: str
+
+    def add_layers_on_page(self, layers_on_page: LayersOnPage):
+        """Add layers on a page to the layers in the document.
+
+        Args:
+            layers_on_page (LayersOnPage): The layers on a page to add.
+        """
+        self.layers_in_document.append(layers_on_page)
+
+    def get_all_layers(self) -> list[Layer]:
+        """Get all layers in the document.
+
+        Returns:
+            list[Layer]: All layers in the document.
+        """
+        all_layers = []
+        for layers_on_page in self.layers_in_document:
+            all_layers.extend(layers_on_page.layers_on_page)
+        return all_layers
+
+
+@dataclass
+class IntervalBlockGroup:
+    """A class to represent a group of depth interval blocks."""
+
+    depth_interval: Interval | list[Interval] | None
+    block: TextBlock | list[TextBlock]

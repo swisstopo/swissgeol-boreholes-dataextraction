@@ -115,19 +115,3 @@ def parse_text(text: str) -> str:
     """
     not_alphanum = re.compile(r"[^\w\d]", re.U)
     return not_alphanum.sub("", text).lower()
-
-
-def remove_empty_predictions(predictions: dict) -> dict:
-    """Remove empty predictions from the predictions dictionary.
-
-    Args:
-        predictions (dict): Predictions dictionary.
-
-    Returns:
-        dict: Predictions dictionary without empty predictions.
-    """
-    for layer in predictions:
-        if parse_text(layer["material_description"]["text"]) == "":
-            predictions.remove(layer)
-
-    return predictions

@@ -55,7 +55,7 @@ class Metrics(metaclass=abc.ABCMeta):
             f"{feature_name}_f1": self.f1,
         }
 
-    # TODO: Currently, some other methods for averaging metrics are in the DatasetMetrics class.
+    # TODO: Currently, some other methods for averaging metrics are in the OverallMetrics class.
     # On the long run, we should refactor this to have a single place where these averaging computations are
     # implemented.
     @staticmethod
@@ -128,11 +128,21 @@ class OverallBoreholeMetadataMetrics(metaclass=abc.ABCMeta):
         coordinates_metrics = Metrics.micro_average(
             [metadata.coordinates_metrics for metadata in self.borehole_metadata_metrics]
         )
-        return BoreholeMetadataMetrics(
-            elevation_metrics=elevation_metrics, coordinates_metrics=coordinates_metrics
-        ).to_json()
+        return BoreholeMetadataMetrics(elevation_metrics=elevation_metrics, coordinates_metrics=coordinates_metrics)
 
     def get_document_level_metrics(self) -> pd.DataFrame:
+        """Get metrics aggregated at the document level.
+
+        Returns:
+            pd.DataFrame: A DataFrame indexed by document names with columns:
+                - elevation: F1 score for elevation predictions
+                - coordinate: F1 score for coordinate predictions
+
+        Example:
+                         elevation  coordinate
+            doc1.pdf     1.00      1.00
+            doc2.pdf     1.00      0.00
+        """
         # Get a dataframe per document, concatenate, and sort by index (document name)
         return pd.concat(
             [metadata.get_document_level_metrics() for metadata in self.borehole_metadata_metrics]

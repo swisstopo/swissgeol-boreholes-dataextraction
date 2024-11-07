@@ -1,6 +1,7 @@
 """Classes for evaluating the metadata of a borehole."""
 
 import math
+from pathlib import Path
 from typing import Any
 
 from stratigraphy.benchmark.ground_truth import GroundTruth
@@ -9,33 +10,30 @@ from stratigraphy.evaluation.evaluation_dataclasses import (
     Metrics,
     OverallBoreholeMetadataMetrics,
 )
-from stratigraphy.metadata.metadata import BoreholeMetadataList
+from stratigraphy.metadata.metadata import OverallBoreholeMetadata
 
 
 class MetadataEvaluator:
     """Class for evaluating the metadata of a borehole."""
 
-    metadata_list: BoreholeMetadataList = None
+    metadata_list: OverallBoreholeMetadata = None
     ground_truth: dict[str, Any] = None
 
-    def __init__(self, metadata_list: BoreholeMetadataList, ground_truth_path: str):
+    def __init__(self, metadata_list: OverallBoreholeMetadata, ground_truth_path: Path) -> None:
         """Initializes the MetadataEvaluator object.
 
         Args:
-            metadata_list (BoreholeMetadataList): The metadata to evaluate.
-            ground_truth_path (str): The path to the ground truth file.
+            metadata_list (OverallBoreholeMetadata): Container for multiple borehole metadata
+                objects to evaluate. Contains metadata_per_file for individual boreholes.
+            ground_truth_path (Path): The path to the ground truth file.
         """
-        self.metadata_list = metadata_list
+        self.metadata_list: OverallBoreholeMetadata = metadata_list
 
         # Load the ground truth data for the metadata
         self.metadata_ground_truth = GroundTruth(ground_truth_path)
 
     def evaluate(self) -> OverallBoreholeMetadataMetrics:
-        """Evaluate the metadata of the file against the ground truth.
-
-        Args:
-            ground_truth_path (str): The path to the ground truth file.
-        """
+        """Evaluate the metadata of the file against the ground truth."""
         # Initialize the metadata correctness metrics
         metadata_metrics_list = OverallBoreholeMetadataMetrics()
 

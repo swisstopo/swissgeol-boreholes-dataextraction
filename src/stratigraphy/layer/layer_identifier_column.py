@@ -40,14 +40,24 @@ class LayerIdentifierColumn:
         Args:
             entries (list[LayerIdentifierEntry]): The entries corresponding to the layer indices.
         """
-        self.entries = entries
+        self.entries: list[LayerIdentifierEntry] = entries
 
     @property
     def max_x0(self) -> float:
+        """Get the maximum x0 value of the layer identifier column entries.
+
+        Returns:
+            float: The maximum x0 value of the layer identifier column entries.
+        """
         return max([rect.x0 for rect in self.rects()])
 
     @property
     def min_x1(self) -> float:
+        """Get the minimum x1 value of the layer identifier column entries.
+
+        Returns:
+            float: The minimum x1 value of the layer identifier column entries.
+        """
         return min([rect.x1 for rect in self.rects()])
 
     def rect(self) -> fitz.Rect:
@@ -63,6 +73,11 @@ class LayerIdentifierColumn:
         return fitz.Rect(x0, y0, x1, y1)
 
     def rects(self) -> list[fitz.Rect]:
+        """Get the rectangles of the layer identifier column entries.
+
+        Returns:
+            list[fitz.Rect]: The rectangles of the layer identifier column entries.
+        """
         return [entry.rect for entry in self.entries]
 
     def add_entry(self, entry: LayerIdentifierEntry):
@@ -95,7 +110,16 @@ class LayerIdentifierColumn:
             return True
         return False
 
-    def strictly_contains(self, other):
+    def strictly_contains(self, other: "LayerIdentifierColumn") -> bool:
+        """Check if the layer identifier column strictly contains another layer identifier column.
+
+        Args:
+            other (LayerIdentifierColumn): The other layer identifier column to check if it is strictly contained.
+
+        Returns:
+            bool: True if the layer identifier column strictly contains the other layer identifier column, False
+            otherwise.
+        """
         return len(other.entries) < len(self.entries) and all(
             other_entry in self.entries for other_entry in other.entries
         )
@@ -126,7 +150,30 @@ class LayerIdentifierColumn:
         return {
             "rect": [rect.x0, rect.y0, rect.x1, rect.y1],
             "entries": [entry.to_json() for entry in self.entries],
+            "type": "LayerIdentifierColumn",
         }
+
+    @classmethod
+    def from_json(cls, data: dict) -> "LayerIdentifierColumn":
+        """Converts a dictionary to an object.
+
+        Args:
+            data (dict): A dictionary containing 'entries' list with 'rect' and 'text' fields.
+
+        Raises:
+             ValueError: If the input dictionary is missing required fields or has invalid data.
+
+        Returns:
+            LayerIdentifierColumn: The layer identifier column object.
+        """
+        if not isinstance(data, dict) or "entries" not in data:
+            raise ValueError("Invalid input: data must be a dictionary with 'entries' field")
+
+        return LayerIdentifierColumn(
+            entries=[
+                LayerIdentifierEntry(rect=fitz.Rect(entry["rect"]), text=entry["text"]) for entry in data["entries"]
+            ]
+        )
 
 
 def find_layer_identifier_column_entries(lines: list[TextLine]) -> list[LayerIdentifierEntry]:

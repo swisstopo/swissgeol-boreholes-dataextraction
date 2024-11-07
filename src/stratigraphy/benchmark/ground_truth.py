@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class GroundTruth:
     """Ground truth data for the stratigraphy benchmark."""
 
-    def __init__(self, path: Path):
+    def __init__(self, path: Path) -> None:
         self.ground_truth = defaultdict(dict)
 
         # Load the ground truth data

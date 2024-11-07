@@ -6,6 +6,7 @@ This module defines the DataExtractor class for extracting data from stratigraph
 import logging
 from abc import ABC, ABCMeta, abstractmethod
 from dataclasses import dataclass
+from typing import Generic, Self, TypeVar
 
 import fitz
 import regex
@@ -16,12 +17,8 @@ from stratigraphy.util.util import read_params
 logger = logging.getLogger(__name__)
 
 
-@dataclass(kw_only=True)
 class ExtractedFeature(metaclass=ABCMeta):
     """Class for extracted feature information."""
-
-    rect: fitz.Rect  # The rectangle that contains the extracted information
-    page: int  # The page number of the PDF document
 
     @abstractmethod
     def is_valid(self) -> bool:
@@ -31,6 +28,72 @@ class ExtractedFeature(metaclass=ABCMeta):
             bool: True if the information is valid, otherwise False.
         """
         pass
+
+    @abstractmethod
+    def to_json(self) -> dict:
+        """Converts the object to a dictionary.
+
+        Returns:
+            dict: The object as a dictionary.
+        """
+        pass
+
+    @classmethod
+    @abstractmethod
+    def from_json(cls, data: dict) -> Self:
+        """Converts a dictionary to an object.
+
+        Args:
+            data (dict): A dictionary representing the information.
+
+        Returns:
+            Self: An instance of the class.
+        """
+        pass
+
+
+T = TypeVar("T", bound=ExtractedFeature)
+
+
+@dataclass
+class FeatureOnPage(Generic[T]):
+    """Class for an extracted feature, together with the page and where on that page the feature was extracted from."""
+
+    feature: T
+    rect: fitz.Rect  # The rectangle that contains the extracted information
+    page: int  # The page number of the PDF document
+
+    def to_json(self) -> dict:
+        """Converts the object to a dictionary.
+
+        Returns:
+            dict: The object as a dictionary.
+        """
+        result = self.feature.to_json()
+        result.update(
+            {
+                "page": self.page if self.page else None,
+                "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
+            }
+        )
+        return result
+
+    @classmethod
+    def from_json(cls, data: dict, feature_cls: type[T]) -> Self:
+        """Converts a dictionary to an object.
+
+        Args:
+            data (dict): A dictionary representing the feature on a page information.
+            feature_cls (T): The extracted feature
+
+        Returns:
+            Self: The resulting FeatureOnPage object.
+        """
+        return cls(
+            feature=feature_cls.from_json(data),
+            page=data["page"],
+            rect=fitz.Rect(data["rect"]),
+        )
 
 
 class DataExtractor(ABC):
@@ -70,6 +133,14 @@ class DataExtractor(ABC):
         self.feature_fp_keys = read_params("matching_params.yml")[f"{self.feature_name}_fp_keys"] or []
 
     def preprocess(self, value: str) -> str:
+        """Preprocesses the value before searching for the feature.
+
+        Args:
+            value (str): The value to preprocess.
+
+        Returns:
+            str: The preprocessed value.
+        """
         for old, new in self.preprocess_replacements.items():
             value = value.replace(old, new)
         return value

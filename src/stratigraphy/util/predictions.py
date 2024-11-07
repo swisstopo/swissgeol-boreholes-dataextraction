@@ -1,17 +1,21 @@
 """This module contains classes for predictions."""
 
 import logging
-from collections import Counter
+import os
+from collections.abc import Callable
 from pathlib import Path
 
-import Levenshtein
-
+from stratigraphy.benchmark.ground_truth import GroundTruth
+from stratigraphy.benchmark.metrics import OverallMetrics, OverallMetricsCatalog
+from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
 from stratigraphy.evaluation.evaluation_dataclasses import Metrics, OverallBoreholeMetadataMetrics
+from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
 from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
-from stratigraphy.groundwater.groundwater_extraction import GroundwaterInformation, GroundwaterInformationOnPage
-from stratigraphy.layer.layer import LayerPrediction
-from stratigraphy.metadata.metadata import BoreholeMetadata, BoreholeMetadataList
+from stratigraphy.evaluation.utility import find_matching_layer
+from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument
+from stratigraphy.layer.layer import Layer, LayersInDocument, LayersOnPage
+from stratigraphy.metadata.metadata import BoreholeMetadata, OverallBoreholeMetadata
 from stratigraphy.util.util import parse_text
 
 logger = logging.getLogger(__name__)
@@ -22,18 +26,17 @@ class FilePredictions:
 
     def __init__(
         self,
-        layers: list[LayerPrediction] | None,
+        layers: LayersInDocument,
         file_name: str,
         metadata: BoreholeMetadata,
-        groundwater_entries: list[GroundwaterInformationOnPage] | None,
-        depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs] | None,
+        groundwater: GroundwaterInDocument,
+        depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs],
     ):
-        self.layers: list[LayerPrediction] | None = layers
-        self.depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs] | None = depths_materials_columns_pairs
+        self.layers: LayersInDocument = layers
+        self.depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs] = depths_materials_columns_pairs
         self.file_name: str = file_name
         self.metadata: BoreholeMetadata = metadata
-        self.groundwater_entries: list[GroundwaterInformationOnPage] | None = groundwater_entries
-        self.groundwater_is_correct: dict = {}
+        self.groundwater: GroundwaterInDocument = groundwater
 
     def convert_to_ground_truth(self):
         """Convert the predictions to ground truth format.
@@ -48,7 +51,7 @@ class FilePredictions:
         """
         ground_truth = {self.file_name: {"metadata": self.metadata}}
         layers = []
-        for layer in self.layers:
+        for layer in self.layers.get_all_layers():
             material_description = layer.material_description.text
             depth_interval = {
                 "start": layer.depth_interval.start.value if layer.depth_interval.start else None,
@@ -71,11 +74,8 @@ class FilePredictions:
         Args:
             ground_truth (dict): The ground truth for the file.
         """
+        # TODO: Call the evaluator for Layers instead
         self.evaluate_layers(ground_truth["layers"])
-        groundwater_ground_truth = ground_truth.get("groundwater", [])
-        if groundwater_ground_truth is None:
-            groundwater_ground_truth = []
-        self.evaluate_groundwater(groundwater_ground_truth)
 
     def evaluate_layers(self, ground_truth_layers: list):
         """Evaluate all layers of the predictions against the ground truth.
@@ -84,123 +84,14 @@ class FilePredictions:
             ground_truth_layers (list): The ground truth layers for the file.
         """
         unmatched_layers = ground_truth_layers.copy()
-        for layer in self.layers:
-            match, depth_interval_is_correct = self._find_matching_layer(layer, unmatched_layers)
+        for layer in self.layers.get_all_layers():
+            match, depth_interval_is_correct = find_matching_layer(layer, unmatched_layers)
             if match:
                 layer.material_is_correct = True
                 layer.depth_interval_is_correct = depth_interval_is_correct
             else:
                 layer.material_is_correct = False
                 layer.depth_interval_is_correct = None
-
-    @staticmethod
-    def count_against_ground_truth(values: list, ground_truth: list) -> Metrics:
-        """Count the number of true positives, false positives and false negatives.
-
-        Args:
-            values (list): The values to count.
-            ground_truth (list): The ground truth values.
-
-        Returns:
-            Metrics: The metrics for the values.
-        """
-        # Counter deals with duplicates when doing intersection
-        values_counter = Counter(values)
-        ground_truth_counter = Counter(ground_truth)
-
-        tp = (values_counter & ground_truth_counter).total()  # size of intersection
-        return Metrics(tp=tp, fp=len(values) - tp, fn=len(ground_truth) - tp)
-
-    def evaluate_groundwater(self, groundwater_ground_truth: list):
-        """Evaluate the groundwater information of the file against the ground truth.
-
-        Args:
-            groundwater_ground_truth (list): The ground truth for the file.
-        """
-        ############################################################################################################
-        ### Compute the metadata correctness for the groundwater information.
-        ############################################################################################################
-        gt_groundwater = [
-            GroundwaterInformation.from_json_values(
-                depth=json_gt_data["depth"],
-                date=json_gt_data["date"],
-                elevation=json_gt_data["elevation"],
-            )
-            for json_gt_data in groundwater_ground_truth
-        ]
-
-        self.groundwater_is_correct["groundwater"] = self.count_against_ground_truth(
-            [
-                (
-                    entry.groundwater.depth,
-                    entry.groundwater.format_date(),
-                    entry.groundwater.elevation,
-                )
-                for entry in self.groundwater_entries
-            ],
-            [(entry.depth, entry.format_date(), entry.elevation) for entry in gt_groundwater],
-        )
-        self.groundwater_is_correct["groundwater_depth"] = self.count_against_ground_truth(
-            [entry.groundwater.depth for entry in self.groundwater_entries],
-            [entry.depth for entry in gt_groundwater],
-        )
-        self.groundwater_is_correct["groundwater_elevation"] = self.count_against_ground_truth(
-            [entry.groundwater.elevation for entry in self.groundwater_entries],
-            [entry.elevation for entry in gt_groundwater],
-        )
-        self.groundwater_is_correct["groundwater_date"] = self.count_against_ground_truth(
-            [entry.groundwater.date for entry in self.groundwater_entries],
-            [entry.date for entry in gt_groundwater],
-        )
-
-    @staticmethod
-    def _find_matching_layer(
-        layer: LayerPrediction, unmatched_layers: list[dict]
-    ) -> tuple[dict, bool] | tuple[None, None]:
-        """Find the matching layer in the ground truth.
-
-        Args:
-            layer (LayerPrediction): The layer to match.
-            unmatched_layers (list[dict]): The layers from the ground truth that were not yet matched during the
-                                           current evaluation.
-
-        Returns:
-            tuple[dict, bool] | tuple[None, None]: The matching layer and a boolean indicating if the depth interval
-                                is correct. None if no match was found.
-        """
-        parsed_text = parse_text(layer.material_description.text)
-        possible_matches = [
-            ground_truth_layer
-            for ground_truth_layer in unmatched_layers
-            if Levenshtein.ratio(parsed_text, ground_truth_layer["material_description"]) > 0.9
-        ]
-
-        if not possible_matches:
-            return None, None
-
-        for possible_match in possible_matches:
-            start = possible_match["depth_interval"]["start"]
-            end = possible_match["depth_interval"]["end"]
-
-            if layer.depth_interval is None:
-                pass
-
-            elif (
-                start == 0 and layer.depth_interval.start is None and end == layer.depth_interval.end.value
-            ):  # If not specified differently, we start at 0.
-                unmatched_layers.remove(possible_match)
-                return possible_match, True
-
-            elif (  # noqa: SIM102
-                layer.depth_interval.start is not None and layer.depth_interval.end is not None
-            ):  # In all other cases we do not allow a None value.
-                if start == layer.depth_interval.start.value and end == layer.depth_interval.end.value:
-                    unmatched_layers.remove(possible_match)
-                    return possible_match, True
-
-        match = max(possible_matches, key=lambda x: Levenshtein.ratio(parsed_text, x["material_description"]))
-        unmatched_layers.remove(match)
-        return match, False
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -210,14 +101,12 @@ class FilePredictions:
         """
         return {
             "metadata": self.metadata.to_json(),
-            "layers": [layer.to_json() for layer in self.layers] if self.layers is not None else [],
+            "layers": [layer.to_json() for layer in self.layers.get_all_layers()] if self.layers is not None else [],
             "depths_materials_column_pairs": [dmc_pair.to_json() for dmc_pair in self.depths_materials_columns_pairs]
             if self.depths_materials_columns_pairs is not None
             else [],
             "page_dimensions": self.metadata.page_dimensions,  # TODO: Remove, already in metadata
-            "groundwater": [entry.to_json() for entry in self.groundwater_entries]
-            if self.groundwater_entries is not None
-            else [],
+            "groundwater": self.groundwater.to_json() if self.groundwater is not None else [],
             "file_name": self.file_name,
         }
 
@@ -225,11 +114,11 @@ class FilePredictions:
 class OverallFilePredictions:
     """A class to represent predictions for all files."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initializes the OverallFilePredictions object."""
         self.file_predictions_list: list[FilePredictions] = []
 
-    def add_file_predictions(self, file_predictions: FilePredictions):
+    def add_file_predictions(self, file_predictions: FilePredictions) -> None:
         """Add file predictions to the list of file predictions.
 
         Args:
@@ -237,8 +126,12 @@ class OverallFilePredictions:
         """
         self.file_predictions_list.append(file_predictions)
 
-    def get_metadata_as_dict(self):
-        """Returns the metadata of the predictions as a dictionary."""
+    def get_metadata_as_dict(self) -> dict:
+        """Returns the metadata of the predictions as a dictionary.
+
+        Returns:
+            dict: The metadata of the predictions as a dictionary.
+        """
         return {
             file_prediction.file_name: file_prediction.metadata.to_json()
             for file_prediction in self.file_predictions_list
@@ -265,22 +158,34 @@ class OverallFilePredictions:
         overall_file_predictions = OverallFilePredictions()
         for file_name, file_data in prediction_from_file.items():
             metadata = BoreholeMetadata.from_json(file_data["metadata"], file_name)
-            layers = LayerPrediction.from_json(file_data["layers"])
+
+            layers = Layer.from_json(file_data["layers"])
+            layers_on_page = LayersOnPage(layers_on_page=layers)
+            layers_in_doc = LayersInDocument(
+                layers_in_document=[layers_on_page], filename=file_name
+            )  # TODO: This is a bit of a hack as we do not seem to save the page of the layer
+
             depths_materials_columns_pairs = [
                 DepthsMaterialsColumnPairs.from_json(dmc_pair)
                 for dmc_pair in file_data["depths_materials_column_pairs"]
             ]
-            groundwater_entries = [GroundwaterInformationOnPage.from_json(entry) for entry in file_data["groundwater"]]
+
+            groundwater_entries = [FeatureOnPage.from_json(entry, Groundwater) for entry in file_data["groundwater"]]
+            groundwater_in_document = GroundwaterInDocument(groundwater=groundwater_entries, filename=file_name)
             overall_file_predictions.add_file_predictions(
                 FilePredictions(
-                    layers=layers,
+                    layers=layers_in_doc,
                     file_name=file_name,
                     metadata=metadata,
                     depths_materials_columns_pairs=depths_materials_columns_pairs,
-                    groundwater_entries=groundwater_entries,
+                    groundwater=groundwater_in_document,
                 )
             )
         return overall_file_predictions
+
+    ############################################################################################################
+    ### Evaluation methods
+    ############################################################################################################
 
     def evaluate_metadata_extraction(self, ground_truth_path: Path) -> OverallBoreholeMetadataMetrics:
         """Evaluate the metadata extraction of the predictions against the ground truth.
@@ -288,8 +193,176 @@ class OverallFilePredictions:
         Args:
             ground_truth_path (Path): The path to the ground truth file.
         """
-        metadata_per_file: BoreholeMetadataList = BoreholeMetadataList()
+        metadata_per_file: OverallBoreholeMetadata = OverallBoreholeMetadata()
 
         for file_prediction in self.file_predictions_list:
             metadata_per_file.add_metadata(file_prediction.metadata)
         return MetadataEvaluator(metadata_per_file, ground_truth_path).evaluate()
+
+    def evaluate_borehole_extraction(self, ground_truth_path: Path) -> OverallMetricsCatalog | None:
+        """Evaluate the borehole extraction predictions.
+
+        Args:
+            ground_truth_path (Path): The path to the ground truth file.
+
+        Returns:
+            OverallMetricsCatalog: A OverallMetricsCatalog that maps a metrics name to the corresponding
+            OverallMetrics object. If no ground truth is available, None is returned.
+        """
+        ############################################################################################################
+        ### Load the ground truth data for the borehole extraction
+        ############################################################################################################
+        ground_truth = None
+        if ground_truth_path and os.path.exists(ground_truth_path):  # for inference no ground truth is available
+            ground_truth = GroundTruth(ground_truth_path)
+        else:
+            logger.warning("Ground truth file not found.")
+
+        ############################################################################################################
+        ### Evaluate the borehole extraction
+        ############################################################################################################
+        number_of_truth_values = {}
+        for file_predictions in self.file_predictions_list:
+            if ground_truth:
+                ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
+                if ground_truth_for_file:
+                    file_predictions.evaluate(ground_truth_for_file)
+                    number_of_truth_values[file_predictions.file_name] = len(ground_truth_for_file["layers"])
+
+        if number_of_truth_values:
+            all_metrics = self.evaluate_layer_extraction(number_of_truth_values)
+
+            groundwater_entries = [file_prediction.groundwater for file_prediction in self.file_predictions_list]
+            overall_groundwater_metrics = GroundwaterEvaluator(groundwater_entries, ground_truth_path).evaluate()
+            all_metrics.groundwater_metrics = overall_groundwater_metrics.groundwater_metrics_to_overall_metrics()
+            all_metrics.groundwater_depth_metrics = (
+                overall_groundwater_metrics.groundwater_depth_metrics_to_overall_metrics()
+            )
+            return all_metrics
+        else:
+            logger.warning("Ground truth file not found. Skipping evaluation.")
+            return None
+
+    def evaluate_layer_extraction(self, number_of_truth_values: dict) -> OverallMetricsCatalog:
+        """Calculate F1, precision and recall for the predictions.
+
+        Calculate F1, precision and recall for the individual documents as well as overall.
+        The individual document metrics are returned as a DataFrame.
+
+        Args:
+            number_of_truth_values (dict): The number of layer ground truth values per file.
+
+        Returns:
+            OverallMetricsCatalog: A dictionary that maps a metrics name to the corresponding OverallMetrics object
+        """
+        # create predictions by language
+        languages = set(fp.metadata.language for fp in self.file_predictions_list)
+        predictions_by_language = {language: OverallFilePredictions() for language in languages}
+
+        all_metrics = OverallMetricsCatalog(languages=languages)
+        all_metrics.layer_metrics = get_layer_metrics(self, number_of_truth_values)
+        all_metrics.depth_interval_metrics = get_depth_interval_metrics(self)
+
+        for file_predictions in self.file_predictions_list:
+            language = file_predictions.metadata.language
+            if language in predictions_by_language:
+                predictions_by_language[language].add_file_predictions(file_predictions)
+
+        for language, language_predictions in predictions_by_language.items():
+            language_number_of_truth_values = {
+                prediction.file_name: number_of_truth_values[prediction.file_name]
+                for prediction in language_predictions.file_predictions_list
+            }
+
+            setattr(
+                all_metrics,
+                f"{language}_layer_metrics",
+                get_layer_metrics(language_predictions, language_number_of_truth_values),
+            )
+            setattr(
+                all_metrics, f"{language}_depth_interval_metrics", get_depth_interval_metrics(language_predictions)
+            )
+
+        logger.info("Macro avg:")
+        logger.info(
+            "F1: %.1f%%, precision: %.1f%%, recall: %.1f%%, depth_interval_precision: %.1f%%",
+            all_metrics.layer_metrics.macro_f1() * 100,
+            all_metrics.layer_metrics.macro_precision() * 100,
+            all_metrics.layer_metrics.macro_recall() * 100,
+            all_metrics.depth_interval_metrics.macro_precision() * 100,
+        )
+
+        return all_metrics
+
+
+def calculate_metrics(
+    predictions: OverallFilePredictions,
+    per_layer_filter: Callable[[Layer], bool],
+    per_layer_condition: Callable[[Layer], bool],
+    number_of_truth_values: dict[str, int] | None = None,
+    per_layer_action: Callable[[Layer], None] | None = None,
+) -> OverallMetrics:
+    """Calculate metrics based on a condition per layer, after applying a filter.
+
+    Args:
+        predictions (OverallFilePredictions): The predictions.
+        per_layer_filter (Callable[[LayerPrediction], bool]): Function to filter layers to consider.
+        per_layer_condition (Callable[[LayerPrediction], bool]): Function that returns True if the layer is a hit.
+        number_of_truth_values (Optional[Dict[str, int]]): Ground truth counts per file (required for 'fn'
+            calculation).
+        per_layer_action (Optional[Callable[[LayerPrediction], None]]): Optional action to perform per layer.
+
+    Returns:
+        OverallMetrics: The calculated metrics.
+    """
+    overall_metrics = OverallMetrics()
+
+    for file_prediction in predictions.file_predictions_list:
+        hits = 0
+        total_predictions = 0
+
+        for layer in file_prediction.layers.get_all_layers():
+            if per_layer_action:
+                per_layer_action(layer)
+            if per_layer_filter(layer):
+                total_predictions += 1
+                if per_layer_condition(layer):
+                    hits += 1
+
+        fn = 0
+        if number_of_truth_values is not None:
+            fn = number_of_truth_values.get(file_prediction.file_name, 0) - hits
+
+        if total_predictions > 0:
+            overall_metrics.metrics[file_prediction.file_name] = Metrics(
+                tp=hits,
+                fp=total_predictions - hits,
+                fn=fn,
+            )
+
+    return overall_metrics
+
+
+def get_layer_metrics(predictions: OverallFilePredictions, number_of_truth_values: dict) -> OverallMetrics:
+    """Calculate metrics for layer predictions."""
+
+    def per_layer_action(layer):
+        if parse_text(layer.material_description.text) == "":
+            logger.warning("Empty string found in predictions")
+
+    return calculate_metrics(
+        predictions=predictions,
+        per_layer_filter=lambda layer: True,
+        per_layer_condition=lambda layer: layer.material_is_correct,
+        number_of_truth_values=number_of_truth_values,
+        per_layer_action=per_layer_action,
+    )
+
+
+def get_depth_interval_metrics(predictions: OverallFilePredictions) -> OverallMetrics:
+    """Calculate metrics for depth interval predictions."""
+    return calculate_metrics(
+        predictions=predictions,
+        per_layer_filter=lambda layer: layer.material_is_correct and layer.depth_interval_is_correct is not None,
+        per_layer_condition=lambda layer: layer.depth_interval_is_correct,
+    )
