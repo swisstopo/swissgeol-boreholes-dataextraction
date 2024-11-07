@@ -20,10 +20,16 @@ TEST_PDF_KEY = Path("sample.pdf")
 TEST_PDF_PATH = Path(__file__).parent.parent / "example" / "example_borehole_profile.pdf"
 TEST_PNG_KEY = Path("dataextraction/sample-1.png")
 TEST_PNG_PATH = Path(__file__).parent.parent / "example" / "sample-1.png"
+
 TEST_ROTATED_PNG_KEY = Path("dataextraction/16132-1.png")
 TEST_ROTATED_PNG_PATH = Path(__file__).parent.parent / "example" / "16132-1.png"
 TEST_ROTATED_PDF_KEY = Path("16132.pdf")
 TEST_ROTATED_PDF_PATH = Path(__file__).parent.parent / "example" / "16132.pdf"  # Rotated PDF of 270 degrees
+
+TEST_CLIPPING_BEHAVIOR_PDF_PATH = Path(__file__).parent.parent / "example" / "clipping_test.pdf"
+TEST_CLIPPING_BEHAVIOR_PDF_KEY = Path("clipping_test.pdf")
+TEST_CLIPPING_BEHAVIOR_PNG_PATH = Path(__file__).parent.parent / "example" / "clipping_test-1.png"
+TEST_CLIPPING_BEHAVIOR_PNG_KEY = Path("dataextraction/clipping_test-1.png")
 
 
 def get_default_small_coordinate_request():
@@ -63,6 +69,11 @@ def upload_test_pdf(s3_client):
     s3_client.upload_file(
         Filename=str(TEST_ROTATED_PDF_PATH), Bucket=config.test_bucket_name, Key=str(TEST_ROTATED_PDF_KEY)
     )
+    s3_client.upload_file(
+        Filename=str(TEST_CLIPPING_BEHAVIOR_PDF_PATH),
+        Bucket=config.test_bucket_name,
+        Key=str(TEST_CLIPPING_BEHAVIOR_PDF_KEY),
+    )
 
 
 @pytest.fixture(scope="function")
@@ -71,6 +82,11 @@ def upload_test_png(s3_client, upload_test_pdf):
     s3_client.upload_file(Filename=str(TEST_PNG_PATH), Bucket=config.test_bucket_name, Key=str(TEST_PNG_KEY))
     s3_client.upload_file(
         Filename=str(TEST_ROTATED_PNG_PATH), Bucket=config.test_bucket_name, Key=str(TEST_ROTATED_PNG_KEY)
+    )
+    s3_client.upload_file(
+        Filename=str(TEST_CLIPPING_BEHAVIOR_PNG_PATH),
+        Bucket=config.test_bucket_name,
+        Key=str(TEST_CLIPPING_BEHAVIOR_PNG_KEY),
     )
 
 
@@ -130,6 +146,111 @@ def test_extract_text_success(test_client: TestClient, upload_test_pdf, upload_t
     assert json_response["text"] == target_text
 
 
+def test_clipping_behavior(test_client: TestClient, upload_test_pdf, upload_test_png):
+    """Test the extract_data endpoint with a valid request."""
+    ####################################################################################################
+    ### Extract Data on Normal PDF with bounding box with all text inside
+    ####################################################################################################
+    target_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut"
+
+    request = ExtractDataRequest(
+        filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
+        page_number=1,
+        bbox={"x0": 311, "y0": 269, "x1": 821, "y1": 704},  # pixels
+        format=FormatTypes.TEXT,
+    )
+    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    assert response.status_code == 200
+    json_response = response.json()
+    assert "bbox" in json_response
+    assert json_response["text"] == target_text
+
+    ####################################################################################################
+    ### Extract Data on Normal PDF with bounding box with text on the boundary (e.g., the bounding box line is on the
+    ### text)
+    ####################################################################################################
+    target_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut"
+
+    request = ExtractDataRequest(
+        filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
+        page_number=1,
+        bbox={"x0": 311, "y0": 299, "x1": 813, "y1": 704},  # pixels
+        format=FormatTypes.TEXT,
+    )
+    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    assert response.status_code == 200
+    json_response = response.json()
+    assert "bbox" in json_response
+    assert json_response["text"] == target_text
+
+    ####################################################################################################
+    ### Extract Data on Normal PDF with bounding box with only a few words selected out of the text.
+    ### Here the text was done with multiple Text Boxes (e.g., each line is a different Text Box).
+    ####################################################################################################
+    target_text = "Lorem ipsum"
+
+    request = ExtractDataRequest(
+        filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
+        page_number=1,
+        bbox={"x0": 311, "y0": 269, "x1": 611, "y1": 336},  # pixels
+        format=FormatTypes.TEXT,
+    )
+    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    assert response.status_code == 200
+    json_response = response.json()
+    assert "bbox" in json_response
+    assert json_response["text"] == target_text
+
+    ####################################################################################################
+    ### Extract Data on Normal PDF with bounding box with only a few words selected out of the text.
+    ### Here the text was done with one Text Box.
+    ####################################################################################################
+    target_text = "Lorem ipsum"
+
+    request = ExtractDataRequest(
+        filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
+        page_number=1,
+        bbox={"x0": 1848, "y0": 242, "x1": 2145, "y1": 303},  # pixels
+        format=FormatTypes.TEXT,
+    )
+    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    assert response.status_code == 200
+    json_response = response.json()
+    assert "bbox" in json_response
+    assert json_response["text"] == target_text
+
+    ####################################################################################################
+    ### Extract Data on Normal PDF with bounding box with only one part of one word selected out of the text.
+    ####################################################################################################
+    target_text = "Lo"
+
+    request = ExtractDataRequest(
+        filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
+        page_number=1,
+        bbox={"x0": 315, "y0": 281, "x1": 371, "y1": 330},  # pixels
+        format=FormatTypes.TEXT,
+    )
+    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    assert response.status_code == 200
+    json_response = response.json()
+    assert "bbox" in json_response
+    assert json_response["text"] == target_text
+
+    target_text = "Lorem"
+
+    request = ExtractDataRequest(
+        filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
+        page_number=1,
+        bbox={"x0": 315, "y0": 300, "x1": 465, "y1": 330},  # pixels
+        format=FormatTypes.TEXT,
+    )
+    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    assert response.status_code == 200
+    json_response = response.json()
+    assert "bbox" in json_response
+    assert json_response["text"] == target_text
+
+
 def test_extract_text_empty(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test the extract_data endpoint with a valid request."""
     request = ExtractDataRequest(
@@ -147,6 +268,9 @@ def test_extract_text_empty(test_client: TestClient, upload_test_pdf, upload_tes
 
 def test_extract_coordinate_success(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test the extract_data endpoint with a valid request."""
+    ####################################################################################################
+    ### Extract Data on Normal PDF with LV03 coordinates
+    ####################################################################################################
     request = get_default_coordinate_request()
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
     assert response.status_code == 200
@@ -156,6 +280,42 @@ def test_extract_coordinate_success(test_client: TestClient, upload_test_pdf, up
     assert json_response["coordinates"]["east"] == 615790
     assert json_response["coordinates"]["north"] == 157500
     assert json_response["coordinates"]["projection"] == "LV03"
+
+    ####################################################################################################
+    ### Extract Data on Rotated PDF with LV03 coordinates
+    ####################################################################################################
+    request = ExtractDataRequest(
+        filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
+        page_number=1,
+        bbox={"x0": 1625, "y0": 900, "x1": 2819, "y1": 968},  # pixels
+        format=FormatTypes.COORDINATES,
+    )
+    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    assert response.status_code == 200
+    json_response = response.json()
+    assert "bbox" in json_response
+    assert "coordinates" in json_response
+    assert json_response["coordinates"]["east"] == 684592.0
+    assert json_response["coordinates"]["north"] == 252857.0
+    assert json_response["coordinates"]["projection"] == "LV03"
+
+    ####################################################################################################
+    ### Extract Data on Rotated PDF with LV95 coordinates
+    ####################################################################################################
+    request = ExtractDataRequest(
+        filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
+        page_number=1,
+        bbox={"x0": 1625, "y0": 1000, "x1": 2819, "y1": 1068},  # pixels
+        format=FormatTypes.COORDINATES,
+    )
+    response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
+    assert response.status_code == 200
+    json_response = response.json()
+    assert "bbox" in json_response
+    assert "coordinates" in json_response
+    assert json_response["coordinates"]["east"] == 2682834.0
+    assert json_response["coordinates"]["north"] == 1253400.0
+    assert json_response["coordinates"]["projection"] == "LV95"
 
 
 def test_incomplete_request(test_client: TestClient, upload_test_pdf, upload_test_png):
@@ -200,7 +360,7 @@ def test_invalid_bbox(test_client: TestClient, upload_test_pdf, upload_test_png)
     request_json["bbox"] = {"x0": 0, "y0": 0, "x1": 100, "y1": -100.0}
     response = test_client.post("/api/V1/extract_data", json=request_json)
     assert response.status_code == 400
-    assert response.json() == {"detail": "Bounding box coordinate must be a positive integer"}
+    assert response.json() == {"detail": "Bounding box coordinates must be positive"}
 
 
 def test_invalid_pdf(test_client: TestClient, upload_test_pdf, upload_test_png):

@@ -120,7 +120,7 @@ class GroundwaterEvaluator:
                 groundwater_elevation_metrics=groundwater_elevation_metrics,
                 groundwater_date_metrics=groundwater_date_metrics,
                 filename=filename,
-            )  # TODO: This clashes with the OverallMetrics object
+            )
 
             overall_groundwater_metrics.add_groundwater_metrics(file_groundwater_metrics)
 

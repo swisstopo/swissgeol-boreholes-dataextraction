@@ -61,7 +61,7 @@ class OverallMetrics:
 class OverallMetricsCatalog:
     """Keeps track of all different relevant metrics that are computed for a dataset."""
 
-    def __init__(self, languages: list[str]):
+    def __init__(self, languages: set[str]):
         self.layer_metrics = OverallMetrics()
         self.depth_interval_metrics = OverallMetrics()
         self.groundwater_metrics = OverallMetrics()

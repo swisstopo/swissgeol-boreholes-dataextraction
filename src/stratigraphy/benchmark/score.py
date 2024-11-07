@@ -19,36 +19,6 @@ logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logg
 logger = logging.getLogger(__name__)
 
 
-def create_predictions_objects(
-    predictions: OverallFilePredictions,
-    ground_truth_path: Path | None,
-) -> tuple[OverallFilePredictions, dict]:
-    """Create predictions objects from the predictions and evaluate them against the ground truth.
-
-    Args:
-        predictions (OverallFilePredictions): The predictions objects.
-        ground_truth_path (Path | None): The path to the ground truth file.
-
-    Returns:
-        tuple[OverallFilePredictions, dict]: The predictions objects and the number of ground truth values per
-                                                 file.
-    """
-    if not (ground_truth_path and ground_truth_path.exists()):  # for inference no ground truth is available
-        logging.warning("Ground truth file not found.")
-        return predictions, {}
-
-    ground_truth = GroundTruth(ground_truth_path)
-
-    number_of_truth_values = {}
-    for file_predictions in predictions.file_predictions_list:
-        ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
-        if ground_truth_for_file:
-            file_predictions.evaluate(ground_truth_for_file)
-            number_of_truth_values[file_predictions.file_name] = len(ground_truth_for_file["layers"])
-
-    return predictions, number_of_truth_values
-
-
 def evaluate(
     predictions: OverallFilePredictions, ground_truth_path: Path, temp_directory: Path
 ) -> None | pd.DataFrame:
