@@ -228,16 +228,15 @@ def start_pipeline(
 
                 # Save the predictions to the overall predictions object
                 # Initialize common variables
-                groundwater_entries = None
+                groundwater_entries = GroundwaterInDocument(filename=filename, groundwater=[])
                 layers_in_document = LayersInDocument([], filename)
-                depths_materials_columns_pairs = None
+                depths_materials_columns_pairs = []
 
                 if part == "all":
                     # Extract the groundwater levels
                     groundwater_entries = GroundwaterInDocument.from_document(doc, metadata.elevation)
 
                     # Extract the layers
-                    depths_materials_column_pairs = []
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
                         logger.info("Processing page %s", page_number)
@@ -263,7 +262,7 @@ def start_pipeline(
                             layer_predictions = process_page_results.predictions
 
                         layers_in_document.layers.extend(layer_predictions)
-                        depths_materials_column_pairs.extend(process_page_results.depth_material_pairs)
+                        depths_materials_columns_pairs.extend(process_page_results.depth_material_pairs)
 
                         if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
                             if not mlflow_tracking:
