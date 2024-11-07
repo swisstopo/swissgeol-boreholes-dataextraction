@@ -232,7 +232,7 @@ class ExtractDataRequest(ABC, BaseModel):
         ...,
         description="""Path to the input PDF document file that contains the data to be extracted. This should be
         a valid file path, and the file should be accessible to the API.""",
-        example=Path("document.png"),
+        example=Path("document.pdf"),
     )
     page_number: int = Field(
         ...,
