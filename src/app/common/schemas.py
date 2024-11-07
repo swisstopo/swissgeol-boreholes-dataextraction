@@ -323,7 +323,7 @@ class ExtractCoordinatesResponse(ExtractDataResponse):
 
     coordinates: Coordinates = Field(
         ...,
-        description="""Geographical coordinates extracted from the document, including east, north values, page number,
+        description="""Geographical coordinates extracted from the document, including east and north values, 
         and projection type.""",
         example={"east": 1.0, "north": 2.0, "projection": "LV95"},
     )
