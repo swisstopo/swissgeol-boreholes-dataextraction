@@ -88,6 +88,9 @@ def post_extract_data(
     or number, then this character is added to the extracted text. This behavior is consistent with the
     clipping behavior of the `PyMuPDF` library.
 
+    ### Prerequisites
+    Ensure that the PDF file has been processed by the create_pngs endpoint first.
+
     ### Request Body
     - **extract_data_request**: Instance of `ExtractDataRequest`, containing file details, page number, bounding
     box, and data format. The bounding box in PNG coordinates helps locate the region to extract data from.

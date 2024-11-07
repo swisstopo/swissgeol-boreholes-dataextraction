@@ -59,16 +59,9 @@ class PNGResponse(BaseModel):
 
     keys: list[str] = Field(
         ...,
-        description="""
-            List of unique identifiers (keys) for the generated PNG files stored in the S3 bucket. Each key allows 
-            access to a specific file within the bucket.
-        """,
-        example=[
-            "dataextraction/file1-1.png",
-            "dataextraction/file1-2.png",
-            "dataextraction/file2-1.png",
-            "dataextraction/file3-1.png",
-        ],
+        description="""List of unique identifiers (keys) for the generated PNG files stored in the S3 bucket. Each key 
+        allows access to a specific file within the bucket.""",
+        example=["dataextraction/file1-1.png", "dataextraction/file1-2.png", "dataextraction/file1-3.png"],
     )
 
 
@@ -90,20 +83,18 @@ class BoundingBox(BaseModel):
 
     This schema represents the coordinates of the box’s corners, which can be used
     to specify an area of interest in image processing tasks. Coordinates are
-    defined with the origin at the top-left of the image.
+    defined with the origin at the top-left of the image. Coordinates are in pixels.
     """
 
     x0: float = Field(
         ...,
-        description="""
-            The x-coordinate of the top-left corner of the bounding box. This value marks the horizontal starting 
-            point of the box.
-        """,
+        description="""The x-coordinate of the top-left corner of the bounding box. This value marks the 
+        horizontal starting point of the box.""",
         example=0.0,
     )
     y0: float = Field(
         ...,
-        description=""""
+        description="""
             The y-coordinate of the top-left corner of the bounding box. This value marks the vertical starting 
             point of the box.
         """,
@@ -111,18 +102,14 @@ class BoundingBox(BaseModel):
     )
     x1: float = Field(
         ...,
-        description="""
-            The x-coordinate of the bottom-right corner of the bounding box. This value marks the horizontal 
-            endpoint of the box.
-        """,
+        description="""The x-coordinate of the bottom-right corner of the bounding box. This value marks the 
+        horizontal endpoint of the box.""",
         example=100.0,
     )
     y1: float = Field(
         ...,
-        description="""
-            The y-coordinate of the bottom-right corner of the bounding box. This value marks the vertical 
-            endpoint of the box.
-        """,
+        description="""The y-coordinate of the bottom-right corner of the bounding box. This value marks the vertical 
+        endpoint of the box.""",
         example=100.0,
     )
 
@@ -188,31 +175,23 @@ class Coordinates(BaseModel):
     """Coordinates schema for representing geographical data points.
 
     This schema defines the format for specifying location data using east/north coordinates
-    along with the projection system used for geo-referencing.
+    along with the projection system used.
     """
 
     east: float = Field(
         ...,
-        description="""
-            Easting coordinate, representing the horizontal position of the point. The value should be in the 
-            units of the specified projection system.
-        """,
+        description="""Easting coordinate. The value should be in the units of the specified projection system.""",
         example=1.0,
     )
     north: float = Field(
         ...,
-        description="""
-            Northing coordinate, representing the vertical position of the point. The value should be in the 
-            units of the specified projection system.
-        """,
+        description="""Northing coordinate. The value should be in the units of the specified projection system.""",
         example=2.0,
     )
     projection: str = Field(
         ...,
-        description="""
-            Projection system used to reference the coordinates. This defines the coordinate reference system, 
-            such as 'LV95' for Swiss coordinate systems.
-        """,
+        description="""Projection system used to reference the coordinates. This defines the coordinate reference
+        system, such as 'LV95' for Swiss coordinate systems.""",
         example="LV95",
     )
 
@@ -220,18 +199,19 @@ class Coordinates(BaseModel):
 class ExtractDataRequest(ABC, BaseModel):
     """Request schema for the `extract_data` endpoint.
 
+    ** Requirements:**
+    Before using this schema, ensure that the PDF file has been processed by the create_pngs endpoint first.
+
     **Coordinate Systems:**
     - **PNG coordinates:** Pixels are measured from the top-left corner (0, 0), where x increases rightward
     and y downward.
-    - **PDF coordinates:** Also measured from the top-left corner (0, 0), though any transformations between
-    PDF and PNG coordinates are managed internally by the `BoundingBox.rescale` method.
 
     ### Fields
     Each field below includes inline examples to aid users in creating requests. See `json_schema_extra`
     for a complete example.
 
     **Attributes:**
-    - **filename** (`Path`): Path to the file (PNG or PDF). _Example_: `"document.png"`
+    - **filename** (`Path`): Path to the PDF file. _Example_: `"document.pdf"`
     - **page_number** (`int`): Target page for data extraction. This is a 1-based index. _Example_: `1`
     - **bbox** (`BoundingBox`): Bounding box for the extraction area, in PNG coordinates. Origin is the
     top-left, with x increasing rightward and y increasing downward.
@@ -244,9 +224,7 @@ class ExtractDataRequest(ABC, BaseModel):
     - **Page Number Validator:** Confirms page number is positive.
     - **Format Validator:** Checks format is valid as per `FormatTypes`.
 
-
-    The bounding box should be provided in PNG coordinates. Any necessary coordinate transformations between PNG
-    and PDF are handled internally using the BoundingBox.rescale method.
+    The bounding box should be provided in PNG coordinates.
 
     Each field in the Pydantic model can have an example parameter, which provides an inline
     example for that specific field.
@@ -254,36 +232,29 @@ class ExtractDataRequest(ABC, BaseModel):
 
     filename: Path = Field(
         ...,
-        description="""
-            Path to the input document file (PNG or PDF) that contains the data to be extracted. This should be
-            a valid file path, and the file should be accessible to the API.
-        """,
+        description="""Path to the input PDF document file that contains the data to be extracted. This should be
+        a valid file path, and the file should be accessible to the API.""",
         example=Path("document.png"),
     )
     page_number: int = Field(
         ...,
-        description="""
-            Page number within the document where the extraction is to be performed. This is a 1-based 
-            index (e.g., 1 for the first page), applicable for multi-page files like PDFs.
-        """,
+        description="""Page number within the document where the extraction is to be performed. This is a 1-based 
+        index (e.g., 1 for the first page), applicable for multi-page files like PDFs.""",
         example=1,
     )
     bbox: BoundingBox = Field(
         ...,
-        description="""
-            Bounding box defining the area for data extraction within the PNG image. The box is specified in 
-            pixels with the top-left as the origin (0,0), where x increases to the right and y increases 
-            downward. This box should be provided in PNG coordinates, and any transformations to PDF
-            coordinates are managed internally.
+        description="""Bounding box defining the area for data extraction within the PNG version of the specified 
+        PDF file. The box is specified in pixels with the top-left as the origin (0,0), where x increases to the 
+        right and y increases downward. This box should be provided in PNG coordinates, and any 
+        transformations to PDF coordinates are managed internally.
         """,
         example={"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0},
     )
     format: FormatTypes = Field(
         ...,
-        description="""
-            Specifies the desired format for extracted data, allowing for options like `coordinates` or other
-            defined `FormatTypes` values. This dictates the structure of the output returned by the API.
-        """,
+        description="""Specifies the desired format for extracted data, allowing for options like `coordinates` or 
+        other defined `FormatTypes` values. This dictates the structure of the output returned by the API.""",
         example=FormatTypes.COORDINATES.value,
     )
 
@@ -335,10 +306,8 @@ class ExtractDataResponse(ABC, BaseModel):
 
     bbox: BoundingBox = Field(
         ...,
-        description="""
-            Bounding box coordinates that define the area within the document where data was extracted. The box
-            is specified in PNG coordinates, with the origin at the top-left corner (0,0).
-        """,
+        description="""Bounding box coordinates that define the area within the document where data was extracted.
+        The box is specified in PNG coordinates, with the origin at the top-left corner (0,0).""",
         example={"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0},
     )
 
@@ -356,11 +325,9 @@ class ExtractCoordinatesResponse(ExtractDataResponse):
 
     coordinates: Coordinates = Field(
         ...,
-        description="""
-            Geographical coordinates extracted from the document, including east, north values, page number,
-            and projection type.
-        """,
-        example={"east": 1.0, "north": 2.0, "page": 1, "projection": "LV95"},
+        description="""Geographical coordinates extracted from the document, including east, north values, page number,
+        and projection type.""",
+        example={"east": 1.0, "north": 2.0, "projection": "LV95"},
     )
 
     @property
@@ -376,9 +343,7 @@ class ExtractTextResponse(ExtractDataResponse):
 
     text: str = Field(
         ...,
-        description="""
-            Text content extracted from the specified bounding box within the document.
-        """,
+        description="""Text content extracted from the specified bounding box within the document.""",
         example="text",
     )
 
@@ -396,10 +361,8 @@ class ExtractNumberResponse(ExtractDataResponse):
 
     number: float = Field(
         ...,
-        description="""
-            Numeric value extracted from the specified bounding box within the document, representing a 
-            measurement or quantitative data.
-        """,
+        description="""Numeric value extracted from the specified bounding box within the document, representing a
+        measurement or quantitative data.""",
         example=1.0,
     )
 
