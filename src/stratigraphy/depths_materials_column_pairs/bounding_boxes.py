@@ -24,6 +24,10 @@ class BoundingBox:
             self.rect.y1,
         ]
 
+    @classmethod
+    def from_json(cls, data) -> "BoundingBox":
+        return cls(rect=fitz.Rect(data))
+
 
 @dataclass
 class BoundingBoxes:
@@ -46,3 +50,14 @@ class BoundingBoxes:
             "material_description_rect": self.material_description_bbox.to_json(),
             "page": self.page,
         }
+
+    @classmethod
+    def from_json(cls, data) -> "BoundingBoxes":
+        return cls(
+            depth_column_bbox=BoundingBox.from_json(data["depth_column_bbox"])
+            if "depth_column_bbox" in data
+            else None,
+            depth_column_entry_bboxes=[BoundingBox.from_json(entry) for entry in data["depth_column_entries"]],
+            material_description_bbox=BoundingBox.from_json(data["material_description_rect"]),
+            page=data["page"],
+        )
