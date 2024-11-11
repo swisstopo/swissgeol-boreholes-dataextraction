@@ -80,11 +80,11 @@ def test_depth_column_entries_with_leading_character():  # noqa: D103
 def test_find_depth_columns_arithmetic_progression():  # noqa: D103
     """Test the find_depth_columns function with an arithmetic progression."""
     entries = [
-        DepthColumnEntry(fitz.Rect(0, 0, 5, 1), 10.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 2, 5, 3), 20.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 4, 5, 5), 30.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 6, 5, 7), 40.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 50.0, PAGE_NUMBER),
+        DepthColumnEntry(fitz.Rect(0, 0, 5, 1), 10.0),
+        DepthColumnEntry(fitz.Rect(0, 2, 5, 3), 20.0),
+        DepthColumnEntry(fitz.Rect(0, 4, 5, 5), 30.0),
+        DepthColumnEntry(fitz.Rect(0, 6, 5, 7), 40.0),
+        DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 50.0),
     ]
     columns = find_depth_columns(
         entries,
@@ -98,11 +98,11 @@ def test_find_depth_columns_arithmetic_progression():  # noqa: D103
 def test_find_depth_columns():  # noqa: D103
     """Test the find_depth_columns function."""
     entries = [
-        DepthColumnEntry(fitz.Rect(0, 0, 5, 1), 12.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 2, 5, 3), 20.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 4, 5, 5), 34.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 6, 5, 7), 40.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 50.0, PAGE_NUMBER),
+        DepthColumnEntry(fitz.Rect(0, 0, 5, 1), 12.0),
+        DepthColumnEntry(fitz.Rect(0, 2, 5, 3), 20.0),
+        DepthColumnEntry(fitz.Rect(0, 4, 5, 5), 34.0),
+        DepthColumnEntry(fitz.Rect(0, 6, 5, 7), 40.0),
+        DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 50.0),
     ]
 
     columns = find_depth_columns(
@@ -123,17 +123,17 @@ def test_find_depth_columns():  # noqa: D103
 def test_two_columns_find_depth_columns():  # noqa: D103
     """Test the find_depth_columns function with two columns."""
     entries = [  # first depth column
-        DepthColumnEntry(fitz.Rect(0, 0, 5, 1), 12.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 2, 5, 3), 20.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 4, 5, 5), 34.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 6, 5, 7), 40.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 50.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(20, 0, 25, 1), 12.0, PAGE_NUMBER),  # second depth column
-        DepthColumnEntry(fitz.Rect(20, 2, 25, 3), 20.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(20, 4, 25, 5), 34.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(20, 6, 25, 7), 40.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(20, 8, 25, 9), 50.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(20, 10, 25, 11), 61.0, PAGE_NUMBER),
+        DepthColumnEntry(fitz.Rect(0, 0, 5, 1), 12.0),
+        DepthColumnEntry(fitz.Rect(0, 2, 5, 3), 20.0),
+        DepthColumnEntry(fitz.Rect(0, 4, 5, 5), 34.0),
+        DepthColumnEntry(fitz.Rect(0, 6, 5, 7), 40.0),
+        DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 50.0),
+        DepthColumnEntry(fitz.Rect(20, 0, 25, 1), 12.0),  # second depth column
+        DepthColumnEntry(fitz.Rect(20, 2, 25, 3), 20.0),
+        DepthColumnEntry(fitz.Rect(20, 4, 25, 5), 34.0),
+        DepthColumnEntry(fitz.Rect(20, 6, 25, 7), 40.0),
+        DepthColumnEntry(fitz.Rect(20, 8, 25, 9), 50.0),
+        DepthColumnEntry(fitz.Rect(20, 10, 25, 11), 61.0),
     ]
     columns = find_depth_columns(
         entries,
@@ -149,19 +149,19 @@ def test_two_columns_find_depth_columns():  # noqa: D103
 def test_find_layer_depth_columns():  # noqa: D103
     """Test the find_layer_depth_columns function."""
     entries = [
-        DepthColumnEntry(fitz.Rect(0, 0, 5, 1), 12.0, PAGE_NUMBER),  # layer 12.0-20.0m
-        DepthColumnEntry(fitz.Rect(0, 0, 5, 1), 20.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 2, 5, 3), 20.0, PAGE_NUMBER),  # layer 20.0-34.0m
-        DepthColumnEntry(fitz.Rect(0, 2, 5, 3), 34.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 4, 5, 5), 34.0, PAGE_NUMBER),  # layer 34.0-40.0m
-        DepthColumnEntry(fitz.Rect(0, 4, 5, 5), 40.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 6, 5, 7), 40.0, PAGE_NUMBER),  # layer 40.0-50.0m
-        DepthColumnEntry(fitz.Rect(0, 6, 5, 7), 50.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 50.0, PAGE_NUMBER),  # layer 50.0-60.0m
-        DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 60.0, PAGE_NUMBER),
+        DepthColumnEntry(fitz.Rect(0, 0, 5, 1), 12.0),  # layer 12.0-20.0m
+        DepthColumnEntry(fitz.Rect(0, 0, 5, 1), 20.0),
+        DepthColumnEntry(fitz.Rect(0, 2, 5, 3), 20.0),  # layer 20.0-34.0m
+        DepthColumnEntry(fitz.Rect(0, 2, 5, 3), 34.0),
+        DepthColumnEntry(fitz.Rect(0, 4, 5, 5), 34.0),  # layer 34.0-40.0m
+        DepthColumnEntry(fitz.Rect(0, 4, 5, 5), 40.0),
+        DepthColumnEntry(fitz.Rect(0, 6, 5, 7), 40.0),  # layer 40.0-50.0m
+        DepthColumnEntry(fitz.Rect(0, 6, 5, 7), 50.0),
+        DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 50.0),  # layer 50.0-60.0m
+        DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 60.0),
     ]
 
-    columns = find_layer_depth_columns(entries, ALL_WORDS_FIND_DEPTH_COLUMN)
+    columns = find_layer_depth_columns(entries, ALL_WORDS_FIND_DEPTH_COLUMN, PAGE_NUMBER)
     assert len(columns) == 1, "There should be 1 column"
     assert len(columns[0].entries) == 5, "The column should have 5 entries"
     assert columns[0].entries[0].start.value == 12.0, "The first entry should have a value of 12.0"
@@ -179,29 +179,29 @@ def test_find_layer_depth_columns():  # noqa: D103
 def test_two_columns_find_layer_depth_columns():  # noqa: D103
     """Test the find_layer_depth_columns function with two columns."""
     entries = [  # first depth column
-        DepthColumnEntry(fitz.Rect(0, 0, 5, 1), 12.0, PAGE_NUMBER),  # layer 12.0-20.0m
-        DepthColumnEntry(fitz.Rect(0, 0, 5, 1), 20.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 2, 5, 3), 20.0, PAGE_NUMBER),  # layer 20.0-34.0m
-        DepthColumnEntry(fitz.Rect(0, 2, 5, 3), 34.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 4, 5, 5), 34.0, PAGE_NUMBER),  # layer 34.0-40.0m
-        DepthColumnEntry(fitz.Rect(0, 4, 5, 5), 40.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 6, 5, 7), 40.0, PAGE_NUMBER),  # layer 40.0-50.0m
-        DepthColumnEntry(fitz.Rect(0, 6, 5, 7), 50.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 50.0, PAGE_NUMBER),  # layer 50.0-60.0m
-        DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 60.0, PAGE_NUMBER),
+        DepthColumnEntry(fitz.Rect(0, 0, 5, 1), 12.0),  # layer 12.0-20.0m
+        DepthColumnEntry(fitz.Rect(0, 0, 5, 1), 20.0),
+        DepthColumnEntry(fitz.Rect(0, 2, 5, 3), 20.0),  # layer 20.0-34.0m
+        DepthColumnEntry(fitz.Rect(0, 2, 5, 3), 34.0),
+        DepthColumnEntry(fitz.Rect(0, 4, 5, 5), 34.0),  # layer 34.0-40.0m
+        DepthColumnEntry(fitz.Rect(0, 4, 5, 5), 40.0),
+        DepthColumnEntry(fitz.Rect(0, 6, 5, 7), 40.0),  # layer 40.0-50.0m
+        DepthColumnEntry(fitz.Rect(0, 6, 5, 7), 50.0),
+        DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 50.0),  # layer 50.0-60.0m
+        DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 60.0),
         # second depth column
-        DepthColumnEntry(fitz.Rect(20, 0, 25, 1), 12.0, PAGE_NUMBER),  # layer 12.0-20.0m
-        DepthColumnEntry(fitz.Rect(20, 0, 25, 1), 20.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(20, 2, 25, 3), 20.0, PAGE_NUMBER),  # layer 20.0-34.0m
-        DepthColumnEntry(fitz.Rect(20, 2, 25, 3), 34.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(20, 4, 25, 5), 34.0, PAGE_NUMBER),  # layer 34.0-40.0m
-        DepthColumnEntry(fitz.Rect(20, 4, 25, 5), 40.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(20, 6, 25, 7), 40.0, PAGE_NUMBER),  # layer 40.0-50.0m
-        DepthColumnEntry(fitz.Rect(20, 6, 25, 7), 50.0, PAGE_NUMBER),
-        DepthColumnEntry(fitz.Rect(20, 8, 25, 9), 50.0, PAGE_NUMBER),  # layer 50.0-60.0m
-        DepthColumnEntry(fitz.Rect(20, 8, 25, 9), 60.0, PAGE_NUMBER),
+        DepthColumnEntry(fitz.Rect(20, 0, 25, 1), 12.0),  # layer 12.0-20.0m
+        DepthColumnEntry(fitz.Rect(20, 0, 25, 1), 20.0),
+        DepthColumnEntry(fitz.Rect(20, 2, 25, 3), 20.0),  # layer 20.0-34.0m
+        DepthColumnEntry(fitz.Rect(20, 2, 25, 3), 34.0),
+        DepthColumnEntry(fitz.Rect(20, 4, 25, 5), 34.0),  # layer 34.0-40.0m
+        DepthColumnEntry(fitz.Rect(20, 4, 25, 5), 40.0),
+        DepthColumnEntry(fitz.Rect(20, 6, 25, 7), 40.0),  # layer 40.0-50.0m
+        DepthColumnEntry(fitz.Rect(20, 6, 25, 7), 50.0),
+        DepthColumnEntry(fitz.Rect(20, 8, 25, 9), 50.0),  # layer 50.0-60.0m
+        DepthColumnEntry(fitz.Rect(20, 8, 25, 9), 60.0),
     ]
-    columns = find_layer_depth_columns(entries, ALL_WORDS_FIND_LAYER_DEPTH_COLUMN)
+    columns = find_layer_depth_columns(entries, ALL_WORDS_FIND_LAYER_DEPTH_COLUMN, PAGE_NUMBER)
     assert len(columns) == 2, "There should be 2 columns"
     assert len(columns[0].entries) == 5, "The first column should have 5 entries"
     assert len(columns[1].entries) == 5, "The second column should have 5 entries"

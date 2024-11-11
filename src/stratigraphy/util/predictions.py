@@ -5,7 +5,7 @@ import logging
 from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.benchmark.metrics import OverallMetricsCatalog
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
-from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
+from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPair
 from stratigraphy.evaluation.evaluation_dataclasses import OverallBoreholeMetadataMetrics
 from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
 from stratigraphy.evaluation.layer_evaluator import LayerEvaluator
@@ -26,10 +26,10 @@ class FilePredictions:
         file_name: str,
         metadata: BoreholeMetadata,
         groundwater: GroundwaterInDocument,
-        depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs],
+        depths_materials_columns_pairs: list[DepthsMaterialsColumnPair],
     ):
         self.layers_in_document: LayersInDocument = layers_in_document
-        self.depths_materials_columns_pairs: list[DepthsMaterialsColumnPairs] = depths_materials_columns_pairs
+        self.depths_materials_columns_pairs: list[DepthsMaterialsColumnPair] = depths_materials_columns_pairs
         self.file_name: str = file_name
         self.metadata: BoreholeMetadata = metadata
         self.groundwater: GroundwaterInDocument = groundwater
@@ -104,7 +104,7 @@ class OverallFilePredictions:
             layers_in_doc = LayersInDocument(layers=layers, filename=file_name)
 
             depths_materials_columns_pairs = [
-                DepthsMaterialsColumnPairs.from_json(dmc_pair)
+                DepthsMaterialsColumnPair.from_json(dmc_pair)
                 for dmc_pair in file_data["depths_materials_column_pairs"]
             ]
 

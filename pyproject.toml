@@ -12,7 +12,6 @@ dependencies = [
     "boto3",
     "pandas",
     "levenshtein",
-    "pathlib",
     "python-dotenv",
     "setuptools",
     "tqdm",

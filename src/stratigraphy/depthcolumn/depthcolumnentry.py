@@ -8,21 +8,16 @@ import fitz
 class DepthColumnEntry:  # noqa: D101
     """Class to represent a depth column entry."""
 
-    def __init__(self, rect: fitz.Rect, value: float, page_number: int):
+    def __init__(self, rect: fitz.Rect, value: float):
         self.rect = rect
         self.value = value
-        self.page_number = page_number
 
     def __repr__(self) -> str:
         return str(self.value)
 
     def to_json(self) -> dict[str, Any]:
         """Convert the depth column entry to a JSON serializable format."""
-        return {
-            "value": self.value,
-            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
-            "page": self.page_number,
-        }
+        return {"value": self.value, "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1]}
 
     @classmethod
     def from_json(cls, json_depth_column_entry: dict) -> "DepthColumnEntry":
@@ -34,29 +29,7 @@ class DepthColumnEntry:  # noqa: D101
         Returns:
             DepthColumnEntry: The depth column entry object.
         """
-        return cls(
-            rect=fitz.Rect(json_depth_column_entry["rect"]),
-            value=json_depth_column_entry["value"],
-            page_number=json_depth_column_entry["page"],
-        )
-
-
-class AnnotatedDepthColumnEntry(DepthColumnEntry):  # noqa: D101
-    """Class to represent a depth column entry obtained from LabelStudio.
-
-    The annotation process in label studio does not come with rectangles for depth column entries.
-    Therefore, we set them to None.
-    """
-
-    def __init__(self, value):
-        super().__init__(None, value, None)
-
-    def to_json(self) -> dict[str, Any]:
-        return {
-            "value": self.value,
-            "rect": self.rect,
-            "page": self.page_number,
-        }
+        return cls(rect=fitz.Rect(json_depth_column_entry["rect"]), value=json_depth_column_entry["value"])
 
 
 class LayerDepthColumnEntry:  # noqa: D101
@@ -65,8 +38,6 @@ class LayerDepthColumnEntry:  # noqa: D101
     def __init__(self, start: DepthColumnEntry, end: DepthColumnEntry):
         self.start = start
         self.end = end
-
-        assert start.page_number == end.page_number, "Start and end entries are on different pages."
 
     def __repr__(self) -> str:
         return f"{self.start.value}-{self.end.value}"
@@ -82,7 +53,6 @@ class LayerDepthColumnEntry:  # noqa: D101
             "start": self.start.to_json(),
             "end": self.end.to_json(),
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
-            "page": self.start.page_number,
         }
 
     @classmethod

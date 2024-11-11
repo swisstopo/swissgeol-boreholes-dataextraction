@@ -1,29 +1,19 @@
 """Definition of the DepthsMaterialsColumnPairs class."""
 
+import math
 from dataclasses import dataclass
 
 import fitz
-from stratigraphy.depthcolumn.depthcolumn import DepthColumn, DepthColumnFactory
+from stratigraphy.depthcolumn.depthcolumn import DepthColumn
+from stratigraphy.lines.line import TextWord
 
 
 @dataclass
-class DepthsMaterialsColumnPairs:
+class DepthsMaterialsColumnPair:
     """A class to represent pairs of depth columns and material descriptions."""
 
     depth_column: DepthColumn | None
     material_description_rect: fitz.Rect
-    page: int
-
-    def __str__(self) -> str:
-        """Converts the object to a string.
-
-        Returns:
-            str: The object as a string.
-        """
-        return (
-            f"DepthsMaterialsColumnPairs(depth_column={self.depth_column},"
-            f"material_description_rect={self.material_description_rect}, page={self.page})"
-        )
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -39,22 +29,29 @@ class DepthsMaterialsColumnPairs:
                 self.material_description_rect.x1,
                 self.material_description_rect.y1,
             ],
-            "page": self.page,
         }
 
-    @classmethod
-    def from_json(cls, json_depths_materials_column_pairs: dict) -> "DepthsMaterialsColumnPairs":
-        """Converts a dictionary to an object.
+    def score_column_match(self, all_words: list[TextWord] | None = None) -> float:
+        """Scores the match between a depth column and a material description.
 
         Args:
-            json_depths_materials_column_pairs (dict): A dictionary representing the depths materials column pairs.
+            all_words (list[TextWord] | None, optional): List of the available text words. Defaults to None.
 
         Returns:
-            DepthsMaterialsColumnPairs: The depths materials column pairs object.
+            float: The score of the match.
         """
-        depth_column_entry = json_depths_materials_column_pairs["depth_column"]
-        depth_column = DepthColumnFactory.create(depth_column_entry) if depth_column_entry else None
-        material_description_rect = fitz.Rect(json_depths_materials_column_pairs["material_description_rect"])
-        page = json_depths_materials_column_pairs["page"]
+        rect = self.depth_column.rect()
+        top = rect.y0
+        bottom = rect.y1
+        right = rect.x1
+        distance = (
+            abs(top - self.material_description_rect.y0)
+            + abs(bottom - self.material_description_rect.y1)
+            + abs(right - self.material_description_rect.x0)
+        )
 
-        return cls(depth_column, material_description_rect, page)
+        height = bottom - top
+
+        noise_count = self.depth_column.noise_count(all_words) if all_words else 0
+
+        return (height - distance) * math.pow(0.8, noise_count)

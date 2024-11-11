@@ -1,7 +1,6 @@
 """This module contains functions to find the description (blocks) of a material in a pdf page."""
 
 import fitz
-from stratigraphy.layer.layer_identifier_column import LayerIdentifierEntry
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.description_block_splitter import (
     SplitDescriptionBlockByLeftHandSideSeparator,
@@ -33,66 +32,6 @@ def get_description_lines(lines: list[TextLine], material_description_rect: fitz
         if material_description_rect.contains(line.rect)
     ]
     return sorted([line for line in filtered_lines if line], key=lambda line: line.rect.y0)
-
-
-def get_description_blocks_from_layer_identifier(
-    layer_identifier_entries: list[LayerIdentifierEntry], description_lines: list[TextLine]
-) -> list[TextBlock]:
-    """Divide the description lines into blocks based on the layer identifier entries.
-
-    Args:
-        layer_identifier_entries (list[LayerIdentifierEntry]): The layer identifier entries.
-        description_lines (list[TextLine]): All lines constituting the material description.
-
-    Returns:
-        list[TextBlock]: The blocks of the material description.
-    """
-    blocks = []
-    line_index = 0
-    for layer_identifier_idx, _layer_index in enumerate(layer_identifier_entries):
-        next_layer_identifier = (
-            layer_identifier_entries[layer_identifier_idx + 1]
-            if layer_identifier_idx + 1 < len(layer_identifier_entries)
-            else None
-        )
-
-        matched_block = matching_blocks(description_lines, line_index, next_layer_identifier)
-        line_index += sum([len(block.lines) for block in matched_block])
-        blocks.extend(matched_block)
-
-    return blocks
-
-
-def matching_blocks(
-    all_lines: list[TextLine], line_index: int, next_layer_identifier: TextLine | None
-) -> list[TextBlock]:
-    """Adds lines to a block until the next layer identifier is reached.
-
-    Args:
-        all_lines (list[TextLine]): All TextLine objects constituting the material description.
-        line_index (int): The index of the last line that is already assigned to a block.
-        next_layer_identifier (TextLine | None): The next layer identifier.
-
-    Returns:
-        list[TextBlock]: The next block or an empty list if no lines are added.
-    """
-    y1_threshold = None
-    if next_layer_identifier:
-        next_interval_start_rect = next_layer_identifier.rect
-        y1_threshold = next_interval_start_rect.y0 + next_interval_start_rect.height / 2
-
-    matched_lines = []
-
-    for current_line in all_lines[line_index:]:
-        if y1_threshold is None or current_line.rect.y1 < y1_threshold:
-            matched_lines.append(current_line)
-        else:
-            break
-
-    if matched_lines:
-        return [TextBlock(matched_lines)]
-    else:
-        return []
 
 
 def get_description_blocks(

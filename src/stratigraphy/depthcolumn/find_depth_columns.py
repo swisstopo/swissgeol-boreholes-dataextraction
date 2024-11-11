@@ -8,6 +8,7 @@ from stratigraphy.depthcolumn.depthcolumn import BoundaryDepthColumn, LayerDepth
 from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
 from stratigraphy.lines.line import TextWord
 from stratigraphy.text.textblock import TextBlock
+from stratigraphy.util.interval import LayerInterval
 
 
 def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> list[DepthColumnEntry]:
@@ -32,10 +33,10 @@ def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> lis
             match = regex.match(input_string)
             if match:
                 value = value_as_float(match.group(1))
-                entries.append(DepthColumnEntry(word.rect, value, word.page_number))
+                entries.append(DepthColumnEntry(word.rect, value))
             elif include_splits:
                 # support for e.g. "1.10-1.60m" extracted as a single word
-                layer_depth_column_entry = extract_layer_depth_interval(input_string, word.rect, word.page_number)
+                layer_depth_column_entry = extract_layer_depth_interval(input_string, word.rect)
                 entries.extend(
                     [layer_depth_column_entry.start, layer_depth_column_entry.end] if layer_depth_column_entry else []
                 )
@@ -52,14 +53,13 @@ def value_as_float(string_value: str) -> float:  # noqa: D103
 
 
 def extract_layer_depth_interval(
-    text: str, rect: fitz.Rect, page_number: int, require_start_of_string: bool = True
+    text: str, rect: fitz.Rect, require_start_of_string: bool = True
 ) -> LayerDepthColumnEntry | None:
     """Extracts a LayerDepthColumnEntry from a string.
 
     Args:
         text (str): The string to extract the depth interval from.
         rect (fitz.Rect): The rectangle of the text.
-        page_number (int): The page number of the text.
         require_start_of_string (bool, optional): Whether the number to extract needs to be
                                                   at the start of a string. Defaults to True.
 
@@ -80,13 +80,15 @@ def extract_layer_depth_interval(
         value2 = value_as_float(match.group(3))
         second_half_rect = fitz.Rect(rect.x0 + rect.width / 2, rect.y0, rect.x1, rect.y1)
         return LayerDepthColumnEntry(
-            DepthColumnEntry(first_half_rect, value1, page_number),
-            DepthColumnEntry(second_half_rect, value2, page_number),
+            DepthColumnEntry(first_half_rect, value1),
+            DepthColumnEntry(second_half_rect, value2),
         )
     return None
 
 
-def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextWord]) -> list[LayerDepthColumn]:
+def find_layer_depth_columns(
+    entries: list[DepthColumnEntry], all_words: list[TextWord], page_number: int
+) -> list[LayerDepthColumn]:
     """Finds all layer depth columns.
 
     Generates a list of LayerDepthColumnEntry objects by finding consecutive pairs of DepthColumnEntry objects.
@@ -99,6 +101,7 @@ def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[Te
     Args:
         entries (list[DepthColumnEntry]): List of depth column entries.
         all_words (list[TextWord]): List of all TextWord objects.
+        page_number (int): The number of the page.
 
     Returns:
         list[LayerDepthColumn]: List of all layer depth columns identified.
@@ -139,10 +142,10 @@ def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[Te
                 new_start_middle = (entry.start.rect.x0 + entry.start.rect.x1) / 2
                 if column_rect.x0 < new_start_middle < column_rect.x1:
                     is_matched = True
-                    column.add_entry(entry)
+                    column.entries.append(entry)
 
             if not is_matched:
-                columns.append(LayerDepthColumn([entry]))
+                columns.append(LayerDepthColumn([entry], page=page_number))
 
     return [
         column_segment
@@ -173,16 +176,17 @@ def find_depth_columns(
         for column in numeric_columns:
             if column.can_be_appended(entry.rect):
                 has_match = True
-                column.add_entry(entry)
+                column.entries.append(entry)
             else:
                 valid_initial_segment = column.valid_initial_segment(entry.rect)
                 if len(valid_initial_segment.entries) > 0:
                     has_match = True
-                    additional_columns.append(valid_initial_segment.add_entry(entry))
+                    valid_initial_segment.entries.append(entry)
+                    additional_columns.append(valid_initial_segment)
 
         numeric_columns.extend(additional_columns)
         if not has_match:
-            numeric_columns.append(BoundaryDepthColumn(entries=[entry]))
+            numeric_columns.append(BoundaryDepthColumn(entries=[entry], page=page_number))
 
         # only keep columns that are not contained in a different column
         numeric_columns = [
@@ -194,7 +198,7 @@ def find_depth_columns(
     boundary_depth_column_validator = BoundaryDepthColumnValidator(all_words, **depth_column_params)
 
     numeric_columns = [
-        boundary_depth_column_validator.reduce_until_valid(column, page_number)
+        boundary_depth_column_validator.reduce_until_valid(column)
         for numeric_column in numeric_columns
         for column in numeric_column.break_on_double_descending()
         # when we have a perfect arithmetic progression, this is usually just a scale
@@ -208,7 +212,7 @@ def find_depth_columns(
     )
 
 
-def get_depth_interval_from_textblock(block: TextBlock) -> LayerDepthColumnEntry | None:
+def get_depth_interval_from_textblock(block: TextBlock) -> LayerInterval | None:
     """Extract depth interval from a material description block.
 
     For borehole profiles in the Deriaz layout, the depth interval is usually found in the text description
@@ -220,14 +224,12 @@ def get_depth_interval_from_textblock(block: TextBlock) -> LayerDepthColumnEntry
         block (TextBlock): The block to calculate the depth interval for.
 
     Returns:
-        LayerDepthColumnEntry | None: The depth interval.
+        LayerInterval | None: The depth interval.
     """
     depth_entries = []
     for line in block.lines:
         try:
-            layer_depth_entry = extract_layer_depth_interval(
-                line.text, line.rect, line.page_number, require_start_of_string=False
-            )
+            layer_depth_entry = extract_layer_depth_interval(line.text, line.rect, require_start_of_string=False)
             # require_start_of_string = False because the depth interval may not always start at the beginning
             # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
             if layer_depth_entry:
@@ -240,6 +242,6 @@ def get_depth_interval_from_textblock(block: TextBlock) -> LayerDepthColumnEntry
         start = min([entry.start for entry in depth_entries], key=lambda start_entry: start_entry.value)
         end = max([entry.end for entry in depth_entries], key=lambda end_entry: end_entry.value)
 
-        return LayerDepthColumnEntry(start, end)
+        return LayerInterval(LayerDepthColumnEntry(start, end))
     else:
         return None

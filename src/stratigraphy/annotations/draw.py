@@ -9,7 +9,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.depthcolumn.depthcolumn import DepthColumn
-from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
+from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPair
 from stratigraphy.groundwater.groundwater_extraction import Groundwater
 from stratigraphy.layer.layer import Layer
 from stratigraphy.metadata.coordinate_extraction import Coordinate
@@ -98,7 +98,7 @@ def draw_predictions(
                     draw_depth_columns_and_material_rect(
                         shape,
                         page.derotation_matrix,
-                        [pair for pair in depths_materials_column_pairs if pair.page == page_number],
+                        [pair for pair in depths_materials_column_pairs if pair.depth_column.page == page_number],
                     )
                     draw_material_descriptions(
                         shape,
@@ -245,7 +245,7 @@ def draw_material_descriptions(shape: fitz.Shape, derotation_matrix: fitz.Matrix
 
 
 def draw_depth_columns_and_material_rect(
-    shape: fitz.Shape, derotation_matrix: fitz.Matrix, depths_materials_column_pairs: list[DepthsMaterialsColumnPairs]
+    shape: fitz.Shape, derotation_matrix: fitz.Matrix, depths_materials_column_pairs: list[DepthsMaterialsColumnPair]
 ):
     """Draw depth columns as well as the material rects on a pdf page.
 

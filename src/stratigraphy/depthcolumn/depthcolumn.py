@@ -3,36 +3,31 @@
 from __future__ import annotations
 
 import abc
+from dataclasses import dataclass
+from typing import Generic, TypeVar
 
 import fitz
 import numpy as np
 from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
 from stratigraphy.layer.layer import IntervalBlockGroup
-from stratigraphy.layer.layer_identifier_column import LayerIdentifierColumn
 from stratigraphy.lines.line import TextLine, TextWord
 from stratigraphy.text.find_description import get_description_blocks
 from stratigraphy.util.dataclasses import Line
-from stratigraphy.util.interval import BoundaryInterval, Interval, LayerInterval
+from stratigraphy.util.interval import BoundaryInterval, LayerInterval
+
+EntryT = TypeVar("EntryT", bound=DepthColumnEntry)
 
 
-class DepthColumn(metaclass=abc.ABCMeta):
+@dataclass
+class DepthColumn(abc.ABC, Generic[EntryT]):
     """Abstract DepthColumn class."""
 
-    @abc.abstractmethod
-    def __init__(self):  # noqa: D107
-        pass
+    entries: list[EntryT]
+    page: int
 
-    @abc.abstractmethod
-    def depth_intervals(self) -> list[Interval]:
-        """Get the depth intervals of the depth column."""
-        pass
-
-    @abc.abstractmethod
     def rects(self) -> list[fitz.Rect]:
         """Get the rectangles of the depth column entries."""
-        pass
-
-    """Used for scoring how well a depth column corresponds to a material description bbox."""
+        return [entry.rect for entry in self.entries]
 
     def rect(self) -> fitz.Rect:
         """Get the bounding box of the depth column entries."""
@@ -52,9 +47,10 @@ class DepthColumn(metaclass=abc.ABCMeta):
         """Get the minimum x1 value of the depth column entries."""
         return min([rect.x1 for rect in self.rects()])
 
-    @abc.abstractmethod
     def noise_count(self, all_words: list[TextWord]) -> int:
-        """Count the number of words that intersect with the depth column entries.
+        """Counts the number of words that intersect with the depth column entries.
+
+        Returns the number of words that intersect with the depth column entries, but are not part of the depth column.
 
         Args:
             all_words (list[TextWord]): A list of all text lines on the page.
@@ -62,11 +58,20 @@ class DepthColumn(metaclass=abc.ABCMeta):
         Returns:
             int: The number of words that intersect with the depth column entries but are not part of it.
         """
-        pass
+
+        def significant_intersection(other_rect):
+            intersection = fitz.Rect(other_rect).intersect(self.rect())
+            return intersection.is_valid and intersection.width > 0.25 * self.rect().width
+
+        return len([word for word in all_words if significant_intersection(word.rect)]) - len(self.entries)
 
     @abc.abstractmethod
     def identify_groups(
-        self, description_lines: list[TextLine], geometric_lines: list[Line], material_description_rect: fitz.Rect
+        self,
+        description_lines: list[TextLine],
+        geometric_lines: list[Line],
+        material_description_rect: fitz.Rect,
+        **params,
     ) -> list[IntervalBlockGroup]:
         """Identifies groups of description blocks that correspond to depth intervals.
 
@@ -74,6 +79,7 @@ class DepthColumn(metaclass=abc.ABCMeta):
             description_lines (list[TextLine]): A list of text lines that are part of the description.
             geometric_lines (list[Line]): A list of geometric lines that are part of the description.
             material_description_rect (fitz.Rect): The bounding box of the material description.
+            params (dict): A dictionary of relevant parameters.
 
         Returns:
             list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
@@ -85,38 +91,33 @@ class DepthColumn(metaclass=abc.ABCMeta):
         """Converts the object to a dictionary."""
         pass
 
-    @classmethod
-    @abc.abstractmethod
-    def from_json(cls, json_depth_column: dict) -> DepthColumn:
-        """Converts a dictionary to an object."""
-        pass
+    def can_be_appended(self, rect: fitz.Rect) -> bool:
+        """Checks if a new depth column entry can be appended to the current depth column.
 
+        Check if the middle of the new rect is between the outer horizontal boundaries of the column, and if there is
+        an intersection with the minimal horizontal boundaries of the column.
 
-class DepthColumnFactory:
-    """Factory class for creating DepthColumn objects."""
-
-    @staticmethod
-    def create(data: dict) -> DepthColumn:
-        """Creates a DepthColumn object from a dictionary.
+        The checks are:
+        - The width of the new rectangle is greater than the width of the current depth column. Or;
+        - The middle of the new rectangle is within the horizontal boundaries of the current depth column.
+        - The new rectangle intersects with the minimal horizontal boundaries of the current depth column.
 
         Args:
-            data (dict): A dictionary representing the depth column.
+            rect (fitz.Rect): Rect of the depth column entry to be appended.
 
         Returns:
-            DepthColumn: The depth column object.
+            bool: True if the new depth column entry can be appended, False otherwise.
         """
-        column_type = data.get("type")
-        if column_type == "BoundaryDepthColumn":
-            return BoundaryDepthColumn.from_json(data)
-        elif column_type == "LayerDepthColumn":
-            return LayerDepthColumn.from_json(data)
-        elif column_type == "LayerIdentifierColumn":
-            return LayerIdentifierColumn.from_json(data)
-        else:
-            raise ValueError(f"Unknown depth column type: {column_type}")
+        new_middle = (rect.x0 + rect.x1) / 2
+        if (self.rect().width < rect.width or self.rect().x0 < new_middle < self.rect().x1) and (
+            rect.x0 <= self.min_x1 and self.max_x0 <= rect.x1
+        ):
+            return True
+        return False
 
 
-class LayerDepthColumn(DepthColumn):
+@dataclass
+class LayerDepthColumn(DepthColumn[LayerDepthColumnEntry]):
     """Represents a depth column where the upper and lower depths of each layer are explicitly specified.
 
     Example::
@@ -127,14 +128,6 @@ class LayerDepthColumn(DepthColumn):
     """
 
     entries: list[LayerDepthColumnEntry]
-
-    def __init__(self, entries=None):
-        super().__init__()
-
-        if entries is not None:
-            self.entries = entries
-        else:
-            self.entries = []
 
     def __repr__(self):
         """Converts the object to a string.
@@ -157,41 +150,8 @@ class LayerDepthColumn(DepthColumn):
             "type": "LayerDepthColumn",
         }
 
-    @classmethod
-    def from_json(cls, json_depth_column: dict) -> LayerDepthColumn:
-        """Converts a dictionary to an object.
-
-        Args:
-            json_depth_column (dict): A dictionary representing the depth column.
-
-        Returns:
-            LayerDepthColumn: The depth column object.
-        """
-        entries_data = json_depth_column.get("entries", [])
-        entries = [LayerDepthColumnEntry.from_json(entry) for entry in entries_data]
-        return LayerDepthColumn(entries)
-
-    def add_entry(self, entry: LayerDepthColumnEntry) -> LayerDepthColumn:
-        """Adds a depth column entry to the depth column.
-
-        Args:
-            entry (LayerDepthColumnEntry): The depth column entry to add.
-
-        Returns:
-            LayerDepthColumn: The depth column with the new entry.
-        """
-        self.entries.append(entry)
-        return self
-
-    def depth_intervals(self) -> list[Interval]:
+    def depth_intervals(self) -> list[LayerInterval]:
         return [LayerInterval(entry) for entry in self.entries]
-
-    def rects(self) -> list[fitz.Rect]:
-        return [entry.rect for entry in self.entries]
-
-    def noise_count(self, all_words: list[TextWord]) -> int:
-        # currently, we don't count noise for layer columns
-        return 0
 
     def break_on_mismatch(self) -> list[LayerDepthColumn]:
         """Breaks the depth column into segments where the depth intervals are not in an arithmetic progression.
@@ -211,7 +171,7 @@ class LayerDepthColumn(DepthColumn):
         if final_segment:
             segments.append(final_segment)
 
-        return [LayerDepthColumn(segment) for segment in segments]
+        return [LayerDepthColumn(segment, page=self.page) for segment in segments]
 
     def is_valid(self) -> bool:
         """Checks if the depth column is valid.
@@ -245,7 +205,7 @@ class LayerDepthColumn(DepthColumn):
             description_lines (list[TextLine]): A list of text lines that are part of the description.
             geometric_lines (list[Line]): A list of geometric lines that are part of the description.
             material_description_rect (fitz.Rect): The bounding box of the material description.
-            params (dict): A dictionary of parameters used for line detection.
+            params (dict): A dictionary of relevant parameters.
 
         Returns:
             list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
@@ -268,7 +228,8 @@ class LayerDepthColumn(DepthColumn):
         return groups
 
 
-class BoundaryDepthColumn(DepthColumn):
+@dataclass
+class BoundaryDepthColumn(DepthColumn[DepthColumnEntry]):
     """Represents a depth column.
 
     The depths of the boundaries between layers are labels, at a vertical position on
@@ -286,22 +247,6 @@ class BoundaryDepthColumn(DepthColumn):
 
     entries: list[DepthColumnEntry]
 
-    def __init__(self, entries: list = None):
-        """Initializes a BoundaryDepthColumn object.
-
-        Args:
-            entries (list, optional): Depth Column Entries for the depth column. Defaults to None.
-        """
-        super().__init__()
-
-        if entries is not None:
-            self.entries = entries
-        else:
-            self.entries = []
-
-    def rects(self) -> list[fitz.Rect]:
-        return [entry.rect for entry in self.entries]
-
     def __repr__(self):
         return "DepthColumn({})".format(", ".join([str(entry) for entry in self.entries]))
 
@@ -318,65 +263,12 @@ class BoundaryDepthColumn(DepthColumn):
             "type": "BoundaryDepthColumn",
         }
 
-    @classmethod
-    def from_json(cls, json_depth_column: dict) -> BoundaryDepthColumn:
-        """Converts a dictionary to an object.
-
-        Args:
-            json_depth_column (dict): A dictionary representing the depth column.
-
-        Returns:
-            BoundaryDepthColumn: The depth column object.
-        """
-        entries_data = json_depth_column.get("entries", [])
-        entries = [DepthColumnEntry.from_json(entry) for entry in entries_data]
-        return BoundaryDepthColumn(entries)
-
-    def add_entry(self, entry: DepthColumnEntry) -> BoundaryDepthColumn:
-        """Adds a depth column entry to the depth column.
-
-        Args:
-            entry (DepthColumnEntry): The depth column entry to add.
-
-        Returns:
-            BoundaryDepthColumn: The depth column with the new entry.
-        """
-        self.entries.append(entry)
-        return self
-
-    """
-    Check if the middle of the new rect is between the outer horizontal boundaries of the column, and if there is an
-    intersection with the minimal horizontal boundaries of the column.
-    """
-
-    def can_be_appended(self, rect: fitz.Rect) -> bool:
-        """Checks if a new depth column entry can be appended to the current depth column.
-
-        The checks are:
-        - The width of the new rectangle is greater than the width of the current depth column. Or;
-        - The middle of the new rectangle is within the horizontal boundaries of the current depth column.
-        - The new rectangle intersects with the minimal horizontal boundaries of the current depth column.
-
-
-        Args:
-            rect (fitz.Rect): Rect of the depth column entry to be appended.
-
-        Returns:
-            bool: True if the new depth column entry can be appended, False otherwise.
-        """
-        new_middle = (rect.x0 + rect.x1) / 2
-        if (self.rect().width < rect.width or self.rect().x0 < new_middle < self.rect().x1) and (
-            rect.x0 <= self.min_x1 and self.max_x0 <= rect.x1
-        ):
-            return True
-        return False
-
     def valid_initial_segment(self, rect: fitz.Rect) -> BoundaryDepthColumn:
         for i in range(len(self.entries) - 1):
-            initial_segment = BoundaryDepthColumn(self.entries[: -i - 1])
+            initial_segment = BoundaryDepthColumn(self.entries[: -i - 1], page=self.page)
             if initial_segment.can_be_appended(rect):
                 return initial_segment
-        return BoundaryDepthColumn()
+        return BoundaryDepthColumn(entries=[], page=self.page)
 
     def strictly_contains(self, other: BoundaryDepthColumn) -> bool:
         return len(other.entries) < len(self.entries) and all(
@@ -412,7 +304,9 @@ class BoundaryDepthColumn(DepthColumn):
             return self.is_arithmetic_progression()
         else:
             for i in range(len(self.entries) - segment_length + 1):
-                if BoundaryDepthColumn(self.entries[i : i + segment_length]).is_arithmetic_progression():
+                if BoundaryDepthColumn(
+                    self.entries[i : i + segment_length], page=self.page
+                ).is_arithmetic_progression():
                     return True
             return False
 
@@ -429,24 +323,6 @@ class BoundaryDepthColumn(DepthColumn):
 
         scale_pearson_correlation_coef = np.corrcoef(entries, progression)[0, 1].item()
         return abs(scale_pearson_correlation_coef) >= 0.9999
-
-    def noise_count(self, all_words: list[TextWord]) -> int:
-        """Counts the number of words that intersect with the depth column entries.
-
-        Returns the number of words that intersect with the depth column entries, but are not part of the depth column.
-
-        Args:
-            all_words (list[TextWord]): A list of all text lines on the page.
-
-        Returns:
-            int: The number of words that intersect with the depth column entries but are not part of it.
-        """
-
-        def significant_intersection(other_rect):
-            intersection = fitz.Rect(other_rect).intersect(self.rect())
-            return intersection.is_valid and intersection.width > 0.25 * self.rect().width
-
-        return len([word for word in all_words if significant_intersection(word.rect)]) - len(self.entries)
 
     def pearson_correlation_coef(self) -> float:
         # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with
@@ -465,7 +341,9 @@ class BoundaryDepthColumn(DepthColumn):
             return None
 
         new_columns = [
-            BoundaryDepthColumn([entry for index, entry in enumerate(self.entries) if index != remove_index])
+            BoundaryDepthColumn(
+                [entry for index, entry in enumerate(self.entries) if index != remove_index], page=self.page
+            )
             for remove_index in range(len(self.entries))
         ]
         return max(new_columns, key=lambda column: column.pearson_correlation_coef())
@@ -490,7 +368,7 @@ class BoundaryDepthColumn(DepthColumn):
         if final_segment:
             segments.append(final_segment)
 
-        return [BoundaryDepthColumn(segment) for segment in segments]
+        return [BoundaryDepthColumn(segment, page=self.page) for segment in segments]
 
     def identify_groups(
         self,
@@ -508,7 +386,7 @@ class BoundaryDepthColumn(DepthColumn):
             description_lines (list[TextLine]): A list of text lines that are part of the description.
             geometric_lines (list[Line]): A list of geometric lines that are part of the description.
             material_description_rect (fitz.Rect): The bounding box of the material description.
-            params (dict): A dictionary of parameters used for line detection.
+            params (dict): A dictionary of relevant parameters.
 
         Returns:
             list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.

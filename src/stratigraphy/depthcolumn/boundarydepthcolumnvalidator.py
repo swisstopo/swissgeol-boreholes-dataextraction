@@ -63,7 +63,7 @@ class BoundaryDepthColumnValidator:
 
         return corr_coef and corr_coef > corr_coef_threshold
 
-    def reduce_until_valid(self, column: BoundaryDepthColumn, page_number: int) -> BoundaryDepthColumn:
+    def reduce_until_valid(self, column: BoundaryDepthColumn) -> BoundaryDepthColumn:
         """Removes entries from the depth column until it fulfills the is_valid condition.
 
         is_valid checks whether there is too much noise (i.e. other text) in the column and whether the entries are
@@ -71,19 +71,18 @@ class BoundaryDepthColumnValidator:
 
         Args:
             column (BoundaryDepthColumn): The depth column to validate
-            page_number (int): The page number of the depth column
         Returns:
             BoundaryDepthColumn: The current depth column with entries removed until it is valid.
         """
         while column:
             if self.is_valid(column):
                 return column
-            elif self.correct_OCR_mistakes(column, page_number) is not None:
-                return self.correct_OCR_mistakes(column, page_number)
+            elif self.correct_OCR_mistakes(column) is not None:
+                return self.correct_OCR_mistakes(column)
             else:
                 column = column.remove_entry_by_correlation_gradient()
 
-    def correct_OCR_mistakes(self, column: BoundaryDepthColumn, page_number: int) -> BoundaryDepthColumn | None:
+    def correct_OCR_mistakes(self, column: BoundaryDepthColumn) -> BoundaryDepthColumn | None:
         """Corrects OCR mistakes in the depth column entries.
 
         Loops through all values and corrects common OCR mistakes for the given entry. Then, the column with the
@@ -102,15 +101,14 @@ class BoundaryDepthColumnValidator:
 
         Args:
             column (BoundaryDepthColumn): The depth column to validate
-            page_number (int): The page number of the depth column
 
         Returns:
             BoundaryDepthColumn | None: The corrected depth column, or None if no correction was possible.
         """
-        new_columns = [BoundaryDepthColumn()]
+        new_columns = [BoundaryDepthColumn(entries=[], page=column.page)]
         for entry in column.entries:
             new_columns = [
-                BoundaryDepthColumn([*column.entries, DepthColumnEntry(entry.rect, new_value, page_number)])
+                BoundaryDepthColumn([*column.entries, DepthColumnEntry(entry.rect, new_value)], page=column.page)
                 for column in new_columns
                 for new_value in _value_alternatives(entry.value)
             ]

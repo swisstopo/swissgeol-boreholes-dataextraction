@@ -7,7 +7,6 @@ import abc
 import fitz
 
 from stratigraphy.depthcolumn.depthcolumnentry import (
-    AnnotatedDepthColumnEntry,
     DepthColumnEntry,
     LayerDepthColumnEntry,
 )
@@ -57,15 +56,6 @@ class Interval(metaclass=abc.ABCMeta):
             "start": self.start.to_json() if self.start else None,
             "end": self.end.to_json() if self.end else None,
         }
-
-
-class AnnotatedInterval:
-    """Class for annotated intervals."""
-
-    def __init__(self, start: float, end: float, background_rect: fitz.Rect):
-        self.start = AnnotatedDepthColumnEntry(start)
-        self.end = AnnotatedDepthColumnEntry(end)
-        self.background_rect = background_rect
 
 
 class BoundaryInterval(Interval):

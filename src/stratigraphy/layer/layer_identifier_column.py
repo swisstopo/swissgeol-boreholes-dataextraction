@@ -1,9 +1,15 @@
 """Module for the LayerIdentifierColumn class."""
 
 import re
+from dataclasses import dataclass
 
 import fitz
+from stratigraphy.depthcolumn.depthcolumn import DepthColumn
+from stratigraphy.depthcolumn.find_depth_columns import get_depth_interval_from_textblock
+from stratigraphy.layer.layer import IntervalBlockGroup
 from stratigraphy.lines.line import TextLine
+from stratigraphy.text.textblock import TextBlock
+from stratigraphy.util.dataclasses import Line
 
 
 class LayerIdentifierEntry:
@@ -31,84 +37,87 @@ class LayerIdentifierEntry:
         }
 
 
-class LayerIdentifierColumn:
-    """Class for a layer identifier column."""
+@dataclass
+class LayerIdentifierColumn(DepthColumn[LayerIdentifierEntry]):
+    """Class for a layer identifier column.
 
-    def __init__(self, entries: list[LayerIdentifierEntry]):
-        """Initialize the LayerIdentifierColumn object.
+    Layer identifiers are labels that are particularly common in Deriaz layout borehole profiles. They can be
+    sequential such as in 1007.pdf - a), b), c), etc. - or contain some semantic meaning such as in 10781.pdf -
+    5c12), 4a), etc.
+    """
 
-        Args:
-            entries (list[LayerIdentifierEntry]): The entries corresponding to the layer indices.
-        """
-        self.entries: list[LayerIdentifierEntry] = entries
+    entries: list[LayerIdentifierEntry]
 
-    @property
-    def max_x0(self) -> float:
-        """Get the maximum x0 value of the layer identifier column entries.
-
-        Returns:
-            float: The maximum x0 value of the layer identifier column entries.
-        """
-        return max([rect.x0 for rect in self.rects()])
-
-    @property
-    def min_x1(self) -> float:
-        """Get the minimum x1 value of the layer identifier column entries.
-
-        Returns:
-            float: The minimum x1 value of the layer identifier column entries.
-        """
-        return min([rect.x1 for rect in self.rects()])
-
-    def rect(self) -> fitz.Rect:
-        """Get the rectangle of the layer identifier column.
-
-        Returns:
-            fitz.Rect: The rectangle of the layer identifier column.
-        """
-        x0 = min([rect.x0 for rect in self.rects()])
-        x1 = max([rect.x1 for rect in self.rects()])
-        y0 = min([rect.y0 for rect in self.rects()])
-        y1 = max([rect.y1 for rect in self.rects()])
-        return fitz.Rect(x0, y0, x1, y1)
-
-    def rects(self) -> list[fitz.Rect]:
-        """Get the rectangles of the layer identifier column entries.
-
-        Returns:
-            list[fitz.Rect]: The rectangles of the layer identifier column entries.
-        """
-        return [entry.rect for entry in self.entries]
-
-    def add_entry(self, entry: LayerIdentifierEntry):
-        """Add a new layer identifier column entry to the layer identifier column.
+    def identify_groups(
+        self,
+        description_lines: list[TextLine],
+        geometric_lines: list[Line],
+        material_description_rect: fitz.Rect,
+        **params,
+    ) -> list[IntervalBlockGroup]:
+        """Divide the description lines into blocks based on the layer identifier entries.
 
         Args:
-            entry (LayerIdentifierEntry): The layer identifier column entry to be added.
-        """
-        self.entries.append(entry)
-
-    def can_be_appended(self, rect: fitz.Rect) -> bool:
-        """Checks if a new layer identifier column entry can be appended to the current layer identifier column.
-
-        The checks are:
-        - The width of the new rectangle is greater than the width of the current layer identifier column. Or;
-        - The middle of the new rectangle is within the horizontal boundaries of the current layer identifier column.
-        - The new rectangle intersects with the minimal horizontal boundaries of the current layer identifier column.
-
-
-        Args:
-            rect (fitz.Rect): Rect of the layer identifier column entry to be appended.
+            description_lines (list[TextLine]): A list of text lines that are part of the description.
+            geometric_lines (list[Line]): A list of geometric lines that are part of the description.
+            material_description_rect (fitz.Rect): The bounding box of the material description.
+            params (dict): A dictionary of relevant parameters.
 
         Returns:
-            bool: True if the new layer identifier column entry can be appended, False otherwise.
+            list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
         """
-        new_middle = (rect.x0 + rect.x1) / 2
-        if (self.rect().width < rect.width or self.rect().x0 < new_middle < self.rect().x1) and (
-            rect.x0 <= self.min_x1 and self.max_x0 <= rect.x1
-        ):
-            return True
-        return False
+        blocks = []
+        line_index = 0
+        for layer_identifier_idx, _layer_index in enumerate(self.entries):
+            next_layer_identifier = (
+                self.entries[layer_identifier_idx + 1] if layer_identifier_idx + 1 < len(self.entries) else None
+            )
+
+            matched_block = self.matching_blocks(description_lines, line_index, next_layer_identifier)
+            line_index += sum([len(block.lines) for block in matched_block])
+            blocks.extend(matched_block)
+
+        result = []
+        for block in blocks:
+            depth_intervals = []
+            depth_interval = get_depth_interval_from_textblock(block)
+            if depth_interval:
+                depth_intervals.append(depth_interval)
+            result.append(IntervalBlockGroup(depth_intervals=depth_intervals, blocks=[block]))
+
+        return result
+
+    @staticmethod
+    def matching_blocks(
+        all_lines: list[TextLine], line_index: int, next_layer_identifier: LayerIdentifierEntry | None
+    ) -> list[TextBlock]:
+        """Adds lines to a block until the next layer identifier is reached.
+
+        Args:
+            all_lines (list[TextLine]): All TextLine objects constituting the material description.
+            line_index (int): The index of the last line that is already assigned to a block.
+            next_layer_identifier (TextLine | None): The next layer identifier.
+
+        Returns:
+            list[TextBlock]: The next block or an empty list if no lines are added.
+        """
+        y1_threshold = None
+        if next_layer_identifier:
+            next_interval_start_rect = next_layer_identifier.rect
+            y1_threshold = next_interval_start_rect.y0 + next_interval_start_rect.height / 2
+
+        matched_lines = []
+
+        for current_line in all_lines[line_index:]:
+            if y1_threshold is None or current_line.rect.y1 < y1_threshold:
+                matched_lines.append(current_line)
+            else:
+                break
+
+        if matched_lines:
+            return [TextBlock(matched_lines)]
+        else:
+            return []
 
     def strictly_contains(self, other: "LayerIdentifierColumn") -> bool:
         """Check if the layer identifier column strictly contains another layer identifier column.
@@ -205,26 +214,27 @@ def find_layer_identifier_column_entries(lines: list[TextLine]) -> list[LayerIde
     return entries
 
 
-def find_layer_identifier_column(entries: list[LayerIdentifierEntry]) -> list[LayerIdentifierColumn]:
+def find_layer_identifier_column(entries: list[LayerIdentifierEntry], page_number: int) -> list[LayerIdentifierColumn]:
     """Find the layer identifier column given the index column entries.
 
     Note: Similar to find_depth_columns.find_depth_columns. Refactoring may be desired.
 
     Args:
         entries (list[LayerIdentifierEntry]): The layer identifier column entries.
+        page_number (int): The number of the page.
 
     Returns:
         list[LayerIdentifierColumn]: The found layer identifier columns.
     """
-    layer_identifier_columns = [LayerIdentifierColumn([entries[0]])]
+    layer_identifier_columns = [LayerIdentifierColumn([entries[0]], page=page_number)]
     for entry in entries[1:]:
         has_match = False
         for column in layer_identifier_columns:
             if column.can_be_appended(entry.rect):
-                column.add_entry(entry)
+                column.entries.append(entry)
                 has_match = True
         if not has_match:
-            layer_identifier_columns.append(LayerIdentifierColumn([entry]))
+            layer_identifier_columns.append(LayerIdentifierColumn([entry], page=page_number))
 
         # only keep columns whose entries are not fully contained in a different column
         layer_identifier_columns = [
