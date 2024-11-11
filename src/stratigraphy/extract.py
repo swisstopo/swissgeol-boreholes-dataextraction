@@ -8,7 +8,7 @@ import fitz
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.depthcolumn import find_depth_columns
 from stratigraphy.depthcolumn.depthcolumn import DepthColumn
-from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBoxes
+from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBox, BoundingBoxes
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPair
 from stratigraphy.layer.layer import IntervalBlockPair, Layer
 from stratigraphy.layer.layer_identifier_column import (
@@ -126,6 +126,10 @@ def process_page(
 
     pairs: list[IntervalBlockPair] = []  # list of matched depth intervals and text blocks
     if filtered_depth_material_column_pairs:  # match depth column items with material description
+        bounding_boxes = [
+            BoundingBoxes.from_depths_material_column_pair(pair, page_number)
+            for pair in filtered_depth_material_column_pairs
+        ]
         for pair in filtered_depth_material_column_pairs:
             description_lines = get_description_lines(lines, pair.material_description_rect)
             if len(description_lines) > 1:
@@ -138,7 +142,16 @@ def process_page(
         material_description_rect = find_material_description_column(
             lines, depth_column=None, language=language, **params["material_description"]
         )
+        bounding_boxes = []
         if material_description_rect:
+            bounding_boxes.append(
+                BoundingBoxes(
+                    depth_column_bbox=None,
+                    depth_column_entry_bboxes=[],
+                    material_description_bbox=BoundingBox(material_description_rect),
+                    page=page_number,
+                )
+            )
             description_lines = get_description_lines(lines, material_description_rect)
             description_blocks = get_description_blocks(
                 description_lines,
@@ -173,7 +186,6 @@ def process_page(
         for pair in pairs
     ]
     layer_predictions = [layer for layer in layer_predictions if layer.description_nonempty()]
-    bounding_boxes = [BoundingBoxes.from_depths_material_column_pair(pair, page_number) for pair in pairs]
     return ProcessPageResult(layer_predictions, bounding_boxes)
 
 
