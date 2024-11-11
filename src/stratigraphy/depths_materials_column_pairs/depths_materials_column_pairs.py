@@ -14,6 +14,7 @@ class DepthsMaterialsColumnPair:
 
     depth_column: DepthColumn | None
     material_description_rect: fitz.Rect
+    page: int
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -29,6 +30,7 @@ class DepthsMaterialsColumnPair:
                 self.material_description_rect.x1,
                 self.material_description_rect.y1,
             ],
+            "page": self.page,
         }
 
     def score_column_match(self, all_words: list[TextWord] | None = None) -> float:

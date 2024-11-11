@@ -61,7 +61,7 @@ def process_page(
     # Detect Layer Index Columns
     layer_identifier_entries = find_layer_identifier_column_entries(lines)
     layer_identifier_columns = (
-        find_layer_identifier_column(layer_identifier_entries, page_number) if layer_identifier_entries else []
+        find_layer_identifier_column(layer_identifier_entries) if layer_identifier_entries else []
     )
     depths_materials_column_pairs = []
     if layer_identifier_columns:
@@ -71,7 +71,7 @@ def process_page(
             )
             if material_description_rect:
                 depths_materials_column_pairs.append(
-                    DepthsMaterialsColumnPair(layer_identifier_column, material_description_rect)
+                    DepthsMaterialsColumnPair(layer_identifier_column, material_description_rect, page=page_number)
                 )
 
         # Obtain the best pair. In contrast to depth columns, there only ever is one layer index column per page.
@@ -83,7 +83,7 @@ def process_page(
     if not depths_materials_column_pairs:
         words = [word for line in lines for word in line.words]
         depth_column_entries = find_depth_columns.depth_column_entries(words, include_splits=True)
-        layer_depth_columns = find_depth_columns.find_layer_depth_columns(depth_column_entries, words, page_number)
+        layer_depth_columns = find_depth_columns.find_layer_depth_columns(depth_column_entries, words)
 
         used_entry_rects = []
         for column in layer_depth_columns:
@@ -98,7 +98,7 @@ def process_page(
         depth_columns: list[DepthColumn] = layer_depth_columns
         depth_columns.extend(
             find_depth_columns.find_depth_columns(
-                depth_column_entries, words, page_number, depth_column_params=params["depth_column_params"]
+                depth_column_entries, words, depth_column_params=params["depth_column_params"]
             )
         )
 
@@ -108,7 +108,7 @@ def process_page(
             )
             if material_description_rect:
                 depths_materials_column_pairs.append(
-                    DepthsMaterialsColumnPair(depth_column, material_description_rect)
+                    DepthsMaterialsColumnPair(depth_column, material_description_rect, page=page_number)
                 )
         # lowest score first
         depths_materials_column_pairs.sort(key=lambda pair: pair.score_column_match(words))
@@ -151,7 +151,11 @@ def process_page(
             )
             pairs.extend([IntervalBlockPair(block=block, depth_interval=None) for block in description_blocks])
             filtered_depth_material_column_pairs.extend(
-                [DepthsMaterialsColumnPair(depth_column=None, material_description_rect=material_description_rect)]
+                [
+                    DepthsMaterialsColumnPair(
+                        depth_column=None, material_description_rect=material_description_rect, page=page_number
+                    )
+                ]
             )
 
     layer_predictions = [
@@ -444,7 +448,8 @@ def find_material_description_column(
         return None
     if depth_column:
         return max(
-            candidate_rects, key=lambda rect: DepthsMaterialsColumnPair(depth_column, rect).score_column_match()
+            candidate_rects,
+            key=lambda rect: DepthsMaterialsColumnPair(depth_column, rect, page=0).score_column_match(),
         )
     else:
         return candidate_rects[0]

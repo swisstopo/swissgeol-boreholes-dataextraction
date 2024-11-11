@@ -98,7 +98,7 @@ def draw_predictions(
                     draw_depth_columns_and_material_rect(
                         shape,
                         page.derotation_matrix,
-                        [pair for pair in depths_materials_column_pairs if pair.depth_column.page == page_number],
+                        [pair for pair in depths_materials_column_pairs if pair.page == page_number],
                     )
                     draw_material_descriptions(
                         shape,

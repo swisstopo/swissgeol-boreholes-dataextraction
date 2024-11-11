@@ -8,7 +8,7 @@ from stratigraphy.depthcolumn.find_depth_columns import (
     find_depth_columns,
     find_layer_depth_columns,
 )
-from stratigraphy.lines.line import TextLine, TextWord
+from stratigraphy.lines.line import TextWord
 
 PAGE_NUMBER = 1
 ALL_WORDS_FIND_DEPTH_COLUMN = [
@@ -50,8 +50,8 @@ def test_depth_column_entries():  # noqa: D103
 def test_depth_column_entries_with_splits():  # noqa: D103
     """Test the depth_column_entries function with include_splits=True."""
     all_words = [
-        TextLine([TextWord(fitz.Rect(0, 0, 10, 1), "10.00-20.0m", PAGE_NUMBER)]),
-        TextLine([TextWord(fitz.Rect(0, 2, 10, 3), "30.0-40.0m", PAGE_NUMBER)]),
+        TextWord(fitz.Rect(0, 0, 10, 1), "10.00-20.0m", PAGE_NUMBER),
+        TextWord(fitz.Rect(0, 2, 10, 3), "30.0-40.0m", PAGE_NUMBER),
     ]
     entries = depth_column_entries(all_words, include_splits=True)
     assert len(entries) == 4, "There should be 4 entries"
@@ -89,7 +89,6 @@ def test_find_depth_columns_arithmetic_progression():  # noqa: D103
     columns = find_depth_columns(
         entries,
         ALL_WORDS_FIND_DEPTH_COLUMN,
-        PAGE_NUMBER,
         depth_column_params={"noise_count_threshold": 1.25, "noise_count_offset": 0},
     )
     assert len(columns) == 0, "There should be 0 columns as the above is a perfect arithmetic progression"
@@ -108,7 +107,6 @@ def test_find_depth_columns():  # noqa: D103
     columns = find_depth_columns(
         entries,
         ALL_WORDS_FIND_DEPTH_COLUMN,
-        PAGE_NUMBER,
         depth_column_params={"noise_count_threshold": 1.25, "noise_count_offset": 0},
     )
     assert len(columns) == 1, "There should be 1 column"
@@ -138,7 +136,6 @@ def test_two_columns_find_depth_columns():  # noqa: D103
     columns = find_depth_columns(
         entries,
         ALL_WORDS_FIND_DEPTH_COLUMN,
-        PAGE_NUMBER,
         depth_column_params={"noise_count_threshold": 1.25, "noise_count_offset": 0},
     )
     assert len(columns) == 2, "There should be 2 columns"
@@ -161,7 +158,7 @@ def test_find_layer_depth_columns():  # noqa: D103
         DepthColumnEntry(fitz.Rect(0, 8, 5, 9), 60.0),
     ]
 
-    columns = find_layer_depth_columns(entries, ALL_WORDS_FIND_DEPTH_COLUMN, PAGE_NUMBER)
+    columns = find_layer_depth_columns(entries, ALL_WORDS_FIND_DEPTH_COLUMN)
     assert len(columns) == 1, "There should be 1 column"
     assert len(columns[0].entries) == 5, "The column should have 5 entries"
     assert columns[0].entries[0].start.value == 12.0, "The first entry should have a value of 12.0"
@@ -201,7 +198,7 @@ def test_two_columns_find_layer_depth_columns():  # noqa: D103
         DepthColumnEntry(fitz.Rect(20, 8, 25, 9), 50.0),  # layer 50.0-60.0m
         DepthColumnEntry(fitz.Rect(20, 8, 25, 9), 60.0),
     ]
-    columns = find_layer_depth_columns(entries, ALL_WORDS_FIND_LAYER_DEPTH_COLUMN, PAGE_NUMBER)
+    columns = find_layer_depth_columns(entries, ALL_WORDS_FIND_LAYER_DEPTH_COLUMN)
     assert len(columns) == 2, "There should be 2 columns"
     assert len(columns[0].entries) == 5, "The first column should have 5 entries"
     assert len(columns[1].entries) == 5, "The second column should have 5 entries"

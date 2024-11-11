@@ -214,19 +214,18 @@ def find_layer_identifier_column_entries(lines: list[TextLine]) -> list[LayerIde
     return entries
 
 
-def find_layer_identifier_column(entries: list[LayerIdentifierEntry], page_number: int) -> list[LayerIdentifierColumn]:
+def find_layer_identifier_column(entries: list[LayerIdentifierEntry]) -> list[LayerIdentifierColumn]:
     """Find the layer identifier column given the index column entries.
 
     Note: Similar to find_depth_columns.find_depth_columns. Refactoring may be desired.
 
     Args:
         entries (list[LayerIdentifierEntry]): The layer identifier column entries.
-        page_number (int): The number of the page.
 
     Returns:
         list[LayerIdentifierColumn]: The found layer identifier columns.
     """
-    layer_identifier_columns = [LayerIdentifierColumn([entries[0]], page=page_number)]
+    layer_identifier_columns = [LayerIdentifierColumn([entries[0]])]
     for entry in entries[1:]:
         has_match = False
         for column in layer_identifier_columns:
@@ -234,7 +233,7 @@ def find_layer_identifier_column(entries: list[LayerIdentifierEntry], page_numbe
                 column.entries.append(entry)
                 has_match = True
         if not has_match:
-            layer_identifier_columns.append(LayerIdentifierColumn([entry], page=page_number))
+            layer_identifier_columns.append(LayerIdentifierColumn([entry]))
 
         # only keep columns whose entries are not fully contained in a different column
         layer_identifier_columns = [

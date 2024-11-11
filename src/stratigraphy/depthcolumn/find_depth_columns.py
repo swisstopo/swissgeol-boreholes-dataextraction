@@ -86,9 +86,7 @@ def extract_layer_depth_interval(
     return None
 
 
-def find_layer_depth_columns(
-    entries: list[DepthColumnEntry], all_words: list[TextWord], page_number: int
-) -> list[LayerDepthColumn]:
+def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextWord]) -> list[LayerDepthColumn]:
     """Finds all layer depth columns.
 
     Generates a list of LayerDepthColumnEntry objects by finding consecutive pairs of DepthColumnEntry objects.
@@ -101,7 +99,6 @@ def find_layer_depth_columns(
     Args:
         entries (list[DepthColumnEntry]): List of depth column entries.
         all_words (list[TextWord]): List of all TextWord objects.
-        page_number (int): The number of the page.
 
     Returns:
         list[LayerDepthColumn]: List of all layer depth columns identified.
@@ -145,7 +142,7 @@ def find_layer_depth_columns(
                     column.entries.append(entry)
 
             if not is_matched:
-                columns.append(LayerDepthColumn([entry], page=page_number))
+                columns.append(LayerDepthColumn([entry]))
 
     return [
         column_segment
@@ -156,14 +153,13 @@ def find_layer_depth_columns(
 
 
 def find_depth_columns(
-    entries: list[DepthColumnEntry], all_words: list[TextWord], page_number: int, depth_column_params: dict
+    entries: list[DepthColumnEntry], all_words: list[TextWord], depth_column_params: dict
 ) -> list[BoundaryDepthColumn]:
     """Construct all possible BoundaryDepthColumn objects from the given DepthColumnEntry objects.
 
     Args:
         entries (list[DepthColumnEntry]): All found depth column entries in the page.
         all_words (list[TextLine]): All words in the page.
-        page_number (int): The page number of the entries.
         depth_column_params (dict): Parameters for the BoundaryDepthColumn objects.
 
     Returns:
@@ -186,7 +182,7 @@ def find_depth_columns(
 
         numeric_columns.extend(additional_columns)
         if not has_match:
-            numeric_columns.append(BoundaryDepthColumn(entries=[entry], page=page_number))
+            numeric_columns.append(BoundaryDepthColumn(entries=[entry]))
 
         # only keep columns that are not contained in a different column
         numeric_columns = [

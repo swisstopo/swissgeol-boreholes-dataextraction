@@ -23,7 +23,6 @@ class DepthColumn(abc.ABC, Generic[EntryT]):
     """Abstract DepthColumn class."""
 
     entries: list[EntryT]
-    page: int
 
     def rects(self) -> list[fitz.Rect]:
         """Get the rectangles of the depth column entries."""
@@ -171,7 +170,7 @@ class LayerDepthColumn(DepthColumn[LayerDepthColumnEntry]):
         if final_segment:
             segments.append(final_segment)
 
-        return [LayerDepthColumn(segment, page=self.page) for segment in segments]
+        return [LayerDepthColumn(segment) for segment in segments]
 
     def is_valid(self) -> bool:
         """Checks if the depth column is valid.
@@ -265,10 +264,10 @@ class BoundaryDepthColumn(DepthColumn[DepthColumnEntry]):
 
     def valid_initial_segment(self, rect: fitz.Rect) -> BoundaryDepthColumn:
         for i in range(len(self.entries) - 1):
-            initial_segment = BoundaryDepthColumn(self.entries[: -i - 1], page=self.page)
+            initial_segment = BoundaryDepthColumn(self.entries[: -i - 1])
             if initial_segment.can_be_appended(rect):
                 return initial_segment
-        return BoundaryDepthColumn(entries=[], page=self.page)
+        return BoundaryDepthColumn(entries=[])
 
     def strictly_contains(self, other: BoundaryDepthColumn) -> bool:
         return len(other.entries) < len(self.entries) and all(
@@ -304,9 +303,7 @@ class BoundaryDepthColumn(DepthColumn[DepthColumnEntry]):
             return self.is_arithmetic_progression()
         else:
             for i in range(len(self.entries) - segment_length + 1):
-                if BoundaryDepthColumn(
-                    self.entries[i : i + segment_length], page=self.page
-                ).is_arithmetic_progression():
+                if BoundaryDepthColumn(self.entries[i : i + segment_length]).is_arithmetic_progression():
                     return True
             return False
 
@@ -341,9 +338,7 @@ class BoundaryDepthColumn(DepthColumn[DepthColumnEntry]):
             return None
 
         new_columns = [
-            BoundaryDepthColumn(
-                [entry for index, entry in enumerate(self.entries) if index != remove_index], page=self.page
-            )
+            BoundaryDepthColumn([entry for index, entry in enumerate(self.entries) if index != remove_index])
             for remove_index in range(len(self.entries))
         ]
         return max(new_columns, key=lambda column: column.pearson_correlation_coef())
@@ -368,7 +363,7 @@ class BoundaryDepthColumn(DepthColumn[DepthColumnEntry]):
         if final_segment:
             segments.append(final_segment)
 
-        return [BoundaryDepthColumn(segment, page=self.page) for segment in segments]
+        return [BoundaryDepthColumn(segment) for segment in segments]
 
     def identify_groups(
         self,

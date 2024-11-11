@@ -105,10 +105,10 @@ class BoundaryDepthColumnValidator:
         Returns:
             BoundaryDepthColumn | None: The corrected depth column, or None if no correction was possible.
         """
-        new_columns = [BoundaryDepthColumn(entries=[], page=column.page)]
+        new_columns = [BoundaryDepthColumn(entries=[])]
         for entry in column.entries:
             new_columns = [
-                BoundaryDepthColumn([*column.entries, DepthColumnEntry(entry.rect, new_value)], page=column.page)
+                BoundaryDepthColumn([*column.entries, DepthColumnEntry(entry.rect, new_value)])
                 for column in new_columns
                 for new_value in _value_alternatives(entry.value)
             ]
