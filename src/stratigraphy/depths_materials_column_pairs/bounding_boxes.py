@@ -42,7 +42,7 @@ class BoundingBoxes:
         """
         return {
             "depth_column_rect": self.depth_column_bbox.to_json() if self.depth_column_bbox else None,
-            "depth_column_entries": [entry.to_json for entry in self.depth_column_entry_bboxes],
+            "depth_column_entries": [entry.to_json() for entry in self.depth_column_entry_bboxes],
             "material_description_rect": self.material_description_bbox.to_json(),
             "page": self.page,
         }

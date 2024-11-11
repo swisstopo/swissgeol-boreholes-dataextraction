@@ -157,11 +157,13 @@ def process_page(
         else:
             depth_column_bbox = None
             depth_column_entry_bboxes = []
-        BoundingBoxes(
-            depth_column_bbox=depth_column_bbox,
-            depth_column_entry_bboxes=depth_column_entry_bboxes,
-            material_description_bbox=BoundingBox(pair.material_description_rect),
-            page=page_number,
+        bounding_boxes.append(
+            BoundingBoxes(
+                depth_column_bbox=depth_column_bbox,
+                depth_column_entry_bboxes=depth_column_entry_bboxes,
+                material_description_bbox=BoundingBox(pair.material_description_rect),
+                page=page_number,
+            )
         )
 
     layer_predictions = [
