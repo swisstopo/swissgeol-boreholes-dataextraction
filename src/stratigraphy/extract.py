@@ -242,13 +242,12 @@ def transform_groups(
     Returns:
         List[IntervalBlockPair]: Pairing of text blocks and depth intervals.
     """
-    if len(depth_intervals) == 0:
-        return []
-    elif len(depth_intervals) == 1:
+    if len(depth_intervals) <= 1:
         concatenated_block = TextBlock(
             [line for block in blocks for line in block.lines]
         )  # concatenate all text lines within a block; line separation flag does not matter here.
-        return [IntervalBlockPair(depth_interval=depth_intervals[0], block=concatenated_block)]
+        depth_interval = depth_intervals[0] if len(depth_intervals) else None
+        return [IntervalBlockPair(depth_interval=depth_interval, block=concatenated_block)]
     else:
         if len(blocks) < len(depth_intervals):
             blocks = split_blocks_by_textline_length(blocks, target_split_count=len(depth_intervals) - len(blocks))
