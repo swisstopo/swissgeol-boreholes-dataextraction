@@ -55,7 +55,7 @@ def draw_predictions(
     for file_prediction in predictions.file_predictions_list:
         logger.info("Drawing predictions for file %s", file_prediction.file_name)
 
-        depths_materials_column_pairs = file_prediction.depths_materials_columns_pairs
+        bounding_boxes = file_prediction.bounding_boxes
         coordinates = file_prediction.metadata.coordinates
         elevation = file_prediction.metadata.elevation
 
@@ -98,7 +98,7 @@ def draw_predictions(
                     draw_depth_columns_and_material_rect(
                         shape,
                         page.derotation_matrix,
-                        [pair for pair in depths_materials_column_pairs if pair.page == page_number],
+                        [bboxes for bboxes in bounding_boxes if bboxes.page == page_number],
                     )
                     draw_material_descriptions(
                         shape,

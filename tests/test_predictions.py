@@ -49,7 +49,7 @@ def sample_file_prediction() -> FilePredictions:
         file_name="test_file",
         metadata=metadata,
         groundwater=groundwater_in_doc,
-        depths_materials_columns_pairs=[],
+        bounding_boxes=[],
     )
 
 

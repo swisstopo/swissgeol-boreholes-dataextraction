@@ -14,24 +14,6 @@ class DepthsMaterialsColumnPair:
 
     depth_column: DepthColumn | None
     material_description_rect: fitz.Rect
-    page: int
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "depth_column": self.depth_column.to_json() if self.depth_column else None,
-            "material_description_rect": [
-                self.material_description_rect.x0,
-                self.material_description_rect.y0,
-                self.material_description_rect.x1,
-                self.material_description_rect.y1,
-            ],
-            "page": self.page,
-        }
 
     def score_column_match(self, all_words: list[TextWord] | None = None) -> float:
         """Scores the match between a depth column and a material description.

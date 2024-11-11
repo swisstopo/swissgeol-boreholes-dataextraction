@@ -85,11 +85,6 @@ class DepthColumn(abc.ABC, Generic[EntryT]):
         """
         pass
 
-    @abc.abstractmethod
-    def to_json(self):
-        """Converts the object to a dictionary."""
-        pass
-
     def can_be_appended(self, rect: fitz.Rect) -> bool:
         """Checks if a new depth column entry can be appended to the current depth column.
 
@@ -135,19 +130,6 @@ class LayerDepthColumn(DepthColumn[LayerDepthColumnEntry]):
             str: The object as a string.
         """
         return "LayerDepthColumn({})".format(", ".join([str(entry) for entry in self.entries]))
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        rect = self.rect()
-        return {
-            "rect": [rect.x0, rect.y0, rect.x1, rect.y1],
-            "entries": [entry.to_json() for entry in self.entries],
-            "type": "LayerDepthColumn",
-        }
 
     def depth_intervals(self) -> list[LayerInterval]:
         return [LayerInterval(entry) for entry in self.entries]
@@ -248,19 +230,6 @@ class BoundaryDepthColumn(DepthColumn[DepthColumnEntry]):
 
     def __repr__(self):
         return "DepthColumn({})".format(", ".join([str(entry) for entry in self.entries]))
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        rect = self.rect()
-        return {
-            "rect": [rect.x0, rect.y0, rect.x1, rect.y1],
-            "entries": [entry.to_json() for entry in self.entries],
-            "type": "BoundaryDepthColumn",
-        }
 
     def valid_initial_segment(self, rect: fitz.Rect) -> BoundaryDepthColumn:
         for i in range(len(self.entries) - 1):

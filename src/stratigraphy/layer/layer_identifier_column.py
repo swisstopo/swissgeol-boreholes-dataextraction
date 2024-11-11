@@ -25,17 +25,6 @@ class LayerIdentifierEntry:
     def __repr__(self):
         return str(self.text)
 
-    def to_json(self):
-        """Convert the layer identifier entry to a JSON serializable format.
-
-        Returns:
-            dict: The JSON serializable format of the layer identifier entry.
-        """
-        return {
-            "text": self.text,
-            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
-        }
-
 
 @dataclass
 class LayerIdentifierColumn(DepthColumn[LayerIdentifierEntry]):
@@ -147,41 +136,6 @@ class LayerIdentifierColumn(DepthColumn[LayerIdentifierEntry]):
             and self.rect().x1 <= rect.x1
             and rect.y0 <= self.rect().y0
             and self.rect().y1 <= rect.y1
-        )
-
-    def to_json(self):
-        """Convert the layer identifier column to a JSON serializable format.
-
-        Returns:
-            dict: The JSON serializable format of the layer identifier column.
-        """
-        rect = self.rect()
-        return {
-            "rect": [rect.x0, rect.y0, rect.x1, rect.y1],
-            "entries": [entry.to_json() for entry in self.entries],
-            "type": "LayerIdentifierColumn",
-        }
-
-    @classmethod
-    def from_json(cls, data: dict) -> "LayerIdentifierColumn":
-        """Converts a dictionary to an object.
-
-        Args:
-            data (dict): A dictionary containing 'entries' list with 'rect' and 'text' fields.
-
-        Raises:
-             ValueError: If the input dictionary is missing required fields or has invalid data.
-
-        Returns:
-            LayerIdentifierColumn: The layer identifier column object.
-        """
-        if not isinstance(data, dict) or "entries" not in data:
-            raise ValueError("Invalid input: data must be a dictionary with 'entries' field")
-
-        return LayerIdentifierColumn(
-            entries=[
-                LayerIdentifierEntry(rect=fitz.Rect(entry["rect"]), text=entry["text"]) for entry in data["entries"]
-            ]
         )
 
 

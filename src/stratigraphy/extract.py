@@ -8,6 +8,7 @@ import fitz
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.depthcolumn import find_depth_columns
 from stratigraphy.depthcolumn.depthcolumn import DepthColumn
+from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBox, BoundingBoxes
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPair
 from stratigraphy.layer.layer import IntervalBlockPair, Layer
 from stratigraphy.layer.layer_identifier_column import (
@@ -35,7 +36,7 @@ class ProcessPageResult:
     """The result of processing a single page of a pdf."""
 
     predictions: list[Layer]
-    depth_material_pairs: list[DepthsMaterialsColumnPair]
+    bounding_boxes: list[BoundingBoxes]
 
 
 def process_page(
@@ -71,10 +72,9 @@ def process_page(
             )
             if material_description_rect:
                 depths_materials_column_pairs.append(
-                    DepthsMaterialsColumnPair(layer_identifier_column, material_description_rect, page=page_number)
+                    DepthsMaterialsColumnPair(layer_identifier_column, material_description_rect)
                 )
 
-        # Obtain the best pair. In contrast to depth columns, there only ever is one layer index column per page.
         if depths_materials_column_pairs:
             depths_materials_column_pairs.sort(key=lambda pair: pair.score_column_match())
 
@@ -108,7 +108,7 @@ def process_page(
             )
             if material_description_rect:
                 depths_materials_column_pairs.append(
-                    DepthsMaterialsColumnPair(depth_column, material_description_rect, page=page_number)
+                    DepthsMaterialsColumnPair(depth_column, material_description_rect)
                 )
         # lowest score first
         depths_materials_column_pairs.sort(key=lambda pair: pair.score_column_match(words))
@@ -125,7 +125,6 @@ def process_page(
     ]
 
     pairs: list[IntervalBlockPair] = []  # list of matched depth intervals and text blocks
-    # groups is of the form: [{"depth_interval": BoundaryInterval, "block": TextBlock}]
     if filtered_depth_material_column_pairs:  # match depth column items with material description
         for pair in filtered_depth_material_column_pairs:
             description_lines = get_description_lines(lines, pair.material_description_rect)
@@ -135,7 +134,6 @@ def process_page(
                 )
                 pairs.extend(new_pairs)
     else:
-        filtered_depth_material_column_pairs = []
         # Fallback when no depth column was found
         material_description_rect = find_material_description_column(
             lines, depth_column=None, language=language, **params["material_description"]
@@ -150,13 +148,21 @@ def process_page(
                 params["left_line_length_threshold"],
             )
             pairs.extend([IntervalBlockPair(block=block, depth_interval=None) for block in description_blocks])
-            filtered_depth_material_column_pairs.extend(
-                [
-                    DepthsMaterialsColumnPair(
-                        depth_column=None, material_description_rect=material_description_rect, page=page_number
-                    )
-                ]
-            )
+
+    bounding_boxes = []
+    for pair in filtered_depth_material_column_pairs:
+        if pair.depth_column:
+            depth_column_bbox = BoundingBox(pair.depth_column.rect())
+            depth_column_entry_bboxes = [BoundingBox(entry.rect) for entry in pair.depth_column.entries]
+        else:
+            depth_column_bbox = None
+            depth_column_entry_bboxes = []
+        BoundingBoxes(
+            depth_column_bbox=depth_column_bbox,
+            depth_column_entry_bboxes=depth_column_entry_bboxes,
+            material_description_bbox=BoundingBox(pair.material_description_rect),
+            page=page_number,
+        )
 
     layer_predictions = [
         Layer(
@@ -182,7 +188,7 @@ def process_page(
         for pair in pairs
     ]
     layer_predictions = [layer for layer in layer_predictions if layer.description_nonempty()]
-    return ProcessPageResult(layer_predictions, filtered_depth_material_column_pairs)
+    return ProcessPageResult(layer_predictions, bounding_boxes)
 
 
 def match_columns(
@@ -449,7 +455,7 @@ def find_material_description_column(
     if depth_column:
         return max(
             candidate_rects,
-            key=lambda rect: DepthsMaterialsColumnPair(depth_column, rect, page=0).score_column_match(),
+            key=lambda rect: DepthsMaterialsColumnPair(depth_column, rect).score_column_match(),
         )
     else:
         return candidate_rects[0]

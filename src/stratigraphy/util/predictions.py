@@ -5,7 +5,7 @@ import logging
 from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.benchmark.metrics import OverallMetricsCatalog
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
-from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPair
+from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBoxes
 from stratigraphy.evaluation.evaluation_dataclasses import OverallBoreholeMetadataMetrics
 from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
 from stratigraphy.evaluation.layer_evaluator import LayerEvaluator
@@ -26,10 +26,10 @@ class FilePredictions:
         file_name: str,
         metadata: BoreholeMetadata,
         groundwater: GroundwaterInDocument,
-        depths_materials_columns_pairs: list[DepthsMaterialsColumnPair],
+        bounding_boxes: list[BoundingBoxes],
     ):
         self.layers_in_document: LayersInDocument = layers_in_document
-        self.depths_materials_columns_pairs: list[DepthsMaterialsColumnPair] = depths_materials_columns_pairs
+        self.bounding_boxes: list[BoundingBoxes] = bounding_boxes
         self.file_name: str = file_name
         self.metadata: BoreholeMetadata = metadata
         self.groundwater: GroundwaterInDocument = groundwater
@@ -43,9 +43,7 @@ class FilePredictions:
         return {
             "metadata": self.metadata.to_json(),
             "layers": [layer.to_json() for layer in self.layers_in_document.layers],
-            "depths_materials_column_pairs": [dmc_pair.to_json() for dmc_pair in self.depths_materials_columns_pairs]
-            if self.depths_materials_columns_pairs is not None
-            else [],
+            "bounding_boxes": [bboxes.to_json() for bboxes in self.bounding_boxes],
             "page_dimensions": self.metadata.page_dimensions,  # TODO: Remove, already in metadata
             "groundwater": self.groundwater.to_json() if self.groundwater is not None else [],
             "file_name": self.file_name,
@@ -103,10 +101,7 @@ class OverallFilePredictions:
             layers = [Layer.from_json(data) for data in file_data["layers"]]
             layers_in_doc = LayersInDocument(layers=layers, filename=file_name)
 
-            depths_materials_columns_pairs = [
-                DepthsMaterialsColumnPair.from_json(dmc_pair)
-                for dmc_pair in file_data["depths_materials_column_pairs"]
-            ]
+            bounding_boxes = [BoundingBoxes.from_json(bboxes) for bboxes in file_data["bounding_boxes"]]
 
             groundwater_entries = [FeatureOnPage.from_json(entry, Groundwater) for entry in file_data["groundwater"]]
             groundwater_in_document = GroundwaterInDocument(groundwater=groundwater_entries, filename=file_name)
@@ -115,7 +110,7 @@ class OverallFilePredictions:
                     layers_in_document=layers_in_doc,
                     file_name=file_name,
                     metadata=metadata,
-                    depths_materials_columns_pairs=depths_materials_columns_pairs,
+                    bounding_boxes=bounding_boxes,
                     groundwater=groundwater_in_document,
                 )
             )
