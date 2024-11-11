@@ -58,20 +58,12 @@ class Layer(ExtractedFeature):
             start_data = depth_interval.get("start")
             end_data = depth_interval.get("end")
             start = (
-                DepthColumnEntry(
-                    value=start_data["value"],
-                    rect=fitz.Rect(start_data["rect"]),
-                    page_number=start_data["page"],
-                )
+                DepthColumnEntry(value=start_data["value"], rect=fitz.Rect(start_data["rect"]))
                 if start_data is not None
                 else None
             )
             end = (
-                DepthColumnEntry(
-                    value=end_data["value"],
-                    rect=fitz.Rect(end_data["rect"]),
-                    page_number=end_data["page"],
-                )
+                DepthColumnEntry(value=end_data["value"], rect=fitz.Rect(end_data["rect"]))
                 if end_data is not None
                 else None
             )
