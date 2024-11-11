@@ -8,7 +8,7 @@ import fitz
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.depthcolumn import find_depth_columns
 from stratigraphy.depthcolumn.depthcolumn import DepthColumn
-from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBox, BoundingBoxes
+from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBoxes
 from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPair
 from stratigraphy.layer.layer import IntervalBlockPair, Layer
 from stratigraphy.layer.layer_identifier_column import (
@@ -149,23 +149,6 @@ def process_page(
             )
             pairs.extend([IntervalBlockPair(block=block, depth_interval=None) for block in description_blocks])
 
-    bounding_boxes = []
-    for pair in filtered_depth_material_column_pairs:
-        if pair.depth_column:
-            depth_column_bbox = BoundingBox(pair.depth_column.rect())
-            depth_column_entry_bboxes = [BoundingBox(entry.rect) for entry in pair.depth_column.entries]
-        else:
-            depth_column_bbox = None
-            depth_column_entry_bboxes = []
-        bounding_boxes.append(
-            BoundingBoxes(
-                depth_column_bbox=depth_column_bbox,
-                depth_column_entry_bboxes=depth_column_entry_bboxes,
-                material_description_bbox=BoundingBox(pair.material_description_rect),
-                page=page_number,
-            )
-        )
-
     layer_predictions = [
         Layer(
             material_description=FeatureOnPage(
@@ -190,6 +173,7 @@ def process_page(
         for pair in pairs
     ]
     layer_predictions = [layer for layer in layer_predictions if layer.description_nonempty()]
+    bounding_boxes = [BoundingBoxes.from_depths_material_column_pair(pair, page_number) for pair in pairs]
     return ProcessPageResult(layer_predictions, bounding_boxes)
 
 
