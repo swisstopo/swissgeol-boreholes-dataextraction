@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import Any
 
 import fitz
 from stratigraphy.lines.line import TextWord
 
 
+@dataclass
 class DepthColumnEntry:  # noqa: D101
     """Class to represent a depth column entry."""
 
-    def __init__(self, rect: fitz.Rect, value: float):
-        self.rect = rect
-        self.value = value
+    rect: fitz.Rect
+    value: float
 
     def __repr__(self) -> str:
         return str(self.value)
@@ -61,10 +62,10 @@ class DepthColumnEntry:  # noqa: D101
                     entries.append(DepthColumnEntry(word.rect, value))
                 elif include_splits:
                     # support for e.g. "1.10-1.60m" extracted as a single word
-                    layer_depth_column_entry = AToBDepthColumnEntry.from_text(input_string, word.rect)
+                    a_to_b_depth_column_entry = AToBDepthColumnEntry.from_text(input_string, word.rect)
                     entries.extend(
-                        [layer_depth_column_entry.start, layer_depth_column_entry.end]
-                        if layer_depth_column_entry
+                        [a_to_b_depth_column_entry.start, a_to_b_depth_column_entry.end]
+                        if a_to_b_depth_column_entry
                         else []
                     )
             except ValueError:
@@ -72,12 +73,14 @@ class DepthColumnEntry:  # noqa: D101
         return entries
 
 
+@dataclass
 class AToBDepthColumnEntry:  # noqa: D101
-    """Class to represent a layer depth column entry."""
+    """Class to represent a depth column entry of the form "1m - 3m"."""
 
-    def __init__(self, start: DepthColumnEntry, end: DepthColumnEntry):
-        self.start = start
-        self.end = end
+    # TODO do we need both this class as well as AToBInterval, or can we combine the two classes?
+
+    start: DepthColumnEntry
+    end: DepthColumnEntry
 
     def __repr__(self) -> str:
         return f"{self.start.value}-{self.end.value}"
@@ -89,11 +92,7 @@ class AToBDepthColumnEntry:  # noqa: D101
 
     def to_json(self) -> dict[str, Any]:
         """Convert the layer depth column entry to a JSON serializable format."""
-        return {
-            "start": self.start.to_json(),
-            "end": self.end.to_json(),
-            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
-        }
+        return {"start": self.start.to_json(), "end": self.end.to_json()}
 
     @classmethod
     def from_json(cls, data: dict) -> AToBDepthColumnEntry:

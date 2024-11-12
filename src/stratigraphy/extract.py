@@ -170,6 +170,7 @@ def process_page(
                 rect=pair.block.rect,
                 page=page_number,
             ),
+            # TODO don't automatically convert any interval to an AAboveBInterval
             depth_interval=AAboveBInterval(start=pair.depth_interval.start, end=pair.depth_interval.end)
             if pair.depth_interval
             else None,
