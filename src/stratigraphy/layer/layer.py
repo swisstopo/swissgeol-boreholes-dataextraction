@@ -84,16 +84,11 @@ class LayersInDocument:
 
 
 @dataclass
-class IntervalBlockGroup:
-    """A class to represent a group of depth intervals and a group of associated text blocks."""
-
-    depth_intervals: list[Interval]
-    blocks: list[TextBlock]
-
-
-@dataclass
 class IntervalBlockPair:
-    """A class to represent an optional depth interval and an associated text block."""
+    """Represent the data for a single layer in the borehole profile.
+
+    This consist of a material description (represented as a text block) and a depth interval (if available).
+    """
 
     depth_interval: Interval | None
     block: TextBlock
