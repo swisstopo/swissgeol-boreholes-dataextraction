@@ -1,6 +1,7 @@
 """Tests for the groundwater module."""
 
 import pytest
+from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.evaluation.evaluation_dataclasses import Metrics
 from stratigraphy.evaluation.groundwater_evaluator import (
@@ -18,9 +19,9 @@ def sample_metrics():
 
 
 @pytest.fixture
-def groundtruth_path():
+def groundtruth():
     """Path to the ground truth file."""
-    return "example/example_gw_groundtruth.json"
+    return GroundTruth("example/example_gw_groundtruth.json")
 
 
 def test_add_groundwater_metrics(sample_metrics):
@@ -62,7 +63,7 @@ def test_groundwater_depth_metrics_to_overall_metrics(sample_metrics):
     assert overall.metrics["file_depth"] == gw_metrics.groundwater_depth_metrics
 
 
-def test_evaluate_with_ground_truth(groundtruth_path):
+def test_evaluate_with_ground_truth(groundtruth):
     """Test the evaluate method with available ground truth data."""
     # Sample groundwater entries
     groundwater_entries = [
@@ -77,7 +78,7 @@ def test_evaluate_with_ground_truth(groundtruth_path):
         )
     ]
 
-    evaluator = GroundwaterEvaluator(groundwater_entries, groundtruth_path)
+    evaluator = GroundwaterEvaluator(groundwater_entries, groundtruth)
     overall_metrics = evaluator.evaluate()
 
     # Assertions
@@ -87,7 +88,7 @@ def test_evaluate_with_ground_truth(groundtruth_path):
     assert overall_metrics.groundwater_metrics[0].groundwater_metrics.precision == 1.0
 
 
-def test_evaluate_multiple_entries(groundtruth_path):
+def test_evaluate_multiple_entries(groundtruth):
     """Test the evaluate method with multiple groundwater entries."""
     # Sample groundwater entries
     groundwater_entries = [
@@ -115,7 +116,7 @@ def test_evaluate_multiple_entries(groundtruth_path):
         ),
     ]
 
-    evaluator = GroundwaterEvaluator(groundwater_entries, groundtruth_path)
+    evaluator = GroundwaterEvaluator(groundwater_entries, groundtruth)
     overall_metrics = evaluator.evaluate()
 
     # Assertions

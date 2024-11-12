@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import abc
+from dataclasses import dataclass
 
 import fitz
 import numpy as np
 from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
-from stratigraphy.layer.layer import IntervalBlockGroup
 from stratigraphy.layer.layer_identifier_column import LayerIdentifierColumn
 from stratigraphy.lines.line import TextLine, TextWord
 from stratigraphy.text.find_description import get_description_blocks
+from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.interval import BoundaryInterval, Interval, LayerInterval
 
@@ -67,7 +68,7 @@ class DepthColumn(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def identify_groups(
         self, description_lines: list[TextLine], geometric_lines: list[Line], material_description_rect: fitz.Rect
-    ) -> list[dict]:
+    ) -> list[IntervalBlockGroup]:
         """Identifies groups of description blocks that correspond to depth intervals.
 
         Args:
@@ -76,8 +77,7 @@ class DepthColumn(metaclass=abc.ABCMeta):
             material_description_rect (fitz.Rect): The bounding box of the material description.
 
         Returns:
-            list[dict]: A list of groups, where each group is a dictionary
-                        with the keys "depth_intervals" and "blocks".
+            list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
         """
         pass
 
@@ -265,11 +265,7 @@ class LayerDepthColumn(DepthColumn):
 
             matched_blocks = interval.matching_blocks(description_lines, line_index, next_interval)
             line_index += sum([len(block.lines) for block in matched_blocks])
-            groups.append(
-                # TODO: This seems to be the only case where a list is passed and most of the time it is a list of one
-                # element. Seem to need the function: transform_groups().
-                IntervalBlockGroup(depth_interval=[interval], block=matched_blocks)
-            )
+            groups.append(IntervalBlockGroup(depth_intervals=[interval], blocks=matched_blocks))
         return groups
 
 
@@ -559,8 +555,8 @@ class BoundaryDepthColumn(DepthColumn):
             current_blocks.extend(pre)
             if len(exact):
                 if len(current_intervals) > 0 or len(current_blocks) > 0:
-                    groups.append(IntervalBlockGroup(depth_interval=current_intervals, block=current_blocks))
-                groups.append(IntervalBlockGroup(depth_interval=[interval], block=exact))
+                    groups.append(IntervalBlockGroup(depth_intervals=current_intervals, blocks=current_blocks))
+                groups.append(IntervalBlockGroup(depth_intervals=[interval], blocks=exact))
                 current_blocks = post
                 current_intervals = []
             else:
@@ -570,6 +566,18 @@ class BoundaryDepthColumn(DepthColumn):
                     current_intervals.append(interval)
 
         if len(current_intervals) > 0 or len(current_blocks) > 0:
-            groups.append(IntervalBlockGroup(depth_interval=current_intervals, block=current_blocks))
+            groups.append(IntervalBlockGroup(depth_intervals=current_intervals, blocks=current_blocks))
 
         return groups
+
+
+@dataclass
+class IntervalBlockGroup:
+    """Helper class to represent a group of depth intervals and an associated group of text blocks.
+
+    The class is used to simplify the code for obtaining an appropriate one-to-one correspondence between depth
+    intervals and material descriptions.
+    """
+
+    depth_intervals: list[Interval]
+    blocks: list[TextBlock]

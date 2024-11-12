@@ -9,8 +9,7 @@ from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
 from stratigraphy import DATAPATH
-from stratigraphy.annotations.draw import draw_predictions
-from stratigraphy.evaluation.evaluation_dataclasses import BoreholeMetadataMetrics
+from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.util.predictions import OverallFilePredictions
 
 load_dotenv()
@@ -21,29 +20,29 @@ logger = logging.getLogger(__name__)
 
 
 def evaluate(
-    predictions: OverallFilePredictions,
-    ground_truth_path: Path,
-    temp_directory: Path,
-    input_directory: Path | None,
-    draw_directory: Path | None,
-) -> None:
+    predictions: OverallFilePredictions, ground_truth_path: Path, temp_directory: Path
+) -> None | pd.DataFrame:
     """Computes all the metrics, logs them, and creates corresponding MLFlow artifacts (when enabled).
 
     Args:
         predictions (OverallFilePredictions): The predictions objects.
-        ground_truth_path (Path): The path to the ground truth file.
+        ground_truth_path (Path | None): The path to the ground truth file.
         temp_directory (Path): The path to the temporary directory.
-        input_directory (Path | None): The path to the input directory.
-        draw_directory (Path | None): The path to the draw directory.
 
     Returns:
-        None
+        None | pd.DataFrame: the document level metadata metrics
     """
+    if not (ground_truth_path and ground_truth_path.exists()):  # for inference no ground truth is available
+        logger.warning("Ground truth file not found. Skipping evaluation.")
+        return None
+
+    ground_truth = GroundTruth(ground_truth_path)
+
     #############################
     # Evaluate the borehole extraction metadata
     #############################
-    metadata_metrics_list = predictions.evaluate_metadata_extraction(ground_truth_path)
-    metadata_metrics: BoreholeMetadataMetrics = metadata_metrics_list.get_cumulated_metrics()
+    metadata_metrics_list = predictions.evaluate_metadata_extraction(ground_truth)
+    metadata_metrics = metadata_metrics_list.get_cumulated_metrics()
     document_level_metadata_metrics: pd.DataFrame = metadata_metrics_list.get_document_level_metrics()
     document_level_metadata_metrics.to_csv(
         temp_directory / "document_level_metadata_metrics.csv", index_label="document_name"
@@ -62,7 +61,7 @@ def evaluate(
     #############################
     # Evaluate the borehole extraction
     #############################
-    metrics = predictions.evaluate_borehole_extraction(ground_truth_path)
+    metrics = predictions.evaluate_geology(ground_truth)
 
     metrics.document_level_metrics_df().to_csv(
         temp_directory / "document_level_metrics.csv", index_label="document_name"
@@ -77,11 +76,7 @@ def evaluate(
         mlflow.log_metrics(metrics_dict)
         mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
 
-    #############################
-    # Draw the prediction
-    #############################
-    if input_directory and draw_directory:
-        draw_predictions(predictions, input_directory, draw_directory, document_level_metadata_metrics)
+    return document_level_metadata_metrics
 
 
 def main():
@@ -110,8 +105,7 @@ def main():
 
     predictions = OverallFilePredictions.from_json(predictions)
 
-    # Customize these as needed
-    evaluate(predictions, args.ground_truth_path, args.temp_directory, input_directory=None, draw_directory=None)
+    evaluate(predictions, args.ground_truth_path, args.temp_directory)
 
 
 def parse_cli() -> argparse.Namespace:

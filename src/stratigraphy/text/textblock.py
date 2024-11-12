@@ -3,32 +3,47 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Self
 
 import fitz
 import numpy as np
+from stratigraphy.data_extractor.data_extractor import ExtractedFeature, FeatureOnPage
 from stratigraphy.lines.line import TextLine
 
 
 @dataclass
-class MaterialDescription:
-    """Class to represent a material description in a PDF document.
-
-    Note: This class is similar to the TextBlock class. As such it has the attributes text and rect.
-    But it does not have the attribute lines and is missing class methods. TextBlock is used during the extraction
-    process where more fine-grained information is required. We lose this "fine-grainedness" when we annotate
-    the boreholes in label-studio.
-    """
+class MaterialDescriptionLine(ExtractedFeature):
+    """Class to represent a line of a material description in a PDF document."""
 
     text: str
-    rect: fitz.Rect
+
+    def to_json(self):
+        """Convert the MaterialDescriptionLine object to a JSON serializable dictionary."""
+        return {"text": self.text}
+
+    @classmethod
+    def from_json(cls, data: dict) -> Self:
+        """Converts a dictionary to an object."""
+        return cls(text=data["text"])
+
+
+@dataclass
+class MaterialDescription(ExtractedFeature):
+    """Class to represent a material description in a PDF document."""
+
+    text: str
+    lines: list[FeatureOnPage[MaterialDescriptionLine]]
 
     def to_json(self):
         """Convert the MaterialDescription object to a JSON serializable dictionary."""
-        return {
-            "text": self.text,
-            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
-        }
+        return {"text": self.text, "lines": [line.to_json() for line in self.lines]}
+
+    @classmethod
+    def from_json(cls, data: dict) -> Self:
+        """Converts a dictionary to an object."""
+        return cls(
+            text=data["text"], lines=[FeatureOnPage.from_json(line, MaterialDescriptionLine) for line in data["lines"]]
+        )
 
 
 @dataclass
@@ -148,15 +163,6 @@ class TextBlock:
                 x0_coordinates.append(line.rect.x0)
                 y0_coordinates.append(line.rect.y0)
         return number_horizontally_close > 1 or number_vertically_close > 2
-
-    def to_json(self) -> dict[str, Any]:
-        """Convert the TextBlock object to a JSON serializable dictionary."""
-        return {
-            "text": self.text,
-            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
-            "lines": [line.to_json() for line in self.lines],
-            "page": self.page_number,
-        }
 
 
 def _is_close(a: float, b: list, tolerance: float) -> bool:

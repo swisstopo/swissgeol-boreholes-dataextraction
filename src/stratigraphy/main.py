@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 
 from stratigraphy import DATAPATH
+from stratigraphy.annotations.draw import draw_predictions
 from stratigraphy.annotations.plot_utils import plot_lines
 from stratigraphy.benchmark.score import evaluate
 from stratigraphy.extract import process_page
@@ -227,17 +228,15 @@ def start_pipeline(
 
                 # Save the predictions to the overall predictions object
                 # Initialize common variables
-                groundwater_entries = None
-                layers = None
-                depths_materials_columns_pairs = None
+                groundwater_entries = GroundwaterInDocument(filename=filename, groundwater=[])
+                layers_in_document = LayersInDocument([], filename)
+                depths_materials_columns_pairs = []
 
                 if part == "all":
                     # Extract the groundwater levels
                     groundwater_entries = GroundwaterInDocument.from_document(doc, metadata.elevation)
 
                     # Extract the layers
-                    layers = LayersInDocument([], filename)
-                    depths_materials_columns_pairs = []
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
                         logger.info("Processing page %s", page_number)
@@ -253,7 +252,7 @@ def start_pipeline(
                             layer_predictions = remove_duplicate_layers(
                                 previous_page=doc[page_index - 1],
                                 current_page=page,
-                                previous_layers=layers,
+                                previous_layers=layers_in_document,
                                 current_layers=process_page_results.predictions,
                                 img_template_probability_threshold=matching_params[
                                     "img_template_probability_threshold"
@@ -262,7 +261,7 @@ def start_pipeline(
                         else:
                             layer_predictions = process_page_results.predictions
 
-                        layers.add_layers_on_page(layer_predictions)
+                        layers_in_document.layers.extend(layer_predictions)
                         depths_materials_columns_pairs.extend(process_page_results.depth_material_pairs)
 
                         if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
@@ -282,7 +281,7 @@ def start_pipeline(
                         file_name=filename,
                         metadata=metadata,
                         groundwater=groundwater_entries,
-                        layers=layers,
+                        layers_in_document=layers_in_document,
                         depths_materials_columns_pairs=depths_materials_columns_pairs,
                     )
                 )
@@ -296,13 +295,12 @@ def start_pipeline(
         with open(predictions_path, "w", encoding="utf8") as file:
             json.dump(predictions.to_json(), file, ensure_ascii=False)
 
-    evaluate(
-        predictions=predictions,
-        ground_truth_path=ground_truth_path,
-        temp_directory=temp_directory,
-        input_directory=input_directory,
-        draw_directory=draw_directory,
+    document_level_metadata_metrics = evaluate(
+        predictions=predictions, ground_truth_path=ground_truth_path, temp_directory=temp_directory
     )
+
+    if input_directory and draw_directory:
+        draw_predictions(predictions, input_directory, draw_directory, document_level_metadata_metrics)
 
 
 if __name__ == "__main__":

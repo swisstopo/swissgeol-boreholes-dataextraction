@@ -7,7 +7,7 @@ import fitz
 import Levenshtein
 import numpy as np
 from stratigraphy.annotations.plot_utils import convert_page_to_opencv_img
-from stratigraphy.layer.layer import LayersInDocument, LayersOnPage
+from stratigraphy.layer.layer import Layer, LayersInDocument
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +16,9 @@ def remove_duplicate_layers(
     previous_page: fitz.Page,
     current_page: fitz.Page,
     previous_layers: LayersInDocument,
-    current_layers: LayersOnPage,
+    current_layers: list[Layer],
     img_template_probability_threshold: float,
-) -> LayersOnPage:
+) -> list[Layer]:
     """Remove duplicate layers from the current page based on the layers of the previous page.
 
     We check if a layer on the current page is present on the previous page. If we have 3 consecutive layers that are
@@ -32,13 +32,13 @@ def remove_duplicate_layers(
         previous_page (fitz.Page): The previous page.
         current_page (fitz.Page): The current page containing the layers to check for duplicates.
         previous_layers (LayersInDocument): The layers of the previous page.
-        current_layers (LayersOnPage): The layers of the current page.
+        current_layers (list[Layer]): The layers of the current page.
         img_template_probability_threshold (float): The threshold for the template matching probability
 
     Returns:
-        list[dict]: The layers of the current page without duplicates.
+        list[Layer]: The layers of the current page without duplicates.
     """
-    sorted_layers = sorted(current_layers.layers_on_page, key=lambda x: x.material_description.rect.y0)
+    sorted_layers = sorted(current_layers, key=lambda x: x.material_description.rect.y0)
     first_non_duplicated_layer_index = 0
     count_consecutive_non_duplicate_layers = 0
     for layer_index, layer in enumerate(sorted_layers):
@@ -57,7 +57,7 @@ def remove_duplicate_layers(
         else:  # in this case we compare the depth interval and material description
             current_material_description = layer.material_description
             current_depth_interval = layer.depth_interval
-            for previous_layer in previous_layers.get_all_layers():
+            for previous_layer in previous_layers.layers:
                 if previous_layer.depth_interval is None:
                     # It may happen, that a layer on the previous page does not have depth interval assigned.
                     # In this case we skip the comparison. This should only happen in some edge cases, as we
@@ -81,7 +81,10 @@ def remove_duplicate_layers(
                 )
                 # check if material description is the same
                 text_similarity = (
-                    Levenshtein.ratio(current_material_description.text, previous_material_description.text) > 0.9
+                    Levenshtein.ratio(
+                        current_material_description.feature.text, previous_material_description.feature.text
+                    )
+                    > 0.9
                 )
 
                 same_start_depth = current_depth_interval_start == previous_depth_interval_start
@@ -98,11 +101,11 @@ def remove_duplicate_layers(
             count_consecutive_non_duplicate_layers = 0
         else:
             count_consecutive_non_duplicate_layers += 1
-    return LayersOnPage(sorted_layers[first_non_duplicated_layer_index:])
+    return sorted_layers[first_non_duplicated_layer_index:]
 
 
 def check_duplicate_layer_by_template_matching(
-    previous_page: fitz.Page, current_page: fitz.Page, current_layer: dict, img_template_probability_threshold: float
+    previous_page: fitz.Page, current_page: fitz.Page, current_layer: Layer, img_template_probability_threshold: float
 ) -> bool:
     """Check if the current layer is a duplicate of a layer on the previous page by using template matching.
 
@@ -113,7 +116,7 @@ def check_duplicate_layer_by_template_matching(
     Args:
         previous_page (fitz.Page): The previous page.
         current_page (fitz.Page): The current page.
-        current_layer (dict): The current layer that is checked for a duplicate.
+        current_layer (Layer): The current layer that is checked for a duplicate.
         img_template_probability_threshold (float): The threshold for the template matching probability
                                                     to consider a layer a duplicate.
 

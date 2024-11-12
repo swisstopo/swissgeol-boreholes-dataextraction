@@ -14,8 +14,6 @@ from stratigraphy.groundwater.groundwater_extraction import Groundwater
 from stratigraphy.layer.layer import Layer
 from stratigraphy.metadata.coordinate_extraction import Coordinate
 from stratigraphy.metadata.elevation_extraction import Elevation
-from stratigraphy.text.textblock import TextBlock
-from stratigraphy.util.interval import BoundaryInterval
 from stratigraphy.util.predictions import OverallFilePredictions
 
 load_dotenv()
@@ -31,7 +29,7 @@ def draw_predictions(
     predictions: OverallFilePredictions,
     directory: Path,
     out_directory: Path,
-    document_level_metadata_metrics: pd.DataFrame,
+    document_level_metadata_metrics: None | pd.DataFrame,
 ) -> None:
     """Draw predictions on pdf pages.
 
@@ -50,7 +48,7 @@ def draw_predictions(
         predictions (dict): Content of the predictions.json file.
         directory (Path): Path to the directory containing the pdf files.
         out_directory (Path): Path to the output directory where the images are saved.
-        document_level_metadata_metrics (pd.DataFrame): Document level metadata metrics.
+        document_level_metadata_metrics (None | pd.DataFrame): Document level metadata metrics.
     """
     if directory.is_file():  # deal with the case when we pass a file instead of a directory
         directory = directory.parent
@@ -62,15 +60,18 @@ def draw_predictions(
         elevation = file_prediction.metadata.elevation
 
         # Assess the correctness of the metadata
-        if file_prediction.file_name in document_level_metadata_metrics.index:
+        if (
+            document_level_metadata_metrics is not None
+            and file_prediction.file_name in document_level_metadata_metrics.index
+        ):
             is_coordinates_correct = document_level_metadata_metrics.loc[file_prediction.file_name].coordinate
             is_elevation_correct = document_level_metadata_metrics.loc[file_prediction.file_name].elevation
         else:
             logger.warning(
                 "Metrics for file %s not found in document_level_metadata_metrics.", file_prediction.file_name
             )
-            is_coordinates_correct = False
-            is_elevation_correct = False
+            is_coordinates_correct = None
+            is_elevation_correct = None
 
         try:
             with fitz.Document(directory / file_prediction.file_name) as doc:
@@ -104,8 +105,8 @@ def draw_predictions(
                         page.derotation_matrix,
                         [
                             layer
-                            for layer in file_prediction.layers.get_all_layers()
-                            if layer.material_description.page_number == page_number
+                            for layer in file_prediction.layers_in_document.layers
+                            if layer.material_description.page == page_number
                         ],
                     )
                     shape.commit()  # Commit all the drawing operations to the page
@@ -133,9 +134,9 @@ def draw_metadata(
     derotation_matrix: fitz.Matrix,
     rotation: float,
     coordinates: Coordinate | None,
-    is_coordinate_correct: bool,
+    is_coordinate_correct: bool | None,
     elevation_info: Elevation | None,
-    is_elevation_correct: bool,
+    is_elevation_correct: bool | None,
 ) -> None:
     """Draw the extracted metadata on the top of the given PDF page.
 
@@ -147,44 +148,45 @@ def draw_metadata(
         derotation_matrix (fitz.Matrix): The derotation matrix of the page.
         rotation (float): The rotation of the page.
         coordinates (Coordinate | None): The coordinate object to draw.
-        is_coordinate_correct (Metrics): Whether the coordinate information is correct.
-        elevation_info (ElevationInformation | None): The elevation information to draw.
-        is_elevation_correct (Metrics): Whether the elevation information is correct.
+        is_coordinate_correct (bool  | None): Whether the coordinate information is correct.
+        elevation_info (Elevation | None): The elevation information to draw.
+        is_elevation_correct (bool | None): Whether the elevation information is correct.
     """
-    # TODO associate correctness with the extracted coordinates in a better way
-    coordinate_color = "green" if is_coordinate_correct else "red"
     coordinate_rect = fitz.Rect([5, 5, 250, 30])
-
-    elevation_color = "green" if is_elevation_correct else "red"
     elevation_rect = fitz.Rect([5, 30, 250, 55])
 
     shape.draw_rect(coordinate_rect * derotation_matrix)
     shape.finish(fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
     shape.insert_textbox(coordinate_rect * derotation_matrix, f"Coordinates: {coordinates}", rotate=rotation)
-    shape.draw_line(
-        coordinate_rect.top_left * derotation_matrix,
-        coordinate_rect.bottom_left * derotation_matrix,
-    )
-    shape.finish(
-        color=fitz.utils.getColor(coordinate_color),
-        width=6,
-        stroke_opacity=0.5,
-    )
+    if is_coordinate_correct is not None:
+        # TODO associate correctness with the extracted coordinates in a better way
+        coordinate_color = "green" if is_coordinate_correct else "red"
+        shape.draw_line(
+            coordinate_rect.top_left * derotation_matrix,
+            coordinate_rect.bottom_left * derotation_matrix,
+        )
+        shape.finish(
+            color=fitz.utils.getColor(coordinate_color),
+            width=6,
+            stroke_opacity=0.5,
+        )
 
     # Draw the bounding box around the elevation information
     elevation_txt = f"Elevation: {elevation_info.elevation} m" if elevation_info is not None else "Elevation: N/A"
     shape.draw_rect(elevation_rect * derotation_matrix)
     shape.finish(fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
     shape.insert_textbox(elevation_rect * derotation_matrix, elevation_txt, rotate=rotation)
-    shape.draw_line(
-        elevation_rect.top_left * derotation_matrix,
-        elevation_rect.bottom_left * derotation_matrix,
-    )
-    shape.finish(
-        color=fitz.utils.getColor(elevation_color),
-        width=6,
-        stroke_opacity=0.5,
-    )
+    if is_elevation_correct is not None:
+        elevation_color = "green" if is_elevation_correct else "red"
+        shape.draw_line(
+            elevation_rect.top_left * derotation_matrix,
+            elevation_rect.bottom_left * derotation_matrix,
+        )
+        shape.finish(
+            color=fitz.utils.getColor(elevation_color),
+            width=6,
+            stroke_opacity=0.5,
+        )
 
 
 def draw_coordinates(shape: fitz.Shape, coordinates: Coordinate) -> None:
@@ -239,15 +241,7 @@ def draw_material_descriptions(shape: fitz.Shape, derotation_matrix: fitz.Matrix
                 fitz.Rect(layer.material_description.rect) * derotation_matrix,
             )
             shape.finish(color=fitz.utils.getColor("orange"))
-        draw_layer(
-            shape=shape,
-            derotation_matrix=derotation_matrix,
-            interval=layer.depth_interval,  # None if no depth interval
-            layer=layer.material_description,
-            index=index,
-            is_correct=layer.material_is_correct,  # None if no ground truth
-            depth_is_correct=layer.depth_interval_is_correct,  # None if no ground truth
-        )
+        draw_layer(shape=shape, derotation_matrix=derotation_matrix, layer=layer, index=index)
 
 
 def draw_depth_columns_and_material_rect(
@@ -286,15 +280,7 @@ def draw_depth_columns_and_material_rect(
         shape.finish(color=fitz.utils.getColor("red"))
 
 
-def draw_layer(
-    shape: fitz.Shape,
-    derotation_matrix: fitz.Matrix,
-    interval: BoundaryInterval | None,
-    layer: TextBlock,
-    index: int,
-    is_correct: bool,
-    depth_is_correct: bool,
-):
+def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, index: int):
     """Draw layers on a pdf page.
 
     In particular, this function:
@@ -304,18 +290,15 @@ def draw_layer(
     Args:
         shape (fitz.Shape): The shape object for drawing.
         derotation_matrix (fitz.Matrix): The derotation matrix of the page.
-        interval (BoundaryInterval | None): Depth interval for the layer.
-        layer (MaterialDescriptionPrediction): Material description block for the layer.
+        layer (Layer): The layer (depth interval and material description).
         index (int): Index of the layer.
-        is_correct (bool): Whether the text block was correctly identified.
-        depth_is_correct (bool): Whether the depth interval was correctly identified.
     """
-    if layer.lines:
-        layer_rect = fitz.Rect(layer.rect)
+    material_description = layer.material_description.feature
+    if material_description.lines:
         color = colors[index % len(colors)]
 
         # background color for material description
-        for line in [line for line in layer.lines]:
+        for line in [line for line in material_description.lines]:
             shape.draw_rect(line.rect * derotation_matrix)
             shape.finish(
                 color=fitz.utils.getColor(color),
@@ -323,8 +306,8 @@ def draw_layer(
                 fill=fitz.utils.getColor(color),
                 width=0,
             )
-            if is_correct is not None:
-                correct_color = "green" if is_correct else "red"
+            if material_description.is_correct is not None:
+                correct_color = "green" if material_description.is_correct else "red"
                 shape.draw_line(
                     line.rect.top_left * derotation_matrix,
                     line.rect.bottom_left * derotation_matrix,
@@ -335,9 +318,9 @@ def draw_layer(
                     stroke_opacity=0.5,
                 )
 
-        if interval:
+        if layer.depth_interval:
             # background color for depth interval
-            background_rect = interval.background_rect
+            background_rect = layer.depth_interval.background_rect
             if background_rect is not None:
                 shape.draw_rect(
                     background_rect * derotation_matrix,
@@ -350,8 +333,8 @@ def draw_layer(
                 )
 
                 # draw green line if depth interval is correct else red line
-                if depth_is_correct is not None:
-                    depth_is_correct_color = "green" if depth_is_correct else "red"
+                if layer.is_correct is not None:
+                    depth_is_correct_color = "green" if layer.is_correct else "red"
                     shape.draw_line(
                         background_rect.top_left * derotation_matrix,
                         background_rect.bottom_left * derotation_matrix,
@@ -363,11 +346,12 @@ def draw_layer(
                     )
 
             # line from depth interval to material description
-            line_anchor = interval.line_anchor
+            line_anchor = layer.depth_interval.line_anchor
             if line_anchor:
+                rect = layer.material_description.rect
                 shape.draw_line(
                     line_anchor * derotation_matrix,
-                    fitz.Point(layer_rect.x0, (layer_rect.y0 + layer_rect.y1) / 2) * derotation_matrix,
+                    fitz.Point(rect.x0, (rect.y0 + rect.y1) / 2) * derotation_matrix,
                 )
                 shape.finish(
                     color=fitz.utils.getColor(color),
