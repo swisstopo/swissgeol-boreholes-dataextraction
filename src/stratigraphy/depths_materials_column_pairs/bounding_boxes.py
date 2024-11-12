@@ -1,4 +1,4 @@
-"""Definition of the DepthsMaterialsColumnPairs class."""
+"""Classes for JSON-serializable bounding boxes of different parts of a borehole profile."""
 
 from dataclasses import dataclass
 
@@ -34,7 +34,7 @@ class BoundingBox:
 
 @dataclass
 class BoundingBoxes:
-    """A class to represent the bounding boxes of depth columns and associated material descriptions."""
+    """A class to represent the bounding boxes of sidebars and associated material descriptions."""
 
     sidebar_bbox: BoundingBox | None
     depth_column_entry_bboxes: list[BoundingBox]

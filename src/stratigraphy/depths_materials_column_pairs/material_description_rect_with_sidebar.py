@@ -1,4 +1,4 @@
-"""Definition of the DepthsMaterialsColumnPairs class."""
+"""Definition of the MaterialDescriptionRectWithSidebar class."""
 
 import math
 from dataclasses import dataclass
