@@ -15,15 +15,15 @@ class AAboveBSidebarExtractor:
     def find_in_words(
         all_words: list[TextWord], used_entry_rects: list[fitz.Rect], sidebar_params: dict
     ) -> list[AAboveBSidebar]:
-        """Construct all possible AAboveBSidebar objects from the given DepthColumnEntry objects.
+        """Construct all possible AAboveBSidebar objects from the given words.
 
         Args:
             all_words (list[TextLine]): All words in the page.
             used_entry_rects (list[fitz.Rect]): Part of the document to ignore.
-            sidebar_params (dict): Parameters for the BoundaryDepthColumn objects.
+            sidebar_params (dict): Parameters for the AAboveBSidebar objects.
 
         Returns:
-            list[AAboveBSidebar]: Found BoundaryDepthColumn objects.
+            list[AAboveBSidebar]: Found AAboveBSidebar objects.
         """
         entries = [
             entry
@@ -57,10 +57,10 @@ class AAboveBSidebarExtractor:
                 if all(not other.strictly_contains(column) for other in numeric_columns)
             ]
 
-        boundary_depth_column_validator = AAboveBSidebarValidator(all_words, **sidebar_params)
+        sidebar_validator = AAboveBSidebarValidator(all_words, **sidebar_params)
 
         numeric_columns = [
-            boundary_depth_column_validator.reduce_until_valid(column)
+            sidebar_validator.reduce_until_valid(column)
             for numeric_column in numeric_columns
             for column in numeric_column.break_on_double_descending()
             # when we have a perfect arithmetic progression, this is usually just a scale
@@ -69,6 +69,6 @@ class AAboveBSidebarExtractor:
         ]
 
         return sorted(
-            [column for column in numeric_columns if column and boundary_depth_column_validator.is_valid(column)],
+            [column for column in numeric_columns if column and sidebar_validator.is_valid(column)],
             key=lambda column: len(column.entries),
         )

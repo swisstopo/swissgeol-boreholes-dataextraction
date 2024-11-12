@@ -70,7 +70,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         result = []
         for block in blocks:
             depth_intervals = []
-            depth_interval = AToBInterval.get_depth_interval_from_textblock(block)
+            depth_interval = AToBInterval.get_depth_interval_from_lines(block.lines)
             if depth_interval:
                 depth_intervals.append(depth_interval)
             result.append(IntervalBlockGroup(depth_intervals=depth_intervals, blocks=[block]))

@@ -104,7 +104,7 @@ class AAboveBSidebarValidator:
             sidebar (AAboveBSidebar): The AAboveBSidebar to validate
 
         Returns:
-            BoundaryDepthColumn | None: The corrected depth column, or None if no correction was possible.
+            AAboveBSidebar | None: The corrected sidebar, or None if no correction was possible.
         """
         new_columns = [AAboveBSidebar(entries=[])]
         for entry in sidebar.entries:

@@ -162,16 +162,16 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         Returns:
             list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
 
-        Example:
+        Example return value:
             [
-                {
-                    "depth_intervals": [BoundaryInterval(None, 0.1), BoundaryInterval(0.1, 0.3), ...],
-                    "blocks": [DescriptionBlock(...), DescriptionBlock(...), ...]
-                },
-                {
-                    "depth_intervals": [BoundaryInterval(0.3, 0.7)],
-                    "blocks": [DescriptionBlock(...), DescriptionBlock(...), ...]
-                },
+                IntervalBlockGroup(
+                    depth_intervals=[AAboveBInterval(None, 0.1), AAboveBInterval(0.1, 0.3), ...],
+                    blocks=[TextBlock(...), TextBlock(...), ...]
+                ),
+                IntervalBlockGroup(
+                    depth_intervals=[AAboveBInterval(0.3, 0.7)],
+                    blocks=[TextBlock(...), TextBlock(...), ...]
+                ),
                 ...
             ]
         """

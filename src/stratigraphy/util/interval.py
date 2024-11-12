@@ -179,22 +179,22 @@ class AToBInterval(Interval):
             return []
 
     @classmethod
-    def get_depth_interval_from_textblock(cls, block: TextBlock) -> AToBInterval | None:
-        """Extract depth interval from a material description block.
+    def get_depth_interval_from_lines(cls, lines: list[TextLine]) -> AToBInterval | None:
+        """Extract depth interval from text lines.
 
-        For borehole profiles in the Deriaz layout, the depth interval is usually found in the text description
-        of the material. Often, these text descriptions contain a further separation into multiple sub layers.
+        For borehole profiles in the Deriaz layout, the depth interval is usually found in the text of the material
+        description. Often, these text descriptions contain a further separation into multiple sub layers.
         These sub layers have their own depth intervals. This function extracts the overall depth interval,
         spanning across all mentioned sub layers.
 
         Args:
-            block (TextBlock): The block to calculate the depth interval for.
+            lines (list[TextLine]): The lines to extract the depth interval from.
 
         Returns:
-            AToBInterval | None: The depth interval.
+            AToBInterval | None: The depth interval (if any) or None (if no depth interval was found).
         """
         depth_entries = []
-        for line in block.lines:
+        for line in lines:
             try:
                 layer_depth_entry = AToBDepthColumnEntry.from_text(line.text, line.rect, require_start_of_string=False)
                 # require_start_of_string = False because the depth interval may not always start at the beginning
