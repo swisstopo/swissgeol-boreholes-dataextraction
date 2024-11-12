@@ -1,14 +1,14 @@
-"""This module contains functionalities to find depth columns in a pdf page."""
+"""This module contains functionalities to find sidebars in a pdf page."""
 
 import re
 
 import fitz
-from stratigraphy.depthcolumn.boundarydepthcolumnvalidator import BoundaryDepthColumnValidator
-from stratigraphy.depthcolumn.depthcolumn import BoundaryDepthColumn, LayerDepthColumn
-from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
+
+from stratigraphy.depthcolumn.depthcolumnentry import AToBDepthColumnEntry, DepthColumnEntry
 from stratigraphy.lines.line import TextWord
+from stratigraphy.sidebar import AAboveBSidebar, AAboveBSidebarValidator, AToBSidebar
 from stratigraphy.text.textblock import TextBlock
-from stratigraphy.util.interval import LayerInterval
+from stratigraphy.util.interval import AToBInterval
 
 
 def depth_column_entries(all_words: list[TextWord], include_splits: bool) -> list[DepthColumnEntry]:
@@ -54,7 +54,7 @@ def value_as_float(string_value: str) -> float:  # noqa: D103
 
 def extract_layer_depth_interval(
     text: str, rect: fitz.Rect, require_start_of_string: bool = True
-) -> LayerDepthColumnEntry | None:
+) -> AToBDepthColumnEntry | None:
     """Extracts a LayerDepthColumnEntry from a string.
 
     Args:
@@ -64,7 +64,7 @@ def extract_layer_depth_interval(
                                                   at the start of a string. Defaults to True.
 
     Returns:
-        LayerDepthColumnEntry | None: The extracted LayerDepthColumnEntry or None if none is found.
+        AToBDepthColumnEntry | None: The extracted LayerDepthColumnEntry or None if none is found.
     """
     input_string = text.strip().replace(",", ".")
 
@@ -79,18 +79,18 @@ def extract_layer_depth_interval(
 
         value2 = value_as_float(match.group(3))
         second_half_rect = fitz.Rect(rect.x0 + rect.width / 2, rect.y0, rect.x1, rect.y1)
-        return LayerDepthColumnEntry(
+        return AToBDepthColumnEntry(
             DepthColumnEntry(first_half_rect, value1),
             DepthColumnEntry(second_half_rect, value2),
         )
     return None
 
 
-def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[TextWord]) -> list[LayerDepthColumn]:
-    """Finds all layer depth columns.
+def find_a_to_b_sidebars(entries: list[DepthColumnEntry], all_words: list[TextWord]) -> list[AToBSidebar]:
+    """Finds all AToBSidebars.
 
     Generates a list of LayerDepthColumnEntry objects by finding consecutive pairs of DepthColumnEntry objects.
-    Different columns are grouped together in LayerDepthColumn objects. Finally, a list of LayerDepthColumn objects,
+    Different columns are grouped together in LayerDepthColumn objects. Finally, a list of AToBSidebars objects,
     one for each column, is returned.
 
     A layer corresponds to a material layer. The layer is defined using a start and end point (e.g. 1.10-1.60m).
@@ -101,7 +101,7 @@ def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[Te
         all_words (list[TextWord]): List of all TextWord objects.
 
     Returns:
-        list[LayerDepthColumn]: List of all layer depth columns identified.
+        list[AToBSidebar]: List of all AToBSidebars identified.
     """
 
     def find_pair(entry: DepthColumnEntry) -> DepthColumnEntry | None:  # noqa: D103
@@ -129,43 +129,43 @@ def find_layer_depth_columns(entries: list[DepthColumnEntry], all_words: list[Te
 
     pairs = [(entry, find_pair(entry)) for entry in entries]
 
-    columns = []
+    sidebars = []
     for first, second in pairs:
         if second is not None:
-            entry = LayerDepthColumnEntry(first, second)
+            entry = AToBDepthColumnEntry(first, second)
             is_matched = False
-            for column in columns:
-                column_rect = column.rect()
+            for sidebar in sidebars:
+                column_rect = sidebar.rect()
                 new_start_middle = (entry.start.rect.x0 + entry.start.rect.x1) / 2
                 if column_rect.x0 < new_start_middle < column_rect.x1:
                     is_matched = True
-                    column.entries.append(entry)
+                    sidebar.entries.append(entry)
 
             if not is_matched:
-                columns.append(LayerDepthColumn([entry]))
+                sidebars.append(AToBSidebar([entry]))
 
     return [
-        column_segment
-        for column in columns
-        for column_segment in column.break_on_mismatch()
-        if column_segment.is_valid()
+        sidebar_segment
+        for sidebar in sidebars
+        for sidebar_segment in sidebar.break_on_mismatch()
+        if sidebar_segment.is_valid()
     ]
 
 
-def find_depth_columns(
-    entries: list[DepthColumnEntry], all_words: list[TextWord], depth_column_params: dict
-) -> list[BoundaryDepthColumn]:
-    """Construct all possible BoundaryDepthColumn objects from the given DepthColumnEntry objects.
+def find_a_above_b_sidebars(
+    entries: list[DepthColumnEntry], all_words: list[TextWord], sidebar_params: dict
+) -> list[AAboveBSidebar]:
+    """Construct all possible AAboveBSidebar objects from the given DepthColumnEntry objects.
 
     Args:
         entries (list[DepthColumnEntry]): All found depth column entries in the page.
         all_words (list[TextLine]): All words in the page.
-        depth_column_params (dict): Parameters for the BoundaryDepthColumn objects.
+        sidebar_params (dict): Parameters for the BoundaryDepthColumn objects.
 
     Returns:
-        list[BoundaryDepthColumn]: Found BoundaryDepthColumn objects.
+        list[AAboveBSidebar]: Found BoundaryDepthColumn objects.
     """
-    numeric_columns: list[BoundaryDepthColumn] = []
+    numeric_columns: list[AAboveBSidebar] = []
     for entry in entries:
         has_match = False
         additional_columns = []
@@ -182,7 +182,7 @@ def find_depth_columns(
 
         numeric_columns.extend(additional_columns)
         if not has_match:
-            numeric_columns.append(BoundaryDepthColumn(entries=[entry]))
+            numeric_columns.append(AAboveBSidebar(entries=[entry]))
 
         # only keep columns that are not contained in a different column
         numeric_columns = [
@@ -191,7 +191,7 @@ def find_depth_columns(
             if all(not other.strictly_contains(column) for other in numeric_columns)
         ]
 
-    boundary_depth_column_validator = BoundaryDepthColumnValidator(all_words, **depth_column_params)
+    boundary_depth_column_validator = AAboveBSidebarValidator(all_words, **sidebar_params)
 
     numeric_columns = [
         boundary_depth_column_validator.reduce_until_valid(column)
@@ -208,7 +208,7 @@ def find_depth_columns(
     )
 
 
-def get_depth_interval_from_textblock(block: TextBlock) -> LayerInterval | None:
+def get_depth_interval_from_textblock(block: TextBlock) -> AToBInterval | None:
     """Extract depth interval from a material description block.
 
     For borehole profiles in the Deriaz layout, the depth interval is usually found in the text description
@@ -220,7 +220,7 @@ def get_depth_interval_from_textblock(block: TextBlock) -> LayerInterval | None:
         block (TextBlock): The block to calculate the depth interval for.
 
     Returns:
-        LayerInterval | None: The depth interval.
+        AToBInterval | None: The depth interval.
     """
     depth_entries = []
     for line in block.lines:
@@ -238,6 +238,6 @@ def get_depth_interval_from_textblock(block: TextBlock) -> LayerInterval | None:
         start = min([entry.start for entry in depth_entries], key=lambda start_entry: start_entry.value)
         end = max([entry.end for entry in depth_entries], key=lambda end_entry: end_entry.value)
 
-        return LayerInterval(LayerDepthColumnEntry(start, end))
+        return AToBInterval(AToBDepthColumnEntry(start, end))
     else:
         return None

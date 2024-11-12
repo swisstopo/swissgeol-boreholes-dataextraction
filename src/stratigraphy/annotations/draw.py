@@ -259,9 +259,9 @@ def draw_depth_columns_and_material_rect(
         bounding_boxes (list[BoundingBoxes]): List of bounding boxes for depth column and material descriptions.
     """
     for bboxes in bounding_boxes:
-        if bboxes.depth_column_bbox:  # Draw rectangle for depth columns
+        if bboxes.sidebar_bbox:  # Draw rectangle for depth columns
             shape.draw_rect(
-                fitz.Rect(bboxes.depth_column_bbox.rect) * derotation_matrix,
+                fitz.Rect(bboxes.sidebar_bbox.rect) * derotation_matrix,
             )
             shape.finish(color=fitz.utils.getColor("green"))
             for depth_column_entry in bboxes.depth_column_entry_bboxes:  # Draw rectangle for depth column entries

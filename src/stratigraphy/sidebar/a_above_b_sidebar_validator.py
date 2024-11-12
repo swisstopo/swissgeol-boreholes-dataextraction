@@ -1,32 +1,32 @@
-"""This module contains logic to validate BoundaryDepthColumn instances."""
+"""This module contains logic to validate AAboveBSidebar instances."""
 
 import dataclasses
 
-from stratigraphy.depthcolumn.depthcolumn import BoundaryDepthColumn
 from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
 from stratigraphy.lines.line import TextWord
+from stratigraphy.sidebar import AAboveBSidebar
 
 
 @dataclasses.dataclass
-class BoundaryDepthColumnValidator:
-    """Validation logic for instances of the BoundaryDepthColumn class.
+class AAboveBSidebarValidator:
+    """Validation logic for instances of the AAboveBSidebar class.
 
     Args:
         all_words (list[TextLine]): A list of all text lines on the page.
-        noise_count_threshold (float): Noise count threshold deciding how much noise is allowed in a column
+        noise_count_threshold (float): Noise count threshold deciding how much noise is allowed in a sidebar
                                        to be valid.
         noise_count_offset (int): Offset for the noise count threshold. Affects the noise count criterion.
-                                  Effective specifically for depth columns with very few entries.
+                                  Effective specifically for sidebars with very few entries.
     """
 
     all_words: list[TextWord]
     noise_count_threshold: float
     noise_count_offset: int
 
-    def is_valid(self, column: BoundaryDepthColumn, corr_coef_threshold: float = 0.99) -> bool:
-        """Checks whether the depth column is valid.
+    def is_valid(self, sidebar: AAboveBSidebar, corr_coef_threshold: float = 0.99) -> bool:
+        """Checks whether the sidebar is valid.
 
-        The depth column is considered valid if:
+        The sidebar is considered valid if:
         - The number of entries is at least 3.
         - The number of words that intersect with the depth column entries is less than the noise count threshold
           time the number of entries minus the noise count offset.
@@ -37,13 +37,13 @@ class BoundaryDepthColumnValidator:
         even though they are.
 
         Args:
-            column (BoundaryDepthColumn): The depth column to validate.
+            sidebar (AAboveBSidebar): The AAboveBSidebar to validate.
             corr_coef_threshold (float): The minimal correlation coefficient for the column to be deemed valid.
 
         Returns:
             bool: True if the depth column is valid, False otherwise.
         """
-        if len(column.entries) < 3:
+        if len(sidebar.entries) < 3:
             return False
 
         # When too much other text is in the column, then it is probably not valid.
@@ -51,28 +51,28 @@ class BoundaryDepthColumnValidator:
         # than columns with more entries. The more entries we have, the less likely it is that we found them by chance.
         # TODO: Once evaluation data is of good enough qualities, we should optimize for the parameter below.
         if (
-            column.noise_count(self.all_words)
-            > self.noise_count_threshold * (len(column.entries) - self.noise_count_offset) ** 2
+            sidebar.noise_count(self.all_words)
+            > self.noise_count_threshold * (len(sidebar.entries) - self.noise_count_offset) ** 2
         ):
             return False
         # Check if the entries are strictly increasing.
-        if not column.is_strictly_increasing():
+        if not sidebar.is_strictly_increasing():
             return False
 
-        corr_coef = column.pearson_correlation_coef()
+        corr_coef = sidebar.pearson_correlation_coef()
 
         return corr_coef and corr_coef > corr_coef_threshold
 
-    def reduce_until_valid(self, column: BoundaryDepthColumn) -> BoundaryDepthColumn:
+    def reduce_until_valid(self, column: AAboveBSidebar) -> AAboveBSidebar:
         """Removes entries from the depth column until it fulfills the is_valid condition.
 
         is_valid checks whether there is too much noise (i.e. other text) in the column and whether the entries are
         linearly correlated with their vertical position.
 
         Args:
-            column (BoundaryDepthColumn): The depth column to validate
+            column (AAboveBSidebar): The depth column to validate
         Returns:
-            BoundaryDepthColumn: The current depth column with entries removed until it is valid.
+            AAboveBSidebar: The current depth column with entries removed until it is valid.
         """
         while column:
             if self.is_valid(column):
@@ -82,7 +82,7 @@ class BoundaryDepthColumnValidator:
             else:
                 column = column.remove_entry_by_correlation_gradient()
 
-    def correct_OCR_mistakes(self, column: BoundaryDepthColumn) -> BoundaryDepthColumn | None:
+    def correct_OCR_mistakes(self, sidebar: AAboveBSidebar) -> AAboveBSidebar | None:
         """Corrects OCR mistakes in the depth column entries.
 
         Loops through all values and corrects common OCR mistakes for the given entry. Then, the column with the
@@ -100,15 +100,15 @@ class BoundaryDepthColumnValidator:
         Note: Common mistakes should be extended as needed.
 
         Args:
-            column (BoundaryDepthColumn): The depth column to validate
+            sidebar (AAboveBSidebar): The AAboveBSidebar to validate
 
         Returns:
             BoundaryDepthColumn | None: The corrected depth column, or None if no correction was possible.
         """
-        new_columns = [BoundaryDepthColumn(entries=[])]
-        for entry in column.entries:
+        new_columns = [AAboveBSidebar(entries=[])]
+        for entry in sidebar.entries:
             new_columns = [
-                BoundaryDepthColumn([*column.entries, DepthColumnEntry(entry.rect, new_value)])
+                AAboveBSidebar([*column.entries, DepthColumnEntry(entry.rect, new_value)])
                 for column in new_columns
                 for new_value in _value_alternatives(entry.value)
             ]

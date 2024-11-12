@@ -7,8 +7,8 @@ import abc
 import fitz
 
 from stratigraphy.depthcolumn.depthcolumnentry import (
+    AToBDepthColumnEntry,
     DepthColumnEntry,
-    LayerDepthColumnEntry,
 )
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.textblock import TextBlock
@@ -58,11 +58,8 @@ class Interval(metaclass=abc.ABCMeta):
         }
 
 
-class BoundaryInterval(Interval):
-    """Class for boundary intervals.
-
-    Boundary intervals are intervals that are defined by a start and an end point.
-    """
+class AAboveBInterval(Interval):
+    """Class for depth intervals where the upper depth is located above the lower depth on the page."""
 
     @property
     def line_anchor(self) -> fitz.Point | None:
@@ -143,14 +140,10 @@ class BoundaryInterval(Interval):
         return pre, exact, post
 
 
-class LayerInterval(Interval):
-    """Class for layer intervals.
+class AToBInterval(Interval):
+    """Class for intervals that are defined in a single line like "1.00 - 2.30m"."""
 
-    A layer interval is an interval whose start and end-points are defined in a single entry.
-    E.g. 1.00 - 2.30m.
-    """
-
-    def __init__(self, layer_depth_column_entry: LayerDepthColumnEntry):
+    def __init__(self, layer_depth_column_entry: AToBDepthColumnEntry):
         self.entry = layer_depth_column_entry
         super().__init__(layer_depth_column_entry.start, layer_depth_column_entry.end)
 

@@ -7,7 +7,7 @@ import fitz
 from stratigraphy.data_extractor.data_extractor import ExtractedFeature, FeatureOnPage
 from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
 from stratigraphy.text.textblock import MaterialDescription, TextBlock
-from stratigraphy.util.interval import BoundaryInterval, Interval
+from stratigraphy.util.interval import AAboveBInterval, Interval
 from stratigraphy.util.util import parse_text
 
 
@@ -16,7 +16,7 @@ class Layer(ExtractedFeature):
     """A class to represent predictions for a single layer."""
 
     material_description: FeatureOnPage[MaterialDescription]
-    depth_interval: BoundaryInterval | None
+    depth_interval: AAboveBInterval | None
     id: uuid.UUID = field(default_factory=uuid.uuid4)
 
     def __str__(self) -> str:
@@ -68,7 +68,7 @@ class Layer(ExtractedFeature):
                 else None
             )
 
-            depth_interval_prediction = BoundaryInterval(start=start, end=end)
+            depth_interval_prediction = AAboveBInterval(start=start, end=end)
         else:
             depth_interval_prediction = None
 

@@ -3,7 +3,9 @@
 from dataclasses import dataclass
 
 import fitz
-from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPair
+from stratigraphy.depths_materials_column_pairs.material_description_rect_with_sidebar import (
+    MaterialDescriptionRectWithSidebar,
+)
 
 
 @dataclass
@@ -34,7 +36,7 @@ class BoundingBox:
 class BoundingBoxes:
     """A class to represent the bounding boxes of depth columns and associated material descriptions."""
 
-    depth_column_bbox: BoundingBox | None
+    sidebar_bbox: BoundingBox | None
     depth_column_entry_bboxes: list[BoundingBox]
     material_description_bbox: BoundingBox
     page: int
@@ -46,7 +48,7 @@ class BoundingBoxes:
             dict: The object as a dictionary.
         """
         return {
-            "depth_column_rect": self.depth_column_bbox.to_json() if self.depth_column_bbox else None,
+            "sidebar_rect": self.sidebar_bbox.to_json() if self.sidebar_bbox else None,
             "depth_column_entries": [entry.to_json() for entry in self.depth_column_entry_bboxes],
             "material_description_rect": self.material_description_bbox.to_json(),
             "page": self.page,
@@ -56,25 +58,25 @@ class BoundingBoxes:
     def from_json(cls, data) -> "BoundingBoxes":
         """Convert a JSON data structure to a BoundingBoxes object."""
         return cls(
-            depth_column_bbox=BoundingBox.from_json(data["depth_column_bbox"])
-            if "depth_column_bbox" in data
-            else None,
+            sidebar_bbox=BoundingBox.from_json(data["sidebar_rect"]) if "sidebar_rect" in data else None,
             depth_column_entry_bboxes=[BoundingBox.from_json(entry) for entry in data["depth_column_entries"]],
             material_description_bbox=BoundingBox.from_json(data["material_description_rect"]),
             page=data["page"],
         )
 
     @classmethod
-    def from_depths_material_column_pair(cls, pair: DepthsMaterialsColumnPair, page_number: int) -> "BoundingBoxes":
-        """Convert a DepthsMaterialsColumnPair instance to a BoundingBoxes object."""
-        if pair.depth_column:
-            depth_column_bbox = BoundingBox(pair.depth_column.rect())
-            depth_column_entry_bboxes = [BoundingBox(entry.rect) for entry in pair.depth_column.entries]
+    def from_material_description_rect_with_sidebar(
+        cls, pair: MaterialDescriptionRectWithSidebar, page_number: int
+    ) -> "BoundingBoxes":
+        """Convert a MaterialDescriptionRectWithSidebar instance to a BoundingBoxes object."""
+        if pair.sidebar:
+            depth_column_bbox = BoundingBox(pair.sidebar.rect())
+            depth_column_entry_bboxes = [BoundingBox(entry.rect) for entry in pair.sidebar.entries]
         else:
             depth_column_bbox = None
             depth_column_entry_bboxes = []
         return BoundingBoxes(
-            depth_column_bbox=depth_column_bbox,
+            sidebar_bbox=depth_column_bbox,
             depth_column_entry_bboxes=depth_column_entry_bboxes,
             material_description_bbox=BoundingBox(pair.material_description_rect),
             page=page_number,

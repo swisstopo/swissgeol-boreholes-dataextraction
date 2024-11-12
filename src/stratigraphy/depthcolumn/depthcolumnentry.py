@@ -32,7 +32,7 @@ class DepthColumnEntry:  # noqa: D101
         return cls(rect=fitz.Rect(json_depth_column_entry["rect"]), value=json_depth_column_entry["value"])
 
 
-class LayerDepthColumnEntry:  # noqa: D101
+class AToBDepthColumnEntry:  # noqa: D101
     """Class to represent a layer depth column entry."""
 
     def __init__(self, start: DepthColumnEntry, end: DepthColumnEntry):
@@ -56,14 +56,14 @@ class LayerDepthColumnEntry:  # noqa: D101
         }
 
     @classmethod
-    def from_json(cls, json_layer_depth_column_entry: dict) -> "LayerDepthColumnEntry":
+    def from_json(cls, json_layer_depth_column_entry: dict) -> "AToBDepthColumnEntry":
         """Converts a dictionary to an object.
 
         Args:
             json_layer_depth_column_entry (dict): A dictionary representing the layer depth column entry.
 
         Returns:
-            LayerDepthColumnEntry: The layer depth column entry object.
+            AToBDepthColumnEntry: The layer depth column entry object.
         """
         start = DepthColumnEntry.from_json(json_layer_depth_column_entry["start"])
         end = DepthColumnEntry.from_json(json_layer_depth_column_entry["end"])

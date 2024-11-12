@@ -1,15 +1,17 @@
-"""Module for the LayerIdentifierColumn class."""
+"""Module for the layer identifier sidebars."""
 
 import re
 from dataclasses import dataclass
 
 import fitz
-from stratigraphy.depthcolumn.depthcolumn import DepthColumn
-from stratigraphy.depthcolumn.find_depth_columns import get_depth_interval_from_textblock
+
 from stratigraphy.layer.layer import IntervalBlockGroup
 from stratigraphy.lines.line import TextLine
+from stratigraphy.sidebar.find_sidebars import get_depth_interval_from_textblock
 from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.dataclasses import Line
+
+from .sidebar import Sidebar
 
 
 class LayerIdentifierEntry:
@@ -27,8 +29,8 @@ class LayerIdentifierEntry:
 
 
 @dataclass
-class LayerIdentifierColumn(DepthColumn[LayerIdentifierEntry]):
-    """Class for a layer identifier column.
+class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
+    """Class for a layer identifier sidebar.
 
     Layer identifiers are labels that are particularly common in Deriaz layout borehole profiles. They can be
     sequential such as in 1007.pdf - a), b), c), etc. - or contain some semantic meaning such as in 10781.pdf -
@@ -108,11 +110,11 @@ class LayerIdentifierColumn(DepthColumn[LayerIdentifierEntry]):
         else:
             return []
 
-    def strictly_contains(self, other: "LayerIdentifierColumn") -> bool:
+    def strictly_contains(self, other: "LayerIdentifierSidebar") -> bool:
         """Check if the layer identifier column strictly contains another layer identifier column.
 
         Args:
-            other (LayerIdentifierColumn): The other layer identifier column to check if it is strictly contained.
+            other (LayerIdentifierSidebar): The other layer identifier column to check if it is strictly contained.
 
         Returns:
             bool: True if the layer identifier column strictly contains the other layer identifier column, False
@@ -139,8 +141,8 @@ class LayerIdentifierColumn(DepthColumn[LayerIdentifierEntry]):
         )
 
 
-def find_layer_identifier_column_entries(lines: list[TextLine]) -> list[LayerIdentifierEntry]:
-    r"""Find the layer identifier column entries.
+def find_layer_identifier_sidebar_entries(lines: list[TextLine]) -> list[LayerIdentifierEntry]:
+    r"""Find the layer identifier sidebar entries.
 
     Regex explanation:
     - \b is a word boundary. This ensures that the match must start at the beginning of a word.
@@ -150,10 +152,10 @@ def find_layer_identifier_column_entries(lines: list[TextLine]) -> list[LayerIde
     This regular expression will match strings like "1)", "2)", "a)", "b)", "1a4)", "6de)", etc.
 
     Args:
-        lines (list[TextLine]): The lines to search for layer identifier columns.
+        lines (list[TextLine]): The lines to search for layer identifier entries.
 
     Returns:
-        list[LayerIdentifierEntry]: The layer identifier column entries.
+        list[LayerIdentifierEntry]: The layer identifier sidebar entries.
     """
     entries = []
     for line in sorted(lines, key=lambda line: line.rect.y0):
@@ -168,7 +170,7 @@ def find_layer_identifier_column_entries(lines: list[TextLine]) -> list[LayerIde
     return entries
 
 
-def find_layer_identifier_column(entries: list[LayerIdentifierEntry]) -> list[LayerIdentifierColumn]:
+def find_layer_identifier_sidebars(entries: list[LayerIdentifierEntry]) -> list[LayerIdentifierSidebar]:
     """Find the layer identifier column given the index column entries.
 
     Note: Similar to find_depth_columns.find_depth_columns. Refactoring may be desired.
@@ -177,33 +179,33 @@ def find_layer_identifier_column(entries: list[LayerIdentifierEntry]) -> list[La
         entries (list[LayerIdentifierEntry]): The layer identifier column entries.
 
     Returns:
-        list[LayerIdentifierColumn]: The found layer identifier columns.
+        list[LayerIdentifierSidebar]: The found layer identifier sidebar.
     """
-    layer_identifier_columns = [LayerIdentifierColumn([entries[0]])]
+    layer_identifier_sidebars = [LayerIdentifierSidebar([entries[0]])]
     for entry in entries[1:]:
         has_match = False
-        for column in layer_identifier_columns:
+        for column in layer_identifier_sidebars:
             if column.can_be_appended(entry.rect):
                 column.entries.append(entry)
                 has_match = True
         if not has_match:
-            layer_identifier_columns.append(LayerIdentifierColumn([entry]))
+            layer_identifier_sidebars.append(LayerIdentifierSidebar([entry]))
 
         # only keep columns whose entries are not fully contained in a different column
-        layer_identifier_columns = [
+        layer_identifier_sidebars = [
             column
-            for column in layer_identifier_columns
-            if all(not other.strictly_contains(column) for other in layer_identifier_columns)
+            for column in layer_identifier_sidebars
+            if all(not other.strictly_contains(column) for other in layer_identifier_sidebars)
         ]
         # check if the column rect is a subset of another column rect. If so, merge the entries and sort them by y0.
-        for column in layer_identifier_columns:
-            for other in layer_identifier_columns:
+        for column in layer_identifier_sidebars:
+            for other in layer_identifier_sidebars:
                 if column != other and column.is_contained(other.rect()):
                     for entry in other.entries:
                         if entry not in column.entries:
                             column.entries.append(entry)
                     column.entries.sort(key=lambda entry: entry.rect.y0)
-                    layer_identifier_columns.remove(other)
+                    layer_identifier_sidebars.remove(other)
                     break
-    layer_identifier_columns = [column for column in layer_identifier_columns if len(column.entries) > 2]
-    return layer_identifier_columns
+    layer_identifier_sidebars = [column for column in layer_identifier_sidebars if len(column.entries) > 2]
+    return layer_identifier_sidebars
