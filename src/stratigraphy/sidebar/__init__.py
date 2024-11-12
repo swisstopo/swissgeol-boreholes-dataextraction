@@ -6,6 +6,7 @@ from .a_above_b_sidebar_validator import AAboveBSidebarValidator
 from .a_to_b_sidebar import AToBSidebar
 from .a_to_b_sidebar_extractor import AToBSidebarExtractor
 from .layer_identifier_sidebar import LayerIdentifierSidebar
+from .layer_identifier_sidebar_extractor import LayerIdentifierSidebarExtractor
 from .sidebar import Sidebar
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "AToBSidebar",
     "AToBSidebarExtractor",
     "LayerIdentifierSidebar",
+    "LayerIdentifierSidebarExtractor",
 ]

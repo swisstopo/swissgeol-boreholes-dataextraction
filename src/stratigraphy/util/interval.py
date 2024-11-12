@@ -177,3 +177,38 @@ class AToBInterval(Interval):
             return [TextBlock(matched_lines)]
         else:
             return []
+
+    @classmethod
+    def get_depth_interval_from_textblock(cls, block: TextBlock) -> AToBInterval | None:
+        """Extract depth interval from a material description block.
+
+        For borehole profiles in the Deriaz layout, the depth interval is usually found in the text description
+        of the material. Often, these text descriptions contain a further separation into multiple sub layers.
+        These sub layers have their own depth intervals. This function extracts the overall depth interval,
+        spanning across all mentioned sub layers.
+
+        Args:
+            block (TextBlock): The block to calculate the depth interval for.
+
+        Returns:
+            AToBInterval | None: The depth interval.
+        """
+        depth_entries = []
+        for line in block.lines:
+            try:
+                layer_depth_entry = AToBDepthColumnEntry.from_text(line.text, line.rect, require_start_of_string=False)
+                # require_start_of_string = False because the depth interval may not always start at the beginning
+                # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
+                if layer_depth_entry:
+                    depth_entries.append(layer_depth_entry)
+            except ValueError:
+                pass
+
+        if depth_entries:
+            # Merge the sub layers into one depth interval.
+            start = min([entry.start for entry in depth_entries], key=lambda start_entry: start_entry.value)
+            end = max([entry.end for entry in depth_entries], key=lambda end_entry: end_entry.value)
+
+            return AToBInterval(AToBDepthColumnEntry(start, end))
+        else:
+            return None

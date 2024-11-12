@@ -7,11 +7,11 @@ from dataclasses import dataclass
 import fitz
 
 from stratigraphy.depthcolumn.depthcolumnentry import AToBDepthColumnEntry
-from stratigraphy.layer.layer import IntervalBlockGroup
 from stratigraphy.lines.line import TextLine
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.interval import AToBInterval
 
+from .interval_block_group import IntervalBlockGroup
 from .sidebar import Sidebar
 
 

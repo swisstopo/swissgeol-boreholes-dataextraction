@@ -1,17 +1,15 @@
 """Module for the layer identifier sidebars."""
 
-import re
 from dataclasses import dataclass
 
 import fitz
 
-from stratigraphy.layer.layer import IntervalBlockGroup
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.dataclasses import Line
 
-from ..depthcolumn.depthcolumnentry import AToBDepthColumnEntry
 from ..util.interval import AToBInterval
+from .interval_block_group import IntervalBlockGroup
 from .sidebar import Sidebar
 
 
@@ -72,7 +70,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         result = []
         for block in blocks:
             depth_intervals = []
-            depth_interval = get_depth_interval_from_textblock(block)
+            depth_interval = AToBInterval.get_depth_interval_from_textblock(block)
             if depth_interval:
                 depth_intervals.append(depth_interval)
             result.append(IntervalBlockGroup(depth_intervals=depth_intervals, blocks=[block]))
@@ -140,108 +138,3 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             and rect.y0 <= self.rect().y0
             and self.rect().y1 <= rect.y1
         )
-
-
-def find_layer_identifier_sidebar_entries(lines: list[TextLine]) -> list[LayerIdentifierEntry]:
-    r"""Find the layer identifier sidebar entries.
-
-    Regex explanation:
-    - \b is a word boundary. This ensures that the match must start at the beginning of a word.
-    - [\da-z]+ matches one or more (+) alphanumeric characters (\d for digits and a-z for lowercase letters).
-    - \) matches a closing parenthesis. The backslash is necessary because parentheses are special characters
-      in regular expressions, so we need to escape it to match a literal parenthesis.
-    This regular expression will match strings like "1)", "2)", "a)", "b)", "1a4)", "6de)", etc.
-
-    Args:
-        lines (list[TextLine]): The lines to search for layer identifier entries.
-
-    Returns:
-        list[LayerIdentifierEntry]: The layer identifier sidebar entries.
-    """
-    entries = []
-    for line in sorted(lines, key=lambda line: line.rect.y0):
-        if len(line.words) > 0:
-            # Only match in the first word of every line, to avoid e.g. matching with "cm)" in a material description
-            # containing an expression like "(diameter max 6 cm)".
-            first_word = line.words[0]
-            regex = re.compile(r"\b[\da-z-]+\)")
-            match = regex.match(first_word.text)
-            if match and len(first_word.text) < 7:
-                entries.append(LayerIdentifierEntry(first_word.rect, first_word.text))
-    return entries
-
-
-def find_layer_identifier_sidebars(entries: list[LayerIdentifierEntry]) -> list[LayerIdentifierSidebar]:
-    """Find the layer identifier column given the index column entries.
-
-    Note: Similar to find_depth_columns.find_depth_columns. Refactoring may be desired.
-
-    Args:
-        entries (list[LayerIdentifierEntry]): The layer identifier column entries.
-
-    Returns:
-        list[LayerIdentifierSidebar]: The found layer identifier sidebar.
-    """
-    layer_identifier_sidebars = [LayerIdentifierSidebar([entries[0]])]
-    for entry in entries[1:]:
-        has_match = False
-        for column in layer_identifier_sidebars:
-            if column.can_be_appended(entry.rect):
-                column.entries.append(entry)
-                has_match = True
-        if not has_match:
-            layer_identifier_sidebars.append(LayerIdentifierSidebar([entry]))
-
-        # only keep columns whose entries are not fully contained in a different column
-        layer_identifier_sidebars = [
-            column
-            for column in layer_identifier_sidebars
-            if all(not other.strictly_contains(column) for other in layer_identifier_sidebars)
-        ]
-        # check if the column rect is a subset of another column rect. If so, merge the entries and sort them by y0.
-        for column in layer_identifier_sidebars:
-            for other in layer_identifier_sidebars:
-                if column != other and column.is_contained(other.rect()):
-                    for entry in other.entries:
-                        if entry not in column.entries:
-                            column.entries.append(entry)
-                    column.entries.sort(key=lambda entry: entry.rect.y0)
-                    layer_identifier_sidebars.remove(other)
-                    break
-    layer_identifier_sidebars = [column for column in layer_identifier_sidebars if len(column.entries) > 2]
-    return layer_identifier_sidebars
-
-
-def get_depth_interval_from_textblock(block: TextBlock) -> AToBInterval | None:
-    """Extract depth interval from a material description block.
-
-    For borehole profiles in the Deriaz layout, the depth interval is usually found in the text description
-    of the material. Often, these text descriptions contain a further separation into multiple sub layers.
-    These sub layers have their own depth intervals. This function extracts the overall depth interval,
-    spanning across all mentioned sub layers.
-
-    Args:
-        block (TextBlock): The block to calculate the depth interval for.
-
-    Returns:
-        AToBInterval | None: The depth interval.
-    """
-    depth_entries = []
-    for line in block.lines:
-        try:
-            layer_depth_entry = AToBDepthColumnEntry.from_text(line.text, line.rect, require_start_of_string=False)
-            # require_start_of_string = False because the depth interval may not always start at the beginning
-            # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
-            if layer_depth_entry:
-                depth_entries.append(layer_depth_entry)
-        except ValueError:
-            pass
-
-    if depth_entries:
-        # Merge the sub layers into one depth interval.
-        start = min([entry.start for entry in depth_entries], key=lambda start_entry: start_entry.value)
-        end = max([entry.end for entry in depth_entries], key=lambda end_entry: end_entry.value)
-
-        return AToBInterval(AToBDepthColumnEntry(start, end))
-    else:
-        return None

@@ -12,10 +12,11 @@ from stratigraphy.depths_materials_column_pairs.material_description_rect_with_s
 )
 from stratigraphy.layer.layer import IntervalBlockPair, Layer
 from stratigraphy.lines.line import TextLine
-from stratigraphy.sidebar import AAboveBSidebarExtractor, AToBSidebarExtractor, Sidebar
-from stratigraphy.sidebar.layer_identifier_sidebar import (
-    find_layer_identifier_sidebar_entries,
-    find_layer_identifier_sidebars,
+from stratigraphy.sidebar import (
+    AAboveBSidebarExtractor,
+    AToBSidebarExtractor,
+    LayerIdentifierSidebarExtractor,
+    Sidebar,
 )
 from stratigraphy.text.find_description import (
     get_description_blocks,
@@ -60,24 +61,21 @@ def process_page(
     Returns:
         list[dict]: All list of the text of all description blocks.
     """
-    # Detect Layer Index Columns
-    layer_identifier_entries = find_layer_identifier_sidebar_entries(lines)
-    layer_identifier_sidebars = (
-        find_layer_identifier_sidebars(layer_identifier_entries) if layer_identifier_entries else []
-    )
-    material_descriptions_sidebar_pairs = []
-    if layer_identifier_sidebars:
-        for layer_identifier_sidebar in layer_identifier_sidebars:
-            material_description_rect = find_material_description_column(
-                lines, layer_identifier_sidebar, language, **params["material_description"]
-            )
-            if material_description_rect:
-                material_descriptions_sidebar_pairs.append(
-                    MaterialDescriptionRectWithSidebar(layer_identifier_sidebar, material_description_rect)
-                )
+    # Detect Layer Identifier Sidebars
 
-        if material_descriptions_sidebar_pairs:
-            material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match())
+    layer_identifier_sidebars = LayerIdentifierSidebarExtractor.from_lines(lines)
+    material_descriptions_sidebar_pairs = []
+    for layer_identifier_sidebar in layer_identifier_sidebars:
+        material_description_rect = find_material_description_column(
+            lines, layer_identifier_sidebar, language, **params["material_description"]
+        )
+        if material_description_rect:
+            material_descriptions_sidebar_pairs.append(
+                MaterialDescriptionRectWithSidebar(layer_identifier_sidebar, material_description_rect)
+            )
+
+    if material_descriptions_sidebar_pairs:
+        material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match())
 
     # If there is a layer identifier sidebar, then we use this directly.
     # Else, we search for sidebars with depths.
