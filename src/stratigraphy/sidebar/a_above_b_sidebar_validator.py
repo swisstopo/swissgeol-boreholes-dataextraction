@@ -4,7 +4,8 @@ import dataclasses
 
 from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
 from stratigraphy.lines.line import TextWord
-from stratigraphy.sidebar import AAboveBSidebar
+
+from .a_above_b_sidebar import AAboveBSidebar
 
 
 @dataclasses.dataclass

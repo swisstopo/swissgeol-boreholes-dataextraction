@@ -12,7 +12,7 @@ from stratigraphy.depths_materials_column_pairs.material_description_rect_with_s
 )
 from stratigraphy.layer.layer import IntervalBlockPair, Layer
 from stratigraphy.lines.line import TextLine
-from stratigraphy.sidebar import Sidebar, find_sidebars
+from stratigraphy.sidebar import AAboveBSidebarExtractor, AToBSidebarExtractor, Sidebar
 from stratigraphy.sidebar.layer_identifier_sidebar import (
     find_layer_identifier_sidebar_entries,
     find_layer_identifier_sidebars,
@@ -84,23 +84,17 @@ def process_page(
     # We could also think of some scoring mechanism to decide which one to use.
     if not material_descriptions_sidebar_pairs:
         words = [word for line in lines for word in line.words]
-        depth_column_entries = find_sidebars.depth_column_entries(words, include_splits=True)
-        a_to_b_sidebars = find_sidebars.find_a_to_b_sidebars(depth_column_entries, words)
+        a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words)
 
         used_entry_rects = []
         for column in a_to_b_sidebars:
             for entry in column.entries:
                 used_entry_rects.extend([entry.start.rect, entry.end.rect])
 
-        depth_column_entries = [
-            entry
-            for entry in find_sidebars.depth_column_entries(words, include_splits=False)
-            if entry.rect not in used_entry_rects
-        ]
         sidebars: list[Sidebar] = a_to_b_sidebars
         sidebars.extend(
-            find_sidebars.find_a_above_b_sidebars(
-                depth_column_entries, words, sidebar_params=params["depth_column_params"]
+            AAboveBSidebarExtractor.find_in_words(
+                words, used_entry_rects, sidebar_params=params["depth_column_params"]
             )
         )
 
