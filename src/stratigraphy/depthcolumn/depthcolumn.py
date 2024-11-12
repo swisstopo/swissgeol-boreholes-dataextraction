@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import abc
+from dataclasses import dataclass
 
 import fitz
 import numpy as np
 from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry, LayerDepthColumnEntry
-from stratigraphy.layer.layer import IntervalBlockGroup
 from stratigraphy.layer.layer_identifier_column import LayerIdentifierColumn
 from stratigraphy.lines.line import TextLine, TextWord
 from stratigraphy.text.find_description import get_description_blocks
+from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.interval import BoundaryInterval, Interval, LayerInterval
 
@@ -568,3 +569,15 @@ class BoundaryDepthColumn(DepthColumn):
             groups.append(IntervalBlockGroup(depth_intervals=current_intervals, blocks=current_blocks))
 
         return groups
+
+
+@dataclass
+class IntervalBlockGroup:
+    """Helper class to represent a group of depth intervals and an associated group of text blocks.
+
+    The class is used to simplify the code for obtaining an appropriate one-to-one correspondence between depth
+    intervals and material descriptions.
+    """
+
+    depth_intervals: list[Interval]
+    blocks: list[TextBlock]
