@@ -1,7 +1,6 @@
 """Layer class definition."""
 
-import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import fitz
 from stratigraphy.data_extractor.data_extractor import ExtractedFeature, FeatureOnPage
@@ -17,7 +16,6 @@ class Layer(ExtractedFeature):
 
     material_description: FeatureOnPage[MaterialDescription]
     depth_interval: AAboveBInterval | None
-    id: uuid.UUID = field(default_factory=uuid.uuid4)
 
     def __str__(self) -> str:
         """Converts the object to a string.
@@ -39,7 +37,6 @@ class Layer(ExtractedFeature):
         return {
             "material_description": self.material_description.to_json() if self.material_description else None,
             "depth_interval": self.depth_interval.to_json() if self.depth_interval else None,
-            "id": str(self.id),
         }
 
     @classmethod

@@ -10,7 +10,6 @@ Each key in the JSON object is the name of a PDF file. The extracted data is lis
 - `layers`: a list of objects, where each object represents a layer of the borehole profile, using the following keys:
   - `material_description`: the text of the material description, both as a single value as well as line-by-line, and the location in the PDF where the text resp. the lines where extracted from.
   - `depth_interval`: the measured depth of the upper and lower limits of the layer, and the location in the PDF where they were extracted from.
-  - `id`: a unique identifier.
 - `bounding_boxes`: a list of objects, one for each (part of a) borehole profile in the PDF, that list some bounding boxes that can be used for visualizations. Each object has the following keys:
   - `sidebar_rect`: the area of the page the contains a "sidebar" (if any), which contains depths or other data displayed to the side of material descriptions.
   - `depth_column_entries`: list of locations of the entries in the depth column (if any).
@@ -87,8 +86,7 @@ All bounding boxes are measured with PDF points as the unit, and with the top-le
             "value": 6.0,
             "rect": [201.62551879882812, 374.30560302734375, 210.0361328125, 380.828857421875]
           }
-        },
-        "id": "2b841b12-1f8d-4845-a873-0916b2a09420"
+        }
       },
       # ... (more layers)
     ],
