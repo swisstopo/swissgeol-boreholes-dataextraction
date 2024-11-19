@@ -44,7 +44,6 @@ class FilePredictions:
             "metadata": self.metadata.to_json(),
             "layers": [layer.to_json() for layer in self.layers_in_document.layers],
             "bounding_boxes": [bboxes.to_json() for bboxes in self.bounding_boxes],
-            "page_dimensions": self.metadata.page_dimensions,  # TODO: Remove, already in metadata
             "groundwater": self.groundwater.to_json() if self.groundwater is not None else [],
         }
 

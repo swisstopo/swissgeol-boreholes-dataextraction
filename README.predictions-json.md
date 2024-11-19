@@ -16,7 +16,6 @@ Each key in the JSON object is the name of a PDF file. The extracted data is lis
   - `depth_column_entries`: list of locations of the entries in the depth column (if any).
   - `material_description_rect`: the area of the page that contains all material descriptions.
   - `page`: the number of the page of the PDF.
-- `page_dimensions`: dimensions of each page in the PDF, measured in PDF points (repeated)
 - `groundwater`: a list of objects, one for each groundwater measurement that was extracted from the PDF. Each object has the following keys.
   - `date`: extracted date for the groundwater measurement (if any) as a string in YYYY-MM-DD format.
   - `depth`: the measured depth (in m) of the groundwater measurement.
@@ -116,16 +115,6 @@ All bounding boxes are measured with PDF points as the unit, and with the top-le
         "material_description_rect": [192.3216094970703, 337.677978515625, 291.1827392578125, 633.6331176757812],
         "page": 2
       }
-    ],
-    "page_dimensions": [
-      [
-        591.956787109375,
-        1030.426025390625
-      ],
-      [
-        588.009521484375,
-        792.114990234375
-      ]
     ],
     "groundwater": [
       {
