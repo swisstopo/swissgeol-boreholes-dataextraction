@@ -46,7 +46,6 @@ class FilePredictions:
             "bounding_boxes": [bboxes.to_json() for bboxes in self.bounding_boxes],
             "page_dimensions": self.metadata.page_dimensions,  # TODO: Remove, already in metadata
             "groundwater": self.groundwater.to_json() if self.groundwater is not None else [],
-            "file_name": self.file_name,
         }
 
 

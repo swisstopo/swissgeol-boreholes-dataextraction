@@ -22,7 +22,6 @@ Each key in the JSON object is the name of a PDF file. The extracted data is lis
   - `depth`: the measured depth (in m) of the groundwater measurement.
   - `elevation`: the elevation (in m above sea level) of the groundwater measurement.
   - `page` and `rect`: the location in the PDF where the groundwater measurement was extracted from.
-- `file_name`: name of the file (repeated)
 
 All page numbers are counted starting at 1.
 
@@ -136,8 +135,7 @@ All bounding boxes are measured with PDF points as the unit, and with the top-le
         "page": 1,
         "rect": [61.23963928222656, 489.3185119628906, 94.0096435546875, 513.6478881835938]
       }
-    ],
-    "file_name": "B366.pdf"
+    ]
   }
 }
 ```
