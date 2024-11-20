@@ -8,7 +8,7 @@ from stratigraphy.lines.line import TextLine
 from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.dataclasses import Line
 
-from ..util.interval import AToBInterval
+from ..util.a_to_b_interval_extractor import AToBIntervalExtractor
 from .interval_block_group import IntervalBlockGroup
 from .sidebar import Sidebar
 
@@ -70,7 +70,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         result = []
         for block in blocks:
             depth_intervals = []
-            depth_interval = AToBInterval.get_depth_interval_from_lines(block.lines)
+            depth_interval = AToBIntervalExtractor.from_lines(block.lines)
             if depth_interval:
                 depth_intervals.append(depth_interval)
             result.append(IntervalBlockGroup(depth_intervals=depth_intervals, blocks=[block]))

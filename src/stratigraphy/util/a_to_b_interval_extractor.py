@@ -14,7 +14,7 @@ class AToBIntervalExtractor:
     """Methods for finding AToBInterval instances (e.g. "0.5m - 1.8m") in a text."""
 
     @classmethod
-    def get_depth_interval_from_lines(cls, lines: list[TextLine]) -> AToBInterval | None:
+    def from_lines(cls, lines: list[TextLine]) -> AToBInterval | None:
         """Extract depth interval from text lines.
 
         For borehole profiles in the Deriaz layout, the depth interval is usually found in the text of the material
