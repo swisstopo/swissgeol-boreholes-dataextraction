@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 import fitz
 
-from stratigraphy.depthcolumn.depthcolumnentry import AToBDepthColumnEntry
 from stratigraphy.lines.line import TextLine
 from stratigraphy.util.dataclasses import Line
 from stratigraphy.util.interval import AToBInterval
@@ -16,7 +15,7 @@ from .sidebar import Sidebar
 
 
 @dataclass
-class AToBSidebar(Sidebar[AToBDepthColumnEntry]):
+class AToBSidebar(Sidebar[AToBInterval]):
     """Represents a sidebar where the upper and lower depths of each layer are explicitly specified.
 
     Example::
@@ -26,7 +25,7 @@ class AToBSidebar(Sidebar[AToBDepthColumnEntry]):
         ...
     """
 
-    entries: list[AToBDepthColumnEntry]
+    entries: list[AToBInterval]
 
     def __repr__(self):
         """Converts the object to a string.

@@ -1,7 +1,7 @@
 """Test suite for the interval module."""
 
 import fitz
-from stratigraphy.depthcolumn.depthcolumnentry import AToBDepthColumnEntry, DepthColumnEntry
+from stratigraphy.depthcolumnentry.depthcolumnentry import DepthColumnEntry
 from stratigraphy.util.interval import AAboveBInterval, AToBInterval
 
 
@@ -27,8 +27,7 @@ def test_line_anchor():  # noqa: D103
 
     start = DepthColumnEntry(fitz.Rect(0, 0, 1, 1), 5)
     end = DepthColumnEntry(fitz.Rect(2, 0, 3, 1), 10)
-    entry = AToBDepthColumnEntry(start, end)
-    layer_interval = AToBInterval(entry)
+    layer_interval = AToBInterval(start, end)
     assert layer_interval.line_anchor == fitz.Point(
         3, 0.5
     ), "The 'line anchor' for a LayerInterval should be the midpoint of the right-hand-side of the end rect."

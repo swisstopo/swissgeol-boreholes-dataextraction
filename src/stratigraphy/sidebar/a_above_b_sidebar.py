@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import fitz
 import numpy as np
 
-from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
+from stratigraphy.depthcolumnentry import DepthColumnEntry
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.find_description import get_description_blocks
 from stratigraphy.util.dataclasses import Line

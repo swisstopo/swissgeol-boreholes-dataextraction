@@ -2,9 +2,10 @@
 
 import re
 
-from stratigraphy.depthcolumn.depthcolumnentry import AToBDepthColumnEntry, DepthColumnEntry
+from stratigraphy.depthcolumnentry import DepthColumnEntry, DepthColumnEntryExtractor
 from stratigraphy.lines.line import TextWord
 from stratigraphy.sidebar import AToBSidebar
+from stratigraphy.util.interval import AToBInterval
 
 
 class AToBSidebarExtractor:
@@ -27,7 +28,7 @@ class AToBSidebarExtractor:
         Returns:
             list[AToBSidebar]: List of all AToBSidebars identified.
         """
-        entries = DepthColumnEntry.find_in_words(all_words, include_splits=True)
+        entries = DepthColumnEntryExtractor.find_in_words(all_words, include_splits=True)
 
         def find_pair(entry: DepthColumnEntry) -> DepthColumnEntry | None:  # noqa: D103
             min_y0 = entry.rect.y0 - entry.rect.height / 2
@@ -57,7 +58,7 @@ class AToBSidebarExtractor:
         sidebars = []
         for first, second in pairs:
             if second is not None:
-                entry = AToBDepthColumnEntry(first, second)
+                entry = AToBInterval(first, second)
                 is_matched = False
                 for sidebar in sidebars:
                     column_rect = sidebar.rect()

@@ -2,7 +2,7 @@
 
 import dataclasses
 
-from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
+from stratigraphy.depthcolumnentry import DepthColumnEntry
 from stratigraphy.lines.line import TextWord
 
 from .a_above_b_sidebar import AAboveBSidebar
