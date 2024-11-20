@@ -4,11 +4,11 @@ import re
 
 import fitz
 
-from stratigraphy.depth import DepthColumnEntry
-from stratigraphy.depth.util import value_as_float
 from stratigraphy.lines.line import TextLine
 
+from .depthcolumnentry import DepthColumnEntry
 from .interval import AToBInterval
+from .util import value_as_float
 
 
 class AToBIntervalExtractor:
