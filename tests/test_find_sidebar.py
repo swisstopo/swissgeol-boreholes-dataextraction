@@ -2,7 +2,7 @@
 
 import fitz
 import pytest
-from stratigraphy.depthcolumnentry import DepthColumnEntryExtractor
+from stratigraphy.depth import DepthColumnEntryExtractor
 from stratigraphy.lines.line import TextWord
 from stratigraphy.sidebar import AAboveBSidebarExtractor, AToBSidebarExtractor
 

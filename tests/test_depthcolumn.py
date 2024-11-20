@@ -1,7 +1,7 @@
 """Test suite for the find_depth_columns module."""
 
 import fitz
-from stratigraphy.depthcolumnentry.depthcolumnentry import DepthColumnEntry
+from stratigraphy.depth.depthcolumnentry import DepthColumnEntry
 from stratigraphy.sidebar import AAboveBSidebar
 
 

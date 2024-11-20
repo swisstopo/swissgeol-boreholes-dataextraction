@@ -6,9 +6,9 @@ from dataclasses import dataclass
 
 import fitz
 
+from stratigraphy.depth import AToBInterval
 from stratigraphy.lines.line import TextLine
 from stratigraphy.util.dataclasses import Line
-from stratigraphy.util.interval import AToBInterval
 
 from .interval_block_group import IntervalBlockGroup
 from .sidebar import Sidebar

@@ -8,7 +8,7 @@ from typing import Generic, TypeVar
 
 import fitz
 
-from stratigraphy.depthcolumnentry import DepthColumnEntry
+from stratigraphy.depth import DepthColumnEntry
 from stratigraphy.lines.line import TextLine, TextWord
 from stratigraphy.sidebar.interval_block_group import IntervalBlockGroup
 from stratigraphy.util.dataclasses import Line

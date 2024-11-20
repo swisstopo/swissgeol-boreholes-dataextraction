@@ -2,10 +2,11 @@
 
 import fitz
 
-from stratigraphy.depthcolumnentry import DepthColumnEntryExtractor
+from stratigraphy.depth import DepthColumnEntryExtractor
 from stratigraphy.lines.line import TextWord
-from stratigraphy.sidebar.a_above_b_sidebar import AAboveBSidebar
-from stratigraphy.sidebar.a_above_b_sidebar_validator import AAboveBSidebarValidator
+
+from .a_above_b_sidebar import AAboveBSidebar
+from .a_above_b_sidebar_validator import AAboveBSidebarValidator
 
 
 class AAboveBSidebarExtractor:

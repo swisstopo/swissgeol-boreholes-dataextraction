@@ -2,10 +2,11 @@
 
 import re
 
-from stratigraphy.depthcolumnentry import DepthColumnEntry
-from stratigraphy.depthcolumnentry.util import value_as_float
+from stratigraphy.depth import DepthColumnEntry
+from stratigraphy.depth.util import value_as_float
 from stratigraphy.lines.line import TextWord
-from stratigraphy.util.a_to_b_interval_extractor import AToBIntervalExtractor
+
+from .a_to_b_interval_extractor import AToBIntervalExtractor
 
 
 class DepthColumnEntryExtractor:

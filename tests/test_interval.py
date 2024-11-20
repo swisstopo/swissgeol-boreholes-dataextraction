@@ -1,8 +1,7 @@
 """Test suite for the interval module."""
 
 import fitz
-from stratigraphy.depthcolumnentry.depthcolumnentry import DepthColumnEntry
-from stratigraphy.util.interval import AAboveBInterval, AToBInterval
+from stratigraphy.depth import AAboveBInterval, AToBInterval, DepthColumnEntry
 
 
 def test_line_anchor():  # noqa: D103
