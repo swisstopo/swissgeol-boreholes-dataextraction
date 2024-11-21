@@ -1,4 +1,4 @@
-# `predictions.json` output Structure
+# `predictions.json` output structure
 The `predictions.json` file contains the results of a data extraction process in a machine-readable format. By default, the file is written to `data/output/predictions.json`.
 
 Each key in the JSON object is the name of a PDF file. The extracted data is listed as an object with the following keys:
