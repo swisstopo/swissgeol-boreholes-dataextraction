@@ -8,8 +8,7 @@ import fitz
 import pandas as pd
 from dotenv import load_dotenv
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
-from stratigraphy.depthcolumn.depthcolumn import DepthColumn
-from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
+from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBoxes
 from stratigraphy.groundwater.groundwater_extraction import Groundwater
 from stratigraphy.layer.layer import Layer
 from stratigraphy.metadata.coordinate_extraction import Coordinate
@@ -55,7 +54,7 @@ def draw_predictions(
     for file_prediction in predictions.file_predictions_list:
         logger.info("Drawing predictions for file %s", file_prediction.file_name)
 
-        depths_materials_column_pairs = file_prediction.depths_materials_columns_pairs
+        bounding_boxes = file_prediction.bounding_boxes
         coordinates = file_prediction.metadata.coordinates
         elevation = file_prediction.metadata.elevation
 
@@ -98,7 +97,7 @@ def draw_predictions(
                     draw_depth_columns_and_material_rect(
                         shape,
                         page.derotation_matrix,
-                        [pair for pair in depths_materials_column_pairs if pair.page == page_number],
+                        [bboxes for bboxes in bounding_boxes if bboxes.page == page_number],
                     )
                     draw_material_descriptions(
                         shape,
@@ -245,7 +244,7 @@ def draw_material_descriptions(shape: fitz.Shape, derotation_matrix: fitz.Matrix
 
 
 def draw_depth_columns_and_material_rect(
-    shape: fitz.Shape, derotation_matrix: fitz.Matrix, depths_materials_column_pairs: list[DepthsMaterialsColumnPairs]
+    shape: fitz.Shape, derotation_matrix: fitz.Matrix, bounding_boxes: list[BoundingBoxes]
 ):
     """Draw depth columns as well as the material rects on a pdf page.
 
@@ -257,25 +256,22 @@ def draw_depth_columns_and_material_rect(
     Args:
         shape (fitz.Shape): The shape object for drawing.
         derotation_matrix (fitz.Matrix): The derotation matrix of the page.
-        depths_materials_column_pairs (list): List of depth column entries.
+        bounding_boxes (list[BoundingBoxes]): List of bounding boxes for depth column and material descriptions.
     """
-    for pair in depths_materials_column_pairs:
-        depth_column: DepthColumn = pair.depth_column
-        material_description_rect = pair.material_description_rect
-
-        if depth_column:  # Draw rectangle for depth columns
+    for bboxes in bounding_boxes:
+        if bboxes.sidebar_bbox:  # Draw rectangle for depth columns
             shape.draw_rect(
-                fitz.Rect(depth_column.rect()) * derotation_matrix,
+                fitz.Rect(bboxes.sidebar_bbox.rect) * derotation_matrix,
             )
             shape.finish(color=fitz.utils.getColor("green"))
-            for depth_column_entry in depth_column.entries:  # Draw rectangle for depth column entries
+            for depth_column_entry in bboxes.depth_column_entry_bboxes:  # Draw rectangle for depth column entries
                 shape.draw_rect(
                     fitz.Rect(depth_column_entry.rect) * derotation_matrix,
                 )
             shape.finish(color=fitz.utils.getColor("purple"))
 
         shape.draw_rect(  # Draw rectangle for material description column
-            fitz.Rect(material_description_rect) * derotation_matrix,
+            bboxes.material_description_bbox.rect * derotation_matrix,
         )
         shape.finish(color=fitz.utils.getColor("red"))
 

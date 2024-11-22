@@ -1,13 +1,12 @@
 """Layer class definition."""
 
-import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import fitz
 from stratigraphy.data_extractor.data_extractor import ExtractedFeature, FeatureOnPage
 from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
 from stratigraphy.text.textblock import MaterialDescription, TextBlock
-from stratigraphy.util.interval import AnnotatedInterval, BoundaryInterval, Interval
+from stratigraphy.util.interval import AAboveBInterval, Interval
 from stratigraphy.util.util import parse_text
 
 
@@ -16,8 +15,7 @@ class Layer(ExtractedFeature):
     """A class to represent predictions for a single layer."""
 
     material_description: FeatureOnPage[MaterialDescription]
-    depth_interval: BoundaryInterval | AnnotatedInterval | None
-    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    depth_interval: AAboveBInterval | None
 
     def __str__(self) -> str:
         """Converts the object to a string.
@@ -39,7 +37,6 @@ class Layer(ExtractedFeature):
         return {
             "material_description": self.material_description.to_json() if self.material_description else None,
             "depth_interval": self.depth_interval.to_json() if self.depth_interval else None,
-            "id": str(self.id),
         }
 
     @classmethod
@@ -58,25 +55,17 @@ class Layer(ExtractedFeature):
             start_data = depth_interval.get("start")
             end_data = depth_interval.get("end")
             start = (
-                DepthColumnEntry(
-                    value=start_data["value"],
-                    rect=fitz.Rect(start_data["rect"]),
-                    page_number=start_data["page"],
-                )
+                DepthColumnEntry(value=start_data["value"], rect=fitz.Rect(start_data["rect"]))
                 if start_data is not None
                 else None
             )
             end = (
-                DepthColumnEntry(
-                    value=end_data["value"],
-                    rect=fitz.Rect(end_data["rect"]),
-                    page_number=end_data["page"],
-                )
+                DepthColumnEntry(value=end_data["value"], rect=fitz.Rect(end_data["rect"]))
                 if end_data is not None
                 else None
             )
 
-            depth_interval_prediction = BoundaryInterval(start=start, end=end)
+            depth_interval_prediction = AAboveBInterval(start=start, end=end)
         else:
             depth_interval_prediction = None
 

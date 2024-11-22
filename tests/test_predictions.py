@@ -49,7 +49,7 @@ def sample_file_prediction() -> FilePredictions:
         file_name="test_file",
         metadata=metadata,
         groundwater=groundwater_in_doc,
-        depths_materials_columns_pairs=[],
+        bounding_boxes=[],
     )
 
 
@@ -58,9 +58,9 @@ def test_to_json(sample_file_prediction: FilePredictions):
     result = sample_file_prediction.to_json()
 
     assert isinstance(result, dict)
-    assert result["file_name"] == "test_file"
     assert len(result["layers"]) == 2
     assert result["metadata"]["coordinates"]["E"] == 2789456
+    assert result["metadata"]["language"] == "en"
 
 
 def test_overall_file_predictions():

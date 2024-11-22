@@ -230,7 +230,7 @@ def start_pipeline(
                 # Initialize common variables
                 groundwater_entries = GroundwaterInDocument(filename=filename, groundwater=[])
                 layers_in_document = LayersInDocument([], filename)
-                depths_materials_columns_pairs = []
+                bounding_boxes = []
 
                 if part == "all":
                     # Extract the groundwater levels
@@ -262,7 +262,7 @@ def start_pipeline(
                             layer_predictions = process_page_results.predictions
 
                         layers_in_document.layers.extend(layer_predictions)
-                        depths_materials_columns_pairs.extend(process_page_results.depth_material_pairs)
+                        bounding_boxes.extend(process_page_results.bounding_boxes)
 
                         if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
                             if not mlflow_tracking:
@@ -282,7 +282,7 @@ def start_pipeline(
                         metadata=metadata,
                         groundwater=groundwater_entries,
                         layers_in_document=layers_in_document,
-                        depths_materials_columns_pairs=depths_materials_columns_pairs,
+                        bounding_boxes=bounding_boxes,
                     )
                 )
 

@@ -1,30 +1,30 @@
 """Contains the main extraction pipeline for stratigraphy."""
 
 import logging
-import math
 from dataclasses import dataclass
 
 import fitz
 
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
-from stratigraphy.depthcolumn import find_depth_columns
-from stratigraphy.depthcolumn.depthcolumn import DepthColumn
-from stratigraphy.depths_materials_column_pairs.depths_materials_column_pairs import DepthsMaterialsColumnPairs
-from stratigraphy.layer.layer import IntervalBlockPair, Layer
-from stratigraphy.layer.layer_identifier_column import (
-    LayerIdentifierColumn,
-    find_layer_identifier_column,
-    find_layer_identifier_column_entries,
+from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBox, BoundingBoxes
+from stratigraphy.depths_materials_column_pairs.material_description_rect_with_sidebar import (
+    MaterialDescriptionRectWithSidebar,
 )
-from stratigraphy.lines.line import TextLine, TextWord
+from stratigraphy.layer.layer import IntervalBlockPair, Layer
+from stratigraphy.lines.line import TextLine
+from stratigraphy.sidebar import (
+    AAboveBSidebarExtractor,
+    AToBSidebarExtractor,
+    LayerIdentifierSidebarExtractor,
+    Sidebar,
+)
 from stratigraphy.text.find_description import (
     get_description_blocks,
-    get_description_blocks_from_layer_identifier,
     get_description_lines,
 )
 from stratigraphy.text.textblock import MaterialDescription, MaterialDescriptionLine, TextBlock, block_distance
 from stratigraphy.util.dataclasses import Line
-from stratigraphy.util.interval import BoundaryInterval, Interval
+from stratigraphy.util.interval import AAboveBInterval, Interval
 from stratigraphy.util.util import (
     x_overlap,
     x_overlap_significant_smallest,
@@ -38,7 +38,7 @@ class ProcessPageResult:
     """The result of processing a single page of a pdf."""
 
     predictions: list[Layer]
-    depth_material_pairs: list[DepthsMaterialsColumnPairs]
+    bounding_boxes: list[BoundingBoxes]
 
 
 def process_page(
@@ -61,87 +61,88 @@ def process_page(
     Returns:
         list[dict]: All list of the text of all description blocks.
     """
-    # Detect Layer Index Columns
-    layer_identifier_entries = find_layer_identifier_column_entries(lines)
-    layer_identifier_columns = (
-        find_layer_identifier_column(layer_identifier_entries) if layer_identifier_entries else []
-    )
-    pairs = []
-    if layer_identifier_columns:
-        for layer_identifier_column in layer_identifier_columns:
-            material_description_rect = find_material_description_column(
-                lines, layer_identifier_column, language, **params["material_description"]
+    # Detect Layer Identifier Sidebars
+
+    layer_identifier_sidebars = LayerIdentifierSidebarExtractor.from_lines(lines)
+    material_descriptions_sidebar_pairs = []
+    for layer_identifier_sidebar in layer_identifier_sidebars:
+        material_description_rect = find_material_description_column(
+            lines, layer_identifier_sidebar, language, **params["material_description"]
+        )
+        if material_description_rect:
+            material_descriptions_sidebar_pairs.append(
+                MaterialDescriptionRectWithSidebar(layer_identifier_sidebar, material_description_rect)
             )
-            if material_description_rect:
-                pairs.append((layer_identifier_column, material_description_rect))
 
-        # Obtain the best pair. In contrast to depth columns, there only ever is one layer index column per page.
-        if pairs:
-            pairs.sort(key=lambda pair: score_column_match(pair[0], pair[1]))
+    if material_descriptions_sidebar_pairs:
+        material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match())
 
-    words = [word for line in lines for word in line.words]
-
-    # If there is a layer identifier column, then we use this directly.
-    # Else, we search for depth columns. We could also think of some scoring mechanism to decide which one to use.
-    if not pairs:
-        depth_column_entries = find_depth_columns.depth_column_entries(words, include_splits=True)
-        layer_depth_columns = find_depth_columns.find_layer_depth_columns(depth_column_entries, words)
+    # If there is a layer identifier sidebar, then we use this directly.
+    # Else, we search for sidebars with depths.
+    # We could also think of some scoring mechanism to decide which one to use.
+    if not material_descriptions_sidebar_pairs:
+        words = [word for line in lines for word in line.words]
+        a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words)
 
         used_entry_rects = []
-        for column in layer_depth_columns:
+        for column in a_to_b_sidebars:
             for entry in column.entries:
                 used_entry_rects.extend([entry.start.rect, entry.end.rect])
 
-        depth_column_entries = [
-            entry
-            for entry in find_depth_columns.depth_column_entries(words, include_splits=False)
-            if entry.rect not in used_entry_rects
-        ]
-        depth_columns: list[DepthColumn] = layer_depth_columns
-        depth_columns.extend(
-            find_depth_columns.find_depth_columns(
-                depth_column_entries, words, page_number, depth_column_params=params["depth_column_params"]
+        sidebars: list[Sidebar] = a_to_b_sidebars
+        sidebars.extend(
+            AAboveBSidebarExtractor.find_in_words(
+                words, used_entry_rects, sidebar_params=params["depth_column_params"]
             )
         )
 
-        for depth_column in depth_columns:
+        for sidebar in sidebars:
             material_description_rect = find_material_description_column(
-                lines, depth_column, language, **params["material_description"]
+                lines, sidebar, language, **params["material_description"]
             )
             if material_description_rect:
-                pairs.append((depth_column, material_description_rect))
+                material_descriptions_sidebar_pairs.append(
+                    MaterialDescriptionRectWithSidebar(sidebar, material_description_rect)
+                )
         # lowest score first
-        pairs.sort(key=lambda pair: score_column_match(pair[0], pair[1], words))
+        material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match(words))
 
     to_delete = []
-    for i, (_depth_column, material_description_rect) in enumerate(pairs):
-        if any(material_description_rect.intersects(other_rect) for _, other_rect in pairs[i + 1 :]):
+    for i, pair in enumerate(material_descriptions_sidebar_pairs):
+        if any(
+            pair.material_description_rect.intersects(other_pair.material_description_rect)
+            for other_pair in material_descriptions_sidebar_pairs[i + 1 :]
+        ):
             to_delete.append(i)
-    filtered_pairs = [item for index, item in enumerate(pairs) if index not in to_delete]
+    filtered_pairs = [item for index, item in enumerate(material_descriptions_sidebar_pairs) if index not in to_delete]
 
     pairs: list[IntervalBlockPair] = []  # list of matched depth intervals and text blocks
-    # groups is of the form: [{"depth_interval": BoundaryInterval, "block": TextBlock}]
-    if filtered_pairs:  # match depth column items with material description
-        for depth_column, material_description_rect in filtered_pairs:
-            description_lines = get_description_lines(lines, material_description_rect)
+    if filtered_pairs:  # match sidebars with material description
+        bounding_boxes = [
+            BoundingBoxes.from_material_description_rect_with_sidebar(pair, page_number) for pair in filtered_pairs
+        ]
+        for pair in filtered_pairs:
+            description_lines = get_description_lines(lines, pair.material_description_rect)
             if len(description_lines) > 1:
                 new_pairs = match_columns(
-                    depth_column, description_lines, geometric_lines, material_description_rect, **params
+                    pair.sidebar, description_lines, geometric_lines, pair.material_description_rect, **params
                 )
                 pairs.extend(new_pairs)
-        filtered_depth_material_column_pairs = [
-            DepthsMaterialsColumnPairs(
-                depth_column=depth_column, material_description_rect=material_description_rect, page=page_number
-            )
-            for depth_column, material_description_rect in filtered_pairs
-        ]
     else:
-        filtered_depth_material_column_pairs = []
         # Fallback when no depth column was found
         material_description_rect = find_material_description_column(
-            lines, depth_column=None, language=language, **params["material_description"]
+            lines, sidebar=None, language=language, **params["material_description"]
         )
+        bounding_boxes = []
         if material_description_rect:
+            bounding_boxes.append(
+                BoundingBoxes(
+                    sidebar_bbox=None,
+                    depth_column_entry_bboxes=[],
+                    material_description_bbox=BoundingBox(material_description_rect),
+                    page=page_number,
+                )
+            )
             description_lines = get_description_lines(lines, material_description_rect)
             description_blocks = get_description_blocks(
                 description_lines,
@@ -151,13 +152,6 @@ def process_page(
                 params["left_line_length_threshold"],
             )
             pairs.extend([IntervalBlockPair(block=block, depth_interval=None) for block in description_blocks])
-            filtered_depth_material_column_pairs.extend(
-                [
-                    DepthsMaterialsColumnPairs(
-                        depth_column=None, material_description_rect=material_description_rect, page=page_number
-                    )
-                ]
-            )
 
     layer_predictions = [
         Layer(
@@ -176,61 +170,32 @@ def process_page(
                 rect=pair.block.rect,
                 page=page_number,
             ),
-            depth_interval=BoundaryInterval(start=pair.depth_interval.start, end=pair.depth_interval.end)
+            # TODO LGVISIUM-104 don't automatically convert any interval to an AAboveBInterval
+            depth_interval=AAboveBInterval(start=pair.depth_interval.start, end=pair.depth_interval.end)
             if pair.depth_interval
             else None,
         )
         for pair in pairs
     ]
     layer_predictions = [layer for layer in layer_predictions if layer.description_nonempty()]
-    return ProcessPageResult(layer_predictions, filtered_depth_material_column_pairs)
-
-
-def score_column_match(
-    depth_column: DepthColumn, material_description_rect: fitz.Rect, all_words: list[TextWord] | None = None
-) -> float:
-    """Scores the match between a depth column and a material description.
-
-    Args:
-        depth_column (DepthColumn): The depth column.
-        material_description_rect (fitz.Rect): The material description rectangle.
-        all_words (list[TextWord] | None, optional): List of the available text words. Defaults to None.
-
-    Returns:
-        float: The score of the match.
-    """
-    rect = depth_column.rect()
-    top = rect.y0
-    bottom = rect.y1
-    right = rect.x1
-    distance = (
-        abs(top - material_description_rect.y0)
-        + abs(bottom - material_description_rect.y1)
-        + abs(right - material_description_rect.x0)
-    )
-
-    height = bottom - top
-
-    noise_count = depth_column.noise_count(all_words) if all_words else 0
-
-    return (height - distance) * math.pow(0.8, noise_count)
+    return ProcessPageResult(layer_predictions, bounding_boxes)
 
 
 def match_columns(
-    depth_column: DepthColumn | LayerIdentifierColumn,
+    sidebar: Sidebar,
     description_lines: list[TextLine],
     geometric_lines: list[Line],
     material_description_rect: fitz.Rect,
     **params: dict,
 ) -> list[IntervalBlockPair]:
-    """Match the depth column entries with the description lines.
+    """Match the layers that can be derived from the sidebar with the description lines.
 
     This function identifies groups of depth intervals and text blocks that are likely to match.
-    Makes a distinction between DepthColumn and LayerIdentifierColumn and obtains the corresponding text blocks
-    as well as their depth intervals where present.
+    The actual matching between text blocks and depth intervals is handled by the implementation of the actual Sidebar
+    instance (e.b. AAboveBSidebar, AToBSidebar).
 
     Args:
-        depth_column (DepthColumn | LayerIdentifierColumn): The depth column.
+        sidebar (Sidebar): The sidebar.
         description_lines (list[TextLine]): The description lines.
         geometric_lines (list[Line]): The geometric lines.
         material_description_rect (fitz.Rect): The material description rectangle.
@@ -239,28 +204,11 @@ def match_columns(
     Returns:
         list[IntervalBlockPair]: The matched depth intervals and text blocks.
     """
-    if isinstance(depth_column, DepthColumn):
-        return [
-            element
-            for group in depth_column.identify_groups(
-                description_lines, geometric_lines, material_description_rect, **params
-            )
-            for element in transform_groups(group.depth_intervals, group.blocks, **params)
-        ]
-    elif isinstance(depth_column, LayerIdentifierColumn):
-        blocks = get_description_blocks_from_layer_identifier(depth_column.entries, description_lines)
-        pairs: list[IntervalBlockPair] = []
-        for block in blocks:
-            depth_interval = find_depth_columns.get_depth_interval_from_textblock(block)
-            if depth_interval:
-                pairs.append(IntervalBlockPair(depth_interval=depth_interval, block=block))
-            else:
-                pairs.append(IntervalBlockPair(depth_interval=None, block=block))
-        return pairs
-    else:
-        raise ValueError(
-            f"depth_column must be a DepthColumn or a LayerIdentifierColumn object. Got {type(depth_column)}."
-        )
+    return [
+        element
+        for group in sidebar.identify_groups(description_lines, geometric_lines, material_description_rect, **params)
+        for element in transform_groups(group.depth_intervals, group.blocks, **params)
+    ]
 
 
 def transform_groups(
@@ -280,20 +228,19 @@ def transform_groups(
     Returns:
         List[IntervalBlockPair]: Pairing of text blocks and depth intervals.
     """
-    if len(depth_intervals) == 0:
-        return []
-    elif len(depth_intervals) == 1:
+    if len(depth_intervals) <= 1:
         concatenated_block = TextBlock(
             [line for block in blocks for line in block.lines]
         )  # concatenate all text lines within a block; line separation flag does not matter here.
-        return [IntervalBlockPair(depth_interval=depth_intervals[0], block=concatenated_block)]
+        depth_interval = depth_intervals[0] if len(depth_intervals) else None
+        return [IntervalBlockPair(depth_interval=depth_interval, block=concatenated_block)]
     else:
         if len(blocks) < len(depth_intervals):
             blocks = split_blocks_by_textline_length(blocks, target_split_count=len(depth_intervals) - len(blocks))
 
         if len(blocks) > len(depth_intervals):
             # create additional depth intervals with end & start value None to match the number of blocks
-            depth_intervals.extend([BoundaryInterval(None, None) for _ in range(len(blocks) - len(depth_intervals))])
+            depth_intervals.extend([AAboveBInterval(None, None) for _ in range(len(blocks) - len(depth_intervals))])
 
         return [
             IntervalBlockPair(depth_interval=depth_interval, block=block)
@@ -382,30 +329,28 @@ def split_blocks_by_textline_length(blocks: list[TextBlock], target_split_count:
 
 
 def find_material_description_column(
-    lines: list[TextLine], depth_column: DepthColumn | None, language: str, **params: dict
+    lines: list[TextLine], sidebar: Sidebar | None, language: str, **params: dict
 ) -> fitz.Rect | None:
     """Find the material description column given a depth column.
 
     Args:
         lines (list[TextLine]): The text lines of the page.
-        depth_column (DepthColumn | None): The depth column.
+        sidebar (Sidebar | None): The sidebar to be associated with the material descriptions.
         language (str): The language of the page.
         **params (dict): Additional parameters for the matching pipeline.
 
     Returns:
         fitz.Rect | None: The material description column.
     """
-    if depth_column:
-        above_depth_column = [
-            line
-            for line in lines
-            if x_overlap(line.rect, depth_column.rect()) and line.rect.y0 < depth_column.rect().y0
+    if sidebar:
+        above_sidebar = [
+            line for line in lines if x_overlap(line.rect, sidebar.rect()) and line.rect.y0 < sidebar.rect().y0
         ]
 
-        min_y0 = max(line.rect.y0 for line in above_depth_column) if above_depth_column else -1
+        min_y0 = max(line.rect.y0 for line in above_sidebar) if above_sidebar else -1
 
         def check_y0_condition(y0):
-            return y0 > min_y0 and y0 < depth_column.rect().y1
+            return y0 > min_y0 and y0 < sidebar.rect().y1
     else:
 
         def check_y0_condition(y0):
@@ -492,7 +437,10 @@ def find_material_description_column(
 
     if len(candidate_rects) == 0:
         return None
-    if depth_column:
-        return max(candidate_rects, key=lambda rect: score_column_match(depth_column, rect))
+    if sidebar:
+        return max(
+            candidate_rects,
+            key=lambda rect: MaterialDescriptionRectWithSidebar(sidebar, rect).score_match(),
+        )
     else:
         return candidate_rects[0]
