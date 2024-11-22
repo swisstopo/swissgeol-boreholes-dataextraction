@@ -2,8 +2,8 @@
 
 from dataclasses import dataclass
 
+from stratigraphy.depth import Interval
 from stratigraphy.text.textblock import TextBlock
-from stratigraphy.util.interval import Interval
 
 
 @dataclass

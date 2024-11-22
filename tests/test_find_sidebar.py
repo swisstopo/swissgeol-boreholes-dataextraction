@@ -2,7 +2,7 @@
 
 import fitz
 import pytest
-from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
+from stratigraphy.depth import DepthColumnEntryExtractor
 from stratigraphy.lines.line import TextWord
 from stratigraphy.sidebar import AAboveBSidebarExtractor, AToBSidebarExtractor
 
@@ -17,7 +17,7 @@ def test_depth_column_entries():  # noqa: D103
         TextWord(fitz.Rect(0, 4, 5, 5), "30.0m", PAGE_NUMBER),
         TextWord(fitz.Rect(0, 6, 5, 7), "40.0m", PAGE_NUMBER),
     ]
-    entries = DepthColumnEntry.find_in_words(all_words, include_splits=False)
+    entries = DepthColumnEntryExtractor.find_in_words(all_words, include_splits=False)
     assert len(entries) == 4, "There should be 4 entries"
     assert pytest.approx(entries[0].value) == 10.0, "The first entry should have a value of 10.0"
     assert pytest.approx(entries[1].value) == 20.0, "The second entry should have a value of 20.0"
@@ -31,7 +31,7 @@ def test_depth_column_entries_with_splits():  # noqa: D103
         TextWord(fitz.Rect(0, 0, 10, 1), "10.00-20.0m", PAGE_NUMBER),
         TextWord(fitz.Rect(0, 2, 10, 3), "30.0-40.0m", PAGE_NUMBER),
     ]
-    entries = DepthColumnEntry.find_in_words(all_words, include_splits=True)
+    entries = DepthColumnEntryExtractor.find_in_words(all_words, include_splits=True)
     assert len(entries) == 4, "There should be 4 entries"
     assert entries[0].value == 10.0, "The first entry should have a value of 10.0"
     assert entries[1].value == 20.0, "The second entry should have a value of 20.0"
@@ -47,7 +47,7 @@ def test_depth_column_entries_with_leading_character():  # noqa: D103
         TextWord(fitz.Rect(0, 4, 5, 5), "-3.0m", PAGE_NUMBER),
         TextWord(fitz.Rect(0, 6, 5, 7), ".4.2m", PAGE_NUMBER),
     ]
-    entries = DepthColumnEntry.find_in_words(all_words, include_splits=True)
+    entries = DepthColumnEntryExtractor.find_in_words(all_words, include_splits=True)
     assert len(entries) == 4, "There should be 4 entries"
     assert entries[0].value == 0.0, "The first entry should have a value of 0"
     assert entries[1].value == 2.0, "The second entry should have a value of 2.0"

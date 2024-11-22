@@ -2,10 +2,11 @@
 
 import fitz
 
-from stratigraphy.depthcolumn.depthcolumnentry import DepthColumnEntry
+from stratigraphy.depth import DepthColumnEntryExtractor
 from stratigraphy.lines.line import TextWord
-from stratigraphy.sidebar.a_above_b_sidebar import AAboveBSidebar
-from stratigraphy.sidebar.a_above_b_sidebar_validator import AAboveBSidebarValidator
+
+from .a_above_b_sidebar import AAboveBSidebar
+from .a_above_b_sidebar_validator import AAboveBSidebarValidator
 
 
 class AAboveBSidebarExtractor:
@@ -27,7 +28,7 @@ class AAboveBSidebarExtractor:
         """
         entries = [
             entry
-            for entry in DepthColumnEntry.find_in_words(all_words, include_splits=False)
+            for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=False)
             if entry.rect not in used_entry_rects
         ]
 

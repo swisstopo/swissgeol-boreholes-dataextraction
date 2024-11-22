@@ -6,17 +6,16 @@ from dataclasses import dataclass
 
 import fitz
 
-from stratigraphy.depthcolumn.depthcolumnentry import AToBDepthColumnEntry
+from stratigraphy.depth import AToBInterval
 from stratigraphy.lines.line import TextLine
 from stratigraphy.util.dataclasses import Line
-from stratigraphy.util.interval import AToBInterval
 
 from .interval_block_group import IntervalBlockGroup
 from .sidebar import Sidebar
 
 
 @dataclass
-class AToBSidebar(Sidebar[AToBDepthColumnEntry]):
+class AToBSidebar(Sidebar[AToBInterval]):
     """Represents a sidebar where the upper and lower depths of each layer are explicitly specified.
 
     Example::
@@ -26,7 +25,7 @@ class AToBSidebar(Sidebar[AToBDepthColumnEntry]):
         ...
     """
 
-    entries: list[AToBDepthColumnEntry]
+    entries: list[AToBInterval]
 
     def __repr__(self):
         """Converts the object to a string.
@@ -35,9 +34,6 @@ class AToBSidebar(Sidebar[AToBDepthColumnEntry]):
             str: The object as a string.
         """
         return "AToBSidebar({})".format(", ".join([str(entry) for entry in self.entries]))
-
-    def depth_intervals(self) -> list[AToBInterval]:
-        return [AToBInterval(entry) for entry in self.entries]
 
     def break_on_mismatch(self) -> list[AToBSidebar]:
         """Breaks the sidebar into segments where the depths are not in an arithmetic progression.
@@ -96,17 +92,15 @@ class AToBSidebar(Sidebar[AToBDepthColumnEntry]):
         Returns:
             list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
         """
-        depth_intervals = self.depth_intervals()
-
         groups = []
         line_index = 0
 
-        for interval_index, interval in enumerate(depth_intervals):
+        for interval_index, interval in enumerate(self.entries):
             # don't allow a layer above depth 0
             if interval.start is None and interval.end.value == 0:
                 continue
 
-            next_interval = depth_intervals[interval_index + 1] if interval_index + 1 < len(depth_intervals) else None
+            next_interval = self.entries[interval_index + 1] if interval_index + 1 < len(self.entries) else None
 
             matched_blocks = interval.matching_blocks(description_lines, line_index, next_interval)
             line_index += sum([len(block.lines) for block in matched_blocks])

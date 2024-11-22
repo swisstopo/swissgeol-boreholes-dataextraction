@@ -2,8 +2,8 @@
 
 from collections import Counter
 
+from stratigraphy.depth import Interval
 from stratigraphy.evaluation.evaluation_dataclasses import Metrics
-from stratigraphy.util.interval import Interval
 
 
 def count_against_ground_truth(values: list[str], ground_truth: list[str]) -> Metrics:

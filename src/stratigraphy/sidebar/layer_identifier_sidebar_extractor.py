@@ -3,8 +3,8 @@
 import re
 
 from stratigraphy.lines.line import TextLine
-from stratigraphy.sidebar import LayerIdentifierSidebar
-from stratigraphy.sidebar.layer_identifier_sidebar import LayerIdentifierEntry
+
+from .layer_identifier_sidebar import LayerIdentifierEntry, LayerIdentifierSidebar
 
 
 class LayerIdentifierSidebarExtractor:

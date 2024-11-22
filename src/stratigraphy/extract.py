@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import fitz
 
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
+from stratigraphy.depth import AAboveBInterval, Interval
 from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBox, BoundingBoxes
 from stratigraphy.depths_materials_column_pairs.material_description_rect_with_sidebar import (
     MaterialDescriptionRectWithSidebar,
@@ -24,7 +25,6 @@ from stratigraphy.text.find_description import (
 )
 from stratigraphy.text.textblock import MaterialDescription, MaterialDescriptionLine, TextBlock, block_distance
 from stratigraphy.util.dataclasses import Line
-from stratigraphy.util.interval import AAboveBInterval, Interval
 from stratigraphy.util.util import (
     x_overlap,
     x_overlap_significant_smallest,
