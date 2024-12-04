@@ -28,7 +28,7 @@ def extract_depth(text: str, max_depth: int) -> float | None:
         float: The extracted depth.
     """
     depth_patterns = [
-        r"([\d.]+)\s*m\s*u\.t\.",
+        r"([\d.]+)\s*m\s*u\.t\.",  # e.g. "5.13 m u.T."
         r"([\d.]+)\s*m\s*u\.t",
         r"(\d+.\d+)",
     ]

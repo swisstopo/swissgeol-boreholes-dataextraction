@@ -74,15 +74,23 @@ IS_SEARCHING_GROUNDWATER_ILLUSTRATION="True"
 
 The extraction of groundwater relies on the `scikit-image` library. This library is part of the optional dependencies of this project as part of the `groundwater_illustration_matching` dependencies in the `pyproject.toml` file. If you wish to use the template matching algorithm to determine the groundwater elevation, depth, and date, please install this dependency before running the code. 
 
-## Main contributors
+## Project management
+
+This project is managed and financed by the Swiss Federal Office of Topography [swisstopo](https://www.swisstopo.admin.ch/). Many contributions come from [Visium](https://www.visium.ch/), in their role as contractor for swisstopo for this project.
+
+This project is released as open source software, under the principle of "_public money, public code_", in accordance with the 2023 federal law "[_EMBAG_](https://www.fedlex.admin.ch/eli/fga/2023/787/de)", and following the guidance of the [tools for OSS published by the Federal Chancellery](https://www.bk.admin.ch/bk/en/home/digitale-transformation-ikt-lenkung/bundesarchitektur/open_source_software/hilfsmittel_oss.html).
+
+We welcome feedback, bug reports and code contributions (provided they are compatible with swisstopo's roadmap) from third parties. Feature requests and support requests can only be fulfilled as long as they are compatible with swisstopo's legal mandate. Other organisations (both within Switzerland or internationally) who manage their own borehole data and are interested in using and/or contributing to this project, are encouraged to contact us, in order to discuss the possibility of establishing a partnership for collaborating more closely on this project.
+
+### Main contributors
 
 * Stijn Vermeeren [@stijnvermeeren-swisstopo](https://www.github.com/stijnvermeeren-swisstopo) (swisstopo) - Project Lead
 * David Cleres [@dcleres](https://www.github.com/dcleres) (Visium)
 * Renato Durrer [@redur](https://www.github.com/redur) (Visium)
 
-## License
+### License
 
-The source code of this project is open source software, licensed under the [MIT License](LICENSE). Certain libraries in the project dependencies might be distributed under more restrictive open source licenses. Most notably, [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright) is available under either the AGPL license or a commercial license. These more restrictive licenses would apply when distributing this project in a single package together with its dependencies.
+The source code of this project is licensed under the [MIT License](LICENSE). Certain libraries in the project dependencies might be distributed under more restrictive open source licenses. Most notably, [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright) is available under either the AGPL license or a commercial license. These more restrictive licenses would apply when distributing this project in a single package together with its dependencies.
 
 ## Installation
 We use pip to manage the packages dependencies. We recommend using a virtual environment within which to install all dependencies.
