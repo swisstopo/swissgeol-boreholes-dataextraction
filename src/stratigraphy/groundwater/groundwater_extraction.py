@@ -189,18 +189,14 @@ class GroundwaterLevelExtractor(DataExtractor):
             key_center = (key_rect.x0 + key_rect.x1) / 2
             groundwater_info_lines.sort(key=lambda line: abs((line.rect.x0 + line.rect.x1) / 2 - key_center))
 
-            try:
-                extracted_gw = self.get_groundwater_info_from_lines(groundwater_info_lines, page)
-                if extracted_gw.feature.depth or extracted_gw.feature.elevation:
-                    # if the depth or elevation is extracted, add the extracted groundwater information to the list
-                    extracted_groundwater_list.append(extracted_gw)
-            except ValueError as error:
-                logger.warning("ValueError: %s", error)
-                logger.warning("Could not extract groundwater information from the lines near the key.")
+            extracted_groundwater = self.get_groundwater_info_from_lines(groundwater_info_lines, page)
+            if extracted_groundwater:
+                # if the depth or elevation is extracted, add the extracted groundwater information to the list
+                extracted_groundwater_list.append(extracted_groundwater)
 
         return extracted_groundwater_list
 
-    def get_groundwater_info_from_lines(self, lines: list[TextLine], page: int) -> FeatureOnPage[Groundwater]:
+    def get_groundwater_info_from_lines(self, lines: list[TextLine], page: int) -> FeatureOnPage[Groundwater] | None:
         """Extracts the groundwater information from a list of text lines.
 
         Args:
@@ -297,7 +293,7 @@ class GroundwaterLevelExtractor(DataExtractor):
                 page=page,
             )
         else:
-            raise ValueError("Could not extract all required information from the lines provided.")
+            logger.warning("Could not extract groundwater depth nor elevation from the lines near the key.")
 
     def extract_groundwater(
         self, page_number: int, lines: list[TextLine], terrain_elevation: Elevation | None
