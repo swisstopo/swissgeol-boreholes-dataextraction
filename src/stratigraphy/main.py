@@ -14,6 +14,7 @@ from stratigraphy import DATAPATH
 from stratigraphy.annotations.draw import draw_predictions
 from stratigraphy.annotations.plot_utils import plot_lines
 from stratigraphy.benchmark.score import evaluate
+from stratigraphy.data_extractor.utility import get_lines_near_rect
 from stratigraphy.extract import process_page
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument
 from stratigraphy.layer.duplicate_detection import remove_duplicate_layers
@@ -228,14 +229,11 @@ def start_pipeline(
 
                 # Save the predictions to the overall predictions object
                 # Initialize common variables
-                groundwater_entries = GroundwaterInDocument(filename=filename, groundwater=[])
                 layers_in_document = LayersInDocument([], filename)
                 bounding_boxes = []
+                aggregated_groundwater_entries = []
 
                 if part == "all":
-                    # Extract the groundwater levels
-                    groundwater_entries = GroundwaterInDocument.from_document(doc, metadata.elevation)
-
                     # Extract the layers
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
@@ -246,6 +244,24 @@ def start_pipeline(
                         process_page_results = process_page(
                             text_lines, geometric_lines, metadata.language, page_number, **matching_params
                         )
+
+                        # Extract the groundwater levels
+                        if process_page_results.bounding_boxes:
+                            material_descr_bbox = process_page_results.bounding_boxes[0].material_description_bbox
+
+                            lines_for_groundwater_key = get_lines_near_rect(
+                                search_left_factor=4,
+                                search_right_factor=4,
+                                search_above_factor=2,
+                                search_below_factor=3,
+                                lines=text_lines,
+                                rect=material_descr_bbox.rect,
+                            )
+                            aggregated_groundwater_entries.extend(
+                                GroundwaterInDocument.from_page(
+                                    doc, page_number, lines_for_groundwater_key, metadata.elevation
+                                )
+                            )
 
                         # TODO: Add remove duplicates here!
                         if page_index > 0:
@@ -274,6 +290,12 @@ def start_pipeline(
                                     page, geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"]
                                 )
                                 mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
+
+                # Create a document-level groundwater entry
+                groundwater_entries = GroundwaterInDocument(
+                    filename=filename,
+                    groundwater=aggregated_groundwater_entries,
+                )
 
                 # Add file predictions
                 predictions.add_file_predictions(
