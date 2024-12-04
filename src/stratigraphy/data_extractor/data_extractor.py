@@ -10,7 +10,6 @@ from typing import Generic, Self, TypeVar
 
 import fitz
 import regex
-from stratigraphy.data_extractor.utility import get_lines_near_rect
 from stratigraphy.lines.line import TextLine
 from stratigraphy.util.util import read_params
 
@@ -193,7 +192,7 @@ class DataExtractor(ABC):
             list[TextLine]: The lines close to the key.
         """
         key_rect = key_line.rect
-        feature_lines = self.get_lines_near_rect(lines, key_rect)
+        feature_lines = self.get_axis_aligned_lines(lines, key_rect)
 
         # Insert key_line first and remove duplicates
         feature_lines.insert(0, key_line)
@@ -204,21 +203,38 @@ class DataExtractor(ABC):
 
         return feature_lines_sorted
 
-    def get_lines_near_rect(self, lines, rect: fitz.Rect) -> list[TextLine]:
-        """Find the lines of the text that are close to a given rectangle.
+    def get_axis_aligned_lines(self, lines: list[TextLine], rect: fitz.Rect) -> list[TextLine]:
+        """Find the lines of text that are horizontally and vertically close to a given rectangle.
+
+         Lines that are found both horizontally and vertically are included only once.
 
         Args:
             lines (list[TextLine]): Arbitrary text lines to search in.
             rect (fitz.Rect): The rectangle to search around.
 
         Returns:
-            list[TextLine]: The lines close to the rectangle.
+            list[TextLine]: A combined list of lines close to the rectangle within the horizontal
+                            (left/right) and vertical (above/below) regions, with intersection included only once.
         """
-        return get_lines_near_rect(
-            self.search_left_factor,
-            self.search_right_factor,
-            self.search_above_factor,
-            self.search_below_factor,
-            lines,
-            rect,
+        # Horizontal rectangle (left-right limits)
+        horizontal_rect = fitz.Rect(
+            rect.x0 - self.search_left_factor * rect.width,
+            rect.y0,
+            rect.x1 + self.search_right_factor * rect.width,
+            rect.y1,
         )
+
+        # Vertical rectangle (above-below limits)
+        vertical_rect = fitz.Rect(
+            rect.x0,
+            rect.y0 - self.search_above_factor * rect.height,
+            rect.x1,
+            rect.y1 + self.search_below_factor * rect.height,
+        )
+
+        horizontal_lines = {line for line in lines if line.rect.intersects(horizontal_rect)}
+        vertical_lines = {line for line in lines if line.rect.intersects(vertical_rect)}
+
+        feature_lines = horizontal_lines | vertical_lines
+
+        return list(feature_lines)
