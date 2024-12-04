@@ -5,7 +5,6 @@ import os
 from dataclasses import dataclass
 from datetime import date as dt
 from datetime import datetime
-from pathlib import Path
 
 import fitz
 import numpy as np
@@ -13,7 +12,6 @@ from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedF
 from stratigraphy.groundwater.utility import extract_date, extract_depth, extract_elevation
 from stratigraphy.lines.line import TextLine
 from stratigraphy.metadata.elevation_extraction import Elevation
-from stratigraphy.text.extract_text import extract_text_lines
 
 logger = logging.getLogger(__name__)
 
@@ -114,30 +112,27 @@ class GroundwaterInDocument:
     filename: str
 
     @classmethod
-    def from_document(cls, doc: fitz.Document, terrain_elevation: Elevation | None = None) -> "GroundwaterInDocument":
-        """Initializes the GroundwaterInDocument object and extracts the groundwater from the document.
+    def from_page(
+        cls, doc: fitz.Document, page_number: int, lines: list[TextLine], terrain_elevation: Elevation | None = None
+    ) -> list[FeatureOnPage[Groundwater]]:
+        """Extracts groundwater information from a single page.
 
         Args:
             doc (fitz.Document): The PDF document.
+            page_number (int): The page number (1-based) to process.
+            lines (list[TextLine]): The list of text lines to retrieve the groundwater from.
             terrain_elevation (Elevation | None): The elevation of the terrain.
 
         Returns:
-            GroundwaterInDocument: The extracted groundwater information from the document.
+            list[FeatureOnPage[Groundwater]]: The groundwater information for the page.
         """
-        filename = Path(doc.name).name
-
         groundwater_extractor = GroundwaterLevelExtractor(document=doc)
-        groundwater: list[FeatureOnPage[Groundwater]] = groundwater_extractor.extract_groundwater(terrain_elevation)
 
-        return GroundwaterInDocument(groundwater=groundwater, filename=filename)
-
-    def get_groundwater_per_page(self) -> list[FeatureOnPage[Groundwater]]:
-        """Returns the groundwater information in the document.
-
-        Returns:
-            list[FeatureOnPage[Groundwater]]: The groundwater information in the document.
-        """
-        return self.groundwater
+        return groundwater_extractor.extract_groundwater(
+            page_number=page_number,
+            lines=lines,
+            terrain_elevation=terrain_elevation,
+        )
 
     def to_json(self) -> list[dict]:
         """Converts the object to a list of dictionaries.
@@ -157,13 +152,13 @@ class GroundwaterLevelExtractor(DataExtractor):
 
     # look for elevation values to the left, right and/or immediately below the key
     search_left_factor: float = 2
-    search_right_factor: float = 10
-    search_below_factor: float = 4
+    search_right_factor: float = 8
+    search_below_factor: float = 2
     search_above_factor: float = 0
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ü": "u"}
 
-    def __init__(self, document):
+    def __init__(self, document):  ##TODO: check if we can remove document here and parent class
         super().__init__(document)
 
         self.is_searching_groundwater_illustration = os.getenv("IS_SEARCHING_GROUNDWATER_ILLUSTRATION") == "True"
@@ -219,7 +214,6 @@ class GroundwaterLevelExtractor(DataExtractor):
         elevation: float | None = None
 
         matched_lines_rect = []
-
         for idx, line in enumerate(lines):
             text = self.preprocess(line.text)
 
@@ -305,7 +299,9 @@ class GroundwaterLevelExtractor(DataExtractor):
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
 
-    def extract_groundwater(self, terrain_elevation: Elevation | None) -> list[FeatureOnPage[Groundwater]]:
+    def extract_groundwater(
+        self, page_number: int, lines: list[TextLine], terrain_elevation: Elevation | None
+    ) -> list[FeatureOnPage[Groundwater]]:
         """Extracts the groundwater information from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
@@ -314,41 +310,39 @@ class GroundwaterLevelExtractor(DataExtractor):
             1. if that gives no results, search for coordinates close to an explicit "groundwater" label (e.g. "Gswp")
 
         Args:
-            terrain_elevation (ElevationInformation | None): The elevation of the borehole.
+            page_number (int): The page number (1-based) of the PDF document.
+            lines (list[TextLine]): The lines of text to extract the groundwater information from.
+            terrain_elevation (Elevation | None): The elevation of the borehole.
 
         Returns:
             list[FeatureOnPage[Groundwater]]: the extracted coordinates (if any)
         """
-        for page in self.doc:
-            lines = extract_text_lines(page)
-            page_number = page.number + 1  # NOTE: page.number is 0-based
+        found_groundwater = self.get_groundwater_near_key(lines, page_number)
+        if not found_groundwater and self.is_searching_groundwater_illustration:
+            from stratigraphy.groundwater.gw_illustration_template_matching import (
+                get_groundwater_from_illustration,
+            )
 
-            found_groundwater = self.get_groundwater_near_key(lines, page_number)
-            if not found_groundwater and self.is_searching_groundwater_illustration:
-                from stratigraphy.groundwater.gw_illustration_template_matching import (
-                    get_groundwater_from_illustration,
-                )
-
-                # Extract groundwater from illustration
-                found_groundwater, confidence_list = get_groundwater_from_illustration(
-                    self, lines, page_number, terrain_elevation
-                )
-                if found_groundwater:
-                    logger.info("Confidence list: %s", confidence_list)
-                    logger.info("Found groundwater from illustration on page %s: %s", page_number, found_groundwater)
-
-            if terrain_elevation:
-                # If the elevation is provided, calculate the depth of the groundwater
-                for entry in found_groundwater:
-                    if not entry.feature.depth and entry.feature.elevation:
-                        entry.feature.depth = round(terrain_elevation.elevation - entry.feature.elevation, 2)
-                    if not entry.feature.elevation and entry.feature.depth:
-                        entry.feature.elevation = round(terrain_elevation.elevation - entry.feature.depth, 2)
-
+            # Extract groundwater from illustration
+            found_groundwater, confidence_list = get_groundwater_from_illustration(
+                self, lines, page_number, terrain_elevation
+            )
             if found_groundwater:
-                groundwater_output = ", ".join([str(entry.feature) for entry in found_groundwater])
-                logger.info("Found groundwater information on page %s: %s", page_number, groundwater_output)
-                return found_groundwater
+                logger.info("Confidence list: %s", confidence_list)
+                logger.info("Found groundwater from illustration on page %s: %s", page_number, found_groundwater)
+
+        if terrain_elevation:
+            # If the elevation is provided, calculate the depth of the groundwater
+            for entry in found_groundwater:
+                if not entry.feature.depth and entry.feature.elevation:
+                    entry.feature.depth = round(terrain_elevation.elevation - entry.feature.elevation, 2)
+                if not entry.feature.elevation and entry.feature.depth:
+                    entry.feature.elevation = round(terrain_elevation.elevation - entry.feature.depth, 2)
+
+        if found_groundwater:
+            groundwater_output = ", ".join([str(entry.feature) for entry in found_groundwater])
+            logger.info("Found groundwater information on page %s: %s", page_number, groundwater_output)
+            return found_groundwater
 
         logger.info("No groundwater found in this borehole profile.")
         return []
