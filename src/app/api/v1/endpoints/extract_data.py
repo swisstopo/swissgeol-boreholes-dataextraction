@@ -147,7 +147,7 @@ def extract_coordinates(
             ),
         )
 
-    coord_extractor = CoordinateExtractor(pdf_page)
+    coord_extractor = CoordinateExtractor()
     extracted_coord = coord_extractor.extract_coordinates_from_bbox(
         pdf_page, extract_data_request.page_number, user_defined_bbox
     )

@@ -219,13 +219,19 @@ class ElevationExtractor(DataExtractor):
 
         logger.info("No elevation found in the bounding box.")
 
-    def extract_elevation(self) -> Elevation | None:
+    def extract_elevation(self, document: fitz.Document) -> Elevation | None:
         """Extracts the elevation information from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the feature key in the respective text of the
         page.
+
+        Args:
+            document (fitz.Document): document from which elevation is extracted page by page
+
+        Returns:
+            Elevation | None: The extracted elevation information.
         """
-        for page in self.doc:
+        for page in document:
             page_number = page.number + 1  # page.number is 0-based
 
             # TODO: This return the first found elevation, but we might want to check all pages.

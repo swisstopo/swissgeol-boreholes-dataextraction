@@ -1,6 +1,5 @@
 """Series of utility functions for groundwater stratigraphy."""
 
-import logging
 from datetime import date, datetime
 
 import regex
@@ -43,12 +42,10 @@ def extract_depth(text: str, max_depth: int) -> float | None:
                 depth = float(depth_match.group(1).replace(",", "."))
                 if depth > max_depth:
                     # If the extracted depth is greater than the max depth, set it to None and continue searching.
-                    logging.warning(f"Depth {depth} exceeds max_depth {max_depth}")
                     depth = None
                 else:
                     break
-        except ValueError as ve:
-            logging.warning(f"ValueError occurred: {ve}")
+        except ValueError:
             continue
     return depth
 

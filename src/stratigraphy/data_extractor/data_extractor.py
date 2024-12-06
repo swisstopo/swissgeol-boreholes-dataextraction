@@ -95,7 +95,6 @@ class DataExtractor(ABC):
     This class defines the interface for extracting data from stratigraphy data files.
     """
 
-    doc: fitz.Document = None
     feature_keys: list[str] = None
     feature_fp_keys: list[str] = None
     feature_name: str = None
@@ -111,17 +110,15 @@ class DataExtractor(ABC):
 
     preprocess_replacements: dict[str, str] = {}
 
-    def __init__(self, document: fitz.Document):
+    def __init__(self):
         """Initializes the DataExtractor object.
 
         Args:
-            document (fitz.Document): A PDF document.
             feature_name (str): The name of the feature to extract.
         """
         if not self.feature_name:
             raise ValueError("Feature name must be specified.")
 
-        self.doc = document
         self.feature_keys = read_params("matching_params.yml")[f"{self.feature_name}_keys"]
         self.feature_fp_keys = read_params("matching_params.yml")[f"{self.feature_name}_fp_keys"] or []
 

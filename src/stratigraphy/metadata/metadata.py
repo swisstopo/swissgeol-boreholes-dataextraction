@@ -106,12 +106,12 @@ class BoreholeMetadata(metaclass=abc.ABCMeta):
         )
 
         # Extract the coordinates of the borehole
-        coordinate_extractor = CoordinateExtractor(document=document)
-        coordinates = coordinate_extractor.extract_coordinates()
+        coordinate_extractor = CoordinateExtractor()
+        coordinates = coordinate_extractor.extract_coordinates(document=document)
 
         # Extract the elevation information
-        elevation_extractor = ElevationExtractor(document=document)
-        elevation = elevation_extractor.extract_elevation()
+        elevation_extractor = ElevationExtractor()
+        elevation = elevation_extractor.extract_elevation(document=document)
 
         # Get the name of the document
         filename = Path(document.name)

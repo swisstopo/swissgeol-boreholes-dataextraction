@@ -68,13 +68,13 @@ def test_to_jsonLV03():  # noqa: D103
 
 doc = fitz.open(DATAPATH.parent / "example" / "example_borehole_profile.pdf")
 doc_with_digits_in_coordinates = fitz.open(DATAPATH.parent / "example" / "A7367.pdf")
-extractor = CoordinateExtractor(doc)
+extractor = CoordinateExtractor()
 
 
 def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
     """Test the extraction of coordinates from a PDF document."""
     # Assuming there is a method called 'extract' in CoordinateExtractor class
-    coordinates = extractor.extract_coordinates()
+    coordinates = extractor.extract_coordinates(doc)
     # Check if the returned value is a list
     assert isinstance(coordinates, Coordinate)
     assert repr(coordinates.east) == "615'790.0"
@@ -84,7 +84,7 @@ def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
 def test_CoordinateExtractor_extract_coordinates_with_digits_in_coordinates():  # noqa: D103
     """Test the extraction of coordinates from a PDF document with digits in the coordinates."""
     # Assuming there is a method called 'extract' in CoordinateExtractor class
-    coordinates = CoordinateExtractor(doc_with_digits_in_coordinates).extract_coordinates()
+    coordinates = CoordinateExtractor().extract_coordinates(doc_with_digits_in_coordinates)
     # Check if the returned value is a list
     assert isinstance(coordinates, Coordinate)
     assert repr(coordinates.east) == "607'562.0"
