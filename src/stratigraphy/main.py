@@ -14,7 +14,6 @@ from stratigraphy import DATAPATH
 from stratigraphy.annotations.draw import draw_predictions
 from stratigraphy.annotations.plot_utils import plot_lines
 from stratigraphy.benchmark.score import evaluate
-from stratigraphy.data_extractor.utility import get_lines_near_rect
 from stratigraphy.extract import process_page
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument
 from stratigraphy.layer.duplicate_detection import remove_duplicate_layers
@@ -246,22 +245,20 @@ def start_pipeline(
                         )
 
                         # Extract the groundwater levels
-                        if process_page_results.bounding_boxes:
-                            material_descr_bbox = process_page_results.bounding_boxes[0].material_description_bbox
+                        for page_bounding_box in process_page_results.bounding_boxes:
+                            material_description_bbox = page_bounding_box.material_description_bbox
 
-                            lines_for_groundwater_key = get_lines_near_rect(
-                                search_left_factor=4,
-                                search_right_factor=4,
-                                search_above_factor=2,
-                                search_below_factor=3,
+                            groundwater_entries_near_bbox = GroundwaterInDocument.near_material_description(
+                                document=doc,
+                                page_number=page_number,
                                 lines=text_lines,
-                                rect=material_descr_bbox.rect,
+                                material_description_bbox=material_description_bbox,
+                                terrain_elevation=metadata.elevation,
                             )
-                            aggregated_groundwater_entries.extend(
-                                GroundwaterInDocument.from_page(
-                                    doc, page_number, lines_for_groundwater_key, metadata.elevation
-                                )
-                            )
+                            ##avoid duplicate entries
+                            for groundwater_entry in groundwater_entries_near_bbox:
+                                if groundwater_entry not in aggregated_groundwater_entries:
+                                    aggregated_groundwater_entries.extend(groundwater_entries_near_bbox)
 
                         # TODO: Add remove duplicates here!
                         if page_index > 0:
@@ -280,7 +277,7 @@ def start_pipeline(
                         layers_in_document.layers.extend(layer_predictions)
                         bounding_boxes.extend(process_page_results.bounding_boxes)
 
-                        if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
+                        if draw_lines:  # could be changed to if draw_lines and mlflow_tracking:
                             if not mlflow_tracking:
                                 logger.warning(
                                     "MLFlow tracking is not enabled. MLFLow is required to store the images."
