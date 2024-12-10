@@ -68,13 +68,13 @@ def test_to_jsonLV03():  # noqa: D103
 
 doc = fitz.open(DATAPATH.parent / "example" / "example_borehole_profile.pdf")
 doc_with_digits_in_coordinates = fitz.open(DATAPATH.parent / "example" / "A7367.pdf")
-extractor = CoordinateExtractor(doc)
+extractor = CoordinateExtractor()
 
 
 def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
     """Test the extraction of coordinates from a PDF document."""
     # Assuming there is a method called 'extract' in CoordinateExtractor class
-    coordinates = extractor.extract_coordinates()
+    coordinates = extractor.extract_coordinates(doc)
     # Check if the returned value is a list
     assert isinstance(coordinates, Coordinate)
     assert repr(coordinates.east) == "615'790.0"
@@ -84,7 +84,7 @@ def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
 def test_CoordinateExtractor_extract_coordinates_with_digits_in_coordinates():  # noqa: D103
     """Test the extraction of coordinates from a PDF document with digits in the coordinates."""
     # Assuming there is a method called 'extract' in CoordinateExtractor class
-    coordinates = CoordinateExtractor(doc_with_digits_in_coordinates).extract_coordinates()
+    coordinates = CoordinateExtractor().extract_coordinates(doc_with_digits_in_coordinates)
     # Check if the returned value is a list
     assert isinstance(coordinates, Coordinate)
     assert repr(coordinates.east) == "607'562.0"
@@ -147,6 +147,53 @@ def test_CoordinateExtractor_get_coordinates_with_x_y_labels():  # noqa: D103
     assert coordinates[1].north.coordinate_value == 1200001
     # ignore invalid coordinates and additional values that are only available with "X" or "Y" label, but not both
     assert len(coordinates) == 2
+
+
+def test_get_axis_aligned_lines():
+    """Test the extraction of lines near feature key."""
+    rect_key = fitz.Rect(x0=200, y0=200, x1=300, y1=250)
+
+    # Key line
+    key_line = TextLine([TextWord(fitz.Rect(200, 200, 300, 400), "Linie1", page=1)])
+    # Inside horizontal range (right)
+    inside_right = TextLine([TextWord(fitz.Rect(310, 200, 410, 250), "Linie2", page=1)])
+    # Inside vertical range (below)
+    inside_below = TextLine([TextWord(fitz.Rect(200, 260, 300, 310), "Linie3", page=1)])
+    # Outside vertical and horizontal range (above)
+    outside_above = TextLine([TextWord(fitz.Rect(200, 140, 300, 190), "Linie4", page=1)])
+    # Completely outside both ranges (diagonal)
+    outside_diagonal = TextLine([TextWord(fitz.Rect(310, 260, 410, 310), "Linie5", page=1)])
+    # Edge case: exactly on horizontal limit
+    boundary_left = TextLine([TextWord(fitz.Rect(100, 200, 200, 250), "Linie6", page=1)])
+    # Edge case: exactly on edge of horizontal limit and vertical limit
+    boundary_edge_above = TextLine([TextWord(fitz.Rect(300, 250, 400, 300), "Linie7", page=1)])
+    # # Inside vertical limit, overlap with horizontal limit
+    overlap_right = TextLine([TextWord(fitz.Rect(250, 200, 350, 250), "Linie8", page=1)])
+    # # Overlap with vertical and horizontal limit
+    overlap_right_below = TextLine([TextWord(fitz.Rect(250, 225, 350, 275), "Linie9", page=1)])
+
+    text_lines = [
+        key_line,
+        inside_right,
+        inside_below,
+        outside_above,
+        outside_diagonal,
+        boundary_left,
+        boundary_edge_above,
+        overlap_right,
+        overlap_right_below,
+    ]
+
+    # CoordinateExtractor searches (x1-x0) *10 to right and (y1-y0) * 3 below rect_key
+    # Thus, x1 limit = 1300, y0 limit = 150
+    feature_lines = extractor.get_axis_aligned_lines(lines=text_lines, rect=rect_key)
+    expected_lines = [key_line, overlap_right, inside_below, inside_right, overlap_right_below]
+
+    for feature_line in feature_lines:
+        assert feature_line in expected_lines, f"Unexpected feature line: {feature_line}"
+
+    for expected_line in expected_lines:
+        assert expected_line in feature_lines, f"Expected line is missing: {expected_line}"
 
 
 def test_CoordinateExtractor_get_coordinates_near_key():  # noqa: D103

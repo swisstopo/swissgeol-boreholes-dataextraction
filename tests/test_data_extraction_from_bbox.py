@@ -13,7 +13,7 @@ import fitz
 import pytest
 from app.common.aws import load_pdf_from_aws
 from app.common.config import config
-from app.common.schemas import ExtractDataRequest, FormatTypes
+from app.common.schemas import BoundingBox, ExtractDataRequest, FormatTypes
 from fastapi.testclient import TestClient
 
 TEST_PDF_KEY = Path("sample.pdf")
@@ -37,7 +37,7 @@ def get_default_small_coordinate_request():
     return ExtractDataRequest(
         filename=TEST_PDF_KEY.name,
         page_number=1,
-        bbox={"x0": 0, "y0": 0, "x1": 100, "y1": 100},
+        bbox=BoundingBox(x0=0, y0=0, x1=100, y1=100),
         format=FormatTypes.COORDINATES,
     )
 
@@ -47,7 +47,7 @@ def get_default_coordinate_request():
     return ExtractDataRequest(
         filename=TEST_PDF_KEY.name,
         page_number=1,
-        bbox={"x0": 0, "y0": 0, "x1": 3000, "y1": 3000},
+        bbox=BoundingBox(x0=0, y0=0, x1=3000, y1=3000),
         format=FormatTypes.COORDINATES,
     )
 
@@ -57,7 +57,7 @@ def get_text_request_on_rotated_pdf():
     return ExtractDataRequest(
         filename=TEST_ROTATED_PDF_KEY.name,
         page_number=1,
-        bbox={"x0": 0, "y0": 0, "x1": 600, "y1": 150},
+        bbox=BoundingBox(x0=0, y0=0, x1=600, y1=150),
         format=FormatTypes.TEXT,
     )
 
@@ -125,7 +125,7 @@ def test_extract_text_success(test_client: TestClient, upload_test_pdf, upload_t
     request = ExtractDataRequest(
         filename=TEST_PDF_KEY.name,
         page_number=1,
-        bbox={"x0": 0, "y0": 0, "x1": 1000, "y1": 1000},
+        bbox=BoundingBox(x0=0, y0=0, x1=1000, y1=1000),
         format=FormatTypes.TEXT,
     )
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
@@ -156,7 +156,7 @@ def test_clipping_behavior(test_client: TestClient, upload_test_pdf, upload_test
     request = ExtractDataRequest(
         filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
         page_number=1,
-        bbox={"x0": 311, "y0": 269, "x1": 821, "y1": 704},  # pixels
+        bbox=BoundingBox(x0=311, y0=269, x1=821, y1=704),  # pixels
         format=FormatTypes.TEXT,
     )
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
@@ -174,7 +174,7 @@ def test_clipping_behavior(test_client: TestClient, upload_test_pdf, upload_test
     request = ExtractDataRequest(
         filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
         page_number=1,
-        bbox={"x0": 311, "y0": 299, "x1": 813, "y1": 704},  # pixels
+        bbox=BoundingBox(x0=311, y0=299, x1=813, y1=704),  # pixels
         format=FormatTypes.TEXT,
     )
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
@@ -192,7 +192,7 @@ def test_clipping_behavior(test_client: TestClient, upload_test_pdf, upload_test
     request = ExtractDataRequest(
         filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
         page_number=1,
-        bbox={"x0": 311, "y0": 269, "x1": 611, "y1": 336},  # pixels
+        bbox=BoundingBox(x0=311, y0=269, x1=611, y1=336),  # pixels
         format=FormatTypes.TEXT,
     )
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
@@ -210,7 +210,7 @@ def test_clipping_behavior(test_client: TestClient, upload_test_pdf, upload_test
     request = ExtractDataRequest(
         filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
         page_number=1,
-        bbox={"x0": 1848, "y0": 242, "x1": 2145, "y1": 303},  # pixels
+        bbox=BoundingBox(x0=1848, y0=242, x1=2145, y1=303),  # pixels
         format=FormatTypes.TEXT,
     )
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
@@ -227,7 +227,7 @@ def test_clipping_behavior(test_client: TestClient, upload_test_pdf, upload_test
     request = ExtractDataRequest(
         filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
         page_number=1,
-        bbox={"x0": 315, "y0": 281, "x1": 371, "y1": 330},  # pixels
+        bbox=BoundingBox(x0=315, y0=281, x1=371, y1=330),  # pixels
         format=FormatTypes.TEXT,
     )
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
@@ -241,7 +241,7 @@ def test_clipping_behavior(test_client: TestClient, upload_test_pdf, upload_test
     request = ExtractDataRequest(
         filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
         page_number=1,
-        bbox={"x0": 315, "y0": 300, "x1": 465, "y1": 330},  # pixels
+        bbox=BoundingBox(x0=315, y0=300, x1=465, y1=330),  # pixels
         format=FormatTypes.TEXT,
     )
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
@@ -256,7 +256,7 @@ def test_extract_text_empty(test_client: TestClient, upload_test_pdf, upload_tes
     request = ExtractDataRequest(
         filename=TEST_PDF_KEY.name,
         page_number=1,
-        bbox={"x0": 0, "y0": 0, "x1": 100, "y1": 100},
+        bbox=BoundingBox(x0=0, y0=0, x1=100, y1=100),
         format=FormatTypes.TEXT,
     )
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
@@ -287,7 +287,7 @@ def test_extract_coordinate_success(test_client: TestClient, upload_test_pdf, up
     request = ExtractDataRequest(
         filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
         page_number=1,
-        bbox={"x0": 1625, "y0": 900, "x1": 2819, "y1": 968},  # pixels
+        bbox=BoundingBox(x0=1625, y0=900, x1=2819, y1=968),  # pixels
         format=FormatTypes.COORDINATES,
     )
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
@@ -305,7 +305,7 @@ def test_extract_coordinate_success(test_client: TestClient, upload_test_pdf, up
     request = ExtractDataRequest(
         filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
         page_number=1,
-        bbox={"x0": 1625, "y0": 1000, "x1": 2819, "y1": 1068},  # pixels
+        bbox=BoundingBox(x0=1625, y0=1000, x1=2819, y1=1068),  # pixels
         format=FormatTypes.COORDINATES,
     )
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
@@ -393,7 +393,7 @@ def test_number_extraction(test_client: TestClient, upload_test_pdf, upload_test
     ####################################################################################################
     request = get_text_request_on_rotated_pdf()
     request.format = FormatTypes.NUMBER
-    request.bbox = {"x0": 0, "y0": 0, "x1": 300, "y1": 300}
+    request.bbox = BoundingBox(x0=0, y0=0, x1=300, y1=300)
 
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
     assert response.status_code == 200
@@ -408,7 +408,8 @@ def test_number_extraction_failure(test_client: TestClient, upload_test_pdf, upl
     request = ExtractDataRequest(
         filename=TEST_PDF_KEY.name,
         page_number=1,
-        bbox={"x0": 0, "y0": 850, "x1": 1000, "y1": 950},  # Line with the coordinates in the document
+        bbox=BoundingBox(x0=0, y0=850, x1=1000, y1=950),
+        # Line with the coordinates in the document
         format=FormatTypes.NUMBER,
     )
 

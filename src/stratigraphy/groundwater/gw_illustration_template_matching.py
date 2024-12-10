@@ -39,14 +39,16 @@ def get_groundwater_from_illustration(
     groundwater_extractor: GroundwaterLevelExtractor,
     lines: list[TextLine],
     page_number: int,
+    document: fitz.Document,
     terrain_elevation: Elevation | None,
 ) -> tuple[list[FeatureOnPage[Groundwater]], list[float]]:
     """Extracts the groundwater information from an illustration.
 
     Args:
-        groundwater_extractor (GroundwaterLevelExtractor): the groundwater level extractor
-        lines (list[TextLine]): the lines of text to extract the groundwater information from
-        page_number (int): the page number (1-based) of the PDF document
+        groundwater_extractor (GroundwaterLevelExtractor): the groundwater level extractor.
+        lines (list[TextLine]): The lines of text to extract the groundwater information from.
+        page_number (int): The page number (1-based) of the PDF document.
+        document (fitz.Document): The document to extract groundwater from illustration from.
         terrain_elevation (Elevation | None): The elevation of the terrain.
 
     Returns:
@@ -57,8 +59,8 @@ def get_groundwater_from_illustration(
     confidence_list = []
 
     # convert the doc to an image
-    page = groundwater_extractor.doc.load_page(page_number - 1)
-    filename = Path(groundwater_extractor.doc.name).stem
+    page = document.load_page(page_number - 1)
+    filename = Path(document.name).stem
     png_filename = f"{filename}-{page_number + 1}.png"
     png_path = f"/tmp/{png_filename}"  # Local path to save the PNG
     fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(png_path)

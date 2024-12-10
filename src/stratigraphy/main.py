@@ -228,14 +228,11 @@ def start_pipeline(
 
                 # Save the predictions to the overall predictions object
                 # Initialize common variables
-                groundwater_entries = GroundwaterInDocument(filename=filename, groundwater=[])
                 layers_in_document = LayersInDocument([], filename)
                 bounding_boxes = []
+                aggregated_groundwater_entries = []
 
                 if part == "all":
-                    # Extract the groundwater levels
-                    groundwater_entries = GroundwaterInDocument.from_document(doc, metadata.elevation)
-
                     # Extract the layers
                     for page_index, page in enumerate(doc):
                         page_number = page_index + 1
@@ -246,6 +243,22 @@ def start_pipeline(
                         process_page_results = process_page(
                             text_lines, geometric_lines, metadata.language, page_number, **matching_params
                         )
+
+                        # Extract the groundwater levels
+                        for page_bounding_box in process_page_results.bounding_boxes:
+                            material_description_bbox = page_bounding_box.material_description_bbox
+
+                            groundwater_entries_near_bbox = GroundwaterInDocument.near_material_description(
+                                document=doc,
+                                page_number=page_number,
+                                lines=text_lines,
+                                material_description_bbox=material_description_bbox,
+                                terrain_elevation=metadata.elevation,
+                            )
+                            ##avoid duplicate entries
+                            for groundwater_entry in groundwater_entries_near_bbox:
+                                if groundwater_entry not in aggregated_groundwater_entries:
+                                    aggregated_groundwater_entries.append(groundwater_entry)
 
                         # TODO: Add remove duplicates here!
                         if page_index > 0:
@@ -264,7 +277,7 @@ def start_pipeline(
                         layers_in_document.layers.extend(layer_predictions)
                         bounding_boxes.extend(process_page_results.bounding_boxes)
 
-                        if draw_lines:  # could be changed to if draw_lines and mflow_tracking:
+                        if draw_lines:  # could be changed to if draw_lines and mlflow_tracking:
                             if not mlflow_tracking:
                                 logger.warning(
                                     "MLFlow tracking is not enabled. MLFLow is required to store the images."
@@ -274,6 +287,12 @@ def start_pipeline(
                                     page, geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"]
                                 )
                                 mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
+
+                # Create a document-level groundwater entry
+                groundwater_entries = GroundwaterInDocument(
+                    filename=filename,
+                    groundwater=aggregated_groundwater_entries,
+                )
 
                 # Add file predictions
                 predictions.add_file_predictions(

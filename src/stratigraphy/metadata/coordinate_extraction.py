@@ -311,7 +311,7 @@ class CoordinateExtractor(DataExtractor):
 
         logger.info("No coordinates found in this borehole profile.")
 
-    def extract_coordinates(self) -> Coordinate | None:
+    def extract_coordinates(self, document: fitz.Document) -> Coordinate | None:
         """Extracts the coordinates from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
@@ -322,10 +322,13 @@ class CoordinateExtractor(DataExtractor):
             2. if that gives no results, search for coordinates close to an explicit "coordinates" label
             3. if that gives no results either, try to detect coordinates in the full text
 
+        Args:
+            document (fitz.Document): document from which coordinates are extracted page by page
+
         Returns:
             Coordinate | None: the extracted coordinates (if any)
         """
-        for page in self.doc:
+        for page in document:
             page_number = page.number + 1  # page.number is 0-based
 
             return self.extract_coordinates_from_bbox(page, page_number)
