@@ -187,7 +187,7 @@ def test_get_axis_aligned_lines():
     # CoordinateExtractor searches (x1-x0) *10 to right and (y1-y0) * 3 below rect_key
     # Thus, x1 limit = 1300, y0 limit = 150
     feature_lines = extractor.get_axis_aligned_lines(lines=text_lines, rect=rect_key)
-    expected_lines = [key_line, overlap_right, inside_below, inside_right, overlap_right_below, overlap_right]
+    expected_lines = [key_line, overlap_right, inside_below, inside_right, overlap_right_below]
 
     for feature_line in feature_lines:
         assert feature_line in expected_lines, f"Unexpected feature line: {feature_line}"
