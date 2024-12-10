@@ -150,8 +150,8 @@ def test_CoordinateExtractor_get_coordinates_with_x_y_labels():  # noqa: D103
 
 
 def test_get_axis_aligned_lines():
-    """Test the extraction of lines near feature key."""  # searches (x1-x0) *10 to right and (y1-y0) * 3 below
-    rect_key = fitz.Rect(x0=200, y0=200, x1=300, y1=250)  # x1 limit = 1300, y0 limit = 150
+    """Test the extraction of lines near feature key."""
+    rect_key = fitz.Rect(x0=200, y0=200, x1=300, y1=250)
 
     # Key line
     key_line = TextLine([TextWord(fitz.Rect(200, 200, 300, 400), "Linie1", page=1)])
@@ -184,6 +184,8 @@ def test_get_axis_aligned_lines():
         overlap_right_below,
     ]
 
+    # CoordinateExtractor searches (x1-x0) *10 to right and (y1-y0) * 3 below rect_key
+    # Thus, x1 limit = 1300, y0 limit = 150
     feature_lines = extractor.get_axis_aligned_lines(lines=text_lines, rect=rect_key)
     expected_lines = [key_line, overlap_right, inside_below, inside_right, overlap_right_below, overlap_right]
 
