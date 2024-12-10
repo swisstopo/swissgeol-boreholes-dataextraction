@@ -258,7 +258,7 @@ def start_pipeline(
                             ##avoid duplicate entries
                             for groundwater_entry in groundwater_entries_near_bbox:
                                 if groundwater_entry not in aggregated_groundwater_entries:
-                                    aggregated_groundwater_entries.extend(groundwater_entries_near_bbox)
+                                    aggregated_groundwater_entries.append(groundwater_entry)
 
                         # TODO: Add remove duplicates here!
                         if page_index > 0:
