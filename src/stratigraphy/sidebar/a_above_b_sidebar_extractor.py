@@ -72,13 +72,6 @@ class AAboveBSidebarExtractor:
 
         logger.info("numeric_columns valid %s", numeric_columns)
 
-        for column in numeric_columns:  ## create helper function
-            if column:
-                integer_entries = [entry for entry in column.entries if isinstance(entry.value, int)]
-                if integer_entries:
-                    integer_subset = AAboveBSidebar(integer_entries)
-                    if integer_subset.significant_arithmetic_progression():
-                        column.entries = [entry for entry in column.entries if entry not in integer_entries]
         logger.info("numeric_columns filtered out integers%s", numeric_columns)
         return sorted(
             [column for column in numeric_columns if column and sidebar_validator.is_valid(column)],
