@@ -3,7 +3,7 @@
 import re
 
 from stratigraphy.depth import DepthColumnEntry
-from stratigraphy.depth.util import value_as_float
+from stratigraphy.depth.util import parse_numeric_value
 from stratigraphy.lines.line import TextWord
 
 from .a_to_b_interval_extractor import AToBIntervalExtractor
@@ -34,9 +34,8 @@ class DepthColumnEntryExtractor:
                 # recognizes a '-' as a '.' and we just ommit the leading '.' to avoid this issue.
                 match = regex.match(input_string)
                 if match:
-                    value = value_as_float(match.group(1))
+                    value = parse_numeric_value(match.group(1))
                     entries.append(DepthColumnEntry(word.rect, value))
-
                 elif include_splits:
                     # support for e.g. "1.10-1.60m" extracted as a single word
                     a_to_b_interval = AToBIntervalExtractor.from_text(input_string, word.rect)

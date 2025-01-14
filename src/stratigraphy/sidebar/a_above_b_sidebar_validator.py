@@ -51,11 +51,13 @@ class AAboveBSidebarValidator:
         # The quadratic behavior of the noise count check makes the check stricter for columns with few entries
         # than columns with more entries. The more entries we have, the less likely it is that we found them by chance.
         # TODO: Once evaluation data is of good enough qualities, we should optimize for the parameter below.
-        if (
-            sidebar.noise_count(self.all_words)
-            > self.noise_count_threshold * (len(sidebar.entries) - self.noise_count_offset) ** 2
-        ):
-            return False
+        # TODO: for deepwells it excludes the right sidebar bc too much noise as very large layers
+        # (lot of text inbetween)
+        # if (
+        #     sidebar.noise_count(self.all_words)
+        #     > self.noise_count_threshold * (len(sidebar.entries) - self.noise_count_offset) ** 2
+        # ):
+        #     return False
         # Check if the entries are strictly increasing.
         if not sidebar.is_strictly_increasing():
             return False
@@ -127,11 +129,11 @@ class AAboveBSidebarValidator:
         return None
 
 
-def _value_alternatives(value: float) -> set[float]:
+def _value_alternatives(value: float | int) -> set[float]:
     """Corrects frequent OCR errors in depth column entries.
 
     Args:
-        value (float): The depth values to find plausible alternatives for
+        value (float | int): The depth values to find plausible alternatives for
 
     Returns:
         set(float): all plausible values (including the original one)
@@ -142,7 +144,6 @@ def _value_alternatives(value: float) -> set[float]:
 
     # replace a pattern such as '.80' with '0.80'. These cases are already converted
     # to '80.0' when depth entries are recognized.
-    if value.is_integer():
-        alternatives.add(value / 100)
-
+    if isinstance(value, int):
+        alternatives.add(float(value) / 100)
     return alternatives

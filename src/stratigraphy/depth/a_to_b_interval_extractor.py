@@ -8,7 +8,7 @@ from stratigraphy.lines.line import TextLine
 
 from .depthcolumnentry import DepthColumnEntry
 from .interval import AToBInterval
-from .util import value_as_float
+from .util import parse_numeric_value
 
 
 class AToBIntervalExtractor:
@@ -80,10 +80,10 @@ class AToBIntervalExtractor:
         regex = re.compile(query)
         match = regex.match(input_string)
         if match:
-            value1 = value_as_float(match.group(1))
+            value1 = parse_numeric_value(match.group(1))
             first_half_rect = fitz.Rect(rect.x0, rect.y0, rect.x1 - rect.width / 2, rect.y1)
 
-            value2 = value_as_float(match.group(3))
+            value2 = parse_numeric_value(match.group(3))
             second_half_rect = fitz.Rect(rect.x0 + rect.width / 2, rect.y0, rect.x1, rect.y1)
             return AToBInterval(
                 DepthColumnEntry(first_half_rect, value1),

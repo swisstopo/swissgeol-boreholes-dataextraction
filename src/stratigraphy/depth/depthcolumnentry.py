@@ -13,7 +13,7 @@ class DepthColumnEntry:  # noqa: D101
     """Class to represent a depth column entry."""
 
     rect: fitz.Rect
-    value: float
+    value: float | int
 
     def __repr__(self) -> str:
         return str(self.value)
