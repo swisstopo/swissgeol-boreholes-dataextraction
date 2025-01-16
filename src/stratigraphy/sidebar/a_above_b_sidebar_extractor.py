@@ -77,10 +77,14 @@ class AAboveBSidebarExtractor:
         numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 3]
         sidebar_validator = AAboveBSidebarValidator(all_words, **sidebar_params)
 
+        # for numeric_column in numeric_columns:
+        #   print([entry.value for entry in numeric_column.entries])
+        #   print([entry.value for entry in numeric_column.make_ascending().entries])
+
         filtered_columns = [
             column
             for numeric_column in numeric_columns
-            for column in numeric_column.break_on_double_descending()
+            for column in numeric_column.make_ascending().break_on_double_descending()
             if not column.significant_arithmetic_progression()
         ]
 

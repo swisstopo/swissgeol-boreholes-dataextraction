@@ -140,9 +140,4 @@ def _value_alternatives(value: float) -> set[float]:
     # In older documents, OCR sometimes mistakes 1 for 4
     alternatives.add(float(str(value).replace("4", "1")))
 
-    # replace a pattern such as '.80' with '0.80'. These cases are already converted
-    # to '80.0' when depth entries are recognized.
-    if value.is_integer():
-        alternatives.add(value / 100)
-
     return alternatives

@@ -111,6 +111,29 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         ]
         return max(new_columns, key=lambda column: column.pearson_correlation_coef())
 
+    def make_ascending(self):
+        for i, entry in enumerate(self.entries):
+            if entry.value.is_integer():
+                factor100_value = entry.value / 100
+                if i > 0:
+                    previous_mismatch = self.entries[i - 1].value >= entry.value
+                    previous_factor100_ok = self.entries[i - 1].value < factor100_value
+                else:
+                    previous_mismatch = False
+                    previous_factor100_ok = True
+
+                if i + 1 < len(self.entries):
+                    next_mismatch = entry.value >= self.entries[i + 1].value
+                    next_factor100_ok = factor100_value < self.entries[i + 1].value
+                else:
+                    next_mismatch = False
+                    next_factor100_ok = True
+
+                if (previous_mismatch or next_mismatch) and (previous_factor100_ok and next_factor100_ok):
+                    entry.value = factor100_value
+
+        return self
+
     def break_on_double_descending(self) -> list[AAboveBSidebar]:
         segments = []
         segment_start = 0
