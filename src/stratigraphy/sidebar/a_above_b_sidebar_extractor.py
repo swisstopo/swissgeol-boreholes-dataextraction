@@ -1,6 +1,7 @@
 """Module for finding AAboveBSidebar instances in a borehole profile."""
 
 import logging
+from bisect import bisect_left, bisect_right
 from collections import defaultdict
 
 import fitz
@@ -18,7 +19,7 @@ class AAboveBSidebarExtractor:
     """Class that finds AAboveBSidebar instances in a borehole profile."""
 
     @staticmethod
-    def find_in_words(  ## help find correct sidebar based on vertical geometric lines!
+    def find_in_words(
         all_words: list[TextWord], used_entry_rects: list[fitz.Rect], sidebar_params: dict
     ) -> list[AAboveBSidebar]:
         """Construct all possible AAboveBSidebar objects from the given words.
@@ -31,49 +32,46 @@ class AAboveBSidebarExtractor:
         Returns:
             list[AAboveBSidebar]: Found AAboveBSidebar objects.
         """
-        entries = [  ##takes sometime
+        entries = [
             entry
             for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=False)
             if entry.rect not in used_entry_rects
         ]
-        logger.info("entries %s", entries)
+        clusters = []
+        cluster_dict = defaultdict(lambda: AAboveBSidebar(entries=[]))
+        threshold = 15
 
-        clusters = defaultdict(lambda: AAboveBSidebar(entries=[]))
         for entry in entries:
             x0 = entry.rect.x0
-            matched_cluster = []
+            left = bisect_left(clusters, x0 - threshold)
+            right = bisect_right(clusters, x0 + threshold)
 
-            for cluster_x0 in clusters:
-                if abs(cluster_x0 - x0) <= 10:  ##TODO: edge cases + overlaps handling should be implemented,
-                    # set the threshold based on page or entry dimensions?
-                    # -> done by allowing entry to belong to multiple clusters ->
-                    # use bisect? to reduce time?
-                    matched_cluster.append(cluster_x0)
+            matched_clusters = clusters[left:right]
 
-            if matched_cluster:
-                for cluster_x0 in matched_cluster:
-                    clusters[cluster_x0].entries.append(entry)
-            else:
-                clusters[x0].entries.append(entry)
-        numeric_columns = list(clusters.values())
+            create_new_cluster = True
+            for cluster_x0 in matched_clusters:
+                cluster_dict[cluster_x0].entries.append(entry)
+                if abs(cluster_x0 - x0) <= threshold / 2:
+                    create_new_cluster = False
+                    break
 
-        logger.info("numeric clusters %s", numeric_columns)
+            if create_new_cluster:
+                clusters.insert(right, x0)
+                cluster_dict[x0].entries.append(entry)
 
+        numeric_columns = [cluster for cluster in cluster_dict.values() if len(cluster.entries) > 3]
         sidebar_validator = AAboveBSidebarValidator(all_words, **sidebar_params)
 
-        numeric_columns = [
-            sidebar_validator.reduce_until_valid(column)
+        filtered_columns = [
+            column
             for numeric_column in numeric_columns
             for column in numeric_column.break_on_double_descending()
-            # when we have a perfect arithmetic progression, this is usually just a scale
-            # that does not match the descriptions
             if not column.significant_arithmetic_progression()
         ]
 
-        logger.info("numeric_columns valid %s", numeric_columns)
+        validated_columns = [sidebar_validator.reduce_until_valid(column) for column in filtered_columns]
 
-        logger.info("numeric_columns filtered out integers%s", numeric_columns)
         return sorted(
-            [column for column in numeric_columns if column and sidebar_validator.is_valid(column)],
+            [column for column in validated_columns if column],
             key=lambda column: len(column.entries),
         )

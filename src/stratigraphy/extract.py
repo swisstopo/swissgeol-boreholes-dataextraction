@@ -81,7 +81,7 @@ def process_page(
     # Else, we search for sidebars with depths.
     # We could also think of some scoring mechanism to decide which one to use.
     if not material_descriptions_sidebar_pairs:
-        words = [word for line in lines for word in line.words]
+        words = sorted([word for line in lines for word in line.words], key=lambda word: word.rect.y0)
         a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words)
 
         used_entry_rects = []
