@@ -37,13 +37,6 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
     def __repr__(self):
         return "AAboveBSidebar({})".format(", ".join([str(entry) for entry in self.entries]))
 
-    def valid_initial_segment(self, rect: fitz.Rect) -> AAboveBSidebar:
-        for i in range(len(self.entries) - 1):
-            initial_segment = AAboveBSidebar(self.entries[: -i - 1])
-            if initial_segment.can_be_appended(rect):
-                return initial_segment
-        return AAboveBSidebar(entries=[])
-
     def strictly_contains(self, other: AAboveBSidebar) -> bool:
         return len(other.entries) < len(self.entries) and all(
             other_entry in self.entries for other_entry in other.entries

@@ -1,18 +1,41 @@
 """Module for finding AAboveBSidebar instances in a borehole profile."""
 
+import dataclasses
 import logging
-from bisect import bisect_left, bisect_right
-from collections import defaultdict
 
 import fitz
 
-from stratigraphy.depth import DepthColumnEntryExtractor
+from stratigraphy.depth import DepthColumnEntry, DepthColumnEntryExtractor
 from stratigraphy.lines.line import TextWord
 
+from ..util.util import x_overlap_significant_largest
 from .a_above_b_sidebar import AAboveBSidebar
 from .a_above_b_sidebar_validator import AAboveBSidebarValidator
 
 logger = logging.getLogger(__name__)
+
+
+@dataclasses.dataclass
+class Cluster:
+    """Class that groups together values that potentially belong to the same depth column."""
+
+    reference_rect: fitz.Rect
+    entries: list[DepthColumnEntry]
+
+    def append_if_fits_and_return_good_fit(self, entry: DepthColumnEntry):
+        """Appends a new entry to this cluster if it fits. Otherwise, this cluster remains unchanged.
+
+        Args:
+            entry: an entry to be added to the cluster, if it fits
+
+        Returns: True if the new entry is a good fit for the cluster, i.e. there is no need to create a new cluster
+                 with this element as the reference.
+        """
+        if x_overlap_significant_largest(self.reference_rect, entry.rect, 0.3):
+            self.entries.append(entry)
+            return x_overlap_significant_largest(self.reference_rect, entry.rect, 0.75)
+
+        return False
 
 
 class AAboveBSidebarExtractor:
@@ -37,29 +60,21 @@ class AAboveBSidebarExtractor:
             for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=False)
             if entry.rect not in used_entry_rects
         ]
-        clusters = []
-        cluster_dict = defaultdict(lambda: AAboveBSidebar(entries=[]))
-        threshold = 15
+        clusters: list[Cluster] = []
 
         for entry in entries:
-            x0 = entry.rect.x0
-            left = bisect_left(clusters, x0 - threshold)
-            right = bisect_right(clusters, x0 + threshold)
-
-            matched_clusters = clusters[left:right]
-
             create_new_cluster = True
-            for cluster_x0 in matched_clusters:
-                cluster_dict[cluster_x0].entries.append(entry)
-                if abs(cluster_x0 - x0) <= threshold / 2:
+            for cluster in clusters:
+                if cluster.append_if_fits_and_return_good_fit(entry):
                     create_new_cluster = False
-                    break
 
             if create_new_cluster:
-                clusters.insert(right, x0)
-                cluster_dict[x0].entries.append(entry)
+                clusters.append(Cluster(entry.rect, [entry]))
 
-        numeric_columns = [cluster for cluster in cluster_dict.values() if len(cluster.entries) > 3]
+        # for cluster in clusters:
+        #     print([(entry.value, entry.rect) for entry in cluster.entries])
+
+        numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 3]
         sidebar_validator = AAboveBSidebarValidator(all_words, **sidebar_params)
 
         filtered_columns = [
@@ -69,9 +84,18 @@ class AAboveBSidebarExtractor:
             if not column.significant_arithmetic_progression()
         ]
 
-        validated_columns = [sidebar_validator.reduce_until_valid(column) for column in filtered_columns]
+        validated_sidebars = [sidebar_validator.reduce_until_valid(column) for column in filtered_columns]
 
-        return sorted(
-            [column for column in validated_columns if column],
-            key=lambda column: len(column.entries),
+        sidebars_by_length = sorted(
+            [sidebar for sidebar in validated_sidebars if sidebar],
+            key=lambda sidebar: len(sidebar.entries),
+            reverse=True,
         )
+
+        result = []
+        # Remove columns that are fully contained in a longer column
+        for sidebar in sidebars_by_length:
+            if not any(result_sidebar.rect().contains(sidebar.rect()) for result_sidebar in result):
+                result.append(sidebar)
+
+        return result
