@@ -1,8 +1,8 @@
 """Test suite for the find_depth_columns module."""
 
 import fitz
-from stratigraphy.depth.depthcolumnentry import DepthColumnEntry
 from stratigraphy.sidebar import AAboveBSidebar
+from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 
 
 def test_aabovebsidebar_isarithmeticprogression():  # noqa: D103
