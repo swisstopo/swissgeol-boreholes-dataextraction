@@ -22,7 +22,7 @@ class MaterialDescriptionRectWithSidebar:
             all_words (list[TextWord] | None, optional): List of the available text words. Defaults to None.
 
         Returns:
-            float: The score of the match.
+            float: The score of the match. Better matches have a higher score value.
         """
         rect = self.sidebar.rect()
         top = rect.y0
@@ -37,5 +37,4 @@ class MaterialDescriptionRectWithSidebar:
         height = bottom - top
 
         noise_count = self.sidebar.noise_count(all_words) if all_words else 0
-
-        return (height - distance) * math.pow(0.8, noise_count)
+        return (height - distance) * math.pow(0.8, 10 * noise_count / len(self.sidebar.entries))

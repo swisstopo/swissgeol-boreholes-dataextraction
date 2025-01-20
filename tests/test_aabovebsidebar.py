@@ -5,8 +5,8 @@ from stratigraphy.depth.depthcolumnentry import DepthColumnEntry
 from stratigraphy.sidebar import AAboveBSidebar
 
 
-def test_aabovebsidebar_isarithmeticprogression():  # noqa: D103
-    """Test the is_arithmetic_progression method of the AAboveBSidebar class."""
+def test_aabovebsidebar_closetoarithmeticprogression():  # noqa: D103
+    """Test the close_to_arithmetic_progression method of the AAboveBSidebar class."""
     sidebar = AAboveBSidebar(
         [
             DepthColumnEntry(fitz.Rect(), value=1),
@@ -16,7 +16,16 @@ def test_aabovebsidebar_isarithmeticprogression():  # noqa: D103
             DepthColumnEntry(fitz.Rect(), value=5),
         ]
     )
-    assert sidebar.is_arithmetic_progression(), "The column should be recognized as arithmetic progression"
+    assert sidebar.close_to_arithmetic_progression(), "The sidebar should be recognized as arithmetic progression"
+
+    sidebar = AAboveBSidebar(
+        [
+            DepthColumnEntry(fitz.Rect(), value=0.2),
+            DepthColumnEntry(fitz.Rect(), value=0.3),
+            DepthColumnEntry(fitz.Rect(), value=0.4),
+        ]
+    )
+    assert sidebar.close_to_arithmetic_progression(), "The sidebar should be recognized as arithmetic progression"
 
     sidebar = AAboveBSidebar(
         [
@@ -28,7 +37,9 @@ def test_aabovebsidebar_isarithmeticprogression():  # noqa: D103
             DepthColumnEntry(fitz.Rect(), value=20.5),
         ]
     )
-    assert not sidebar.is_arithmetic_progression(), "The column should not be recognized as arithmetic progression"
+    assert (
+        not sidebar.close_to_arithmetic_progression()
+    ), "The sidebar should not be recognized as arithmetic progression"
 
 
 def test_aabovebsidebar_makeascending():  # noqa: D103

@@ -59,6 +59,8 @@ class AAboveBSidebarValidator:
         # Check if the entries are strictly increasing.
         if not sidebar.is_strictly_increasing():
             return False
+        if sidebar.close_to_arithmetic_progression():
+            return False
 
         corr_coef = sidebar.pearson_correlation_coef()
 
