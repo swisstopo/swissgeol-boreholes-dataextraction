@@ -71,15 +71,8 @@ class AAboveBSidebarExtractor:
             if create_new_cluster:
                 clusters.append(Cluster(entry.rect, [entry]))
 
-        # for cluster in clusters:
-        #     print([(entry.value, entry.rect) for entry in cluster.entries])
-
         numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 3]
         sidebar_validator = AAboveBSidebarValidator(all_words, **sidebar_params)
-
-        # for numeric_column in numeric_columns:
-        #   print([entry.value for entry in numeric_column.entries])
-        #   print([entry.value for entry in numeric_column.make_ascending().entries])
 
         filtered_columns = [
             column
