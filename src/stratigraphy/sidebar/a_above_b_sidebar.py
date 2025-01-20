@@ -7,13 +7,14 @@ from dataclasses import dataclass
 import fitz
 import numpy as np
 
-from stratigraphy.depth import AAboveBInterval, DepthColumnEntry
+from stratigraphy.depth import AAboveBInterval
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.find_description import get_description_blocks
 from stratigraphy.util.dataclasses import Line
 
 from .interval_block_group import IntervalBlockGroup
 from .sidebar import Sidebar
+from .sidebarentry import DepthColumnEntry
 
 
 @dataclass

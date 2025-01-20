@@ -1,41 +1,17 @@
 """Module for finding AAboveBSidebar instances in a borehole profile."""
 
-import dataclasses
 import logging
 
 import fitz
 
-from stratigraphy.depth import DepthColumnEntry, DepthColumnEntryExtractor
+from stratigraphy.depth import DepthColumnEntryExtractor
 from stratigraphy.lines.line import TextWord
 
-from ..util.util import x_overlap_significant_largest
 from .a_above_b_sidebar import AAboveBSidebar
 from .a_above_b_sidebar_validator import AAboveBSidebarValidator
+from .cluster import Cluster
 
 logger = logging.getLogger(__name__)
-
-
-@dataclasses.dataclass
-class Cluster:
-    """Class that groups together values that potentially belong to the same depth column."""
-
-    reference_rect: fitz.Rect
-    entries: list[DepthColumnEntry]
-
-    def append_if_fits_and_return_good_fit(self, entry: DepthColumnEntry):
-        """Appends a new entry to this cluster if it fits. Otherwise, this cluster remains unchanged.
-
-        Args:
-            entry: an entry to be added to the cluster, if it fits
-
-        Returns: True if the new entry is a good fit for the cluster, i.e. there is no need to create a new cluster
-                 with this element as the reference.
-        """
-        if x_overlap_significant_largest(self.reference_rect, entry.rect, 0.3):
-            self.entries.append(entry)
-            return x_overlap_significant_largest(self.reference_rect, entry.rect, 0.75)
-
-        return False
 
 
 class AAboveBSidebarExtractor:

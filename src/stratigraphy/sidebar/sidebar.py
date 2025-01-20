@@ -8,9 +8,9 @@ from typing import Generic, TypeVar
 
 import fitz
 
-from stratigraphy.depth import DepthColumnEntry
 from stratigraphy.lines.line import TextLine, TextWord
 from stratigraphy.sidebar.interval_block_group import IntervalBlockGroup
+from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 from stratigraphy.util.dataclasses import Line
 
 EntryT = TypeVar("EntryT", bound=DepthColumnEntry)
@@ -82,27 +82,3 @@ class Sidebar(abc.ABC, Generic[EntryT]):
             list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
         """
         pass
-
-    def can_be_appended(self, rect: fitz.Rect) -> bool:
-        """Checks if a new depth column entry can be appended to the current depth column.
-
-        Check if the middle of the new rect is between the outer horizontal boundaries of the column, and if there is
-        an intersection with the minimal horizontal boundaries of the column.
-
-        The checks are:
-        - The width of the new rectangle is greater than the width of the current depth column. Or;
-        - The middle of the new rectangle is within the horizontal boundaries of the current depth column.
-        - The new rectangle intersects with the minimal horizontal boundaries of the current depth column.
-
-        Args:
-            rect (fitz.Rect): Rect of the depth column entry to be appended.
-
-        Returns:
-            bool: True if the new depth column entry can be appended, False otherwise.
-        """
-        new_middle = (rect.x0 + rect.x1) / 2
-        if (self.rect().width < rect.width or self.rect().x0 < new_middle < self.rect().x1) and (
-            rect.x0 <= self.min_x1 and self.max_x0 <= rect.x1
-        ):
-            return True
-        return False
