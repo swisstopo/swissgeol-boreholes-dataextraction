@@ -50,7 +50,11 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         )
 
     def is_strictly_increasing(self) -> bool:
-        return all(i.value < j.value for i, j in zip(self.entries, self.entries[1:], strict=False))
+        length = len(self.entries)
+        for i in range(length - 1):
+            if self.entries[i].value >= self.entries[i + 1].value:
+                return False
+            return True
 
     def depth_intervals(self) -> list[AAboveBInterval]:
         """Creates a list of depth intervals from the depth column entries.
