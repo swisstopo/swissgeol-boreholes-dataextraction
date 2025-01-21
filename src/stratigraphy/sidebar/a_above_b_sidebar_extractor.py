@@ -5,12 +5,14 @@ from bisect import bisect_left, bisect_right
 from collections import defaultdict
 
 import fitz
+import rtree
 
 from stratigraphy.depth import DepthColumnEntryExtractor
 from stratigraphy.lines.line import TextWord
 
 from .a_above_b_sidebar import AAboveBSidebar
 from .a_above_b_sidebar_validator import AAboveBSidebarValidator
+from .sidebar import SidebarNoise, noise_count
 
 logger = logging.getLogger(__name__)
 
@@ -20,17 +22,21 @@ class AAboveBSidebarExtractor:
 
     @staticmethod
     def find_in_words(
-        all_words: list[TextWord], used_entry_rects: list[fitz.Rect], sidebar_params: dict
-    ) -> list[AAboveBSidebar]:
+        all_words: list[TextWord],
+        word_rtree: rtree.index.Index,
+        used_entry_rects: list[fitz.Rect],
+        sidebar_params: dict,
+    ) -> list[SidebarNoise]:
         """Construct all possible AAboveBSidebar objects from the given words.
 
         Args:
             all_words (list[TextWord]): All words in the page.
+            word_rtree (rtree.index.Index): Pre-built R-tree for spatial queries.
             used_entry_rects (list[fitz.Rect]): Part of the document to ignore.
             sidebar_params (dict): Parameters for the AAboveBSidebar objects.
 
         Returns:
-            list[AAboveBSidebar]: Found AAboveBSidebar objects.
+            list[SidebarNoise]: Validated AAboveBSidebar objects wrapped with noise count.
         """
         entries = [
             entry
@@ -60,7 +66,6 @@ class AAboveBSidebarExtractor:
                 cluster_dict[x0].entries.append(entry)
 
         numeric_columns = [cluster for cluster in cluster_dict.values() if len(cluster.entries) > 3]
-        sidebar_validator = AAboveBSidebarValidator(all_words, **sidebar_params)
 
         filtered_columns = [
             column
@@ -69,9 +74,16 @@ class AAboveBSidebarExtractor:
             if not column.significant_arithmetic_progression()
         ]
 
-        validated_columns = [sidebar_validator.reduce_until_valid(column) for column in filtered_columns]
+        sidebar_validator = AAboveBSidebarValidator(**sidebar_params)
+
+        def process_column(column):
+            noise = noise_count(column, all_words, word_rtree)
+            sidebar_noise = SidebarNoise(sidebar=column, noise_count=noise)
+            return sidebar_validator.reduce_until_valid(sidebar_noise, all_words, word_rtree)
+
+        validated_sidebars = list(filter(None, map(process_column, filtered_columns)))
 
         return sorted(
-            [column for column in validated_columns if column],
-            key=lambda column: len(column.entries),
+            [sidebar_noise for sidebar_noise in validated_sidebars if sidebar_noise.sidebar],
+            key=lambda sidebar_noise: len(sidebar_noise.sidebar.entries),
         )
