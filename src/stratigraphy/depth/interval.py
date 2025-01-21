@@ -144,6 +144,9 @@ class AToBInterval(Interval):
     def __init__(self, start: DepthColumnEntry, end: DepthColumnEntry):
         super().__init__(start, end)
 
+    def __repr__(self):
+        return f"({self.start}, {self.end})"
+
     @property
     def rect(self) -> fitz.Rect:
         """Get the rectangle surrounding the interval."""
