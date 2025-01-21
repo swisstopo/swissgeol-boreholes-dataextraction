@@ -1,8 +1,8 @@
 """Test suite for the find_depth_columns module."""
 
 import fitz
-from stratigraphy.depth.depthcolumnentry import DepthColumnEntry
 from stratigraphy.sidebar import AAboveBSidebar
+from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 
 
 def test_aabovebsidebar_closetoarithmeticprogression():  # noqa: D103
@@ -56,3 +56,6 @@ def test_aabovebsidebar_makeascending():  # noqa: D103
     test([1.0, 2.0, 300.0], [1.0, 2.0, 3.0])
     test([1.0, 200.0, 300.0, 4.0, 5.0, 6.0, 100.0], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 100.0])
     test([100.0, 200.0, 300.0], [100.0, 200.0, 300.0])
+
+    # ensure a "noise" value "0.0" does not influence the result
+    test([1.0, 2.0, 3.0, 0.0, 4.0], [1.0, 2.0, 3.0, 0.0, 4.0])

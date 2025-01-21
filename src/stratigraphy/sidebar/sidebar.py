@@ -8,10 +8,11 @@ from typing import Generic, TypeVar
 
 import fitz
 
-from stratigraphy.depth import DepthColumnEntry
 from stratigraphy.lines.line import TextLine, TextWord
 from stratigraphy.sidebar.interval_block_group import IntervalBlockGroup
+from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 from stratigraphy.util.dataclasses import Line
+from stratigraphy.util.util import x_overlap_significant_smallest
 
 EntryT = TypeVar("EntryT", bound=DepthColumnEntry)
 
@@ -56,11 +57,13 @@ class Sidebar(abc.ABC, Generic[EntryT]):
             int: The number of words that intersect with the depth column entries but are not part of it.
         """
 
-        def significant_intersection(other_rect):
-            intersection = fitz.Rect(other_rect).intersect(self.rect())
-            return intersection.is_valid and intersection.width > 0.25 * self.rect().width
+        def significant_intersection(rect: fitz.Rect) -> bool:
+            x_overlap = x_overlap_significant_smallest(self.rect(), rect, 0.25)
+            intersects = rect.intersects(self.rect())
+            return x_overlap and intersects
 
-        return len([word for word in all_words if significant_intersection(word.rect)]) - len(self.entries)
+        alphanum_words = [word for word in all_words if any(char.isalnum() for char in word.text)]
+        return len([word for word in alphanum_words if significant_intersection(word.rect)]) - len(self.entries)
 
     @abc.abstractmethod
     def identify_groups(
@@ -82,27 +85,3 @@ class Sidebar(abc.ABC, Generic[EntryT]):
             list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
         """
         pass
-
-    def can_be_appended(self, rect: fitz.Rect) -> bool:
-        """Checks if a new depth column entry can be appended to the current depth column.
-
-        Check if the middle of the new rect is between the outer horizontal boundaries of the column, and if there is
-        an intersection with the minimal horizontal boundaries of the column.
-
-        The checks are:
-        - The width of the new rectangle is greater than the width of the current depth column. Or;
-        - The middle of the new rectangle is within the horizontal boundaries of the current depth column.
-        - The new rectangle intersects with the minimal horizontal boundaries of the current depth column.
-
-        Args:
-            rect (fitz.Rect): Rect of the depth column entry to be appended.
-
-        Returns:
-            bool: True if the new depth column entry can be appended, False otherwise.
-        """
-        new_middle = (rect.x0 + rect.x1) / 2
-        if (self.rect().width < rect.width or self.rect().x0 < new_middle < self.rect().x1) and (
-            rect.x0 <= self.min_x1 and self.max_x0 <= rect.x1
-        ):
-            return True
-        return False

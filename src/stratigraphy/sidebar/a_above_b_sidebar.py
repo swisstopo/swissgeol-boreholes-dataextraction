@@ -8,13 +8,14 @@ from dataclasses import dataclass
 import fitz
 import numpy as np
 
-from stratigraphy.depth import AAboveBInterval, DepthColumnEntry
+from stratigraphy.depth import AAboveBInterval
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.find_description import get_description_blocks
 from stratigraphy.util.dataclasses import Line
 
 from .interval_block_group import IntervalBlockGroup
 from .sidebar import Sidebar
+from .sidebarentry import DepthColumnEntry
 
 
 @dataclass
@@ -114,11 +115,13 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         for i, entry in enumerate(self.entries):
             if entry.value.is_integer() and entry.value > median_value:
                 factor100_value = entry.value / 100
-                previous_ok = i == 0 or self.entries[i - 1].value < factor100_value
+                previous_ok = i == 0 or all(entry.value < factor100_value for entry in self.entries[:i])
                 next_ok = i + 1 == len(self.entries) or factor100_value < self.entries[i + 1].value
 
                 if previous_ok and next_ok:
-                    entry.value = factor100_value
+                    # Create a new entry instead of modifying the value of the current one, as this entry might be
+                    # used in different sidebars as well.
+                    self.entries[i] = DepthColumnEntry(rect=entry.rect, value=factor100_value)
 
         return self
 
