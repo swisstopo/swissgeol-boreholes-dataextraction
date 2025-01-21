@@ -12,6 +12,7 @@ from stratigraphy.lines.line import TextLine, TextWord
 from stratigraphy.sidebar.interval_block_group import IntervalBlockGroup
 from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 from stratigraphy.util.dataclasses import Line
+from stratigraphy.util.util import x_overlap_significant_smallest
 
 EntryT = TypeVar("EntryT", bound=DepthColumnEntry)
 
@@ -56,9 +57,10 @@ class Sidebar(abc.ABC, Generic[EntryT]):
             int: The number of words that intersect with the depth column entries but are not part of it.
         """
 
-        def significant_intersection(other_rect):
-            intersection = fitz.Rect(other_rect).intersect(self.rect())
-            return intersection.is_valid and intersection.width > 0.25 * self.rect().width
+        def significant_intersection(rect: fitz.Rect) -> bool:
+            x_overlap = x_overlap_significant_smallest(self.rect(), rect, 0.25)
+            intersects = rect.intersects(self.rect())
+            return x_overlap and intersects
 
         return len([word for word in all_words if significant_intersection(word.rect)]) - len(self.entries)
 

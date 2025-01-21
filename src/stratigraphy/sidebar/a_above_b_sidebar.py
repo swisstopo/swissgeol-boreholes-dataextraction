@@ -121,7 +121,9 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
                 next_ok = i + 1 == len(self.entries) or factor100_value < self.entries[i + 1].value
 
                 if previous_ok and next_ok:
-                    entry.value = factor100_value
+                    # Create a new entry instead of modifying the value of the current one, as this entry might be
+                    # used in different sidebars as well.
+                    self.entries[i] = DepthColumnEntry(rect=entry.rect, value=factor100_value)
 
         return self
 

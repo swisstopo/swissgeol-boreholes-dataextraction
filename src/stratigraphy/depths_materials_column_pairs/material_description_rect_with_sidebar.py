@@ -37,5 +37,4 @@ class MaterialDescriptionRectWithSidebar:
         height = bottom - top
 
         noise_count = self.sidebar.noise_count(all_words) if all_words else 0
-
         return (height - distance) * math.pow(0.8, noise_count)
