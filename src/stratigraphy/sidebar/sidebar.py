@@ -62,7 +62,8 @@ class Sidebar(abc.ABC, Generic[EntryT]):
             intersects = rect.intersects(self.rect())
             return x_overlap and intersects
 
-        return len([word for word in all_words if significant_intersection(word.rect)]) - len(self.entries)
+        alphanum_words = [word for word in all_words if any(char.isalnum() for char in word.text)]
+        return len([word for word in alphanum_words if significant_intersection(word.rect)]) - len(self.entries)
 
     @abc.abstractmethod
     def identify_groups(

@@ -117,7 +117,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         for i, entry in enumerate(self.entries):
             if entry.value.is_integer() and entry.value > median_value:
                 factor100_value = entry.value / 100
-                previous_ok = i == 0 or self.entries[i - 1].value < factor100_value
+                previous_ok = i == 0 or all(entry.value < factor100_value for entry in self.entries[:i])
                 next_ok = i + 1 == len(self.entries) or factor100_value < self.entries[i + 1].value
 
                 if previous_ok and next_ok:
