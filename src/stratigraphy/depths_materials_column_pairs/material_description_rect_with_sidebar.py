@@ -4,7 +4,6 @@ import math
 from dataclasses import dataclass
 
 import fitz
-from stratigraphy.lines.line import TextWord
 from stratigraphy.sidebar import Sidebar
 
 
@@ -14,12 +13,11 @@ class MaterialDescriptionRectWithSidebar:
 
     sidebar: Sidebar | None
     material_description_rect: fitz.Rect
+    noise_count: int = 0
 
-    def score_match(self, all_words: list[TextWord] | None = None) -> float:
+    @property
+    def score_match(self) -> float:
         """Scores the match between a sidebar and a material description.
-
-        Args:
-            all_words (list[TextWord] | None, optional): List of the available text words. Defaults to None.
 
         Returns:
             float: The score of the match.
@@ -36,6 +34,4 @@ class MaterialDescriptionRectWithSidebar:
 
         height = bottom - top
 
-        noise_count = self.sidebar.noise_count(all_words) if all_words else 0
-
-        return (height - distance) * math.pow(0.8, noise_count)
+        return (height - distance) * math.pow(0.8, self.noise_count)
