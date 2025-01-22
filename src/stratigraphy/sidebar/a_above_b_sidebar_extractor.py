@@ -7,6 +7,8 @@ from stratigraphy.lines.line import TextWord
 
 from .a_above_b_sidebar import AAboveBSidebar
 from .a_above_b_sidebar_validator import AAboveBSidebarValidator
+from .cluster import Cluster
+from .sidebarentry import DepthColumnEntry
 
 
 class AAboveBSidebarExtractor:
@@ -19,7 +21,7 @@ class AAboveBSidebarExtractor:
         """Construct all possible AAboveBSidebar objects from the given words.
 
         Args:
-            all_words (list[TextLine]): All words in the page.
+            all_words (list[TextWord]): All words in the page.
             used_entry_rects (list[fitz.Rect]): Part of the document to ignore.
             sidebar_params (dict): Parameters for the AAboveBSidebar objects.
 
@@ -31,45 +33,30 @@ class AAboveBSidebarExtractor:
             for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=False)
             if entry.rect not in used_entry_rects
         ]
+        clusters = Cluster[DepthColumnEntry].create_clusters(entries)
 
-        numeric_columns: list[AAboveBSidebar] = []
-        for entry in entries:
-            has_match = False
-            additional_columns = []
-            for column in numeric_columns:
-                if column.can_be_appended(entry.rect):
-                    has_match = True
-                    column.entries.append(entry)
-                else:
-                    valid_initial_segment = column.valid_initial_segment(entry.rect)
-                    if len(valid_initial_segment.entries) > 0:
-                        has_match = True
-                        valid_initial_segment.entries.append(entry)
-                        additional_columns.append(valid_initial_segment)
-
-            numeric_columns.extend(additional_columns)
-            if not has_match:
-                numeric_columns.append(AAboveBSidebar(entries=[entry]))
-
-            # only keep columns that are not contained in a different column
-            numeric_columns = [
-                column
-                for column in numeric_columns
-                if all(not other.strictly_contains(column) for other in numeric_columns)
-            ]
-
+        numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 3]
         sidebar_validator = AAboveBSidebarValidator(all_words, **sidebar_params)
 
-        numeric_columns = [
-            sidebar_validator.reduce_until_valid(column)
+        filtered_columns = [
+            column
             for numeric_column in numeric_columns
-            for column in numeric_column.break_on_double_descending()
-            # when we have a perfect arithmetic progression, this is usually just a scale
-            # that does not match the descriptions
+            for column in numeric_column.make_ascending().break_on_double_descending()
             if not column.significant_arithmetic_progression()
         ]
 
-        return sorted(
-            [column for column in numeric_columns if column and sidebar_validator.is_valid(column)],
-            key=lambda column: len(column.entries),
+        validated_sidebars = [sidebar_validator.reduce_until_valid(column) for column in filtered_columns]
+
+        sidebars_by_length = sorted(
+            [sidebar for sidebar in validated_sidebars if sidebar],
+            key=lambda sidebar: len(sidebar.entries),
+            reverse=True,
         )
+
+        result = []
+        # Remove columns that are fully contained in a longer column
+        for sidebar in sidebars_by_length:
+            if not any(result_sidebar.rect().contains(sidebar.rect()) for result_sidebar in result):
+                result.append(sidebar)
+
+        return result
