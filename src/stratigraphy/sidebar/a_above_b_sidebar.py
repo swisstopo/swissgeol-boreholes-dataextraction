@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import statistics
 from dataclasses import dataclass
 
 import fitz
@@ -64,31 +65,28 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         # (and includes additional lines below the actual material descriptions).
         return depth_intervals
 
-    def significant_arithmetic_progression(self) -> bool:
-        # to allow for OCR errors or gaps in the progression, we only require a segment of length 6 that is an
-        # arithmetic progression
-        segment_length = 6
-        if len(self.entries) < segment_length:
-            return self.is_arithmetic_progression()
-        else:
-            for i in range(len(self.entries) - segment_length + 1):
-                if AAboveBSidebar(self.entries[i : i + segment_length]).is_arithmetic_progression():
-                    return True
+    def close_to_arithmetic_progression(self) -> bool:
+        """Check if the depth values of the entries of this sidebar are very close to an arithmetic progressing."""
+        if len(self.entries) < 2:
             return False
 
-    def is_arithmetic_progression(self) -> bool:
-        if len(self.entries) <= 2:
-            return True
+        values = [entry.value for entry in self.entries]
 
-        progression = np.array(range(len(self.entries)))
-        entries = np.array([entry.value for entry in self.entries])
-
-        # Avoid warnings in the np.corrcoef call, as the correlation coef is undefined if the standard deviation is 0.
-        if np.std(entries) == 0:
+        differences = [values[i + 1] - values[i] for i in range(len(values) - 1)]
+        step = round(statistics.median(differences), 2)
+        if step <= 0:
             return False
 
-        scale_pearson_correlation_coef = np.corrcoef(entries, progression)[0, 1].item()
-        return abs(scale_pearson_correlation_coef) >= 0.9999
+        first = values[0]
+        last = values[-1]
+        arithmethic_progression = {
+            # ensure we have nicely rounded numbers, without inaccuracies from floating point arithmetic
+            round(value * step, 2)
+            for value in range(int(first / step), int(last / step) + 1)
+        }
+        score = [value in arithmethic_progression for value in values].count(True)
+        # 80% of the values must be contained in the closest arithmetic progression (allowing for 20% OCR errors)
+        return score > 0.8 * len(values)
 
     def pearson_correlation_coef(self) -> float:
         # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with

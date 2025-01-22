@@ -42,7 +42,7 @@ class AAboveBSidebarExtractor:
             column
             for numeric_column in numeric_columns
             for column in numeric_column.make_ascending().break_on_double_descending()
-            if not column.significant_arithmetic_progression()
+            if not column.close_to_arithmetic_progression()
         ]
 
         validated_sidebars = [sidebar_validator.reduce_until_valid(column) for column in filtered_columns]
