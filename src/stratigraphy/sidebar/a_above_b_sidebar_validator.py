@@ -4,11 +4,11 @@ import dataclasses
 
 import rtree
 
-from stratigraphy.depth import DepthColumnEntry
 from stratigraphy.lines.line import TextWord
 
 from .a_above_b_sidebar import AAboveBSidebar
 from .sidebar import SidebarNoise, noise_count
+from .sidebarentry import DepthColumnEntry
 
 
 @dataclasses.dataclass
@@ -54,8 +54,11 @@ class AAboveBSidebarValidator:
         # Check if the entries are strictly increasing.
         if not sidebar.is_strictly_increasing():
             return False
+        if sidebar.close_to_arithmetic_progression():
+            return False
 
         corr_coef = sidebar.pearson_correlation_coef()
+
         return corr_coef and corr_coef > corr_coef_threshold
 
     def reduce_until_valid(
@@ -157,10 +160,5 @@ def _value_alternatives(value: float) -> set[float]:
     alternatives = {value}
     # In older documents, OCR sometimes mistakes 1 for 4
     alternatives.add(float(str(value).replace("4", "1")))
-
-    # replace a pattern such as '.80' with '0.80'. These cases are already converted
-    # to '80.0' when depth entries are recognized.
-    if value.is_integer():
-        alternatives.add(value / 100)
 
     return alternatives

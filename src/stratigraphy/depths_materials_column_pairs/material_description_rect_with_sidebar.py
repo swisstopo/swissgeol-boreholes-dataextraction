@@ -20,7 +20,7 @@ class MaterialDescriptionRectWithSidebar:
         """Scores the match between a sidebar and a material description.
 
         Returns:
-            float: The score of the match.
+            float: The score of the match. Better matches have a higher score value.
         """
         rect = self.sidebar.rect()
         top = rect.y0
@@ -34,4 +34,4 @@ class MaterialDescriptionRectWithSidebar:
 
         height = bottom - top
 
-        return (height - distance) * math.pow(0.8, self.noise_count)
+        return (height - distance) * math.pow(0.8, 10 * self.noise_count / len(self.sidebar.entries))

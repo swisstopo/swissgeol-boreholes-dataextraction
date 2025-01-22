@@ -133,8 +133,7 @@ def test_aabovebsidebarextractor_two_column():  # noqa: D103
     columns = [sidebar_noise.sidebar for sidebar_noise in sidebars_noise]
 
     assert len(columns) == 2, "There should be 2 columns"
-    assert len(columns[0].entries) == 5, "The first column should have 5 entries"
-    assert len(columns[1].entries) == 6, "The second column should have 6 entries"
+    assert {len(column.entries) for column in columns} == {5, 6}, "The columns should have 5 and 6 entries"
 
 
 def test_atobsidebarextractor():  # noqa: D103

@@ -1,8 +1,6 @@
 """Module for finding AAboveBSidebar instances in a borehole profile."""
 
 import logging
-from bisect import bisect_left, bisect_right
-from collections import defaultdict
 
 import fitz
 import rtree
@@ -12,7 +10,9 @@ from stratigraphy.lines.line import TextWord
 
 from .a_above_b_sidebar import AAboveBSidebar
 from .a_above_b_sidebar_validator import AAboveBSidebarValidator
+from .cluster import Cluster
 from .sidebar import SidebarNoise, noise_count
+from .sidebarentry import DepthColumnEntry
 
 logger = logging.getLogger(__name__)
 
@@ -43,35 +43,16 @@ class AAboveBSidebarExtractor:
             for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=False)
             if entry.rect not in used_entry_rects
         ]
-        clusters = []
-        cluster_dict = defaultdict(lambda: AAboveBSidebar(entries=[]))
-        threshold = 15
+        clusters = Cluster[DepthColumnEntry].create_clusters(entries)
 
-        for entry in entries:
-            x0 = entry.rect.x0
-            left = bisect_left(clusters, x0 - threshold)
-            right = bisect_right(clusters, x0 + threshold)
-
-            matched_clusters = clusters[left:right]
-
-            create_new_cluster = True
-            for cluster_x0 in matched_clusters:
-                cluster_dict[cluster_x0].entries.append(entry)
-                if abs(cluster_x0 - x0) <= threshold / 2:
-                    create_new_cluster = False
-                    break
-
-            if create_new_cluster:
-                clusters.insert(right, x0)
-                cluster_dict[x0].entries.append(entry)
-
-        numeric_columns = [cluster for cluster in cluster_dict.values() if len(cluster.entries) > 3]
+        numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 3]
+        sidebar_validator = AAboveBSidebarValidator(**sidebar_params)
 
         filtered_columns = [
             column
             for numeric_column in numeric_columns
-            for column in numeric_column.break_on_double_descending()
-            if not column.significant_arithmetic_progression()
+            for column in numeric_column.make_ascending().break_on_double_descending()
+            if not column.close_to_arithmetic_progression()
         ]
 
         sidebar_validator = AAboveBSidebarValidator(**sidebar_params)
@@ -83,7 +64,18 @@ class AAboveBSidebarExtractor:
 
         validated_sidebars = list(filter(None, map(process_column, filtered_columns)))
 
-        return sorted(
+        sidebars_by_length = sorted(
             [sidebar_noise for sidebar_noise in validated_sidebars if sidebar_noise.sidebar],
             key=lambda sidebar_noise: len(sidebar_noise.sidebar.entries),
+            reverse=True,
         )
+
+        result = []
+        # Remove sidebar_noise that are fully contained in a longer sidebar
+        for sidebar_noise in sidebars_by_length:
+            if not any(
+                result_sidebar.sidebar.rect().contains(sidebar_noise.sidebar.rect()) for result_sidebar in result
+            ):
+                result.append(sidebar_noise)
+
+        return result

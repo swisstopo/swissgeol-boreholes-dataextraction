@@ -4,6 +4,7 @@ import re
 
 from stratigraphy.lines.line import TextLine
 
+from .cluster import Cluster
 from .layer_identifier_sidebar import LayerIdentifierEntry, LayerIdentifierSidebar
 
 
@@ -36,7 +37,7 @@ class LayerIdentifierSidebarExtractor:
                 regex = re.compile(r"\b[\da-z-]+\)")
                 match = regex.match(first_word.text)
                 if match and len(first_word.text) < 7:
-                    entries.append(LayerIdentifierEntry(first_word.rect, first_word.text))
+                    entries.append(LayerIdentifierEntry(rect=first_word.rect, value=first_word.text))
         return entries
 
     @classmethod
@@ -55,32 +56,20 @@ class LayerIdentifierSidebarExtractor:
         if not entries:
             return []
 
-        layer_identifier_sidebars = [LayerIdentifierSidebar([entries[0]])]
-        for entry in entries[1:]:
-            has_match = False
-            for column in layer_identifier_sidebars:
-                if column.can_be_appended(entry.rect):
-                    column.entries.append(entry)
-                    has_match = True
-            if not has_match:
-                layer_identifier_sidebars.append(LayerIdentifierSidebar([entry]))
+        clusters = Cluster[LayerIdentifierEntry].create_clusters(entries)
 
-            # only keep columns whose entries are not fully contained in a different column
-            layer_identifier_sidebars = [
-                column
-                for column in layer_identifier_sidebars
-                if all(not other.strictly_contains(column) for other in layer_identifier_sidebars)
-            ]
-            # check if the column rect is a subset of another column rect. If so, merge the entries and sort them by
-            # y0.
-            for column in layer_identifier_sidebars:
-                for other in layer_identifier_sidebars:
-                    if column != other and column.is_contained(other.rect()):
-                        for entry in other.entries:
-                            if entry not in column.entries:
-                                column.entries.append(entry)
-                        column.entries.sort(key=lambda entry: entry.rect.y0)
-                        layer_identifier_sidebars.remove(other)
-                        break
-        layer_identifier_sidebars = [column for column in layer_identifier_sidebars if len(column.entries) > 2]
-        return layer_identifier_sidebars
+        sidebars = [LayerIdentifierSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 2]
+
+        sidebars_by_length = sorted(
+            [sidebar for sidebar in sidebars if sidebar],
+            key=lambda sidebar: len(sidebar.entries),
+            reverse=True,
+        )
+
+        result = []
+        # Remove columns that are fully contained in a longer column
+        for sidebar in sidebars_by_length:
+            if not any(result_sidebar.rect().contains(sidebar.rect()) for result_sidebar in result):
+                result.append(sidebar)
+
+        return result

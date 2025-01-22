@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
+import statistics
 from dataclasses import dataclass
 
 import fitz
 import numpy as np
 
-from stratigraphy.depth import AAboveBInterval, DepthColumnEntry
+from stratigraphy.depth import AAboveBInterval
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.find_description import get_description_blocks
 from stratigraphy.util.dataclasses import Line
 
 from .interval_block_group import IntervalBlockGroup
 from .sidebar import Sidebar
+from .sidebarentry import DepthColumnEntry
 
 
 @dataclass
@@ -36,13 +38,6 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
 
     def __repr__(self):
         return "AAboveBSidebar({})".format(", ".join([str(entry) for entry in self.entries]))
-
-    def valid_initial_segment(self, rect: fitz.Rect) -> AAboveBSidebar:
-        for i in range(len(self.entries) - 1):
-            initial_segment = AAboveBSidebar(self.entries[: -i - 1])
-            if initial_segment.can_be_appended(rect):
-                return initial_segment
-        return AAboveBSidebar(entries=[])
 
     def strictly_contains(self, other: AAboveBSidebar) -> bool:
         return len(other.entries) < len(self.entries) and all(
@@ -74,31 +69,28 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         # (and includes additional lines below the actual material descriptions).
         return depth_intervals
 
-    def significant_arithmetic_progression(self) -> bool:
-        # to allow for OCR errors or gaps in the progression, we only require a segment of length 6 that is an
-        # arithmetic progression
-        segment_length = 6
-        if len(self.entries) < segment_length:
-            return self.is_arithmetic_progression()
-        else:
-            for i in range(len(self.entries) - segment_length + 1):
-                if AAboveBSidebar(self.entries[i : i + segment_length]).is_arithmetic_progression():
-                    return True
+    def close_to_arithmetic_progression(self) -> bool:
+        """Check if the depth values of the entries of this sidebar are very close to an arithmetic progressing."""
+        if len(self.entries) < 2:
             return False
 
-    def is_arithmetic_progression(self) -> bool:
-        if len(self.entries) <= 2:
-            return True
+        values = [entry.value for entry in self.entries]
 
-        progression = np.array(range(len(self.entries)))
-        entries = np.array([entry.value for entry in self.entries])
-
-        # Avoid warnings in the np.corrcoef call, as the correlation coef is undefined if the standard deviation is 0.
-        if np.std(entries) == 0:
+        differences = [values[i + 1] - values[i] for i in range(len(values) - 1)]
+        step = round(statistics.median(differences), 2)
+        if step <= 0:
             return False
 
-        scale_pearson_correlation_coef = np.corrcoef(entries, progression)[0, 1].item()
-        return abs(scale_pearson_correlation_coef) >= 0.9999
+        first = values[0]
+        last = values[-1]
+        arithmethic_progression = {
+            # ensure we have nicely rounded numbers, without inaccuracies from floating point arithmetic
+            round(value * step, 2)
+            for value in range(int(first / step), int(last / step) + 1)
+        }
+        score = [value in arithmethic_progression for value in values].count(True)
+        # 80% of the values must be contained in the closest arithmetic progression (allowing for 20% OCR errors)
+        return score > 0.8 * len(values)
 
     def pearson_correlation_coef(self) -> float:
         # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with
@@ -121,6 +113,21 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
             for remove_index in range(len(self.entries))
         ]
         return max(new_columns, key=lambda column: column.pearson_correlation_coef())
+
+    def make_ascending(self):
+        median_value = np.median(np.array([entry.value for entry in self.entries]))
+        for i, entry in enumerate(self.entries):
+            if entry.value.is_integer() and entry.value > median_value:
+                factor100_value = entry.value / 100
+                previous_ok = i == 0 or all(entry.value < factor100_value for entry in self.entries[:i])
+                next_ok = i + 1 == len(self.entries) or factor100_value < self.entries[i + 1].value
+
+                if previous_ok and next_ok:
+                    # Create a new entry instead of modifying the value of the current one, as this entry might be
+                    # used in different sidebars as well.
+                    self.entries[i] = DepthColumnEntry(rect=entry.rect, value=factor100_value)
+
+        return self
 
     def break_on_double_descending(self) -> list[AAboveBSidebar]:
         segments = []

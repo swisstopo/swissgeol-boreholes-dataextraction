@@ -11,20 +11,7 @@ from stratigraphy.util.dataclasses import Line
 
 from .interval_block_group import IntervalBlockGroup
 from .sidebar import Sidebar
-
-
-class LayerIdentifierEntry:
-    """Class for a layer identifier entry.
-
-    Note: As of now this is very similar to DepthColumnEntry. Refactoring may be desired.
-    """
-
-    def __init__(self, rect: fitz.Rect, text: str):
-        self.rect = rect
-        self.text = text
-
-    def __repr__(self):
-        return str(self.text)
+from .sidebarentry import LayerIdentifierEntry
 
 
 @dataclass
