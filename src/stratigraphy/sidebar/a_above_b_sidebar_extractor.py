@@ -1,7 +1,5 @@
 """Module for finding AAboveBSidebar instances in a borehole profile."""
 
-import logging
-
 import fitz
 
 from stratigraphy.depth import DepthColumnEntryExtractor
@@ -10,8 +8,7 @@ from stratigraphy.lines.line import TextWord
 from .a_above_b_sidebar import AAboveBSidebar
 from .a_above_b_sidebar_validator import AAboveBSidebarValidator
 from .cluster import Cluster
-
-logger = logging.getLogger(__name__)
+from .sidebarentry import DepthColumnEntry
 
 
 class AAboveBSidebarExtractor:
@@ -36,16 +33,7 @@ class AAboveBSidebarExtractor:
             for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=False)
             if entry.rect not in used_entry_rects
         ]
-        clusters: list[Cluster] = []
-
-        for entry in entries:
-            create_new_cluster = True
-            for cluster in clusters:
-                if cluster.append_if_fits_and_return_good_fit(entry):
-                    create_new_cluster = False
-
-            if create_new_cluster:
-                clusters.append(Cluster(entry.rect, [entry]))
+        clusters = Cluster[DepthColumnEntry].create_clusters(entries)
 
         numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 3]
         sidebar_validator = AAboveBSidebarValidator(all_words, **sidebar_params)
