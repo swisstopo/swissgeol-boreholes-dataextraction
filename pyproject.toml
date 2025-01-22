@@ -45,7 +45,8 @@ lint = [
     "pre-commit==3.6.2",
 ]
 experiment-tracking = [
-    "mlflow==2.11.1"
+    "mlflow==2.11.1",
+    "pygit2"
 ]
 visualize = [
     "matplotlib==3.8.0"

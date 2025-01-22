@@ -29,6 +29,7 @@ load_dotenv()
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 if mlflow_tracking:
     import mlflow
+    import pygit2
 
 logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
@@ -147,7 +148,7 @@ def setup_mlflow_tracking(
     out_directory: Path = None,
     predictions_path: Path = None,
     metadata_path: Path = None,
-    experiment_name: str = "Boreholes Stratigraphy",
+    experiment_name: str = "Boreholes data extraction",
 ):
     """Set up MLFlow tracking."""
     mlflow.set_experiment(experiment_name)
@@ -162,6 +163,12 @@ def setup_mlflow_tracking(
         mlflow.set_tag("metadata_path", str(metadata_path))
     mlflow.log_params(flatten(line_detection_params))
     mlflow.log_params(flatten(matching_params))
+
+    repo = pygit2.Repository(".")
+    commit = repo[repo.head.target]
+    mlflow.set_tag("git_branch", repo.head.shorthand)
+    mlflow.set_tag("git_commit_message", commit.message)
+    mlflow.set_tag("git_commit_sha", commit.id)
 
 
 def start_pipeline(
