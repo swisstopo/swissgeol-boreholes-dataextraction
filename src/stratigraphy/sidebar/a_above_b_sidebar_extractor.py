@@ -1,7 +1,5 @@
 """Module for finding AAboveBSidebar instances in a borehole profile."""
 
-import logging
-
 import fitz
 import rtree
 
@@ -13,8 +11,6 @@ from .a_above_b_sidebar_validator import AAboveBSidebarValidator
 from .cluster import Cluster
 from .sidebar import SidebarNoise, noise_count
 from .sidebarentry import DepthColumnEntry
-
-logger = logging.getLogger(__name__)
 
 
 class AAboveBSidebarExtractor:
