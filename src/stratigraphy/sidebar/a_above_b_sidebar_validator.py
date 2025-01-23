@@ -29,6 +29,7 @@ class AAboveBSidebarValidator:
         """Checks whether the sidebar is valid.
 
         The sidebar is considered valid if:
+        - The number of entries is at least 3.
         - Its noise_count is less than the noise count threshold
           time the number of entries minus the noise count offset.
         - The entries are strictly increasing.
@@ -48,6 +49,8 @@ class AAboveBSidebarValidator:
 
         sidebar = sidebar_noise.sidebar
         noise = sidebar_noise.noise_count
+        if len(sidebar.entries) < 3:
+            return False
 
         if noise > self.noise_count_threshold * (len(sidebar.entries) - self.noise_count_offset) ** 2:
             return False
