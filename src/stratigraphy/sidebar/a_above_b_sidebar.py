@@ -99,10 +99,13 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         entries = np.array([entry.value for entry in self.entries])
 
         # Avoid warnings in the np.corrcoef call, as the correlation coef is undefined if the standard deviation is 0.
-        if np.std(entries) == 0 or np.std(positions) == 0:
+        std_positions = np.std(positions)
+        std_entries = np.std(entries)
+        if std_positions == 0 or std_entries == 0:
             return 0
 
-        return np.corrcoef(positions, entries)[0, 1].item()
+        covariance = np.mean((positions - np.mean(positions)) * (entries - np.mean(entries)))
+        return covariance / (std_positions * std_entries)
 
     def remove_entry_by_correlation_gradient(self) -> AAboveBSidebar | None:
         if len(self.entries) < 3:
