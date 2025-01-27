@@ -45,10 +45,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         )
 
     def is_strictly_increasing(self) -> bool:
-        return all(
-          self.entries[i].value < self.entries[i + 1].value
-          for i in range(len(self.entries) - 1)
-        )
+        return all(self.entries[i].value < self.entries[i + 1].value for i in range(len(self.entries) - 1))
 
     def depth_intervals(self) -> list[AAboveBInterval]:
         """Creates a list of depth intervals from the depth column entries.
@@ -97,12 +94,13 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         positions = np.array([entry.rect.y1 for entry in self.entries])
         entries = np.array([entry.value for entry in self.entries])
 
-        # Avoid warnings in the np.corrcoef call, as the correlation coef is undefined if the standard deviation is 0.
         std_positions = np.std(positions)
         std_entries = np.std(entries)
         if std_positions == 0 or std_entries == 0:
             return 0
 
+        # We calculate the Pearson correlation coefficient manually
+        # to avoid redundant standard deviation calculations that would occur with np.corrcoef.
         covariance = np.mean((positions - np.mean(positions)) * (entries - np.mean(entries)))
         return covariance / (std_positions * std_entries)
 
