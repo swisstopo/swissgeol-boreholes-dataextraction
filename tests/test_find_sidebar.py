@@ -88,8 +88,8 @@ def test_aabovebsidebarextractor():  # noqa: D103
         TextWord(fitz.Rect(0, 8, 5, 9), "50.0", PAGE_NUMBER),
     ]
     word_rtree = rtree.index.Index()
-    for i, word in enumerate(all_words):
-        word_rtree.insert(i, (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1))
+    for word in all_words:
+        word_rtree.insert(id(word), (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,
@@ -122,8 +122,8 @@ def test_aabovebsidebarextractor_two_column():  # noqa: D103
         TextWord(fitz.Rect(20, 10, 25, 11), "61.0", PAGE_NUMBER),
     ]
     word_rtree = rtree.index.Index()
-    for i, word in enumerate(all_words):
-        word_rtree.insert(i, (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1))
+    for word in all_words:
+        word_rtree.insert(id(word), (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,

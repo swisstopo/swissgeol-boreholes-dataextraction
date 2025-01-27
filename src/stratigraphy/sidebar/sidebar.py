@@ -83,19 +83,18 @@ class SidebarNoise(Generic[EntryT]):
         return f"SidebarNoise(sidebar={repr(self.sidebar)}, noise_count={self.noise_count})"
 
 
-def noise_count(sidebar: Sidebar, all_words: list[TextWord], word_rtree: rtree.index.Index) -> int:
+def noise_count(sidebar: Sidebar, word_rtree: rtree.index.Index) -> int:
     """Counts the number of words that intersect with the Sidebar entries.
 
     Args:
         sidebar (Sidebar): Sidebar object for which the noise count is calculated.
-        all_words (list[TextWord]): A list of words contained on a page.
-        word_rtree (rtree.index.Index): Pre-built R-tree for spatial queries.
+        word_rtree (rtree.index.Index): Pre-built R-tree of all words on page for spatial queries.
 
     Returns:
         int: The number of words that intersect with the Sidebar entries but are not part of it.
     """
     sidebar_rect = sidebar.rect()
-    intersecting_words = _get_intersecting_words(all_words, word_rtree, sidebar_rect)
+    intersecting_words = _get_intersecting_words(word_rtree, sidebar_rect)
 
     def significant_intersection(word: TextWord) -> bool:
         word_rect = word.rect
@@ -106,9 +105,7 @@ def noise_count(sidebar: Sidebar, all_words: list[TextWord], word_rtree: rtree.i
     return sum(1 for word in intersecting_words if significant_intersection(word)) - len(sidebar.entries)
 
 
-def _get_intersecting_words(
-    all_words: list[TextWord], word_rtree: rtree.index.Index, rect: fitz.Rect
-) -> list[TextWord]:
+def _get_intersecting_words(word_rtree: rtree.index.Index, rect: fitz.Rect) -> list[TextWord]:
     """Retrieve all words from the page intersecting with Sidebar bounding box."""
-    intersecting_ids = list(word_rtree.intersection((rect.x0, rect.y0, rect.x1, rect.y1)))
-    return [all_words[i] for i in intersecting_ids if any(char.isalnum() for char in all_words[i].text)]
+    intersecting_words = list(word_rtree.intersection((rect.x0, rect.y0, rect.x1, rect.y1), objects="raw"))
+    return [word for word in intersecting_words if any(char.isalnum() for char in word.text)]

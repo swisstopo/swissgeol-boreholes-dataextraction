@@ -54,9 +54,9 @@ class AAboveBSidebarExtractor:
         sidebar_validator = AAboveBSidebarValidator(**sidebar_params)
 
         def process_column(column):
-            noise = noise_count(column, all_words, word_rtree)
+            noise = noise_count(column, word_rtree)
             sidebar_noise = SidebarNoise(sidebar=column, noise_count=noise)
-            return sidebar_validator.reduce_until_valid(sidebar_noise, all_words, word_rtree)
+            return sidebar_validator.reduce_until_valid(sidebar_noise, word_rtree)
 
         validated_sidebars = list(filter(None, map(process_column, filtered_columns)))
 

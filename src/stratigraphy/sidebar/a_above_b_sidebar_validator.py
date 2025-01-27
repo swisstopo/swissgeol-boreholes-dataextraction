@@ -4,8 +4,6 @@ import dataclasses
 
 import rtree
 
-from stratigraphy.lines.line import TextWord
-
 from .a_above_b_sidebar import AAboveBSidebar
 from .sidebar import SidebarNoise, noise_count
 from .sidebarentry import DepthColumnEntry
@@ -65,7 +63,7 @@ class AAboveBSidebarValidator:
         return corr_coef and corr_coef > corr_coef_threshold
 
     def reduce_until_valid(
-        self, sidebar_noise: SidebarNoise[AAboveBSidebar], all_words: list[TextWord], word_rtree: rtree.index.Index
+        self, sidebar_noise: SidebarNoise[AAboveBSidebar], word_rtree: rtree.index.Index
     ) -> SidebarNoise | None:
         """Removes entries from the depth column until it fulfills the is_valid condition.
 
@@ -74,8 +72,7 @@ class AAboveBSidebarValidator:
 
         Args:
             sidebar_noise (SidebarNoise): The SidebarNoise wrapping the AAboveBSidebar to validate.
-            all_words (list[TextWord]): A list of all words contained on a page.
-            word_rtree (rtree.index.Index): Pre-built R-tree for spatial queries.
+            word_rtree (rtree.index.Index): Pre-built R-tree of all words on page for spatial queries.
 
         Returns:
             sidebar_noise | None : The current SidebarNoise with entries removed from Sidebar until it is valid
@@ -85,7 +82,7 @@ class AAboveBSidebarValidator:
             if self.is_valid(sidebar_noise):
                 return sidebar_noise
 
-            corrected_sidebar_noise = self.correct_OCR_mistakes(sidebar_noise, all_words, word_rtree)
+            corrected_sidebar_noise = self.correct_OCR_mistakes(sidebar_noise, word_rtree)
             if corrected_sidebar_noise:
                 return corrected_sidebar_noise
 
@@ -93,14 +90,12 @@ class AAboveBSidebarValidator:
             if not new_sidebar:
                 return None
 
-            new_noise_count = noise_count(new_sidebar, all_words, word_rtree)
+            new_noise_count = noise_count(new_sidebar, word_rtree)
             sidebar_noise = SidebarNoise(sidebar=new_sidebar, noise_count=new_noise_count)
 
         return None
 
-    def correct_OCR_mistakes(
-        self, sidebar_noise: SidebarNoise, all_words: list[TextWord], word_rtree: rtree.index.Index
-    ) -> SidebarNoise | None:
+    def correct_OCR_mistakes(self, sidebar_noise: SidebarNoise, word_rtree: rtree.index.Index) -> SidebarNoise | None:
         """Corrects OCR mistakes in the Sidebar entries.
 
         Loops through all values and corrects common OCR mistakes for the given entry. Then, the column with the
@@ -119,8 +114,7 @@ class AAboveBSidebarValidator:
 
         Args:
             sidebar_noise (SidebarNoise): The SidebarNoise wrapping the sidebar to validate.
-            all_words (list[TextWord]): All words on the page for recalculating noise count.
-            word_rtree (index.Index): R-tree for efficient spatial queries.
+            word_rtree (index.Index): R-tree of all words on page for efficient spatial queries.
 
         Returns:
             SidebarNoise | None: The corrected SidebarNoise, or None if no correction was possible.
@@ -140,7 +134,7 @@ class AAboveBSidebarValidator:
 
         if new_columns:
             best_column = max(new_columns, key=lambda column: column.pearson_correlation_coef())
-            new_noise_count = noise_count(best_column, all_words, word_rtree)
+            new_noise_count = noise_count(best_column, word_rtree)
 
             # We require a higher correlation coefficient when corrections are made
             if self.is_valid(

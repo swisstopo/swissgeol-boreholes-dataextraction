@@ -85,8 +85,8 @@ def process_page(
     if not material_descriptions_sidebar_pairs:
         words = sorted([word for line in lines for word in line.words], key=lambda word: word.rect.y0)
         word_rtree = rtree.index.Index()
-        for i, word in enumerate(words):
-            word_rtree.insert(i, (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1))
+        for word in words:
+            word_rtree.insert(id(word), (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
 
         a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words)
         used_entry_rects = []
@@ -96,8 +96,7 @@ def process_page(
 
         # create sidebars with noise count
         sidebars_noise: list[SidebarNoise] = [
-            SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, words, word_rtree))
-            for sidebar in a_to_b_sidebars
+            SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, word_rtree)) for sidebar in a_to_b_sidebars
         ]
         sidebars_noise.extend(
             AAboveBSidebarExtractor.find_in_words(
