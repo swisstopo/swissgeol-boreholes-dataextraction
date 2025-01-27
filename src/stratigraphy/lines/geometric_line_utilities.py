@@ -195,7 +195,7 @@ def _are_parallel(line1: Line, line2: Line, angle_threshold: float) -> bool:
     Args:
         line1 (Line): The first line.
         line2 (Line): The second line.
-        angle_threshold (float, optional): The acceptable difference between the slopes of the lines.
+        angle_threshold (float, optional): The acceptable difference between the angles of the lines in degrees.
 
     Returns:
         bool: True if the lines are parallel, False otherwise.

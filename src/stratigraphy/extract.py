@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 
 import fitz
+import rtree
 
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.depth import AAboveBInterval, Interval
@@ -19,6 +20,7 @@ from stratigraphy.sidebar import (
     LayerIdentifierSidebarExtractor,
     Sidebar,
 )
+from stratigraphy.sidebar.sidebar import SidebarNoise, noise_count
 from stratigraphy.text.find_description import (
     get_description_blocks,
     get_description_lines,
@@ -75,37 +77,47 @@ def process_page(
             )
 
     if material_descriptions_sidebar_pairs:
-        material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match())
+        material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match)
 
     # If there is a layer identifier sidebar, then we use this directly.
     # Else, we search for sidebars with depths.
     # We could also think of some scoring mechanism to decide which one to use.
     if not material_descriptions_sidebar_pairs:
         words = sorted([word for line in lines for word in line.words], key=lambda word: word.rect.y0)
-        a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words)
+        word_rtree = rtree.index.Index()
+        for word in words:
+            word_rtree.insert(id(word), (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
 
+        a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words)
         used_entry_rects = []
         for column in a_to_b_sidebars:
             for entry in column.entries:
                 used_entry_rects.extend([entry.start.rect, entry.end.rect])
 
-        sidebars: list[Sidebar] = a_to_b_sidebars
-        sidebars.extend(
+        # create sidebars with noise count
+        sidebars_noise: list[SidebarNoise] = [
+            SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, word_rtree)) for sidebar in a_to_b_sidebars
+        ]
+        sidebars_noise.extend(
             AAboveBSidebarExtractor.find_in_words(
-                words, used_entry_rects, sidebar_params=params["depth_column_params"]
+                words, word_rtree, used_entry_rects, sidebar_params=params["depth_column_params"]
             )
         )
 
-        for sidebar in sidebars:
+        for sidebar_noise in sidebars_noise:
             material_description_rect = find_material_description_column(
-                lines, sidebar, language, **params["material_description"]
+                lines, sidebar_noise.sidebar, language, **params["material_description"]
             )
             if material_description_rect:
                 material_descriptions_sidebar_pairs.append(
-                    MaterialDescriptionRectWithSidebar(sidebar, material_description_rect)
+                    MaterialDescriptionRectWithSidebar(
+                        sidebar=sidebar_noise.sidebar,
+                        material_description_rect=material_description_rect,
+                        noise_count=sidebar_noise.noise_count,
+                    )
                 )
         # lowest score first
-        material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match(words))
+        material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match)
 
     to_delete = []
     for i, pair in enumerate(material_descriptions_sidebar_pairs):
@@ -440,7 +452,7 @@ def find_material_description_column(
     if sidebar:
         return max(
             candidate_rects,
-            key=lambda rect: MaterialDescriptionRectWithSidebar(sidebar, rect).score_match(),
+            key=lambda rect: MaterialDescriptionRectWithSidebar(sidebar, rect).score_match,
         )
     else:
         return candidate_rects[0]

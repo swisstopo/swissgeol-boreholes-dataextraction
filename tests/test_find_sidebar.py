@@ -2,6 +2,7 @@
 
 import fitz
 import pytest
+import rtree
 from stratigraphy.depth import DepthColumnEntryExtractor
 from stratigraphy.lines.line import TextWord
 from stratigraphy.sidebar import AAboveBSidebarExtractor, AToBSidebarExtractor
@@ -63,12 +64,17 @@ def test_aabovebsidebarextractor_arithmetic_progression():  # noqa: D103
         TextWord(fitz.Rect(0, 6, 5, 7), "40.0", PAGE_NUMBER),
         TextWord(fitz.Rect(0, 8, 5, 9), "50.0", PAGE_NUMBER),
     ]
+    word_rtree = rtree.index.Index()
+    for i, word in enumerate(all_words):
+        word_rtree.insert(i, (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1))
     """Test the AAboveBSidebarExtractor with an arithmetic progression."""
-    columns = AAboveBSidebarExtractor.find_in_words(
+    sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
+        word_rtree,
         used_entry_rects=[],
         sidebar_params={"noise_count_threshold": 1.25, "noise_count_offset": 0},
     )
+    columns = [sidebar_noise.sidebar for sidebar_noise in sidebars_noise]
     assert len(columns) == 0, "There should be 0 columns as the above is a perfect arithmetic progression"
 
 
@@ -81,11 +87,16 @@ def test_aabovebsidebarextractor():  # noqa: D103
         TextWord(fitz.Rect(0, 6, 5, 7), "40.0", PAGE_NUMBER),
         TextWord(fitz.Rect(0, 8, 5, 9), "50.0", PAGE_NUMBER),
     ]
-    columns = AAboveBSidebarExtractor.find_in_words(
+    word_rtree = rtree.index.Index()
+    for word in all_words:
+        word_rtree.insert(id(word), (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
+    sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
+        word_rtree,
         used_entry_rects=[],
         sidebar_params={"noise_count_threshold": 1.25, "noise_count_offset": 0},
     )
+    columns = [sidebar_noise.sidebar for sidebar_noise in sidebars_noise]
     assert len(columns) == 1, "There should be 1 column"
     assert len(columns[0].entries) == 5, "The column should have 5 entries"
     assert pytest.approx(columns[0].entries[0].value) == 12.0, "The first entry should have a value of 12.0"
@@ -110,12 +121,17 @@ def test_aabovebsidebarextractor_two_column():  # noqa: D103
         TextWord(fitz.Rect(20, 8, 25, 9), "50.0", PAGE_NUMBER),
         TextWord(fitz.Rect(20, 10, 25, 11), "61.0", PAGE_NUMBER),
     ]
-
-    columns = AAboveBSidebarExtractor.find_in_words(
+    word_rtree = rtree.index.Index()
+    for word in all_words:
+        word_rtree.insert(id(word), (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
+    sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
+        word_rtree,
         used_entry_rects=[],
         sidebar_params={"noise_count_threshold": 1.25, "noise_count_offset": 0},
     )
+    columns = [sidebar_noise.sidebar for sidebar_noise in sidebars_noise]
+
     assert len(columns) == 2, "There should be 2 columns"
     assert {len(column.entries) for column in columns} == {5, 6}, "The columns should have 5 and 6 entries"
 

@@ -2,9 +2,10 @@
 
 import dataclasses
 
-from stratigraphy.lines.line import TextWord
+import rtree
 
 from .a_above_b_sidebar import AAboveBSidebar
+from .sidebar import SidebarNoise, noise_count
 from .sidebarentry import DepthColumnEntry
 
 
@@ -13,48 +14,43 @@ class AAboveBSidebarValidator:
     """Validation logic for instances of the AAboveBSidebar class.
 
     Args:
-        all_words (list[TextLine]): A list of all text lines on the page.
         noise_count_threshold (float): Noise count threshold deciding how much noise is allowed in a sidebar
                                        to be valid.
         noise_count_offset (int): Offset for the noise count threshold. Affects the noise count criterion.
                                   Effective specifically for sidebars with very few entries.
     """
 
-    all_words: list[TextWord]
     noise_count_threshold: float
     noise_count_offset: int
 
-    def is_valid(self, sidebar: AAboveBSidebar, corr_coef_threshold: float = 0.99) -> bool:
+    def is_valid(self, sidebar_noise: SidebarNoise[AAboveBSidebar], corr_coef_threshold: float = 0.99) -> bool:
         """Checks whether the sidebar is valid.
 
         The sidebar is considered valid if:
         - The number of entries is at least 3.
-        - The number of words that intersect with the depth column entries is less than the noise count threshold
+        - Its noise_count is less than the noise count threshold
           time the number of entries minus the noise count offset.
         - The entries are strictly increasing.
         - The entries are linearly correlated with their vertical position.
 
-        Note: The noise count criteria may require a rehaul. Some depth columns are not recognized as valid
-        even though they are.
-
         Args:
-            sidebar (AAboveBSidebar): The AAboveBSidebar to validate.
+            sidebar_noise (SidebarNoise): The SidebarNoise wrapping the sidebar to validate.
             corr_coef_threshold (float): The minimal correlation coefficient for the column to be deemed valid.
 
         Returns:
-            bool: True if the depth column is valid, False otherwise.
+            bool: True if the sidebar is valid, False otherwise.
         """
-        if len(sidebar.entries) < 3:
-            return False
-
         # When too much other text is in the column, then it is probably not valid.
         # The quadratic behavior of the noise count check makes the check stricter for columns with few entries
         # than columns with more entries. The more entries we have, the less likely it is that we found them by chance.
         # TODO: Once evaluation data is of good enough qualities, we should optimize for the parameter below.
-        if (
-            sidebar.noise_count(self.all_words)
-            > self.noise_count_threshold * (len(sidebar.entries) - self.noise_count_offset) ** 2
-        ):
+
+        sidebar = sidebar_noise.sidebar
+        noise = sidebar_noise.noise_count
+        if len(sidebar.entries) < 3:
+            return False
+
+        if noise > self.noise_count_threshold * (len(sidebar.entries) - self.noise_count_offset) ** 2:
             return False
         # Check if the entries are strictly increasing.
         if not sidebar.is_strictly_increasing():
@@ -66,27 +62,41 @@ class AAboveBSidebarValidator:
 
         return corr_coef and corr_coef > corr_coef_threshold
 
-    def reduce_until_valid(self, column: AAboveBSidebar) -> AAboveBSidebar:
+    def reduce_until_valid(
+        self, sidebar_noise: SidebarNoise[AAboveBSidebar], word_rtree: rtree.index.Index
+    ) -> SidebarNoise | None:
         """Removes entries from the depth column until it fulfills the is_valid condition.
 
         is_valid checks whether there is too much noise (i.e. other text) in the column and whether the entries are
         linearly correlated with their vertical position.
 
         Args:
-            column (AAboveBSidebar): The depth column to validate
-        Returns:
-            AAboveBSidebar: The current depth column with entries removed until it is valid.
-        """
-        while column:
-            if self.is_valid(column):
-                return column
-            elif self.correct_OCR_mistakes(column) is not None:
-                return self.correct_OCR_mistakes(column)
-            else:
-                column = column.remove_entry_by_correlation_gradient()
+            sidebar_noise (SidebarNoise): The SidebarNoise wrapping the AAboveBSidebar to validate.
+            word_rtree (rtree.index.Index): Pre-built R-tree of all words on page for spatial queries.
 
-    def correct_OCR_mistakes(self, sidebar: AAboveBSidebar) -> AAboveBSidebar | None:
-        """Corrects OCR mistakes in the depth column entries.
+        Returns:
+            sidebar_noise | None : The current SidebarNoise with entries removed from Sidebar until it is valid
+            and the recalculated noise_count or None.
+        """
+        while sidebar_noise.sidebar.entries:
+            if self.is_valid(sidebar_noise):
+                return sidebar_noise
+
+            corrected_sidebar_noise = self.correct_OCR_mistakes(sidebar_noise, word_rtree)
+            if corrected_sidebar_noise:
+                return corrected_sidebar_noise
+
+            new_sidebar = sidebar_noise.sidebar.remove_entry_by_correlation_gradient()
+            if not new_sidebar:
+                return None
+
+            new_noise_count = noise_count(new_sidebar, word_rtree)
+            sidebar_noise = SidebarNoise(sidebar=new_sidebar, noise_count=new_noise_count)
+
+        return None
+
+    def correct_OCR_mistakes(self, sidebar_noise: SidebarNoise, word_rtree: rtree.index.Index) -> SidebarNoise | None:
+        """Corrects OCR mistakes in the Sidebar entries.
 
         Loops through all values and corrects common OCR mistakes for the given entry. Then, the column with the
         highest pearson correlation coefficient is selected and checked for validity.
@@ -103,12 +113,15 @@ class AAboveBSidebarValidator:
         Note: Common mistakes should be extended as needed.
 
         Args:
-            sidebar (AAboveBSidebar): The AAboveBSidebar to validate
+            sidebar_noise (SidebarNoise): The SidebarNoise wrapping the sidebar to validate.
+            word_rtree (index.Index): R-tree of all words on page for efficient spatial queries.
 
         Returns:
-            AAboveBSidebar | None: The corrected sidebar, or None if no correction was possible.
+            SidebarNoise | None: The corrected SidebarNoise, or None if no correction was possible.
         """
+        sidebar = sidebar_noise.sidebar
         new_columns = [AAboveBSidebar(entries=[])]
+
         for entry in sidebar.entries:
             new_columns = [
                 AAboveBSidebar([*column.entries, DepthColumnEntry(entry.rect, new_value)])
@@ -121,10 +134,13 @@ class AAboveBSidebarValidator:
 
         if new_columns:
             best_column = max(new_columns, key=lambda column: column.pearson_correlation_coef())
+            new_noise_count = noise_count(best_column, word_rtree)
 
-            # We require a higher correlation coefficient when we've already corrected a mistake.
-            if self.is_valid(best_column, corr_coef_threshold=0.999):
-                return best_column
+            # We require a higher correlation coefficient when corrections are made
+            if self.is_valid(
+                SidebarNoise(sidebar=best_column, noise_count=new_noise_count), corr_coef_threshold=0.999
+            ):
+                return SidebarNoise(sidebar=best_column, noise_count=new_noise_count)
 
         return None
 

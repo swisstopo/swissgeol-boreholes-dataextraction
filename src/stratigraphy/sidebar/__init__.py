@@ -11,6 +11,7 @@ from .sidebar import Sidebar
 
 __all__ = [
     "Sidebar",
+    "SidebarNoise",
     "AAboveBSidebar",
     "AAboveBSidebarExtractor",
     "AAboveBSidebarValidator",
