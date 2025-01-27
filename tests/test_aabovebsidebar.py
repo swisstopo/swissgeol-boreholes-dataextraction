@@ -59,3 +59,52 @@ def test_aabovebsidebar_makeascending():  # noqa: D103
 
     # ensure a "noise" value "0.0" does not influence the result
     test([1.0, 2.0, 3.0, 0.0, 4.0], [1.0, 2.0, 3.0, 0.0, 4.0])
+
+
+def test_aabovebsidebar_isstrictlyincreasing():  # noqa: D103
+    """Test the is_strictly_increasing method of the AAboveBSidebar class."""
+    # Case 1: Strictly increasing values
+    sidebar = AAboveBSidebar(
+        [
+            DepthColumnEntry(fitz.Rect(), value=1),
+            DepthColumnEntry(fitz.Rect(), value=2),
+            DepthColumnEntry(fitz.Rect(), value=3),
+            DepthColumnEntry(fitz.Rect(), value=4),
+            DepthColumnEntry(fitz.Rect(), value=5),
+        ]
+    )
+    assert sidebar.is_strictly_increasing(), "The sidebar should be strictly increasing"
+
+    # Case 2: Not strictly increasing (equal values)
+    sidebar = AAboveBSidebar(
+        [
+            DepthColumnEntry(fitz.Rect(), value=1),
+            DepthColumnEntry(fitz.Rect(), value=2),
+            DepthColumnEntry(fitz.Rect(), value=2),
+            DepthColumnEntry(fitz.Rect(), value=4),
+        ]
+    )
+    assert not sidebar.is_strictly_increasing(), "The sidebar should not be strictly increasing"
+
+    # Case 3: Not strictly increasing (decreasing)
+    sidebar = AAboveBSidebar(
+        [
+            DepthColumnEntry(fitz.Rect(), value=5),
+            DepthColumnEntry(fitz.Rect(), value=4),
+            DepthColumnEntry(fitz.Rect(), value=3),
+            DepthColumnEntry(fitz.Rect(), value=2),
+        ]
+    )
+    assert not sidebar.is_strictly_increasing(), "The sidebar should not be strictly increasing"
+
+    # Case 4: Single entry (trivial)
+    sidebar = AAboveBSidebar(
+        [
+            DepthColumnEntry(fitz.Rect(), value=1),
+        ]
+    )
+    assert sidebar.is_strictly_increasing(), "A single entry should be considered strictly increasing"
+
+    # Case 5: Empty
+    sidebar = AAboveBSidebar([])
+    assert sidebar.is_strictly_increasing(), "An empty list should be considered strictly increasing"
