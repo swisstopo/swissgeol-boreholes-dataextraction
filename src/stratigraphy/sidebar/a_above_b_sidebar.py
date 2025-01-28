@@ -45,7 +45,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         )
 
     def is_strictly_increasing(self) -> bool:
-        return all(self.entries[i].value < self.entries[i + 1].value for i in range(len(self.entries) - 1))
+        return all(i.value < j.value for i, j in zip(self.entries, self.entries[1:], strict=False))
 
     def depth_intervals(self) -> list[AAboveBInterval]:
         """Creates a list of depth intervals from the depth column entries.
@@ -94,15 +94,11 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         positions = np.array([entry.rect.y1 for entry in self.entries])
         entries = np.array([entry.value for entry in self.entries])
 
-        std_positions = np.std(positions)
-        std_entries = np.std(entries)
-        if std_positions == 0 or std_entries == 0:
+        # Avoid warnings in the np.corrcoef call, as the correlation coef is undefined if the standard deviation is 0.
+        if np.std(entries) == 0 or np.std(positions) == 0:
             return 0
 
-        # We calculate the Pearson correlation coefficient manually
-        # to avoid redundant standard deviation calculations that would occur with np.corrcoef.
-        covariance = np.mean((positions - np.mean(positions)) * (entries - np.mean(entries)))
-        return covariance / (std_positions * std_entries)
+        return np.corrcoef(positions, entries)[0, 1].item()
 
     def remove_entry_by_correlation_gradient(self) -> AAboveBSidebar | None:
         if len(self.entries) < 3:
@@ -119,15 +115,23 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         for i, entry in enumerate(self.entries):
             if entry.value.is_integer() and entry.value > median_value:
                 factor100_value = entry.value / 100
-                previous_ok = i == 0 or all(entry.value < factor100_value for entry in self.entries[:i])
-                next_ok = i + 1 == len(self.entries) or factor100_value < self.entries[i + 1].value
-
-                if previous_ok and next_ok:
+                if self._valid_value(i, factor100_value):
                     # Create a new entry instead of modifying the value of the current one, as this entry might be
                     # used in different sidebars as well.
                     self.entries[i] = DepthColumnEntry(rect=entry.rect, value=factor100_value)
 
+            if "4" in str(entry.value) and not self._valid_value(i, entry.value):
+                alternative_value = float(str(entry.value).replace("4", "1"))
+                if self._valid_value(i, alternative_value):
+                    self.entries[i] = DepthColumnEntry(rect=entry.rect, value=alternative_value)
+
         return self
+
+    def _valid_value(self, index: int, new_value: float) -> bool:
+        """Check if new value at given index is maintaining ascending order."""
+        previous_ok = index == 0 or all(other_entry.value < new_value for other_entry in self.entries[:index])
+        next_ok = index + 1 == len(self.entries) or new_value < self.entries[index + 1].value
+        return previous_ok and next_ok
 
     def break_on_double_descending(self) -> list[AAboveBSidebar]:
         segments = []

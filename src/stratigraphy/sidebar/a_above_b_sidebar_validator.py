@@ -82,10 +82,6 @@ class AAboveBSidebarValidator:
             if self.is_valid(sidebar_noise):
                 return sidebar_noise
 
-            corrected_sidebar_noise = self.correct_OCR_mistakes(sidebar_noise, word_rtree)
-            if corrected_sidebar_noise:
-                return corrected_sidebar_noise
-
             new_sidebar = sidebar_noise.sidebar.remove_entry_by_correlation_gradient()
             if not new_sidebar:
                 return None
