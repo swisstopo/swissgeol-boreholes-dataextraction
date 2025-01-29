@@ -124,9 +124,9 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
                         self.entries[i] = DepthColumnEntry(rect=entry.rect, value=new_value)
                         break
 
-            if "4" in str(entry.value) and not self._valid_value(
-                i, entry.value
-            ):  # OCR mistake example also 3 instead of 9
+            if "4" in str(entry.value) and not self._valid_value(i, entry.value):
+                # Correct common OCR mistakes where "4" is recognized instead of "1"
+                # Edge case: OCR also can also replace "3" with "9"
                 alternative_values = generate_alternatives(entry.value)
                 for alternative_value in alternative_values:
                     if self._valid_value(i, alternative_value):
@@ -243,13 +243,12 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         return groups
 
 
-def generate_alternatives(value):
+def generate_alternatives(value: float) -> list[float]:
     """Generate a list of all possible alternatives by replacing each '4' with '1'."""
     value_str = str(value)
     alternatives = []
     options = [(char if char != "4" else ["4", "1"]) for char in value_str]
 
-    # Create all combinations
     for combo in product(*options):
         alternatives.append(float("".join(combo)))
 
