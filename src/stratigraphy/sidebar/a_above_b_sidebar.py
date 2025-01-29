@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import statistics
 from dataclasses import dataclass
+from itertools import product
 
 import fitz
 import numpy as np
@@ -113,23 +114,32 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
     def make_ascending(self):
         median_value = np.median(np.array([entry.value for entry in self.entries]))
         for i, entry in enumerate(self.entries):
+            new_values = []
             if entry.value.is_integer() and entry.value > median_value:
-                factor100_value = entry.value / 100
-                if self._valid_value(i, factor100_value):
-                    # Create a new entry instead of modifying the value of the current one, as this entry might be
-                    # used in different sidebars as well.
-                    self.entries[i] = DepthColumnEntry(rect=entry.rect, value=factor100_value)
+                new_values.extend([entry.value / 100, entry.value / 10])
+                for new_value in new_values:
+                    if self._valid_value(i, new_value):
+                        # Create a new entry instead of modifying the value of the current one, as this entry might be
+                        # used in different sidebars as well.
+                        self.entries[i] = DepthColumnEntry(rect=entry.rect, value=new_value)
+                        break
 
-            if "4" in str(entry.value) and not self._valid_value(i, entry.value):
-                alternative_value = float(str(entry.value).replace("4", "1"))
-                if self._valid_value(i, alternative_value):
-                    self.entries[i] = DepthColumnEntry(rect=entry.rect, value=alternative_value)
+            if "4" in str(entry.value) and not self._valid_value(
+                i, entry.value
+            ):  # OCR mistake example also 3 instead of 9
+                alternative_values = generate_alternatives(entry.value)
+                for alternative_value in alternative_values:
+                    if self._valid_value(i, alternative_value):
+                        self.entries[i] = DepthColumnEntry(rect=entry.rect, value=alternative_value)
+                        break
 
         return self
 
     def _valid_value(self, index: int, new_value: float) -> bool:
         """Check if new value at given index is maintaining ascending order."""
-        previous_ok = index == 0 or all(other_entry.value < new_value for other_entry in self.entries[:index])
+        previous_ok = index == 0 or all(
+            other_entry.value < new_value for other_entry in self.entries[:index]
+        )  ## too strict?
         next_ok = index + 1 == len(self.entries) or new_value < self.entries[index + 1].value
         return previous_ok and next_ok
 
@@ -231,3 +241,16 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
             groups.append(IntervalBlockGroup(depth_intervals=current_intervals, blocks=current_blocks))
 
         return groups
+
+
+def generate_alternatives(value):
+    """Generate a list of all possible alternatives by replacing each '4' with '1'."""
+    value_str = str(value)
+    alternatives = []
+    options = [(char if char != "4" else ["4", "1"]) for char in value_str]
+
+    # Create all combinations
+    for combo in product(*options):
+        alternatives.append(float("".join(combo)))
+
+    return alternatives
