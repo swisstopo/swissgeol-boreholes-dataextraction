@@ -5,7 +5,6 @@ import math
 from dataclasses import dataclass
 
 import fitz
-from stratigraphy.lines.line import TextWord
 from stratigraphy.sidebar import Sidebar
 
 logger = logging.getLogger(__name__)
@@ -17,31 +16,25 @@ class MaterialDescriptionRectWithSidebar:
 
     sidebar: Sidebar | None
     material_description_rect: fitz.Rect
+    noise_count: int = 0
 
-    def score_match(self, all_words: list[TextWord] | None = None) -> float:
+    @property
+    def score_match(self) -> float:
         """Scores the match between a sidebar and a material description.
 
-        Args:
-            all_words (list[TextWord] | None, optional): List of the available text words. Defaults to None.
-
         Returns:
-            float: The score of the match.
+            float: The score of the match. Better matches have a higher score value.
         """
         rect = self.sidebar.rect()
-        top_sidebar = rect.y0
-        bottom_sidebar = rect.y1
-        right_sidebar = rect.x1
-
-        vertical_distance = abs(top_sidebar - self.material_description_rect.y0) + abs(
-            bottom_sidebar - self.material_description_rect.y1
+        top = rect.y0
+        bottom = rect.y1
+        right = rect.x1
+        distance = (
+            abs(top - self.material_description_rect.y0)
+            + abs(bottom - self.material_description_rect.y1)
+            + abs(right - self.material_description_rect.x0)
         )
-        horizontal_distance = abs(right_sidebar - self.material_description_rect.x0)
-        distance = 1.5 * vertical_distance + horizontal_distance
 
-        height_sidebar = bottom_sidebar - top_sidebar
-        noise_count = self.sidebar.noise_count(all_words) if all_words else 0
-        # noise_penalty = noise_count**3
+        height = bottom - top
 
-        # return (height_sidebar - distance - noise_penalty)
-        # TODO: check which scoring system will have max accuracy
-        return (height_sidebar - distance) * math.pow(0.95, noise_count)
+        return (height - distance) * math.pow(0.8, 10 * self.noise_count / len(self.sidebar.entries))

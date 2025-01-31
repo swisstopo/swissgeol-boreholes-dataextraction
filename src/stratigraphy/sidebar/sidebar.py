@@ -7,11 +7,13 @@ from dataclasses import dataclass
 from typing import Generic, TypeVar
 
 import fitz
+import rtree
 
-from stratigraphy.depth import DepthColumnEntry
 from stratigraphy.lines.line import TextLine, TextWord
 from stratigraphy.sidebar.interval_block_group import IntervalBlockGroup
+from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 from stratigraphy.util.dataclasses import Line
+from stratigraphy.util.util import x_overlap_significant_smallest
 
 EntryT = TypeVar("EntryT", bound=DepthColumnEntry)
 
@@ -44,24 +46,6 @@ class Sidebar(abc.ABC, Generic[EntryT]):
         """Get the minimum x1 value of the depth column entries."""
         return min([rect.x1 for rect in self.rects()])
 
-    def noise_count(self, all_words: list[TextWord]) -> int:
-        """Counts the number of words that intersect with the depth column entries.
-
-        Returns the number of words that intersect with the depth column entries, but are not part of the depth column.
-
-        Args:
-            all_words (list[TextWord]): A list of all text lines on the page.
-
-        Returns:
-            int: The number of words that intersect with the depth column entries but are not part of it.
-        """
-
-        def significant_intersection(other_rect):
-            intersection = fitz.Rect(other_rect).intersect(self.rect())
-            return intersection.is_valid and intersection.width > 0.25 * self.rect().width
-
-        return len([word for word in all_words if significant_intersection(word.rect)]) - len(self.entries)
-
     @abc.abstractmethod
     def identify_groups(
         self,
@@ -83,26 +67,45 @@ class Sidebar(abc.ABC, Generic[EntryT]):
         """
         pass
 
-    def can_be_appended(self, rect: fitz.Rect) -> bool:
-        """Checks if a new depth column entry can be appended to the current depth column.
 
-        Check if the middle of the new rect is between the outer horizontal boundaries of the column, and if there is
-        an intersection with the minimal horizontal boundaries of the column.
+@dataclass
+class SidebarNoise(Generic[EntryT]):
+    """Wrapper class for Sidebar to calculate noise count using intersecting words."""
 
-        The checks are:
-        - The width of the new rectangle is greater than the width of the current depth column. Or;
-        - The middle of the new rectangle is within the horizontal boundaries of the current depth column.
-        - The new rectangle intersects with the minimal horizontal boundaries of the current depth column.
+    sidebar: Sidebar[EntryT]
+    noise_count: int
 
-        Args:
-            rect (fitz.Rect): Rect of the depth column entry to be appended.
+    def __post_init__(self):
+        if not isinstance(self.sidebar, Sidebar):
+            raise TypeError(f"Expected a Sidebar instance, got {type(self.sidebar).__name__}")
 
-        Returns:
-            bool: True if the new depth column entry can be appended, False otherwise.
-        """
-        new_middle = (rect.x0 + rect.x1) / 2
-        if (self.rect().width < rect.width or self.rect().x0 < new_middle < self.rect().x1) and (
-            rect.x0 <= self.min_x1 and self.max_x0 <= rect.x1
-        ):
-            return True
-        return False
+    def __repr__(self):
+        return f"SidebarNoise(sidebar={repr(self.sidebar)}, noise_count={self.noise_count})"
+
+
+def noise_count(sidebar: Sidebar, word_rtree: rtree.index.Index) -> int:
+    """Counts the number of words that intersect with the Sidebar entries.
+
+    Args:
+        sidebar (Sidebar): Sidebar object for which the noise count is calculated.
+        word_rtree (rtree.index.Index): Pre-built R-tree of all words on page for spatial queries.
+
+    Returns:
+        int: The number of words that intersect with the Sidebar entries but are not part of it.
+    """
+    sidebar_rect = sidebar.rect()
+    intersecting_words = _get_intersecting_words(word_rtree, sidebar_rect)
+
+    def significant_intersection(word: TextWord) -> bool:
+        word_rect = word.rect
+        x_overlap = x_overlap_significant_smallest(sidebar_rect, word_rect, 0.25)
+        intersects = word_rect.intersects(sidebar_rect)
+        return x_overlap and intersects
+
+    return sum(1 for word in intersecting_words if significant_intersection(word)) - len(sidebar.entries)
+
+
+def _get_intersecting_words(word_rtree: rtree.index.Index, rect: fitz.Rect) -> list[TextWord]:
+    """Retrieve all words from the page intersecting with Sidebar bounding box."""
+    intersecting_words = list(word_rtree.intersection((rect.x0, rect.y0, rect.x1, rect.y1), objects="raw"))
+    return [word for word in intersecting_words if any(char.isalnum() for char in word.text)]

@@ -2,14 +2,25 @@
 
 from __future__ import annotations
 
+import abc
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 import fitz
 
+ValueT = TypeVar("ValueT")
+
 
 @dataclass
-class DepthColumnEntry:  # noqa: D101
+class SidebarEntry(abc.ABC, Generic[ValueT]):
+    """Abstract class for sidebar entries (e.g. DepthColumnEntry or LayerIdentifierEntry)."""
+
+    rect: fitz.Rect
+    value: ValueT
+
+
+@dataclass
+class DepthColumnEntry(SidebarEntry[float]):  # noqa: D101
     """Class to represent a depth column entry."""
 
     rect: fitz.Rect
@@ -33,3 +44,7 @@ class DepthColumnEntry:  # noqa: D101
             DepthColumnEntry: The depth column entry object.
         """
         return cls(rect=fitz.Rect(data["rect"]), value=data["value"])
+
+
+class LayerIdentifierEntry(SidebarEntry[str]):
+    """Class for a layer identifier entry."""

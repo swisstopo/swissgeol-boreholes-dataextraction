@@ -6,7 +6,7 @@ import fitz
 
 from stratigraphy.lines.line import TextLine
 
-from .depthcolumnentry import DepthColumnEntry
+from ..sidebar.sidebarentry import DepthColumnEntry
 from .interval import AToBInterval
 from .util import parse_numeric_value
 

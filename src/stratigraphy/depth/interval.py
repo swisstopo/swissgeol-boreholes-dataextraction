@@ -7,9 +7,8 @@ import abc
 import fitz
 
 from stratigraphy.lines.line import TextLine
+from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 from stratigraphy.text.textblock import TextBlock
-
-from .depthcolumnentry import DepthColumnEntry
 
 
 class Interval(metaclass=abc.ABCMeta):
@@ -143,6 +142,9 @@ class AToBInterval(Interval):
 
     def __init__(self, start: DepthColumnEntry, end: DepthColumnEntry):
         super().__init__(start, end)
+
+    def __repr__(self):
+        return f"({self.start}, {self.end})"
 
     @property
     def rect(self) -> fitz.Rect:
