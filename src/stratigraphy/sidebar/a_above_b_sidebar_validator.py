@@ -79,6 +79,13 @@ class AAboveBSidebarValidator:
             and the recalculated noise_count or None.
         """
         while sidebar_noise.sidebar.entries:
+            # integer_entries = [entry for entry in sidebar_noise.sidebar.entries if isinstance(entry.value, int)]
+            # if integer_entries and close_to_arithmetic_progression(integer_entries):
+            #     sidebar_noise.sidebar.entries = [
+            #     entry for entry in sidebar_noise.sidebar.entries if entry not in integer_entries]
+            #     sidebar_noise.noise_count = noise_count(sidebar_noise.sidebar, word_rtree)
+            #     continue
+
             if self.is_valid(sidebar_noise):
                 return sidebar_noise
 
@@ -152,7 +159,7 @@ def _value_alternatives(value: float | int) -> set[float]:
         value (float | int): The depth values to find plausible alternatives for
 
     Returns:
-        set(float): all plausible values (including the original one)
+        set (float): all plausible values (including the original one)
     """
     alternatives = {value}
     # In older documents, OCR sometimes mistakes 1 for 4

@@ -68,7 +68,7 @@ class AAboveBSidebarExtractor:
                         column.sidebar.entries = [
                             entry for entry in column.sidebar.entries if entry not in integer_entries
                         ]
-                        column.sidebar.noise_count = noise_count(column.sidebar, word_rtree)
+                        column.noise_count = noise_count(column.sidebar, word_rtree)
 
         sidebars_by_length = sorted(
             [sidebar_noise for sidebar_noise in validated_sidebars if sidebar_noise.sidebar],
