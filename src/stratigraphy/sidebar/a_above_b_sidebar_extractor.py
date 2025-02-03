@@ -42,7 +42,6 @@ class AAboveBSidebarExtractor:
         clusters = Cluster[DepthColumnEntry].create_clusters(entries)
 
         numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 3]
-        sidebar_validator = AAboveBSidebarValidator(**sidebar_params)
 
         filtered_columns = [
             column

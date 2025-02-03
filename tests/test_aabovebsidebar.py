@@ -2,6 +2,7 @@
 
 import fitz
 from stratigraphy.sidebar import AAboveBSidebar
+from stratigraphy.sidebar.a_above_b_sidebar import generate_alternatives
 from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 
 
@@ -47,18 +48,46 @@ def test_aabovebsidebar_makeascending():  # noqa: D103
 
     def test(in_values, out_values):
         sidebar = AAboveBSidebar([DepthColumnEntry(fitz.Rect(), value=value) for value in in_values])
-        assert [
-            entry.value for entry in sidebar.make_ascending().entries
-        ] == out_values, "The depth values from the sidebar are not converted correctly"
+        result = [entry.value for entry in sidebar.make_ascending().entries]
+        assert result == out_values, f"Expected {out_values}, but got {result}"
 
+    # Basic transformation for values greater than the median, correct by factor 100
     test([1.0, 200.0, 3.0], [1.0, 2.0, 3.0])
     test([100.0, 2.0, 3.0], [1.0, 2.0, 3.0])
     test([1.0, 2.0, 300.0], [1.0, 2.0, 3.0])
-    test([1.0, 200.0, 300.0, 4.0, 5.0, 6.0, 100.0], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 100.0])
+
+    # Basic transformation for values greater than the median, correct by factor 10
+    test([1.0, 20.0, 300.0], [1.0, 20.0, 30.0])
+    test([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 100.0], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 10.0])
     test([100.0, 200.0, 300.0], [100.0, 200.0, 300.0])
+
+    ## Transforming OCR mistakes
+    test([0.5, 4.0, 2.0, 5.0], [0.5, 1.0, 2.0, 5.0])
+    test([4.0, 4.4, 4.4, 5.0], [4.0, 4.1, 4.4, 5.0])
 
     # ensure a "noise" value "0.0" does not influence the result
     test([1.0, 2.0, 3.0, 0.0, 4.0], [1.0, 2.0, 3.0, 0.0, 4.0])
+
+
+def test_generate_alternatives():
+    """Test generate_alternatives function for alternative options to OCR mistakes."""
+    assert generate_alternatives(4) == [4, 1]
+    assert generate_alternatives(14) == [14, 11]
+    assert generate_alternatives(441) == [441, 411, 141, 111]
+    assert generate_alternatives(123) == [123]
+    assert generate_alternatives(4.4) == [4.4, 4.1, 1.4, 1.1]
+
+
+def test_valid_value():
+    """Test _valid_value helper function for make_ascending method of the AAboveBSidebar class."""
+    entries = [DepthColumnEntry(None, 1), DepthColumnEntry(None, 2), DepthColumnEntry(None, 3)]
+    sidebar = AAboveBSidebar(entries)
+
+    assert sidebar._valid_value(1, 2) is True
+    assert sidebar._valid_value(1, 3) is False
+    assert sidebar._valid_value(1, 1.5) is True
+    assert sidebar._valid_value(0, 2) is False
+    assert sidebar._valid_value(2, 3.5) is True
 
 
 def test_aabovebsidebar_isstrictlyincreasing():  # noqa: D103
