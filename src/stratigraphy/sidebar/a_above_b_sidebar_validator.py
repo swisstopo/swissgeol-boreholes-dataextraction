@@ -6,7 +6,6 @@ import rtree
 
 from .a_above_b_sidebar import AAboveBSidebar
 from .sidebar import SidebarNoise, noise_count
-from .sidebarentry import DepthColumnEntry
 
 
 @dataclasses.dataclass
@@ -89,10 +88,6 @@ class AAboveBSidebarValidator:
             if self.is_valid(sidebar_noise):
                 return sidebar_noise
 
-            corrected_sidebar_noise = self.correct_OCR_mistakes(sidebar_noise, word_rtree)
-            if corrected_sidebar_noise:
-                return corrected_sidebar_noise
-
             new_sidebar = sidebar_noise.sidebar.remove_entry_by_correlation_gradient()
             if not new_sidebar:
                 return None
@@ -101,72 +96,3 @@ class AAboveBSidebarValidator:
             sidebar_noise = SidebarNoise(sidebar=new_sidebar, noise_count=new_noise_count)
 
         return None
-
-    def correct_OCR_mistakes(self, sidebar_noise: SidebarNoise, word_rtree: rtree.index.Index) -> SidebarNoise | None:
-        """Corrects OCR mistakes in the Sidebar entries.
-
-        Loops through all values and corrects common OCR mistakes for the given entry. Then, the column with the
-        highest pearson correlation coefficient is selected and checked for validity.
-
-        This is useful if one or more entries have an OCR mistake, and the column is not valid because of it.
-
-        Currently, there is no limit on the number of corrections per depth column. Indeed, there are examples of depth
-        columns with multiple OCR errors on different depth values. On the other hand, allowing an unlimited number of
-        corrections increases the risk, that a random column of different values is incorrectly accepted as a depth
-        column after making the corrections, especially if the column has a low number of entries. A more robust
-        solution might be to allow corrections on less than 50% of all entries, or something similar. However, we
-        currently don't have enough examples to properly tune this parameter.
-
-        Note: Common mistakes should be extended as needed.
-
-        Args:
-            sidebar_noise (SidebarNoise): The SidebarNoise wrapping the sidebar to validate.
-            word_rtree (index.Index): R-tree of all words on page for efficient spatial queries.
-
-        Returns:
-            SidebarNoise | None: The corrected SidebarNoise, or None if no correction was possible.
-        """
-        sidebar = sidebar_noise.sidebar
-        new_columns = [AAboveBSidebar(entries=[])]
-
-        for entry in sidebar.entries:
-            new_columns = [
-                AAboveBSidebar([*column.entries, DepthColumnEntry(entry.rect, new_value)])
-                for column in new_columns
-                for new_value in _value_alternatives(entry.value)
-            ]
-            # Immediately require strictly increasing values, to avoid exponential complexity when many implausible
-            # alternative values are suggested
-            new_columns = [column for column in new_columns if column.is_strictly_increasing()]
-
-        if new_columns:
-            best_column = max(new_columns, key=lambda column: column.pearson_correlation_coef())
-            new_noise_count = noise_count(best_column, word_rtree)
-
-            # We require a higher correlation coefficient when corrections are made
-            if self.is_valid(
-                SidebarNoise(sidebar=best_column, noise_count=new_noise_count), corr_coef_threshold=0.999
-            ):
-                return SidebarNoise(sidebar=best_column, noise_count=new_noise_count)
-
-        return None
-
-
-def _value_alternatives(value: float | int) -> set[float]:
-    """Corrects frequent OCR errors in depth column entries.
-
-    Args:
-        value (float | int): The depth values to find plausible alternatives for
-
-    Returns:
-        set (float): all plausible values (including the original one)
-    """
-    alternatives = {value}
-    # In older documents, OCR sometimes mistakes 1 for 4
-    alternatives.add(float(str(value).replace("4", "1")))
-
-    # replace a pattern such as '.80' with '0.80'. These cases are already converted
-    # to '80.0' when depth entries are recognized.
-    if isinstance(value, int):
-        alternatives.add(float(value) / 100)
-    return alternatives
