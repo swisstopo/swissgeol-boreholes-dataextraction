@@ -59,16 +59,9 @@ class AAboveBSidebarExtractor:
 
         validated_sidebars = list(filter(None, map(process_column, filtered_columns)))
 
-        for column in validated_sidebars:  ## create helper function
-            if column.sidebar:
-                integer_entries = [entry for entry in column.sidebar.entries if isinstance(entry.value, int)]
-                if integer_entries:
-                    integer_subset = AAboveBSidebar(integer_entries)
-                    if integer_subset.close_to_arithmetic_progression():
-                        column.sidebar.entries = [
-                            entry for entry in column.sidebar.entries if entry not in integer_entries
-                        ]
-                        column.noise_count = noise_count(column.sidebar, word_rtree)
+        for sidebar_noise in validated_sidebars:
+            if sidebar_noise.sidebar:
+                sidebar_noise.sidebar.remove_integer_scale()
 
         sidebars_by_length = sorted(
             [sidebar_noise for sidebar_noise in validated_sidebars if sidebar_noise.sidebar],

@@ -43,7 +43,6 @@ class AAboveBSidebarValidator:
         # The quadratic behavior of the noise count check makes the check stricter for columns with few entries
         # than columns with more entries. The more entries we have, the less likely it is that we found them by chance.
         # TODO: Once evaluation data is of good enough qualities, we should optimize for the parameter below.
-        ## TODO: comment section as for deepwells column get excluded due to high noise count
         sidebar = sidebar_noise.sidebar
         noise = sidebar_noise.noise_count
         if len(sidebar.entries) < 3:
@@ -78,13 +77,6 @@ class AAboveBSidebarValidator:
             and the recalculated noise_count or None.
         """
         while sidebar_noise.sidebar.entries:
-            # integer_entries = [entry for entry in sidebar_noise.sidebar.entries if isinstance(entry.value, int)]
-            # if integer_entries and close_to_arithmetic_progression(integer_entries):
-            #     sidebar_noise.sidebar.entries = [
-            #     entry for entry in sidebar_noise.sidebar.entries if entry not in integer_entries]
-            #     sidebar_noise.noise_count = noise_count(sidebar_noise.sidebar, word_rtree)
-            #     continue
-
             if self.is_valid(sidebar_noise):
                 return sidebar_noise
 
