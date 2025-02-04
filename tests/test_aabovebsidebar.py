@@ -6,6 +6,13 @@ from stratigraphy.sidebar.a_above_b_sidebar import generate_alternatives
 from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 
 
+def run_test(method, in_values, out_values):
+    """Helper function to run tests on AAboveBSidebar methods."""
+    sidebar = AAboveBSidebar([DepthColumnEntry(fitz.Rect(), value=value) for value in in_values])
+    result = [entry.value for entry in getattr(sidebar, method)().entries]
+    assert result == out_values, f"Expected {out_values}, but got {result}"
+
+
 def test_aabovebsidebar_closetoarithmeticprogression():  # noqa: D103
     """Test the close_to_arithmetic_progression method of the AAboveBSidebar class."""
     sidebar = AAboveBSidebar(
@@ -43,30 +50,34 @@ def test_aabovebsidebar_closetoarithmeticprogression():  # noqa: D103
     ), "The sidebar should not be recognized as arithmetic progression"
 
 
+def test_aabovebsidebar_removeintegerscale():  # noqa: D103
+    """Test the remove_integer_scale method of the AAboveBSidebar class."""
+    run_test("remove_integer_scale", [1.05, 2, 3, 4, 5.78, 6], [1.05, 5.78])
+    run_test("remove_integer_scale", [10, 20, 30, 40, 50], [])
+    run_test("remove_integer_scale", [5, 10, 15, 20, 25, 30.5, 40.7], [30.5, 40.7])
+    run_test("remove_integer_scale", [3, 7, 12, 20], [3, 7, 12, 20])
+    run_test("remove_integer_scale", [10], [10])
+    run_test("remove_integer_scale", [1.1, 2.2, 3.3, 4.4], [1.1, 2.2, 3.3, 4.4])
+
+
 def test_aabovebsidebar_makeascending():  # noqa: D103
     """Test the make_ascending method of the AAboveBSidebar class."""
-
-    def test(in_values, out_values):
-        sidebar = AAboveBSidebar([DepthColumnEntry(fitz.Rect(), value=value) for value in in_values])
-        result = [entry.value for entry in sidebar.make_ascending().entries]
-        assert result == out_values, f"Expected {out_values}, but got {result}"
-
     # Basic transformation for values greater than the median, correct by factor 100
-    test([1.0, 200.0, 3.0], [1.0, 2.0, 3.0])
-    test([100.0, 2.0, 3.0], [1.0, 2.0, 3.0])
-    test([1.0, 2.0, 300.0], [1.0, 2.0, 3.0])
+    run_test("make_ascending", [1.0, 200.0, 3.0], [1.0, 2.0, 3.0])
+    run_test("make_ascending", [100.0, 2.0, 3.0], [1.0, 2.0, 3.0])
+    run_test("make_ascending", [1.0, 2.0, 300.0], [1.0, 2.0, 3.0])
 
     # Basic transformation for values greater than the median, correct by factor 10
-    test([1.0, 20.0, 300.0], [1.0, 20.0, 30.0])
-    test([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 100.0], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 10.0])
-    test([100.0, 200.0, 300.0], [100.0, 200.0, 300.0])
+    run_test("make_ascending", [1.0, 20.0, 300.0], [1.0, 20.0, 30.0])
+    run_test("make_ascending", [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 100.0], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 10.0])
+    run_test("make_ascending", [100.0, 200.0, 300.0], [100.0, 200.0, 300.0])
 
     ## Transforming OCR mistakes
-    test([0.5, 4.0, 2.0, 5.0], [0.5, 1.0, 2.0, 5.0])
-    test([4.0, 4.4, 4.4, 5.0], [4.0, 4.1, 4.4, 5.0])
+    run_test("make_ascending", [0.5, 4.0, 2.0, 5.0], [0.5, 1.0, 2.0, 5.0])
+    run_test("make_ascending", [4.0, 4.4, 4.4, 5.0], [4.0, 4.1, 4.4, 5.0])
 
     # ensure a "noise" value "0.0" does not influence the result
-    test([1.0, 2.0, 3.0, 0.0, 4.0], [1.0, 2.0, 3.0, 0.0, 4.0])
+    run_test("make_ascending", [1.0, 2.0, 3.0, 0.0, 4.0], [1.0, 2.0, 3.0, 0.0, 4.0])
 
 
 def test_generate_alternatives():

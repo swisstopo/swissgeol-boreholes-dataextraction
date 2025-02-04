@@ -1,6 +1,5 @@
 """Contains the main extraction pipeline for stratigraphy."""
 
-import logging
 from dataclasses import dataclass
 
 import fitz
@@ -31,8 +30,6 @@ from stratigraphy.util.util import (
     x_overlap,
     x_overlap_significant_smallest,
 )
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -103,7 +100,6 @@ def process_page(
                 words, word_rtree, used_entry_rects, sidebar_params=params["depth_column_params"]
             )
         )
-
         for sidebar_noise in sidebars_noise:
             material_description_rect = find_material_description_column(
                 lines, sidebar_noise.sidebar, language, **params["material_description"]
@@ -118,7 +114,6 @@ def process_page(
                 )
         # lowest score first
         material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match)
-
     to_delete = []
     for i, pair in enumerate(material_descriptions_sidebar_pairs):
         if any(
