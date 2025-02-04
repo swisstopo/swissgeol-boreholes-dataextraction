@@ -43,6 +43,7 @@ class AAboveBSidebarValidator:
         # The quadratic behavior of the noise count check makes the check stricter for columns with few entries
         # than columns with more entries. The more entries we have, the less likely it is that we found them by chance.
         # TODO: Once evaluation data is of good enough qualities, we should optimize for the parameter below.
+
         sidebar = sidebar_noise.sidebar
         noise = sidebar_noise.noise_count
         if len(sidebar.entries) < 3:

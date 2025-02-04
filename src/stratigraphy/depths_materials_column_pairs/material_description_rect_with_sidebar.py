@@ -1,13 +1,10 @@
 """Definition of the MaterialDescriptionRectWithSidebar class."""
 
-import logging
 import math
 from dataclasses import dataclass
 
 import fitz
 from stratigraphy.sidebar import Sidebar
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
