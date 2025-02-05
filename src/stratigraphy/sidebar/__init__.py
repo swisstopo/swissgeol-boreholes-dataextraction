@@ -7,7 +7,7 @@ from .a_to_b_sidebar import AToBSidebar
 from .a_to_b_sidebar_extractor import AToBSidebarExtractor
 from .layer_identifier_sidebar import LayerIdentifierSidebar
 from .layer_identifier_sidebar_extractor import LayerIdentifierSidebarExtractor
-from .sidebar import Sidebar
+from .sidebar import Sidebar, SidebarNoise
 
 __all__ = [
     "Sidebar",

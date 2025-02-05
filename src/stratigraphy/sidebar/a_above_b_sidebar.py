@@ -9,7 +9,7 @@ from itertools import product
 import fitz
 import numpy as np
 
-from stratigraphy.depth import AAboveBInterval
+from stratigraphy.depth.interval import AAboveBInterval
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.find_description import get_description_blocks
 from stratigraphy.util.dataclasses import Line

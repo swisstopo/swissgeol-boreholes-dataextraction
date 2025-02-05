@@ -3,8 +3,8 @@
 import fitz
 import rtree
 
-from stratigraphy.depth import DepthColumnEntryExtractor
 from stratigraphy.lines.line import TextWord
+from stratigraphy.sidebar.depthcolumnentry_extractor import DepthColumnEntryExtractor
 
 from .a_above_b_sidebar import AAboveBSidebar
 from .a_above_b_sidebar_validator import AAboveBSidebarValidator
