@@ -2,7 +2,6 @@
 
 import re
 
-from stratigraphy.depth.util import parse_numeric_value
 from stratigraphy.lines.line import TextWord
 
 from ..sidebar.sidebarentry import DepthColumnEntry
@@ -26,7 +25,7 @@ class DepthColumnEntryExtractor:
             list[DepthColumnEntry]: The extracted depth column entries.
         """
         entries = []
-        regex = re.compile(r"^-?\.?([0-9]+(\.[0-9]+)?)[müMN\\.]*$")
+        regex = re.compile(r"^-?\.?([0-9]+(\.[0-9]*)?)[müMN\\.]*$")
 
         for word in sorted(all_words, key=lambda word: word.rect.y0):
             try:
@@ -35,8 +34,7 @@ class DepthColumnEntryExtractor:
                 # recognizes a '-' as a '.' and we just ommit the leading '.' to avoid this issue.
                 match = regex.match(input_string)
                 if match:
-                    value = parse_numeric_value(match.group(1))
-                    entries.append(DepthColumnEntry(word.rect, value))
+                    entries.append(DepthColumnEntry.from_string_value(word.rect, match.group(1)))
 
                 elif include_splits:
                     # support for e.g. "1.10-1.60m" extracted as a single word

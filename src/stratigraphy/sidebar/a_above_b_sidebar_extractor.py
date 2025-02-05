@@ -60,8 +60,7 @@ class AAboveBSidebarExtractor:
         validated_sidebars = list(filter(None, map(process_column, filtered_columns)))
 
         for sidebar_noise in validated_sidebars:
-            if sidebar_noise.sidebar:
-                sidebar_noise.sidebar.remove_integer_scale()
+            sidebar_noise.sidebar.remove_integer_scale()
 
         sidebars_by_length = sorted(
             [sidebar_noise for sidebar_noise in validated_sidebars if sidebar_noise.sidebar],

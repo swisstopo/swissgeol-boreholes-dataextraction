@@ -122,7 +122,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
 
     def remove_integer_scale(self):
         """Removes arithmetically progressing integers from this sidebar, as they are likely a scale."""
-        integer_entries = [entry for entry in self.entries if isinstance(entry.value, int)]
+        integer_entries = [entry for entry in self.entries if not entry.has_decimal_point]
         if integer_entries and AAboveBSidebar.is_close_to_arithmetic_progression(integer_entries):
             self.entries = [entry for entry in self.entries if entry not in integer_entries]
         return self
@@ -134,7 +134,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         for i, entry in enumerate(self.entries):
             new_values = []
 
-            if float(entry.value).is_integer() and entry.value > median_value:
+            if entry.value.is_integer() and entry.value > median_value:
                 new_values.extend([entry.value / 100, entry.value / 10])
 
             # Correct common OCR mistakes where "4" is recognized instead of "1"
