@@ -2,9 +2,10 @@
 
 import re
 
-from stratigraphy.depth import AToBInterval, DepthColumnEntryExtractor
+from stratigraphy.depth import AToBInterval
 from stratigraphy.lines.line import TextWord
 from stratigraphy.sidebar import AToBSidebar
+from stratigraphy.sidebar.depthcolumnentry_extractor import DepthColumnEntryExtractor
 from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 
 

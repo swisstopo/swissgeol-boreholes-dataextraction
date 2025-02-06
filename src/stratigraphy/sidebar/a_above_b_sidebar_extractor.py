@@ -3,8 +3,8 @@
 import fitz
 import rtree
 
-from stratigraphy.depth import DepthColumnEntryExtractor
 from stratigraphy.lines.line import TextWord
+from stratigraphy.sidebar.depthcolumnentry_extractor import DepthColumnEntryExtractor
 
 from .a_above_b_sidebar import AAboveBSidebar
 from .a_above_b_sidebar_validator import AAboveBSidebarValidator
@@ -58,6 +58,9 @@ class AAboveBSidebarExtractor:
             return sidebar_validator.reduce_until_valid(sidebar_noise, word_rtree)
 
         validated_sidebars = list(filter(None, map(process_column, filtered_columns)))
+
+        for sidebar_noise in validated_sidebars:
+            sidebar_noise.sidebar.remove_integer_scale()
 
         sidebars_by_length = sorted(
             [sidebar_noise for sidebar_noise in validated_sidebars if sidebar_noise.sidebar],

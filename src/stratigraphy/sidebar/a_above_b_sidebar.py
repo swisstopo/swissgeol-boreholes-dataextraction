@@ -9,7 +9,7 @@ from itertools import product
 import fitz
 import numpy as np
 
-from stratigraphy.depth import AAboveBInterval
+from stratigraphy.depth.interval import AAboveBInterval
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.find_description import get_description_blocks
 from stratigraphy.util.dataclasses import Line
@@ -66,12 +66,13 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         # (and includes additional lines below the actual material descriptions).
         return depth_intervals
 
-    def close_to_arithmetic_progression(self) -> bool:
-        """Check if the depth values of the entries of this sidebar are very close to an arithmetic progressing."""
-        if len(self.entries) < 2:
+    @staticmethod
+    def is_close_to_arithmetic_progression(entries: list[DepthColumnEntry]) -> bool:
+        """Check if entries are very close to an arithmetic progression."""
+        if len(entries) <= 2:
             return False
 
-        values = [entry.value for entry in self.entries]
+        values = [entry.value for entry in entries]
 
         differences = [values[i + 1] - values[i] for i in range(len(values) - 1)]
         step = round(statistics.median(differences), 2)
@@ -80,14 +81,18 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
 
         first = values[0]
         last = values[-1]
-        arithmethic_progression = {
+        arithmetic_progression = {
             # ensure we have nicely rounded numbers, without inaccuracies from floating point arithmetic
             round(value * step, 2)
             for value in range(int(first / step), int(last / step) + 1)
         }
-        score = [value in arithmethic_progression for value in values].count(True)
+        score = [value in arithmetic_progression for value in values].count(True)
         # 80% of the values must be contained in the closest arithmetic progression (allowing for 20% OCR errors)
         return score > 0.8 * len(values)
+
+    def close_to_arithmetic_progression(self) -> bool:
+        """Check if the depth values of the entries of this sidebar are very close to an arithmetic progression."""
+        return AAboveBSidebar.is_close_to_arithmetic_progression(self.entries)
 
     def pearson_correlation_coef(self) -> float:
         # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with
@@ -115,7 +120,15 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         ]
         return max(new_columns, key=lambda column: column.pearson_correlation_coef())
 
+    def remove_integer_scale(self):
+        """Removes arithmetically progressing integers from this sidebar, as they are likely a scale."""
+        integer_entries = [entry for entry in self.entries if not entry.has_decimal_point]
+        if integer_entries and AAboveBSidebar.is_close_to_arithmetic_progression(integer_entries):
+            self.entries = [entry for entry in self.entries if entry not in integer_entries]
+        return self
+
     def make_ascending(self):
+        """Adjust entries in this sidebar for an ascending order."""
         median_value = np.median(np.array([entry.value for entry in self.entries]))
 
         for i, entry in enumerate(self.entries):

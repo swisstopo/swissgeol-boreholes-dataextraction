@@ -1,6 +1,5 @@
 """Contains the main extraction pipeline for stratigraphy."""
 
-import logging
 from dataclasses import dataclass
 
 import fitz
@@ -31,8 +30,6 @@ from stratigraphy.util.util import (
     x_overlap,
     x_overlap_significant_smallest,
 )
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
