@@ -37,13 +37,13 @@ def test_depth_column_entries():  # noqa: D103
     assert entries[3].has_decimal_point, "The forth entry has a decimal point"
 
     assert pytest.approx(entries[4].value) == 50.0, "The fifth entry should have a value of 50.0"
-    assert not entries[4].has_decimal_point, "The fifth entry has a decimal point"
+    assert not entries[4].has_decimal_point, "The fifth entry doesn't have a decimal point"
 
     assert pytest.approx(entries[5].value) == 60.0, "The sixth entry should have a value of 60.0"
     assert entries[5].has_decimal_point, "The sixth entry has a decimal point"
 
     assert pytest.approx(entries[6].value) == 70.0, "The seventh entry should have a value of 70.0"
-    assert not entries[6].has_decimal_point, "The seventh entry has a decimal point"
+    assert not entries[6].has_decimal_point, "The seventh entry doesn't have a decimal point"
 
 
 def test_depth_column_entries_with_splits():  # noqa: D103
