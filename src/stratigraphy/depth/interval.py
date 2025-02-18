@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import abc
-
 import fitz
 
 from stratigraphy.lines.line import TextLine
@@ -11,7 +9,7 @@ from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 from stratigraphy.text.textblock import TextBlock
 
 
-class Interval(metaclass=abc.ABCMeta):
+class Interval:
     """Abstract class for (depth) intervals."""
 
     def __init__(self, start: DepthColumnEntry | None, end: DepthColumnEntry | None):
@@ -19,58 +17,9 @@ class Interval(metaclass=abc.ABCMeta):
         self.start = start
         self.end = end
 
-    @property
-    def start_value(self) -> float | None:
-        """Get the start value of the interval."""
-        if self.start:
-            return self.start.value
-        else:
-            return None
-
-    @property
-    def end_value(self) -> float | None:
-        """Get the end value of the interval."""
-        if self.end:
-            return self.end.value
-        else:
-            return None
-
-    @property
-    @abc.abstractmethod
-    def line_anchor(self) -> fitz.Point:
-        """Get the line anchor of the interval."""
-        pass
-
-    @property
-    @abc.abstractmethod
-    def background_rect(self) -> fitz.Rect | None:
-        """Get the background rectangle of the interval."""
-        pass
-
-    def to_json(self):
-        """Convert the interval to a JSON serializable format."""
-        return {
-            "start": self.start.to_json() if self.start else None,
-            "end": self.end.to_json() if self.end else None,
-        }
-
 
 class AAboveBInterval(Interval):
     """Class for depth intervals where the upper depth is located above the lower depth on the page."""
-
-    @property
-    def line_anchor(self) -> fitz.Point | None:
-        if self.start and self.end:
-            return fitz.Point(self.start.rect.x1, (self.start.rect.y0 + self.end.rect.y1) / 2)
-        elif self.start:
-            return fitz.Point(self.start.rect.x1, self.start.rect.y1)
-        elif self.end:
-            return fitz.Point(self.end.rect.x1, self.end.rect.y0)
-
-    @property
-    def background_rect(self) -> fitz.Rect | None:
-        if self.start and self.end:
-            return fitz.Rect(self.start.rect.x0, self.start.rect.y1, self.start.rect.x1, self.end.rect.y0)
 
     def matching_blocks(
         self, all_blocks: list[TextBlock], block_index: int
@@ -150,15 +99,6 @@ class AToBInterval(Interval):
     def rect(self) -> fitz.Rect:
         """Get the rectangle surrounding the interval."""
         return fitz.Rect(self.start.rect).include_rect(self.end.rect)
-
-    @property
-    def line_anchor(self) -> fitz.Point | None:
-        if self.end:
-            return fitz.Point(self.end.rect.x1, (self.end.rect.y0 + self.end.rect.y1) / 2)
-
-    @property
-    def background_rect(self) -> fitz.Rect | None:
-        return None
 
     def matching_blocks(
         self, all_lines: list[TextLine], line_index: int, next_interval: Interval | None

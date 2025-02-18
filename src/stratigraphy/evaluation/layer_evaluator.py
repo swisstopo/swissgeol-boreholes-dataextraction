@@ -140,7 +140,7 @@ class LayerEvaluator:
             start = possible_match["depth_interval"]["start"]
             end = possible_match["depth_interval"]["end"]
 
-            if _is_valid_depth_interval(layer.depth_interval, start, end):
+            if _is_valid_depth_interval(layer.depths, start, end):
                 unmatched_layers.remove(possible_match)
                 return possible_match, True
 

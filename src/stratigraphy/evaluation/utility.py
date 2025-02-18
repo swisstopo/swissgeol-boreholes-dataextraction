@@ -2,8 +2,8 @@
 
 from collections import Counter
 
-from stratigraphy.depth import Interval
 from stratigraphy.evaluation.evaluation_dataclasses import Metrics
+from stratigraphy.layer.layer import LayerDepths
 
 
 def count_against_ground_truth(values: list[str], ground_truth: list[str]) -> Metrics:
@@ -29,24 +29,24 @@ def count_against_ground_truth(values: list[str], ground_truth: list[str]) -> Me
     return Metrics(tp=tp, fp=len(values) - tp, fn=len(ground_truth) - tp)
 
 
-def _is_valid_depth_interval(depth_interval: Interval, start: float, end: float) -> bool:
+def _is_valid_depth_interval(depths: LayerDepths, start: float, end: float) -> bool:
     """Validate if the depth intervals match.
 
     Args:
-        depth_interval (Interval): The depth interval to compare.
+        depths (LayerDepths): The layer depths to compare.
         start (float): The start value of the interval.
         end (float): The end value of the interval.
 
     Returns:
         bool: True if the depth intervals match, False otherwise.
     """
-    if depth_interval is None:
+    if depths is None:
         return False
 
-    if depth_interval.start is None:
-        return (start == 0) and (end == depth_interval.end.value)
+    if depths.start is None:
+        return (start == 0) and (end == depths.end.value)
 
-    if (depth_interval.start is not None) and (depth_interval.end is not None):
-        return start == depth_interval.start.value and end == depth_interval.end.value
+    if (depths.start is not None) and (depths.end is not None):
+        return start == depths.start.value and end == depths.end.value
 
     return False

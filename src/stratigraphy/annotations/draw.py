@@ -314,9 +314,9 @@ def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, 
                     stroke_opacity=0.5,
                 )
 
-        if layer.depth_interval:
+        if layer.depths:
             # background color for depth interval
-            background_rect = layer.depth_interval.background_rect
+            background_rect = layer.depths.background_rect
             if background_rect is not None:
                 shape.draw_rect(
                     background_rect * derotation_matrix,
@@ -342,7 +342,7 @@ def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, 
                     )
 
             # line from depth interval to material description
-            line_anchor = layer.depth_interval.line_anchor
+            line_anchor = layer.depths.line_anchor
             if line_anchor:
                 rect = layer.material_description.rect
                 shape.draw_line(

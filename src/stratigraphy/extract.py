@@ -11,7 +11,7 @@ from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBo
 from stratigraphy.depths_materials_column_pairs.material_description_rect_with_sidebar import (
     MaterialDescriptionRectWithSidebar,
 )
-from stratigraphy.layer.layer import IntervalBlockPair, Layer
+from stratigraphy.layer.layer import IntervalBlockPair, Layer, LayerDepths
 from stratigraphy.lines.line import TextLine
 from stratigraphy.sidebar import (
     AAboveBSidebarExtractor,
@@ -179,10 +179,7 @@ def process_page(
                 rect=pair.block.rect,
                 page=page_number,
             ),
-            # TODO LGVISIUM-104 don't automatically convert any interval to an AAboveBInterval
-            depth_interval=AAboveBInterval(start=pair.depth_interval.start, end=pair.depth_interval.end)
-            if pair.depth_interval
-            else None,
+            depths=LayerDepths.from_interval(pair.depth_interval) if pair.depth_interval else None,
         )
         for pair in pairs
     ]
