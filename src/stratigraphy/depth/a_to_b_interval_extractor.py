@@ -40,9 +40,7 @@ class AToBIntervalExtractor:
         depth_entries = []
         for line in lines:
             try:
-                a_to_b_depth_entry = AToBIntervalExtractor.from_text(
-                    line.text, line.rect, require_start_of_string=False
-                )
+                a_to_b_depth_entry = AToBIntervalExtractor.from_text(line, require_start_of_string=False)
                 # require_start_of_string = False because the depth interval may not always start at the beginning
                 # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
                 if a_to_b_depth_entry:
@@ -59,28 +57,39 @@ class AToBIntervalExtractor:
             return None
 
     @classmethod
-    def from_text(cls, text: str, rect: fitz.Rect, require_start_of_string: bool = True) -> AToBInterval | None:
+    def from_text(cls, text_line: TextLine, require_start_of_string: bool = True) -> AToBInterval | None:
         """Attempts to extract a AToBInterval from a string.
 
         Args:
-            text (str): The string to extract the depth interval from.
-            rect (fitz.Rect): The rectangle of the text.
+            text_line (TextLine): The text line to extract the depth interval from.
             require_start_of_string (bool, optional): Whether the number to extract needs to be
                                                       at the start of a string. Defaults to True.
 
         Returns:
             AToBInterval | None: The extracted AToBInterval or None if none is found.
         """
-        input_string = text.strip().replace(",", ".")
+        input_string = text_line.text.strip().replace(",", ".")
+        char_index_to_word_index = []
+        for index, word in enumerate(text_line.words):
+            char_index_to_word_index.extend([index] * (len(word.text) + 1))
 
         query = r"-?([0-9]+(\.[0-9]+)?)[müMN\]*[\s-]+([0-9]+(\.[0-9]+)?)[müMN\\.]*"
         if not require_start_of_string:
             query = r".*?" + query
         regex = re.compile(query)
         match = regex.match(input_string)
+
+        def rect_from_group_index(index):
+            rect = fitz.Rect()
+            start_word_index = char_index_to_word_index[match.start(index)]
+            end_word_index = char_index_to_word_index[match.end(index) - 1]
+            for word_index in range(start_word_index, end_word_index + 1):
+                rect.include_rect(text_line.words[word_index].rect)
+            return rect
+
         if match:
             return AToBInterval(
-                DepthColumnEntry.from_string_value(rect, match.group(1)),
-                DepthColumnEntry.from_string_value(rect, match.group(3)),
+                DepthColumnEntry.from_string_value(rect_from_group_index(1), match.group(1)),
+                DepthColumnEntry.from_string_value(rect_from_group_index(3), match.group(3)),
             )
         return None

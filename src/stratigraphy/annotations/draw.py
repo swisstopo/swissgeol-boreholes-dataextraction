@@ -342,13 +342,28 @@ def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, 
                     )
 
             # line from depth interval to material description
-            line_anchor = layer.depths.line_anchor
-            if line_anchor:
-                rect = layer.material_description.rect
-                shape.draw_line(
-                    line_anchor * derotation_matrix,
-                    fitz.Point(rect.x0, (rect.y0 + rect.y1) / 2) * derotation_matrix,
-                )
-                shape.finish(
-                    color=fitz.utils.getColor(color),
-                )
+            depths_rect = fitz.Rect()
+            if layer.depths.start:
+                depths_rect.include_rect(layer.depths.start.rect)
+            if layer.depths.end:
+                depths_rect.include_rect(layer.depths.end.rect)
+
+            if not layer.material_description.rect.contains(depths_rect):
+                # Depths are separate from the material description: draw a line connecting them
+                line_anchor = layer.depths.line_anchor
+                if line_anchor:
+                    rect = layer.material_description.rect
+                    shape.draw_line(
+                        line_anchor * derotation_matrix,
+                        fitz.Point(rect.x0, (rect.y0 + rect.y1) / 2) * derotation_matrix,
+                    )
+                    shape.finish(
+                        color=fitz.utils.getColor(color),
+                    )
+            else:
+                # Depths are part of the material description: only draw bounding boxes
+                if layer.depths.start:
+                    shape.draw_rect(fitz.Rect(layer.depths.start.rect) * derotation_matrix)
+                if layer.depths.end:
+                    shape.draw_rect(fitz.Rect(layer.depths.end.rect) * derotation_matrix)
+                shape.finish(color=fitz.utils.getColor("purple"))
