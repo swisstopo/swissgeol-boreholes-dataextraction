@@ -315,32 +315,6 @@ def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, 
                 )
 
         if layer.depths:
-            # background color for depth interval
-            background_rect = layer.depths.background_rect
-            if background_rect is not None:
-                shape.draw_rect(
-                    background_rect * derotation_matrix,
-                )
-                shape.finish(
-                    color=fitz.utils.getColor(color),
-                    fill_opacity=0.2,
-                    fill=fitz.utils.getColor(color),
-                    width=0,
-                )
-
-                # draw green line if depth interval is correct else red line
-                if layer.is_correct is not None:
-                    depth_is_correct_color = "green" if layer.is_correct else "red"
-                    shape.draw_line(
-                        background_rect.top_left * derotation_matrix,
-                        background_rect.bottom_left * derotation_matrix,
-                    )
-                    shape.finish(
-                        color=fitz.utils.getColor(depth_is_correct_color),
-                        width=6,
-                        stroke_opacity=0.5,
-                    )
-
             # line from depth interval to material description
             depths_rect = fitz.Rect()
             if layer.depths.start:
@@ -360,6 +334,32 @@ def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, 
                     shape.finish(
                         color=fitz.utils.getColor(color),
                     )
+
+                # background color for depth interval
+                background_rect = layer.depths.background_rect
+                if background_rect is not None:
+                    shape.draw_rect(
+                        background_rect * derotation_matrix,
+                    )
+                    shape.finish(
+                        color=fitz.utils.getColor(color),
+                        fill_opacity=0.2,
+                        fill=fitz.utils.getColor(color),
+                        width=0,
+                    )
+
+                    # draw green line if depth interval is correct else red line
+                    if layer.is_correct is not None:
+                        depth_is_correct_color = "green" if layer.is_correct else "red"
+                        shape.draw_line(
+                            background_rect.top_left * derotation_matrix,
+                            background_rect.bottom_left * derotation_matrix,
+                        )
+                        shape.finish(
+                            color=fitz.utils.getColor(depth_is_correct_color),
+                            width=6,
+                            stroke_opacity=0.5,
+                        )
             else:
                 # Depths are part of the material description: only draw bounding boxes
                 if layer.depths.start:
@@ -367,3 +367,22 @@ def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, 
                 if layer.depths.end:
                     shape.draw_rect(fitz.Rect(layer.depths.end.rect) * derotation_matrix)
                 shape.finish(color=fitz.utils.getColor("purple"))
+
+                # draw green line if depth interval is correct else red line
+                if layer.is_correct is not None:
+                    depth_is_correct_color = "green" if layer.is_correct else "red"
+                    if layer.depths.start:
+                        shape.draw_line(
+                            layer.depths.start.rect.bottom_left * derotation_matrix,
+                            layer.depths.start.rect.bottom_right * derotation_matrix,
+                        )
+                    if layer.depths.end:
+                        shape.draw_line(
+                            layer.depths.end.rect.bottom_left * derotation_matrix,
+                            layer.depths.end.rect.bottom_right * derotation_matrix,
+                        )
+                    shape.finish(
+                        color=fitz.utils.getColor(depth_is_correct_color),
+                        width=6,
+                        stroke_opacity=0.5,
+                    )
