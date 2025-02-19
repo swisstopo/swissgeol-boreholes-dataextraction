@@ -2,14 +2,14 @@
 
 import abc
 import dataclasses
+from collections.abc import Callable
 from typing import Generic, Self, TypeVar
 
 import fitz
 
 from ..util.util import x_overlap_significant_largest
-from .sidebarentry import SidebarEntry
 
-EntryT = TypeVar("EntryT", bound=SidebarEntry)
+EntryT = TypeVar("EntryT")
 
 
 @dataclasses.dataclass
@@ -18,12 +18,13 @@ class Cluster(abc.ABC, Generic[EntryT]):
 
     reference_rect: fitz.Rect
     entries: list[EntryT]
+    entry_to_rect: Callable[[EntryT], fitz.Rect]
 
     def good_fit(self, entry: EntryT, threshold: float) -> bool:
-        return x_overlap_significant_largest(self.reference_rect, entry.rect, threshold)
+        return x_overlap_significant_largest(self.reference_rect, self.entry_to_rect(entry), threshold)
 
     @classmethod
-    def create_clusters(cls, entries: list[EntryT]) -> list[Self]:
+    def create_clusters(cls, entries: list[EntryT], entry_to_rect: Callable[[EntryT], fitz.Rect]) -> list[Self]:
         clusters: list[Cluster[EntryT]] = []
         for entry in entries:
             create_new_cluster = True
@@ -38,6 +39,6 @@ class Cluster(abc.ABC, Generic[EntryT]):
                         create_new_cluster = False
 
             if create_new_cluster:
-                clusters.append(Cluster(entry.rect, [entry]))
+                clusters.append(Cluster(entry_to_rect(entry), [entry], entry_to_rect))
 
         return clusters

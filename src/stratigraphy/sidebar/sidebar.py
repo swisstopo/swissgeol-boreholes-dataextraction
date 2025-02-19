@@ -9,7 +9,7 @@ from typing import Generic, TypeVar
 import fitz
 import rtree
 
-from stratigraphy.lines.line import TextLine, TextWord
+from stratigraphy.lines.line import TextLine
 from stratigraphy.sidebar.interval_block_group import IntervalBlockGroup
 from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 from stratigraphy.util.dataclasses import Line
@@ -83,29 +83,33 @@ class SidebarNoise(Generic[EntryT]):
         return f"SidebarNoise(sidebar={repr(self.sidebar)}, noise_count={self.noise_count})"
 
 
-def noise_count(sidebar: Sidebar, word_rtree: rtree.index.Index) -> int:
-    """Counts the number of words that intersect with the Sidebar entries.
+def noise_count(sidebar: Sidebar, line_rtree: rtree.index.Index) -> int:
+    """Counts the number of text lines that intersect with the Sidebar entries.
 
     Args:
         sidebar (Sidebar): Sidebar object for which the noise count is calculated.
-        word_rtree (rtree.index.Index): Pre-built R-tree of all words on page for spatial queries.
+        line_rtree (rtree.index.Index): Pre-built R-tree of all text lines on page for spatial queries.
 
     Returns:
-        int: The number of words that intersect with the Sidebar entries but are not part of it.
+        int: The number of text lines that intersect with the Sidebar entries but are not part of it.
     """
     sidebar_rect = sidebar.rect()
-    intersecting_words = _get_intersecting_words(word_rtree, sidebar_rect)
+    intersecting_lines = _get_intersecting_lines(line_rtree, sidebar_rect)
 
-    def significant_intersection(word: TextWord) -> bool:
-        word_rect = word.rect
-        x_overlap = x_overlap_significant_smallest(sidebar_rect, word_rect, 0.25)
-        intersects = word_rect.intersects(sidebar_rect)
+    def significant_intersection(line: TextLine) -> bool:
+        line_rect = line.rect
+        x_overlap = x_overlap_significant_smallest(sidebar_rect, line_rect, 0.25)
+        intersects = line_rect.intersects(sidebar_rect)
         return x_overlap and intersects
 
-    return sum(1 for word in intersecting_words if significant_intersection(word)) - len(sidebar.entries)
+    def not_in_entries(line: TextLine) -> bool:
+        line_rect = line.rect
+        return not any(line_rect.intersects(entry.rect) for entry in sidebar.entries)
+
+    return sum(1 for line in intersecting_lines if significant_intersection(line) and not_in_entries(line))
 
 
-def _get_intersecting_words(word_rtree: rtree.index.Index, rect: fitz.Rect) -> list[TextWord]:
+def _get_intersecting_lines(line_rtree: rtree.index.Index, rect: fitz.Rect) -> list[TextLine]:
     """Retrieve all words from the page intersecting with Sidebar bounding box."""
-    intersecting_words = list(word_rtree.intersection((rect.x0, rect.y0, rect.x1, rect.y1), objects="raw"))
-    return [word for word in intersecting_words if any(char.isalnum() for char in word.text)]
+    intersecting_lines = list(line_rtree.intersection((rect.x0, rect.y0, rect.x1, rect.y1), objects="raw"))
+    return [line for line in intersecting_lines if any(char.isalnum() for char in line.text)]

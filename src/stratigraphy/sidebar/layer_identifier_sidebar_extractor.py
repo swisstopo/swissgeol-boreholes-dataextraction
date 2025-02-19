@@ -56,7 +56,7 @@ class LayerIdentifierSidebarExtractor:
         if not entries:
             return []
 
-        clusters = Cluster[LayerIdentifierEntry].create_clusters(entries)
+        clusters = Cluster[LayerIdentifierEntry].create_clusters(entries, lambda entry: entry.rect)
 
         sidebars = [LayerIdentifierSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 2]
 
