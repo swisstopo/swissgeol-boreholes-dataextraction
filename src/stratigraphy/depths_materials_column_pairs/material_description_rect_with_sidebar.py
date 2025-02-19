@@ -19,8 +19,6 @@ class MaterialDescriptionRectWithSidebar:
     def score_match(self) -> float:
         """Scores the match between a sidebar and a material description.
 
-        The higher the bounding box of the material descriptions, the higher the score.
-
         For pairs that have a sidebar, the score is
         - positively influenced by the width of the material description bounding box
         - negatively influenced by the horizontal distance between (the right-hand-side of) the sidebar and (the
@@ -31,6 +29,8 @@ class MaterialDescriptionRectWithSidebar:
           descriptions
         The resulting score is also reduced if the sidebar has a high noise count (many unrelated tokens in between
         the extracted depths values).
+
+        Pairs without a sidebar receive a default score of 0.
 
         Returns:
             float: The score of the match. Better matches have a higher score value.
