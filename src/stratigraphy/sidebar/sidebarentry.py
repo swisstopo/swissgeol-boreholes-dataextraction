@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass
-from typing import Any, Generic, TypeVar
+from typing import Generic, TypeVar
 
 import pymupdf
 
@@ -29,26 +29,6 @@ class DepthColumnEntry(SidebarEntry[float]):  # noqa: D101
 
     def __repr__(self) -> str:
         return str(self.value)
-
-    def to_json(self) -> dict[str, Any]:
-        """Convert the depth column entry to a JSON serializable format."""
-        return {
-            "value": self.value,
-            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
-            "has_decimal_point": self.has_decimal_point,
-        }
-
-    @classmethod
-    def from_json(cls, data: dict) -> DepthColumnEntry:
-        """Converts a dictionary to an object.
-
-        Args:
-            data (dict): A dictionary representing the depth column entry.
-
-        Returns:
-            DepthColumnEntry: The depth column entry object.
-        """
-        return cls(rect=pymupdf.Rect(data["rect"]), value=data["value"], has_decimal_point=data["has_decimal_point"])
 
     @classmethod
     def from_string_value(cls, rect: pymupdf.Rect, string_value: str) -> DepthColumnEntry:

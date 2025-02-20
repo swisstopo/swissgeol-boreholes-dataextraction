@@ -4,7 +4,8 @@ import fitz
 import pytest
 import rtree
 from stratigraphy.lines.line import TextWord
-from stratigraphy.sidebar import AAboveBSidebarExtractor, AToBSidebarExtractor
+from stratigraphy.sidebar.a_above_b_sidebar_extractor import AAboveBSidebarExtractor
+from stratigraphy.sidebar.a_to_b_sidebar_extractor import AToBSidebarExtractor
 from stratigraphy.sidebar.depthcolumnentry_extractor import DepthColumnEntryExtractor
 
 PAGE_NUMBER = 1

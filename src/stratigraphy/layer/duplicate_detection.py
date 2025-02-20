@@ -50,15 +50,15 @@ def remove_duplicate_layers(
         # check if current layer has an overlapping layer on the previous page.
         # for that purpose compare depth interval as well as material description text.
         duplicate_condition = False
-        if layer.depth_interval is None:
+        if layer.depths is None:
             duplicate_condition = check_duplicate_layer_by_template_matching(
                 previous_page, current_page, layer, img_template_probability_threshold
             )
         else:  # in this case we compare the depth interval and material description
             current_material_description = layer.material_description
-            current_depth_interval = layer.depth_interval
+            current_depth_interval = layer.depths
             for previous_layer in previous_layers.layers:
-                if previous_layer.depth_interval is None:
+                if previous_layer.depths is None:
                     # It may happen, that a layer on the previous page does not have depth interval assigned.
                     # In this case we skip the comparison. This should only happen in some edge cases, as we
                     # assume that when the current page has a depth column, that the previous page also contains a
@@ -66,7 +66,7 @@ def remove_duplicate_layers(
                     continue
 
                 previous_material_description = previous_layer.material_description
-                previous_depth_interval = previous_layer.depth_interval
+                previous_depth_interval = previous_layer.depths
 
                 # start values for the depth intervals may be None. End values are always explicitly set.
                 current_depth_interval_start = (

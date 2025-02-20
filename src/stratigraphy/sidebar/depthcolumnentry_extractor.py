@@ -3,7 +3,7 @@
 import re
 
 from stratigraphy.depth.a_to_b_interval_extractor import AToBIntervalExtractor
-from stratigraphy.lines.line import TextWord
+from stratigraphy.lines.line import TextLine, TextWord
 from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 
 
@@ -37,8 +37,9 @@ class DepthColumnEntryExtractor:
 
                 elif include_splits:
                     # support for e.g. "1.10-1.60m" extracted as a single word
-                    a_to_b_interval = AToBIntervalExtractor.from_text(input_string, word.rect)
-                    entries.extend([a_to_b_interval.start, a_to_b_interval.end] if a_to_b_interval else [])
+                    a_to_b_interval = AToBIntervalExtractor.from_text(TextLine([word]))
+                    if a_to_b_interval:
+                        entries.extend([a_to_b_interval.start, a_to_b_interval.end])
             except ValueError:
                 pass
         return entries

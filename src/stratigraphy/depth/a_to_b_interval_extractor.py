@@ -5,8 +5,8 @@ import re
 import fitz
 
 from stratigraphy.lines.line import TextLine
+from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 
-from ..sidebar.sidebarentry import DepthColumnEntry
 from .interval import AToBInterval
 
 
@@ -40,9 +40,7 @@ class AToBIntervalExtractor:
         depth_entries = []
         for line in lines:
             try:
-                a_to_b_depth_entry = AToBIntervalExtractor.from_text(
-                    line.text, line.rect, require_start_of_string=False
-                )
+                a_to_b_depth_entry = AToBIntervalExtractor.from_text(line, require_start_of_string=False)
                 # require_start_of_string = False because the depth interval may not always start at the beginning
                 # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
                 if a_to_b_depth_entry:
@@ -59,30 +57,46 @@ class AToBIntervalExtractor:
             return None
 
     @classmethod
-    def from_text(cls, text: str, rect: fitz.Rect, require_start_of_string: bool = True) -> AToBInterval | None:
+    def from_text(cls, text_line: TextLine, require_start_of_string: bool = True) -> AToBInterval | None:
         """Attempts to extract a AToBInterval from a string.
 
         Args:
-            text (str): The string to extract the depth interval from.
-            rect (fitz.Rect): The rectangle of the text.
+            text_line (TextLine): The text line to extract the depth interval from.
             require_start_of_string (bool, optional): Whether the number to extract needs to be
                                                       at the start of a string. Defaults to True.
 
         Returns:
             AToBInterval | None: The extracted AToBInterval or None if none is found.
         """
-        input_string = text.strip().replace(",", ".")
+        input_string = text_line.text.strip().replace(",", ".")
 
-        query = r"-?([0-9]+(\.[0-9]+)?)[müMN\]*[\s-]+([0-9]+(\.[0-9]+)?)[müMN\\.]*"
+        # for every character in input_string, list the index of the word this character originates from
+        char_index_to_word_index = []
+        for index, word in enumerate(text_line.words):
+            char_index_to_word_index.extend([index] * (len(word.text) + 1))  # +1 to include the space between words
+
+        query = r"-?([0-9]+(?:\.[0-9]+)?)[müMN\]*[\s-]+([0-9]+(?:\.[0-9]+)?)[müMN\\.]*"
         if not require_start_of_string:
             query = r".*?" + query
         regex = re.compile(query)
         match = regex.match(input_string)
+
+        def rect_from_group_index(index):
+            """Give the rect that covers all the words that intersect with the given regex group."""
+            rect = fitz.Rect()
+            start_word_index = char_index_to_word_index[match.start(index)]
+            # `match.end(index) - 1`, because match.end gives the index of the first character that is *not* matched,
+            # whereas we want the last character that *is* matched.
+            end_word_index = char_index_to_word_index[match.end(index) - 1]
+            # `end_word_index + 1` because the end of the range is exclusive by default, whereas we also want to
+            # include the word with this index
+            for word_index in range(start_word_index, end_word_index + 1):
+                rect.include_rect(text_line.words[word_index].rect)
+            return rect
+
         if match:
-            first_half_rect = fitz.Rect(rect.x0, rect.y0, rect.x1 - rect.width / 2, rect.y1)
-            second_half_rect = fitz.Rect(rect.x0 + rect.width / 2, rect.y0, rect.x1, rect.y1)
             return AToBInterval(
-                DepthColumnEntry.from_string_value(first_half_rect, match.group(1)),
-                DepthColumnEntry.from_string_value(second_half_rect, match.group(3)),
+                DepthColumnEntry.from_string_value(rect_from_group_index(1), match.group(1)),
+                DepthColumnEntry.from_string_value(rect_from_group_index(2), match.group(2)),
             )
         return None

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import fitz
 
-from stratigraphy.depth import AToBInterval
+from stratigraphy.depth.interval import AToBInterval
 from stratigraphy.lines.line import TextLine
 from stratigraphy.util.dataclasses import Line
 
