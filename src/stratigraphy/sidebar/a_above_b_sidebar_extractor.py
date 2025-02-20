@@ -19,7 +19,7 @@ class AAboveBSidebarExtractor:
     @staticmethod
     def find_in_words(
         all_words: list[TextWord],
-        word_rtree: rtree.index.Index,
+        line_rtree: rtree.index.Index,
         used_entry_rects: list[fitz.Rect],
         sidebar_params: dict,
     ) -> list[SidebarNoise]:
@@ -27,7 +27,7 @@ class AAboveBSidebarExtractor:
 
         Args:
             all_words (list[TextWord]): All words in the page.
-            word_rtree (rtree.index.Index): Pre-built R-tree for spatial queries.
+            line_rtree (rtree.index.Index): Pre-built R-tree for spatial queries.
             used_entry_rects (list[fitz.Rect]): Part of the document to ignore.
             sidebar_params (dict): Parameters for the AAboveBSidebar objects.
 
@@ -39,7 +39,7 @@ class AAboveBSidebarExtractor:
             for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=False)
             if entry.rect not in used_entry_rects
         ]
-        clusters = Cluster[DepthColumnEntry].create_clusters(entries)
+        clusters = Cluster[DepthColumnEntry].create_clusters(entries, lambda entry: entry.rect)
 
         numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 3]
 
@@ -53,9 +53,9 @@ class AAboveBSidebarExtractor:
         sidebar_validator = AAboveBSidebarValidator(**sidebar_params)
 
         def process_column(column):
-            noise = noise_count(column, word_rtree)
+            noise = noise_count(column, line_rtree)
             sidebar_noise = SidebarNoise(sidebar=column, noise_count=noise)
-            return sidebar_validator.reduce_until_valid(sidebar_noise, word_rtree)
+            return sidebar_validator.reduce_until_valid(sidebar_noise, line_rtree)
 
         validated_sidebars = list(filter(None, map(process_column, filtered_columns)))
 

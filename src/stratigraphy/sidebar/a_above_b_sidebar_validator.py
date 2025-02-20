@@ -62,7 +62,7 @@ class AAboveBSidebarValidator:
         return corr_coef and corr_coef > corr_coef_threshold
 
     def reduce_until_valid(
-        self, sidebar_noise: SidebarNoise[AAboveBSidebar], word_rtree: rtree.index.Index
+        self, sidebar_noise: SidebarNoise[AAboveBSidebar], line_rtree: rtree.index.Index
     ) -> SidebarNoise | None:
         """Removes entries from the depth column until it fulfills the is_valid condition.
 
@@ -71,7 +71,7 @@ class AAboveBSidebarValidator:
 
         Args:
             sidebar_noise (SidebarNoise): The SidebarNoise wrapping the AAboveBSidebar to validate.
-            word_rtree (rtree.index.Index): Pre-built R-tree of all words on page for spatial queries.
+            line_rtree (rtree.index.Index): Pre-built R-tree of all text lines on page for spatial queries.
 
         Returns:
             sidebar_noise | None : The current SidebarNoise with entries removed from Sidebar until it is valid
@@ -85,7 +85,7 @@ class AAboveBSidebarValidator:
             if not new_sidebar:
                 return None
 
-            new_noise_count = noise_count(new_sidebar, word_rtree)
+            new_noise_count = noise_count(new_sidebar, line_rtree)
             sidebar_noise = SidebarNoise(sidebar=new_sidebar, noise_count=new_noise_count)
 
         return None

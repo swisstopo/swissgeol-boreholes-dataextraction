@@ -5,6 +5,7 @@ import re
 from stratigraphy.depth.interval import AToBInterval
 from stratigraphy.lines.line import TextWord
 from stratigraphy.sidebar.a_to_b_sidebar import AToBSidebar
+from stratigraphy.sidebar.cluster import Cluster
 from stratigraphy.sidebar.depthcolumnentry_extractor import DepthColumnEntryExtractor
 from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 
@@ -55,25 +56,12 @@ class AToBSidebarExtractor:
                     return other
 
         pairs = [(entry, find_pair(entry)) for entry in entries]
-
-        sidebars = []
-        for first, second in pairs:
-            if second is not None:
-                entry = AToBInterval(first, second)
-                is_matched = False
-                for sidebar in sidebars:
-                    column_rect = sidebar.rect()
-                    new_start_middle = (entry.start.rect.x0 + entry.start.rect.x1) / 2
-                    if column_rect.x0 < new_start_middle < column_rect.x1:
-                        is_matched = True
-                        sidebar.entries.append(entry)
-
-                if not is_matched:
-                    sidebars.append(AToBSidebar([entry]))
+        intervals = [AToBInterval(first, second) for first, second in pairs if second]
+        clusters = Cluster[AToBInterval].create_clusters(intervals, lambda interval: interval.rect)
 
         return [
             sidebar_segment
-            for sidebar in sidebars
-            for sidebar_segment in sidebar.break_on_mismatch()
+            for cluster in clusters
+            for sidebar_segment in AToBSidebar(cluster.entries).break_on_mismatch()
             if sidebar_segment.is_valid()
         ]

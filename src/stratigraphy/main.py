@@ -14,7 +14,7 @@ from stratigraphy import DATAPATH
 from stratigraphy.annotations.draw import draw_predictions
 from stratigraphy.annotations.plot_utils import plot_lines
 from stratigraphy.benchmark.score import evaluate
-from stratigraphy.extract import process_page
+from stratigraphy.extract import MaterialDescriptionRectWithSidebarExtractor
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument
 from stratigraphy.layer.duplicate_detection import remove_duplicate_layers
 from stratigraphy.layer.layer import LayersInDocument
@@ -247,9 +247,9 @@ def start_pipeline(
 
                         text_lines = extract_text_lines(page)
                         geometric_lines = extract_lines(page, line_detection_params)
-                        process_page_results = process_page(
+                        process_page_results = MaterialDescriptionRectWithSidebarExtractor(
                             text_lines, geometric_lines, metadata.language, page_number, **matching_params
-                        )
+                        ).process_page()
 
                         # Extract the groundwater levels
                         for page_bounding_box in process_page_results.bounding_boxes:
