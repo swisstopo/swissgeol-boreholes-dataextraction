@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import fitz
 from stratigraphy.data_extractor.data_extractor import ExtractedFeature, FeatureOnPage
-from stratigraphy.depth import Interval
+from stratigraphy.depth.interval import Interval
 from stratigraphy.text.textblock import MaterialDescription, TextBlock
 from stratigraphy.util.util import parse_text
 

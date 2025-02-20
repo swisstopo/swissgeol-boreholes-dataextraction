@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import fitz
 
-from stratigraphy.depth import AToBIntervalExtractor
+from stratigraphy.depth.a_to_b_interval_extractor import AToBIntervalExtractor
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.dataclasses import Line
