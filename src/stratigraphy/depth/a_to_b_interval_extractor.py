@@ -5,8 +5,8 @@ import re
 import fitz
 
 from stratigraphy.lines.line import TextLine
+from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 
-from ..sidebar.sidebarentry import DepthColumnEntry
 from .interval import AToBInterval
 
 
@@ -69,20 +69,27 @@ class AToBIntervalExtractor:
             AToBInterval | None: The extracted AToBInterval or None if none is found.
         """
         input_string = text_line.text.strip().replace(",", ".")
+
+        # for every character in input_string, list the index of the word this character originates from
         char_index_to_word_index = []
         for index, word in enumerate(text_line.words):
-            char_index_to_word_index.extend([index] * (len(word.text) + 1))
+            char_index_to_word_index.extend([index] * (len(word.text) + 1))  # +1 to include the space between words
 
-        query = r"-?([0-9]+(\.[0-9]+)?)[müMN\]*[\s-]+([0-9]+(\.[0-9]+)?)[müMN\\.]*"
+        query = r"-?([0-9]+(?:\.[0-9]+)?)[müMN\]*[\s-]+([0-9]+(?:\.[0-9]+)?)[müMN\\.]*"
         if not require_start_of_string:
             query = r".*?" + query
         regex = re.compile(query)
         match = regex.match(input_string)
 
         def rect_from_group_index(index):
+            """Give the rect that covers all the words that intersect with the given regex group."""
             rect = fitz.Rect()
             start_word_index = char_index_to_word_index[match.start(index)]
+            # `match.end(index) - 1`, because match.end gives the index of the first character that is *not* matched,
+            # whereas we want the last character that *is* matched.
             end_word_index = char_index_to_word_index[match.end(index) - 1]
+            # `end_word_index + 1` because the end of the range is exclusive by default, whereas we also want to
+            # include the word with this index
             for word_index in range(start_word_index, end_word_index + 1):
                 rect.include_rect(text_line.words[word_index].rect)
             return rect
@@ -90,6 +97,6 @@ class AToBIntervalExtractor:
         if match:
             return AToBInterval(
                 DepthColumnEntry.from_string_value(rect_from_group_index(1), match.group(1)),
-                DepthColumnEntry.from_string_value(rect_from_group_index(3), match.group(3)),
+                DepthColumnEntry.from_string_value(rect_from_group_index(2), match.group(2)),
             )
         return None

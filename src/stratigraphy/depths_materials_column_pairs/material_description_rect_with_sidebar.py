@@ -4,7 +4,7 @@ import math
 from dataclasses import dataclass
 
 import fitz
-from stratigraphy.sidebar import Sidebar
+from stratigraphy.sidebar.sidebar import Sidebar
 
 
 @dataclass
