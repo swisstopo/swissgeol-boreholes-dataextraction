@@ -44,4 +44,4 @@ def test_atobintervalextractor_fromtext():  # noqa: D103
         TextWord(pymupdf.Rect(4, 0, 6, 1), "COLLUVIONS", page=1),
     ]
     interval = AToBIntervalExtractor.from_text(TextLine(words), require_start_of_string=False)
-    assert interval is not None, "With require_start_of_string=True, matches that are at the start are allowed."
+    assert interval is not None, "With require_start_of_string=False, matches that are at the start are allowed."
