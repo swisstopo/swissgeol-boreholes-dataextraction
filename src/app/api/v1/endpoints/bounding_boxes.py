@@ -4,7 +4,7 @@ from pathlib import Path
 
 from app.common.helpers import load_pdf_page, load_png
 from app.common.schemas import BoundingBox, BoundingBoxesResponse
-from stratigraphy.text.extract_text import extract_text_lines_from_bbox
+from stratigraphy.text.extract_text import extract_text_lines
 
 
 def bounding_boxes(filename: Path, page_number: int) -> BoundingBoxesResponse:
@@ -27,7 +27,7 @@ def bounding_boxes(filename: Path, page_number: int) -> BoundingBoxesResponse:
     png_page_height = png_page.shape[0]
 
     # Extract the text
-    text_lines = extract_text_lines_from_bbox(pdf_page, bbox=None)
+    text_lines = extract_text_lines(pdf_page)
 
     bboxes = [
         # Convert the bounding box to PNG coordinates

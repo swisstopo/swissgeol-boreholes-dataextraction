@@ -126,7 +126,7 @@ def post_extract_data(
 ) -> ExtractCoordinatesResponse | ExtractTextResponse | ExtractNumberResponse:
     """Extract specified data from a given document based on the bounding box coordinates and format.
 
-    Text is extracted on a word-by-word basis, whereby a word is included if it's center point is within the bound
+    Text is extracted on a word-by-word basis, whereby a word is included if its center point is within the bound
     box that is provided by the user in the request.
 
     ### Prerequisites

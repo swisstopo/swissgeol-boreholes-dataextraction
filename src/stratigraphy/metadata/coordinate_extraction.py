@@ -9,7 +9,7 @@ import fitz
 import regex
 from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature
 from stratigraphy.lines.line import TextLine
-from stratigraphy.text.extract_text import extract_text_lines_from_bbox
+from stratigraphy.text.extract_text import extract_text_lines
 
 logger = logging.getLogger(__name__)
 
@@ -325,6 +325,6 @@ class CoordinateExtractor(DataExtractor):
             Coordinate | None: the extracted coordinates (if any)
         """
         for page in document:
-            text_lines = extract_text_lines_from_bbox(page, bbox=None)
+            text_lines = extract_text_lines(page)
             page_number = page.number + 1  # page.number is 0-based
             return self.extract_coordinates_aggregated(text_lines, page_number)

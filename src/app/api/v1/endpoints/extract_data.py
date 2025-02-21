@@ -17,7 +17,7 @@ from app.common.schemas import (
 from fastapi import HTTPException
 from stratigraphy.lines.line import TextLine
 from stratigraphy.metadata.coordinate_extraction import CoordinateExtractor, LV03Coordinate, LV95Coordinate
-from stratigraphy.text.extract_text import extract_text_lines_from_bbox
+from stratigraphy.text.extract_text import extract_text_lines
 
 
 def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataResponse:
@@ -53,7 +53,7 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
 
     # Select words whose middle-point is in the user-defined bbox
     text_lines = []
-    for text_line in extract_text_lines_from_bbox(pdf_page, bbox=None):
+    for text_line in extract_text_lines(pdf_page):
         words = [
             word
             for word in text_line.words
