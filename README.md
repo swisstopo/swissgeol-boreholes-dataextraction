@@ -106,6 +106,8 @@ Alternatively you can replace the `pip install -e '.[all]'` command with `pip in
 
 Adding pip packages can be done by editing the `pyproject.toml` of the project and adding the required package.
 
+If you are using a version of Python newer than 3.12 (e.g. 3.13), you may need to use the command ` python3.12 -m venv env `instead.
+
 ## Run data extraction
 To execute the data extraction pipeline, follow these steps:
 
@@ -166,6 +168,17 @@ The project structure and the most important files are as follows:
 ## Main scripts
 
 - `main.py` : This is the main script of the project. It runs the data extraction pipeline, which analyzes the PDF files in the `data/Benchmark` directory and saves the results in the `predictions.json` file.
+
+## Data
+
+To locally download the data from the AWS s3 bucket to the ./data, you can run the following commands.
+
+```bash 
+brew install awscli
+aws s3 sync s3://stijnvermeeren-boreholes-data ./data
+```
+
+The vscode extension **AWS S3** can also be used to access the content of the bucket.
 
 ## API
 
@@ -242,6 +255,8 @@ docker build -t borehole-api . -f Dockerfile
 ```bash
 docker build --platform linux/amd64 -t borehole-api:test .
 ```
+
+If docker is not setup yet, you might need to first use `docker login -u <username>` to login to your docker account.
 
 This command will build the Docker image with the tag `borehole-api`.
 
