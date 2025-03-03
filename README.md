@@ -171,12 +171,30 @@ The project structure and the most important files are as follows:
 
 ## Data
 
-To locally download the data from the AWS s3 bucket to the ./data, you can run the following commands.
+To locally download the data from the AWS S3 bucket to the `./data` directory, run the following commands:
 
 ```bash 
 brew install awscli
 aws s3 sync s3://stijnvermeeren-boreholes-data ./data
 ```
+
+You may need to export some environment variables or configure AWS credentials manually.
+
+- Add the following content to `~/.aws/config`:  
+
+  ```
+  [default]
+  region=eu-central-1
+  output=json
+  ```  
+
+- Add your credentials to `~/.aws/credentials`:  
+
+  ```
+  [default]
+  aws_access_key_id=YOUR_ACCESS_KEY
+  aws_secret_access_key=YOUR_SECRET_KEY
+  ```  
 
 The vscode extension **AWS S3** can also be used to access the content of the bucket.
 
