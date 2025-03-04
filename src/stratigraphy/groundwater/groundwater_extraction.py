@@ -49,7 +49,7 @@ class Groundwater(ExtractedFeature):
         Returns:
             str: The object as a string.
         """
-        return f"Groundwater(" f"date={self.format_date()}, " f"depth={self.depth}, " f"elevation={self.elevation})"
+        return f"Groundwater(date={self.format_date()}, depth={self.depth}, elevation={self.elevation})"
 
     @staticmethod
     def from_json_values(depth: float | None, date: str | None, elevation: float | None) -> "Groundwater":
@@ -113,6 +113,37 @@ class GroundwaterInDocument:
     groundwater: list[FeatureOnPage[Groundwater]]
     filename: str
 
+    def to_json(self) -> list[dict]:
+        """Converts the object to a list of dictionaries.
+
+        Returns:
+            list[dict]: The object as a list of dictionaries.
+        """
+        return [entry.to_json() for entry in self.groundwater]
+
+
+class GroundwaterLevelExtractor(DataExtractor):
+    """Extract groundwater informations from a PDF document."""
+
+    feature_name = "groundwater"
+
+    is_searching_groundwater_illustration: bool = False
+
+    # look for elevation values to the left, right and/or immediately below the key
+    search_left_factor: float = 2
+    search_right_factor: float = 8
+    search_below_factor: float = 2
+    search_above_factor: float = 0
+
+    preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ü": "u"}
+
+    def __init__(self):
+        super().__init__()
+
+        self.is_searching_groundwater_illustration = os.getenv("IS_SEARCHING_GROUNDWATER_ILLUSTRATION") == "True"
+        if self.is_searching_groundwater_illustration:
+            logger.info("Searching for groundwater information in illustrations.")
+
     @classmethod
     def near_material_description(
         cls,
@@ -151,37 +182,6 @@ class GroundwaterInDocument:
             document=document,
             terrain_elevation=terrain_elevation,
         )
-
-    def to_json(self) -> list[dict]:
-        """Converts the object to a list of dictionaries.
-
-        Returns:
-            list[dict]: The object as a list of dictionaries.
-        """
-        return [entry.to_json() for entry in self.groundwater]
-
-
-class GroundwaterLevelExtractor(DataExtractor):
-    """Extracts coordinates from a PDF document."""
-
-    feature_name = "groundwater"
-
-    is_searching_groundwater_illustration: bool = False
-
-    # look for elevation values to the left, right and/or immediately below the key
-    search_left_factor: float = 2
-    search_right_factor: float = 8
-    search_below_factor: float = 2
-    search_above_factor: float = 0
-
-    preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ü": "u"}
-
-    def __init__(self):
-        super().__init__()
-
-        self.is_searching_groundwater_illustration = os.getenv("IS_SEARCHING_GROUNDWATER_ILLUSTRATION") == "True"
-        if self.is_searching_groundwater_illustration:
-            logger.info("Searching for groundwater information in illustrations.")
 
     def get_groundwater_near_key(self, lines: list[TextLine], page: int) -> list[FeatureOnPage[Groundwater]]:
         """Find groundwater information from text lines that are close to an explicit "groundwater" label.
