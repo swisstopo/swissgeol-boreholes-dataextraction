@@ -1,4 +1,4 @@
-"""This module defines the FastAPI endpoint for extracting information from PDF borehole document."""
+"""This module defines the FastAPI endpoint for extracting information from a PDF borehole document."""
 
 from pathlib import Path
 

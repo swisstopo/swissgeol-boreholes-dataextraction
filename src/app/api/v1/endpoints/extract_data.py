@@ -152,14 +152,14 @@ def extract_coordinates(extract_data_request: ExtractDataRequest, text_lines: li
     raise HTTPException(status_code=404, detail="Coordinates not found.")
 
 
-def extract_text(text_lines: list[TextLine]) -> ExtractDataResponse:
-    """Extract numbers from a collection of text lines.
+def extract_text(text_lines: list[TextLine]) -> ExtractTextResponse:
+    """Extract text from a collection of text lines.
 
     Args:
         text_lines (list[TextLine]): The text lines to extract the numbers from.
 
     Returns:
-        ExtractDataResponse: The extracted text.
+        ExtractTextResponse: The extracted text.
     """
     text = " ".join([line.text for line in text_lines])
 
@@ -181,7 +181,7 @@ def extract_number(text_lines: list[TextLine]) -> ExtractNumberResponse:
         text_lines (list[TextLine]): The text lines to extract the numbers from.
 
     Returns:
-        ExtractDataResponse: The extracted number with bbox.
+        ExtractNumberResponse: The extracted number with bbox.
     """
     for text_line in text_lines:
         number = extract_number_from_text(text_line.text)
