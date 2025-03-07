@@ -107,10 +107,25 @@ class Groundwater(ExtractedFeature):
 
 
 @dataclass
+class GroundwatersInBorehole:
+    """Class for extracted groundwater information from a single borehole."""
+
+    groundwater_feature_list: list[FeatureOnPage[Groundwater]]
+
+    def to_json(self) -> list[dict]:
+        """Converts the object to a list of dictionaries.
+
+        Returns:
+            list[dict]: The object as a list of dictionaries.
+        """
+        return [entry.to_json() for entry in self.groundwater_feature_list]
+
+
+@dataclass
 class GroundwaterInDocument:
     """Class for extracted groundwater information from a document."""
 
-    groundwater: list[FeatureOnPage[Groundwater]]
+    borehole_groundwaters: list[GroundwatersInBorehole]
     filename: str
 
     def to_json(self) -> list[dict]:
@@ -119,7 +134,7 @@ class GroundwaterInDocument:
         Returns:
             list[dict]: The object as a list of dictionaries.
         """
-        return [entry.to_json() for entry in self.groundwater]
+        return [borehole_gw.to_json() for borehole_gw in self.borehole_groundwaters]
 
 
 class GroundwaterLevelExtractor(DataExtractor):
