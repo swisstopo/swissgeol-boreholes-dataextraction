@@ -140,11 +140,53 @@ class Layer(ExtractedFeature):
 
 
 @dataclass
-class LayersInDocument:
-    """A class to represent predictions for a single document."""
+class BoreholeLayers:
+    """Represent the data for all layers in a borehole profile."""
 
     layers: list[Layer]
-    filename: str
+
+    def to_json(self):
+        return [layer.to_json() for layer in self.layers]
+
+    def __getitem__(self, index):
+        return self.layers[index]
+
+
+class LayersInDocument:
+    """A class to represent predictions for a single document.
+
+    maybe should be called BoreholeLayersInDocument
+    """
+
+    def __init__(self, boreholes_layers: list[BoreholeLayers], filename: str):
+        self.boreholes_layers = boreholes_layers
+        self.filename = filename
+
+    # def __len__(self):
+    #     return len(self.boreholes_layers)
+
+    # def __iter__(self):
+    #     yield from self.boreholes_layers
+
+    # def __getitem__(self, index):
+    #     return self.boreholes_layers[index]
+
+    def assign_layers_to_boreholes(self, layer_predictions: list[list[Layer]]):
+        """SIMPLIFICATION: currently assumes that if there is more than one page, there is a single borehole.
+
+        This means that only pdfs with one page could contain more than one borehole.
+        This is the case for all example from zurich and geoquat,validation.
+        If we want to be more robust, a matching should be done to determine which layers goes with which borehole.
+
+        Args:
+            layer_predictions (list[list[Layer]]): List containing the a list of all layers of all boreholes
+        """
+        if not self.boreholes_layers:
+            # first page
+            self.boreholes_layers = [BoreholeLayers(borehole_layers) for borehole_layers in layer_predictions]
+        else:
+            # second page, use assumption
+            self.boreholes_layers[0].layers.extend(layer_predictions[0])
 
 
 @dataclass
