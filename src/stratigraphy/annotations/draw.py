@@ -52,80 +52,83 @@ def draw_predictions(
     if directory.is_file():  # deal with the case when we pass a file instead of a directory
         directory = directory.parent
     for file_prediction in predictions.file_predictions_list:
-        logger.info("Drawing predictions for file %s", file_prediction.file_name)
-
-        bounding_boxes = file_prediction.bounding_boxes
-        coordinates = file_prediction.metadata.coordinates
-        elevation = file_prediction.metadata.elevation
-
-        # Assess the correctness of the metadata
-        if (
-            document_level_metadata_metrics is not None
-            and file_prediction.file_name in document_level_metadata_metrics.index
-        ):
-            is_coordinates_correct = document_level_metadata_metrics.loc[file_prediction.file_name].coordinate
-            is_elevation_correct = document_level_metadata_metrics.loc[file_prediction.file_name].elevation
-        else:
-            logger.warning(
-                "Metrics for file %s not found in document_level_metadata_metrics.", file_prediction.file_name
-            )
-            is_coordinates_correct = None
-            is_elevation_correct = None
-
+        filename = file_prediction.file_name
+        logger.info("Drawing predictions for file %s", filename)
         try:
-            with fitz.Document(directory / file_prediction.file_name) as doc:
+            with fitz.Document(directory / filename) as doc:
                 for page_index, page in enumerate(doc):
                     page_number = page_index + 1
                     shape = page.new_shape()  # Create a shape object for drawing
-                    if page_number == 1:
-                        draw_metadata(
+
+                    # iterate over all boreholes identified
+                    for borehole_prediction in file_prediction.borehole_predictions_list:
+                        bounding_boxes = borehole_prediction.bounding_boxes
+                        coordinates = borehole_prediction.metadata.coordinates
+                        elevation = borehole_prediction.metadata.elevation
+
+                        # Assess the correctness of the metadata
+                        if (
+                            document_level_metadata_metrics is not None
+                            and filename in document_level_metadata_metrics.index
+                        ):
+                            is_coordinates_correct = document_level_metadata_metrics.loc[filename].coordinate
+                            is_elevation_correct = document_level_metadata_metrics.loc[filename].elevation
+                        else:
+                            logger.warning(
+                                "Metrics for file %s not found in document_level_metadata_metrics.", filename
+                            )
+                            is_coordinates_correct = None
+                            is_elevation_correct = None
+
+                        if page_number == 1:
+                            draw_metadata(
+                                shape,
+                                page.derotation_matrix,
+                                page.rotation,
+                                coordinates,
+                                is_coordinates_correct,
+                                elevation,
+                                is_elevation_correct,
+                            )
+                        if coordinates is not None and page_number == coordinates.page:
+                            draw_coordinates(shape, coordinates)
+                        if elevation is not None and page_number == elevation.page:
+                            draw_elevation(shape, elevation)
+                        for groundwater_entry in borehole_prediction.groundwater_in_borehole.groundwater_feature_list:
+                            if page_number == groundwater_entry.page:
+                                draw_groundwater(shape, groundwater_entry)
+                        draw_depth_columns_and_material_rect(
                             shape,
                             page.derotation_matrix,
-                            page.rotation,
-                            coordinates,
-                            is_coordinates_correct,
-                            elevation,
-                            is_elevation_correct,
+                            [bboxes for bboxes in bounding_boxes if bboxes.page == page_number],
                         )
-                    if coordinates is not None and page_number == coordinates.page:
-                        draw_coordinates(shape, coordinates)
-                    if elevation is not None and page_number == elevation.page:
-                        draw_elevation(shape, elevation)
-                    for groundwater_entry in file_prediction.groundwater.groundwater:
-                        if page_number == groundwater_entry.page:
-                            draw_groundwater(shape, groundwater_entry)
-                    draw_depth_columns_and_material_rect(
-                        shape,
-                        page.derotation_matrix,
-                        [bboxes for bboxes in bounding_boxes if bboxes.page == page_number],
-                    )
-                    draw_material_descriptions(
-                        shape,
-                        page.derotation_matrix,
-                        [
-                            layer
-                            for layer in file_prediction.layers_in_document.layers
-                            if layer.material_description.page == page_number
-                        ],
-                    )
-                    shape.commit()  # Commit all the drawing operations to the page
+                        draw_material_descriptions(
+                            shape,
+                            page.derotation_matrix,
+                            [
+                                layer
+                                for layer in borehole_prediction.layers_in_borehole.layers
+                                if layer.material_description.page == page_number
+                            ],
+                        )
+                        shape.commit()  # Commit all the drawing operations to the page
 
-                    tmp_file_path = out_directory / f"{file_prediction.file_name}_page{page_number}.png"
-                    fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
+                        tmp_file_path = out_directory / f"{filename}_page{page_number}.png"
+                        fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
 
-                    if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
-                        try:
-                            import mlflow
+                        if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
+                            try:
+                                import mlflow
 
-                            mlflow.log_artifact(tmp_file_path, artifact_path="pages")
-                        except NameError:
-                            logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
+                                mlflow.log_artifact(tmp_file_path, artifact_path="pages")
+                            except NameError:
+                                logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
 
         except (FileNotFoundError, fitz.FileDataError) as e:
-            logger.error("Error opening file %s: %s", file_prediction.file_name, e)
+            logger.error("Error opening file %s: %s", filename, e)
             continue
 
-        logger.info("Finished drawing predictions for file %s", file_prediction.file_name)
+        logger.info("Finished drawing predictions for file %s", filename)
 
 
 def draw_metadata(
