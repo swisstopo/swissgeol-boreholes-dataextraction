@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+from collections import defaultdict
 from pathlib import Path
 
 import click
@@ -15,7 +16,11 @@ from stratigraphy.annotations.draw import draw_predictions
 from stratigraphy.annotations.plot_utils import plot_lines
 from stratigraphy.benchmark.score import evaluate
 from stratigraphy.extract import MaterialDescriptionRectWithSidebarExtractor
-from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument, GroundwaterLevelExtractor
+from stratigraphy.groundwater.groundwater_extraction import (
+    GroundwaterInDocument,
+    GroundwaterLevelExtractor,
+    GroundwatersInBorehole,
+)
 from stratigraphy.layer.duplicate_detection import remove_duplicate_layers
 from stratigraphy.layer.layer import LayersInDocument
 from stratigraphy.lines.line_detection import extract_lines, line_detection_params
@@ -239,7 +244,7 @@ def start_pipeline(
             # Initialize common variables
             layers_in_document = LayersInDocument([], filename)
             bounding_boxes = []
-            aggregated_groundwater_entries = []
+            aggregated_groundwater_entries = defaultdict(list)
 
             if part != "all":
                 continue
@@ -255,7 +260,7 @@ def start_pipeline(
                 ).process_page()
 
                 # Extract the groundwater levels
-                for page_bounding_box in process_page_results.bounding_boxes:
+                for borehole_index, page_bounding_box in enumerate(process_page_results.bounding_boxes):
                     material_description_bbox = page_bounding_box.material_description_bbox
 
                     groundwater_entries_near_bbox = GroundwaterLevelExtractor.near_material_description(
@@ -267,8 +272,12 @@ def start_pipeline(
                     )
                     ##avoid duplicate entries
                     for groundwater_entry in groundwater_entries_near_bbox:
-                        if groundwater_entry not in aggregated_groundwater_entries:
-                            aggregated_groundwater_entries.append(groundwater_entry)
+                        if groundwater_entry not in [
+                            already_seen
+                            for borehole_gw in aggregated_groundwater_entries.values()
+                            for already_seen in borehole_gw
+                        ]:
+                            aggregated_groundwater_entries[borehole_index].append(groundwater_entry)
 
                 # TODO: Add remove duplicates here!
                 if page_index > 0:
@@ -282,7 +291,7 @@ def start_pipeline(
                 else:
                     layer_predictions = process_page_results.predictions
 
-                layers_in_document.layers.extend(layer_predictions)
+                layers_in_document.assign_layers_to_boreholes(layer_predictions)
                 bounding_boxes.extend(process_page_results.bounding_boxes)
 
                 if draw_lines:  # could be changed to if draw_lines and mlflow_tracking:
@@ -295,7 +304,9 @@ def start_pipeline(
             # Create a document-level groundwater entry
             groundwater_entries = GroundwaterInDocument(
                 filename=filename,
-                groundwater=aggregated_groundwater_entries,
+                borehole_groundwaters=[
+                    GroundwatersInBorehole(value) for _, value in sorted(aggregated_groundwater_entries.items())
+                ],
             )
 
             # Add file predictions
@@ -309,6 +320,7 @@ def start_pipeline(
                 )
             )
 
+    # propagate change here
     logger.info("Metadata written to %s", metadata_path)
     with open(metadata_path, "w", encoding="utf8") as file:
         json.dump(predictions.get_metadata_as_dict(), file, ensure_ascii=False)
