@@ -52,7 +52,9 @@ class MetadataEvaluator:
                 ###########################################################################################################
                 ### Compute the metadata correctness for the coordinates.
                 ###########################################################################################################
-                extracted_coordinates = borehole_metadata.coordinates.feature
+                extracted_coordinates = (
+                    borehole_metadata.coordinates.feature if borehole_metadata.coordinates else None
+                )
                 ground_truth_coordinates = borehole_grounf_truth.get("metadata", {}).get("coordinates")
 
                 coordinate_metrics = self._evaluate_coordinate(extracted_coordinates, ground_truth_coordinates)
@@ -63,7 +65,9 @@ class MetadataEvaluator:
                 ############################################################################################################
                 ### Compute the metadata correctness for the elevation.
                 ############################################################################################################
-                extracted_elevation = borehole_metadata.elevation.feature.elevation
+                extracted_elevation = (
+                    borehole_metadata.elevation.feature.elevation if borehole_metadata.elevation else None
+                )
                 ground_truth_elevation = borehole_grounf_truth.get("metadata", {}).get("reference_elevation")
                 elevation_metrics = self._evaluate_elevation(extracted_elevation, ground_truth_elevation)
                 if borehole_metadata.elevation:
