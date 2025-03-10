@@ -19,9 +19,10 @@ from stratigraphy.util.predictions import FilePredictions, OverallFilePrediction
 @pytest.fixture
 def sample_file_prediction() -> FilePredictions:
     """Fixture to create a sample FilePredictions object."""
-    coord = LV95Coordinate(
-        east=CoordinateEntry(coordinate_value=2789456),
-        north=CoordinateEntry(coordinate_value=1123012),
+    coord = FeatureOnPage(
+        feature=LV95Coordinate(
+            east=CoordinateEntry(coordinate_value=2789456), north=CoordinateEntry(coordinate_value=1123012)
+        ),
         rect=fitz.Rect(),
         page=1,
     )
