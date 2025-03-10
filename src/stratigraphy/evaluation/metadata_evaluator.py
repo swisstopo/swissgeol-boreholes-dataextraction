@@ -52,20 +52,22 @@ class MetadataEvaluator:
                 ###########################################################################################################
                 ### Compute the metadata correctness for the coordinates.
                 ###########################################################################################################
-                extracted_coordinates = borehole_metadata.coordinates
+                extracted_coordinates = borehole_metadata.coordinates.feature
                 ground_truth_coordinates = borehole_grounf_truth.get("metadata", {}).get("coordinates")
 
                 coordinate_metrics = self._evaluate_coordinate(extracted_coordinates, ground_truth_coordinates)
+                if borehole_metadata.coordinates:
+                    borehole_metadata.coordinates.is_correct = coordinate_metrics.tp > 0
                 coordinate_metrics_list.append(coordinate_metrics)
 
                 ############################################################################################################
                 ### Compute the metadata correctness for the elevation.
                 ############################################################################################################
-                extracted_elevation = (
-                    None if borehole_metadata.elevation is None else borehole_metadata.elevation.elevation
-                )
+                extracted_elevation = borehole_metadata.elevation.feature.elevation
                 ground_truth_elevation = borehole_grounf_truth.get("metadata", {}).get("reference_elevation")
                 elevation_metrics = self._evaluate_elevation(extracted_elevation, ground_truth_elevation)
+                if borehole_metadata.elevation:
+                    borehole_metadata.elevation.is_correct = elevation_metrics.tp > 0
                 elevation_metrics_list.append(elevation_metrics)
 
             # perfoem micro-average to store the metrics of all the boreholes in the document

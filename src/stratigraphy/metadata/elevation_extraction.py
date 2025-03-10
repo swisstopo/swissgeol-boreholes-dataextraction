@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 import fitz
 import numpy as np
-from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature
+from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature, FeatureOnPage
 from stratigraphy.groundwater.utility import extract_elevation
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.extract_text import extract_text_lines_from_bbox
@@ -25,18 +25,10 @@ class Elevation(ExtractedFeature):
 
     elevation: float  # Elevation relative to the mean sea level
 
-    # TODO remove after refactoring to use FeatureOnPage also for elevation
-    rect: fitz.Rect  # The rectangle that contains the extracted information
-    page: int  # The page number of the PDF document
-
     def __post_init__(self):
         """Checks if the information is valid."""
         if not isinstance(self.elevation, float):
             raise ValueError("Elevation must be a float")
-        if not isinstance(self.page, int):
-            raise ValueError("Page must be an integer")
-        if not isinstance(self.rect, fitz.Rect):
-            raise ValueError("Rect must be a fitz.Rect")
 
     def is_valid(self) -> bool:
         """Checks if the information is valid.
@@ -52,7 +44,7 @@ class Elevation(ExtractedFeature):
         Returns:
             str: The object as a string.
         """
-        return f"Elevation(" f"elevation={self.elevation}, " f"page={self.page})"
+        return f"Elevation(elevation={self.elevation})"
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -60,11 +52,7 @@ class Elevation(ExtractedFeature):
         Returns:
             dict: The object as a dictionary.
         """
-        return {
-            "elevation": self.elevation,
-            "page": self.page if self.page else None,
-            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
-        }
+        return {"elevation": self.elevation}
 
     @classmethod
     def from_json(cls, data: dict) -> "Elevation":
@@ -76,15 +64,7 @@ class Elevation(ExtractedFeature):
         Returns:
             Elevation: The elevation information object.
         """
-        elevation = data["elevation"]
-        page = data["page"]
-        rect = data["rect"]
-
-        # Convert to fitz.Rect
-        if rect:
-            rect = fitz.Rect(rect[0], rect[1], rect[2], rect[3])
-
-        return cls(elevation=elevation, page=page, rect=rect)
+        return cls(elevation=data["elevation"])
 
 
 class ElevationExtractor(DataExtractor):
@@ -107,7 +87,7 @@ class ElevationExtractor(DataExtractor):
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ate": "ote"}
 
-    def get_elevation_near_key(self, lines: list[TextLine], page: int) -> Elevation | None:
+    def get_elevation_near_key(self, lines: list[TextLine], page: int) -> FeatureOnPage[Elevation] | None:
         """Find elevation from text lines that are close to an explicit "elevation" label.
 
         Also apply some preprocessing to the text of those text lines, to deal with some common (OCR) errors.
@@ -115,10 +95,9 @@ class ElevationExtractor(DataExtractor):
         Args:
             lines (list[TextLine]): all the lines of text to search in
             page (int): the page number (1-based) of the PDF document
-            page_width (float): the width of the current page (in points / PyMuPDF coordinates)
 
         Returns:
-            Elevation | None: the found elevation
+            FeatureOnPage[Elevation] | None: the found elevation
         """
         # find the key that indicates the elevation information
         elevation_key_lines = self.find_feature_key(lines)
@@ -129,7 +108,7 @@ class ElevationExtractor(DataExtractor):
 
             try:
                 extracted_elevation = self.get_elevation_from_lines(elevation_lines, page)
-                if extracted_elevation.elevation:
+                if extracted_elevation.feature.elevation:
                     extracted_elevation_list.append(extracted_elevation)
             except ValueError as error:
                 logger.warning("ValueError: %s", error)
@@ -137,22 +116,24 @@ class ElevationExtractor(DataExtractor):
 
         return self.select_best_elevation_information(extracted_elevation_list)
 
-    def select_best_elevation_information(self, extracted_elevation_list: list[Elevation]) -> Elevation | None:
+    def select_best_elevation_information(
+        self, extracted_elevation_list: list[FeatureOnPage[Elevation]]
+    ) -> FeatureOnPage[Elevation] | None:
         """Select the best elevation information from a list of extracted elevation information.
 
         Args:
-            extracted_elevation_list (list[Elevation]): A list of extracted elevation information.
+            extracted_elevation_list (list[FeatureOnPage[Elevation]]): A list of extracted elevation information.
 
         Returns:
-            Elevation | None: The best extracted elevation information.
+            FeatureOnPage[Elevation] | None: The best extracted elevation information.
         """
         # Sort the extracted elevation information by elevation with the highest elevation first
-        extracted_elevation_list.sort(key=lambda x: x.elevation, reverse=True)
+        extracted_elevation_list.sort(key=lambda x: x.feature.elevation, reverse=True)
 
         # Return the first element of the sorted list
         return extracted_elevation_list[0] if extracted_elevation_list else None
 
-    def get_elevation_from_lines(self, lines: list[TextLine], page: int) -> Elevation:
+    def get_elevation_from_lines(self, lines: list[TextLine], page: int) -> FeatureOnPage[Elevation]:
         r"""Matches the elevation in a string of text.
 
         Args:
@@ -192,13 +173,13 @@ class ElevationExtractor(DataExtractor):
             rect_union = None
 
         if elevation:
-            return Elevation(elevation=elevation, rect=rect_union, page=page)
+            return FeatureOnPage(feature=Elevation(elevation=elevation), rect=rect_union, page=page)
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
 
     def extract_elevation_from_bbox(
         self, pdf_page: fitz.Page, page_number: int, bbox: fitz.Rect | None = None
-    ) -> Elevation | None:
+    ) -> FeatureOnPage[Elevation] | None:
         """Extract the elevation information from a bounding box.
 
         Args:
@@ -207,19 +188,19 @@ class ElevationExtractor(DataExtractor):
             page_number (int): The page number.
 
         Returns:
-            Elevation | None: The extracted elevation information.
+            FeatureOnPage[Elevation] | None: The extracted elevation information.
         """
         lines = extract_text_lines_from_bbox(pdf_page, bbox)
 
         found_elevation_value = self.get_elevation_near_key(lines, page_number)
 
         if found_elevation_value:
-            logger.info("Found elevation in the bounding box: %s", found_elevation_value.elevation)
+            logger.info("Found elevation in the bounding box: %s", found_elevation_value.feature.elevation)
             return found_elevation_value
 
         logger.info("No elevation found in the bounding box.")
 
-    def extract_elevation(self, document: fitz.Document) -> Elevation | None:
+    def extract_elevation(self, document: fitz.Document) -> FeatureOnPage[Elevation] | None:
         """Extracts the elevation information from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the feature key in the respective text of the
@@ -229,7 +210,7 @@ class ElevationExtractor(DataExtractor):
             document (fitz.Document): document from which elevation is extracted page by page
 
         Returns:
-            Elevation | None: The extracted elevation information.
+            FeatureOnPage[Elevation] | None: The extracted elevation information.
         """
         for page in document:
             page_number = page.number + 1  # page.number is 0-based

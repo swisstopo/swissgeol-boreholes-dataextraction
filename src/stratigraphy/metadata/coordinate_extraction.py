@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import fitz
 import regex
-from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature
+from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature, FeatureOnPage
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.extract_text import extract_text_lines_from_bbox
 
@@ -36,10 +36,6 @@ class Coordinate(ExtractedFeature):
     east: CoordinateEntry
     north: CoordinateEntry
 
-    # TODO remove after refactoring to use FeatureOnPage also for coordinates
-    rect: fitz.Rect  # The rectangle that contains the extracted information
-    page: int  # The page number of the PDF document
-
     def __post_init__(self):
         # east always greater than north by definition. Irrespective of the leading 1 or 2
         if self.east.coordinate_value < self.north.coordinate_value:
@@ -55,39 +51,26 @@ class Coordinate(ExtractedFeature):
         Returns:
             dict: The object as a dictionary.
         """
-        return {
-            "E": self.east.coordinate_value,
-            "N": self.north.coordinate_value,
-            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
-            "page": self.page,
-        }
+        return {"E": self.east.coordinate_value, "N": self.north.coordinate_value}
 
     @staticmethod
-    def from_values(east: float, north: float, rect: fitz.Rect, page: int) -> Coordinate | None:
+    def from_values(east: float, north: float) -> Coordinate | None:
         """Creates a Coordinate object from the given values.
 
         Args:
             east (float): The east coordinate value.
             north (float): The north coordinate value.
-            rect (fitz.Rect): The rectangle that contains the extracted information.
-            page (int): The page number of the PDF document.
 
         Returns:
             Coordinate | None: The coordinate object.
         """
         if 1e6 < east < 1e7:
             return LV95Coordinate(
-                east=CoordinateEntry(coordinate_value=east),
-                north=CoordinateEntry(coordinate_value=north),
-                rect=rect,
-                page=page,
+                east=CoordinateEntry(coordinate_value=east), north=CoordinateEntry(coordinate_value=north)
             )
         elif east < 1e6:
             return LV03Coordinate(
-                east=CoordinateEntry(coordinate_value=east),
-                north=CoordinateEntry(coordinate_value=north),
-                rect=rect,
-                page=page,
+                east=CoordinateEntry(coordinate_value=east), north=CoordinateEntry(coordinate_value=north)
             )
         else:
             logger.warning("Invalid coordinates format. Got E: %s, N: %s", east, north)
@@ -103,9 +86,7 @@ class Coordinate(ExtractedFeature):
         Returns:
             Coordinate: The coordinate object.
         """
-        return Coordinate.from_values(
-            east=input["E"], north=input["N"], rect=fitz.Rect(input["rect"]), page=input["page"]
-        )
+        return Coordinate.from_values(east=input["E"], north=input["N"])
 
 
 @dataclass
@@ -142,7 +123,7 @@ class CoordinateExtractor(DataExtractor):
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " "}
 
-    def get_coordinates_with_x_y_labels(self, lines: list[TextLine], page: int) -> list[Coordinate]:
+    def get_coordinates_with_x_y_labels(self, lines: list[TextLine], page: int) -> list[FeatureOnPage[Coordinate]]:
         """Find coordinates with explicit "X" and "Y" labels from the text lines.
 
         Args:
@@ -150,7 +131,7 @@ class CoordinateExtractor(DataExtractor):
             page (int): the page number (1-based) of the PDF document
 
         Returns:
-            list[Coordinate]: all found coordinates
+            list[FeatureOnPage[Coordinate]]: all found coordinates
         """
         # In this case, we can allow for some whitespace in between the numbers.
         # In some older borehole profile the OCR may recognize whitespace between two digits.
@@ -170,16 +151,13 @@ class CoordinateExtractor(DataExtractor):
             rect.include_rect(x_match[1])
             rect.include_rect(y_match[1])
             coordinates = Coordinate.from_values(
-                east=int("".join(x_match[0].groups(default=""))),
-                north=int("".join(y_match[0].groups(default=""))),
-                rect=rect,
-                page=page,
+                east=int("".join(x_match[0].groups(default=""))), north=int("".join(y_match[0].groups(default="")))
             )
             if coordinates is not None and coordinates.is_valid():
-                found_coordinates.append(coordinates)
+                found_coordinates.append(FeatureOnPage(feature=coordinates, rect=rect, page=page))
         return found_coordinates
 
-    def get_coordinates_near_key(self, lines: list[TextLine], page: int) -> list[Coordinate]:
+    def get_coordinates_near_key(self, lines: list[TextLine], page: int) -> list[FeatureOnPage[Coordinate]]:
         """Find coordinates from text lines that are close to an explicit "coordinates" label.
 
         Also apply some preprocessing to the text of those text lines, to deal with some common (OCR) errors.
@@ -189,7 +167,7 @@ class CoordinateExtractor(DataExtractor):
             page (int): the page number (1-based) of the PDF document
 
         Returns:
-            list[Coordinate]: all found coordinates
+            list[FeatureOnPage[Coordinate]]: all found coordinates
         """
         # find the key that indicates the coordinate information
         coordinate_key_lines = self.find_feature_key(lines)
@@ -201,7 +179,7 @@ class CoordinateExtractor(DataExtractor):
 
         return extracted_coordinates
 
-    def get_coordinates_from_lines(self, lines: list[TextLine], page: int) -> list[Coordinate]:
+    def get_coordinates_from_lines(self, lines: list[TextLine], page: int) -> list[FeatureOnPage[Coordinate]]:
         r"""Matches the coordinates in a string of text.
 
         The query searches for a pair of coordinates of 6 or 7 digits, respectively. The pair of coordinates
@@ -233,7 +211,7 @@ class CoordinateExtractor(DataExtractor):
             page (int): the page number (1-based) of the PDF document
 
         Returns:
-            list[Coordinate]: A list of potential coordinates
+            list[FeatureOnPage[Coordinate]]: A list of potential coordinates
         """
         full_regex = regex.compile(
             r"(?:[XY][=:\s]{0,2})?"
@@ -243,16 +221,20 @@ class CoordinateExtractor(DataExtractor):
             + r"\b"
         )
         potential_coordinates = [
-            Coordinate.from_values(
-                east=float("{}.{}".format("".join(match.groups(default="")[:3]), match.groups(default="")[3])),
-                north=float("{}.{}".format("".join(match.groups(default="")[4:-1]), match.groups(default="")[-1])),
-                rect=rect,
+            FeatureOnPage(
+                feature=Coordinate.from_values(
+                    east=float("{}.{}".format("".join(match.groups(default="")[:3]), match.groups(default="")[3])),
+                    north=float("{}.{}".format("".join(match.groups(default="")[4:-1]), match.groups(default="")[-1])),
+                ),
                 page=page,
+                rect=rect,
             )
             for match, rect in CoordinateExtractor._match_text_with_rect(lines, full_regex, self.preprocess)
         ]
         return [
-            coordinates for coordinates in potential_coordinates if coordinates is not None and coordinates.is_valid()
+            coordinates
+            for coordinates in potential_coordinates
+            if coordinates.feature is not None and coordinates.feature.is_valid()
         ]
 
     @staticmethod
@@ -284,7 +266,7 @@ class CoordinateExtractor(DataExtractor):
 
     def extract_coordinates_from_bbox(
         self, page: fitz.Page, page_number: int, bbox: fitz.Rect | None = None
-    ) -> Coordinate | None:
+    ) -> FeatureOnPage[Coordinate] | None:
         """Extracts the coordinates from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
@@ -296,7 +278,7 @@ class CoordinateExtractor(DataExtractor):
             3. if that gives no results either, try to detect coordinates in the full text
 
         Returns:
-            Coordinate | None: the extracted coordinates (if any)
+            FeatureOnPage[Coordinate] | None: the extracted coordinates (if any)
         """
         lines = extract_text_lines_from_bbox(page, bbox)
 
@@ -311,7 +293,7 @@ class CoordinateExtractor(DataExtractor):
 
         logger.info("No coordinates found in this borehole profile.")
 
-    def extract_coordinates(self, document: fitz.Document) -> Coordinate | None:
+    def extract_coordinates(self, document: fitz.Document) -> FeatureOnPage[Coordinate] | None:
         """Extracts the coordinates from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
@@ -326,7 +308,7 @@ class CoordinateExtractor(DataExtractor):
             document (fitz.Document): document from which coordinates are extracted page by page
 
         Returns:
-            Coordinate | None: the extracted coordinates (if any)
+            FeatureOnPage[Coordinate] | None: the extracted coordinates (if any)
         """
         for page in document:
             page_number = page.number + 1  # page.number is 0-based
