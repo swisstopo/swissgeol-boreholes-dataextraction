@@ -52,7 +52,7 @@ class Elevation(ExtractedFeature):
         Returns:
             str: The object as a string.
         """
-        return f"Elevation(" f"elevation={self.elevation}, " f"page={self.page})"
+        return f"Elevation(elevation={self.elevation}, page={self.page})"
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -107,7 +107,7 @@ class ElevationExtractor(DataExtractor):
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ate": "ote"}
 
-    def get_elevation_near_key(self, lines: list[TextLine], page: int) -> Elevation | None:
+    def get_elevation_near_key(self, lines: list[TextLine], page: int) -> list[Elevation] | None:
         """Find elevation from text lines that are close to an explicit "elevation" label.
 
         Also apply some preprocessing to the text of those text lines, to deal with some common (OCR) errors.
@@ -137,8 +137,10 @@ class ElevationExtractor(DataExtractor):
 
         return self.select_best_elevation_information(extracted_elevation_list)
 
-    def select_best_elevation_information(self, extracted_elevation_list: list[Elevation]) -> Elevation | None:
-        """Select the best elevation information from a list of extracted elevation information.
+    def select_best_elevation_information(self, extracted_elevation_list: list[Elevation]) -> list[Elevation] | None:
+        """Select the best elevations information from a list of extracted elevation information.
+
+        Currently returns all of the elevation found, sorted with the highest first.
 
         Args:
             extracted_elevation_list (list[Elevation]): A list of extracted elevation information.
@@ -149,8 +151,8 @@ class ElevationExtractor(DataExtractor):
         # Sort the extracted elevation information by elevation with the highest elevation first
         extracted_elevation_list.sort(key=lambda x: x.elevation, reverse=True)
 
-        # Return the first element of the sorted list
-        return extracted_elevation_list[0] if extracted_elevation_list else None
+        # Return all elements of the sorted list
+        return extracted_elevation_list if extracted_elevation_list else None
 
     def get_elevation_from_lines(self, lines: list[TextLine], page: int) -> Elevation:
         r"""Matches the elevation in a string of text.
@@ -198,7 +200,7 @@ class ElevationExtractor(DataExtractor):
 
     def extract_elevation_from_bbox(
         self, pdf_page: fitz.Page, page_number: int, bbox: fitz.Rect | None = None
-    ) -> Elevation | None:
+    ) -> list[Elevation] | None:
         """Extract the elevation information from a bounding box.
 
         Args:
@@ -214,12 +216,14 @@ class ElevationExtractor(DataExtractor):
         found_elevation_value = self.get_elevation_near_key(lines, page_number)
 
         if found_elevation_value:
-            logger.info("Found elevation in the bounding box: %s", found_elevation_value.elevation)
+            logger.info(
+                "Found elevations in the bounding box: %s", [elevs.elevation for elevs in found_elevation_value]
+            )
             return found_elevation_value
 
         logger.info("No elevation found in the bounding box.")
 
-    def extract_elevation(self, document: fitz.Document) -> Elevation | None:
+    def extract_elevation(self, document: fitz.Document) -> list[Elevation]:
         """Extracts the elevation information from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the feature key in the respective text of the
@@ -231,8 +235,12 @@ class ElevationExtractor(DataExtractor):
         Returns:
             Elevation | None: The extracted elevation information.
         """
+        elevations: list[Elevation] = []
         for page in document:
             page_number = page.number + 1  # page.number is 0-based
 
-            # TODO: This return the first found elevation, but we might want to check all pages.
-            return self.extract_elevation_from_bbox(page, page_number)
+            elev = self.extract_elevation_from_bbox(page, page_number)
+            if elev is not None:
+                elevations.extend(elev)
+
+        return elevations

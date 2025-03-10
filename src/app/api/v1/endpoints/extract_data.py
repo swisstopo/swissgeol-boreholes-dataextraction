@@ -151,6 +151,8 @@ def extract_coordinates(
     extracted_coord = coord_extractor.extract_coordinates_from_bbox(
         pdf_page, extract_data_request.page_number, user_defined_bbox
     )
+    if extracted_coord is not None:
+        extracted_coord = extracted_coord[0]  # currently we only handles one set of coordinate
 
     if isinstance(extracted_coord, LV03Coordinate):
         return create_response(extracted_coord, "LV03")
