@@ -9,7 +9,7 @@ import fitz
 import regex
 from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature
 from stratigraphy.lines.line import TextLine
-from stratigraphy.text.extract_text import extract_text_lines_from_bbox
+from stratigraphy.text.extract_text import extract_text_lines
 
 logger = logging.getLogger(__name__)
 
@@ -282,9 +282,7 @@ class CoordinateExtractor(DataExtractor):
             results.append((match, rect))
         return results
 
-    def extract_coordinates_from_bbox(
-        self, page: fitz.Page, page_number: int, bbox: fitz.Rect | None = None
-    ) -> Coordinate | None:
+    def extract_coordinates_aggregated(self, text_lines: list[TextLine], page_number: int) -> Coordinate | None:
         """Extracts the coordinates from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
@@ -298,12 +296,10 @@ class CoordinateExtractor(DataExtractor):
         Returns:
             Coordinate | None: the extracted coordinates (if any)
         """
-        lines = extract_text_lines_from_bbox(page, bbox)
-
         found_coordinates = (
-            self.get_coordinates_with_x_y_labels(lines, page_number)
-            or self.get_coordinates_near_key(lines, page_number)
-            or self.get_coordinates_from_lines(lines, page_number)
+            self.get_coordinates_with_x_y_labels(text_lines, page_number)
+            or self.get_coordinates_near_key(text_lines, page_number)
+            or self.get_coordinates_from_lines(text_lines, page_number)
         )
 
         if len(found_coordinates) > 0:
@@ -329,6 +325,6 @@ class CoordinateExtractor(DataExtractor):
             Coordinate | None: the extracted coordinates (if any)
         """
         for page in document:
+            text_lines = extract_text_lines(page)
             page_number = page.number + 1  # page.number is 0-based
-
-            return self.extract_coordinates_from_bbox(page, page_number)
+            return self.extract_coordinates_aggregated(text_lines, page_number)

@@ -119,13 +119,13 @@ def test_extract_text_success(test_client: TestClient, upload_test_pdf, upload_t
         "Bohrmeister : Dragnic "
         "Ausführungsdatum 2.-3. 9. 1995 "
         "Koordinaten : 615 790 / 157 500 "
-        "Kote Bezugspunkt: ~788,6 m ü. M."
+        "Kote Bezugspunkt : ~788,6 m ü. M."
     )
 
     request = ExtractDataRequest(
         filename=TEST_PDF_KEY.name,
         page_number=1,
-        bbox=BoundingBox(x0=0, y0=0, x1=1000, y1=1000),
+        bbox=BoundingBox(x0=0, y0=0, x1=1020, y1=1000),
         format=FormatTypes.TEXT,
     )
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
@@ -220,10 +220,8 @@ def test_clipping_behavior(test_client: TestClient, upload_test_pdf, upload_test
     assert json_response["text"] == target_text
 
     ####################################################################################################
-    ### Extract Data on Normal PDF with bounding box with only one part of one word selected out of the text.
+    ### Extract Data on Normal PDF with bounding box with only a part of one word selected.
     ####################################################################################################
-    target_text = "Lo"
-
     request = ExtractDataRequest(
         filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
         page_number=1,
@@ -231,17 +229,14 @@ def test_clipping_behavior(test_client: TestClient, upload_test_pdf, upload_test
         format=FormatTypes.TEXT,
     )
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
-    assert response.status_code == 200
-    json_response = response.json()
-    assert "bbox" in json_response
-    assert json_response["text"] == target_text
+    assert response.status_code == 404
 
     target_text = "Lorem"
 
     request = ExtractDataRequest(
         filename=TEST_CLIPPING_BEHAVIOR_PDF_KEY.name,
         page_number=1,
-        bbox=BoundingBox(x0=315, y0=300, x1=465, y1=330),  # pixels
+        bbox=BoundingBox(x0=315, y0=300, x1=440, y1=330),  # pixels
         format=FormatTypes.TEXT,
     )
     response = test_client.post("/api/V1/extract_data", content=request.model_dump_json())
