@@ -12,7 +12,7 @@ from stratigraphy.evaluation.utility import count_against_ground_truth
 from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument
 from stratigraphy.layer.layer import LayersInDocument
 from stratigraphy.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
-from stratigraphy.metadata.metadata import BoreholeMetadata
+from stratigraphy.metadata.metadata import MetadataInDocument
 from stratigraphy.util.predictions import FilePredictions, OverallFilePredictions
 
 
@@ -42,7 +42,7 @@ def sample_file_prediction() -> FilePredictions:
     )
     groundwater_in_doc = GroundwaterInDocument(groundwater=[groundwater_on_page], filename="test_file")
 
-    metadata = BoreholeMetadata(coordinates=coord, page_dimensions=[Mock(width=10, height=20)], language="en")
+    metadata = MetadataInDocument(coordinates=coord, page_dimensions=[Mock(width=10, height=20)], language="en")
 
     return FilePredictions(
         layers_in_document=layers_in_document,

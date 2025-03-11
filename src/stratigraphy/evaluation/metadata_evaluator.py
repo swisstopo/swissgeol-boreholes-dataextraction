@@ -37,8 +37,9 @@ class MetadataEvaluator:
         # Initialize the metadata correctness metrics
         metadata_metrics_list = OverallBoreholeMetadataMetrics()
 
-        for metadata in self.metadata_list.metadata_per_file:
-            filename = metadata[0].filename.name
+        for metadata_for_file, filename in zip(
+            self.metadata_list.metadata_per_file, self.metadata_list.filenames, strict=True
+        ):
             file_ground_truth = self.ground_truth.for_file(filename)
             pred_to_gt_matching = {v: k for k, v in self.gt_to_pred_matching[filename].items()}
 
@@ -46,14 +47,19 @@ class MetadataEvaluator:
             elevation_metrics_list = []
             coordinate_metrics_list = []
 
-            for borehole_index, borehole_metadata in enumerate(metadata):
-                borehole_grounf_truth = file_ground_truth[pred_to_gt_matching[borehole_index]]
+            for borehole_index, borehole_metadata in enumerate(metadata_for_file):
+                ground_truth_index = pred_to_gt_matching.get(borehole_index)
+                if ground_truth_index is None:
+                    # when the extraction detects more borehole than there actually is in the ground truth, the wosrt
+                    # predictions have no match and must be skipped for the evaluation
+                    continue
+                borehole_ground_truth = file_ground_truth[ground_truth_index]
 
                 ###########################################################################################################
                 ### Compute the metadata correctness for the coordinates.
                 ###########################################################################################################
-                extracted_coordinates = borehole_metadata.coordinates
-                ground_truth_coordinates = borehole_grounf_truth.get("metadata", {}).get("coordinates")
+                extracted_coordinates = borehole_metadata.coordinate
+                ground_truth_coordinates = borehole_ground_truth.get("metadata", {}).get("coordinates")
 
                 coordinate_metrics = self._evaluate_coordinate(extracted_coordinates, ground_truth_coordinates)
                 coordinate_metrics_list.append(coordinate_metrics)
@@ -64,7 +70,7 @@ class MetadataEvaluator:
                 extracted_elevation = (
                     None if borehole_metadata.elevation is None else borehole_metadata.elevation.elevation
                 )
-                ground_truth_elevation = borehole_grounf_truth.get("metadata", {}).get("reference_elevation")
+                ground_truth_elevation = borehole_ground_truth.get("metadata", {}).get("reference_elevation")
                 elevation_metrics = self._evaluate_elevation(extracted_elevation, ground_truth_elevation)
                 elevation_metrics_list.append(elevation_metrics)
 

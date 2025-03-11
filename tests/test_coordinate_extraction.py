@@ -74,7 +74,7 @@ extractor = CoordinateExtractor()
 def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
     """Test the extraction of coordinates from a PDF document."""
     # Assuming there is a method called 'extract' in CoordinateExtractor class
-    coordinates = extractor.extract_coordinates(doc)
+    coordinates = extractor.extract_coordinates(doc)[0]
     # Check if the returned value is a list
     assert isinstance(coordinates, Coordinate)
     assert repr(coordinates.east) == "615'790.0"
@@ -84,7 +84,7 @@ def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
 def test_CoordinateExtractor_extract_coordinates_with_digits_in_coordinates():  # noqa: D103
     """Test the extraction of coordinates from a PDF document with digits in the coordinates."""
     # Assuming there is a method called 'extract' in CoordinateExtractor class
-    coordinates = CoordinateExtractor().extract_coordinates(doc_with_digits_in_coordinates)
+    coordinates = CoordinateExtractor().extract_coordinates(doc_with_digits_in_coordinates)[0]
     # Check if the returned value is a list
     assert isinstance(coordinates, Coordinate)
     assert repr(coordinates.east) == "607'562.0"

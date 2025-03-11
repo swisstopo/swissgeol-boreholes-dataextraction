@@ -6,7 +6,7 @@ from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.benchmark.metrics import OverallMetrics
 from stratigraphy.evaluation.evaluation_dataclasses import Metrics
 from stratigraphy.evaluation.utility import count_against_ground_truth
-from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument
+from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
 
 
 @dataclass
@@ -54,19 +54,19 @@ class GroundwaterEvaluator:
 
     def __init__(
         self,
-        groundwater_entries: list[GroundwaterInDocument],
+        groundwater_entries: dict[str : list[GroundwatersInBorehole]],
         ground_truth: GroundTruth,
         gt_to_pred_matching: dict[str : dict[int, int]],
     ):
         """Initializes the GroundwaterEvaluator object.
 
         Args:
-            groundwater_entries (list[GroundwaterInDocument]): The metadata to evaluate.
+            groundwater_entries (dict[str:list[GroundwatersInBorehole]]): The groundwaters to evaluate.
             ground_truth (GroundTruth): The ground truth.
             gt_to_pred_matching (dict[str : dict[int:int]]): the dict matching the index of the gt borehole to pred
         """
         self.ground_truth = ground_truth
-        self.groundwater_entries: list[GroundwaterInDocument] = groundwater_entries
+        self.groundwater_entries: dict[str : list[GroundwatersInBorehole]] = groundwater_entries
         self.gt_to_pred_matching: dict[str : dict[int:int]] = gt_to_pred_matching
 
     def evaluate(self) -> OverallGroundwaterMetrics:
@@ -77,8 +77,7 @@ class GroundwaterEvaluator:
         """
         overall_groundwater_metrics = OverallGroundwaterMetrics()
 
-        for groundwater_in_doc in self.groundwater_entries:
-            filename = groundwater_in_doc.filename
+        for filename, groundwater_in_doc in self.groundwater_entries.items():
             ground_truth_data = self.ground_truth.for_file(filename)
             pred_to_gt_matching = {v: k for k, v in self.gt_to_pred_matching[filename].items()}
 
@@ -89,14 +88,19 @@ class GroundwaterEvaluator:
             groundwater_date_metrics_list = []
 
             # iterate on all the borehole detected in the document
-            for pred_index, groundwaters_in_borehole in enumerate(groundwater_in_doc.borehole_groundwaters):
+            for pred_index, groundwaters_in_borehole in enumerate(groundwater_in_doc):
                 # from the matching previously done on the layer description, extract the coresponding gt borehole
+                ground_truth_index = pred_to_gt_matching.get(pred_index)
+                if ground_truth_index is None:
+                    # when the extraction detects more borehole than there actually is in the ground truth, the wosrt
+                    # predictions have no match and must be skipped for the evaluation
+                    continue
                 ground_truth_index = pred_to_gt_matching[pred_index]
-                gt_borehole_groundwater = ground_truth_data[ground_truth_index]
-                if gt_borehole_groundwater is None or gt_borehole_groundwater.get("groundwater") is None:
+                gt_borehole = ground_truth_data[ground_truth_index]
+                if gt_borehole is None or gt_borehole.get("groundwater") is None:
                     ground_truth = []  # If no ground truth is available, set it to an empty list
                 else:
-                    ground_truth = gt_borehole_groundwater.get("groundwater")
+                    ground_truth = gt_borehole.get("groundwater")
 
                 ############################################################################################################
                 ### Compute the metadata correctness for the groundwater information.

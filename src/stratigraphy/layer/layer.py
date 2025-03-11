@@ -140,16 +140,13 @@ class Layer(ExtractedFeature):
 
 
 @dataclass
-class BoreholeLayers:
+class LayersInBorehole:
     """Represent the data for all layers in a borehole profile."""
 
     layers: list[Layer]
 
     def to_json(self):
         return [layer.to_json() for layer in self.layers]
-
-    def __getitem__(self, index):
-        return self.layers[index]
 
 
 class LayersInDocument:
@@ -158,18 +155,9 @@ class LayersInDocument:
     maybe should be called BoreholeLayersInDocument
     """
 
-    def __init__(self, boreholes_layers: list[BoreholeLayers], filename: str):
+    def __init__(self, boreholes_layers: list[LayersInBorehole], filename: str):
         self.boreholes_layers = boreholes_layers
         self.filename = filename
-
-    # def __len__(self):
-    #     return len(self.boreholes_layers)
-
-    # def __iter__(self):
-    #     yield from self.boreholes_layers
-
-    # def __getitem__(self, index):
-    #     return self.boreholes_layers[index]
 
     def assign_layers_to_boreholes(self, layer_predictions: list[list[Layer]]):
         """SIMPLIFICATION: currently assumes that if there is more than one page, there is a single borehole.
@@ -181,9 +169,11 @@ class LayersInDocument:
         Args:
             layer_predictions (list[list[Layer]]): List containing the a list of all layers of all boreholes
         """
+        if not layer_predictions:
+            return
         if not self.boreholes_layers:
             # first page
-            self.boreholes_layers = [BoreholeLayers(borehole_layers) for borehole_layers in layer_predictions]
+            self.boreholes_layers = [LayersInBorehole(borehole_layers) for borehole_layers in layer_predictions]
         else:
             # second page, use assumption
             self.boreholes_layers[0].layers.extend(layer_predictions[0])

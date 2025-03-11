@@ -24,9 +24,14 @@ from stratigraphy.groundwater.groundwater_extraction import (
 from stratigraphy.layer.duplicate_detection import remove_duplicate_layers
 from stratigraphy.layer.layer import LayersInDocument
 from stratigraphy.lines.line_detection import extract_lines, line_detection_params
-from stratigraphy.metadata.metadata import BoreholeMetadata
+from stratigraphy.metadata.metadata import FileMetadata, MetadataInDocument
 from stratigraphy.text.extract_text import extract_text_lines
-from stratigraphy.util.predictions import FilePredictions, OverallFilePredictions
+from stratigraphy.util.predictions import (
+    BoreholeListBuilder,
+    BoreholePredictions,
+    FilePredictions,
+    OverallFilePredictions,
+)
 from stratigraphy.util.util import flatten, read_params
 
 load_dotenv()
@@ -238,7 +243,8 @@ def start_pipeline(
 
         with fitz.Document(in_path) as doc:
             # Extract metadata
-            metadata = BoreholeMetadata.from_document(doc)
+            file_metadata = FileMetadata.from_document(doc)
+            metadata = MetadataInDocument.from_document(doc)
 
             # Save the predictions to the overall predictions object
             # Initialize common variables
@@ -256,7 +262,7 @@ def start_pipeline(
                 text_lines = extract_text_lines(page)
                 geometric_lines = extract_lines(page, line_detection_params)
                 process_page_results = MaterialDescriptionRectWithSidebarExtractor(
-                    text_lines, geometric_lines, metadata.language, page_number, **matching_params
+                    text_lines, geometric_lines, file_metadata.language, page_number, **matching_params
                 ).process_page()
 
                 # Extract the groundwater levels
@@ -268,7 +274,7 @@ def start_pipeline(
                         page_number=page_number,
                         lines=text_lines,
                         material_description_bbox=material_description_bbox,
-                        terrain_elevation=metadata.elevation,
+                        terrain_elevations=metadata.elevations,
                     )
                     ##avoid duplicate entries
                     for groundwater_entry in groundwater_entries_near_bbox:
@@ -292,7 +298,11 @@ def start_pipeline(
                     layer_predictions = process_page_results.predictions
 
                 layers_in_document.assign_layers_to_boreholes(layer_predictions)
-                bounding_boxes.extend(process_page_results.bounding_boxes)
+                if page_number == 1:
+                    bounding_boxes = [[bbox] for bbox in process_page_results.bounding_boxes]
+                else:
+                    # use assumption, if there is multiple pages, there is only one borehole (so one bbox too)
+                    bounding_boxes[0].extend(process_page_results.bounding_boxes)
 
                 if draw_lines:  # could be changed to if draw_lines and mlflow_tracking:
                     if not mlflow_tracking:
@@ -309,16 +319,18 @@ def start_pipeline(
                 ],
             )
 
+            # create list of BoreholePrediction objects with all the separate lists
+            borehole_predictions_list: list[BoreholePredictions] = BoreholeListBuilder(
+                layers_in_document=layers_in_document,
+                file_name=filename,
+                groundwater_doc=groundwater_entries,
+                bounding_boxes=bounding_boxes,
+                elevations_list=metadata.elevations,
+                coordinates_list=metadata.coordinates,
+            ).build()
+
             # Add file predictions
-            predictions.add_file_predictions(
-                FilePredictions(
-                    file_name=filename,
-                    metadata=metadata,
-                    groundwater=groundwater_entries,
-                    layers_in_document=layers_in_document,
-                    bounding_boxes=bounding_boxes,
-                )
-            )
+            predictions.add_file_predictions(FilePredictions(borehole_predictions_list, file_metadata, filename))
 
     # propagate change here
     logger.info("Metadata written to %s", metadata_path)

@@ -61,10 +61,12 @@ def draw_predictions(
                     shape = page.new_shape()  # Create a shape object for drawing
 
                     # iterate over all boreholes identified
-                    for borehole_prediction in file_prediction.borehole_predictions_list:
-                        bounding_boxes = borehole_prediction.bounding_boxes
-                        coordinates = borehole_prediction.metadata.coordinates
-                        elevation = borehole_prediction.metadata.elevation
+                    for borehole_predictions in file_prediction.borehole_predictions_list:
+                        bounding_boxes = borehole_predictions.bounding_boxes
+                        coordinates = borehole_predictions.metadata.coordinate
+                        elevation = borehole_predictions.metadata.elevation
+                        groundwaters = borehole_predictions.groundwater_in_borehole
+                        bh_layers = borehole_predictions.layers_in_borehole
 
                         # Assess the correctness of the metadata
                         if (
@@ -94,7 +96,7 @@ def draw_predictions(
                             draw_coordinates(shape, coordinates)
                         if elevation is not None and page_number == elevation.page:
                             draw_elevation(shape, elevation)
-                        for groundwater_entry in borehole_prediction.groundwater_in_borehole.groundwater_feature_list:
+                        for groundwater_entry in groundwaters.groundwater_feature_list:
                             if page_number == groundwater_entry.page:
                                 draw_groundwater(shape, groundwater_entry)
                         draw_depth_columns_and_material_rect(
@@ -105,11 +107,7 @@ def draw_predictions(
                         draw_material_descriptions(
                             shape,
                             page.derotation_matrix,
-                            [
-                                layer
-                                for layer in borehole_prediction.layers_in_borehole.layers
-                                if layer.material_description.page == page_number
-                            ],
+                            [layer for layer in bh_layers.layers if layer.material_description.page == page_number],
                         )
                         shape.commit()  # Commit all the drawing operations to the page
 
