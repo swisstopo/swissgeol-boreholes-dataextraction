@@ -7,15 +7,14 @@ from typing import TypeVar
 
 from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.benchmark.metrics import OverallMetricsCatalog
-from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBoxes
 from stratigraphy.evaluation.evaluation_dataclasses import OverallBoreholeMetadataMetrics
 from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
 from stratigraphy.evaluation.layer_evaluator import LayerEvaluator
 from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
-from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument, GroundwatersInBorehole
-from stratigraphy.layer.layer import Layer, LayersInBorehole, LayersInDocument
-from stratigraphy.metadata.metadata import BoreholeMetadata, FileMetadata, MetadataInDocument, OverallFileMetadata
+from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument, GroundwatersInBorehole
+from stratigraphy.layer.layer import LayersInBorehole, LayersInDocument
+from stratigraphy.metadata.metadata import BoreholeMetadata, FileMetadata, OverallFileMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +46,26 @@ class BoreholePredictions:
             "groundwater": self.groundwater_in_borehole.to_json() if self.groundwater_in_borehole is not None else [],
         }
 
+    @classmethod
+    def from_json(cls, json_object, file_name) -> "BoreholePredictions":
+        """Extract a BoreholePrediction object from a json dictionary.
+
+        Args:
+            json_object (dict): the json object containing the informations of the borehole
+            file_name: the file name
+
+        Returns:
+            (BoreholePredictions): the extracted object
+        """
+        return cls(
+            json_object["borehole_index"],
+            LayersInBorehole.from_json(json_object["layers"]),
+            file_name,
+            BoreholeMetadata.from_json(json_object["metadata"]),
+            GroundwatersInBorehole.from_json(json_object["groundwater"]),
+            [BoundingBoxes.from_json(bbox_json) for bbox_json in json_object["bounding_boxes"]],
+        )
+
 
 @dataclass
 class FilePredictions:
@@ -66,8 +85,7 @@ class FilePredictions:
             dict: The object as a dictionary.
         """
         return {
-            "page_dimension": self.file_metadata.page_dimensions,
-            "language": self.file_metadata.language,
+            **self.file_metadata.to_json(),
             "boreholes": [borehole.to_json() for borehole in self.borehole_predictions_list],
         }
 
@@ -85,7 +103,7 @@ class BoreholeListBuilder:
         self,
         layers_in_document: LayersInDocument,
         file_name: str,
-        groundwater_doc: GroundwaterInDocument,
+        groundwater_in_doc: GroundwaterInDocument,
         bounding_boxes: list[list[BoundingBoxes]],
         elevations_list: list,
         coordinates_list: list,
@@ -95,15 +113,15 @@ class BoreholeListBuilder:
         Args:
             layers_in_document (LayersInDocument): Object containing borehole layers extracted from the document.
             file_name (str): The name of the processed document.
-            groundwater_doc (GroundwaterInDocument): Contains detected groundwater entries for boreholes.
+            groundwater_in_doc (GroundwaterInDocument): Contains detected groundwater entries for boreholes.
             bounding_boxes (list[list[BoundingBoxes]]): A nested list where each inner list represents bounding boxes
-                associated with a borehole across multiple pages.
+                associated with a borehole.
             elevations_list (list[float]): List of terrain elevation values for detected boreholes.
-            coordinates_list (list[tuple[float, float]]): List of borehole coordinates (latitude, longitude).
+            coordinates_list (list[tuple[float, float]]): List of borehole coordinates.
         """
         self._layers_in_document = layers_in_document
         self._file_name = file_name
-        self._groundwater_doc = groundwater_doc
+        self._groundwater_in_doc = groundwater_in_doc
         self._bounding_boxes = bounding_boxes
         self._elevations_list = elevations_list
         self._coordinates_list = coordinates_list
@@ -130,7 +148,7 @@ class BoreholeListBuilder:
             ) in enumerate(
                 zip(
                     self._layers_in_document.boreholes_layers,
-                    self._groundwater_doc.borehole_groundwaters,
+                    self._groundwater_in_doc.borehole_groundwaters,
                     self._bounding_boxes,
                     self._elevations_list,
                     self._coordinates_list,
@@ -143,7 +161,7 @@ class BoreholeListBuilder:
         """Ensures that all lists have the same length by duplicating elements if necessary."""
         num_boreholes = max(
             len(self._layers_in_document.boreholes_layers),
-            len(self._groundwater_doc.borehole_groundwaters),
+            len(self._groundwater_in_doc.borehole_groundwaters),
             len(self._bounding_boxes),
             len(self._elevations_list),
             len(self._coordinates_list),
@@ -152,8 +170,8 @@ class BoreholeListBuilder:
         self._layers_in_document.boreholes_layers = self._extend_list(
             self._layers_in_document.boreholes_layers, LayersInBorehole([]), num_boreholes
         )
-        self._groundwater_doc.borehole_groundwaters = self._extend_list(
-            self._groundwater_doc.borehole_groundwaters, GroundwatersInBorehole([]), num_boreholes
+        self._groundwater_in_doc.borehole_groundwaters = self._extend_list(
+            self._groundwater_in_doc.borehole_groundwaters, GroundwatersInBorehole([]), num_boreholes
         )
         self._bounding_boxes = self._extend_list(self._bounding_boxes, [], num_boreholes)
         self._elevations_list = self._extend_list(self._elevations_list, None, num_boreholes)
@@ -215,8 +233,6 @@ class OverallFilePredictions:
     def from_json(cls, prediction_from_file: dict) -> "OverallFilePredictions":
         """Converts a dictionary to an object.
 
-        # TODO still need to prop change here!
-
         Args:
             prediction_from_file (dict): A dictionary representing the predictions.
 
@@ -225,24 +241,11 @@ class OverallFilePredictions:
         """
         overall_file_predictions = OverallFilePredictions()
         for file_name, file_data in prediction_from_file.items():
-            metadata = MetadataInDocument.from_json(file_data["metadata"], file_name)
+            file_metadata = FileMetadata.from_json(file_data, file_name)
 
-            layers = [Layer.from_json(data) for data in file_data["layers"]]
-            layers_in_doc = LayersInDocument(layers=layers, filename=file_name)
+            borehole_list = [BoreholePredictions.from_json(bh_data, file_name) for bh_data in file_data["boreholes"]]
 
-            bounding_boxes = [BoundingBoxes.from_json(bboxes) for bboxes in file_data["bounding_boxes"]]
-
-            groundwater_entries = [FeatureOnPage.from_json(entry, Groundwater) for entry in file_data["groundwater"]]
-            groundwater_in_document = GroundwaterInDocument(groundwater=groundwater_entries, filename=file_name)
-            overall_file_predictions.add_file_predictions(
-                FilePredictions(
-                    layers_in_document=layers_in_doc,
-                    file_name=file_name,
-                    metadata=metadata,
-                    bounding_boxes=bounding_boxes,
-                    groundwater=groundwater_in_document,
-                )
-            )
+            overall_file_predictions.add_file_predictions(FilePredictions(borehole_list, file_metadata, file_name))
         return overall_file_predictions
 
     ############################################################################################################

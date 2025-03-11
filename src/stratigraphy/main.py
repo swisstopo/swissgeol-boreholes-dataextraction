@@ -302,7 +302,10 @@ def start_pipeline(
                     bounding_boxes = [[bbox] for bbox in process_page_results.bounding_boxes]
                 else:
                     # use assumption, if there is multiple pages, there is only one borehole (so one bbox too)
-                    bounding_boxes[0].extend(process_page_results.bounding_boxes)
+                    if bounding_boxes:
+                        bounding_boxes[0].extend(process_page_results.bounding_boxes)
+                    else:
+                        bounding_boxes = [[bbox] for bbox in process_page_results.bounding_boxes]
 
                 if draw_lines:  # could be changed to if draw_lines and mlflow_tracking:
                     if not mlflow_tracking:
@@ -323,7 +326,7 @@ def start_pipeline(
             borehole_predictions_list: list[BoreholePredictions] = BoreholeListBuilder(
                 layers_in_document=layers_in_document,
                 file_name=filename,
-                groundwater_doc=groundwater_entries,
+                groundwater_in_doc=groundwater_entries,
                 bounding_boxes=bounding_boxes,
                 elevations_list=metadata.elevations,
                 coordinates_list=metadata.coordinates,

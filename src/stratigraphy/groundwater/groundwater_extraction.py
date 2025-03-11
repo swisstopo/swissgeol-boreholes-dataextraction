@@ -120,6 +120,18 @@ class GroundwatersInBorehole:
         """
         return [entry.to_json() for entry in self.groundwater_feature_list]
 
+    @classmethod
+    def from_json(cls, json_object: dict) -> "GroundwatersInBorehole":
+        """Extract a GroundwatersInBorehole object from a json dictionary.
+
+        Args:
+            json_object (dict): the json object containing the informations of the borehole
+
+        Returns:
+            GroundwatersInBorehole: the GroundwatersInBorehole object
+        """
+        return cls([FeatureOnPage.from_json(gw_data, Groundwater) for gw_data in json_object])
+
 
 @dataclass
 class GroundwaterInDocument:

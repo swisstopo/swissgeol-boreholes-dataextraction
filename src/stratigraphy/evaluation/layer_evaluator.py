@@ -188,10 +188,12 @@ class LayerEvaluator:
             predicted_layers (BoreholeLayers): object containing the list of the predicted layers
 
         Returns:
-            matching_score (float): a score that captures the similarity between the boreholes
+            matching_score (float): a score that captures the similarity between the boreholes (1 is best, 0 is worst)
         """
         unmatched_layers = ground_truth_layers.copy()
         matching_score = 0
+        if not predicted_layers.layers:
+            return 0
         for layer in predicted_layers.layers:
             match, depth_interval_is_correct = LayerEvaluator.find_matching_layer(layer, unmatched_layers)
             if match:

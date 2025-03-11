@@ -31,19 +31,8 @@ class PageDimensions(NamedTuple):
 class MetadataInDocument:
     """Container for all stratigraphy metadata found in the document."""
 
-    elevations: list[Elevation]
-    coordinates: list[Coordinate]
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "elevation": self.elevations.to_json() if self.elevations else None,
-            "coordinates": self.coordinates.to_json() if self.coordinates else None,
-        }
+    elevations: list[FeatureOnPage[Elevation]]
+    coordinates: list[FeatureOnPage[Coordinate]]
 
     @classmethod
     def from_document(cls, document: fitz.Document) -> "MetadataInDocument":
@@ -65,26 +54,6 @@ class MetadataInDocument:
 
         return cls(elevations=elevations, coordinates=coordinates)
 
-    @classmethod
-    def from_json(cls, json_metadata: dict, filename: str) -> "MetadataInDocument":
-        """Converts a dictionary to an object.
-
-        Args:
-            json_metadata (dict): A dictionary representing the metadata.
-            filename (str): The name of the file.
-
-        Returns:
-            MetadataInDocument: The metadata object.
-        """
-        elevations = (
-            [Elevation.from_json(json_metadata["elevation"])] if json_metadata["elevation"] is not None else []
-        )
-        coordinates = (
-            [Coordinate.from_json(json_metadata["coordinates"])] if json_metadata["coordinates"] is not None else []
-        )
-
-        return cls(elevations=elevations, coordinates=coordinates)
-
 
 @dataclass
 class BoreholeMetadata:
@@ -103,6 +72,24 @@ class BoreholeMetadata:
             "elevation": self.elevation.to_json() if self.elevation else None,
             "coordinates": self.coordinates.to_json() if self.coordinates else None,
         }
+
+    @classmethod
+    def from_json(cls, json_metadata: dict) -> "BoreholeMetadata":
+        """Converts a dictionary to an object.
+
+        Args:
+            json_metadata (dict): A dictionary representing the metadata.
+            filename (str): The name of the file.
+
+        Returns:
+            MetadataInDocument: The metadata object.
+        """
+        return cls(
+            FeatureOnPage.from_json(json_metadata["elevation"], Elevation) if json_metadata["elevation"] else None,
+            FeatureOnPage.from_json(json_metadata["coordinates"], Coordinate)
+            if json_metadata["coordinates"]
+            else None,
+        )
 
 
 @dataclass

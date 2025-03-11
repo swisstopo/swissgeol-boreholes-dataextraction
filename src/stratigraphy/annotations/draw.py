@@ -66,7 +66,10 @@ def draw_predictions(
 
                         if coordinates is not None and page_number == coordinates.page:
                             draw_feature(
-                                shape, coordinates.rect * page.derotation_matrix, coordinates.is_correct, "purple"
+                                shape,
+                                coordinates.rect * page.derotation_matrix,
+                                coordinates.feature.is_correct,
+                                "purple",
                             )
                         if elevation is not None and page_number == elevation.page:
                             draw_feature(

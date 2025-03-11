@@ -148,6 +148,18 @@ class LayersInBorehole:
     def to_json(self):
         return [layer.to_json() for layer in self.layers]
 
+    @classmethod
+    def from_json(cls, json_object) -> "LayersInBorehole":
+        """Extract a LayersInBorehole object from a json dictionary.
+
+        Args:
+            json_object (dict): _description_
+
+        Returns:
+            json_object: the json object containing the informations of the borehole
+        """
+        return cls([Layer.from_json(layer_data) for layer_data in json_object])
+
 
 class LayersInDocument:
     """A class to represent predictions for a single document.
