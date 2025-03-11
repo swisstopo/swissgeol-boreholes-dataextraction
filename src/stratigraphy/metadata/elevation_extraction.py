@@ -87,7 +87,7 @@ class ElevationExtractor(DataExtractor):
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ate": "ote"}
 
-    def get_elevation_near_key(self, lines: list[TextLine], page: int) -> FeatureOnPage[Elevation] | None:
+    def get_elevation_near_key(self, lines: list[TextLine], page: int) -> list[FeatureOnPage[Elevation]]:
         """Find elevation from text lines that are close to an explicit "elevation" label.
 
         Also apply some preprocessing to the text of those text lines, to deal with some common (OCR) errors.
@@ -97,7 +97,7 @@ class ElevationExtractor(DataExtractor):
             page (int): the page number (1-based) of the PDF document
 
         Returns:
-            FeatureOnPage[Elevation] | None: the found elevation
+            list[FeatureOnPage[Elevation]]: the found elevation
         """
         # find the key that indicates the elevation information
         elevation_key_lines = self.find_feature_key(lines)
@@ -118,20 +118,22 @@ class ElevationExtractor(DataExtractor):
 
     def select_best_elevation_information(
         self, extracted_elevation_list: list[FeatureOnPage[Elevation]]
-    ) -> FeatureOnPage[Elevation] | None:
-        """Select the best elevation information from a list of extracted elevation information.
+    ) -> list[FeatureOnPage[Elevation]]:
+        """Select the best elevations information from a list of extracted elevation information.
+
+        Currently returns all of the elevations found, sorted with the highest first.
 
         Args:
             extracted_elevation_list (list[FeatureOnPage[Elevation]]): A list of extracted elevation information.
 
         Returns:
-            FeatureOnPage[Elevation] | None: The best extracted elevation information.
+            list[FeatureOnPage[Elevation]]: The best extracted elevation information.
         """
         # Sort the extracted elevation information by elevation with the highest elevation first
         extracted_elevation_list.sort(key=lambda x: x.feature.elevation, reverse=True)
 
-        # Return the first element of the sorted list
-        return extracted_elevation_list[0] if extracted_elevation_list else None
+        # Return all elements of the sorted list
+        return extracted_elevation_list
 
     def get_elevation_from_lines(self, lines: list[TextLine], page: int) -> FeatureOnPage[Elevation]:
         r"""Matches the elevation in a string of text.
@@ -179,7 +181,7 @@ class ElevationExtractor(DataExtractor):
 
     def extract_elevation_from_bbox(
         self, pdf_page: fitz.Page, page_number: int, bbox: fitz.Rect | None = None
-    ) -> FeatureOnPage[Elevation] | None:
+    ) -> list[FeatureOnPage[Elevation]]:
         """Extract the elevation information from a bounding box.
 
         Args:
@@ -188,19 +190,23 @@ class ElevationExtractor(DataExtractor):
             page_number (int): The page number.
 
         Returns:
-            FeatureOnPage[Elevation] | None: The extracted elevation information.
+            list[FeatureOnPage[Elevation]]: The extracted elevation information.
         """
         lines = extract_text_lines_from_bbox(pdf_page, bbox)
 
-        found_elevation_value = self.get_elevation_near_key(lines, page_number)
+        found_elevation_values = self.get_elevation_near_key(lines, page_number)
 
-        if found_elevation_value:
-            logger.info("Found elevation in the bounding box: %s", found_elevation_value.feature.elevation)
-            return found_elevation_value
+        if found_elevation_values:
+            logger.info(
+                "Found elevations in the bounding box: %s",
+                [value.feature.elevation for value in found_elevation_values],
+            )
+        else:
+            logger.info("No elevation found in the bounding box.")
 
-        logger.info("No elevation found in the bounding box.")
+        return found_elevation_values
 
-    def extract_elevation(self, document: fitz.Document) -> FeatureOnPage[Elevation] | None:
+    def extract_elevation(self, document: fitz.Document) -> list[FeatureOnPage[Elevation]]:
         """Extracts the elevation information from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the feature key in the respective text of the
@@ -210,10 +216,11 @@ class ElevationExtractor(DataExtractor):
             document (fitz.Document): document from which elevation is extracted page by page
 
         Returns:
-            FeatureOnPage[Elevation] | None: The extracted elevation information.
+            list[FeatureOnPage[Elevation]]: The extracted elevation information.
         """
+        elevations: list[Elevation] = []
         for page in document:
             page_number = page.number + 1  # page.number is 0-based
+            elevations.extend(self.extract_elevation_from_bbox(page, page_number))
 
-            # TODO: This return the first found elevation, but we might want to check all pages.
-            return self.extract_elevation_from_bbox(page, page_number)
+        return elevations
