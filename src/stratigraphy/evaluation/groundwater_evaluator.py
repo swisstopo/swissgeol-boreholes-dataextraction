@@ -114,6 +114,8 @@ class GroundwaterEvaluator:
                     for json_gt_data in ground_truth
                 ]
 
+                # TODO store the correctness directly on the Groundwater objects, so we can use that in the
+                # visualizations (cf. https://github.com/swisstopo/swissgeol-boreholes-dataextraction/issues/124)
                 groundwater_metrics = count_against_ground_truth(
                     [
                         (

@@ -166,7 +166,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         page_number: int,
         lines: list[TextLine],
         material_description_bbox: BoundingBox,
-        terrain_elevations: list[Elevation] | None = None,
+        terrain_elevations: list[FeatureOnPage[Elevation]] | None = None,
     ) -> list[FeatureOnPage[Groundwater]]:
         """Extracts groundwater information from a near material description bounding box on a page.
 
@@ -333,7 +333,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         page_number: int,
         lines: list[TextLine],
         document: fitz.Document,
-        terrain_elevations: list[Elevation] | None,
+        terrain_elevations: list[FeatureOnPage[Elevation]] | None,
     ) -> list[FeatureOnPage[Groundwater]]:
         """Extracts the groundwater information from a borehole profile.
 
@@ -360,9 +360,9 @@ class GroundwaterLevelExtractor(DataExtractor):
             # Extract groundwater from illustration
             terrain_elevations = terrain_elevations or [None]  # Ensure we always have at least one iteration
 
-            for terrain_elev in terrain_elevations:
+            for terrain_elev_feature in terrain_elevations:
                 found_groundwater, confidence_list = get_groundwater_from_illustration(
-                    self, lines, page_number, document, terrain_elev
+                    self, lines, page_number, document, terrain_elev_feature
                 )
                 if found_groundwater:
                     break  # Not sure if early exit is correct
@@ -378,13 +378,13 @@ class GroundwaterLevelExtractor(DataExtractor):
                 avg_entry_pos = (entry.rect.top_left + entry.rect.bottom_right) / 2
                 best_dist = float("inf")
                 # as multiple terrain elevations can be found, we keep the closest to the current groundwater entry
-                for terrain_elev in terrain_elevations:
-                    dist = avg_entry_pos.distance_to(terrain_elev.rect)
+                for terrain_elev_feature in terrain_elevations:
+                    dist = avg_entry_pos.distance_to(terrain_elev_feature.rect)
                     if dist < best_dist:
                         if not entry.feature.depth and entry.feature.elevation:
-                            best_depth = round(terrain_elev.elevation - entry.feature.elevation, 2)
+                            best_depth = round(terrain_elev_feature.feature.elevation - entry.feature.elevation, 2)
                         if not entry.feature.elevation and entry.feature.depth:
-                            best_elev = round(terrain_elev.elevation - entry.feature.depth, 2)
+                            best_elev = round(terrain_elev_feature.feature.elevation - entry.feature.depth, 2)
                 if not entry.feature.depth and entry.feature.elevation:
                     entry.feature.depth = best_depth
                 if not entry.feature.elevation and entry.feature.depth:

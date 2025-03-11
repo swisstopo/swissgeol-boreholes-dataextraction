@@ -16,10 +16,7 @@ from stratigraphy.metadata.coordinate_extraction import (
 def test_strLV95():  # noqa: D103
     """Test the string representation of an LV95Coordinate object."""
     coord = LV95Coordinate(
-        east=CoordinateEntry(coordinate_value=2789456),
-        north=CoordinateEntry(coordinate_value=1123012),
-        rect=fitz.Rect(),
-        page=1,
+        east=CoordinateEntry(coordinate_value=2789456), north=CoordinateEntry(coordinate_value=1123012)
     )
     assert str(coord) == "E: 2789456, N: 1123012"
 
@@ -27,19 +24,16 @@ def test_strLV95():  # noqa: D103
 def test_to_jsonLV95():  # noqa: D103
     """Test the to_json method of an LV95Coordinate object."""
     coord = LV95Coordinate(
-        east=CoordinateEntry(coordinate_value=2789456),
-        north=CoordinateEntry(coordinate_value=1123012),
-        rect=fitz.Rect(0, 1, 2, 3),
-        page=1,
+        east=CoordinateEntry(coordinate_value=2789456), north=CoordinateEntry(coordinate_value=1123012)
     )
-    assert coord.to_json() == {"E": 2789456, "N": 1123012, "rect": [0, 1, 2, 3], "page": 1}
+    assert coord.to_json() == {"E": 2789456, "N": 1123012}
 
 
 def test_swap_coordinates():  # noqa: D103
     """Test the swapping of coordinates in an LV95Coordinate object."""
     north = CoordinateEntry(coordinate_value=789456)
     east = CoordinateEntry(coordinate_value=123012)
-    coord = LV95Coordinate(north=north, east=east, rect=fitz.Rect(), page=1)
+    coord = LV95Coordinate(north=north, east=east)
     assert coord.east == north
     assert coord.north == east
 
@@ -47,10 +41,7 @@ def test_swap_coordinates():  # noqa: D103
 def test_strLV03():  # noqa: D103
     """Test the string representation of an LV03Coordinate object."""
     coord = LV03Coordinate(
-        east=CoordinateEntry(coordinate_value=789456),
-        north=CoordinateEntry(coordinate_value=123012),
-        rect=fitz.Rect(),
-        page=1,
+        east=CoordinateEntry(coordinate_value=789456), north=CoordinateEntry(coordinate_value=123012)
     )
     assert str(coord) == "E: 789456, N: 123012"
 
@@ -58,12 +49,9 @@ def test_strLV03():  # noqa: D103
 def test_to_jsonLV03():  # noqa: D103
     """Test the to_json method of an LV03Coordinate object."""
     coord = LV03Coordinate(
-        east=CoordinateEntry(coordinate_value=789456),
-        north=CoordinateEntry(coordinate_value=123012),
-        rect=fitz.Rect(0, 1, 2, 3),
-        page=1,
+        east=CoordinateEntry(coordinate_value=789456), north=CoordinateEntry(coordinate_value=123012)
     )
-    assert coord.to_json() == {"E": 789456, "N": 123012, "rect": [0, 1, 2, 3], "page": 1}
+    assert coord.to_json() == {"E": 789456, "N": 123012}
 
 
 doc = fitz.open(DATAPATH.parent / "example" / "example_borehole_profile.pdf")
@@ -76,9 +64,9 @@ def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
     # Assuming there is a method called 'extract' in CoordinateExtractor class
     coordinates = extractor.extract_coordinates(doc)[0]
     # Check if the returned value is a list
-    assert isinstance(coordinates, Coordinate)
-    assert repr(coordinates.east) == "615'790.0"
-    assert repr(coordinates.north) == "157'500.0"
+    assert isinstance(coordinates.feature, Coordinate)
+    assert repr(coordinates.feature.east) == "615'790.0"
+    assert repr(coordinates.feature.north) == "157'500.0"
 
 
 def test_CoordinateExtractor_extract_coordinates_with_digits_in_coordinates():  # noqa: D103
@@ -86,9 +74,9 @@ def test_CoordinateExtractor_extract_coordinates_with_digits_in_coordinates():  
     # Assuming there is a method called 'extract' in CoordinateExtractor class
     coordinates = CoordinateExtractor().extract_coordinates(doc_with_digits_in_coordinates)[0]
     # Check if the returned value is a list
-    assert isinstance(coordinates, Coordinate)
-    assert repr(coordinates.east) == "607'562.0"
-    assert repr(coordinates.north) == "187'087.5"
+    assert isinstance(coordinates.feature, Coordinate)
+    assert repr(coordinates.feature.east) == "607'562.0"
+    assert repr(coordinates.feature.north) == "187'087.5"
 
 
 def _create_simple_lines(text_lines: list[str]) -> list[TextLine]:
@@ -139,12 +127,12 @@ def test_CoordinateExtractor_get_coordinates_with_x_y_labels():  # noqa: D103
     coordinates = extractor.get_coordinates_with_x_y_labels(lines, page=1)
 
     # coordinates with explicit "X" and "Y" labels are found, even when they are further apart
-    assert coordinates[0].east.coordinate_value == 2600000
-    assert coordinates[0].north.coordinate_value == 1200000
+    assert coordinates[0].feature.east.coordinate_value == 2600000
+    assert coordinates[0].feature.north.coordinate_value == 1200000
     # 1st X-value is only combined with the 1st Y-value, 2nd X-value with 2nd Y-value, etc.
     # Values are swapped when necessary
-    assert coordinates[1].east.coordinate_value == 2600001
-    assert coordinates[1].north.coordinate_value == 1200001
+    assert coordinates[1].feature.east.coordinate_value == 2600001
+    assert coordinates[1].feature.north.coordinate_value == 1200001
     # ignore invalid coordinates and additional values that are only available with "X" or "Y" label, but not both
     assert len(coordinates) == 2
 
@@ -212,11 +200,11 @@ def test_CoordinateExtractor_get_coordinates_near_key():  # noqa: D103
     coordinates = extractor.get_coordinates_near_key(lines, page=1)
 
     # coordinates on the same line as the key are found, and OCR errors are corrected
-    assert coordinates[0].east.coordinate_value == 615790
-    assert coordinates[0].north.coordinate_value == 157500
+    assert coordinates[0].feature.east.coordinate_value == 615790
+    assert coordinates[0].feature.north.coordinate_value == 157500
     # coordinates immediately below is also found
-    assert coordinates[1].east.coordinate_value == 600001
-    assert coordinates[1].north.coordinate_value == 200001
+    assert coordinates[1].feature.east.coordinate_value == 600001
+    assert coordinates[1].feature.north.coordinate_value == 200001
     # no coordinates are found far down from the coordinates key
     assert len(coordinates) == 2
 
@@ -251,8 +239,8 @@ def test_CoordinateExtractor_get_coordinates_from_lines(text, expected):  # noqa
     lines = _create_simple_lines([text])
     coordinates = extractor.get_coordinates_from_lines(lines, page=1)
     expected_east, expected_north = expected
-    assert coordinates[0].east.coordinate_value == expected_east
-    assert coordinates[0].north.coordinate_value == expected_north
+    assert coordinates[0].feature.east.coordinate_value == expected_east
+    assert coordinates[0].feature.north.coordinate_value == expected_north
     assert coordinates[0].page == 1
 
 
@@ -273,31 +261,31 @@ def test_CoordinateExtractor_get_coordinates_from_lines_rect():  # noqa: D103
     # Example from 269126143-bp.pdf (a slash in the middle of the coordinates as misread by OCR as the digit 1)
     lines = _create_simple_lines(["269578211260032"])
     coordinates = extractor.get_coordinates_from_lines(lines, page=1)
-    assert coordinates[0].east.coordinate_value == 2695782
-    assert coordinates[0].north.coordinate_value == 1260032
+    assert coordinates[0].feature.east.coordinate_value == 2695782
+    assert coordinates[0].feature.north.coordinate_value == 1260032
 
 
 def test_get_single_decimal_coordinates():
     """Test the extraction of decimal coordinates from a list of text lines."""
     lines = _create_simple_lines(["615.790.6 / 157.500.5"])
     coordinates = extractor.get_coordinates_from_lines(lines, page=1)
-    assert coordinates[0].east.coordinate_value == 615790.6
-    assert coordinates[0].north.coordinate_value == 157500.5
+    assert coordinates[0].feature.east.coordinate_value == 615790.6
+    assert coordinates[0].feature.north.coordinate_value == 157500.5
 
     lines = _create_simple_lines(["2600000.6 / 1200000.5"])
     coordinates = extractor.get_coordinates_from_lines(lines, page=1)
-    assert coordinates[0].east.coordinate_value == 2600000.6
-    assert coordinates[0].north.coordinate_value == 1200000.5
+    assert coordinates[0].feature.east.coordinate_value == 2600000.6
+    assert coordinates[0].feature.north.coordinate_value == 1200000.5
 
 
 def test_get_double_decimal_coordinates():
     """Test the extraction of decimal coordinates from a list of text lines."""
     lines = _create_simple_lines(["615.790.64 / 157.500.55"])
     coordinates = extractor.get_coordinates_from_lines(lines, page=1)
-    assert coordinates[0].east.coordinate_value == 615790.64
-    assert coordinates[0].north.coordinate_value == 157500.55
+    assert coordinates[0].feature.east.coordinate_value == 615790.64
+    assert coordinates[0].feature.north.coordinate_value == 157500.55
 
     lines = _create_simple_lines(["2600000.64 / 1200000.55"])
     coordinates = extractor.get_coordinates_from_lines(lines, page=1)
-    assert coordinates[0].east.coordinate_value == 2600000.64
-    assert coordinates[0].north.coordinate_value == 1200000.55
+    assert coordinates[0].feature.east.coordinate_value == 2600000.64
+    assert coordinates[0].feature.north.coordinate_value == 1200000.55

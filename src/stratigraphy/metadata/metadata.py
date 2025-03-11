@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 import fitz
+from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.metadata.coordinate_extraction import Coordinate, CoordinateExtractor
 from stratigraphy.metadata.elevation_extraction import Elevation, ElevationExtractor
 from stratigraphy.metadata.language_detection import detect_language_of_document
@@ -87,10 +88,10 @@ class MetadataInDocument:
 
 @dataclass
 class BoreholeMetadata:
-    """Metadata for a single borehole."""
+    """Metadata for stratigraphy data."""
 
-    elevation: Elevation
-    coordinate: Coordinate
+    elevation: FeatureOnPage[Elevation] | None = None
+    coordinates: FeatureOnPage[Coordinate] | None = None
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -100,7 +101,7 @@ class BoreholeMetadata:
         """
         return {
             "elevation": self.elevation.to_json() if self.elevation else None,
-            "coordinates": self.coordinate.to_json() if self.coordinate else None,
+            "coordinates": self.coordinates.to_json() if self.coordinates else None,
         }
 
 

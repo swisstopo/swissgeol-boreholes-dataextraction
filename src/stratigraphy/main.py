@@ -274,7 +274,7 @@ def start_pipeline(
                         page_number=page_number,
                         lines=text_lines,
                         material_description_bbox=material_description_bbox,
-                        terrain_elevations=metadata.elevations,
+                        terrain_elevations=metadata.elevations if metadata.elevations else None,
                     )
                     ##avoid duplicate entries
                     for groundwater_entry in groundwater_entries_near_bbox:
