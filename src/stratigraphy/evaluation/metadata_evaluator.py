@@ -69,7 +69,7 @@ class MetadataEvaluator:
 
                 coordinate_metrics = self._evaluate_coordinate(extracted_coordinates, ground_truth_coordinates)
                 if borehole_metadata.coordinates:
-                    borehole_metadata.coordinates.is_correct = coordinate_metrics.tp > 0
+                    borehole_metadata.coordinates.feature.is_correct = coordinate_metrics.tp > 0
                 coordinate_metrics_list.append(coordinate_metrics)
 
                 ############################################################################################################
