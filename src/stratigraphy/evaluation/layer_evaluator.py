@@ -100,12 +100,11 @@ class LayerEvaluator:
                 fn_for_all_boreholes += fn
 
             # at this point we have the global statistics for all the boreholes in the document
-            if total_predictions > 0:
-                overall_metrics.metrics[file.filename] = Metrics(
-                    tp=hits_for_all_borehole,
-                    fp=total_predictions_for_all_boreholes - hits_for_all_borehole,
-                    fn=fn_for_all_boreholes,
-                )
+            overall_metrics.metrics[file.filename] = Metrics(
+                tp=hits_for_all_borehole,
+                fp=total_predictions_for_all_boreholes - hits_for_all_borehole,
+                fn=fn_for_all_boreholes,
+            )
 
         return overall_metrics
 
