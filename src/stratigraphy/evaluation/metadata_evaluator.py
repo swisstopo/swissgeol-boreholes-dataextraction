@@ -2,86 +2,66 @@
 
 import math
 
-from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.evaluation.evaluation_dataclasses import (
     FileBoreholeMetadataMetrics,
     Metrics,
     OverallBoreholeMetadataMetrics,
 )
 from stratigraphy.metadata.coordinate_extraction import Coordinate
-from stratigraphy.metadata.metadata import OverallFileMetadata
+from stratigraphy.util.borehole_predictions import FileMetadataWithGroundTruth
 
 
 class MetadataEvaluator:
     """Class for evaluating the metadata of a borehole."""
 
-    def __init__(
-        self,
-        metadata_list: OverallFileMetadata,
-        ground_truth: GroundTruth,
-        gt_to_pred_matching: dict[str : dict[int, int]],
-    ) -> None:
+    def __init__(self, metadata_list: list[FileMetadataWithGroundTruth]) -> None:
         """Initializes the MetadataEvaluator object.
 
         Args:
-            metadata_list (OverallFileMetadata): Container for multiple files containing borehole metadata
-                objects to evaluate. Contains metadata_per_file, nested lists of metadata refering to individual
-                boreholes detected in a common file, with one external list for each file.
-            ground_truth (GroundTruth): The ground truth.
-            gt_to_pred_matching (dict[str : dict[int:int]]): The dict matching the index of the groundtruth borehole
-                to the prediction. It is mostly relevant when there is multiple boreholes in a documents (else it is
-                just {0:0}). There is one entry for each of the files.
+            metadata_list (list[FileMetadataWithGroundTruth]): a list of borehole metadata predictions, with
+                ground truth data associated for every borehole.
         """
-        self.metadata_list: OverallFileMetadata = metadata_list
-        self.ground_truth: GroundTruth = ground_truth
-        self.gt_to_pred_matching: dict[str : dict[int:int]] = gt_to_pred_matching
+        self.metadata_list = metadata_list
 
     def evaluate(self) -> OverallBoreholeMetadataMetrics:
         """Evaluate the metadata of the file against the ground truth."""
         # Initialize the metadata correctness metrics
         metadata_metrics_list = OverallBoreholeMetadataMetrics()
 
-        for metadata_for_file, filename in zip(
-            self.metadata_list.metadata_per_file, self.metadata_list.filenames, strict=True
-        ):
-            file_ground_truth = self.ground_truth.for_file(filename)
-            pred_to_gt_matching = {v: k for k, v in self.gt_to_pred_matching[filename].items()}
-
+        for file_data in self.metadata_list:
             # create the lists that will contain the individual score of each borehole
             elevation_metrics_list = []
             coordinate_metrics_list = []
 
-            for borehole_index, borehole_metadata in enumerate(metadata_for_file):
-                ground_truth_index = pred_to_gt_matching.get(borehole_index)
-                if ground_truth_index is None:
+            for borehole_data in file_data.boreholes:
+                if borehole_data.ground_truth is None:
                     # when the extraction detects more borehole than there actually is in the ground truth, the wosrt
                     # predictions have no match and must be skipped for the evaluation
                     continue
-                borehole_ground_truth = file_ground_truth[ground_truth_index]
 
                 ###########################################################################################################
                 ### Compute the metadata correctness for the coordinates.
                 ###########################################################################################################
                 extracted_coordinates = (
-                    borehole_metadata.coordinates.feature if borehole_metadata.coordinates else None
+                    borehole_data.metadata.coordinates.feature if borehole_data.metadata.coordinates else None
                 )
-                ground_truth_coordinates = borehole_ground_truth.get("metadata", {}).get("coordinates")
+                ground_truth_coordinates = borehole_data.ground_truth.get("coordinates")
 
                 coordinate_metrics = self._evaluate_coordinate(extracted_coordinates, ground_truth_coordinates)
-                if borehole_metadata.coordinates:
-                    borehole_metadata.coordinates.is_correct = coordinate_metrics.tp > 0
+                if borehole_data.metadata.coordinates:
+                    borehole_data.metadata.coordinates.is_correct = coordinate_metrics.tp > 0
                 coordinate_metrics_list.append(coordinate_metrics)
 
                 ############################################################################################################
                 ### Compute the metadata correctness for the elevation.
                 ############################################################################################################
                 extracted_elevation = (
-                    borehole_metadata.elevation.feature.elevation if borehole_metadata.elevation else None
+                    borehole_data.metadata.elevation.feature.elevation if borehole_data.metadata.elevation else None
                 )
-                ground_truth_elevation = borehole_ground_truth.get("metadata", {}).get("reference_elevation")
+                ground_truth_elevation = borehole_data.ground_truth.get("reference_elevation")
                 elevation_metrics = self._evaluate_elevation(extracted_elevation, ground_truth_elevation)
-                if borehole_metadata.elevation:
-                    borehole_metadata.elevation.is_correct = elevation_metrics.tp > 0
+                if borehole_data.metadata.elevation:
+                    borehole_data.metadata.elevation.is_correct = elevation_metrics.tp > 0
                 elevation_metrics_list.append(elevation_metrics)
 
             # perform micro-average to store the metrics of all the boreholes in the document
@@ -89,7 +69,7 @@ class MetadataEvaluator:
                 FileBoreholeMetadataMetrics(
                     elevation_metrics=Metrics.micro_average(elevation_metrics_list),
                     coordinates_metrics=Metrics.micro_average(coordinate_metrics_list),
-                    filename=filename,
+                    filename=file_data.filename,
                 )
             )
 

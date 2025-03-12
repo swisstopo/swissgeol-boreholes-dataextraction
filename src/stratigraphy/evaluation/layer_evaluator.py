@@ -6,11 +6,11 @@ from collections.abc import Callable
 from copy import deepcopy
 
 import Levenshtein
-from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.benchmark.metrics import OverallMetrics
 from stratigraphy.evaluation.evaluation_dataclasses import Metrics
 from stratigraphy.evaluation.utility import _is_valid_depth_interval
 from stratigraphy.layer.layer import Layer, LayersInBorehole
+from stratigraphy.util.borehole_predictions import FileLayersWithGroundTruth
 from stratigraphy.util.util import parse_text
 
 logger = logging.getLogger(__name__)
@@ -23,28 +23,15 @@ class LayerEvaluator:
 
     def __init__(
         self,
-        layers_entries: dict[str : list[LayersInBorehole]],
-        ground_truth: GroundTruth,
-        gt_to_pred_matching: dict[str : dict[int:int]],
+        layers_list: list[FileLayersWithGroundTruth],
     ):
         """Initializes the LayerEvaluator object.
 
         Args:
-            layers_entries (dict[str : list[LayersInBorehole]]): The layers to evaluate.
-            ground_truth (GroundTruth): The ground truth.
-            gt_to_pred_matching (dict[str : dict[int:int]]): the dict matching the index of the gt borehole to pred
-
-            layers_entries (dict[str : list[LayersInBorehole]]): The layers to evaluate. The expected
-                format is a dict with the filename as key, and the lists of all the Borehole layers identified for each
-                profile as value. The Borehole layers are themself a list of Layers.
-            ground_truth (GroundTruth): The ground truth.
-            gt_to_pred_matching (dict[str : dict[int:int]]): The dict matching the index of the groundtruth borehole
-                to the prediction. It is mostly relevant when there is multiple boreholes in a documents (else it is
-                just {0:0}). There is one entry for each of the files.
+            layers_list (list[FileLayersWithGroundTruth]): The layers to evaluate, grouped by borehole in a list,
+                with associated ground truth data for each borehole.
         """
-        self.ground_truth: GroundTruth = ground_truth
-        self.layers_entries: dict[str : list[LayersInBorehole]] = layers_entries
-        self.gt_to_pred_matching: dict[str : dict[int:int]] = gt_to_pred_matching
+        self.layers_list = layers_list
 
     def get_layer_metrics(self) -> OverallMetrics:
         """Calculate metrics for layer predictions."""
@@ -86,31 +73,17 @@ class LayerEvaluator:
         overall_metrics = OverallMetrics()
 
         # iteration over all the files
-        for filename, layers_in_document in self.layers_entries.items():
-            # the groundtruth matching the current file is fetched, so is the dict matching the boreholes in the
-            # groundtruth to the ones in the prediction
-            ground_truth_for_file = self.ground_truth.for_file(filename)
-            gt_to_pred_index = self.gt_to_pred_matching[filename]
-
+        for file in self.layers_list:
             hits_for_all_borehole = 0
             total_predictions_for_all_boreholes = 0
             fn_for_all_boreholes = 0
 
-            # iteration over all the borehole present in the groundtruth of the file
-            for gt_index, ground_truth_borehole in ground_truth_for_file.items():
-                # the borehole that is the most similar to the ground truth is fetched
-                pred_borehole_index = gt_to_pred_index.get(gt_index)
-                if pred_borehole_index is None:
-                    # When the data extraction pipeline finds fewer boreholes than there actually is in the ground
-                    # truth, the matching is not one-to-one and we have to skip some boreholes in the evaluation.
-                    continue
-                borehole_layers = layers_in_document[pred_borehole_index]
-
-                number_of_truth_values = len(ground_truth_borehole["layers"])
+            for borehole_data in file.boreholes:
+                number_of_truth_values = len(borehole_data.ground_truth)
                 hits = 0
                 total_predictions = 0
 
-                for layer in borehole_layers.layers:
+                for layer in borehole_data.layers.layers:
                     if per_layer_action:
                         per_layer_action(layer)
                     if per_layer_filter(layer):
@@ -124,9 +97,9 @@ class LayerEvaluator:
                 total_predictions_for_all_boreholes += total_predictions
                 fn_for_all_boreholes += fn
 
-            # at this point we have the global statistics for all the boreholes in the documents
+            # at this point we have the global statistics for all the boreholes in the document
             if total_predictions > 0:
-                overall_metrics.metrics[filename] = Metrics(
+                overall_metrics.metrics[borehole_data.filename] = Metrics(
                     tp=hits_for_all_borehole,
                     fp=total_predictions_for_all_boreholes - hits_for_all_borehole,
                     fn=fn_for_all_boreholes,

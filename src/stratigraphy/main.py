@@ -26,12 +26,8 @@ from stratigraphy.layer.layer import LayersInDocument
 from stratigraphy.lines.line_detection import extract_lines, line_detection_params
 from stratigraphy.metadata.metadata import FileMetadata, MetadataInDocument
 from stratigraphy.text.extract_text import extract_text_lines
-from stratigraphy.util.predictions import (
-    BoreholeListBuilder,
-    BoreholePredictions,
-    FilePredictions,
-    OverallFilePredictions,
-)
+from stratigraphy.util.file_predictions import FilePredictions, OverallFilePredictions
+from stratigraphy.util.predictions import BoreholeListBuilder, BoreholePredictions
 from stratigraphy.util.util import flatten, read_params
 
 load_dotenv()
