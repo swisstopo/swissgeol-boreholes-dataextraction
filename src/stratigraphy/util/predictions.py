@@ -134,7 +134,7 @@ class AllBoreholePredictionsWithGroundTruth:
                 file.filename,
                 [
                     BoreholeMetadataWithGroundTruth(
-                        predictions.predictions.metadata,
+                        predictions.predictions.metadata if predictions.predictions else None,
                         predictions.ground_truth.get("metadata", {}),
                     )
                     for predictions in file.boreholes
@@ -161,7 +161,7 @@ class AllBoreholePredictionsWithGroundTruth:
                 file.language,
                 [
                     BoreholeLayersWithGroundTruth(
-                        predictions.predictions.layers_in_borehole,
+                        predictions.predictions.layers_in_borehole if predictions.predictions else None,
                         predictions.ground_truth.get("layers", []),
                     )
                     for predictions in file.boreholes
@@ -202,7 +202,7 @@ class AllBoreholePredictionsWithGroundTruth:
                 file.filename,
                 [
                     BoreholeGroundwaterWithGroundTruth(
-                        predictions.predictions.groundwater_in_borehole,
+                        predictions.predictions.groundwater_in_borehole if predictions.predictions else None,
                         predictions.ground_truth.get("groundwater", []) or [],  # value can be `None`
                     )
                     for predictions in file.boreholes

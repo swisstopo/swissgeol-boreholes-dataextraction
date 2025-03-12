@@ -94,6 +94,7 @@ class GroundwaterEvaluator:
 
                 # TODO store the correctness directly on the Groundwater objects, so we can use that in the
                 # visualizations (cf. https://github.com/swisstopo/swissgeol-boreholes-dataextraction/issues/124)
+                entries = borehole_data.groundwater.groundwater_feature_list if borehole_data.groundwater else []
                 groundwater_metrics = count_against_ground_truth(
                     [
                         (
@@ -101,20 +102,20 @@ class GroundwaterEvaluator:
                             entry.feature.format_date(),
                             entry.feature.elevation,
                         )
-                        for entry in borehole_data.groundwater.groundwater_feature_list
+                        for entry in entries
                     ],
                     [(entry.depth, entry.format_date(), entry.elevation) for entry in gt_groundwater],
                 )
                 groundwater_depth_metrics = count_against_ground_truth(
-                    [entry.feature.depth for entry in borehole_data.groundwater.groundwater_feature_list],
+                    [entry.feature.depth for entry in entries],
                     [entry.depth for entry in gt_groundwater],
                 )
                 groundwater_elevation_metrics = count_against_ground_truth(
-                    [entry.feature.elevation for entry in borehole_data.groundwater.groundwater_feature_list],
+                    [entry.feature.elevation for entry in entries],
                     [entry.elevation for entry in gt_groundwater],
                 )
                 groundwater_date_metrics = count_against_ground_truth(
-                    [entry.feature.format_date() for entry in borehole_data.groundwater.groundwater_feature_list],
+                    [entry.feature.format_date() for entry in entries],
                     [entry.format_date() for entry in gt_groundwater],
                 )
                 groundwater_metrics_list.append(groundwater_metrics)

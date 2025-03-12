@@ -58,7 +58,7 @@ class BoreholePredictions:
 class BoreholePredictionsWithGroundTruth:
     """Predictions for a specific borehole with associated ground truth."""
 
-    predictions: BoreholePredictions
+    predictions: BoreholePredictions | None
     ground_truth: dict
 
 
@@ -66,7 +66,7 @@ class BoreholePredictionsWithGroundTruth:
 class BoreholeLayersWithGroundTruth:
     """Stratigraphy predictions for a specific borehole with associated ground truth."""
 
-    layers: LayersInBorehole
+    layers: LayersInBorehole | None
     ground_truth: list
 
 
@@ -74,7 +74,7 @@ class BoreholeLayersWithGroundTruth:
 class BoreholeGroundwaterWithGroundTruth:
     """Groundwater predictions for a specific borehole with associated ground truth."""
 
-    groundwater: GroundwatersInBorehole
+    groundwater: GroundwatersInBorehole | None
     ground_truth: list
 
 
@@ -82,7 +82,7 @@ class BoreholeGroundwaterWithGroundTruth:
 class BoreholeMetadataWithGroundTruth:
     """Borehole metadata predictions for a specific borehole with associated ground truth."""
 
-    metadata: BoreholeMetadata
+    metadata: BoreholeMetadata | None
     ground_truth: dict
 
 

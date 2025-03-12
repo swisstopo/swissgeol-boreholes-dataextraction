@@ -10,7 +10,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.ground_truth import GroundTruth
-from stratigraphy.util.file_predictions import OverallFilePredictions
+from stratigraphy.util.overall_file_predictions import OverallFilePredictions
 
 load_dotenv()
 

@@ -43,12 +43,14 @@ class MetadataEvaluator:
                 ### Compute the metadata correctness for the coordinates.
                 ###########################################################################################################
                 extracted_coordinates = (
-                    borehole_data.metadata.coordinates.feature if borehole_data.metadata.coordinates else None
+                    borehole_data.metadata.coordinates.feature
+                    if borehole_data.metadata and borehole_data.metadata.coordinates
+                    else None
                 )
                 ground_truth_coordinates = borehole_data.ground_truth.get("coordinates")
 
                 coordinate_metrics = self._evaluate_coordinate(extracted_coordinates, ground_truth_coordinates)
-                if borehole_data.metadata.coordinates:
+                if borehole_data.metadata and borehole_data.metadata.coordinates:
                     borehole_data.metadata.coordinates.is_correct = coordinate_metrics.tp > 0
                 coordinate_metrics_list.append(coordinate_metrics)
 
@@ -56,11 +58,13 @@ class MetadataEvaluator:
                 ### Compute the metadata correctness for the elevation.
                 ############################################################################################################
                 extracted_elevation = (
-                    borehole_data.metadata.elevation.feature.elevation if borehole_data.metadata.elevation else None
+                    borehole_data.metadata.elevation.feature.elevation
+                    if borehole_data.metadata and borehole_data.metadata.elevation
+                    else None
                 )
                 ground_truth_elevation = borehole_data.ground_truth.get("reference_elevation")
                 elevation_metrics = self._evaluate_elevation(extracted_elevation, ground_truth_elevation)
-                if borehole_data.metadata.elevation:
+                if borehole_data.metadata and borehole_data.metadata.elevation:
                     borehole_data.metadata.elevation.is_correct = elevation_metrics.tp > 0
                 elevation_metrics_list.append(elevation_metrics)
 

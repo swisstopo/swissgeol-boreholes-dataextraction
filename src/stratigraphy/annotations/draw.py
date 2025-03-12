@@ -9,7 +9,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBoxes
 from stratigraphy.layer.layer import Layer
-from stratigraphy.util.file_predictions import OverallFilePredictions
+from stratigraphy.util.overall_file_predictions import OverallFilePredictions
 
 load_dotenv()
 
