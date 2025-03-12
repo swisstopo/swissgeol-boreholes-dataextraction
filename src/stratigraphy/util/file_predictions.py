@@ -94,10 +94,6 @@ class OverallFilePredictions:
             overall_file_predictions.add_file_predictions(FilePredictions(borehole_list, file_metadata, file_name))
         return overall_file_predictions
 
-    ############################################################################################################
-    ### Evaluation methods
-    ############################################################################################################
-
     def match_with_ground_truth(self, ground_truth: GroundTruth) -> AllBoreholePredictionsWithGroundTruth:
         """Match the extracted boreholes with corresponding boreholes in the ground truth data.
 
@@ -112,16 +108,20 @@ class OverallFilePredictions:
             boreholes = []
             ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
             if ground_truth_for_file:
-                borehole_matching_gt_to_pred = LayerEvaluator.evaluate_borehole(
-                    [bh.layers_in_borehole for bh in file_predictions.borehole_predictions_list],
-                    {idx: borehole_data["layers"] for idx, borehole_data in ground_truth_for_file.items()},
-                )
-                for gt_idx, borehole_idx in borehole_matching_gt_to_pred.items():
+                borehole_idx_to_ground_truth_idx = {
+                    borehole_idx: gt_idx
+                    for gt_idx, borehole_idx in LayerEvaluator.evaluate_borehole(
+                        [bh.layers_in_borehole for bh in file_predictions.borehole_predictions_list],
+                        {idx: borehole_data["layers"] for idx, borehole_data in ground_truth_for_file.items()},
+                    ).items()
+                }
+                for borehole_idx, predictions in enumerate(file_predictions.borehole_predictions_list):
+                    if borehole_idx in borehole_idx_to_ground_truth_idx:
+                        borehole_ground_truth = ground_truth_for_file[borehole_idx_to_ground_truth_idx[borehole_idx]]
+                    else:
+                        borehole_ground_truth = {}
                     boreholes.append(
-                        BoreholePredictionsWithGroundTruth(
-                            predictions=file_predictions.borehole_predictions_list[borehole_idx],
-                            ground_truth=ground_truth_for_file[gt_idx],
-                        )
+                        BoreholePredictionsWithGroundTruth(predictions=predictions, ground_truth=borehole_ground_truth)
                     )
             files.append(
                 FilePredictionsWithGroundTruth(

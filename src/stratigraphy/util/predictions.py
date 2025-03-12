@@ -2,7 +2,7 @@
 
 import dataclasses
 import logging
-from copy import deepcopy
+from collections.abc import Callable
 from typing import TypeVar
 
 from stratigraphy.benchmark.metrics import OverallMetricsCatalog
@@ -12,7 +12,7 @@ from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
 from stratigraphy.evaluation.layer_evaluator import LayerEvaluator
 from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument, GroundwatersInBorehole
-from stratigraphy.layer.layer import LayersInBorehole, LayersInDocument
+from stratigraphy.layer.layer import LayersInDocument
 from stratigraphy.metadata.metadata import BoreholeMetadata
 from stratigraphy.util.borehole_predictions import (
     BoreholeGroundwaterWithGroundTruth,
@@ -99,35 +99,22 @@ class BoreholeListBuilder:
 
     def _extend_length_to_match_boreholes_num_pred(self) -> None:
         """Ensures that all lists have the same length by duplicating elements if necessary."""
-        num_boreholes = max(
-            len(self._layers_in_document.boreholes_layers),
-            len(self._groundwater_in_doc.borehole_groundwaters),
-            len(self._bounding_boxes),
-            len(self._elevations_list),
-            len(self._coordinates_list),
-        )
+        num_boreholes = len(self._layers_in_document.boreholes_layers)
 
-        self._layers_in_document.boreholes_layers = self._extend_list(
-            self._layers_in_document.boreholes_layers, LayersInBorehole([]), num_boreholes
-        )
         self._groundwater_in_doc.borehole_groundwaters = self._extend_list(
-            self._groundwater_in_doc.borehole_groundwaters, GroundwatersInBorehole([]), num_boreholes
+            self._groundwater_in_doc.borehole_groundwaters, lambda: GroundwatersInBorehole([]), num_boreholes
         )
-        self._bounding_boxes = self._extend_list(self._bounding_boxes, [], num_boreholes)
-        self._elevations_list = self._extend_list(self._elevations_list, None, num_boreholes)
-        self._coordinates_list = self._extend_list(self._coordinates_list, None, num_boreholes)
+        self._bounding_boxes = self._extend_list(self._bounding_boxes, lambda: [], num_boreholes)
+        self._elevations_list = self._extend_list(self._elevations_list, lambda: None, num_boreholes)
+        self._coordinates_list = self._extend_list(self._coordinates_list, lambda: None, num_boreholes)
 
     @staticmethod
-    def _extend_list(lst: list[T], base_elem: T, target_length: int) -> list[T]:
+    def _extend_list(lst: list[T], base_elem: Callable[[], T], target_length: int) -> list[T]:
         """Extends a list with deep copies of a base element until it reaches the target length."""
-        if not lst:
-            lst.append(deepcopy(base_elem))  # Ensure there's a base element if the list is empty
-
-        base_elem = deepcopy(lst[0])  # Use the first element as the base
         while len(lst) < target_length:
-            lst.append(deepcopy(base_elem))  # Append copies to match the required length
+            lst.append(base_elem())  # Append copies to match the required length
 
-        return lst
+        return lst[:target_length]
 
 
 @dataclasses.dataclass
