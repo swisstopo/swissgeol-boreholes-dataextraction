@@ -9,7 +9,7 @@ from stratigraphy.evaluation.groundwater_evaluator import (
     GroundwaterMetrics,
     OverallGroundwaterMetrics,
 )
-from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument
+from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
 
 
 @pytest.fixture
@@ -66,19 +66,26 @@ def test_groundwater_depth_metrics_to_overall_metrics(sample_metrics):
 def test_evaluate_with_ground_truth(groundtruth):
     """Test the evaluate method with available ground truth data."""
     # Sample groundwater entries
-    groundwater_entries = [
-        GroundwaterInDocument(
-            filename="example_borehole_profile.pdf",
-            groundwater=[
-                FeatureOnPage.from_json(
-                    {"depth": 2.22, "date": "2016-04-18", "elevation": 448.07, "page": 1, "rect": [0, 0, 100, 100]},
-                    Groundwater,
-                )
-            ],
-        )
-    ]
-
-    evaluator = GroundwaterEvaluator(groundwater_entries, groundtruth)
+    groundwater_entries = {
+        "example_borehole_profile.pdf": [
+            GroundwatersInBorehole(
+                groundwater_feature_list=[
+                    FeatureOnPage.from_json(
+                        {
+                            "depth": 2.22,
+                            "date": "2016-04-18",
+                            "elevation": 448.07,
+                            "page": 1,
+                            "rect": [0, 0, 100, 100],
+                        },
+                        Groundwater,
+                    )
+                ],
+            )
+        ]
+    }
+    gt_to_pred_matching = {"example_borehole_profile.pdf": {0: 0}}
+    evaluator = GroundwaterEvaluator(groundwater_entries, groundtruth, gt_to_pred_matching)
     overall_metrics = evaluator.evaluate()
 
     # Assertions
@@ -91,32 +98,53 @@ def test_evaluate_with_ground_truth(groundtruth):
 def test_evaluate_multiple_entries(groundtruth):
     """Test the evaluate method with multiple groundwater entries."""
     # Sample groundwater entries
-    groundwater_entries = [
-        GroundwaterInDocument(
-            filename="example_borehole_profile.pdf",
-            groundwater=[
-                FeatureOnPage.from_json(
-                    {"depth": 2.22, "date": "2016-04-18", "elevation": 448.07, "page": 1, "rect": [0, 0, 100, 100]},
-                    Groundwater,
-                ),
-                FeatureOnPage.from_json(
-                    {"depth": 3.22, "date": "2016-04-20", "elevation": 447.07, "page": 1, "rect": [0, 0, 100, 100]},
-                    Groundwater,
-                ),
-            ],
-        ),
-        GroundwaterInDocument(
-            filename="example_borehole_profile_2.pdf",
-            groundwater=[
-                FeatureOnPage.from_json(
-                    {"depth": 3.22, "date": "2016-04-20", "elevation": 447.07, "page": 1, "rect": [0, 0, 100, 100]},
-                    Groundwater,
-                )
-            ],
-        ),
-    ]
+    groundwater_entries = {
+        "example_borehole_profile.pdf": [
+            GroundwatersInBorehole(
+                [
+                    FeatureOnPage.from_json(
+                        {
+                            "depth": 2.22,
+                            "date": "2016-04-18",
+                            "elevation": 448.07,
+                            "page": 1,
+                            "rect": [0, 0, 100, 100],
+                        },
+                        Groundwater,
+                    ),
+                    FeatureOnPage.from_json(
+                        {
+                            "depth": 3.22,
+                            "date": "2016-04-20",
+                            "elevation": 447.07,
+                            "page": 1,
+                            "rect": [0, 0, 100, 100],
+                        },
+                        Groundwater,
+                    ),
+                ]
+            )
+        ],
+        "example_borehole_profile_2.pdf": [
+            GroundwatersInBorehole(
+                [
+                    FeatureOnPage.from_json(
+                        {
+                            "depth": 3.22,
+                            "date": "2016-04-20",
+                            "elevation": 447.07,
+                            "page": 1,
+                            "rect": [0, 0, 100, 100],
+                        },
+                        Groundwater,
+                    )
+                ]
+            )
+        ],
+    }
 
-    evaluator = GroundwaterEvaluator(groundwater_entries, groundtruth)
+    gt_to_pred_matching = {"example_borehole_profile.pdf": {0: 0}, "example_borehole_profile_2.pdf": {0: 0}}
+    evaluator = GroundwaterEvaluator(groundwater_entries, groundtruth, gt_to_pred_matching)
     overall_metrics = evaluator.evaluate()
 
     # Assertions

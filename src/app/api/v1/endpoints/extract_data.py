@@ -16,6 +16,7 @@ from app.common.schemas import (
     FormatTypes,
 )
 from fastapi import HTTPException
+from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.metadata.coordinate_extraction import CoordinateExtractor, LV03Coordinate, LV95Coordinate
 from stratigraphy.text.extract_text import extract_text_lines_from_bbox
 
@@ -131,18 +132,18 @@ def extract_coordinates(
         system (LV03 or LV95). The bounding box is in PDF coordinates.
     """
 
-    def create_response(coord, srs):
+    def create_response(coord_feature, srs):
         bbox = BoundingBox(
-            x0=coord.rect.x0,
-            y0=coord.rect.y0,
-            x1=coord.rect.x1,
-            y1=coord.rect.y1,
+            x0=coord_feature.rect.x0,
+            y0=coord_feature.rect.y0,
+            x1=coord_feature.rect.x1,
+            y1=coord_feature.rect.y1,
         )
         return ExtractCoordinatesResponse(
             bbox=bbox,
             coordinates=Coordinates(
-                east=coord.east.coordinate_value,
-                north=coord.north.coordinate_value,
+                east=coord_feature.feature.east.coordinate_value,
+                north=coord_feature.feature.north.coordinate_value,
                 projection=srs,
             ),
         )
@@ -151,14 +152,15 @@ def extract_coordinates(
     extracted_coord = coord_extractor.extract_coordinates_from_bbox(
         pdf_page, extract_data_request.page_number, user_defined_bbox
     )
-    if extracted_coord is not None:
+    if extracted_coord:
         extracted_coord = extracted_coord[0]  # currently we only handles one set of coordinate
 
-    if isinstance(extracted_coord, LV03Coordinate):
-        return create_response(extracted_coord, "LV03")
+    if isinstance(extracted_coord, FeatureOnPage):
+        if isinstance(extracted_coord.feature, LV03Coordinate):
+            return create_response(extracted_coord, "LV03")
 
-    if isinstance(extracted_coord, LV95Coordinate):
-        return create_response(extracted_coord, "LV95")
+        if isinstance(extracted_coord.feature, LV95Coordinate):
+            return create_response(extracted_coord, "LV95")
 
     raise HTTPException(status_code=404, detail="Coordinates not found.")
 
