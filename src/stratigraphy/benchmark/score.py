@@ -39,26 +39,6 @@ def evaluate(
     ground_truth = GroundTruth(ground_truth_path)
 
     #############################
-    # Evaluate the borehole extraction metadata
-    #############################
-    metadata_metrics_list = predictions.evaluate_metadata_extraction(ground_truth)
-    metadata_metrics = metadata_metrics_list.get_cumulated_metrics()
-    document_level_metadata_metrics: pd.DataFrame = metadata_metrics_list.get_document_level_metrics()
-    document_level_metadata_metrics.to_csv(
-        temp_directory / "document_level_metadata_metrics.csv", index_label="document_name"
-    )  # mlflow.log_artifact expects a file
-
-    # print the metrics
-    logger.info("Metadata Performance metrics:")
-    logger.info(metadata_metrics.to_json())
-
-    if mlflow_tracking:
-        import mlflow
-
-        mlflow.log_metrics(metadata_metrics.to_json())
-        mlflow.log_artifact(temp_directory / "document_level_metadata_metrics.csv")
-
-    #############################
     # Evaluate the borehole extraction
     #############################
     metrics = predictions.evaluate_geology(ground_truth)
@@ -73,8 +53,28 @@ def evaluate(
     logger.info("Performance metrics: %s", formatted_metrics)
 
     if mlflow_tracking:
+        import mlflow
+
         mlflow.log_metrics(metrics_dict)
         mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
+
+    #############################
+    # Evaluate the borehole extraction metadata
+    #############################
+    metadata_metrics_list = predictions.evaluate_metadata_extraction(ground_truth)
+    metadata_metrics = metadata_metrics_list.get_cumulated_metrics()
+    document_level_metadata_metrics: pd.DataFrame = metadata_metrics_list.get_document_level_metrics()
+    document_level_metadata_metrics.to_csv(
+        temp_directory / "document_level_metadata_metrics.csv", index_label="document_name"
+    )  # mlflow.log_artifact expects a file
+
+    # print the metrics
+    logger.info("Metadata Performance metrics:")
+    logger.info(metadata_metrics.to_json())
+
+    if mlflow_tracking:
+        mlflow.log_metrics(metadata_metrics.to_json())
+        mlflow.log_artifact(temp_directory / "document_level_metadata_metrics.csv")
 
     return document_level_metadata_metrics
 

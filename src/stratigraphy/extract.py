@@ -33,7 +33,7 @@ from stratigraphy.util.util import (
 class ProcessPageResult:
     """The result of processing a single page of a pdf."""
 
-    predictions: list[Layer]
+    predictions: list[list[Layer]]
     bounding_boxes: list[BoundingBoxes]
 
 
@@ -103,37 +103,49 @@ class MaterialDescriptionRectWithSidebarExtractor:
             for pair in filtered_pairs
         ]
 
-        interval_block_pairs = [
-            interval_block_pair
-            for pair in filtered_pairs
-            for interval_block_pair in self._get_interval_block_pairs(pair)
+        # this must not be flattened anymore, i.e. we keep the /per borehole separation
+        interval_block_pairs = [self._get_interval_block_pairs(pair) for pair in filtered_pairs]
+
+        layer_predictions = [
+            [
+                Layer(
+                    material_description=FeatureOnPage(
+                        feature=MaterialDescription(
+                            text=pair.block.text,
+                            lines=[
+                                FeatureOnPage(
+                                    feature=MaterialDescriptionLine(text_line.text),
+                                    rect=text_line.rect,
+                                    page=text_line.page_number,
+                                )
+                                for text_line in pair.block.lines
+                            ],
+                        ),
+                        rect=pair.block.rect,
+                        page=self.page_number,
+                    ),
+                    depths=LayerDepths.from_interval(pair.depth_interval) if pair.depth_interval else None,
+                )
+                for pair in boreholes_layers
+            ]
+            for boreholes_layers in interval_block_pairs
         ]
 
         layer_predictions = [
-            Layer(
-                material_description=FeatureOnPage(
-                    feature=MaterialDescription(
-                        text=pair.block.text,
-                        lines=[
-                            FeatureOnPage(
-                                feature=MaterialDescriptionLine(text_line.text),
-                                rect=text_line.rect,
-                                page=text_line.page_number,
-                            )
-                            for text_line in pair.block.lines
-                        ],
-                    ),
-                    rect=pair.block.rect,
-                    page=self.page_number,
-                ),
-                depths=LayerDepths.from_interval(pair.depth_interval) if pair.depth_interval else None,
-            )
-            for pair in interval_block_pairs
+            [layer for layer in borehole_layers if layer.description_nonempty()]
+            for borehole_layers in layer_predictions
         ]
-        layer_predictions = [layer for layer in layer_predictions if layer.description_nonempty()]
         return ProcessPageResult(layer_predictions, bounding_boxes)
 
     def _get_interval_block_pairs(self, pair: MaterialDescriptionRectWithSidebar) -> list[IntervalBlockPair]:
+        """Get the interval block pairs for a given material description rect with sidebar.
+
+        Args:
+            pair (MaterialDescriptionRectWithSidebar): The material description rect with sidebar.
+
+        Returns:
+            list[IntervalBlockPair]: The interval block pairs.
+        """
         description_lines = get_description_lines(self.lines, pair.material_description_rect)
         if len(description_lines) > 1:
             if pair.sidebar:
