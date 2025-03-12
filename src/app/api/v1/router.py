@@ -1,8 +1,11 @@
 """Main router for the app."""
 
+from app.api.v1.endpoints.bounding_boxes import bounding_boxes
 from app.api.v1.endpoints.create_pngs import create_pngs
 from app.api.v1.endpoints.extract_data import extract_data
 from app.common.schemas import (
+    BoundingBoxesRequest,
+    BoundingBoxesResponse,
     ExtractCoordinatesResponse,
     ExtractDataRequest,
     ExtractNumberResponse,
@@ -66,6 +69,46 @@ def post_create_pngs(request: PNGRequest) -> PNGResponse:
 
 
 ####################################################################################################
+### Bounding Boxes for Words
+####################################################################################################
+@router.post(
+    "/bounding_boxes",
+    tags=["bounding_boxes"],
+    responses={
+        400: {"model": BadRequestResponse, "description": "Bad request"},
+        404: {
+            "model": BadRequestResponse,
+            "description": "Failed to load PDF document. The filename is not found in the bucket.",
+        },
+        500: {"model": BadRequestResponse, "description": "Internal server error"},
+    },
+)
+def get_bounding_boxes(request: BoundingBoxesRequest) -> BoundingBoxesResponse:
+    """Obtain bounding boxes (in PNG pixel coordinates) for all words that are found on the requested PDF page.
+
+    ### Prerequisites
+    The text in the PDF must be digitally readable, i.e. either a digitally-born PDF, or a PDF where OCR has already
+    been executed.
+
+    Ensure that the PDF file has been processed by the create_pngs endpoint first.
+
+    ### Request Body
+    - **request** (`BoundingBoxesRequest`): Contains the `filename` of the PDF document in the S3 bucket and the page
+    number.
+
+    ### Returns
+    - **BoundingBoxesResponse**: Response containing a list of bounding boxes.
+
+    ### Status Codes
+    - **200 OK**: The bounding were successfully found.
+    - **400 Bad Request**: The request format or content is invalid. Verify that `filename` is correctly specified.
+    - **404 Not Found**: PDF file not found in S3 bucket.
+    - **500 Internal Server Error**: An error occurred on the server while obtaining the bounding boxes.
+    """
+    return bounding_boxes(request.filename, request.page_number)
+
+
+####################################################################################################
 ### Extract Data
 ####################################################################################################
 @router.post(
@@ -83,10 +126,8 @@ def post_extract_data(
 ) -> ExtractCoordinatesResponse | ExtractTextResponse | ExtractNumberResponse:
     """Extract specified data from a given document based on the bounding box coordinates and format.
 
-    Behavior of the data extraction from the specified bounding box is the following: extraction on a per-letter
-    basis, which means that as soon as the specified bounding box overlaps (partially or fully) with a letter
-    or number, then this character is added to the extracted text. This behavior is consistent with the
-    clipping behavior of the `PyMuPDF` library.
+    Text is extracted on a word-by-word basis, whereby a word is included if its center point is within the bounding
+    box that is provided by the user in the request.
 
     ### Prerequisites
     Ensure that the PDF file has been processed by the create_pngs endpoint first.
