@@ -95,12 +95,12 @@ class MetadataEvaluator:
 
         return metadata_metrics_list
 
-    def _evaluate_elevation(self, extracted_elevation: int | None, ground_truth_elevation: int | None):
+    def _evaluate_elevation(self, extracted_elevation: float | None, ground_truth_elevation: float | None):
         """Private method used to evaluate the extracted elevation against the ground truth.
 
         Args:
-            extracted_elevation (int | None): the extracted elevation
-            ground_truth_elevation (int | None): the groundtruth elevation
+            extracted_elevation (float | None): the extracted elevation
+            ground_truth_elevation (float | None): the groundtruth elevation
 
         Returns:
             Metrics: the metric for this elevation.

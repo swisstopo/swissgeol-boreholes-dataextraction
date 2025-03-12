@@ -32,13 +32,14 @@ def remove_duplicate_layers(
         previous_page (fitz.Page): The previous page.
         current_page (fitz.Page): The current page containing the layers to check for duplicates.
         previous_layers (LayersInDocument): The layers of the previous page.
-        current_layers (list[Layer]): The layers of the current page.
+        current_layers (list[list[Layer]]): The layers of the current page.
         img_template_probability_threshold (float): The threshold for the template matching probability
 
     Returns:
         list[Layer]: The layers of the current page without duplicates.
     """
     non_duplicated_layers = []
+    # iterate on all the borehole profiles identified on this page
     for current_borehole_layers in current_layers:
         sorted_layers = sorted(current_borehole_layers, key=lambda x: x.material_description.rect.y0)
         first_non_duplicated_layer_index = 0
@@ -58,6 +59,7 @@ def remove_duplicate_layers(
             else:  # in this case we compare the depth interval and material description
                 current_material_description = layer.material_description
                 current_depth_interval = layer.depths
+                # iterate on all the layers in the previously identified borehole profiles
                 for previous_borehole_layers in previous_layers.boreholes_layers:
                     for previous_layer in previous_borehole_layers.layers:
                         if previous_layer.depths is None:
@@ -101,7 +103,7 @@ def remove_duplicate_layers(
 
                     if duplicate_condition:
                         break
-
+            # the layers of the current borehole are duplicates of the layers of one of the previous borehole
             if duplicate_condition:
                 first_non_duplicated_layer_index = layer_index + 1  # all layers before this layer are duplicates
                 count_consecutive_non_duplicate_layers = 0

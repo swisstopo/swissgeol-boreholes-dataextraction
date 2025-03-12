@@ -179,7 +179,20 @@ class BoreholeListBuilder:
 
     @staticmethod
     def _extend_list(lst: list[T], base_elem: T, target_length: int) -> list[T]:
-        """Extends a list with deep copies of a base element until it reaches the target length."""
+        """Extends a list with deep copies of a base element until it reaches the target length.
+
+        If the input list is empty, it initializes it with a deep copy of base_elem.
+        Then, it ensures that the list reaches target_length by appending deep copies
+        of the first element in the list.
+
+        Args:
+            lst (list[T]): The list to extend.
+            base_elem (T): The element to use as a base for deep copying.
+            target_length (int): The desired length of the list.
+
+        Returns:
+            list[T]: The extended list with deep copies of the base element.
+        """
         if not lst:
             lst.append(deepcopy(base_elem))  # Ensure there's a base element if the list is empty
 
@@ -259,7 +272,7 @@ class OverallFilePredictions:
             ground_truth (GroundTruth): The ground truth.
 
         Returns:
-            OverallBoreholeMetadataMetrics
+            OverallBoreholeMetadataMetrics: the computed metrics for the metadata.
         """
         metadata_per_file: OverallFileMetadata = OverallFileMetadata(
             [file_pred.file_name for file_pred in self.file_predictions_list],
