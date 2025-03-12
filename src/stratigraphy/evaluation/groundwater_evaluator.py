@@ -128,7 +128,7 @@ class GroundwaterEvaluator:
                 groundwater_depth_metrics=Metrics.micro_average(groundwater_depth_metrics_list),
                 groundwater_elevation_metrics=Metrics.micro_average(groundwater_elevation_metrics_list),
                 groundwater_date_metrics=Metrics.micro_average(groundwater_date_metrics_list),
-                filename=borehole_data.filename,
+                filename=file.filename,
             )
 
             overall_groundwater_metrics.add_groundwater_metrics(file_groundwater_metrics)
