@@ -29,9 +29,11 @@ def transform_json(input_json):
 def convert_ground_truth_v2(ground_truth_path, out_path):
     """CLI command to transform borehole JSON structure and save the output.
 
+    Probably works only after the first convert_ground_truth.py has been applied.
+
     usage:
     ```
-    python src/scripts/convert_ground_truth_v2.py -g ./data/geoquat_old_ground_truth.json
+    python src/scripts/convert_ground_truth_v2.py -g ./data/geoquat_old_ground_truth.json \
     -o ./data/geoquat_new_ground_truth.json
     ```
 

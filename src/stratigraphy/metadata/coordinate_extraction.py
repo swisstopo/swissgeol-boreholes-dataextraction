@@ -307,12 +307,11 @@ class CoordinateExtractor(DataExtractor):
         Returns:
             list[FeatureOnPage[Coordinate]]: the extracted coordinates (if any)
         """
-        coordinates: list[Coordinate] = []
+        coordinates: list[FeatureOnPage[Coordinate]] = []
         for page in document:
             page_number = page.number + 1  # page.number is 0-based
 
             coord = self.extract_coordinates_from_bbox(page, page_number)
-            if coord is not None:
-                coordinates.extend(coord)
+            coordinates.extend(coord)
 
         return coordinates

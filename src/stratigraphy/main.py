@@ -335,7 +335,6 @@ def start_pipeline(
             # Add file predictions
             predictions.add_file_predictions(FilePredictions(borehole_predictions_list, file_metadata, filename))
 
-    # propagate change here
     logger.info("Metadata written to %s", metadata_path)
     with open(metadata_path, "w", encoding="utf8") as file:
         json.dump(predictions.get_metadata_as_dict(), file, ensure_ascii=False)

@@ -57,7 +57,7 @@ class MetadataInDocument:
 
 @dataclass
 class BoreholeMetadata:
-    """Metadata for stratigraphy data."""
+    """Metadata for stratigraphy data for a single borehole."""
 
     elevation: FeatureOnPage[Elevation] | None = None
     coordinates: FeatureOnPage[Coordinate] | None = None
@@ -82,7 +82,7 @@ class BoreholeMetadata:
             filename (str): The name of the file.
 
         Returns:
-            MetadataInDocument: The metadata object.
+            BoreholeMetadata: The metadata object.
         """
         return cls(
             FeatureOnPage.from_json(json_metadata["elevation"], Elevation) if json_metadata["elevation"] else None,
@@ -172,7 +172,7 @@ class FileMetadata:
 class OverallFileMetadata:
     """Metadata for stratigraphy data.
 
-    This class is a list of MetadataInDocument objects. Each object corresponds to a
+    This class is a list of list of BoreholeMetadata objects. Each inner list corresponds to a
     single file.
     """
 
@@ -186,6 +186,6 @@ class OverallFileMetadata:
             dict: The object as a dictionary.
         """
         return {
-            metadata_list[0].filename.name: [metadata.to_json() for metadata in metadata_list]
-            for metadata_list in self.metadata_per_file
+            filename: [metadata.to_json() for metadata in metadata_list]
+            for filename, metadata_list in zip(self.filenames, self.metadata_per_file, strict=True)
         }

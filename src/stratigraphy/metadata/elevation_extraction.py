@@ -129,6 +129,10 @@ class ElevationExtractor(DataExtractor):
         Returns:
             list[FeatureOnPage[Elevation]]: The best extracted elevation information.
         """
+        # first remoove the dupplicate. Even if 2 boreholes have the same elevation, it will be handled later. Keeping
+        # duplicates here could only harm us.
+        extracted_elevation_list = list({obj.feature.elevation: obj for obj in extracted_elevation_list}.values())
+
         # Sort the extracted elevation information by elevation with the highest elevation first
         extracted_elevation_list.sort(key=lambda x: x.feature.elevation, reverse=True)
 
