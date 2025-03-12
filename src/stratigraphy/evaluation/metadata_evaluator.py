@@ -81,7 +81,7 @@ class MetadataEvaluator:
                 ground_truth_elevation = borehole_ground_truth.get("metadata", {}).get("reference_elevation")
                 elevation_metrics = self._evaluate_elevation(extracted_elevation, ground_truth_elevation)
                 if borehole_metadata.elevation:
-                    borehole_metadata.elevation.is_correct = elevation_metrics.tp > 0
+                    borehole_metadata.elevation.feature.is_correct = elevation_metrics.tp > 0
                 elevation_metrics_list.append(elevation_metrics)
 
             # perform micro-average to store the metrics of all the boreholes in the document

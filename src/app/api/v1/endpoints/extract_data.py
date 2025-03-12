@@ -15,7 +15,6 @@ from app.common.schemas import (
     FormatTypes,
 )
 from fastapi import HTTPException
-from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.lines.line import TextLine
 from stratigraphy.metadata.coordinate_extraction import CoordinateExtractor, LV03Coordinate, LV95Coordinate
 from stratigraphy.text.extract_text import extract_text_lines
@@ -145,9 +144,7 @@ def extract_coordinates(extract_data_request: ExtractDataRequest, text_lines: li
     extracted_coord = coord_extractor.extract_coordinates_aggregated(text_lines, extract_data_request.page_number)
 
     if extracted_coord:
-        extracted_coord = extracted_coord[0]  # currently we only handles one set of coordinate
-
-    if isinstance(extracted_coord, FeatureOnPage):
+        extracted_coord = extracted_coord[0]  # currently we only handle one set of coordinate
         if isinstance(extracted_coord.feature, LV03Coordinate):
             return create_response(extracted_coord, "LV03")
 
