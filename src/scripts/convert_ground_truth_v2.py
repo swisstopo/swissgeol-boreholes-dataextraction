@@ -31,14 +31,15 @@ def convert_ground_truth_v2(ground_truth_path, out_path):
 
     Probably works only after the first convert_ground_truth.py has been applied.
 
-    usage:
+    Args:
+        ground_truth_path: Path to the input JSON file.
+        out_path: Path to save the transformed JSON file.
+
+    Usage:
     ```
     python src/scripts/convert_ground_truth_v2.py -g ./data/geoquat_old_ground_truth.json \
     -o ./data/geoquat_new_ground_truth.json
     ```
-
-    INPUT_FILE: Path to the input JSON file.
-    OUTPUT_FILE: Path to save the transformed JSON file.
     """
     with open(ground_truth_path) as file:
         data = json.load(file)

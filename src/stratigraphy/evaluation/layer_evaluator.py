@@ -33,6 +33,14 @@ class LayerEvaluator:
             layers_entries (dict[str : list[LayersInBorehole]]): The layers to evaluate.
             ground_truth (GroundTruth): The ground truth.
             gt_to_pred_matching (dict[str : dict[int:int]]): the dict matching the index of the gt borehole to pred
+
+            layers_entries (dict[str : list[LayersInBorehole]]): The layers to evaluate. The expected
+                format is a dict with the filename as key, and the lists of all the Borehole layers identified for each
+                profile as value. The Borehole layers are themself a list of Layers.
+            ground_truth (GroundTruth): The ground truth.
+            gt_to_pred_matching (dict[str : dict[int:int]]): The dict matching the index of the groundtruth borehole
+                to the prediction. It is mostly relevant when there is multiple boreholes in a documents (else it is
+                just {0:0}). There is one entry for each of the files.
         """
         self.ground_truth: GroundTruth = ground_truth
         self.layers_entries: dict[str : list[LayersInBorehole]] = layers_entries
@@ -79,7 +87,8 @@ class LayerEvaluator:
 
         # iteration over all the files
         for filename, layers_in_document in self.layers_entries.items():
-            # the groundtruth matching the current file is fetched, so is the dict matching the groundtruth to pred
+            # the groundtruth matching the current file is fetched, so is the dict matching the boreholes in the
+            # groundtruth to the ones in the prediction
             ground_truth_for_file = self.ground_truth.for_file(filename)
             gt_to_pred_index = self.gt_to_pred_matching[filename]
 
@@ -129,7 +138,8 @@ class LayerEvaluator:
     def evaluate_borehole(borehole_layers: list[LayersInBorehole], all_ground_truth_layers: dict[int:list]):
         """Evaluate all predicted layers for a borehole against the ground truth.
 
-        Also performs the matching ground truth to prediction when there is more than one borehole in the document.
+        Also performs the matching groundtruth to prediction when there is more than one borehole in the document.
+        It is for this reason that the layers are the first element that needs to be elaluated.
 
         Args:
             borehole_layers (list[LayersInBorehole]): The predicted layers for all the boreholes in the document.
@@ -181,11 +191,12 @@ class LayerEvaluator:
         """Computes the matching score between a prediction and a groundtruth borehole.
 
         This is relevant when there is more than one borehole per pdf. Computing this score allows to match the
-        predictions identified in the document against the correct groundtruth.
+        predictions identified in the document against the correct groundtruth. The matching score is computed by
+        comparing the layers of each borehole identified to each layers in the groudtruth.
 
         Args:
             ground_truth_layers (list[dict]): list containing the ground truth for the layers
-            predicted_layers (BoreholeLayers): object containing the list of the predicted layers
+            predicted_layers (LayersInBorehole): object containing the list of the predicted layers
 
         Returns:
             matching_score (float): a score that captures the similarity between the boreholes (1 is best, 0 is worst)

@@ -8,6 +8,7 @@ from stratigraphy.evaluation.evaluation_dataclasses import (
     Metrics,
     OverallBoreholeMetadataMetrics,
 )
+from stratigraphy.metadata.coordinate_extraction import Coordinate
 from stratigraphy.metadata.metadata import OverallFileMetadata
 
 
@@ -24,9 +25,12 @@ class MetadataEvaluator:
 
         Args:
             metadata_list (OverallFileMetadata): Container for multiple files containing borehole metadata
-                objects to evaluate. Contains metadata_per_file, a list of metadata refering to individual boreholes.
+                objects to evaluate. Contains metadata_per_file, nested lists of metadata refering to individual
+                boreholes detected in a common file, with one external list for each file.
             ground_truth (GroundTruth): The ground truth.
-            gt_to_pred_matching (dict[str : dict[int:int]]): the dict matching the index of the gt borehole to pred
+            gt_to_pred_matching (dict[str : dict[int:int]]): The dict matching the index of the groundtruth borehole
+                to the prediction. It is mostly relevant when there is multiple boreholes in a documents (else it is
+                just {0:0}). There is one entry for each of the files.
         """
         self.metadata_list: OverallFileMetadata = metadata_list
         self.ground_truth: GroundTruth = ground_truth
@@ -80,7 +84,7 @@ class MetadataEvaluator:
                     borehole_metadata.elevation.is_correct = elevation_metrics.tp > 0
                 elevation_metrics_list.append(elevation_metrics)
 
-            # perfoem micro-average to store the metrics of all the boreholes in the document
+            # perform micro-average to store the metrics of all the boreholes in the document
             metadata_metrics_list.borehole_metadata_metrics.append(
                 FileBoreholeMetadataMetrics(
                     elevation_metrics=Metrics.micro_average(elevation_metrics_list),
@@ -91,7 +95,16 @@ class MetadataEvaluator:
 
         return metadata_metrics_list
 
-    def _evaluate_elevation(self, extracted_elevation, ground_truth_elevation):
+    def _evaluate_elevation(self, extracted_elevation: int | None, ground_truth_elevation: int | None):
+        """Private method used to evaluate the extracted elevation against the ground truth.
+
+        Args:
+            extracted_elevation (int | None): the extracted elevation
+            ground_truth_elevation (int | None): the groundtruth elevation
+
+        Returns:
+            Metrics: the metric for this elevation.
+        """
         if extracted_elevation is not None and ground_truth_elevation is not None:
             if math.isclose(extracted_elevation, ground_truth_elevation, abs_tol=0.1):
                 elevation_metrics = Metrics(
@@ -114,7 +127,16 @@ class MetadataEvaluator:
 
         return elevation_metrics
 
-    def _evaluate_coordinate(self, extracted_coordinates, ground_truth_coordinates):
+    def _evaluate_coordinate(self, extracted_coordinates: Coordinate | None, ground_truth_coordinates: dict | None):
+        """Private method used to evaluate the extracted coordinates against the ground truth.
+
+        Args:
+            extracted_coordinates (Coordinate | None): the extracted coordinates
+            ground_truth_coordinates (dict | None): the groundtruth coordinates
+
+        Returns:
+            Metrics: the metric for these coordinates.
+        """
         if extracted_coordinates and ground_truth_coordinates:
             if extracted_coordinates.east.coordinate_value > 2e6 and ground_truth_coordinates["E"] < 2e6:
                 ground_truth_east = int(ground_truth_coordinates["E"]) + 2e6

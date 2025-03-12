@@ -164,7 +164,7 @@ class LayersInBorehole:
 class LayersInDocument:
     """A class to represent predictions for a single document.
 
-    maybe should be called BoreholeLayersInDocument
+    It contains a list of LayersInBorehole, not just a list of Layer.
     """
 
     def __init__(self, boreholes_layers: list[LayersInBorehole], filename: str):

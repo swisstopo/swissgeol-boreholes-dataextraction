@@ -61,9 +61,12 @@ class GroundwaterEvaluator:
         """Initializes the GroundwaterEvaluator object.
 
         Args:
-            groundwater_entries (dict[str:list[GroundwatersInBorehole]]): The groundwaters to evaluate.
+            groundwater_entries (dict[str : list[GroundwatersInBorehole]]): The groundwaters to evaluate. The expected
+                format is a dict with the filename as key, and the lists of all the Groundwaters as value.
             ground_truth (GroundTruth): The ground truth.
-            gt_to_pred_matching (dict[str : dict[int:int]]): the dict matching the index of the gt borehole to pred
+            gt_to_pred_matching (dict[str : dict[int:int]]): The dict matching the index of the groundtruth borehole
+                to the prediction. It is mostly relevant when there is multiple boreholes in a documents (else it is
+                just {0:0}). There is one entry for each of the files.
         """
         self.ground_truth = ground_truth
         self.groundwater_entries: dict[str : list[GroundwatersInBorehole]] = groundwater_entries
@@ -92,7 +95,7 @@ class GroundwaterEvaluator:
                 # from the matching previously done on the layer description, extract the coresponding gt borehole
                 ground_truth_index = pred_to_gt_matching.get(pred_index)
                 if ground_truth_index is None:
-                    # when the extraction detects more borehole than there actually is in the ground truth, the wosrt
+                    # when the extraction detects more borehole than there actually is in the ground truth, the worst
                     # predictions have no match and must be skipped for the evaluation
                     continue
                 ground_truth_index = pred_to_gt_matching[pred_index]
