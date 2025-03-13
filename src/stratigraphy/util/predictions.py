@@ -2,10 +2,11 @@
 
 import dataclasses
 import logging
-from collections.abc import Callable
+from copy import deepcopy
 from typing import TypeVar
 
 from stratigraphy.benchmark.metrics import OverallMetricsCatalog
+from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBoxes
 from stratigraphy.evaluation.evaluation_dataclasses import OverallBoreholeMetadataMetrics
 from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
@@ -13,6 +14,8 @@ from stratigraphy.evaluation.layer_evaluator import LayerEvaluator
 from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument, GroundwatersInBorehole
 from stratigraphy.layer.layer import LayersInDocument
+from stratigraphy.metadata.coordinate_extraction import Coordinate
+from stratigraphy.metadata.elevation_extraction import Elevation
 from stratigraphy.metadata.metadata import BoreholeMetadata
 from stratigraphy.util.borehole_predictions import (
     BoreholeGroundwaterWithGroundTruth,
@@ -45,8 +48,8 @@ class BoreholeListBuilder:
         file_name: str,
         groundwater_in_doc: GroundwaterInDocument,
         bounding_boxes: list[list[BoundingBoxes]],
-        elevations_list: list,
-        coordinates_list: list,
+        elevations_list: list[FeatureOnPage[Elevation] | None],
+        coordinates_list: list[FeatureOnPage[Coordinate] | None],
     ):
         """Initializes the BoreholeListBuilder with extracted borehole-related data.
 
@@ -56,8 +59,9 @@ class BoreholeListBuilder:
             groundwater_in_doc (GroundwaterInDocument): Contains detected groundwater entries for boreholes.
             bounding_boxes (list[list[BoundingBoxes]]): A nested list where each inner list represents bounding boxes
                 associated with a borehole.
-            elevations_list (list[float]): List of terrain elevation values for detected boreholes.
-            coordinates_list (list[tuple[float, float]]): List of borehole coordinates.
+            elevations_list (list[FeatureOnPage[Elevation] | None]): List of terrain elevation values for detected
+                boreholes.
+            coordinates_list (list[FeatureOnPage[Coordinate] | None]): List of borehole coordinates.
         """
         self._layers_in_document = layers_in_document
         self._file_name = file_name
@@ -102,17 +106,22 @@ class BoreholeListBuilder:
         num_boreholes = len(self._layers_in_document.boreholes_layers)
 
         self._groundwater_in_doc.borehole_groundwaters = self._extend_list(
-            self._groundwater_in_doc.borehole_groundwaters, lambda: GroundwatersInBorehole([]), num_boreholes
+            self._groundwater_in_doc.borehole_groundwaters, GroundwatersInBorehole([]), num_boreholes
         )
-        self._bounding_boxes = self._extend_list(self._bounding_boxes, lambda: [], num_boreholes)
-        self._elevations_list = self._extend_list(self._elevations_list, lambda: None, num_boreholes)
-        self._coordinates_list = self._extend_list(self._coordinates_list, lambda: None, num_boreholes)
+        self._bounding_boxes = self._extend_list(self._bounding_boxes, [], num_boreholes)
+        self._elevations_list = self._extend_list(self._elevations_list, None, num_boreholes)
+        self._coordinates_list = self._extend_list(self._coordinates_list, None, num_boreholes)
 
     @staticmethod
-    def _extend_list(lst: list[T], base_elem: Callable[[], T], target_length: int) -> list[T]:
+    def _extend_list(lst: list[T], default_elem: T, target_length: int) -> list[T]:
+        # deepcopy is necessary, because the is_correct attribute is already stored on this object, but the same
+        # extracted value might be correct on one borehole and incorrect on another one.
+        def create_new_elem():
+            return deepcopy(lst[0]) if lst else default_elem
+
         """Extends a list with deep copies of a base element until it reaches the target length."""
         while len(lst) < target_length:
-            lst.append(base_elem())  # Append copies to match the required length
+            lst.append(create_new_elem())  # Append copies to match the required length
 
         return lst[:target_length]
 
