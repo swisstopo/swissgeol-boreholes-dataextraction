@@ -121,7 +121,31 @@ source env/bin/activate
 
 2. **Download the borehole profiles, optional**
 
-Use `boreholes-download-profiles` to download the files to be processed from an AWS S3 storage. In order to do so, you need to authenticate with aws first. We recommend to use the aws CLI for that purpose. This step is optional, you can continue with step 3 on your own set of borehole profiles.
+Use `boreholes-download-profiles` to download the files to be processed from an AWS S3 storage. In order to do so, you need to authenticate with aws first. We recommend using the aws CLI for that purpose, or storing your credentials in the ~/.aws configuration files This step is optional, you can continue with step 3 on your own set of borehole profiles.
+
+Alternativelly, you can download the data directly using the AWS CLI:
+```bash 
+brew install awscli
+aws s3 sync s3://stijnvermeeren-boreholes-data ./data
+```
+
+If you choose to use the ~/.aws files, here how they should look like.
+
+**~/.aws/config**
+
+  ```
+  [default]
+  region=eu-central-1
+  output=json
+  ```  
+
+ **~/.aws/credentials**
+
+  ```
+  [default]
+  aws_access_key_id=YOUR_ACCESS_KEY
+  aws_secret_access_key=YOUR_SECRET_KEY
+  ```  
 
 3. **Run the extraction script**
 
@@ -168,35 +192,6 @@ The project structure and the most important files are as follows:
 ## Main scripts
 
 - `main.py` : This is the main script of the project. It runs the data extraction pipeline, which analyzes the PDF files in the `data/Benchmark` directory and saves the results in the `predictions.json` file.
-
-## Data
-
-To locally download the data from the AWS S3 bucket to the `./data` directory, run the following commands:
-
-```bash 
-brew install awscli
-aws s3 sync s3://stijnvermeeren-boreholes-data ./data
-```
-
-You may need to export some environment variables or configure AWS credentials manually.
-
-- Add the following content to `~/.aws/config`:  
-
-  ```
-  [default]
-  region=eu-central-1
-  output=json
-  ```  
-
-- Add your credentials to `~/.aws/credentials`:  
-
-  ```
-  [default]
-  aws_access_key_id=YOUR_ACCESS_KEY
-  aws_secret_access_key=YOUR_SECRET_KEY
-  ```  
-
-The vscode extension **AWS S3** can also be used to access the content of the bucket.
 
 ## API
 
