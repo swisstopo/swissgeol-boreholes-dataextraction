@@ -114,12 +114,15 @@ class BoreholeListBuilder:
 
     @staticmethod
     def _extend_list(lst: list[T], default_elem: T, target_length: int) -> list[T]:
-        # deepcopy is necessary, because the is_correct attribute is already stored on this object, but the same
-        # extracted value might be correct on one borehole and incorrect on another one.
+        """Extends a list with deep copies of a base element until it reaches the target length.
+
+        deepcopy is necessary, because the is_correct attribute is already stored on this object, but the same
+        extracted value might be correct on one borehole and incorrect on another one.
+        """
+
         def create_new_elem():
             return deepcopy(lst[0]) if lst else default_elem
 
-        """Extends a list with deep copies of a base element until it reaches the target length."""
         while len(lst) < target_length:
             lst.append(create_new_elem())  # Append copies to match the required length
 
