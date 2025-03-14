@@ -8,10 +8,7 @@ from stratigraphy.util.borehole_predictions import BoreholePredictions
 
 @dataclasses.dataclass
 class FilePredictions:
-    """A class to represent predictions for a single file.
-
-    It is responsible for grouping all the lists of elements into a single list of BoreholePrediction objects.
-    """
+    """A class to represent predictions for a single file."""
 
     borehole_predictions_list: list[BoreholePredictions]
     file_metadata: FileMetadata

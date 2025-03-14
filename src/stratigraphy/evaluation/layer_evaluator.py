@@ -24,15 +24,15 @@ class LayerEvaluator:
 
     def __init__(
         self,
-        layers_list: list[FileLayersWithGroundTruth],
+        file_layers_list: list[FileLayersWithGroundTruth],
     ):
         """Initializes the LayerEvaluator object.
 
         Args:
-            layers_list (list[FileLayersWithGroundTruth]): The layers to evaluate, grouped by borehole in a list,
+            file_layers_list (list[FileLayersWithGroundTruth]): The layers to evaluate, grouped by borehole in a list,
                 with associated ground truth data for each borehole.
         """
-        self.layers_list = layers_list
+        self.file_layers_list = file_layers_list
 
     def get_layer_metrics(self) -> OverallMetrics:
         """Calculate metrics for layer predictions."""
@@ -74,7 +74,7 @@ class LayerEvaluator:
         overall_metrics = OverallMetrics()
 
         # iteration over all the files
-        for file in self.layers_list:
+        for file in self.file_layers_list:
             hits_for_all_borehole = 0
             total_predictions_for_all_boreholes = 0
             fn_for_all_boreholes = 0

@@ -17,7 +17,6 @@ class OverallFilePredictions:
     def __init__(self) -> None:
         """Initializes the OverallFilePredictions object."""
         self.file_predictions_list: list[FilePredictions] = []
-        self.matching_pred_to_gt_boreholes = dict()  # set when evaluating layers
 
     def add_file_predictions(self, file_predictions: FilePredictions) -> None:
         """Add file predictions to the list of file predictions.
@@ -71,6 +70,8 @@ class OverallFilePredictions:
 
     def match_with_ground_truth(self, ground_truth: GroundTruth) -> AllBoreholePredictionsWithGroundTruth:
         """Match the extracted boreholes with corresponding boreholes in the ground truth data.
+
+        This is done by comparing the layers of the extracted boreholes with those in the groundtruth.
 
         Args:
             ground_truth (GroundTruth): The ground truth.
