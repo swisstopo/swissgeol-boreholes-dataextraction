@@ -1,7 +1,6 @@
 """Test suite for the prediction module."""
 
 from datetime import datetime
-from pathlib import Path
 from unittest.mock import Mock
 
 import fitz
@@ -13,7 +12,10 @@ from stratigraphy.groundwater.groundwater_extraction import Groundwater, Groundw
 from stratigraphy.layer.layer import LayersInBorehole
 from stratigraphy.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
 from stratigraphy.metadata.metadata import BoreholeMetadata, FileMetadata
-from stratigraphy.util.predictions import BoreholePredictions, FilePredictions, OverallFilePredictions
+from stratigraphy.util.borehole_predictions import BoreholePredictionsWithGroundTruth, FilePredictionsWithGroundTruth
+from stratigraphy.util.file_predictions import FilePredictions
+from stratigraphy.util.overall_file_predictions import OverallFilePredictions
+from stratigraphy.util.predictions import AllBoreholePredictionsWithGroundTruth, BoreholePredictions
 
 
 @pytest.fixture
@@ -63,6 +65,39 @@ def sample_file_prediction() -> FilePredictions:
     )
 
 
+@pytest.fixture
+def groundtruth():
+    """Path to the ground truth file."""
+    return GroundTruth("example/example_groundtruth.json")
+
+
+@pytest.fixture
+def sample_file_prediction_with_ground_truth(
+    sample_file_prediction: FilePredictions, groundtruth: GroundTruth
+) -> FilePredictionsWithGroundTruth:
+    """Builds a FilePredictionsWithGroundTruth object with the given predictions and groundtruth.
+
+    Args:
+        sample_file_prediction (FilePredictions): a fixture that returns the FilePredictions object
+        groundtruth (GroundTruth): a fixture that returns the Groudtruth object
+
+    Returns:
+        FilePredictionsWithGroundTruth: the FilePredictionsWithGroundTruth associated
+    """
+    file_ground_truth: dict = groundtruth.for_file(sample_file_prediction.file_name)
+    gt_index = 0
+    return FilePredictionsWithGroundTruth(
+        filename=sample_file_prediction.file_name,
+        language=sample_file_prediction.file_metadata.language,
+        boreholes=[
+            BoreholePredictionsWithGroundTruth(
+                predictions=borehole_preds, ground_truth=file_ground_truth.get(gt_index)
+            )
+            for borehole_preds in sample_file_prediction.borehole_predictions_list
+        ],
+    )
+
+
 def test_to_json(sample_file_prediction: FilePredictions):
     """Test the to_json method."""
     result = sample_file_prediction.to_json()
@@ -84,14 +119,14 @@ def test_overall_file_predictions(sample_file_prediction: FilePredictions):
     assert set(result.keys()) == {"example_borehole_profile.pdf"}
 
 
-def test_evaluate_metadata_extraction(sample_file_prediction: FilePredictions):
+def test_evaluate_metadata_extraction(sample_file_prediction_with_ground_truth: FilePredictionsWithGroundTruth):
     """Test evaluate_metadata_extraction method of OverallFilePredictions."""
     overall_predictions = OverallFilePredictions()
     overall_predictions.add_file_predictions(sample_file_prediction)
-    overall_predictions.matching_pred_to_gt_boreholes = {"example_borehole_profile.pdf": {0: 0}}
+    all_predsk_with_gt = AllBoreholePredictionsWithGroundTruth([sample_file_prediction_with_ground_truth])
 
-    ground_truth = GroundTruth(Path("example/example_groundtruth.json"))
-    metadata_metrics = overall_predictions.evaluate_metadata_extraction(ground_truth)
+    #
+    metadata_metrics = all_predsk_with_gt.evaluate_metadata_extraction()
 
     assert metadata_metrics is not None  # Ensure the evaluation returns a result
 
