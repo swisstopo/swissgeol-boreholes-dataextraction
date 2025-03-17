@@ -26,12 +26,9 @@ from stratigraphy.layer.layer import LayersInDocument
 from stratigraphy.lines.line_detection import extract_lines, line_detection_params
 from stratigraphy.metadata.metadata import FileMetadata, MetadataInDocument
 from stratigraphy.text.extract_text import extract_text_lines
-from stratigraphy.util.predictions import (
-    BoreholeListBuilder,
-    BoreholePredictions,
-    FilePredictions,
-    OverallFilePredictions,
-)
+from stratigraphy.util.file_predictions import FilePredictions
+from stratigraphy.util.overall_file_predictions import OverallFilePredictions
+from stratigraphy.util.predictions import BoreholeListBuilder, BoreholePredictions
 from stratigraphy.util.util import flatten, read_params
 
 load_dotenv()
@@ -270,12 +267,21 @@ def start_pipeline(
                 for borehole_index, page_bounding_box in enumerate(process_page_results.bounding_boxes):
                     material_description_bbox = page_bounding_box.material_description_bbox
 
+                    # TODO: first match elevation with boreholes more intelligently, then pass the correct value to
+                    # the groundwater extraction logic
+                    terrain_elevation = None
+                    if metadata.elevations:
+                        if len(metadata.elevations) > borehole_index:
+                            terrain_elevation = metadata.elevations[borehole_index]
+                        else:
+                            terrain_elevation = metadata.elevations[0]
+
                     groundwater_entries_near_bbox = GroundwaterLevelExtractor.near_material_description(
                         document=doc,
                         page_number=page_number,
                         lines=text_lines,
                         material_description_bbox=material_description_bbox,
-                        terrain_elevations=metadata.elevations if metadata.elevations else None,
+                        terrain_elevation=terrain_elevation,
                     )
                     # avoid duplicate entries
                     seen_entry = [

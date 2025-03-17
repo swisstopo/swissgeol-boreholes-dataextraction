@@ -10,7 +10,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from stratigraphy import DATAPATH
 from stratigraphy.benchmark.ground_truth import GroundTruth
-from stratigraphy.util.predictions import OverallFilePredictions
+from stratigraphy.util.overall_file_predictions import OverallFilePredictions
 
 load_dotenv()
 
@@ -41,7 +41,8 @@ def evaluate(
     #############################
     # Evaluate the borehole extraction
     #############################
-    metrics = predictions.evaluate_geology(ground_truth)
+    matched_with_ground_truth = predictions.match_with_ground_truth(ground_truth)
+    metrics = matched_with_ground_truth.evaluate_geology()
 
     metrics.document_level_metrics_df().to_csv(
         temp_directory / "document_level_metrics.csv", index_label="document_name"
@@ -61,7 +62,7 @@ def evaluate(
     #############################
     # Evaluate the borehole extraction metadata
     #############################
-    metadata_metrics_list = predictions.evaluate_metadata_extraction(ground_truth)
+    metadata_metrics_list = matched_with_ground_truth.evaluate_metadata_extraction()
     metadata_metrics = metadata_metrics_list.get_cumulated_metrics()
     document_level_metadata_metrics: pd.DataFrame = metadata_metrics_list.get_document_level_metrics()
     document_level_metadata_metrics.to_csv(

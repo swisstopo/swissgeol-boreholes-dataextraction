@@ -114,7 +114,7 @@ class FileBoreholeMetadataMetrics(BoreholeMetadataMetrics):
 class OverallBoreholeMetadataMetrics(metaclass=abc.ABCMeta):
     """Metrics for borehole metadata."""
 
-    borehole_metadata_metrics: list[FileBoreholeMetadataMetrics]
+    borehole_metadata_metrics: list[BoreholeMetadataMetrics]
 
     def __init__(self):
         """Initializes the OverallBoreholeMetadataMetrics object."""
