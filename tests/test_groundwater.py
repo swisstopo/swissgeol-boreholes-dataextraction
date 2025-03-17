@@ -26,81 +26,33 @@ def groundtruth():
 
 
 @pytest.fixture
-def example_groundwater_1() -> dict:
-    """Dictionary containing a single GroundwatersInBorehole entry with two groundwaters detected.
-
-    Returns:
-        dict: dict with filename: list(groundwater)
-    """
-    return {
-        "example_borehole_profile.pdf": [
-            GroundwatersInBorehole(
-                [
-                    FeatureOnPage.from_json(
-                        {
-                            "depth": 2.22,
-                            "date": "2016-04-18",
-                            "elevation": 448.07,
-                            "page": 1,
-                            "rect": [0, 0, 100, 100],
-                        },
-                        Groundwater,
-                    ),
-                    FeatureOnPage.from_json(
-                        {
-                            "depth": 3.22,
-                            "date": "2016-04-20",
-                            "elevation": 447.07,
-                            "page": 1,
-                            "rect": [0, 0, 100, 100],
-                        },
-                        Groundwater,
-                    ),
-                ]
-            ),
-        ]
-    }
+def groundwater_at_2m22() -> dict:
+    """Fixture that returns an Groundwater object (embeded in a FeatureOnPage)."""
+    return FeatureOnPage.from_json(
+        {
+            "depth": 2.22,
+            "date": "2016-04-18",
+            "elevation": 448.07,
+            "page": 1,
+            "rect": [0, 0, 100, 100],
+        },
+        Groundwater,
+    )
 
 
 @pytest.fixture
-def example_groundwater_2() -> dict:
-    """Dictionary containing multiple GroundwatersInBorehole entries in one document.
-
-    Returns:
-        dict: dict with filename: list(groundwater)
-    """
-    return {
-        "example_borehole_profile_2.pdf": [
-            GroundwatersInBorehole(
-                [
-                    FeatureOnPage.from_json(
-                        {
-                            "depth": 2.22,
-                            "date": "2016-04-18",
-                            "elevation": 448.07,
-                            "page": 1,
-                            "rect": [0, 0, 100, 100],
-                        },
-                        Groundwater,
-                    )
-                ],
-            ),
-            GroundwatersInBorehole(
-                [
-                    FeatureOnPage.from_json(
-                        {
-                            "depth": 3.22,
-                            "date": "2016-04-20",
-                            "elevation": 447.07,
-                            "page": 1,
-                            "rect": [0, 0, 100, 100],
-                        },
-                        Groundwater,
-                    )
-                ]
-            ),
-        ],
-    }
+def groundwater_at_3m22() -> dict:
+    """Fixture that returns another Groundwater object (embeded in a FeatureOnPage)."""
+    return FeatureOnPage.from_json(
+        {
+            "depth": 3.22,
+            "date": "2016-04-20",
+            "elevation": 447.07,
+            "page": 1,
+            "rect": [0, 0, 100, 100],
+        },
+        Groundwater,
+    )
 
 
 def test_add_groundwater_metrics(sample_metrics):
@@ -142,10 +94,12 @@ def test_groundwater_depth_metrics_to_overall_metrics(sample_metrics):
     assert overall.metrics["file_depth"] == gw_metrics.groundwater_depth_metrics
 
 
-def test_evaluate_with_ground_truth(groundtruth, example_groundwater_1: dict):
+def test_evaluate_with_ground_truth(groundtruth, groundwater_at_2m22, groundwater_at_3m22):
     """Test the evaluate method with available ground truth data."""
-    # Sample groundwater entries
-    groundwater_entries = example_groundwater_1
+    # In this test, there is one borehole, with two groundwater measurement for it.
+    groundwater_entries = {
+        "example_borehole_profile.pdf": [GroundwatersInBorehole([groundwater_at_2m22, groundwater_at_3m22])]
+    }
 
     # dictionary used to "manually" build the FileGroundwaterWithGroundTruth object
     pred_to_gt_matching = {"example_borehole_profile.pdf": {0: 0}}
@@ -156,11 +110,11 @@ def test_evaluate_with_ground_truth(groundtruth, example_groundwater_1: dict):
                 boreholes=[
                     BoreholeGroundwaterWithGroundTruth(
                         groundwater=groundwaterinborehole,
-                        ground_truth=groundtruth.for_file(filename).get(pred_idx)["groundwater"],
+                        ground_truth=groundtruth.for_file(filename).get(pred_to_gt_matching[filename][pred_idx])[
+                            "groundwater"
+                        ],
                     )
-                    for pred_idx, (groundwaterinborehole, p_to_gt) in enumerate(
-                        zip(groundwaterinborehole_list, pred_to_gt_matching[filename], strict=False)
-                    )
+                    for pred_idx, groundwaterinborehole in enumerate(groundwaterinborehole_list)
                 ],
             )
             for filename, groundwaterinborehole_list in groundwater_entries.items()
@@ -175,13 +129,22 @@ def test_evaluate_with_ground_truth(groundtruth, example_groundwater_1: dict):
     assert overall_metrics.groundwater_metrics[0].groundwater_metrics.precision == 1.0
 
 
-def test_evaluate_multiple_entries(groundtruth, example_groundwater_1, example_groundwater_2):
-    """Test the evaluate method with multiple groundwater entries.
+def test_evaluate_multiple_documents(groundtruth, groundwater_at_2m22, groundwater_at_3m22):
+    """Test the evaluate method with multiple groundwater entries on two documents.
 
-    Also, the second document has multiple borehole, and the matching is 0->1 and 1->0
+    On the first document, there is one borehole with two groundwater measurement (like in the previous test).
+    On the second document, there is two boreholes, each with one groundwater measurement. For those boreholes, the
+    matching with the ground truth is 0->1 and 1->0. Meaning that the first borehole of the prediction matches the
+    second entry in the groudtruth file.
     """
     # Sample groundwater entries
-    groundwater_entries = {**example_groundwater_1, **example_groundwater_2}
+    groundwater_entries = {
+        "example_borehole_profile.pdf": [GroundwatersInBorehole([groundwater_at_2m22, groundwater_at_3m22])],
+        "example_borehole_profile_2.pdf": [
+            GroundwatersInBorehole([groundwater_at_2m22]),
+            GroundwatersInBorehole([groundwater_at_3m22]),
+        ],
+    }
 
     # dictionary used to "manually" build the FileGroundwaterWithGroundTruth object
     pred_to_gt_matching = {"example_borehole_profile.pdf": {0: 0}, "example_borehole_profile_2.pdf": {0: 1, 1: 0}}
