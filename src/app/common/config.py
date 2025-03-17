@@ -3,7 +3,10 @@
 import logging
 import os
 
+import dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+dotenv.load_dotenv(override=True)
 
 
 def get_aws_bucket_name() -> str:
