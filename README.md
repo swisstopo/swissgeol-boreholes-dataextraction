@@ -129,7 +129,7 @@ brew install awscli
 aws s3 sync s3://stijnvermeeren-boreholes-data ./data
 ```
 
-If you choose to use the ~/.aws files, here how they should look like.
+If you choose to use the ~/.aws files, then they should look like this:
 
 **~/.aws/config**
 
