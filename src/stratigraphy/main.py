@@ -267,12 +267,21 @@ def start_pipeline(
                 for borehole_index, page_bounding_box in enumerate(process_page_results.bounding_boxes):
                     material_description_bbox = page_bounding_box.material_description_bbox
 
+                    # TODO: first match elevation with boreholes more intelligently, then pass the correct value to
+                    # the groundwater extraction logic
+                    terrain_elevation = None
+                    if metadata.elevations:
+                        if len(metadata.elevations) > borehole_index:
+                            terrain_elevation = metadata.elevations[borehole_index]
+                        else:
+                            terrain_elevation = metadata.elevations[0]
+
                     groundwater_entries_near_bbox = GroundwaterLevelExtractor.near_material_description(
                         document=doc,
                         page_number=page_number,
                         lines=text_lines,
                         material_description_bbox=material_description_bbox,
-                        terrain_elevations=metadata.elevations if metadata.elevations else None,
+                        terrain_elevation=terrain_elevation,
                     )
                     # avoid duplicate entries
                     seen_entry = [
