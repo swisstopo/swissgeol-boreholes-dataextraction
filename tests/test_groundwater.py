@@ -147,6 +147,7 @@ def test_evaluate_with_ground_truth(groundtruth, example_groundwater_1: dict):
     # Sample groundwater entries
     groundwater_entries = example_groundwater_1
 
+    # dictionary used to "manually" build the FileGroundwaterWithGroundTruth object
     pred_to_gt_matching = {"example_borehole_profile.pdf": {0: 0}}
     evaluator = GroundwaterEvaluator(
         groundwater_list=[
@@ -182,6 +183,7 @@ def test_evaluate_multiple_entries(groundtruth, example_groundwater_1, example_g
     # Sample groundwater entries
     groundwater_entries = {**example_groundwater_1, **example_groundwater_2}
 
+    # dictionary used to "manually" build the FileGroundwaterWithGroundTruth object
     pred_to_gt_matching = {"example_borehole_profile.pdf": {0: 0}, "example_borehole_profile_2.pdf": {0: 1, 1: 0}}
     evaluator = GroundwaterEvaluator(
         groundwater_list=[
