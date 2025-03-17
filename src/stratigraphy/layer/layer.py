@@ -146,6 +146,11 @@ class LayersInBorehole:
     layers: list[Layer]
 
     def to_json(self):
+        """Converts the object to a dictionary.
+
+        Returns:
+            dict: The object as a dictionary.
+        """
         return [layer.to_json() for layer in self.layers]
 
     @classmethod
@@ -153,10 +158,10 @@ class LayersInBorehole:
         """Extract a LayersInBorehole object from a json dictionary.
 
         Args:
-            json_object (dict): _description_
+            json_object (dict): The object as a dictionary.
 
         Returns:
-            json_object: the json object containing the informations of the borehole
+            LayersInBorehole: The LayersInBorehole object.
         """
         return cls([Layer.from_json(layer_data) for layer_data in json_object])
 

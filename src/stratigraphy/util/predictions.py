@@ -139,7 +139,7 @@ class AllBoreholePredictionsWithGroundTruth:
         """Evaluate the metadata extraction of the predictions against the ground truth.
 
         Returns:
-            OverallBoreholeMetadataMetrics
+            OverallBoreholeMetadataMetrics: the computed metrics for the metadata.
         """
         metadata_list = [
             FileMetadataWithGroundTruth(

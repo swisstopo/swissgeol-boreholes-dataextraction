@@ -233,6 +233,7 @@ def start_pipeline(
 
     for filename in tqdm(files, desc="Processing files", unit="file"):
         if not filename.endswith(".pdf"):
+            logger.warning(f"{filename} does not end with .pdf and is not treated.")
             continue
 
         in_path = os.path.join(root, filename)
@@ -273,13 +274,12 @@ def start_pipeline(
                         material_description_bbox=material_description_bbox,
                         terrain_elevations=metadata.elevations if metadata.elevations else None,
                     )
-                    ##avoid duplicate entries
+                    # avoid duplicate entries
+                    seen_entry = [
+                        seen for borehole_gw in aggregated_groundwater_entries.values() for seen in borehole_gw
+                    ]
                     for groundwater_entry in groundwater_entries_near_bbox:
-                        if groundwater_entry not in [
-                            already_seen
-                            for borehole_gw in aggregated_groundwater_entries.values()
-                            for already_seen in borehole_gw
-                        ]:
+                        if groundwater_entry not in seen_entry:
                             aggregated_groundwater_entries[borehole_index].append(groundwater_entry)
 
                 # TODO: Add remove duplicates here!
@@ -295,14 +295,13 @@ def start_pipeline(
                     layer_predictions = process_page_results.predictions
 
                 layers_in_document.assign_layers_to_boreholes(layer_predictions)
-                if page_number == 1:
+
+                # Assign new bounding boxes to the correct borehole profile list
+                if page_number == 1 or not bounding_boxes:
                     bounding_boxes = [[bbox] for bbox in process_page_results.bounding_boxes]
                 else:
-                    # use assumption, if there is multiple pages, there is only one borehole (so one bbox too)
-                    if bounding_boxes:
-                        bounding_boxes[0].extend(process_page_results.bounding_boxes)
-                    else:
-                        bounding_boxes = [[bbox] for bbox in process_page_results.bounding_boxes]
+                    # If multiple pages, assume only one borehole (one bbox list)
+                    bounding_boxes[0].extend(process_page_results.bounding_boxes)
 
                 if draw_lines:  # could be changed to if draw_lines and mlflow_tracking:
                     if not mlflow_tracking:

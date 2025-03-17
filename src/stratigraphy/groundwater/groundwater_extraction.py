@@ -121,11 +121,11 @@ class GroundwatersInBorehole:
         return [entry.to_json() for entry in self.groundwater_feature_list]
 
     @classmethod
-    def from_json(cls, json_object: dict) -> "GroundwatersInBorehole":
+    def from_json(cls, json_object: list[dict]) -> "GroundwatersInBorehole":
         """Extract a GroundwatersInBorehole object from a json dictionary.
 
         Args:
-            json_object (dict): the json object containing the informations of the borehole
+            json_object (list[dict]): the json object containing the informations of the borehole
 
         Returns:
             GroundwatersInBorehole: the GroundwatersInBorehole object
@@ -178,7 +178,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         page_number: int,
         lines: list[TextLine],
         material_description_bbox: BoundingBox,
-        terrain_elevations: list[FeatureOnPage[Elevation]] | None = None,
+        terrain_elevations: list[FeatureOnPage[Elevation]],
     ) -> list[FeatureOnPage[Groundwater]]:
         """Extracts groundwater information from a near material description bounding box on a page.
 
@@ -187,7 +187,7 @@ class GroundwaterLevelExtractor(DataExtractor):
             page_number (int): The page number (1-based) to process.
             lines (list[TextLine]): The list of text lines to retrieve the groundwater from.
             material_description_bbox (BoundingBox): The material description box from which
-            terrain_elevations (list[Elevation] | None): The elevation of the terrain.
+            terrain_elevations (llist[FeatureOnPage[Elevation]]): The elevations of the terrain.
 
         Returns:
             list[FeatureOnPage[Groundwater]]: The groundwater information near a material description bounding box.
@@ -345,7 +345,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         page_number: int,
         lines: list[TextLine],
         document: fitz.Document,
-        terrain_elevations: list[FeatureOnPage[Elevation]] | None,
+        terrain_elevations: list[FeatureOnPage[Elevation]],
     ) -> list[FeatureOnPage[Groundwater]]:
         """Extracts the groundwater information from a borehole profile.
 
@@ -358,7 +358,7 @@ class GroundwaterLevelExtractor(DataExtractor):
             page_number (int): The page number (1-based) of the PDF document.
             lines (list[TextLine]): The lines of text to extract the groundwater information from.
             document (fitz.Document): The document used to extract groundwater from illustration.
-            terrain_elevations (list[Elevation] | None): The elevations of the borehole.
+            terrain_elevations (list[FeatureOnPage[Elevation]]): The elevations of the borehole.
 
         Returns:
             list[FeatureOnPage[Groundwater]]: the extracted coordinates (if any)

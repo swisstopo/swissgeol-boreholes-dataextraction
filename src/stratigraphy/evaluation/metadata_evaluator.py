@@ -51,7 +51,7 @@ class MetadataEvaluator:
 
                 coordinate_metrics = self._evaluate_coordinate(extracted_coordinates, ground_truth_coordinates)
                 if borehole_data.metadata and borehole_data.metadata.coordinates:
-                    borehole_data.metadata.coordinates.is_correct = coordinate_metrics.tp > 0
+                    borehole_data.metadata.coordinates.feature.is_correct = coordinate_metrics.tp > 0
                 coordinate_metrics_list.append(coordinate_metrics)
 
                 ############################################################################################################
@@ -65,7 +65,7 @@ class MetadataEvaluator:
                 ground_truth_elevation = borehole_data.ground_truth.get("reference_elevation")
                 elevation_metrics = self._evaluate_elevation(extracted_elevation, ground_truth_elevation)
                 if borehole_data.metadata and borehole_data.metadata.elevation:
-                    borehole_data.metadata.elevation.is_correct = elevation_metrics.tp > 0
+                    borehole_data.metadata.elevation.feature.is_correct = elevation_metrics.tp > 0
                 elevation_metrics_list.append(elevation_metrics)
 
             # perform micro-average to store the metrics of all the boreholes in the document
@@ -79,12 +79,12 @@ class MetadataEvaluator:
 
         return metadata_metrics_list
 
-    def _evaluate_elevation(self, extracted_elevation: int | None, ground_truth_elevation: int | None):
+    def _evaluate_elevation(self, extracted_elevation: float | None, ground_truth_elevation: float | None):
         """Private method used to evaluate the extracted elevation against the ground truth.
 
         Args:
-            extracted_elevation (int | None): the extracted elevation
-            ground_truth_elevation (int | None): the groundtruth elevation
+            extracted_elevation (float | None): the extracted elevation
+            ground_truth_elevation (float | None): the groundtruth elevation
 
         Returns:
             Metrics: the metric for this elevation.

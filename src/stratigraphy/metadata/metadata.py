@@ -79,7 +79,6 @@ class BoreholeMetadata:
 
         Args:
             json_metadata (dict): A dictionary representing the metadata.
-            filename (str): The name of the file.
 
         Returns:
             BoreholeMetadata: The metadata object.
@@ -154,7 +153,7 @@ class FileMetadata:
             filename (str): The name of the file.
 
         Returns:
-            MetadataInDocument: The metadata object.
+            FileMetadata: The metadata object.
         """
         language = json_metadata["language"]
         page_dimensions = [
