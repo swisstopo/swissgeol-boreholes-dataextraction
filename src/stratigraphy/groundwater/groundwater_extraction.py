@@ -381,22 +381,11 @@ class GroundwaterLevelExtractor(DataExtractor):
                 logger.info("Found groundwater from illustration on page %s: %s", page_number, found_groundwater)
 
         if terrain_elevation:
-            # If the elevation is provided, calculate the depth of the groundwater
             for entry in found_groundwater:
-                # middle position of the groundwater found
-                avg_entry_pos = (entry.rect.top_left + entry.rect.bottom_right) / 2
-                best_dist = float("inf")
-                # as multiple terrain elevations can be found, we keep the closest to the current groundwater entry
-                dist = avg_entry_pos.distance_to(terrain_elevation.rect)
-                if dist < best_dist:
-                    if not entry.feature.depth and entry.feature.elevation:
-                        best_depth = round(terrain_elevation.feature.elevation - entry.feature.elevation, 2)
-                    if not entry.feature.elevation and entry.feature.depth:
-                        best_elev = round(terrain_elevation.feature.elevation - entry.feature.depth, 2)
                 if not entry.feature.depth and entry.feature.elevation:
-                    entry.feature.depth = best_depth
+                    entry.feature.depth = round(terrain_elevation.feature.elevation - entry.feature.elevation, 2)
                 if not entry.feature.elevation and entry.feature.depth:
-                    entry.feature.elevation = best_elev
+                    entry.feature.elevation = round(terrain_elevation.feature.elevation - entry.feature.depth, 2)
 
         if found_groundwater:
             groundwater_output = ", ".join([str(entry.feature) for entry in found_groundwater])
