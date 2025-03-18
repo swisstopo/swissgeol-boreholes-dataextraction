@@ -105,6 +105,50 @@ material_description:
       - profondeur
       - désignation
 
+  en:
+    including_expressions:
+      - sand
+      - sandy
+      - sandstone
+      - silt
+      - silty
+      - siltstone
+      - clay
+      - claystone
+      - gravel
+      - asphalt
+      - humus
+      - brown
+      - gray
+      - soft
+      - hard
+      - root
+      - surface layer
+      - stone
+      - beige
+      - concrete
+      - chalk
+      - marl
+      - core material
+      - limestone
+      - ditto
+      - alternation
+      - leucosome
+    excluding_expressions:
+      - Mr.
+      - end
+      - profile
+      - description
+      - signatures
+      - mixed sample
+      - project
+      - location
+      - address
+      - weather
+      - pump test
+      - core drilling
+      - drilling radius
+
 
 coordinate_keys:
   - Koordinaten
