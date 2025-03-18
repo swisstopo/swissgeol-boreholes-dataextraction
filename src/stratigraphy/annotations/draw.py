@@ -73,6 +73,10 @@ def draw_predictions(
             is_elevation_correct = None
 
         try:
+            # Clear cache to avoid cache contamination across different files, which can cause incorrect
+            # visualizations; see also https://github.com/swisstopo/swissgeol-boreholes-suite/issues/1935
+            fitz.TOOLS.store_shrink(100)
+
             with fitz.Document(directory / file_prediction.file_name) as doc:
                 for page_index, page in enumerate(doc):
                     page_number = page_index + 1
