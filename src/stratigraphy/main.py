@@ -30,6 +30,7 @@ from stratigraphy.util.predictions import (
     BoreholeListBuilder,
     BoreholePredictions,
     FilePredictions,
+    CsvPredictions,
     OverallFilePredictions,
 )
 from stratigraphy.util.util import flatten, read_params
@@ -97,6 +98,13 @@ def common_options(f):
         default=False,
         help="Whether to draw lines on pdf pages. Defaults to False.",
     )(f)
+    f = click.option(
+        "-c",
+        "--csv",
+        is_flag=True,
+        default=False,
+        help="Whether to generate CSV output. Defaults to False.",
+    )(f)
     return f
 
 
@@ -113,6 +121,7 @@ def click_pipeline(
     metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
+    csv: bool = False,
     part: str = "all",
 ):
     """Run the boreholes data extraction pipeline."""
@@ -124,6 +133,7 @@ def click_pipeline(
         metadata_path=metadata_path,
         skip_draw_predictions=skip_draw_predictions,
         draw_lines=draw_lines,
+        csv=csv,
         part=part,
     )
 
@@ -189,6 +199,7 @@ def start_pipeline(
     metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
+    csv: bool = False,
     part: str = "all",
 ):
     """Run the boreholes data extraction pipeline.
@@ -334,6 +345,15 @@ def start_pipeline(
 
             # Add file predictions
             predictions.add_file_predictions(FilePredictions(borehole_predictions_list, file_metadata, filename))
+
+            #TODO: Add an approach that stores each borehole in a separate file for files with multiple boreholes and log csv files in MLFlow
+            # Add layers to a csv file
+            if csv:
+                csv_path = out_directory / f"{Path(filename).stem}.csv"
+                logger.info("Writing CSV predictions to %s", csv_path)
+                csv_file = CsvPredictions(borehole_predictions_list).to_csv()
+                with open(csv_path, "w", encoding="utf8", newline='') as file:
+                    file.write(csv_file)
 
     logger.info("Metadata written to %s", metadata_path)
     with open(metadata_path, "w", encoding="utf8") as file:
