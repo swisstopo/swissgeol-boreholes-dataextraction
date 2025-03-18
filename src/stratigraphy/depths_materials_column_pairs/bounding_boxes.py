@@ -33,7 +33,7 @@ class BoundingBox:
 
 
 @dataclass
-class BoundingBoxes:
+class PageBoundingBoxes:
     """A class to represent the bounding boxes of sidebars and associated material descriptions."""
 
     sidebar_bbox: BoundingBox | None
@@ -55,7 +55,7 @@ class BoundingBoxes:
         }
 
     @classmethod
-    def from_json(cls, data) -> "BoundingBoxes":
+    def from_json(cls, data) -> "PageBoundingBoxes":
         """Convert a JSON data structure to a BoundingBoxes object."""
         return cls(
             sidebar_bbox=BoundingBox.from_json(data["sidebar_rect"]) if "sidebar_rect" in data else None,
@@ -67,7 +67,7 @@ class BoundingBoxes:
     @classmethod
     def from_material_description_rect_with_sidebar(
         cls, pair: MaterialDescriptionRectWithSidebar, page_number: int
-    ) -> "BoundingBoxes":
+    ) -> "PageBoundingBoxes":
         """Convert a MaterialDescriptionRectWithSidebar instance to a BoundingBoxes object."""
         if pair.sidebar:
             depth_column_bbox = BoundingBox(pair.sidebar.rect())
@@ -75,7 +75,7 @@ class BoundingBoxes:
         else:
             depth_column_bbox = None
             depth_column_entry_bboxes = []
-        return BoundingBoxes(
+        return PageBoundingBoxes(
             sidebar_bbox=depth_column_bbox,
             depth_column_entry_bboxes=depth_column_entry_bboxes,
             material_description_bbox=BoundingBox(pair.material_description_rect),

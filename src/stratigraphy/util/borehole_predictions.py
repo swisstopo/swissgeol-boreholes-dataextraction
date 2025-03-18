@@ -2,7 +2,7 @@
 
 import dataclasses
 
-from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBoxes
+from stratigraphy.depths_materials_column_pairs.bounding_boxes import PageBoundingBoxes
 from stratigraphy.groundwater.groundwater_extraction import GroundwatersInBorehole
 from stratigraphy.layer.layer import LayersInBorehole
 from stratigraphy.metadata.metadata import BoreholeMetadata
@@ -17,7 +17,7 @@ class BoreholePredictions:
     file_name: str
     metadata: BoreholeMetadata
     groundwater_in_borehole: GroundwatersInBorehole
-    bounding_boxes: list[BoundingBoxes]
+    bounding_boxes: list[PageBoundingBoxes]
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -50,7 +50,7 @@ class BoreholePredictions:
             file_name,
             BoreholeMetadata.from_json(json_object["metadata"]),
             GroundwatersInBorehole.from_json(json_object["groundwater"]),
-            [BoundingBoxes.from_json(bbox_json) for bbox_json in json_object["bounding_boxes"]],
+            [PageBoundingBoxes.from_json(bbox_json) for bbox_json in json_object["bounding_boxes"]],
         )
 
 

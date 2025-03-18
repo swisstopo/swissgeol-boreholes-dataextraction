@@ -7,13 +7,12 @@ from typing import TypeVar
 
 from stratigraphy.benchmark.metrics import OverallMetricsCatalog
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
-from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBoxes
 from stratigraphy.evaluation.evaluation_dataclasses import OverallBoreholeMetadataMetrics
 from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
 from stratigraphy.evaluation.layer_evaluator import LayerEvaluator
 from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
 from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument, GroundwatersInBorehole
-from stratigraphy.layer.layer import LayersInDocument
+from stratigraphy.layer.layer import LayersInBorehole, LayersInDocument
 from stratigraphy.metadata.coordinate_extraction import Coordinate
 from stratigraphy.metadata.elevation_extraction import Elevation
 from stratigraphy.metadata.metadata import BoreholeMetadata
@@ -44,29 +43,27 @@ class BoreholeListBuilder:
 
     def __init__(
         self,
-        layers_in_document: LayersInDocument,
+        layers_with_bb_in_document: LayersInDocument,
         file_name: str,
         groundwater_in_doc: GroundwaterInDocument,
-        bounding_boxes: list[list[BoundingBoxes]],
         elevations_list: list[FeatureOnPage[Elevation] | None],
         coordinates_list: list[FeatureOnPage[Coordinate] | None],
     ):
         """Initializes the BoreholeListBuilder with extracted borehole-related data.
 
         Args:
-            layers_in_document (LayersInDocument): Object containing borehole layers extracted from the document.
+            layers_with_bb_in_document (LayersInDocument): Object containing borehole layers extracted from the
+                document, along with its corespoding bounding boxes.
             file_name (str): The name of the processed document.
             groundwater_in_doc (GroundwaterInDocument): Contains detected groundwater entries for boreholes.
-            bounding_boxes (list[list[BoundingBoxes]]): A nested list where each inner list represents bounding boxes
-                associated with a borehole.
+
             elevations_list (list[FeatureOnPage[Elevation] | None]): List of terrain elevation values for detected
                 boreholes.
             coordinates_list (list[FeatureOnPage[Coordinate] | None]): List of borehole coordinates.
         """
-        self._layers_in_document = layers_in_document
+        self._layers_with_bb_in_document = layers_with_bb_in_document
         self._file_name = file_name
         self._groundwater_in_doc = groundwater_in_doc
-        self._bounding_boxes = bounding_boxes
         self._elevations_list = elevations_list
         self._coordinates_list = coordinates_list
 
@@ -77,23 +74,21 @@ class BoreholeListBuilder:
         return [
             BoreholePredictions(
                 borehole_index,
-                layers_in_borehole,
+                LayersInBorehole(layers_in_borehole_with_bb.predictions),
                 self._file_name,
                 BoreholeMetadata(elevation, coordinate),
                 groundwater,
-                bounding_boxes,
+                layers_in_borehole_with_bb.bounding_boxes,
             )
             for borehole_index, (
-                layers_in_borehole,
+                layers_in_borehole_with_bb,
                 groundwater,
-                bounding_boxes,
                 elevation,
                 coordinate,
             ) in enumerate(
                 zip(
-                    self._layers_in_document.boreholes_layers,
+                    self._layers_with_bb_in_document.boreholes_layers_with_bb,
                     self._groundwater_in_doc.borehole_groundwaters,
-                    self._bounding_boxes,
                     self._elevations_list,
                     self._coordinates_list,
                     strict=True,
@@ -103,12 +98,11 @@ class BoreholeListBuilder:
 
     def _extend_length_to_match_boreholes_num_pred(self) -> None:
         """Ensures that all lists have the same length by duplicating elements if necessary."""
-        num_boreholes = len(self._layers_in_document.boreholes_layers)
+        num_boreholes = len(self._layers_with_bb_in_document.boreholes_layers_with_bb)
 
         self._groundwater_in_doc.borehole_groundwaters = self._extend_list(
             self._groundwater_in_doc.borehole_groundwaters, GroundwatersInBorehole([]), num_boreholes
         )
-        self._bounding_boxes = self._extend_list(self._bounding_boxes, [], num_boreholes)
         self._elevations_list = self._extend_list(self._elevations_list, None, num_boreholes)
         self._coordinates_list = self._extend_list(self._coordinates_list, None, num_boreholes)
 

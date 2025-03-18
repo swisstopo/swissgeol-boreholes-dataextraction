@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import fitz
 from stratigraphy.data_extractor.data_extractor import ExtractedFeature, FeatureOnPage
 from stratigraphy.depth.interval import Interval
+from stratigraphy.depths_materials_column_pairs.bounding_boxes import PageBoundingBoxes
 from stratigraphy.text.textblock import MaterialDescription, TextBlock
 from stratigraphy.util.util import parse_text
 
@@ -166,17 +167,25 @@ class LayersInBorehole:
         return cls([Layer.from_json(layer_data) for layer_data in json_object])
 
 
+@dataclass
+class ExtractedBorehole:
+    """A class to store the extracted information of one single borehole."""
+
+    predictions: list[Layer]
+    bounding_boxes: list[PageBoundingBoxes]  # one for each page that the borehole spans
+
+
 class LayersInDocument:
     """A class to represent predictions for a single document.
 
     It contains a list of LayersInBorehole, not just a list of Layer.
     """
 
-    def __init__(self, boreholes_layers: list[LayersInBorehole], filename: str):
-        self.boreholes_layers = boreholes_layers
+    def __init__(self, boreholes_layers: list[ExtractedBorehole], filename: str):
+        self.boreholes_layers_with_bb = boreholes_layers
         self.filename = filename
 
-    def assign_layers_to_boreholes(self, layer_predictions: list[list[Layer]]):
+    def assign_layers_to_boreholes(self, layer_predictions: list[ExtractedBorehole]):
         """SIMPLIFICATION: currently assumes that if there is more than one page, there is a single borehole.
 
         This means that only pdfs with one page could contain more than one borehole.
@@ -184,16 +193,17 @@ class LayersInDocument:
         If we want to be more robust, a matching should be done to determine which layers goes with which borehole.
 
         Args:
-            layer_predictions (list[list[Layer]]): List containing the a list of all layers of all boreholes
+            layer_predictions (list[ExtractedBorehole]): List containing the a list of all layers of all boreholes
         """
         if not layer_predictions:
             return
-        if not self.boreholes_layers:
+        if not self.boreholes_layers_with_bb:
             # first page
-            self.boreholes_layers = [LayersInBorehole(borehole_layers) for borehole_layers in layer_predictions]
+            self.boreholes_layers_with_bb = layer_predictions
         else:
-            # second page, use assumption
-            self.boreholes_layers[0].layers.extend(layer_predictions[0])
+            # second page, use assumption, also fot the bounding boxes
+            self.boreholes_layers_with_bb[0].bounding_boxes.extend(layer_predictions[0].bounding_boxes)
+            self.boreholes_layers_with_bb[0].predictions.extend(layer_predictions[0].predictions)
 
 
 @dataclass

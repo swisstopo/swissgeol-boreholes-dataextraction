@@ -7,7 +7,7 @@ import fitz
 import Levenshtein
 import numpy as np
 from stratigraphy.annotations.plot_utils import convert_page_to_opencv_img
-from stratigraphy.layer.layer import Layer, LayersInDocument
+from stratigraphy.layer.layer import ExtractedBorehole, Layer, LayersInDocument
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +15,10 @@ logger = logging.getLogger(__name__)
 def remove_duplicate_layers(
     previous_page: fitz.Page,
     current_page: fitz.Page,
-    previous_layers: LayersInDocument,
-    current_layers: list[list[Layer]],
+    previous_layers_with_bb: LayersInDocument,
+    current_layers_with_bb: LayersInDocument,
     img_template_probability_threshold: float,
-) -> list[Layer]:
+) -> list[ExtractedBorehole]:
     """Remove duplicate layers from the current page based on the layers of the previous page.
 
     We check if a layer on the current page is present on the previous page. If we have 3 consecutive layers that are
@@ -31,16 +31,18 @@ def remove_duplicate_layers(
     Args:
         previous_page (fitz.Page): The previous page.
         current_page (fitz.Page): The current page containing the layers to check for duplicates.
-        previous_layers (LayersInDocument): The layers of the previous page.
-        current_layers (list[list[Layer]]): The layers of the current page.
+        previous_layers_with_bb (LayersInDocument): The layers of the previous page, with their bounding box.
+        current_layers_with_bb (LayersInDocument): The layers of the current page, with their bounding box.
         img_template_probability_threshold (float): The threshold for the template matching probability
 
     Returns:
-        list[Layer]: The layers of the current page without duplicates.
+        list[ExtractedBorehole]: The layers of the boreholes on the current page without duplicates. Their bounding
+            boxes are kept the same.
     """
-    non_duplicated_layers = []
+    non_duplicated_layers: list[list[Layer]] = []
     # iterate on all the borehole profiles identified on this page
-    for current_borehole_layers in current_layers:
+    for current_borehole_layers_with_bb in current_layers_with_bb.boreholes_layers_with_bb:
+        current_borehole_layers = current_borehole_layers_with_bb.predictions
         sorted_layers = sorted(current_borehole_layers, key=lambda x: x.material_description.rect.y0)
         first_non_duplicated_layer_index = 0
         count_consecutive_non_duplicate_layers = 0
@@ -60,8 +62,9 @@ def remove_duplicate_layers(
                 current_material_description = layer.material_description
                 current_depth_interval = layer.depths
                 # iterate on all the layers in the previously identified borehole profiles
-                for previous_borehole_layers in previous_layers.boreholes_layers:
-                    for previous_layer in previous_borehole_layers.layers:
+                for previous_borehole_layers_with_bb in previous_layers_with_bb.boreholes_layers_with_bb:
+                    previous_borehole_layers = previous_borehole_layers_with_bb.predictions
+                    for previous_layer in previous_borehole_layers:
                         if previous_layer.depths is None:
                             # It may happen, that a layer on the previous page does not have depth interval assigned.
                             # In this case we skip the comparison. This should only happen in some edge cases, as we
@@ -111,7 +114,12 @@ def remove_duplicate_layers(
                 count_consecutive_non_duplicate_layers += 1
         non_duplicated_layers.append(sorted_layers[first_non_duplicated_layer_index:])
 
-    return non_duplicated_layers
+    return [
+        ExtractedBorehole(lays, extracted_borehole.bounding_boxes)
+        for lays, extracted_borehole in zip(
+            non_duplicated_layers, current_layers_with_bb.boreholes_layers_with_bb, strict=False
+        )
+    ]
 
 
 def check_duplicate_layer_by_template_matching(
