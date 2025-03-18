@@ -58,7 +58,9 @@ class PageBoundingBoxes:
     def from_json(cls, data) -> "PageBoundingBoxes":
         """Convert a JSON data structure to a BoundingBoxes object."""
         return cls(
-            sidebar_bbox=BoundingBox.from_json(data["sidebar_rect"]) if "sidebar_rect" in data else None,
+            sidebar_bbox=BoundingBox.from_json(data["sidebar_rect"])
+            if "sidebar_rect" in data and data["sidebar_rect"]
+            else None,
             depth_column_entry_bboxes=[BoundingBox.from_json(entry) for entry in data["depth_column_entries"]],
             material_description_bbox=BoundingBox.from_json(data["material_description_rect"]),
             page=data["page"],
