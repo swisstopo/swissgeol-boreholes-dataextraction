@@ -1,0 +1,75 @@
+{
+    "example_borehole_profile.pdf": [
+        {
+            "borehole_index": 0,
+            "groundwater": [],
+            "layers": [
+                {
+                    "depth_interval": {
+                        "end": 0.5,
+                        "start": 0.0
+                    },
+                    "material_description": "KIES, Sand"
+                },
+                {
+                    "depth_interval": {
+                        "end": 2.0,
+                        "start": 0.5
+                    },
+                    "material_description": "stein, sand"
+                }
+            ],
+            "metadata": {
+                "coordinates": {
+                    "E": 615790,
+                    "N": 157500
+                },
+                "drilling_date": "1995-09-03",
+                "drilling_methods": null,
+                "original_name": "",
+                "project_name": "",
+                "reference_elevation": 788.6,
+                "total_depth": null
+            }
+        },
+        {
+            "borehole_index": 1,
+            "groundwater": [],
+            "layers": [
+                {
+                    "depth_interval": {
+                        "end": 1,
+                        "start": null
+                    },
+                    "material_description": "HUMUS"
+                },
+                {
+                    "depth_interval": {
+                        "end": 2,
+                        "start": 1
+                    },
+                    "material_description": "KIES, grau"
+                },
+                {
+                    "depth_interval": {
+                        "end": 3,
+                        "start": 2
+                    },
+                    "material_description": "sand"
+                }
+            ],
+            "metadata": {
+                "coordinates": {
+                    "E": 615790,
+                    "N": 157500
+                },
+                "drilling_date": "1995-09-03",
+                "drilling_methods": null,
+                "original_name": "",
+                "project_name": "",
+                "reference_elevation": 788.6,
+                "total_depth": null
+            }
+        }
+    ]
+}

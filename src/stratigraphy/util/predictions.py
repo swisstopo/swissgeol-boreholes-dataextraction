@@ -1,167 +1,191 @@
 """This module contains classes for predictions."""
 
+import dataclasses
 import logging
+from copy import deepcopy
+from typing import TypeVar
 
-from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.benchmark.metrics import OverallMetricsCatalog
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
-from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBoxes
 from stratigraphy.evaluation.evaluation_dataclasses import OverallBoreholeMetadataMetrics
 from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
 from stratigraphy.evaluation.layer_evaluator import LayerEvaluator
 from stratigraphy.evaluation.metadata_evaluator import MetadataEvaluator
-from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument
-from stratigraphy.layer.layer import Layer, LayersInDocument
-from stratigraphy.metadata.metadata import BoreholeMetadata, OverallBoreholeMetadata
+from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument, GroundwatersInBorehole
+from stratigraphy.layer.layer import LayersInBorehole, LayersInDocument
+from stratigraphy.metadata.coordinate_extraction import Coordinate
+from stratigraphy.metadata.elevation_extraction import Elevation
+from stratigraphy.metadata.metadata import BoreholeMetadata
+from stratigraphy.util.borehole_predictions import (
+    BoreholeGroundwaterWithGroundTruth,
+    BoreholeLayersWithGroundTruth,
+    BoreholeMetadataWithGroundTruth,
+    BoreholePredictions,
+    FileGroundwaterWithGroundTruth,
+    FileLayersWithGroundTruth,
+    FileMetadataWithGroundTruth,
+    FilePredictionsWithGroundTruth,
+)
 
 logger = logging.getLogger(__name__)
 
+T = TypeVar("T")
 
-class FilePredictions:
-    """A class to represent predictions for a single file."""
+
+class BoreholeListBuilder:
+    """Class responsible for constructing a list of BoreholePredictions.
+
+    This is done by aggregating and aligning various extracted document elements.
+
+    This class ensures that all borehole-related lists are extended to match the number of detected boreholes
+    and then builds BoreholePredictions objects accordingly.
+    """
 
     def __init__(
         self,
-        layers_in_document: LayersInDocument,
+        layers_with_bb_in_document: LayersInDocument,
         file_name: str,
-        metadata: BoreholeMetadata,
-        groundwater: GroundwaterInDocument,
-        bounding_boxes: list[BoundingBoxes],
+        groundwater_in_doc: GroundwaterInDocument,
+        elevations_list: list[FeatureOnPage[Elevation] | None],
+        coordinates_list: list[FeatureOnPage[Coordinate] | None],
     ):
-        self.layers_in_document: LayersInDocument = layers_in_document
-        self.bounding_boxes: list[BoundingBoxes] = bounding_boxes
-        self.file_name: str = file_name
-        self.metadata: BoreholeMetadata = metadata
-        self.groundwater: GroundwaterInDocument = groundwater
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            "metadata": self.metadata.to_json(),
-            "layers": [layer.to_json() for layer in self.layers_in_document.layers],
-            "bounding_boxes": [bboxes.to_json() for bboxes in self.bounding_boxes],
-            "groundwater": self.groundwater.to_json() if self.groundwater is not None else [],
-        }
-
-
-class OverallFilePredictions:
-    """A class to represent predictions for all files."""
-
-    def __init__(self) -> None:
-        """Initializes the OverallFilePredictions object."""
-        self.file_predictions_list: list[FilePredictions] = []
-
-    def add_file_predictions(self, file_predictions: FilePredictions) -> None:
-        """Add file predictions to the list of file predictions.
+        """Initializes the BoreholeListBuilder with extracted borehole-related data.
 
         Args:
-            file_predictions (FilePredictions): The file predictions to add.
+            layers_with_bb_in_document (LayersInDocument): Object containing borehole layers extracted from the
+                document, along with its corespoding bounding boxes.
+            file_name (str): The name of the processed document.
+            groundwater_in_doc (GroundwaterInDocument): Contains detected groundwater entries for boreholes.
+
+            elevations_list (list[FeatureOnPage[Elevation] | None]): List of terrain elevation values for detected
+                boreholes.
+            coordinates_list (list[FeatureOnPage[Coordinate] | None]): List of borehole coordinates.
         """
-        self.file_predictions_list.append(file_predictions)
+        self._layers_with_bb_in_document = layers_with_bb_in_document
+        self._file_name = file_name
+        self._groundwater_in_doc = groundwater_in_doc
+        self._elevations_list = elevations_list
+        self._coordinates_list = coordinates_list
 
-    def get_metadata_as_dict(self) -> dict:
-        """Returns the metadata of the predictions as a dictionary.
+    def build(self) -> list[BoreholePredictions]:
+        """Creates a list of BoreholePredictions after ensuring all lists have the same length."""
+        self._extend_length_to_match_boreholes_num_pred()
 
-        Returns:
-            dict: The metadata of the predictions as a dictionary.
-        """
-        return {
-            file_prediction.file_name: file_prediction.metadata.to_json()
-            for file_prediction in self.file_predictions_list
-        }
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary by merging individual file predictions.
-
-        Returns:
-            dict: A dictionary representation of the object.
-        """
-        return {fp.file_name: fp.to_json() for fp in self.file_predictions_list}
-
-    @classmethod
-    def from_json(cls, prediction_from_file: dict) -> "OverallFilePredictions":
-        """Converts a dictionary to an object.
-
-        Args:
-            prediction_from_file (dict): A dictionary representing the predictions.
-
-        Returns:
-            OverallFilePredictions: The object.
-        """
-        overall_file_predictions = OverallFilePredictions()
-        for file_name, file_data in prediction_from_file.items():
-            metadata = BoreholeMetadata.from_json(file_data["metadata"], file_name)
-
-            layers = [Layer.from_json(data) for data in file_data["layers"]]
-            layers_in_doc = LayersInDocument(layers=layers, filename=file_name)
-
-            bounding_boxes = [BoundingBoxes.from_json(bboxes) for bboxes in file_data["bounding_boxes"]]
-
-            groundwater_entries = [FeatureOnPage.from_json(entry, Groundwater) for entry in file_data["groundwater"]]
-            groundwater_in_document = GroundwaterInDocument(groundwater=groundwater_entries, filename=file_name)
-            overall_file_predictions.add_file_predictions(
-                FilePredictions(
-                    layers_in_document=layers_in_doc,
-                    file_name=file_name,
-                    metadata=metadata,
-                    bounding_boxes=bounding_boxes,
-                    groundwater=groundwater_in_document,
+        return [
+            BoreholePredictions(
+                borehole_index,
+                LayersInBorehole(layers_in_borehole_with_bb.predictions),
+                self._file_name,
+                BoreholeMetadata(elevation, coordinate),
+                groundwater,
+                layers_in_borehole_with_bb.bounding_boxes,
+            )
+            for borehole_index, (
+                layers_in_borehole_with_bb,
+                groundwater,
+                elevation,
+                coordinate,
+            ) in enumerate(
+                zip(
+                    self._layers_with_bb_in_document.boreholes_layers_with_bb,
+                    self._groundwater_in_doc.borehole_groundwaters,
+                    self._elevations_list,
+                    self._coordinates_list,
+                    strict=True,
                 )
             )
-        return overall_file_predictions
+        ]
 
-    ############################################################################################################
-    ### Evaluation methods
-    ############################################################################################################
+    def _extend_length_to_match_boreholes_num_pred(self) -> None:
+        """Ensures that all lists have the same length by duplicating elements if necessary."""
+        num_boreholes = len(self._layers_with_bb_in_document.boreholes_layers_with_bb)
 
-    def evaluate_metadata_extraction(self, ground_truth: GroundTruth) -> OverallBoreholeMetadataMetrics:
+        self._groundwater_in_doc.borehole_groundwaters = self._extend_list(
+            self._groundwater_in_doc.borehole_groundwaters, GroundwatersInBorehole([]), num_boreholes
+        )
+        self._elevations_list = self._extend_list(self._elevations_list, None, num_boreholes)
+        self._coordinates_list = self._extend_list(self._coordinates_list, None, num_boreholes)
+
+    @staticmethod
+    def _extend_list(lst: list[T], default_elem: T, target_length: int) -> list[T]:
+        """Extends a list with deep copies of a base element until it reaches the target length.
+
+        deepcopy is necessary, because the is_correct attribute is already stored on this object, but the same
+        extracted value might be correct on one borehole and incorrect on another one.
+        """
+
+        def create_new_elem():
+            return deepcopy(lst[0]) if lst else default_elem
+
+        while len(lst) < target_length:
+            lst.append(create_new_elem())  # Append copies to match the required length
+
+        return lst[:target_length]
+
+
+@dataclasses.dataclass
+class AllBoreholePredictionsWithGroundTruth:
+    """Class for evaluating all files, after individual boreholes have been match with their ground truth data."""
+
+    predictions_list: list[FilePredictionsWithGroundTruth]
+
+    def evaluate_metadata_extraction(self) -> OverallBoreholeMetadataMetrics:
         """Evaluate the metadata extraction of the predictions against the ground truth.
 
-        Args:
-            ground_truth (GroundTruth): The ground truth.
+        Returns:
+            OverallBoreholeMetadataMetrics: the computed metrics for the metadata.
         """
-        metadata_per_file: OverallBoreholeMetadata = OverallBoreholeMetadata()
+        metadata_list = [
+            FileMetadataWithGroundTruth(
+                file.filename,
+                [
+                    BoreholeMetadataWithGroundTruth(
+                        predictions.predictions.metadata if predictions.predictions else None,
+                        predictions.ground_truth.get("metadata", {}),
+                    )
+                    for predictions in file.boreholes
+                ],
+            )
+            for file in self.predictions_list
+        ]
 
-        for file_prediction in self.file_predictions_list:
-            metadata_per_file.add_metadata(file_prediction.metadata)
-        return MetadataEvaluator(metadata_per_file, ground_truth).evaluate()
+        return MetadataEvaluator(metadata_list).evaluate()
 
-    def evaluate_geology(self, ground_truth: GroundTruth) -> OverallMetricsCatalog | None:
+    def evaluate_geology(self) -> OverallMetricsCatalog:
         """Evaluate the borehole extraction predictions.
-
-        Args:
-            ground_truth (GroundTruth): The ground truth.
 
         Returns:
             OverallMetricsCatalog: A OverallMetricsCatalog that maps a metrics name to the corresponding
             OverallMetrics object. If no ground truth is available, None is returned.
         """
-        for file_predictions in self.file_predictions_list:
-            ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
-            if ground_truth_for_file:
-                LayerEvaluator.evaluate_borehole(
-                    file_predictions.layers_in_document.layers, ground_truth_for_file["layers"]
-                )
-
-        languages = set(fp.metadata.language for fp in self.file_predictions_list)
+        languages = set(fp.language for fp in self.predictions_list)
         all_metrics = OverallMetricsCatalog(languages=languages)
 
-        evaluator = LayerEvaluator(
-            [prediction.layers_in_document for prediction in self.file_predictions_list], ground_truth
-        )
+        layers_list = [
+            FileLayersWithGroundTruth(
+                file.filename,
+                file.language,
+                [
+                    BoreholeLayersWithGroundTruth(
+                        predictions.predictions.layers_in_borehole if predictions.predictions else None,
+                        predictions.ground_truth.get("layers", []),
+                    )
+                    for predictions in file.boreholes
+                ],
+            )
+            for file in self.predictions_list
+        ]
+        evaluator = LayerEvaluator(layers_list)
         all_metrics.layer_metrics = evaluator.get_layer_metrics()
         all_metrics.depth_interval_metrics = evaluator.get_depth_interval_metrics()
 
-        layers_in_doc_by_language = {language: [] for language in languages}
-        for file_prediction in self.file_predictions_list:
-            layers_in_doc_by_language[file_prediction.metadata.language].append(file_prediction.layers_in_document)
+        predictions_by_language = {language: [] for language in languages}
+        for borehole_data in layers_list:
+            # even if metadata can be different for boreholes in the same document, langage is the same (take index 0)
+            predictions_by_language[borehole_data.language].append(borehole_data)
 
-        for language, layers_in_doc_list in layers_in_doc_by_language.items():
-            evaluator = LayerEvaluator(layers_in_doc_list, ground_truth)
+        for language, language_predictions_list in predictions_by_language.items():
+            evaluator = LayerEvaluator(language_predictions_list)
             setattr(
                 all_metrics,
                 f"{language}_layer_metrics",
@@ -178,8 +202,21 @@ class OverallFilePredictions:
             all_metrics.depth_interval_metrics.macro_precision() * 100,
         )
 
-        groundwater_entries = [file_prediction.groundwater for file_prediction in self.file_predictions_list]
-        overall_groundwater_metrics = GroundwaterEvaluator(groundwater_entries, ground_truth).evaluate()
+        # TODO groundwater should not be in evaluate_geology(), it should be handle by a higher-level function call
+        groundwater_list = [
+            FileGroundwaterWithGroundTruth(
+                file.filename,
+                [
+                    BoreholeGroundwaterWithGroundTruth(
+                        predictions.predictions.groundwater_in_borehole if predictions.predictions else None,
+                        predictions.ground_truth.get("groundwater", []) or [],  # value can be `None`
+                    )
+                    for predictions in file.boreholes
+                ],
+            )
+            for file in self.predictions_list
+        ]
+        overall_groundwater_metrics = GroundwaterEvaluator(groundwater_list).evaluate()
         all_metrics.groundwater_metrics = overall_groundwater_metrics.groundwater_metrics_to_overall_metrics()
         all_metrics.groundwater_depth_metrics = (
             overall_groundwater_metrics.groundwater_depth_metrics_to_overall_metrics()

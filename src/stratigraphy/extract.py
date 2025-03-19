@@ -1,17 +1,15 @@
 """Contains the main extraction pipeline for stratigraphy."""
 
-from dataclasses import dataclass
-
 import fitz
 import rtree
 
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.depth.interval import AAboveBInterval, Interval
-from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBoxes
+from stratigraphy.depths_materials_column_pairs.bounding_boxes import PageBoundingBoxes
 from stratigraphy.depths_materials_column_pairs.material_description_rect_with_sidebar import (
     MaterialDescriptionRectWithSidebar,
 )
-from stratigraphy.layer.layer import IntervalBlockPair, Layer, LayerDepths
+from stratigraphy.layer.layer import ExtractedBorehole, IntervalBlockPair, Layer, LayerDepths
 from stratigraphy.lines.line import TextLine
 from stratigraphy.sidebar.a_above_b_sidebar_extractor import AAboveBSidebarExtractor
 from stratigraphy.sidebar.a_to_b_sidebar_extractor import AToBSidebarExtractor
@@ -27,14 +25,6 @@ from stratigraphy.util.util import (
     x_overlap,
     x_overlap_significant_smallest,
 )
-
-
-@dataclass
-class ProcessPageResult:
-    """The result of processing a single page of a pdf."""
-
-    predictions: list[Layer]
-    bounding_boxes: list[BoundingBoxes]
 
 
 class MaterialDescriptionRectWithSidebarExtractor:
@@ -58,7 +48,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self.page_number = page_number
         self.params = params
 
-    def process_page(self) -> ProcessPageResult:
+    def process_page(self) -> list[ExtractedBorehole]:
         """Process a single page of a pdf.
 
         Finds all descriptions and depth intervals on the page and matches them.
@@ -98,18 +88,15 @@ class MaterialDescriptionRectWithSidebarExtractor:
             item for index, item in enumerate(material_descriptions_sidebar_pairs) if index not in to_delete
         ]
 
-        bounding_boxes = [
-            BoundingBoxes.from_material_description_rect_with_sidebar(pair, self.page_number)
-            for pair in filtered_pairs
-        ]
+        return [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
 
-        interval_block_pairs = [
-            interval_block_pair
-            for pair in filtered_pairs
-            for interval_block_pair in self._get_interval_block_pairs(pair)
-        ]
+    def _create_borehole_from_pair(self, pair: MaterialDescriptionRectWithSidebar) -> ExtractedBorehole:
+        bounding_boxes = PageBoundingBoxes.from_material_description_rect_with_sidebar(pair, self.page_number)
 
-        layer_predictions = [
+        # this must not be flattened anymore, i.e. we keep the /per borehole separation
+        interval_block_pairs = self._get_interval_block_pairs(pair)
+
+        borehole_layers = [
             Layer(
                 material_description=FeatureOnPage(
                     feature=MaterialDescription(
@@ -130,10 +117,19 @@ class MaterialDescriptionRectWithSidebarExtractor:
             )
             for pair in interval_block_pairs
         ]
-        layer_predictions = [layer for layer in layer_predictions if layer.description_nonempty()]
-        return ProcessPageResult(layer_predictions, bounding_boxes)
+
+        borehole_layers = [layer for layer in borehole_layers if layer.description_nonempty()]
+        return ExtractedBorehole(borehole_layers, [bounding_boxes])  # takes a list of bounding boxes
 
     def _get_interval_block_pairs(self, pair: MaterialDescriptionRectWithSidebar) -> list[IntervalBlockPair]:
+        """Get the interval block pairs for a given material description rect with sidebar.
+
+        Args:
+            pair (MaterialDescriptionRectWithSidebar): The material description rect with sidebar.
+
+        Returns:
+            list[IntervalBlockPair]: The interval block pairs.
+        """
         description_lines = get_description_lines(self.lines, pair.material_description_rect)
         if len(description_lines) > 1:
             if pair.sidebar:

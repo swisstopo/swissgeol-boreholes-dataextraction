@@ -6,7 +6,7 @@ from stratigraphy.evaluation.evaluation_dataclasses import Metrics
 from stratigraphy.layer.layer import LayerDepths
 
 
-def count_against_ground_truth(values: list[str], ground_truth: list[str]) -> Metrics:
+def count_against_ground_truth(values: list[any], ground_truth: list[any]) -> Metrics:
     """Count evaluation metrics by comparing predicted values against ground truth.
 
     Metrics are calculated as follows:
@@ -15,8 +15,8 @@ def count_against_ground_truth(values: list[str], ground_truth: list[str]) -> Me
     - False Negatives (fn): Number of missed ground truth values (len(ground_truth) - tp)
 
     Args:
-        values (list[str]): The predicted values to evaluate
-        ground_truth (list[str]): The ground truth values to compare against
+        values (list[any]): The predicted values to evaluate
+        ground_truth (list[any]): The ground truth values to compare against
 
     Returns:
         Metrics: Object containing tp, fp, and fn counts

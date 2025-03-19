@@ -17,6 +17,9 @@ class Interval:
         self.start = start
         self.end = end
 
+    def __repr__(self):
+        return f"({self.start}, {self.end})"
+
 
 class AAboveBInterval(Interval):
     """Class for depth intervals where the upper depth is located above the lower depth on the page."""
