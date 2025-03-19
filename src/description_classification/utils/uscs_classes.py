@@ -1,0 +1,47 @@
+"""class module."""
+
+from enum import Enum, auto
+
+
+class USCSClasses(Enum):
+    """USCS (Unified Soil Classification System) classes."""
+
+    kunst = auto()
+    Bl = auto()
+    GP = auto()
+    CH = auto()
+    CM = auto()
+    CL = auto()
+    CL_ML = auto()
+    G = auto()
+    S = auto()
+    GW_GC = auto()
+    Pt = auto()
+    ML = auto()
+    GM = auto()
+    kA = auto()
+    FELS = auto()
+    SC = auto()
+    S_SM = auto()
+    SM = auto()
+    SP = auto()
+    SP_SC = auto()
+    SP_SM = auto()
+    SW = auto()
+    SW_SC = auto()
+    SW_SM = auto()
+    G_GC = auto()
+    G_GM = auto()
+    St = auto()
+    St_Bl = auto()
+    OH = auto()
+    OL = auto()
+    S_SC = auto()
+    SC_SM = auto()
+    GC = auto()
+    GC_GM = auto()
+    GP_GC = auto()
+    GP_GM = auto()
+    GW = auto()
+    GW_GM = auto()
+    MH = auto()
