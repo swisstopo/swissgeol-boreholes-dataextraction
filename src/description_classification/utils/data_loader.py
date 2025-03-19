@@ -3,6 +3,7 @@
 import json
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 
 from description_classification.utils.language_detection import detect_language
 from description_classification.utils.uscs_classes import USCSClasses
@@ -14,41 +15,31 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class LayerDescription:
-    """_summary_."""
+class LayerInformations:
+    """Class for each layer in the ground truth json file."""
 
     filename: str
     borehole_index: int
     layer_index: int
     language: str
-    description: str
+    material_description: str
+    ground_truth_uscs_class: None | USCSClasses
+    prediction_uscs_class: None | USCSClasses  # dynamically set
 
 
-@dataclass
-class LayerUSCSGroundTruth:
-    """_summary_."""
-
-    filename: str
-    borehole_index: int
-    layer_index: int
-    language: str
-    uscs_class: USCSClasses
-
-
-def load_data(json_path):
-    """_summary_.
+def load_data(json_path: Path) -> list[LayerInformations]:
+    """Loads the data from the ground truth json file.
 
     Args:
-        json_path (_type_): _description_
+        json_path (Path): the ground truth json file path
 
     Returns:
-        _type_: _description_
+        list[LayerInformations]: the data formated as a list of LayerInformations objects
     """
     with open(json_path, encoding="utf-8") as f:
         data = json.load(f)
 
-    descriptions: list[LayerDescription] = []
-    ground_truth: list[LayerUSCSGroundTruth] = []
+    layer_descriptions: list[LayerInformations] = []
     for filename, boreholes in data.items():
         all_text = " ".join([lay["material_description"] for bh in boreholes for lay in bh["layers"]])
         language = detect_language(
@@ -62,29 +53,33 @@ def load_data(json_path):
                         f"layer {layer_index} with description {layer['material_description']}."
                     )
                     continue
-                descriptions.append(
-                    LayerDescription(
-                        filename, borehole["borehole_index"], layer_index, language, layer["material_description"]
-                    )
-                )
                 uscs_class = map_most_similar_uscs(layer["uscs_1"])
                 if not uscs_class:
                     logger.warning(f"Unknown class: {layer['uscs_1']}, mapping it to None.")
-                ground_truth.append(
-                    LayerUSCSGroundTruth(filename, borehole["borehole_index"], layer_index, language, uscs_class)
+
+                layer_descriptions.append(
+                    LayerInformations(
+                        filename,
+                        borehole["borehole_index"],
+                        layer_index,
+                        language,
+                        layer["material_description"],
+                        uscs_class,
+                        None,
+                    )
                 )
 
-    return descriptions, ground_truth
+    return layer_descriptions
 
 
 def map_most_similar_uscs(uscs_str: str) -> USCSClasses | None:
-    """_summary_.
+    """Maps the ground truth string to one of the USCSClasses.
 
     Args:
-        uscs_str (str): _description_
+        uscs_str (str): the ground truth string
 
     Returns:
-        USCSClasses: _description_
+        USCSClasses: the matching class
     """
     for class_ in USCSClasses:
         if uscs_str.replace("-", "_") == class_.name:

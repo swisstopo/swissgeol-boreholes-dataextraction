@@ -1,47 +1,29 @@
-"""Evaluate module."""
+"""Evaluation module."""
 
+import logging
+import os
 from dataclasses import dataclass
 
-from description_classification.classifiers.classifiers import LayerUSCSPrediction, USCSClasses
-from description_classification.utils.data_loader import LayerUSCSGroundTruth
-from sklearn.metrics import f1_score, precision_score, recall_score
+from description_classification.utils.data_loader import LayerInformations
+from stratigraphy.evaluation.evaluation_dataclasses import Metrics
+from stratigraphy.evaluation.utility import count_against_ground_truth
 from stratigraphy.util.util import read_params
+
+logger = logging.getLogger(__name__)
+
+mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
+if mlflow_tracking:
+    import mlflow
 
 classification_params = read_params("classification_params.yml")
 
 
 @dataclass
-class ClassificationMetrics:
-    """Metric."""
-
-    f1: float
-    precision: float
-    recall: float
-
-    @classmethod
-    def evaluate(cls, pred_classes: list[USCSClasses], true_classes: list[USCSClasses]):
-        """_summary_.
-
-        Args:
-            pred_classes (list[USCSClasses]): _description_
-            true_classes (list[USCSClasses]): _description_
-
-        Returns:
-            _type_: _description_
-        """
-        f1 = f1_score(true_classes, pred_classes, average="weighted", zero_division=0)
-        precision = precision_score(true_classes, pred_classes, average="weighted", zero_division=0)
-        recall = recall_score(true_classes, pred_classes, average="weighted", zero_division=0)
-
-        return cls(f1, precision, recall)
-
-
-@dataclass
 class AllClassificationMetrics:
-    """Metric."""
+    """Metrics class."""
 
-    global_metrics: ClassificationMetrics
-    language_metrics: dict[str:ClassificationMetrics]
+    global_metrics: Metrics
+    language_metrics: dict[str:Metrics]
 
     def __repr__(self):
         cls = self.__class__.__name__
@@ -50,28 +32,54 @@ class AllClassificationMetrics:
         )
         return f"{cls}(\nglobal_metrics={self.global_metrics}\nlanguage_metrics=\n{{\n{language_metrics_repr}\n}})"
 
+    def to_json(self) -> dict[str:float]:
+        """Returns the metrics as dict.
 
-def evaluate(predictions: list[LayerUSCSPrediction], ground_truth: list[LayerUSCSGroundTruth]):
-    """_summary_.
+        Returns:
+            dict[str:float]: the dictionary.
+        """
+        return {
+            **self.global_metrics.to_json("global"),
+            **{
+                k: v
+                for language, metrics in self.language_metrics.items()
+                for k, v in metrics.to_json(language).items()
+            },
+        }
+
+
+def evaluate(layer_descriptions: list[LayerInformations]) -> AllClassificationMetrics:
+    """Evaluates the predictions of the LayerInformations objects against the ground truth.
 
     Args:
-        predictions (list[LayerUSCSPrediction]): _description_
-        ground_truth (list[LayerUSCSGroundTruth]): _description_
+        layer_descriptions (list[LayerDescriptionWithGroundTruth]): the LayerInformations objects
 
     Returns:
-        _type_: _description_
+        AllClassificationMetrics: the holder for the metrics
     """
-    # call evaluate for all lang and gloabal
-    supported_language = classification_params["supported_language"]
-    global_metrics = ClassificationMetrics.evaluate(
-        [pred.uscs_class.value for pred in predictions], [gt.uscs_class.value for gt in ground_truth]
+    global_metrics: Metrics = count_against_ground_truth(
+        [layer.prediction_uscs_class for layer in layer_descriptions],
+        [layer.ground_truth_uscs_class for layer in layer_descriptions],
     )
+
+    supported_language: list[str] = classification_params["supported_language"]
     language_metrics = {
-        language: ClassificationMetrics.evaluate(
-            [pred.uscs_class.value for pred in predictions if pred.language == language],
-            [gt.uscs_class.value for gt in ground_truth if gt.language == language],
+        language: count_against_ground_truth(
+            [layer.prediction_uscs_class for layer in layer_descriptions if layer.language == language],
+            [layer.ground_truth_uscs_class for layer in layer_descriptions if layer.language == language],
         )
         for language in supported_language
     }
 
-    return AllClassificationMetrics(global_metrics, language_metrics)
+    all_classification_metrics = AllClassificationMetrics(global_metrics, language_metrics)
+
+    if mlflow_tracking:
+        log_metrics_to_mlflow(all_classification_metrics)
+        logger.info("Logging metrics to MLFlow")
+    return all_classification_metrics
+
+
+def log_metrics_to_mlflow(all_classification_metrics: AllClassificationMetrics):
+    """Log metrics to MFlow."""
+    for name, value in all_classification_metrics.to_json().items():
+        mlflow.log_metric(name, value)
