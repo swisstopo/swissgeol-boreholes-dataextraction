@@ -265,32 +265,35 @@ def start_pipeline(
 
                 # Extract the groundwater levels
                 for borehole_index, extracted_borehole in enumerate(processed_page_results.boreholes_layers_with_bb):
-                    for page_bounding_box in extracted_borehole.bounding_boxes:
-                        material_description_bbox = page_bounding_box.material_description_bbox
+                    # Each extracted_borehole contains only one BoundingBoxes element in its list,
+                    # so we extract the first element (index 0).
+                    # The reason for using a list is that later in the code, a single borehole may span multiple
+                    # pages, requiring multiple BoundingBoxes, one for each page.
+                    material_description_bbox = extracted_borehole.bounding_boxes[0].material_description_bbox
 
-                        # TODO: first match elevation with boreholes more intelligently, then pass the correct value to
-                        # the groundwater extraction logic
-                        terrain_elevation = None
-                        if metadata.elevations:
-                            if len(metadata.elevations) > borehole_index:
-                                terrain_elevation = metadata.elevations[borehole_index]
-                            else:
-                                terrain_elevation = metadata.elevations[0]
+                    # TODO: first match elevation with boreholes more intelligently, then pass the correct value to
+                    # the groundwater extraction logic
+                    terrain_elevation = None
+                    if metadata.elevations:
+                        if len(metadata.elevations) > borehole_index:
+                            terrain_elevation = metadata.elevations[borehole_index]
+                        else:
+                            terrain_elevation = metadata.elevations[0]
 
-                        groundwater_entries_near_bbox = GroundwaterLevelExtractor.near_material_description(
-                            document=doc,
-                            page_number=page_number,
-                            lines=text_lines,
-                            material_description_bbox=material_description_bbox,
-                            terrain_elevation=terrain_elevation,
-                        )
-                        # avoid duplicate entries
-                        seen_entry = [
-                            seen for borehole_gw in aggregated_groundwater_entries.values() for seen in borehole_gw
-                        ]
-                        for groundwater_entry in groundwater_entries_near_bbox:
-                            if groundwater_entry not in seen_entry:
-                                aggregated_groundwater_entries[borehole_index].append(groundwater_entry)
+                    groundwater_entries_near_bbox = GroundwaterLevelExtractor.near_material_description(
+                        document=doc,
+                        page_number=page_number,
+                        lines=text_lines,
+                        material_description_bbox=material_description_bbox,
+                        terrain_elevation=terrain_elevation,
+                    )
+                    # avoid duplicate entries
+                    seen_entry = [
+                        seen for borehole_gw in aggregated_groundwater_entries.values() for seen in borehole_gw
+                    ]
+                    for groundwater_entry in groundwater_entries_near_bbox:
+                        if groundwater_entry not in seen_entry:
+                            aggregated_groundwater_entries[borehole_index].append(groundwater_entry)
 
                 # TODO: Add remove duplicates here!
                 if page_index > 0:
