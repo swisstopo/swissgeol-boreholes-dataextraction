@@ -7,7 +7,7 @@ import fitz
 import Levenshtein
 import numpy as np
 from stratigraphy.annotations.plot_utils import convert_page_to_opencv_img
-from stratigraphy.layer.layer import Layer, LayersInDocument
+from stratigraphy.layer.layer import ExtractedBorehole, Layer, LayersInDocument
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +15,10 @@ logger = logging.getLogger(__name__)
 def remove_duplicate_layers(
     previous_page: fitz.Page,
     current_page: fitz.Page,
-    previous_layers: LayersInDocument,
-    current_layers: list[Layer],
+    previous_layers_with_bb: LayersInDocument,
+    current_layers_with_bb: LayersInDocument,
     img_template_probability_threshold: float,
-) -> list[Layer]:
+) -> list[ExtractedBorehole]:
     """Remove duplicate layers from the current page based on the layers of the previous page.
 
     We check if a layer on the current page is present on the previous page. If we have 3 consecutive layers that are
@@ -31,77 +31,95 @@ def remove_duplicate_layers(
     Args:
         previous_page (fitz.Page): The previous page.
         current_page (fitz.Page): The current page containing the layers to check for duplicates.
-        previous_layers (LayersInDocument): The layers of the previous page.
-        current_layers (list[Layer]): The layers of the current page.
+        previous_layers_with_bb (LayersInDocument): The layers of the previous page, with their bounding box.
+        current_layers_with_bb (LayersInDocument): The layers of the current page, with their bounding box.
         img_template_probability_threshold (float): The threshold for the template matching probability
 
     Returns:
-        list[Layer]: The layers of the current page without duplicates.
+        list[ExtractedBorehole]: The layers of the boreholes on the current page without duplicates. Their bounding
+            boxes are kept the same.
     """
-    sorted_layers = sorted(current_layers, key=lambda x: x.material_description.rect.y0)
-    first_non_duplicated_layer_index = 0
-    count_consecutive_non_duplicate_layers = 0
-    for layer_index, layer in enumerate(sorted_layers):
-        if (
-            count_consecutive_non_duplicate_layers >= 3
-        ):  # if we have three consecutive non-duplicate layers, we can assume that there is no further page overlap.
-            break
+    non_duplicated_extracted_boreholes: list[ExtractedBorehole] = []
+    # iterate on all the borehole profiles identified on this page
+    for current_borehole_layers_with_bb in current_layers_with_bb.boreholes_layers_with_bb:
+        current_borehole_layers = current_borehole_layers_with_bb.predictions
+        sorted_layers = sorted(current_borehole_layers, key=lambda x: x.material_description.rect.y0)
+        first_non_duplicated_layer_index = 0
+        count_consecutive_non_duplicate_layers = 0
+        for layer_index, layer in enumerate(sorted_layers):
+            # if we have 3 consecutive non-duplicate layers, we can assume that there is no further page overlap.
+            if count_consecutive_non_duplicate_layers >= 3:
+                break
 
-        # check if current layer has an overlapping layer on the previous page.
-        # for that purpose compare depth interval as well as material description text.
-        duplicate_condition = False
-        if layer.depths is None:
-            duplicate_condition = check_duplicate_layer_by_template_matching(
-                previous_page, current_page, layer, img_template_probability_threshold
-            )
-        else:  # in this case we compare the depth interval and material description
-            current_material_description = layer.material_description
-            current_depth_interval = layer.depths
-            for previous_layer in previous_layers.layers:
-                if previous_layer.depths is None:
-                    # It may happen, that a layer on the previous page does not have depth interval assigned.
-                    # In this case we skip the comparison. This should only happen in some edge cases, as we
-                    # assume that when the current page has a depth column, that the previous page also contains a
-                    # depth column. We assume overlapping pages and a depth column should extend over both pages.
-                    continue
-
-                previous_material_description = previous_layer.material_description
-                previous_depth_interval = previous_layer.depths
-
-                # start values for the depth intervals may be None. End values are always explicitly set.
-                current_depth_interval_start = (
-                    current_depth_interval.start.value
-                    if ((current_depth_interval is not None) and (current_depth_interval.start is not None))
-                    else None
+            # check if current layer has an overlapping layer on the previous page.
+            # for that purpose compare depth interval as well as material description text.
+            duplicate_condition = False
+            if layer.depths is None:
+                duplicate_condition = check_duplicate_layer_by_template_matching(
+                    previous_page, current_page, layer, img_template_probability_threshold
                 )
-                previous_depth_interval_start = (
-                    previous_depth_interval.start.value
-                    if ((previous_depth_interval is not None) and (previous_depth_interval.start is not None))
-                    else None
-                )
-                # check if material description is the same
-                text_similarity = (
-                    Levenshtein.ratio(
-                        current_material_description.feature.text, previous_material_description.feature.text
-                    )
-                    > 0.9
-                )
+            else:  # in this case we compare the depth interval and material description
+                current_material_description = layer.material_description
+                current_depth_interval = layer.depths
+                # iterate on all the layers in the previously identified borehole profiles
+                for previous_borehole_layers_with_bb in previous_layers_with_bb.boreholes_layers_with_bb:
+                    previous_borehole_layers = previous_borehole_layers_with_bb.predictions
+                    for previous_layer in previous_borehole_layers:
+                        if previous_layer.depths is None:
+                            # It may happen, that a layer on the previous page does not have depth interval assigned.
+                            # In this case we skip the comparison. This should only happen in some edge cases, as we
+                            # assume that when the current page has a depth column, that the previous page also
+                            # contains a depth column.
+                            # We assume overlapping pages and a depth column should extend over both pages.
+                            continue
 
-                same_start_depth = current_depth_interval_start == previous_depth_interval_start
-                if current_depth_interval.end and previous_depth_interval.end:
-                    same_end_depth = current_depth_interval.end.value == previous_depth_interval.end.value
+                        previous_material_description = previous_layer.material_description
+                        previous_depth_interval = previous_layer.depths
 
-                    if text_similarity and same_start_depth and same_end_depth:
-                        duplicate_condition = True
-                        logger.info("Removing duplicate layer.")
+                        # start values for the depth intervals may be None. End values are always explicitly set.
+                        current_depth_interval_start = (
+                            current_depth_interval.start.value
+                            if ((current_depth_interval is not None) and (current_depth_interval.start is not None))
+                            else None
+                        )
+                        previous_depth_interval_start = (
+                            previous_depth_interval.start.value
+                            if ((previous_depth_interval is not None) and (previous_depth_interval.start is not None))
+                            else None
+                        )
+                        # check if material description is the same
+                        text_similarity = (
+                            Levenshtein.ratio(
+                                current_material_description.feature.text, previous_material_description.feature.text
+                            )
+                            > 0.9
+                        )
+
+                        same_start_depth = current_depth_interval_start == previous_depth_interval_start
+                        if current_depth_interval.end and previous_depth_interval.end:
+                            same_end_depth = current_depth_interval.end.value == previous_depth_interval.end.value
+
+                            if text_similarity and same_start_depth and same_end_depth:
+                                duplicate_condition = True
+                                logger.info("Removing duplicate layer.")
+                                break
+
+                    if duplicate_condition:
                         break
+            # the layers of the current borehole are duplicates of the layers of one of the previous borehole
+            if duplicate_condition:
+                first_non_duplicated_layer_index = layer_index + 1  # all layers before this layer are duplicates
+                count_consecutive_non_duplicate_layers = 0
+            else:
+                count_consecutive_non_duplicate_layers += 1
+        non_duplicated_extracted_boreholes.append(
+            ExtractedBorehole(
+                predictions=sorted_layers[first_non_duplicated_layer_index:],
+                bounding_boxes=current_borehole_layers_with_bb.bounding_boxes,
+            )
+        )
 
-        if duplicate_condition:
-            first_non_duplicated_layer_index = layer_index + 1  # all layers before this layer are duplicates
-            count_consecutive_non_duplicate_layers = 0
-        else:
-            count_consecutive_non_duplicate_layers += 1
-    return sorted_layers[first_non_duplicated_layer_index:]
+    return non_duplicated_extracted_boreholes
 
 
 def check_duplicate_layer_by_template_matching(

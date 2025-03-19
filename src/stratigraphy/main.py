@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+from collections import defaultdict
 from pathlib import Path
 
 import click
@@ -15,13 +16,19 @@ from stratigraphy.annotations.draw import draw_predictions
 from stratigraphy.annotations.plot_utils import plot_lines
 from stratigraphy.benchmark.score import evaluate
 from stratigraphy.extract import MaterialDescriptionRectWithSidebarExtractor
-from stratigraphy.groundwater.groundwater_extraction import GroundwaterInDocument
+from stratigraphy.groundwater.groundwater_extraction import (
+    GroundwaterInDocument,
+    GroundwaterLevelExtractor,
+    GroundwatersInBorehole,
+)
 from stratigraphy.layer.duplicate_detection import remove_duplicate_layers
 from stratigraphy.layer.layer import LayersInDocument
 from stratigraphy.lines.line_detection import extract_lines, line_detection_params
-from stratigraphy.metadata.metadata import BoreholeMetadata
+from stratigraphy.metadata.metadata import FileMetadata, MetadataInDocument
 from stratigraphy.text.extract_text import extract_text_lines
-from stratigraphy.util.predictions import FilePredictions, OverallFilePredictions
+from stratigraphy.util.file_predictions import FilePredictions
+from stratigraphy.util.overall_file_predictions import OverallFilePredictions
+from stratigraphy.util.predictions import BoreholeListBuilder, BoreholePredictions
 from stratigraphy.util.util import flatten, read_params
 
 load_dotenv()
@@ -225,92 +232,109 @@ def start_pipeline(
     predictions = OverallFilePredictions()
 
     for filename in tqdm(files, desc="Processing files", unit="file"):
-        if filename.endswith(".pdf"):
-            in_path = os.path.join(root, filename)
-            logger.info("Processing file: %s", in_path)
+        if not filename.endswith(".pdf"):
+            logger.warning(f"{filename} does not end with .pdf and is not treated.")
+            continue
 
-            with fitz.Document(in_path) as doc:
-                # Extract metadata
-                metadata = BoreholeMetadata.from_document(doc)
+        in_path = os.path.join(root, filename)
+        logger.info("Processing file: %s", in_path)
 
-                # Save the predictions to the overall predictions object
-                # Initialize common variables
-                layers_in_document = LayersInDocument([], filename)
-                bounding_boxes = []
-                aggregated_groundwater_entries = []
+        with fitz.Document(in_path) as doc:
+            # Extract metadata
+            file_metadata = FileMetadata.from_document(doc)
+            metadata = MetadataInDocument.from_document(doc)
 
-                if part == "all":
-                    # Extract the layers
-                    for page_index, page in enumerate(doc):
-                        page_number = page_index + 1
-                        logger.info("Processing page %s", page_number)
+            # Save the predictions to the overall predictions object
+            # Initialize common variables
+            layers_with_bb_in_document = LayersInDocument([], filename)
+            aggregated_groundwater_entries = defaultdict(list)
 
-                        text_lines = extract_text_lines(page)
-                        geometric_lines = extract_lines(page, line_detection_params)
-                        process_page_results = MaterialDescriptionRectWithSidebarExtractor(
-                            text_lines, geometric_lines, metadata.language, page_number, **matching_params
-                        ).process_page()
+            if part != "all":
+                continue
+            # Extract the layers
+            for page_index, page in enumerate(doc):
+                page_number = page_index + 1
+                logger.info("Processing page %s", page_number)
 
-                        # Extract the groundwater levels
-                        for page_bounding_box in process_page_results.bounding_boxes:
-                            material_description_bbox = page_bounding_box.material_description_bbox
+                text_lines = extract_text_lines(page)
+                geometric_lines = extract_lines(page, line_detection_params)
+                extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(
+                    text_lines, geometric_lines, file_metadata.language, page_number, **matching_params
+                ).process_page()
+                processed_page_results = LayersInDocument(extracted_boreholes, filename)
 
-                            groundwater_entries_near_bbox = GroundwaterInDocument.near_material_description(
-                                document=doc,
-                                page_number=page_number,
-                                lines=text_lines,
-                                material_description_bbox=material_description_bbox,
-                                terrain_elevation=metadata.elevation,
-                            )
-                            ##avoid duplicate entries
-                            for groundwater_entry in groundwater_entries_near_bbox:
-                                if groundwater_entry not in aggregated_groundwater_entries:
-                                    aggregated_groundwater_entries.append(groundwater_entry)
+                # Extract the groundwater levels
+                for borehole_index, extracted_borehole in enumerate(processed_page_results.boreholes_layers_with_bb):
+                    # Each extracted_borehole contains only one BoundingBoxes element in its list,
+                    # so we extract the first element (index 0).
+                    # The reason for using a list is that later in the code, a single borehole may span multiple
+                    # pages, requiring multiple BoundingBoxes, one for each page.
+                    material_description_bbox = extracted_borehole.bounding_boxes[0].material_description_bbox
 
-                        # TODO: Add remove duplicates here!
-                        if page_index > 0:
-                            layer_predictions = remove_duplicate_layers(
-                                previous_page=doc[page_index - 1],
-                                current_page=page,
-                                previous_layers=layers_in_document,
-                                current_layers=process_page_results.predictions,
-                                img_template_probability_threshold=matching_params[
-                                    "img_template_probability_threshold"
-                                ],
-                            )
+                    # TODO: first match elevation with boreholes more intelligently, then pass the correct value to
+                    # the groundwater extraction logic
+                    terrain_elevation = None
+                    if metadata.elevations:
+                        if len(metadata.elevations) > borehole_index:
+                            terrain_elevation = metadata.elevations[borehole_index]
                         else:
-                            layer_predictions = process_page_results.predictions
+                            terrain_elevation = metadata.elevations[0]
 
-                        layers_in_document.layers.extend(layer_predictions)
-                        bounding_boxes.extend(process_page_results.bounding_boxes)
-
-                        if draw_lines:  # could be changed to if draw_lines and mlflow_tracking:
-                            if not mlflow_tracking:
-                                logger.warning(
-                                    "MLFlow tracking is not enabled. MLFLow is required to store the images."
-                                )
-                            else:
-                                img = plot_lines(
-                                    page, geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"]
-                                )
-                                mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
-
-                # Create a document-level groundwater entry
-                groundwater_entries = GroundwaterInDocument(
-                    filename=filename,
-                    groundwater=aggregated_groundwater_entries,
-                )
-
-                # Add file predictions
-                predictions.add_file_predictions(
-                    FilePredictions(
-                        file_name=filename,
-                        metadata=metadata,
-                        groundwater=groundwater_entries,
-                        layers_in_document=layers_in_document,
-                        bounding_boxes=bounding_boxes,
+                    groundwater_entries_near_bbox = GroundwaterLevelExtractor.near_material_description(
+                        document=doc,
+                        page_number=page_number,
+                        lines=text_lines,
+                        material_description_bbox=material_description_bbox,
+                        terrain_elevation=terrain_elevation,
                     )
-                )
+                    # avoid duplicate entries
+                    seen_entry = [
+                        seen for borehole_gw in aggregated_groundwater_entries.values() for seen in borehole_gw
+                    ]
+                    for groundwater_entry in groundwater_entries_near_bbox:
+                        if groundwater_entry not in seen_entry:
+                            aggregated_groundwater_entries[borehole_index].append(groundwater_entry)
+
+                # TODO: Add remove duplicates here!
+                if page_index > 0:
+                    layer_with_bb_predictions = remove_duplicate_layers(
+                        previous_page=doc[page_index - 1],
+                        current_page=page,
+                        previous_layers_with_bb=layers_with_bb_in_document,
+                        current_layers_with_bb=processed_page_results,
+                        img_template_probability_threshold=matching_params["img_template_probability_threshold"],
+                    )
+                else:
+                    layer_with_bb_predictions = processed_page_results.boreholes_layers_with_bb
+
+                layers_with_bb_in_document.assign_layers_to_boreholes(layer_with_bb_predictions)
+
+                if draw_lines:  # could be changed to if draw_lines and mlflow_tracking:
+                    if not mlflow_tracking:
+                        logger.warning("MLFlow tracking is not enabled. MLFLow is required to store the images.")
+                    else:
+                        img = plot_lines(page, geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"])
+                        mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
+
+            # Create a document-level groundwater entry
+            groundwater_entries = GroundwaterInDocument(
+                filename=filename,
+                borehole_groundwaters=[
+                    GroundwatersInBorehole(value) for _, value in sorted(aggregated_groundwater_entries.items())
+                ],
+            )
+
+            # create list of BoreholePrediction objects with all the separate lists
+            borehole_predictions_list: list[BoreholePredictions] = BoreholeListBuilder(
+                layers_with_bb_in_document=layers_with_bb_in_document,
+                file_name=filename,
+                groundwater_in_doc=groundwater_entries,
+                elevations_list=metadata.elevations,
+                coordinates_list=metadata.coordinates,
+            ).build()
+
+            # Add file predictions
+            predictions.add_file_predictions(FilePredictions(borehole_predictions_list, file_metadata, filename))
 
     logger.info("Metadata written to %s", metadata_path)
     with open(metadata_path, "w", encoding="utf8") as file:

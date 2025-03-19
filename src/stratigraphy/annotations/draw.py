@@ -7,13 +7,9 @@ from pathlib import Path
 import fitz
 import pandas as pd
 from dotenv import load_dotenv
-from stratigraphy.data_extractor.data_extractor import FeatureOnPage
-from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBoxes
-from stratigraphy.groundwater.groundwater_extraction import Groundwater
+from stratigraphy.depths_materials_column_pairs.bounding_boxes import PageBoundingBoxes
 from stratigraphy.layer.layer import Layer
-from stratigraphy.metadata.coordinate_extraction import Coordinate
-from stratigraphy.metadata.elevation_extraction import Elevation
-from stratigraphy.util.predictions import OverallFilePredictions
+from stratigraphy.util.overall_file_predictions import OverallFilePredictions
 
 load_dotenv()
 
@@ -52,177 +48,95 @@ def draw_predictions(
     if directory.is_file():  # deal with the case when we pass a file instead of a directory
         directory = directory.parent
     for file_prediction in predictions.file_predictions_list:
-        logger.info("Drawing predictions for file %s", file_prediction.file_name)
-
-        bounding_boxes = file_prediction.bounding_boxes
-        coordinates = file_prediction.metadata.coordinates
-        elevation = file_prediction.metadata.elevation
-
-        # Assess the correctness of the metadata
-        if (
-            document_level_metadata_metrics is not None
-            and file_prediction.file_name in document_level_metadata_metrics.index
-        ):
-            is_coordinates_correct = document_level_metadata_metrics.loc[file_prediction.file_name].coordinate
-            is_elevation_correct = document_level_metadata_metrics.loc[file_prediction.file_name].elevation
-        else:
-            logger.warning(
-                "Metrics for file %s not found in document_level_metadata_metrics.", file_prediction.file_name
-            )
-            is_coordinates_correct = None
-            is_elevation_correct = None
-
+        filename = file_prediction.file_name
+        logger.info("Drawing predictions for file %s", filename)
         try:
             # Clear cache to avoid cache contamination across different files, which can cause incorrect
             # visualizations; see also https://github.com/swisstopo/swissgeol-boreholes-suite/issues/1935
             fitz.TOOLS.store_shrink(100)
 
-            with fitz.Document(directory / file_prediction.file_name) as doc:
+            with fitz.Document(directory / filename) as doc:
                 for page_index, page in enumerate(doc):
                     page_number = page_index + 1
                     shape = page.new_shape()  # Create a shape object for drawing
-                    if page_number == 1:
-                        draw_metadata(
+
+                    # iterate over all boreholes identified
+                    for borehole_predictions in file_prediction.borehole_predictions_list:
+                        bounding_boxes = borehole_predictions.bounding_boxes
+                        coordinates = borehole_predictions.metadata.coordinates
+                        elevation = borehole_predictions.metadata.elevation
+                        groundwaters = borehole_predictions.groundwater_in_borehole
+                        bh_layers = borehole_predictions.layers_in_borehole
+
+                        if coordinates is not None and page_number == coordinates.page:
+                            draw_feature(
+                                shape,
+                                coordinates.rect * page.derotation_matrix,
+                                coordinates.feature.is_correct,
+                                "purple",
+                            )
+                        if elevation is not None and page_number == elevation.page:
+                            draw_feature(
+                                shape, elevation.rect * page.derotation_matrix, elevation.feature.is_correct, "blue"
+                            )
+                        for groundwater_entry in groundwaters.groundwater_feature_list:
+                            if page_number == groundwater_entry.page:
+                                # TODO: store correctness with the groundwater object
+                                # See also https://github.com/swisstopo/swissgeol-boreholes-dataextraction/issues/124
+                                draw_feature(shape, groundwater_entry.rect * page.derotation_matrix, None, "pink")
+                        draw_depth_columns_and_material_rect(
                             shape,
                             page.derotation_matrix,
-                            page.rotation,
-                            coordinates,
-                            is_coordinates_correct,
-                            elevation,
-                            is_elevation_correct,
+                            [bboxes for bboxes in bounding_boxes if bboxes.page == page_number],
                         )
-                    if coordinates is not None and page_number == coordinates.page:
-                        draw_coordinates(shape, coordinates)
-                    if elevation is not None and page_number == elevation.page:
-                        draw_elevation(shape, elevation)
-                    for groundwater_entry in file_prediction.groundwater.groundwater:
-                        if page_number == groundwater_entry.page:
-                            draw_groundwater(shape, groundwater_entry)
-                    draw_depth_columns_and_material_rect(
-                        shape,
-                        page.derotation_matrix,
-                        [bboxes for bboxes in bounding_boxes if bboxes.page == page_number],
-                    )
-                    draw_material_descriptions(
-                        shape,
-                        page.derotation_matrix,
-                        [
-                            layer
-                            for layer in file_prediction.layers_in_document.layers
-                            if layer.material_description.page == page_number
-                        ],
-                    )
-                    shape.commit()  # Commit all the drawing operations to the page
+                        draw_material_descriptions(
+                            shape,
+                            page.derotation_matrix,
+                            [layer for layer in bh_layers.layers if layer.material_description.page == page_number],
+                        )
+                        shape.commit()  # Commit all the drawing operations to the page
 
-                    tmp_file_path = out_directory / f"{file_prediction.file_name}_page{page_number}.png"
-                    fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
+                        tmp_file_path = out_directory / f"{filename}_page{page_number}.png"
+                        fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
 
-                    if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
-                        try:
-                            import mlflow
+                        if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
+                            try:
+                                import mlflow
 
-                            mlflow.log_artifact(tmp_file_path, artifact_path="pages")
-                        except NameError:
-                            logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
+                                mlflow.log_artifact(tmp_file_path, artifact_path="pages")
+                            except NameError:
+                                logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
 
         except (FileNotFoundError, fitz.FileDataError) as e:
-            logger.error("Error opening file %s: %s", file_prediction.file_name, e)
+            logger.error("Error opening file %s: %s", filename, e)
             continue
 
-        logger.info("Finished drawing predictions for file %s", file_prediction.file_name)
+        logger.info("Finished drawing predictions for file %s", filename)
 
 
-def draw_metadata(
-    shape: fitz.Shape,
-    derotation_matrix: fitz.Matrix,
-    rotation: float,
-    coordinates: Coordinate | None,
-    is_coordinate_correct: bool | None,
-    elevation_info: Elevation | None,
-    is_elevation_correct: bool | None,
-) -> None:
-    """Draw the extracted metadata on the top of the given PDF page.
-
-    The data is always drawn at the top-left of the page, without considering where on the page the data was originally
-    found / extracted from.
+def draw_feature(shape: fitz.Shape, rect: fitz.Rect, is_correct: bool | None, color: str) -> None:
+    """Draw a bounding box around the area of the page where some feature was extracted from.
 
     Args:
         shape (fitz.Shape): The shape object for drawing.
-        derotation_matrix (fitz.Matrix): The derotation matrix of the page.
-        rotation (float): The rotation of the page.
-        coordinates (Coordinate | None): The coordinate object to draw.
-        is_coordinate_correct (bool  | None): Whether the coordinate information is correct.
-        elevation_info (Elevation | None): The elevation information to draw.
-        is_elevation_correct (bool | None): Whether the elevation information is correct.
+        rect (fitz:Rect): The bounding box of the feature to draw.
+        is_correct (bool | None): whether the feature has been evaluated as correct against the ground truth
+        color (str): The name of the color to use for the bounding box of the feature.
     """
-    coordinate_rect = fitz.Rect([5, 5, 250, 30])
-    elevation_rect = fitz.Rect([5, 30, 250, 55])
+    shape.draw_rect(rect)
+    shape.finish(color=fitz.utils.getColor(color))
 
-    shape.draw_rect(coordinate_rect * derotation_matrix)
-    shape.finish(fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
-    shape.insert_textbox(coordinate_rect * derotation_matrix, f"Coordinates: {coordinates}", rotate=rotation)
-    if is_coordinate_correct is not None:
-        # TODO associate correctness with the extracted coordinates in a better way
-        coordinate_color = "green" if is_coordinate_correct else "red"
+    if is_correct is not None:
+        correct_color = "green" if is_correct else "red"
         shape.draw_line(
-            coordinate_rect.top_left * derotation_matrix,
-            coordinate_rect.bottom_left * derotation_matrix,
+            rect.top_left,
+            rect.bottom_left,
         )
         shape.finish(
-            color=fitz.utils.getColor(coordinate_color),
+            color=fitz.utils.getColor(correct_color),
             width=6,
             stroke_opacity=0.5,
         )
-
-    # Draw the bounding box around the elevation information
-    elevation_txt = f"Elevation: {elevation_info.elevation} m" if elevation_info is not None else "Elevation: N/A"
-    shape.draw_rect(elevation_rect * derotation_matrix)
-    shape.finish(fill=fitz.utils.getColor("gray"), fill_opacity=0.5)
-    shape.insert_textbox(elevation_rect * derotation_matrix, elevation_txt, rotate=rotation)
-    if is_elevation_correct is not None:
-        elevation_color = "green" if is_elevation_correct else "red"
-        shape.draw_line(
-            elevation_rect.top_left * derotation_matrix,
-            elevation_rect.bottom_left * derotation_matrix,
-        )
-        shape.finish(
-            color=fitz.utils.getColor(elevation_color),
-            width=6,
-            stroke_opacity=0.5,
-        )
-
-
-def draw_coordinates(shape: fitz.Shape, coordinates: Coordinate) -> None:
-    """Draw a bounding box around the area of the page where the coordinates were extracted from.
-
-    Args:
-        shape (fitz.Shape): The shape object for drawing.
-        coordinates (Coordinate): The coordinate object to draw.
-    """
-    shape.draw_rect(coordinates.rect)
-    shape.finish(color=fitz.utils.getColor("purple"))
-
-
-def draw_groundwater(shape: fitz.Shape, groundwater_entry: FeatureOnPage[Groundwater]) -> None:
-    """Draw a bounding box around the area of the page where the groundwater information was extracted from.
-
-    Args:
-        shape (fitz.Shape): The shape object for drawing.
-        groundwater_entry (FeatureOnPage[Groundwater]): The groundwater information to draw.
-    """
-    shape.draw_rect(groundwater_entry.rect)
-    shape.finish(color=fitz.utils.getColor("pink"))
-
-
-def draw_elevation(shape: fitz.Shape, elevation: Elevation) -> None:
-    """Draw a bounding box around the area of the page where the elevation were extracted from.
-
-    Args:
-        shape (fitz.Shape): The shape object for drawing.
-        elevation (Elevation): The elevation information to draw.
-    """
-    shape.draw_rect(elevation.rect)
-    shape.finish(color=fitz.utils.getColor("blue"))
 
 
 def draw_material_descriptions(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layers: list[Layer]) -> None:
@@ -248,7 +162,7 @@ def draw_material_descriptions(shape: fitz.Shape, derotation_matrix: fitz.Matrix
 
 
 def draw_depth_columns_and_material_rect(
-    shape: fitz.Shape, derotation_matrix: fitz.Matrix, bounding_boxes: list[BoundingBoxes]
+    shape: fitz.Shape, derotation_matrix: fitz.Matrix, bounding_boxes: list[PageBoundingBoxes]
 ):
     """Draw depth columns as well as the material rects on a pdf page.
 
