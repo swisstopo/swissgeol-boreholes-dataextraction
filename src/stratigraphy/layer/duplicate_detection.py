@@ -39,7 +39,7 @@ def remove_duplicate_layers(
         list[ExtractedBorehole]: The layers of the boreholes on the current page without duplicates. Their bounding
             boxes are kept the same.
     """
-    non_duplicated_layers: list[list[Layer]] = []
+    all_extracted_boreholes: list[ExtractedBorehole] = []
     # iterate on all the borehole profiles identified on this page
     for current_borehole_layers_with_bb in current_layers_with_bb.boreholes_layers_with_bb:
         current_borehole_layers = current_borehole_layers_with_bb.predictions
@@ -112,14 +112,14 @@ def remove_duplicate_layers(
                 count_consecutive_non_duplicate_layers = 0
             else:
                 count_consecutive_non_duplicate_layers += 1
-        non_duplicated_layers.append(sorted_layers[first_non_duplicated_layer_index:])
-
-    return [
-        ExtractedBorehole(lays, extracted_borehole.bounding_boxes)
-        for lays, extracted_borehole in zip(
-            non_duplicated_layers, current_layers_with_bb.boreholes_layers_with_bb, strict=False
+        all_extracted_boreholes.append(
+            ExtractedBorehole(
+                predictions=sorted_layers[first_non_duplicated_layer_index:],
+                bounding_boxes=current_borehole_layers_with_bb.bounding_boxes,
+            )
         )
-    ]
+
+    return all_extracted_boreholes
 
 
 def check_duplicate_layer_by_template_matching(
