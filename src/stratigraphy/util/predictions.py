@@ -2,8 +2,6 @@
 
 import dataclasses
 import logging
-import csv
-import io
 from copy import deepcopy
 from typing import TypeVar
 
@@ -124,44 +122,6 @@ class BoreholeListBuilder:
 
         return lst[:target_length]
 
-
-@dataclasses.dataclass
-class CsvPredictions:
-    """A class to represent predictions for a single file in a csv format.
-
-    It is responsible for converting the borehole predictions list elements to a CSV like string.
-    """
-
-    borehole_predictions_list: list[BoreholePredictions]
-
-    def to_csv(self) -> dict:
-        """Converts the borehole predictions to a CSV format.
-        This method iterates through the list of borehole predictions and writes
-        the relevant data (borehole index, layer index, material description, start depth,
-        and end depth) to a CSV string.
-
-        Returns:
-            string: CSV string representation of the borehole predictions.
-        """
-
-        csv_strings = []
-
-        for borehole in self.borehole_predictions_list:
-            output = io.StringIO()
-            writer = csv.writer(output)
-            writer.writerow(["layer_index", "from_depth", "to_depth", "material_description"])
-
-            for layer_index, layer in enumerate(borehole.layers_in_borehole.layers):
-                writer.writerow([
-                    layer_index,
-                    layer.depths.start.value if layer.depths.start is not None else None,
-                    layer.depths.end.value,
-                    layer.material_description.feature.text,
-                ])
-
-            csv_strings.append(output.getvalue())
-
-        return csv_strings
 
 @dataclasses.dataclass
 class AllBoreholePredictionsWithGroundTruth:

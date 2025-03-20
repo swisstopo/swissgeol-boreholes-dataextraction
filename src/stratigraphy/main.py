@@ -28,7 +28,7 @@ from stratigraphy.metadata.metadata import FileMetadata, MetadataInDocument
 from stratigraphy.text.extract_text import extract_text_lines
 from stratigraphy.util.file_predictions import FilePredictions
 from stratigraphy.util.overall_file_predictions import OverallFilePredictions
-from stratigraphy.util.predictions import BoreholeListBuilder, BoreholePredictions, CsvPredictions
+from stratigraphy.util.predictions import BoreholeListBuilder, BoreholePredictions
 from stratigraphy.util.util import flatten, read_params
 
 load_dotenv()
@@ -346,11 +346,10 @@ def start_pipeline(
             # Add file predictions
             predictions.add_file_predictions(FilePredictions(borehole_predictions_list, file_metadata, filename))
 
-            #TODO: Add an approach that stores each borehole in a separate file for files with multiple boreholes
             # Add layers to a csv file
             if csv:
                 base_path = out_directory / Path(filename).stem
-                csv_list = CsvPredictions(borehole_predictions_list).to_csv()
+                csv_list = FilePredictions(borehole_predictions_list, file_metadata, filename).to_csv()
 
                 for borehole_index, csv_content in enumerate(csv_list):
                     csv_path = f"{base_path}_{borehole_index}.csv" if len(csv_list) > 1 else f"{base_path}.csv"
