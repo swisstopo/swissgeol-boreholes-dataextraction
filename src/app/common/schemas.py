@@ -194,6 +194,70 @@ class Coordinates(BaseModel):
     )
 
 
+class BoundingBoxesRequest(ABC, BaseModel):
+    """Request schema for the `bounding_boxes` endpoint.
+
+    ### Fields
+    Each field below includes inline examples to aid users in creating requests. See `json_schema_extra`
+    for a complete example.
+
+    **Attributes:**
+    - **filename** (`Path`): Path to the PDF file. _Example_: `"document.pdf"`
+    - **page_number** (`int`): Target page for data extraction. This is a 1-based index. _Example_: `1`
+
+    ### Validation
+    Custom validators ensure data integrity:
+    - **Filename Validator:** Ensures filename is not empty.
+    - **Page Number Validator:** Confirms page number is positive.
+    """
+
+    filename: Path = Field(
+        ...,
+        description="""Path to the input PDF document file that contains the data to be extracted. This should be
+        a valid file path, and the file should be accessible to the API.""",
+        example=Path("document.pdf"),
+    )
+    page_number: int = Field(
+        ...,
+        description="""Page number within the document where the extraction is to be performed. This is a 1-based 
+        index (e.g., 1 for the first page), applicable for multi-page files like PDFs.""",
+        example=1,
+    )
+
+    @field_validator("filename", mode="before")
+    @classmethod
+    def validate_filename(cls, value: str) -> str:
+        """Ensure the filename is not empty."""
+        return validate_filename(value)
+
+    @field_validator("page_number")
+    @classmethod
+    def page_number_must_be_positive(cls, v: int) -> int:
+        """Validate that the page number is positive."""
+        if v <= 0:
+            raise ValueError("Page number must be a positive integer")
+        return v
+
+    class Config:
+        """Make it possible to define an example for the entire request model in the Swagger UI.
+
+        The schema_extra attribute inside the Config class allows you to define a complete
+        example for the entire request model.
+        """
+
+        json_schema_extra = {"example": {"filename": "10012.pdf", "page_number": 1}}
+
+
+class BoundingBoxesResponse(BaseModel):
+    """Response schema for the `bounding_boxes` endpoint, representing the bounding boxes of words on the page."""
+
+    bounding_boxes: list[BoundingBox] = Field(
+        ...,
+        description="""List of bounding boxes for all words that are found on the requested page.""",
+        example=[{"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0}, {"x0": 150.0, "y0": 20.0, "x1": 220.0, "y1": 40.0}],
+    )
+
+
 class ExtractDataRequest(ABC, BaseModel):
     """Request schema for the `extract_data` endpoint.
 

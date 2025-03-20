@@ -7,9 +7,9 @@ from pathlib import Path
 import fitz
 import pandas as pd
 from dotenv import load_dotenv
-from stratigraphy.depths_materials_column_pairs.bounding_boxes import BoundingBoxes
+from stratigraphy.depths_materials_column_pairs.bounding_boxes import PageBoundingBoxes
 from stratigraphy.layer.layer import Layer
-from stratigraphy.util.predictions import OverallFilePredictions
+from stratigraphy.util.overall_file_predictions import OverallFilePredictions
 
 load_dotenv()
 
@@ -158,7 +158,7 @@ def draw_material_descriptions(shape: fitz.Shape, derotation_matrix: fitz.Matrix
 
 
 def draw_depth_columns_and_material_rect(
-    shape: fitz.Shape, derotation_matrix: fitz.Matrix, bounding_boxes: list[BoundingBoxes]
+    shape: fitz.Shape, derotation_matrix: fitz.Matrix, bounding_boxes: list[PageBoundingBoxes]
 ):
     """Draw depth columns as well as the material rects on a pdf page.
 

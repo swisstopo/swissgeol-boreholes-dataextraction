@@ -11,7 +11,6 @@ def extract_text_lines(page: fitz.Page) -> list[TextLine]:
 
     Args:
         page (fitz.page): the page to extract text from
-        page_number (int): the page number (first page is 1)
 
     Returns:
         list[TextLine]: A list of text lines.

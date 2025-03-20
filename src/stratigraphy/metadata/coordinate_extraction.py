@@ -9,7 +9,7 @@ import fitz
 import regex
 from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature, FeatureOnPage
 from stratigraphy.lines.line import TextLine
-from stratigraphy.text.extract_text import extract_text_lines_from_bbox
+from stratigraphy.text.extract_text import extract_text_lines
 
 logger = logging.getLogger(__name__)
 
@@ -264,8 +264,8 @@ class CoordinateExtractor(DataExtractor):
             results.append((match, rect))
         return results
 
-    def extract_coordinates_from_bbox(
-        self, page: fitz.Page, page_number: int, bbox: fitz.Rect | None = None
+    def extract_coordinates_aggregated(
+        self, text_lines: list[TextLine], page_number: int
     ) -> list[FeatureOnPage[Coordinate]]:
         """Extracts the coordinates from a borehole profile.
 
@@ -280,12 +280,10 @@ class CoordinateExtractor(DataExtractor):
         Returns:
             list[FeatureOnPage[Coordinate]]: the extracted coordinates (if any)
         """
-        lines = extract_text_lines_from_bbox(page, bbox)
-
         found_coordinates = (
-            self.get_coordinates_with_x_y_labels(lines, page_number)
-            or self.get_coordinates_near_key(lines, page_number)
-            or self.get_coordinates_from_lines(lines, page_number)
+            self.get_coordinates_with_x_y_labels(text_lines, page_number)
+            or self.get_coordinates_near_key(text_lines, page_number)
+            or self.get_coordinates_from_lines(text_lines, page_number)
         )
 
         return found_coordinates
@@ -309,9 +307,10 @@ class CoordinateExtractor(DataExtractor):
         """
         coordinates: list[FeatureOnPage[Coordinate]] = []
         for page in document:
+            text_lines = extract_text_lines(page)
             page_number = page.number + 1  # page.number is 0-based
 
-            coord = self.extract_coordinates_from_bbox(page, page_number)
+            coord = self.extract_coordinates_aggregated(text_lines, page_number)
             coordinates.extend(coord)
 
         return coordinates

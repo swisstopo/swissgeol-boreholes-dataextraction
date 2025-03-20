@@ -1,10 +1,9 @@
 """This module defines the FastAPI endpoint for extracting information from PDF borehole document."""
 
 import re
-from pathlib import Path
 
 import fitz
-from app.common.aws import load_pdf_from_aws, load_png_from_aws
+from app.common.helpers import load_pdf_page, load_png
 from app.common.schemas import (
     BoundingBox,
     Coordinates,
@@ -16,8 +15,9 @@ from app.common.schemas import (
     FormatTypes,
 )
 from fastapi import HTTPException
+from stratigraphy.lines.line import TextLine
 from stratigraphy.metadata.coordinate_extraction import CoordinateExtractor, LV03Coordinate, LV95Coordinate
-from stratigraphy.text.extract_text import extract_text_lines_from_bbox
+from stratigraphy.text.extract_text import extract_text_lines
 
 
 def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataResponse:
@@ -35,22 +35,11 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
         ExtractDataResponse: The extracted information with the bounding box where the information was found.
         In PNG coordinates.
     """
-    # Load the PNG image
-    pdf_document = load_pdf_from_aws(extract_data_request.filename)
-
-    # Load the page from the PDF document
-    pdf_page = pdf_document.load_page(extract_data_request.page_number - 1)
+    pdf_page = load_pdf_page(extract_data_request.filename, extract_data_request.page_number)
     pdf_page_width = pdf_page.rect.width
     pdf_page_height = pdf_page.rect.height
 
-    # Load the PNG image the boreholes app is showing to the user
-    # Convert the PDF filename to a PNG filename: "10012.pdf" -> 'dataextraction/10012-1.png'
-    # Remove the file extension and replace it with '.png'
-    base_filename = extract_data_request.filename.stem
-    png_filename = Path(f"{base_filename}-{extract_data_request.page_number}.png")
-
-    # Load the PNG file from AWS
-    png_page = load_png_from_aws(png_filename)
+    png_page = load_png(extract_data_request.filename, extract_data_request.page_number)
     png_page_width = png_page.shape[1]
     png_page_height = png_page.shape[0]
 
@@ -62,15 +51,23 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
         target_width=pdf_page_width,
     )  # bbox in PDF coordinates
 
-    # If the PDF page is rotated, rotate the bounding box
-    user_defined_rect_with_rotation = user_defined_bbox.to_fitz_rect() * pdf_page.derotation_matrix
+    # Select words whose middle-point is in the user-defined bbox
+    text_lines = []
+    for text_line in extract_text_lines(pdf_page):
+        words = [
+            word
+            for word in text_line.words
+            if user_defined_bbox.to_fitz_rect().contains(
+                fitz.Point((word.rect.x0 + word.rect.x1) / 2, (word.rect.y0 + word.rect.y1) / 2)
+            )
+        ]
+        if words:
+            text_lines.append(TextLine(words))
 
     # Extract the information based on the format type
     if extract_data_request.format == FormatTypes.COORDINATES:
         # Extract the coordinates and bounding box
-        extracted_coords: ExtractCoordinatesResponse | None = extract_coordinates(
-            extract_data_request, pdf_page, user_defined_rect_with_rotation
-        )
+        extracted_coords: ExtractCoordinatesResponse | None = extract_coordinates(extract_data_request, text_lines)
 
         # Convert the bounding box to PNG coordinates and return the response
         return ExtractCoordinatesResponse(
@@ -84,7 +81,7 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
         )
 
     elif extract_data_request.format == FormatTypes.TEXT:
-        extracted_text: ExtractTextResponse = extract_text(pdf_page, user_defined_rect_with_rotation)
+        extracted_text: ExtractTextResponse = extract_text(text_lines)
 
         # Convert the bounding box to PNG coordinates and return the response
         return ExtractTextResponse(
@@ -97,7 +94,7 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
             text=extracted_text.text,
         )
     elif extract_data_request.format == FormatTypes.NUMBER:
-        extracted_number = extract_number(pdf_page, user_defined_rect_with_rotation)
+        extracted_number = extract_number(text_lines)
 
         # Convert the bounding box to PNG coordinates and return the response
         return ExtractNumberResponse(
@@ -113,71 +110,60 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
         raise ValueError("Invalid format type.")
 
 
-def extract_coordinates(
-    extract_data_request: ExtractDataRequest, pdf_page: fitz.Page, user_defined_bbox: fitz.Rect
-) -> ExtractDataResponse:
-    """Extract coordinates from a PDF document.
+def extract_coordinates(extract_data_request: ExtractDataRequest, text_lines: list[TextLine]) -> ExtractDataResponse:
+    """Extract coordinates from a collection of text lines.
 
-    The coordinates are extracted from the user-defined bounding box. The coordinates are extracted in the
-    Swiss coordinate system (LV03 or LV95). The user_defined_bbox is in PDF coordinates.
+    The coordinates are extracted in the Swiss coordinate system (LV03 or LV95).
 
     Args:
         extract_data_request (ExtractDataRequest): The request data. The page number is 1-based.
-        pdf_page (fitz.Page): The PDF page.
-        user_defined_bbox (fitz.Rect): The user-defined bounding box. The bounding box is in PDF coordinates.
+        text_lines (list[TextLine]): The text lines to extract the coordinates from.
 
     Returns:
         ExtractDataResponse: The extracted coordinates. The coordinates are in the Swiss coordinate
         system (LV03 or LV95). The bounding box is in PDF coordinates.
     """
 
-    def create_response(coord, srs):
+    def create_response(coord_feature, srs):
         bbox = BoundingBox(
-            x0=coord.rect.x0,
-            y0=coord.rect.y0,
-            x1=coord.rect.x1,
-            y1=coord.rect.y1,
+            x0=coord_feature.rect.x0,
+            y0=coord_feature.rect.y0,
+            x1=coord_feature.rect.x1,
+            y1=coord_feature.rect.y1,
         )
         return ExtractCoordinatesResponse(
             bbox=bbox,
             coordinates=Coordinates(
-                east=coord.east.coordinate_value,
-                north=coord.north.coordinate_value,
+                east=coord_feature.feature.east.coordinate_value,
+                north=coord_feature.feature.north.coordinate_value,
                 projection=srs,
             ),
         )
 
     coord_extractor = CoordinateExtractor()
-    extracted_coord = coord_extractor.extract_coordinates_from_bbox(
-        pdf_page, extract_data_request.page_number, user_defined_bbox
-    )
-    if extracted_coord is not None:
-        extracted_coord = extracted_coord[0]  # currently we only handles one set of coordinate
+    extracted_coord = coord_extractor.extract_coordinates_aggregated(text_lines, extract_data_request.page_number)
 
-    if isinstance(extracted_coord, LV03Coordinate):
-        return create_response(extracted_coord, "LV03")
+    if extracted_coord:
+        extracted_coord = extracted_coord[0]  # currently we only handle one set of coordinate
+        if isinstance(extracted_coord.feature, LV03Coordinate):
+            return create_response(extracted_coord, "LV03")
 
-    if isinstance(extracted_coord, LV95Coordinate):
-        return create_response(extracted_coord, "LV95")
+        if isinstance(extracted_coord.feature, LV95Coordinate):
+            return create_response(extracted_coord, "LV95")
 
     raise HTTPException(status_code=404, detail="Coordinates not found.")
 
 
-def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDataResponse:
-    """Extract text from a PDF Document. The text is extracted from the user-defined bounding box.
+def extract_text(text_lines: list[TextLine]) -> ExtractTextResponse:
+    """Extract text from a collection of text lines.
 
     Args:
-        pdf_page (fitz.Page): The PDF page.
-        user_defined_bbox (fitz.Rect): The user-defined bounding box. The bounding box is in PDF coordinates.
+        text_lines (list[TextLine]): The text lines to extract the numbers from.
 
     Returns:
-        ExtractDataResponse: The extracted text.
+        ExtractTextResponse: The extracted text.
     """
-    # Extract the text
-    text_lines = extract_text_lines_from_bbox(pdf_page, user_defined_bbox)
-
-    # Convert the text lines to a string
-    text = " ".join([text_line.text for text_line in text_lines])
+    text = " ".join([line.text for line in text_lines])
 
     text_based_bbox = fitz.Rect()
     for text_line in text_lines:
@@ -190,20 +176,15 @@ def extract_text(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractDa
         raise HTTPException(status_code=404, detail="Text not found.")
 
 
-def extract_number(pdf_page: fitz.Page, user_defined_bbox: fitz.Rect) -> ExtractNumberResponse:
-    """Extract numbers from a PDF document. The numbers are extracted from the user-defined bounding box.
+def extract_number(text_lines: list[TextLine]) -> ExtractNumberResponse:
+    """Extract numbers from a collection of text lines.
 
     Args:
-        pdf_page (fitz.Page): The PDF page.
-        user_defined_bbox (fitz.Rect): The user-defined bounding box. The bounding box is in PDF coordinates.
+        text_lines (list[TextLine]): The text lines to extract the numbers from.
 
     Returns:
-        ExtractDataResponse: The extracted number with bbox.
+        ExtractNumberResponse: The extracted number with bbox.
     """
-    # Extract the text
-    text_lines = extract_text_lines_from_bbox(pdf_page, user_defined_bbox)
-
-    # Extract the number
     for text_line in text_lines:
         number = extract_number_from_text(text_line.text)
         if number:

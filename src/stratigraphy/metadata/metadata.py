@@ -1,6 +1,6 @@
 """Metadata for stratigraphy data."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
@@ -79,7 +79,6 @@ class BoreholeMetadata:
 
         Args:
             json_metadata (dict): A dictionary representing the metadata.
-            filename (str): The name of the file.
 
         Returns:
             BoreholeMetadata: The metadata object.
@@ -154,7 +153,7 @@ class FileMetadata:
             filename (str): The name of the file.
 
         Returns:
-            MetadataInDocument: The metadata object.
+            FileMetadata: The metadata object.
         """
         language = json_metadata["language"]
         page_dimensions = [
@@ -166,26 +165,3 @@ class FileMetadata:
             page_dimensions=page_dimensions,
             filename=Path(filename),
         )
-
-
-@dataclass
-class OverallFileMetadata:
-    """Metadata for stratigraphy data.
-
-    This class is a list of list of BoreholeMetadata objects. Each inner list corresponds to a
-    single file.
-    """
-
-    filenames: list[str]
-    metadata_per_file: list[list[BoreholeMetadata]] = field(default_factory=list)
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return {
-            filename: [metadata.to_json() for metadata in metadata_list]
-            for filename, metadata_list in zip(self.filenames, self.metadata_per_file, strict=True)
-        }

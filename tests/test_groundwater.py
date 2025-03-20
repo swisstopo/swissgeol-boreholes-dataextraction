@@ -9,7 +9,8 @@ from stratigraphy.evaluation.groundwater_evaluator import (
     GroundwaterMetrics,
     OverallGroundwaterMetrics,
 )
-from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterInDocument
+from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
+from stratigraphy.util.borehole_predictions import BoreholeGroundwaterWithGroundTruth, FileGroundwaterWithGroundTruth
 
 
 @pytest.fixture
@@ -22,6 +23,36 @@ def sample_metrics():
 def groundtruth():
     """Path to the ground truth file."""
     return GroundTruth("example/example_gw_groundtruth.json")
+
+
+@pytest.fixture
+def groundwater_at_2m22() -> dict:
+    """Fixture that returns an Groundwater object (embeded in a FeatureOnPage)."""
+    return FeatureOnPage.from_json(
+        {
+            "depth": 2.22,
+            "date": "2016-04-18",
+            "elevation": 448.07,
+            "page": 1,
+            "rect": [0, 0, 100, 100],
+        },
+        Groundwater,
+    )
+
+
+@pytest.fixture
+def groundwater_at_3m22() -> dict:
+    """Fixture that returns another Groundwater object (embeded in a FeatureOnPage)."""
+    return FeatureOnPage.from_json(
+        {
+            "depth": 3.22,
+            "date": "2016-04-20",
+            "elevation": 447.07,
+            "page": 1,
+            "rect": [0, 0, 100, 100],
+        },
+        Groundwater,
+    )
 
 
 def test_add_groundwater_metrics(sample_metrics):
@@ -63,22 +94,32 @@ def test_groundwater_depth_metrics_to_overall_metrics(sample_metrics):
     assert overall.metrics["file_depth"] == gw_metrics.groundwater_depth_metrics
 
 
-def test_evaluate_with_ground_truth(groundtruth):
+def test_evaluate_with_ground_truth(groundtruth, groundwater_at_2m22, groundwater_at_3m22):
     """Test the evaluate method with available ground truth data."""
-    # Sample groundwater entries
-    groundwater_entries = [
-        GroundwaterInDocument(
-            filename="example_borehole_profile.pdf",
-            groundwater=[
-                FeatureOnPage.from_json(
-                    {"depth": 2.22, "date": "2016-04-18", "elevation": 448.07, "page": 1, "rect": [0, 0, 100, 100]},
-                    Groundwater,
-                )
-            ],
-        )
-    ]
+    # In this test, there is one borehole, with two groundwater measurement for it.
+    groundwater_entries = {
+        "example_borehole_profile.pdf": [GroundwatersInBorehole([groundwater_at_2m22, groundwater_at_3m22])]
+    }
 
-    evaluator = GroundwaterEvaluator(groundwater_entries, groundtruth)
+    # dictionary used to "manually" build the FileGroundwaterWithGroundTruth object
+    pred_to_gt_matching = {"example_borehole_profile.pdf": {0: 0}}
+    evaluator = GroundwaterEvaluator(
+        groundwater_list=[
+            FileGroundwaterWithGroundTruth(
+                filename=filename,
+                boreholes=[
+                    BoreholeGroundwaterWithGroundTruth(
+                        groundwater=groundwaterinborehole,
+                        ground_truth=groundtruth.for_file(filename).get(pred_to_gt_matching[filename][pred_idx])[
+                            "groundwater"
+                        ],
+                    )
+                    for pred_idx, groundwaterinborehole in enumerate(groundwaterinborehole_list)
+                ],
+            )
+            for filename, groundwaterinborehole_list in groundwater_entries.items()
+        ]
+    )
     overall_metrics = evaluator.evaluate()
 
     # Assertions
@@ -88,35 +129,49 @@ def test_evaluate_with_ground_truth(groundtruth):
     assert overall_metrics.groundwater_metrics[0].groundwater_metrics.precision == 1.0
 
 
-def test_evaluate_multiple_entries(groundtruth):
-    """Test the evaluate method with multiple groundwater entries."""
-    # Sample groundwater entries
-    groundwater_entries = [
-        GroundwaterInDocument(
-            filename="example_borehole_profile.pdf",
-            groundwater=[
-                FeatureOnPage.from_json(
-                    {"depth": 2.22, "date": "2016-04-18", "elevation": 448.07, "page": 1, "rect": [0, 0, 100, 100]},
-                    Groundwater,
-                ),
-                FeatureOnPage.from_json(
-                    {"depth": 3.22, "date": "2016-04-20", "elevation": 447.07, "page": 1, "rect": [0, 0, 100, 100]},
-                    Groundwater,
-                ),
-            ],
-        ),
-        GroundwaterInDocument(
-            filename="example_borehole_profile_2.pdf",
-            groundwater=[
-                FeatureOnPage.from_json(
-                    {"depth": 3.22, "date": "2016-04-20", "elevation": 447.07, "page": 1, "rect": [0, 0, 100, 100]},
-                    Groundwater,
-                )
-            ],
-        ),
-    ]
+def test_evaluate_multiple_documents(groundtruth, groundwater_at_2m22, groundwater_at_3m22):
+    """Test the evaluate method with multiple groundwater entries on two documents.
 
-    evaluator = GroundwaterEvaluator(groundwater_entries, groundtruth)
+    On the first document, there is one borehole with two groundwater measurement (like in the previous test).
+    On the second document, there is two boreholes, each with one groundwater measurement. For those boreholes, the
+    matching with the ground truth is 0->1 and 1->0. Meaning that the first borehole of the prediction matches the
+    second entry in the groudtruth file.
+    """
+    # Sample groundwater entries
+    gt_matching_index_example = {0: 0}
+    gt_matching_index_example_2 = {0: 1, 1: 0}
+    evaluator = GroundwaterEvaluator(
+        groundwater_list=[
+            FileGroundwaterWithGroundTruth(
+                filename="example_borehole_profile.pdf",
+                boreholes=[
+                    BoreholeGroundwaterWithGroundTruth(
+                        groundwater=GroundwatersInBorehole([groundwater_at_2m22, groundwater_at_3m22]),
+                        ground_truth=groundtruth.for_file("example_borehole_profile.pdf").get(
+                            gt_matching_index_example[0]
+                        )["groundwater"],
+                    )
+                ],
+            ),
+            FileGroundwaterWithGroundTruth(
+                filename="example_borehole_profile_2.pdf",
+                boreholes=[
+                    BoreholeGroundwaterWithGroundTruth(
+                        groundwater=GroundwatersInBorehole([groundwater_at_2m22]),
+                        ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf").get(
+                            gt_matching_index_example_2[0]
+                        )["groundwater"],
+                    ),
+                    BoreholeGroundwaterWithGroundTruth(
+                        groundwater=GroundwatersInBorehole([groundwater_at_3m22]),
+                        ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf").get(
+                            gt_matching_index_example_2[1]
+                        )["groundwater"],
+                    ),
+                ],
+            ),
+        ]
+    )
     overall_metrics = evaluator.evaluate()
 
     # Assertions
@@ -124,8 +179,8 @@ def test_evaluate_multiple_entries(groundtruth):
     assert overall_metrics.groundwater_metrics[0].filename == "example_borehole_profile.pdf"
     assert overall_metrics.groundwater_metrics[1].filename == "example_borehole_profile_2.pdf"
     assert overall_metrics.groundwater_metrics[0].groundwater_metrics.f1 == 1.0
-    assert overall_metrics.groundwater_metrics[1].groundwater_metrics.tp == 1.0
-    assert overall_metrics.groundwater_metrics[1].groundwater_metrics.fn == 1.0
+    assert overall_metrics.groundwater_metrics[1].groundwater_metrics.tp == 2.0
+    assert overall_metrics.groundwater_metrics[1].groundwater_metrics.fn == 0.0
     assert overall_metrics.groundwater_metrics[1].groundwater_metrics.fp == 0.0
 
 

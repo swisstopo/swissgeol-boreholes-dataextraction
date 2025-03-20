@@ -106,6 +106,8 @@ Alternatively you can replace the `pip install -e '.[all]'` command with `pip in
 
 Adding pip packages can be done by editing the `pyproject.toml` of the project and adding the required package.
 
+If you are using a version of Python newer than 3.12 (e.g. 3.13), you may need to use the command ` python3.12 -m venv env `instead.
+
 ## Run data extraction
 To execute the data extraction pipeline, follow these steps:
 
@@ -119,7 +121,31 @@ source env/bin/activate
 
 2. **Download the borehole profiles, optional**
 
-Use `boreholes-download-profiles` to download the files to be processed from an AWS S3 storage. In order to do so, you need to authenticate with aws first. We recommend to use the aws CLI for that purpose. This step is optional, you can continue with step 3 on your own set of borehole profiles.
+Use `boreholes-download-profiles` to download the files to be processed from an AWS S3 storage. In order to do so, you need to authenticate with aws first. We recommend using the aws CLI for that purpose, or storing your credentials in the ~/.aws configuration files This step is optional, you can continue with step 3 on your own set of borehole profiles.
+
+Alternativelly, you can download the data directly using the AWS CLI:
+```bash 
+brew install awscli
+aws s3 sync s3://stijnvermeeren-boreholes-data ./data
+```
+
+If you choose to use the ~/.aws files, then they should look like this:
+
+**~/.aws/config**
+
+  ```
+  [default]
+  region=eu-central-1
+  output=json
+  ```  
+
+ **~/.aws/credentials**
+
+  ```
+  [default]
+  aws_access_key_id=YOUR_ACCESS_KEY
+  aws_secret_access_key=YOUR_SECRET_KEY
+  ```  
 
 3. **Run the extraction script**
 
@@ -242,6 +268,8 @@ docker build -t borehole-api . -f Dockerfile
 ```bash
 docker build --platform linux/amd64 -t borehole-api:test .
 ```
+
+If docker is not setup yet, you might need to first use `docker login -u <username>` to login to your docker account.
 
 This command will build the Docker image with the tag `borehole-api`.
 
