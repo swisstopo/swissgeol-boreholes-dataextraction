@@ -9,7 +9,7 @@ import mlflow
 from dotenv import load_dotenv
 
 from description_classification import DATAPATH
-from description_classification.classifiers.classifiers import Classifier, DummyClassifier
+from description_classification.classifiers.classifiers import BaselineClassifier, Classifier
 from description_classification.evaluation.evaluate import evaluate
 from description_classification.utils.data_loader import load_data
 
@@ -80,7 +80,8 @@ def main(file_path: Path, out_directory: Path):
     logger.info(f"Loading data from {data_path}")
     layer_descriptions = load_data(data_path)
 
-    classifier: Classifier = DummyClassifier()
+    # classifier: Classifier = DummyClassifier()
+    classifier: Classifier = BaselineClassifier()
     logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
     classifier.classify(layer_descriptions)
 

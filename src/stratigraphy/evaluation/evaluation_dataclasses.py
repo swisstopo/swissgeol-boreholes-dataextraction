@@ -71,8 +71,6 @@ class Metrics(metaclass=abc.ABCMeta):
             f"{feature_name}_precision": self.precision,
             f"{feature_name}_recall": self.recall,
             f"{feature_name}_f1": self.f1,
-            f"{feature_name}_total_predictions": self.total_predictions,
-            f"{feature_name}_total_true": self.total_true,
         }
 
     # TODO: Currently, some other methods for averaging metrics are in the OverallMetrics class.

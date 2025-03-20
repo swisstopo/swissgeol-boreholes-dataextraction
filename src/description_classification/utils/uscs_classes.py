@@ -1,6 +1,9 @@
 """class module."""
 
+import logging
 from enum import Enum, auto
+
+logger = logging.getLogger(__name__)
 
 
 class USCSClasses(Enum):
@@ -45,3 +48,19 @@ class USCSClasses(Enum):
     GW = auto()
     GW_GM = auto()
     MH = auto()
+
+
+def map_most_similar_uscs(uscs_str: str) -> USCSClasses:
+    """Maps the ground truth string to one of the USCSClasses.
+
+    Args:
+        uscs_str (str): the ground truth string
+
+    Returns:
+        USCSClasses: the matching class
+    """
+    for class_ in USCSClasses:
+        if uscs_str.replace("-", "_") == class_.name:
+            return class_
+    logger.warning(f"{uscs_str} does have a matching class, mapping it to {USCSClasses.kA.name} instead.")
+    return USCSClasses.kA  # keine Angabe = no indication

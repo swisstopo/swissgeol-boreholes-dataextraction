@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from description_classification.utils.language_detection import detect_language
-from description_classification.utils.uscs_classes import USCSClasses
+from description_classification.utils.uscs_classes import USCSClasses, map_most_similar_uscs
 from stratigraphy.util.util import read_params
 
 classification_params = read_params("classification_params.yml")
@@ -54,9 +54,6 @@ def load_data(json_path: Path) -> list[LayerInformations]:
                     )
                     continue
                 uscs_class = map_most_similar_uscs(layer["uscs_1"])
-                if not uscs_class:
-                    logger.warning(f"Unknown class: {layer['uscs_1']}, mapping it to None.")
-
                 layer_descriptions.append(
                     LayerInformations(
                         filename,
@@ -70,18 +67,3 @@ def load_data(json_path: Path) -> list[LayerInformations]:
                 )
 
     return layer_descriptions
-
-
-def map_most_similar_uscs(uscs_str: str) -> USCSClasses | None:
-    """Maps the ground truth string to one of the USCSClasses.
-
-    Args:
-        uscs_str (str): the ground truth string
-
-    Returns:
-        USCSClasses: the matching class
-    """
-    for class_ in USCSClasses:
-        if uscs_str.replace("-", "_") == class_.name:
-            return class_
-    return None

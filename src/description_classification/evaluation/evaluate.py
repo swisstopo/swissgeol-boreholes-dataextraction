@@ -22,35 +22,8 @@ classification_params = read_params("classification_params.yml")
 class AllClassificationMetrics:
     """Metrics class."""
 
-    global_metrics: Metrics
-    language_metrics: dict[str:Metrics]
-
-    def __repr__(self):
-        cls = self.__class__.__name__
-        language_metrics_repr = "\n".join(
-            f"  {language}: {metrics}" for language, metrics in self.language_metrics.items()
-        )
-        return f"{cls}(\nglobal_metrics={self.global_metrics}\nlanguage_metrics=\n{{\n{language_metrics_repr}\n}})"
-
-    def to_json_per_class(self) -> dict[str:float]:
-        """Returns the metrics as dict, detailing each classes.
-
-        Returns:
-            dict[str:float]: the dictionary.
-        """
-        return {
-            **{
-                k: v
-                for class_, metrics in self.global_metrics.items()
-                for k, v in metrics.to_json(f"global_{class_.name}").items()
-            },
-            **{
-                k: v
-                for language, metrics_dict in self.language_metrics.items()
-                for class_, metrics in metrics_dict.items()
-                for k, v in metrics.to_json(f"{language}_{class_.name}").items()
-            },
-        }
+    global_metrics: dict[str:Metrics]
+    language_metrics: dict[str : dict[str:Metrics]]
 
     @staticmethod
     def macro_average(metric_list: list["Metrics"]) -> "Metrics":
@@ -75,19 +48,89 @@ class AllClassificationMetrics:
 
         return Metrics(tp=avg_tp, fp=avg_fp, fn=avg_fn)
 
+    @property
+    def num_sample(self) -> int:
+        """Returns the total number of sample.
+
+        Returns:
+            int: the number of sample.
+        """
+        return sum([metrics.tp + metrics.fn for metrics in self.global_metrics.values()])
+
+    @property
+    def per_language_macro_avg_metrics_dict(self) -> dict[str:Metrics]:
+        """Dictionary containing the metrics for each language.
+
+        Returns:
+            dict[str:Metrics]: The dictionary
+        """
+        return {
+            k: v
+            for language, metrics_dict in self.language_metrics.items()
+            for k, v in self.macro_average(metrics_dict.values()).to_json(f"{language}_avg").items()
+        }
+
+    @property
+    def per_class_global_metrics_dict(self) -> dict[str:Metrics]:
+        """Dictionary containing the global metrics detailled for each uscs class.
+
+        Returns:
+            dict[str:Metrics]: The dictionary
+        """
+        return {
+            k: v
+            for class_, metrics in self.global_metrics.items()
+            for k, v in metrics.to_json(f"global_{class_.name}").items()
+        }
+
+    @property
+    def per_class_per_language_metrics_dict(self) -> dict[str:Metrics]:
+        """Dictionary containing the metrics for each language, detailled for each uscs class.
+
+        Returns:
+            dict[str:Metrics]: The dictionary
+        """
+        return {
+            k: v
+            for language, metrics_dict in self.language_metrics.items()
+            for class_, metrics in metrics_dict.items()
+            for k, v in metrics.to_json(f"{language}_{class_.name}").items()
+        }
+
+    @property
+    def num_sample_per_language_dict(self) -> dict[str:int]:
+        """Dictionary containing the number of sample of each language.
+
+        Returns:
+            dict[str:Metrics]: The dictionary
+        """
+        return {
+            f"{language}_num": sum([metrics.tp + metrics.fn for metrics in lauguage_metrics.values()])
+            for language, lauguage_metrics in self.language_metrics.items()
+        }
+
     def to_json(self) -> dict[str:float]:
-        """Returns the metrics as dict, the class are flattened by doing the macro average.
+        """Returns the metrics as dict, the metrics are reduced by taking the macro average across all classes.
 
         Returns:
             dict[str:float]: the dictionary.
         """
         return {
+            "global_num_true": self.num_sample,
             **self.macro_average(self.global_metrics.values()).to_json("global_avg"),
-            **{
-                k: v
-                for language, metrics_dict in self.language_metrics.items()
-                for k, v in self.macro_average(metrics_dict.values()).to_json(f"{language}_avg").items()
-            },
+            **self.per_language_macro_avg_metrics_dict,
+            **self.num_sample_per_language_dict,
+        }
+
+    def to_json_per_class(self) -> dict[str:float]:
+        """Returns the metrics as dict, detailing each classes.
+
+        Returns:
+            dict[str:float]: the dictionary.
+        """
+        return {
+            **self.per_class_global_metrics_dict,
+            **self.per_class_per_language_metrics_dict,
         }
 
 
