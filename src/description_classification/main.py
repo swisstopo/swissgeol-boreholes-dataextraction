@@ -29,6 +29,8 @@ def setup_mlflow_tracking(
     experiment_name: str = "Layer descriptions classification",
 ):
     """Set up MLFlow tracking."""
+    if mlflow.active_run():
+        mlflow.end_run()  # Ensure the previous run is closed
     mlflow.set_experiment(experiment_name)
     mlflow.start_run()
     mlflow.set_tag("json file_path", str(file_path))
@@ -85,8 +87,13 @@ def main(file_path: Path, out_directory: Path):
     logger.info("Evaluating predictions")
     classification_metrics = evaluate(layer_descriptions)
     logger.info(f"classification metrics: {classification_metrics.to_json()}")
+    logger.debug(f"classification metrics per class: {classification_metrics.to_json_per_class()}")
+
+    if mlflow_tracking:
+        mlflow.end_run()
 
 
 if __name__ == "__main__":
     # launch with: python -m src.description_classification.main -f data/geoquat_ground_truth.json
+    # or with: boreholes-classify-descriptions  -f data/geoquat_ground_truth.json
     click_pipeline()

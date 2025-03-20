@@ -66,6 +66,7 @@ boreholes-extract-all = "stratigraphy.main:click_pipeline"
 boreholes-extract-metadata = "stratigraphy.main:click_pipeline_metadata"
 boreholes-download-profiles = "stratigraphy.get_files:download_directory_froms3"
 boreholes-score = "stratigraphy.benchmark.score:main"
+boreholes-classify-descriptions = "description_classification.main:click_pipeline"
 
 [tool.ruff.lint]
 select = [
