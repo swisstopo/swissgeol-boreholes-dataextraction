@@ -346,14 +346,20 @@ def start_pipeline(
             # Add file predictions
             predictions.add_file_predictions(FilePredictions(borehole_predictions_list, file_metadata, filename))
 
-            #TODO: Add an approach that stores each borehole in a separate file for files with multiple boreholes and log csv files in MLFlow
+            #TODO: Add an approach that stores each borehole in a separate file for files with multiple boreholes
             # Add layers to a csv file
             if csv:
-                csv_path = out_directory / f"{Path(filename).stem}.csv"
-                logger.info("Writing CSV predictions to %s", csv_path)
-                csv_file = CsvPredictions(borehole_predictions_list).to_csv()
-                with open(csv_path, "w", encoding="utf8", newline='') as file:
-                    file.write(csv_file)
+                base_path = out_directory / Path(filename).stem
+                csv_list = CsvPredictions(borehole_predictions_list).to_csv()
+
+                for borehole_index, csv_content in enumerate(csv_list):
+                    csv_path = f"{base_path}_{borehole_index}.csv" if len(csv_list) > 1 else f"{base_path}.csv"
+                    logger.info("Writing CSV predictions to %s", csv_path)
+                    with open(csv_path, "w", encoding="utf8", newline='') as file:
+                        file.write(csv_content)
+
+                    if mlflow_tracking:
+                        mlflow.log_artifact(csv_path, "csv")
 
     logger.info("Metadata written to %s", metadata_path)
     with open(metadata_path, "w", encoding="utf8") as file:

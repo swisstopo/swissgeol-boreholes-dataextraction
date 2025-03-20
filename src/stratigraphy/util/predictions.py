@@ -94,8 +94,9 @@ class FilePredictions:
 
 @dataclass
 class CsvPredictions:
-    """A class to output predictions for a single file in a csv format.
+    """A class to represent predictions for a single file in a csv format.
 
+    It is responsible for converting the borehole predictions list elements to a CSV like string.
     """
 
     borehole_predictions_list: list[BoreholePredictions]
@@ -110,19 +111,24 @@ class CsvPredictions:
             string: CSV string representation of the borehole predictions.
         """
 
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(["borehole_index", "layer_index", "from_depth", "to_depth", "material_description"])
+        csv_strings = []
+
         for borehole in self.borehole_predictions_list:
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(["layer_index", "from_depth", "to_depth", "material_description"])
+
             for layer_index, layer in enumerate(borehole.layers_in_borehole.layers):
                 writer.writerow([
-                    borehole.borehole_index,
                     layer_index,
                     layer.depths.start.value if layer.depths.start is not None else None,
                     layer.depths.end.value,
                     layer.material_description.feature.text,
                 ])
-        return output.getvalue()
+
+            csv_strings.append(output.getvalue())
+
+        return csv_strings
 
 
 class BoreholeListBuilder:
