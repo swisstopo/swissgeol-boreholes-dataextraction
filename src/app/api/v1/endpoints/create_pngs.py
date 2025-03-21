@@ -25,6 +25,10 @@ def create_pngs(aws_filename: Path) -> PNGResponse:
     # Get the filename from the path
     filename = aws_filename.stem
 
+    # Clear cache to avoid cache contamination across different files, which can cause incorrect visualizations;
+    # see also https://github.com/swisstopo/swissgeol-boreholes-suite/issues/1935
+    fitz.TOOLS.store_shrink(100)
+
     # Initialize the S3 client
     pdf_document = load_pdf_from_aws(aws_filename)
 
