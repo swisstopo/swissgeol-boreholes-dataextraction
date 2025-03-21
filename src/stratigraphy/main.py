@@ -273,6 +273,7 @@ def start_pipeline(
 
                     # TODO: first match elevation with boreholes more intelligently, then pass the correct value to
                     # the groundwater extraction logic
+                    # probably do after matching
                     terrain_elevation = None
                     if metadata.elevations:
                         if len(metadata.elevations) > borehole_index:

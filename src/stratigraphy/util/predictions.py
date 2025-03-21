@@ -70,6 +70,7 @@ class BoreholeListBuilder:
     def build(self) -> list[BoreholePredictions]:
         """Creates a list of BoreholePredictions after ensuring all lists have the same length."""
         self._extend_length_to_match_boreholes_num_pred()
+        self._match_elements_to_borehole()
 
         return [
             BoreholePredictions(
@@ -121,6 +122,30 @@ class BoreholeListBuilder:
             lst.append(create_new_elem())  # Append copies to match the required length
 
         return lst[:target_length]
+
+    def _match_elements_to_borehole(self):
+        # iterative matching
+        elevation_to_match = self._elevations_list
+
+        matched_borehole_layers = {}
+        while elevation_to_match:
+            for elevation in elevation_to_match:
+                avg_entry_pos = (elevation.rect.top_left + elevation.rect.bottom_right) / 2
+                best_dist = float("inf")
+                # we keep the elevation closest to the current groundwater entry
+                for borehole_layers in self._layers_with_bb_in_document.boreholes_layers_with_bb:
+                    # TODO compute extreme coord of borehole, match smallest
+                    best_match = borehole_layers
+                    dist = avg_entry_pos.distance_to(borehole_layers.rect)
+                    best_dist = dist
+                    if best_dist:
+                        pass
+                    # if dist < best_dist:
+                    #     if not entry.feature.depth and entry.feature.elevation:
+                    #         best_depth = round(terrain_elev.elevation - entry.feature.elevation, 2)
+                    #     if not entry.feature.elevation and entry.feature.depth:
+                    #         best_elev = round(terrain_elev.elevation - entry.feature.depth, 2)
+            matched_borehole_layers.add(best_match)
 
 
 @dataclasses.dataclass
