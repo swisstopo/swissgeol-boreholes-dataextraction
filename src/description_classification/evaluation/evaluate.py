@@ -6,6 +6,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 from description_classification.utils.data_loader import LayerInformations
+from description_classification.utils.uscs_classes import USCSClasses
 from stratigraphy.evaluation.evaluation_dataclasses import Metrics
 from stratigraphy.util.util import read_params
 
@@ -20,10 +21,18 @@ classification_params = read_params("classification_params.yml")
 
 @dataclass
 class AllClassificationMetrics:
-    """Metrics class."""
+    """Stores classification metrics at both global and language-specific levels.
 
-    global_metrics: dict[str:Metrics]
-    language_metrics: dict[str : dict[str:Metrics]]
+    Attributes:
+        global_metrics (dict[USCSClasses, Metrics]): A dictionary containing the classification metrics
+            for each of the USCS classes at a global level.
+        language_metrics (dict[str, dict[USCSClasses, Metrics]]): A dictionary where each key represents
+            a supported language. Each value is another dictionary containing the classification metrics
+            for each of the USCS classes in that language.
+    """
+
+    global_metrics: dict[USCSClasses:Metrics]
+    language_metrics: dict[str : dict[USCSClasses:Metrics]]
 
     @staticmethod
     def macro_average(metric_list: list["Metrics"]) -> "Metrics":

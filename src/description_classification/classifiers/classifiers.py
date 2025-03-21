@@ -52,7 +52,10 @@ class BaselineClassifier:
     def classify(self, layer_descriptions: list[LayerInformations]):
         """Classifies the description of the LayerInformations objects.
 
-        This method will populate the prediction_uscs_class attribute of each object.
+        This method will populate the prediction_uscs_class attribute of each object. The layer's soil description is
+        matched with the description of the USCS class. For example the class SW-SC has for description "sable bien
+        gradué avec argile (SW-SC)" in the classification_params.yml file, so it will try to identify the pattern
+        "sable bien gradué avec argile" in the layer's descriptions.
 
         Args:
             layer_descriptions (list[LayerInformations]): The LayerInformations object
@@ -63,17 +66,27 @@ class BaselineClassifier:
         for layer in layer_descriptions:
             patterns = uscs_patterns[layer.language]
             description = layer.material_description.lower()
-            detected_class = None
+            detected_class: USCSClasses | None = None
+
+            all_matches: dict[USCSClasses:str] = dict()
 
             # Iterate over USCS classes and match with regex
             for class_key, class_keywords in patterns.items():
-                # agressive search, will split by keyword and stop at first keyword match
-                for keyword in re.sub(r"[()]", "", class_keywords).split():  # remove () around class label
-                    if re.search(rf"\b{re.escape(keyword.lower())}\b", description):
-                        detected_class = map_most_similar_uscs(class_key)
-                        break  # Stop at the first match
-                if detected_class:
-                    break
+                uscs_class = map_most_similar_uscs(class_key)
+                # Create a regex pattern without the class name in parenthesis
+                regex_pattern = r"\b" + re.escape(re.sub(r"\(.*?\)", "", class_keywords).strip()) + r"\b"
+
+                # Search for an exact match of the full pattern
+                match = re.search(regex_pattern, description)
+                if match:
+                    matched_text = match.group(0)
+                    all_matches[uscs_class] = matched_text
+
+            longest_match: str | None = None
+            for matched_class, matched_text in all_matches.items():
+                if longest_match is None or len(matched_text.split()) > len(longest_match.split()):
+                    longest_match = matched_text
+                    detected_class = matched_class
 
             # Assign the detected class or default to "keine Angabe" (kA)
             layer.prediction_uscs_class = detected_class if detected_class else USCSClasses.kA
