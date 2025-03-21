@@ -215,6 +215,7 @@ def start_pipeline(
         skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
         draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.
         metadata_path (Path): The path to the metadata file.
+        csv (bool): Whether to generate a CSV output. Defaults to False.
         part (str, optional): The part of the pipeline to run. Defaults to "all".
     """  # noqa: D301
     if mlflow_tracking:
@@ -354,7 +355,7 @@ def start_pipeline(
                 for borehole_index, csv_content in enumerate(csv_list):
                     csv_path = f"{base_path}_{borehole_index}.csv" if len(csv_list) > 1 else f"{base_path}.csv"
                     logger.info("Writing CSV predictions to %s", csv_path)
-                    with open(csv_path, "w", encoding="utf8", newline='') as file:
+                    with open(csv_path, "w", encoding="utf8", newline="") as file:
                         file.write(csv_content)
 
                     if mlflow_tracking:

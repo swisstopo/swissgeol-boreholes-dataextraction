@@ -1,8 +1,8 @@
 """Classes for predictions per PDF file."""
 
+import csv
 import dataclasses
 import io
-import csv
 
 from stratigraphy.metadata.metadata import FileMetadata
 from stratigraphy.util.borehole_predictions import BoreholePredictions
@@ -29,6 +29,7 @@ class FilePredictions:
 
     def to_csv(self) -> dict:
         """Converts the borehole predictions to a a list of CSV format strings.
+
         This method iterates through the list of borehole predictions and writes
         the relevant data (layer index, material description, start depth,
         and end depth) to a CSV string.
@@ -36,7 +37,6 @@ class FilePredictions:
         Returns:
             list: a list of CSV string representation of the borehole predictions.
         """
-
         csv_strings = []
 
         for borehole in self.borehole_predictions_list:
@@ -47,14 +47,18 @@ class FilePredictions:
             for layer_index, layer in enumerate(borehole.layers_in_borehole.layers):
                 start_depth = None if layer.depths is None or layer.depths.start is None else layer.depths.start.value
                 end_depth = None if layer.depths is None or layer.depths.end is None else layer.depths.end.value
-                material_description = None if layer.material_description is None else layer.material_description.feature.text
+                material_description = (
+                    None if layer.material_description is None else layer.material_description.feature.text
+                )
 
-                writer.writerow([
-                    layer_index,
-                    start_depth,
-                    end_depth,
-                    material_description,
-                ])
+                writer.writerow(
+                    [
+                        layer_index,
+                        start_depth,
+                        end_depth,
+                        material_description,
+                    ]
+                )
 
             csv_strings.append(output.getvalue())
 
