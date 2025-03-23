@@ -231,6 +231,10 @@ def start_pipeline(
         draw_directory = out_directory / "draw"
         draw_directory.mkdir(parents=True, exist_ok=True)
 
+    if csv:
+        csv_dir = out_directory / "csv"
+        csv_dir.mkdir(parents=True, exist_ok=True)
+
     # if a file is specified instead of an input directory, copy the file to a temporary directory and work with that.
     if input_directory.is_file():
         root = input_directory.parent
@@ -349,14 +353,13 @@ def start_pipeline(
 
             # Add layers to a csv file
             if csv:
-                base_path = out_directory / Path(filename).stem
-                csv_list = FilePredictions(borehole_predictions_list, file_metadata, filename).to_csv()
+                base_path = csv_dir / Path(filename).stem
 
-                for borehole_index, csv_content in enumerate(csv_list):
-                    csv_path = f"{base_path}_{borehole_index}.csv" if len(csv_list) > 1 else f"{base_path}.csv"
+                for index, borehole in enumerate(borehole_predictions_list):
+                    csv_path = f"{base_path}_{index}.csv" if len(borehole_predictions_list) > 1 else f"{base_path}.csv"
                     logger.info("Writing CSV predictions to %s", csv_path)
                     with open(csv_path, "w", encoding="utf8", newline="") as file:
-                        file.write(csv_content)
+                        file.write(borehole.to_csv())
 
                     if mlflow_tracking:
                         mlflow.log_artifact(csv_path, "csv")
