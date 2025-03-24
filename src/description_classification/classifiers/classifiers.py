@@ -63,30 +63,69 @@ class BaselineClassifier:
         """
         uscs_patterns = classification_params["uscs_patterns"]
 
+        # Create a stemming function that takes predefined suffix elements for a specific language and stemms all the words
+        # We ensure that the word is long enough by checking if the length is greater than the suffix length + 2
+        suffix_replacements = {
+        "de": [("er", ""), ("en", ""), ("es", ""), ("e", ""), ("s", "")],
+        "fr": [("s", ""), ("x", ""), ("aux", "al"), ("eux", "eu"), ("ers", "er")]
+        }
+
+        def simple_stem(word: str, language: str) -> str:
+            """Simple stemming function to handle common declensions"""
+            word = word.lower()
+            if language in suffix_replacements:
+                for suffix, replacement in suffix_replacements[language]:
+                    if word.endswith(suffix) and len(word) > len(suffix) + 2:  
+                        return word[:-len(suffix)] + replacement
+            return word
+
         for layer in layer_descriptions:
             patterns = uscs_patterns[layer.language]
             description = layer.material_description.lower()
-            detected_class: USCSClasses | None = None
+            language = layer.language
 
-            all_matches: dict[USCSClasses:str] = dict()
+            # Tokenize the description into separate words and stem them
+            description_tokens = re.findall(r'\b\w+\b', description.lower())
+            stemmed_description_tokens = [simple_stem(token, language) for token in description_tokens]
 
-            # Iterate over USCS classes and match with regex
+            matches = []
+
             for class_key, class_keywords in patterns.items():
                 uscs_class = map_most_similar_uscs(class_key)
                 # Create a regex pattern without the class name in parenthesis
-                regex_pattern = r"\b" + re.escape(re.sub(r"\(.*?\)", "", class_keywords).strip()) + r"\b"
+                clean_pattern = re.sub(r"\(.*?\)", "", class_keywords).strip().lower()
 
-                # Search for an exact match of the full pattern
-                match = re.search(regex_pattern, description)
-                if match:
-                    matched_text = match.group(0)
-                    all_matches[uscs_class] = matched_text
+                # Tokenize the pattern into separate words and stem them
+                pattern_tokens = re.findall(r'\b\w+\b', clean_pattern)
+                stemmed_pattern_tokens = [simple_stem(token, language) for token in pattern_tokens]
 
-            longest_match: str | None = None
-            for matched_class, matched_text in all_matches.items():
-                if longest_match is None or len(matched_text.split()) > len(longest_match.split()):
-                    longest_match = matched_text
-                    detected_class = matched_class
+                matched_tokens = 0
+                matched_words = []
 
-            # Assign the detected class or default to "keine Angabe" (kA)
-            layer.prediction_uscs_class = detected_class if detected_class else USCSClasses.kA
+                for p_token in stemmed_pattern_tokens:
+                    if p_token in stemmed_description_tokens:
+                        matched_tokens += 1
+                        idx = stemmed_description_tokens.index(p_token)
+                        matched_words.append(description_tokens[idx])
+
+                # Calculate coverage score
+                if pattern_tokens:
+                    coverage = matched_tokens / len(pattern_tokens)
+
+                    # Only consider matches with significant coverage At least 50% of pattern
+                    if coverage >= 0.5:
+                        matches.append({
+                            'class': uscs_class,
+                            'coverage': coverage,
+                            'complexity': len(pattern_tokens),
+                            'matched_words': matched_words
+                        })
+
+            # Sort matches by coverage (primary) and complexity (secondary)
+            sorted_matches = sorted(matches, key=lambda x: (x['coverage'], x['complexity']), reverse=True)
+
+            # Assign the best match or default to "keine Angabe" (kA)
+            if sorted_matches:
+                layer.prediction_uscs_class = sorted_matches[0]['class']
+            else:
+                layer.prediction_uscs_class = USCSClasses.kA
