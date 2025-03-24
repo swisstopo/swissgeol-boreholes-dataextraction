@@ -105,6 +105,12 @@ class Groundwater(ExtractedFeature):
             "elevation": self.elevation,
         }
 
+    def set_elevation_info(self, terrain_elevation):
+        if self.depth is None:  # if was not already set
+            self.depth = round(terrain_elevation - self.elevation, 2)
+        if self.elevation is None:  # if was not already set
+            self.elevation = round(terrain_elevation - self.depth, 2)
+
 
 @dataclass
 class GroundwatersInBorehole:
@@ -131,6 +137,10 @@ class GroundwatersInBorehole:
             GroundwatersInBorehole: the GroundwatersInBorehole object
         """
         return cls([FeatureOnPage.from_json(gw_data, Groundwater) for gw_data in json_object])
+
+    def set_elevation_infos(self, terrain_elevation):
+        for entry in self.groundwater_feature_list:
+            entry.feature.set_elevation_info(terrain_elevation)
 
 
 @dataclass

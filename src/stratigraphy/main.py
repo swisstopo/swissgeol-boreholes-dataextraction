@@ -271,15 +271,10 @@ def start_pipeline(
                     # pages, requiring multiple BoundingBoxes, one for each page.
                     material_description_bbox = extracted_borehole.bounding_boxes[0].material_description_bbox
 
-                    # TODO: first match elevation with boreholes more intelligently, then pass the correct value to
-                    # the groundwater extraction logic
-                    # probably do after matching
                     terrain_elevation = None
-                    if metadata.elevations:
-                        if len(metadata.elevations) > borehole_index:
-                            terrain_elevation = metadata.elevations[borehole_index]
-                        else:
-                            terrain_elevation = metadata.elevations[0]
+                    if metadata.elevations and len(metadata.elevations) == 1:
+                        # only one elevation found, can set it during extraction phase
+                        terrain_elevation = metadata.elevations[0]
 
                     groundwater_entries_near_bbox = GroundwaterLevelExtractor.near_material_description(
                         document=doc,
@@ -333,6 +328,9 @@ def start_pipeline(
                 elevations_list=metadata.elevations,
                 coordinates_list=metadata.coordinates,
             ).build()
+            # now that the matching is done, the depths of groundwater can be set if multiple elevations were found
+            for borehole in borehole_predictions_list:
+                borehole.set_groundwater_elevation_infos()
 
             # Add file predictions
             predictions.add_file_predictions(FilePredictions(borehole_predictions_list, file_metadata, filename))
