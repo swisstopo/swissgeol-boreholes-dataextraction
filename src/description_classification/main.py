@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 def setup_mlflow_tracking(
     file_path: Path,
     out_directory: Path,
+    file_subset_directory: Path,
     experiment_name: str = "Layer descriptions classification",
 ):
     """Set up MLFlow tracking."""
@@ -35,6 +36,7 @@ def setup_mlflow_tracking(
     mlflow.start_run()
     mlflow.set_tag("json file_path", str(file_path))
     mlflow.set_tag("out_directory", str(out_directory))
+    mlflow.set_tag("file_subset_directory", str(file_subset_directory))
 
 
 def common_options(f):
@@ -53,32 +55,36 @@ def common_options(f):
         default=DATAPATH / "output_description_classification",
         help="Path to the output directory.",
     )(f)
+    f = click.option(
+        "-s",
+        "--file-subset-directory",
+        type=click.Path(path_type=Path),
+        default=DATAPATH / "geoquat" / "validation",
+        help="Path to the directory containing the file whose names are used.",
+    )(f)
     return f
 
 
 @click.command()
 @common_options
-def click_pipeline(
-    file_path: Path,
-    out_directory: Path,
-):
+def click_pipeline(file_path: Path, out_directory: Path, file_subset_directory: Path):
     """Run the description classification pipeline."""
-    main(file_path, out_directory)
+    main(file_path, out_directory, file_subset_directory)
 
 
-def main(file_path: Path, out_directory: Path):
+def main(file_path: Path, out_directory: Path, file_subset_directory: Path):
     """Main pipeline to classify the layer's soil descriptions.
 
     Args:
         file_path (Path): Path to the ground truth json file.
         out_directory (Path): Path to output directory
+        file_subset_directory (Path): Path to the directory containing the file whose names are used.
     """
     if mlflow_tracking:
-        setup_mlflow_tracking(file_path, out_directory)
+        setup_mlflow_tracking(file_path, out_directory, file_subset_directory)
 
-    data_path = Path("data/geoquat_ground_truth.json")
-    logger.info(f"Loading data from {data_path}")
-    layer_descriptions = load_data(data_path)
+    logger.info(f"Loading data from {file_path}")
+    layer_descriptions = load_data(file_path, file_subset_directory)
 
     # classifier: Classifier = DummyClassifier()
     classifier: Classifier = BaselineClassifier()
