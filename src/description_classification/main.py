@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from description_classification import DATAPATH
 from description_classification.classifiers.classifiers import BaselineClassifier, Classifier
 from description_classification.evaluation.evaluate import evaluate
-from description_classification.utils.data_loader import load_data
+from description_classification.utils.data_loader import load_data, write_predictions
 
 load_dotenv()
 
@@ -71,7 +71,7 @@ def main(file_path: Path, out_directory: Path):
 
     Args:
         file_path (Path): Path to the ground truth json file.
-        out_directory (Path): Path to output directory (not used yet)
+        out_directory (Path): Path to output directory
     """
     if mlflow_tracking:
         setup_mlflow_tracking(file_path, out_directory)
@@ -84,6 +84,8 @@ def main(file_path: Path, out_directory: Path):
     classifier: Classifier = BaselineClassifier()
     logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
     classifier.classify(layer_descriptions)
+
+    write_predictions(layer_descriptions, out_directory)
 
     logger.info("Evaluating predictions")
     classification_metrics = evaluate(layer_descriptions)
