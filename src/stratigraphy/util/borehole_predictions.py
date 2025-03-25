@@ -1,6 +1,8 @@
 """Classes for the predictions per borehole, and for associating them with ground truth data."""
 
+import csv
 import dataclasses
+import io
 
 from stratigraphy.depths_materials_column_pairs.bounding_boxes import PageBoundingBoxes
 from stratigraphy.groundwater.groundwater_extraction import GroundwatersInBorehole
@@ -32,6 +34,35 @@ class BoreholePredictions:
             "bounding_boxes": [bboxes.to_json() for bboxes in self.bounding_boxes],
             "groundwater": self.groundwater_in_borehole.to_json() if self.groundwater_in_borehole is not None else [],
         }
+
+    def to_csv(self) -> str:
+        """Converts borehole layer data to CSV format.
+
+        This method generates a CSV string containing layer data with
+        layer index, start depth, end depth and material description.
+
+        Returns:
+            str: CSV string representation of borehole predictions.
+        """
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["layer_index", "from_depth", "to_depth", "material_description"])
+
+        for layer_index, layer in enumerate(self.layers_in_borehole.layers):
+            start_depth = layer.depths.start.value if layer.depths and layer.depths.start else None
+            end_depth = layer.depths.end.value if layer.depths and layer.depths.end else None
+            material_description = layer.material_description.feature.text if layer.material_description else None
+
+            writer.writerow(
+                [
+                    layer_index,
+                    start_depth,
+                    end_depth,
+                    material_description,
+                ]
+            )
+
+        return output.getvalue()
 
     @classmethod
     def from_json(cls, json_object, file_name) -> "BoreholePredictions":

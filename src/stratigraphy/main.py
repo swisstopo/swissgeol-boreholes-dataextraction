@@ -94,6 +94,13 @@ def common_options(f):
         default=False,
         help="Whether to draw lines on pdf pages. Defaults to False.",
     )(f)
+    f = click.option(
+        "-c",
+        "--csv",
+        is_flag=True,
+        default=False,
+        help="Whether to generate CSV output. Defaults to False.",
+    )(f)
     return f
 
 
@@ -110,6 +117,7 @@ def click_pipeline(
     metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
+    csv: bool = False,
     part: str = "all",
 ):
     """Run the boreholes data extraction pipeline."""
@@ -121,6 +129,7 @@ def click_pipeline(
         metadata_path=metadata_path,
         skip_draw_predictions=skip_draw_predictions,
         draw_lines=draw_lines,
+        csv=csv,
         part=part,
     )
 
@@ -186,6 +195,7 @@ def start_pipeline(
     metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
+    csv: bool = False,
     part: str = "all",
 ):
     """Run the boreholes data extraction pipeline.
@@ -205,6 +215,7 @@ def start_pipeline(
         skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
         draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.
         metadata_path (Path): The path to the metadata file.
+        csv (bool): Whether to generate a CSV output. Defaults to False.
         part (str, optional): The part of the pipeline to run. Defaults to "all".
     """  # noqa: D301
     if mlflow_tracking:
@@ -219,6 +230,10 @@ def start_pipeline(
         # check if directories exist and create them when necessary
         draw_directory = out_directory / "draw"
         draw_directory.mkdir(parents=True, exist_ok=True)
+
+    if csv:
+        csv_dir = out_directory / "csv"
+        csv_dir.mkdir(parents=True, exist_ok=True)
 
     # if a file is specified instead of an input directory, copy the file to a temporary directory and work with that.
     if input_directory.is_file():
@@ -335,6 +350,19 @@ def start_pipeline(
 
             # Add file predictions
             predictions.add_file_predictions(FilePredictions(borehole_predictions_list, file_metadata, filename))
+
+            # Add layers to a csv file
+            if csv:
+                base_path = csv_dir / Path(filename).stem
+
+                for index, borehole in enumerate(borehole_predictions_list):
+                    csv_path = f"{base_path}_{index}.csv" if len(borehole_predictions_list) > 1 else f"{base_path}.csv"
+                    logger.info("Writing CSV predictions to %s", csv_path)
+                    with open(csv_path, "w", encoding="utf8", newline="") as file:
+                        file.write(borehole.to_csv())
+
+                    if mlflow_tracking:
+                        mlflow.log_artifact(csv_path, "csv")
 
     logger.info("Metadata written to %s", metadata_path)
     with open(metadata_path, "w", encoding="utf8") as file:
