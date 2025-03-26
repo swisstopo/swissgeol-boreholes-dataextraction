@@ -115,4 +115,4 @@ def write_predictions(layers_with_predictions: list[LayerInformations], out_dir:
         )
 
     with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(output_data, f, ensure_ascii=False)
+        json.dump(output_data, f, ensure_ascii=False, indent=4)

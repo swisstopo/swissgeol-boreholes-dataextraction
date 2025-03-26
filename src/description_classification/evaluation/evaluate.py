@@ -58,15 +58,6 @@ class AllClassificationMetrics:
         return Metrics(tp=avg_tp, fp=avg_fp, fn=avg_fn)
 
     @property
-    def num_sample(self) -> int:
-        """Returns the total number of sample.
-
-        Returns:
-            int: the number of sample.
-        """
-        return sum([metrics.tp + metrics.fn for metrics in self.global_metrics.values()])
-
-    @property
     def per_language_macro_avg_metrics_dict(self) -> dict[str:Metrics]:
         """Dictionary containing the metrics for each language.
 
@@ -106,18 +97,6 @@ class AllClassificationMetrics:
             for k, v in metrics.to_json(f"{language}_{class_.name}").items()
         }
 
-    @property
-    def num_sample_per_language_dict(self) -> dict[str:int]:
-        """Dictionary containing the number of sample of each language.
-
-        Returns:
-            dict[str:Metrics]: The dictionary
-        """
-        return {
-            f"{language}_num": sum([metrics.tp + metrics.fn for metrics in lauguage_metrics.values()])
-            for language, lauguage_metrics in self.language_metrics.items()
-        }
-
     def to_json(self) -> dict[str:float]:
         """Returns the metrics as dict, the metrics are reduced by taking the macro average across all classes.
 
@@ -125,10 +104,8 @@ class AllClassificationMetrics:
             dict[str:float]: the dictionary.
         """
         return {
-            "global_num_true": self.num_sample,
             **self.macro_average(self.global_metrics.values()).to_json("global_avg"),
             **self.per_language_macro_avg_metrics_dict,
-            **self.num_sample_per_language_dict,
         }
 
     def to_json_per_class(self) -> dict[str:float]:
@@ -143,11 +120,12 @@ class AllClassificationMetrics:
         }
 
 
-def evaluate(layer_descriptions: list[LayerInformations]) -> AllClassificationMetrics:
+def evaluate(layer_descriptions: list[LayerInformations], log_per_class: bool = False) -> AllClassificationMetrics:
     """Evaluates the predictions of the LayerInformations objects against the ground truth.
 
     Args:
         layer_descriptions (list[LayerDescriptionWithGroundTruth]): the LayerInformations objects
+        log_per_class (bool, optional): whether to log per-class metrics. Defaults to False.
 
     Returns:
         AllClassificationMetrics: the holder for the metrics
@@ -169,15 +147,14 @@ def evaluate(layer_descriptions: list[LayerInformations]) -> AllClassificationMe
     all_classification_metrics = AllClassificationMetrics(global_metrics, language_metrics)
 
     if mlflow_tracking:
-        # turn the flag to True to log the metric details for each class
-        log_metrics_to_mlflow(all_classification_metrics, log_per_class=True)
+        log_metrics_to_mlflow(all_classification_metrics, log_per_class=log_per_class)
         logger.info("Logging metrics to MLFlow")
+
     return all_classification_metrics
 
 
-def per_class_metrics(predictions: list[str], ground_truth: list[str]) -> dict[str, Metrics]:
-    """Compute TP, FP, FN per class.
-
+def per_class_metrics(predictions: list[USCSClasses], ground_truth: list[USCSClasses]) -> dict[USCSClasses, Metrics]:
+    """Compute per-class classification metrics.
     Args:
         predictions (List[str]): List of predicted class labels.
         ground_truth (List[str]): List of actual class labels.
@@ -185,25 +162,26 @@ def per_class_metrics(predictions: list[str], ground_truth: list[str]) -> dict[s
     Returns:
         Dict[str, Metrics]: A dictionary mapping each class to its TP, FP, FN.
     """
-    classes = set(predictions) | set(ground_truth)  # Get all unique classes
-    pred_counter = Counter(predictions)
-    gt_counter = Counter(ground_truth)
-
+    all_classes = set(predictions) | set(ground_truth)
     metrics_per_class = {}
-    for cls in classes:
-        tp = min(pred_counter[cls], gt_counter[cls])  # Intersection
-        fp = pred_counter[cls] - tp
-        fn = gt_counter[cls] - tp
+
+    for cls in all_classes:
+        tp = sum(1 for pred, gt in zip(predictions, ground_truth) if pred == gt == cls)
+        fp = sum(1 for pred, gt in zip(predictions, ground_truth) if pred == cls and gt != cls)
+        fn = sum(1 for pred, gt in zip(predictions, ground_truth) if pred != cls and gt == cls)
+
         metrics_per_class[cls] = Metrics(tp=tp, fp=fp, fn=fn)
 
     return metrics_per_class
 
 
 def log_metrics_to_mlflow(all_classification_metrics: AllClassificationMetrics, log_per_class=False):
-    """Log metrics to MFlow."""
+    """Log metrics to MLFlow with error handling."""
+    # Log overall metrics
     for name, value in all_classification_metrics.to_json().items():
         mlflow.log_metric(name, value)
-    if not log_per_class:
-        return
-    for name, metrics in all_classification_metrics.to_json_per_class().items():
-        mlflow.log_metric(name, metrics)
+
+    # Log per-class metrics if requested
+    if log_per_class:
+        for name, value in all_classification_metrics.to_json_per_class().items():
+            mlflow.log_metric(name, value)

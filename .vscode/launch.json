@@ -44,6 +44,18 @@
             "python": "${workspaceFolder}/swisstopo/bin/python3",
         },
         {
+            "name": "Python: Run boreholes-classify-descriptions",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.description_classification.main",
+            "args": [
+                "-f", "data/geoquat_ground_truth.json",
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "${workspaceFolder}/swisstopo/bin/python3",
+        },
+        {
             "name": "API",
             "type": "debugpy",
             "request": "launch",

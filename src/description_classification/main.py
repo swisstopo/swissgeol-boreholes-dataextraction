@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 
 import click
-import mlflow
 from dotenv import load_dotenv
 
 from description_classification import DATAPATH
@@ -62,17 +61,24 @@ def common_options(f):
         default=DATAPATH / "geoquat" / "validation",
         help="Path to the directory containing the file whose names are used.",
     )(f)
+    f = click.option(
+        "-l",
+        "--log-per-class",
+        is_flag=True,
+        default=False,
+        help="Log classification metrics per class.",
+    )(f)
     return f
 
 
 @click.command()
 @common_options
-def click_pipeline(file_path: Path, out_directory: Path, file_subset_directory: Path):
+def click_pipeline(file_path: Path, out_directory: Path, file_subset_directory: Path, log_per_class: bool = False):
     """Run the description classification pipeline."""
-    main(file_path, out_directory, file_subset_directory)
+    main(file_path, out_directory, file_subset_directory, log_per_class)
 
 
-def main(file_path: Path, out_directory: Path, file_subset_directory: Path):
+def main(file_path: Path, out_directory: Path, file_subset_directory: Path, log_per_class: bool = False):
     """Main pipeline to classify the layer's soil descriptions.
 
     Args:
@@ -86,15 +92,33 @@ def main(file_path: Path, out_directory: Path, file_subset_directory: Path):
     logger.info(f"Loading data from {file_path}")
     layer_descriptions = load_data(file_path, file_subset_directory)
 
-    # classifier: Classifier = DummyClassifier()
     classifier: Classifier = BaselineClassifier()
     logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
     classifier.classify(layer_descriptions)
 
     write_predictions(layer_descriptions, out_directory)
 
+    if mlflow_tracking:
+        # Log dataset statistics
+        mlflow.log_param("dataset_size", len(layer_descriptions))
+
+        # Log language distribution
+        language_counts = {}
+        for layer in layer_descriptions:
+            language = layer.language
+            language_counts[language] = language_counts.get(language, 0) + 1
+        for language, count in language_counts.items():
+            mlflow.log_param(f"language_{language}_count", count)
+
+        # Log model name
+        mlflow.log_param("classifier_type", classifier.__class__.__name__)
+
+        # Log input data and output predictions
+        mlflow.log_artifact(str(file_path), "input_data")
+        mlflow.log_artifact(f"{out_directory}/uscs_class_predictions.json", "predictions_json")
+
     logger.info("Evaluating predictions")
-    classification_metrics = evaluate(layer_descriptions)
+    classification_metrics = evaluate(layer_descriptions, log_per_class=log_per_class)
     logger.info(f"classification metrics: {classification_metrics.to_json()}")
     logger.debug(f"classification metrics per class: {classification_metrics.to_json_per_class()}")
 
