@@ -43,24 +43,6 @@ class Metrics(metaclass=abc.ABCMeta):
         recall = self.recall
         return 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
 
-    @property
-    def total_predictions(self) -> int:
-        """Returns the total number of prediction.
-
-        Returns:
-            int: the total number of predictions
-        """
-        return self.tp + self.fp
-
-    @property
-    def total_true(self) -> int:
-        """Returns the total number of prediction.
-
-        Returns:
-            int: the total number of predictions
-        """
-        return self.tp + self.fn
-
     def to_json(self, feature_name) -> dict:
         """Converts the object to a dictionary.
 
