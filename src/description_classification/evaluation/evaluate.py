@@ -2,7 +2,6 @@
 
 import logging
 import os
-from collections import Counter
 from dataclasses import dataclass
 
 from description_classification.utils.data_loader import LayerInformations
@@ -155,6 +154,7 @@ def evaluate(layer_descriptions: list[LayerInformations], log_per_class: bool = 
 
 def per_class_metrics(predictions: list[USCSClasses], ground_truth: list[USCSClasses]) -> dict[USCSClasses, Metrics]:
     """Compute per-class classification metrics.
+
     Args:
         predictions (List[str]): List of predicted class labels.
         ground_truth (List[str]): List of actual class labels.
@@ -166,9 +166,9 @@ def per_class_metrics(predictions: list[USCSClasses], ground_truth: list[USCSCla
     metrics_per_class = {}
 
     for cls in all_classes:
-        tp = sum(1 for pred, gt in zip(predictions, ground_truth) if pred == gt == cls)
-        fp = sum(1 for pred, gt in zip(predictions, ground_truth) if pred == cls and gt != cls)
-        fn = sum(1 for pred, gt in zip(predictions, ground_truth) if pred != cls and gt == cls)
+        tp = sum(1 for pred, gt in zip(predictions, ground_truth, strict=False) if pred == gt == cls)
+        fp = sum(1 for pred, gt in zip(predictions, ground_truth, strict=False) if pred == cls and gt != cls)
+        fn = sum(1 for pred, gt in zip(predictions, ground_truth, strict=False) if pred != cls and gt == cls)
 
         metrics_per_class[cls] = Metrics(tp=tp, fp=fp, fn=fn)
 
