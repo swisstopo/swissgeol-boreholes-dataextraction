@@ -132,8 +132,7 @@ class BoreholeListBuilder:
     ) -> dict[int, int]:
         """Matches extracted elements to boreholes.
 
-        This is done by minimizing the total sum of the distances from the elements to the coresponding layers.
-
+        This is done by minimizing the total sum of the distances from the elements to the corresponding layers.
         Args:
             element_list (list[FeatureOnPage  |  None  |  list[FeatureOnPage]]): list of element to match
 
