@@ -2,6 +2,7 @@
 
 import json
 import logging
+from collections import Counter
 from dataclasses import dataclass
 from os import listdir
 from os.path import isfile, join
@@ -74,6 +75,19 @@ def load_data(json_path: Path, file_subset_directory: Path) -> list[LayerInforma
                 )
 
     return layer_descriptions
+
+
+def get_data_language_count(layer_descriptions: list[LayerInformations]) -> dict[str:int]:
+    """Returns the count of sample for each language.
+
+    Args:
+        layer_descriptions (list[LayerInformations]): All the layers.
+
+    Returns:
+        dict[str:int]: the count for each language.
+    """
+    language_counts = dict(Counter(layer.language for layer in layer_descriptions))
+    return language_counts
 
 
 def write_predictions(layers_with_predictions: list[LayerInformations], out_dir: Path):
