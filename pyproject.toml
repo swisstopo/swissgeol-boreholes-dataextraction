@@ -95,3 +95,9 @@ line-length = 119
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:.*Swig.*has no __module__ attribute:DeprecationWarning",
+    "ignore:datetime.datetime.utcnow:DeprecationWarning:botocore"
+]

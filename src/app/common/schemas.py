@@ -13,7 +13,7 @@ from enum import Enum
 from pathlib import Path
 
 import fitz
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def validate_filename(value: str) -> str:
@@ -38,16 +38,13 @@ class PNGRequest(BaseModel):
 
     filename: Path  # This will ensure the filename is a Path object
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)  # This allows using non-standard types like Path
+
     @field_validator("filename", mode="before")
     @classmethod
     def validate_filename(cls, value: str) -> str:
         """Ensure the filename is not empty."""
         return validate_filename(value)
-
-    class Config:
-        """Make to allow using non-standard types like Path."""
-
-        arbitrary_types_allowed: bool = True  # This allows using non-standard types like Path
 
 
 class PNGResponse(BaseModel):
@@ -61,7 +58,13 @@ class PNGResponse(BaseModel):
         ...,
         description="""List of unique identifiers (keys) for the generated PNG files stored in the S3 bucket. Each key 
         allows access to a specific file within the bucket.""",
-        example=["dataextraction/file1-1.png", "dataextraction/file1-2.png", "dataextraction/file1-3.png"],
+    )
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "keys": ["dataextraction/file1-1.png", "dataextraction/file1-2.png", "dataextraction/file1-3.png"]
+            },
+        }
     )
 
 
@@ -90,26 +93,24 @@ class BoundingBox(BaseModel):
         ...,
         description="""The x-coordinate of the top-left corner of the bounding box. This value marks the 
         horizontal starting point of the box.""",
-        example=0.0,
     )
     y0: float = Field(
         ...,
         description="""The y-coordinate of the top-left corner of the bounding box. This value marks the vertical 
         starting point of the box.""",
-        example=0.0,
     )
     x1: float = Field(
         ...,
         description="""The x-coordinate of the bottom-right corner of the bounding box. This value marks the 
         horizontal endpoint of the box.""",
-        example=100.0,
     )
     y1: float = Field(
         ...,
         description="""The y-coordinate of the bottom-right corner of the bounding box. This value marks the vertical 
         endpoint of the box.""",
-        example=100.0,
     )
+
+    model_config = ConfigDict(json_schema_extra={"example": {"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0}})
 
     @field_validator("x0", "y0", "x1", "y1")
     @classmethod
@@ -177,21 +178,19 @@ class Coordinates(BaseModel):
     """
 
     east: float = Field(
-        ...,
-        description="""Easting coordinate. The value should be in the units of the specified projection system.""",
-        example=1.0,
+        ..., description="""Easting coordinate. The value should be in the units of the specified projection system."""
     )
     north: float = Field(
         ...,
         description="""Northing coordinate. The value should be in the units of the specified projection system.""",
-        example=2.0,
     )
     projection: str = Field(
         ...,
         description="""Projection system used to reference the coordinates. This defines the coordinate reference
         system, such as 'LV95' for Swiss coordinate systems.""",
-        example="LV95",
     )
+
+    model_config = ConfigDict(json_schema_extra={"example": {"east": 1.0, "north": 2.0, "projection": "LV95"}})
 
 
 class BoundingBoxesRequest(ABC, BaseModel):
@@ -215,14 +214,15 @@ class BoundingBoxesRequest(ABC, BaseModel):
         ...,
         description="""Path to the input PDF document file that contains the data to be extracted. This should be
         a valid file path, and the file should be accessible to the API.""",
-        example=Path("document.pdf"),
     )
+
     page_number: int = Field(
         ...,
         description="""Page number within the document where the extraction is to be performed. This is a 1-based 
         index (e.g., 1 for the first page), applicable for multi-page files like PDFs.""",
-        example=1,
     )
+
+    model_config = ConfigDict(json_schema_extra={"example": {"filename": str(Path("1007.pdf")), "page_number": 1}})
 
     @field_validator("filename", mode="before")
     @classmethod
@@ -238,23 +238,23 @@ class BoundingBoxesRequest(ABC, BaseModel):
             raise ValueError("Page number must be a positive integer")
         return v
 
-    class Config:
-        """Make it possible to define an example for the entire request model in the Swagger UI.
-
-        The schema_extra attribute inside the Config class allows you to define a complete
-        example for the entire request model.
-        """
-
-        json_schema_extra = {"example": {"filename": "10012.pdf", "page_number": 1}}
-
 
 class BoundingBoxesResponse(BaseModel):
     """Response schema for the `bounding_boxes` endpoint, representing the bounding boxes of words on the page."""
 
     bounding_boxes: list[BoundingBox] = Field(
-        ...,
-        description="""List of bounding boxes for all words that are found on the requested page.""",
-        example=[{"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0}, {"x0": 150.0, "y0": 20.0, "x1": 220.0, "y1": 40.0}],
+        ..., description="""List of bounding boxes for all words that are found on the requested page."""
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "bounding_boxes": [
+                    {"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0},
+                    {"x0": 150.0, "y0": 20.0, "x1": 220.0, "y1": 40.0},
+                ]
+            }
+        }
     )
 
 
@@ -296,13 +296,11 @@ class ExtractDataRequest(ABC, BaseModel):
         ...,
         description="""Path to the input PDF document file that contains the data to be extracted. This should be
         a valid file path, and the file should be accessible to the API.""",
-        example=Path("document.pdf"),
     )
     page_number: int = Field(
         ...,
         description="""Page number within the document where the extraction is to be performed. This is a 1-based 
         index (e.g., 1 for the first page), applicable for multi-page files like PDFs.""",
-        example=1,
     )
     bbox: BoundingBox = Field(
         ...,
@@ -311,13 +309,22 @@ class ExtractDataRequest(ABC, BaseModel):
         right and y increases downward. This box should be provided in PNG coordinates, and any 
         transformations to PDF coordinates are managed internally.
         """,
-        example={"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0},
     )
     format: FormatTypes = Field(
         ...,
         description="""Specifies the desired format for extracted data, allowing for options like `coordinates` or 
         other defined `FormatTypes` values. This dictates the structure of the output returned by the API.""",
-        example=FormatTypes.COORDINATES.value,
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "filename": "1007.pdf",
+                "page_number": 1,
+                "bbox": {"x0": 0.0, "y0": 0.0, "x1": 200.0, "y1": 200.0},
+                "format": FormatTypes.COORDINATES.value,  # Adjust as needed
+            }
+        }
     )
 
     @field_validator("filename", mode="before")
@@ -342,22 +349,6 @@ class ExtractDataRequest(ABC, BaseModel):
             raise ValueError(f"Invalid format type: {v}")
         return v
 
-    class Config:
-        """Make it possible to define an example for the entire request model in the Swagger UI.
-
-        The schema_extra attribute inside the Config class allows you to define a complete
-        example for the entire request model.
-        """
-
-        json_schema_extra = {
-            "example": {
-                "filename": "10012.pdf",
-                "page_number": 1,
-                "bbox": {"x0": 0.0, "y0": 0.0, "x1": 200.0, "y1": 200.0},
-                "format": "coordinates",  # Adjust this to match your actual FormatTypes
-            }
-        }
-
 
 class ExtractDataResponse(ABC, BaseModel):
     """Base response schema for the `extract_data` endpoint, representing the extracted data's bounding box.
@@ -370,7 +361,10 @@ class ExtractDataResponse(ABC, BaseModel):
         ...,
         description="""Bounding box coordinates that define the area within the document where data was extracted.
         The box is specified in PNG coordinates, with the origin at the top-left corner (0,0).""",
-        example={"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0},
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"bbox": {"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0}}}
     )
 
     @property
@@ -389,7 +383,9 @@ class ExtractCoordinatesResponse(ExtractDataResponse):
         ...,
         description="""Geographical coordinates extracted from the document, including east and north values, 
         and projection type.""",
-        example={"east": 1.0, "north": 2.0, "projection": "LV95"},
+    )
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"coordinates": {"east": 1.0, "north": 2.0, "projection": "LV95"}}}
     )
 
     @property
@@ -406,8 +402,8 @@ class ExtractTextResponse(ExtractDataResponse):
     text: str = Field(
         ...,
         description="""Text content extracted from the specified bounding box within the document.""",
-        example="text",
     )
+    model_config = ConfigDict(json_schema_extra={"example": {"text": "text"}})
 
     @property
     def response_type(self):
@@ -425,8 +421,9 @@ class ExtractNumberResponse(ExtractDataResponse):
         ...,
         description="""Numeric value extracted from the specified bounding box within the document, representing a
         measurement or quantitative data.""",
-        example=1.0,
     )
+
+    model_config = ConfigDict(json_schema_extra={"example": {"number": 1.0}})
 
     @property
     def response_type(self):
