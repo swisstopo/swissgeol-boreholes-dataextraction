@@ -137,7 +137,7 @@ class BoreholeListBuilder:
             element_list (list[FeatureOnPage  |  None  |  list[FeatureOnPage]]): list of element to match
 
         Returns:
-            dict[int, int]: the dictonary containing the best mapping borehole_index -> element_index
+            dict[int, int]: the dictionary containing the best mapping borehole_index -> element_index
         """
         if not element_list[0]:
             return {idx: idx for idx in range(len(element_list))}
