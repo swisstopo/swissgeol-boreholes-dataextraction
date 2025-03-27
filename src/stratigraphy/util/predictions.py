@@ -165,6 +165,7 @@ class BoreholeListBuilder:
                 # the current boreholes layers don't appear on the page where the element is
                 return float("inf")
             outer_rect = bbox.get_outer_rect()  # Get the outer rect of the bounding box
+            # the center is the average of the extreme coordinates of each feature in the list.
             element_center = fitz.Point(0, 0)
             for feat in feat_list:
                 element_center += (feat.rect.top_left + feat.rect.bottom_right) / 2
@@ -173,14 +174,17 @@ class BoreholeListBuilder:
             dist = element_center.distance_to(outer_rect)
             return dist
 
-        # Fill the cost matrix with distances between each elevation and each borehole
+        # Fill the cost matrix with distances between each element and each borehole
         for i, feat_list in enumerate(elements_to_match):
             for j, bboxes in enumerate(borehole_bounding_boxes):
                 dist = distance_func(feat_list, bboxes)  # Compute the distance
                 cost_matrix[i, j] = dist
 
-        # Use the Hungarian algorithm (Kuhn-Munkres) to solve the assignment problem, finds the perfect matching
-        # with minimal cost.
+        # Use the Hungarian algorithm (Kuhn-Munkres) to solve the assignment problem.
+        # It finds the optimal one-to-one matching between elements and borehole layers such that the total
+        # distance (cost) between matched pairs is minimized.
+        # In simpler terms: out of all possible ways to pair elements with boreholes, this picks the combination that
+        # results in the shortest total distance between them.
         elem_indexes, layer_indexes = linear_sum_assignment(cost_matrix)
 
         # Store the index of the matched elements in a dictionary

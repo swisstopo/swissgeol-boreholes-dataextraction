@@ -291,7 +291,6 @@ def start_pipeline(
                         if groundwater_entry not in seen_entry:
                             aggregated_groundwater_entries[borehole_index].append(groundwater_entry)
 
-                # TODO: Add remove duplicates here!
                 if page_index > 0:
                     layer_with_bb_predictions = remove_duplicate_layers(
                         previous_page=doc[page_index - 1],
