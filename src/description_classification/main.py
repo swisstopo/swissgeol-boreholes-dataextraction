@@ -10,7 +10,13 @@ from dotenv import load_dotenv
 from description_classification import DATAPATH
 from description_classification.classifiers.classifiers import BaselineClassifier, Classifier
 from description_classification.evaluation.evaluate import evaluate
-from description_classification.utils.data_loader import get_data_language_count, load_data, write_predictions
+from description_classification.utils.data_loader import (
+    LayerInformations,
+    get_data_class_count,
+    get_data_language_count,
+    load_data,
+    write_predictions,
+)
 
 load_dotenv()
 
@@ -38,7 +44,9 @@ def setup_mlflow_tracking(
     mlflow.set_tag("file_subset_directory", str(file_subset_directory))
 
 
-def log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier):
+def log_ml_flow_infos(
+    file_path: Path, out_directory: Path, layer_descriptions: list[LayerInformations], classifier: Classifier
+):
     """Logs informations to mlflow, such as the number of sample, laguage distribution, classifier type and data."""
     # Log dataset statistics
     mlflow.log_param("dataset_size", len(layer_descriptions))
@@ -46,6 +54,10 @@ def log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier):
     # Log language distribution
     for language, count in get_data_language_count(layer_descriptions).items():
         mlflow.log_param(f"language_{language}_count", count)
+
+    # Log class distribution
+    for class_, count in get_data_class_count(layer_descriptions).items():
+        mlflow.log_param(f"class_{class_}_count", count)
 
     # Log model name
     mlflow.log_param("classifier_type", classifier.__class__.__name__)

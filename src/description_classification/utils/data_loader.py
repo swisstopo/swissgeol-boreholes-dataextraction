@@ -90,6 +90,19 @@ def get_data_language_count(layer_descriptions: list[LayerInformations]) -> dict
     return language_counts
 
 
+def get_data_class_count(layer_descriptions: list[LayerInformations]) -> dict[str:int]:
+    """Returns the count of sample for each class.
+
+    Args:
+        layer_descriptions (list[LayerInformations]): All the layers.
+
+    Returns:
+        dict[str:int]: the count for each class.
+    """
+    class_counts = dict(Counter(layer.ground_truth_uscs_class.name for layer in layer_descriptions))
+    return class_counts
+
+
 def write_predictions(layers_with_predictions: list[LayerInformations], out_dir: Path):
     """Writes the predictions and ground truth data to a JSON file.
 

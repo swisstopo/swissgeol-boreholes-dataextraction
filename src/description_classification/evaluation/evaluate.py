@@ -70,6 +70,32 @@ class AllClassificationMetrics:
             "macro_f1": round(sum(f1s) / len(f1s), 2),
         }
 
+    @staticmethod
+    def compute_micro_average(metric_list: list[Metrics]) -> dict[str, float]:
+        """Computes the Micro Average of a list of metrics.
+
+        Unlike macro averaging, micro averaging aggregates true positives, false positives, and false negatives across
+        all classes before computing precision, recall, and F1-score.
+        This gives more weight to larger classes, making it suitable when class imbalance is present.
+
+        Args:
+            metric_list (list[Metrics]): The list of per-class metrics.
+
+        Returns:
+            dict[str, float]: The dict with micro-averaged metrics, with keys micro_precision, micro_recall,
+                and micro_f1.
+        """
+        if not metric_list:
+            return {"micro_precision": 0, "micro_recall": 0, "micro_f1": 0}
+
+        all_aggregated_metric = Metrics.micro_average(metric_list)
+
+        return {
+            "micro_precision": round(all_aggregated_metric.precision, 2),
+            "micro_recall": round(all_aggregated_metric.recall, 2),
+            "micro_f1": round(all_aggregated_metric.f1, 2),
+        }
+
     @property
     def global_macro_avg_dict(self) -> dict[str, float]:
         """Dictionary containing the f1, recall and precision, macro averaged across all classes.
@@ -78,6 +104,15 @@ class AllClassificationMetrics:
             dict[str, float]: The dictionary
         """
         return {f"global_{k}": v for k, v in self.compute_macro_average(self.global_metrics.values()).items()}
+
+    @property
+    def global_micro_avg_dict(self) -> dict[str, float]:
+        """Dictionary containing the f1, recall and precision, micro averaged across all classes.
+
+        Returns:
+            dict[str, float]: The dictionary
+        """
+        return {f"global_{k}": v for k, v in self.compute_micro_average(self.global_metrics.values()).items()}
 
     @property
     def per_language_macro_avg_metrics_dict(self) -> dict[str, float]:
@@ -90,6 +125,19 @@ class AllClassificationMetrics:
             f"{language}_{k}": v
             for language, metrics_dict in self.language_metrics.items()
             for k, v in self.compute_macro_average(metrics_dict.values()).items()
+        }
+
+    @property
+    def per_language_micro_avg_metrics_dict(self) -> dict[str, float]:
+        """Dictionary containing f1, recall and precision for each language, micro averaged across all classes.
+
+        Returns:
+            dict[str, float]: The dictionary
+        """
+        return {
+            f"{language}_{k}": v
+            for language, metrics_dict in self.language_metrics.items()
+            for k, v in self.compute_micro_average(metrics_dict.values()).items()
         }
 
     @property
@@ -128,6 +176,8 @@ class AllClassificationMetrics:
         return {
             **self.global_macro_avg_dict,
             **self.per_language_macro_avg_metrics_dict,
+            **self.global_micro_avg_dict,
+            **self.per_language_micro_avg_metrics_dict,
         }
 
     def to_json_per_class(self) -> dict[str, float]:
