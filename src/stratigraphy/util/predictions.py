@@ -57,8 +57,8 @@ class BoreholeListBuilder:
         """Initializes the BoreholeListBuilder with extracted borehole-related data.
 
         Args:
-            layers_with_bb_in_document (LayersInDocument): Object containing borehole layers extracted from the
-                document, along with its corespoding bounding boxes.
+            layers_with_bb_in_document (LayersInDocument): Object containing a list of extracted boreholes, each
+            holding a list of layers and a list of bounding boxes.
             file_name (str): The name of the processed document.
             groundwater_in_doc (GroundwaterInDocument): Contains detected groundwater entries for boreholes.
 
@@ -74,6 +74,8 @@ class BoreholeListBuilder:
 
     def build(self) -> list[BoreholePredictions]:
         """Creates a list of BoreholePredictions after ensuring all lists have the same length."""
+        if not self._layers_with_bb_in_document.boreholes_layers_with_bb:
+            return []  # no borehole identified
         self._extend_length_to_match_boreholes_num_pred()
 
         # for each element, perform the perfect matching with the borehole layers, and retrieve the matching dict
@@ -140,7 +142,8 @@ class BoreholeListBuilder:
         Returns:
             dict[int, int]: the dictionary containing the best mapping borehole_index -> element_index
         """
-        if not element_list[0]:
+        # solve trivial case and case where the elements are None
+        if len(element_list) == 1 or not element_list[0]:
             return {idx: idx for idx in range(len(element_list))}
 
         # Normalize input: Ensure all element in the outer list are a list (even if it's just one feature).

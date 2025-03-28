@@ -54,6 +54,7 @@ class BoreholePredictions:
         )
 
     def set_groundwater_elevation_infos(self):
+        """Sets the depth and elevation of the groundwater entries of this borehole."""
         if not self.metadata.elevation:
             return
         borehole_terrain_elevation = self.metadata.elevation.feature.elevation

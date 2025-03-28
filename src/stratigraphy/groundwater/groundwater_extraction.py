@@ -105,7 +105,12 @@ class Groundwater(ExtractedFeature):
             "elevation": self.elevation,
         }
 
-    def set_elevation_infos(self, terrain_elevation):
+    def set_elevation_infos(self, terrain_elevation: float):
+        """Sets the depth and elevation of the groundwater.
+
+        Args:
+            terrain_elevation (float): The elevation of the terrain at the top of the borehole.
+        """
         if self.depth is None:  # if was not already set
             self.depth = round(terrain_elevation - self.elevation, 2)
         if self.elevation is None:  # if was not already set
@@ -138,7 +143,12 @@ class GroundwatersInBorehole:
         """
         return cls([FeatureOnPage.from_json(gw_data, Groundwater) for gw_data in json_object])
 
-    def set_elevation_infos(self, terrain_elevation):
+    def set_elevation_infos(self, terrain_elevation: float):
+        """Sets the depth and elevation of all groundwater entries.
+
+        Args:
+            terrain_elevation (float): The elevation of the terrain at the top of the borehole.
+        """
         for entry in self.groundwater_feature_list:
             entry.feature.set_elevation_infos(terrain_elevation)
 
