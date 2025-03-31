@@ -7,14 +7,26 @@ import regex
 
 def extract_date(text: str) -> tuple[date | None, str | None]:
     """Extract the date from a string in the format dd.mm.yyyy or dd.mm.yy."""
-    date_match = regex.search(r"(\d{1,2}\.\d{1,2}\.\d{2,4})", text)
+    date_match = regex.search(r"(\d{1,2})\s*\.\s*(\d{1,2})\s*\.\s*(\d{2,4})", text)
 
     if not date_match:
         return None, None
+    original_data_str = date_match.group(0)
+    cleaned_date_str = f"{date_match.group(1)}.{date_match.group(2)}.{date_match.group(3)}"
+    date_format = "%d.%m.%y" if len(date_match.group(3)) == 2 else "%d.%m.%Y"
+    # Validate date before parsing
+    if not is_valid_date(cleaned_date_str, date_format):
+        return None, None
+    return datetime.strptime(cleaned_date_str, date_format).date(), original_data_str
 
-    date_str = date_match.group(1)
-    date_format = "%d.%m.%y" if len(date_str.split(".")[2]) == 2 else "%d.%m.%Y"
-    return datetime.strptime(date_str, date_format).date(), date_str
+
+def is_valid_date(date_str: str, date_format: str) -> bool:
+    """Check if a date string is valid for a given format."""
+    try:
+        datetime.strptime(date_str, date_format)  # Try parsing the date
+        return True
+    except ValueError:
+        return False
 
 
 def extract_depth(text: str, max_depth: int) -> float | None:
