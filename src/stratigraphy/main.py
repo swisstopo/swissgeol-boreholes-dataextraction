@@ -3,7 +3,6 @@
 import json
 import logging
 import os
-from collections import defaultdict
 from pathlib import Path
 
 import click
@@ -19,7 +18,6 @@ from stratigraphy.extract import MaterialDescriptionRectWithSidebarExtractor
 from stratigraphy.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
     GroundwaterLevelExtractor,
-    GroundwatersInBorehole,
 )
 from stratigraphy.layer.duplicate_detection import remove_duplicate_layers
 from stratigraphy.layer.layer import LayersInDocument
@@ -244,10 +242,9 @@ def start_pipeline(
             file_metadata = FileMetadata.from_document(doc)
             metadata = MetadataInDocument.from_document(doc)
 
-            # Save the predictions to the overall predictions object
-            # Initialize common variables
+            # Save the predictions to the overall predictions object, initialize common variables
             layers_with_bb_in_document = LayersInDocument([], filename)
-            aggregated_groundwater_entries = defaultdict(list)
+            all_groundwater_entries = GroundwaterInDocument([], filename)
 
             if part != "all":
                 continue
@@ -264,32 +261,11 @@ def start_pipeline(
                 processed_page_results = LayersInDocument(extracted_boreholes, filename)
 
                 # Extract the groundwater levels
-                for borehole_index, extracted_borehole in enumerate(processed_page_results.boreholes_layers_with_bb):
-                    # Each extracted_borehole contains only one BoundingBoxes element in its list,
-                    # so we extract the first element (index 0).
-                    # The reason for using a list is that later in the code, a single borehole may span multiple
-                    # pages, requiring multiple BoundingBoxes, one for each page.
-                    material_description_bbox = extracted_borehole.bounding_boxes[0].material_description_bbox
-
-                    terrain_elevation = None
-                    if metadata.elevations and len(metadata.elevations) == 1:
-                        # only one elevation found, can set it during extraction phase
-                        terrain_elevation = metadata.elevations[0]
-
-                    groundwater_entries_near_bbox = GroundwaterLevelExtractor.near_material_description(
-                        document=doc,
-                        page_number=page_number,
-                        lines=text_lines,
-                        material_description_bbox=material_description_bbox,
-                        terrain_elevation=terrain_elevation,
-                    )
-                    # avoid duplicate entries
-                    seen_entry = [
-                        seen for borehole_gw in aggregated_groundwater_entries.values() for seen in borehole_gw
-                    ]
-                    for groundwater_entry in groundwater_entries_near_bbox:
-                        if groundwater_entry not in seen_entry:
-                            aggregated_groundwater_entries[borehole_index].append(groundwater_entry)
+                groundwater_extractor = GroundwaterLevelExtractor()
+                groundwater_entries = groundwater_extractor.extract_groundwater(
+                    page_number=page_number, lines=text_lines, document=doc
+                )
+                all_groundwater_entries.groundwater_feature_list.extend(groundwater_entries)
 
                 if page_index > 0:
                     layer_with_bb_predictions = remove_duplicate_layers(
@@ -311,23 +287,15 @@ def start_pipeline(
                         img = plot_lines(page, geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"])
                         mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
-            # Create a document-level groundwater entry
-            groundwater_entries = GroundwaterInDocument(
-                filename=filename,
-                borehole_groundwaters=[
-                    GroundwatersInBorehole(value) for _, value in sorted(aggregated_groundwater_entries.items())
-                ],
-            )
-
             # create list of BoreholePrediction objects with all the separate lists
             borehole_predictions_list: list[BoreholePredictions] = BoreholeListBuilder(
                 layers_with_bb_in_document=layers_with_bb_in_document,
                 file_name=filename,
-                groundwater_in_doc=groundwater_entries,
+                groundwater_in_doc=all_groundwater_entries,
                 elevations_list=metadata.elevations,
                 coordinates_list=metadata.coordinates,
             ).build()
-            # now that the matching is done, the depths of groundwater can be set if multiple elevations were found
+            # now that the matching is done, the depths of groundwater can be set
             for borehole in borehole_predictions_list:
                 borehole.set_groundwater_elevation_infos()
 

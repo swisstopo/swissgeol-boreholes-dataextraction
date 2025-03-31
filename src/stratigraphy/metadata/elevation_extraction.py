@@ -108,7 +108,7 @@ class ElevationExtractor(DataExtractor):
 
             try:
                 extracted_elevation = self.get_elevation_from_lines(elevation_lines, page)
-                if extracted_elevation.feature.elevation:
+                if extracted_elevation.feature.elevation and extracted_elevation not in extracted_elevation_list:
                     extracted_elevation_list.append(extracted_elevation)
             except ValueError as error:
                 logger.warning("ValueError: %s", error)
@@ -129,10 +129,6 @@ class ElevationExtractor(DataExtractor):
         Returns:
             list[FeatureOnPage[Elevation]]: The best extracted elevation information.
         """
-        # first remove the duplicate. Even if 2 boreholes have the same elevation, it will be handled later. Keeping
-        # duplicates here could only harm us.
-        extracted_elevation_list = list({obj.feature.elevation: obj for obj in extracted_elevation_list}.values())
-
         # Sort the extracted elevation information by elevation with the highest elevation first
         extracted_elevation_list.sort(key=lambda x: x.feature.elevation, reverse=True)
 

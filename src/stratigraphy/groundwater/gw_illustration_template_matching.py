@@ -16,7 +16,6 @@ from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.data_extractor.utility import get_lines_near_rect
 from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwaterLevelExtractor
 from stratigraphy.lines.line import TextLine
-from stratigraphy.metadata.elevation_extraction import Elevation
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +39,6 @@ def get_groundwater_from_illustration(
     lines: list[TextLine],
     page_number: int,
     document: fitz.Document,
-    terrain_elevation: Elevation | None,
 ) -> tuple[list[FeatureOnPage[Groundwater]], list[float]]:
     """Extracts the groundwater information from an illustration.
 
@@ -128,84 +126,21 @@ def get_groundwater_from_illustration(
                 extracted_gw = groundwater_extractor.get_groundwater_info_from_lines(
                     groundwater_info_lines, page_number
                 )
-                if extracted_gw.groundwater.depth or extracted_gw.groundwater.elevation:
-                    # Fill in the depth and elevation if they are not already filled in based on the terrain
-                    if terrain_elevation:
-                        if not extracted_gw.groundwater.depth and extracted_gw.groundwater.elevation:
-                            extracted_gw.groundwater.depth = round(
-                                terrain_elevation.elevation - extracted_gw.groundwater.elevation, 2
-                            )
-                        if not extracted_gw.groundwater.elevation and extracted_gw.groundwater.depth:
-                            extracted_gw.groundwater.elevation = round(
-                                terrain_elevation.elevation - extracted_gw.groundwater.depth, 2
-                            )
-
-                        # Make a sanity check to see if elevation and depth make sense (i.e., they add up:
-                        # elevation + depth = terrain elevation)
-                        if extracted_gw.groundwater.elevation and extracted_gw.groundwater.depth:
-                            extract_terrain_elevation = round(
-                                extracted_gw.groundwater.elevation + extracted_gw.groundwater.depth, 2
-                            )
-                            if extract_terrain_elevation != terrain_elevation.elevation:
-                                # If the extracted elevation and depth do not match the terrain elevation, we try
-                                # to remove one of the items from the match and see if we can find a better match.
-                                logger.warning("The extracted elevation and depth do not match the terrain elevation.")
-                                logger.warning(
-                                    "Elevation: %s, Depth: %s, Terrain Elevation: %s",
-                                    extracted_gw.groundwater.elevation,
-                                    extracted_gw.groundwater.depth,
-                                    terrain_elevation.elevation,
-                                )
-
-                                # re-run the extraction and see if we can find a better match by removing one
-                                # item from the current match
-                                groundwater_info_lines_without_depth = [
-                                    line
-                                    for line in groundwater_info_lines
-                                    if str(extracted_gw.groundwater.depth) not in line.text
-                                ]
-                                groundwater_info_lines_without_elevation = [
-                                    line
-                                    for line in groundwater_info_lines
-                                    if str(extracted_gw.groundwater.elevation) not in line.text
-                                ]
-                                extracted_gw = groundwater_extractor.get_groundwater_info_from_lines(
-                                    groundwater_info_lines_without_depth, page_number
-                                )
-
-                                if not extracted_gw.groundwater.depth:
-                                    extracted_gw = groundwater_extractor.get_groundwater_info_from_lines(
-                                        groundwater_info_lines_without_elevation, page_number
-                                    )
-
-                                if extracted_gw.groundwater.elevation and extracted_gw.groundwater.depth:
-                                    extract_terrain_elevation = round(
-                                        extracted_gw.groundwater.elevation + extracted_gw.groundwater.depth, 2
-                                    )
-
-                                    if extract_terrain_elevation != terrain_elevation.elevation:
-                                        logger.warning(
-                                            "The extracted elevation and depth do not match the terrain elevation."
-                                        )
-                                        logger.warning(
-                                            "Elevation: %s, Depth: %s, Terrain Elevation: %s",
-                                            extracted_gw.groundwater.elevation,
-                                            extracted_gw.groundwater.depth,
-                                            terrain_elevation.elevation,
-                                        )
-                                        continue
-
+                if (
+                    (extracted_gw.groundwater.depth or extracted_gw.groundwater.elevation)
+                    and extracted_gw not in extracted_groundwater_list
+                    and extracted_gw.groundwater.date
+                ):
                     # Only if the groundwater information is not already in the list
-                    if extracted_gw not in extracted_groundwater_list and extracted_gw.groundwater.date:
-                        extracted_groundwater_list.append(extracted_gw)
-                        confidence_list.append(confidence)
+                    extracted_groundwater_list.append(extracted_gw)
+                    confidence_list.append(confidence)
 
-                        # Remove the extracted groundwater information from the lines to avoid double extraction
-                        for line in groundwater_info_lines:
-                            # if the rectangle of the line is in contact with the rectangle of the extracted
-                            # groundwater information, remove the line
-                            if line.rect.intersects(extracted_gw.rect):
-                                lines.remove(line)
+                    # Remove the extracted groundwater information from the lines to avoid double extraction
+                    for line in groundwater_info_lines:
+                        # if the rectangle of the line is in contact with the rectangle of the extracted
+                        # groundwater information, remove the line
+                        if line.rect.intersects(extracted_gw.rect):
+                            lines.remove(line)
 
             except ValueError as error:
                 logger.warning("ValueError: %s", error)
