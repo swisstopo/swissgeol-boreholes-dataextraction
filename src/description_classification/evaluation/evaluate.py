@@ -34,7 +34,7 @@ class AllClassificationMetrics:
     language_metrics: dict[str : dict[USCSClasses:Metrics]]
 
     @staticmethod
-    def macro_average(metric_list: list["Metrics"]) -> "Metrics":
+    def compute_macro_average(metric_list: list[Metrics]) -> dict[str, float]:
         """Computes the Macro Average of a list of metrics.
 
         Each metric is first calculated per class and then averaged. This is useful when there is a large class
@@ -44,37 +44,108 @@ class AllClassificationMetrics:
             metric_list (list[Metrics]): The list of per-class metrics.
 
         Returns:
-            Metrics: Macro-averaged metrics.
+            dict[str, float]: The dict with macro-averaged metrics, with keys macro_precision, macro_recall and
+                macro_f1.
         """
-        num_classes = len(metric_list)
-        if num_classes == 0:
-            return Metrics(tp=0, fp=0, fn=0)
+        if not metric_list:
+            return {"macro_precision": 0, "macro_recall": 0, "macro_f1": 0}
+        precisions = []
+        recalls = []
+        f1s = []
 
-        avg_tp = sum(metric.tp for metric in metric_list) / num_classes
-        avg_fp = sum(metric.fp for metric in metric_list) / num_classes
-        avg_fn = sum(metric.fn for metric in metric_list) / num_classes
+        for m in metric_list:
+            tp, fp, fn = m.tp, m.fp, m.fn
 
-        return Metrics(tp=avg_tp, fp=avg_fp, fn=avg_fn)
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+            f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
 
-    @property
-    def per_language_macro_avg_metrics_dict(self) -> dict[str:Metrics]:
-        """Dictionary containing the metrics for each language.
+            precisions.append(precision)
+            recalls.append(recall)
+            f1s.append(f1)
+
+        return {
+            "macro_precision": round(sum(precisions) / len(precisions), 2),
+            "macro_recall": round(sum(recalls) / len(recalls), 2),
+            "macro_f1": round(sum(f1s) / len(f1s), 2),
+        }
+
+    @staticmethod
+    def compute_micro_average(metric_list: list[Metrics]) -> dict[str, float]:
+        """Computes the Micro Average of a list of metrics.
+
+        Unlike macro averaging, micro averaging aggregates true positives, false positives, and false negatives across
+        all classes before computing precision, recall, and F1-score.
+        This gives more weight to larger classes, making it suitable when class imbalance is present.
+
+        Args:
+            metric_list (list[Metrics]): The list of per-class metrics.
 
         Returns:
-            dict[str:Metrics]: The dictionary
+            dict[str, float]: The dict with micro-averaged metrics, with keys micro_precision, micro_recall,
+                and micro_f1.
         """
+        if not metric_list:
+            return {"micro_precision": 0, "micro_recall": 0, "micro_f1": 0}
+
+        all_aggregated_metric = Metrics.micro_average(metric_list)
+
         return {
-            k: v
-            for language, metrics_dict in self.language_metrics.items()
-            for k, v in self.macro_average(metrics_dict.values()).to_json(f"{language}_avg").items()
+            "micro_precision": round(all_aggregated_metric.precision, 2),
+            "micro_recall": round(all_aggregated_metric.recall, 2),
+            "micro_f1": round(all_aggregated_metric.f1, 2),
         }
 
     @property
-    def per_class_global_metrics_dict(self) -> dict[str:Metrics]:
-        """Dictionary containing the global metrics detailled for each uscs class.
+    def global_macro_avg_dict(self) -> dict[str, float]:
+        """Dictionary containing the f1, recall and precision, macro averaged across all classes.
 
         Returns:
-            dict[str:Metrics]: The dictionary
+            dict[str, float]: The dictionary
+        """
+        return {f"global_{k}": v for k, v in self.compute_macro_average(self.global_metrics.values()).items()}
+
+    @property
+    def global_micro_avg_dict(self) -> dict[str, float]:
+        """Dictionary containing the f1, recall and precision, micro averaged across all classes.
+
+        Returns:
+            dict[str, float]: The dictionary
+        """
+        return {f"global_{k}": v for k, v in self.compute_micro_average(self.global_metrics.values()).items()}
+
+    @property
+    def per_language_macro_avg_metrics_dict(self) -> dict[str, float]:
+        """Dictionary containing f1, recall and precision for each language, macro averaged across all classes.
+
+        Returns:
+            dict[str, float]: The dictionary
+        """
+        return {
+            f"{language}_{k}": v
+            for language, metrics_dict in self.language_metrics.items()
+            for k, v in self.compute_macro_average(metrics_dict.values()).items()
+        }
+
+    @property
+    def per_language_micro_avg_metrics_dict(self) -> dict[str, float]:
+        """Dictionary containing f1, recall and precision for each language, micro averaged across all classes.
+
+        Returns:
+            dict[str, float]: The dictionary
+        """
+        return {
+            f"{language}_{k}": v
+            for language, metrics_dict in self.language_metrics.items()
+            for k, v in self.compute_micro_average(metrics_dict.values()).items()
+        }
+
+    @property
+    def per_class_global_metrics_dict(self) -> dict[str, float]:
+        """Dictionary containing the global f1, recall and precision, detailled for each uscs class.
+
+        Returns:
+            dict[str, float]: The dictionary
         """
         return {
             k: v
@@ -83,11 +154,11 @@ class AllClassificationMetrics:
         }
 
     @property
-    def per_class_per_language_metrics_dict(self) -> dict[str:Metrics]:
-        """Dictionary containing the metrics for each language, detailled for each uscs class.
+    def per_class_per_language_metrics_dict(self) -> dict[str, float]:
+        """Dictionary containing the f1, recall and precision for each language, detailled for each uscs class.
 
         Returns:
-            dict[str:Metrics]: The dictionary
+            dict[str, float]: The dictionary
         """
         return {
             k: v
@@ -96,22 +167,24 @@ class AllClassificationMetrics:
             for k, v in metrics.to_json(f"{language}_{class_.name}").items()
         }
 
-    def to_json(self) -> dict[str:float]:
+    def to_json(self) -> dict[str, float]:
         """Returns the metrics as dict, the metrics are reduced by taking the macro average across all classes.
 
         Returns:
-            dict[str:float]: the dictionary.
+            dict[str, float]: the dictionary.
         """
         return {
-            **self.macro_average(self.global_metrics.values()).to_json("global_avg"),
+            **self.global_macro_avg_dict,
             **self.per_language_macro_avg_metrics_dict,
+            **self.global_micro_avg_dict,
+            **self.per_language_micro_avg_metrics_dict,
         }
 
-    def to_json_per_class(self) -> dict[str:float]:
+    def to_json_per_class(self) -> dict[str, float]:
         """Returns the metrics as dict, detailing each classes.
 
         Returns:
-            dict[str:float]: the dictionary.
+            dict[str, float]: the dictionary.
         """
         return {
             **self.per_class_global_metrics_dict,
