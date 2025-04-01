@@ -30,8 +30,8 @@ class AllClassificationMetrics:
             for each of the USCS classes in that language.
     """
 
-    global_metrics: dict[USCSClasses:Metrics]
-    language_metrics: dict[str : dict[USCSClasses:Metrics]]
+    global_metrics: dict[USCSClasses, Metrics]
+    language_metrics: dict[str, dict[USCSClasses, Metrics]]
 
     @staticmethod
     def compute_macro_average(metric_list: list[Metrics]) -> dict[str, float]:
@@ -49,25 +49,15 @@ class AllClassificationMetrics:
         """
         if not metric_list:
             return {"macro_precision": 0, "macro_recall": 0, "macro_f1": 0}
-        precisions = []
-        recalls = []
-        f1s = []
 
-        for m in metric_list:
-            tp, fp, fn = m.tp, m.fp, m.fn
-
-            precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-            recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-            f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
-
-            precisions.append(precision)
-            recalls.append(recall)
-            f1s.append(f1)
+        precisions = [metrics.precision for metrics in metric_list]
+        recalls = [metrics.recall for metrics in metric_list]
+        f1s = [metrics.f1 for metrics in metric_list]
 
         return {
-            "macro_precision": round(sum(precisions) / len(precisions), 2),
-            "macro_recall": round(sum(recalls) / len(recalls), 2),
-            "macro_f1": round(sum(f1s) / len(f1s), 2),
+            "macro_precision": round(sum(precisions) / len(precisions), 4),
+            "macro_recall": round(sum(recalls) / len(recalls), 4),
+            "macro_f1": round(sum(f1s) / len(f1s), 4),
         }
 
     @staticmethod
@@ -91,9 +81,9 @@ class AllClassificationMetrics:
         all_aggregated_metric = Metrics.micro_average(metric_list)
 
         return {
-            "micro_precision": round(all_aggregated_metric.precision, 2),
-            "micro_recall": round(all_aggregated_metric.recall, 2),
-            "micro_f1": round(all_aggregated_metric.f1, 2),
+            "micro_precision": round(all_aggregated_metric.precision, 4),
+            "micro_recall": round(all_aggregated_metric.recall, 4),
+            "micro_f1": round(all_aggregated_metric.f1, 4),
         }
 
     @property
@@ -192,69 +182,63 @@ class AllClassificationMetrics:
         }
 
 
-def evaluate(layer_descriptions: list[LayerInformations], log_per_class: bool = False) -> AllClassificationMetrics:
+def evaluate(layer_descriptions: list[LayerInformations]) -> AllClassificationMetrics:
     """Evaluates the predictions of the LayerInformations objects against the ground truth.
 
     Args:
-        layer_descriptions (list[LayerDescriptionWithGroundTruth]): the LayerInformations objects
+        layer_descriptions (list[LayerInformations]): the LayerInformations objects
         log_per_class (bool, optional): whether to log per-class metrics. Defaults to False.
 
     Returns:
         AllClassificationMetrics: the holder for the metrics
     """
-    global_metrics: dict[str, Metrics] = per_class_metrics(
-        [layer.prediction_uscs_class for layer in layer_descriptions],
-        [layer.ground_truth_uscs_class for layer in layer_descriptions],
-    )
+    global_metrics: dict[USCSClasses, Metrics] = per_class_metrics(layer_descriptions)
 
     supported_language: list[str] = classification_params["supported_language"]
-    language_metrics = {
-        language: per_class_metrics(
-            [layer.prediction_uscs_class for layer in layer_descriptions if layer.language == language],
-            [layer.ground_truth_uscs_class for layer in layer_descriptions if layer.language == language],
-        )
+    language_metrics: dict[str, dict[USCSClasses, Metrics]] = {
+        language: per_class_metrics([layer for layer in layer_descriptions if layer.language == language])
         for language in supported_language
     }
 
     all_classification_metrics = AllClassificationMetrics(global_metrics, language_metrics)
 
     if mlflow_tracking:
-        log_metrics_to_mlflow(all_classification_metrics, log_per_class=log_per_class)
+        log_metrics_to_mlflow(all_classification_metrics)
         logger.info("Logging metrics to MLFlow")
 
     return all_classification_metrics
 
 
-def per_class_metrics(predictions: list[USCSClasses], ground_truth: list[USCSClasses]) -> dict[USCSClasses, Metrics]:
+def per_class_metrics(layers: list[LayerInformations]) -> dict[USCSClasses, Metrics]:
     """Compute per-class classification metrics.
 
     Args:
-        predictions (List[str]): List of predicted class labels.
-        ground_truth (List[str]): List of actual class labels.
+        layers (list[LayerInformations]): the layers to compute the metrics from.
 
     Returns:
-        Dict[str, Metrics]: A dictionary mapping each class to its TP, FP, FN.
+        Dict[USCSClasses, Metrics]: A dictionary mapping each class to its TP, FP, FN.
     """
-    all_classes = set(predictions) | set(ground_truth)
+    all_classes = set([layer.prediction_uscs_class for layer in layers]) | set(
+        [layer.ground_truth_uscs_class for layer in layers]
+    )
     metrics_per_class = {}
 
     for cls in all_classes:
-        tp = sum(1 for pred, gt in zip(predictions, ground_truth, strict=False) if pred == gt == cls)
-        fp = sum(1 for pred, gt in zip(predictions, ground_truth, strict=False) if pred == cls and gt != cls)
-        fn = sum(1 for pred, gt in zip(predictions, ground_truth, strict=False) if pred != cls and gt == cls)
+        tp = sum(1 for layer in layers if layer.prediction_uscs_class == layer.ground_truth_uscs_class == cls)
+        fp = sum(1 for layer in layers if layer.prediction_uscs_class == cls and layer.ground_truth_uscs_class != cls)
+        fn = sum(1 for layer in layers if layer.prediction_uscs_class != cls and layer.ground_truth_uscs_class == cls)
 
         metrics_per_class[cls] = Metrics(tp=tp, fp=fp, fn=fn)
 
     return metrics_per_class
 
 
-def log_metrics_to_mlflow(all_classification_metrics: AllClassificationMetrics, log_per_class=False):
+def log_metrics_to_mlflow(all_classification_metrics: AllClassificationMetrics):
     """Log metrics to MLFlow with error handling."""
     # Log overall metrics
     for name, value in all_classification_metrics.to_json().items():
         mlflow.log_metric(name, value)
 
-    # Log per-class metrics if requested
-    if log_per_class:
-        for name, value in all_classification_metrics.to_json_per_class().items():
-            mlflow.log_metric(name, value)
+    # Log per-class metrics
+    for name, value in all_classification_metrics.to_json_per_class().items():
+        mlflow.log_metric(name, value)

@@ -4,16 +4,16 @@ from langdetect import detect
 from langdetect.lang_detect_exception import LangDetectException
 
 
-def detect_language(text, default_language, supported_languages):
-    """_summary_.
+def detect_language(text: str, default_language: str, supported_languages: list[str]) -> str:
+    """Detects the language of a given text.
 
     Args:
-        text (_type_): _description_
-        default_language (_type_): _description_
-        supported_languages (_type_): _description_
+        text (str): The input text from which the language is detected.
+        default_language (str): The language to return if detection fails or the detected language is unsupported.
+        supported_languages (list[str]): A list of languages that are considered valid.
 
     Returns:
-        _type_: _description_
+        str: The detected language if it is in the list of supported languages; otherwise, the default language.
     """
     try:
         language = detect(text)
