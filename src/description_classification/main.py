@@ -107,7 +107,6 @@ def main(file_path: Path, out_directory: Path, file_subset_directory: Path):
         file_path (Path): Path to the ground truth json file.
         out_directory (Path): Path to output directory
         file_subset_directory (Path): Path to the directory containing the file whose names are used.
-        log_per_class (bool): Log classification metrics per class.
     """
     if mlflow_tracking:
         setup_mlflow_tracking(file_path, out_directory, file_subset_directory)

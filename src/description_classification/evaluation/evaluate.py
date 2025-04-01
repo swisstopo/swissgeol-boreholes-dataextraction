@@ -187,7 +187,6 @@ def evaluate(layer_descriptions: list[LayerInformations]) -> AllClassificationMe
 
     Args:
         layer_descriptions (list[LayerInformations]): the LayerInformations objects
-        log_per_class (bool, optional): whether to log per-class metrics. Defaults to False.
 
     Returns:
         AllClassificationMetrics: the holder for the metrics
