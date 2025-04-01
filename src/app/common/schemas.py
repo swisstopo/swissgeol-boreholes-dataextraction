@@ -222,7 +222,7 @@ class BoundingBoxesRequest(ABC, BaseModel):
         index (e.g., 1 for the first page), applicable for multi-page files like PDFs.""",
     )
 
-    model_config = ConfigDict(json_schema_extra={"example": {"filename": str(Path("1007.pdf")), "page_number": 1}})
+    model_config = ConfigDict(json_schema_extra={"example": {"filename": "1007.pdf", "page_number": 1}})
 
     @field_validator("filename", mode="before")
     @classmethod

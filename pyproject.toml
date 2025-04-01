@@ -97,6 +97,10 @@ line-length = 119
 convention = "google"
 
 [tool.pytest.ini_options]
+# Some deprecation warnings come from external libraries (botocore and SWIG). Since we can’t fix these in our code,
+# they are now ignored during test runs to keep the output clean. Link to the existing issues:
+# SWIG: https://github.com/pymupdf/PyMuPDF/issues/3931
+# boto3: https://github.com/boto/boto3/issues/3889
 filterwarnings = [
     "ignore:.*Swig.*has no __module__ attribute:DeprecationWarning",
     "ignore:datetime.datetime.utcnow:DeprecationWarning:botocore"
