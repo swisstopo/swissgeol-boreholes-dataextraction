@@ -168,10 +168,15 @@ class LayerEvaluator:
                 BoreholePredictionsWithGroundTruth(predictions=None, ground_truth=ground_truth_for_file[gt_idx])
             )
 
+        # add entries with missing ground truth for all unmatched prediction boreholes (will count as false positives)
+        for index, pred in enumerate(file_predictions.borehole_predictions_list):
+            if index not in assigned_preds:
+                result.append(BoreholePredictionsWithGroundTruth(predictions=pred, ground_truth={}))
+
         # TODO properly disentangle the matching and the evaluations
         # now compute the real statistics for the matched pairs
         for borehole_data in result:
-            if borehole_data.predictions:
+            if borehole_data.predictions and "layers" in borehole_data.ground_truth:
                 # This method makes an internal modification to borehole_layers
                 LayerEvaluator.compute_borehole_affinity(
                     borehole_data.ground_truth["layers"], borehole_data.predictions.layers_in_borehole
