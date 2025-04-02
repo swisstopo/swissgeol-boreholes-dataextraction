@@ -345,8 +345,6 @@ class GroundwaterLevelExtractor(DataExtractor):
             page_number (int): The page number (1-based) of the PDF document.
             lines (list[TextLine]): The lines of text to extract the groundwater information from.
             document (fitz.Document): The document used to extract groundwater from illustration.
-            terrain_elevation (FeatureOnPage[Elevation] | None): The elevation of the terrain for the borehole (if any
-                is known)
 
         Returns:
             list[FeatureOnPage[Groundwater]]: the extracted coordinates (if any)

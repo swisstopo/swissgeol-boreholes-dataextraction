@@ -47,7 +47,6 @@ def get_groundwater_from_illustration(
         lines (list[TextLine]): The lines of text to extract the groundwater information from.
         page_number (int): The page number (1-based) of the PDF document.
         document (fitz.Document): The document to extract groundwater from illustration from.
-        terrain_elevation (Elevation | None): The elevation of the terrain.
 
     Returns:
         list[FeatureOnPage[Groundwater]]: the extracted groundwater information
