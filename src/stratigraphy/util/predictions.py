@@ -156,13 +156,10 @@ class BoreholeListBuilder:
 
         borehole_index_to_matched_elem_index = defaultdict(list)
         for i, feat in enumerate(element_list):
-            smallest_dist = None
-
-            for j, bboxes in enumerate(borehole_bounding_boxes):
-                dist = self._compute_distance(feat, bboxes)  # Compute the distance
-                if not smallest_dist or dist < smallest_dist:
-                    best_bbox_idx = j
-                    smallest_dist = dist
+            best_bbox_idx = min(
+                range(len(borehole_bounding_boxes)),
+                key=lambda j: self._compute_distance(feat, borehole_bounding_boxes[j]),
+            )
             borehole_index_to_matched_elem_index[best_bbox_idx].append(i)
 
         return borehole_index_to_matched_elem_index

@@ -119,7 +119,7 @@ class Groundwater(ExtractedFeature):
         if round(terrain_elevation - self.elevation, 2) - self.depth > prec:  # account for approx, up to 0.5m
             logger.warning(
                 f"Extracted groundwater height informations (depth = {self.depth}, elevation = {self.elevation}) "
-                f"do not match the calcul 'terrain_elevation - gw_elevation = gw_depth': {terrain_elevation} "
+                f"do not match the constraint 'terrain_elevation - gw_elevation = gw_depth': {terrain_elevation} "
                 f"- {self.elevation} = {round(terrain_elevation - self.elevation, 2)} != {self.depth} ± {prec}"
             )
 

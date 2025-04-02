@@ -11,13 +11,13 @@ def extract_date(text: str) -> tuple[date | None, str | None]:
 
     if not date_match:
         return None, None
-    original_data_str = date_match.group(0)
+    original_date_str = date_match.group(0)
     cleaned_date_str = f"{date_match.group(1)}.{date_match.group(2)}.{date_match.group(3)}"
     date_format = "%d.%m.%y" if len(date_match.group(3)) == 2 else "%d.%m.%Y"
     # Validate date before parsing
     if not is_valid_date(cleaned_date_str, date_format):
         return None, None
-    return datetime.strptime(cleaned_date_str, date_format).date(), original_data_str
+    return datetime.strptime(cleaned_date_str, date_format).date(), original_date_str
 
 
 def is_valid_date(date_str: str, date_format: str) -> bool:
