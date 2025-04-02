@@ -176,10 +176,10 @@ class LayerEvaluator:
         # TODO properly disentangle the matching and the evaluations
         # now compute the real statistics for the matched pairs
         for borehole_data in result:
-            if borehole_data.predictions and "layers" in borehole_data.ground_truth:
+            if borehole_data.predictions:
                 # This method makes an internal modification to borehole_layers
                 LayerEvaluator.compute_borehole_affinity(
-                    borehole_data.ground_truth["layers"], borehole_data.predictions.layers_in_borehole
+                    borehole_data.ground_truth.get("layers", []), borehole_data.predictions.layers_in_borehole
                 )
         return result
 
