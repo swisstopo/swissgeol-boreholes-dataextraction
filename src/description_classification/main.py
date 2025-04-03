@@ -8,7 +8,7 @@ import click
 from dotenv import load_dotenv
 
 from description_classification import DATAPATH
-from description_classification.classifiers.classifiers import BaselineClassifier, Classifier
+from description_classification.classifiers.classifiers import BertClassifier, Classifier
 from description_classification.evaluation.evaluate import evaluate
 from description_classification.utils.data_loader import LayerInformations, load_data
 from description_classification.utils.data_utils import (
@@ -90,23 +90,31 @@ def common_options(f):
         help="Path to the directory containing subset files (e.g. data/geoquat/train)."
         " If not provided, the full JSON file is used.",
     )(f)
+    f = click.option(
+        "-p",
+        "--model-path",
+        type=click.Path(path_type=Path),
+        default=None,
+        help="Path to the local trained model.",
+    )(f)
     return f
 
 
 @click.command()
 @common_options
-def click_pipeline(file_path: Path, out_directory: Path, file_subset_directory: Path):
+def click_pipeline(file_path: Path, out_directory: Path, file_subset_directory: Path, model_path: Path):
     """Run the description classification pipeline."""
-    main(file_path, out_directory, file_subset_directory)
+    main(file_path, out_directory, file_subset_directory, model_path)
 
 
-def main(file_path: Path, out_directory: Path, file_subset_directory: Path):
+def main(file_path: Path, out_directory: Path, file_subset_directory: Path, model_path: Path):
     """Main pipeline to classify the layer's soil descriptions.
 
     Args:
         file_path (Path): Path to the ground truth json file.
         out_directory (Path): Path to output directory
         file_subset_directory (Path): Path to the directory containing the file whose names are used.
+        model_path (Path): Path to the trained model.
     """
     if mlflow_tracking:
         setup_mlflow_tracking(file_path, out_directory, file_subset_directory)
@@ -114,7 +122,7 @@ def main(file_path: Path, out_directory: Path, file_subset_directory: Path):
     logger.info(f"Loading data from {file_path}")
     layer_descriptions = load_data(file_path, file_subset_directory)
 
-    classifier: Classifier = BaselineClassifier()
+    classifier: Classifier = BertClassifier(model_path)
     logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
     classifier.classify(layer_descriptions)
 
@@ -134,5 +142,6 @@ def main(file_path: Path, out_directory: Path, file_subset_directory: Path):
 
 if __name__ == "__main__":
     # launch with: python -m src.description_classification.main -f data/geoquat_ground_truth.json
-    # or with: boreholes-classify-descriptions  -f data/geoquat_ground_truth.json
+    # or with: boreholes-classify-descriptions  -f data/geoquat_ground_truth.json -s data/geoquat/validation -p
+    # data/output_training/20250403-102944/final
     click_pipeline()

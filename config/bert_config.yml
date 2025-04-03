@@ -1,0 +1,16 @@
+model_path: "google-bert/bert-base-uncased"
+
+# Data parameters
+train_subset: "geoquat/train"
+eval_subset: "geoquat/validation"
+
+# Training hyperparameters
+batch_size: 32
+num_epochs: 20
+learning_rate: 1e-3
+weight_decay: 0.01
+warmup_ratio: 0.1
+lr_scheduler_type: "cosine"
+
+# Inference parameters
+inference_batch_size: 32

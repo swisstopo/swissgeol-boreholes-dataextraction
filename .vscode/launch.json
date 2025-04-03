@@ -10,24 +10,48 @@
             "request": "launch",
             "module": "src.stratigraphy.main",
             "args": [
-                "-i", "data/zurich",
-                "-g", "data/zurich_ground_truth.json"
-                // "-i", "data/geoquat/validation",
-                // "-g", "data/geoquat_ground_truth.json"
+                "-i",
+                //"example/example_borehole_profile.pdf",
+                //"data/subset_zurich",
+                //"data/zurich",
+                //"data/zurich/267123036-bp.pdf",
+                "data/zurich/268123018-bp.pdf", // 2 bh, one with gw
+                // "data/zurich/269126084-bp.pdf", // 2 gw in the same borehole
+                // "data/zurich/267125339-bp.pdf", //groundwater detected
+                // "data/zurich/267125358-bp.pdf", //2 boreholes in one page,  diff elev and coord   
+                //"data/zurich/695265009-bp.pdf", // 2 elevations found
+                // "data/zurich/269126143-bp.pdf", // also 2 boreholes                                    
+                // "data/zurich/267123055-bp.pdf", // WRONG gw depth                                ***
+                //"data/zurich/675244002-bp.pdf",
+                // "data/zurich/684252058-bp.pdf", // 2pages, 2 bh detected (1 in gt)
+                // "data/zurich/681249142-bp.pdf", //8 boreholes in gt, 6 detected
+                //"data/zurich/267123077-bp.pdf",
+                // "data/zurich/267123036-bp.pdf",
+                //"data/geoquat/validation/13080.pdf", //has f1=0, detects 1x the same, and not the right things
+                //"data/geoquat/validation/A7111.pdf",
+                //"data/geoquat/validation",
+                //"data/geoquat/train",
+                //"data/geoquat/validation/8366.pdf",
+                //"data/geoquat/test/A8005.pdf",
+                "-g",
+                "data/zurich_ground_truth.json"
+                //"data/geoquat_ground_truth.json"
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
-            "python": "${workspaceFolder}/swisstopo/bin/python3",
+            "python": "${workspaceFolder}/env/bin/python3",
         },
         {
             "name": "Python: Run scoring",
             "type": "debugpy",
             "request": "launch",
             "module": "src.stratigraphy.benchmark.score",
-            "args": [],
+            "args": [
+                "--no-mlflow-tracking"
+            ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
-            "python": "./swisstopo/bin/python3",
+            "python": "${workspaceFolder}/env/bin/python3",
         },
         {
             "name": "Python: Run label studio to GT",
@@ -36,8 +60,10 @@
             "module": "src.scripts.label_studio_annotation_to_ground_truth",
             "args": [
                 // "-a", "/Users/david.cleres/Downloads/project-2-at-2024-08-15-12-37-dd0f900a.json",
-                "-a", "/Users/david.cleres/Downloads/project-2-at-2024-08-15-13-55-e7d6ebf7.json",
-                "-o", "data/label-studio/zurich_ground_truth.json"
+                "-a",
+                "/Users/david.cleres/Downloads/project-2-at-2024-08-15-13-55-e7d6ebf7.json",
+                "-o",
+                "data/label-studio/zurich_ground_truth.json"
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
@@ -49,11 +75,16 @@
             "request": "launch",
             "module": "src.description_classification.main",
             "args": [
-                "-f", "data/geoquat_ground_truth.json",
+                "-f",
+                "data/geoquat_ground_truth.json",
+                "-s",
+                "data/geoquat/validation",
+                "-p",
+                "data/output_training/20250403-153408/checkpoint-2502"
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
-            "python": "${workspaceFolder}/swisstopo/bin/python3",
+            "python": "${workspaceFolder}/env/bin/python3",
         },
         {
             "name": "API",
@@ -81,7 +112,20 @@
             "args": [],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
-            "python": "${workspaceFolder}/swisstopo/bin/python3",
-        }
+            "python": "${workspaceFolder}/env/bin/python3",
+        },
+        {
+            "name": "Python: Run bert-training",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.description_classification.models.train",
+            "args": [
+                "-f",
+                "data/geoquat_ground_truth.json",
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "${workspaceFolder}/env/bin/python3",
+        },
     ]
 }
