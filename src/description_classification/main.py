@@ -8,7 +8,12 @@ import click
 from dotenv import load_dotenv
 
 from description_classification import DATAPATH
-from description_classification.classifiers.classifiers import BertClassifier, Classifier
+from description_classification.classifiers.classifiers import (
+    BaselineClassifier,
+    BertClassifier,
+    Classifier,
+    DummyClassifier,
+)
 from description_classification.evaluation.evaluate import evaluate
 from description_classification.utils.data_loader import LayerInformations, load_data
 from description_classification.utils.data_utils import (
@@ -91,6 +96,13 @@ def common_options(f):
         " If not provided, the full JSON file is used.",
     )(f)
     f = click.option(
+        "-c",
+        "--classifier-type",
+        type=click.Choice(["dummy", "baseline", "bert"], case_sensitive=False),
+        default="dummy",
+        help="Classifier to use for description classification. Choose from 'dummy', 'baseline', or 'bert'.",
+    )(f)
+    f = click.option(
         "-p",
         "--model-path",
         type=click.Path(path_type=Path),
@@ -102,18 +114,21 @@ def common_options(f):
 
 @click.command()
 @common_options
-def click_pipeline(file_path: Path, out_directory: Path, file_subset_directory: Path, model_path: Path):
+def click_pipeline(
+    file_path: Path, out_directory: Path, file_subset_directory: Path, classifier_type: str, model_path: Path
+):
     """Run the description classification pipeline."""
-    main(file_path, out_directory, file_subset_directory, model_path)
+    main(file_path, out_directory, file_subset_directory, classifier_type, model_path)
 
 
-def main(file_path: Path, out_directory: Path, file_subset_directory: Path, model_path: Path):
+def main(file_path: Path, out_directory: Path, file_subset_directory: Path, classifier_type: str, model_path: Path):
     """Main pipeline to classify the layer's soil descriptions.
 
     Args:
         file_path (Path): Path to the ground truth json file.
         out_directory (Path): Path to output directory
         file_subset_directory (Path): Path to the directory containing the file whose names are used.
+        classifier_type (str): The classifier type to use.
         model_path (Path): Path to the trained model.
     """
     if mlflow_tracking:
@@ -122,7 +137,18 @@ def main(file_path: Path, out_directory: Path, file_subset_directory: Path, mode
     logger.info(f"Loading data from {file_path}")
     layer_descriptions = load_data(file_path, file_subset_directory)
 
-    classifier: Classifier = BertClassifier(model_path)
+    if model_path is not None and classifier_type != "bert":
+        logger.warning("Model path is only used with classifier 'bert'.")
+
+    if classifier_type == "dummy":
+        classifier = DummyClassifier()
+    elif classifier_type == "baseline":
+        classifier = BaselineClassifier()
+    elif classifier_type == "bert":
+        classifier = BertClassifier(model_path)
+        classifier.log_model_name_to_mlflow()
+    if mlflow_tracking:
+        mlflow.log_param("classifier", classifier_type)
     logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
     classifier.classify(layer_descriptions)
 

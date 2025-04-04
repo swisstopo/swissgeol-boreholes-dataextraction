@@ -35,10 +35,10 @@ dependencies = [
     "quads>=1.1.0",
     "numpy<2",
     "rtree",
-    "transformers==4.50.3",
-    "datasets==3.5.0",
-    "torch==2.6.0",
-    "accelerate==1.6.0",
+    "transformers",
+    "datasets",
+    "torch",
+    "accelerate",
 ]
 
 [project.optional-dependencies]
@@ -71,6 +71,7 @@ boreholes-extract-metadata = "stratigraphy.main:click_pipeline_metadata"
 boreholes-download-profiles = "stratigraphy.get_files:download_directory_froms3"
 boreholes-score = "stratigraphy.benchmark.score:main"
 boreholes-classify-descriptions = "description_classification.main:click_pipeline"
+fine-tune-bert = "description_classification.models.train:train_model"
 
 [tool.ruff.lint]
 select = [

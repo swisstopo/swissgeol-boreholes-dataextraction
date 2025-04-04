@@ -1,10 +1,12 @@
 """Classifier module."""
 
+import logging
 import os
 import re
 from pathlib import Path
 from typing import Protocol
 
+import mlflow
 import numpy as np
 from description_classification.models.model import BertModel
 from description_classification.utils.data_loader import LayerInformations
@@ -12,6 +14,9 @@ from description_classification.utils.uscs_classes import USCSClasses, map_most_
 from stratigraphy.util.util import read_params
 from transformers import Trainer
 
+logger = logging.getLogger(__name__)
+
+mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 classification_params = read_params("classification_params.yml")
@@ -107,7 +112,13 @@ class BertClassifier:
         if model_path is None:
             # load pretrained from transformers lib (bad)
             model_path = model_config["model_path"]
+        self.model_path = model_path
         self.bert_model = BertModel(model_path)
+
+    def log_model_name_to_mlflow(self):
+        if not mlflow_tracking:
+            return
+        mlflow.log_param("model_name", "/".join(self.model_path.parts[-2:]))
 
     def classify(self, layer_descriptions: list[LayerInformations]):
         """Classifies the description of the LayerInformations objects.
@@ -117,11 +128,11 @@ class BertClassifier:
         Args:
             layer_descriptions (list[LayerInformations]): The LayerInformations object
         """
-        # for unbatched
-        # for layer in tqdm(layer_descriptions):
+        # for unbatched 501.22s
+        # for layer in layer_descriptions:
         #     layer.prediction_uscs_class = self.bert_model.predict_uscs_class(layer.material_description)
 
-        # for batched
+        # for batched: 386.75s
         # texts = [layer.material_description for layer in layer_descriptions]
         # predictions = self.bert_model.predict_uscs_class_batched(
         #     texts, batch_size=model_config["inference_batch_size"]
@@ -129,14 +140,15 @@ class BertClassifier:
         # for layer, prediction in zip(layer_descriptions, predictions, strict=True):
         #     layer.prediction_uscs_class = prediction
 
-        # using dummy trainer 190.91s
-        dataset = self.bert_model.get_tokenized_dataset(layer_descriptions)
+        # using dummy trainer 191.745s
+        eval_dataset = self.bert_model.get_tokenized_dataset(layer_descriptions)
         trainer = Trainer(
             model=self.bert_model.model,
             processing_class=self.bert_model.tokenizer,
         )
-        output = trainer.predict(dataset)
+        output = trainer.predict(eval_dataset)
         predicted_indices = list(np.argmax(output.predictions, axis=1))
 
-        # Convert indices to USCSClasses
-        return [self.bert_model.id2classEnum[idx] for idx in predicted_indices]
+        # Convert indices to USCSClasses and assign them
+        for layer, idx in zip(layer_descriptions, predicted_indices, strict=True):
+            layer.prediction_uscs_class = self.bert_model.id2classEnum[idx]

@@ -5,6 +5,7 @@ data-legacy/
 /notebooks
 /mlruns
 /mlartifacts
+models/
 
 # Templated gitignores for python projects. Sourced from https://github.com/github/gitignore/blob/main/Python.gitignore
 # Byte-compiled / optimized / DLL files

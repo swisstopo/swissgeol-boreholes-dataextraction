@@ -79,8 +79,10 @@
                 "data/geoquat_ground_truth.json",
                 "-s",
                 "data/geoquat/validation",
+                "-c",
+                "bert",
                 "-p",
-                "data/output_training/20250403-153408/checkpoint-2502"
+                "models/output_training/20250403-102944_best/checkpoint-1251"
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,

@@ -61,7 +61,7 @@ def common_options(f):
         "-o",
         "--out-directory",
         type=click.Path(path_type=Path),
-        default=DATAPATH / "output_training",
+        default="models",
         help="Path to the output directory.",
     )(f)
     return f
@@ -122,7 +122,8 @@ def setup_training_args(out_directory: Path) -> TrainingArguments:
         learning_rate=float(model_config["learning_rate"]),
         lr_scheduler_type=model_config["lr_scheduler_type"],
         warmup_ratio=float(model_config["warmup_ratio"]),
-        logging_strategy="steps",
+        max_grad_norm=float(model_config["max_grad_norm"]),
+        logging_strategy="epoch",
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
@@ -183,7 +184,7 @@ def setup_trainer(bert_model: BertModel, file_path: Path, out_directory: Path) -
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        tokenizer=bert_model.tokenizer,
+        processing_class=bert_model.tokenizer,
         data_collator=DataCollatorWithPadding(tokenizer=bert_model.tokenizer),
         compute_metrics=compute_metrics,  # Define your custom metric function if needed
     )
