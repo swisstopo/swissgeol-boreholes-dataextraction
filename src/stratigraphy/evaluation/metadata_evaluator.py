@@ -7,6 +7,7 @@ from stratigraphy.evaluation.evaluation_dataclasses import (
     Metrics,
     OverallBoreholeMetadataMetrics,
 )
+from stratigraphy.evaluation.utility import evaluate_single
 from stratigraphy.metadata.coordinate_extraction import Coordinate
 from stratigraphy.util.borehole_predictions import FileMetadataWithGroundTruth
 
@@ -49,7 +50,10 @@ class MetadataEvaluator:
                 )
                 ground_truth_coordinates = borehole_data.ground_truth.get("coordinates")
 
-                coordinate_metrics = self._evaluate_coordinate(extracted_coordinates, ground_truth_coordinates)
+                evaluation_result = evaluate_single(
+                    extracted_coordinates, ground_truth_coordinates, self.match_coordinates
+                )
+                coordinate_metrics = evaluation_result.metrics
                 if borehole_data.metadata and borehole_data.metadata.coordinates:
                     borehole_data.metadata.coordinates.feature.is_correct = coordinate_metrics.tp > 0
                 coordinate_metrics_list.append(coordinate_metrics)
@@ -63,7 +67,8 @@ class MetadataEvaluator:
                     else None
                 )
                 ground_truth_elevation = borehole_data.ground_truth.get("reference_elevation")
-                elevation_metrics = self._evaluate_elevation(extracted_elevation, ground_truth_elevation)
+                evaluation_result = evaluate_single(extracted_elevation, ground_truth_elevation, self.match_elevation)
+                elevation_metrics = evaluation_result.metrics
                 if borehole_data.metadata and borehole_data.metadata.elevation:
                     borehole_data.metadata.elevation.feature.is_correct = elevation_metrics.tp > 0
                 elevation_metrics_list.append(elevation_metrics)
@@ -79,78 +84,40 @@ class MetadataEvaluator:
 
         return metadata_metrics_list
 
-    def _evaluate_elevation(self, extracted_elevation: float | None, ground_truth_elevation: float | None):
-        """Private method used to evaluate the extracted elevation against the ground truth.
+    @staticmethod
+    def match_elevation(extracted_elevation: float, ground_truth_elevation: float):
+        """Method used to evaluate the extracted elevation against the ground truth.
 
         Args:
-            extracted_elevation (float | None): the extracted elevation
-            ground_truth_elevation (float | None): the groundtruth elevation
+            extracted_elevation (float): the extracted elevation
+            ground_truth_elevation (float): the groundtruth elevation
 
         Returns:
-            Metrics: the metric for this elevation.
+            bool: if the extracted evaluation matches the ground truth
         """
-        if extracted_elevation is not None and ground_truth_elevation is not None:
-            if math.isclose(extracted_elevation, ground_truth_elevation, abs_tol=0.1):
-                elevation_metrics = Metrics(
-                    tp=1,
-                    fp=0,
-                    fn=0,
-                )
-            else:
-                elevation_metrics = Metrics(
-                    tp=0,
-                    fp=1,
-                    fn=1,
-                )
-        else:
-            elevation_metrics = Metrics(
-                tp=0,
-                fp=1 if extracted_elevation is not None else 0,
-                fn=1 if ground_truth_elevation is not None else 0,
-            )
+        return math.isclose(extracted_elevation, ground_truth_elevation, abs_tol=0.1)
 
-        return elevation_metrics
-
-    def _evaluate_coordinate(self, extracted_coordinates: Coordinate | None, ground_truth_coordinates: dict | None):
-        """Private method used to evaluate the extracted coordinates against the ground truth.
+    @staticmethod
+    def match_coordinates(extracted_coordinates: Coordinate, ground_truth_coordinates: dict):
+        """Method used to evaluate the extracted coordinates against the ground truth.
 
         Args:
-            extracted_coordinates (Coordinate | None): the extracted coordinates
-            ground_truth_coordinates (dict | None): the groundtruth coordinates
+            extracted_coordinates (Coordinate): the extracted coordinates
+            ground_truth_coordinates (dict): the groundtruth coordinates
 
         Returns:
-            Metrics: the metric for these coordinates.
+            bool: if the extracted cooredinates match the ground truth
         """
-        if extracted_coordinates and ground_truth_coordinates:
-            if extracted_coordinates.east.coordinate_value > 2e6 and ground_truth_coordinates["E"] < 2e6:
-                ground_truth_east = int(ground_truth_coordinates["E"]) + 2e6
-                ground_truth_north = int(ground_truth_coordinates["N"]) + 1e6
-            elif extracted_coordinates.east.coordinate_value < 2e6 and ground_truth_coordinates["E"] > 2e6:
-                ground_truth_east = int(ground_truth_coordinates["E"]) - 2e6
-                ground_truth_north = int(ground_truth_coordinates["N"]) - 1e6
-            else:
-                ground_truth_east = int(ground_truth_coordinates["E"])
-                ground_truth_north = int(ground_truth_coordinates["N"])
-
-            if (math.isclose(int(extracted_coordinates.east.coordinate_value), ground_truth_east, abs_tol=2)) and (
-                math.isclose(int(extracted_coordinates.north.coordinate_value), ground_truth_north, abs_tol=2)
-            ):
-                coordinate_metrics = Metrics(
-                    tp=1,
-                    fp=0,
-                    fn=0,
-                )
-            else:
-                coordinate_metrics = Metrics(
-                    tp=0,
-                    fp=1,
-                    fn=1,
-                )
+        if extracted_coordinates.east.coordinate_value > 2e6 and ground_truth_coordinates["E"] < 2e6:
+            ground_truth_east = int(ground_truth_coordinates["E"]) + 2e6
+            ground_truth_north = int(ground_truth_coordinates["N"]) + 1e6
+        elif extracted_coordinates.east.coordinate_value < 2e6 and ground_truth_coordinates["E"] > 2e6:
+            ground_truth_east = int(ground_truth_coordinates["E"]) - 2e6
+            ground_truth_north = int(ground_truth_coordinates["N"]) - 1e6
         else:
-            coordinate_metrics = Metrics(
-                tp=0,
-                fp=1 if extracted_coordinates is not None else 0,
-                fn=1 if ground_truth_coordinates is not None else 0,
-            )
+            ground_truth_east = int(ground_truth_coordinates["E"])
+            ground_truth_north = int(ground_truth_coordinates["N"])
 
-        return coordinate_metrics
+        return (math.isclose(int(extracted_coordinates.east.coordinate_value), ground_truth_east, abs_tol=2)) and (
+            math.isclose(int(extracted_coordinates.north.coordinate_value), ground_truth_north, abs_tol=2)
+        )

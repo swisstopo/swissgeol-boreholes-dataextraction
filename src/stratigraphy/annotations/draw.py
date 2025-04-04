@@ -81,9 +81,12 @@ def draw_predictions(
                             )
                         for groundwater_entry in groundwaters.groundwater_feature_list:
                             if page_number == groundwater_entry.page:
-                                # TODO: store correctness with the groundwater object
-                                # See also https://github.com/swisstopo/swissgeol-boreholes-dataextraction/issues/124
-                                draw_feature(shape, groundwater_entry.rect * page.derotation_matrix, None, "pink")
+                                draw_feature(
+                                    shape,
+                                    groundwater_entry.rect * page.derotation_matrix,
+                                    groundwater_entry.feature.is_correct,
+                                    "pink",
+                                )
                         draw_depth_columns_and_material_rect(
                             shape,
                             page.derotation_matrix,

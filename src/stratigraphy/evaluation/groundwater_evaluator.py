@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from stratigraphy.benchmark.metrics import OverallMetrics
 from stratigraphy.evaluation.evaluation_dataclasses import Metrics
-from stratigraphy.evaluation.utility import count_against_ground_truth
+from stratigraphy.evaluation.utility import evaluate
 from stratigraphy.groundwater.groundwater_extraction import Groundwater
 from stratigraphy.util.borehole_predictions import FileGroundwaterWithGroundTruth
 
@@ -92,35 +92,26 @@ class GroundwaterEvaluator:
                     for json_gt_data in borehole_data.ground_truth
                 ]
 
-                # TODO store the correctness directly on the Groundwater objects, so we can use that in the
-                # visualizations (cf. https://github.com/swisstopo/swissgeol-boreholes-dataextraction/issues/124)
-                entries = borehole_data.groundwater.groundwater_feature_list if borehole_data.groundwater else []
-                groundwater_metrics = count_against_ground_truth(
-                    [
-                        (
-                            entry.feature.depth,
-                            entry.feature.format_date(),
-                            entry.feature.elevation,
-                        )
-                        for entry in entries
-                    ],
-                    [(entry.depth, entry.format_date(), entry.elevation) for entry in gt_groundwater],
+                entries = (
+                    [feature_on_page.feature for feature_on_page in borehole_data.groundwater.groundwater_feature_list]
+                    if borehole_data.groundwater
+                    else []
                 )
-                groundwater_depth_metrics = count_against_ground_truth(
-                    [entry.feature.depth for entry in entries],
-                    [entry.depth for entry in gt_groundwater],
-                )
-                groundwater_elevation_metrics = count_against_ground_truth(
-                    [entry.feature.elevation for entry in entries],
-                    [entry.elevation for entry in gt_groundwater],
-                )
-                groundwater_date_metrics = count_against_ground_truth(
-                    [entry.feature.format_date() for entry in entries],
-                    [entry.format_date() for entry in gt_groundwater],
-                )
-                groundwater_metrics_list.append(groundwater_metrics)
+
+                groundwater_evaluation = evaluate(entries, gt_groundwater, self.match_groundwater)
+                groundwater_metrics_list.append(groundwater_evaluation.metrics)
+                for feature, is_correct in zip(entries, groundwater_evaluation.extracted_correct, strict=True):
+                    feature.is_correct = is_correct
+
+                groundwater_depth_metrics = evaluate(entries, gt_groundwater, self.match_groundwater_depth).metrics
                 groundwater_depth_metrics_list.append(groundwater_depth_metrics)
+
+                groundwater_elevation_metrics = evaluate(
+                    entries, gt_groundwater, self.match_groundwater_elevation
+                ).metrics
                 groundwater_elevation_metrics_list.append(groundwater_elevation_metrics)
+
+                groundwater_date_metrics = evaluate(entries, gt_groundwater, self.match_groundwater_date).metrics
                 groundwater_date_metrics_list.append(groundwater_date_metrics)
 
             # we take the micro-average across boreholes
@@ -135,3 +126,21 @@ class GroundwaterEvaluator:
             overall_groundwater_metrics.add_groundwater_metrics(file_groundwater_metrics)
 
         return overall_groundwater_metrics
+
+    @staticmethod
+    def match_groundwater(extracted: Groundwater, ground_truth: Groundwater) -> bool:
+        extracted_tuple = (extracted.depth, extracted.format_date(), extracted.elevation)
+        ground_truth_tuple = (ground_truth.depth, ground_truth.format_date(), ground_truth.elevation)
+        return extracted_tuple == ground_truth_tuple
+
+    @staticmethod
+    def match_groundwater_depth(extracted: Groundwater, ground_truth: Groundwater) -> bool:
+        return extracted.depth == ground_truth.depth
+
+    @staticmethod
+    def match_groundwater_date(extracted: Groundwater, ground_truth: Groundwater) -> bool:
+        return extracted.format_date() == ground_truth.format_date()
+
+    @staticmethod
+    def match_groundwater_elevation(extracted: Groundwater, ground_truth: Groundwater) -> bool:
+        return extracted.elevation == ground_truth.elevation
