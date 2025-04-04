@@ -8,7 +8,7 @@ import pytest
 from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.evaluation.layer_evaluator import LayerEvaluator
-from stratigraphy.evaluation.utility import count_against_ground_truth
+from stratigraphy.evaluation.utility import evaluate, evaluate_single
 from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
 from stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry, LayersInBorehole
 from stratigraphy.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
@@ -240,7 +240,23 @@ def test_evaluate_metadata_extraction(sample_file_prediction_with_ground_truth: 
         ([1, 2], [3, 4], (0, 2, 2)),
     ],
 )
-def test_count_against_ground_truth_cases(values, ground_truth, expected):
+def test_evaluate(values, ground_truth, expected):
     """Test count_against_ground_truth with various scenarios."""
-    metrics = count_against_ground_truth(values, ground_truth)
+    metrics = evaluate(values, ground_truth, lambda a, b: a == b).metrics
+    assert (metrics.tp, metrics.fp, metrics.fn) == expected
+
+
+@pytest.mark.parametrize(
+    "value,ground_truth,expected",
+    [
+        (1, 1, (1, 0, 0)),
+        (1, 2, (0, 1, 1)),
+        (1, None, (0, 1, 0)),
+        (None, 1, (0, 0, 1)),
+        (None, None, (0, 0, 0)),
+    ],
+)
+def test_evaluate_single(value, ground_truth, expected):
+    """Test count_against_ground_truth with various scenarios."""
+    metrics = evaluate_single(value, ground_truth, lambda a, b: a == b).metrics
     assert (metrics.tp, metrics.fp, metrics.fn) == expected
