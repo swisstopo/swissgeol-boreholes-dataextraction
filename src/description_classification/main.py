@@ -148,13 +148,12 @@ def main(file_path: Path, out_directory: Path, file_subset_directory: Path, clas
     elif classifier_type == "bert":
         classifier = BertClassifier(model_path)
 
-    logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
-    if mlflow_tracking:
-        log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier)
-
     # classify
+    logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
     classifier.classify(layer_descriptions)
     write_predictions(layer_descriptions, out_directory)
+    if mlflow_tracking:
+        log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier)
 
     # evaluate
     logger.info("Evaluating predictions")
