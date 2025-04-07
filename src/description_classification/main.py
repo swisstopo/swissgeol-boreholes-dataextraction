@@ -6,6 +6,7 @@ from pathlib import Path
 
 import click
 from dotenv import load_dotenv
+from stratigraphy.util.util import read_params
 
 from description_classification import DATAPATH
 from description_classification.classifiers.classifiers import BaselineClassifier, Classifier
@@ -14,11 +15,12 @@ from description_classification.utils.data_loader import LayerInformations, load
 from description_classification.utils.data_utils import (
     get_data_class_count,
     get_data_language_count,
-    write_per_class_predictions,
+    write_per_language_per_class_predictions,
     write_predictions,
 )
 
 load_dotenv()
+classification_params = read_params("classification_params.yml")
 
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 if mlflow_tracking:
@@ -67,8 +69,14 @@ def log_ml_flow_infos(
     mlflow.log_artifact(f"{out_directory}/uscs_class_predictions.json", "predictions_json")
 
     pred_dir = os.path.join(out_directory, "predictions_per_ground_truth_class")
-    for file in os.listdir(pred_dir):
-        mlflow.log_artifact(os.path.join(pred_dir, file), "predictions_per_ground_truth_class_json")
+    for language in ["global", *classification_params["supported_language"]]:
+        language_dir = os.path.join(pred_dir, language)
+        mlflow.log_artifact(
+            os.path.join(language_dir, "_overview.json"), f"predictions_per_ground_truth_class_json/{language}"
+        )
+        for file in os.listdir(language_dir):
+            file_path = os.path.join(language_dir, file)
+            mlflow.log_artifact(file_path, f"predictions_per_ground_truth_class_json/{language}")
 
 
 def common_options(f):
@@ -124,7 +132,7 @@ def main(file_path: Path, out_directory: Path, file_subset_directory: Path):
     classifier.classify(layer_descriptions)
 
     write_predictions(layer_descriptions, out_directory)
-    write_per_class_predictions(layer_descriptions, out_directory)
+    write_per_language_per_class_predictions(layer_descriptions, out_directory)
 
     if mlflow_tracking:
         log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier)
