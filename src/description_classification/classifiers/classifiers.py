@@ -5,9 +5,8 @@ from typing import Protocol
 
 from description_classification.utils.data_loader import LayerInformations
 from description_classification.utils.uscs_classes import USCSClasses, map_most_similar_uscs
-from stratigraphy.util.util import read_params
 from nltk.stem.snowball import SnowballStemmer
-
+from stratigraphy.util.util import read_params
 
 classification_params = read_params("classification_params.yml")
 language_resources = read_params("language_resources.yml")
@@ -60,10 +59,9 @@ class BaselineClassifier:
         """Initialize with configurable thresholds.
 
         Args:
-            match_threshold: Minimum coverage for exact position matches (default: 0.75)
+            match_threshold: Minimum coverage for exact position matches (default: 0.5)
             partial_match_threshold: Minimum coverage for partial position matches (default: 0.75)
         """
-
         self.match_threshold = match_threshold
         self.partial_match_threshold = partial_match_threshold
 
@@ -75,16 +73,9 @@ class BaselineClassifier:
             for lang, synonyms in language_resources.get("synonyms", {}).items()
         }
 
-        self.stopwords = {
-            lang: words for lang, words in language_resources.get("stopwords", {}).items()
-        }
+        self.stopwords = {lang: words for lang, words in language_resources.get("stopwords", {}).items()}
 
-        self.stemmer_languages = {
-            "de": "german",
-            "fr": "french",
-            "en": "english",
-            "it": "italian"
-        }
+        self.stemmer_languages = {"de": "german", "fr": "french", "en": "english", "it": "italian"}
 
         self.stemmers = {}
 
@@ -99,7 +90,6 @@ class BaselineClassifier:
         Returns:
         bool: True if tokens are considered synonyms, False otherwise
         """
-
         if token1 == token2:
             return True
 
@@ -119,29 +109,28 @@ class BaselineClassifier:
         Returns:
         list[str]: A new list containing only the tokens without stopwords
         """
-
         lang_stopwords = self.stopwords.get(language, [])
         return [token for token in tokens if token not in lang_stopwords]
 
     def get_stemmer(self, language: str) -> dict[str, SnowballStemmer]:
-            """Get or create a stemmer for the specified language with German as a fallback option. 
-            As its base it utilizes the nltk package and snowball stemmer.
+        """Get or create a stemmer for the specified language with German as a fallback option.
 
-            Args:
-                language (str): The language code for which to get the stemmer
+        Args:
+            language (str): The language code for which to get the stemmer
 
-            Returns:
-                SnowballStemmer: The stemmer for the specified language or German if language is not supported
-            """
+        Returns:
+            SnowballStemmer: The stemmer for the specified language
+        """
+        if language not in self.stemmers:
+            stemmer_lang = self.stemmer_languages.get(language, "german")
+            self.stemmers[language] = SnowballStemmer(stemmer_lang)
 
-            if language not in self.stemmers:
-                stemmer_lang = self.stemmer_languages.get(language, "german")
-                self.stemmers[language] = SnowballStemmer(stemmer_lang)
+        return self.stemmers[language]
 
-            return self.stemmers[language]
-
-    def find_ordered_sequence(self, pattern_tokens, description_tokens, language, match_threshold, partial_match_threshold) -> tuple:
-        """Find the best match for pattern tokens within description tokens
+    def find_ordered_sequence(
+        self, pattern_tokens, description_tokens, language, match_threshold, partial_match_threshold
+    ) -> tuple:
+        """Find the best match for pattern tokens within description tokens.
 
         Uses two matching strategies:
         1. Exact sequence matching - pattern is treated as a continuous sequence
@@ -151,6 +140,8 @@ class BaselineClassifier:
             pattern_tokens: Stemmed tokens from the pattern
             description_tokens: Stemmed tokens from the description
             language: Language code for synonym matching
+            match_threshold: Minimum coverage for exact position matches
+            partial_match_threshold: Minimum coverage for partial position matches
 
         Returns:
             tuple: (coverage, start_pos, matched_words)
@@ -201,7 +192,6 @@ class BaselineClassifier:
 
         return 0, -1, []
 
-
     def classify(self, layer_descriptions: list[LayerInformations]):
         """Classifies the description of the LayerInformations objects.
 
@@ -216,7 +206,6 @@ class BaselineClassifier:
             layer_descriptions (list[LayerInformations]): The LayerInformations object
 
         """
-
         for layer in layer_descriptions:
             patterns = self.uscs_patterns[layer.language]
             description = layer.material_description.lower()
@@ -224,7 +213,7 @@ class BaselineClassifier:
             stemmer = self.get_stemmer(language)
 
             # Tokenize the description into separate words and stem them
-            description_tokens = re.findall(r'\b\w+\b', description.lower())
+            description_tokens = re.findall(r"\b\w+\b", description.lower())
             description_tokens = self.filter_stopwords(description_tokens, language)
             stemmed_description_tokens = [stemmer.stem(token) for token in description_tokens]
 
@@ -236,27 +225,32 @@ class BaselineClassifier:
                 clean_pattern = re.sub(r"\(.*?\)", "", class_keywords).strip().lower()
 
                 # Tokenize the pattern into separate words and stem them
-                pattern_tokens = re.findall(r'\b\w+\b', clean_pattern)
+                pattern_tokens = re.findall(r"\b\w+\b", clean_pattern)
                 pattern_tokens = self.filter_stopwords(pattern_tokens, language)
                 stemmed_pattern_tokens = [stemmer.stem(token) for token in pattern_tokens]
 
                 coverage, start_pos, matched_words = self.find_ordered_sequence(
-                    stemmed_pattern_tokens, stemmed_description_tokens, language,
-                    self.match_threshold, self.partial_match_threshold
+                    stemmed_pattern_tokens,
+                    stemmed_description_tokens,
+                    language,
+                    self.match_threshold,
+                    self.partial_match_threshold,
                 )
 
-                matches.append({
-                    'class': uscs_class,
-                    'coverage': coverage,
-                    'complexity': len(pattern_tokens),
-                    'matched_words': matched_words,
-                    'start_pos': start_pos,
-                })
+                matches.append(
+                    {
+                        "class": uscs_class,
+                        "coverage": coverage,
+                        "complexity": len(pattern_tokens),
+                        "matched_words": matched_words,
+                        "start_pos": start_pos,
+                    }
+                )
 
             # Sort matches by coverage and complexity in descending order, then by start_pos in ascending order
-            sorted_matches = sorted(matches, key=lambda x: (-x['coverage'], -x['complexity'], x['start_pos']))
+            sorted_matches = sorted(matches, key=lambda x: (-x["coverage"], -x["complexity"], x["start_pos"]))
 
             if sorted_matches:
-                layer.prediction_uscs_class = sorted_matches[0]['class']
+                layer.prediction_uscs_class = sorted_matches[0]["class"]
             else:
                 layer.prediction_uscs_class = USCSClasses.kA
