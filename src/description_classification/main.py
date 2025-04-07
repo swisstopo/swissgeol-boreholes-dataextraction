@@ -14,6 +14,7 @@ from description_classification.utils.data_loader import LayerInformations, load
 from description_classification.utils.data_utils import (
     get_data_class_count,
     get_data_language_count,
+    write_per_class_predictions,
     write_predictions,
 )
 
@@ -64,6 +65,10 @@ def log_ml_flow_infos(
     # Log input data and output predictions
     mlflow.log_artifact(str(file_path), "input_data")
     mlflow.log_artifact(f"{out_directory}/uscs_class_predictions.json", "predictions_json")
+
+    pred_dir = os.path.join(out_directory, "predictions_per_ground_truth_class")
+    for file in os.listdir(pred_dir):
+        mlflow.log_artifact(os.path.join(pred_dir, file), "predictions_per_ground_truth_class_json")
 
 
 def common_options(f):
@@ -119,6 +124,7 @@ def main(file_path: Path, out_directory: Path, file_subset_directory: Path):
     classifier.classify(layer_descriptions)
 
     write_predictions(layer_descriptions, out_directory)
+    write_per_class_predictions(layer_descriptions, out_directory)
 
     if mlflow_tracking:
         log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier)
