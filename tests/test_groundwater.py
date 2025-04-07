@@ -1,5 +1,7 @@
 """Tests for the groundwater module."""
 
+from datetime import date
+
 import pytest
 from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
@@ -10,7 +12,25 @@ from stratigraphy.evaluation.groundwater_evaluator import (
     OverallGroundwaterMetrics,
 )
 from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
+from stratigraphy.groundwater.utility import extract_date
 from stratigraphy.util.borehole_predictions import BoreholeGroundwaterWithGroundTruth, FileGroundwaterWithGroundTruth
+
+
+@pytest.fixture
+def date_test_cases():
+    """Provides test cases for extract_date function."""
+    return [
+        # Valid full-year dates
+        ("The date is 12.05.1998", date(1998, 5, 12), "12.05.1998"),
+        # Valid short-year dates
+        ("Event on 07.04.99", date(1999, 4, 7), "07.04.99"),
+        # Extra spaces
+        ("  10 . 03 . 1985 ", date(1985, 3, 10), "10 . 03 . 1985"),
+        # Invalid dates
+        ("Invalid format: 30.02.2020", None, None),
+        # No date in text
+        ("No date here!", None, None),
+    ]
 
 
 @pytest.fixture
@@ -53,6 +73,12 @@ def groundwater_at_3m22() -> dict:
         },
         Groundwater,
     )
+
+
+def test_extract_date(date_test_cases):
+    """Test extract_date function with various inputs."""
+    for text, expected_date, expected_str in date_test_cases:
+        assert extract_date(text) == (expected_date, expected_str)
 
 
 def test_add_groundwater_metrics(sample_metrics):
@@ -138,31 +164,38 @@ def test_evaluate_multiple_documents(groundtruth, groundwater_at_2m22, groundwat
     second entry in the groudtruth file.
     """
     # Sample groundwater entries
-    groundwater_entries = {
-        "example_borehole_profile.pdf": [GroundwatersInBorehole([groundwater_at_2m22, groundwater_at_3m22])],
-        "example_borehole_profile_2.pdf": [
-            GroundwatersInBorehole([groundwater_at_2m22]),
-            GroundwatersInBorehole([groundwater_at_3m22]),
-        ],
-    }
-
-    # dictionary used to "manually" build the FileGroundwaterWithGroundTruth object
-    pred_to_gt_matching = {"example_borehole_profile.pdf": {0: 0}, "example_borehole_profile_2.pdf": {0: 1, 1: 0}}
+    gt_matching_index_example = {0: 0}
+    gt_matching_index_example_2 = {0: 1, 1: 0}
     evaluator = GroundwaterEvaluator(
         groundwater_list=[
             FileGroundwaterWithGroundTruth(
-                filename=filename,
+                filename="example_borehole_profile.pdf",
                 boreholes=[
                     BoreholeGroundwaterWithGroundTruth(
-                        groundwater=groundwaterinborehole,
-                        ground_truth=groundtruth.for_file(filename).get(pred_to_gt_matching[filename][pred_idx])[
-                            "groundwater"
-                        ],
+                        groundwater=GroundwatersInBorehole([groundwater_at_2m22, groundwater_at_3m22]),
+                        ground_truth=groundtruth.for_file("example_borehole_profile.pdf").get(
+                            gt_matching_index_example[0]
+                        )["groundwater"],
                     )
-                    for pred_idx, groundwaterinborehole in enumerate(groundwaterinborehole_list)
                 ],
-            )
-            for filename, groundwaterinborehole_list in groundwater_entries.items()
+            ),
+            FileGroundwaterWithGroundTruth(
+                filename="example_borehole_profile_2.pdf",
+                boreholes=[
+                    BoreholeGroundwaterWithGroundTruth(
+                        groundwater=GroundwatersInBorehole([groundwater_at_2m22]),
+                        ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf").get(
+                            gt_matching_index_example_2[0]
+                        )["groundwater"],
+                    ),
+                    BoreholeGroundwaterWithGroundTruth(
+                        groundwater=GroundwatersInBorehole([groundwater_at_3m22]),
+                        ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf").get(
+                            gt_matching_index_example_2[1]
+                        )["groundwater"],
+                    ),
+                ],
+            ),
         ]
     )
     overall_metrics = evaluator.evaluate()

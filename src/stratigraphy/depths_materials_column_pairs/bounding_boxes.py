@@ -83,3 +83,26 @@ class PageBoundingBoxes:
             material_description_bbox=BoundingBox(pair.material_description_rect),
             page=page_number,
         )
+
+    def get_outer_rect(self) -> fitz.Rect:
+        """Returns the extreme bounding rectangle.
+
+        Computes the smallest rectangle that encloses all bounding boxes in this PageBoundingBoxes object.
+
+        Returns:
+            fitz.Rect: The bounding rectangle.
+        """
+        all_bboxes = [self.material_description_bbox] + self.depth_column_entry_bboxes
+        if self.sidebar_bbox:
+            all_bboxes.append(self.sidebar_bbox)
+
+        if not all_bboxes:
+            raise ValueError("No bounding boxes available to determine extreme coordinates.")
+
+        # Compute extreme coordinates
+        min_x = min(bbox.rect.x0 for bbox in all_bboxes)
+        min_y = min(bbox.rect.y0 for bbox in all_bboxes)
+        max_x = max(bbox.rect.x1 for bbox in all_bboxes)
+        max_y = max(bbox.rect.y1 for bbox in all_bboxes)
+
+        return fitz.Rect(min_x, min_y, max_x, max_y)

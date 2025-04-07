@@ -7,7 +7,7 @@ name = "swissgeol-boreholes-dataextraction"
 version = "0.0.1-dev"
 description = "Python project to analyse borehole profiles."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"
 dependencies = [
     "boto3",
     "pandas",
@@ -30,7 +30,7 @@ dependencies = [
     "langdetect>=1.0.9",
     "regex",
     "backoff",
-    "PyMuPDF>=1.23.26",
+    "PyMuPDF>=1.25.4",
     "opencv-python-headless",
     "quads>=1.1.0",
     "numpy<2",
@@ -96,3 +96,13 @@ line-length = 119
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.pytest.ini_options]
+# Some deprecation warnings come from external libraries (botocore and SWIG). Since we can’t fix these in our code,
+# they are now ignored during test runs to keep the output clean. Link to the existing issues:
+# SWIG: https://github.com/pymupdf/PyMuPDF/issues/3931
+# boto3: https://github.com/boto/boto3/issues/3889
+filterwarnings = [
+    "ignore:.*Swig.*has no __module__ attribute:DeprecationWarning",
+    "ignore:datetime.datetime.utcnow:DeprecationWarning:botocore"
+]

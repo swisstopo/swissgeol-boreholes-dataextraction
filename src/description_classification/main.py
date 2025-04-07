@@ -10,11 +10,10 @@ from dotenv import load_dotenv
 from description_classification import DATAPATH
 from description_classification.classifiers.classifiers import BaselineClassifier, Classifier
 from description_classification.evaluation.evaluate import evaluate
-from description_classification.utils.data_loader import (
-    LayerInformations,
+from description_classification.utils.data_loader import LayerInformations, load_data
+from description_classification.utils.data_utils import (
     get_data_class_count,
     get_data_language_count,
-    load_data,
     write_predictions,
 )
 
@@ -87,34 +86,27 @@ def common_options(f):
         "-s",
         "--file-subset-directory",
         type=click.Path(path_type=Path),
-        default=DATAPATH / "geoquat" / "validation",
-        help="Path to the directory containing the file whose names are used.",
-    )(f)
-    f = click.option(
-        "-l",
-        "--log-per-class",
-        is_flag=True,
-        default=False,
-        help="Log classification metrics per class.",
+        default=None,
+        help="Path to the directory containing subset files (e.g. data/geoquat/train)."
+        " If not provided, the full JSON file is used.",
     )(f)
     return f
 
 
 @click.command()
 @common_options
-def click_pipeline(file_path: Path, out_directory: Path, file_subset_directory: Path, log_per_class: bool = False):
+def click_pipeline(file_path: Path, out_directory: Path, file_subset_directory: Path):
     """Run the description classification pipeline."""
-    main(file_path, out_directory, file_subset_directory, log_per_class)
+    main(file_path, out_directory, file_subset_directory)
 
 
-def main(file_path: Path, out_directory: Path, file_subset_directory: Path, log_per_class: bool = False):
+def main(file_path: Path, out_directory: Path, file_subset_directory: Path):
     """Main pipeline to classify the layer's soil descriptions.
 
     Args:
         file_path (Path): Path to the ground truth json file.
         out_directory (Path): Path to output directory
         file_subset_directory (Path): Path to the directory containing the file whose names are used.
-        log_per_class (bool): Log classification metrics per class.
     """
     if mlflow_tracking:
         setup_mlflow_tracking(file_path, out_directory, file_subset_directory)
@@ -132,7 +124,7 @@ def main(file_path: Path, out_directory: Path, file_subset_directory: Path, log_
         log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier)
 
     logger.info("Evaluating predictions")
-    classification_metrics = evaluate(layer_descriptions, log_per_class=log_per_class)
+    classification_metrics = evaluate(layer_descriptions)
     logger.info(f"classification metrics: {classification_metrics.to_json()}")
     logger.debug(f"classification metrics per class: {classification_metrics.to_json_per_class()}")
 

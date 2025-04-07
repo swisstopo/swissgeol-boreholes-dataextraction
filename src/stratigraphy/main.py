@@ -3,7 +3,6 @@
 import json
 import logging
 import os
-from collections import defaultdict
 from pathlib import Path
 
 import click
@@ -19,7 +18,6 @@ from stratigraphy.extract import MaterialDescriptionRectWithSidebarExtractor
 from stratigraphy.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
     GroundwaterLevelExtractor,
-    GroundwatersInBorehole,
 )
 from stratigraphy.layer.duplicate_detection import remove_duplicate_layers
 from stratigraphy.layer.layer import LayersInDocument
@@ -94,6 +92,13 @@ def common_options(f):
         default=False,
         help="Whether to draw lines on pdf pages. Defaults to False.",
     )(f)
+    f = click.option(
+        "-c",
+        "--csv",
+        is_flag=True,
+        default=False,
+        help="Whether to generate CSV output. Defaults to False.",
+    )(f)
     return f
 
 
@@ -110,6 +115,7 @@ def click_pipeline(
     metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
+    csv: bool = False,
     part: str = "all",
 ):
     """Run the boreholes data extraction pipeline."""
@@ -121,6 +127,7 @@ def click_pipeline(
         metadata_path=metadata_path,
         skip_draw_predictions=skip_draw_predictions,
         draw_lines=draw_lines,
+        csv=csv,
         part=part,
     )
 
@@ -186,6 +193,7 @@ def start_pipeline(
     metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
+    csv: bool = False,
     part: str = "all",
 ):
     """Run the boreholes data extraction pipeline.
@@ -205,6 +213,7 @@ def start_pipeline(
         skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
         draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.
         metadata_path (Path): The path to the metadata file.
+        csv (bool): Whether to generate a CSV output. Defaults to False.
         part (str, optional): The part of the pipeline to run. Defaults to "all".
     """  # noqa: D301
     if mlflow_tracking:
@@ -219,6 +228,10 @@ def start_pipeline(
         # check if directories exist and create them when necessary
         draw_directory = out_directory / "draw"
         draw_directory.mkdir(parents=True, exist_ok=True)
+
+    if csv:
+        csv_dir = out_directory / "csv"
+        csv_dir.mkdir(parents=True, exist_ok=True)
 
     # if a file is specified instead of an input directory, copy the file to a temporary directory and work with that.
     if input_directory.is_file():
@@ -244,10 +257,9 @@ def start_pipeline(
             file_metadata = FileMetadata.from_document(doc)
             metadata = MetadataInDocument.from_document(doc)
 
-            # Save the predictions to the overall predictions object
-            # Initialize common variables
+            # Save the predictions to the overall predictions object, initialize common variables
             layers_with_bb_in_document = LayersInDocument([], filename)
-            aggregated_groundwater_entries = defaultdict(list)
+            all_groundwater_entries = GroundwaterInDocument([], filename)
 
             if part != "all":
                 continue
@@ -264,35 +276,12 @@ def start_pipeline(
                 processed_page_results = LayersInDocument(extracted_boreholes, filename)
 
                 # Extract the groundwater levels
-                for borehole_index, extracted_borehole in enumerate(processed_page_results.boreholes_layers_with_bb):
-                    for page_bounding_box in extracted_borehole.bounding_boxes:
-                        material_description_bbox = page_bounding_box.material_description_bbox
+                groundwater_extractor = GroundwaterLevelExtractor()
+                groundwater_entries = groundwater_extractor.extract_groundwater(
+                    page_number=page_number, lines=text_lines, document=doc
+                )
+                all_groundwater_entries.groundwater_feature_list.extend(groundwater_entries)
 
-                        # TODO: first match elevation with boreholes more intelligently, then pass the correct value to
-                        # the groundwater extraction logic
-                        terrain_elevation = None
-                        if metadata.elevations:
-                            if len(metadata.elevations) > borehole_index:
-                                terrain_elevation = metadata.elevations[borehole_index]
-                            else:
-                                terrain_elevation = metadata.elevations[0]
-
-                        groundwater_entries_near_bbox = GroundwaterLevelExtractor.near_material_description(
-                            document=doc,
-                            page_number=page_number,
-                            lines=text_lines,
-                            material_description_bbox=material_description_bbox,
-                            terrain_elevation=terrain_elevation,
-                        )
-                        # avoid duplicate entries
-                        seen_entry = [
-                            seen for borehole_gw in aggregated_groundwater_entries.values() for seen in borehole_gw
-                        ]
-                        for groundwater_entry in groundwater_entries_near_bbox:
-                            if groundwater_entry not in seen_entry:
-                                aggregated_groundwater_entries[borehole_index].append(groundwater_entry)
-
-                # TODO: Add remove duplicates here!
                 if page_index > 0:
                     layer_with_bb_predictions = remove_duplicate_layers(
                         previous_page=doc[page_index - 1],
@@ -313,25 +302,33 @@ def start_pipeline(
                         img = plot_lines(page, geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"])
                         mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
-            # Create a document-level groundwater entry
-            groundwater_entries = GroundwaterInDocument(
-                filename=filename,
-                borehole_groundwaters=[
-                    GroundwatersInBorehole(value) for _, value in sorted(aggregated_groundwater_entries.items())
-                ],
-            )
-
             # create list of BoreholePrediction objects with all the separate lists
             borehole_predictions_list: list[BoreholePredictions] = BoreholeListBuilder(
                 layers_with_bb_in_document=layers_with_bb_in_document,
                 file_name=filename,
-                groundwater_in_doc=groundwater_entries,
+                groundwater_in_doc=all_groundwater_entries,
                 elevations_list=metadata.elevations,
                 coordinates_list=metadata.coordinates,
             ).build()
+            # now that the matching is done, the depths of groundwater can be set
+            for borehole in borehole_predictions_list:
+                borehole.set_groundwater_elevation_infos()
 
             # Add file predictions
             predictions.add_file_predictions(FilePredictions(borehole_predictions_list, file_metadata, filename))
+
+            # Add layers to a csv file
+            if csv:
+                base_path = csv_dir / Path(filename).stem
+
+                for index, borehole in enumerate(borehole_predictions_list):
+                    csv_path = f"{base_path}_{index}.csv" if len(borehole_predictions_list) > 1 else f"{base_path}.csv"
+                    logger.info("Writing CSV predictions to %s", csv_path)
+                    with open(csv_path, "w", encoding="utf8", newline="") as file:
+                        file.write(borehole.to_csv())
+
+                    if mlflow_tracking:
+                        mlflow.log_artifact(csv_path, "csv")
 
     logger.info("Metadata written to %s", metadata_path)
     with open(metadata_path, "w", encoding="utf8") as file:
