@@ -91,7 +91,7 @@ def train_model(file_path: Path, out_directory: Path, model_checkpoint: Path):
     trainer = setup_trainer(bert_model, file_path, out_directory)
 
     # Start training
-    logger.info("Begining the training.")
+    logger.info("Beginning the training.")
     train_result = trainer.train(resume_from_checkpoint=model_checkpoint)
 
     trainer.save_model()  # Saves the tokenizer too for easy upload

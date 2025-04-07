@@ -107,7 +107,7 @@ class BaselineClassifier:
 class BertClassifier:
     """Classifier class that uses the BERT model."""
 
-    def __init__(self, model_path: Path):
+    def __init__(self, model_path: Path | None):
         if model_path is None:
             # load pretrained from transformers lib (bad)
             model_path = model_config["model_path"]

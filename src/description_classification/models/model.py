@@ -56,7 +56,7 @@ class BertModel:
             param.requires_grad = False
 
     def freeze_layers_except_pooler_and_classifier(self):
-        """Freeze all layers except the poller and classifier layers."""
+        """Freeze all layers except the pooler and classifier layers."""
         self.freeze_all_layers()
         self.unfreeze_pooler()
         self.unfreeze_classifier()
