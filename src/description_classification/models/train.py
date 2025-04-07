@@ -17,7 +17,11 @@ from description_classification.evaluation.evaluate import AllClassificationMetr
 from description_classification.models.model import BertModel
 from description_classification.utils.data_loader import load_data
 
-logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
+if __name__ == "__main__":
+    # Only configure logging if this script is run directly (e.g., training pipeline entrypoint)
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S"
+    )
 logger = logging.getLogger(__name__)
 
 load_dotenv()
@@ -54,8 +58,7 @@ def common_options(f):
         "--model-checkpoint",
         type=click.Path(exists=True, path_type=Path),
         default=None,
-        help="Path to a local folder containing an existing bert model "
-        "(e.g. data/output_training/20250403-102944/final).",
+        help="Path to a local folder containing an existing bert model (e.g. models/your_model_folder).",
     )(f)
     f = click.option(
         "-o",
@@ -81,7 +84,7 @@ def train_model(file_path: Path, out_directory: Path, model_checkpoint: Path):
     model_path = model_config["model_path"] if model_checkpoint is None else model_checkpoint
     logger.info(f"Loading pretrained model from {model_path}.")
     bert_model = BertModel(model_path)
-    bert_model.freeze_layers_except_pooler()
+    bert_model.freeze_layers_except_pooler_and_classifier()
     bert_model.model.train()
 
     # Initialize the trainer
@@ -90,15 +93,12 @@ def train_model(file_path: Path, out_directory: Path, model_checkpoint: Path):
     # Start training
     logger.info("Begining the training.")
     train_result = trainer.train(resume_from_checkpoint=model_checkpoint)
-    metrics = train_result.metrics
 
     trainer.save_model()  # Saves the tokenizer too for easy upload
+    metrics = train_result.metrics
     trainer.log_metrics("train", metrics)
     trainer.save_metrics("train", metrics)
     trainer.save_state()
-
-    # Optionally save the trained model
-    # bert_model.save(out_directory / "final")
 
 
 def setup_training_args(out_directory: Path) -> TrainingArguments:
@@ -128,7 +128,7 @@ def setup_training_args(out_directory: Path) -> TrainingArguments:
         save_strategy="epoch",
         load_best_model_at_end=True,
         report_to=report_to,
-        # save_total_limit=2,  # Limit checkpoints to save space
+        save_total_limit=2,  # Limit checkpoints to save space, only keep best two
     )
     return training_args
 
@@ -192,5 +192,5 @@ def setup_trainer(bert_model: BertModel, file_path: Path, out_directory: Path) -
 
 
 if __name__ == "__main__":
-    # python -m src.description_classification.models.train -f data/geoquat_ground_truth.json
+    # run: fine-tune-bert -f data/geoquat_ground_truth.json -c models/your_chekpoint_model_folder
     train_model()

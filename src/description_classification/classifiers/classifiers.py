@@ -6,7 +6,6 @@ import re
 from pathlib import Path
 from typing import Protocol
 
-import mlflow
 import numpy as np
 from description_classification.models.model import BertModel
 from description_classification.utils.data_loader import LayerInformations
@@ -114,11 +113,6 @@ class BertClassifier:
             model_path = model_config["model_path"]
         self.model_path = model_path
         self.bert_model = BertModel(model_path)
-
-    def log_model_name_to_mlflow(self):
-        if not mlflow_tracking:
-            return
-        mlflow.log_param("model_name", "/".join(self.model_path.parts[-2:]))
 
     def classify(self, layer_descriptions: list[LayerInformations]):
         """Classifies the description of the LayerInformations objects.

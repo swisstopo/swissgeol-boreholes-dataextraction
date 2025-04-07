@@ -49,26 +49,35 @@ class BertModel:
 
         self.id2classEnum = {class_.value: class_ for class_ in USCSClasses}
 
-    def freeze_layers(self):
+    def freeze_all_layers(self):
         """Freeze all layers (base model + classifier)."""
         for name, param in self.model.named_parameters():
             logger.debug(f"Freezing Param: {name}")
             param.requires_grad = False
 
-    def freeze_layers_except_pooler(self):
-        """Freeze all layers except the pooler layer (base model pooler + classifier)."""
-        # Freeze all layers
-        for name, param in self.model.named_parameters():
-            logger.debug(f"Freezing Param: {name}")
-            param.requires_grad = False
+    def freeze_layers_except_pooler_and_classifier(self):
+        """Freeze all layers except the poller and classifier layers."""
+        self.freeze_all_layers()
+        self.unfreeze_pooler()
+        self.unfreeze_classifier()
 
-        # Unfreeze pooler and classifier layer
+    def unfreeze_pooler(self):
+        """Unfreeze all the pooler layers."""
+        # Unfreeze pooler layer
         for name, param in self.model.named_parameters():
-            if "pooler" in name or "classifier" in name:
+            if "pooler" in name:
                 logger.debug(f"Unfreezing Param: {name}")
                 param.requires_grad = True
 
-    def unfreeze_layers(self):
+    def unfreeze_classifier(self):
+        """Unfreeze all the classifier layers."""
+        # Unfreeze classifier layer
+        for name, param in self.model.named_parameters():
+            if "classifier" in name:
+                logger.debug(f"Unfreezing Param: {name}")
+                param.requires_grad = True
+
+    def unfreeze_all_layers(self):
         """Unfreeze all layers (base model + classifier)."""
         for name, param in self.model.named_parameters():
             logger.debug(f"Unfreezing Param: {name}")
@@ -83,29 +92,13 @@ class BertModel:
         Returns:
             datasets.Dataset: the dataset, with tokenized informations.
         """
-        shorten = len(layers)
+        shorten = len(layers)  # used for debugging to load only a subset of data (e.g. to test overfitting the model)
         data: dict[str, list] = {
             "layer": [layer.material_description for layer in layers[:shorten]],
             "label": [layer.ground_truth_uscs_class.value for layer in layers[:shorten]],
         }
         dataset = datasets.Dataset.from_dict(data)
         return self.tokenize_dataset(dataset)
-
-    def tokenize_text(self, text: str | list[str]) -> dict[str, torch.Tensor]:
-        """Tokenizes a single text string or a list of strings.
-
-        Args:
-            text (str): The text to tokenize.
-
-        Returns:
-            dict[str, torch.Tensor]: A dictionary with the tokenized informations. The dictionary has keys
-                "input_ids", "token_type_ids" and "attention_mask"
-        """
-        tokenized_text = self.tokenizer(
-            text, truncation=True, padding="max_length", max_length=512, return_tensors="pt"
-        )
-        # tokenized_text = self.tokenizer(text, truncation=True, return_tensors="pt")
-        return tokenized_text
 
     def tokenize_dataset(self, dataset: datasets.Dataset):
         """Tokenizes the whole dataset.
@@ -121,8 +114,22 @@ class BertModel:
         def tokenize(entry):
             return self.tokenize_text(entry["layer"])
 
-        # tokenized_text = self.tokenizer(text, truncation=True, return_tensors="pt")
         return dataset.map(tokenize, batched=True)
+
+    def tokenize_text(self, text: str | list[str]) -> dict[str, torch.Tensor]:
+        """Tokenizes a single text string or a list of strings.
+
+        Args:
+            text (str): The text to tokenize.
+
+        Returns:
+            dict[str, torch.Tensor]: A dictionary with the tokenized informations. The dictionary has keys
+                "input_ids", "token_type_ids" and "attention_mask"
+        """
+        tokenized_text = self.tokenizer(
+            text, truncation=True, padding="max_length", max_length=512, return_tensors="pt"
+        )
+        return tokenized_text
 
     def predict_idx(self, text: str) -> int:
         """Runs prediction on a single text input.
@@ -179,19 +186,3 @@ class BertModel:
 
         # Convert indices to USCSClasses
         return [self.id2classEnum[idx] for idx in predictions]
-
-    def save(self, save_path: str):
-        """Save the model to disk."""
-        self.model.save_pretrained(save_path)
-        self.tokenizer.save_pretrained(save_path)
-
-    def load_trained(self, save_path: str):
-        """Load a pretrained model and tokenizer from disk."""
-        try:
-            # Load model and tokenizer from saved directory
-            self.model = BertForSequenceClassification.from_pretrained(save_path)
-            self.tokenizer = BertTokenizerFast.from_pretrained(save_path)
-            logger.info(f"Model and tokenizer loaded successfully from {save_path}")
-        except Exception as e:
-            logger.error(f"Error loading model or tokenizer from {save_path}: {e}")
-            raise e

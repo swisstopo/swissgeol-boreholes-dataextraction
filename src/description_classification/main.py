@@ -63,8 +63,10 @@ def log_ml_flow_infos(
     for class_, count in get_data_class_count(layer_descriptions).items():
         mlflow.log_param(f"class_{class_}_count", count)
 
-    # Log model name
+    # Log classifier name
     mlflow.log_param("classifier_type", classifier.__class__.__name__)
+    if isinstance(classifier, BertClassifier):
+        mlflow.log_param("model_name", "/".join(classifier.model_path.parts[-2:]))
 
     # Log input data and output predictions
     mlflow.log_artifact(str(file_path), "input_data")
@@ -139,24 +141,22 @@ def main(file_path: Path, out_directory: Path, file_subset_directory: Path, clas
 
     if model_path is not None and classifier_type != "bert":
         logger.warning("Model path is only used with classifier 'bert'.")
-
     if classifier_type == "dummy":
         classifier = DummyClassifier()
     elif classifier_type == "baseline":
         classifier = BaselineClassifier()
     elif classifier_type == "bert":
         classifier = BertClassifier(model_path)
-        classifier.log_model_name_to_mlflow()
-    if mlflow_tracking:
-        mlflow.log_param("classifier", classifier_type)
+
     logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
-    classifier.classify(layer_descriptions)
-
-    write_predictions(layer_descriptions, out_directory)
-
     if mlflow_tracking:
         log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier)
 
+    # classify
+    classifier.classify(layer_descriptions)
+    write_predictions(layer_descriptions, out_directory)
+
+    # evaluate
     logger.info("Evaluating predictions")
     classification_metrics = evaluate(layer_descriptions)
     logger.info(f"classification metrics: {classification_metrics.to_json()}")
