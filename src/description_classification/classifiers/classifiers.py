@@ -166,7 +166,7 @@ class BaselineClassifier:
                     result = self.find_ordered_sequence(
                         stemmed_pattern_tokens,
                         stemmed_description_tokens,
-                        self.partial_match_threshold,
+                        self.match_threshold,
                     )
 
                     if result:
