@@ -2,6 +2,7 @@
 
 import csv
 import json
+import shutil
 from collections import Counter, OrderedDict
 from pathlib import Path
 
@@ -96,6 +97,11 @@ def write_per_language_per_class_predictions(
 
     """
     out_dir = out_dir / "predictions_per_class"
+    # delete and recreate to remove any old files
+    if out_dir.exists() and out_dir.is_dir():
+        shutil.rmtree(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     for language in ["global", *classification_params["supported_language"]]:
         metrics_dict_in_language = {
             k: v for k, v in classification_metrics.per_class_all_metrics_dict.items() if k.startswith(language)
