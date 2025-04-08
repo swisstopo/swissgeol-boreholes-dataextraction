@@ -85,7 +85,7 @@ class BaselineClassifier:
 
         return self.stemmers[language]
 
-    def find_ordered_sequence(self, pattern_tokens, description_tokens, partial_match_threshold) -> tuple:
+    def find_ordered_sequence(self, pattern_tokens, description_tokens, partial_match_threshold) -> tuple | None:
         """Find the best match for pattern tokens within description tokens.
 
         Uses two matching strategies:
@@ -98,39 +98,36 @@ class BaselineClassifier:
             partial_match_threshold: Minimum coverage for partial position matches
 
         Returns:
-            tuple: (coverage, start_pos, matched_words)
+            tuple | None: (coverage, start_pos, matched_words)
                 - coverage: Ratio of matched tokens (0.0-1.0)
-                - start_pos: Position where match begins (-1 if no match)
+                - match_positions: Positions of the matched tokens in the description_tokens as a tuple
                 - matched_words: List of tokens that matched the pattern
         """
         if not pattern_tokens:
-            return 0, -1, []
+            return None
 
         description_len = len(description_tokens)
         pattern_len = len(pattern_tokens)
 
         # Look for partial sequence matches with flexible position matching
-        matches = 0
         matched_words = []
         last_match_pos = -1
-        start_pos = -1
+        matched_positions = []
 
         for p_token in pattern_tokens:
             # Look for this pattern token anywhere after the last match
             for d_idx in range(last_match_pos + 1, description_len):
                 if p_token == description_tokens[d_idx]:
-                    if start_pos == -1:
-                        start_pos = d_idx
-                    matches += 1
+                    matched_positions.append(d_idx)
                     matched_words.append(description_tokens[d_idx])
                     last_match_pos = d_idx
                     break
 
-        coverage = matches / pattern_len
+        coverage = len(matched_positions) / pattern_len
         if coverage >= partial_match_threshold:
-            return coverage, start_pos, matched_words
+            return coverage, tuple(matched_positions), matched_words
 
-        return 0, -1, []
+        return None
 
     def classify(self, layer_descriptions: list[LayerInformations]):
         """Classifies the description of the LayerInformations objects.
@@ -165,24 +162,26 @@ class BaselineClassifier:
                     pattern_tokens = re.findall(r"\b\w+\b", class_keyphrase)
                     stemmed_pattern_tokens = [stemmer.stem(token) for token in pattern_tokens]
 
-                    coverage, start_pos, matched_words = self.find_ordered_sequence(
+                    result = self.find_ordered_sequence(
                         stemmed_pattern_tokens,
                         stemmed_description_tokens,
                         self.partial_match_threshold,
                     )
 
-                    matches.append(
-                        {
-                            "class": uscs_class,
-                            "coverage": coverage,
-                            "complexity": len(pattern_tokens),
-                            "matched_words": matched_words,
-                            "start_pos": start_pos,
-                        }
-                    )
+                    if result:
+                        coverage, match_positions, matched_words = result
+                        matches.append(
+                            {
+                                "class": uscs_class,
+                                "coverage": coverage,
+                                "complexity": len(pattern_tokens),
+                                "matched_words": matched_words,
+                                "match_positions": match_positions,
+                            }
+                        )
 
             # Sort matches by coverage and complexity in descending order, then by start_pos in ascending order
-            sorted_matches = sorted(matches, key=lambda x: (-x["coverage"], -x["complexity"], x["start_pos"]))
+            sorted_matches = sorted(matches, key=lambda x: (-x["coverage"], -x["complexity"], x["match_positions"]))
 
             if sorted_matches:
                 layer.prediction_uscs_class = sorted_matches[0]["class"]
