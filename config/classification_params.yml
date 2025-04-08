@@ -19,7 +19,7 @@ uscs_patterns:
     GW-GC: ["gut abgestufter Kies mit Ton"]
     GW-GM: ["gut abgestufter Kies mit Silt"]
     MH: ["elastischer Silt"]
-    ML: ["Silt", "Siltsand", "Silt, Kies"]
+    ML: ["Silt", "Siltsand", "Silt, Kies", "sandiger Lehm"]
     OH: ["organischer Silt", "Humus", "Silt, organisch", "humoser Silt"]
     OL: ["organischer Ton", "Humus und Sand"]
     S: ["Sand", "Sand, Kies"]
