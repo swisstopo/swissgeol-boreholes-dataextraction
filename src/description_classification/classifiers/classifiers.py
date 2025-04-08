@@ -47,22 +47,17 @@ class DummyClassifier:
 class BaselineClassifier:
     """Baseline classifier class.
 
-    Uses keyword pattern matching with language-specific adjustments:
-    - Stemming to normalize words
-    - Synonym recognition to handle equivalent terms
-    - Stopword filtering to ignore common non-diagnostic words
-    - Sequential pattern matching with flexible positioning
+    The BaselineClassifier works by matching stemmed USCS patterns against layer descriptions using
+    a flexible ordered sequence matching algorithm.
     """
 
-    def __init__(self, match_threshold=0.5, partial_match_threshold=0.75):
-        """Initialize with configurable thresholds.
+    def __init__(self, match_threshold=0.75):
+        """Initialize with configurable threshold.
 
         Args:
-            match_threshold: Minimum coverage for exact position matches (default: 0.5)
-            partial_match_threshold: Minimum coverage for partial position matches (default: 0.75)
+            match_threshold: Minimum coverage for matches (default: 0.75)
         """
         self.match_threshold = match_threshold
-        self.partial_match_threshold = partial_match_threshold
 
         self.uscs_patterns = classification_params["uscs_patterns"]
 
@@ -85,23 +80,24 @@ class BaselineClassifier:
 
         return self.stemmers[language]
 
-    def find_ordered_sequence(self, pattern_tokens, description_tokens, partial_match_threshold) -> tuple | None:
+    def find_ordered_sequence(self, pattern_tokens, description_tokens, match_threshold) -> tuple | None:
         """Find the best match for pattern tokens within description tokens.
 
-        Uses two matching strategies:
-        1. Exact sequence matching - pattern is treated as a continuous sequence
-        2. Flexible matching - pattern is treated as an order sequence with gaps
+        This method searches for pattern tokens within description tokens in sequential order,
+        allowing for discontinuous matches (matching allows for gaps between pattern tokens).
 
         Args:
-            pattern_tokens: Stemmed tokens from the pattern
-            description_tokens: Stemmed tokens from the description
-            partial_match_threshold: Minimum coverage for partial position matches
+            pattern_tokens: List of tokens to search for.
+            description_tokens: List of tokens to search within.
+            match_threshold: Minimum coverage ratio required for a match to be valid.
 
         Returns:
-            tuple | None: (coverage, start_pos, matched_words)
-                - coverage: Ratio of matched tokens (0.0-1.0)
-                - match_positions: Positions of the matched tokens in the description_tokens as a tuple
-                - matched_words: List of tokens that matched the pattern
+            If a match with sufficient coverage is found, returns a tuple containing:
+                - coverage (float): Ratio of matched pattern tokens to total pattern tokens
+                - matched_positions (tuple): Positions of matches in description_tokens
+                - matched_words (list): The actual matched words
+            If no sufficient match is found, returns None.
+
         """
         if not pattern_tokens:
             return None
@@ -124,24 +120,29 @@ class BaselineClassifier:
                     break
 
         coverage = len(matched_positions) / pattern_len
-        if coverage >= partial_match_threshold:
+        if coverage >= match_threshold:
             return coverage, tuple(matched_positions), matched_words
 
         return None
 
     def classify(self, layer_descriptions: list[LayerInformations]):
-        """Classifies the description of the LayerInformations objects.
+        """Classifies the material descriptions of layer information objects into USCS soil classes.
 
-        This method analyzes each layer's material description and assigns a USCS class
-        by pattern matching. USCS patterns and material descriptions are tokenized, stemmed
-        and stopwords are removed from both lists. The best pattern match is selected based on:
-        - Coverage (percentage of pattern words matched) - highest priority
-        - Complexity (number of words in pattern) - second priority
-        - Position (earlier matches preferred) - third priority
+        The method modifies the input object, layer_descriptions by setting their
+        prediction_uscs_class attribute The approach is as follows:
+
+        1. Tokenize and stem both the material description and the USCS pattern keywords
+        2. Find matches between description and patterns using partial matching
+        3. Scores matches based on three criteria (in priority order):
+           - Coverage: Percentage of pattern words matched in the description
+           - Complexity: Length/specificity of the pattern (longer patterns preferred)
+           - Position: Earlier matches in the text are preferred
+        4. Assigns the best matching USCS class to the layer object
+
+        For layers with no matches, assigns the default class 'kA' (no classification).
 
         Args:
             layer_descriptions (list[LayerInformations]): The LayerInformations object
-
         """
         for layer in layer_descriptions:
             patterns = self.uscs_patterns[layer.language]
@@ -180,7 +181,7 @@ class BaselineClassifier:
                             }
                         )
 
-            # Sort matches by coverage and complexity in descending order, then by start_pos in ascending order
+            # Sort matches by coverage and complexity in descending order, then by match_positions in ascending order
             sorted_matches = sorted(matches, key=lambda x: (-x["coverage"], -x["complexity"], x["match_positions"]))
 
             if sorted_matches:
