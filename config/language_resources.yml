@@ -1,13 +1,3 @@
 synonyms:
   de:
-    feinsand: [feinsand, mittelsand]
-    kies: [kies, feinkies, grobkies, feinmittelkies]
-    ton: [ton, lehm]
-    schwach: [schwach, leicht]
-    grober: [grober, mittelgrober]
-  fr:
-    sable: [sable, sableux, sableuse]
-
-stopwords:
-  de: [mit, wenig, bis]
-  fr: [avec, peu, jusqu'à]
+    kies: [kies]
