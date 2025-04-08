@@ -68,15 +68,17 @@ def log_ml_flow_infos(
     mlflow.log_artifact(str(file_path), "input_data")
     mlflow.log_artifact(f"{out_directory}/uscs_class_predictions.json", "predictions_json")
 
-    pred_dir = os.path.join(out_directory, "predictions_per_ground_truth_class")
+    # log output prediction artifacts detailed for each class
+    pred_dir = os.path.join(out_directory, "predictions_per_class")
     for language in ["global", *classification_params["supported_language"]]:
-        language_dir = os.path.join(pred_dir, language)
-        mlflow.log_artifact(
-            os.path.join(language_dir, "_overview.json"), f"predictions_per_ground_truth_class_json/{language}"
-        )
-        for file in os.listdir(language_dir):
-            file_path = os.path.join(language_dir, file)
-            mlflow.log_artifact(file_path, f"predictions_per_ground_truth_class_json/{language}")
+        overview_path = os.path.join(pred_dir, language, "overview.csv")
+        mlflow.log_artifact(overview_path, f"predictions_per_class_json/{language}")
+        for first_key in ["ground_truth", "prediction"]:
+            language_first_key_dir = os.path.join(pred_dir, language, f"group_by_{first_key}")
+            artifact_directory = f"predictions_per_class_json/{language}/group_by_{first_key}"
+            for file in os.listdir(language_first_key_dir):
+                file_path = os.path.join(language_first_key_dir, file)
+                mlflow.log_artifact(file_path, artifact_directory)
 
 
 def common_options(f):
@@ -131,16 +133,16 @@ def main(file_path: Path, out_directory: Path, file_subset_directory: Path):
     logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
     classifier.classify(layer_descriptions)
 
-    write_predictions(layer_descriptions, out_directory)
-    write_per_language_per_class_predictions(layer_descriptions, out_directory)
-
-    if mlflow_tracking:
-        log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier)
-
     logger.info("Evaluating predictions")
     classification_metrics = evaluate(layer_descriptions)
     logger.info(f"classification metrics: {classification_metrics.to_json()}")
     logger.debug(f"classification metrics per class: {classification_metrics.to_json_per_class()}")
+
+    write_predictions(layer_descriptions, out_directory)
+    write_per_language_per_class_predictions(layer_descriptions, classification_metrics, out_directory)
+
+    if mlflow_tracking:
+        log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier)
 
     if mlflow_tracking:
         mlflow.end_run()
