@@ -26,7 +26,7 @@ uscs_patterns:
     S-SC: ["schwach toniger Sand", "leicht toniger Sand"]
     S-SM: ["schwach siltiger Sand", "leicht siltiger Sand"]
     SC: ["toniger Sand", "Sand, tonig", "Sand, Ton", "lehmiger Sand"]
-    SC-SM: ["siltiger bis toniger Sand", "Sand, verlehmt, siltig", "Sand, Silt, Ton", "Sand, Silt, tonig", "Sand, siltig, tonig", "tonig-siltiger Sand", "siltiger Sand, tonig", "toniger Sand, Silt"]
+    SC-SM: ["siltiger, toniger Sand", "Sand, verlehmt, siltig", "Sand, Silt, Ton", "Sand, Silt, tonig", "Sand, siltig, tonig", "tonig-siltiger Sand", "siltiger Sand, tonig", "toniger Sand, Silt"]
     SM: ["siltiger Sand", "sandig, siltig", "siltig, sandig"]
     SP: ["schlecht abgestufter Sand", "grobkörniger Sand", "Sand, Kies", "mittelkörniger Sand", "feinkiesiger Mittelsand", "Feinsand, Kies", "Mittelsand, Kies"]
     SP-SC: ["schlecht abgestufter Sand mit Ton", "Feinsand, tonig", "Feinsand, Lehm", "toniger Feinsand"]

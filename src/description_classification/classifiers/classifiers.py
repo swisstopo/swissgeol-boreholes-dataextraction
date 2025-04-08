@@ -85,9 +85,7 @@ class BaselineClassifier:
 
         return self.stemmers[language]
 
-    def find_ordered_sequence(
-        self, pattern_tokens, description_tokens, language, match_threshold, partial_match_threshold
-    ) -> tuple:
+    def find_ordered_sequence(self, pattern_tokens, description_tokens, partial_match_threshold) -> tuple:
         """Find the best match for pattern tokens within description tokens.
 
         Uses two matching strategies:
@@ -97,8 +95,6 @@ class BaselineClassifier:
         Args:
             pattern_tokens: Stemmed tokens from the pattern
             description_tokens: Stemmed tokens from the description
-            language: Language code for synonym matching
-            match_threshold: Minimum coverage for exact position matches
             partial_match_threshold: Minimum coverage for partial position matches
 
         Returns:
@@ -113,40 +109,26 @@ class BaselineClassifier:
         description_len = len(description_tokens)
         pattern_len = len(pattern_tokens)
 
-        # Look for exact sequence matches at each possible starting position in description
-        if description_len >= pattern_len:
-            for start_pos in range(description_len - pattern_len + 1):
-                matches = 0
-                matched_words = []
-
-                # Check if pattern matches at this position
-                for i, p_token in enumerate(pattern_tokens):
-                    d_token = description_tokens[start_pos + i]
-                    if p_token == d_token:
-                        matches += 1
-                        matched_words.append(d_token)
-
-                coverage = matches / pattern_len
-                if coverage >= match_threshold:
-                    return coverage, start_pos, matched_words
-
         # Look for partial sequence matches with flexible position matching
         matches = 0
         matched_words = []
         last_match_pos = -1
+        start_pos = -1
 
         for p_token in pattern_tokens:
             # Look for this pattern token anywhere after the last match
             for d_idx in range(last_match_pos + 1, description_len):
                 if p_token == description_tokens[d_idx]:
+                    if start_pos == -1:
+                        start_pos = d_idx
                     matches += 1
                     matched_words.append(description_tokens[d_idx])
                     last_match_pos = d_idx
                     break
 
-            coverage = matches / pattern_len
-            if coverage >= partial_match_threshold:
-                return coverage, 0, matched_words
+        coverage = matches / pattern_len
+        if coverage >= partial_match_threshold:
+            return coverage, start_pos, matched_words
 
         return 0, -1, []
 
@@ -186,8 +168,6 @@ class BaselineClassifier:
                     coverage, start_pos, matched_words = self.find_ordered_sequence(
                         stemmed_pattern_tokens,
                         stemmed_description_tokens,
-                        language,
-                        self.match_threshold,
                         self.partial_match_threshold,
                     )
 
