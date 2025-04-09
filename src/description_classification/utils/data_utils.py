@@ -118,7 +118,13 @@ def write_per_language_per_class_predictions(
         # groupby ground truth first
         write_per_class_predictions(
             layers_in_language,
-            grouping_functions=group_by_ground_truth_functions,
+            grouping_functions=GroupingFunctions(
+                get_first_key_class=lambda layer: layer.ground_truth_uscs_class,
+                get_second_key_class=lambda layer: layer.prediction_uscs_class,
+                first_key_str="ground_truth",
+                second_key_str="prediction",
+                metric_used="recall",
+            ),
             metrics_dict=metrics_dict_in_language,
             out_dir=out_dir / language / "group_by_ground_truth",
         )
@@ -126,7 +132,13 @@ def write_per_language_per_class_predictions(
         # groupby prediction first
         write_per_class_predictions(
             layers_in_language,
-            grouping_functions=group_by_prediction_functions,
+            grouping_functions=GroupingFunctions(
+                get_first_key_class=lambda layer: layer.prediction_uscs_class,
+                get_second_key_class=lambda layer: layer.ground_truth_uscs_class,
+                first_key_str="prediction",
+                second_key_str="ground_truth",
+                metric_used="precision",
+            ),
             metrics_dict=metrics_dict_in_language,
             out_dir=out_dir / language / "group_by_prediction",
         )
@@ -185,23 +197,6 @@ class GroupingFunctions:
     first_key_str: str
     second_key_str: str
     metric_used: str
-
-
-group_by_ground_truth_functions = GroupingFunctions(
-    get_first_key_class=lambda layer: layer.ground_truth_uscs_class,
-    get_second_key_class=lambda layer: layer.prediction_uscs_class,
-    first_key_str="ground_truth",
-    second_key_str="prediction",
-    metric_used="recall",
-)
-
-group_by_prediction_functions = GroupingFunctions(
-    get_first_key_class=lambda layer: layer.prediction_uscs_class,
-    get_second_key_class=lambda layer: layer.ground_truth_uscs_class,
-    first_key_str="prediction",
-    second_key_str="ground_truth",
-    metric_used="precision",
-)
 
 
 def build_class_stats(
