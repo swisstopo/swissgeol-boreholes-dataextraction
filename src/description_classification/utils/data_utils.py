@@ -181,6 +181,8 @@ def write_overview(metrics_dict: dict[str, float], layers_with_predictions: list
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
 
+        rows = []
+
         for class_ in USCSClasses:
             # filter metrics dict (e.g. extract "CL_ML" for "global_CL_ML_recall")
             class_metrics_dict = {k: v for k, v in metrics_dict.items() if class_.name == "_".join(k.split("_")[1:-1])}
@@ -188,14 +190,21 @@ def write_overview(metrics_dict: dict[str, float], layers_with_predictions: list
             num_ground_truth = sum(layer.ground_truth_uscs_class == class_ for layer in layers_with_predictions)
             num_pred = sum(layer.prediction_uscs_class == class_ for layer in layers_with_predictions)
 
-            row = {
-                "class": class_.name,
-                "f1": next(v for k, v in class_metrics_dict.items() if k.endswith("f1")),
-                "precision": next(v for k, v in class_metrics_dict.items() if k.endswith("precision")),
-                "recall": next(v for k, v in class_metrics_dict.items() if k.endswith("recall")),
-                "number_ground_truth": num_ground_truth,
-                "number_prediction": num_pred,
-            }
+            rows.append(
+                {
+                    "class": class_.name,
+                    "f1": next(v for k, v in class_metrics_dict.items() if k.endswith("f1")),
+                    "precision": next(v for k, v in class_metrics_dict.items() if k.endswith("precision")),
+                    "recall": next(v for k, v in class_metrics_dict.items() if k.endswith("recall")),
+                    "number_ground_truth": num_ground_truth,
+                    "number_prediction": num_pred,
+                }
+            )
+
+        # Sort rows by number_ground_truth in descending order
+        rows.sort(key=lambda x: x["number_ground_truth"], reverse=True)
+
+        for row in rows:
             writer.writerow(row)
 
 
