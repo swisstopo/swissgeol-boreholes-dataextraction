@@ -55,7 +55,7 @@ class BaselineClassifier:
         """Initialize with configurable threshold.
 
         Args:
-            match_threshold: Minimum coverage for matches (default: 0.75)
+            match_threshold (float): Minimum coverage for matches (default: 0.75)
         """
         self.match_threshold = match_threshold
 
@@ -72,7 +72,7 @@ class BaselineClassifier:
             language (str): The language code for which to get the stemmer
 
         Returns:
-            SnowballStemmer: The stemmer for the specified language
+            SnowballStemmer (dict[str, SnowballStemmer]): The stemmer for the specified language
         """
         if language not in self.stemmers:
             stemmer_lang = self.stemmer_languages.get(language, "german")
@@ -87,17 +87,15 @@ class BaselineClassifier:
         allowing for discontinuous matches (matching allows for gaps between pattern tokens).
 
         Args:
-            pattern_tokens: List of tokens to search for.
-            description_tokens: List of tokens to search within.
-            match_threshold: Minimum coverage ratio required for a match to be valid.
+            pattern_tokens (list): List of tokens to search for.
+            description_tokens (list): List of tokens to search within.
+            match_threshold (float): Minimum coverage ratio required for a match to be valid.
 
         Returns:
-            If a match with sufficient coverage is found, returns a tuple containing:
+            tuple| None: If a match is found, returns a tuple with:
                 - coverage (float): Ratio of matched pattern tokens to total pattern tokens
                 - matched_positions (tuple): Positions of matches in description_tokens
                 - matched_words (list): The actual matched words
-            If no sufficient match is found, returns None.
-
         """
         if not pattern_tokens:
             return None
