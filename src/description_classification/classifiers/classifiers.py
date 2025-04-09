@@ -65,14 +65,14 @@ class BaselineClassifier:
 
         self.stemmers = {}
 
-    def get_stemmer(self, language: str) -> dict[str, SnowballStemmer]:
+    def get_stemmer(self, language: str) -> SnowballStemmer:
         """Get or create a stemmer for the specified language with German as a fallback option.
 
         Args:
             language (str): The language code for which to get the stemmer
 
         Returns:
-            SnowballStemmer (dict[str, SnowballStemmer]): The stemmer for the specified language
+            SnowballStemmer: The stemmer for the specified language
         """
         if language not in self.stemmers:
             stemmer_lang = self.stemmer_languages.get(language, "german")
