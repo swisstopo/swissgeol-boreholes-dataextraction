@@ -107,6 +107,7 @@ Alternatively you can replace the `pip install -e '.[all]'` command with `pip in
 Adding pip packages can be done by editing the `pyproject.toml` of the project and adding the required package.
 
 If you are using a version of Python newer than 3.12 (e.g. 3.13), you may need to use the command ` python3.12 -m venv env `instead.
+It might also be usefull to use `python3.12 -m pip install -e '.[all]'` if some error appear.
 
 ## Run data extraction
 To execute the data extraction pipeline, follow these steps:

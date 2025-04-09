@@ -2,11 +2,16 @@
 
 import dataclasses
 import logging
+from collections import defaultdict
 from copy import deepcopy
 from typing import TypeVar
 
+import numpy as np
+from scipy.optimize import linear_sum_assignment
+
 from stratigraphy.benchmark.metrics import OverallMetricsCatalog
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
+from stratigraphy.depths_materials_column_pairs.bounding_boxes import PageBoundingBoxes
 from stratigraphy.evaluation.evaluation_dataclasses import OverallBoreholeMetadataMetrics
 from stratigraphy.evaluation.groundwater_evaluator import GroundwaterEvaluator
 from stratigraphy.evaluation.layer_evaluator import LayerEvaluator
@@ -52,8 +57,8 @@ class BoreholeListBuilder:
         """Initializes the BoreholeListBuilder with extracted borehole-related data.
 
         Args:
-            layers_with_bb_in_document (LayersInDocument): Object containing borehole layers extracted from the
-                document, along with its corespoding bounding boxes.
+            layers_with_bb_in_document (LayersInDocument): Object containing a list of extracted boreholes, each
+            holding a list of layers and a list of bounding boxes.
             file_name (str): The name of the processed document.
             groundwater_in_doc (GroundwaterInDocument): Contains detected groundwater entries for boreholes.
 
@@ -68,41 +73,44 @@ class BoreholeListBuilder:
         self._coordinates_list = coordinates_list
 
     def build(self) -> list[BoreholePredictions]:
-        """Creates a list of BoreholePredictions after ensuring all lists have the same length."""
-        self._extend_length_to_match_boreholes_num_pred()
+        """Creates a list of BoreholePredictions after, mapping all elements to eachother."""
+        if not self._layers_with_bb_in_document.boreholes_layers_with_bb:
+            return []  # no borehole identified
+        self._extend_lenght_metadata_elements()
+
+        # for each element, perform the perfect matching with the borehole layers, and retrieve the matching dict
+        borehole_to_elevation_map = self._one_to_one_match_element_to_borehole(self._elevations_list)
+        borehole_to_coordinate_map = self._one_to_one_match_element_to_borehole(self._coordinates_list)
+        borehole_to_list_groundwater_map = self._many_to_one_match_element_to_borehole(
+            self._groundwater_in_doc.groundwater_feature_list
+        )
 
         return [
             BoreholePredictions(
                 borehole_index,
                 LayersInBorehole(layers_in_borehole_with_bb.predictions),
                 self._file_name,
-                BoreholeMetadata(elevation, coordinate),
-                groundwater,
+                BoreholeMetadata(
+                    self._elevations_list[borehole_to_elevation_map[borehole_index]],
+                    self._coordinates_list[borehole_to_coordinate_map[borehole_index]],
+                ),
+                GroundwatersInBorehole(
+                    [
+                        self._groundwater_in_doc.groundwater_feature_list[idx]
+                        for idx in borehole_to_list_groundwater_map[borehole_index]
+                    ]
+                ),
                 layers_in_borehole_with_bb.bounding_boxes,
             )
-            for borehole_index, (
-                layers_in_borehole_with_bb,
-                groundwater,
-                elevation,
-                coordinate,
-            ) in enumerate(
-                zip(
-                    self._layers_with_bb_in_document.boreholes_layers_with_bb,
-                    self._groundwater_in_doc.borehole_groundwaters,
-                    self._elevations_list,
-                    self._coordinates_list,
-                    strict=True,
-                )
+            for borehole_index, layers_in_borehole_with_bb in enumerate(
+                self._layers_with_bb_in_document.boreholes_layers_with_bb
             )
         ]
 
-    def _extend_length_to_match_boreholes_num_pred(self) -> None:
-        """Ensures that all lists have the same length by duplicating elements if necessary."""
+    def _extend_lenght_metadata_elements(self) -> None:
+        """Ensures that all lists have at least the same length by duplicating elements if necessary."""
         num_boreholes = len(self._layers_with_bb_in_document.boreholes_layers_with_bb)
 
-        self._groundwater_in_doc.borehole_groundwaters = self._extend_list(
-            self._groundwater_in_doc.borehole_groundwaters, GroundwatersInBorehole([]), num_boreholes
-        )
         self._elevations_list = self._extend_list(self._elevations_list, None, num_boreholes)
         self._coordinates_list = self._extend_list(self._coordinates_list, None, num_boreholes)
 
@@ -120,7 +128,97 @@ class BoreholeListBuilder:
         while len(lst) < target_length:
             lst.append(create_new_elem())  # Append copies to match the required length
 
-        return lst[:target_length]
+        return lst
+
+    def _many_to_one_match_element_to_borehole(self, element_list: list[FeatureOnPage]) -> dict[int, list[int]]:
+        """Matches extracted elements to boreholes.
+
+        This is done by assigning the clossest borehole to each element.
+
+        Args:
+            element_list (list[FeatureOnPage]): list of element to match
+
+        Returns:
+            dict[int, list[int]]: the dictionary containing the best mapping borehole_index -> all element_indexes
+        """
+        num_boreholes = len(self._layers_with_bb_in_document.boreholes_layers_with_bb)
+        # solve trivial case
+        if num_boreholes == 1:
+            return {0: [idx for idx in range(len(element_list))]}
+        # solve case where the list is empty
+        if not element_list:
+            return {idx: [] for idx in range(num_boreholes)}
+
+        # Get a list of references of all borehole bounding boxes
+        borehole_bounding_boxes = [
+            bh.bounding_boxes for bh in self._layers_with_bb_in_document.boreholes_layers_with_bb
+        ]
+
+        borehole_index_to_matched_elem_index = defaultdict(list)
+        for i, feat in enumerate(element_list):
+            best_bbox_idx = min(
+                range(len(borehole_bounding_boxes)),
+                key=lambda j: self._compute_distance(feat, borehole_bounding_boxes[j]),
+            )
+            borehole_index_to_matched_elem_index[best_bbox_idx].append(i)
+
+        return borehole_index_to_matched_elem_index
+
+    def _one_to_one_match_element_to_borehole(
+        self,
+        element_list: list[FeatureOnPage | None],
+    ) -> dict[int, int]:
+        """Matches extracted elements to boreholes.
+
+        This is done by minimizing the total sum of the distances from the elements to the corresponding layers.
+
+        Args:
+            element_list (list[FeatureOnPage  |  None ]): list of element to match
+
+        Returns:
+            dict[int, int]: the dictionary containing the best mapping borehole_index -> element_index
+        """
+        # solve trivial case and case where the elements are None
+        if len(element_list) == 1 or not element_list[0]:
+            return {idx: idx for idx in range(len(element_list))}
+
+        # Get a list of references of all borehole bounding boxes
+        borehole_bounding_boxes = [
+            bh.bounding_boxes for bh in self._layers_with_bb_in_document.boreholes_layers_with_bb
+        ]
+
+        cost_matrix = np.zeros((len(element_list), len(borehole_bounding_boxes)))
+
+        # Fill the cost matrix with distances between each element and each borehole
+        for i, feat in enumerate(element_list):
+            for j, bboxes in enumerate(borehole_bounding_boxes):
+                dist = self._compute_distance(feat, bboxes)  # Compute the distance
+                cost_matrix[i, j] = dist
+
+        # Use the Hungarian algorithm (Kuhn-Munkres) to solve the assignment problem.
+        # It finds the optimal one-to-one matching between elements and borehole layers such that the total
+        # distance (cost) between matched pairs is minimized.
+        # In simpler terms: out of all possible ways to pair elements with boreholes, this picks the combination that
+        # results in the shortest total distance between them.
+        elem_indexes, layer_indexes = linear_sum_assignment(cost_matrix)
+
+        # Store the index of the matched elements in a dictionary
+        borehole_index_to_matched_elem_index = {}
+        for elem_idx, layer_idx in zip(elem_indexes, layer_indexes, strict=True):
+            borehole_index_to_matched_elem_index[layer_idx] = elem_idx
+
+        return borehole_index_to_matched_elem_index
+
+    def _compute_distance(self, feat: FeatureOnPage, bounding_boxes: list[PageBoundingBoxes]) -> float:
+        """Computes the distance between a FeatureOnPage objects and the bounding boxes of one borehole."""
+        bbox = next((bbox for bbox in bounding_boxes if bbox.page == feat.page), None)
+        if bbox is None:
+            # the current boreholes layers don't appear on the page where the element is
+            return float("inf")
+        outer_rect = bbox.get_outer_rect()
+        element_center = (feat.rect.top_left + feat.rect.bottom_right) / 2
+        dist = element_center.distance_to(outer_rect)
+        return dist
 
 
 @dataclasses.dataclass

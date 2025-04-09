@@ -13,9 +13,9 @@
                 "-i",
                 //"example/example_borehole_profile.pdf",
                 //"data/subset_zurich",
-                //"data/zurich",
-                //"data/zurich/267123036-bp.pdf",
-                "data/zurich/268123018-bp.pdf", // 2 bh, one with gw
+                "data/zurich",
+                // "data/zurich/268123018-bp.pdf",
+                // "data/zurich/268123018-bp.pdf", // 2 bh, one with gw
                 // "data/zurich/269126084-bp.pdf", // 2 gw in the same borehole
                 // "data/zurich/267125339-bp.pdf", //groundwater detected
                 // "data/zurich/267125358-bp.pdf", //2 boreholes in one page,  diff elev and coord   
@@ -28,11 +28,15 @@
                 //"data/zurich/267123077-bp.pdf",
                 // "data/zurich/267123036-bp.pdf",
                 //"data/geoquat/validation/13080.pdf", //has f1=0, detects 1x the same, and not the right things
+                //"data/zurich/267125439-bp.pdf",
                 //"data/geoquat/validation/A7111.pdf",
                 //"data/geoquat/validation",
                 //"data/geoquat/train",
                 //"data/geoquat/validation/8366.pdf",
                 //"data/geoquat/test/A8005.pdf",
+                // "data/nagra/Dossier III_Appendix A_BOZ1-1_Lithostratigraphy_1_2500_0000-1037.39.pdf", //***
+                //"data/nagra/Dossier III_Appendix_A_TRU1-1_Lithostratigraphy_1_2500_0000-1310.pdf",
+                // "data/nagra",
                 "-g",
                 "data/zurich_ground_truth.json"
                 //"data/geoquat_ground_truth.json"
@@ -82,7 +86,7 @@
                 "-c",
                 "bert",
                 "-p",
-                "models/output_training/20250403-102944_best/checkpoint-1251"
+                "models/20250404-120603_best/checkpoint-5004"
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,

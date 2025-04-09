@@ -35,6 +35,7 @@ dependencies = [
     "quads>=1.1.0",
     "numpy<2",
     "rtree",
+    "nltk",
     "transformers",
     "datasets",
     "torch",

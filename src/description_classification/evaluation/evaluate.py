@@ -158,6 +158,10 @@ class AllClassificationMetrics:
             for k, v in metrics.to_json(f"{language}_{class_.name}").items()
         }
 
+    @property
+    def per_class_all_metrics_dict(self) -> dict[str, float]:
+        return {**self.per_class_global_metrics_dict, **self.per_class_per_language_metrics_dict}
+
     def to_json(self) -> dict[str, float]:
         """Returns the metrics as dict, the metrics are reduced by taking the macro average across all classes.
 
@@ -233,9 +237,8 @@ def per_class_metric(predictions: Iterable, labels: Iterable):
     Returns:
         Dict[USCSClasses, Metrics]: A dictionary mapping each class to its TP, FP, FN.
     """
-    all_classes = set(predictions) | set(labels)
     metrics_per_class = {}
-    for cls in all_classes:
+    for cls in USCSClasses:
         tp = sum(1 for pred, lab in zip(predictions, labels, strict=True) if pred == lab == cls)
         fp = sum(1 for pred, lab in zip(predictions, labels, strict=True) if pred == cls and lab != cls)
         fn = sum(1 for pred, lab in zip(predictions, labels, strict=True) if pred != cls and lab == cls)
