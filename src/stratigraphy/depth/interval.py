@@ -7,6 +7,9 @@ import fitz
 from stratigraphy.lines.line import TextLine
 from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 from stratigraphy.text.textblock import TextBlock
+from stratigraphy.util.util import read_params
+
+matching_params = read_params("matching_params.yml")
 
 
 class Interval:
@@ -25,7 +28,7 @@ class AAboveBInterval(Interval):
     """Class for depth intervals where the upper depth is located above the lower depth on the page."""
 
     def matching_blocks(
-        self, all_blocks: list[TextBlock], block_index: int
+        self, all_blocks: list[TextBlock], block_index: int, min_block_clearance: int
     ) -> tuple[list[TextBlock], list[TextBlock], list[TextBlock]]:
         """Calculates pre, exact and post blocks for the boundary interval.
 
@@ -36,6 +39,7 @@ class AAboveBInterval(Interval):
         Args:
             all_blocks (list[TextBlock]): All blocks available blocks.
             block_index (int): Index of the current block.
+            min_block_clearance (int): The required space above and below a block to a have an exact match.
 
         Returns:
             tuple[list[TextBlock], list[TextBlock], list[TextBlock]]: Pre, exact and post blocks.
@@ -52,7 +56,7 @@ class AAboveBInterval(Interval):
             distances_above = [
                 current_block.rect.y0 - other.rect.y1 for other in all_blocks if other.rect.y0 < current_block.rect.y0
             ]
-            distance_above_ok_for_exact = len(distances_above) == 0 or min(distances_above) > 5
+            distance_above_ok_for_exact = len(distances_above) == 0 or min(distances_above) > min_block_clearance
 
             exact_match_blocks = []
             exact_match_index = block_index
@@ -69,7 +73,7 @@ class AAboveBInterval(Interval):
                         exact_match_index += 1
                         distances_below = [other.rect.y0 - exact_match_block.rect.y1 for other in all_blocks]
                         distances_below = [distance for distance in distances_below if distance > 0]
-                        can_end_exact_match = len(distances_below) == 0 or min(distances_below) > 5
+                        can_end_exact_match = len(distances_below) == 0 or min(distances_below) > min_block_clearance
                     else:
                         continue_exact_match = False
 

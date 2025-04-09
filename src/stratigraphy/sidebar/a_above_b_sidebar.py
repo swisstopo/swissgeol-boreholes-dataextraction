@@ -233,7 +233,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
             if interval.start is None and interval.end.value == 0:
                 continue
 
-            pre, exact, post = interval.matching_blocks(all_blocks, block_index)
+            pre, exact, post = interval.matching_blocks(all_blocks, block_index, params["min_block_clearance"])
             block_index += len(pre) + len(exact) + len(post)
 
             current_blocks.extend(pre)
