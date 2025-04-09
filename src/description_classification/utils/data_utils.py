@@ -84,6 +84,25 @@ def write_predictions(layers_with_predictions: list[LayerInformations], out_dir:
         json.dump(output_data, f, ensure_ascii=False, indent=4)
 
 
+@dataclass
+class KeyClassConfig:
+    """Contains the appropriate functions depending on whether we are grouping by ground truth or prediction.
+
+    Attributes:
+        get_first_key_class: function to extract the first key class
+        get_second_key_class: function to extract the second key class
+        first_key_str: string label for the first key
+        second_key_str: string label for the second key
+        metric_used: the metric name ("recall" or "precision")
+    """
+
+    get_first_key_class: Callable[[LayerInformations], USCSClasses]
+    get_second_key_class: Callable[[LayerInformations], USCSClasses]
+    first_key_str: str
+    second_key_str: str
+    metric_used: str
+
+
 def write_per_language_per_class_predictions(
     layers_with_predictions: list[LayerInformations], classification_metrics: AllClassificationMetrics, out_dir: Path
 ):
@@ -118,7 +137,7 @@ def write_per_language_per_class_predictions(
         # groupby ground truth first
         write_per_class_predictions(
             layers_in_language,
-            grouping_functions=GroupingFunctions(
+            key_class_config=KeyClassConfig(
                 get_first_key_class=lambda layer: layer.ground_truth_uscs_class,
                 get_second_key_class=lambda layer: layer.prediction_uscs_class,
                 first_key_str="ground_truth",
@@ -132,7 +151,7 @@ def write_per_language_per_class_predictions(
         # groupby prediction first
         write_per_class_predictions(
             layers_in_language,
-            grouping_functions=GroupingFunctions(
+            key_class_config=KeyClassConfig(
                 get_first_key_class=lambda layer: layer.prediction_uscs_class,
                 get_second_key_class=lambda layer: layer.ground_truth_uscs_class,
                 first_key_str="prediction",
@@ -180,34 +199,15 @@ def write_overview(metrics_dict: dict[str, float], layers_with_predictions: list
             writer.writerow(row)
 
 
-@dataclass
-class GroupingFunctions:
-    """Contains the appropriate functions depending on whether we are grouping by ground truth or prediction.
-
-    Attributes:
-        get_first_key_class: function to extract the first key class
-        get_second_key_class: function to extract the second key class
-        first_key_str: string label for the first key
-        second_key_str: string label for the second key
-        metric_used: the metric name ("recall" or "precision")
-    """
-
-    get_first_key_class: Callable[[LayerInformations], USCSClasses]
-    get_second_key_class: Callable[[LayerInformations], USCSClasses]
-    first_key_str: str
-    second_key_str: str
-    metric_used: str
-
-
 def build_class_stats(
-    samples_for_class: list[LayerInformations], first_key_class: USCSClasses, grouping_functions: GroupingFunctions
+    samples_for_class: list[LayerInformations], first_key_class: USCSClasses, key_class_config: KeyClassConfig
 ) -> tuple[OrderedDict, dict, int]:
     """Builds detailed statistics and sample data for a specific class.
 
     Args:
         samples_for_class: Layers matching the first key class.
         first_key_class: The class being analyzed.
-        grouping_functions: Functions and labels according to the grouping that was used.
+        key_class_config: Functions and labels according to the grouping that was used.
 
     Returns:
         tuple: A tuple containing:
@@ -221,13 +221,13 @@ def build_class_stats(
 
     for second_key_class in USCSClasses:
         matched_samples = [
-            layer for layer in samples_for_class if grouping_functions.get_second_key_class(layer) == second_key_class
+            layer for layer in samples_for_class if key_class_config.get_second_key_class(layer) == second_key_class
         ]
 
         stat = {
-            f"is_{grouping_functions.first_key_str}_class": first_key_class == second_key_class,
-            f"number_{grouping_functions.second_key_str}": len(matched_samples),
-            f"proportion_{grouping_functions.second_key_str}": len(matched_samples) / total if total else 0.0,
+            f"is_{key_class_config.first_key_str}_class": first_key_class == second_key_class,
+            f"number_{key_class_config.second_key_str}": len(matched_samples),
+            f"proportion_{key_class_config.second_key_str}": len(matched_samples) / total if total else 0.0,
         }
 
         class_stats[second_key_class.name] = stat
@@ -249,8 +249,8 @@ def build_class_stats(
         sorted(
             class_stats.items(),
             key=lambda x: (
-                x[1][f"is_{grouping_functions.first_key_str}_class"],
-                x[1][f"proportion_{grouping_functions.second_key_str}"],
+                x[1][f"is_{key_class_config.first_key_str}_class"],
+                x[1][f"proportion_{key_class_config.second_key_str}"],
             ),
             reverse=True,
         )
@@ -261,7 +261,7 @@ def build_class_stats(
 
 def write_per_class_predictions(
     layers_with_predictions: list[LayerInformations],
-    grouping_functions: GroupingFunctions,
+    key_class_config: KeyClassConfig,
     metrics_dict: dict[str, float],
     out_dir: Path,
 ):
@@ -269,7 +269,7 @@ def write_per_class_predictions(
 
     Args:
         layers_with_predictions (list[LayerInformations]): List of layers with predictions.
-        grouping_functions: Functions and labels according to the grouping that should be applied.
+        key_class_config: Functions and labels according to the grouping that should be applied.
         metrics_dict (dict[str, float]): the dict containing the relevent metrics.
         out_dir (Path): Path to the output directory.
     """
@@ -279,12 +279,12 @@ def write_per_class_predictions(
         samples_for_first_key = [
             layer
             for layer in layers_with_predictions
-            if grouping_functions.get_first_key_class(layer) == first_key_class
+            if key_class_config.get_first_key_class(layer) == first_key_class
         ]
 
         # get the statistics for each second class, relative to the first_key_class
         stats_first_key, samples_for_first_key, total_first_key = build_class_stats(
-            samples_for_first_key, first_key_class, grouping_functions
+            samples_for_first_key, first_key_class, key_class_config
         )
 
         # get the metric for the correct first key (recall if "zoom" is on ground truth, precision otherwise)
@@ -292,19 +292,19 @@ def write_per_class_predictions(
             (
                 v
                 for k, v in metrics_dict.items()
-                if grouping_functions.metric_used in k and first_key_class.name == "_".join(k.split("_")[1:-1])
+                if key_class_config.metric_used in k and first_key_class.name == "_".join(k.split("_")[1:-1])
             )
         )
 
         # build final dict
         final_dict = OrderedDict()
-        final_dict[f"number_{grouping_functions.first_key_str}"] = total_first_key
-        final_dict[f"micro_{grouping_functions.metric_used}_for_{grouping_functions.first_key_str}_class"] = (
+        final_dict[f"number_{key_class_config.first_key_str}"] = total_first_key
+        final_dict[f"micro_{key_class_config.metric_used}_for_{key_class_config.first_key_str}_class"] = (
             first_key_metric_micro
         )
         final_dict.update(stats_first_key)
         final_dict["samples"] = samples_for_first_key
 
-        output_file = out_dir / f"{grouping_functions.first_key_str}_class_{first_key_class.name}.json"
+        output_file = out_dir / f"{key_class_config.first_key_str}_class_{first_key_class.name}.json"
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(final_dict, f, ensure_ascii=False, indent=4)
