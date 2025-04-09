@@ -5,6 +5,7 @@ import json
 import shutil
 from collections import Counter, OrderedDict
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 from description_classification.evaluation.evaluate import AllClassificationMetrics
@@ -117,7 +118,7 @@ def write_per_language_per_class_predictions(
         # groupby ground truth first
         write_per_class_predictions(
             layers_in_language,
-            groupby_ground_truth_first=True,
+            grouping_functions=group_by_ground_truth_functions,
             metrics_dict=metrics_dict_in_language,
             out_dir=out_dir / language / "group_by_ground_truth",
         )
@@ -125,7 +126,7 @@ def write_per_language_per_class_predictions(
         # groupby prediction first
         write_per_class_predictions(
             layers_in_language,
-            groupby_ground_truth_first=False,
+            grouping_functions=group_by_prediction_functions,
             metrics_dict=metrics_dict_in_language,
             out_dir=out_dir / language / "group_by_prediction",
         )
@@ -167,55 +168,51 @@ def write_overview(metrics_dict: dict[str, float], layers_with_predictions: list
             writer.writerow(row)
 
 
-def get_key_class_functions(
-    groupby_ground_truth_first: bool,
-) -> tuple[Callable[[LayerInformations], USCSClasses], Callable[[LayerInformations], USCSClasses], str, str, str]:
-    """Returns the appropriate functions and depending on whether we are grouping by ground truth or prediction.
+@dataclass
+class GroupingFunctions:
+    """Contains the appropriate functions depending on whether we are grouping by ground truth or prediction.
 
-    Args:
-        groupby_ground_truth_first (bool): If True, group by ground truth class first.
-
-    Returns:
-        tuple: The tuple containing:
-            - function to extract the first key class
-            - function to extract the second key class
-            - string label for the first key
-            - string label for the second key
-            - the metric name ("recall" or "precision")
+    Attributes:
+        get_first_key_class: function to extract the first key class
+        get_second_key_class: function to extract the second key class
+        first_key_str: string label for the first key
+        second_key_str: string label for the second key
+        metric_used: the metric name ("recall" or "precision")
     """
-    if groupby_ground_truth_first:
-        return (
-            lambda layer: layer.ground_truth_uscs_class,
-            lambda layer: layer.prediction_uscs_class,
-            "ground_truth",
-            "prediction",
-            "recall",
-        )
-    else:
-        return (
-            lambda layer: layer.prediction_uscs_class,
-            lambda layer: layer.ground_truth_uscs_class,
-            "prediction",
-            "ground_truth",
-            "precision",
-        )
+
+    get_first_key_class: Callable[[LayerInformations], USCSClasses]
+    get_second_key_class: Callable[[LayerInformations], USCSClasses]
+    first_key_str: str
+    second_key_str: str
+    metric_used: str
+
+
+group_by_ground_truth_functions = GroupingFunctions(
+    get_first_key_class=lambda layer: layer.ground_truth_uscs_class,
+    get_second_key_class=lambda layer: layer.prediction_uscs_class,
+    first_key_str="ground_truth",
+    second_key_str="prediction",
+    metric_used="recall",
+)
+
+group_by_prediction_functions = GroupingFunctions(
+    get_first_key_class=lambda layer: layer.prediction_uscs_class,
+    get_second_key_class=lambda layer: layer.ground_truth_uscs_class,
+    first_key_str="prediction",
+    second_key_str="ground_truth",
+    metric_used="precision",
+)
 
 
 def build_class_stats(
-    samples_for_class: list[LayerInformations],
-    first_key_class: USCSClasses,
-    get_second_key: Callable[[LayerInformations], USCSClasses],
-    first_key_str: str,
-    second_key_str: str,
+    samples_for_class: list[LayerInformations], first_key_class: USCSClasses, grouping_functions: GroupingFunctions
 ) -> tuple[OrderedDict, dict, int]:
     """Builds detailed statistics and sample data for a specific class.
 
     Args:
         samples_for_class: Layers matching the first key class.
         first_key_class: The class being analyzed.
-        get_second_key: Function to extract the comparison (second key) class.
-        first_key_str: String label ("ground_truth" or "prediction").
-        second_key_str: String label opposite of first.
+        grouping_functions: Functions and labels according to the grouping that was used.
 
     Returns:
         tuple: A tuple containing:
@@ -228,12 +225,14 @@ def build_class_stats(
     samples_grouped = {}
 
     for second_key_class in USCSClasses:
-        matched_samples = [layer for layer in samples_for_class if get_second_key(layer) == second_key_class]
+        matched_samples = [
+            layer for layer in samples_for_class if grouping_functions.get_second_key_class(layer) == second_key_class
+        ]
 
         stat = {
-            f"is_{first_key_str}_class": first_key_class == second_key_class,
-            f"number_{second_key_str}": len(matched_samples),
-            f"proportion_{second_key_str}": len(matched_samples) / total if total else 0.0,
+            f"is_{grouping_functions.first_key_str}_class": first_key_class == second_key_class,
+            f"number_{grouping_functions.second_key_str}": len(matched_samples),
+            f"proportion_{grouping_functions.second_key_str}": len(matched_samples) / total if total else 0.0,
         }
 
         class_stats[second_key_class.name] = stat
@@ -254,7 +253,10 @@ def build_class_stats(
     sorted_stats = OrderedDict(
         sorted(
             class_stats.items(),
-            key=lambda x: (x[1][f"is_{first_key_str}_class"], x[1][f"proportion_{second_key_str}"]),
+            key=lambda x: (
+                x[1][f"is_{grouping_functions.first_key_str}_class"],
+                x[1][f"proportion_{grouping_functions.second_key_str}"],
+            ),
             reverse=True,
         )
     )
@@ -264,7 +266,7 @@ def build_class_stats(
 
 def write_per_class_predictions(
     layers_with_predictions: list[LayerInformations],
-    groupby_ground_truth_first: bool,
+    grouping_functions: GroupingFunctions,
     metrics_dict: dict[str, float],
     out_dir: Path,
 ):
@@ -272,24 +274,22 @@ def write_per_class_predictions(
 
     Args:
         layers_with_predictions (list[LayerInformations]): List of layers with predictions.
-        groupby_ground_truth_first (bool): whether the grouping is done first by ground truth or predicted class.
+        grouping_functions: Functions and labels according to the grouping that should be applied.
         metrics_dict (dict[str, float]): the dict containing the relevent metrics.
         out_dir (Path): Path to the output directory.
     """
     out_dir.mkdir(parents=True, exist_ok=True)  # Ensure the output directory exists
 
-    get_first_key_class, get_second_key_class, first_key_str, second_key_str, metric_used = get_key_class_functions(
-        groupby_ground_truth_first
-    )
-
     for first_key_class in USCSClasses:
         samples_for_first_key = [
-            layer for layer in layers_with_predictions if get_first_key_class(layer) == first_key_class
+            layer
+            for layer in layers_with_predictions
+            if grouping_functions.get_first_key_class(layer) == first_key_class
         ]
 
         # get the statistics for each second class, relative to the first_key_class
         stats_first_key, samples_for_first_key, total_first_key = build_class_stats(
-            samples_for_first_key, first_key_class, get_second_key_class, first_key_str, second_key_str
+            samples_for_first_key, first_key_class, grouping_functions
         )
 
         # get the metric for the correct first key (recall if "zoom" is on ground truth, precision otherwise)
@@ -297,17 +297,19 @@ def write_per_class_predictions(
             (
                 v
                 for k, v in metrics_dict.items()
-                if metric_used in k and first_key_class.name == "_".join(k.split("_")[1:-1])
+                if grouping_functions.metric_used in k and first_key_class.name == "_".join(k.split("_")[1:-1])
             )
         )
 
         # build final dict
         final_dict = OrderedDict()
-        final_dict[f"number_{first_key_str}"] = total_first_key
-        final_dict[f"micro_{metric_used}_for_{first_key_str}_class"] = first_key_metric_micro
+        final_dict[f"number_{grouping_functions.first_key_str}"] = total_first_key
+        final_dict[f"micro_{grouping_functions.metric_used}_for_{grouping_functions.first_key_str}_class"] = (
+            first_key_metric_micro
+        )
         final_dict.update(stats_first_key)
         final_dict["samples"] = samples_for_first_key
 
-        output_file = out_dir / f"{first_key_str}_class_{first_key_class.name}.json"
+        output_file = out_dir / f"{grouping_functions.first_key_str}_class_{first_key_class.name}.json"
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(final_dict, f, ensure_ascii=False, indent=4)
