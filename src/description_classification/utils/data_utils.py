@@ -88,8 +88,9 @@ def write_per_language_per_class_predictions(
 ):
     """Creates json files that sumarizes the predictions.
 
-    Creates one folder for each language and one for the global predictions. In each folder creates a file
-        for each USCS class and write the predictions and ground truth data for each class.
+    Creates one folder for each language and one for the global predictions. In each folder creates an overview file,
+        one folder for the grouping by predictions and one for the grouping by ground truth. In those folders, we
+        create a file for each USCS class and write the predictions and ground truth data for each class.
 
     Args:
         layers_with_predictions (list[LayerInformations]): List of layers with predictions.
@@ -291,7 +292,7 @@ def write_per_class_predictions(
             samples_for_first_key, first_key_class, get_second_key_class, first_key_str, second_key_str
         )
 
-        # get the metric for the correct first key (recall if "zoom" is on groud truth, precision otherwise)
+        # get the metric for the correct first key (recall if "zoom" is on ground truth, precision otherwise)
         first_key_metric_micro = next(
             (
                 v
