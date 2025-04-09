@@ -157,6 +157,10 @@ class AllClassificationMetrics:
             for k, v in metrics.to_json(f"{language}_{class_.name}").items()
         }
 
+    @property
+    def per_class_all_metrics_dict(self) -> dict[str, float]:
+        return {**self.per_class_global_metrics_dict, **self.per_class_per_language_metrics_dict}
+
     def to_json(self) -> dict[str, float]:
         """Returns the metrics as dict, the metrics are reduced by taking the macro average across all classes.
 
@@ -217,12 +221,9 @@ def per_class_metrics(layers: list[LayerInformations]) -> dict[USCSClasses, Metr
     Returns:
         Dict[USCSClasses, Metrics]: A dictionary mapping each class to its TP, FP, FN.
     """
-    all_classes = set([layer.prediction_uscs_class for layer in layers]) | set(
-        [layer.ground_truth_uscs_class for layer in layers]
-    )
     metrics_per_class = {}
 
-    for cls in all_classes:
+    for cls in USCSClasses:
         tp = sum(1 for layer in layers if layer.prediction_uscs_class == layer.ground_truth_uscs_class == cls)
         fp = sum(1 for layer in layers if layer.prediction_uscs_class == cls and layer.ground_truth_uscs_class != cls)
         fn = sum(1 for layer in layers if layer.prediction_uscs_class != cls and layer.ground_truth_uscs_class == cls)
