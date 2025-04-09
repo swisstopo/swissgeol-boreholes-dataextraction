@@ -12,7 +12,7 @@ from description_classification.utils.data_loader import LayerInformations
 from description_classification.utils.uscs_classes import USCSClasses, map_most_similar_uscs
 from nltk.stem.snowball import SnowballStemmer
 from stratigraphy.util.util import read_params
-from transformers import Trainer
+from transformers import Trainer, TrainingArguments
 
 logger = logging.getLogger(__name__)
 
@@ -235,6 +235,7 @@ class BertClassifier:
         trainer = Trainer(
             model=self.bert_model.model,
             processing_class=self.bert_model.tokenizer,
+            args=TrainingArguments(per_device_eval_batch_size=model_config["inference_batch_size"]),
         )
         output = trainer.predict(eval_dataset)
         predicted_indices = list(np.argmax(output.predictions, axis=1))
