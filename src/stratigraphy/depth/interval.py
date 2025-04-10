@@ -7,9 +7,6 @@ import fitz
 from stratigraphy.lines.line import TextLine
 from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 from stratigraphy.text.textblock import TextBlock
-from stratigraphy.util.util import read_params
-
-matching_params = read_params("matching_params.yml")
 
 
 class Interval:
