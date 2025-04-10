@@ -1,5 +1,7 @@
 """Module for the layer identifier sidebars."""
 
+import logging
+import re
 from dataclasses import dataclass
 
 import fitz
@@ -8,10 +10,14 @@ from stratigraphy.depth.a_to_b_interval_extractor import AToBIntervalExtractor
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.dataclasses import Line
+from stratigraphy.util.util import read_params
 
 from .interval_block_group import IntervalBlockGroup
 from .sidebar import Sidebar
 from .sidebarentry import LayerIdentifierEntry
+
+logger = logging.getLogger(__name__)
+matching_params = read_params("matching_params.yml")
 
 
 @dataclass
@@ -125,3 +131,44 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             and rect.y0 <= self.rect().y0
             and self.rect().y1 <= rect.y1
         )
+
+    def _natural_sort_key(self, value):
+        """Splits a string into parts: [int, str, int] for natural sorting.
+
+        Example: '6d12)' → [6, 'd', 12]
+        """
+        value = value.strip().replace(")", "").lower()
+
+        # Split into alternating numbers and letters
+        parts = re.findall(r"\d+|[a-z]+", value)
+        key = [int(p) if p.isdigit() else p for p in parts]
+        return key
+
+    def has_regular_progression(self):
+        """Checks if a LayerIdentifierSidebar object is valid.
+
+        This check is particularly useful to reject cases where columns of heights are detected, due to the letter
+            "m)" which could indicate meters (e.g., 350.0 m in deepwell Arsch). It also rejects some invalid sidebars
+            that appear in other documents.
+
+        Returns:
+            bool: Indicates whether the sidebar follows a logical order.
+        """
+        valid_count = 0
+        for entry, next_entry in zip(self.entries, self.entries[1:], strict=False):
+            current = self._natural_sort_key(entry.value)
+            next_ = self._natural_sort_key(next_entry.value)
+
+            try:
+                if current < next_:
+                    valid_count += 1
+            except TypeError as e:
+                # happens when comparing a string with an int, it is usually due to a extraction error (e.g. "e" < 2)
+                logger.warning(
+                    f"{e} encountered during comparison between {entry.value} and {next_entry.value}. This is "
+                    "typically due to extraction issues, such as mixing strings and numbers (l -> 1, q -> 9)."
+                )
+                continue
+
+        valid_ratio = valid_count / (len(self.entries) - 1)
+        return valid_ratio > matching_params["layer_identifier_acceptance_ratio"]

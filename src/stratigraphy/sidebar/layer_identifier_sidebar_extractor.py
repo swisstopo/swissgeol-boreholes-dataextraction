@@ -68,8 +68,12 @@ class LayerIdentifierSidebarExtractor:
 
         result = []
         # Remove columns that are fully contained in a longer column
+        # Also remove columns that do not follow a logical progression (e.g. 2 < 3a < 3b < 5 is valid)
         for sidebar in sidebars_by_length:
-            if not any(result_sidebar.rect().contains(sidebar.rect()) for result_sidebar in result):
+            if (
+                not any(result_sidebar.rect().contains(sidebar.rect()) for result_sidebar in result)
+                and sidebar.has_regular_progression()
+            ):
                 result.append(sidebar)
 
         return result

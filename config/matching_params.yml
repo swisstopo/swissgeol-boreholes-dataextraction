@@ -1,6 +1,7 @@
 
 block_line_ratio: 0.20
 left_line_length_threshold: 7
+layer_identifier_acceptance_ratio: 0.5
 img_template_probability_threshold: 0.62
 
 depth_column_params:  # these params should be optimized as soon as there is reliable evaluation data
