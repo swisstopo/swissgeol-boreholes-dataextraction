@@ -1,14 +1,18 @@
 """Classifier module."""
 
+import json
+import os
 import re
 from typing import Protocol
 
+import boto3
 from description_classification.utils.data_loader import LayerInformations
 from description_classification.utils.uscs_classes import USCSClasses, map_most_similar_uscs
 from nltk.stem.snowball import SnowballStemmer
 from stratigraphy.util.util import read_params
 
 classification_params = read_params("classification_params.yml")
+classification_prompts = read_params("classification_prompts.yml")
 
 
 class Classifier(Protocol):
@@ -126,8 +130,8 @@ class BaselineClassifier:
     def classify(self, layer_descriptions: list[LayerInformations]):
         """Classifies the material descriptions of layer information objects into USCS soil classes.
 
-        The method modifies the input object, layer_descriptions by setting their
-        prediction_uscs_class attribute The approach is as follows:
+        The method modifies the input object, layer_descriptions by setting their prediction_uscs_class attribute. 
+        The approach is as follows:
 
         1. Tokenize and stem both the material description and the USCS pattern keywords
         2. Find matches between description and patterns using partial matching
@@ -186,3 +190,124 @@ class BaselineClassifier:
                 layer.prediction_uscs_class = sorted_matches[0]["class"]
             else:
                 layer.prediction_uscs_class = USCSClasses.kA
+
+class AWSBedrockClassifier:
+    """AWSBedrockClassifier class uses AWS Bedrock with underlying Anthropic LLM models."""
+
+    def __init__(self):
+        """Creates a boto3 client for AWS Bedrock and initializes the classifier.
+
+        Environment variables are used to configure the AWS region, model ID, and Anthropic version.
+        The USCS patterns and classification prompts are read from the configuration files.
+        """
+        self.bedrock_client = boto3.client(service_name="bedrock-runtime", region_name=os.environ.get("AWS_REGION"))
+
+        self.anthropic_version = os.environ.get("ANTHROPIC_VERSION")
+        self.model_id = os.environ.get("ANTHROPIC_MODEL_ID")
+
+        self.uscs_patterns = classification_params["uscs_patterns"]
+        self.classification_prompts = classification_prompts
+
+    def create_message(
+        self, max_tokens: int, temperature: float, anthropic_version: str, material_description: str, language: str
+    ) -> dict:
+        """Creates a message for the Anthropic LLM model.
+
+        Args:
+            max_tokens (int): The maximum number of tokens to generate.
+            temperature (float): The sampling temperature to use.
+            anthropic_version (str): The version of the Anthropic model to use.
+            material_description (str): The material description to classify.
+            language (str): The language of the material description.
+
+        Returns:
+            body (dict): The message body for the Bedrock API.
+        """
+        language_patterns = self.uscs_patterns[language]
+        system_message = self.classification_prompts["system_prompt"].format(uscs_patterns=language_patterns)
+        user_message = self.classification_prompts["user_prompt"].format(material_description=material_description)
+
+        body = json.dumps(
+            {
+                "anthropic_version": anthropic_version,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "system": system_message,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": user_message,
+                            }
+                        ],
+                    },
+                ],
+            }
+        )
+
+        return body
+
+    def format_response(self, response: dict) -> dict:
+        """Formats the response from the Bedrock API.
+
+        The function extracts the model answer (USCS Class) and reasoning from the llm response object.
+        If no reasoning is provided None is assigned to the Reasoning key, if no answer is provided
+        default value 'kA' is assigned to the Model Answer key.
+
+        Args:
+            response (dict): The response from the Bedrock API.
+
+        Returns:
+            dict: A dictionary containing the model answer (USCS Class) and reasoning.
+        """
+        response_body = json.loads(response.get("body").read())
+        response_text = response_body.get("content")[0].get("text", None)
+
+        reasoning = re.search(r"<thinking>(.*?)</thinking>", response_text, re.DOTALL)
+        reasoning = reasoning.group(1).strip() if reasoning else None
+
+        answer = re.search(r"<answer>(.*?)</answer>", response_text, re.DOTALL)
+        answer = answer.group(1).strip() if answer else "kA"
+
+        return {"Model Answer": answer, "Reasoning": reasoning}
+
+    def classify(self, layer_descriptions: list[LayerInformations], max_tokens: int = 256, temperature: float = 0.3):
+        """Classifies the material descriptions of layer information objects into USCS soil classes.
+
+        The method modifies the input object, layer_descriptions by setting their bprediction_uscs_class attribute.
+        The approach is as follows:
+        1. Each layer description together with the detected language is added to the prompt sent to an Anthropic
+        LLM model API on AWS Bedrock.
+        2. The LLM model provides an answer in the form of a USCS class and (potentially) reasoning.
+        3. If the USCS class and Reasoning exists in the LLM response both are added to the layer_descriptions object.
+
+
+        Args:
+            layer_descriptions (list[LayerInformations]): The LayerInformations object
+            max_tokens (int): The maximum number of tokens to generate.
+            temperature (float): The sampling temperature to use.
+        """
+        for layer in layer_descriptions:
+            print(f"Classifying layer: {layer.filename}_{layer.borehole_index}_{layer.layer_index}")
+
+            body = self.create_message(
+                max_tokens=max_tokens,
+                temperature=temperature,
+                anthropic_version=self.anthropic_version,
+                material_description=layer.material_description,
+                language=layer.language,
+            )
+            try:
+                response = self.bedrock_client.invoke_model(body=body, modelId=self.model_id)
+            except Exception as e:
+                print(f"API call failed for '{layer.material_description}': {str(e)}")
+                layer.prediction_uscs_class = USCSClasses.kA
+
+            formatted_response = self.format_response(response)
+
+            uscs_class = map_most_similar_uscs(formatted_response.get("Model Answer"))
+            layer.prediction_uscs_class = uscs_class
+
+            layer.llm_reasoning = formatted_response.get("Reasoning")

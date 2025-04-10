@@ -8,7 +8,7 @@ import click
 from dotenv import load_dotenv
 
 from description_classification import DATAPATH
-from description_classification.classifiers.classifiers import BaselineClassifier, Classifier
+from description_classification.classifiers.classifiers import AWSBedrockClassifier, Classifier
 from description_classification.evaluation.evaluate import evaluate
 from description_classification.utils.data_loader import LayerInformations, load_data
 from description_classification.utils.data_utils import (
@@ -114,7 +114,7 @@ def main(file_path: Path, out_directory: Path, file_subset_directory: Path):
     logger.info(f"Loading data from {file_path}")
     layer_descriptions = load_data(file_path, file_subset_directory)
 
-    classifier: Classifier = BaselineClassifier()
+    classifier: Classifier = AWSBedrockClassifier()
     logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
     classifier.classify(layer_descriptions)
 
