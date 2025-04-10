@@ -107,11 +107,12 @@ Alternatively you can replace the `pip install -e '.[all]'` command with `pip in
 Adding pip packages can be done by editing the `pyproject.toml` of the project and adding the required package.
 
 If you are using a version of Python newer than 3.12 (e.g. 3.13), you may need to use the command ` python3.12 -m venv env `instead.
+It might also be usefull to use `python3.12 -m pip install -e '.[all]'` if some error appear.
 
 ## Run data extraction
 To execute the data extraction pipeline, follow these steps:
 
-1. **Activate the virtual environment**
+### 1. Activate the virtual environment
 
 Activate your virtual environment. On unix systems this is
 
@@ -119,7 +120,7 @@ Activate your virtual environment. On unix systems this is
 source env/bin/activate
 ```
 
-2. **Download the borehole profiles, optional**
+### 2. Download the borehole profiles, optional
 
 Use `boreholes-download-profiles` to download the files to be processed from an AWS S3 storage. In order to do so, you need to authenticate with aws first. We recommend using the aws CLI for that purpose, or storing your credentials in the ~/.aws configuration files This step is optional, you can continue with step 3 on your own set of borehole profiles.
 
@@ -147,7 +148,7 @@ If you choose to use the ~/.aws files, then they should look like this:
   aws_secret_access_key=YOUR_SECRET_KEY
   ```  
 
-3. **Run the extraction script**
+## 3. Run the extraction script
 
 The main script for the extraction pipeline is located at `src/stratigraphy/main.py`. A cli command is created to run this script.
 
@@ -156,11 +157,63 @@ The script will source all PDFs from the specified directory and create PNG file
 
 Use `boreholes-extract-all --help` to see all options for the extraction script.
 
-4. **Check the results**
+### 4. Check the results
 
 The script produces output in two different formats:
 - A file `data/output/predictions.json` that contains all extracted data in a machine-readable format. The structure of this file is documented in [README.predictions-json.md](README.predictions-json.md).
 - A PNG image of each processed PDF page in the `data/output/draw` directory, where the extracted data is highlighted.
+
+## Run Layer Description Classification  
+
+To execute the layer description classification, follow these steps:  
+
+### 1. Setup  
+
+Repeat steps 1 and 2 of the [data extraction pipeline](#run-data-extraction) to set up the environment and download the data.  
+
+### 2. Run the Classification Pipeline  
+
+The main script for the classification pipeline is located at `src/description_classification/main.py`. A CLI command is available to run this script:  
+
+```bash
+boreholes-classify-descriptions -f data/geoquat_ground_truth.json -s data/geoquat/ -c baseline validation
+```  
+
+- Use the `-f` or `--file-path` flag to specify the path to the JSON file containing the layer description and USCS ground truth.  
+- You can optionally provide a folder containing a subset of files by using the `-s` or `--file-subset-directory` flag. Only the filenames in this folder will be loaded from the JSON file for classification.
+- Use the `-c` or `--classifier` option to chose the classifier type from `dummy`, `baseline` or `bert`.
+- If you are using the classifier `bert` with a trained local [model](#train-bert-model), specify its folder path using the `-p` or `--model-path` flag. The folder has to contain all files generated when saving a model checkpoint with the transformers librairy.
+
+The script will classify all given descriptions and write the predictions to the `data/output_description_classification` directory.  
+
+Run `boreholes-classify-descriptions --help` to see all available options.  
+
+---  
+
+## Train BERT Model  
+
+To fine-tune BERT on your data, follow these steps:  
+
+### 1. Setup  
+
+Repeat steps 1 and 2 of the [data extraction pipeline](#run-data-extraction) to set up the environment and download the data.  
+
+### 2. Choose Hyperparameters  
+
+Modify the file `config/bert_config.yml` to set the hyperparameters for training and data processing.  
+
+### 3. Train the Model  
+
+To fine-tune BERT from the base model on Hugging Face, run:  
+
+```bash
+fine-tune-bert -f path/to/your/data.json
+```  
+
+- Use `-f` or `--file-path` to specify the path to the JSON file containing the descriptions and ground truth for each layer.  
+- By default, the initial model is the one specified in the config file (loaded from hugging face). However, you can continue training from a specific checkpoint by providing a local model path with `-c` or `--model-checkpoint`.  
+
+The pipeline stores a checkpoint of the model after each epoch and logs training details in the `models` directory. The model name corresponds to the timestamp when training was launched.  
 
 # Developer Guidance
 ## Project Structure

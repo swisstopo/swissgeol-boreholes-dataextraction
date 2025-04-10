@@ -9,6 +9,9 @@ logger = logging.getLogger(__name__)
 class USCSClasses(Enum):
     """USCS (Unified Soil Classification System) classes."""
 
+    def _generate_next_value_(name, start, count, last_values):
+        return count  # To start from 0 instead of 1
+
     kunst = auto()
     Bl = auto()
     GP = auto()

@@ -2,6 +2,7 @@
 
 import logging
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from description_classification.utils.data_loader import LayerInformations
@@ -195,11 +196,11 @@ def evaluate(layer_descriptions: list[LayerInformations]) -> AllClassificationMe
     Returns:
         AllClassificationMetrics: the holder for the metrics
     """
-    global_metrics: dict[USCSClasses, Metrics] = per_class_metrics(layer_descriptions)
+    global_metrics: dict[USCSClasses, Metrics] = per_class_metrics_from_layers(layer_descriptions)
 
     supported_language: list[str] = classification_params["supported_language"]
     language_metrics: dict[str, dict[USCSClasses, Metrics]] = {
-        language: per_class_metrics([layer for layer in layer_descriptions if layer.language == language])
+        language: per_class_metrics_from_layers([layer for layer in layer_descriptions if layer.language == language])
         for language in supported_language
     }
 
@@ -212,7 +213,7 @@ def evaluate(layer_descriptions: list[LayerInformations]) -> AllClassificationMe
     return all_classification_metrics
 
 
-def per_class_metrics(layers: list[LayerInformations]) -> dict[USCSClasses, Metrics]:
+def per_class_metrics_from_layers(layers: list[LayerInformations]) -> dict[USCSClasses, Metrics]:
     """Compute per-class classification metrics.
 
     Args:
@@ -221,12 +222,26 @@ def per_class_metrics(layers: list[LayerInformations]) -> dict[USCSClasses, Metr
     Returns:
         Dict[USCSClasses, Metrics]: A dictionary mapping each class to its TP, FP, FN.
     """
-    metrics_per_class = {}
+    predictions = [layer.prediction_uscs_class for layer in layers]
+    labels = [layer.ground_truth_uscs_class for layer in layers]
+    return per_class_metric(predictions, labels)
 
+
+def per_class_metric(predictions: Iterable, labels: Iterable):
+    """Compute per-class classification metrics from the predictions and the labels.
+
+    Args:
+        predictions (Iterable): An iterable containing the prediction for each sample.
+        labels (Iterable): An iterable containing the ground truth label for each sample.
+
+    Returns:
+        Dict[USCSClasses, Metrics]: A dictionary mapping each class to its TP, FP, FN.
+    """
+    metrics_per_class = {}
     for cls in USCSClasses:
-        tp = sum(1 for layer in layers if layer.prediction_uscs_class == layer.ground_truth_uscs_class == cls)
-        fp = sum(1 for layer in layers if layer.prediction_uscs_class == cls and layer.ground_truth_uscs_class != cls)
-        fn = sum(1 for layer in layers if layer.prediction_uscs_class != cls and layer.ground_truth_uscs_class == cls)
+        tp = sum(1 for pred, lab in zip(predictions, labels, strict=True) if pred == lab == cls)
+        fp = sum(1 for pred, lab in zip(predictions, labels, strict=True) if pred == cls and lab != cls)
+        fn = sum(1 for pred, lab in zip(predictions, labels, strict=True) if pred != cls and lab == cls)
 
         metrics_per_class[cls] = Metrics(tp=tp, fp=fp, fn=fn)
 
