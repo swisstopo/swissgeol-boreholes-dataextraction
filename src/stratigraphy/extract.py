@@ -88,7 +88,13 @@ class MaterialDescriptionRectWithSidebarExtractor:
             item for index, item in enumerate(material_descriptions_sidebar_pairs) if index not in to_delete
         ]
 
-        return [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
+        # We order the boreholes with the highest score first. When one borehole is actually present in the ground
+        # truth, but more than one are detected, we want the most correct to be assigned
+        # TODO we actually should try to merge similar extracted boreholes to keep the most information possible.
+        return [
+            self._create_borehole_from_pair(pair)
+            for pair in sorted(filtered_pairs, key=lambda pair: pair.score_match, reverse=True)
+        ]
 
     def _create_borehole_from_pair(self, pair: MaterialDescriptionRectWithSidebar) -> ExtractedBorehole:
         bounding_boxes = PageBoundingBoxes.from_material_description_rect_with_sidebar(pair, self.page_number)
