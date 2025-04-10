@@ -130,7 +130,7 @@ class BaselineClassifier:
     def classify(self, layer_descriptions: list[LayerInformations]):
         """Classifies the material descriptions of layer information objects into USCS soil classes.
 
-        The method modifies the input object, layer_descriptions by setting their prediction_uscs_class attribute. 
+        The method modifies the input object, layer_descriptions by setting their prediction_uscs_class attribute.
         The approach is as follows:
 
         1. Tokenize and stem both the material description and the USCS pattern keywords
@@ -190,6 +190,7 @@ class BaselineClassifier:
                 layer.prediction_uscs_class = sorted_matches[0]["class"]
             else:
                 layer.prediction_uscs_class = USCSClasses.kA
+
 
 class AWSBedrockClassifier:
     """AWSBedrockClassifier class uses AWS Bedrock with underlying Anthropic LLM models."""
