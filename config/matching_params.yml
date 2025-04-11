@@ -200,7 +200,6 @@ groundwater_fp_keys:
     - Grundwasser-          
     - Grundwasserfassung   
     - GW/ # makes it possible to avoid false positives like "GW/" from the USCS Nomenclature columns     
-    - GW- # same 
 
 groundwater_unit_keys:
   de:
