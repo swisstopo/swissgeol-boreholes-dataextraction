@@ -35,7 +35,8 @@ dependencies = [
     "quads>=1.1.0",
     "numpy<2",
     "rtree",
-    "nltk"
+    "nltk",
+    "boto3"
 ]
 
 [project.optional-dependencies]
