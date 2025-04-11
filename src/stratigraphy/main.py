@@ -255,7 +255,7 @@ def start_pipeline(
         with fitz.Document(in_path) as doc:
             # Extract metadata
             file_metadata = FileMetadata.from_document(doc)
-            metadata = MetadataInDocument.from_document(doc)
+            metadata = MetadataInDocument.from_document(doc, file_metadata.language)
 
             # Save the predictions to the overall predictions object, initialize common variables
             layers_with_bb_in_document = LayersInDocument([], filename)
@@ -276,7 +276,7 @@ def start_pipeline(
                 processed_page_results = LayersInDocument(extracted_boreholes, filename)
 
                 # Extract the groundwater levels
-                groundwater_extractor = GroundwaterLevelExtractor()
+                groundwater_extractor = GroundwaterLevelExtractor(file_metadata.language)
                 groundwater_entries = groundwater_extractor.extract_groundwater(
                     page_number=page_number, lines=text_lines, document=doc
                 )
