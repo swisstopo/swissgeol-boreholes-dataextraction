@@ -191,8 +191,13 @@ class GroundwaterLevelExtractor(DataExtractor):
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ü": "u"}
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, language):
+        """Initializes the GroundwaterLevelExtractor object.
+
+        Args:
+            language (str): the language of the document.
+        """
+        super().__init__(language)
 
         self.is_searching_groundwater_illustration = os.getenv("IS_SEARCHING_GROUNDWATER_ILLUSTRATION") == "True"
         if self.is_searching_groundwater_illustration:

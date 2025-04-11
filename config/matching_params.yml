@@ -150,77 +150,89 @@ material_description:
       - core drilling
       - drilling radius
 
-
 coordinate_keys:
-  - Koordinaten
-  - Koordinate
-  - Koord.
-  - coordinates
-  - coordinate
-  - coordonnées
-  - coordonn
-
-coordinate_fp_keys:
-
-
-groundwater_fp_keys:
-  - Wasserstau
-  - Grundwasser-
-  - Grundwasserfassung
-  - GW/  # makes it possible to avoid false positives like "GW/" from the USCS Nomenclature columns
+  de:
+    - Koordinaten        
+    - Koordinate         
+    - Koord.             
+  en:
+    - coordinates        
+    - coordinate         
+  fr:
+    - coordonnées        
+    - coordonn           
 
 groundwater_keys:
-  # German
-  - Wasserspiegel
-  - Wasserstand
-  - Grundwasserspiegel
-  - GW
-  - GWSP
-  - Gwsp
-  - gwsp
-  - G.W.Sp 
-  - GW.SP.
-  - W.SP.
-  - W.SP
-  - W SP
-  - Gr.W.spiegel
-  - GrW Sp
-  - Wsp
-  - GW-Spiegel
-  - Grundwasser
-  - Spiegel
+  de:
+    - Wasserspiegel
+    - Wasserstand
+    - Grundwasserspiegel
+    - GW
+    - GWSP
+    - Gwsp
+    - gwsp
+    - G.W.Sp 
+    - GW.SP.
+    - W.SP.
+    - W.SP
+    - W SP
+    - Gr.W.spiegel
+    - GrW Sp
+    - Wsp
+    - GW-Spiegel
+    - Grundwasser
+    - Spiegel           
+  fr:
+    - nappe phréatique
+    - nappe
+    - nappe d'eau
+    - nappe d'eau souterraine
+    - venue d'eau
+    - niveau d'eau
+  en:
+    - groundwater   
+    - ground-water
+    - ground-water level
 
-  # French
-  - nappe phréatique
-  - nappe
-  - nappe d'eau
-  - nappe d'eau souterraine
-  - venue d'eau
-  - niveau d'eau
-
-  # English
-  - groundwater
+groundwater_fp_keys:
+  de:
+    - Wasserstau            
+    - Grundwasser-          
+    - Grundwasserfassung   
+    - GW/ # makes it possible to avoid false positives like "GW/" from the USCS Nomenclature columns     
 
 groundwater_unit_keys:
-  # German
-  - m ü. M.
-  - müM
-  - M.ü.T.
-  - MüT
-  - M.u.T.
-  - MuT
-  - m.u.T.
+  de:
+    - m ü. M.            
+    - müM
+    - M.ü.T.
+    - MüT
+    - M.u.T.
+    - MuT
+    - m.u.T.
+  
+  fr:
+    - m/mer
 
 elevation_keys:
-  # German
-  - Kote OK Terrain
-  - Höhenlage
-  - Höhe
-  - Kote
-  - OK Terrain
-  - OKT
-  - Ansatzhöhe
-  - Terrainkote
+  de:
+    - Kote OK Terrain   
+    - Höhenlage        
+    - Höhe            
+    - Kote           
+    - OK Terrain    
+    - OKT          
+    - Ansatzhöhe 
+    - Terrainkote
+    - Terrainhöhe
 
-elevation_fp_keys:
+  fr:
+    - Terrain H
+    - H
+    - Altitude Terrain
+    - Altitude
+    - Alt. Terrain
+
+  en:
+    - Surface level
 

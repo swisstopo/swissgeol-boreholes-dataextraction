@@ -110,17 +110,18 @@ class DataExtractor(ABC):
 
     preprocess_replacements: dict[str, str] = {}
 
-    def __init__(self):
+    def __init__(self, language: str):
         """Initializes the DataExtractor object.
 
         Args:
-            feature_name (str): The name of the feature to extract.
+            language (str): the language of the document.
         """
         if not self.feature_name:
             raise ValueError("Feature name must be specified.")
 
-        self.feature_keys = read_params("matching_params.yml")[f"{self.feature_name}_keys"]
-        self.feature_fp_keys = read_params("matching_params.yml")[f"{self.feature_name}_fp_keys"] or []
+        params = read_params("matching_params.yml")
+        self.feature_keys = params[f"{self.feature_name}_keys"][language]
+        self.feature_fp_keys = params.get(f"{self.feature_name}_fp_keys", {}).get(language, [])
 
     def preprocess(self, value: str) -> str:
         """Preprocesses the value before searching for the feature.

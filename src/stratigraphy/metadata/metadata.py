@@ -35,21 +35,22 @@ class MetadataInDocument:
     coordinates: list[FeatureOnPage[Coordinate]]
 
     @classmethod
-    def from_document(cls, document: fitz.Document) -> "MetadataInDocument":
+    def from_document(cls, document: fitz.Document, language: str) -> "MetadataInDocument":
         """Create a MetadataInDocument object from a document.
 
         Args:
             document (fitz.Document): The document.
+            language (str): The language of the document.
 
         Returns:
             MetadataInDocument: The metadata object.
         """
         # Extract the coordinates of the borehole
-        coordinate_extractor = CoordinateExtractor()
+        coordinate_extractor = CoordinateExtractor(language)
         coordinates = coordinate_extractor.extract_coordinates(document=document)
 
         # Extract the elevation information
-        elevation_extractor = ElevationExtractor()
+        elevation_extractor = ElevationExtractor(language)
         elevations = elevation_extractor.extract_elevation(document=document)
 
         return cls(elevations=elevations, coordinates=coordinates)
