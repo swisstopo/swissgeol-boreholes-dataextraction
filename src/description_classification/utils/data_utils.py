@@ -51,7 +51,7 @@ def write_predictions(
     Args:
         layers_with_predictions (list[LayerInformations]): List of layers with predictions.
         out_dir (Path): Path to the output directory.
-        outh_path (str): Name of the output file (default: "uscs_class_predictions.json").
+        out_path (str): Name of the output file (default: "uscs_class_predictions.json").
     """
     out_dir.mkdir(parents=True, exist_ok=True)  # Ensure the output directory exists
     output_file = out_dir / out_path
