@@ -1,5 +1,6 @@
 """This module contains the main pipeline for the classification of the layer's soil descriptions."""
 
+import asyncio
 import logging
 import os
 from pathlib import Path
@@ -131,7 +132,11 @@ def main(file_path: Path, out_directory: Path, file_subset_directory: Path):
 
     classifier: Classifier = AWSBedrockClassifier()
     logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
-    classifier.classify(layer_descriptions)
+
+    if isinstance(classifier, AWSBedrockClassifier):
+        asyncio.run(classifier.classify(layer_descriptions, store_files=True, max_concurrent_calls=1))
+    else:
+        classifier.classify(layer_descriptions)
 
     logger.info("Evaluating predictions")
     classification_metrics = evaluate(layer_descriptions)

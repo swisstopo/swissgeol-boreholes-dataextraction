@@ -1,18 +1,25 @@
 """Classifier module."""
 
+import asyncio
 import json
 import os
 import re
+from collections import defaultdict
+from pathlib import Path
 from typing import Protocol
 
 import boto3
+from description_classification import DATAPATH
 from description_classification.utils.data_loader import LayerInformations
+from description_classification.utils.data_utils import write_api_failures, write_predictions
 from description_classification.utils.uscs_classes import USCSClasses, map_most_similar_uscs
 from nltk.stem.snowball import SnowballStemmer
 from stratigraphy.util.util import read_params
 
 classification_params = read_params("classification_params.yml")
 classification_prompts = read_params("classification_prompts.yml")
+
+out_directory = DATAPATH / "output_description_classification_berdrock"
 
 
 class Classifier(Protocol):
@@ -274,7 +281,15 @@ class AWSBedrockClassifier:
 
         return {"Model Answer": answer, "Reasoning": reasoning}
 
-    def classify(self, layer_descriptions: list[LayerInformations], max_tokens: int = 256, temperature: float = 0.3):
+    async def classify(
+        self,
+        layer_descriptions: list[LayerInformations],
+        max_tokens: int = 256,
+        temperature: float = 0.3,
+        store_files: bool = False,
+        bedrock_out_directory: Path = out_directory,
+        max_concurrent_calls: int = 1,
+    ):
         """Classifies the material descriptions of layer information objects into USCS soil classes.
 
         The method modifies the input object, layer_descriptions by setting their bprediction_uscs_class attribute.
@@ -284,31 +299,74 @@ class AWSBedrockClassifier:
         2. The LLM model provides an answer in the form of a USCS class and (potentially) reasoning.
         3. If the USCS class and Reasoning exists in the LLM response both are added to the layer_descriptions object.
 
-
         Args:
             layer_descriptions (list[LayerInformations]): The LayerInformations object
             max_tokens (int): The maximum number of tokens to generate.
             temperature (float): The sampling temperature to use.
+            store_files (bool): Whether to store the prediction files (default: False)
+            bedrock_out_directory: Directory to write prediction outputs
+            max_concurrent_calls: Maximum number of concurrent API calls (default: 10)
         """
+        api_failures = []
+
+        layers_by_filename = defaultdict(list)
         for layer in layer_descriptions:
-            print(f"Classifying layer: {layer.filename}_{layer.borehole_index}_{layer.layer_index}")
+            layers_by_filename[layer.filename].append(layer)
 
-            body = self.create_message(
-                max_tokens=max_tokens,
-                temperature=temperature,
-                anthropic_version=self.anthropic_version,
-                material_description=layer.material_description,
-                language=layer.language,
-            )
-            try:
-                response = self.bedrock_client.invoke_model(body=body, modelId=self.model_id)
-            except Exception as e:
-                print(f"API call failed for '{layer.material_description}': {str(e)}")
-                layer.prediction_uscs_class = USCSClasses.kA
+        semaphore = asyncio.Semaphore(max_concurrent_calls)
 
-            formatted_response = self.format_response(response)
+        for filename, filename_layers in layers_by_filename.items():
+            print(f"Processing file: {filename} with {len(filename_layers)} layers")
+            path = f"{Path(filename).stem}.csv"
 
-            uscs_class = map_most_similar_uscs(formatted_response.get("Model Answer"))
-            layer.prediction_uscs_class = uscs_class
+            async def process_layer(layer):
+                async with semaphore:
+                    try:
+                        print(f"Classifying layer: {layer.filename}_{layer.borehole_index}_{layer.layer_index}")
 
-            layer.llm_reasoning = formatted_response.get("Reasoning")
+                        body = self.create_message(
+                            max_tokens=max_tokens,
+                            temperature=temperature,
+                            anthropic_version=self.anthropic_version,
+                            material_description=layer.material_description,
+                            language=layer.language,
+                        )
+
+                        loop = asyncio.get_event_loop()
+                        response = await loop.run_in_executor(
+                            None,  # Use default executor
+                            lambda: self.bedrock_client.invoke_model(body=body, modelId=self.model_id),
+                        )
+
+                        formatted_response = self.format_response(response)
+                        uscs_class = map_most_similar_uscs(formatted_response.get("Model Answer"))
+
+                        layer.prediction_uscs_class = uscs_class
+                        layer.llm_reasoning = formatted_response.get("Reasoning")
+
+                        return None
+
+                    except Exception as e:
+                        error_msg = str(e)
+                        print(f"API call failed for '{layer.filename}, {layer.layer_index}': {error_msg}")
+                        layer.prediction_uscs_class = USCSClasses.kA
+
+                        # Return failure info
+                        return {
+                            "filename": layer.filename,
+                            "borehole_index": layer.borehole_index,
+                            "layer_index": layer.layer_index,
+                            "error": error_msg,
+                        }
+
+            tasks = [process_layer(layer) for layer in filename_layers]
+            results = await asyncio.gather(*tasks)
+
+            for result in results:
+                if result is not None:
+                    api_failures.append(result)
+
+            if store_files:
+                write_predictions(filename_layers, bedrock_out_directory, path)
+
+        write_api_failures(api_failures, bedrock_out_directory)
