@@ -17,7 +17,11 @@ from app.common.schemas import (
 from fastapi import HTTPException
 from stratigraphy.lines.line import TextLine
 from stratigraphy.metadata.coordinate_extraction import CoordinateExtractor, LV03Coordinate, LV95Coordinate
+from stratigraphy.metadata.language_detection import detect_language_of_text
 from stratigraphy.text.extract_text import extract_text_lines
+from stratigraphy.util.util import read_params
+
+matching_params = read_params("matching_params.yml")
 
 
 def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataResponse:
@@ -64,10 +68,19 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
         if words:
             text_lines.append(TextLine(words))
 
+    # Detect the language of the textlines
+    language = detect_language_of_text(
+        " ".join([text.text for text in text_lines]),
+        matching_params["default_language"],
+        matching_params["material_description"].keys(),
+    )
+
     # Extract the information based on the format type
     if extract_data_request.format == FormatTypes.COORDINATES:
         # Extract the coordinates and bounding box
-        extracted_coords: ExtractCoordinatesResponse | None = extract_coordinates(extract_data_request, text_lines)
+        extracted_coords: ExtractCoordinatesResponse | None = extract_coordinates(
+            extract_data_request, text_lines, language
+        )
 
         # Convert the bounding box to PNG coordinates and return the response
         return ExtractCoordinatesResponse(
@@ -110,7 +123,9 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
         raise ValueError("Invalid format type.")
 
 
-def extract_coordinates(extract_data_request: ExtractDataRequest, text_lines: list[TextLine]) -> ExtractDataResponse:
+def extract_coordinates(
+    extract_data_request: ExtractDataRequest, text_lines: list[TextLine], language: str
+) -> ExtractDataResponse:
     """Extract coordinates from a collection of text lines.
 
     The coordinates are extracted in the Swiss coordinate system (LV03 or LV95).
@@ -118,6 +133,7 @@ def extract_coordinates(extract_data_request: ExtractDataRequest, text_lines: li
     Args:
         extract_data_request (ExtractDataRequest): The request data. The page number is 1-based.
         text_lines (list[TextLine]): The text lines to extract the coordinates from.
+        language (str): The language of the document.
 
     Returns:
         ExtractDataResponse: The extracted coordinates. The coordinates are in the Swiss coordinate
@@ -140,7 +156,7 @@ def extract_coordinates(extract_data_request: ExtractDataRequest, text_lines: li
             ),
         )
 
-    coord_extractor = CoordinateExtractor()
+    coord_extractor = CoordinateExtractor(language)
     extracted_coord = coord_extractor.extract_coordinates_aggregated(text_lines, extract_data_request.page_number)
 
     if extracted_coord:
