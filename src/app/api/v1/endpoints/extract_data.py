@@ -68,15 +68,16 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
         if words:
             text_lines.append(TextLine(words))
 
-    # Detect the language of the textlines
-    language = detect_language_of_text(
-        " ".join([text.text for text in text_lines]),
-        matching_params["default_language"],
-        matching_params["material_description"].keys(),
-    )
-
     # Extract the information based on the format type
     if extract_data_request.format == FormatTypes.COORDINATES:
+        # Detect the language of the textlines.
+        # Note: language is detected only from textlines inside the user-defined bounding box, not the whole document.
+        # If more confidence is needed, consider using the entire document to infer the language.
+        language = detect_language_of_text(
+            " ".join([text.text for text in text_lines]),
+            matching_params["default_language"],
+            matching_params["material_description"].keys(),
+        )
         # Extract the coordinates and bounding box
         extracted_coords: ExtractCoordinatesResponse | None = extract_coordinates(
             extract_data_request, text_lines, language
