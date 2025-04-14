@@ -132,15 +132,22 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             and self.rect().y1 <= rect.y1
         )
 
-    def _natural_sort_key(self, value):
+    def _standardize_key(self, value: str) -> list[str | int]:
         """Splits a string into parts: [int, str, int] for natural sorting.
 
         Example: '6d12)' → [6, 'd', 12]
+
+        Args:
+            value (str): the value to convert to standartized key.
+
+        Returns:
+            list[str | int]: the list containing the key in order.
         """
         value = value.strip().replace(")", "").lower()
 
         # Split into alternating numbers and letters
         parts = re.findall(r"\d+|[a-z]+", value)
+        # conversion to int needed because 2 < 12 for example (with strings, '12' < '2', because '1' < '2')
         key = [int(p) if p.isdigit() else p for p in parts]
         return key
 
@@ -156,8 +163,8 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         """
         valid_count = 0
         for entry, next_entry in zip(self.entries, self.entries[1:], strict=False):
-            current = self._natural_sort_key(entry.value)
-            next_ = self._natural_sort_key(next_entry.value)
+            current = self._standardize_key(entry.value)
+            next_ = self._standardize_key(next_entry.value)
 
             try:
                 if current < next_:
