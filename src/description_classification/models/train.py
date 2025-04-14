@@ -10,7 +10,7 @@ import datasets
 import mlflow
 from dotenv import load_dotenv
 from stratigraphy.util.util import read_params
-from transformers import DataCollatorWithPadding, Trainer, TrainingArguments
+from transformers import DataCollatorWithPadding, EvalPrediction, Trainer, TrainingArguments
 
 from description_classification import DATAPATH
 from description_classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
@@ -172,7 +172,18 @@ def setup_trainer(bert_model: BertModel, file_path: Path, out_directory: Path) -
     train_dataset, eval_dataset = setup_data(bert_model, file_path)
 
     # Define a custom compute_metrics function
-    def compute_metrics(eval_pred):
+    def compute_metrics(eval_pred: EvalPrediction) -> dict[str, float]:
+        """Function used for evaluating prediction, and logging during the training.
+
+        Note: The metrics are not used to optimize the model during the training, just to evaluate it.
+            The model is trained by trying to lower the cross-entropy loss.
+
+        Args:
+            eval_pred (EvalPrediction): Object of type EvalPrediction that will be passt to this function.
+
+        Returns:
+            dict[str, float]: Dictionary containing all the metrics procduced to evaluate the predictions.
+        """
         logits, labels = eval_pred
         predictions = logits.argmax(axis=-1)
         metrics = per_class_metric(predictions, labels)
@@ -186,7 +197,7 @@ def setup_trainer(bert_model: BertModel, file_path: Path, out_directory: Path) -
         eval_dataset=eval_dataset,
         processing_class=bert_model.tokenizer,
         data_collator=DataCollatorWithPadding(tokenizer=bert_model.tokenizer),
-        compute_metrics=compute_metrics,  # Define your custom metric function if needed
+        compute_metrics=compute_metrics,
     )
     return trainer
 

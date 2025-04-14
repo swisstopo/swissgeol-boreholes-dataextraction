@@ -1,18 +1,21 @@
 """class module."""
 
 import logging
-from enum import Enum, auto
+from enum import IntEnum, auto
 
 logger = logging.getLogger(__name__)
 
 
-class USCSClasses(Enum):
-    """USCS (Unified Soil Classification System) classes."""
+class USCSClasses(IntEnum):
+    """USCS (Unified Soil Classification System) classes.
 
-    def _generate_next_value_(name, start, count, last_values):
-        return count  # To start from 0 instead of 1
+    Note:
+        By default, auto() assigns integer values starting from 1. In Python, especially in machine learning, it is
+        common to start class labels from 0. The Trainer used when training the BERT model expects labels starting at
+        0, so using 0-based indexing here avoids the need to address the issue later and prevents potential bugs.
+    """
 
-    kunst = auto()
+    kunst = 0
     Bl = auto()
     GP = auto()
     CH = auto()
