@@ -77,6 +77,16 @@ class BertModel:
                 logger.debug(f"Unfreezing Param: {name}")
                 param.requires_grad = True
 
+    def unfreeze_layer_11(self):
+        """Unfreeze the last layer of the transformer encoder, the 11th layer.
+
+        This concerns all the folloewing layers:
+            - TODO
+        """
+        for name, param in self.model.bert.encoder.layer[11].named_parameters():
+            logger.debug(f"Unfreezing Param: {name}")
+            param.requires_grad = True
+
     def unfreeze_all_layers(self):
         """Unfreeze all layers (base model + classifier)."""
         for name, param in self.model.named_parameters():

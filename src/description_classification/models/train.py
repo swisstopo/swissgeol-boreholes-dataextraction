@@ -42,6 +42,7 @@ def setup_mlflow_tracking(
     mlflow.start_run()
     mlflow.set_tag("json file_path", str(file_path))
     mlflow.set_tag("out_directory", str(out_directory))
+    print("tracking")
 
 
 def common_options(f):
@@ -85,6 +86,7 @@ def train_model(file_path: Path, out_directory: Path, model_checkpoint: Path):
     logger.info(f"Loading pretrained model from {model_path}.")
     bert_model = BertModel(model_path)
     bert_model.freeze_layers_except_pooler_and_classifier()
+    bert_model.unfreeze_layer_11()
     bert_model.model.train()
 
     # Initialize the trainer
@@ -92,7 +94,7 @@ def train_model(file_path: Path, out_directory: Path, model_checkpoint: Path):
 
     # Start training
     logger.info("Beginning the training.")
-    train_result = trainer.train(resume_from_checkpoint=model_checkpoint)
+    train_result = trainer.train()
 
     trainer.save_model()  # Saves the tokenizer too for easy upload
     metrics = train_result.metrics
