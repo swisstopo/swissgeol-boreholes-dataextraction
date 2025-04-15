@@ -50,7 +50,7 @@ class BertModel:
         self.id2classEnum = {class_.value: class_ for class_ in USCSClasses}
 
     def freeze_all_layers(self):
-        """Freeze all layers (base model + classifier)."""
+        """Freeze all layers (base bert model + classifier)."""
         for name, param in self.model.named_parameters():
             logger.debug(f"Freezing Param: {name}")
             param.requires_grad = False
@@ -61,31 +61,81 @@ class BertModel:
         self.unfreeze_pooler()
         self.unfreeze_classifier()
 
-    def unfreeze_pooler(self):
-        """Unfreeze all the pooler layers."""
-        # Unfreeze pooler layer
+    def unfreeze_classifier(self):
+        """Unfreeze all the classifier layers.
+
+        This will put requires_grad=True for the following parameters:
+            - classifier.weight
+            - classifier.bias
+        """
         for name, param in self.model.named_parameters():
-            if "pooler" in name:
+            if "classifier" in name:
                 logger.debug(f"Unfreezing Param: {name}")
                 param.requires_grad = True
 
-    def unfreeze_classifier(self):
-        """Unfreeze all the classifier layers."""
-        # Unfreeze classifier layer
+    def unfreeze_pooler(self):
+        """Unfreeze all the pooler layers.
+
+        This will put requires_grad=True for the following parameters:
+            - bert.pooler.dense.weight
+            - bert.pooler.dense.bias
+        """
         for name, param in self.model.named_parameters():
-            if "classifier" in name:
+            if "pooler" in name:
                 logger.debug(f"Unfreezing Param: {name}")
                 param.requires_grad = True
 
     def unfreeze_layer_11(self):
         """Unfreeze the last layer of the transformer encoder, the 11th layer.
 
-        This concerns all the folloewing layers:
-            - TODO
+        The 11th layer is a basic self-attention bloc and it has all the following parameters:
+            - bert.encoder.layer.11.attention.self.query.weight
+            - bert.encoder.layer.11.attention.self.query.bias
+            - bert.encoder.layer.11.attention.self.key.weight
+            - bert.encoder.layer.11.attention.self.key.bias
+            - bert.encoder.layer.11.attention.self.value.weight
+            - bert.encoder.layer.11.attention.self.value.bias
+            - bert.encoder.layer.11.attention.output.dense.weight
+            - bert.encoder.layer.11.attention.output.dense.bias
+            - bert.encoder.layer.11.attention.output.LayerNorm.weight
+            - bert.encoder.layer.11.attention.output.LayerNorm.bias
+            - bert.encoder.layer.11.intermediate.dense.weight
+            - bert.encoder.layer.11.intermediate.dense.bias
+            - bert.encoder.layer.11.output.dense.weight
+            - bert.encoder.layer.11.output.dense.bias
+            - bert.encoder.layer.11.output.LayerNorm.weight
+            - bert.encoder.layer.11.output.LayerNorm.bias
         """
-        for name, param in self.model.bert.encoder.layer[11].named_parameters():
-            logger.debug(f"Unfreezing Param: {name}")
-            param.requires_grad = True
+        for name, param in self.model.named_parameters():
+            if "layer.11" in name:
+                logger.debug(f"Unfreezing Param: {name}")
+                param.requires_grad = True
+
+    def unfreeze_layer_10(self):
+        """Unfreeze the second-to-last layer of the transformer encoder, the 10th layer.
+
+        The 10th layer is a basic self-attention bloc and it has all the following parameters:
+            - bert.encoder.layer.10.attention.self.query.weight
+            - bert.encoder.layer.10.attention.self.query.bias
+            - bert.encoder.layer.10.attention.self.key.weight
+            - bert.encoder.layer.10.attention.self.key.bias
+            - bert.encoder.layer.10.attention.self.value.weight
+            - bert.encoder.layer.10.attention.self.value.bias
+            - bert.encoder.layer.10.attention.output.dense.weight
+            - bert.encoder.layer.10.attention.output.dense.bias
+            - bert.encoder.layer.10.attention.output.LayerNorm.weight
+            - bert.encoder.layer.10.attention.output.LayerNorm.bias
+            - bert.encoder.layer.10.intermediate.dense.weight
+            - bert.encoder.layer.10.intermediate.dense.bias
+            - bert.encoder.layer.10.output.dense.weight
+            - bert.encoder.layer.10.output.dense.bias
+            - bert.encoder.layer.10.output.LayerNorm.weight
+            - bert.encoder.layer.10.output.LayerNorm.bias
+        """
+        for name, param in self.model.named_parameters():
+            if "layer.10" in name:
+                logger.debug(f"Unfreezing Param: {name}")
+                param.requires_grad = True
 
     def unfreeze_all_layers(self):
         """Unfreeze all layers (base model + classifier)."""

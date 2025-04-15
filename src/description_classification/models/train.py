@@ -18,7 +18,7 @@ from description_classification.models.model import BertModel
 from description_classification.utils.data_loader import load_data
 
 if __name__ == "__main__":
-    # Only configure logging if this script is run directly (e.g., training pipeline entrypoint)
+    # Only configure logging if this script is run directly (e.g. training pipeline entrypoint)
     logging.basicConfig(
         format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S"
     )

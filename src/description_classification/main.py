@@ -68,7 +68,7 @@ def log_ml_flow_infos(
 
     # Log classifier name
     mlflow.log_param("classifier_type", classifier.__class__.__name__)
-    if isinstance(classifier, BertClassifier):
+    if isinstance(classifier, BertClassifier) and os.path.isdir(classifier.model_path):
         mlflow.log_param("model_name", "/".join(classifier.model_path.parts[-2:]))
 
     # Log input data and output predictions
