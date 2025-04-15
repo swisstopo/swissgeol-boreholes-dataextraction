@@ -188,7 +188,7 @@ def main(
     elif classifier_type == "bert":
         classifier = BertClassifier(model_path)
     elif classifier_type == "bedrock":
-        classifier = AWSBedrockClassifier(out_directory_bedrock, max_concurrent_calls=5)
+        classifier = AWSBedrockClassifier(out_directory_bedrock, temperature=0.0, max_concurrent_calls=1)
 
     # classify
     logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
