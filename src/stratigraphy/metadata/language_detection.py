@@ -35,6 +35,20 @@ def detect_language_of_document(doc: fitz.Document, default_language: str, suppo
         str: The detected language of the document. One of supported_languages.
     """
     text = extract_text_from_document(doc)
+    return detect_language_of_text(text, default_language, supported_languages)
+
+
+def detect_language_of_text(text: str, default_language: str, supported_languages: list) -> str:
+    """Detects the language of a text.
+
+    Args:
+        text (str): The text to detect the language of.
+        default_language (str): The default language to use if the language detection fails.
+        supported_languages (list): A list of supported languages.
+
+    Returns:
+        str: The detected language of the document. One of supported_languages.
+    """
     try:
         language = detect(text)
     except LangDetectException:

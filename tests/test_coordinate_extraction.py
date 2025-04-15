@@ -56,13 +56,14 @@ def test_to_jsonLV03():  # noqa: D103
 
 doc = fitz.open(DATAPATH.parent / "example" / "example_borehole_profile.pdf")
 doc_with_digits_in_coordinates = fitz.open(DATAPATH.parent / "example" / "A7367.pdf")
-extractor = CoordinateExtractor()
+extractor_de = CoordinateExtractor("de")
+extractor_fr = CoordinateExtractor("fr")
 
 
 def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
     """Test the extraction of coordinates from a PDF document."""
     # Assuming there is a method called 'extract' in CoordinateExtractor class
-    coordinates = extractor.extract_coordinates(doc)[0]
+    coordinates = extractor_de.extract_coordinates(doc)[0]
     # Check if the returned value is a list
     assert isinstance(coordinates.feature, Coordinate)
     assert repr(coordinates.feature.east) == "615'790.0"
@@ -72,7 +73,7 @@ def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
 def test_CoordinateExtractor_extract_coordinates_with_digits_in_coordinates():  # noqa: D103
     """Test the extraction of coordinates from a PDF document with digits in the coordinates."""
     # Assuming there is a method called 'extract' in CoordinateExtractor class
-    coordinates = CoordinateExtractor().extract_coordinates(doc_with_digits_in_coordinates)[0]
+    coordinates = CoordinateExtractor("de").extract_coordinates(doc_with_digits_in_coordinates)[0]
     # Check if the returned value is a list
     assert isinstance(coordinates.feature, Coordinate)
     assert repr(coordinates.feature.east) == "607'562.0"
@@ -98,15 +99,15 @@ def test_CoordinateExtractor_find_coordinate_key():  # noqa: D103
     lines = _create_simple_lines(
         ["This is a sample text", "followed by a key with a spelling mistake", "Ko0rdinate 615.790 / 157.500"]
     )
-    key_line = extractor.find_feature_key(lines)
+    key_line = extractor_de.find_feature_key(lines)
     assert key_line[0].text == "Ko0rdinate 615.790 / 157.500"
 
     lines = _create_simple_lines(["An all-uppercase key should be matched", "COORDONNEES"])
-    key_line = extractor.find_feature_key(lines)
+    key_line = extractor_fr.find_feature_key(lines)
     assert key_line[0].text == "COORDONNEES"
 
     lines = _create_simple_lines(["This is a sample text", "without any relevant key"])
-    key_line = extractor.find_feature_key(lines)
+    key_line = extractor_de.find_feature_key(lines)
     assert not key_line
 
 
@@ -124,7 +125,7 @@ def test_CoordinateExtractor_get_coordinates_with_x_y_labels():  # noqa: D103
             "Y = 1'999'999",
         ]
     )
-    coordinates = extractor.get_coordinates_with_x_y_labels(lines, page=1)
+    coordinates = extractor_de.get_coordinates_with_x_y_labels(lines, page=1)
 
     # coordinates with explicit "X" and "Y" labels are found, even when they are further apart
     assert coordinates[0].feature.east.coordinate_value == 2600000
@@ -174,7 +175,7 @@ def test_get_axis_aligned_lines():
 
     # CoordinateExtractor searches (x1-x0) *10 to right and (y1-y0) * 3 below rect_key
     # Thus, x1 limit = 1300, y0 limit = 150
-    feature_lines = extractor.get_axis_aligned_lines(lines=text_lines, rect=rect_key)
+    feature_lines = extractor_de.get_axis_aligned_lines(lines=text_lines, rect=rect_key)
     expected_lines = [key_line, overlap_right, inside_below, inside_right, overlap_right_below]
 
     for feature_line in feature_lines:
@@ -197,7 +198,7 @@ def test_CoordinateExtractor_get_coordinates_near_key():  # noqa: D103
             "and something far below 600 002 / 200 002",
         ]
     )
-    coordinates = extractor.get_coordinates_near_key(lines, page=1)
+    coordinates = extractor_de.get_coordinates_near_key(lines, page=1)
 
     # coordinates on the same line as the key are found, and OCR errors are corrected
     assert coordinates[0].feature.east.coordinate_value == 615790
@@ -237,7 +238,7 @@ def test_CoordinateExtractor_get_coordinates_near_key():  # noqa: D103
 def test_CoordinateExtractor_get_coordinates_from_lines(text, expected):  # noqa: D103
     """Test the extraction of coordinates from a list of text lines."""
     lines = _create_simple_lines([text])
-    coordinates = extractor.get_coordinates_from_lines(lines, page=1)
+    coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
     expected_east, expected_north = expected
     assert coordinates[0].feature.east.coordinate_value == expected_east
     assert coordinates[0].feature.north.coordinate_value == expected_north
@@ -247,12 +248,12 @@ def test_CoordinateExtractor_get_coordinates_from_lines(text, expected):  # noqa
 def test_CoordinateExtractor_get_coordinates_from_lines_rect():  # noqa: D103
     """Test the extraction of coordinates from a list of text lines with different rect formats."""
     lines = _create_simple_lines(["start", "2600000 1200000", "end"])
-    coordinates = extractor.get_coordinates_from_lines(lines, page=1)
+    coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
     assert coordinates[0].rect == lines[1].rect
     assert coordinates[0].page == 1
 
     lines = _create_simple_lines(["start", "2600000", "1200000", "end"])
-    coordinates = extractor.get_coordinates_from_lines(lines, page=1)
+    coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
     expected_rect = lines[1].rect
     expected_rect.include_rect(lines[2].rect)
     assert coordinates[0].rect == expected_rect
@@ -260,7 +261,7 @@ def test_CoordinateExtractor_get_coordinates_from_lines_rect():  # noqa: D103
 
     # Example from 269126143-bp.pdf (a slash in the middle of the coordinates as misread by OCR as the digit 1)
     lines = _create_simple_lines(["269578211260032"])
-    coordinates = extractor.get_coordinates_from_lines(lines, page=1)
+    coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
     assert coordinates[0].feature.east.coordinate_value == 2695782
     assert coordinates[0].feature.north.coordinate_value == 1260032
 
@@ -268,12 +269,12 @@ def test_CoordinateExtractor_get_coordinates_from_lines_rect():  # noqa: D103
 def test_get_single_decimal_coordinates():
     """Test the extraction of decimal coordinates from a list of text lines."""
     lines = _create_simple_lines(["615.790.6 / 157.500.5"])
-    coordinates = extractor.get_coordinates_from_lines(lines, page=1)
+    coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
     assert coordinates[0].feature.east.coordinate_value == 615790.6
     assert coordinates[0].feature.north.coordinate_value == 157500.5
 
     lines = _create_simple_lines(["2600000.6 / 1200000.5"])
-    coordinates = extractor.get_coordinates_from_lines(lines, page=1)
+    coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
     assert coordinates[0].feature.east.coordinate_value == 2600000.6
     assert coordinates[0].feature.north.coordinate_value == 1200000.5
 
@@ -281,11 +282,11 @@ def test_get_single_decimal_coordinates():
 def test_get_double_decimal_coordinates():
     """Test the extraction of decimal coordinates from a list of text lines."""
     lines = _create_simple_lines(["615.790.64 / 157.500.55"])
-    coordinates = extractor.get_coordinates_from_lines(lines, page=1)
+    coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
     assert coordinates[0].feature.east.coordinate_value == 615790.64
     assert coordinates[0].feature.north.coordinate_value == 157500.55
 
     lines = _create_simple_lines(["2600000.64 / 1200000.55"])
-    coordinates = extractor.get_coordinates_from_lines(lines, page=1)
+    coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
     assert coordinates[0].feature.east.coordinate_value == 2600000.64
     assert coordinates[0].feature.north.coordinate_value == 1200000.55
