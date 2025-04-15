@@ -8,7 +8,7 @@ system_prompt:
   </classifications>
 
   <rules>
-  In case if the field is empty or no corresponding categogy can be found please provide a classification kA
+  In case the field is empty or no corresponding categogy can be found please provide a classification kA
   Think through your reasoning before making the classification and place your thought process in <thinking></thinking> tags. This is your space to think and reason about the ticket classificaiton.
   Once you have finished thinking, classify the ticket using ONLY the classifications listed above and place it in <answer></answer> tags.
   </rules>

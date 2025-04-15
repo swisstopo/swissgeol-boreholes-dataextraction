@@ -100,13 +100,23 @@ def write_api_failures(api_failures: list, output_directory: Path, filename: str
         return
 
     os.makedirs(output_directory, exist_ok=True)
-
     failures_path = output_directory / filename
 
-    with open(failures_path, "w") as f:
-        json.dump(api_failures, f, indent=2)
+    existing_failures = []
+    if failures_path.exists():
+        try:
+            with open(failures_path, "r") as f:
+                existing_failures = json.load(f)
+        except json.JSONDecodeError:
+            # Overwrite the file if it isn't a valid JSON
+            print(f"Warning: Existing file {failures_path} contained invalid JSON and will be overwritten")
 
-    print(f"Recorded {len(api_failures)} failed API calls to {failures_path}")
+    all_failures = existing_failures + api_failures
+
+    with open(failures_path, "w") as f:
+        json.dump(all_failures, f, indent=2)
+
+    print(f"Recorded {len(api_failures)} failed API calls to {failures_path}, total records: {len(all_failures)}")
 
 
 @dataclass

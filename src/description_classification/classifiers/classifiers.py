@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import re
+import uuid
 from collections import defaultdict
 from pathlib import Path
 from typing import Protocol
@@ -17,10 +18,6 @@ from nltk.stem.snowball import SnowballStemmer
 from stratigraphy.util.util import read_params
 
 classification_params = read_params("classification_params.yml")
-classification_prompts = read_params("classification_prompts.yml")
-
-out_directory = DATAPATH / "output_description_classification_berdrock"
-
 
 class Classifier(Protocol):
     """Classifier Protocol."""
@@ -214,7 +211,6 @@ class AWSBedrockClassifier:
         self.model_id = os.environ.get("ANTHROPIC_MODEL_ID")
 
         self.uscs_patterns = classification_params["uscs_patterns"]
-        self.classification_prompts = classification_prompts
 
     def create_message(
         self, max_tokens: int, temperature: float, anthropic_version: str, material_description: str, language: str
@@ -232,8 +228,10 @@ class AWSBedrockClassifier:
             body (dict): The message body for the Bedrock API.
         """
         language_patterns = self.uscs_patterns[language]
-        system_message = self.classification_prompts["system_prompt"].format(uscs_patterns=language_patterns)
-        user_message = self.classification_prompts["user_prompt"].format(material_description=material_description)
+
+        classification_prompts = read_params(os.environ.get("ANTHROPIC_PROMPT_TEMPLATE"))
+        system_message = classification_prompts["system_prompt"].format(uscs_patterns=language_patterns)
+        user_message = classification_prompts["user_prompt"].format(material_description=material_description)
 
         body = json.dumps(
             {
@@ -284,10 +282,9 @@ class AWSBedrockClassifier:
     async def classify(
         self,
         layer_descriptions: list[LayerInformations],
+        bedrock_out_directory: Path = None,
         max_tokens: int = 256,
         temperature: float = 0.3,
-        store_files: bool = False,
-        bedrock_out_directory: Path = out_directory,
         max_concurrent_calls: int = 1,
     ):
         """Classifies the material descriptions of layer information objects into USCS soil classes.
@@ -304,10 +301,11 @@ class AWSBedrockClassifier:
             max_tokens (int): The maximum number of tokens to generate.
             temperature (float): The sampling temperature to use.
             store_files (bool): Whether to store the prediction files (default: False)
-            bedrock_out_directory: Directory to write prediction outputs
-            max_concurrent_calls: Maximum number of concurrent API calls (default: 10)
+            bedrock_out_directory (Path): Directory to write prediction outputs
+            max_concurrent_calls (int): Maximum number of concurrent API calls (default: 10)
         """
         api_failures = []
+        run_id = uuid.uuid4()
 
         layers_by_filename = defaultdict(list)
         for layer in layer_descriptions:
@@ -353,6 +351,7 @@ class AWSBedrockClassifier:
 
                         # Return failure info
                         return {
+                            "run_id": run_id,
                             "filename": layer.filename,
                             "borehole_index": layer.borehole_index,
                             "layer_index": layer.layer_index,
@@ -366,7 +365,7 @@ class AWSBedrockClassifier:
                 if result is not None:
                     api_failures.append(result)
 
-            if store_files:
+            if bedrock_out_directory:
                 write_predictions(filename_layers, bedrock_out_directory, path)
 
-        write_api_failures(api_failures, bedrock_out_directory)
+            write_api_failures(api_failures, bedrock_out_directory)

@@ -62,8 +62,11 @@ def log_ml_flow_infos(
     for class_, count in get_data_class_count(layer_descriptions).items():
         mlflow.log_param(f"class_{class_}_count", count)
 
-    # Log model name
+    # Log model name and id if anthropic model used
     mlflow.log_param("classifier_type", classifier.__class__.__name__)
+
+    if isinstance(classifier, AWSBedrockClassifier):
+        mlflow.log_param("anthropic_model_id", os.environ.get("ANTHROPIC_MODEL_ID"))
 
     # Log input data and output predictions
     mlflow.log_artifact(str(file_path), "input_data")
@@ -99,6 +102,13 @@ def common_options(f):
         help="Path to the output directory.",
     )(f)
     f = click.option(
+        "-ob",
+        "--out-directory-beadrock",
+        type=click.Path(path_type=Path),
+        default=DATAPATH / "output_description_classification_beadrock",
+        help="Path to the output directory for beadrock files.",
+    )(f)
+    f = click.option(
         "-s",
         "--file-subset-directory",
         type=click.Path(path_type=Path),
@@ -111,12 +121,12 @@ def common_options(f):
 
 @click.command()
 @common_options
-def click_pipeline(file_path: Path, out_directory: Path, file_subset_directory: Path):
+def click_pipeline(file_path: Path, out_directory: Path, out_directory_beadrock: Path, file_subset_directory: Path):
     """Run the description classification pipeline."""
-    main(file_path, out_directory, file_subset_directory)
+    main(file_path, out_directory, out_directory_beadrock, file_subset_directory)
 
 
-def main(file_path: Path, out_directory: Path, file_subset_directory: Path):
+def main(file_path: Path, out_directory: Path, out_directory_beadrock: Path, file_subset_directory: Path):
     """Main pipeline to classify the layer's soil descriptions.
 
     Args:
@@ -134,7 +144,7 @@ def main(file_path: Path, out_directory: Path, file_subset_directory: Path):
     logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
 
     if isinstance(classifier, AWSBedrockClassifier):
-        asyncio.run(classifier.classify(layer_descriptions, store_files=True, max_concurrent_calls=1))
+        asyncio.run(classifier.classify(layer_descriptions, out_directory_beadrock, max_concurrent_calls=1))
     else:
         classifier.classify(layer_descriptions)
 
