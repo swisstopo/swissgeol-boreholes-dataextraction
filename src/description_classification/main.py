@@ -1,6 +1,5 @@
 """This module contains the main pipeline for the classification of the layer's soil descriptions."""
 
-import asyncio
 import logging
 import os
 from pathlib import Path
@@ -12,6 +11,7 @@ from stratigraphy.util.util import read_params
 from description_classification import DATAPATH
 from description_classification.classifiers.classifiers import (
     AWSBedrockClassifier,
+    BaselineClassifier,
     BertClassifier,
     Classifier,
     DummyClassifier,
@@ -111,10 +111,10 @@ def common_options(f):
     )(f)
     f = click.option(
         "-ob",
-        "--out-directory-beadrock",
+        "--out-directory-bedrock",
         type=click.Path(path_type=Path),
-        default=DATAPATH / "output_description_classification_beadrock",
-        help="Path to the output directory for beadrock files.",
+        default=DATAPATH / "output_description_classification_bedrock",
+        help="Path to the output directory for bedrock files.",
     )(f)
     f = click.option(
         "-s",
@@ -127,9 +127,9 @@ def common_options(f):
     f = click.option(
         "-c",
         "--classifier-type",
-        type=click.Choice(["dummy", "baseline", "bert"], case_sensitive=False),
+        type=click.Choice(["dummy", "baseline", "bert", "bedrock"], case_sensitive=False),
         default="dummy",
-        help="Classifier to use for description classification. Choose from 'dummy', 'baseline', or 'bert'.",
+        help="Classifier to use for description classification. Choose from 'dummy', 'baseline', 'bert' or bedrock.",
     )(f)
     f = click.option(
         "-p",
@@ -144,18 +144,31 @@ def common_options(f):
 @click.command()
 @common_options
 def click_pipeline(
-    file_path: Path, out_directory: Path, out_directory_beadrock: Path, file_subset_directory: Path, classifier_type: str, model_path: Path
+    file_path: Path,
+    out_directory: Path,
+    out_directory_bedrock: Path,
+    file_subset_directory: Path,
+    classifier_type: str,
+    model_path: Path,
 ):
     """Run the description classification pipeline."""
-    main(file_path, out_directory, out_directory_beadrock, file_subset_directory, classifier_type, model_path)
+    main(file_path, out_directory, out_directory_bedrock, file_subset_directory, classifier_type, model_path)
 
 
-def main(file_path: Path, out_directory: Path, out_directory_beadrock: Path, file_subset_directory: Path, classifier_type: str, model_path: Path):
+def main(
+    file_path: Path,
+    out_directory: Path,
+    out_directory_bedrock: Path,
+    file_subset_directory: Path,
+    classifier_type: str,
+    model_path: Path,
+):
     """Main pipeline to classify the layer's soil descriptions.
 
     Args:
         file_path (Path): Path to the ground truth json file.
         out_directory (Path): Path to output directory
+        out_directory_bedrock (Path): Path to output directory for beadrock API files
         file_subset_directory (Path): Path to the directory containing the file whose names are used.
         classifier_type (str): The classifier type to use.
         model_path (Path): Path to the trained model.
@@ -171,17 +184,15 @@ def main(file_path: Path, out_directory: Path, out_directory_beadrock: Path, fil
     if classifier_type == "dummy":
         classifier = DummyClassifier()
     elif classifier_type == "baseline":
-        classifier = AWSBedrockClassifier()
+        classifier = BaselineClassifier()
     elif classifier_type == "bert":
         classifier = BertClassifier(model_path)
+    elif classifier_type == "bedrock":
+        classifier = AWSBedrockClassifier(out_directory_bedrock, max_concurrent_calls=5)
 
     # classify
     logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
-
-    if isinstance(classifier, AWSBedrockClassifier):
-        asyncio.run(classifier.classify(layer_descriptions, out_directory_beadrock, max_concurrent_calls=1))
-    else:
-        classifier.classify(layer_descriptions)
+    classifier.classify(layer_descriptions)
 
     logger.info("Evaluating predictions")
     classification_metrics = evaluate(layer_descriptions)

@@ -105,7 +105,7 @@ def write_api_failures(api_failures: list, output_directory: Path, filename: str
     existing_failures = []
     if failures_path.exists():
         try:
-            with open(failures_path, "r") as f:
+            with open(failures_path) as f:
                 existing_failures = json.load(f)
         except json.JSONDecodeError:
             # Overwrite the file if it isn't a valid JSON

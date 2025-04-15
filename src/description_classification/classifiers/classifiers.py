@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import os
 import logging
 import os
 import re
@@ -11,10 +10,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Protocol
 
+import boto3
 import numpy as np
 from description_classification.models.model import BertModel
-import boto3
-from description_classification import DATAPATH
 from description_classification.utils.data_loader import LayerInformations
 from description_classification.utils.data_utils import write_api_failures, write_predictions
 from description_classification.utils.uscs_classes import USCSClasses, map_most_similar_uscs
@@ -256,18 +254,35 @@ class BertClassifier:
 class AWSBedrockClassifier:
     """AWSBedrockClassifier class uses AWS Bedrock with underlying Anthropic LLM models."""
 
-    def __init__(self):
+    def __init__(
+        self,
+        bedrock_out_directory: Path | None,
+        max_tokens: int = 256,
+        temperature: float = 0.3,
+        max_concurrent_calls: int = 1,
+    ):
         """Creates a boto3 client for AWS Bedrock and initializes the classifier.
 
         Environment variables are used to configure the AWS region, model ID, and Anthropic version.
         The USCS patterns and classification prompts are read from the configuration files.
+
+        Args:
+            max_tokens (int): The maximum number of tokens to generate.
+            bedrock_out_directory (Path): Directory to write prediction outputs and API failures
+            temperature (float): The sampling temperature to use.
+            store_files (bool): Whether to store the prediction files (default: False)
+            max_concurrent_calls (int): Maximum number of concurrent API calls (default: 1)
         """
         self.bedrock_client = boto3.client(service_name="bedrock-runtime", region_name=os.environ.get("AWS_REGION"))
-
         self.anthropic_version = os.environ.get("ANTHROPIC_VERSION")
         self.model_id = os.environ.get("ANTHROPIC_MODEL_ID")
 
         self.uscs_patterns = classification_params["uscs_patterns"]
+
+        self.bedrock_out_directory = bedrock_out_directory
+        self.max_tokens = max_tokens
+        self.temperature = temperature
+        self.max_concurrent_calls = max_concurrent_calls
 
     def create_message(
         self, max_tokens: int, temperature: float, anthropic_version: str, material_description: str, language: str
@@ -336,14 +351,7 @@ class AWSBedrockClassifier:
 
         return {"Model Answer": answer, "Reasoning": reasoning}
 
-    async def classify(
-        self,
-        layer_descriptions: list[LayerInformations],
-        bedrock_out_directory: Path = None,
-        max_tokens: int = 256,
-        temperature: float = 0.3,
-        max_concurrent_calls: int = 1,
-    ):
+    async def classify_async(self, layer_descriptions):
         """Classifies the material descriptions of layer information objects into USCS soil classes.
 
         The method modifies the input object, layer_descriptions by setting their bprediction_uscs_class attribute.
@@ -352,23 +360,15 @@ class AWSBedrockClassifier:
         LLM model API on AWS Bedrock.
         2. The LLM model provides an answer in the form of a USCS class and (potentially) reasoning.
         3. If the USCS class and Reasoning exists in the LLM response both are added to the layer_descriptions object.
-
-        Args:
-            layer_descriptions (list[LayerInformations]): The LayerInformations object
-            max_tokens (int): The maximum number of tokens to generate.
-            temperature (float): The sampling temperature to use.
-            store_files (bool): Whether to store the prediction files (default: False)
-            bedrock_out_directory (Path): Directory to write prediction outputs
-            max_concurrent_calls (int): Maximum number of concurrent API calls (default: 10)
         """
         api_failures = []
-        run_id = uuid.uuid4()
+        run_id = str(uuid.uuid4())
 
         layers_by_filename = defaultdict(list)
         for layer in layer_descriptions:
             layers_by_filename[layer.filename].append(layer)
 
-        semaphore = asyncio.Semaphore(max_concurrent_calls)
+        semaphore = asyncio.Semaphore(self.max_concurrent_calls)
 
         for filename, filename_layers in layers_by_filename.items():
             print(f"Processing file: {filename} with {len(filename_layers)} layers")
@@ -380,8 +380,8 @@ class AWSBedrockClassifier:
                         print(f"Classifying layer: {layer.filename}_{layer.borehole_index}_{layer.layer_index}")
 
                         body = self.create_message(
-                            max_tokens=max_tokens,
-                            temperature=temperature,
+                            max_tokens=self.max_tokens,
+                            temperature=self.temperature,
                             anthropic_version=self.anthropic_version,
                             material_description=layer.material_description,
                             language=layer.language,
@@ -422,7 +422,9 @@ class AWSBedrockClassifier:
                 if result is not None:
                     api_failures.append(result)
 
-            if bedrock_out_directory:
-                write_predictions(filename_layers, bedrock_out_directory, path)
+            if self.bedrock_out_directory:
+                write_predictions(filename_layers, self.bedrock_out_directory, path)
+                write_api_failures(api_failures, self.bedrock_out_directory)
 
-            write_api_failures(api_failures, bedrock_out_directory)
+    def classify(self, layer_descriptions):
+        asyncio.run(self.classify_async(layer_descriptions))
