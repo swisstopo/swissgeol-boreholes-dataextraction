@@ -351,7 +351,7 @@ class AWSBedrockClassifier:
 
         return {"Model Answer": answer, "Reasoning": reasoning}
 
-    async def classify_async(self, layer_descriptions):
+    async def classify_async(self, layer_descriptions: list[LayerInformations]):
         """Classifies the material descriptions of layer information objects into USCS soil classes.
 
         The method modifies the input object, layer_descriptions by setting their bprediction_uscs_class attribute.
@@ -426,5 +426,5 @@ class AWSBedrockClassifier:
                 write_predictions(filename_layers, self.bedrock_out_directory, path)
                 write_api_failures(api_failures, self.bedrock_out_directory)
 
-    def classify(self, layer_descriptions):
+    def classify(self, layer_descriptions: list[LayerInformations]):
         asyncio.run(self.classify_async(layer_descriptions))
