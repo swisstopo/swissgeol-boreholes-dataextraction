@@ -3,12 +3,16 @@
 import asyncio
 import json
 import os
+import logging
+import os
 import re
 import uuid
 from collections import defaultdict
 from pathlib import Path
 from typing import Protocol
 
+import numpy as np
+from description_classification.models.model import BertModel
 import boto3
 from description_classification import DATAPATH
 from description_classification.utils.data_loader import LayerInformations
@@ -16,8 +20,16 @@ from description_classification.utils.data_utils import write_api_failures, writ
 from description_classification.utils.uscs_classes import USCSClasses, map_most_similar_uscs
 from nltk.stem.snowball import SnowballStemmer
 from stratigraphy.util.util import read_params
+from transformers import Trainer, TrainingArguments
+
+logger = logging.getLogger(__name__)
+
+mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 classification_params = read_params("classification_params.yml")
+model_config = read_params("bert_config.yml")
+
 
 class Classifier(Protocol):
     """Classifier Protocol."""
@@ -194,6 +206,51 @@ class BaselineClassifier:
                 layer.prediction_uscs_class = sorted_matches[0]["class"]
             else:
                 layer.prediction_uscs_class = USCSClasses.kA
+
+
+class BertClassifier:
+    """Classifier class that uses the BERT model."""
+
+    def __init__(self, model_path: Path | None):
+        if model_path is None:
+            # load pretrained from transformers lib (bad)
+            model_path = model_config["model_path"]
+        self.model_path = model_path
+        self.bert_model = BertModel(model_path)
+
+    def classify(self, layer_descriptions: list[LayerInformations]):
+        """Classifies the description of the LayerInformations objects.
+
+        This method will populate the prediction_uscs_class attribute of each object.
+
+        Args:
+            layer_descriptions (list[LayerInformations]): The LayerInformations object
+        """
+        # for unbatched 501.22s
+        # for layer in layer_descriptions:
+        #     layer.prediction_uscs_class = self.bert_model.predict_uscs_class(layer.material_description)
+
+        # for batched: 386.75s
+        # texts = [layer.material_description for layer in layer_descriptions]
+        # predictions = self.bert_model.predict_uscs_class_batched(
+        #     texts, batch_size=model_config["inference_batch_size"]
+        # )
+        # for layer, prediction in zip(layer_descriptions, predictions, strict=True):
+        #     layer.prediction_uscs_class = prediction
+
+        # using dummy trainer 191.745s
+        eval_dataset = self.bert_model.get_tokenized_dataset(layer_descriptions)
+        trainer = Trainer(
+            model=self.bert_model.model,
+            processing_class=self.bert_model.tokenizer,
+            args=TrainingArguments(per_device_eval_batch_size=model_config["inference_batch_size"]),
+        )
+        output = trainer.predict(eval_dataset)
+        predicted_indices = list(np.argmax(output.predictions, axis=1))
+
+        # Convert indices to USCSClasses and assign them
+        for layer, idx in zip(layer_descriptions, predicted_indices, strict=True):
+            layer.prediction_uscs_class = self.bert_model.id2classEnum[idx]
 
 
 class AWSBedrockClassifier:
