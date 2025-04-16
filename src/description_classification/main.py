@@ -12,7 +12,7 @@ from description_classification import DATAPATH
 from description_classification.classifiers.baseline_classifier import BaselineClassifier
 from description_classification.classifiers.bedrock_classifier import AWSBedrockClassifier
 from description_classification.classifiers.bert_classifier import BertClassifier
-from description_classification.classifiers.classifiers import Classifier
+from description_classification.classifiers.classifier_protocol import Classifier
 from description_classification.classifiers.dummy_classifier import DummyClassifier
 from description_classification.evaluation.evaluate import evaluate
 from description_classification.utils.data_loader import LayerInformations, load_data
