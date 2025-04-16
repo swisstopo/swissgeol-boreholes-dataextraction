@@ -10,6 +10,7 @@ from stratigraphy.util.util import read_params
 
 from description_classification import DATAPATH
 from description_classification.classifiers.classifiers import (
+    AWSBedrockClassifier,
     BaselineClassifier,
     BertClassifier,
     Classifier,
@@ -66,10 +67,14 @@ def log_ml_flow_infos(
     for class_, count in get_data_class_count(layer_descriptions).items():
         mlflow.log_param(f"class_{class_}_count", count)
 
-    # Log classifier name
+    # Log classifier name and id if anthropic model used
     mlflow.log_param("classifier_type", classifier.__class__.__name__)
+
     if isinstance(classifier, BertClassifier):
         mlflow.log_param("model_name", "/".join(classifier.model_path.parts[-2:]))
+
+    if isinstance(classifier, AWSBedrockClassifier):
+        mlflow.log_param("anthropic_model_id", os.environ.get("ANTHROPIC_MODEL_ID"))
 
     # Log input data and output predictions
     mlflow.log_artifact(str(file_path), "input_data")
@@ -105,6 +110,13 @@ def common_options(f):
         help="Path to the output directory.",
     )(f)
     f = click.option(
+        "-ob",
+        "--out-directory-bedrock",
+        type=click.Path(path_type=Path),
+        default=DATAPATH / "output_description_classification_bedrock",
+        help="Path to the output directory for bedrock files.",
+    )(f)
+    f = click.option(
         "-s",
         "--file-subset-directory",
         type=click.Path(path_type=Path),
@@ -115,9 +127,9 @@ def common_options(f):
     f = click.option(
         "-c",
         "--classifier-type",
-        type=click.Choice(["dummy", "baseline", "bert"], case_sensitive=False),
+        type=click.Choice(["dummy", "baseline", "bert", "bedrock"], case_sensitive=False),
         default="dummy",
-        help="Classifier to use for description classification. Choose from 'dummy', 'baseline', or 'bert'.",
+        help="Classifier to use for description classification. Choose from 'dummy', 'baseline', 'bert' or 'bedrock'.",
     )(f)
     f = click.option(
         "-p",
@@ -132,18 +144,31 @@ def common_options(f):
 @click.command()
 @common_options
 def click_pipeline(
-    file_path: Path, out_directory: Path, file_subset_directory: Path, classifier_type: str, model_path: Path
+    file_path: Path,
+    out_directory: Path,
+    out_directory_bedrock: Path,
+    file_subset_directory: Path,
+    classifier_type: str,
+    model_path: Path,
 ):
     """Run the description classification pipeline."""
-    main(file_path, out_directory, file_subset_directory, classifier_type, model_path)
+    main(file_path, out_directory, out_directory_bedrock, file_subset_directory, classifier_type, model_path)
 
 
-def main(file_path: Path, out_directory: Path, file_subset_directory: Path, classifier_type: str, model_path: Path):
+def main(
+    file_path: Path,
+    out_directory: Path,
+    out_directory_bedrock: Path,
+    file_subset_directory: Path,
+    classifier_type: str,
+    model_path: Path,
+):
     """Main pipeline to classify the layer's soil descriptions.
 
     Args:
         file_path (Path): Path to the ground truth json file.
         out_directory (Path): Path to output directory
+        out_directory_bedrock (Path): Path to output directory for bedrock API files
         file_subset_directory (Path): Path to the directory containing the file whose names are used.
         classifier_type (str): The classifier type to use.
         model_path (Path): Path to the trained model.
@@ -162,6 +187,8 @@ def main(file_path: Path, out_directory: Path, file_subset_directory: Path, clas
         classifier = BaselineClassifier()
     elif classifier_type == "bert":
         classifier = BertClassifier(model_path)
+    elif classifier_type == "bedrock":
+        classifier = AWSBedrockClassifier(out_directory_bedrock, temperature=0.3, max_concurrent_calls=1)
 
     # classify
     logger.info(f"Classifying layer description with {classifier.__class__.__name__}")

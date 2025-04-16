@@ -27,6 +27,7 @@ class LayerInformations:
     material_description: str
     ground_truth_uscs_class: None | USCSClasses
     prediction_uscs_class: None | USCSClasses  # dynamically set
+    llm_reasoning: None | str  # dynamically set,
 
 
 def load_data(json_path: Path, file_subset_directory: Path | None) -> list[LayerInformations]:
@@ -75,6 +76,7 @@ def load_data(json_path: Path, file_subset_directory: Path | None) -> list[Layer
                         layer["material_description"],
                         uscs_class,
                         prediction_uscs_class=None,
+                        llm_reasoning=None,
                     )
                 )
 
