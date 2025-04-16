@@ -48,12 +48,17 @@ class AllClassificationMetrics:
             dict[str, float]: The dict with macro-averaged metrics, with keys macro_precision, macro_recall and
                 macro_f1.
         """
-        if not metric_list:
+        # Filter out classes with no ground truth presence (tp + fn == 0), to avoid penalizing the macro-averaging by
+        # including classes that don't appear in the ground truth. This is what is done by sklearn, thus it is
+        # probably the best pratice for computing macro-average.
+        valid_metrics = [m for m in metric_list if (m.tp + m.fn) > 0]
+
+        if not valid_metrics:
             return {"macro_precision": 0, "macro_recall": 0, "macro_f1": 0}
 
-        precisions = [metrics.precision for metrics in metric_list]
-        recalls = [metrics.recall for metrics in metric_list]
-        f1s = [metrics.f1 for metrics in metric_list]
+        precisions = [metrics.precision for metrics in valid_metrics]
+        recalls = [metrics.recall for metrics in valid_metrics]
+        f1s = [metrics.f1 for metrics in valid_metrics]
 
         return {
             "macro_precision": round(sum(precisions) / len(precisions), 4),
