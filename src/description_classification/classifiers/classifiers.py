@@ -278,6 +278,7 @@ class AWSBedrockClassifier:
         self.model_id = os.environ.get("ANTHROPIC_MODEL_ID")
 
         self.uscs_patterns = classification_params["uscs_patterns"]
+        self.classification_prompts = read_params(os.environ.get("ANTHROPIC_PROMPT_TEMPLATE"))
 
         self.bedrock_out_directory = bedrock_out_directory
         self.max_tokens = max_tokens
@@ -301,9 +302,8 @@ class AWSBedrockClassifier:
         """
         language_patterns = self.uscs_patterns[language]
 
-        classification_prompts = read_params(os.environ.get("ANTHROPIC_PROMPT_TEMPLATE"))
-        system_message = classification_prompts["system_prompt"].format(uscs_patterns=language_patterns)
-        user_message = classification_prompts["user_prompt"].format(material_description=material_description)
+        system_message = self.classification_prompts["system_prompt"].format(uscs_patterns=language_patterns)
+        user_message = self.classification_prompts["user_prompt"].format(material_description=material_description)
 
         body = json.dumps(
             {

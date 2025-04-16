@@ -129,7 +129,7 @@ def common_options(f):
         "--classifier-type",
         type=click.Choice(["dummy", "baseline", "bert", "bedrock"], case_sensitive=False),
         default="dummy",
-        help="Classifier to use for description classification. Choose from 'dummy', 'baseline', 'bert' or bedrock.",
+        help="Classifier to use for description classification. Choose from 'dummy', 'baseline', 'bert' or 'bedrock'.",
     )(f)
     f = click.option(
         "-p",

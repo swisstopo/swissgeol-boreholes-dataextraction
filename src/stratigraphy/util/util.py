@@ -104,6 +104,31 @@ def read_params(params_name: str) -> dict:
     return params
 
 
+
+def read_params(params_name: str) -> dict:
+    """Read parameters from a yaml file.
+
+    Args:
+        params_name (str): Name of the params yaml file.
+    """
+
+    config_path = PROJECT_ROOT / "config" / params_name
+
+    if not config_path.exists():
+        raise FileNotFoundError(f"Provided parameter file not found: {config_path}")
+
+    if not config_path.is_file():
+        raise ValueError(f"Provided path does not point to a file: {config_path}")
+
+    try:
+        with open(config_path) as f:
+            params = yaml.safe_load(f)
+
+        return params
+    except yaml.YAMLError as e:
+        raise yaml.YAMLError(f"Invalid YAML format in {config_path}: {str(e)}")
+
+
 def parse_text(text: str) -> str:
     """Parse text by removing non-alphanumeric characters and converting to lowercase.
 

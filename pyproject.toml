@@ -36,7 +36,6 @@ dependencies = [
     "numpy<2",
     "rtree",
     "nltk",
-    "boto3",
     "transformers",
     "datasets",
     "torch",
