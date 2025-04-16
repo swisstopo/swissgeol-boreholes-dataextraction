@@ -1,12 +1,14 @@
-"""Classifier module."""
-
-from typing import Protocol
+"""Dummy classifier module."""
 
 from description_classification.utils.data_loader import LayerInformations
+from description_classification.utils.uscs_classes import USCSClasses
 
 
-class Classifier(Protocol):
-    """Classifier Protocol."""
+class DummyClassifier:
+    """Dummy classifier class.
+
+    Assigns the class USCSClasses.CL_ML to all descriptions
+    """
 
     def classify(self, layer_descriptions: list[LayerInformations]):
         """Classifies the description of the LayerInformations objects.
@@ -17,3 +19,5 @@ class Classifier(Protocol):
             layer_descriptions (list[LayerInformations]): The LayerInformations object
 
         """
+        for layer in layer_descriptions:
+            layer.prediction_uscs_class = USCSClasses.CL_ML
