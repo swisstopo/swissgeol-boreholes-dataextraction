@@ -3,14 +3,18 @@
 import logging
 import os
 import time
+from collections import Counter
 from pathlib import Path
 
 import click
 import datasets
 import mlflow
+import torch
+import torch.nn as nn
 from dotenv import load_dotenv
 from stratigraphy.util.util import read_params
 from transformers import DataCollatorWithPadding, EvalPrediction, Trainer, TrainingArguments
+from transformers.modeling_outputs import SequenceClassifierOutput
 
 from description_classification import DATAPATH
 from description_classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
@@ -30,6 +34,57 @@ mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"
 model_config = read_params("bert_config.yml")
 
 
+class WeightedLabelSmoother:
+    """Label Smoothing with optional per-class weighting for classification tasks.
+
+    Acts as a loss function when called. It is the standard way of doing in the transformers librairy.
+    Modified from https://github.com/huggingface/transformers/blob/main/src/transformers/trainer_pt_utils.py#L539.
+    """
+
+    epsilon: float = 0.1
+    ignore_index: int = -100
+
+    def __init__(self, class_weights: torch.Tensor = None):
+        """Initialize the object.
+
+        Args:
+            class_weights (torch.Tensor, optional): A 1D tensor of shape (num_classes,) with per-class weights.
+        """
+        self.class_weights = class_weights  # Tensor of shape [num_classes]
+
+    def __call__(
+        self, model_output: SequenceClassifierOutput, labels: torch.Tensor, num_items_in_batch: torch.Tensor = None
+    ) -> torch.Tensor:
+        logits = model_output["logits"] if isinstance(model_output, dict) else model_output[0]
+
+        log_probs = -nn.functional.log_softmax(logits, dim=-1)  # shape: (batch_size, seq_len, vocab_size)
+        if labels.dim() == log_probs.dim() - 1:
+            labels = labels.unsqueeze(-1)  # shape: (batch_size, seq_len, 1)
+
+        padding_mask = labels.eq(self.ignore_index)
+        # In case the ignore_index is -100, the gather will fail, so we replace labels by 0. The padding_mask
+        # will ignore them in any case
+        safe_labels = torch.clamp(labels, min=0)
+        nll_loss = log_probs.gather(dim=-1, index=safe_labels)  # shape: (batch_size, seq_len, 1)
+
+        # New: Apply per-class weights if provided
+        if self.class_weights is not None:
+            weights = self.class_weights.to(logits.device)
+            per_token_weights = weights[safe_labels.squeeze(-1)]  # shape: (batch_size, seq_len)
+            per_token_weights = per_token_weights.unsqueeze(-1)  # shape: (batch_size, seq_len, 1)
+            nll_loss = nll_loss * per_token_weights
+
+        smoothed_loss = log_probs.sum(dim=-1, keepdim=True, dtype=torch.float32)  # (batch_size, seq_len, 1)
+
+        nll_loss = nll_loss.masked_fill(padding_mask, 0.0)
+        smoothed_loss = smoothed_loss.masked_fill(padding_mask, 0.0)
+
+        num_active_elements = padding_mask.numel() - padding_mask.long().sum()
+        nll = nll_loss.sum() / num_active_elements
+        smooth = smoothed_loss.sum() / (num_active_elements * log_probs.size(-1))
+        return (1 - self.epsilon) * nll + self.epsilon * smooth
+
+
 def setup_mlflow_tracking(
     file_path: Path,
     out_directory: Path,
@@ -42,7 +97,7 @@ def setup_mlflow_tracking(
     mlflow.start_run()
     mlflow.set_tag("json file_path", str(file_path))
     mlflow.set_tag("out_directory", str(out_directory))
-    print("tracking")
+    mlflow.log_params(model_config)
 
 
 def common_options(f):
@@ -85,8 +140,8 @@ def train_model(file_path: Path, out_directory: Path, model_checkpoint: Path):
     model_path = model_config["model_path"] if model_checkpoint is None else model_checkpoint
     logger.info(f"Loading pretrained model from {model_path}.")
     bert_model = BertModel(model_path)
-    bert_model.freeze_layers_except_pooler_and_classifier()
-    bert_model.unfreeze_layer_11()
+    bert_model.freeze_all_layers()
+    bert_model.unfreeze_list(model_config["unfreeze_layers"])
     bert_model.model.train()
 
     # Initialize the trainer
@@ -155,6 +210,43 @@ def setup_data(bert_model: BertModel, file_path: Path) -> tuple[datasets.Dataset
     return train_dataset, eval_dataset
 
 
+def compute_trainset_weights(
+    trainset: datasets.Dataset, min_scale: float = 0.5, max_scale: float = 2.0
+) -> torch.Tensor:
+    """Computes normalized inverse-frequency class weights.
+
+    Args:
+        trainset (datasets.Dataset): the dataset to infer the weights from.
+        min_scale (float): Minimum weight value after scaling.
+        max_scale (float): Maximum weight value after scaling.
+
+    Returns:
+        torch.Tensor: A tensor of shape (num_classes,) with scaled weights.
+    """
+    label_counts = Counter(trainset["label"])
+    num_classes = max(label_counts.keys()) + 1  # class index starts at 0
+
+    # Compute raw inverse-frequency weights
+    raw_weights = torch.tensor(
+        [1.0 / label_counts[i] if i in label_counts else 0.0 for i in range(num_classes)], dtype=torch.float32
+    )
+
+    # Scale to desired range [min_scale, max_scale]
+    nonzero = raw_weights[raw_weights > 0]
+    if len(nonzero) > 0 and nonzero.max() != nonzero.min():
+        min_w, max_w = nonzero.min(), nonzero.max()
+        scaled_weights = (raw_weights - min_w) / (max_w - min_w)  # normalize to [0, 1]
+        scaled_weights = min_scale + (max_scale - min_scale) * scaled_weights  # scale to [min_scale, max_scale]
+    else:
+        scaled_weights = torch.ones_like(raw_weights)  # fallback: uniform weights
+
+    # OR other method
+    # scaled_weights = torch.tensor([
+    #     1.0 / np.log(1 + label_counts.get(i, 1)) for i in range(num_classes)
+    # ])
+    return scaled_weights
+
+
 def setup_trainer(bert_model: BertModel, file_path: Path, out_directory: Path) -> Trainer:
     """Create a Trainer object.
 
@@ -191,6 +283,13 @@ def setup_trainer(bert_model: BertModel, file_path: Path, out_directory: Path) -
         metrics = per_class_metric(predictions, labels)
         return AllClassificationMetrics.compute_micro_average(metrics.values())
 
+    use_class_balacing = model_config.get("use_class_balancing", "false").lower() == "true"
+    compute_loss_func = None
+    if use_class_balacing:
+        class_weights = compute_trainset_weights(train_dataset)
+        # create the object that will be called to compute the loss function (standard in transformers lib).
+        compute_loss_func = WeightedLabelSmoother(class_weights=class_weights)
+
     # Create the Trainer object
     trainer = Trainer(
         model=bert_model.model,
@@ -200,6 +299,7 @@ def setup_trainer(bert_model: BertModel, file_path: Path, out_directory: Path) -
         processing_class=bert_model.tokenizer,
         data_collator=DataCollatorWithPadding(tokenizer=bert_model.tokenizer),
         compute_metrics=compute_metrics,
+        compute_loss_func=compute_loss_func,
     )
     return trainer
 

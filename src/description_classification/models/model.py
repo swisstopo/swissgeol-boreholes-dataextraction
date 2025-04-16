@@ -61,6 +61,23 @@ class BertModel:
         self.unfreeze_pooler()
         self.unfreeze_classifier()
 
+    def unfreeze_list(self, unfreeze_list: list[str]):
+        if "all" in unfreeze_list:
+            logger.warning("Warning: Unfreezing all layers may consume excessive RAM and raise an error.")
+            self.unfreeze_all_layers()
+            return
+        for layer in unfreeze_list:
+            if layer == "classifier":
+                self.unfreeze_classifier()
+            elif layer == "pooler":
+                self.unfreeze_pooler()
+            elif layer == "layer_11":
+                self.unfreeze_layer_11()
+            elif layer == "layer_10":
+                self.unfreeze_layer_10()
+            else:
+                raise ValueError(f"Uknown layer to unfreeze: {layer}.")
+
     def unfreeze_classifier(self):
         """Unfreeze all the classifier layers.
 
