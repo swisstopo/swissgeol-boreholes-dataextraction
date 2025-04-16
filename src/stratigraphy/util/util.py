@@ -98,20 +98,6 @@ def read_params(params_name: str) -> dict:
     Args:
         params_name (str): Name of the params yaml file.
     """
-    with open(PROJECT_ROOT / "config" / params_name) as f:
-        params = yaml.safe_load(f)
-
-    return params
-
-
-
-def read_params(params_name: str) -> dict:
-    """Read parameters from a yaml file.
-
-    Args:
-        params_name (str): Name of the params yaml file.
-    """
-
     config_path = PROJECT_ROOT / "config" / params_name
 
     if not config_path.exists():
@@ -126,7 +112,7 @@ def read_params(params_name: str) -> dict:
 
         return params
     except yaml.YAMLError as e:
-        raise yaml.YAMLError(f"Invalid YAML format in {config_path}: {str(e)}")
+        raise yaml.YAMLError(f"Invalid YAML format in {config_path}: {str(e)}") from e
 
 
 def parse_text(text: str) -> str:
