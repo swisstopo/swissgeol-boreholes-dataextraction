@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 from stratigraphy.util.util import read_params
 
 from description_classification import DATAPATH
+from description_classification.classifiers.aws_bedrock_classifier import AWSBedrockClassifier
 from description_classification.classifiers.baseline_classifier import BaselineClassifier
-from description_classification.classifiers.bedrock_classifier import AWSBedrockClassifier
 from description_classification.classifiers.bert_classifier import BertClassifier
 from description_classification.classifiers.classifier_protocol import Classifier
 from description_classification.classifiers.dummy_classifier import DummyClassifier
