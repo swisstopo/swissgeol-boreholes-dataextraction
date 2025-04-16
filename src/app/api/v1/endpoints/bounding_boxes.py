@@ -31,7 +31,7 @@ def bounding_boxes(filename: Path, page_number: int) -> BoundingBoxesResponse:
 
     bboxes = [
         # Convert the bounding box to PNG coordinates
-        BoundingBox.load_from_fitz_rect(word.rect).rescale(
+        BoundingBox.load_from_pymupdf_rect(word.rect).rescale(
             original_height=pdf_page_height,
             original_width=pdf_page_width,
             target_height=png_page_height,

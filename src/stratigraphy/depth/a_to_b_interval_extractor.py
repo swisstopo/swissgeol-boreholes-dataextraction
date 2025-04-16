@@ -2,7 +2,7 @@
 
 import re
 
-import fitz
+import pymupdf
 
 from stratigraphy.lines.line import TextLine
 from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
@@ -83,7 +83,7 @@ class AToBIntervalExtractor:
 
         def rect_from_group_index(index):
             """Give the rect that covers all the words that intersect with the given regex group."""
-            rect = fitz.Rect()
+            rect = pymupdf.Rect()
             start_word_index = char_index_to_word_index[match.start(index)]
             # `match.end(index) - 1`, because match.end gives the index of the first character that is *not* matched,
             # whereas we want the last character that *is* matched.

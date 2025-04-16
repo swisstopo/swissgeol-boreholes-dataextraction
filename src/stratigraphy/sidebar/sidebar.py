@@ -6,7 +6,7 @@ import abc
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 
-import fitz
+import pymupdf
 import rtree
 
 from stratigraphy.lines.line import TextLine
@@ -24,17 +24,17 @@ class Sidebar(abc.ABC, Generic[EntryT]):
 
     entries: list[EntryT]
 
-    def rects(self) -> list[fitz.Rect]:
+    def rects(self) -> list[pymupdf.Rect]:
         """Get the rectangles of the depth column entries."""
         return [entry.rect for entry in self.entries]
 
-    def rect(self) -> fitz.Rect:
+    def rect(self) -> pymupdf.Rect:
         """Get the bounding box of the depth column entries."""
         x0 = min([rect.x0 for rect in self.rects()])
         x1 = max([rect.x1 for rect in self.rects()])
         y0 = min([rect.y0 for rect in self.rects()])
         y1 = max([rect.y1 for rect in self.rects()])
-        return fitz.Rect(x0, y0, x1, y1)
+        return pymupdf.Rect(x0, y0, x1, y1)
 
     @property
     def max_x0(self) -> float:
@@ -51,7 +51,7 @@ class Sidebar(abc.ABC, Generic[EntryT]):
         self,
         description_lines: list[TextLine],
         geometric_lines: list[Line],
-        material_description_rect: fitz.Rect,
+        material_description_rect: pymupdf.Rect,
         **params,
     ) -> list[IntervalBlockGroup]:
         """Identifies groups of description blocks that correspond to depth intervals.
@@ -59,7 +59,7 @@ class Sidebar(abc.ABC, Generic[EntryT]):
         Args:
             description_lines (list[TextLine]): A list of text lines that are part of the description.
             geometric_lines (list[Line]): A list of geometric lines that are part of the description.
-            material_description_rect (fitz.Rect): The bounding box of the material description.
+            material_description_rect (pymupdf.Rect): The bounding box of the material description.
             params (dict): A dictionary of relevant parameters.
 
         Returns:
@@ -109,7 +109,7 @@ def noise_count(sidebar: Sidebar, line_rtree: rtree.index.Index) -> int:
     return sum(1 for line in intersecting_lines if significant_intersection(line) and not_in_entries(line))
 
 
-def _get_intersecting_lines(line_rtree: rtree.index.Index, rect: fitz.Rect) -> list[TextLine]:
+def _get_intersecting_lines(line_rtree: rtree.index.Index, rect: pymupdf.Rect) -> list[TextLine]:
     """Retrieve all words from the page intersecting with Sidebar bounding box."""
     intersecting_lines = list(line_rtree.intersection((rect.x0, rect.y0, rect.x1, rect.y1), objects="raw"))
     return [line for line in intersecting_lines if any(char.isalnum() for char in line.text)]

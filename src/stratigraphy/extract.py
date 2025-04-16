@@ -1,6 +1,6 @@
 """Contains the main extraction pipeline for stratigraphy."""
 
-import fitz
+import pymupdf
 import rtree
 
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
@@ -205,14 +205,14 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         return material_descriptions_sidebar_pairs
 
-    def _find_material_description_column(self, sidebar: Sidebar | None) -> fitz.Rect | None:
+    def _find_material_description_column(self, sidebar: Sidebar | None) -> pymupdf.Rect | None:
         """Find the material description column given a depth column.
 
         Args:
             sidebar (Sidebar | None): The sidebar to be associated with the material descriptions.
 
         Returns:
-            fitz.Rect | None: The material description column.
+            pymupdf.Rect | None: The material description column.
         """
         if sidebar:
             above_sidebar = [
@@ -309,7 +309,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 else:
                     continue_search = False
 
-            candidate_rects.append(fitz.Rect(best_x0, best_y0, best_x1, best_y1))
+            candidate_rects.append(pymupdf.Rect(best_x0, best_y0, best_x1, best_y1))
 
         if len(candidate_rects) == 0:
             return None
@@ -326,7 +326,7 @@ def match_columns(
     sidebar: Sidebar,
     description_lines: list[TextLine],
     geometric_lines: list[Line],
-    material_description_rect: fitz.Rect,
+    material_description_rect: pymupdf.Rect,
     **params: dict,
 ) -> list[IntervalBlockPair]:
     """Match the layers that can be derived from the sidebar with the description lines.
@@ -339,7 +339,7 @@ def match_columns(
         sidebar (Sidebar): The sidebar.
         description_lines (list[TextLine]): The description lines.
         geometric_lines (list[Line]): The geometric lines.
-        material_description_rect (fitz.Rect): The material description rectangle.
+        material_description_rect (pymupdf.Rect): The material description rectangle.
         **params (dict): Additional parameters for the matching pipeline.
 
     Returns:

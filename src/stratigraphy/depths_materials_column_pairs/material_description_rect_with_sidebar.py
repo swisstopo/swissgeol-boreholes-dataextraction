@@ -3,7 +3,7 @@
 import math
 from dataclasses import dataclass
 
-import fitz
+import pymupdf
 from stratigraphy.sidebar.sidebar import Sidebar
 
 
@@ -12,7 +12,7 @@ class MaterialDescriptionRectWithSidebar:
     """A class to represent pairs of sidebar and material description rectangle."""
 
     sidebar: Sidebar | None
-    material_description_rect: fitz.Rect
+    material_description_rect: pymupdf.Rect
     noise_count: int = 0
 
     @property

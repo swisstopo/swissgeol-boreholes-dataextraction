@@ -3,7 +3,7 @@
 import re
 from collections.abc import MutableMapping
 
-import fitz
+import pymupdf
 import yaml
 from numpy.typing import ArrayLike
 
@@ -11,12 +11,12 @@ from stratigraphy import PROJECT_ROOT
 from stratigraphy.util.dataclasses import Line, Point
 
 
-def x_overlap(rect1: fitz.Rect, rect2: fitz.Rect) -> float:  # noqa: D103
+def x_overlap(rect1: pymupdf.Rect, rect2: pymupdf.Rect) -> float:  # noqa: D103
     """Calculate the x overlap between two rectangles.
 
     Args:
-        rect1 (fitz.Rect): First rectangle.
-        rect2 (fitz.Rect): Second rectangle.
+        rect1 (pymupdf.Rect): First rectangle.
+        rect2 (pymupdf.Rect): Second rectangle.
 
     Returns:
         float: The x overlap between the two rectangles.
@@ -27,12 +27,12 @@ def x_overlap(rect1: fitz.Rect, rect2: fitz.Rect) -> float:  # noqa: D103
         return 0
 
 
-def x_overlap_significant_smallest(rect1: fitz.Rect, rect2: fitz.Rect, level: float) -> bool:  # noqa: D103
+def x_overlap_significant_smallest(rect1: pymupdf.Rect, rect2: pymupdf.Rect, level: float) -> bool:  # noqa: D103
     """Check if the x overlap between two rectangles is significant relative to the width of the narrowest one.
 
     Args:
-        rect1 (fitz.Rect): First rectangle.
-        rect2 (fitz.Rect): Second rectangle.
+        rect1 (pymupdf.Rect): First rectangle.
+        rect2 (pymupdf.Rect): Second rectangle.
         level (float): Level of significance.
 
     Returns:
@@ -41,12 +41,12 @@ def x_overlap_significant_smallest(rect1: fitz.Rect, rect2: fitz.Rect, level: fl
     return x_overlap(rect1, rect2) > level * min(rect1.width, rect2.width)
 
 
-def x_overlap_significant_largest(rect1: fitz.Rect, rect2: fitz.Rect, level: float) -> bool:  # noqa: D103
+def x_overlap_significant_largest(rect1: pymupdf.Rect, rect2: pymupdf.Rect, level: float) -> bool:  # noqa: D103
     """Check if the x overlap between two rectangles is significant relative to the width of the widest one.
 
     Args:
-        rect1 (fitz.Rect): First rectangle.
-        rect2 (fitz.Rect): Second rectangle.
+        rect1 (pymupdf.Rect): First rectangle.
+        rect2 (pymupdf.Rect): Second rectangle.
         level (float): Level of significance.
 
     Returns:

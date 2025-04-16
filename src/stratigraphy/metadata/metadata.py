@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
-import fitz
+import pymupdf
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.metadata.coordinate_extraction import Coordinate, CoordinateExtractor
 from stratigraphy.metadata.elevation_extraction import Elevation, ElevationExtractor
@@ -35,11 +35,11 @@ class MetadataInDocument:
     coordinates: list[FeatureOnPage[Coordinate]]
 
     @classmethod
-    def from_document(cls, document: fitz.Document, language: str) -> "MetadataInDocument":
+    def from_document(cls, document: pymupdf.Document, language: str) -> "MetadataInDocument":
         """Create a MetadataInDocument object from a document.
 
         Args:
-            document (fitz.Document): The document.
+            document (pymupdf.Document): The document.
             language (str): The language of the document.
 
         Returns:
@@ -112,11 +112,11 @@ class FileMetadata:
         }
 
     @classmethod
-    def from_document(cls, document: fitz.Document) -> "FileMetadata":
+    def from_document(cls, document: pymupdf.Document) -> "FileMetadata":
         """Create a FileMetadata object from a document.
 
         Args:
-            document (fitz.Document): The document.
+            document (pymupdf.Document): The document.
 
         Returns:
             FileMetadata: The file metadata object.

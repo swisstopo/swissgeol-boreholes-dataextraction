@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import fitz
+import pymupdf
 from stratigraphy.util.util import read_params, x_overlap_significant_largest
 
 material_description = read_params("matching_params.yml")["material_description"]
@@ -11,12 +11,12 @@ material_description = read_params("matching_params.yml")["material_description"
 class TextWord:
     """Class to represent a word on a specific location on a PDF page.
 
-    A TextWord object consists of a fitz Rectangle object and a string.
+    A TextWord object consists of a pymupdf Rectangle object and a string.
     The string is the word that is contained in the rectangle. The rectangles are used
     to represent the location of the word in a PDF document.
     """
 
-    def __init__(self, rect: fitz.Rect, text: str, page: int):
+    def __init__(self, rect: pymupdf.Rect, text: str, page: int):
         self.rect = rect
         self.text = text
         self.page_number = page
@@ -39,7 +39,7 @@ class TextLine:
             words (list[TextWord]): The words that make up the line.
             page_number (int): The page number of the line. The first page has idx 1.
         """
-        self.rect = fitz.Rect()
+        self.rect = pymupdf.Rect()
         for word in words:
             self.rect.include_rect(word.rect)
         self.words = words

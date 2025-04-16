@@ -4,8 +4,8 @@ import logging
 import os
 from pathlib import Path
 
-import fitz
 import pandas as pd
+import pymupdf
 from dotenv import load_dotenv
 from stratigraphy.depths_materials_column_pairs.bounding_boxes import PageBoundingBoxes
 from stratigraphy.layer.layer import Layer
@@ -53,9 +53,9 @@ def draw_predictions(
         try:
             # Clear cache to avoid cache contamination across different files, which can cause incorrect
             # visualizations; see also https://github.com/swisstopo/swissgeol-boreholes-suite/issues/1935
-            fitz.TOOLS.store_shrink(100)
+            pymupdf.TOOLS.store_shrink(100)
 
-            with fitz.Document(directory / filename) as doc:
+            with pymupdf.Document(directory / filename) as doc:
                 for page_index, page in enumerate(doc):
                     page_number = page_index + 1
                     shape = page.new_shape()  # Create a shape object for drawing
@@ -100,7 +100,7 @@ def draw_predictions(
                         shape.commit()  # Commit all the drawing operations to the page
 
                         tmp_file_path = out_directory / f"{filename}_page{page_number}.png"
-                        fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
+                        pymupdf.utils.get_pixmap(page, matrix=pymupdf.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
 
                         if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
                             try:
@@ -110,24 +110,24 @@ def draw_predictions(
                             except NameError:
                                 logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
 
-        except (FileNotFoundError, fitz.FileDataError) as e:
+        except (FileNotFoundError, pymupdf.FileDataError) as e:
             logger.error("Error opening file %s: %s", filename, e)
             continue
 
         logger.info("Finished drawing predictions for file %s", filename)
 
 
-def draw_feature(shape: fitz.Shape, rect: fitz.Rect, is_correct: bool | None, color: str) -> None:
+def draw_feature(shape: pymupdf.Shape, rect: pymupdf.Rect, is_correct: bool | None, color: str) -> None:
     """Draw a bounding box around the area of the page where some feature was extracted from.
 
     Args:
-        shape (fitz.Shape): The shape object for drawing.
-        rect (fitz:Rect): The bounding box of the feature to draw.
+        shape (pymupdf.Shape): The shape object for drawing.
+        rect (pymupdf:Rect): The bounding box of the feature to draw.
         is_correct (bool | None): whether the feature has been evaluated as correct against the ground truth
         color (str): The name of the color to use for the bounding box of the feature.
     """
     shape.draw_rect(rect)
-    shape.finish(color=fitz.utils.getColor(color))
+    shape.finish(color=pymupdf.utils.getColor(color))
 
     if is_correct is not None:
         correct_color = "green" if is_correct else "red"
@@ -136,13 +136,13 @@ def draw_feature(shape: fitz.Shape, rect: fitz.Rect, is_correct: bool | None, co
             rect.bottom_left,
         )
         shape.finish(
-            color=fitz.utils.getColor(correct_color),
+            color=pymupdf.utils.getColor(correct_color),
             width=6,
             stroke_opacity=0.5,
         )
 
 
-def draw_material_descriptions(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layers: list[Layer]) -> None:
+def draw_material_descriptions(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, layers: list[Layer]) -> None:
     """Draw information about material descriptions on a pdf page.
 
     In particular, this function:
@@ -151,21 +151,21 @@ def draw_material_descriptions(shape: fitz.Shape, derotation_matrix: fitz.Matrix
         - colors the lines of the material description text blocks based on whether they were correctly identified.
 
     Args:
-        shape (fitz.Shape): The shape object for drawing.
-        derotation_matrix (fitz.Matrix): The derotation matrix of the page.
+        shape (pymupdf.Shape): The shape object for drawing.
+        derotation_matrix (pymupdf.Matrix): The derotation matrix of the page.
         layers (LayerPrediction): The predictions for the page.
     """
     for index, layer in enumerate(layers):
         if layer.material_description.rect is not None:
             shape.draw_rect(
-                fitz.Rect(layer.material_description.rect) * derotation_matrix,
+                pymupdf.Rect(layer.material_description.rect) * derotation_matrix,
             )
-            shape.finish(color=fitz.utils.getColor("orange"))
+            shape.finish(color=pymupdf.utils.getColor("orange"))
         draw_layer(shape=shape, derotation_matrix=derotation_matrix, layer=layer, index=index)
 
 
 def draw_depth_columns_and_material_rect(
-    shape: fitz.Shape, derotation_matrix: fitz.Matrix, bounding_boxes: list[PageBoundingBoxes]
+    shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, bounding_boxes: list[PageBoundingBoxes]
 ):
     """Draw depth columns as well as the material rects on a pdf page.
 
@@ -175,29 +175,29 @@ def draw_depth_columns_and_material_rect(
         - draws rectangles around the material description columns.
 
     Args:
-        shape (fitz.Shape): The shape object for drawing.
-        derotation_matrix (fitz.Matrix): The derotation matrix of the page.
+        shape (pymupdf.Shape): The shape object for drawing.
+        derotation_matrix (pymupdf.Matrix): The derotation matrix of the page.
         bounding_boxes (list[BoundingBoxes]): List of bounding boxes for depth column and material descriptions.
     """
     for bboxes in bounding_boxes:
         if bboxes.sidebar_bbox:  # Draw rectangle for depth columns
             shape.draw_rect(
-                fitz.Rect(bboxes.sidebar_bbox.rect) * derotation_matrix,
+                pymupdf.Rect(bboxes.sidebar_bbox.rect) * derotation_matrix,
             )
-            shape.finish(color=fitz.utils.getColor("green"))
+            shape.finish(color=pymupdf.utils.getColor("green"))
             for depth_column_entry in bboxes.depth_column_entry_bboxes:  # Draw rectangle for depth column entries
                 shape.draw_rect(
-                    fitz.Rect(depth_column_entry.rect) * derotation_matrix,
+                    pymupdf.Rect(depth_column_entry.rect) * derotation_matrix,
                 )
-            shape.finish(color=fitz.utils.getColor("purple"))
+            shape.finish(color=pymupdf.utils.getColor("purple"))
 
         shape.draw_rect(  # Draw rectangle for material description column
             bboxes.material_description_bbox.rect * derotation_matrix,
         )
-        shape.finish(color=fitz.utils.getColor("red"))
+        shape.finish(color=pymupdf.utils.getColor("red"))
 
 
-def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, index: int):
+def draw_layer(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, layer: Layer, index: int):
     """Draw layers on a pdf page.
 
     In particular, this function:
@@ -205,8 +205,8 @@ def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, 
         - colors the lines of the material description text layers based on whether they were correctly identified.
 
     Args:
-        shape (fitz.Shape): The shape object for drawing.
-        derotation_matrix (fitz.Matrix): The derotation matrix of the page.
+        shape (pymupdf.Shape): The shape object for drawing.
+        derotation_matrix (pymupdf.Matrix): The derotation matrix of the page.
         layer (Layer): The layer (depth interval and material description).
         index (int): Index of the layer.
     """
@@ -218,9 +218,9 @@ def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, 
         for line in [line for line in material_description.lines]:
             shape.draw_rect(line.rect * derotation_matrix)
             shape.finish(
-                color=fitz.utils.getColor(color),
+                color=pymupdf.utils.getColor(color),
                 fill_opacity=0.2,
-                fill=fitz.utils.getColor(color),
+                fill=pymupdf.utils.getColor(color),
                 width=0,
             )
             if material_description.is_correct is not None:
@@ -230,14 +230,14 @@ def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, 
                     line.rect.bottom_left * derotation_matrix,
                 )
                 shape.finish(
-                    color=fitz.utils.getColor(correct_color),
+                    color=pymupdf.utils.getColor(correct_color),
                     width=6,
                     stroke_opacity=0.5,
                 )
 
         if layer.depths:
             # line from depth interval to material description
-            depths_rect = fitz.Rect()
+            depths_rect = pymupdf.Rect()
             if layer.depths.start:
                 depths_rect.include_rect(layer.depths.start.rect)
             if layer.depths.end:
@@ -250,10 +250,10 @@ def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, 
                     rect = layer.material_description.rect
                     shape.draw_line(
                         line_anchor * derotation_matrix,
-                        fitz.Point(rect.x0, (rect.y0 + rect.y1) / 2) * derotation_matrix,
+                        pymupdf.Point(rect.x0, (rect.y0 + rect.y1) / 2) * derotation_matrix,
                     )
                     shape.finish(
-                        color=fitz.utils.getColor(color),
+                        color=pymupdf.utils.getColor(color),
                     )
 
                 # background color for depth interval
@@ -263,9 +263,9 @@ def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, 
                         background_rect * derotation_matrix,
                     )
                     shape.finish(
-                        color=fitz.utils.getColor(color),
+                        color=pymupdf.utils.getColor(color),
                         fill_opacity=0.2,
-                        fill=fitz.utils.getColor(color),
+                        fill=pymupdf.utils.getColor(color),
                         width=0,
                     )
 
@@ -277,17 +277,17 @@ def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, 
                             background_rect.bottom_left * derotation_matrix,
                         )
                         shape.finish(
-                            color=fitz.utils.getColor(depth_is_correct_color),
+                            color=pymupdf.utils.getColor(depth_is_correct_color),
                             width=6,
                             stroke_opacity=0.5,
                         )
             else:
                 # Depths are part of the material description: only draw bounding boxes
                 if layer.depths.start:
-                    shape.draw_rect(fitz.Rect(layer.depths.start.rect) * derotation_matrix)
+                    shape.draw_rect(pymupdf.Rect(layer.depths.start.rect) * derotation_matrix)
                 if layer.depths.end:
-                    shape.draw_rect(fitz.Rect(layer.depths.end.rect) * derotation_matrix)
-                shape.finish(color=fitz.utils.getColor("purple"))
+                    shape.draw_rect(pymupdf.Rect(layer.depths.end.rect) * derotation_matrix)
+                shape.finish(color=pymupdf.utils.getColor("purple"))
 
                 # draw green line if depth interval is correct else red line
                 if layer.is_correct is not None:
@@ -303,7 +303,7 @@ def draw_layer(shape: fitz.Shape, derotation_matrix: fitz.Matrix, layer: Layer, 
                             layer.depths.end.rect.bottom_right * derotation_matrix,
                         )
                     shape.finish(
-                        color=fitz.utils.getColor(depth_is_correct_color),
+                        color=pymupdf.utils.getColor(depth_is_correct_color),
                         width=6,
                         stroke_opacity=0.5,
                     )

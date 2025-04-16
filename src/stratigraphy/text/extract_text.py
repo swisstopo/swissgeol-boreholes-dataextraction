@@ -1,16 +1,16 @@
 """Methods for extracting plain text from a PDF document."""
 
-import fitz
+import pymupdf
 from stratigraphy.lines.line import TextLine, TextWord
 
 
-def extract_text_lines(page: fitz.Page) -> list[TextLine]:
+def extract_text_lines(page: pymupdf.Page) -> list[TextLine]:
     """Extract all text lines from the page.
 
     Sometimes, a single lines as identified by PyMuPDF, is still split into separate lines.
 
     Args:
-        page (fitz.page): the page to extract text from
+        page (pymupdf.page): the page to extract text from
 
     Returns:
         list[TextLine]: A list of text lines.
@@ -18,14 +18,14 @@ def extract_text_lines(page: fitz.Page) -> list[TextLine]:
     return extract_text_lines_from_bbox(page, bbox=None)
 
 
-def extract_text_lines_from_bbox(page: fitz.Page, bbox: fitz.Rect | None) -> list[TextLine]:
+def extract_text_lines_from_bbox(page: pymupdf.Page, bbox: pymupdf.Rect | None) -> list[TextLine]:
     """Extract all text lines from the page.
 
     Sometimes, a single lines as identified by PyMuPDF, is still split into separate lines.
 
     Args:
-        page (fitz.page): the page to extract text from
-        bbox (fitz.Rect | None): the bounding box to extract text from
+        page (pymupdf.page): the page to extract text from
+        bbox (pymupdf.Rect | None): the bounding box to extract text from
 
     Returns:
         list[TextLine]: A list of text lines.
@@ -33,7 +33,7 @@ def extract_text_lines_from_bbox(page: fitz.Page, bbox: fitz.Rect | None) -> lis
     words = []
     words_by_line = {}
     for x0, y0, x1, y1, word, block_no, line_no, _word_no in page.get_text("words", clip=bbox):
-        rect = fitz.Rect(x0, y0, x1, y1) * page.rotation_matrix
+        rect = pymupdf.Rect(x0, y0, x1, y1) * page.rotation_matrix
         text_word = TextWord(rect, word, page.number + 1)
         words.append(text_word)
         key = f"{block_no}_{line_no}"

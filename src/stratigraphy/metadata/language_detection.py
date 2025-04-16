@@ -1,15 +1,15 @@
 """This module contains functionalities for language detection of a document."""
 
-import fitz
+import pymupdf
 from langdetect import detect
 from langdetect.lang_detect_exception import LangDetectException
 
 
-def extract_text_from_document(doc: fitz.Document) -> str:
+def extract_text_from_document(doc: pymupdf.Document) -> str:
     """Extracts and processes text from a document.
 
     Args:
-        doc (fitz.Document): The document to extract text from.
+        doc (pymupdf.Document): The document to extract text from.
 
     Returns:
         str: The extracted and processed text.
@@ -23,11 +23,11 @@ def extract_text_from_document(doc: fitz.Document) -> str:
     return "".join(e for e in text if (e.isalnum() or e.isspace()) and not e.isdigit())
 
 
-def detect_language_of_document(doc: fitz.Document, default_language: str, supported_languages: list) -> str:
+def detect_language_of_document(doc: pymupdf.Document, default_language: str, supported_languages: list) -> str:
     """Detects the language of a document.
 
     Args:
-        doc (fitz.Document): The document to detect the language of.
+        doc (pymupdf.Document): The document to detect the language of.
         default_language (str): The default language to use if the language detection fails.
         supported_languages (list): A list of supported languages.
 

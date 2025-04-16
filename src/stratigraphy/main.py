@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 import click
-import fitz
+import pymupdf
 from dotenv import load_dotenv
 from tqdm import tqdm
 
@@ -252,7 +252,7 @@ def start_pipeline(
         in_path = os.path.join(root, filename)
         logger.info("Processing file: %s", in_path)
 
-        with fitz.Document(in_path) as doc:
+        with pymupdf.Document(in_path) as doc:
             # Extract metadata
             file_metadata = FileMetadata.from_document(doc)
             metadata = MetadataInDocument.from_document(doc, file_metadata.language)

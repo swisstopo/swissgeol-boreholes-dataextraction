@@ -3,7 +3,7 @@
 from datetime import datetime
 from unittest.mock import Mock
 
-import fitz
+import pymupdf
 import pytest
 from stratigraphy.benchmark.ground_truth import GroundTruth
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
@@ -28,7 +28,7 @@ def sample_file_prediction() -> FilePredictions:
         feature=LV95Coordinate(
             east=CoordinateEntry(coordinate_value=2789456), north=CoordinateEntry(coordinate_value=1123012)
         ),
-        rect=fitz.Rect(),
+        rect=pymupdf.Rect(),
         page=1,
     )
 
@@ -44,7 +44,7 @@ def sample_file_prediction() -> FilePredictions:
     groundwater_on_page = FeatureOnPage(
         feature=Groundwater(depth=100, date=dt_date, elevation=20),
         page=1,
-        rect=fitz.Rect(0, 0, 100, 100),
+        rect=pymupdf.Rect(0, 0, 100, 100),
     )
     groundwater_in_bh = GroundwatersInBorehole(groundwater_feature_list=[groundwater_on_page])
 
@@ -75,15 +75,15 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
         feature=LV95Coordinate(
             east=CoordinateEntry(coordinate_value=2789456), north=CoordinateEntry(coordinate_value=1123012)
         ),
-        rect=fitz.Rect(),
+        rect=pymupdf.Rect(),
         page=1,
     )
 
     layers_in_borehole = LayersInBorehole(
         [
             Layer(
-                material_description=FeatureOnPage(MaterialDescription(text=descr, lines=[]), fitz.Rect(), 0),
-                depths=LayerDepths(LayerDepthsEntry(start, fitz.Rect()), LayerDepthsEntry(end, fitz.Rect())),
+                material_description=FeatureOnPage(MaterialDescription(text=descr, lines=[]), pymupdf.Rect(), 0),
+                depths=LayerDepths(LayerDepthsEntry(start, pymupdf.Rect()), LayerDepthsEntry(end, pymupdf.Rect())),
             )
             for descr, start, end in [
                 ("HUMUS", None, 1),
@@ -95,8 +95,8 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
     layers_in_borehole_2 = LayersInBorehole(
         [
             Layer(
-                material_description=FeatureOnPage(MaterialDescription(text=descr, lines=[]), fitz.Rect(), 0),
-                depths=LayerDepths(LayerDepthsEntry(start, fitz.Rect()), LayerDepthsEntry(end, fitz.Rect())),
+                material_description=FeatureOnPage(MaterialDescription(text=descr, lines=[]), pymupdf.Rect(), 0),
+                depths=LayerDepths(LayerDepthsEntry(start, pymupdf.Rect()), LayerDepthsEntry(end, pymupdf.Rect())),
             )
             for descr, start, end in [
                 ("KIES, Sand,", 0.0, 0.5),
@@ -109,7 +109,7 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
     groundwater_on_page = FeatureOnPage(
         feature=Groundwater(depth=100, date=dt_date, elevation=20),
         page=1,
-        rect=fitz.Rect(0, 0, 100, 100),
+        rect=pymupdf.Rect(0, 0, 100, 100),
     )
     groundwater_in_bh = GroundwatersInBorehole(groundwater_feature_list=[groundwater_on_page])
 

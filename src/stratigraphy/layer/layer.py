@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-import fitz
+import pymupdf
 from stratigraphy.data_extractor.data_extractor import ExtractedFeature, FeatureOnPage
 from stratigraphy.depth.interval import Interval
 from stratigraphy.depths_materials_column_pairs.bounding_boxes import PageBoundingBoxes
@@ -15,7 +15,7 @@ class LayerDepthsEntry:
     """Class for the data about the upper or lower limit of a layer, as required for visualiation and evaluation."""
 
     value: float
-    rect: fitz.Rect
+    rect: pymupdf.Rect
 
     def to_json(self):
         """Convert the LayerDepthsEntry object to a JSON serializable format."""
@@ -34,7 +34,7 @@ class LayerDepthsEntry:
         Returns:
             DepthColumnEntry: the corresponding LayerDepthsEntry object.
         """
-        return cls(value=data["value"], rect=fitz.Rect(data["rect"]))
+        return cls(value=data["value"], rect=pymupdf.Rect(data["rect"]))
 
 
 @dataclass
@@ -45,18 +45,20 @@ class LayerDepths:
     end: LayerDepthsEntry | None
 
     @property
-    def line_anchor(self) -> fitz.Point | None:
+    def line_anchor(self) -> pymupdf.Point | None:
         if self.start and self.end:
-            return fitz.Point(max(self.start.rect.x1, self.end.rect.x1), (self.start.rect.y0 + self.end.rect.y1) / 2)
+            return pymupdf.Point(
+                max(self.start.rect.x1, self.end.rect.x1), (self.start.rect.y0 + self.end.rect.y1) / 2
+            )
         elif self.start:
-            return fitz.Point(self.start.rect.x1, self.start.rect.y1)
+            return pymupdf.Point(self.start.rect.x1, self.start.rect.y1)
         elif self.end:
-            return fitz.Point(self.end.rect.x1, self.end.rect.y0)
+            return pymupdf.Point(self.end.rect.x1, self.end.rect.y0)
 
     @property
-    def background_rect(self) -> fitz.Rect | None:
+    def background_rect(self) -> pymupdf.Rect | None:
         if self.start and self.end and self.start.rect.y1 < self.end.rect.y0:
-            return fitz.Rect(
+            return pymupdf.Rect(
                 self.start.rect.x0, self.start.rect.y1, max(self.start.rect.x1, self.end.rect.x1), self.end.rect.y0
             )
 

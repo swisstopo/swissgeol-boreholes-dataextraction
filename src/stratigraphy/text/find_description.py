@@ -1,6 +1,6 @@
 """This module contains functions to find the description (blocks) of a material in a pdf page."""
 
-import fitz
+import pymupdf
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.description_block_splitter import (
     SplitDescriptionBlockByLeftHandSideSeparator,
@@ -11,14 +11,14 @@ from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.dataclasses import Line
 
 
-def get_description_lines(lines: list[TextLine], material_description_rect: fitz.Rect) -> list[TextLine]:
+def get_description_lines(lines: list[TextLine], material_description_rect: pymupdf.Rect) -> list[TextLine]:
     """Get the description lines of a material.
 
     Checks if the lines are within the material description rectangle and if they are not too far to the right.
 
     Args:
         lines (list[TextLine]): The lines to filter.
-        material_description_rect (fitz.Rect): The rectangle containing the material description.
+        material_description_rect (pymupdf.Rect): The rectangle containing the material description.
 
     Returns:
         list[TextLine]: The filtered lines.
@@ -37,7 +37,7 @@ def get_description_lines(lines: list[TextLine], material_description_rect: fitz
 def get_description_blocks(
     description_lines: list[TextLine],
     geometric_lines: list[Line],
-    material_description_rect: fitz.Rect,
+    material_description_rect: pymupdf.Rect,
     block_line_ratio: float,
     left_line_length_threshold: float,
     target_layer_count: int = None,
@@ -50,7 +50,7 @@ def get_description_blocks(
     Args:
         description_lines (list[TextLine]): The text lines to group into blocks.
         geometric_lines (list[Line]): The geometric lines detected in the pdf page.
-        material_description_rect (fitz.Rect): The bounding box of the material descriptions.
+        material_description_rect (pymupdf.Rect): The bounding box of the material descriptions.
         block_line_ratio (float): The relative part a line has to cross a block in order to induce a splitting.
         left_line_length_threshold (float): The minimum length of a line segment on the left side
                                             of a block to split it.

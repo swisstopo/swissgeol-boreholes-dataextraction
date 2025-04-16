@@ -1,6 +1,6 @@
 """Test suite for the coordinate_extraction module."""
 
-import fitz
+import pymupdf
 import pytest
 from stratigraphy import DATAPATH
 from stratigraphy.lines.line import TextLine, TextWord
@@ -54,8 +54,8 @@ def test_to_jsonLV03():  # noqa: D103
     assert coord.to_json() == {"E": 789456, "N": 123012}
 
 
-doc = fitz.open(DATAPATH.parent / "example" / "example_borehole_profile.pdf")
-doc_with_digits_in_coordinates = fitz.open(DATAPATH.parent / "example" / "A7367.pdf")
+doc = pymupdf.open(DATAPATH.parent / "example" / "example_borehole_profile.pdf")
+doc_with_digits_in_coordinates = pymupdf.open(DATAPATH.parent / "example" / "A7367.pdf")
 extractor_de = CoordinateExtractor("de")
 extractor_fr = CoordinateExtractor("fr")
 
@@ -86,7 +86,7 @@ def _create_simple_lines(text_lines: list[str]) -> list[TextLine]:
     return [
         TextLine(
             [
-                TextWord(fitz.Rect(word_index, line_index, word_index + 1, line_index + 1), word_text, page_number)
+                TextWord(pymupdf.Rect(word_index, line_index, word_index + 1, line_index + 1), word_text, page_number)
                 for word_index, word_text in enumerate(text_line.split(" "))
             ]
         )
@@ -140,26 +140,26 @@ def test_CoordinateExtractor_get_coordinates_with_x_y_labels():  # noqa: D103
 
 def test_get_axis_aligned_lines():
     """Test the extraction of lines near feature key."""
-    rect_key = fitz.Rect(x0=200, y0=200, x1=300, y1=250)
+    rect_key = pymupdf.Rect(x0=200, y0=200, x1=300, y1=250)
 
     # Key line
-    key_line = TextLine([TextWord(fitz.Rect(200, 200, 300, 400), "Linie1", page=1)])
+    key_line = TextLine([TextWord(pymupdf.Rect(200, 200, 300, 400), "Linie1", page=1)])
     # Inside horizontal range (right)
-    inside_right = TextLine([TextWord(fitz.Rect(310, 200, 410, 250), "Linie2", page=1)])
+    inside_right = TextLine([TextWord(pymupdf.Rect(310, 200, 410, 250), "Linie2", page=1)])
     # Inside vertical range (below)
-    inside_below = TextLine([TextWord(fitz.Rect(200, 260, 300, 310), "Linie3", page=1)])
+    inside_below = TextLine([TextWord(pymupdf.Rect(200, 260, 300, 310), "Linie3", page=1)])
     # Outside vertical and horizontal range (above)
-    outside_above = TextLine([TextWord(fitz.Rect(200, 140, 300, 190), "Linie4", page=1)])
+    outside_above = TextLine([TextWord(pymupdf.Rect(200, 140, 300, 190), "Linie4", page=1)])
     # Completely outside both ranges (diagonal)
-    outside_diagonal = TextLine([TextWord(fitz.Rect(310, 260, 410, 310), "Linie5", page=1)])
+    outside_diagonal = TextLine([TextWord(pymupdf.Rect(310, 260, 410, 310), "Linie5", page=1)])
     # Edge case: exactly on horizontal limit
-    boundary_left = TextLine([TextWord(fitz.Rect(100, 200, 200, 250), "Linie6", page=1)])
+    boundary_left = TextLine([TextWord(pymupdf.Rect(100, 200, 200, 250), "Linie6", page=1)])
     # Edge case: exactly on edge of horizontal limit and vertical limit
-    boundary_edge_above = TextLine([TextWord(fitz.Rect(300, 250, 400, 300), "Linie7", page=1)])
+    boundary_edge_above = TextLine([TextWord(pymupdf.Rect(300, 250, 400, 300), "Linie7", page=1)])
     # # Inside vertical limit, overlap with horizontal limit
-    overlap_right = TextLine([TextWord(fitz.Rect(250, 200, 350, 250), "Linie8", page=1)])
+    overlap_right = TextLine([TextWord(pymupdf.Rect(250, 200, 350, 250), "Linie8", page=1)])
     # # Overlap with vertical and horizontal limit
-    overlap_right_below = TextLine([TextWord(fitz.Rect(250, 225, 350, 275), "Linie9", page=1)])
+    overlap_right_below = TextLine([TextWord(pymupdf.Rect(250, 225, 350, 275), "Linie9", page=1)])
 
     text_lines = [
         key_line,

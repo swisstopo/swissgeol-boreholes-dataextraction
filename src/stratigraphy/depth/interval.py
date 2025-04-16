@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import fitz
+import pymupdf
 
 from stratigraphy.lines.line import TextLine
 from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
@@ -100,9 +100,9 @@ class AToBInterval(Interval):
         return f"({self.start}, {self.end})"
 
     @property
-    def rect(self) -> fitz.Rect:
+    def rect(self) -> pymupdf.Rect:
         """Get the rectangle surrounding the interval."""
-        return fitz.Rect(self.start.rect).include_rect(self.end.rect)
+        return pymupdf.Rect(self.start.rect).include_rect(self.end.rect)
 
     def matching_blocks(
         self, all_lines: list[TextLine], line_index: int, next_interval: Interval | None

@@ -9,8 +9,8 @@ import math
 import os
 from pathlib import Path
 
-import fitz
 import numpy as np
+import pymupdf
 import skimage as ski
 from stratigraphy.data_extractor.data_extractor import FeatureOnPage
 from stratigraphy.data_extractor.utility import get_lines_near_rect
@@ -38,7 +38,7 @@ def get_groundwater_from_illustration(
     groundwater_extractor: GroundwaterLevelExtractor,
     lines: list[TextLine],
     page_number: int,
-    document: fitz.Document,
+    document: pymupdf.Document,
 ) -> tuple[list[FeatureOnPage[Groundwater]], list[float]]:
     """Extracts the groundwater information from an illustration.
 
@@ -46,7 +46,7 @@ def get_groundwater_from_illustration(
         groundwater_extractor (GroundwaterLevelExtractor): the groundwater level extractor.
         lines (list[TextLine]): The lines of text to extract the groundwater information from.
         page_number (int): The page number (1-based) of the PDF document.
-        document (fitz.Document): The document to extract groundwater from illustration from.
+        document (pymupdf.Document): The document to extract groundwater from illustration from.
 
     Returns:
         list[FeatureOnPage[Groundwater]]: the extracted groundwater information
@@ -60,7 +60,7 @@ def get_groundwater_from_illustration(
     filename = Path(document.name).stem
     png_filename = f"{filename}-{page_number + 1}.png"
     png_path = f"/tmp/{png_filename}"  # Local path to save the PNG
-    fitz.utils.get_pixmap(page, matrix=fitz.Matrix(2, 2), clip=page.rect).save(png_path)
+    pymupdf.utils.get_pixmap(page, matrix=pymupdf.Matrix(2, 2), clip=page.rect).save(png_path)
 
     # load the image
     img = ski.io.imread(png_path)
@@ -79,7 +79,7 @@ def get_groundwater_from_illustration(
                 # skip this template if the confidence is too low to avoid false positives
                 continue
             top_left = (ij[1], ij[0])
-            illustration_rect = fitz.Rect(
+            illustration_rect = pymupdf.Rect(
                 top_left[0], top_left[1], top_left[0] + template.shape[1], top_left[1] + template.shape[0]
             )
 
@@ -95,7 +95,7 @@ def get_groundwater_from_illustration(
             # convert the illustration_rect to the coordinate system of the PDF
             horizontal_scaling = page.rect.width / img.shape[1]
             vertical_scaling = page.rect.height / img.shape[0]
-            pdf_illustration_rect = fitz.Rect(
+            pdf_illustration_rect = pymupdf.Rect(
                 illustration_rect.x0 * horizontal_scaling,
                 illustration_rect.y0 * vertical_scaling,
                 illustration_rect.x1 * horizontal_scaling,
@@ -113,7 +113,7 @@ def get_groundwater_from_illustration(
             )
 
             # sort the lines by their proximity to the key line center, compute the distance to the key line center
-            def distance_to_key_center(line_rect: fitz.Rect, illustration_rect: fitz.Rect) -> float:
+            def distance_to_key_center(line_rect: pymupdf.Rect, illustration_rect: pymupdf.Rect) -> float:
                 key_center_x = (illustration_rect.x0 + illustration_rect.x1) / 2
                 key_center_y = (illustration_rect.y0 + illustration_rect.y1) / 2
                 line_center_x = (line_rect.x0 + line_rect.x1) / 2

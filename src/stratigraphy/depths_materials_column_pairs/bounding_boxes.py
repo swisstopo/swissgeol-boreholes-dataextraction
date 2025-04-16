@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-import fitz
+import pymupdf
 from stratigraphy.depths_materials_column_pairs.material_description_rect_with_sidebar import (
     MaterialDescriptionRectWithSidebar,
 )
@@ -12,7 +12,7 @@ from stratigraphy.depths_materials_column_pairs.material_description_rect_with_s
 class BoundingBox:
     """A single bounding box, JSON serializable."""
 
-    rect: fitz.Rect
+    rect: pymupdf.Rect
 
     def to_json(self) -> list[int]:
         """Converts the object to a dictionary.
@@ -29,7 +29,7 @@ class BoundingBox:
 
     @classmethod
     def from_json(cls, data) -> "BoundingBox":
-        return cls(rect=fitz.Rect(data))
+        return cls(rect=pymupdf.Rect(data))
 
 
 @dataclass
@@ -84,13 +84,13 @@ class PageBoundingBoxes:
             page=page_number,
         )
 
-    def get_outer_rect(self) -> fitz.Rect:
+    def get_outer_rect(self) -> pymupdf.Rect:
         """Returns the extreme bounding rectangle.
 
         Computes the smallest rectangle that encloses all bounding boxes in this PageBoundingBoxes object.
 
         Returns:
-            fitz.Rect: The bounding rectangle.
+            pymupdf.Rect: The bounding rectangle.
         """
         all_bboxes = [self.material_description_bbox] + self.depth_column_entry_bboxes
         if self.sidebar_bbox:
@@ -105,4 +105,4 @@ class PageBoundingBoxes:
         max_x = max(bbox.rect.x1 for bbox in all_bboxes)
         max_y = max(bbox.rect.y1 for bbox in all_bboxes)
 
-        return fitz.Rect(min_x, min_y, max_x, max_y)
+        return pymupdf.Rect(min_x, min_y, max_x, max_y)

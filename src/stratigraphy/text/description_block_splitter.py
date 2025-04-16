@@ -2,8 +2,8 @@
 
 import abc
 
-import fitz
 import numpy as np
+import pymupdf
 from stratigraphy.lines.line import TextLine
 from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.dataclasses import Line
@@ -51,11 +51,11 @@ class DescriptionBlockSplitter(metaclass=abc.ABCMeta):
 class SplitDescriptionBlockByLine(DescriptionBlockSplitter):
     """Creates blocks based on longer lines between the material description text."""
 
-    def __init__(self, threshold: float, material_description_rect: fitz.Rect, geometric_lines: list[Line]):
+    def __init__(self, threshold: float, material_description_rect: pymupdf.Rect, geometric_lines: list[Line]):
         """Create a new SplitDescriptionBlockByLine instance.
 
         Args:
-            material_description_rect (fitz.Rect): The bounding box for all material descriptions.
+            material_description_rect (pymupdf.Rect): The bounding box for all material descriptions.
             threshold (float): Percentage of the block width that needs to be covered by a line.
             geometric_lines (list[Line]): The geometric lines detected in the pdf page.
         """

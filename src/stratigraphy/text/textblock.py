@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Self
 
-import fitz
 import numpy as np
+import pymupdf
 from stratigraphy.data_extractor.data_extractor import ExtractedFeature, FeatureOnPage
 from stratigraphy.lines.line import TextLine
 
@@ -61,14 +61,14 @@ class TextBlock:
         self.line_count = len(self.lines)
         self.text = " ".join([line.text for line in self.lines])
         if self.line_count:
-            self.rect = fitz.Rect(
+            self.rect = pymupdf.Rect(
                 min(line.rect.x0 for line in self.lines),
                 min(line.rect.y0 for line in self.lines),
                 max(line.rect.x1 for line in self.lines),
                 max(line.rect.y1 for line in self.lines),
             )
         else:
-            self.rect = fitz.Rect()
+            self.rect = pymupdf.Rect()
 
         # go through all the lines and check if they are on the same page
         page_number_set = set(line.page_number for line in self.lines)

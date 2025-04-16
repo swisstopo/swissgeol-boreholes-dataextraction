@@ -8,7 +8,7 @@ from abc import ABC, ABCMeta, abstractmethod
 from dataclasses import dataclass
 from typing import Generic, Self, TypeVar
 
-import fitz
+import pymupdf
 import regex
 from stratigraphy.lines.line import TextLine
 from stratigraphy.util.util import read_params
@@ -53,7 +53,7 @@ class FeatureOnPage(Generic[T]):
     """Class for an extracted feature, together with the page and where on that page the feature was extracted from."""
 
     feature: T
-    rect: fitz.Rect  # The rectangle that contains the extracted information
+    rect: pymupdf.Rect  # The rectangle that contains the extracted information
     page: int  # The page number of the PDF document
 
     def to_json(self) -> dict:
@@ -85,7 +85,7 @@ class FeatureOnPage(Generic[T]):
         return cls(
             feature=feature_cls.from_json(data),
             page=data["page"],
-            rect=fitz.Rect(data["rect"]),
+            rect=pymupdf.Rect(data["rect"]),
         )
 
 
@@ -205,21 +205,21 @@ class DataExtractor(ABC):
 
         return feature_lines_sorted
 
-    def get_axis_aligned_lines(self, lines: list[TextLine], rect: fitz.Rect) -> list[TextLine]:
+    def get_axis_aligned_lines(self, lines: list[TextLine], rect: pymupdf.Rect) -> list[TextLine]:
         """Find the lines of text that are horizontally and vertically close to a given rectangle.
 
          Lines that are found both horizontally and vertically are included only once.
 
         Args:
             lines (list[TextLine]): Arbitrary text lines to search in.
-            rect (fitz.Rect): The rectangle to search around.
+            rect (pymupdf.Rect): The rectangle to search around.
 
         Returns:
             list[TextLine]: A combined list of lines close to the rectangle within the horizontal
                             (left/right) and vertical (above/below) regions, with intersection included only once.
         """
         # Horizontal rectangle (left-right limits)
-        horizontal_rect = fitz.Rect(
+        horizontal_rect = pymupdf.Rect(
             rect.x0 - self.search_left_factor * rect.width,
             rect.y0,
             rect.x1 + self.search_right_factor * rect.width,
@@ -227,7 +227,7 @@ class DataExtractor(ABC):
         )
 
         # Vertical rectangle (above-below limits)
-        vertical_rect = fitz.Rect(
+        vertical_rect = pymupdf.Rect(
             rect.x0,
             rect.y0 - self.search_above_factor * rect.height,
             rect.x1,

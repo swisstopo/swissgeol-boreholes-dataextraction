@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-import fitz
+import pymupdf
 import regex
 from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature, FeatureOnPage
 from stratigraphy.lines.line import TextLine
@@ -147,7 +147,7 @@ class CoordinateExtractor(DataExtractor):
         # for.
         found_coordinates = []
         for x_match, y_match in zip(x_matches, y_matches, strict=False):
-            rect = fitz.Rect()
+            rect = pymupdf.Rect()
             rect.include_rect(x_match[1])
             rect.include_rect(y_match[1])
             coordinates = Coordinate.from_values(
@@ -240,7 +240,7 @@ class CoordinateExtractor(DataExtractor):
     @staticmethod
     def _match_text_with_rect(
         lines: list[TextLine], pattern: regex.Regex, preprocess=lambda x: x
-    ) -> list[(regex.Match, fitz.Rect)]:
+    ) -> list[(regex.Match, pymupdf.Rect)]:
         full_text = ""
         lines_with_position = []
         for line in lines:
@@ -258,7 +258,7 @@ class CoordinateExtractor(DataExtractor):
                 if entry["end"] >= match.start() and entry["start"] < match.end()
             ]
 
-            rect = fitz.Rect()
+            rect = pymupdf.Rect()
             for line in match_lines:
                 rect.include_rect(line.rect)
             results.append((match, rect))
@@ -288,7 +288,7 @@ class CoordinateExtractor(DataExtractor):
 
         return found_coordinates
 
-    def extract_coordinates(self, document: fitz.Document) -> list[FeatureOnPage[Coordinate]]:
+    def extract_coordinates(self, document: pymupdf.Document) -> list[FeatureOnPage[Coordinate]]:
         """Extracts the coordinates from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
@@ -300,7 +300,7 @@ class CoordinateExtractor(DataExtractor):
             3. if that gives no results either, try to detect coordinates in the full text
 
         Args:
-            document (fitz.Document): document from which coordinates are extracted page by page
+            document (pymupdf.Document): document from which coordinates are extracted page by page
 
         Returns:
             list[FeatureOnPage[Coordinate]]: the extracted coordinates (if any)

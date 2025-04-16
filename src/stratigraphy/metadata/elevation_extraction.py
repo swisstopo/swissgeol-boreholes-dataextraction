@@ -9,8 +9,8 @@ descriptions.
 import logging
 from dataclasses import dataclass
 
-import fitz
 import numpy as np
+import pymupdf
 from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature, FeatureOnPage
 from stratigraphy.groundwater.utility import extract_elevation
 from stratigraphy.lines.line import TextLine
@@ -170,7 +170,7 @@ class ElevationExtractor(DataExtractor):
             y0 = rect_array[:, 1].min()
             x1 = rect_array[:, 2].max()
             y1 = rect_array[:, 3].max()
-            rect_union = fitz.Rect(x0, y0, x1, y1)
+            rect_union = pymupdf.Rect(x0, y0, x1, y1)
         else:
             rect_union = None
 
@@ -180,13 +180,13 @@ class ElevationExtractor(DataExtractor):
             raise ValueError("Could not extract all required information from the lines provided.")
 
     def extract_elevation_from_bbox(
-        self, pdf_page: fitz.Page, page_number: int, bbox: fitz.Rect | None = None
+        self, pdf_page: pymupdf.Page, page_number: int, bbox: pymupdf.Rect | None = None
     ) -> list[FeatureOnPage[Elevation]]:
         """Extract the elevation information from a bounding box.
 
         Args:
-            pdf_page (fitz.Page): The PDF page.
-            bbox (fitz.Rect | None): The bounding box.
+            pdf_page (pymupdf.Page): The PDF page.
+            bbox (pymupdf.Rect | None): The bounding box.
             page_number (int): The page number.
 
         Returns:
@@ -206,14 +206,14 @@ class ElevationExtractor(DataExtractor):
 
         return found_elevation_values
 
-    def extract_elevation(self, document: fitz.Document) -> list[FeatureOnPage[Elevation]]:
+    def extract_elevation(self, document: pymupdf.Document) -> list[FeatureOnPage[Elevation]]:
         """Extracts the elevation information from a borehole profile.
 
         Processes the borehole profile page by page and tries to find the feature key in the respective text of the
         page.
 
         Args:
-            document (fitz.Document): document from which elevation is extracted page by page
+            document (pymupdf.Document): document from which elevation is extracted page by page
 
         Returns:
             list[FeatureOnPage[Elevation]]: The extracted elevation information.

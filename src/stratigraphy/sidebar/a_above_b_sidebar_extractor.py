@@ -1,6 +1,6 @@
 """Module for finding AAboveBSidebar instances in a borehole profile."""
 
-import fitz
+import pymupdf
 import rtree
 
 from stratigraphy.lines.line import TextWord
@@ -20,7 +20,7 @@ class AAboveBSidebarExtractor:
     def find_in_words(
         all_words: list[TextWord],
         line_rtree: rtree.index.Index,
-        used_entry_rects: list[fitz.Rect],
+        used_entry_rects: list[pymupdf.Rect],
         sidebar_params: dict,
     ) -> list[SidebarNoise]:
         """Construct all possible AAboveBSidebar objects from the given words.
@@ -28,7 +28,7 @@ class AAboveBSidebarExtractor:
         Args:
             all_words (list[TextWord]): All words in the page.
             line_rtree (rtree.index.Index): Pre-built R-tree for spatial queries.
-            used_entry_rects (list[fitz.Rect]): Part of the document to ignore.
+            used_entry_rects (list[pymupdf.Rect]): Part of the document to ignore.
             sidebar_params (dict): Parameters for the AAboveBSidebar objects.
 
         Returns:

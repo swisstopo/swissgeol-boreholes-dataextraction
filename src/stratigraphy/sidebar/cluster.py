@@ -5,7 +5,7 @@ import dataclasses
 from collections.abc import Callable
 from typing import Generic, Self, TypeVar
 
-import fitz
+import pymupdf
 
 from ..util.util import x_overlap_significant_largest
 
@@ -16,15 +16,15 @@ EntryT = TypeVar("EntryT")
 class Cluster(abc.ABC, Generic[EntryT]):
     """Class that groups together values that potentially belong to the same sidebar."""
 
-    reference_rect: fitz.Rect
+    reference_rect: pymupdf.Rect
     entries: list[EntryT]
-    entry_to_rect: Callable[[EntryT], fitz.Rect]
+    entry_to_rect: Callable[[EntryT], pymupdf.Rect]
 
     def good_fit(self, entry: EntryT, threshold: float) -> bool:
         return x_overlap_significant_largest(self.reference_rect, self.entry_to_rect(entry), threshold)
 
     @classmethod
-    def create_clusters(cls, entries: list[EntryT], entry_to_rect: Callable[[EntryT], fitz.Rect]) -> list[Self]:
+    def create_clusters(cls, entries: list[EntryT], entry_to_rect: Callable[[EntryT], pymupdf.Rect]) -> list[Self]:
         clusters: list[Cluster[EntryT]] = []
         for entry in entries:
             create_new_cluster = True

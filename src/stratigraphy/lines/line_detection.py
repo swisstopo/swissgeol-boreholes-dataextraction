@@ -4,8 +4,8 @@ import logging
 import os
 
 import cv2
-import fitz
 import numpy as np
+import pymupdf
 from dotenv import load_dotenv
 from numpy.typing import ArrayLike
 from stratigraphy.lines.geometric_line_utilities import (
@@ -24,7 +24,7 @@ mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlo
 line_detection_params = read_params("line_detection_params.yml")
 
 
-def detect_lines_lsd(page: fitz.Page, scale_factor=2, lsd_params=None) -> ArrayLike:
+def detect_lines_lsd(page: pymupdf.Page, scale_factor=2, lsd_params=None) -> ArrayLike:
     """Given a file path, detect lines in the pdf using the Line Segment Detector (LSD) algorithm.
 
     Publication of the algorithm can be found here: http://www.ipol.im/pub/art/2012/gjmr-lsd/article.pdf
@@ -33,14 +33,14 @@ def detect_lines_lsd(page: fitz.Page, scale_factor=2, lsd_params=None) -> ArrayL
           This behavior will be changed in the future.
 
     Args:
-        page (fitz.Page): The page to detect lines in.
+        page (pymupdf.Page): The page to detect lines in.
         scale_factor (float, optional): The scale factor to scale the pdf page. Defaults to 2.
         lsd_params (dict, optional): The parameters for the Line Segment Detector. Defaults to None.
 
     Returns:
         list[Line]: The lines detected in the pdf.
     """
-    pix = page.get_pixmap(matrix=fitz.Matrix(scale_factor, scale_factor))
+    pix = page.get_pixmap(matrix=pymupdf.Matrix(scale_factor, scale_factor))
     img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, 3)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -54,11 +54,11 @@ def detect_lines_lsd(page: fitz.Page, scale_factor=2, lsd_params=None) -> ArrayL
     return [line_from_array(line, scale_factor) for line in lines]
 
 
-def extract_lines(page: fitz.Page, line_detection_params: dict) -> list[Line]:
+def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]:
     """Extract lines from a pdf page.
 
     Args:
-        page (fitz.Page): The page to extract lines from.
+        page (pymupdf.Page): The page to extract lines from.
         line_detection_params (dict): The parameters for the line detection algorithm.
 
     Returns:

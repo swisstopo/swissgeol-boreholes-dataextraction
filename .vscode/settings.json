@@ -7,7 +7,7 @@
         "depthcolumnentry",
         "dotenv",
         "fastapi",
-        "fitz",
+        "pymupdf",
         "geoinformation",
         "mlflow",
         "pixmap",

@@ -3,9 +3,9 @@
 import logging
 
 import cv2
-import fitz
 import Levenshtein
 import numpy as np
+import pymupdf
 from stratigraphy.annotations.plot_utils import convert_page_to_opencv_img
 from stratigraphy.layer.layer import ExtractedBorehole, Layer, LayersInDocument
 
@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 def remove_duplicate_layers(
-    previous_page: fitz.Page,
-    current_page: fitz.Page,
+    previous_page: pymupdf.Page,
+    current_page: pymupdf.Page,
     previous_layers_with_bb: LayersInDocument,
     current_layers_with_bb: LayersInDocument,
     img_template_probability_threshold: float,
@@ -29,8 +29,8 @@ def remove_duplicate_layers(
     duplicate layers. If there is no depth column, we use template matching to compare the layers.
 
     Args:
-        previous_page (fitz.Page): The previous page.
-        current_page (fitz.Page): The current page containing the layers to check for duplicates.
+        previous_page (pymupdf.Page): The previous page.
+        current_page (pymupdf.Page): The current page containing the layers to check for duplicates.
         previous_layers_with_bb (LayersInDocument): The layers of the previous page, with their bounding box.
         current_layers_with_bb (LayersInDocument): The layers of the current page, with their bounding box.
         img_template_probability_threshold (float): The threshold for the template matching probability
@@ -123,7 +123,10 @@ def remove_duplicate_layers(
 
 
 def check_duplicate_layer_by_template_matching(
-    previous_page: fitz.Page, current_page: fitz.Page, current_layer: Layer, img_template_probability_threshold: float
+    previous_page: pymupdf.Page,
+    current_page: pymupdf.Page,
+    current_layer: Layer,
+    img_template_probability_threshold: float,
 ) -> bool:
     """Check if the current layer is a duplicate of a layer on the previous page by using template matching.
 
@@ -132,8 +135,8 @@ def check_duplicate_layer_by_template_matching(
     in the previous page.
 
     Args:
-        previous_page (fitz.Page): The previous page.
-        current_page (fitz.Page): The current page.
+        previous_page (pymupdf.Page): The previous page.
+        current_page (pymupdf.Page): The current page.
         current_layer (Layer): The current layer that is checked for a duplicate.
         img_template_probability_threshold (float): The threshold for the template matching probability
                                                     to consider a layer a duplicate.

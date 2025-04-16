@@ -3,8 +3,8 @@
 import logging
 
 import cv2
-import fitz
 import numpy as np
+import pymupdf
 from stratigraphy.text.textblock import TextBlock
 from stratigraphy.util.dataclasses import Line
 
@@ -36,18 +36,18 @@ def _draw_lines(open_cv_img, lines, scale_factor=1):
     return open_cv_img
 
 
-def convert_page_to_opencv_img(page: fitz.Page, scale_factor: float, color_mode=cv2.COLOR_RGB2BGR) -> np.array:
-    """Converts a fitz.Page object to an OpenCV image.
+def convert_page_to_opencv_img(page: pymupdf.Page, scale_factor: float, color_mode=cv2.COLOR_RGB2BGR) -> np.array:
+    """Converts a pymupdf.Page object to an OpenCV image.
 
     Args:
-        page (fitz.Page): The page to convert to an OpenCV image.
+        page (pymupdf.Page): The page to convert to an OpenCV image.
         scale_factor (float): Applied scale factor to the image.
         color_mode (_type_, optional): _description_. Defaults to cv2.COLOR_RGB2BGR.
 
     Returns:
         np.array: The OpenCV image.
     """
-    pix = page.get_pixmap(matrix=fitz.Matrix(scale_factor, scale_factor))
+    pix = page.get_pixmap(matrix=pymupdf.Matrix(scale_factor, scale_factor))
     img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, 3)
     open_cv_img = cv2.cvtColor(img, color_mode)
     return open_cv_img
@@ -76,11 +76,11 @@ def _convert_line_to_grid(line: Line, scale_factor: float) -> Line:
     return Line(start, end)
 
 
-def plot_lines(page: fitz.Page, lines: list[Line], scale_factor: float = 2) -> cv2.COLOR_RGB2BGR:
+def plot_lines(page: pymupdf.Page, lines: list[Line], scale_factor: float = 2) -> cv2.COLOR_RGB2BGR:
     """Given a page object and the lines detected in the page, plot the page with the detected lines.
 
     Args:
-        page (fitz.Page): The page to draw the lines in.
+        page (pymupdf.Page): The page to draw the lines in.
         lines (ArrayLike): The lines detected in the pdf.
         scale_factor (float, optional): The scale factor to apply to the pdf. Defaults to 2.
     """
@@ -91,11 +91,11 @@ def plot_lines(page: fitz.Page, lines: list[Line], scale_factor: float = 2) -> c
     return open_cv_img
 
 
-def draw_blocks_and_lines(page: fitz.Page, blocks: list[TextBlock], lines: list[Line] = None):
+def draw_blocks_and_lines(page: pymupdf.Page, blocks: list[TextBlock], lines: list[Line] = None):
     """Draw the blocks and lines on the page.
 
     Args:
-        page (fitz.Page): The page to draw the blocks and lines on.
+        page (pymupdf.Page): The page to draw the blocks and lines on.
         blocks (List[TextBlock]): The blocks to draw on the page.
         lines (List[Line] | None): The lines to draw on the page. Defaults to None.
 
@@ -105,10 +105,10 @@ def draw_blocks_and_lines(page: fitz.Page, blocks: list[TextBlock], lines: list[
     scale_factor = 2
 
     for block in blocks:  # draw all blocks in the page
-        fitz.utils.draw_rect(
+        pymupdf.utils.draw_rect(
             page,
             block.rect() * page.derotation_matrix,
-            color=fitz.utils.getColor("orange"),
+            color=pymupdf.utils.getColor("orange"),
         )
 
     open_cv_img = convert_page_to_opencv_img(page, scale_factor=2)

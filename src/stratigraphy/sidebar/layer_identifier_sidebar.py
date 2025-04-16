@@ -4,7 +4,7 @@ import logging
 import re
 from dataclasses import dataclass
 
-import fitz
+import pymupdf
 
 from stratigraphy.depth.a_to_b_interval_extractor import AToBIntervalExtractor
 from stratigraphy.lines.line import TextLine
@@ -35,7 +35,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         self,
         description_lines: list[TextLine],
         geometric_lines: list[Line],
-        material_description_rect: fitz.Rect,
+        material_description_rect: pymupdf.Rect,
         **params,
     ) -> list[IntervalBlockGroup]:
         """Divide the description lines into blocks based on the layer identifier entries.
@@ -43,7 +43,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         Args:
             description_lines (list[TextLine]): A list of text lines that are part of the description.
             geometric_lines (list[Line]): A list of geometric lines that are part of the description.
-            material_description_rect (fitz.Rect): The bounding box of the material description.
+            material_description_rect (pymupdf.Rect): The bounding box of the material description.
             params (dict): A dictionary of relevant parameters.
 
         Returns:
@@ -116,11 +116,11 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             other_entry in self.entries for other_entry in other.entries
         )
 
-    def is_contained(self, rect: fitz.Rect) -> bool:
+    def is_contained(self, rect: pymupdf.Rect) -> bool:
         """Check if the layer identifier column is contained in another rectangle.
 
         Args:
-            rect (fitz.Rect): The rectangle to check if it contains the layer identifier column.
+            rect (pymupdf.Rect): The rectangle to check if it contains the layer identifier column.
 
         Returns:
             bool: True if the layer identifier column is contained in the rectangle, False otherwise.

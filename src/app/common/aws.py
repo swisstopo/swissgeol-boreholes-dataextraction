@@ -4,8 +4,8 @@ import io
 from pathlib import Path
 
 import boto3
-import fitz
 import numpy as np
+import pymupdf
 from app.common.config import config
 from botocore.exceptions import ClientError, NoCredentialsError
 from dotenv import load_dotenv
@@ -48,18 +48,18 @@ def create_s3_client():
         raise HTTPException(status_code=500, detail="Failed to access S3.") from None
 
 
-def load_pdf_from_aws(filename: Path) -> fitz.Document:
+def load_pdf_from_aws(filename: Path) -> pymupdf.Document:
     """Load a PDF document from AWS S3.
 
     Args:
         filename (str): The filename of the PDF document.
 
     Returns:
-        fitz.Document: The loaded PDF document.
+        pymupdf.Document: The loaded PDF document.
     """
     # Load the PDF from the S3 object
     data = load_data_from_aws(filename)
-    return fitz.open(stream=data, filetype="pdf")
+    return pymupdf.open(stream=data, filetype="pdf")
 
 
 def load_png_from_aws(filename: Path) -> np.ndarray:

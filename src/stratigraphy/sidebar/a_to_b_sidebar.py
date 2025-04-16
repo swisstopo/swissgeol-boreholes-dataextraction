@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import fitz
+import pymupdf
 
 from stratigraphy.depth.interval import AToBInterval
 from stratigraphy.lines.line import TextLine
@@ -78,7 +78,7 @@ class AToBSidebar(Sidebar[AToBInterval]):
         self,
         description_lines: list[TextLine],
         geometric_lines: list[Line],
-        material_description_rect: fitz.Rect,
+        material_description_rect: pymupdf.Rect,
         **params,
     ) -> list[IntervalBlockGroup]:
         """Identifies groups of description blocks that correspond to depth intervals.
@@ -86,7 +86,7 @@ class AToBSidebar(Sidebar[AToBInterval]):
         Args:
             description_lines (list[TextLine]): A list of text lines that are part of the description.
             geometric_lines (list[Line]): A list of geometric lines that are part of the description.
-            material_description_rect (fitz.Rect): The bounding box of the material description.
+            material_description_rect (pymupdf.Rect): The bounding box of the material description.
             params (dict): A dictionary of relevant parameters.
 
         Returns:

@@ -1,6 +1,6 @@
 """Utility functions for the data extractor module."""
 
-from fitz import Rect
+from pymupdf import Rect
 from stratigraphy.lines.line import TextLine
 
 
@@ -20,7 +20,7 @@ def get_lines_near_rect(
         search_above_factor (float): The factor to search above the rectangle.
         search_below_factor (float): The factor to search below the rectangle
         lines (list[TextLine]): Arbitrary text lines to search in.
-        rect (fitz.Rect): The rectangle to search around.
+        rect (pymupdf.Rect): The rectangle to search around.
 
     Returns:
         list[TextLine]: The lines close to the rectangle.

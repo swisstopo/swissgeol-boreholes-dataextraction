@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from datetime import date as dt
 from datetime import datetime
 
-import fitz
 import numpy as np
+import pymupdf
 from stratigraphy.data_extractor.data_extractor import DataExtractor, ExtractedFeature, FeatureOnPage
 from stratigraphy.groundwater.utility import extract_date, extract_depth, extract_elevation
 from stratigraphy.lines.line import TextLine
@@ -314,7 +314,7 @@ class GroundwaterLevelExtractor(DataExtractor):
             y0 = rect_array[:, 1].min()
             x1 = rect_array[:, 2].max()
             y1 = rect_array[:, 3].max()
-            rect_union = fitz.Rect(x0, y0, x1, y1)
+            rect_union = pymupdf.Rect(x0, y0, x1, y1)
         else:
             rect_union = None
 
@@ -337,7 +337,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         self,
         page_number: int,
         lines: list[TextLine],
-        document: fitz.Document,
+        document: pymupdf.Document,
     ) -> list[FeatureOnPage[Groundwater]]:
         """Extracts the groundwater information from a borehole profile.
 
@@ -349,7 +349,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         Args:
             page_number (int): The page number (1-based) of the PDF document.
             lines (list[TextLine]): The lines of text to extract the groundwater information from.
-            document (fitz.Document): The document used to extract groundwater from illustration.
+            document (pymupdf.Document): The document used to extract groundwater from illustration.
 
         Returns:
             list[FeatureOnPage[Groundwater]]: the extracted coordinates (if any)
