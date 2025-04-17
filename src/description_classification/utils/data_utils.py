@@ -12,7 +12,7 @@ from pathlib import Path
 from description_classification.evaluation.evaluate import AllClassificationMetrics
 from description_classification.utils.data_loader import LayerInformations
 from description_classification.utils.uscs_classes import USCSClasses
-from stratigraphy.util.util import read_params
+from general_utils.file_utils import read_params
 
 classification_params = read_params("classification_params.yml")
 

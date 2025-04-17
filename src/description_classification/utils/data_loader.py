@@ -7,9 +7,9 @@ from os import listdir
 from os.path import isfile, join
 from pathlib import Path
 
-from description_classification.utils.language_detection import detect_language
 from description_classification.utils.uscs_classes import USCSClasses, map_most_similar_uscs
-from stratigraphy.util.util import read_params
+from general_utils.file_utils import read_params
+from general_utils.language_detection import detect_language_of_text
 
 classification_params = read_params("classification_params.yml")
 
@@ -55,7 +55,7 @@ def load_data(json_path: Path, file_subset_directory: Path | None) -> list[Layer
         if filename_subset is not None and filename not in filename_subset:
             continue
         all_text = " ".join([lay["material_description"] for bh in boreholes for lay in bh["layers"]])
-        language = detect_language(
+        language = detect_language_of_text(
             all_text, classification_params["default_language"], classification_params["supported_language"]
         )
         for borehole in boreholes:

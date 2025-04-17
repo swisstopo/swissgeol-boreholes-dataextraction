@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 
-import fitz
+import pymupdf
 from app.common.aws import load_pdf_from_aws, upload_file_to_s3
 from app.common.schemas import PNGResponse
 from fastapi import HTTPException
@@ -27,7 +27,7 @@ def create_pngs(aws_filename: Path) -> PNGResponse:
 
     # Clear cache to avoid cache contamination across different files, which can cause incorrect visualizations;
     # see also https://github.com/swisstopo/swissgeol-boreholes-suite/issues/1935
-    fitz.TOOLS.store_shrink(100)
+    pymupdf.TOOLS.store_shrink(100)
 
     # Initialize the S3 client
     pdf_document = load_pdf_from_aws(aws_filename)
@@ -38,7 +38,7 @@ def create_pngs(aws_filename: Path) -> PNGResponse:
     try:
         for page_number in range(pdf_document.page_count):
             page = pdf_document.load_page(page_number)
-            pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))
+            pix = page.get_pixmap(matrix=pymupdf.Matrix(3, 3))
             png_filename = f"{filename}-{page_number + 1}.png"
             png_path = f"/tmp/{png_filename}"  # Local path to save the PNG
             s3_bucket_png_path = f"dataextraction/{png_filename}"

@@ -8,19 +8,19 @@
             "name": "Python: Run boreholes-extract-all",
             "type": "debugpy",
             "request": "launch",
-            "module": "src.stratigraphy.main",
+            "module": "src.borehole_extraction.main",
             "args": [
                 "-i",
                 //"example/example_borehole_profile.pdf",
                 //"data/subset_zurich",
-                "data/zurich",
+                // "data/zurich",
                 // "data/zurich/268123018-bp.pdf",
                 // "data/zurich/268123018-bp.pdf", // 2 bh, one with gw
                 // "data/zurich/269126084-bp.pdf", // 2 gw in the same borehole
                 // "data/zurich/267125339-bp.pdf", //groundwater detected
-                // "data/zurich/267125358-bp.pdf", //2 boreholes in one page,  diff elev and coord   
+                // "data/zurich/267125358-bp.pdf", //2 boreholes in one page,  diff elev and coord
                 //"data/zurich/695265009-bp.pdf", // 2 elevations found
-                // "data/zurich/269126143-bp.pdf", // also 2 boreholes                                    
+                // "data/zurich/269126143-bp.pdf", // also 2 boreholes
                 // "data/zurich/267123055-bp.pdf", // WRONG gw depth                                ***
                 //"data/zurich/675244002-bp.pdf",
                 // "data/zurich/684252058-bp.pdf", // 2pages, 2 bh detected (1 in gt)
@@ -30,7 +30,7 @@
                 //"data/geoquat/validation/13080.pdf", //has f1=0, detects 1x the same, and not the right things
                 //"data/zurich/267125439-bp.pdf",
                 //"data/geoquat/validation/A7111.pdf",
-                //"data/geoquat/validation",
+                "data/geoquat/validation",
                 //"data/geoquat/train",
                 //"data/geoquat/validation/8366.pdf",
                 //"data/geoquat/test/A8005.pdf",
@@ -38,8 +38,8 @@
                 //"data/nagra/Dossier III_Appendix_A_TRU1-1_Lithostratigraphy_1_2500_0000-1310.pdf",
                 // "data/nagra",
                 "-g",
-                "data/zurich_ground_truth.json"
-                //"data/geoquat_ground_truth.json"
+                //"data/zurich_ground_truth.json"
+                "data/geoquat_ground_truth.json"
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
@@ -49,7 +49,7 @@
             "name": "Python: Run scoring",
             "type": "debugpy",
             "request": "launch",
-            "module": "src.stratigraphy.benchmark.score",
+            "module": "src.borehole_extraction.evaluation.benchmark.score",
             "args": [
                 "--no-mlflow-tracking"
             ],

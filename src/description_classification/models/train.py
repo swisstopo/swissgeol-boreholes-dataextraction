@@ -9,7 +9,7 @@ import click
 import datasets
 import mlflow
 from dotenv import load_dotenv
-from stratigraphy.util.util import read_params
+from general_utils.file_utils import read_params
 from transformers import DataCollatorWithPadding, EvalPrediction, Trainer, TrainingArguments
 
 from description_classification import DATAPATH

@@ -9,7 +9,7 @@ The s3_client fixture is created by the mock_aws decorator, which mocks the AWS 
 import json
 from pathlib import Path
 
-import fitz
+import pymupdf
 import pytest
 from app.common.aws import load_pdf_from_aws
 from app.common.config import config
@@ -94,7 +94,7 @@ def test_load_pdf_from_aws(upload_test_pdf):
     """Test loading a PDF from mocked AWS S3."""
     pdf_document = load_pdf_from_aws(Path(TEST_PDF_KEY.name))
     assert pdf_document is not None
-    assert isinstance(pdf_document, fitz.Document)
+    assert isinstance(pdf_document, pymupdf.Document)
 
 
 def test_extract_coordinate_fail(test_client: TestClient, upload_test_pdf, upload_test_png):
