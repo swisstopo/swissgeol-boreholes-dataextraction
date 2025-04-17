@@ -1,8 +1,10 @@
 """Test suite for the LayerIdentifierSidebar module."""
 
 import pytest
-from borehole_extraction.extraction.stratigraphy.sidebar.layer_identifier_sidebar import LayerIdentifierSidebar
-from borehole_extraction.extraction.stratigraphy.sidebar.sidebarentry import LayerIdentifierEntry
+from borehole_extraction.extraction.stratigraphy.base_sidebar_entry.sidebar_entry import LayerIdentifierEntry
+from borehole_extraction.extraction.stratigraphy.sidebar_classes.layer_identifier_sidebar import (
+    LayerIdentifierSidebar,
+)
 
 
 @pytest.mark.parametrize(

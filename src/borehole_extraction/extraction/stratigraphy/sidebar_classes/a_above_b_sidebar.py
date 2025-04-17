@@ -8,14 +8,13 @@ from itertools import product
 
 import numpy as np
 import pymupdf
-from borehole_extraction.extraction.stratigraphy.depth.interval import AAboveBInterval
+from borehole_extraction.extraction.stratigraphy.interval.interval import AAboveBInterval, IntervalBlockGroup
 from borehole_extraction.extraction.util_extraction.geometry.geometry_dataclasses import Line
 from borehole_extraction.extraction.util_extraction.text.find_description import get_description_blocks
 from borehole_extraction.extraction.util_extraction.text.textline import TextLine
 
-from .interval_block_group import IntervalBlockGroup
+from ..base_sidebar_entry.sidebar_entry import DepthColumnEntry
 from .sidebar import Sidebar
-from .sidebarentry import DepthColumnEntry
 
 
 @dataclass

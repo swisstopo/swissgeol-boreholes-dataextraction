@@ -3,9 +3,15 @@
 import pymupdf
 import pytest
 import rtree
-from borehole_extraction.extraction.stratigraphy.sidebar.a_above_b_sidebar_extractor import AAboveBSidebarExtractor
-from borehole_extraction.extraction.stratigraphy.sidebar.a_to_b_sidebar_extractor import AToBSidebarExtractor
-from borehole_extraction.extraction.stratigraphy.sidebar.depthcolumnentry_extractor import DepthColumnEntryExtractor
+from borehole_extraction.extraction.stratigraphy.sidebar_extractor.a_above_b_sidebar_extractor import (
+    AAboveBSidebarExtractor,
+)
+from borehole_extraction.extraction.stratigraphy.sidebar_extractor.a_to_b_sidebar_extractor import (
+    AToBSidebarExtractor,
+)
+from borehole_extraction.extraction.stratigraphy.sidebar_extractor.depth_column_entry_extractor import (
+    DepthColumnEntryExtractor,
+)
 from borehole_extraction.extraction.util_extraction.text.textline import TextWord
 
 PAGE_NUMBER = 1

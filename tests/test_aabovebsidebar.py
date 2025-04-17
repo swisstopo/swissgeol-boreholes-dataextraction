@@ -1,40 +1,43 @@
 """Test suite for the find_depth_columns module."""
 
 import pymupdf
-from borehole_extraction.extraction.stratigraphy.sidebar.a_above_b_sidebar import AAboveBSidebar, generate_alternatives
-from borehole_extraction.extraction.stratigraphy.sidebar.sidebarentry import DepthColumnEntry
+from borehole_extraction.extraction.stratigraphy.base_sidebar_entry.sidebar_entry import DepthColumnEntry
+from borehole_extraction.extraction.stratigraphy.sidebar_classes.a_above_b_sidebar import (
+    AAboveBSidebar,
+    generate_alternatives,
+)
 
 
 def test_aabovebsidebar_closetoarithmeticprogression():  # noqa: D103
     """Test the close_to_arithmetic_progression method of the AAboveBSidebar class."""
     sidebar = AAboveBSidebar(
         [
-            DepthColumnEntry(pymupdf.Rect(), value=1),
-            DepthColumnEntry(pymupdf.Rect(), value=2),
-            DepthColumnEntry(pymupdf.Rect(), value=3),
-            DepthColumnEntry(pymupdf.Rect(), value=4),
-            DepthColumnEntry(pymupdf.Rect(), value=5),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=1),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=2),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=3),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=4),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=5),
         ]
     )
     assert sidebar.close_to_arithmetic_progression(), "The sidebar should be recognized as arithmetic progression"
 
     sidebar = AAboveBSidebar(
         [
-            DepthColumnEntry(pymupdf.Rect(), value=0.2),
-            DepthColumnEntry(pymupdf.Rect(), value=0.3),
-            DepthColumnEntry(pymupdf.Rect(), value=0.4),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=0.2),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=0.3),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=0.4),
         ]
     )
     assert sidebar.close_to_arithmetic_progression(), "The sidebar should be recognized as arithmetic progression"
 
     sidebar = AAboveBSidebar(
         [
-            DepthColumnEntry(pymupdf.Rect(), value=17.6),
-            DepthColumnEntry(pymupdf.Rect(), value=18.15),
-            DepthColumnEntry(pymupdf.Rect(), value=18.65),
-            DepthColumnEntry(pymupdf.Rect(), value=19.3),
-            DepthColumnEntry(pymupdf.Rect(), value=19.9),
-            DepthColumnEntry(pymupdf.Rect(), value=20.5),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=17.6),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=18.15),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=18.65),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=19.3),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=19.9),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=20.5),
         ]
     )
     assert (
@@ -64,7 +67,7 @@ def test_aabovebsidebar_makeascending():  # noqa: D103
     """Test the make_ascending method of the AAboveBSidebar class."""
 
     def run_test(in_values, out_values):
-        sidebar = AAboveBSidebar([DepthColumnEntry(pymupdf.Rect(), value=value) for value in in_values])
+        sidebar = AAboveBSidebar([DepthColumnEntry(rect=pymupdf.Rect(), value=value) for value in in_values])
         result = [entry.value for entry in sidebar.make_ascending().entries]
         assert result == out_values, f"Expected {out_values}, but got {result}"
 
@@ -97,7 +100,11 @@ def test_generate_alternatives():
 
 def test_valid_value():
     """Test _valid_value helper function for make_ascending method of the AAboveBSidebar class."""
-    entries = [DepthColumnEntry(None, 1), DepthColumnEntry(None, 2), DepthColumnEntry(None, 3)]
+    entries = [
+        DepthColumnEntry(rect=None, value=1),
+        DepthColumnEntry(rect=None, value=2),
+        DepthColumnEntry(rect=None, value=3),
+    ]
     sidebar = AAboveBSidebar(entries)
 
     assert sidebar._valid_value(1, 2) is True
@@ -112,11 +119,11 @@ def test_aabovebsidebar_isstrictlyincreasing():  # noqa: D103
     # Case 1: Strictly increasing values
     sidebar = AAboveBSidebar(
         [
-            DepthColumnEntry(pymupdf.Rect(), value=1),
-            DepthColumnEntry(pymupdf.Rect(), value=2),
-            DepthColumnEntry(pymupdf.Rect(), value=3),
-            DepthColumnEntry(pymupdf.Rect(), value=4),
-            DepthColumnEntry(pymupdf.Rect(), value=5),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=1),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=2),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=3),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=4),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=5),
         ]
     )
     assert sidebar.is_strictly_increasing(), "The sidebar should be strictly increasing"
@@ -124,10 +131,10 @@ def test_aabovebsidebar_isstrictlyincreasing():  # noqa: D103
     # Case 2: Not strictly increasing (equal values)
     sidebar = AAboveBSidebar(
         [
-            DepthColumnEntry(pymupdf.Rect(), value=1),
-            DepthColumnEntry(pymupdf.Rect(), value=2),
-            DepthColumnEntry(pymupdf.Rect(), value=2),
-            DepthColumnEntry(pymupdf.Rect(), value=4),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=1),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=2),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=2),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=4),
         ]
     )
     assert not sidebar.is_strictly_increasing(), "The sidebar should not be strictly increasing"
@@ -135,10 +142,10 @@ def test_aabovebsidebar_isstrictlyincreasing():  # noqa: D103
     # Case 3: Not strictly increasing (decreasing)
     sidebar = AAboveBSidebar(
         [
-            DepthColumnEntry(pymupdf.Rect(), value=5),
-            DepthColumnEntry(pymupdf.Rect(), value=4),
-            DepthColumnEntry(pymupdf.Rect(), value=3),
-            DepthColumnEntry(pymupdf.Rect(), value=2),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=5),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=4),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=3),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=2),
         ]
     )
     assert not sidebar.is_strictly_increasing(), "The sidebar should not be strictly increasing"
@@ -146,7 +153,7 @@ def test_aabovebsidebar_isstrictlyincreasing():  # noqa: D103
     # Case 4: Single entry (trivial)
     sidebar = AAboveBSidebar(
         [
-            DepthColumnEntry(pymupdf.Rect(), value=1),
+            DepthColumnEntry(rect=pymupdf.Rect(), value=1),
         ]
     )
     assert sidebar.is_strictly_increasing(), "A single entry should be considered strictly increasing"

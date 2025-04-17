@@ -1,7 +1,7 @@
 """Test suite for the interval module."""
 
 import pymupdf
-from borehole_extraction.extraction.stratigraphy.depth.a_to_b_interval_extractor import AToBIntervalExtractor
+from borehole_extraction.extraction.stratigraphy.interval.a_to_b_interval_extractor import AToBIntervalExtractor
 from borehole_extraction.extraction.util_extraction.text.textline import TextLine, TextWord
 
 # TODO: add tests for AAboveBInterval.matching_blocks

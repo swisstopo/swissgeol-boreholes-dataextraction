@@ -2,13 +2,13 @@
 
 import re
 
-from borehole_extraction.extraction.stratigraphy.depth.interval import AToBInterval
+from borehole_extraction.extraction.stratigraphy.interval.interval import AToBInterval
 from borehole_extraction.extraction.util_extraction.text.textline import TextWord
 
-from .a_to_b_sidebar import AToBSidebar
-from .cluster import Cluster
-from .depthcolumnentry_extractor import DepthColumnEntryExtractor
-from .sidebarentry import DepthColumnEntry
+from ..base_sidebar_entry.sidebar_entry import DepthColumnEntry
+from ..sidebar_classes.a_to_b_sidebar import AToBSidebar
+from ..sidebar_utils.cluster import Cluster
+from .depth_column_entry_extractor import DepthColumnEntryExtractor
 
 
 class AToBSidebarExtractor:
