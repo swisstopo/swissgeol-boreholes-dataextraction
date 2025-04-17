@@ -2,6 +2,7 @@
 
 import csv
 import json
+import os
 import shutil
 from collections import Counter, OrderedDict
 from collections.abc import Callable
@@ -42,15 +43,18 @@ def get_data_class_count(layer_descriptions: list[LayerInformations]) -> dict[st
     return class_counts
 
 
-def write_predictions(layers_with_predictions: list[LayerInformations], out_dir: Path):
+def write_predictions(
+    layers_with_predictions: list[LayerInformations], out_dir: Path, out_path: str = "uscs_class_predictions.json"
+):
     """Writes the predictions and ground truth data to a JSON file.
 
     Args:
         layers_with_predictions (list[LayerInformations]): List of layers with predictions.
         out_dir (Path): Path to the output directory.
+        out_path (str): Name of the output file (default: "uscs_class_predictions.json").
     """
     out_dir.mkdir(parents=True, exist_ok=True)  # Ensure the output directory exists
-    output_file = out_dir / "uscs_class_predictions.json"
+    output_file = out_dir / out_path
 
     output_data = {}
 
@@ -82,6 +86,37 @@ def write_predictions(layers_with_predictions: list[LayerInformations], out_dir:
 
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(output_data, f, ensure_ascii=False, indent=4)
+
+
+def write_api_failures(api_failures: list, output_directory: Path, filename: str = "api_failure.json") -> None:
+    """Write API call failures to a JSON file.
+
+    Args:
+        api_failures: List of dictionaries containing API failure information
+        output_directory: Directory where the file should be saved
+        filename: Name of the output file (default: "api_failure.json")
+    """
+    if not api_failures:
+        return
+
+    os.makedirs(output_directory, exist_ok=True)
+    failures_path = output_directory / filename
+
+    existing_failures = []
+    if failures_path.exists():
+        try:
+            with open(failures_path) as f:
+                existing_failures = json.load(f)
+        except json.JSONDecodeError:
+            # Overwrite the file if it isn't a valid JSON
+            print(f"Warning: Existing file {failures_path} contained invalid JSON and will be overwritten")
+
+    all_failures = existing_failures + api_failures
+
+    with open(failures_path, "w") as f:
+        json.dump(all_failures, f, indent=2)
+
+    print(f"Recorded {len(api_failures)} failed API calls to {failures_path}, total records: {len(all_failures)}")
 
 
 @dataclass

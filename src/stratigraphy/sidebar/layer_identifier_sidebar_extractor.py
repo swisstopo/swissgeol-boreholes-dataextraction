@@ -68,8 +68,16 @@ class LayerIdentifierSidebarExtractor:
 
         result = []
         # Remove columns that are fully contained in a longer column
+        # Also check that the columns are mostly ascending, both numerically and alphabetically (e.g. 2 < 3a < 3b
+        # < 5 is valid). Some errors are tolerated, as the indicators (especially in Geneva) sometimes carry a
+        # semantic meaning instead of being strictly ordered (e.g. geoquat/validation/9394.pdf), and we also need to
+        # account for human or OCR mistakes. We only reject a column if the error ratio is bigger than the parameter
+        # layer_identifier_acceptance_ratio specified in the config file.
         for sidebar in sidebars_by_length:
-            if not any(result_sidebar.rect().contains(sidebar.rect()) for result_sidebar in result):
+            if (
+                not any(result_sidebar.rect().contains(sidebar.rect()) for result_sidebar in result)
+                and sidebar.has_regular_progression()
+            ):
                 result.append(sidebar)
 
         return result
