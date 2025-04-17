@@ -22,9 +22,6 @@ from transformers import Trainer, TrainingArguments
 
 logger = logging.getLogger(__name__)
 
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
 classification_params = read_params("classification_params.yml")
 model_config = read_params("bert_config.yml")
 
@@ -224,19 +221,7 @@ class BertClassifier:
         Args:
             layer_descriptions (list[LayerInformations]): The LayerInformations object
         """
-        # for unbatched 501.22s
-        # for layer in layer_descriptions:
-        #     layer.prediction_uscs_class = self.bert_model.predict_uscs_class(layer.material_description)
-
-        # for batched: 386.75s
-        # texts = [layer.material_description for layer in layer_descriptions]
-        # predictions = self.bert_model.predict_uscs_class_batched(
-        #     texts, batch_size=model_config["inference_batch_size"]
-        # )
-        # for layer, prediction in zip(layer_descriptions, predictions, strict=True):
-        #     layer.prediction_uscs_class = prediction
-
-        # using dummy trainer 191.745s
+        # We create an instance of Trainer only for prediction as it is much faster than using custom methods.
         eval_dataset = self.bert_model.get_tokenized_dataset(layer_descriptions)
         trainer = Trainer(
             model=self.bert_model.model,

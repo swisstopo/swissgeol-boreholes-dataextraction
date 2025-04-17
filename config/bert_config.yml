@@ -7,13 +7,19 @@ eval_subset: "geoquat/validation"
 
 # Training hyperparameters
 batch_size: 32
-num_epochs: 6
-learning_rate: 3e-3
+num_epochs: 32
+learning_rate: 1e-4
 weight_decay: 0.001
 warmup_ratio: 0.1
+#lr_scheduler_type: "cosine"
 lr_scheduler_type: "cosine_with_restarts"
-# lr_scheduler_type: "cosine"
 max_grad_norm: 5.0
+# Custom Training hyperparameters
+unfreeze_layers:
+  - "classifier"
+  - "pooler"
+  - "layer_11"
+use_class_balancing: "true"
 
 # Inference parameters
 inference_batch_size: 32
