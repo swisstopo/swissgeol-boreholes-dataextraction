@@ -331,6 +331,28 @@ class MaterialDescriptionRectWithSidebarExtractor:
             return candidate_rects[0]
 
 
+def process_page(
+    text_lines: list[TextLine], geometric_lines: list[Line], language: str, page_number: int, **matching_params: dict
+) -> list[ExtractedBorehole]:
+    """Process a single PDF page and extract borehole information.
+
+    Acts as a simple interface to MaterialDescriptionRectWithSidebarExtractor without requiring direct class usage.
+
+    Args:
+        text_lines (list[TextLine]): All text lines on the page.
+        geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
+        language (str): Language of the page (used in parsing).
+        page_number (int): The page number (0-indexed).
+        **matching_params (dict): Additional parameters for the matching pipeline.
+
+    Returns:
+        list[ExtractedBorehole]: Extracted borehole layers from the page.
+    """
+    return MaterialDescriptionRectWithSidebarExtractor(
+        text_lines, geometric_lines, language, page_number, **matching_params
+    ).process_page()
+
+
 def match_columns(
     sidebar: Sidebar,
     description_lines: list[TextLine],

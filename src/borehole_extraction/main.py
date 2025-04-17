@@ -15,7 +15,7 @@ from borehole_extraction import DATAPATH
 from borehole_extraction.annotations.draw import draw_predictions
 from borehole_extraction.annotations.plot_utils import plot_lines
 from borehole_extraction.evaluation.benchmark.score import evaluate_all_predictions
-from borehole_extraction.extraction.extract import MaterialDescriptionRectWithSidebarExtractor
+from borehole_extraction.extraction.extract import process_page
 from borehole_extraction.extraction.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
     GroundwaterLevelExtractor,
@@ -272,9 +272,9 @@ def start_pipeline(
 
                 text_lines = extract_text_lines(page)
                 geometric_lines = extract_lines(page, line_detection_params)
-                extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(
+                extracted_boreholes = process_page(
                     text_lines, geometric_lines, file_metadata.language, page_number, **matching_params
-                ).process_page()
+                )
                 processed_page_results = LayersInDocument(extracted_boreholes, filename)
 
                 # Extract the groundwater levels
