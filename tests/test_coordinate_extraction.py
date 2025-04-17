@@ -2,15 +2,15 @@
 
 import pymupdf
 import pytest
-from stratigraphy import DATAPATH
-from stratigraphy.lines.line import TextLine, TextWord
-from stratigraphy.metadata.coordinate_extraction import (
+from borehole_extraction import DATAPATH
+from borehole_extraction.extraction.metadata.coordinate_extraction import (
     Coordinate,
     CoordinateEntry,
     CoordinateExtractor,
     LV03Coordinate,
     LV95Coordinate,
 )
+from borehole_extraction.extraction.util_extraction.lines.line import TextLine, TextWord
 
 
 def test_strLV95():  # noqa: D103

@@ -16,8 +16,8 @@ from description_classification.models.model import BertModel
 from description_classification.utils.data_loader import LayerInformations
 from description_classification.utils.data_utils import write_api_failures, write_predictions
 from description_classification.utils.uscs_classes import USCSClasses, map_most_similar_uscs
+from general_utils.file_utils import read_params
 from nltk.stem.snowball import SnowballStemmer
-from stratigraphy.util.util import read_params
 from transformers import Trainer, TrainingArguments
 
 logger = logging.getLogger(__name__)

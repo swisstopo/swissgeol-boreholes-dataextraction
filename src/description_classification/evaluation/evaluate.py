@@ -5,10 +5,10 @@ import os
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+from borehole_extraction.evaluation.evaluation_dataclasses import Metrics
 from description_classification.utils.data_loader import LayerInformations
 from description_classification.utils.uscs_classes import USCSClasses
-from stratigraphy.evaluation.evaluation_dataclasses import Metrics
-from stratigraphy.util.util import read_params
+from general_utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
 

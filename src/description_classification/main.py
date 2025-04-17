@@ -6,7 +6,7 @@ from pathlib import Path
 
 import click
 from dotenv import load_dotenv
-from stratigraphy.util.util import read_params
+from general_utils.file_utils import read_params
 
 from description_classification import DATAPATH
 from description_classification.classifiers.classifiers import (

@@ -14,12 +14,16 @@ from app.common.schemas import (
     ExtractTextResponse,
     FormatTypes,
 )
+from borehole_extraction.extraction.metadata.coordinate_extraction import (
+    CoordinateExtractor,
+    LV03Coordinate,
+    LV95Coordinate,
+)
+from borehole_extraction.extraction.util_extraction.lines.line import TextLine
+from borehole_extraction.extraction.util_extraction.text.extract_text import extract_text_lines
 from fastapi import HTTPException
-from stratigraphy.lines.line import TextLine
-from stratigraphy.metadata.coordinate_extraction import CoordinateExtractor, LV03Coordinate, LV95Coordinate
-from stratigraphy.metadata.language_detection import detect_language_of_text
-from stratigraphy.text.extract_text import extract_text_lines
-from stratigraphy.util.util import read_params
+from general_utils.file_utils import read_params
+from general_utils.language_detection import detect_language_of_text
 
 matching_params = read_params("matching_params.yml")
 

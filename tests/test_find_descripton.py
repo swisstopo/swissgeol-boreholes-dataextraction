@@ -1,9 +1,9 @@
 """Test suite for the find_description module."""
 
 import pymupdf
-from stratigraphy.lines.line import TextLine, TextWord
-from stratigraphy.text.find_description import get_description_blocks
-from stratigraphy.util.dataclasses import Line, Point
+from borehole_extraction.extraction.util_extraction.dataclasses import Line, Point
+from borehole_extraction.extraction.util_extraction.lines.line import TextLine, TextWord
+from borehole_extraction.extraction.util_extraction.text.find_description import get_description_blocks
 
 page_number = 1
 textline1 = TextLine([TextWord(pymupdf.Rect([0, 0, 10, 10]), "Hello", page_number)])

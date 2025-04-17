@@ -5,19 +5,28 @@ from unittest.mock import Mock
 
 import pymupdf
 import pytest
-from stratigraphy.benchmark.ground_truth import GroundTruth
-from stratigraphy.data_extractor.data_extractor import FeatureOnPage
-from stratigraphy.evaluation.layer_evaluator import LayerEvaluator
-from stratigraphy.evaluation.utility import evaluate, evaluate_single
-from stratigraphy.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
-from stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry, LayersInBorehole
-from stratigraphy.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
-from stratigraphy.metadata.metadata import BoreholeMetadata, FileMetadata
-from stratigraphy.text.textblock import MaterialDescription
-from stratigraphy.util.borehole_predictions import BoreholePredictionsWithGroundTruth, FilePredictionsWithGroundTruth
-from stratigraphy.util.file_predictions import FilePredictions
-from stratigraphy.util.overall_file_predictions import OverallFilePredictions
-from stratigraphy.util.predictions import AllBoreholePredictionsWithGroundTruth, BoreholePredictions
+from borehole_extraction.evaluation.benchmark.ground_truth import GroundTruth
+from borehole_extraction.evaluation.layer_evaluator import LayerEvaluator
+from borehole_extraction.evaluation.utility import evaluate, evaluate_single
+from borehole_extraction.extraction.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
+from borehole_extraction.extraction.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
+from borehole_extraction.extraction.metadata.metadata import BoreholeMetadata, FileMetadata
+from borehole_extraction.extraction.predictions.borehole_predictions import (
+    BoreholePredictions,
+    BoreholePredictionsWithGroundTruth,
+    FilePredictionsWithGroundTruth,
+)
+from borehole_extraction.extraction.predictions.file_predictions import FilePredictions
+from borehole_extraction.extraction.predictions.overall_file_predictions import OverallFilePredictions
+from borehole_extraction.extraction.predictions.predictions import AllBoreholePredictionsWithGroundTruth
+from borehole_extraction.extraction.stratigraphy.layer.layer import (
+    Layer,
+    LayerDepths,
+    LayerDepthsEntry,
+    LayersInBorehole,
+)
+from borehole_extraction.extraction.util_extraction.data_extractor.data_extractor import FeatureOnPage
+from borehole_extraction.extraction.util_extraction.text.textblock import MaterialDescription
 
 
 @pytest.fixture

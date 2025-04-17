@@ -1,8 +1,8 @@
 """Test suite for the find_depth_columns module."""
 
 import pymupdf
-from stratigraphy.sidebar.a_above_b_sidebar import AAboveBSidebar, generate_alternatives
-from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
+from borehole_extraction.extraction.stratigraphy.sidebar.a_above_b_sidebar import AAboveBSidebar, generate_alternatives
+from borehole_extraction.extraction.stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 
 
 def test_aabovebsidebar_closetoarithmeticprogression():  # noqa: D103

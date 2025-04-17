@@ -1,7 +1,7 @@
 """Test suite for the LayerDepths class."""
 
 import pymupdf
-from stratigraphy.layer.layer import LayerDepths, LayerDepthsEntry
+from borehole_extraction.extraction.stratigraphy.layer.layer import LayerDepths, LayerDepthsEntry
 
 
 def test_line_anchor():  # noqa: D103
