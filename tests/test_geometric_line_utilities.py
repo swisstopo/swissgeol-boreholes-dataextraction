@@ -2,8 +2,7 @@
 
 import numpy as np
 import pytest
-from borehole_extraction.extraction.util_extraction.dataclasses import Line, Point
-from borehole_extraction.extraction.util_extraction.lines.geometric_line_utilities import (
+from borehole_extraction.extraction.util_extraction.geometry.geometric_line_utilities import (
     _get_orthogonal_projection_to_line,
     _merge_lines,
     _odr_regression,
@@ -11,6 +10,7 @@ from borehole_extraction.extraction.util_extraction.lines.geometric_line_utiliti
     is_point_on_line,
     merge_parallel_lines_quadtree,
 )
+from borehole_extraction.extraction.util_extraction.geometry.geometry_dataclasses import Line, Point
 
 
 # Remember, phi is orthogonal to the line we are to parameterize

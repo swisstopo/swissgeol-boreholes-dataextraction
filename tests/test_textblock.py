@@ -1,8 +1,8 @@
 """Test suite for the textblock module."""
 
 import pymupdf
-from borehole_extraction.extraction.util_extraction.lines.line import TextLine, TextWord
 from borehole_extraction.extraction.util_extraction.text.textblock import TextBlock, block_distance
+from borehole_extraction.extraction.util_extraction.text.textline import TextLine, TextWord
 
 
 def test_concatenate():  # noqa: D103

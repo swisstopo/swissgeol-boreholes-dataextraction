@@ -10,7 +10,7 @@ from typing import Generic, Self, TypeVar
 
 import pymupdf
 import regex
-from borehole_extraction.extraction.util_extraction.lines.line import TextLine
+from borehole_extraction.extraction.util_extraction.text.textline import TextLine
 from general_utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)

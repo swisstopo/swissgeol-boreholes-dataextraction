@@ -20,8 +20,8 @@ from borehole_extraction.extraction.stratigraphy.sidebar.layer_identifier_sideba
 )
 from borehole_extraction.extraction.stratigraphy.sidebar.sidebar import Sidebar, SidebarNoise, noise_count
 from borehole_extraction.extraction.util_extraction.data_extractor.data_extractor import FeatureOnPage
-from borehole_extraction.extraction.util_extraction.dataclasses import Line
-from borehole_extraction.extraction.util_extraction.lines.line import TextLine
+from borehole_extraction.extraction.util_extraction.geometry.geometry_dataclasses import Line
+from borehole_extraction.extraction.util_extraction.geometry.util import x_overlap, x_overlap_significant_smallest
 from borehole_extraction.extraction.util_extraction.text.find_description import (
     get_description_blocks,
     get_description_lines,
@@ -32,7 +32,7 @@ from borehole_extraction.extraction.util_extraction.text.textblock import (
     TextBlock,
     block_distance,
 )
-from borehole_extraction.extraction.util_extraction.util import x_overlap, x_overlap_significant_smallest
+from borehole_extraction.extraction.util_extraction.text.textline import TextLine
 from pandas import Interval
 
 

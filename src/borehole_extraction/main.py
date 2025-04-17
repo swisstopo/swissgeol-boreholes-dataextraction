@@ -27,7 +27,7 @@ from borehole_extraction.extraction.predictions.overall_file_predictions import 
 from borehole_extraction.extraction.predictions.predictions import BoreholeListBuilder
 from borehole_extraction.extraction.stratigraphy.layer.duplicate_detection import remove_duplicate_layers
 from borehole_extraction.extraction.stratigraphy.layer.layer import LayersInDocument
-from borehole_extraction.extraction.util_extraction.lines.line_detection import extract_lines
+from borehole_extraction.extraction.util_extraction.geometry.line_detection import extract_lines
 from borehole_extraction.extraction.util_extraction.text.extract_text import extract_text_lines
 
 load_dotenv()

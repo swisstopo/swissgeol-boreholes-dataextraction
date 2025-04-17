@@ -1,8 +1,9 @@
 """This module contains general utility functions for the stratigraphy module."""
 
 import pymupdf
-from borehole_extraction.extraction.util_extraction.dataclasses import Line, Point
 from numpy.typing import ArrayLike
+
+from .geometry_dataclasses import Line, Point
 
 
 def x_overlap(rect1: pymupdf.Rect, rect2: pymupdf.Rect) -> float:  # noqa: D103

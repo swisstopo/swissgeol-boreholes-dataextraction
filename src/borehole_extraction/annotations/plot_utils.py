@@ -5,7 +5,7 @@ import logging
 import cv2
 import numpy as np
 import pymupdf
-from borehole_extraction.extraction.util_extraction.dataclasses import Line
+from borehole_extraction.extraction.util_extraction.geometry.geometry_dataclasses import Line
 from borehole_extraction.extraction.util_extraction.text.textblock import TextBlock
 
 logger = logging.getLogger(__name__)

@@ -10,7 +10,7 @@ from borehole_extraction.extraction.metadata.coordinate_extraction import (
     LV03Coordinate,
     LV95Coordinate,
 )
-from borehole_extraction.extraction.util_extraction.lines.line import TextLine, TextWord
+from borehole_extraction.extraction.util_extraction.text.textline import TextLine, TextWord
 
 
 def test_strLV95():  # noqa: D103

@@ -2,7 +2,7 @@
 
 import re
 
-from borehole_extraction.extraction.util_extraction.lines.line import TextLine
+from borehole_extraction.extraction.util_extraction.text.textline import TextLine
 
 from .cluster import Cluster
 from .layer_identifier_sidebar import LayerIdentifierEntry, LayerIdentifierSidebar

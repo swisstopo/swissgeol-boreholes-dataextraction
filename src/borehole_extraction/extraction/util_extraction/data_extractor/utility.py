@@ -1,6 +1,6 @@
 """Utility functions for the data extractor module."""
 
-from borehole_extraction.extraction.util_extraction.lines.line import TextLine
+from borehole_extraction.extraction.util_extraction.text.textline import TextLine
 from pymupdf import Rect
 
 

@@ -6,15 +6,13 @@ import os
 import cv2
 import numpy as np
 import pymupdf
-from borehole_extraction.extraction.util_extraction.dataclasses import Line
-from borehole_extraction.extraction.util_extraction.lines.geometric_line_utilities import (
-    drop_vertical_lines,
-    merge_parallel_lines_quadtree,
-)
-from borehole_extraction.extraction.util_extraction.util import line_from_array
 from dotenv import load_dotenv
 from general_utils.file_utils import read_params
 from numpy.typing import ArrayLike
+
+from .geometric_line_utilities import drop_vertical_lines, merge_parallel_lines_quadtree
+from .geometry_dataclasses import Line
+from .util import line_from_array
 
 load_dotenv()
 

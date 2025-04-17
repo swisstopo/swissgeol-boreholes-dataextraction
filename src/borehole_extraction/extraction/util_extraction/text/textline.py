@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pymupdf
-from borehole_extraction.extraction.util_extraction.util import x_overlap_significant_largest
+from borehole_extraction.extraction.util_extraction.geometry.util import x_overlap_significant_largest
 from general_utils.file_utils import read_params
 
 material_description = read_params("matching_params.yml")["material_description"]

@@ -6,9 +6,10 @@ from itertools import combinations
 from math import atan, cos, pi, sin
 
 import numpy as np
-from borehole_extraction.extraction.util_extraction.dataclasses import Line, Point
-from borehole_extraction.extraction.util_extraction.lines.linesquadtree import LinesQuadTree
 from numpy.typing import ArrayLike
+
+from .geometry_dataclasses import Line, Point
+from .linesquadtree import LinesQuadTree
 
 logger = logging.getLogger(__name__)
 

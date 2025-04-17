@@ -11,7 +11,8 @@ from borehole_extraction.extraction.util_extraction.data_extractor.data_extracto
     ExtractedFeature,
     FeatureOnPage,
 )
-from borehole_extraction.extraction.util_extraction.lines.line import TextLine
+
+from .textline import TextLine
 
 
 @dataclass

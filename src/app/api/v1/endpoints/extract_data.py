@@ -19,8 +19,8 @@ from borehole_extraction.extraction.metadata.coordinate_extraction import (
     LV03Coordinate,
     LV95Coordinate,
 )
-from borehole_extraction.extraction.util_extraction.lines.line import TextLine
 from borehole_extraction.extraction.util_extraction.text.extract_text import extract_text_lines
+from borehole_extraction.extraction.util_extraction.text.textline import TextLine
 from fastapi import HTTPException
 from general_utils.file_utils import read_params
 from general_utils.language_detection import detect_language_of_text

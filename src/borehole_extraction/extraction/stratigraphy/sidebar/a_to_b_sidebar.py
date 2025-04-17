@@ -6,8 +6,8 @@ from dataclasses import dataclass
 
 import pymupdf
 from borehole_extraction.extraction.stratigraphy.depth.interval import AToBInterval
-from borehole_extraction.extraction.util_extraction.dataclasses import Line
-from borehole_extraction.extraction.util_extraction.lines.line import TextLine
+from borehole_extraction.extraction.util_extraction.geometry.geometry_dataclasses import Line
+from borehole_extraction.extraction.util_extraction.text.textline import TextLine
 
 from .interval_block_group import IntervalBlockGroup
 from .sidebar import Sidebar

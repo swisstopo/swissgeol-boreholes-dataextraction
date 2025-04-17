@@ -1,7 +1,7 @@
 """Test suite for the dataclasses module."""
 
 import pytest
-from borehole_extraction.extraction.util_extraction.dataclasses import Line, Point
+from borehole_extraction.extraction.util_extraction.geometry.geometry_dataclasses import Line, Point
 
 
 def test_distance_to():  # noqa: D103

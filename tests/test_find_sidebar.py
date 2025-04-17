@@ -6,7 +6,7 @@ import rtree
 from borehole_extraction.extraction.stratigraphy.sidebar.a_above_b_sidebar_extractor import AAboveBSidebarExtractor
 from borehole_extraction.extraction.stratigraphy.sidebar.a_to_b_sidebar_extractor import AToBSidebarExtractor
 from borehole_extraction.extraction.stratigraphy.sidebar.depthcolumnentry_extractor import DepthColumnEntryExtractor
-from borehole_extraction.extraction.util_extraction.lines.line import TextWord
+from borehole_extraction.extraction.util_extraction.text.textline import TextWord
 
 PAGE_NUMBER = 1
 

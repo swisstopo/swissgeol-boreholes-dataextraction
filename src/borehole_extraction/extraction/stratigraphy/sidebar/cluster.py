@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import Generic, Self, TypeVar
 
 import pymupdf
-from borehole_extraction.extraction.util_extraction.util import x_overlap_significant_largest
+from borehole_extraction.extraction.util_extraction.geometry.util import x_overlap_significant_largest
 
 EntryT = TypeVar("EntryT")
 

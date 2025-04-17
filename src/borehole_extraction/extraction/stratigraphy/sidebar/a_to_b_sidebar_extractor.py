@@ -3,7 +3,7 @@
 import re
 
 from borehole_extraction.extraction.stratigraphy.depth.interval import AToBInterval
-from borehole_extraction.extraction.util_extraction.lines.line import TextWord
+from borehole_extraction.extraction.util_extraction.text.textline import TextWord
 
 from .a_to_b_sidebar import AToBSidebar
 from .cluster import Cluster

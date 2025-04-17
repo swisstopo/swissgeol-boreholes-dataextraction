@@ -15,7 +15,7 @@ import skimage as ski
 from borehole_extraction.extraction.groundwater.groundwater_extraction import Groundwater, GroundwaterLevelExtractor
 from borehole_extraction.extraction.util_extraction.data_extractor.data_extractor import FeatureOnPage
 from borehole_extraction.extraction.util_extraction.data_extractor.utility import get_lines_near_rect
-from borehole_extraction.extraction.util_extraction.lines.line import TextLine
+from borehole_extraction.extraction.util_extraction.text.textline import TextLine
 
 logger = logging.getLogger(__name__)
 

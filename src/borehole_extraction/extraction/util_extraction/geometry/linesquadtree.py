@@ -3,7 +3,8 @@
 import uuid
 
 import quads
-from borehole_extraction.extraction.util_extraction.dataclasses import Line, Point
+
+from .geometry_dataclasses import Line, Point
 
 
 class LinesQuadTree:

@@ -1,7 +1,8 @@
 """Methods for extracting plain text from a PDF document."""
 
 import pymupdf
-from borehole_extraction.extraction.util_extraction.lines.line import TextLine, TextWord
+
+from .textline import TextLine, TextWord
 
 
 def extract_text_lines(page: pymupdf.Page) -> list[TextLine]:

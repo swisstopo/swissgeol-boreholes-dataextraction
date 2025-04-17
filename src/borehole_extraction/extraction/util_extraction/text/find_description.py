@@ -1,14 +1,15 @@
 """This module contains functions to find the description (blocks) of a material in a pdf page."""
 
 import pymupdf
-from borehole_extraction.extraction.util_extraction.dataclasses import Line
-from borehole_extraction.extraction.util_extraction.lines.line import TextLine
-from borehole_extraction.extraction.util_extraction.text.description_block_splitter import (
+from borehole_extraction.extraction.util_extraction.geometry.geometry_dataclasses import Line
+
+from .description_block_splitter import (
     SplitDescriptionBlockByLeftHandSideSeparator,
     SplitDescriptionBlockByLine,
     SplitDescriptionBlockByVerticalSpace,
 )
-from borehole_extraction.extraction.util_extraction.text.textblock import TextBlock
+from .textblock import TextBlock
+from .textline import TextLine
 
 
 def get_description_lines(lines: list[TextLine], material_description_rect: pymupdf.Rect) -> list[TextLine]:

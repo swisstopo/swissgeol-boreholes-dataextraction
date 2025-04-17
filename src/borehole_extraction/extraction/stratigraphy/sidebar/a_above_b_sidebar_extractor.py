@@ -3,7 +3,7 @@
 import pymupdf
 import rtree
 from borehole_extraction.extraction.stratigraphy.sidebar.depthcolumnentry_extractor import DepthColumnEntryExtractor
-from borehole_extraction.extraction.util_extraction.lines.line import TextWord
+from borehole_extraction.extraction.util_extraction.text.textline import TextWord
 
 from .a_above_b_sidebar import AAboveBSidebar
 from .a_above_b_sidebar_validator import AAboveBSidebarValidator

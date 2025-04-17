@@ -4,9 +4,10 @@ import abc
 
 import numpy as np
 import pymupdf
-from borehole_extraction.extraction.util_extraction.dataclasses import Line
-from borehole_extraction.extraction.util_extraction.lines.line import TextLine
-from borehole_extraction.extraction.util_extraction.text.textblock import TextBlock
+from borehole_extraction.extraction.util_extraction.geometry.geometry_dataclasses import Line
+
+from .textblock import TextBlock
+from .textline import TextLine
 
 
 class DescriptionBlockSplitter(metaclass=abc.ABCMeta):
