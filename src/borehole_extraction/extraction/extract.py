@@ -2,22 +2,30 @@
 
 import pymupdf
 import rtree
-from borehole_extraction.extraction.stratigraphy.depth.interval import AAboveBInterval, IntervalBlockPair
-from borehole_extraction.extraction.stratigraphy.depths_materials_pairs.bounding_boxes import PageBoundingBoxes
-from borehole_extraction.extraction.stratigraphy.depths_materials_pairs.material_description_rect_with_sidebar import (
-    MaterialDescriptionRectWithSidebar,
-)
+from borehole_extraction.extraction.stratigraphy.interval.interval import AAboveBInterval, IntervalBlockPair
 from borehole_extraction.extraction.stratigraphy.layer.layer import (
     DepthInterval,
     ExtractedBorehole,
     Layer,
 )
-from borehole_extraction.extraction.stratigraphy.sidebar.a_above_b_sidebar_extractor import AAboveBSidebarExtractor
-from borehole_extraction.extraction.stratigraphy.sidebar.a_to_b_sidebar_extractor import AToBSidebarExtractor
-from borehole_extraction.extraction.stratigraphy.sidebar.layer_identifier_sidebar_extractor import (
+from borehole_extraction.extraction.stratigraphy.layer.page_bounding_boxes import (
+    MaterialDescriptionRectWithSidebar,
+    PageBoundingBoxes,
+)
+from borehole_extraction.extraction.stratigraphy.sidebar_classes.sidebar import (
+    Sidebar,
+    SidebarNoise,
+    noise_count,
+)
+from borehole_extraction.extraction.stratigraphy.sidebar_extractor.a_above_b_sidebar_extractor import (
+    AAboveBSidebarExtractor,
+)
+from borehole_extraction.extraction.stratigraphy.sidebar_extractor.a_to_b_sidebar_extractor import (
+    AToBSidebarExtractor,
+)
+from borehole_extraction.extraction.stratigraphy.sidebar_extractor.layer_identifier_sidebar_extractor import (
     LayerIdentifierSidebarExtractor,
 )
-from borehole_extraction.extraction.stratigraphy.sidebar.sidebar import Sidebar, SidebarNoise, noise_count
 from borehole_extraction.extraction.util_extraction.data_extractor.data_extractor import FeatureOnPage
 from borehole_extraction.extraction.util_extraction.geometry.geometry_dataclasses import Line
 from borehole_extraction.extraction.util_extraction.geometry.util import x_overlap, x_overlap_significant_smallest

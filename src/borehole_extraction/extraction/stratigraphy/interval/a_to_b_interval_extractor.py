@@ -3,7 +3,7 @@
 import re
 
 import pymupdf
-from borehole_extraction.extraction.stratigraphy.sidebar.sidebarentry import DepthColumnEntry
+from borehole_extraction.extraction.stratigraphy.base_sidebar_entry.sidebar_entry import DepthColumnEntry
 from borehole_extraction.extraction.util_extraction.text.textline import TextLine
 
 from .interval import AToBInterval

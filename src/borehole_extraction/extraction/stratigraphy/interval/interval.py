@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import pymupdf
-from borehole_extraction.extraction.stratigraphy.sidebar.sidebarentry import DepthColumnEntry
+from borehole_extraction.extraction.stratigraphy.base_sidebar_entry.sidebar_entry import DepthColumnEntry
 from borehole_extraction.extraction.util_extraction.text.textblock import TextBlock
 from borehole_extraction.extraction.util_extraction.text.textline import TextLine
 
@@ -57,6 +57,18 @@ class DepthInterval:
             start=DepthColumnEntry.from_json(data["start"]) if data["start"] else None,
             end=DepthColumnEntry.from_json(data["end"]) if data["end"] else None,
         )
+
+
+@dataclass
+class IntervalBlockGroup:
+    """Helper class to represent a group of depth intervals and an associated group of text blocks.
+
+    The class is used to simplify the code for obtaining an appropriate one-to-one correspondence between depth
+    intervals and material descriptions.
+    """
+
+    depth_intervals: list[DepthInterval]
+    blocks: list[TextBlock]
 
 
 @dataclass

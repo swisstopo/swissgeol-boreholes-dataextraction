@@ -5,15 +5,15 @@ import re
 from dataclasses import dataclass
 
 import pymupdf
-from borehole_extraction.extraction.stratigraphy.depth.a_to_b_interval_extractor import AToBIntervalExtractor
+from borehole_extraction.extraction.stratigraphy.base_sidebar_entry.sidebar_entry import LayerIdentifierEntry
+from borehole_extraction.extraction.stratigraphy.interval.a_to_b_interval_extractor import AToBIntervalExtractor
+from borehole_extraction.extraction.stratigraphy.interval.interval import IntervalBlockGroup
 from borehole_extraction.extraction.util_extraction.geometry.geometry_dataclasses import Line
 from borehole_extraction.extraction.util_extraction.text.textblock import TextBlock
 from borehole_extraction.extraction.util_extraction.text.textline import TextLine
 from general_utils.file_utils import read_params
 
-from .interval_block_group import IntervalBlockGroup
 from .sidebar import Sidebar
-from .sidebarentry import LayerIdentifierEntry
 
 logger = logging.getLogger(__name__)
 matching_params = read_params("matching_params.yml")

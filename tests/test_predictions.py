@@ -19,12 +19,12 @@ from borehole_extraction.extraction.predictions.borehole_predictions import (
 from borehole_extraction.extraction.predictions.file_predictions import FilePredictions
 from borehole_extraction.extraction.predictions.overall_file_predictions import OverallFilePredictions
 from borehole_extraction.extraction.predictions.predictions import AllBoreholePredictionsWithGroundTruth
+from borehole_extraction.extraction.stratigraphy.base_sidebar_entry.sidebar_entry import DepthColumnEntry
 from borehole_extraction.extraction.stratigraphy.layer.layer import (
     DepthInterval,
     Layer,
     LayersInBorehole,
 )
-from borehole_extraction.extraction.stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 from borehole_extraction.extraction.util_extraction.data_extractor.data_extractor import FeatureOnPage
 from borehole_extraction.extraction.util_extraction.text.textblock import MaterialDescription
 

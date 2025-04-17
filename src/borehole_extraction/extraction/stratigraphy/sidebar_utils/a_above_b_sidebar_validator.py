@@ -4,8 +4,8 @@ import dataclasses
 
 import rtree
 
-from .a_above_b_sidebar import AAboveBSidebar
-from .sidebar import SidebarNoise, noise_count
+from ..sidebar_classes.a_above_b_sidebar import AAboveBSidebar
+from ..sidebar_classes.sidebar import SidebarNoise, noise_count
 
 
 @dataclasses.dataclass

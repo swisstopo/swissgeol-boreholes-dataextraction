@@ -2,10 +2,11 @@
 
 import re
 
+from borehole_extraction.extraction.stratigraphy.base_sidebar_entry.sidebar_entry import LayerIdentifierEntry
 from borehole_extraction.extraction.util_extraction.text.textline import TextLine
 
-from .cluster import Cluster
-from .layer_identifier_sidebar import LayerIdentifierEntry, LayerIdentifierSidebar
+from ..sidebar_classes.layer_identifier_sidebar import LayerIdentifierSidebar
+from ..sidebar_utils.cluster import Cluster
 
 
 class LayerIdentifierSidebarExtractor:
