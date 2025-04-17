@@ -141,7 +141,7 @@ def train_model(file_path: Path, out_directory: Path, model_checkpoint: Path):
     logger.info(f"Loading pretrained model from {model_path}.")
     bert_model = BertModel(model_path)
     bert_model.freeze_all_layers()
-    bert_model.unfreeze_list(model_config["unfreeze_layers"])
+    bert_model.unfreeze_list(model_config.get("unfreeze_layers", []))
     bert_model.model.train()
 
     # Initialize the trainer

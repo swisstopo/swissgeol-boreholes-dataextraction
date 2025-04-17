@@ -62,6 +62,18 @@ class BertModel:
         self.unfreeze_classifier()
 
     def unfreeze_list(self, unfreeze_list: list[str]):
+        """Unfreeze a list of layers.
+
+        Args:
+            unfreeze_list (list[str]): A list of layers to unfreeze. Possible values are:
+                - "classifier"
+                - "pooler"
+                - "layer_11"
+                - "layer_10"
+                - "all"
+        """
+        if not unfreeze_list:
+            logger.warning("No layer to unfreeze, the model will not be trained.")
         if "all" in unfreeze_list:
             logger.warning("Warning: Unfreezing all layers may consume excessive RAM and raise an error.")
             self.unfreeze_all_layers()
