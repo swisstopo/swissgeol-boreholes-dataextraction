@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import pymupdf
 from borehole_extraction.extraction.stratigraphy.depth.interval import Interval
-from borehole_extraction.extraction.stratigraphy.depths_materials_column_pairs.bounding_boxes import PageBoundingBoxes
+from borehole_extraction.extraction.stratigraphy.depths_materials_pairs.bounding_boxes import PageBoundingBoxes
 from borehole_extraction.extraction.util_extraction.data_extractor.data_extractor import (
     ExtractedFeature,
     FeatureOnPage,

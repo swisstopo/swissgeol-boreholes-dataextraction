@@ -6,7 +6,7 @@ import io
 
 from borehole_extraction.extraction.groundwater.groundwater_extraction import GroundwatersInBorehole
 from borehole_extraction.extraction.metadata.metadata import BoreholeMetadata
-from borehole_extraction.extraction.stratigraphy.depths_materials_column_pairs.bounding_boxes import PageBoundingBoxes
+from borehole_extraction.extraction.stratigraphy.depths_materials_pairs.bounding_boxes import PageBoundingBoxes
 from borehole_extraction.extraction.stratigraphy.layer.layer import LayersInBorehole
 
 

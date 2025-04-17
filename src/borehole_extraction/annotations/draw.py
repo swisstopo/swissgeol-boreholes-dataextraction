@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 import pymupdf
 from borehole_extraction.extraction.predictions.overall_file_predictions import OverallFilePredictions
-from borehole_extraction.extraction.stratigraphy.depths_materials_column_pairs.bounding_boxes import PageBoundingBoxes
+from borehole_extraction.extraction.stratigraphy.depths_materials_pairs.bounding_boxes import PageBoundingBoxes
 from borehole_extraction.extraction.stratigraphy.layer.layer import Layer
 from dotenv import load_dotenv
 

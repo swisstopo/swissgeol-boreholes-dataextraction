@@ -29,7 +29,7 @@ from borehole_extraction.extraction.predictions.borehole_predictions import (
     FileMetadataWithGroundTruth,
     FilePredictionsWithGroundTruth,
 )
-from borehole_extraction.extraction.stratigraphy.depths_materials_column_pairs.bounding_boxes import PageBoundingBoxes
+from borehole_extraction.extraction.stratigraphy.depths_materials_pairs.bounding_boxes import PageBoundingBoxes
 from borehole_extraction.extraction.stratigraphy.layer.layer import LayersInBorehole, LayersInDocument
 from borehole_extraction.extraction.util_extraction.data_extractor.data_extractor import FeatureOnPage
 from scipy.optimize import linear_sum_assignment
