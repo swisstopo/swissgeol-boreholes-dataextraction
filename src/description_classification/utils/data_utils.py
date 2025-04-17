@@ -80,7 +80,9 @@ def write_predictions(
                 "ground_truth_uscs_class": layer.ground_truth_uscs_class.name
                 if layer.ground_truth_uscs_class
                 else None,
-                "prediction_uscs_class": layer.prediction_uscs_class.name if layer.prediction_uscs_class else None,
+                "prediction_uscs_class": layer.prediction_uscs_class.name
+                if layer.prediction_uscs_class is not None
+                else None,
             }
         )
 
