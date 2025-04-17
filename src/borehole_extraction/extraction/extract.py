@@ -2,16 +2,15 @@
 
 import pymupdf
 import rtree
-from borehole_extraction.extraction.stratigraphy.depth.interval import AAboveBInterval
+from borehole_extraction.extraction.stratigraphy.depth.interval import AAboveBInterval, IntervalBlockPair
 from borehole_extraction.extraction.stratigraphy.depths_materials_pairs.bounding_boxes import PageBoundingBoxes
 from borehole_extraction.extraction.stratigraphy.depths_materials_pairs.material_description_rect_with_sidebar import (
     MaterialDescriptionRectWithSidebar,
 )
 from borehole_extraction.extraction.stratigraphy.layer.layer import (
+    DepthInterval,
     ExtractedBorehole,
-    IntervalBlockPair,
     Layer,
-    LayerDepths,
 )
 from borehole_extraction.extraction.stratigraphy.sidebar.a_above_b_sidebar_extractor import AAboveBSidebarExtractor
 from borehole_extraction.extraction.stratigraphy.sidebar.a_to_b_sidebar_extractor import AToBSidebarExtractor
@@ -33,7 +32,6 @@ from borehole_extraction.extraction.util_extraction.text.textblock import (
     block_distance,
 )
 from borehole_extraction.extraction.util_extraction.text.textline import TextLine
-from pandas import Interval
 
 
 class MaterialDescriptionRectWithSidebarExtractor:
@@ -128,7 +126,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     rect=pair.block.rect,
                     page=self.page_number,
                 ),
-                depths=LayerDepths.from_interval(pair.depth_interval) if pair.depth_interval else None,
+                depths=pair.depth_interval if pair.depth_interval else None,
             )
             for pair in interval_block_pairs
         ]
@@ -383,7 +381,7 @@ def match_columns(
     ]
 
 
-def transform_groups(depth_intervals: list[Interval], blocks: list[TextBlock]) -> list[IntervalBlockPair]:
+def transform_groups(depth_intervals: list[DepthInterval], blocks: list[TextBlock]) -> list[IntervalBlockPair]:
     """Transforms the text blocks such that their number equals the number of depth intervals.
 
     If there are more depth intervals than text blocks, text blocks are splitted. When there

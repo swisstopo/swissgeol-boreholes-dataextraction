@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from borehole_extraction.extraction.stratigraphy.depth.interval import Interval
+from borehole_extraction.extraction.stratigraphy.depth.interval import DepthInterval
 from borehole_extraction.extraction.util_extraction.text.textblock import TextBlock
 
 
@@ -14,5 +14,5 @@ class IntervalBlockGroup:
     intervals and material descriptions.
     """
 
-    depth_intervals: list[Interval]
+    depth_intervals: list[DepthInterval]
     blocks: list[TextBlock]
