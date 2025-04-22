@@ -4,9 +4,9 @@ import pymupdf
 import rtree
 from borehole_extraction.extraction.stratigraphy.interval.interval import AAboveBInterval, IntervalBlockPair
 from borehole_extraction.extraction.stratigraphy.layer.layer import (
-    DepthInterval,
     ExtractedBorehole,
     Layer,
+    LayerDepths,
 )
 from borehole_extraction.extraction.stratigraphy.layer.page_bounding_boxes import (
     MaterialDescriptionRectWithSidebar,
@@ -40,6 +40,7 @@ from borehole_extraction.extraction.util_extraction.text.textblock import (
     block_distance,
 )
 from borehole_extraction.extraction.util_extraction.text.textline import TextLine
+from pandas import Interval
 
 
 class MaterialDescriptionRectWithSidebarExtractor:
@@ -134,7 +135,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     rect=pair.block.rect,
                     page=self.page_number,
                 ),
-                depths=pair.depth_interval if pair.depth_interval else None,
+                depths=LayerDepths.from_interval(pair.depth_interval) if pair.depth_interval else None,
             )
             for pair in interval_block_pairs
         ]
@@ -389,7 +390,7 @@ def match_columns(
     ]
 
 
-def transform_groups(depth_intervals: list[DepthInterval], blocks: list[TextBlock]) -> list[IntervalBlockPair]:
+def transform_groups(depth_intervals: list[Interval], blocks: list[TextBlock]) -> list[IntervalBlockPair]:
     """Transforms the text blocks such that their number equals the number of depth intervals.
 
     If there are more depth intervals than text blocks, text blocks are splitted. When there

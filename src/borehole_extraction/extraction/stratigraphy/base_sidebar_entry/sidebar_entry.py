@@ -15,16 +15,16 @@ ValueT = TypeVar("ValueT")
 class SidebarEntry(abc.ABC, Generic[ValueT]):
     """Abstract class for sidebar entries (e.g. DepthColumnEntry or LayerIdentifierEntry)."""
 
-    value: ValueT
     rect: pymupdf.Rect
+    value: ValueT
 
 
 @dataclass
-class DepthColumnEntry(SidebarEntry[float]):
+class DepthColumnEntry(SidebarEntry[float]):  # noqa: D101
     """Class to represent a depth column entry."""
 
-    value: float
     rect: pymupdf.Rect
+    value: float
     has_decimal_point: bool = False
 
     def __repr__(self) -> str:
@@ -42,25 +42,6 @@ class DepthColumnEntry(SidebarEntry[float]):
             DepthColumnEntry: The depth column entry object.
         """
         return cls(rect=rect, value=abs(float(string_value)), has_decimal_point="." in string_value)
-
-    @classmethod
-    def from_json(cls, data: dict) -> DepthColumnEntry:
-        """Converts a dictionary to an object.
-
-        Args:
-            data (dict): A dictionary representing the layer depths entry.
-
-        Returns:
-            DepthColumnEntry: the corresponding LayerDepthsEntry object.
-        """
-        return cls(value=data["value"], rect=pymupdf.Rect(data["rect"]))
-
-    def to_json(self):
-        """Convert the LayerDepthsEntry object to a JSON serializable format."""
-        return {
-            "value": self.value,
-            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
-        }
 
 
 class LayerIdentifierEntry(SidebarEntry[str]):

@@ -11,8 +11,8 @@ from borehole_extraction.extraction.util_extraction.text.textline import TextLin
 from ..base_sidebar_entry.sidebar_entry import DepthColumnEntry
 
 
-class DepthInterval:
-    """class for (depth) intervals."""
+class Interval:
+    """Abstract class for (depth) intervals."""
 
     def __init__(self, start: DepthColumnEntry | None, end: DepthColumnEntry | None):
         super().__init__()
@@ -21,43 +21,6 @@ class DepthInterval:
 
     def __repr__(self):
         return f"({self.start}, {self.end})"
-
-    @property
-    def line_anchor(self) -> pymupdf.Point | None:
-        if self.start and self.end:
-            return pymupdf.Point(
-                max(self.start.rect.x1, self.end.rect.x1), (self.start.rect.y0 + self.end.rect.y1) / 2
-            )
-        elif self.start:
-            return pymupdf.Point(self.start.rect.x1, self.start.rect.y1)
-        elif self.end:
-            return pymupdf.Point(self.end.rect.x1, self.end.rect.y0)
-
-    @property
-    def background_rect(self) -> pymupdf.Rect | None:
-        if self.start and self.end and self.start.rect.y1 < self.end.rect.y0:
-            return pymupdf.Rect(
-                self.start.rect.x0, self.start.rect.y1, max(self.start.rect.x1, self.end.rect.x1), self.end.rect.y0
-            )
-
-    def to_json(self):
-        """Convert the LayerDepths object to a JSON serializable format."""
-        return {"start": self.start.to_json() if self.start else None, "end": self.end.to_json() if self.end else None}
-
-    @classmethod
-    def from_json(cls, data: dict) -> DepthInterval:
-        """Converts a dictionary to an object.
-
-        Args:
-            data (dict): A dictionary representing the layer depths.
-
-        Returns:
-            Interval: the corresponding LayerDepths object.
-        """
-        return cls(
-            start=DepthColumnEntry.from_json(data["start"]) if data["start"] else None,
-            end=DepthColumnEntry.from_json(data["end"]) if data["end"] else None,
-        )
 
 
 @dataclass
@@ -68,7 +31,7 @@ class IntervalBlockGroup:
     intervals and material descriptions.
     """
 
-    depth_intervals: list[DepthInterval]
+    depth_intervals: list[Interval]
     blocks: list[TextBlock]
 
 
@@ -79,11 +42,11 @@ class IntervalBlockPair:
     This consist of a material description (represented as a text block) and a depth interval (if available).
     """
 
-    depth_interval: DepthInterval | None
+    depth_interval: Interval | None
     block: TextBlock
 
 
-class AAboveBInterval(DepthInterval):
+class AAboveBInterval(Interval):
     """Class for depth intervals where the upper depth is located above the lower depth on the page."""
 
     def matching_blocks(
@@ -152,7 +115,7 @@ class AAboveBInterval(DepthInterval):
         return pre, exact, post
 
 
-class AToBInterval(DepthInterval):
+class AToBInterval(Interval):
     """Class for intervals that are defined in a single line like "1.00 - 2.30m"."""
 
     def __init__(self, start: DepthColumnEntry, end: DepthColumnEntry):
@@ -167,7 +130,7 @@ class AToBInterval(DepthInterval):
         return pymupdf.Rect(self.start.rect).include_rect(self.end.rect)
 
     def matching_blocks(
-        self, all_lines: list[TextLine], line_index: int, next_interval: DepthInterval | None
+        self, all_lines: list[TextLine], line_index: int, next_interval: Interval | None
     ) -> list[TextBlock]:
         """Adds lines to a block until the next layer identifier is reached."""
         y1_threshold = None

@@ -5,7 +5,7 @@ from collections.abc import Callable
 from typing import TypeVar
 
 from borehole_extraction.evaluation.evaluation_dataclasses import Metrics
-from borehole_extraction.extraction.stratigraphy.layer.layer import DepthInterval
+from borehole_extraction.extraction.stratigraphy.layer.layer import LayerDepths
 
 
 @dataclasses.dataclass
@@ -76,7 +76,7 @@ def evaluate(extracted: list[T], ground_truth: list[U], match: Callable[[T, U], 
     return EvaluationResults(extracted_correct, ground_truth_correct)
 
 
-def is_valid_depth_interval(depths: DepthInterval, start: float, end: float) -> bool:
+def is_valid_depth_interval(depths: LayerDepths, start: float, end: float) -> bool:
     """Validate if the depth intervals match.
 
     Args:

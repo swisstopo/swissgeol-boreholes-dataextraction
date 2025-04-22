@@ -2,15 +2,103 @@
 
 from dataclasses import dataclass
 
+import pymupdf
 from borehole_extraction.extraction.util_extraction.data_extractor.data_extractor import (
     ExtractedFeature,
     FeatureOnPage,
 )
-from borehole_extraction.extraction.util_extraction.text.textblock import MaterialDescription
+from borehole_extraction.extraction.util_extraction.text.textblock import MaterialDescription, TextBlock
 from general_utils.file_utils import parse_text
 
-from ..interval.interval import DepthInterval
+from ..interval.interval import Interval
 from ..layer.page_bounding_boxes import PageBoundingBoxes
+
+
+@dataclass
+class LayerDepthsEntry:
+    """Class for the data about the upper or lower limit of a layer, as required for visualiation and evaluation."""
+
+    value: float
+    rect: pymupdf.Rect
+
+    def to_json(self):
+        """Convert the LayerDepthsEntry object to a JSON serializable format."""
+        return {
+            "value": self.value,
+            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
+        }
+
+    @classmethod
+    def from_json(cls, data: dict) -> "LayerDepthsEntry":
+        """Converts a dictionary to an object.
+
+        Args:
+            data (dict): A dictionary representing the layer depths entry.
+
+        Returns:
+            DepthColumnEntry: the corresponding LayerDepthsEntry object.
+        """
+        return cls(value=data["value"], rect=pymupdf.Rect(data["rect"]))
+
+
+@dataclass
+class LayerDepths:
+    """Class for the data about the depths of a layer that are necessary for visualiation and evaluation."""
+
+    start: LayerDepthsEntry | None
+    end: LayerDepthsEntry | None
+
+    @property
+    def line_anchor(self) -> pymupdf.Point | None:
+        if self.start and self.end:
+            return pymupdf.Point(
+                max(self.start.rect.x1, self.end.rect.x1), (self.start.rect.y0 + self.end.rect.y1) / 2
+            )
+        elif self.start:
+            return pymupdf.Point(self.start.rect.x1, self.start.rect.y1)
+        elif self.end:
+            return pymupdf.Point(self.end.rect.x1, self.end.rect.y0)
+
+    @property
+    def background_rect(self) -> pymupdf.Rect | None:
+        if self.start and self.end and self.start.rect.y1 < self.end.rect.y0:
+            return pymupdf.Rect(
+                self.start.rect.x0, self.start.rect.y1, max(self.start.rect.x1, self.end.rect.x1), self.end.rect.y0
+            )
+
+    def to_json(self):
+        """Convert the LayerDepths object to a JSON serializable format."""
+        return {"start": self.start.to_json() if self.start else None, "end": self.end.to_json() if self.end else None}
+
+    @classmethod
+    def from_json(cls, data: dict) -> "LayerDepths":
+        """Converts a dictionary to an object.
+
+        Args:
+            data (dict): A dictionary representing the layer depths.
+
+        Returns:
+            DepthColumnEntry: the corresponding LayerDepths object.
+        """
+        return cls(
+            start=LayerDepthsEntry.from_json(data["start"]) if data["start"] else None,
+            end=LayerDepthsEntry.from_json(data["end"]) if data["end"] else None,
+        )
+
+    @classmethod
+    def from_interval(cls, interval: Interval) -> "LayerDepths":
+        """Converts an Interval to a LayerDepths object.
+
+        Args:
+            interval (Interval): an AAboveBInterval or AToBInterval.
+
+        Returns:
+            LayerDepths: the corresponding LayerDepths object.
+        """
+        return cls(
+            start=LayerDepthsEntry(interval.start.value, interval.start.rect) if interval.start else None,
+            end=LayerDepthsEntry(interval.end.value, interval.end.rect) if interval.end else None,
+        )
 
 
 @dataclass
@@ -18,7 +106,7 @@ class Layer(ExtractedFeature):
     """A class to represent predictions for a single layer."""
 
     material_description: FeatureOnPage[MaterialDescription]
-    depths: DepthInterval | None
+    depths: LayerDepths | None
 
     def __str__(self) -> str:
         """Converts the object to a string.
@@ -53,7 +141,7 @@ class Layer(ExtractedFeature):
             list[LayerPrediction]: A list of LayerPrediction objects.
         """
         material_prediction = FeatureOnPage.from_json(data["material_description"], MaterialDescription)
-        depths = DepthInterval.from_json(data["depths"]) if ("depths" in data and data["depths"] is not None) else None
+        depths = LayerDepths.from_json(data["depths"]) if ("depths" in data and data["depths"] is not None) else None
 
         return Layer(material_description=material_prediction, depths=depths)
 
@@ -122,3 +210,14 @@ class LayersInDocument:
             # second page, use assumption, also fot the bounding boxes
             self.boreholes_layers_with_bb[0].bounding_boxes.extend(layer_predictions[0].bounding_boxes)
             self.boreholes_layers_with_bb[0].predictions.extend(layer_predictions[0].predictions)
+
+
+@dataclass
+class IntervalBlockPair:
+    """Represent the data for a single layer in the borehole profile.
+
+    This consist of a material description (represented as a text block) and a depth interval (if available).
+    """
+
+    depth_interval: Interval | None
+    block: TextBlock

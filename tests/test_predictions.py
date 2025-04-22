@@ -19,10 +19,10 @@ from borehole_extraction.extraction.predictions.borehole_predictions import (
 from borehole_extraction.extraction.predictions.file_predictions import FilePredictions
 from borehole_extraction.extraction.predictions.overall_file_predictions import OverallFilePredictions
 from borehole_extraction.extraction.predictions.predictions import AllBoreholePredictionsWithGroundTruth
-from borehole_extraction.extraction.stratigraphy.base_sidebar_entry.sidebar_entry import DepthColumnEntry
 from borehole_extraction.extraction.stratigraphy.layer.layer import (
-    DepthInterval,
     Layer,
+    LayerDepths,
+    LayerDepthsEntry,
     LayersInBorehole,
 )
 from borehole_extraction.extraction.util_extraction.data_extractor.data_extractor import FeatureOnPage
@@ -92,7 +92,7 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
         [
             Layer(
                 material_description=FeatureOnPage(MaterialDescription(text=descr, lines=[]), pymupdf.Rect(), 0),
-                depths=DepthInterval(DepthColumnEntry(start, pymupdf.Rect()), DepthColumnEntry(end, pymupdf.Rect())),
+                depths=LayerDepths(LayerDepthsEntry(start, pymupdf.Rect()), LayerDepthsEntry(end, pymupdf.Rect())),
             )
             for descr, start, end in [
                 ("HUMUS", None, 1),
@@ -105,7 +105,7 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
         [
             Layer(
                 material_description=FeatureOnPage(MaterialDescription(text=descr, lines=[]), pymupdf.Rect(), 0),
-                depths=DepthInterval(DepthColumnEntry(start, pymupdf.Rect()), DepthColumnEntry(end, pymupdf.Rect())),
+                depths=LayerDepths(LayerDepthsEntry(start, pymupdf.Rect()), LayerDepthsEntry(end, pymupdf.Rect())),
             )
             for descr, start, end in [
                 ("KIES, Sand,", 0.0, 0.5),
