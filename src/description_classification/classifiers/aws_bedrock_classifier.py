@@ -138,7 +138,7 @@ class AWSBedrockClassifier:
 
         for filename, filename_layers in layers_by_filename.items():
             print(f"Processing file: {filename} with {len(filename_layers)} layers")
-            path = f"{Path(filename).stem}.csv"
+            path = f"{Path(filename).stem}.json"
 
             async def process_layer(layer):
                 async with semaphore:
