@@ -78,6 +78,12 @@ class BoreholeListBuilder:
         """Creates a list of BoreholePredictions after, mapping all elements to eachother."""
         if not self._layers_with_bb_in_document.boreholes_layers_with_bb:
             return []  # no borehole identified
+
+        # Removes elevation entries that are also groundwater entries.
+        self.remove_elevations_overlaping_groundwater()
+
+        # only criterion for the number of boreholes in the document is the number of borehole layers identified.
+        self._num_boreholes = len(self._layers_with_bb_in_document.boreholes_layers_with_bb)
         self._extend_lenght_metadata_elements()
 
         # for each element, perform the perfect matching with the borehole layers, and retrieve the matching dict
@@ -111,10 +117,8 @@ class BoreholeListBuilder:
 
     def _extend_lenght_metadata_elements(self) -> None:
         """Ensures that all lists have at least the same length by duplicating elements if necessary."""
-        num_boreholes = len(self._layers_with_bb_in_document.boreholes_layers_with_bb)
-
-        self._elevations_list = self._extend_list(self._elevations_list, None, num_boreholes)
-        self._coordinates_list = self._extend_list(self._coordinates_list, None, num_boreholes)
+        self._elevations_list = self._extend_list(self._elevations_list, None, self._num_boreholes)
+        self._coordinates_list = self._extend_list(self._coordinates_list, None, self._num_boreholes)
 
     @staticmethod
     def _extend_list(lst: list[T], default_elem: T, target_length: int) -> list[T]:
@@ -131,6 +135,23 @@ class BoreholeListBuilder:
             lst.append(create_new_elem())  # Append copies to match the required length
 
         return lst
+
+    def remove_elevations_overlaping_groundwater(self) -> None:
+        """Removes elevation entries that are also groundwater entries.
+
+        This is done by checking if the elevation is present in the groundwater list and removing it if so.
+        Some false positives in the groundwater detection causes correct elevations to be deleted (A11462 and A11370).
+        To avoid that, we make sure not to delete an elevation entry if it is the only one in the list.
+        """
+        if len(self._elevations_list) <= 1:
+            return
+        real_elevations = []
+        groundwater_elevations = [gw.feature.elevation for gw in self._groundwater_in_doc.groundwater_feature_list]
+        for elevation in self._elevations_list:
+            if elevation and elevation.feature.elevation in groundwater_elevations:
+                continue
+            real_elevations.append(elevation)
+        self._elevations_list = real_elevations
 
     def _many_to_one_match_element_to_borehole(self, element_list: list[FeatureOnPage]) -> dict[int, list[int]]:
         """Matches extracted elements to boreholes.
@@ -183,6 +204,16 @@ class BoreholeListBuilder:
         # solve trivial case and case where the elements are None
         if len(element_list) == 1 or not element_list[0]:
             return {idx: idx for idx in range(len(element_list))}
+
+        # if there is only one borehole on the document,  we take the upmost element to avoid matching the top
+        # elevation of the depth column.
+        if self._num_boreholes == 1 and len(element_list) > 1:
+            # take the index of the element with the smallest page number, and which is the highest in the page.
+            best_index = min(
+                range(len(element_list)),
+                key=lambda idx: (element_list[idx].page, element_list[idx].rect.y0),
+            )
+            return {0: best_index}
 
         # Get a list of references of all borehole bounding boxes
         borehole_bounding_boxes = [
