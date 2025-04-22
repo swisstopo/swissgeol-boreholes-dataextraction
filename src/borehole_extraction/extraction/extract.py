@@ -2,7 +2,7 @@
 
 import pymupdf
 import rtree
-from borehole_extraction.extraction.stratigraphy.interval.interval import AAboveBInterval, IntervalBlockPair
+from borehole_extraction.extraction.stratigraphy.interval.interval import AAboveBInterval, Interval, IntervalBlockPair
 from borehole_extraction.extraction.stratigraphy.layer.layer import (
     ExtractedBorehole,
     Layer,
@@ -40,7 +40,6 @@ from borehole_extraction.extraction.util_extraction.text.textblock import (
     block_distance,
 )
 from borehole_extraction.extraction.util_extraction.text.textline import TextLine
-from pandas import Interval
 
 
 class MaterialDescriptionRectWithSidebarExtractor:
