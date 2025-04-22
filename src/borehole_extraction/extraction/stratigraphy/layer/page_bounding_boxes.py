@@ -4,8 +4,9 @@ import math
 from dataclasses import dataclass
 
 import pymupdf
-from borehole_extraction.extraction.stratigraphy.sidebar_classes.sidebar import Sidebar
 from borehole_extraction.extraction.util_extraction.geometry.geometry_dataclasses import BoundingBox
+
+from ..sidebar_classes.sidebar import Sidebar
 
 
 @dataclass

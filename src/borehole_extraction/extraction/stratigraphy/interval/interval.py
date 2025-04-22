@@ -5,9 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import pymupdf
-from borehole_extraction.extraction.stratigraphy.base_sidebar_entry.sidebar_entry import DepthColumnEntry
 from borehole_extraction.extraction.util_extraction.text.textblock import TextBlock
 from borehole_extraction.extraction.util_extraction.text.textline import TextLine
+
+from ..base_sidebar_entry.sidebar_entry import DepthColumnEntry
 
 
 class DepthInterval:

@@ -2,14 +2,12 @@
 
 import pymupdf
 import rtree
-from borehole_extraction.extraction.stratigraphy.sidebar_extractor.depth_column_entry_extractor import (
-    DepthColumnEntryExtractor,
-)
 from borehole_extraction.extraction.util_extraction.text.textline import TextWord
 
 from ..base_sidebar_entry.sidebar_entry import DepthColumnEntry
 from ..sidebar_classes.a_above_b_sidebar import AAboveBSidebar
 from ..sidebar_classes.sidebar import SidebarNoise, noise_count
+from ..sidebar_extractor.depth_column_entry_extractor import DepthColumnEntryExtractor
 from ..sidebar_utils.a_above_b_sidebar_validator import AAboveBSidebarValidator
 from ..sidebar_utils.cluster import Cluster
 

@@ -8,11 +8,12 @@ from typing import Generic, TypeVar
 
 import pymupdf
 import rtree
-from borehole_extraction.extraction.stratigraphy.base_sidebar_entry.sidebar_entry import DepthColumnEntry
-from borehole_extraction.extraction.stratigraphy.interval.interval import IntervalBlockGroup
 from borehole_extraction.extraction.util_extraction.geometry.geometry_dataclasses import Line
 from borehole_extraction.extraction.util_extraction.geometry.util import x_overlap_significant_smallest
 from borehole_extraction.extraction.util_extraction.text.textline import TextLine
+
+from ..base_sidebar_entry.sidebar_entry import DepthColumnEntry
+from ..interval.interval import IntervalBlockGroup
 
 EntryT = TypeVar("EntryT", bound=DepthColumnEntry)
 

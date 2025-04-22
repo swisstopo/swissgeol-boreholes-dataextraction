@@ -2,14 +2,15 @@
 
 from dataclasses import dataclass
 
-from borehole_extraction.extraction.stratigraphy.interval.interval import DepthInterval
-from borehole_extraction.extraction.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from borehole_extraction.extraction.util_extraction.data_extractor.data_extractor import (
     ExtractedFeature,
     FeatureOnPage,
 )
 from borehole_extraction.extraction.util_extraction.text.textblock import MaterialDescription
 from general_utils.file_utils import parse_text
+
+from ..interval.interval import DepthInterval
+from ..layer.page_bounding_boxes import PageBoundingBoxes
 
 
 @dataclass
