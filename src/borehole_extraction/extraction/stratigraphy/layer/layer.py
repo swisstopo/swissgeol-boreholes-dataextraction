@@ -7,7 +7,7 @@ from borehole_extraction.extraction.util_extraction.data_extractor.data_extracto
     ExtractedFeature,
     FeatureOnPage,
 )
-from borehole_extraction.extraction.util_extraction.text.textblock import MaterialDescription, TextBlock
+from borehole_extraction.extraction.util_extraction.text.textblock import MaterialDescription
 from general_utils.file_utils import parse_text
 
 from ..interval.interval import Interval
@@ -210,14 +210,3 @@ class LayersInDocument:
             # second page, use assumption, also fot the bounding boxes
             self.boreholes_layers_with_bb[0].bounding_boxes.extend(layer_predictions[0].bounding_boxes)
             self.boreholes_layers_with_bb[0].predictions.extend(layer_predictions[0].predictions)
-
-
-@dataclass
-class IntervalBlockPair:
-    """Represent the data for a single layer in the borehole profile.
-
-    This consist of a material description (represented as a text block) and a depth interval (if available).
-    """
-
-    depth_interval: Interval | None
-    block: TextBlock
