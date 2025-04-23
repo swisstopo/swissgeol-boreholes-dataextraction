@@ -68,12 +68,12 @@ groundwater-illustration-matching = [
 all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize, devtools, groundwater-illustration-matching]"]
 
 [project.scripts]
-boreholes-extract-all = "borehole_extraction.main:click_pipeline"
-boreholes-extract-metadata = "borehole_extraction.main:click_pipeline_metadata"
+boreholes-extract-all = "extraction.main:click_pipeline"
+boreholes-extract-metadata = "extraction.main:click_pipeline_metadata"
 boreholes-download-profiles = "scripts.get_files:download_directory_froms3"
-boreholes-score = "borehole_extraction.evaluation.benchmark.score:main"
-boreholes-classify-descriptions = "description_classification.main:click_pipeline"
-fine-tune-bert = "description_classification.models.train:train_model"
+boreholes-score = "extraction.evaluation.benchmark.score:main"
+boreholes-classify-descriptions = "classification.main:click_pipeline"
+fine-tune-bert = "classification.models.train:train_model"
 
 [tool.ruff.lint]
 select = [

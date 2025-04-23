@@ -14,16 +14,16 @@ from app.common.schemas import (
     ExtractTextResponse,
     FormatTypes,
 )
-from borehole_extraction.extraction.metadata.coordinate_extraction import (
+from extraction.extraction.metadata.coordinate_extraction import (
     CoordinateExtractor,
     LV03Coordinate,
     LV95Coordinate,
 )
-from borehole_extraction.extraction.util_extraction.text.extract_text import extract_text_lines
-from borehole_extraction.extraction.util_extraction.text.textline import TextLine
+from extraction.extraction.utils.text.extract_text import extract_text_lines
+from extraction.extraction.utils.text.textline import TextLine
 from fastapi import HTTPException
-from general_utils.file_utils import read_params
-from general_utils.language_detection import detect_language_of_text
+from utils.file_utils import read_params
+from utils.language_detection import detect_language_of_text
 
 matching_params = read_params("matching_params.yml")
 
