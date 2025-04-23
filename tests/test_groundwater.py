@@ -3,20 +3,20 @@
 from datetime import date
 
 import pytest
-from borehole_extraction.evaluation.benchmark.ground_truth import GroundTruth
-from borehole_extraction.evaluation.evaluation_dataclasses import Metrics
-from borehole_extraction.evaluation.groundwater_evaluator import (
+from extraction.evaluation.benchmark.ground_truth import GroundTruth
+from extraction.evaluation.evaluation_dataclasses import Metrics
+from extraction.evaluation.groundwater_evaluator import (
     GroundwaterEvaluator,
     GroundwaterMetrics,
     OverallGroundwaterMetrics,
 )
-from borehole_extraction.extraction.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
-from borehole_extraction.extraction.groundwater.utility import extract_date
-from borehole_extraction.extraction.predictions.borehole_predictions import (
+from extraction.extraction.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
+from extraction.extraction.groundwater.utility import extract_date
+from extraction.extraction.predictions.borehole_predictions import (
     BoreholeGroundwaterWithGroundTruth,
     FileGroundwaterWithGroundTruth,
 )
-from borehole_extraction.extraction.util_extraction.data_extractor.data_extractor import FeatureOnPage
+from extraction.extraction.utils.data_extractor import FeatureOnPage
 
 
 @pytest.fixture
