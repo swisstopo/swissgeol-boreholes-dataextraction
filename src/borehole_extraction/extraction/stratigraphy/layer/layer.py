@@ -16,7 +16,12 @@ from ..layer.page_bounding_boxes import PageBoundingBoxes
 
 @dataclass
 class LayerDepthsEntry:
-    """Class for the data about the upper or lower limit of a layer, as required for visualiation and evaluation."""
+    """Represents the upper or lower limit of a layer, used specifically for visualization and evaluation.
+
+    Unlike `DepthColumnEntry` in `sidebarentry.py`, this class holds the extracted depth information,
+    rather than being involved throughout the extraction process. It includes utility methods for
+    data serialization, such as `to_json()`.
+    """
 
     value: float
     rect: pymupdf.Rect
@@ -43,7 +48,12 @@ class LayerDepthsEntry:
 
 @dataclass
 class LayerDepths:
-    """Class for the data about the depths of a layer that are necessary for visualiation and evaluation."""
+    """Represents the start and end depth boundaries of a layer.
+
+    Unlike the class `Interval` from `interval.py`, which is used in logical depth computations and extraction flow,
+    the class `LayerDepths` is primarily used for data representation, visualiation and evaluation. It holds two
+    extracted depth entries (`LayerDepthsEntry`), as opposed to Interval holding two `DepthColumnEntry`.
+    """
 
     start: LayerDepthsEntry | None
     end: LayerDepthsEntry | None
@@ -121,7 +131,12 @@ class LayerDepths:
 
 @dataclass
 class Layer(ExtractedFeature):
-    """A class to represent predictions for a single layer."""
+    """Represents a finalized layer prediction in a borehole profile.
+
+    A `Layer` combines a material description with its associated depth information,
+    typically derived from a cleaned and validated `Sidebar` after extraction. It is the
+    main data structure used for representing stratigraphy in the `ExtractedBorehole` class.
+    """
 
     material_description: FeatureOnPage[MaterialDescription]
     depths: LayerDepths | None

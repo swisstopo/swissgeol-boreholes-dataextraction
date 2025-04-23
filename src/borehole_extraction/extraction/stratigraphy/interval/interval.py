@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 import pymupdf
@@ -11,8 +12,15 @@ from borehole_extraction.extraction.util_extraction.text.textline import TextLin
 from ..base_sidebar_entry.sidebar_entry import DepthColumnEntry
 
 
-class Interval:
-    """Abstract class for (depth) intervals."""
+class Interval(ABC):
+    """Abstract class for (depth) intervals.
+
+    This class defines a generic interface for any depth interval, either derived from vertical positions on the page
+    (e.g., column-aligned entries) or parsed inline from text (e.g., "1.00 - 2.30m").
+
+    Unlike `LayerDepths`, which is used in visual layout and representation, `Interval` is part of the data
+    extraction pipeline.
+    """
 
     def __init__(self, start: DepthColumnEntry | None, end: DepthColumnEntry | None):
         super().__init__()
@@ -21,6 +29,11 @@ class Interval:
 
     def __repr__(self):
         return f"({self.start}, {self.end})"
+
+    @abstractmethod
+    def matching_blocks(self, *args, **kwargs):
+        """Abstract method to compute blocks that match the interval."""
+        raise NotImplementedError("Subclasses must implement matching_blocks()")
 
 
 @dataclass
@@ -146,7 +159,4 @@ class AToBInterval(Interval):
             else:
                 break
 
-        if matched_lines:
-            return [TextBlock(matched_lines)]
-        else:
-            return []
+        return [TextBlock(matched_lines)] if matched_lines else []
