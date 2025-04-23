@@ -5,7 +5,6 @@ from collections.abc import Callable
 from typing import TypeVar
 
 from borehole_extraction.evaluation.evaluation_dataclasses import Metrics
-from borehole_extraction.extraction.stratigraphy.layer.layer import LayerDepths
 
 
 @dataclasses.dataclass
@@ -74,26 +73,3 @@ def evaluate(extracted: list[T], ground_truth: list[U], match: Callable[[T, U], 
             ground_truth_correct[matched_gt_index] = True
 
     return EvaluationResults(extracted_correct, ground_truth_correct)
-
-
-def is_valid_depth_interval(depths: LayerDepths, start: float, end: float) -> bool:
-    """Validate if the depth intervals match.
-
-    Args:
-        depths (LayerDepths): The layer depths to compare.
-        start (float): The start value of the interval.
-        end (float): The end value of the interval.
-
-    Returns:
-        bool: True if the depth intervals match, False otherwise.
-    """
-    if depths is None:
-        return False
-
-    if depths.start is None:
-        return (start == 0) and (end == depths.end.value)
-
-    if (depths.start is not None) and (depths.end is not None):
-        return start == depths.start.value and end == depths.end.value
-
-    return False

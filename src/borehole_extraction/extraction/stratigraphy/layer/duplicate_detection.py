@@ -7,7 +7,8 @@ import Levenshtein
 import numpy as np
 import pymupdf
 from borehole_extraction.annotations.plot_utils import convert_page_to_opencv_img
-from borehole_extraction.extraction.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayersInDocument
+
+from .layer import ExtractedBorehole, Layer, LayersInDocument
 
 logger = logging.getLogger(__name__)
 

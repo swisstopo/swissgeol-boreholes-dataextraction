@@ -8,18 +8,28 @@ from typing import Generic, TypeVar
 
 import pymupdf
 import rtree
-from borehole_extraction.extraction.stratigraphy.sidebar.interval_block_group import IntervalBlockGroup
-from borehole_extraction.extraction.stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 from borehole_extraction.extraction.util_extraction.geometry.geometry_dataclasses import Line
 from borehole_extraction.extraction.util_extraction.geometry.util import x_overlap_significant_smallest
 from borehole_extraction.extraction.util_extraction.text.textline import TextLine
+
+from ..base_sidebar_entry.sidebar_entry import DepthColumnEntry
+from ..interval.interval import IntervalBlockGroup
 
 EntryT = TypeVar("EntryT", bound=DepthColumnEntry)
 
 
 @dataclass
 class Sidebar(abc.ABC, Generic[EntryT]):
-    """Abstract Sidebar class, representing depths or other data displayed to the side of material descriptions."""
+    """Abstract base class for representing depths or other data displayed to the side of material descriptions.
+
+    A `Sidebar` holds a list of structured entries (e.g., depth markers, labels, intervals) that were
+    identified during the extraction phase.
+
+    Sidebars are used strictly during extraction. They come in various forms, such as depth columns,
+    AtoB intervals, or labeled layer identifiers, depending on how the source document expresses stratigraphy.
+    Once validated and processed, sidebar content is transformed into a finalized `ExtractedBorehole` where
+    each entry is mapped to a `Layer` object, which are used for visualization, evaluation, or export.
+    """
 
     entries: list[EntryT]
 

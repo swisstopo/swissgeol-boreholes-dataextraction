@@ -2,9 +2,10 @@
 
 import re
 
-from borehole_extraction.extraction.stratigraphy.depth.a_to_b_interval_extractor import AToBIntervalExtractor
-from borehole_extraction.extraction.stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 from borehole_extraction.extraction.util_extraction.text.textline import TextLine, TextWord
+
+from ..base_sidebar_entry.sidebar_entry import DepthColumnEntry
+from ..interval.a_to_b_interval_extractor import AToBIntervalExtractor
 
 
 class DepthColumnEntryExtractor:

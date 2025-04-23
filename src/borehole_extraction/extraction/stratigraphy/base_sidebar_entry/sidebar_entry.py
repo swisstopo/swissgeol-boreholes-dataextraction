@@ -20,8 +20,13 @@ class SidebarEntry(abc.ABC, Generic[ValueT]):
 
 
 @dataclass
-class DepthColumnEntry(SidebarEntry[float]):  # noqa: D101
-    """Class to represent a depth column entry."""
+class DepthColumnEntry(SidebarEntry[float]):
+    """Represents a depth value extracted from the document.
+
+    DepthColumnEntry are used during the extraction process to hold depth data, which will later be part Intervals
+    or Sidebars. Unlike `LayerDepthsEntry`, which is used for visualization after extraction, this class is part
+    of the core extraction logic, and is the building block for larger object like Sidebars.
+    """
 
     rect: pymupdf.Rect
     value: float

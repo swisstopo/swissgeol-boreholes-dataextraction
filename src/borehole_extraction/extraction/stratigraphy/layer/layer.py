@@ -3,19 +3,25 @@
 from dataclasses import dataclass
 
 import pymupdf
-from borehole_extraction.extraction.stratigraphy.depth.interval import Interval
-from borehole_extraction.extraction.stratigraphy.depths_materials_pairs.bounding_boxes import PageBoundingBoxes
 from borehole_extraction.extraction.util_extraction.data_extractor.data_extractor import (
     ExtractedFeature,
     FeatureOnPage,
 )
-from borehole_extraction.extraction.util_extraction.text.textblock import MaterialDescription, TextBlock
+from borehole_extraction.extraction.util_extraction.text.textblock import MaterialDescription
 from general_utils.file_utils import parse_text
+
+from ..interval.interval import Interval
+from ..layer.page_bounding_boxes import PageBoundingBoxes
 
 
 @dataclass
 class LayerDepthsEntry:
-    """Class for the data about the upper or lower limit of a layer, as required for visualiation and evaluation."""
+    """Represents the upper or lower limit of a layer, used specifically for visualization and evaluation.
+
+    Unlike `DepthColumnEntry` in `sidebarentry.py`, this class holds the extracted depth information,
+    rather than being involved throughout the extraction process. It includes utility methods for
+    data serialization, such as `to_json()`.
+    """
 
     value: float
     rect: pymupdf.Rect
@@ -42,7 +48,12 @@ class LayerDepthsEntry:
 
 @dataclass
 class LayerDepths:
-    """Class for the data about the depths of a layer that are necessary for visualiation and evaluation."""
+    """Represents the start and end depth boundaries of a layer.
+
+    Unlike the class `Interval` from `interval.py`, which is used in logical depth computations and extraction flow,
+    the class `LayerDepths` is primarily used for data representation, visualiation and evaluation. It holds two
+    extracted depth entries (`LayerDepthsEntry`), as opposed to Interval holding two `DepthColumnEntry`.
+    """
 
     start: LayerDepthsEntry | None
     end: LayerDepthsEntry | None
@@ -99,10 +110,33 @@ class LayerDepths:
             end=LayerDepthsEntry(interval.end.value, interval.end.rect) if interval.end else None,
         )
 
+    def is_valid_depth_interval(self, start: float, end: float) -> bool:
+        """Validate if self and the depth interval start-end match.
+
+        Args:
+            start (float): The start value of the interval.
+            end (float): The end value of the interval.
+
+        Returns:
+            bool: True if the depth intervals match, False otherwise.
+        """
+        if self.start is None:
+            return (start == 0) and (end == self.end.value)
+
+        if (self.start is not None) and (self.end is not None):
+            return start == self.start.value and end == self.end.value
+
+        return False
+
 
 @dataclass
 class Layer(ExtractedFeature):
-    """A class to represent predictions for a single layer."""
+    """Represents a finalized layer prediction in a borehole profile.
+
+    A `Layer` combines a material description with its associated depth information,
+    typically derived from a cleaned and validated `Sidebar` after extraction. It is the
+    main data structure used for representing stratigraphy in the `ExtractedBorehole` class.
+    """
 
     material_description: FeatureOnPage[MaterialDescription]
     depths: LayerDepths | None
@@ -209,14 +243,3 @@ class LayersInDocument:
             # second page, use assumption, also fot the bounding boxes
             self.boreholes_layers_with_bb[0].bounding_boxes.extend(layer_predictions[0].bounding_boxes)
             self.boreholes_layers_with_bb[0].predictions.extend(layer_predictions[0].predictions)
-
-
-@dataclass
-class IntervalBlockPair:
-    """Represent the data for a single layer in the borehole profile.
-
-    This consist of a material description (represented as a text block) and a depth interval (if available).
-    """
-
-    depth_interval: Interval | None
-    block: TextBlock

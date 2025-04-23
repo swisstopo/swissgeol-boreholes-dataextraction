@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass
 
 import numpy as np
+import pymupdf
 
 logger = logging.getLogger(__name__)
 
@@ -65,3 +66,27 @@ class Line:
     def intercept(self) -> float:
         """Calculate the y-intercept of the line."""
         return self.start.y - self.slope * self.start.x
+
+
+@dataclass
+class BoundingBox:
+    """A single bounding box, JSON serializable."""
+
+    rect: pymupdf.Rect
+
+    def to_json(self) -> list[int]:
+        """Converts the object to a dictionary.
+
+        Returns:
+            list[int]: The object as a list.
+        """
+        return [
+            self.rect.x0,
+            self.rect.y0,
+            self.rect.x1,
+            self.rect.y1,
+        ]
+
+    @classmethod
+    def from_json(cls, data) -> BoundingBox:
+        return cls(rect=pymupdf.Rect(data))

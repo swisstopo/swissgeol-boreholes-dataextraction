@@ -2,14 +2,25 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
 import pymupdf
-from borehole_extraction.extraction.stratigraphy.sidebar.sidebarentry import DepthColumnEntry
 from borehole_extraction.extraction.util_extraction.text.textblock import TextBlock
 from borehole_extraction.extraction.util_extraction.text.textline import TextLine
 
+from ..base_sidebar_entry.sidebar_entry import DepthColumnEntry
 
-class Interval:
-    """Abstract class for (depth) intervals."""
+
+class Interval(ABC):
+    """Abstract class for (depth) intervals.
+
+    This class defines a generic interface for any depth interval, either derived from vertical positions on the page
+    (e.g., column-aligned entries) or parsed inline from text (e.g., "1.00 - 2.30m").
+
+    Unlike `LayerDepths`, which is used in visual layout and representation, `Interval` is part of the data
+    extraction pipeline.
+    """
 
     def __init__(self, start: DepthColumnEntry | None, end: DepthColumnEntry | None):
         super().__init__()
@@ -18,6 +29,34 @@ class Interval:
 
     def __repr__(self):
         return f"({self.start}, {self.end})"
+
+    @abstractmethod
+    def matching_blocks(self, *args, **kwargs):
+        """Abstract method to compute blocks that match the interval."""
+        raise NotImplementedError("Subclasses must implement matching_blocks()")
+
+
+@dataclass
+class IntervalBlockGroup:
+    """Helper class to represent a group of depth intervals and an associated group of text blocks.
+
+    The class is used to simplify the code for obtaining an appropriate one-to-one correspondence between depth
+    intervals and material descriptions.
+    """
+
+    depth_intervals: list[Interval]
+    blocks: list[TextBlock]
+
+
+@dataclass
+class IntervalBlockPair:
+    """Represent the data for a single layer in the borehole profile.
+
+    This consist of a material description (represented as a text block) and a depth interval (if available).
+    """
+
+    depth_interval: Interval | None
+    block: TextBlock
 
 
 class AAboveBInterval(Interval):
@@ -120,7 +159,4 @@ class AToBInterval(Interval):
             else:
                 break
 
-        if matched_lines:
-            return [TextBlock(matched_lines)]
-        else:
-            return []
+        return [TextBlock(matched_lines)] if matched_lines else []
