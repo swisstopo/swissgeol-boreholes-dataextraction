@@ -6,7 +6,6 @@ from collections import defaultdict
 from copy import deepcopy
 from typing import TypeVar
 
-import numpy as np
 from borehole_extraction.evaluation.benchmark.metrics import OverallMetricsCatalog
 from borehole_extraction.evaluation.evaluation_dataclasses import OverallBoreholeMetadataMetrics
 from borehole_extraction.evaluation.groundwater_evaluator import GroundwaterEvaluator
@@ -32,7 +31,6 @@ from borehole_extraction.extraction.predictions.borehole_predictions import (
 from borehole_extraction.extraction.stratigraphy.layer.layer import LayersInBorehole, LayersInDocument
 from borehole_extraction.extraction.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from borehole_extraction.extraction.util_extraction.data_extractor.data_extractor import FeatureOnPage
-from scipy.optimize import linear_sum_assignment
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +82,7 @@ class BoreholeListBuilder:
 
         # only criterion for the number of boreholes in the document is the number of borehole layers identified.
         self._num_boreholes = len(self._layers_with_bb_in_document.boreholes_layers_with_bb)
+        # Duplicate metadata (e.g. elevation, coordinates) if fewer values were extracted than number of boreholes
         self._extend_lenght_metadata_elements()
 
         # for each element, perform the perfect matching with the borehole layers, and retrieve the matching dict
@@ -153,93 +152,91 @@ class BoreholeListBuilder:
             real_elevations.append(elevation)
         self._elevations_list = real_elevations
 
-    def _many_to_one_match_element_to_borehole(self, element_list: list[FeatureOnPage]) -> dict[int, list[int]]:
+    def _many_to_one_match_element_to_borehole(
+        self, element_list: list[FeatureOnPage], taken_boreholes: set[int] | None = None
+    ) -> dict[int, list[int]]:
         """Matches extracted elements to boreholes.
 
         This is done by assigning the clossest borehole to each element.
 
         Args:
             element_list (list[FeatureOnPage]): list of element to match
+            taken_boreholes (set[int]): the set of borehole index that needs to be ignored for the mapping. In this
+                context, it is the boreholes that have already been matched (defaults to None).
 
         Returns:
             dict[int, list[int]]: the dictionary containing the best mapping borehole_index -> all element_indexes
         """
-        num_boreholes = len(self._layers_with_bb_in_document.boreholes_layers_with_bb)
         # solve trivial case
-        if num_boreholes == 1:
+        if self._num_boreholes == 1:
             return {0: [idx for idx in range(len(element_list))]}
         # solve case where the list is empty
         if not element_list:
-            return {idx: [] for idx in range(num_boreholes)}
+            return {idx: [] for idx in range(self._num_boreholes)}
 
         # Get a list of references of all borehole bounding boxes
         borehole_bounding_boxes = [
             bh.bounding_boxes for bh in self._layers_with_bb_in_document.boreholes_layers_with_bb
         ]
 
+        if taken_boreholes is None:
+            taken_boreholes = set()
+        available_boreholes = [idx for idx in range(len(borehole_bounding_boxes)) if idx not in taken_boreholes]
+
         borehole_index_to_matched_elem_index = defaultdict(list)
         for i, feat in enumerate(element_list):
             best_bbox_idx = min(
-                range(len(borehole_bounding_boxes)),
+                available_boreholes,
                 key=lambda j: self._compute_distance(feat, borehole_bounding_boxes[j]),
             )
             borehole_index_to_matched_elem_index[best_bbox_idx].append(i)
 
         return borehole_index_to_matched_elem_index
 
-    def _one_to_one_match_element_to_borehole(
-        self,
-        element_list: list[FeatureOnPage | None],
-    ) -> dict[int, int]:
-        """Matches extracted elements to boreholes.
+    def _one_to_one_match_element_to_borehole(self, element_list: list[FeatureOnPage | None]) -> dict[int, int]:
+        """Matches elements (e.g. elevation, coordonates) one-to-one to boreholes based on spatial position.
 
-        This is done by minimizing the total sum of the distances from the elements to the corresponding layers.
+        The algorithm ensures that each borehole is assigned exactly one element, resolving cases where
+        multiple elements might be close to a single borehole. It works iteratively by:
+
+        1. Using a many-to-one matching heuristic to suggest possible element candidates per borehole.
+        2. Filtering out elements that have already been assigned.
+        3. Selecting the best candidate — defined as the topmost one on the page — if multiple are available.
+        4. Repeating until each borehole has a unique match.
 
         Args:
-            element_list (list[FeatureOnPage  |  None ]): list of element to match
+            element_list (list[FeatureOnPage | None]): List of extracted elements to match.
 
         Returns:
-            dict[int, int]: the dictionary containing the best mapping borehole_index -> element_index
+            dict[int, int]: Mapping from borehole index to matched element index in `element_list`.
         """
         # solve trivial case and case where the elements are None
         if len(element_list) == 1 or not element_list[0]:
             return {idx: idx for idx in range(len(element_list))}
 
-        # if there is only one borehole on the document,  we take the upmost element to avoid matching the top
-        # elevation of the depth column.
-        if self._num_boreholes == 1 and len(element_list) > 1:
-            # take the index of the element with the smallest page number, and which is the highest in the page.
-            best_index = min(
-                range(len(element_list)),
-                key=lambda idx: (element_list[idx].page, element_list[idx].rect.y0),
-            )
-            return {0: best_index}
-
-        # Get a list of references of all borehole bounding boxes
-        borehole_bounding_boxes = [
-            bh.bounding_boxes for bh in self._layers_with_bb_in_document.boreholes_layers_with_bb
-        ]
-
-        cost_matrix = np.zeros((len(element_list), len(borehole_bounding_boxes)))
-
-        # Fill the cost matrix with distances between each element and each borehole
-        for i, feat in enumerate(element_list):
-            for j, bboxes in enumerate(borehole_bounding_boxes):
-                dist = self._compute_distance(feat, bboxes)  # Compute the distance
-                cost_matrix[i, j] = dist
-
-        # Use the Hungarian algorithm (Kuhn-Munkres) to solve the assignment problem.
-        # It finds the optimal one-to-one matching between elements and borehole layers such that the total
-        # distance (cost) between matched pairs is minimized.
-        # In simpler terms: out of all possible ways to pair elements with boreholes, this picks the combination that
-        # results in the shortest total distance between them.
-        elem_indexes, layer_indexes = linear_sum_assignment(cost_matrix)
-
-        # Store the index of the matched elements in a dictionary
+        picked_element_index = set()
         borehole_index_to_matched_elem_index = {}
-        for elem_idx, layer_idx in zip(elem_indexes, layer_indexes, strict=True):
-            borehole_index_to_matched_elem_index[layer_idx] = elem_idx
 
+        # continue until all boreholes are mathched
+        while len(borehole_index_to_matched_elem_index) != self._num_boreholes:
+            # map all elements to their closest borehole.
+            borehole_to_many_elements_mapping = self._many_to_one_match_element_to_borehole(
+                element_list, set(borehole_index_to_matched_elem_index.keys())
+            )
+            for borehole_index, element_list_index in borehole_to_many_elements_mapping.items():
+                assert borehole_index not in borehole_index_to_matched_elem_index
+                # only allow to pick from the elements that are not matched yet
+                available_elements_index = [elem for elem in element_list_index if elem not in picked_element_index]
+                if not available_elements_index:
+                    continue
+                # if multiple element are bound to the same borehole, always pick the highest on the page
+                best_element_index = min(
+                    available_elements_index,
+                    key=lambda idx: (element_list[idx].page, element_list[idx].rect.y0),
+                )
+                # fill the mapping borehole_index - element_index and add the indexed to the seen sets.
+                borehole_index_to_matched_elem_index[borehole_index] = best_element_index
+                picked_element_index.add(best_element_index)
         return borehole_index_to_matched_elem_index
 
     def _compute_distance(self, feat: FeatureOnPage, bounding_boxes: list[PageBoundingBoxes]) -> float:
