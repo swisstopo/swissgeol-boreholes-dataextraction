@@ -8,7 +8,6 @@ from copy import deepcopy
 import Levenshtein
 from borehole_extraction.evaluation.benchmark.metrics import OverallMetrics
 from borehole_extraction.evaluation.evaluation_dataclasses import Metrics
-from borehole_extraction.evaluation.utility import is_valid_depth_interval
 from borehole_extraction.extraction.predictions.borehole_predictions import (
     BoreholePredictionsWithGroundTruth,
     FileLayersWithGroundTruth,
@@ -246,7 +245,7 @@ class LayerEvaluator:
             start = possible_match["depth_interval"]["start"]
             end = possible_match["depth_interval"]["end"]
 
-            if is_valid_depth_interval(layer.depths, start, end):
+            if layer.depths is not None and layer.depths.is_valid_depth_interval(start, end):
                 unmatched_layers.remove(possible_match)
                 return possible_match, True
 

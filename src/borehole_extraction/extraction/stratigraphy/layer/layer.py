@@ -100,6 +100,24 @@ class LayerDepths:
             end=LayerDepthsEntry(interval.end.value, interval.end.rect) if interval.end else None,
         )
 
+    def is_valid_depth_interval(self, start: float, end: float) -> bool:
+        """Validate if self and the depth interval start-end match.
+
+        Args:
+            start (float): The start value of the interval.
+            end (float): The end value of the interval.
+
+        Returns:
+            bool: True if the depth intervals match, False otherwise.
+        """
+        if self.start is None:
+            return (start == 0) and (end == self.end.value)
+
+        if (self.start is not None) and (self.end is not None):
+            return start == self.start.value and end == self.end.value
+
+        return False
+
 
 @dataclass
 class Layer(ExtractedFeature):
