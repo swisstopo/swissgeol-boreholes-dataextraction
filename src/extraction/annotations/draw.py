@@ -7,9 +7,9 @@ from pathlib import Path
 import pandas as pd
 import pymupdf
 from dotenv import load_dotenv
-from extraction.extraction.predictions.overall_file_predictions import OverallFilePredictions
-from extraction.extraction.stratigraphy.layer.layer import Layer
-from extraction.extraction.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
+from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
+from extraction.features.stratigraphy.layer.layer import Layer
+from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 
 load_dotenv()
 

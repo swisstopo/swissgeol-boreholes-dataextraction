@@ -225,26 +225,47 @@ The project structure and the most important files are as follows:
     - `app/`: The API of the project.
       - `main.py`: The main script that launches the API.
       - `common/config.py`: Config file for the API.
-      - `v1/`: Contain all the code for the version 1 of the API.
-      - `v1/router.py`: Presents at a glance all the available endpoints.
-    - `stratigraphy/` : The main package of the project.
-      - `main.py` : The main script of the project. This script runs the data extraction pipeline.
-      - `line_detection.py`: Contains functionalities for line detection on pdf pages.
-      - `util/` : Utility scripts and modules.
-      - `benchmark/` : Scripts to evaluate the data extraction.
+      - `v1/`: Contains all the code for the version 1 of the API.
+      - `v1/router.py`: Provides an overview of all available endpoints.
+    - `extraction/`: The main package of the data extraction pipeline.
+      - `annotations/`: Package for drawing the documents.
+      - `evaluation/`: Package for evaluating the extracted information.
+        - `benchmark/score.py`: Script to score predictions without running the extraction.
+      - `features/`: Package containing all the extraction logic.
+        - `groundwater/`: Contains the groundwater extraction logic.
+        - `metadata/`: Contains the elevation and coordinates extraction logic.
+        - `predictions/`: Mainly contains data structures and prediction matching logic.
+        - `stratigraphy/`: Contains the stratigraphy extraction logic.
+        - `utils/` : Utility package related to extraction.
+        - `extract.py`: Contains the main logic for data extraction
+      - `main.py` : The main script to run the data extraction pipeline.
+    - `classification/`: The main package for the classification of layer descriptions.
+      - `classifiers/`: Contains implementations of various classifiers.
+      - `evaluation/`: Contains scripts for evaluating classification results.
+      - `utils/`: Contains modules used for processing data for classification and all the existing classes.
+      - `models/`: Contains modules used by the Bert-base classifier, like the model and the training pipeline.
+      - `main.py` : The main script to run the descritption classification pipeline.
+    - `utils/` : Utility modules that are used by all pipelines.
+    - `scripts/`: Various utility scipts used to download the files or generate the ground truth.
   - `data/` : The data used by the project.
-    - `output/` : 
+    - `output/` : output of the extraction pipeline
       - `draw/` : The directory where the PNG files are saved.
       - `predictions.json` : The output file of the project, containing the results of the data extraction process.
+    - `output_description_classification/`: output of the classification pipeline
+  - `config/`: Contains configuration files for the classification pipeline.
+    - `bert_config.yml`: Configuration file for fine-tuning the BERT model.
+    - `classification_params.yml`: Configuration file containing variables used for the classification pipeline.
+    - `line_detection_params.yml`: Configuration file for the line detection.
+    - `matching_params.yml`: Configuration file containing variables used for the data extraction pipeline.
   - `tests/` : The tests for the project.
   - `README.md` : The README file for the project.
-  - `pyproject.toml`: Contain the python requirements and provides specific for a python environment.
+  - `pyproject.toml`: Contains the Python requirements and configurations specific to the Python environment.
   - `Dockerfile`: Dockerfile to launch the Borehole App as API.
 
 
 ## Main scripts
 
-- `main.py` : This is the main script of the project. It runs the data extraction pipeline, which analyzes the PDF files in the `data/Benchmark` directory and saves the results in the `predictions.json` file.
+- `extraction/main.py` : This is the main script of the project. It runs the data extraction pipeline, which analyzes the PDF files in the `data` directory and saves the results in the `predictions.json` file.
 
 ## API
 

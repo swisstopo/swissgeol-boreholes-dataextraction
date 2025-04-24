@@ -3,16 +3,16 @@
 import pymupdf
 import pytest
 import rtree
-from extraction.extraction.stratigraphy.sidebar.extractor.a_above_b_sidebar_extractor import (
+from extraction.features.stratigraphy.sidebar.extractor.a_above_b_sidebar_extractor import (
     AAboveBSidebarExtractor,
 )
-from extraction.extraction.stratigraphy.sidebar.extractor.a_to_b_sidebar_extractor import (
+from extraction.features.stratigraphy.sidebar.extractor.a_to_b_sidebar_extractor import (
     AToBSidebarExtractor,
 )
-from extraction.extraction.stratigraphy.sidebar.extractor.depth_column_entry_extractor import (
+from extraction.features.stratigraphy.sidebar.extractor.depth_column_entry_extractor import (
     DepthColumnEntryExtractor,
 )
-from extraction.extraction.utils.text.textline import TextWord
+from extraction.features.utils.text.textline import TextWord
 
 PAGE_NUMBER = 1
 

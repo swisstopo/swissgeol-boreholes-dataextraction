@@ -10,13 +10,13 @@ from extraction.evaluation.groundwater_evaluator import (
     GroundwaterMetrics,
     OverallGroundwaterMetrics,
 )
-from extraction.extraction.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
-from extraction.extraction.groundwater.utility import extract_date
-from extraction.extraction.predictions.borehole_predictions import (
+from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
+from extraction.features.groundwater.utility import extract_date
+from extraction.features.predictions.borehole_predictions import (
     BoreholeGroundwaterWithGroundTruth,
     FileGroundwaterWithGroundTruth,
 )
-from extraction.extraction.utils.data_extractor import FeatureOnPage
+from extraction.features.utils.data_extractor import FeatureOnPage
 
 
 @pytest.fixture

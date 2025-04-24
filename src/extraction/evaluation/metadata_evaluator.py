@@ -8,8 +8,8 @@ from extraction.evaluation.evaluation_dataclasses import (
     OverallBoreholeMetadataMetrics,
 )
 from extraction.evaluation.utility import evaluate_single
-from extraction.extraction.metadata.coordinate_extraction import Coordinate
-from extraction.extraction.predictions.borehole_predictions import FileMetadataWithGroundTruth
+from extraction.features.metadata.coordinate_extraction import Coordinate
+from extraction.features.predictions.borehole_predictions import FileMetadataWithGroundTruth
 
 
 class MetadataEvaluator:

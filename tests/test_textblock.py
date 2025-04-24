@@ -1,8 +1,8 @@
 """Test suite for the textblock module."""
 
 import pymupdf
-from extraction.extraction.utils.text.textblock import TextBlock, block_distance
-from extraction.extraction.utils.text.textline import TextLine, TextWord
+from extraction.features.utils.text.textblock import TextBlock, block_distance
+from extraction.features.utils.text.textline import TextLine, TextWord
 
 
 def test_concatenate():  # noqa: D103
