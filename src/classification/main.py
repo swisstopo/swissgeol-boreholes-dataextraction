@@ -9,13 +9,11 @@ from dotenv import load_dotenv
 from utils.file_utils import read_params
 
 from classification import DATAPATH
-from classification.classifiers.classifiers import (
-    AWSBedrockClassifier,
-    BaselineClassifier,
-    BertClassifier,
-    Classifier,
-    DummyClassifier,
-)
+from classification.classifiers.aws_bedrock_classifier import AWSBedrockClassifier
+from classification.classifiers.baseline_classifier import BaselineClassifier
+from classification.classifiers.bert_classifier import BertClassifier
+from classification.classifiers.classifier_protocol import Classifier
+from classification.classifiers.dummy_classifier import DummyClassifier
 from classification.evaluation.evaluate import evaluate
 from classification.utils.data_loader import LayerInformations, load_data
 from classification.utils.data_utils import (
@@ -121,7 +119,7 @@ def common_options(f):
         "--file-subset-directory",
         type=click.Path(path_type=Path),
         default=None,
-        help="Path to the directory containing subset files (e.g. data/geoquat/train)."
+        help="Path to the directory containing subset files (e.g. data/geoquat/validation)."
         " If not provided, the full JSON file is used.",
     )(f)
     f = click.option(
@@ -211,6 +209,6 @@ def main(
 
 if __name__ == "__main__":
     # launch with: python -m src.description_classification.main -f data/geoquat_ground_truth.json
-    # or with: boreholes-classify-descriptions  -f data/geoquat_ground_truth.json -s data/geoquat/validation -p
-    # data/output_training/20250403-102944/final
+    # or with: boreholes-classify-descriptions  -f data/geoquat_ground_truth.json -s data/geoquat/validation\
+    # -c bert -p models/your_best_model_checkpoint_folder
     click_pipeline()
