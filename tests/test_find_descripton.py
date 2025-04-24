@@ -1,9 +1,9 @@
 """Test suite for the find_description module."""
 
 import pymupdf
-from extraction.extraction.utils.geometry.geometry_dataclasses import Line, Point
-from extraction.extraction.utils.text.find_description import get_description_blocks
-from extraction.extraction.utils.text.textline import TextLine, TextWord
+from extraction.features.utils.geometry.geometry_dataclasses import Line, Point
+from extraction.features.utils.text.find_description import get_description_blocks
+from extraction.features.utils.text.textline import TextLine, TextWord
 
 page_number = 1
 textline1 = TextLine([TextWord(pymupdf.Rect([0, 0, 10, 10]), "Hello", page_number)])

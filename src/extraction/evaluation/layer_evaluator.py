@@ -8,12 +8,12 @@ from copy import deepcopy
 import Levenshtein
 from extraction.evaluation.benchmark.metrics import OverallMetrics
 from extraction.evaluation.evaluation_dataclasses import Metrics
-from extraction.extraction.predictions.borehole_predictions import (
+from extraction.features.predictions.borehole_predictions import (
     BoreholePredictionsWithGroundTruth,
     FileLayersWithGroundTruth,
 )
-from extraction.extraction.predictions.file_predictions import FilePredictions
-from extraction.extraction.stratigraphy.layer.layer import Layer, LayersInBorehole
+from extraction.features.predictions.file_predictions import FilePredictions
+from extraction.features.stratigraphy.layer.layer import Layer, LayersInBorehole
 from utils.file_utils import parse_text
 
 logger = logging.getLogger(__name__)

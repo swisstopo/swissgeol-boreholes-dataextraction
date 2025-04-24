@@ -3,14 +3,14 @@
 import pymupdf
 import pytest
 from extraction import DATAPATH
-from extraction.extraction.metadata.coordinate_extraction import (
+from extraction.features.metadata.coordinate_extraction import (
     Coordinate,
     CoordinateEntry,
     CoordinateExtractor,
     LV03Coordinate,
     LV95Coordinate,
 )
-from extraction.extraction.utils.text.textline import TextLine, TextWord
+from extraction.features.utils.text.textline import TextLine, TextWord
 
 
 def test_strLV95():  # noqa: D103

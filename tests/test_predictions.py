@@ -8,25 +8,25 @@ import pytest
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.evaluation.layer_evaluator import LayerEvaluator
 from extraction.evaluation.utility import evaluate, evaluate_single
-from extraction.extraction.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
-from extraction.extraction.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
-from extraction.extraction.metadata.metadata import BoreholeMetadata, FileMetadata
-from extraction.extraction.predictions.borehole_predictions import (
+from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
+from extraction.features.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
+from extraction.features.metadata.metadata import BoreholeMetadata, FileMetadata
+from extraction.features.predictions.borehole_predictions import (
     BoreholePredictions,
     BoreholePredictionsWithGroundTruth,
     FilePredictionsWithGroundTruth,
 )
-from extraction.extraction.predictions.file_predictions import FilePredictions
-from extraction.extraction.predictions.overall_file_predictions import OverallFilePredictions
-from extraction.extraction.predictions.predictions import AllBoreholePredictionsWithGroundTruth
-from extraction.extraction.stratigraphy.layer.layer import (
+from extraction.features.predictions.file_predictions import FilePredictions
+from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
+from extraction.features.predictions.predictions import AllBoreholePredictionsWithGroundTruth
+from extraction.features.stratigraphy.layer.layer import (
     Layer,
     LayerDepths,
     LayerDepthsEntry,
     LayersInBorehole,
 )
-from extraction.extraction.utils.data_extractor import FeatureOnPage
-from extraction.extraction.utils.text.textblock import MaterialDescription
+from extraction.features.utils.data_extractor import FeatureOnPage
+from extraction.features.utils.text.textblock import MaterialDescription
 
 
 @pytest.fixture

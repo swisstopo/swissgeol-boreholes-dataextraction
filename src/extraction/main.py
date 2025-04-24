@@ -15,20 +15,20 @@ from extraction import DATAPATH
 from extraction.annotations.draw import draw_predictions
 from extraction.annotations.plot_utils import plot_lines
 from extraction.evaluation.benchmark.score import evaluate_all_predictions
-from extraction.extraction.extract import process_page
-from extraction.extraction.groundwater.groundwater_extraction import (
+from extraction.features.extract import process_page
+from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
     GroundwaterLevelExtractor,
 )
-from extraction.extraction.metadata.metadata import FileMetadata, MetadataInDocument
-from extraction.extraction.predictions.borehole_predictions import BoreholePredictions
-from extraction.extraction.predictions.file_predictions import FilePredictions
-from extraction.extraction.predictions.overall_file_predictions import OverallFilePredictions
-from extraction.extraction.predictions.predictions import BoreholeListBuilder
-from extraction.extraction.stratigraphy.layer.duplicate_detection import remove_duplicate_layers
-from extraction.extraction.stratigraphy.layer.layer import LayersInDocument
-from extraction.extraction.utils.geometry.line_detection import extract_lines
-from extraction.extraction.utils.text.extract_text import extract_text_lines
+from extraction.features.metadata.metadata import FileMetadata, MetadataInDocument
+from extraction.features.predictions.borehole_predictions import BoreholePredictions
+from extraction.features.predictions.file_predictions import FilePredictions
+from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
+from extraction.features.predictions.predictions import BoreholeListBuilder
+from extraction.features.stratigraphy.layer.duplicate_detection import remove_duplicate_layers
+from extraction.features.stratigraphy.layer.layer import LayersInDocument
+from extraction.features.utils.geometry.line_detection import extract_lines
+from extraction.features.utils.text.extract_text import extract_text_lines
 
 load_dotenv()
 

@@ -1,8 +1,8 @@
 """Test suite for the find_depth_columns module."""
 
 import pymupdf
-from extraction.extraction.stratigraphy.base.sidebar_entry import DepthColumnEntry
-from extraction.extraction.stratigraphy.sidebar.classes.a_above_b_sidebar import (
+from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
+from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import (
     AAboveBSidebar,
     generate_alternatives,
 )
