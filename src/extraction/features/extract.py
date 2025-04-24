@@ -91,13 +91,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             pair for pair in material_descriptions_sidebar_pairs if pair.score_match >= 0
         ]
 
-        to_delete = []
-        for i, pair in enumerate(material_descriptions_sidebar_pairs):
-            if any(
-                pair.material_description_rect.intersects(other_pair.material_description_rect)
-                for other_pair in material_descriptions_sidebar_pairs[i + 1 :]
-            ):
-                to_delete.append(i)
+        to_delete = self.find_intersecting_indices(material_descriptions_sidebar_pairs)
 
         filtered_pairs = [
             item for index, item in enumerate(material_descriptions_sidebar_pairs) if index not in to_delete
@@ -110,6 +104,46 @@ class MaterialDescriptionRectWithSidebarExtractor:
             self._create_borehole_from_pair(pair)
             for pair in sorted(filtered_pairs, key=lambda pair: pair.score_match, reverse=True)
         ]
+
+    def find_intersecting_indices(
+        self, material_descriptions_sidebar_pairs: list[MaterialDescriptionRectWithSidebar]
+    ) -> list[int]:
+        """Identifies overlapping material descriptions or sidebars.
+
+        This function scans through all material description/sidebar pairs and returns a list of indices
+        that should be removed due to overlaps. If an intersection is found between two elements, only
+        the first (lower-indexed) element is marked for deletion.
+
+        Args:
+            material_descriptions_sidebar_pairs (list[MaterialDescriptionRectWithSidebar]): a list of pairs consisting
+                of a material description rectangle and an optional sidebar.
+
+        Returns:
+            list[int]: The indices of elements that overlap with others and should be removed.
+        """
+        to_delete = []
+
+        def intersects_any(rect, others):
+            return any(rect.intersects(other) for other in others if other is not None)
+
+        for i, pair in enumerate(material_descriptions_sidebar_pairs):
+            mat_rect = pair.material_description_rect
+            sidebar_rect = pair.sidebar.rect() if pair.sidebar else None
+
+            # Build the list of other rectangles
+            remaining_pairs = material_descriptions_sidebar_pairs[i + 1 :]
+            other_mat_rects = [p.material_description_rect for p in remaining_pairs]
+            other_sidebar_rects = [p.sidebar.rect() if p.sidebar else None for p in remaining_pairs]
+
+            # Check all conditions
+            if (
+                intersects_any(mat_rect, other_mat_rects)
+                or intersects_any(mat_rect, other_sidebar_rects)
+                or (sidebar_rect and intersects_any(sidebar_rect, other_mat_rects))
+                or (sidebar_rect and intersects_any(sidebar_rect, other_sidebar_rects))
+            ):
+                to_delete.append(i)
+        return to_delete
 
     def _create_borehole_from_pair(self, pair: MaterialDescriptionRectWithSidebar) -> ExtractedBorehole:
         bounding_boxes = PageBoundingBoxes.from_material_description_rect_with_sidebar(pair, self.page_number)
