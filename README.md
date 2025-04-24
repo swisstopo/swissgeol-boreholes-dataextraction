@@ -231,7 +231,7 @@ The project structure and the most important files are as follows:
       - `annotations/`: Package for drawing the documents.
       - `evaluation/`: Package for evaluating the extracted information.
         - `benchmark/score.py`: Script to score predictions without running the extraction.
-      - `extraction/`: Package containing all the extraction logic.
+      - `features/`: Package containing all the extraction logic.
         - `groundwater/`: Contains the groundwater extraction logic.
         - `metadata/`: Contains the elevation and coordinates extraction logic.
         - `predictions/`: Mainly contains data structures and prediction matching logic.
