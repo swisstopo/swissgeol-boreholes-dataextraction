@@ -212,7 +212,7 @@ class BoreholeListBuilder:
 
         borehole_index_to_matched_elem_index = {}
 
-        # continue until all boreholes are mathched
+        # continue until all boreholes are matched
         while len(borehole_index_to_matched_elem_index) != self._num_boreholes:
             # map all elements to their closest borehole.
             borehole_idx_to_many_element_mapping = self._many_to_one_match_element_to_borehole(
