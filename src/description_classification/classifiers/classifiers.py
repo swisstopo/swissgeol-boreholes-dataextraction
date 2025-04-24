@@ -257,9 +257,10 @@ class AWSBedrockClassifier:
     def __init__(
         self,
         bedrock_out_directory: Path | None,
-        max_tokens: int = 256,
+        max_tokens: int = 2048,
         temperature: float = 0.3,
         max_concurrent_calls: int = 1,
+        api_call_delay: float = 0
     ):
         """Creates a boto3 client for AWS Bedrock and initializes the classifier.
 
@@ -272,18 +273,21 @@ class AWSBedrockClassifier:
             temperature (float): The sampling temperature to use.
             store_files (bool): Whether to store the prediction files (default: False)
             max_concurrent_calls (int): Maximum number of concurrent API calls (default: 1)
+            api_call_delay (float): Delay between API calls in seconds (default: 0)
         """
         self.bedrock_client = boto3.client(service_name="bedrock-runtime", region_name=os.environ.get("AWS_REGION"))
         self.anthropic_version = os.environ.get("ANTHROPIC_VERSION")
         self.model_id = os.environ.get("ANTHROPIC_MODEL_ID")
 
-        self.uscs_patterns = classification_params["uscs_patterns"]
+        self.uscs_patterns = read_params(os.environ.get("ANTHROPIC_CLASSIFICATION_PARAMS"))["uscs_patterns"] #classification_params["uscs_patterns"]
+
         self.classification_prompts = read_params(os.environ.get("ANTHROPIC_PROMPT_TEMPLATE"))
 
         self.bedrock_out_directory = bedrock_out_directory
         self.max_tokens = max_tokens
         self.temperature = temperature
         self.max_concurrent_calls = max_concurrent_calls
+        self.api_call_delay = api_call_delay
 
     def create_message(
         self, max_tokens: int, temperature: float, anthropic_version: str, material_description: str, language: str
@@ -304,6 +308,9 @@ class AWSBedrockClassifier:
 
         system_message = self.classification_prompts["system_prompt"].format(uscs_patterns=language_patterns)
         user_message = self.classification_prompts["user_prompt"].format(material_description=material_description)
+
+        #system_message = self.classification_prompts["system_prompt"]
+        #user_message = self.classification_prompts["user_prompt"].format(uscs_patterns=language_patterns, material_description=material_description)
 
         body = json.dumps(
             {
@@ -378,7 +385,9 @@ class AWSBedrockClassifier:
                 async with semaphore:
                     try:
                         print(f"Classifying layer: {layer.filename}_{layer.borehole_index}_{layer.layer_index}")
-
+                        
+                        await asyncio.sleep(self.api_call_delay)
+                        
                         body = self.create_message(
                             max_tokens=self.max_tokens,
                             temperature=self.temperature,
