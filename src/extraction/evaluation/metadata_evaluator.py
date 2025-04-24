@@ -95,7 +95,7 @@ class MetadataEvaluator:
         Returns:
             bool: if the extracted evaluation matches the ground truth
         """
-        return math.isclose(extracted_elevation, ground_truth_elevation, abs_tol=0.1)
+        return math.isclose(extracted_elevation, ground_truth_elevation, abs_tol=0.01)
 
     @staticmethod
     def match_coordinates(extracted_coordinates: Coordinate, ground_truth_coordinates: dict):
