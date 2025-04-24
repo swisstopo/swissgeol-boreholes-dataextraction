@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import click
-import fitz
+import pymupdf
 from tqdm import tqdm
 
 
@@ -19,10 +19,10 @@ def convert_pdf_to_png(input_directory: Path, output_directory: Path):
     """
     output_directory.mkdir(parents=True, exist_ok=True)
     for pdf_file in tqdm(input_directory.glob("*.pdf")):
-        document = fitz.open(pdf_file)
+        document = pymupdf.open(pdf_file)
         for page_number in range(document.page_count):
             page = document.load_page(page_number)
-            image = page.get_pixmap(matrix=fitz.Matrix(3, 3))
+            image = page.get_pixmap(matrix=pymupdf.Matrix(3, 3))
             image.save(output_directory / f"{pdf_file.stem}_{page_number}.png")
 
 
