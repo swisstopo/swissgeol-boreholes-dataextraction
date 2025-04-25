@@ -1,8 +1,8 @@
 """Test suite for the interval module."""
 
 import pymupdf
-from stratigraphy.depth.a_to_b_interval_extractor import AToBIntervalExtractor
-from stratigraphy.lines.line import TextLine, TextWord
+from extraction.features.stratigraphy.interval.a_to_b_interval_extractor import AToBIntervalExtractor
+from extraction.features.utils.text.textline import TextLine, TextWord
 
 # TODO: add tests for AAboveBInterval.matching_blocks
 
