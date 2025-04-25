@@ -200,7 +200,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             [interval.depth_interval for interval in self._get_interval_block_pairs(pair)] for pair in filtered_pairs
         ]
 
-        # create sets with all the depths appeating in the interval list
+        # create sets with all the depths appearing in the interval list
         all_depths_set = []
         for interval_list in all_interval_lists:
             depth_set = set()
