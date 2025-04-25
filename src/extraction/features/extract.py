@@ -91,21 +91,28 @@ class MaterialDescriptionRectWithSidebarExtractor:
             pair for pair in material_descriptions_sidebar_pairs if pair.score_match >= 0
         ]
 
-        to_delete = self.find_intersecting_indices(material_descriptions_sidebar_pairs)
-
+        # remove pairs that have any of their elements (sidebar, material description) intersecting with others.
+        to_delete = self._find_intersecting_indices(material_descriptions_sidebar_pairs)
         filtered_pairs = [
             item for index, item in enumerate(material_descriptions_sidebar_pairs) if index not in to_delete
         ]
 
+        # remove pairs that have all depths equal to None (only if they is more than one pair).
+        to_delete = self._find_no_depths_indices(filtered_pairs)
+        filtered_pairs = [item for index, item in enumerate(filtered_pairs) if index not in to_delete]
+
+        # remove pairs that are likelly duplicates of others.
+        to_delete = self._find_duplicated_pairs_indices(filtered_pairs)
+        non_duplicated_pairs = [item for index, item in enumerate(filtered_pairs) if index not in to_delete]
+
         # We order the boreholes with the highest score first. When one borehole is actually present in the ground
         # truth, but more than one are detected, we want the most correct to be assigned
-        # TODO we actually should try to merge similar extracted boreholes to keep the most information possible.
         return [
             self._create_borehole_from_pair(pair)
-            for pair in sorted(filtered_pairs, key=lambda pair: pair.score_match, reverse=True)
+            for pair in sorted(non_duplicated_pairs, key=lambda pair: pair.score_match, reverse=True)
         ]
 
-    def find_intersecting_indices(
+    def _find_intersecting_indices(
         self, material_descriptions_sidebar_pairs: list[MaterialDescriptionRectWithSidebar]
     ) -> list[int]:
         """Identifies overlapping material descriptions or sidebars.
@@ -143,6 +150,82 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 or (sidebar_rect and intersects_any(sidebar_rect, other_sidebar_rects))
             ):
                 to_delete.append(i)
+        return to_delete
+
+    def _find_no_depths_indices(self, filtered_pairs: list[MaterialDescriptionRectWithSidebar]) -> list[int]:
+        """Identify indices of pairs that have no depth intervals.
+
+        Pairs are deleted only if there is more than one element in filtered_pairs.
+
+        Args:
+            filtered_pairs (list[MaterialDescriptionRectWithSidebar]): List of material description/sidebar pairs.
+
+        Returns:
+            list[int]: Indices of pairs where all depth intervals are None.
+        """
+        # if only one pair is detected, we should keep it
+        if len(filtered_pairs) <= 1:
+            return []
+
+        all_interval_lists = [
+            [interval.depth_interval for interval in self._get_interval_block_pairs(pair)] for pair in filtered_pairs
+        ]
+
+        to_delete = [
+            i
+            for i, interval_list in enumerate(all_interval_lists)
+            if all(interval is None for interval in interval_list)
+        ]
+
+        return to_delete
+
+    def _find_duplicated_pairs_indices(self, filtered_pairs: list[MaterialDescriptionRectWithSidebar]) -> list[int]:
+        """Identify indices of pairs that are likely duplicates.
+
+        This is done because the informations about the same borehole could be represented in multiple ways.
+        We only want to keep multiple pairs if they belong to different boreholes in the given pdf page.
+        If duplication is found, we delete the first element, as the pairs are sorted from lowest score first.
+
+        Args:
+            filtered_pairs (list[MaterialDescriptionRectWithSidebar]): The filtered pairs.
+
+        Returns:
+            list[int]: A list containing the indexes of pairs that are duplicated and that should be deleted.
+        """
+        if len(filtered_pairs) <= 1:
+            # only one pair, can't be a duplicate
+            return []
+
+        all_interval_lists = [
+            [interval.depth_interval for interval in self._get_interval_block_pairs(pair)] for pair in filtered_pairs
+        ]
+
+        # create sets with all the depths appeating in the interval list
+        all_depths_set = []
+        for interval_list in all_interval_lists:
+            depth_set = set()
+            for interval in interval_list:
+                if interval is None:
+                    continue
+                if interval.start:
+                    depth_set.add(interval.start.value)
+                if interval.end:
+                    depth_set.add(interval.end.value)
+            all_depths_set.append(depth_set)
+
+        to_delete = []
+        # Compare the depth sets and compute their overlap ratio.
+        # If two sets share many of the same depths, they are likely duplicates.
+        for i, depth in enumerate(all_depths_set):
+            for other_depth in all_depths_set[i + 1 :]:
+                intersection_len = len(depth & other_depth)
+                min_len = min(len(depth), len(other_depth))
+
+                similarity_score = intersection_len / min_len if min_len != 0 else 0
+
+                if similarity_score > self.params["duplicate_similarity_threshold"]:
+                    to_delete.append(i)
+
         return to_delete
 
     def _create_borehole_from_pair(self, pair: MaterialDescriptionRectWithSidebar) -> ExtractedBorehole:
