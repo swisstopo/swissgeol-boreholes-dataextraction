@@ -29,6 +29,7 @@ class BertClassifier:
         Args:
             layer_descriptions (list[LayerInformations]): The LayerInformations object
         """
+        # We create an instance of Trainer only for prediction as it is much faster than using custom methods.
         eval_dataset = self.bert_model.get_tokenized_dataset(layer_descriptions)
         trainer = Trainer(
             model=self.bert_model.model,
