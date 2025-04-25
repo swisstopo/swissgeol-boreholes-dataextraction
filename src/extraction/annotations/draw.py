@@ -97,18 +97,19 @@ def draw_predictions(
                             page.derotation_matrix,
                             [layer for layer in bh_layers.layers if layer.material_description.page == page_number],
                         )
-                        shape.commit()  # Commit all the drawing operations to the page
 
-                        tmp_file_path = out_directory / f"{filename}_page{page_number}.png"
-                        pymupdf.utils.get_pixmap(page, matrix=pymupdf.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
+                    shape.commit()  # Commit all the drawing operations to the page
 
-                        if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
-                            try:
-                                import mlflow
+                    tmp_file_path = out_directory / f"{filename}_page{page_number}.png"
+                    pymupdf.utils.get_pixmap(page, matrix=pymupdf.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
 
-                                mlflow.log_artifact(tmp_file_path, artifact_path="pages")
-                            except NameError:
-                                logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
+                    if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
+                        try:
+                            import mlflow
+
+                            mlflow.log_artifact(tmp_file_path, artifact_path="pages")
+                        except NameError:
+                            logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
 
         except (FileNotFoundError, pymupdf.FileDataError) as e:
             logger.error("Error opening file %s: %s", filename, e)
