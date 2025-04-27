@@ -2,7 +2,7 @@
 
 import re
 
-import fitz
+import pymupdf
 from app.common.helpers import load_pdf_page, load_png
 from app.common.schemas import (
     BoundingBox,
@@ -14,12 +14,16 @@ from app.common.schemas import (
     ExtractTextResponse,
     FormatTypes,
 )
+from extraction.features.metadata.coordinate_extraction import (
+    CoordinateExtractor,
+    LV03Coordinate,
+    LV95Coordinate,
+)
+from extraction.features.utils.text.extract_text import extract_text_lines
+from extraction.features.utils.text.textline import TextLine
 from fastapi import HTTPException
-from stratigraphy.lines.line import TextLine
-from stratigraphy.metadata.coordinate_extraction import CoordinateExtractor, LV03Coordinate, LV95Coordinate
-from stratigraphy.metadata.language_detection import detect_language_of_text
-from stratigraphy.text.extract_text import extract_text_lines
-from stratigraphy.util.util import read_params
+from utils.file_utils import read_params
+from utils.language_detection import detect_language_of_text
 
 matching_params = read_params("matching_params.yml")
 
@@ -61,8 +65,8 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
         words = [
             word
             for word in text_line.words
-            if user_defined_bbox.to_fitz_rect().contains(
-                fitz.Point((word.rect.x0 + word.rect.x1) / 2, (word.rect.y0 + word.rect.y1) / 2)
+            if user_defined_bbox.to_pymupdf_rect().contains(
+                pymupdf.Point((word.rect.x0 + word.rect.x1) / 2, (word.rect.y0 + word.rect.y1) / 2)
             )
         ]
         if words:
@@ -182,12 +186,12 @@ def extract_text(text_lines: list[TextLine]) -> ExtractTextResponse:
     """
     text = " ".join([line.text for line in text_lines])
 
-    text_based_bbox = fitz.Rect()
+    text_based_bbox = pymupdf.Rect()
     for text_line in text_lines:
         text_based_bbox = text_based_bbox.include_rect(text_line.rect)
 
     if text:
-        bbox = BoundingBox.load_from_fitz_rect(text_based_bbox)
+        bbox = BoundingBox.load_from_pymupdf_rect(text_based_bbox)
         return ExtractTextResponse(bbox=bbox, text=text)
     else:
         raise HTTPException(status_code=404, detail="Text not found.")

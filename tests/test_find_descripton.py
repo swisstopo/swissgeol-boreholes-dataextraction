@@ -1,15 +1,15 @@
 """Test suite for the find_description module."""
 
-import fitz
-from stratigraphy.lines.line import TextLine, TextWord
-from stratigraphy.text.find_description import get_description_blocks
-from stratigraphy.util.dataclasses import Line, Point
+import pymupdf
+from extraction.features.utils.geometry.geometry_dataclasses import Line, Point
+from extraction.features.utils.text.find_description import get_description_blocks
+from extraction.features.utils.text.textline import TextLine, TextWord
 
 page_number = 1
-textline1 = TextLine([TextWord(fitz.Rect([0, 0, 10, 10]), "Hello", page_number)])
-textline2 = TextLine([TextWord(fitz.Rect([0, 15, 10, 25]), "World", page_number)])
+textline1 = TextLine([TextWord(pymupdf.Rect([0, 0, 10, 10]), "Hello", page_number)])
+textline2 = TextLine([TextWord(pymupdf.Rect([0, 15, 10, 25]), "World", page_number)])
 textline3 = TextLine(
-    [TextWord(fitz.Rect([0, 37, 10, 47]), "Hey", page_number)]
+    [TextWord(pymupdf.Rect([0, 37, 10, 47]), "Hey", page_number)]
 )  # larger vertical distance to previous blocks
 
 geometric_lines = [Line(Point(500, 1), Point(505, 1))]  # line does not cut the blocks
@@ -21,7 +21,7 @@ description_lines = [
     textline2,
     textline3,
 ]
-material_description_rect = fitz.Rect(0, 0, 5, 42)
+material_description_rect = pymupdf.Rect(0, 0, 5, 42)
 block_line_ratio = 0.5
 left_line_length_threshold = 3
 

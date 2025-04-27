@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
 
-import fitz
+import pymupdf
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -144,20 +144,20 @@ class BoundingBox(BaseModel):
             y1=self.y1 * height_factor,
         )
 
-    def to_fitz_rect(self) -> fitz.Rect:
+    def to_pymupdf_rect(self) -> pymupdf.Rect:
         """Convert the bounding box to a PyMuPDF rectangle.
 
         Returns:
-            fitz.Rect: The PyMuPDF rectangle.
+            pymupdf.Rect: The PyMuPDF rectangle.
         """
-        return fitz.Rect(self.x0, self.y0, self.x1, self.y1)
+        return pymupdf.Rect(self.x0, self.y0, self.x1, self.y1)
 
     @staticmethod
-    def load_from_fitz_rect(rect: fitz.Rect) -> "BoundingBox":
+    def load_from_pymupdf_rect(rect: pymupdf.Rect) -> "BoundingBox":
         """Load the bounding box from a PyMuPDF rectangle.
 
         Args:
-            rect (fitz.Rect): The PyMuPDF rectangle.
+            rect (pymupdf.Rect): The PyMuPDF rectangle.
 
         Returns:
             BoundingBox: The bounding box.

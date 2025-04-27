@@ -1,7 +1,7 @@
 """Test suite for the DepthColumnEntry class."""
 
 import pymupdf
-from stratigraphy.sidebar.sidebarentry import DepthColumnEntry
+from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
 
 
 def test_from_string_value():
