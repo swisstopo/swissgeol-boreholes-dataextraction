@@ -97,7 +97,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             item for index, item in enumerate(material_descriptions_sidebar_pairs) if index not in to_delete
         ]
 
-        # remove pairs that have all depths equal to None (only if there is more than one pair).
+        # remoove pairs that have all depths equal to None (only if there is more than one pair).
         to_delete = self._find_no_depths_indices(filtered_pairs)
         filtered_pairs = [item for index, item in enumerate(filtered_pairs) if index not in to_delete]
 
