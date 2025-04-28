@@ -12,6 +12,7 @@ from extraction.features.stratigraphy.layer.page_bounding_boxes import (
     MaterialDescriptionRectWithSidebar,
     PageBoundingBoxes,
 )
+from extraction.features.stratigraphy.sidebar.classes.layer_identifier_sidebar import LayerIdentifierSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import (
     Sidebar,
     SidebarNoise,
@@ -99,11 +100,14 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         # remove pairs that have all depths equal to None (only if there is more than one pair).
         to_delete = self._find_no_depths_indices(filtered_pairs)
-        filtered_pairs = [item for index, item in enumerate(filtered_pairs) if index not in to_delete]
+        # try without filtering Nones
+        # filtered_pairs = [item for index, item in enumerate(filtered_pairs) if index not in to_delete]
 
         # remove pairs that are likely duplicates of others.
         to_delete = self._find_duplicated_pairs_indices(filtered_pairs)
         non_duplicated_pairs = [item for index, item in enumerate(filtered_pairs) if index not in to_delete]
+
+        # A1304.pdf, A11406.pdf, 1488.pdf and 695265010-bp.pdf have a different outcome!!
 
         # We order the boreholes with the highest score first. When one borehole is actually present in the ground
         # truth, but more than one are detected, we want the most correct to be assigned
@@ -199,25 +203,30 @@ class MaterialDescriptionRectWithSidebarExtractor:
         all_interval_lists = [
             [interval.depth_interval for interval in self._get_interval_block_pairs(pair)] for pair in filtered_pairs
         ]
-
-        # create sets with all the depths appearing in the interval list
-        all_depths_set = []
-        for interval_list in all_interval_lists:
-            depth_set = set()
-            for interval in interval_list:
-                if interval is None:
-                    continue
-                if interval.start:
-                    depth_set.add(interval.start.value)
-                if interval.end:
-                    depth_set.add(interval.end.value)
-            all_depths_set.append(depth_set)
+        if any([all(interval is None for interval in interval_list) for interval_list in all_interval_lists]):
+            if all([isinstance(p.sidebar, LayerIdentifierSidebar) for p in filtered_pairs]):
+                all_depth_sets = [set([entry.value for entry in p.sidebar.entries]) for p in filtered_pairs]
+            else:
+                return []
+        else:
+            # create sets with all the depths appearing in the interval list
+            all_depth_sets = []
+            for interval_list in all_interval_lists:
+                depth_set = set()
+                for interval in interval_list:
+                    if interval is None:
+                        continue
+                    if interval.start:
+                        depth_set.add(interval.start.value)
+                    if interval.end:
+                        depth_set.add(interval.end.value)
+                all_depth_sets.append(depth_set)
 
         to_delete = []
         # Compare the depth sets and compute their overlap ratio.
         # If two sets share many of the same depths, they are likely duplicates.
-        for i, depth in enumerate(all_depths_set):
-            for other_depth in all_depths_set[i + 1 :]:
+        for i, depth in enumerate(all_depth_sets):
+            for other_depth in all_depth_sets[i + 1 :]:
                 intersection_len = len(depth & other_depth)
                 min_len = min(len(depth), len(other_depth))
 
