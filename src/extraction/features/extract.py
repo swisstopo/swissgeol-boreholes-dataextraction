@@ -100,7 +100,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
         # remove pairs that have all depths equal to None (only if there is more than one pair).
         filtered_pairs = [item for index, item in enumerate(filtered_pairs) if index not in to_delete]
 
-        # remove pairs that are likely duplicates of others.
+        # remove pairs that are likelly duplicates of others.
+        to_delete = self._find_duplicated_pairs_indices(filtered_pairs)
         non_duplicated_pairs = [item for index, item in enumerate(filtered_pairs) if index not in to_delete]
 
         # We order the boreholes with the highest score first. When one borehole is actually present in the ground
