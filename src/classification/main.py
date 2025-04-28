@@ -136,6 +136,12 @@ def common_options(f):
         default=None,
         help="Path to the local trained model.",
     )(f)
+    f = click.option(
+        "--data-type",
+        type=click.Choice(["uscs", "lithology"], case_sensitive=False),
+        default="uscs",
+        help="Type of data that need to be classify",
+    )(f)
     return f
 
 
@@ -148,9 +154,12 @@ def click_pipeline(
     file_subset_directory: Path,
     classifier_type: str,
     model_path: Path,
+    data_type: str,
 ):
     """Run the description classification pipeline."""
-    main(file_path, out_directory, out_directory_bedrock, file_subset_directory, classifier_type, model_path)
+    main(
+        file_path, out_directory, out_directory_bedrock, file_subset_directory, classifier_type, model_path, data_type
+    )
 
 
 def main(
@@ -160,6 +169,7 @@ def main(
     file_subset_directory: Path,
     classifier_type: str,
     model_path: Path,
+    data_type: str,
 ):
     """Main pipeline to classify the layer's soil descriptions.
 
@@ -170,12 +180,13 @@ def main(
         file_subset_directory (Path): Path to the directory containing the file whose names are used.
         classifier_type (str): The classifier type to use.
         model_path (Path): Path to the trained model.
+        data_type (str): Type of data that need to be classify.
     """
     if mlflow_tracking:
         setup_mlflow_tracking(file_path, out_directory, file_subset_directory)
 
     logger.info(f"Loading data from {file_path}")
-    layer_descriptions = load_data(file_path, file_subset_directory)
+    layer_descriptions = load_data(file_path, file_subset_directory, data_type)
 
     if model_path is not None and classifier_type != "bert":
         logger.warning("Model path is only used with classifier 'bert'.")
