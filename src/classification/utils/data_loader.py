@@ -7,6 +7,7 @@ from os import listdir
 from os.path import isfile, join
 from pathlib import Path
 
+from classification.utils.lithology_classes import LithologyClasses, map_most_similar_lithology
 from classification.utils.uscs_classes import USCSClasses, map_most_similar_uscs
 from utils.file_utils import read_params
 from utils.language_detection import detect_language_of_text
@@ -26,16 +27,19 @@ class LayerInformations:
     language: str
     material_description: str
     ground_truth_uscs_class: None | USCSClasses
+    ground_truth_lithology_class: None | LithologyClasses
     prediction_uscs_class: None | USCSClasses  # dynamically set
+    prediction_lithology_class: None | LithologyClasses  # dynamically set
     llm_reasoning: None | str  # dynamically set,
 
 
-def load_data(json_path: Path, file_subset_directory: Path | None) -> list[LayerInformations]:
+def load_data(json_path: Path, file_subset_directory: Path | None, data_type: str) -> list[LayerInformations]:
     """Loads the data from the ground truth json file.
 
     Args:
         json_path (Path): the ground truth json file path
         file_subset_directory (Path): Path to the directory containing the file whose names are used.
+        data_type (str): Type of data that need to be classify
 
     Returns:
         list[LayerInformations]: the data formated as a list of LayerInformations objects
@@ -60,13 +64,28 @@ def load_data(json_path: Path, file_subset_directory: Path | None) -> list[Layer
         )
         for borehole in boreholes:
             for layer_index, layer in enumerate(borehole["layers"]):
-                if not layer["uscs_1"]:
-                    logger.debug(
-                        f"Skippping layer: no ground truth for {filename}, borehole {borehole['borehole_index']}, "
-                        f"layer {layer_index} with description {layer['material_description']}."
-                    )
-                    continue
-                uscs_class = map_most_similar_uscs(layer["uscs_1"])
+                lithology_class = None
+                uscs_class = None
+                if data_type == "uscs":
+                    uscs_1 = layer.get("uscs_1", None)
+                    if not uscs_1:
+                        logger.debug(
+                            f"Skippping layer: no USCS ground truth for {filename} borehole "
+                            f"{borehole['borehole_index']}, layer {layer_index} with "
+                            f"description {layer['material_description']}."
+                        )
+                        continue
+                    uscs_class = map_most_similar_uscs(uscs_1)
+                elif data_type == "lithology":
+                    lithology = layer.get("lithology", None)
+                    if not lithology:
+                        logger.debug(
+                            f"Skippping layer: no Lithology ground truth for {filename} borehole "
+                            f"{borehole['borehole_index']}, layer {layer_index} with "
+                            f"description {layer['material_description']}."
+                        )
+                        continue
+                    lithology_class = map_most_similar_lithology(lithology)
                 layer_descriptions.append(
                     LayerInformations(
                         filename,
@@ -75,7 +94,9 @@ def load_data(json_path: Path, file_subset_directory: Path | None) -> list[Layer
                         language,
                         layer["material_description"],
                         uscs_class,
+                        lithology_class,
                         prediction_uscs_class=None,
+                        prediction_lithology_class=None,
                         llm_reasoning=None,
                     )
                 )
