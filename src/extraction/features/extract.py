@@ -91,7 +91,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             pair for pair in material_descriptions_sidebar_pairs if pair.score_match >= 0
         ]
 
-        # remoooove pairs that have any of their elements (sidebar, material description) intersecting with others.
+        # remove pairs that have any of their elements (sidebar, material description) intersecting with others.
         to_delete = self._find_intersecting_indices(material_descriptions_sidebar_pairs)
         filtered_pairs = [
             item for index, item in enumerate(material_descriptions_sidebar_pairs) if index not in to_delete
