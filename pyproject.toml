@@ -39,8 +39,8 @@ dependencies = [
     "transformers",
     "datasets",
     "torch",
-    "accelerate"
-
+    "accelerate",
+    "rdflib",
 ]
 
 [project.optional-dependencies]

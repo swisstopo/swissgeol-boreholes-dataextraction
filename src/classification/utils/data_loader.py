@@ -53,7 +53,6 @@ def load_data(json_path: Path, file_subset_directory: Path | None, data_type: st
     else:
         logger.info(f"Using files from subset directory: {file_subset_directory}")
         filename_subset = {f for f in listdir(file_subset_directory) if isfile(join(file_subset_directory, f))}
-
     layer_descriptions: list[LayerInformations] = []
     for filename, boreholes in data.items():
         if filename_subset is not None and filename not in filename_subset:
@@ -67,25 +66,25 @@ def load_data(json_path: Path, file_subset_directory: Path | None, data_type: st
                 lithology_class = None
                 uscs_class = None
                 if data_type == "uscs":
-                    uscs_1 = layer.get("uscs_1", None)
-                    if not uscs_1:
+                    uscs_1_str = layer.get("uscs_1", None)
+                    if not uscs_1_str:
                         logger.debug(
                             f"Skippping layer: no USCS ground truth for {filename} borehole "
                             f"{borehole['borehole_index']}, layer {layer_index} with "
                             f"description {layer['material_description']}."
                         )
                         continue
-                    uscs_class = map_most_similar_uscs(uscs_1)
+                    uscs_class = map_most_similar_uscs(uscs_1_str)
                 elif data_type == "lithology":
-                    lithology = layer.get("lithology", None)
-                    if not lithology:
+                    lithology_str = layer.get("lithology", None)
+                    if not lithology_str:
                         logger.debug(
                             f"Skippping layer: no Lithology ground truth for {filename} borehole "
                             f"{borehole['borehole_index']}, layer {layer_index} with "
                             f"description {layer['material_description']}."
                         )
                         continue
-                    lithology_class = map_most_similar_lithology(lithology)
+                    lithology_class = map_most_similar_lithology(lithology_str)
                 layer_descriptions.append(
                     LayerInformations(
                         filename,
@@ -100,5 +99,4 @@ def load_data(json_path: Path, file_subset_directory: Path | None, data_type: st
                         llm_reasoning=None,
                     )
                 )
-
     return layer_descriptions
