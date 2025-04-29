@@ -76,11 +76,11 @@ def log_ml_flow_infos(
     if isinstance(classifier, AWSBedrockClassifier):
         mlflow.log_param("anthropic_model_id", os.environ.get("ANTHROPIC_MODEL_ID"))
 
-        prompt_version_match = re.search(r'(v\d+)', os.environ.get("ANTHROPIC_PROMPT_TEMPLATE"))
+        prompt_version_match = re.search(r"(v\d+)", os.environ.get("ANTHROPIC_PROMPT_TEMPLATE"))
         if prompt_version_match:
             mlflow.log_param("anthropic_prompt_version", prompt_version_match.group(1))
 
-        class_param_version_match = re.search(r'(v\d+)', os.environ.get("ANTHROPIC_CLASSIFICATION_PARAMS"))
+        class_param_version_match = re.search(r"(v\d+)", os.environ.get("ANTHROPIC_CLASSIFICATION_PARAMS"))
         if class_param_version_match:
             mlflow.log_param("anthropic_class_param_version", class_param_version_match.group(1))
 

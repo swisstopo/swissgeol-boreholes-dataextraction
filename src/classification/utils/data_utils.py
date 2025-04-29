@@ -83,9 +83,7 @@ def write_predictions(
                 "prediction_uscs_class": layer.prediction_uscs_class.name
                 if layer.prediction_uscs_class is not None
                 else None,
-                "llm_reasoning": layer.llm_reasoning 
-                if layer.llm_reasoning is not None 
-                else None,
+                "llm_reasoning": layer.llm_reasoning if layer.llm_reasoning is not None else None,
             }
         )
 
