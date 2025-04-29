@@ -98,7 +98,7 @@ class BertModel:
             - classifier.bias
         """
         for name, param in self.model.named_parameters():
-            if "classifier" in name:
+            if name.startswith("classifier."):
                 logger.debug(f"Unfreezing Param: {name}")
                 param.requires_grad = True
 
@@ -110,7 +110,7 @@ class BertModel:
             - bert.pooler.dense.bias
         """
         for name, param in self.model.named_parameters():
-            if "pooler" in name:
+            if name.startswith("bert.pooler."):
                 logger.debug(f"Unfreezing Param: {name}")
                 param.requires_grad = True
 
@@ -136,7 +136,7 @@ class BertModel:
             - bert.encoder.layer.11.output.LayerNorm.bias
         """
         for name, param in self.model.named_parameters():
-            if "layer.11" in name:
+            if name.startswith("bert.encoder.layer.11."):
                 logger.debug(f"Unfreezing Param: {name}")
                 param.requires_grad = True
 
@@ -162,7 +162,7 @@ class BertModel:
             - bert.encoder.layer.10.output.LayerNorm.bias
         """
         for name, param in self.model.named_parameters():
-            if "layer.10" in name:
+            if name.startswith("bert.encoder.layer.10."):
                 logger.debug(f"Unfreezing Param: {name}")
                 param.requires_grad = True
 
