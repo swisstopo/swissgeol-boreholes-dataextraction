@@ -27,7 +27,6 @@ class AWSBedrockClassifier:
         temperature: float = 0.3,
         max_concurrent_calls: int = 1,
         api_call_delay: float = 0.0
-        
     ):
         """Creates a boto3 client for AWS Bedrock and initializes the classifier.
 

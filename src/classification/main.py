@@ -66,12 +66,13 @@ def log_ml_flow_infos(
     for class_, count in get_data_class_count(layer_descriptions).items():
         mlflow.log_param(f"class_{class_}_count", count)
 
-    # Log classifier name and id if anthropic model used
+    # Log classifier name
     mlflow.log_param("classifier_type", classifier.__class__.__name__)
 
     if isinstance(classifier, BertClassifier):
         mlflow.log_param("model_name", "/".join(classifier.model_path.parts[-2:]))
 
+    # Log model and id, prompt and parameter versions if anthropic model used
     if isinstance(classifier, AWSBedrockClassifier):
         mlflow.log_param("anthropic_model_id", os.environ.get("ANTHROPIC_MODEL_ID"))
 
