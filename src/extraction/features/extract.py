@@ -12,6 +12,7 @@ from extraction.features.stratigraphy.layer.page_bounding_boxes import (
     MaterialDescriptionRectWithSidebar,
     PageBoundingBoxes,
 )
+from extraction.features.stratigraphy.sidebar.classes.layer_identifier_sidebar import LayerIdentifierSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import (
     Sidebar,
     SidebarNoise,
@@ -97,8 +98,11 @@ class MaterialDescriptionRectWithSidebarExtractor:
             item for index, item in enumerate(material_descriptions_sidebar_pairs) if index not in to_delete
         ]
 
-        # remove pairs that have all depths equal to None (only if there is more than one pair).
-        to_delete = self._find_no_depths_indices(filtered_pairs)
+        # remove pairs with no sidebar if there is more than one pair.
+        to_delete = (
+            [] if len(filtered_pairs) <= 1 else [i for i, pair in enumerate(filtered_pairs) if not pair.sidebar]
+        )
+
         filtered_pairs = [item for index, item in enumerate(filtered_pairs) if index not in to_delete]
 
         # remove pairs that are likely duplicates of others.
@@ -152,33 +156,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 to_delete.append(i)
         return to_delete
 
-    def _find_no_depths_indices(self, filtered_pairs: list[MaterialDescriptionRectWithSidebar]) -> list[int]:
-        """Identify indices of pairs that have no depth intervals.
-
-        Pairs are deleted only if there is more than one element in filtered_pairs.
-
-        Args:
-            filtered_pairs (list[MaterialDescriptionRectWithSidebar]): List of material description/sidebar pairs.
-
-        Returns:
-            list[int]: Indices of pairs where all depth intervals are None.
-        """
-        # if only one pair is detected, we should keep it
-        if len(filtered_pairs) <= 1:
-            return []
-
-        all_interval_lists = [
-            [interval.depth_interval for interval in self._get_interval_block_pairs(pair)] for pair in filtered_pairs
-        ]
-
-        to_delete = [
-            i
-            for i, interval_list in enumerate(all_interval_lists)
-            if all(interval is None for interval in interval_list)
-        ]
-
-        return to_delete
-
     def _find_duplicated_pairs_indices(self, filtered_pairs: list[MaterialDescriptionRectWithSidebar]) -> list[int]:
         """Identify indices of pairs that are likely duplicates.
 
@@ -199,25 +176,36 @@ class MaterialDescriptionRectWithSidebarExtractor:
         all_interval_lists = [
             [interval.depth_interval for interval in self._get_interval_block_pairs(pair)] for pair in filtered_pairs
         ]
-
-        # create sets with all the depths appearing in the interval list
-        all_depths_set = []
-        for interval_list in all_interval_lists:
-            depth_set = set()
-            for interval in interval_list:
-                if interval is None:
-                    continue
-                if interval.start:
-                    depth_set.add(interval.start.value)
-                if interval.end:
-                    depth_set.add(interval.end.value)
-            all_depths_set.append(depth_set)
+        no_depths = any([all(interval is None for interval in interval_list) for interval_list in all_interval_lists])
+        if no_depths:
+            # if a sidebar does not have depths associate with it, we check if all the sidebars contains layer
+            # identifiers like a), b), ...
+            if all([isinstance(p.sidebar, LayerIdentifierSidebar) for p in filtered_pairs]):
+                # We create a set with all the layer identifier entries of each sidebars, we will check for
+                # duplicates using those elements
+                all_element_sets = [set([entry.value for entry in p.sidebar.entries]) for p in filtered_pairs]
+            else:
+                return []  # otherwise, we don't delete anything
+        else:
+            # If all the sidebars have depths associate with them, we create sets with all the depths appearing in
+            # each interval list and check for duplicates using those elements.
+            all_element_sets = []
+            for interval_list in all_interval_lists:
+                depth_set = set()
+                for interval in interval_list:
+                    if interval is None:
+                        continue
+                    if interval.start:
+                        depth_set.add(interval.start.value)
+                    if interval.end:
+                        depth_set.add(interval.end.value)
+                all_element_sets.append(depth_set)
 
         to_delete = []
-        # Compare the depth sets and compute their overlap ratio.
-        # If two sets share many of the same depths, they are likely duplicates.
-        for i, depth in enumerate(all_depths_set):
-            for other_depth in all_depths_set[i + 1 :]:
+        # Compare the element sets (depths or layer identifiers) and compute their overlap ratio.
+        # If two sets share many of the same elements, they are likely duplicates.
+        for i, depth in enumerate(all_element_sets):
+            for other_depth in all_element_sets[i + 1 :]:
                 intersection_len = len(depth & other_depth)
                 min_len = min(len(depth), len(other_depth))
 
