@@ -167,15 +167,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         if len(filtered_pairs) <= 1:
             return []
 
-        all_interval_lists = [
-            [interval.depth_interval for interval in self._get_interval_block_pairs(pair)] for pair in filtered_pairs
-        ]
-
-        to_delete = [
-            i
-            for i, interval_list in enumerate(all_interval_lists)
-            if all(interval is None for interval in interval_list)
-        ]
+        to_delete = [i for i, pair in enumerate(filtered_pairs) if not pair.sidebar]
 
         return to_delete
 
