@@ -48,10 +48,10 @@ class AllClassificationMetrics:
             dict[str, float]: The dict with macro-averaged metrics, with keys macro_precision, macro_recall and
                 macro_f1.
         """
-        # Filter out classes with no ground truth presence (tp + fn == 0), to avoid penalizing the macro-averaging by
-        # including classes that don't appear in the ground truth. This is what is done by sklearn, thus it is
-        # probably the best pratice for computing macro-average.
-        valid_metrics = [m for m in metric_list if (m.tp + m.fn) > 0]
+        # Filter out classes with no presence in the data (i.e. tp + fn + fp == 0) to avoid penalizing macro-averaging
+        # by including classes that do not appear in the data. This follows sklearn's approach and is likely best
+        # practice for computing macro-averaged metrics.
+        valid_metrics = [m for m in metric_list if (m.tp + m.fn + m.fp) > 0]
 
         if not valid_metrics:
             return {"macro_precision": 0, "macro_recall": 0, "macro_f1": 0}
