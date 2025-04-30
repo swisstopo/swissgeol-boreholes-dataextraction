@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 from classification.utils.data_loader import LayerInformations
-from classification.utils.uscs_classes import USCSClasses
+from classification.utils.enum_class import ClassEnum
 from extraction.evaluation.evaluation_dataclasses import Metrics
 from utils.file_utils import read_params
 
@@ -24,15 +24,15 @@ class AllClassificationMetrics:
     """Stores classification metrics at both global and language-specific levels.
 
     Attributes:
-        global_metrics (dict[USCSClasses, Metrics]): A dictionary containing the classification metrics
-            for each of the USCS classes at a global level.
-        language_metrics (dict[str, dict[USCSClasses, Metrics]]): A dictionary where each key represents
+        global_metrics (dict[ClassEnum, Metrics]): A dictionary containing the classification metrics
+            for each of the classes at a global level.
+        language_metrics (dict[str, dict[ClassEnum, Metrics]]): A dictionary where each key represents
             a supported language. Each value is another dictionary containing the classification metrics
-            for each of the USCS classes in that language.
+            for each of the classes in that language.
     """
 
-    global_metrics: dict[USCSClasses, Metrics]
-    language_metrics: dict[str, dict[USCSClasses, Metrics]]
+    global_metrics: dict[ClassEnum, Metrics]
+    language_metrics: dict[str, dict[ClassEnum, Metrics]]
 
     @staticmethod
     def compute_macro_average(metric_list: list[Metrics]) -> dict[str, float]:
@@ -133,7 +133,7 @@ class AllClassificationMetrics:
 
     @property
     def per_class_global_metrics_dict(self) -> dict[str, float]:
-        """Dictionary containing the global f1, recall and precision, detailled for each uscs class.
+        """Dictionary containing the global f1, recall and precision, detailled for each class.
 
         Returns:
             dict[str, float]: The dictionary
@@ -146,7 +146,7 @@ class AllClassificationMetrics:
 
     @property
     def per_class_per_language_metrics_dict(self) -> dict[str, float]:
-        """Dictionary containing the f1, recall and precision for each language, detailled for each uscs class.
+        """Dictionary containing the f1, recall and precision for each language, detailled for each class.
 
         Returns:
             dict[str, float]: The dictionary
@@ -196,10 +196,10 @@ def evaluate(layer_descriptions: list[LayerInformations]) -> AllClassificationMe
     Returns:
         AllClassificationMetrics: the holder for the metrics
     """
-    global_metrics: dict[USCSClasses, Metrics] = per_class_metrics_from_layers(layer_descriptions)
+    global_metrics: dict[ClassEnum, Metrics] = per_class_metrics_from_layers(layer_descriptions)
 
     supported_language: list[str] = classification_params["supported_language"]
-    language_metrics: dict[str, dict[USCSClasses, Metrics]] = {
+    language_metrics: dict[str, dict[ClassEnum, Metrics]] = {
         language: per_class_metrics_from_layers([layer for layer in layer_descriptions if layer.language == language])
         for language in supported_language
     }
@@ -213,21 +213,21 @@ def evaluate(layer_descriptions: list[LayerInformations]) -> AllClassificationMe
     return all_classification_metrics
 
 
-def per_class_metrics_from_layers(layers: list[LayerInformations]) -> dict[USCSClasses, Metrics]:
+def per_class_metrics_from_layers(layers: list[LayerInformations]) -> dict[ClassEnum, Metrics]:
     """Compute per-class classification metrics.
 
     Args:
         layers (list[LayerInformations]): the layers to compute the metrics from.
 
     Returns:
-        Dict[USCSClasses, Metrics]: A dictionary mapping each class to its TP, FP, FN.
+        Dict[ClassEnum, Metrics]: A dictionary mapping each class to its TP, FP, FN.
     """
-    predictions = [layer.prediction_uscs_class for layer in layers]
-    labels = [layer.ground_truth_uscs_class for layer in layers]
+    predictions = [layer.prediction_class for layer in layers]
+    labels = [layer.ground_truth_class for layer in layers]
     return per_class_metric(predictions, labels)
 
 
-def per_class_metric(predictions: Iterable, labels: Iterable):
+def per_class_metric(predictions: Iterable, labels: Iterable) -> dict[ClassEnum, Metrics]:
     """Compute per-class classification metrics from the predictions and the labels.
 
     Args:
@@ -235,10 +235,11 @@ def per_class_metric(predictions: Iterable, labels: Iterable):
         labels (Iterable): An iterable containing the ground truth label for each sample.
 
     Returns:
-        Dict[USCSClasses, Metrics]: A dictionary mapping each class to its TP, FP, FN.
+        dict[ClassEnum, Metrics]: A dictionary mapping each class to its TP, FP, FN.
     """
     metrics_per_class = {}
-    for cls in USCSClasses:
+    classes: set[ClassEnum] = set(predictions) | set(labels)
+    for cls in classes:
         tp = sum(1 for pred, lab in zip(predictions, labels, strict=True) if pred == lab == cls)
         fp = sum(1 for pred, lab in zip(predictions, labels, strict=True) if pred == cls and lab != cls)
         fn = sum(1 for pred, lab in zip(predictions, labels, strict=True) if pred != cls and lab == cls)

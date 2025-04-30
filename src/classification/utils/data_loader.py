@@ -7,8 +7,9 @@ from os import listdir
 from os.path import isfile, join
 from pathlib import Path
 
-from classification.utils.lithology_classes import LithologyClasses, map_most_similar_lithology
-from classification.utils.uscs_classes import USCSClasses, map_most_similar_uscs
+from classification.utils.enum_class import ClassEnum
+from classification.utils.lithology_classes import map_most_similar_lithology
+from classification.utils.uscs_classes import map_most_similar_uscs
 from utils.file_utils import read_params
 from utils.language_detection import detect_language_of_text
 
@@ -26,10 +27,9 @@ class LayerInformations:
     layer_index: int
     language: str
     material_description: str
-    ground_truth_uscs_class: None | USCSClasses
-    ground_truth_lithology_class: None | LithologyClasses
-    prediction_uscs_class: None | USCSClasses  # dynamically set
-    prediction_lithology_class: None | LithologyClasses  # dynamically set
+    data_type: str  # a layer is either classified into USCS or lithology, but not both
+    ground_truth_class: None | ClassEnum
+    prediction_class: None | ClassEnum  # dynamically set
     llm_reasoning: None | str  # dynamically set,
 
 
@@ -63,28 +63,20 @@ def load_data(json_path: Path, file_subset_directory: Path | None, data_type: st
         )
         for borehole in boreholes:
             for layer_index, layer in enumerate(borehole["layers"]):
-                lithology_class = None
-                uscs_class = None
-                if data_type == "uscs":
-                    uscs_1_str = layer.get("uscs_1", None)
-                    if not uscs_1_str:
-                        logger.debug(
-                            f"Skippping layer: no USCS ground truth for {filename} borehole "
-                            f"{borehole['borehole_index']}, layer {layer_index} with "
-                            f"description {layer['material_description']}."
-                        )
-                        continue
-                    uscs_class = map_most_similar_uscs(uscs_1_str)
-                elif data_type == "lithology":
-                    lithology_str = layer.get("lithology", None)
-                    if not lithology_str:
-                        logger.debug(
-                            f"Skippping layer: no Lithology ground truth for {filename} borehole "
-                            f"{borehole['borehole_index']}, layer {layer_index} with "
-                            f"description {layer['material_description']}."
-                        )
-                        continue
-                    lithology_class = map_most_similar_lithology(lithology_str)
+                key = "uscs_1" if data_type == "uscs" else "lithology"
+                class_str = layer.get(key, None)
+                if not class_str:
+                    logger.debug(
+                        f"Skipping layer: no {data_type.upper()} ground truth for {filename} borehole "
+                        f"{borehole['borehole_index']}, layer {layer_index} with "
+                        f"description {layer['material_description']}."
+                    )
+                    continue
+
+                ground_truth_class = (
+                    map_most_similar_uscs(class_str) if data_type == "uscs" else map_most_similar_lithology(class_str)
+                )
+
                 layer_descriptions.append(
                     LayerInformations(
                         filename,
@@ -92,10 +84,9 @@ def load_data(json_path: Path, file_subset_directory: Path | None, data_type: st
                         layer_index,
                         language,
                         layer["material_description"],
-                        uscs_class,
-                        lithology_class,
-                        prediction_uscs_class=None,
-                        prediction_lithology_class=None,
+                        data_type,
+                        ground_truth_class,
+                        prediction_class=None,
                         llm_reasoning=None,
                     )
                 )
