@@ -7,9 +7,7 @@ from os import listdir
 from os.path import isfile, join
 from pathlib import Path
 
-from classification.utils.enum_class import ClassEnum
-from classification.utils.lithology_classes import map_most_similar_lithology
-from classification.utils.uscs_classes import map_most_similar_uscs
+from classification.utils.classification_classes import ClassEnum, map_most_similar_class
 from utils.file_utils import read_params
 from utils.language_detection import detect_language_of_text
 
@@ -27,7 +25,7 @@ class LayerInformations:
     layer_index: int
     language: str
     material_description: str
-    data_type: str  # a layer is either classified into USCS or lithology, but not both
+    data_type: str  # a layer is either classified into USCS or lithology, but never both
     ground_truth_class: None | ClassEnum
     prediction_class: None | ClassEnum  # dynamically set
     llm_reasoning: None | str  # dynamically set,
@@ -73,9 +71,7 @@ def load_data(json_path: Path, file_subset_directory: Path | None, data_type: st
                     )
                     continue
 
-                ground_truth_class = (
-                    map_most_similar_uscs(class_str) if data_type == "uscs" else map_most_similar_lithology(class_str)
-                )
+                ground_truth_class = map_most_similar_class(class_str, data_type)
 
                 layer_descriptions.append(
                     LayerInformations(

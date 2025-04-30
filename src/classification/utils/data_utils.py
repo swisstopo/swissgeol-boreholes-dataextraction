@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from classification.evaluation.evaluate import AllClassificationMetrics
+from classification.utils.classification_classes import ClassEnum
 from classification.utils.data_loader import LayerInformations
-from classification.utils.enum_class import ClassEnum
 from utils.file_utils import read_params
 
 classification_params = read_params("classification_params.yml")

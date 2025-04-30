@@ -15,8 +15,8 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers.models.bert.modeling_bert import BertForSequenceClassification
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
+from classification.utils.classification_classes import USCSClasses
 from classification.utils.data_loader import LayerInformations
-from classification.utils.uscs_classes import USCSClasses
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +184,7 @@ class BertModel:
         shorten = len(layers)  # used for debugging to load only a subset of data (e.g. to test overfitting the model)
         data: dict[str, list] = {
             "layer": [layer.material_description for layer in layers[:shorten]],
-            "label": [layer.ground_truth_uscs_class.value for layer in layers[:shorten]],
+            "label": [layer.ground_truth_class.value for layer in layers[:shorten]],
         }
         dataset = datasets.Dataset.from_dict(data)
         return self.tokenize_dataset(dataset)

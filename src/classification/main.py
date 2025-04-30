@@ -199,7 +199,7 @@ def main(
         classifier = AWSBedrockClassifier(out_directory_bedrock, temperature=0.3, max_concurrent_calls=1)
 
     # classify
-    logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
+    logger.info(f"Classifying layer description into {data_type} classes with {classifier.__class__.__name__}")
     classifier.classify(layer_descriptions)
 
     logger.info("Evaluating predictions")
