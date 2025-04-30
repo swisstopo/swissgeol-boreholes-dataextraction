@@ -1,8 +1,9 @@
 import yaml
 import csv
+import json
 from pathlib import Path
 
-def load_csv_to_yaml(csv_path: Path, yaml_path: Path):
+def load_csv_to_yaml(csv_path: Path, yaml_path: Path, filter_term_order: int = None):
     """Transform lithology data from CSV to a structured dictionary (yml).
 
     Keep both the prefered and alternative patterns, and description for each language.
@@ -10,6 +11,7 @@ def load_csv_to_yaml(csv_path: Path, yaml_path: Path):
     Args:
         csv_path (str): Path to the CSV file to process
         yaml_path (str): Path to the output YAML file
+        term_order (int): Filter by term order (optional)
     """
 
     languages = ['en', 'fr', 'de', 'it']
@@ -19,24 +21,33 @@ def load_csv_to_yaml(csv_path: Path, yaml_path: Path):
         reader = csv.DictReader(csvfile)
 
         for row in reader:
+            if filter_term_order is not None:
+                if int(row.get('term_order', 0)) != filter_term_order:
+                    continue
+
             pattern_id = row['id']
             description = row['definition'] if row['definition'] and row['definition'] != 'nan' else None
 
             for lang in languages:
                 # Get the preferred label for this language
-                pref_label = row.get(f'prefLabel_{lang}', '')
+                pref_lable = row.get(f'prefLabel_{lang}')
 
                 # Handle alternative labels
-                alt_label = row.get(f'altLabel_{lang}', '')
+                alt_lables = []
+                alt_lable_raw = row.get(f'altLabel_{lang}')
+                if alt_lable_raw and alt_lable_raw != '':
+                     formatted_alt_label = alt_lable_raw.replace("'", '"')
+                     alt_lables = json.loads(formatted_alt_label)
+                else:
+                    alt_lables = []
 
-                # Build the labels list
-                labels = [pref_label] if pref_label else []
-                if alt_label and alt_label != '':
-                    labels.append(alt_label)
+                lables = [pref_lable] if pref_lable else []
+                if alt_lables:
+                    lables = lables + alt_lables
 
                 # Store in the patterns dictionary
                 lithology_patterns[lang][pattern_id] = {
-                    'labels': labels,
+                    'labels': lables,
                     'description': description
                 }
 
