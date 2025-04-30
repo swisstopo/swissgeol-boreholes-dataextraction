@@ -68,123 +68,72 @@ class LithologyClasses(IntEnum):
         0-based indexing is used to maintain consistency with machine learning labeling conventions.
     """
 
-    ##### unique classes in deepwells #####
-    # quartzite ##
-    # breccia
-    # conglomerate
-    # marlstone
-    # serpentinite ##
-    # other #----
-    # limestone
-    # rhyolite
-    # sandstone
-    # diorite
-    # clay
-    # rock #!!!! not is Enum: parent of all
-    # claystone
-    # kakirite
-    # granodiorite
-    # pelite # !!!!not is Enum: parent of claystone, marlstone, siltstone
-    # dolostone
-    # phyllite
-    # mylonite
-    # aplite
-    # psephite #!!!!!!! not is Enum:parent of conglomerate
-    # schist
-    # cataclastite
-    # evaporite
-    # amphibolite
-    # siltstone
-    # granite
-    # not specified #!!!!not is Enum:!
-    # unconsolidated deposits #!!!not is Enum:!
-    # gneiss
-    # marble
-
-    ###### unique calsses in nagra #####
-    # aplite
-    # dolostone
-    # migmatite ### not in deepwells
-    # cataclastite
-    # kakirite
-    # sandstone
-    # evaporite
-    # clay
-    # unconsolidated deposits #!!! not is Enum:
-    # granite
-    # breccia
-    # conglomerate
-    # siltstone
-    # sand ### not in deepwells
-    # pelite
-    # claystone
-    # limestone
-    # gneiss
-    # marlstone
-    # rock
-
     kA = 0
     Amphibolite = auto()
     Migmatite = auto()
-    Andesite = auto()  #
+    Andesite = auto()  # not seen in ground truth data (yet)
     Aplite = auto()
-    Basalt = auto()  #
-    Basanite = auto()  #
-    Bentonite = auto()  #
+    Basalt = auto()  # not seen in ground truth data (yet)
+    Basanite = auto()  # not seen in ground truth data (yet)
+    Bentonite = auto()  # not seen in ground truth data (yet)
     Claystone = auto()
     Breccia = auto()
+    Rock = auto()  # is parent of other primary
     Rhyolite = auto()
-    Tuffite = auto()  #
+    Psephite = auto()  # is parent of other primary
+    Tuffite = auto()  # not seen in ground truth data (yet) ..
     Cataclastite = auto()
     Clay = auto()
-    Loam = auto()  #
+    Loam = auto()  # not seen in ground truth data (yet) ..
+    Pelite = auto()  # is parent of other primary
     Conglomerate = auto()
-    Dacite = auto()  #
+    Dacite = auto()  # not seen in ground truth data (yet)
     Diorite = auto()
-    Monzonite = auto()  #
+    Monzonite = auto()  # not seen in ground truth data (yet) ..
     Dolostone = auto()
-    Eclogite = auto()  #
+    Eclogite = auto()  # not seen in ground truth data (yet)
     Evaporite = auto()
-    Foidite = auto()  #
-    Foidolite = auto()  #
-    Gabbro = auto()  #
+    Foidite = auto()  # not seen in ground truth data (yet)
+    Foidolite = auto()  # not seen in ground truth data (yet)
+    Gabbro = auto()  # not seen in ground truth data (yet)
     Mylonite = auto()
     Gneiss = auto()
     Granite = auto()
     Granodiorite = auto()
-    Granulite = auto()  #
+    Granulite = auto()  # not seen in ground truth data (yet)
+    Psammite = auto()  # is parent of other primary
     Schist = auto()
-    Syenite = auto()  #
-    Granofels = auto()  #
-    Peridotite = auto()  #
-    Pyroxenite = auto()  #
-    Granophyre = auto()  #
-    Hornfels = auto()  #
-    Ignimbrite = auto()  #
+    Syenite = auto()  # not seen in ground truth data (yet)
+    Granofels = auto()  # not seen in ground truth data (yet)
+    Peridotite = auto()  # not seen in ground truth data (yet)
+    Pyroxenite = auto()  # not seen in ground truth data (yet)
+    Granophyre = auto()  # not seen in ground truth data (yet)
+    Hornfels = auto()  # not seen in ground truth data (yet)
+    Ignimbrite = auto()  # not seen in ground truth data (yet)
     Kakirite = auto()
-    Latite = auto()  #
+    Latite = auto()  # not seen in ground truth data (yet)
     Limestone = auto()
     Marble = auto()
-    Marl = auto()  #
+    Marl = auto()  # not seen in ground truth data (yet)
     Marlstone = auto()
-    Pebble = auto()  #
+    Pebble = auto()  # not seen in ground truth data (yet)
     Sand = auto()
-    Silt = auto()  #
-    Peat = auto()  #
+    Silt = auto()  # not seen in ground truth data (yet)
+    Peat = auto()  # not seen in ground truth data (yet)
     Phyllite = auto()
-    Pegmatite = auto()  #
+    Pegmatite = auto()  # not seen in ground truth data (yet)
     Siltstone = auto()
     Serpentinite = auto()
-    Phonolite = auto()  #
-    Prasinite = auto()  #
+    Phonolite = auto()  # not seen in ground truth data (yet)
+    Prasinite = auto()  # not seen in ground truth data (yet)
     Sandstone = auto()
-    Pseudotachyllite = auto()  #
+    Pseudotachyllite = auto()  # not seen in ground truth data (yet)
     Quartzite = auto()
-    Rauwacke = auto()  #
-    Rodingite = auto()  #
-    Tonalite = auto()  #
-    Tephrite = auto()  #
-    Trachyte = auto()  #
+    Rauwacke = auto()  # not seen in ground truth data (yet)
+    Rodingite = auto()  # not seen in ground truth data (yet)
+    Tonalite = auto()  # not seen in ground truth data (yet)
+    Tephrite = auto()  # not seen in ground truth data (yet)
+    Trachyte = auto()  # not seen in ground truth data (yet)
 
 
 # Define joined type to use everywere in the code

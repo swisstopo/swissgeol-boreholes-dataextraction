@@ -81,8 +81,8 @@
             "args": [
                 "-f",
                 // "data/geoquat_ground_truth.json",
-                // "data/deepwells_ground_truth.json",
-                "data/nagra_ground_truth.json",
+                 "data/deepwells_ground_truth.json",
+                //"data/nagra_ground_truth.json",
                 // "-s",
                 // "data/geoquat/validation",
                 "-c",
@@ -137,5 +137,15 @@
             "justMyCode": true,
             "python": "${workspaceFolder}/env/bin/python3",
         },
-    ]
+        {
+            "name": "Python: load rdf to yml",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.scripts.load_csv_to_yaml",
+            "args": ["--from-rdf"],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "${workspaceFolder}/env/bin/python3",
+        },
+    ],
 }
