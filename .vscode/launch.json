@@ -14,7 +14,7 @@
                 //"example/example_borehole_profile.pdf",
                 //"data/subset_zurich",
                 //"data/zurich",
-                // "data/zurich/268123018-bp.pdf",
+                "data/zurich/695265010-bp.pdf",
                 // "data/zurich/268123018-bp.pdf", // 2 bh, one with gw
                 // "data/zurich/269126084-bp.pdf", // 2 gw in the same borehole
                 // "data/zurich/267125339-bp.pdf", //groundwater detected
@@ -30,9 +30,9 @@
                 //"data/geoquat/validation/13080.pdf", //has f1=0, detects 1x the same, and not the right things
                 //"data/zurich/267125439-bp.pdf",
                 //"data/geoquat/validation/A7111.pdf",
-                "data/geoquat/validation",
-                //"data/geoquat/train",
-                //"data/geoquat/validation/8366.pdf",
+                //"data/geoquat/validation",
+                //"data/geoquat/train", #14225.pdfok, A11406.pdfNO, 1488.pdf, 14273.pdfok and A1304
+                // "data/geoquat/validation/A1304.pdf",
                 //"data/geoquat/test/A8005.pdf",
                 // "data/nagra/Dossier III_Appendix A_BOZ1-1_Lithostratigraphy_1_2500_0000-1037.39.pdf", //***
                 //"data/nagra/Dossier III_Appendix_A_TRU1-1_Lithostratigraphy_1_2500_0000-1310.pdf",
@@ -80,13 +80,17 @@
             "module": "src.classification.main",
             "args": [
                 "-f",
-                "data/geoquat_ground_truth.json",
-                "-s",
-                "data/geoquat/validation",
+                // "data/geoquat_ground_truth.json",
+                // "data/deepwells_ground_truth.json",
+                "data/nagra_ground_truth.json",
+                // "-s",
+                // "data/geoquat/validation",
                 "-c",
-                "bert",
+                "dummy",
                 "-p",
-                "models/20250404-120603_best/checkpoint-5004"
+                "models/balance_best/20250416-192401_best_stage2_balance/checkpoint-8340_very_best",
+                "--data-type",
+                "lithology"
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,

@@ -75,7 +75,7 @@ def log_ml_flow_infos(
 
     # Log input data and output predictions
     mlflow.log_artifact(str(file_path), "input_data")
-    mlflow.log_artifact(f"{out_directory}/uscs_class_predictions.json", "predictions_json")
+    mlflow.log_artifact(f"{out_directory}/class_predictions.json", "predictions_json")
 
     # log output prediction artifacts detailed for each class
     pred_dir = os.path.join(out_directory, "predictions_per_class")
@@ -139,7 +139,7 @@ def common_options(f):
         "--data-type",
         type=click.Choice(["uscs", "lithology"], case_sensitive=False),
         default="uscs",
-        help="Type of data that need to be classify",
+        help="Type of data that needs to be classified",
     )(f)
     return f
 

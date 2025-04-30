@@ -11,7 +11,7 @@ from pathlib import Path
 
 from classification.evaluation.evaluate import AllClassificationMetrics
 from classification.utils.data_loader import LayerInformations
-from classification.utils.uscs_classes import USCSClasses
+from classification.utils.enum_class import ClassEnum
 from utils.file_utils import read_params
 
 classification_params = read_params("classification_params.yml")
@@ -39,19 +39,19 @@ def get_data_class_count(layer_descriptions: list[LayerInformations]) -> dict[st
     Returns:
         dict[str,int]: the count for each class.
     """
-    class_counts = dict(Counter(layer.ground_truth_uscs_class.name for layer in layer_descriptions))
+    class_counts = dict(Counter(layer.ground_truth_class.name for layer in layer_descriptions))
     return class_counts
 
 
 def write_predictions(
-    layers_with_predictions: list[LayerInformations], out_dir: Path, out_path: str = "uscs_class_predictions.json"
+    layers_with_predictions: list[LayerInformations], out_dir: Path, out_path: str = "class_predictions.json"
 ):
     """Writes the predictions and ground truth data to a JSON file.
 
     Args:
         layers_with_predictions (list[LayerInformations]): List of layers with predictions.
         out_dir (Path): Path to the output directory.
-        out_path (str): Name of the output file (default: "uscs_class_predictions.json").
+        out_path (str): Name of the output file (default: "class_predictions.json").
     """
     out_dir.mkdir(parents=True, exist_ok=True)  # Ensure the output directory exists
     output_file = out_dir / out_path
@@ -77,12 +77,9 @@ def write_predictions(
                 "layer_index": layer.layer_index,
                 "material_description": layer.material_description,
                 "language": layer.language,
-                "ground_truth_uscs_class": layer.ground_truth_uscs_class.name
-                if layer.ground_truth_uscs_class is not None
-                else None,
-                "prediction_uscs_class": layer.prediction_uscs_class.name
-                if layer.prediction_uscs_class is not None
-                else None,
+                "data_type": layer.data_type,
+                "ground_truth_class": layer.ground_truth_class.name if layer.ground_truth_class is not None else None,
+                "prediction_class": layer.prediction_class.name if layer.prediction_class is not None else None,
             }
         )
 
@@ -133,8 +130,8 @@ class KeyClassConfig:
         metric_used: the metric name ("recall" or "precision")
     """
 
-    get_first_key_class: Callable[[LayerInformations], USCSClasses]
-    get_second_key_class: Callable[[LayerInformations], USCSClasses]
+    get_first_key_class: Callable[[LayerInformations], ClassEnum]
+    get_second_key_class: Callable[[LayerInformations], ClassEnum]
     first_key_str: str
     second_key_str: str
     metric_used: str
@@ -147,7 +144,7 @@ def write_per_language_per_class_predictions(
 
     Creates one folder for each language and one for the global predictions. In each folder creates an overview file,
         one folder for the grouping by predictions and one for the grouping by ground truth. In those folders, we
-        create a file for each USCS class and write the predictions and ground truth data for each class.
+        create a file for each class seen in the data and write the predictions and ground truth data for each.
 
     Args:
         layers_with_predictions (list[LayerInformations]): List of layers with predictions.
@@ -175,8 +172,8 @@ def write_per_language_per_class_predictions(
         write_per_class_predictions(
             layers_in_language,
             key_class_config=KeyClassConfig(
-                get_first_key_class=lambda layer: layer.ground_truth_uscs_class,
-                get_second_key_class=lambda layer: layer.prediction_uscs_class,
+                get_first_key_class=lambda layer: layer.ground_truth_class,
+                get_second_key_class=lambda layer: layer.prediction_class,
                 first_key_str="ground_truth",
                 second_key_str="prediction",
                 metric_used="recall",
@@ -189,8 +186,8 @@ def write_per_language_per_class_predictions(
         write_per_class_predictions(
             layers_in_language,
             key_class_config=KeyClassConfig(
-                get_first_key_class=lambda layer: layer.prediction_uscs_class,
-                get_second_key_class=lambda layer: layer.ground_truth_uscs_class,
+                get_first_key_class=lambda layer: layer.prediction_class,
+                get_second_key_class=lambda layer: layer.ground_truth_class,
                 first_key_str="prediction",
                 second_key_str="ground_truth",
                 metric_used="precision",
@@ -201,7 +198,7 @@ def write_per_language_per_class_predictions(
 
 
 def write_overview(metrics_dict: dict[str, float], layers_with_predictions: list[LayerInformations], out_dir: Path):
-    """Write an overview CSV containing performance metrics per USCS class.
+    """Write an overview CSV containing performance metrics for each class.
 
     Args:
         metrics_dict (dict[str, float]): Flat dictionary with metrics, e.g., 'global_CL_f1': 0.5.
@@ -220,12 +217,17 @@ def write_overview(metrics_dict: dict[str, float], layers_with_predictions: list
 
         rows = []
 
-        for class_ in USCSClasses:
+        ground_truths = [layer.ground_truth_class for layer in layers_with_predictions]
+        predictions = [layer.prediction_class for layer in layers_with_predictions]
+
+        all_classes = set(predictions) | set(ground_truths)
+
+        for class_ in all_classes:
             # filter metrics dict (e.g. extract "CL_ML" for "global_CL_ML_recall")
             class_metrics_dict = {k: v for k, v in metrics_dict.items() if class_.name == "_".join(k.split("_")[1:-1])}
 
-            num_ground_truth = sum(layer.ground_truth_uscs_class == class_ for layer in layers_with_predictions)
-            num_pred = sum(layer.prediction_uscs_class == class_ for layer in layers_with_predictions)
+            num_pred = sum(pred == class_ for pred in predictions)
+            num_ground_truth = sum(gt == class_ for gt in ground_truths)
 
             rows.append(
                 {
@@ -245,83 +247,25 @@ def write_overview(metrics_dict: dict[str, float], layers_with_predictions: list
             writer.writerow(row)
 
 
-def build_class_stats(
-    samples_for_class: list[LayerInformations], first_key_class: USCSClasses, key_class_config: KeyClassConfig
-) -> tuple[OrderedDict, dict, int]:
-    """Builds detailed statistics and sample data for a specific class.
-
-    Args:
-        samples_for_class: Layers matching the first key class.
-        first_key_class: The class being analyzed.
-        key_class_config: Functions and labels according to the grouping that was used.
-
-    Returns:
-        tuple: A tuple containing:
-            - Ordered stats dictionary per second class.
-            - All samples grouped by second class.
-            - Total number of samples for the first class.
-    """
-    total = len(samples_for_class)
-    class_stats = {}
-    samples_grouped = {}
-
-    for second_key_class in USCSClasses:
-        matched_samples = [
-            layer for layer in samples_for_class if key_class_config.get_second_key_class(layer) == second_key_class
-        ]
-
-        stat = {
-            f"is_{key_class_config.first_key_str}_class": first_key_class == second_key_class,
-            f"number_{key_class_config.second_key_str}": len(matched_samples),
-            f"proportion_{key_class_config.second_key_str}": len(matched_samples) / total if total else 0.0,
-        }
-
-        class_stats[second_key_class.name] = stat
-
-        samples_grouped[second_key_class.name] = [
-            {
-                "file_name": layer.filename,
-                "borehole_index": layer.borehole_index,
-                "layer_index": layer.layer_index,
-                "language": layer.language,
-                "material_description": layer.material_description,
-                "ground_truth_uscs_class": layer.ground_truth_uscs_class.name,
-                "prediction_uscs_class": layer.prediction_uscs_class.name,
-            }
-            for layer in matched_samples
-        ]
-
-    sorted_stats = OrderedDict(
-        sorted(
-            class_stats.items(),
-            key=lambda x: (
-                x[1][f"is_{key_class_config.first_key_str}_class"],
-                x[1][f"proportion_{key_class_config.second_key_str}"],
-            ),
-            reverse=True,
-        )
-    )
-
-    return sorted_stats, samples_grouped, total
-
-
 def write_per_class_predictions(
     layers_with_predictions: list[LayerInformations],
     key_class_config: KeyClassConfig,
     metrics_dict: dict[str, float],
     out_dir: Path,
 ):
-    """Creates one file per USCS class and write the predictions and ground truth data for each class.
+    """Creates one file for each class seen in the data and write the predictions and ground truth data for each.
 
     Args:
         layers_with_predictions (list[LayerInformations]): List of layers with predictions.
-        key_class_config: Functions and labels according to the grouping that should be applied.
+        key_class_config (KeyClassConfig): Functions and labels according to the grouping that should be applied.
         metrics_dict (dict[str, float]): the dict containing the relevent metrics.
         out_dir (Path): Path to the output directory.
     """
     out_dir.mkdir(parents=True, exist_ok=True)  # Ensure the output directory exists
 
-    for first_key_class in USCSClasses:
+    all_first_key_classes = set([key_class_config.get_first_key_class(layer) for layer in layers_with_predictions])
+
+    for first_key_class in all_first_key_classes:
         samples_for_first_key = [
             layer
             for layer in layers_with_predictions
@@ -354,3 +298,66 @@ def write_per_class_predictions(
         output_file = out_dir / f"{key_class_config.first_key_str}_class_{first_key_class.name}.json"
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(final_dict, f, ensure_ascii=False, indent=4)
+
+
+def build_class_stats(
+    samples_for_class: list[LayerInformations], first_key_class: ClassEnum, key_class_config: KeyClassConfig
+) -> tuple[OrderedDict, dict, int]:
+    """Builds detailed statistics and sample data for a specific class.
+
+    Args:
+        samples_for_class (list[LayerInformations]): Layers matching the first key class.
+        first_key_class (ClassEnum): The class being analyzed.
+        key_class_config (KeyClassConfig): Functions and labels according to the grouping that was used.
+
+    Returns:
+        tuple: A tuple containing:
+            - Ordered stats dictionary per second class.
+            - All samples grouped by second class.
+            - Total number of samples for the first class.
+    """
+    total = len(samples_for_class)
+    class_stats = {}
+    samples_grouped = {}
+
+    all_second_key_classes = set([key_class_config.get_second_key_class(layer) for layer in samples_for_class])
+
+    for second_key_class in all_second_key_classes:
+        matched_samples = [
+            layer for layer in samples_for_class if key_class_config.get_second_key_class(layer) == second_key_class
+        ]
+
+        stat = {
+            f"is_{key_class_config.first_key_str}_class": first_key_class == second_key_class,
+            f"number_{key_class_config.second_key_str}": len(matched_samples),
+            f"proportion_{key_class_config.second_key_str}": len(matched_samples) / total if total else 0.0,
+        }
+
+        class_stats[second_key_class.name] = stat
+
+        samples_grouped[second_key_class.name] = [
+            {
+                "file_name": layer.filename,
+                "borehole_index": layer.borehole_index,
+                "layer_index": layer.layer_index,
+                "language": layer.language,
+                "data_type": layer.data_type,
+                "material_description": layer.material_description,
+                "ground_truth_class": layer.ground_truth_class.name,
+                "prediction_class": layer.prediction_class.name,
+            }
+            for layer in matched_samples
+        ]
+
+    sorted_stats = OrderedDict(
+        sorted(
+            class_stats.items(),
+            key=lambda x: (
+                x[1][f"is_{key_class_config.first_key_str}_class"],
+                x[1][f"proportion_{key_class_config.second_key_str}"],
+            ),
+            reverse=True,
+        )
+    )
+
+    return sorted_stats, samples_grouped, total
