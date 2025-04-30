@@ -2,8 +2,8 @@
 
 import re
 
+from classification.utils.classification_classes import USCSClasses, map_most_similar_class
 from classification.utils.data_loader import LayerInformations
-from classification.utils.uscs_classes import USCSClasses, map_most_similar_uscs
 from nltk.stem.snowball import SnowballStemmer
 from utils.file_utils import read_params
 
@@ -92,7 +92,7 @@ class BaselineClassifier:
     def classify(self, layer_descriptions: list[LayerInformations]):
         """Classifies the material descriptions of layer information objects into USCS soil classes.
 
-        The method modifies the input object, layer_descriptions by setting their prediction_uscs_class attribute.
+        The method modifies the input object, layer_descriptions by setting their prediction_class attribute.
         The approach is as follows:
 
         1. Tokenize and stem both the material description and the USCS pattern keywords
@@ -121,7 +121,7 @@ class BaselineClassifier:
             matches = []
 
             for class_key, class_keyphrases in patterns.items():
-                uscs_class = map_most_similar_uscs(class_key)
+                uscs_class = map_most_similar_class(class_key, "uscs")
                 for class_keyphrase in class_keyphrases:
                     # Tokenize the pattern into separate words and stem them
                     pattern_tokens = re.findall(r"\b\w+\b", class_keyphrase)
@@ -149,6 +149,6 @@ class BaselineClassifier:
             sorted_matches = sorted(matches, key=lambda x: (-x["coverage"], -x["complexity"], x["match_positions"]))
 
             if sorted_matches:
-                layer.prediction_uscs_class = sorted_matches[0]["class"]
+                layer.prediction_class = sorted_matches[0]["class"]
             else:
-                layer.prediction_uscs_class = USCSClasses.kA
+                layer.prediction_class = USCSClasses.kA

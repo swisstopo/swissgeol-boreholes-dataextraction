@@ -5,8 +5,8 @@ import os
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+from classification.utils.classification_classes import ClassEnum
 from classification.utils.data_loader import LayerInformations
-from classification.utils.enum_class import ClassEnum
 from extraction.evaluation.evaluation_dataclasses import Metrics
 from utils.file_utils import read_params
 

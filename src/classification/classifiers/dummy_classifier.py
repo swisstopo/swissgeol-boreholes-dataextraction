@@ -1,8 +1,7 @@
 """Dummy classifier module."""
 
+from classification.utils.classification_classes import LithologyClasses, USCSClasses
 from classification.utils.data_loader import LayerInformations
-from classification.utils.lithology_classes import LithologyClasses
-from classification.utils.uscs_classes import USCSClasses
 
 
 class DummyClassifier:
