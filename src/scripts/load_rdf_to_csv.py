@@ -10,7 +10,7 @@ import rdflib
 import requests
 
 
-def extract_id(url: str):
+def extract_id(url: str) -> str:
     """Returns the last part of the URL.
 
     Args:
@@ -24,60 +24,66 @@ def extract_id(url: str):
     return url
 
 
-def count_capital_terms(id_value: str):
+def count_capital_terms(id_value: str) -> int:
     """Count the number of capital terms in a given string.
 
     Args:
         id_value (str): The string to count capital terms in.
 
-    returns:
+    Returns:
         int: The number of capital terms in the string.
     """
     terms = re.findall(r"[A-Z][a-z0-9]*", id_value)
     return len(terms)
 
 
-def process_url_array(url_array_str: str):
-    """Process a string representation of a list of URLs.
+def load_rdf_str(rdf_url) -> str:
+    """Load an RDF file from a remote URL and return its content as a string.
 
     Args:
-        url_array_str (str): String representation of a list of URLs.
+        rdf_url (str): the url of the remote URL.
 
-    returns:
-        list: List of the last parts of the URLs.
+    Returns:
+        str: The content of the RDF file as a string.
     """
-    if not url_array_str or url_array_str == "[]":
-        return []
-
-    try:
-        # Convert string representation to list
-        url_array_str = url_array_str.replace("'", '"')
-        url_array = json.loads(url_array_str)
-
-        # Extract the last part of each URL
-        return [url.split("/")[-1] for url in url_array]
-    except json.JSONDecodeError:
-        return []
-
-
-def load_rdf_to_csv(output_csv: Path):
-    """Load RDF file from the swissgeol-lexic-vocabulary-lithologie repository and create a CSV file.
-
-    Args:
-        output_csv (Path): Path to the output CSV file.
-    """
-    # Settings
-    rdf_url = "https://raw.githubusercontent.com/swisstopo/swissgeol-lexic-vocabulary-lithologie/main/lithology.rdf"
-    SUPPORTED_LANGUAGES = ["en", "de", "fr", "it"]
-
-    # Download RDF/XML
-    output_dir = "data/lithology_lexic"
     response = requests.get(rdf_url)
     if response.status_code != 200:
         raise Exception(f"Failed to fetch RDF file. Status code: {response.status_code}")
-    rdf_data = response.text
-    with open(os.path.join(output_dir, "lithology.rdf"), "w", encoding="utf-8") as f_rdf:
+    return response.text
+
+
+def write_rdf(rdf_data, output_dir, rdf_file_name):
+    """Write RDF data to a file, creating the output directory if it doesn't exist.
+
+    Args:
+        rdf_data (str): The RDF content to write into the file.
+        output_dir (str): Path to the directory where the RDF file should be saved.
+        rdf_file_name (str): Name of the RDF file to create.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    with open(os.path.join(output_dir, rdf_file_name), "w", encoding="utf-8") as f_rdf:
         f_rdf.write(rdf_data)
+
+
+def load_rdf_to_csv(
+    output_dir: Path = Path("data/lithology_lexic"),
+    output_rdf_name: str = "lithology.rdf",
+    output_csv_name: str = "lithology.csv",
+):
+    """Load RDF file from the swissgeol-lexic-vocabulary-lithologie repository and create a CSV file.
+
+    Args:
+        output_dir (Path): folder to store the output files in.
+        output_rdf_name (str): name of the output rdf file.
+        output_csv_name (str): name of the output csv file.
+    """
+    # Settings
+    SUPPORTED_LANGUAGES = ["en", "de", "fr", "it"]
+    rdf_url = "https://raw.githubusercontent.com/swisstopo/swissgeol-lexic-vocabulary-lithologie/main/lithology.rdf"
+
+    # Download RDF
+    rdf_data = load_rdf_str(rdf_url)
+    write_rdf(rdf_data, output_dir, output_rdf_name)
 
     # Parse RDF
     graph = rdflib.Graph()
@@ -139,23 +145,9 @@ def load_rdf_to_csv(output_csv: Path):
         rows.append(row)
 
     # Write CSV
-    fieldnames = [
-        "id",
-        "term_order",
-        "prefLabel_en",
-        "prefLabel_fr",
-        "prefLabel_de",
-        "prefLabel_it",
-        "definition",
-        "altLabel_en",
-        "altLabel_fr",
-        "altLabel_de",
-        "altLabel_it",
-        "broader",
-        "narrower",
-    ]
-
-    with open(output_csv, mode="w", encoding="utf-8", newline="") as f:
+    output_csv_path = Path(output_dir, output_csv_name)
+    with open(output_csv_path, mode="w", encoding="utf-8", newline="") as f:
+        fieldnames = rows[0].keys()
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         for row in rows:
@@ -164,7 +156,7 @@ def load_rdf_to_csv(output_csv: Path):
                 row[field] = json.dumps(row[field], ensure_ascii=False)
             writer.writerow(row)
 
-    print(f"CSV file saved to: {output_csv}")
+    print(f"CSV file saved to: {output_csv_path}")
 
 
 if __name__ == "__main__":
