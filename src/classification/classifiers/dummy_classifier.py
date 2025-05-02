@@ -1,6 +1,5 @@
 """Dummy classifier module."""
 
-from classification.utils.classification_classes import LithologyClasses, USCSClasses
 from classification.utils.data_loader import LayerInformations
 
 
@@ -19,7 +18,4 @@ class DummyClassifier:
             layer_descriptions (list[LayerInformations]): List of layer information objects to classify.
         """
         for layer in layer_descriptions:
-            if layer.data_type == "uscs":
-                layer.prediction_class = USCSClasses.CL_ML
-            else:
-                layer.prediction_class = LithologyClasses.Marlstone
+            layer.prediction_class = layer.class_system.get_dummy_classifier_class_value()

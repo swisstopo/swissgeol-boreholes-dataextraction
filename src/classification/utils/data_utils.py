@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from classification.evaluation.evaluate import AllClassificationMetrics
-from classification.utils.classification_classes import ClassEnum
+from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformations
 from utils.file_utils import read_params
 
@@ -41,6 +41,18 @@ def get_data_class_count(layer_descriptions: list[LayerInformations]) -> dict[st
     """
     class_counts = dict(Counter(layer.ground_truth_class.name for layer in layer_descriptions))
     return class_counts
+
+
+def get_classification_systems(layer_descriptions: list[LayerInformations]) -> list[str]:
+    """Returns the systems the descriptions were classified into.
+
+    Args:
+        layer_descriptions (list[LayerInformations]): All the layers.
+
+    Returns:
+        list[str]: the classifiaction systems used (found using the layer key in ground truth data).
+    """
+    return list(set([layer.class_system.get_layer_ground_truth_key() for layer in layer_descriptions]))
 
 
 def write_predictions(
@@ -77,7 +89,7 @@ def write_predictions(
                 "layer_index": layer.layer_index,
                 "material_description": layer.material_description,
                 "language": layer.language,
-                "data_type": layer.data_type,
+                "class_system": layer.class_system.get_layer_ground_truth_key(),
                 "ground_truth_class": layer.ground_truth_class.name if layer.ground_truth_class is not None else None,
                 "prediction_class": layer.prediction_class.name if layer.prediction_class is not None else None,
             }
@@ -130,8 +142,8 @@ class KeyClassConfig:
         metric_used: the metric name ("recall" or "precision")
     """
 
-    get_first_key_class: Callable[[LayerInformations], ClassEnum]
-    get_second_key_class: Callable[[LayerInformations], ClassEnum]
+    get_first_key_class: Callable[[LayerInformations], ClassificationSystem.EnumMember]
+    get_second_key_class: Callable[[LayerInformations], ClassificationSystem.EnumMember]
     first_key_str: str
     second_key_str: str
     metric_used: str
@@ -301,13 +313,15 @@ def write_per_class_predictions(
 
 
 def build_class_stats(
-    samples_for_class: list[LayerInformations], first_key_class: ClassEnum, key_class_config: KeyClassConfig
+    samples_for_class: list[LayerInformations],
+    first_key_class: ClassificationSystem.EnumMember,
+    key_class_config: KeyClassConfig,
 ) -> tuple[OrderedDict, dict, int]:
     """Builds detailed statistics and sample data for a specific class.
 
     Args:
         samples_for_class (list[LayerInformations]): Layers matching the first key class.
-        first_key_class (ClassEnum): The class being analyzed.
+        first_key_class (ClassificationSystem.EnumMember): The class being analyzed.
         key_class_config (KeyClassConfig): Functions and labels according to the grouping that was used.
 
     Returns:
@@ -341,7 +355,7 @@ def build_class_stats(
                 "borehole_index": layer.borehole_index,
                 "layer_index": layer.layer_index,
                 "language": layer.language,
-                "data_type": layer.data_type,
+                "class_system": layer.class_system.get_layer_ground_truth_key(),
                 "material_description": layer.material_description,
                 "ground_truth_class": layer.ground_truth_class.name,
                 "prediction_class": layer.prediction_class.name,

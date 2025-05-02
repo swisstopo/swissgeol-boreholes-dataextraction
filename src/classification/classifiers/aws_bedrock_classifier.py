@@ -9,7 +9,7 @@ from collections import defaultdict
 from pathlib import Path
 
 import boto3
-from classification.utils.classification_classes import USCSClasses, map_most_similar_class
+from classification.utils.classification_classes import USCSSystem
 from classification.utils.data_loader import LayerInformations
 from classification.utils.data_utils import write_api_failures, write_predictions
 from utils.file_utils import read_params
@@ -160,7 +160,7 @@ class AWSBedrockClassifier:
                         )
 
                         formatted_response = self.format_response(response)
-                        uscs_class = map_most_similar_class(formatted_response.get("Model Answer"), "uscs")
+                        uscs_class = USCSSystem.map_most_similar_class(formatted_response.get("Model Answer"))
 
                         layer.prediction_class = uscs_class
                         layer.llm_reasoning = formatted_response.get("Reasoning")
@@ -170,7 +170,7 @@ class AWSBedrockClassifier:
                     except Exception as e:
                         error_msg = str(e)
                         print(f"API call failed for '{layer.filename}, {layer.layer_index}': {error_msg}")
-                        layer.prediction_class = USCSClasses.kA
+                        layer.prediction_class = USCSSystem.get_default_class_value()
 
                         # Return failure info
                         return {

@@ -5,7 +5,7 @@ import os
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from classification.utils.classification_classes import ClassEnum
+from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformations
 from extraction.evaluation.evaluation_dataclasses import Metrics
 from utils.file_utils import read_params
@@ -24,15 +24,15 @@ class AllClassificationMetrics:
     """Stores classification metrics at both global and language-specific levels.
 
     Attributes:
-        global_metrics (dict[ClassEnum, Metrics]): A dictionary containing the classification metrics
-            for each of the classes at a global level.
-        language_metrics (dict[str, dict[ClassEnum, Metrics]]): A dictionary where each key represents
-            a supported language. Each value is another dictionary containing the classification metrics
+        global_metrics (dict[ClassificationType.EnumClasses, Metrics]): A dictionary containing the
+        classification metrics for each of the classes at a global level.
+        language_metrics (dict[str, dict[ClassificationType.EnumClasses, Metrics]]): A dictionary where each key
+            representsa supported language. Each value is another dictionary containing the classification metrics
             for each of the classes in that language.
     """
 
-    global_metrics: dict[ClassEnum, Metrics]
-    language_metrics: dict[str, dict[ClassEnum, Metrics]]
+    global_metrics: dict[ClassificationSystem.EnumMember, Metrics]
+    language_metrics: dict[str, dict[ClassificationSystem.EnumMember, Metrics]]
 
     @staticmethod
     def compute_macro_average(metric_list: list[Metrics]) -> dict[str, float]:
@@ -201,10 +201,10 @@ def evaluate(layer_descriptions: list[LayerInformations]) -> AllClassificationMe
     Returns:
         AllClassificationMetrics: the holder for the metrics
     """
-    global_metrics: dict[ClassEnum, Metrics] = per_class_metrics_from_layers(layer_descriptions)
+    global_metrics: dict[ClassificationSystem.EnumMember, Metrics] = per_class_metrics_from_layers(layer_descriptions)
 
     supported_language: list[str] = classification_params["supported_language"]
-    language_metrics: dict[str, dict[ClassEnum, Metrics]] = {
+    language_metrics: dict[str, dict[ClassificationSystem.EnumMember, Metrics]] = {
         language: per_class_metrics_from_layers([layer for layer in layer_descriptions if layer.language == language])
         for language in supported_language
     }
@@ -218,7 +218,7 @@ def evaluate(layer_descriptions: list[LayerInformations]) -> AllClassificationMe
     return all_classification_metrics
 
 
-def per_class_metrics_from_layers(layers: list[LayerInformations]) -> dict[ClassEnum, Metrics]:
+def per_class_metrics_from_layers(layers: list[LayerInformations]) -> dict[ClassificationSystem.EnumMember, Metrics]:
     """Compute per-class classification metrics.
 
     Args:
@@ -232,7 +232,7 @@ def per_class_metrics_from_layers(layers: list[LayerInformations]) -> dict[Class
     return per_class_metric(predictions, labels)
 
 
-def per_class_metric(predictions: Iterable, labels: Iterable) -> dict[ClassEnum, Metrics]:
+def per_class_metric(predictions: Iterable, labels: Iterable) -> dict[ClassificationSystem.EnumMember, Metrics]:
     """Compute per-class classification metrics from the predictions and the labels.
 
     Args:
@@ -243,7 +243,7 @@ def per_class_metric(predictions: Iterable, labels: Iterable) -> dict[ClassEnum,
         dict[ClassEnum, Metrics]: A dictionary mapping each class to its TP, FP, FN.
     """
     metrics_per_class = {}
-    classes: set[ClassEnum] = set(predictions) | set(labels)
+    classes: set[ClassificationSystem.EnumMember] = set(predictions) | set(labels)
     for cls in classes:
         tp = sum(1 for pred, lab in zip(predictions, labels, strict=True) if pred == lab == cls)
         fp = sum(1 for pred, lab in zip(predictions, labels, strict=True) if pred == cls and lab != cls)

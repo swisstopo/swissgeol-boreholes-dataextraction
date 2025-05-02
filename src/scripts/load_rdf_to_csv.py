@@ -24,11 +24,15 @@ def extract_id(url: str) -> str:
     return url
 
 
-def count_capital_terms(id_value: str) -> int:
-    """Count the number of capital terms in a given string.
+def count_capital_letters(id_value: str) -> int:
+    """Count the number of capital letter in a given string.
+
+    This is used to determine the order of lithology classes, as they are written with CamelCase, e.g.:
+        - Marlstone has 1 uppercased letter (so will be of order 1)
+        - MarlstoneBioclasts has 2 uppercased letter (so will be of order 2)
 
     Args:
-        id_value (str): The string to count capital terms in.
+        id_value (str): The string to count capital letters in.
 
     Returns:
         int: The number of capital terms in the string.
@@ -93,10 +97,10 @@ def load_rdf_to_csv(
     rows = []
 
     for s in graph.subjects(rdflib.RDF.type, rdflib.URIRef("http://www.w3.org/2004/02/skos/core#Concept")):
-        url = extract_id(str(s))
+        id = extract_id(str(s))
         row = {
-            "id": url,
-            "term_order": count_capital_terms(url),
+            "id": id,
+            "term_order": count_capital_letters(id),
             "prefLabel_en": None,
             "prefLabel_fr": None,
             "prefLabel_de": None,

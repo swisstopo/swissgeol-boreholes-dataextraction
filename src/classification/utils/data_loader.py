@@ -7,7 +7,7 @@ from os import listdir
 from os.path import isfile, join
 from pathlib import Path
 
-from classification.utils.classification_classes import ClassEnum, map_most_similar_class
+from classification.utils.classification_classes import ClassificationSystem, ExistingClassificationSystems
 from utils.file_utils import read_params
 from utils.language_detection import detect_language_of_text
 
@@ -18,26 +18,29 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class LayerInformations:
-    """Class for each layer in the ground truth json file."""
+    """Class for each layer in the ground truth json file.
+
+    A layer is either classified into USCS or lithology, but never both.
+    """
 
     filename: str
     borehole_index: int
     layer_index: int
     language: str
     material_description: str
-    data_type: str  # a layer is either classified into USCS or lithology, but never both
-    ground_truth_class: None | ClassEnum
-    prediction_class: None | ClassEnum  # dynamically set
+    class_system: type[ClassificationSystem]  # note: class_system is the class, and not an instance of the class
+    ground_truth_class: None | ClassificationSystem.EnumMember
+    prediction_class: None | ClassificationSystem.EnumMember  # dynamically set
     llm_reasoning: None | str  # dynamically set,
 
 
-def load_data(json_path: Path, file_subset_directory: Path | None, data_type: str) -> list[LayerInformations]:
+def load_data(json_path: Path, file_subset_directory: Path | None, class_system_str: str) -> list[LayerInformations]:
     """Loads the data from the ground truth json file.
 
     Args:
         json_path (Path): the ground truth json file path
         file_subset_directory (Path): Path to the directory containing the file whose names are used.
-        data_type (str): Type of data that need to be classify
+        class_system_str (str): The classification system used to classify the data.
 
     Returns:
         list[LayerInformations]: the data formated as a list of LayerInformations objects
@@ -61,17 +64,18 @@ def load_data(json_path: Path, file_subset_directory: Path | None, data_type: st
         )
         for borehole in boreholes:
             for layer_index, layer in enumerate(borehole["layers"]):
-                key = "uscs_1" if data_type == "uscs" else "lithology"
-                class_str = layer.get(key, None)
+                class_system = ExistingClassificationSystems.get_classification_system_type(class_system_str)
+                layer_key = class_system.get_layer_ground_truth_key()
+                class_str = layer.get(layer_key, None)
                 if not class_str:
                     logger.debug(
-                        f"Skipping layer: no {data_type.upper()} ground truth for {filename} borehole "
+                        f"Skipping layer: no {layer_key} in ground truth for {filename} borehole "
                         f"{borehole['borehole_index']}, layer {layer_index} with "
                         f"description {layer['material_description']}."
                     )
                     continue
 
-                ground_truth_class = map_most_similar_class(class_str, data_type)
+                ground_truth_class = class_system.map_most_similar_class(class_str)
 
                 layer_descriptions.append(
                     LayerInformations(
@@ -80,7 +84,7 @@ def load_data(json_path: Path, file_subset_directory: Path | None, data_type: st
                         layer_index,
                         language,
                         layer["material_description"],
-                        data_type,
+                        class_system,
                         ground_truth_class,
                         prediction_class=None,
                         llm_reasoning=None,
