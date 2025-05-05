@@ -34,23 +34,20 @@ class AWSBedrockClassifier:
         self.model_id = os.environ.get("ANTHROPIC_MODEL_ID")
 
         # Bedrock parameters
-        self.uscs_pattern_version = read_params("bedrock/bedrock_config.yml")["uscs_pattern_version"]
-        self.prompt_version = read_params("bedrock/bedrock_config.yml")["prompt_version"]
-        self.temperature = read_params("bedrock/bedrock_config.yml")["temperature"]
-        self.max_tokens = read_params("bedrock/bedrock_config.yml")["max_tokens"]
-        reasoning_mode = read_params("bedrock/bedrock_config.yml")["reasoning_mode"]
+        self.config = read_params("bedrock/bedrock_config.yml")
+        reasoning_mode = self.config["reasoning_mode"]
 
         self.uscs_patterns = read_params("bedrock/classification_patterns_bedrock.yml")["uscs_patterns"][
-            self.uscs_pattern_version
+            self.config["uscs_pattern_version"]
         ]
 
         if reasoning_mode:
             self.classification_prompts = read_params("bedrock/classification_prompts.yml")["reasoning"][
-                self.prompt_version
+                self.config["prompt_version"]
             ]
         else:
             self.classification_prompts = read_params("bedrock/classification_prompts.yml")["classification"][
-                self.prompt_version
+                self.config["prompt_version"]
             ]
 
         self.bedrock_out_directory = bedrock_out_directory
@@ -154,8 +151,8 @@ class AWSBedrockClassifier:
                         await asyncio.sleep(self.api_call_delay)
 
                         body = self.create_message(
-                            max_tokens=self.max_tokens,
-                            temperature=self.temperature,
+                            max_tokens=self.config["max_tokens"],
+                            temperature=self.config["temperature"],
                             anthropic_version=self.anthropic_version,
                             material_description=layer.material_description,
                             language=layer.language,
