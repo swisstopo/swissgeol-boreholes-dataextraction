@@ -176,7 +176,7 @@ Repeat steps 1 and 2 of the [data extraction pipeline](#run-data-extraction) to 
 The main script for the classification pipeline is located at `src/description_classification/main.py`. A CLI command is available to run this script:  
 
 ```bash
-boreholes-classify-descriptions -f data/geoquat_ground_truth.json -s data/geoquat/ -c baseline validation
+boreholes-classify-descriptions -f data/geoquat_ground_truth.json -s data/geoquat/validation -c baseline
 ```  
 
 - Use the `-f` or `--file-path` flag to specify the path to the JSON file containing the layer description and USCS ground truth.  
