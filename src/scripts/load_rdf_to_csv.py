@@ -37,7 +37,7 @@ def count_capital_letters(id_value: str) -> int:
     Returns:
         int: The number of capital terms in the string.
     """
-    terms = re.findall(r"[A-Z][a-z0-9]*", id_value)
+    terms = re.findall(r"[A-Z]", id_value)
     return len(terms)
 
 
