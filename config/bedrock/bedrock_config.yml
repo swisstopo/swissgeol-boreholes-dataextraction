@@ -1,0 +1,14 @@
+# Prompt version (version tag to be used from the classification_prompts.yml in MLFlow)
+prompt_version: baseline
+
+# Classification parameter version (version tag to be used from the classification_patterns_bedrock.yml in MLFlow)
+uscs_pattern_version: baseline
+
+# temperature - answer creativity for the LLM model
+temperature: 0.0
+
+# Maximum response tokens
+max_tokens: 2048
+
+# Parameter indicating if Reasoning (Chain of Thought) mode should be used. Warning this significantly increases latency
+reasoning_mode: False

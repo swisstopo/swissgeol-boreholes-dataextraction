@@ -65,13 +65,26 @@ def log_ml_flow_infos(
     for class_, count in get_data_class_count(layer_descriptions).items():
         mlflow.log_param(f"class_{class_}_count", count)
 
-    # Log classifier name and id if anthropic model used
+    # Log classifier name
     mlflow.log_param("classifier_type", classifier.__class__.__name__)
     if isinstance(classifier, BertClassifier) and os.path.isdir(classifier.model_path):
         mlflow.log_param("model_name", "/".join(classifier.model_path.parts[-2:]))
 
+    # Log model and id, prompt and parameter versions if anthropic model used
     if isinstance(classifier, AWSBedrockClassifier):
         mlflow.log_param("anthropic_model_id", os.environ.get("ANTHROPIC_MODEL_ID"))
+
+        prompt_version = read_params("bedrock/bedrock_config.yml")["prompt_version"]
+        if prompt_version:
+            mlflow.log_param("anthropic_prompt_version", prompt_version)
+
+        class_param_version = read_params("bedrock/bedrock_config.yml")["uscs_pattern_version"]
+        if class_param_version:
+            mlflow.log_param("anthropic_class_param_version", class_param_version)
+
+        reasoning_mode = read_params("bedrock/bedrock_config.yml")["reasoning_mode"]
+        if reasoning_mode:
+            mlflow.log_param("anthropic_reasoning_mode", reasoning_mode)
 
     # Log input data and output predictions
     mlflow.log_artifact(str(file_path), "input_data")
@@ -185,7 +198,7 @@ def main(
     elif classifier_type == "bert":
         classifier = BertClassifier(model_path)
     elif classifier_type == "bedrock":
-        classifier = AWSBedrockClassifier(out_directory_bedrock, temperature=0.3, max_concurrent_calls=1)
+        classifier = AWSBedrockClassifier(out_directory_bedrock, max_concurrent_calls=1, api_call_delay=0.0)
 
     # classify
     logger.info(f"Classifying layer description with {classifier.__class__.__name__}")

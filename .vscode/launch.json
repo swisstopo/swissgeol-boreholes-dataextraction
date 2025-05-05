@@ -80,11 +80,11 @@
             "module": "src.classification.main",
             "args": [
                 "-f",
-                "data/geoquat_ground_truth.json",
+                "data/geoquat_ground_truth_small.json",
                 "-s",
                 "data/geoquat/validation",
                 "-c",
-                "bert",
+                "bedrock",
                 "-p",
                 "models/20250404-120603_best/checkpoint-5004"
             ],
