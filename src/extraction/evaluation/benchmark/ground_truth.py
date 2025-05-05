@@ -36,7 +36,7 @@ class GroundTruth:
                         "depth_interval": layer["depth_interval"],
                     }
                     for layer in layers
-                    if parse_text(layer["material_description"]) != ""
+                    if layer["material_description"] is not None and parse_text(layer["material_description"]) != ""
                 ]
                 self.ground_truth[file_name][borehole_index]["metadata"] = borehole_data["metadata"]
                 self.ground_truth[file_name][borehole_index]["groundwater"] = borehole_data["groundwater"]

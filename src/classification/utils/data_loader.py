@@ -60,7 +60,14 @@ def load_data(
     for filename, boreholes in data.items():
         if filename_subset is not None and filename not in filename_subset:
             continue
-        all_text = " ".join([lay["material_description"] for bh in boreholes for lay in bh["layers"]])
+        all_text = " ".join(
+            [
+                lay["material_description"]
+                for bh in boreholes
+                for lay in bh["layers"]
+                if lay["material_description"] is not None
+            ]
+        )
         language = detect_language_of_text(
             all_text, classification_params["default_language"], classification_params["supported_language"]
         )

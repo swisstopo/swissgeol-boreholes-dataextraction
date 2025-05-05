@@ -92,6 +92,7 @@ def write_predictions(
                 "class_system": layer.class_system.get_layer_ground_truth_key(),
                 "ground_truth_class": layer.ground_truth_class.name if layer.ground_truth_class is not None else None,
                 "prediction_class": layer.prediction_class.name if layer.prediction_class is not None else None,
+                "llm_reasoning": layer.llm_reasoning if layer.llm_reasoning is not None else None,
             }
         )
 

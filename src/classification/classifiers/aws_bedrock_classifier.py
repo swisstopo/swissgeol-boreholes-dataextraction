@@ -14,42 +14,45 @@ from classification.utils.data_loader import LayerInformations
 from classification.utils.data_utils import write_api_failures, write_predictions
 from utils.file_utils import read_params
 
-classification_params = read_params("classification_params.yml")
-
 
 class AWSBedrockClassifier:
     """AWSBedrockClassifier class uses AWS Bedrock with underlying Anthropic LLM models."""
 
-    def __init__(
-        self,
-        bedrock_out_directory: Path | None,
-        max_tokens: int = 256,
-        temperature: float = 0.3,
-        max_concurrent_calls: int = 1,
-    ):
+    def __init__(self, bedrock_out_directory: Path | None, max_concurrent_calls: int = 1, api_call_delay: float = 0.0):
         """Creates a boto3 client for AWS Bedrock and initializes the classifier.
 
         Environment variables are used to configure the AWS region, model ID, and Anthropic version.
         The USCS patterns and classification prompts are read from the configuration files.
 
         Args:
-            max_tokens (int): The maximum number of tokens to generate.
             bedrock_out_directory (Path): Directory to write prediction outputs and API failures
-            temperature (float): The sampling temperature to use.
-            store_files (bool): Whether to store the prediction files (default: False)
             max_concurrent_calls (int): Maximum number of concurrent API calls (default: 1)
+            api_call_delay (float): Delay between API calls in seconds (default: 0)
         """
         self.bedrock_client = boto3.client(service_name="bedrock-runtime", region_name=os.environ.get("AWS_REGION"))
         self.anthropic_version = os.environ.get("ANTHROPIC_VERSION")
         self.model_id = os.environ.get("ANTHROPIC_MODEL_ID")
 
-        self.uscs_patterns = classification_params["uscs_patterns"]
-        self.classification_prompts = read_params(os.environ.get("ANTHROPIC_PROMPT_TEMPLATE"))
+        # Bedrock parameters
+        self.config = read_params("bedrock/bedrock_config.yml")
+        reasoning_mode = self.config["reasoning_mode"]
+
+        self.uscs_patterns = read_params("bedrock/classification_patterns_bedrock.yml")["uscs_patterns"][
+            self.config["uscs_pattern_version"]
+        ]
+
+        if reasoning_mode:
+            self.classification_prompts = read_params("bedrock/classification_prompts.yml")["reasoning"][
+                self.config["prompt_version"]
+            ]
+        else:
+            self.classification_prompts = read_params("bedrock/classification_prompts.yml")["classification"][
+                self.config["prompt_version"]
+            ]
 
         self.bedrock_out_directory = bedrock_out_directory
-        self.max_tokens = max_tokens
-        self.temperature = temperature
         self.max_concurrent_calls = max_concurrent_calls
+        self.api_call_delay = api_call_delay
 
     def create_message(
         self, max_tokens: int, temperature: float, anthropic_version: str, material_description: str, language: str
@@ -145,9 +148,11 @@ class AWSBedrockClassifier:
                     try:
                         print(f"Classifying layer: {layer.filename}_{layer.borehole_index}_{layer.layer_index}")
 
+                        await asyncio.sleep(self.api_call_delay)
+
                         body = self.create_message(
-                            max_tokens=self.max_tokens,
-                            temperature=self.temperature,
+                            max_tokens=self.config["max_tokens"],
+                            temperature=self.config["temperature"],
                             anthropic_version=self.anthropic_version,
                             material_description=layer.material_description,
                             language=layer.language,
