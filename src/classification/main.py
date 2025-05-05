@@ -140,10 +140,11 @@ def common_options(f):
         help="Path to the local trained model.",
     )(f)
     f = click.option(
-        "--class-sys",
+        "-cs",
+        "--classification-system",
         type=click.Choice(["uscs", "lithology"], case_sensitive=False),
         default="uscs",
-        help="Type of data that needs to be classified",
+        help="The classification system used to classify the data.",
     )(f)
     return f
 
@@ -157,11 +158,17 @@ def click_pipeline(
     file_subset_directory: Path,
     classifier_type: str,
     model_path: Path,
-    class_sys: str,
+    classification_system: str,
 ):
     """Run the description classification pipeline."""
     main(
-        file_path, out_directory, out_directory_bedrock, file_subset_directory, classifier_type, model_path, class_sys
+        file_path,
+        out_directory,
+        out_directory_bedrock,
+        file_subset_directory,
+        classifier_type,
+        model_path,
+        classification_system,
     )
 
 
@@ -172,7 +179,7 @@ def main(
     file_subset_directory: Path,
     classifier_type: str,
     model_path: Path,
-    class_sys: str,
+    classification_system: str,
 ):
     """Main pipeline to classify the layer's soil descriptions.
 
@@ -183,13 +190,13 @@ def main(
         file_subset_directory (Path): Path to the directory containing the file whose names are used.
         classifier_type (str): The classifier type to use.
         model_path (Path): Path to the trained model.
-        class_sys (str): The classification system used to classify the data.
+        classification_system (str): The classification system used to classify the data.
     """
     if mlflow_tracking:
         setup_mlflow_tracking(file_path, out_directory, file_subset_directory)
 
     logger.info(f"Loading data from {file_path}")
-    layer_descriptions = load_data(file_path, file_subset_directory, class_sys)
+    layer_descriptions = load_data(file_path, file_subset_directory, classification_system)
 
     if model_path is not None and classifier_type != "bert":
         logger.warning("Model path is only used with classifier 'bert'.")
@@ -203,7 +210,9 @@ def main(
         classifier = AWSBedrockClassifier(out_directory_bedrock, temperature=0.3, max_concurrent_calls=1)
 
     # classify
-    logger.info(f"Classifying layer description into {class_sys} classes with {classifier.__class__.__name__}")
+    logger.info(
+        f"Classifying layer description into {classification_system} classes with {classifier.__class__.__name__}"
+    )
     classifier.classify(layer_descriptions)
 
     logger.info("Evaluating predictions")

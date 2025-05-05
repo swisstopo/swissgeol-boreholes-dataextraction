@@ -24,11 +24,11 @@ class AllClassificationMetrics:
     """Stores classification metrics at both global and language-specific levels.
 
     Attributes:
-        global_metrics (dict[ClassificationType.EnumClasses, Metrics]): A dictionary containing the
+        global_metrics (dict[ClassificationType.EnumMember, Metrics]): A dictionary containing the
         classification metrics for each of the classes at a global level.
-        language_metrics (dict[str, dict[ClassificationType.EnumClasses, Metrics]]): A dictionary where each key
-            representsa supported language. Each value is another dictionary containing the classification metrics
-            for each of the classes in that language.
+        language_metrics (dict[str, dict[ClassificationType.EnumMember, Metrics]]): A dictionary where each key
+            represents a supported language. Each value is another dictionary containing the classification metrics
+            for each class in that language.
     """
 
     global_metrics: dict[ClassificationSystem.EnumMember, Metrics]

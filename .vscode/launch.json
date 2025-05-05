@@ -89,7 +89,7 @@
                 "dummy",
                 "-p",
                 "models/balance_best/20250416-192401_best_stage2_balance/checkpoint-8340_very_best",
-                "--class-sys",
+                "-cs",
                 "lithology"
             ],
             "cwd": "${workspaceFolder}",

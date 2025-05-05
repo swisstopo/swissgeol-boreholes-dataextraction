@@ -34,13 +34,15 @@ class LayerInformations:
     llm_reasoning: None | str  # dynamically set,
 
 
-def load_data(json_path: Path, file_subset_directory: Path | None, class_system_str: str) -> list[LayerInformations]:
+def load_data(
+    json_path: Path, file_subset_directory: Path | None, classification_system_str: str
+) -> list[LayerInformations]:
     """Loads the data from the ground truth json file.
 
     Args:
         json_path (Path): the ground truth json file path
         file_subset_directory (Path): Path to the directory containing the file whose names are used.
-        class_system_str (str): The classification system used to classify the data.
+        classification_system_str (str): The classification system used to classify the data.
 
     Returns:
         list[LayerInformations]: the data formated as a list of LayerInformations objects
@@ -64,8 +66,10 @@ def load_data(json_path: Path, file_subset_directory: Path | None, class_system_
         )
         for borehole in boreholes:
             for layer_index, layer in enumerate(borehole["layers"]):
-                class_system = ExistingClassificationSystems.get_classification_system_type(class_system_str)
-                layer_key = class_system.get_layer_ground_truth_key()
+                classification_system = ExistingClassificationSystems.get_classification_system_type(
+                    classification_system_str.lower()
+                )
+                layer_key = classification_system.get_layer_ground_truth_key()
                 class_str = layer.get(layer_key, None)
                 if not class_str:
                     logger.debug(
@@ -75,7 +79,7 @@ def load_data(json_path: Path, file_subset_directory: Path | None, class_system_
                     )
                     continue
 
-                ground_truth_class = class_system.map_most_similar_class(class_str)
+                ground_truth_class = classification_system.map_most_similar_class(class_str)
 
                 layer_descriptions.append(
                     LayerInformations(
@@ -84,7 +88,7 @@ def load_data(json_path: Path, file_subset_directory: Path | None, class_system_
                         layer_index,
                         language,
                         layer["material_description"],
-                        class_system,
+                        classification_system,
                         ground_truth_class,
                         prediction_class=None,
                         llm_reasoning=None,
