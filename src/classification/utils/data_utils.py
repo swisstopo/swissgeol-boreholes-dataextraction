@@ -295,7 +295,7 @@ def write_per_class_predictions(
             (
                 v
                 for k, v in metrics_dict.items()
-                if key_class_config.metric_used in k and first_key_class.name == "_".join(k.split("_")[1:-1])
+                if k.endswith(key_class_config.metric_used) and first_key_class.name == "_".join(k.split("_")[1:-1])
             )
         )
 

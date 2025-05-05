@@ -73,33 +73,34 @@ def load_data(
         )
         for borehole in boreholes:
             for layer_index, layer in enumerate(borehole["layers"]):
-                if layer["material_description"]:
-                    classification_system = ExistingClassificationSystems.get_classification_system_type(
-                        classification_system_str.lower()
+                if not layer["material_description"]:
+                    continue
+                classification_system = ExistingClassificationSystems.get_classification_system_type(
+                    classification_system_str.lower()
+                )
+                layer_key = classification_system.get_layer_ground_truth_key()
+                class_str = layer.get(layer_key, None)
+                if not class_str:
+                    logger.debug(
+                        f"Skipping layer: no {layer_key} in ground truth for {filename} borehole "
+                        f"{borehole['borehole_index']}, layer {layer_index} with "
+                        f"description {layer['material_description']}."
                     )
-                    layer_key = classification_system.get_layer_ground_truth_key()
-                    class_str = layer.get(layer_key, None)
-                    if not class_str:
-                        logger.debug(
-                            f"Skipping layer: no {layer_key} in ground truth for {filename} borehole "
-                            f"{borehole['borehole_index']}, layer {layer_index} with "
-                            f"description {layer['material_description']}."
-                        )
-                        continue
+                    continue
 
-                    ground_truth_class = classification_system.map_most_similar_class(class_str)
+                ground_truth_class = classification_system.map_most_similar_class(class_str)
 
-                    layer_descriptions.append(
-                        LayerInformations(
-                            filename,
-                            borehole["borehole_index"],
-                            layer_index,
-                            language,
-                            layer["material_description"],
-                            classification_system,
-                            ground_truth_class,
-                            prediction_class=None,
-                            llm_reasoning=None,
-                        )
+                layer_descriptions.append(
+                    LayerInformations(
+                        filename,
+                        borehole["borehole_index"],
+                        layer_index,
+                        language,
+                        layer["material_description"],
+                        classification_system,
+                        ground_truth_class,
+                        prediction_class=None,
+                        llm_reasoning=None,
                     )
+                )
     return layer_descriptions

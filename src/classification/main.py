@@ -17,7 +17,6 @@ from classification.classifiers.dummy_classifier import DummyClassifier
 from classification.evaluation.evaluate import evaluate
 from classification.utils.data_loader import LayerInformations, load_data
 from classification.utils.data_utils import (
-    get_classification_systems,
     get_data_class_count,
     get_data_language_count,
     write_per_language_per_class_predictions,
@@ -52,7 +51,11 @@ def setup_mlflow_tracking(
 
 
 def log_ml_flow_infos(
-    file_path: Path, out_directory: Path, layer_descriptions: list[LayerInformations], classifier: Classifier
+    file_path: Path,
+    out_directory: Path,
+    layer_descriptions: list[LayerInformations],
+    classifier: Classifier,
+    classification_system: str,
 ):
     """Logs informations to mlflow, such as the number of sample, laguage distribution, classifier type and data."""
     # Log dataset statistics
@@ -67,7 +70,7 @@ def log_ml_flow_infos(
         mlflow.log_param(f"class_{class_}_count", count)
 
     # Log the classification systems used
-    mlflow.log_param("classification_systems", get_classification_systems(layer_descriptions))
+    mlflow.log_param("classification_systems", classification_system)
 
     # Log classifier name
     mlflow.log_param("classifier_type", classifier.__class__.__name__)
@@ -205,6 +208,9 @@ def main(
         model_path (Path): Path to the trained model.
         classification_system (str): The classification system used to classify the data.
     """
+    if classification_system == "lithology" and classifier_type != "dummy":
+        raise NotImplementedError
+
     if mlflow_tracking:
         setup_mlflow_tracking(file_path, out_directory, file_subset_directory)
 
@@ -237,7 +243,7 @@ def main(
     write_per_language_per_class_predictions(layer_descriptions, classification_metrics, out_directory)
 
     if mlflow_tracking:
-        log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier)
+        log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier, classification_system)
 
     if mlflow_tracking:
         mlflow.end_run()
