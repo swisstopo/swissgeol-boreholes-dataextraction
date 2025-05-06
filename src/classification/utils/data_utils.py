@@ -43,18 +43,6 @@ def get_data_class_count(layer_descriptions: list[LayerInformations]) -> dict[st
     return class_counts
 
 
-def get_classification_systems(layer_descriptions: list[LayerInformations]) -> list[str]:
-    """Returns the systems the descriptions were classified into.
-
-    Args:
-        layer_descriptions (list[LayerInformations]): All the layers.
-
-    Returns:
-        list[str]: the classifiaction systems used (found using the layer key in ground truth data).
-    """
-    return list(set([layer.class_system.get_layer_ground_truth_key() for layer in layer_descriptions]))
-
-
 def write_predictions(
     layers_with_predictions: list[LayerInformations], out_dir: Path, out_path: str = "class_predictions.json"
 ):

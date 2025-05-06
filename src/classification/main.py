@@ -209,7 +209,9 @@ def main(
         classification_system (str): The classification system used to classify the data.
     """
     if classification_system == "lithology" and classifier_type != "dummy":
-        raise NotImplementedError
+        raise NotImplementedError(
+            "Currently, only the dummy classifier is supported with classification system 'lithology'."
+        )
 
     if mlflow_tracking:
         setup_mlflow_tracking(file_path, out_directory, file_subset_directory)
