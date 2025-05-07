@@ -1,0 +1,1085 @@
+lithology_patterns:
+  en:
+    Amphibolite:
+      labels: [amphibolite]
+      description: metamorphic rock essentially composed of minerals of the amphibole
+        group
+    Migmatite:
+      labels: [migmatite]
+      description: rock formed by partial fusion under medium- to high-grade metamorphic
+        conditions segregating a leucosome exsolution from a melanosome refractory
+        remnant; this anatectic process can ultimately lead to the production of magmatic
+        bodies
+    Andesite:
+      labels: [andesite]
+      description: volcanic rock (max. 20% quartz or max. 10% feldspatoid and > 65%
+        plagioclase in the QAPF diagram); the texture is microlithic
+    Aplite:
+      labels: [aplite, aplitic rock]
+      description: leucocratic acidic microcrystalline rock emplaced as dikes and/or
+        sills or as fine-grained peripheral facies of plutonic intrusions
+    Basalt:
+      labels: [basalt]
+      description: melanocratic mafic volcanic rock (max. 20% quartz or max. 10% feldspatoid
+        and > 65% plagioclase in the QAPF diagram); the texture is microlithic
+    Basanite:
+      labels: [basanite]
+      description: null
+    Bentonite:
+      labels: [bentonite]
+      description: very fine-grained clay-rich residual rock mostly consisting of
+        absorbent swelling montmorillonite; it forms by the weathering of volcanic
+        tuff
+    Claystone:
+      labels: [claystone, shale]
+      description: very fine-grained (mean grainsize < 1/256 mm) clastic sedimentary
+        rock
+    Breccia:
+      labels: [breccia]
+      description: coarse-grained (mean grainsize > 2 mm) clastic rock with angular
+        components; the fragmentation processes (sedimentary or tectonic) is not further
+        specified
+    Rock:
+      labels: [rock, consolidated rock, stone]
+      description: A rock is a natural consolidated material made up of an assemblage
+        of minerals or composite particles.
+    Rhyolite:
+      labels: [rhyolite]
+      description: leucocratic acidic volcanic rock (> 20% quartz and < 65% plagioclase
+        in the QAPF diagram); the texture is microlithic to porphyric with a large
+        amount of glass
+    Psephite:
+      labels: [psephite]
+      description: coarse-grained (mean grainsize > 2 mm) clastic sedimentary rock,
+        typically formed by pebbles in a finer-grained matrix
+    Tuffite:
+      labels: [tuffite, tuffitic rock]
+      description: volcano-clastic rock with a large proportion (25-75%) of element
+        of volcanic origin
+    Cataclastite:
+      labels: [cataclastite]
+      description: cohesive rock formed by tectonic fragmentation in a deformation
+        zone
+    Clay:
+      labels: [clay]
+      description: null
+    Loam:
+      labels: [loam]
+      description: null
+    Pelite:
+      labels: [pelite]
+      description: fine-grained (mean grainsize < 1/16 mm) clastic sedimentary rock
+    Conglomerate:
+      labels: [conglomerate, puddingstone]
+      description: coarse-grained (mean grainsize > 2 mm) clastic sedimentary rock
+        with rounded components
+    Dacite:
+      labels: [dacite]
+      description: leucocratic acidic volcanic rock (> 20% quartz and > 65% plagioclase
+        in the QAPF diagram); the texture is microlithic to porphyric with a large
+        amount of glass
+    Diorite:
+      labels: [diorite]
+      description: plutonic rock (max. 20% quartz and > 65% plagioclase in the QAPF
+        diagram)
+    Monzonite:
+      labels: [monzonite]
+      description: plutonic rock (max. 20% quartz or max. 10% feldspatoid and 35-65%
+        plagioclase in the QAPF diagram)
+    Dolostone:
+      labels: [dolostone]
+      description: sedimentary rock essentially composed of the mineral dolomite (calcium
+        magnesium carbonate); it can be formed primarily by biochemical processes,
+        secondarily through diagenetic replacement or indirectly by accumulation and
+        cementation of dolomitic clasts
+    Eclogite:
+      labels: [eclogite]
+      description: mafic metamorphic rock typically composed of garnet and omphacite
+        (sodium-rich pyroxene); it forms under high-pressure and low-temperature conditions;
+        the name eclogite should not be indiscriminately used for all metamorphic
+        rock formed under eclogitic facies conditions
+    Evaporite:
+      labels: [evaporite, evaporitic rock]
+      description: sedimentary rock formed by chemical precipitation
+    Foidite:
+      labels: [foidite]
+      description: strongly undersaturated (no quartz) volcanic rock with a predominant
+        feldspatoid mineralogy (> 60% in the QAPF diagram)
+    Foidolite:
+      labels: [foidolite]
+      description: strongly undersaturated (no quartz) plutonic rock with a predominant
+        feldspatoid mineralogy (> 60% in the QAPF diagram)
+    Gabbro:
+      labels: [gabbro]
+      description: mafic plutonic rock (max. 20% quartz and > 65% plagioclase in the
+        QAPF diagram)
+    Mylonite:
+      labels: [mylonite]
+      description: rock formed by ductile tectonic deformation
+    Gneiss:
+      labels: [gneiss]
+      description: layered (gneissose cleavage planes > 1 cm apart) metamorphic rock
+    Granite:
+      labels: [granite]
+      description: leucocratic acidic plutonic rock (20-60% quartz and < 65% plagioclase
+        in the QAPF diagram)
+    Granodiorite:
+      labels: [granodiorite]
+      description: leucocratic acidic plutonic rock (20-60% quartz and 65-90% plagioclase
+        in the QAPF diagram)
+    Granulite:
+      labels: [granulite]
+      description: high-grade metamorphic rock with a granoblastic texture and massive
+        to layered (gneissose) aspect
+    Psammite:
+      labels: [psammite]
+      description: medium-grained (mean grainsize 1/16 - 2 mm) clastic sedimentary
+        rock
+    Schist:
+      labels: [schist]
+      description: foliated (schistose cleavage planes 0,1-1 cm apart) metamorphic
+        rock
+    Syenite:
+      labels: [syenite]
+      description: plutonic rock (max. 20% quartz or max. 10% feldspatoid and < 35%
+        plagioclase in the QAPF diagram)
+    Granofels:
+      labels: [granofels, fels]
+      description: metamorphic rock with a granoblastic texture and a massive, non-foliated
+        aspect
+    Peridotite:
+      labels: [peridotite]
+      description: coarse-grained ultramafic rock essentially composed of minerals
+        of the olivine and pyroxene groups
+    Pyroxenite:
+      labels: [pyroxenite]
+      description: coarse-grained ultramafic rock essentially composed of minerals
+        of the pyroxene group
+    Granophyre:
+      labels: [granophyre, granophyric rock]
+      description: subvolcanic porphyric rock, generally of granitic composition,
+        characterised by its graphic intergrowth of quartz and alkali feldspar
+    Hornfels:
+      labels: [hornfels]
+      description: rock formed by contact metamorphism
+    Ignimbrite:
+      labels: [ignimbrite]
+      description: volcano-clastic rock with elements dominantly (> 75%) of pyroclastic
+        origin; it is characteristically composed of a poorly sorted mixture of volcanic
+        ash, pumice lapilli and scattered lithic fragments
+    Kakirite:
+      labels: [kakirite]
+      description: non-cohesive rock formed by tectonic fragmentation in a deformation
+        zone
+    Latite:
+      labels: [latite, trachyandesite]
+      description: volcanic rock (max. 20% quartz or max. 10% feldspatoid and 35-65%
+        plagioclase in the QAPF diagram); the texture is microlithic to porphyric
+    Limestone:
+      labels: [limestone]
+      description: sedimentary rock essentially composed of the mineral calcite (pure
+        calcium carbonate); it can be formed directly by biogenic, biochemical or
+        hydrochemical processes, as well as indirectly by accumulation and cementation
+        of calcitic clasts
+    Marble:
+      labels: [marble]
+      description: metamorphic rock dominantly of carbonate composition, granoblastic
+        texture and massive to layered aspect (foliated varieties are classified as
+        calcschists or calcphyllites)
+    Marl:
+      labels: [marl]
+      description: null
+    Marlstone:
+      labels: [marlstone]
+      description: carbonate-rich fine-grained (mean grainsize 1/256 - 1/16 mm) clastic
+        sedimentary rock
+    Pebble:
+      labels: [pebble]
+      description: unconsolidated material composed of coarse-grained (mean grainsize
+        > 2 mm) clasts
+    Sand:
+      labels: [sand]
+      description: unconsolidated material composed of medium-grained (mean grainsize
+        1/16 - 2 mm) clasts
+    Silt:
+      labels: [silt]
+      description: null
+    Peat:
+      labels: [peat]
+      description: partly decomposed organic material (mainly Sphagnum) accumulated
+        in poorly oxygenated wetlands
+    Phyllite:
+      labels: [phyllite]
+      description: finely foliated (cleavage planes <0,1 mm apart) metamorphic rock
+    Pegmatite:
+      labels: [pegmatite, pegmatitic rock]
+      description: filonian magmatic rock characterised by (very) large automorphic
+        crystals, mainly occuring at the periphery of (and genetically linked to)
+        granitic intrusions
+    Siltstone:
+      labels: [siltstone]
+      description: fine-grained (mean grainsize 1/256 - 1/16 mm) clastic sedimentary
+        rock
+    Serpentinite:
+      labels: [serpentinite]
+      description: metamorphic rock essentially composed of minerals of the serpentine
+        group
+    Phonolite:
+      labels: [phonolite]
+      description: undersaturated (no quartz) volcanic rock (> 10% feldspatoid and
+        < 50% plagioclase in the QAPF diagram); the texture is microlithic
+    Prasinite:
+      labels: [prasinite]
+      description: mafic metamorphic rock of basaltic composition, typically displaying
+        white ocellar albite crystals surrounded by a green matrix
+    Sandstone:
+      labels: [sandstone]
+      description: medium-grained (mean grainsize 1/16 - 2 mm) clastic sedimentary
+        rock
+    Pseudotachyllite:
+      labels: [pseudotachyllite]
+      description: rock resulting from melting by frictional heat in a deformation
+        zone
+    Quartzite:
+      labels: [quartzite]
+      description: metamorphic rock dominantly of quartzitic composition, granoblastic
+        texture and massive to layered aspect (foliated varieties are classified as
+        quartz schists or quartz phyllites)
+    Rauwacke:
+      labels: [rauwacke, cellular dolostone]
+      description: porous carbonate sedimentary rock with a brecciated and/or vacuolar
+        aspect; it can be formed by a combination of chemical processes (incl. dissolution
+        of original gypsum) and/or tectonic deformation
+    Rodingite:
+      labels: [rodingite]
+      description: calc-silicate-rich microcrystalline rock formed by metasomatic
+        processes at the contact between serpentinites and mafic or felsic intrusive
+        bodies
+    Tonalite:
+      labels: [tonalite]
+      description: acidic plutonic rock (20-60% quartz and > 90% plagioclase in the
+        QAPF diagram)
+    Tephrite:
+      labels: [tephrite]
+      description: undersaturated (no quartz) volcanic rock (> 10% feldspatoid and
+        > 50% plagioclase in the QAPF diagram); the texture is microlithic
+    Trachyte:
+      labels: [trachyte]
+      description: volcanic rock (max. 20% quartz or max. 10% feldspatoid and < 35%
+        plagioclase in the QAPF diagram); the texture is microlithic to porphyric
+    kA:
+      labels: [not specified]
+      description: not specified
+  fr:
+    Amphibolite:
+      labels: [amphibolite]
+      description: metamorphic rock essentially composed of minerals of the amphibole
+        group
+    Migmatite:
+      labels: [migmatite]
+      description: rock formed by partial fusion under medium- to high-grade metamorphic
+        conditions segregating a leucosome exsolution from a melanosome refractory
+        remnant; this anatectic process can ultimately lead to the production of magmatic
+        bodies
+    Andesite:
+      labels: [andésite]
+      description: volcanic rock (max. 20% quartz or max. 10% feldspatoid and > 65%
+        plagioclase in the QAPF diagram); the texture is microlithic
+    Aplite:
+      labels: [aplite]
+      description: leucocratic acidic microcrystalline rock emplaced as dikes and/or
+        sills or as fine-grained peripheral facies of plutonic intrusions
+    Basalt:
+      labels: [basalte]
+      description: melanocratic mafic volcanic rock (max. 20% quartz or max. 10% feldspatoid
+        and > 65% plagioclase in the QAPF diagram); the texture is microlithic
+    Basanite:
+      labels: [basanite]
+      description: null
+    Bentonite:
+      labels: [bentonite]
+      description: very fine-grained clay-rich residual rock mostly consisting of
+        absorbent swelling montmorillonite; it forms by the weathering of volcanic
+        tuff
+    Claystone:
+      labels: [argilite]
+      description: very fine-grained (mean grainsize < 1/256 mm) clastic sedimentary
+        rock
+    Breccia:
+      labels: [brèche]
+      description: coarse-grained (mean grainsize > 2 mm) clastic rock with angular
+        components; the fragmentation processes (sedimentary or tectonic) is not further
+        specified
+    Rock:
+      labels: [roche, roche consolidée]
+      description: A rock is a natural consolidated material made up of an assemblage
+        of minerals or composite particles.
+    Rhyolite:
+      labels: [rhyolite]
+      description: leucocratic acidic volcanic rock (> 20% quartz and < 65% plagioclase
+        in the QAPF diagram); the texture is microlithic to porphyric with a large
+        amount of glass
+    Psephite:
+      labels: [pséphite]
+      description: coarse-grained (mean grainsize > 2 mm) clastic sedimentary rock,
+        typically formed by pebbles in a finer-grained matrix
+    Tuffite:
+      labels: [tuffite]
+      description: volcano-clastic rock with a large proportion (25-75%) of element
+        of volcanic origin
+    Cataclastite:
+      labels: [cataclastite]
+      description: cohesive rock formed by tectonic fragmentation in a deformation
+        zone
+    Clay:
+      labels: [argile]
+      description: null
+    Loam:
+      labels: [limon]
+      description: null
+    Pelite:
+      labels: [pélite]
+      description: fine-grained (mean grainsize < 1/16 mm) clastic sedimentary rock
+    Conglomerate:
+      labels: [conglomérat, poudingue]
+      description: coarse-grained (mean grainsize > 2 mm) clastic sedimentary rock
+        with rounded components
+    Dacite:
+      labels: [dacite]
+      description: leucocratic acidic volcanic rock (> 20% quartz and > 65% plagioclase
+        in the QAPF diagram); the texture is microlithic to porphyric with a large
+        amount of glass
+    Diorite:
+      labels: [diorite]
+      description: plutonic rock (max. 20% quartz and > 65% plagioclase in the QAPF
+        diagram)
+    Monzonite:
+      labels: [monzonite]
+      description: plutonic rock (max. 20% quartz or max. 10% feldspatoid and 35-65%
+        plagioclase in the QAPF diagram)
+    Dolostone:
+      labels: [dolomie]
+      description: sedimentary rock essentially composed of the mineral dolomite (calcium
+        magnesium carbonate); it can be formed primarily by biochemical processes,
+        secondarily through diagenetic replacement or indirectly by accumulation and
+        cementation of dolomitic clasts
+    Eclogite:
+      labels: [éclogite]
+      description: mafic metamorphic rock typically composed of garnet and omphacite
+        (sodium-rich pyroxene); it forms under high-pressure and low-temperature conditions;
+        the name eclogite should not be indiscriminately used for all metamorphic
+        rock formed under eclogitic facies conditions
+    Evaporite:
+      labels: [évaporite, roche évaporitique]
+      description: sedimentary rock formed by chemical precipitation
+    Foidite:
+      labels: [foïdite]
+      description: strongly undersaturated (no quartz) volcanic rock with a predominant
+        feldspatoid mineralogy (> 60% in the QAPF diagram)
+    Foidolite:
+      labels: [foïdolite]
+      description: strongly undersaturated (no quartz) plutonic rock with a predominant
+        feldspatoid mineralogy (> 60% in the QAPF diagram)
+    Gabbro:
+      labels: [gabbro]
+      description: mafic plutonic rock (max. 20% quartz and > 65% plagioclase in the
+        QAPF diagram)
+    Mylonite:
+      labels: [mylonite]
+      description: rock formed by ductile tectonic deformation
+    Gneiss:
+      labels: [gneiss]
+      description: layered (gneissose cleavage planes > 1 cm apart) metamorphic rock
+    Granite:
+      labels: [granite]
+      description: leucocratic acidic plutonic rock (20-60% quartz and < 65% plagioclase
+        in the QAPF diagram)
+    Granodiorite:
+      labels: [granodiorite]
+      description: leucocratic acidic plutonic rock (20-60% quartz and 65-90% plagioclase
+        in the QAPF diagram)
+    Granulite:
+      labels: [granulite]
+      description: high-grade metamorphic rock with a granoblastic texture and massive
+        to layered (gneissose) aspect
+    Psammite:
+      labels: [psammite]
+      description: medium-grained (mean grainsize 1/16 - 2 mm) clastic sedimentary
+        rock
+    Schist:
+      labels: [schiste]
+      description: foliated (schistose cleavage planes 0,1-1 cm apart) metamorphic
+        rock
+    Syenite:
+      labels: [syénite]
+      description: plutonic rock (max. 20% quartz or max. 10% feldspatoid and < 35%
+        plagioclase in the QAPF diagram)
+    Granofels:
+      labels: [granofels, fels]
+      description: metamorphic rock with a granoblastic texture and a massive, non-foliated
+        aspect
+    Peridotite:
+      labels: [péridotite]
+      description: coarse-grained ultramafic rock essentially composed of minerals
+        of the olivine and pyroxene groups
+    Pyroxenite:
+      labels: [pyroxénite]
+      description: coarse-grained ultramafic rock essentially composed of minerals
+        of the pyroxene group
+    Granophyre:
+      labels: [granophyre]
+      description: subvolcanic porphyric rock, generally of granitic composition,
+        characterised by its graphic intergrowth of quartz and alkali feldspar
+    Hornfels:
+      labels: [cornéenne, roche du métamorphisme de contact]
+      description: rock formed by contact metamorphism
+    Ignimbrite:
+      labels: [ignimbrite]
+      description: volcano-clastic rock with elements dominantly (> 75%) of pyroclastic
+        origin; it is characteristically composed of a poorly sorted mixture of volcanic
+        ash, pumice lapilli and scattered lithic fragments
+    Kakirite:
+      labels: [kakirite]
+      description: non-cohesive rock formed by tectonic fragmentation in a deformation
+        zone
+    Latite:
+      labels: [latite, trachyandésite]
+      description: volcanic rock (max. 20% quartz or max. 10% feldspatoid and 35-65%
+        plagioclase in the QAPF diagram); the texture is microlithic to porphyric
+    Limestone:
+      labels: [calcaire]
+      description: sedimentary rock essentially composed of the mineral calcite (pure
+        calcium carbonate); it can be formed directly by biogenic, biochemical or
+        hydrochemical processes, as well as indirectly by accumulation and cementation
+        of calcitic clasts
+    Marble:
+      labels: [marbre]
+      description: metamorphic rock dominantly of carbonate composition, granoblastic
+        texture and massive to layered aspect (foliated varieties are classified as
+        calcschists or calcphyllites)
+    Marl:
+      labels: [marne]
+      description: null
+    Marlstone:
+      labels: [marne]
+      description: carbonate-rich fine-grained (mean grainsize 1/256 - 1/16 mm) clastic
+        sedimentary rock
+    Pebble:
+      labels: [gravier]
+      description: unconsolidated material composed of coarse-grained (mean grainsize
+        > 2 mm) clasts
+    Sand:
+      labels: [sable]
+      description: unconsolidated material composed of medium-grained (mean grainsize
+        1/16 - 2 mm) clasts
+    Silt:
+      labels: [silt]
+      description: null
+    Peat:
+      labels: [tourbe]
+      description: partly decomposed organic material (mainly Sphagnum) accumulated
+        in poorly oxygenated wetlands
+    Phyllite:
+      labels: [phyllite]
+      description: finely foliated (cleavage planes <0,1 mm apart) metamorphic rock
+    Pegmatite:
+      labels: [pegmatite]
+      description: filonian magmatic rock characterised by (very) large automorphic
+        crystals, mainly occuring at the periphery of (and genetically linked to)
+        granitic intrusions
+    Siltstone:
+      labels: [siltite]
+      description: fine-grained (mean grainsize 1/256 - 1/16 mm) clastic sedimentary
+        rock
+    Serpentinite:
+      labels: [serpentinite]
+      description: metamorphic rock essentially composed of minerals of the serpentine
+        group
+    Phonolite:
+      labels: [phonolite]
+      description: undersaturated (no quartz) volcanic rock (> 10% feldspatoid and
+        < 50% plagioclase in the QAPF diagram); the texture is microlithic
+    Prasinite:
+      labels: [prasinite]
+      description: mafic metamorphic rock of basaltic composition, typically displaying
+        white ocellar albite crystals surrounded by a green matrix
+    Sandstone:
+      labels: [grès]
+      description: medium-grained (mean grainsize 1/16 - 2 mm) clastic sedimentary
+        rock
+    Pseudotachyllite:
+      labels: [pseudotachyllite]
+      description: rock resulting from melting by frictional heat in a deformation
+        zone
+    Quartzite:
+      labels: [quartzite]
+      description: metamorphic rock dominantly of quartzitic composition, granoblastic
+        texture and massive to layered aspect (foliated varieties are classified as
+        quartz schists or quartz phyllites)
+    Rauwacke:
+      labels: [cornieule]
+      description: porous carbonate sedimentary rock with a brecciated and/or vacuolar
+        aspect; it can be formed by a combination of chemical processes (incl. dissolution
+        of original gypsum) and/or tectonic deformation
+    Rodingite:
+      labels: [rodingite]
+      description: calc-silicate-rich microcrystalline rock formed by metasomatic
+        processes at the contact between serpentinites and mafic or felsic intrusive
+        bodies
+    Tonalite:
+      labels: [tonalite]
+      description: acidic plutonic rock (20-60% quartz and > 90% plagioclase in the
+        QAPF diagram)
+    Tephrite:
+      labels: [téphrite]
+      description: undersaturated (no quartz) volcanic rock (> 10% feldspatoid and
+        > 50% plagioclase in the QAPF diagram); the texture is microlithic
+    Trachyte:
+      labels: [trachyte]
+      description: volcanic rock (max. 20% quartz or max. 10% feldspatoid and < 35%
+        plagioclase in the QAPF diagram); the texture is microlithic to porphyric
+    kA:
+      labels: [sans indication]
+      description: not specified
+  de:
+    Amphibolite:
+      labels: [Amphibolit]
+      description: metamorphic rock essentially composed of minerals of the amphibole
+        group
+    Migmatite:
+      labels: [Migmatit]
+      description: rock formed by partial fusion under medium- to high-grade metamorphic
+        conditions segregating a leucosome exsolution from a melanosome refractory
+        remnant; this anatectic process can ultimately lead to the production of magmatic
+        bodies
+    Andesite:
+      labels: [Andesit]
+      description: volcanic rock (max. 20% quartz or max. 10% feldspatoid and > 65%
+        plagioclase in the QAPF diagram); the texture is microlithic
+    Aplite:
+      labels: [Aplit]
+      description: leucocratic acidic microcrystalline rock emplaced as dikes and/or
+        sills or as fine-grained peripheral facies of plutonic intrusions
+    Basalt:
+      labels: [Basalt]
+      description: melanocratic mafic volcanic rock (max. 20% quartz or max. 10% feldspatoid
+        and > 65% plagioclase in the QAPF diagram); the texture is microlithic
+    Basanite:
+      labels: [Basanit]
+      description: null
+    Bentonite:
+      labels: [Bentonit]
+      description: very fine-grained clay-rich residual rock mostly consisting of
+        absorbent swelling montmorillonite; it forms by the weathering of volcanic
+        tuff
+    Claystone:
+      labels: [Tonstein]
+      description: very fine-grained (mean grainsize < 1/256 mm) clastic sedimentary
+        rock
+    Breccia:
+      labels: [Brekzie]
+      description: coarse-grained (mean grainsize > 2 mm) clastic rock with angular
+        components; the fragmentation processes (sedimentary or tectonic) is not further
+        specified
+    Rock:
+      labels: [Gestein, Festgestein]
+      description: A rock is a natural consolidated material made up of an assemblage
+        of minerals or composite particles.
+    Rhyolite:
+      labels: [Rhyolith]
+      description: leucocratic acidic volcanic rock (> 20% quartz and < 65% plagioclase
+        in the QAPF diagram); the texture is microlithic to porphyric with a large
+        amount of glass
+    Psephite:
+      labels: [Psephit]
+      description: coarse-grained (mean grainsize > 2 mm) clastic sedimentary rock,
+        typically formed by pebbles in a finer-grained matrix
+    Tuffite:
+      labels: [Tuffit]
+      description: volcano-clastic rock with a large proportion (25-75%) of element
+        of volcanic origin
+    Cataclastite:
+      labels: [Kataklasit]
+      description: cohesive rock formed by tectonic fragmentation in a deformation
+        zone
+    Clay:
+      labels: [Ton]
+      description: null
+    Loam:
+      labels: [Lehm]
+      description: null
+    Pelite:
+      labels: [Pelit]
+      description: fine-grained (mean grainsize < 1/16 mm) clastic sedimentary rock
+    Conglomerate:
+      labels: [Konglomerat, Nagelfluh]
+      description: coarse-grained (mean grainsize > 2 mm) clastic sedimentary rock
+        with rounded components
+    Dacite:
+      labels: [Dazit]
+      description: leucocratic acidic volcanic rock (> 20% quartz and > 65% plagioclase
+        in the QAPF diagram); the texture is microlithic to porphyric with a large
+        amount of glass
+    Diorite:
+      labels: [Diorit]
+      description: plutonic rock (max. 20% quartz and > 65% plagioclase in the QAPF
+        diagram)
+    Monzonite:
+      labels: [Monzonit]
+      description: plutonic rock (max. 20% quartz or max. 10% feldspatoid and 35-65%
+        plagioclase in the QAPF diagram)
+    Dolostone:
+      labels: [Dolomitstein]
+      description: sedimentary rock essentially composed of the mineral dolomite (calcium
+        magnesium carbonate); it can be formed primarily by biochemical processes,
+        secondarily through diagenetic replacement or indirectly by accumulation and
+        cementation of dolomitic clasts
+    Eclogite:
+      labels: [Eklogit]
+      description: mafic metamorphic rock typically composed of garnet and omphacite
+        (sodium-rich pyroxene); it forms under high-pressure and low-temperature conditions;
+        the name eclogite should not be indiscriminately used for all metamorphic
+        rock formed under eclogitic facies conditions
+    Evaporite:
+      labels: [Evaporit, Salzgestein, Evaporitgestein]
+      description: sedimentary rock formed by chemical precipitation
+    Foidite:
+      labels: [Foidit]
+      description: strongly undersaturated (no quartz) volcanic rock with a predominant
+        feldspatoid mineralogy (> 60% in the QAPF diagram)
+    Foidolite:
+      labels: [Foidolit]
+      description: strongly undersaturated (no quartz) plutonic rock with a predominant
+        feldspatoid mineralogy (> 60% in the QAPF diagram)
+    Gabbro:
+      labels: [Gabbro]
+      description: mafic plutonic rock (max. 20% quartz and > 65% plagioclase in the
+        QAPF diagram)
+    Mylonite:
+      labels: [Mylonit]
+      description: rock formed by ductile tectonic deformation
+    Gneiss:
+      labels: [Gneis]
+      description: layered (gneissose cleavage planes > 1 cm apart) metamorphic rock
+    Granite:
+      labels: [Granit]
+      description: leucocratic acidic plutonic rock (20-60% quartz and < 65% plagioclase
+        in the QAPF diagram)
+    Granodiorite:
+      labels: [Granodiorit]
+      description: leucocratic acidic plutonic rock (20-60% quartz and 65-90% plagioclase
+        in the QAPF diagram)
+    Granulite:
+      labels: [Granulit]
+      description: high-grade metamorphic rock with a granoblastic texture and massive
+        to layered (gneissose) aspect
+    Psammite:
+      labels: [Psammit]
+      description: medium-grained (mean grainsize 1/16 - 2 mm) clastic sedimentary
+        rock
+    Schist:
+      labels: [Schiefer]
+      description: foliated (schistose cleavage planes 0,1-1 cm apart) metamorphic
+        rock
+    Syenite:
+      labels: [Syenit]
+      description: plutonic rock (max. 20% quartz or max. 10% feldspatoid and < 35%
+        plagioclase in the QAPF diagram)
+    Granofels:
+      labels: [Granofels, Fels]
+      description: metamorphic rock with a granoblastic texture and a massive, non-foliated
+        aspect
+    Peridotite:
+      labels: [Peridotit]
+      description: coarse-grained ultramafic rock essentially composed of minerals
+        of the olivine and pyroxene groups
+    Pyroxenite:
+      labels: [Pyroxenit]
+      description: coarse-grained ultramafic rock essentially composed of minerals
+        of the pyroxene group
+    Granophyre:
+      labels: [Granophyr]
+      description: subvolcanic porphyric rock, generally of granitic composition,
+        characterised by its graphic intergrowth of quartz and alkali feldspar
+    Hornfels:
+      labels: [Hornfels, Gestein der Kontaktmetamorphose]
+      description: rock formed by contact metamorphism
+    Ignimbrite:
+      labels: [Ignimbrit]
+      description: volcano-clastic rock with elements dominantly (> 75%) of pyroclastic
+        origin; it is characteristically composed of a poorly sorted mixture of volcanic
+        ash, pumice lapilli and scattered lithic fragments
+    Kakirite:
+      labels: [Kakirit]
+      description: non-cohesive rock formed by tectonic fragmentation in a deformation
+        zone
+    Latite:
+      labels: [Latit, Trachyandesit]
+      description: volcanic rock (max. 20% quartz or max. 10% feldspatoid and 35-65%
+        plagioclase in the QAPF diagram); the texture is microlithic to porphyric
+    Limestone:
+      labels: [Kalkstein]
+      description: sedimentary rock essentially composed of the mineral calcite (pure
+        calcium carbonate); it can be formed directly by biogenic, biochemical or
+        hydrochemical processes, as well as indirectly by accumulation and cementation
+        of calcitic clasts
+    Marble:
+      labels: [Marmor]
+      description: metamorphic rock dominantly of carbonate composition, granoblastic
+        texture and massive to layered aspect (foliated varieties are classified as
+        calcschists or calcphyllites)
+    Marl:
+      labels: [Mergel]
+      description: null
+    Marlstone:
+      labels: [Mergelstein]
+      description: carbonate-rich fine-grained (mean grainsize 1/256 - 1/16 mm) clastic
+        sedimentary rock
+    Pebble:
+      labels: [Kies]
+      description: unconsolidated material composed of coarse-grained (mean grainsize
+        > 2 mm) clasts
+    Sand:
+      labels: [Sand]
+      description: unconsolidated material composed of medium-grained (mean grainsize
+        1/16 - 2 mm) clasts
+    Silt:
+      labels: [Silt]
+      description: null
+    Peat:
+      labels: [Torf]
+      description: partly decomposed organic material (mainly Sphagnum) accumulated
+        in poorly oxygenated wetlands
+    Phyllite:
+      labels: [Phyllit]
+      description: finely foliated (cleavage planes <0,1 mm apart) metamorphic rock
+    Pegmatite:
+      labels: [Pegmatit]
+      description: filonian magmatic rock characterised by (very) large automorphic
+        crystals, mainly occuring at the periphery of (and genetically linked to)
+        granitic intrusions
+    Siltstone:
+      labels: [Siltstein]
+      description: fine-grained (mean grainsize 1/256 - 1/16 mm) clastic sedimentary
+        rock
+    Serpentinite:
+      labels: [Serpentinit]
+      description: metamorphic rock essentially composed of minerals of the serpentine
+        group
+    Phonolite:
+      labels: [Phonolith]
+      description: undersaturated (no quartz) volcanic rock (> 10% feldspatoid and
+        < 50% plagioclase in the QAPF diagram); the texture is microlithic
+    Prasinite:
+      labels: [Prasinit]
+      description: mafic metamorphic rock of basaltic composition, typically displaying
+        white ocellar albite crystals surrounded by a green matrix
+    Sandstone:
+      labels: [Sandstein]
+      description: medium-grained (mean grainsize 1/16 - 2 mm) clastic sedimentary
+        rock
+    Pseudotachyllite:
+      labels: [Pseudotachyllit]
+      description: rock resulting from melting by frictional heat in a deformation
+        zone
+    Quartzite:
+      labels: [Quarzit]
+      description: metamorphic rock dominantly of quartzitic composition, granoblastic
+        texture and massive to layered aspect (foliated varieties are classified as
+        quartz schists or quartz phyllites)
+    Rauwacke:
+      labels: [Rauwacke, Zellendolomit]
+      description: porous carbonate sedimentary rock with a brecciated and/or vacuolar
+        aspect; it can be formed by a combination of chemical processes (incl. dissolution
+        of original gypsum) and/or tectonic deformation
+    Rodingite:
+      labels: [Rodingit]
+      description: calc-silicate-rich microcrystalline rock formed by metasomatic
+        processes at the contact between serpentinites and mafic or felsic intrusive
+        bodies
+    Tonalite:
+      labels: [Tonalit]
+      description: acidic plutonic rock (20-60% quartz and > 90% plagioclase in the
+        QAPF diagram)
+    Tephrite:
+      labels: [Tephrit]
+      description: undersaturated (no quartz) volcanic rock (> 10% feldspatoid and
+        > 50% plagioclase in the QAPF diagram); the texture is microlithic
+    Trachyte:
+      labels: [Trachyt]
+      description: volcanic rock (max. 20% quartz or max. 10% feldspatoid and < 35%
+        plagioclase in the QAPF diagram); the texture is microlithic to porphyric
+    kA:
+      labels: [keine Angabe, unbekannt, nicht beschrieben]
+      description: not specified
+  it:
+    Amphibolite:
+      labels: [anfibolite]
+      description: metamorphic rock essentially composed of minerals of the amphibole
+        group
+    Migmatite:
+      labels: [migmatite]
+      description: rock formed by partial fusion under medium- to high-grade metamorphic
+        conditions segregating a leucosome exsolution from a melanosome refractory
+        remnant; this anatectic process can ultimately lead to the production of magmatic
+        bodies
+    Andesite:
+      labels: [andesite]
+      description: volcanic rock (max. 20% quartz or max. 10% feldspatoid and > 65%
+        plagioclase in the QAPF diagram); the texture is microlithic
+    Aplite:
+      labels: [aplite]
+      description: leucocratic acidic microcrystalline rock emplaced as dikes and/or
+        sills or as fine-grained peripheral facies of plutonic intrusions
+    Basalt:
+      labels: [basalto]
+      description: melanocratic mafic volcanic rock (max. 20% quartz or max. 10% feldspatoid
+        and > 65% plagioclase in the QAPF diagram); the texture is microlithic
+    Basanite:
+      labels: [basanite]
+      description: null
+    Bentonite:
+      labels: [bentonite]
+      description: very fine-grained clay-rich residual rock mostly consisting of
+        absorbent swelling montmorillonite; it forms by the weathering of volcanic
+        tuff
+    Claystone:
+      labels: [argillite]
+      description: very fine-grained (mean grainsize < 1/256 mm) clastic sedimentary
+        rock
+    Breccia:
+      labels: [breccia]
+      description: coarse-grained (mean grainsize > 2 mm) clastic rock with angular
+        components; the fragmentation processes (sedimentary or tectonic) is not further
+        specified
+    Rock:
+      labels: [roccia]
+      description: A rock is a natural consolidated material made up of an assemblage
+        of minerals or composite particles.
+    Rhyolite:
+      labels: [riolite]
+      description: leucocratic acidic volcanic rock (> 20% quartz and < 65% plagioclase
+        in the QAPF diagram); the texture is microlithic to porphyric with a large
+        amount of glass
+    Psephite:
+      labels: [psefite]
+      description: coarse-grained (mean grainsize > 2 mm) clastic sedimentary rock,
+        typically formed by pebbles in a finer-grained matrix
+    Tuffite:
+      labels: [tufite]
+      description: volcano-clastic rock with a large proportion (25-75%) of element
+        of volcanic origin
+    Cataclastite:
+      labels: [cataclastite]
+      description: cohesive rock formed by tectonic fragmentation in a deformation
+        zone
+    Clay:
+      labels: [argilla]
+      description: null
+    Loam:
+      labels: [limo]
+      description: null
+    Pelite:
+      labels: [pelite]
+      description: fine-grained (mean grainsize < 1/16 mm) clastic sedimentary rock
+    Conglomerate:
+      labels: [conglomerato, puddinga]
+      description: coarse-grained (mean grainsize > 2 mm) clastic sedimentary rock
+        with rounded components
+    Dacite:
+      labels: [dacite]
+      description: leucocratic acidic volcanic rock (> 20% quartz and > 65% plagioclase
+        in the QAPF diagram); the texture is microlithic to porphyric with a large
+        amount of glass
+    Diorite:
+      labels: [diorite]
+      description: plutonic rock (max. 20% quartz and > 65% plagioclase in the QAPF
+        diagram)
+    Monzonite:
+      labels: [monzonite]
+      description: plutonic rock (max. 20% quartz or max. 10% feldspatoid and 35-65%
+        plagioclase in the QAPF diagram)
+    Dolostone:
+      labels: [dolomia]
+      description: sedimentary rock essentially composed of the mineral dolomite (calcium
+        magnesium carbonate); it can be formed primarily by biochemical processes,
+        secondarily through diagenetic replacement or indirectly by accumulation and
+        cementation of dolomitic clasts
+    Eclogite:
+      labels: [eclogite]
+      description: mafic metamorphic rock typically composed of garnet and omphacite
+        (sodium-rich pyroxene); it forms under high-pressure and low-temperature conditions;
+        the name eclogite should not be indiscriminately used for all metamorphic
+        rock formed under eclogitic facies conditions
+    Evaporite:
+      labels: [evaporite, roccia evaporitica]
+      description: sedimentary rock formed by chemical precipitation
+    Foidite:
+      labels: [foidite]
+      description: strongly undersaturated (no quartz) volcanic rock with a predominant
+        feldspatoid mineralogy (> 60% in the QAPF diagram)
+    Foidolite:
+      labels: [foidolite]
+      description: strongly undersaturated (no quartz) plutonic rock with a predominant
+        feldspatoid mineralogy (> 60% in the QAPF diagram)
+    Gabbro:
+      labels: [gabbro]
+      description: mafic plutonic rock (max. 20% quartz and > 65% plagioclase in the
+        QAPF diagram)
+    Mylonite:
+      labels: [milonite]
+      description: rock formed by ductile tectonic deformation
+    Gneiss:
+      labels: [gneiss]
+      description: layered (gneissose cleavage planes > 1 cm apart) metamorphic rock
+    Granite:
+      labels: [granito]
+      description: leucocratic acidic plutonic rock (20-60% quartz and < 65% plagioclase
+        in the QAPF diagram)
+    Granodiorite:
+      labels: [granodiorite]
+      description: leucocratic acidic plutonic rock (20-60% quartz and 65-90% plagioclase
+        in the QAPF diagram)
+    Granulite:
+      labels: [granulite]
+      description: high-grade metamorphic rock with a granoblastic texture and massive
+        to layered (gneissose) aspect
+    Psammite:
+      labels: [psammite]
+      description: medium-grained (mean grainsize 1/16 - 2 mm) clastic sedimentary
+        rock
+    Schist:
+      labels: [scisto]
+      description: foliated (schistose cleavage planes 0,1-1 cm apart) metamorphic
+        rock
+    Syenite:
+      labels: [sienite]
+      description: plutonic rock (max. 20% quartz or max. 10% feldspatoid and < 35%
+        plagioclase in the QAPF diagram)
+    Granofels:
+      labels: [granofels]
+      description: metamorphic rock with a granoblastic texture and a massive, non-foliated
+        aspect
+    Peridotite:
+      labels: [peridotite]
+      description: coarse-grained ultramafic rock essentially composed of minerals
+        of the olivine and pyroxene groups
+    Pyroxenite:
+      labels: [pirossenite]
+      description: coarse-grained ultramafic rock essentially composed of minerals
+        of the pyroxene group
+    Granophyre:
+      labels: [granofiro]
+      description: subvolcanic porphyric rock, generally of granitic composition,
+        characterised by its graphic intergrowth of quartz and alkali feldspar
+    Hornfels:
+      labels: [cornubianite, hornfels]
+      description: rock formed by contact metamorphism
+    Ignimbrite:
+      labels: [ignimbrite]
+      description: volcano-clastic rock with elements dominantly (> 75%) of pyroclastic
+        origin; it is characteristically composed of a poorly sorted mixture of volcanic
+        ash, pumice lapilli and scattered lithic fragments
+    Kakirite:
+      labels: [cachirite]
+      description: non-cohesive rock formed by tectonic fragmentation in a deformation
+        zone
+    Latite:
+      labels: [latite]
+      description: volcanic rock (max. 20% quartz or max. 10% feldspatoid and 35-65%
+        plagioclase in the QAPF diagram); the texture is microlithic to porphyric
+    Limestone:
+      labels: [calcare]
+      description: sedimentary rock essentially composed of the mineral calcite (pure
+        calcium carbonate); it can be formed directly by biogenic, biochemical or
+        hydrochemical processes, as well as indirectly by accumulation and cementation
+        of calcitic clasts
+    Marble:
+      labels: [marmo]
+      description: metamorphic rock dominantly of carbonate composition, granoblastic
+        texture and massive to layered aspect (foliated varieties are classified as
+        calcschists or calcphyllites)
+    Marl:
+      labels: [marna]
+      description: null
+    Marlstone:
+      labels: [marna]
+      description: carbonate-rich fine-grained (mean grainsize 1/256 - 1/16 mm) clastic
+        sedimentary rock
+    Pebble:
+      labels: [ghiaia]
+      description: unconsolidated material composed of coarse-grained (mean grainsize
+        > 2 mm) clasts
+    Sand:
+      labels: [sabbia]
+      description: unconsolidated material composed of medium-grained (mean grainsize
+        1/16 - 2 mm) clasts
+    Silt:
+      labels: [silt]
+      description: null
+    Peat:
+      labels: [torba]
+      description: partly decomposed organic material (mainly Sphagnum) accumulated
+        in poorly oxygenated wetlands
+    Phyllite:
+      labels: [fillite]
+      description: finely foliated (cleavage planes <0,1 mm apart) metamorphic rock
+    Pegmatite:
+      labels: [pegmatite]
+      description: filonian magmatic rock characterised by (very) large automorphic
+        crystals, mainly occuring at the periphery of (and genetically linked to)
+        granitic intrusions
+    Siltstone:
+      labels: [siltite]
+      description: fine-grained (mean grainsize 1/256 - 1/16 mm) clastic sedimentary
+        rock
+    Serpentinite:
+      labels: [serpentinite]
+      description: metamorphic rock essentially composed of minerals of the serpentine
+        group
+    Phonolite:
+      labels: [fonolite]
+      description: undersaturated (no quartz) volcanic rock (> 10% feldspatoid and
+        < 50% plagioclase in the QAPF diagram); the texture is microlithic
+    Prasinite:
+      labels: [prasinite]
+      description: mafic metamorphic rock of basaltic composition, typically displaying
+        white ocellar albite crystals surrounded by a green matrix
+    Sandstone:
+      labels: [arenaria]
+      description: medium-grained (mean grainsize 1/16 - 2 mm) clastic sedimentary
+        rock
+    Pseudotachyllite:
+      labels: [pseudotachilite]
+      description: rock resulting from melting by frictional heat in a deformation
+        zone
+    Quartzite:
+      labels: [quarzite]
+      description: metamorphic rock dominantly of quartzitic composition, granoblastic
+        texture and massive to layered aspect (foliated varieties are classified as
+        quartz schists or quartz phyllites)
+    Rauwacke:
+      labels: [cargnola]
+      description: porous carbonate sedimentary rock with a brecciated and/or vacuolar
+        aspect; it can be formed by a combination of chemical processes (incl. dissolution
+        of original gypsum) and/or tectonic deformation
+    Rodingite:
+      labels: [rodingite]
+      description: calc-silicate-rich microcrystalline rock formed by metasomatic
+        processes at the contact between serpentinites and mafic or felsic intrusive
+        bodies
+    Tonalite:
+      labels: [tonalite]
+      description: acidic plutonic rock (20-60% quartz and > 90% plagioclase in the
+        QAPF diagram)
+    Tephrite:
+      labels: [tefrite]
+      description: undersaturated (no quartz) volcanic rock (> 10% feldspatoid and
+        > 50% plagioclase in the QAPF diagram); the texture is microlithic
+    Trachyte:
+      labels: [trachite]
+      description: volcanic rock (max. 20% quartz or max. 10% feldspatoid and < 35%
+        plagioclase in the QAPF diagram); the texture is microlithic to porphyric
+    kA:
+      labels: [senza indicazioni]
+      description: not specified

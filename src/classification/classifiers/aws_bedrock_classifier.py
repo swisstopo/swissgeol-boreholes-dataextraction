@@ -9,9 +9,9 @@ from collections import defaultdict
 from pathlib import Path
 
 import boto3
+from classification.utils.classification_classes import USCSSystem
 from classification.utils.data_loader import LayerInformations
 from classification.utils.data_utils import write_api_failures, write_predictions
-from classification.utils.uscs_classes import USCSClasses, map_most_similar_uscs
 from utils.file_utils import read_params
 
 
@@ -133,7 +133,7 @@ class AWSBedrockClassifier:
         api_failures = []
         run_id = str(uuid.uuid4())
 
-        layers_by_filename = defaultdict(list)
+        layers_by_filename: dict[str, list[LayerInformations]] = defaultdict(list)
         for layer in layer_descriptions:
             layers_by_filename[layer.filename].append(layer)
 
@@ -143,7 +143,7 @@ class AWSBedrockClassifier:
             print(f"Processing file: {filename} with {len(filename_layers)} layers")
             path = f"{Path(filename).stem}.json"
 
-            async def process_layer(layer):
+            async def process_layer(layer: LayerInformations):
                 async with semaphore:
                     try:
                         print(f"Classifying layer: {layer.filename}_{layer.borehole_index}_{layer.layer_index}")
@@ -165,9 +165,9 @@ class AWSBedrockClassifier:
                         )
 
                         formatted_response = self.format_response(response)
-                        uscs_class = map_most_similar_uscs(formatted_response.get("Model Answer"))
+                        uscs_class = USCSSystem.map_most_similar_class(formatted_response.get("Model Answer"))
 
-                        layer.prediction_uscs_class = uscs_class
+                        layer.prediction_class = uscs_class
                         layer.llm_reasoning = formatted_response.get("Reasoning")
 
                         return None
@@ -175,7 +175,7 @@ class AWSBedrockClassifier:
                     except Exception as e:
                         error_msg = str(e)
                         print(f"API call failed for '{layer.filename}, {layer.layer_index}': {error_msg}")
-                        layer.prediction_uscs_class = USCSClasses.kA
+                        layer.prediction_class = USCSSystem.get_default_class_value()
 
                         # Return failure info
                         return {

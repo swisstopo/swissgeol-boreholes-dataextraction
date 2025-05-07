@@ -15,8 +15,8 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers.models.bert.modeling_bert import BertForSequenceClassification
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
+from classification.utils.classification_classes import USCSSystem
 from classification.utils.data_loader import LayerInformations
-from classification.utils.uscs_classes import USCSClasses
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +30,9 @@ class BertModel:
         Args:
             model_path (str): A string containing the model name.
         """
-        self.num_class = len(USCSClasses)
-        self.id2label = {class_.value: class_.name for class_ in USCSClasses}
-        self.label2id = {class_.name: class_.value for class_ in USCSClasses}
+        self.num_class = len(USCSSystem.USCSClasses)
+        self.id2label = {class_.value: class_.name for class_ in USCSSystem.USCSClasses}
+        self.label2id = {class_.name: class_.value for class_ in USCSSystem.USCSClasses}
         # Check if model_path is a valid directory for a locally saved model
         if os.path.isdir(model_path):
             logger.info(f"Model and tokenizer loaded from local path: {model_path}")
@@ -47,7 +47,7 @@ class BertModel:
             label2id=self.label2id,
         )
 
-        self.id2classEnum = {class_.value: class_ for class_ in USCSClasses}
+        self.id2classEnum = {class_.value: class_ for class_ in USCSSystem.USCSClasses}
 
     def freeze_all_layers(self):
         """Freeze all layers (base bert model + classifier)."""
@@ -184,7 +184,7 @@ class BertModel:
         shorten = len(layers)  # used for debugging to load only a subset of data (e.g. to test overfitting the model)
         data: dict[str, list] = {
             "layer": [layer.material_description for layer in layers[:shorten]],
-            "label": [layer.ground_truth_uscs_class.value for layer in layers[:shorten]],
+            "label": [layer.ground_truth_class.value for layer in layers[:shorten]],
         }
         dataset = datasets.Dataset.from_dict(data)
         return self.tokenize_dataset(dataset)
@@ -235,7 +235,7 @@ class BertModel:
         idx = torch.argmax(outputs.logits, dim=1).item()
         return idx
 
-    def predict_uscs_class(self, text: str) -> USCSClasses:
+    def predict_uscs_class(self, text: str) -> USCSSystem.USCSClasses:
         """Runs prediction on a single text input.
 
         Args:
@@ -247,7 +247,7 @@ class BertModel:
         idx = self.predict_idx(text)
         return self.id2classEnum[idx]
 
-    def predict_uscs_class_batched(self, texts: list[str], batch_size: int) -> list[USCSClasses]:
+    def predict_uscs_class_batched(self, texts: list[str], batch_size: int) -> list[USCSSystem.USCSClasses]:
         """Runs batch prediction on multiple text inputs.
 
         Args:

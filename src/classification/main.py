@@ -51,7 +51,11 @@ def setup_mlflow_tracking(
 
 
 def log_ml_flow_infos(
-    file_path: Path, out_directory: Path, layer_descriptions: list[LayerInformations], classifier: Classifier
+    file_path: Path,
+    out_directory: Path,
+    layer_descriptions: list[LayerInformations],
+    classifier: Classifier,
+    classification_system: str,
 ):
     """Logs informations to mlflow, such as the number of sample, laguage distribution, classifier type and data."""
     # Log dataset statistics
@@ -64,6 +68,9 @@ def log_ml_flow_infos(
     # Log class distribution
     for class_, count in get_data_class_count(layer_descriptions).items():
         mlflow.log_param(f"class_{class_}_count", count)
+
+    # Log the classification systems used
+    mlflow.log_param("classification_systems", classification_system)
 
     # Log classifier name
     mlflow.log_param("classifier_type", classifier.__class__.__name__)
@@ -88,7 +95,7 @@ def log_ml_flow_infos(
 
     # Log input data and output predictions
     mlflow.log_artifact(str(file_path), "input_data")
-    mlflow.log_artifact(f"{out_directory}/uscs_class_predictions.json", "predictions_json")
+    mlflow.log_artifact(f"{out_directory}/class_predictions.json", "predictions_json")
 
     # log output prediction artifacts detailed for each class
     pred_dir = os.path.join(out_directory, "predictions_per_class")
@@ -148,6 +155,13 @@ def common_options(f):
         default=None,
         help="Path to the local trained model.",
     )(f)
+    f = click.option(
+        "-cs",
+        "--classification-system",
+        type=click.Choice(["uscs", "lithology"], case_sensitive=False),
+        default="uscs",
+        help="The classification system used to classify the data.",
+    )(f)
     return f
 
 
@@ -160,9 +174,18 @@ def click_pipeline(
     file_subset_directory: Path,
     classifier_type: str,
     model_path: Path,
+    classification_system: str,
 ):
     """Run the description classification pipeline."""
-    main(file_path, out_directory, out_directory_bedrock, file_subset_directory, classifier_type, model_path)
+    main(
+        file_path,
+        out_directory,
+        out_directory_bedrock,
+        file_subset_directory,
+        classifier_type,
+        model_path,
+        classification_system,
+    )
 
 
 def main(
@@ -172,6 +195,7 @@ def main(
     file_subset_directory: Path,
     classifier_type: str,
     model_path: Path,
+    classification_system: str,
 ):
     """Main pipeline to classify the layer's soil descriptions.
 
@@ -182,12 +206,18 @@ def main(
         file_subset_directory (Path): Path to the directory containing the file whose names are used.
         classifier_type (str): The classifier type to use.
         model_path (Path): Path to the trained model.
+        classification_system (str): The classification system used to classify the data.
     """
+    if classification_system == "lithology" and classifier_type != "dummy":
+        raise NotImplementedError(
+            "Currently, only the dummy classifier is supported with classification system 'lithology'."
+        )
+
     if mlflow_tracking:
         setup_mlflow_tracking(file_path, out_directory, file_subset_directory)
 
     logger.info(f"Loading data from {file_path}")
-    layer_descriptions = load_data(file_path, file_subset_directory)
+    layer_descriptions = load_data(file_path, file_subset_directory, classification_system)
 
     if model_path is not None and classifier_type != "bert":
         logger.warning("Model path is only used with classifier 'bert'.")
@@ -201,7 +231,9 @@ def main(
         classifier = AWSBedrockClassifier(out_directory_bedrock, max_concurrent_calls=1, api_call_delay=0.0)
 
     # classify
-    logger.info(f"Classifying layer description with {classifier.__class__.__name__}")
+    logger.info(
+        f"Classifying layer description into {classification_system} classes with {classifier.__class__.__name__}"
+    )
     classifier.classify(layer_descriptions)
 
     logger.info("Evaluating predictions")
@@ -213,7 +245,7 @@ def main(
     write_per_language_per_class_predictions(layer_descriptions, classification_metrics, out_directory)
 
     if mlflow_tracking:
-        log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier)
+        log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier, classification_system)
 
     if mlflow_tracking:
         mlflow.end_run()
