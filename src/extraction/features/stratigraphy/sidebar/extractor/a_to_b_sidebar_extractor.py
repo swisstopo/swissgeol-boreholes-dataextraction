@@ -87,6 +87,7 @@ def get_most_detailed_intervals(intervals: list[AToBInterval]) -> list[AToBInter
     Returns:
         list[AToBInterval]: The ordered list
     """
+    intervals = intervals.copy()  # don't mutate the original object
     # Sort intervals by depth (interval close to the surface first) and thickness (small interval first).
     intervals.sort(key=lambda x: (x.start.value, x.end.value))
 

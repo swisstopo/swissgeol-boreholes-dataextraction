@@ -52,7 +52,7 @@ class MaterialDescriptionRectWithSidebar:
 
         height = sidebar_bottom - sidebar_top
 
-        geometry_score = self.material_description_rect.width - 1.75 * x_distance + height - 2 * y_distance
+        geometry_score = self.material_description_rect.width - 1.64 * x_distance + height - 2 * y_distance
 
         noise_coef = 10.0 if isinstance(self.sidebar, AAboveBSidebar) else 0.0
         noise_penalty_multiplier = math.pow(0.8, noise_coef * self.noise_count / len(self.sidebar.entries))
