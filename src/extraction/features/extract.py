@@ -82,7 +82,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         if material_description_rect_without_sidebar:
             material_descriptions_sidebar_pairs.append(
                 MaterialDescriptionRectWithSidebar(
-                    sidebar=None, material_description_rect=material_description_rect_without_sidebar
+                    sidebar=None, material_description_rect=material_description_rect_without_sidebar, lines=self.lines
                 )
             )
 
@@ -111,10 +111,11 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         # We order the boreholes with the highest score first. When one borehole is actually present in the ground
         # truth, but more than one are detected, we want the most correct to be assigned
-        return [
+        boreholes = [
             self._create_borehole_from_pair(pair)
             for pair in sorted(non_duplicated_pairs, key=lambda pair: pair.score_match, reverse=True)
         ]
+        return [borehole for borehole in boreholes if borehole.predictions]
 
     def _find_intersecting_indices(
         self, material_descriptions_sidebar_pairs: list[MaterialDescriptionRectWithSidebar]
@@ -285,7 +286,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             material_description_rect = self._find_material_description_column(layer_identifier_sidebar)
             if material_description_rect:
                 material_descriptions_sidebar_pairs.append(
-                    MaterialDescriptionRectWithSidebar(layer_identifier_sidebar, material_description_rect)
+                    MaterialDescriptionRectWithSidebar(layer_identifier_sidebar, material_description_rect, self.lines)
                 )
         return material_descriptions_sidebar_pairs
 
@@ -298,6 +299,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
         a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words)
         used_entry_rects = []
+
         for column in a_to_b_sidebars:
             for entry in column.entries:
                 used_entry_rects.extend([entry.start.rect, entry.end.rect])
@@ -319,6 +321,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     MaterialDescriptionRectWithSidebar(
                         sidebar=sidebar_noise.sidebar,
                         material_description_rect=material_description_rect,
+                        lines=self.lines,
                         noise_count=sidebar_noise.noise_count,
                     )
                 )
@@ -363,7 +366,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         description_clusters = []
         while len(is_description) > 0:
             coverage_by_generating_line = [
-                [other for other in is_description if x_overlap_significant_smallest(line.rect, other.rect, 0.5)]
+                [other for other in is_description if x_overlap_significant_smallest(line.rect, other.rect, 0.4)]
                 for line in is_description
             ]
 
@@ -436,7 +439,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         if sidebar:
             return max(
                 candidate_rects,
-                key=lambda rect: MaterialDescriptionRectWithSidebar(sidebar, rect).score_match,
+                key=lambda rect: MaterialDescriptionRectWithSidebar(sidebar, rect, self.lines).score_match,
             )
         else:
             return candidate_rects[0]

@@ -59,10 +59,60 @@ class AToBSidebarExtractor:
         pairs = [(entry, find_pair(entry)) for entry in entries]
         intervals = [AToBInterval(first, second) for first, second in pairs if second]
         clusters = Cluster[AToBInterval].create_clusters(intervals, lambda interval: interval.rect)
+        merged_clusters = Cluster[AToBInterval].merge_close_clusters(clusters)
+        clusters.extend(merged_clusters)
 
-        return [
+        detailed_sidebars = [AToBSidebar(get_most_detailed_intervals(clust.entries)) for clust in clusters]
+        detailed_sidebars = [detailed_sidebar for detailed_sidebar in detailed_sidebars if detailed_sidebar.is_valid()]
+        sidebars = [
             sidebar_segment
             for cluster in clusters
             for sidebar_segment in AToBSidebar(cluster.entries).break_on_mismatch()
             if sidebar_segment.is_valid()
         ]
+
+        # return unique sidebars by comparing each intervals.
+        return list({tuple(sb.entries): sb for sb in sidebars + detailed_sidebars}.values())
+
+
+def get_most_detailed_intervals(intervals: list[AToBInterval]) -> list[AToBInterval]:
+    """Takes a list of intervals and returns the most detailed list of intervals.
+
+    This is done by finding the list of intervals that can be continued from one to the other, that contains the most
+    details and that reach the biggest depth.
+
+    Args:
+        intervals (list[AToBInterval]): The list of intervals.
+
+    Returns:
+        list[AToBInterval]: The ordered list
+    """
+    intervals = intervals.copy()  # don't mutate the original object
+    # Sort intervals by depth (interval close to the surface first) and thickness (small interval first).
+    intervals.sort(key=lambda x: (x.start.value, x.end.value))
+
+    current_intervals = [intervals[0]]
+    processed_intervals = {intervals[0]}
+    most_detailed_intervals = []  # stores the deepest list of continued interval found so far
+
+    while current_intervals:
+        current_interval = current_intervals[-1]
+        found = False
+        for interval in intervals:
+            if interval in processed_intervals:
+                continue
+            # from the current (deepest) interval, look for interval that starts with the ending value (we stop at
+            # the first interval found as they are sorted, so we will get the smallest one). We also ensure that the
+            # interval found is below the current, to remove any noise.
+            if current_interval.end.value == interval.start.value and current_interval.rect.y0 <= interval.rect.y0:
+                current_intervals.append(interval)
+                processed_intervals.add(interval)
+                found = True
+                break
+        if not found:
+            # if we did not found an interval to continue the search, we store the result if it is the best so far,
+            # and continue the search from the previous interval, by poping the last added.
+            if not most_detailed_intervals or current_intervals[-1].end.value > most_detailed_intervals[-1].end.value:
+                most_detailed_intervals = current_intervals.copy()
+            current_intervals.pop()
+    return most_detailed_intervals
