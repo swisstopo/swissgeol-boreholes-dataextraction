@@ -4,7 +4,10 @@ import math
 from dataclasses import dataclass
 
 import pymupdf
+from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
 from extraction.features.utils.geometry.geometry_dataclasses import BoundingBox
+from extraction.features.utils.text.find_description import get_description_lines
+from extraction.features.utils.text.textline import TextLine
 
 from ..sidebar.classes.sidebar import Sidebar
 
@@ -15,10 +18,11 @@ class MaterialDescriptionRectWithSidebar:
 
     sidebar: Sidebar | None
     material_description_rect: pymupdf.Rect
+    lines: list[TextLine]
     noise_count: int = 0
 
     @property
-    def score_match(self) -> float:
+    def score_match_old(self) -> float:
         """Scores the match between a sidebar and a material description.
 
         For pairs that have a sidebar, the score is
@@ -52,6 +56,49 @@ class MaterialDescriptionRectWithSidebar:
             )
         else:
             return 0
+
+    @property
+    def score_match(self) -> float:
+        """Scores the match between a sidebar and a material description.
+
+        For pairs that have a sidebar, the score is
+        - positively influenced by the width of the material description bounding box
+        - negatively influenced by the horizontal distance between (the right-hand-side of) the sidebar and (the
+          left-hand-side of) the material descriptions
+        - positively influenced by the height of the sidebar
+        - negatively influenced by vertical distance between the top of the sidebar and the top of the material
+          descriptions, and the vertical distance between the bottom of the sidebar and the bottom of the material
+          descriptions
+        The resulting score is also reduced if the sidebar has a high noise count (many unrelated tokens in between
+        the extracted depths values).
+
+        Pairs without a sidebar receive a default score of 0.
+
+        Returns:
+            float: The score of the match. Better matches have a higher score value.
+        """
+        if not self.sidebar:
+            return 0.0
+        rect = self.sidebar.rect()
+        sidebar_top, sidebar_bottom, sidebar_right = rect.y0, rect.y1, rect.x1
+        material_left = self.material_description_rect.x0
+        material_top, material_bottom = self.material_description_rect.y0, self.material_description_rect.y1
+        x_distance = abs(sidebar_right - material_left)
+        y_distance = abs(sidebar_top - material_top) + abs(sidebar_bottom - material_bottom)
+
+        height = sidebar_bottom - sidebar_top
+
+        geometry_score = self.material_description_rect.width - 1.75 * x_distance + height - 2 * y_distance
+
+        noise_coef = 10.0 if isinstance(self.sidebar, AAboveBSidebar) else 0.0
+        noise_penalty_multiplier = math.pow(0.8, noise_coef * self.noise_count / len(self.sidebar.entries))
+
+        description_lines = get_description_lines(self.lines, self.material_description_rect)
+        num_lines_score = len(description_lines)
+
+        sidebar_found_bonus = 130.0  # to prioritize sidebar-material pairs over material description without sidebar
+
+        return (geometry_score + num_lines_score + sidebar_found_bonus) * noise_penalty_multiplier
 
 
 @dataclass
