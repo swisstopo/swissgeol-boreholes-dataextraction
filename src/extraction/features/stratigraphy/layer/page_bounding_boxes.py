@@ -33,8 +33,12 @@ class MaterialDescriptionRectWithSidebar:
         - negatively influenced by vertical distance between the top of the sidebar and the top of the material
           descriptions, and the vertical distance between the bottom of the sidebar and the bottom of the material
           descriptions
+        - positively influenced by the number of text lines contained in the material decription rectangle
+        - increased by a fix a bonus for being a valid sidebar-material pair (usefull when comparing against pairs that
+          don't have a sidebar, only a material description rectangle)
         The resulting score is also reduced if the sidebar has a high noise count (many unrelated tokens in between
-        the extracted depths values).
+        the extracted depths values). This noise is not taken into account if the sidebar is extracted from text (if it
+        is of type LayerIdentifierSidebar or AtoBSidebar).
 
         Pairs without a sidebar receive a default score of 0.
 

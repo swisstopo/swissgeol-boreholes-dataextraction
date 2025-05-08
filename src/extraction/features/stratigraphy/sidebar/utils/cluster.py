@@ -51,10 +51,10 @@ class Cluster(abc.ABC, Generic[EntryT]):
         """Iteratively merge clusters that are close to each other.
 
         Args:
-            clusters: A list of Cluster objects to merge.
+            clusters (list[Cluster[EntryT]]): A list of Cluster objects to merge.
 
         Returns:
-            A list of merged Cluster objects.
+            list[Cluster[EntryT]]: A list of merged Cluster objects.
         """
         current_clusters = clusters.copy()  # Make a copy to avoid mutating the input
 
