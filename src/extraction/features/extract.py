@@ -117,58 +117,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         ]
         return [borehole for borehole in boreholes if borehole.predictions]
 
-    def process_page_old(self) -> list[ExtractedBorehole]:
-        """Process a single page of a pdf.
-
-        Finds all descriptions and depth intervals on the page and matches them.
-
-        TODO: Ideally, one function does one thing. This function does a lot of things. It should be split into
-        smaller functions.
-
-        Returns:
-            ProcessPageResult: a list of the extracted layers and a list of relevant bounding boxes.
-        """
-        material_descriptions_sidebar_pairs = self._find_layer_identifier_sidebar_pairs()
-        material_descriptions_sidebar_pairs.extend(self._find_depth_sidebar_pairs_old())
-
-        material_description_rect_without_sidebar = self._find_material_description_column_old(sidebar=None)
-        if material_description_rect_without_sidebar:
-            material_descriptions_sidebar_pairs.append(
-                MaterialDescriptionRectWithSidebar(
-                    sidebar=None, material_description_rect=material_description_rect_without_sidebar, lines=self.lines
-                )
-            )
-
-        material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match_old)  # lowest score first
-
-        material_descriptions_sidebar_pairs = [
-            pair for pair in material_descriptions_sidebar_pairs if pair.score_match_old >= 0
-        ]
-
-        # remove pairs that have any of their elements (sidebar, material description) intersecting with others.
-        to_delete = self._find_intersecting_indices(material_descriptions_sidebar_pairs)
-        filtered_pairs = [
-            item for index, item in enumerate(material_descriptions_sidebar_pairs) if index not in to_delete
-        ]
-
-        # remove pairs with no sidebar if there is more than one pair.
-        to_delete = (
-            [] if len(filtered_pairs) <= 1 else [i for i, pair in enumerate(filtered_pairs) if not pair.sidebar]
-        )
-
-        filtered_pairs = [item for index, item in enumerate(filtered_pairs) if index not in to_delete]
-
-        # remove pairs that are likely duplicates of others.
-        to_delete = self._find_duplicated_pairs_indices(filtered_pairs)
-        non_duplicated_pairs = [item for index, item in enumerate(filtered_pairs) if index not in to_delete]
-
-        # We order the boreholes with the highest score first. When one borehole is actually present in the ground
-        # truth, but more than one are detected, we want the most correct to be assigned
-        return [
-            self._create_borehole_from_pair(pair)
-            for pair in sorted(non_duplicated_pairs, key=lambda pair: pair.score_match_old, reverse=True)
-        ]
-
     def _find_intersecting_indices(
         self, material_descriptions_sidebar_pairs: list[MaterialDescriptionRectWithSidebar]
     ) -> list[int]:
@@ -380,43 +328,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         return material_descriptions_sidebar_pairs
 
-    def _find_depth_sidebar_pairs_old(self) -> list[MaterialDescriptionRectWithSidebar]:
-        material_descriptions_sidebar_pairs = []
-        line_rtree = rtree.index.Index()
-        for line in self.lines:
-            line_rtree.insert(id(line), (line.rect.x0, line.rect.y0, line.rect.x1, line.rect.y1), obj=line)
-
-        words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
-        a_to_b_sidebars = AToBSidebarExtractor.find_in_words_old(words)
-        used_entry_rects = []
-        for column in a_to_b_sidebars:
-            for entry in column.entries:
-                used_entry_rects.extend([entry.start.rect, entry.end.rect])
-
-        # create sidebars with noise count
-        sidebars_noise: list[SidebarNoise] = [
-            SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree)) for sidebar in a_to_b_sidebars
-        ]
-        sidebars_noise.extend(
-            AAboveBSidebarExtractor.find_in_words(
-                words, line_rtree, used_entry_rects, sidebar_params=self.params["depth_column_params"]
-            )
-        )
-
-        for sidebar_noise in sidebars_noise:
-            material_description_rect = self._find_material_description_column(sidebar_noise.sidebar)
-            if material_description_rect:
-                material_descriptions_sidebar_pairs.append(
-                    MaterialDescriptionRectWithSidebar(
-                        sidebar=sidebar_noise.sidebar,
-                        material_description_rect=material_description_rect,
-                        lines=self.lines,
-                        noise_count=sidebar_noise.noise_count,
-                    )
-                )
-
-        return material_descriptions_sidebar_pairs
-
     def _find_material_description_column(self, sidebar: Sidebar | None) -> pymupdf.Rect | None:
         """Find the material description column given a depth column.
 
@@ -533,122 +444,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         else:
             return candidate_rects[0]
 
-    def _find_material_description_column_old(self, sidebar: Sidebar | None) -> pymupdf.Rect | None:
-        """Find the material description column given a depth column.
-
-        Args:
-            sidebar (Sidebar | None): The sidebar to be associated with the material descriptions.
-
-        Returns:
-            pymupdf.Rect | None: The material description column.
-        """
-        if sidebar:
-            above_sidebar = [
-                line
-                for line in self.lines
-                if x_overlap(line.rect, sidebar.rect()) and line.rect.y0 < sidebar.rect().y0
-            ]
-
-            min_y0 = max(line.rect.y0 for line in above_sidebar) if above_sidebar else -1
-
-            def check_y0_condition(y0):
-                return y0 > min_y0 and y0 < sidebar.rect().y1
-        else:
-
-            def check_y0_condition(y0):
-                return True
-
-        candidate_description = [line for line in self.lines if check_y0_condition(line.rect.y0)]
-        is_description = [
-            line
-            for line in candidate_description
-            if line.is_description(self.params["material_description"][self.language])
-        ]
-
-        if len(candidate_description) == 0:
-            return
-
-        description_clusters = []
-        while len(is_description) > 0:
-            coverage_by_generating_line = [
-                [other for other in is_description if x_overlap_significant_smallest(line.rect, other.rect, 0.5)]
-                for line in is_description
-            ]
-
-            def filter_coverage(coverage):
-                if coverage:
-                    min_x0 = min(line.rect.x0 for line in coverage)
-                    max_x1 = max(line.rect.x1 for line in coverage)
-                    # how did we determine the 0.4? Should it be a parameter? What would it do if we were to change it?
-                    x0_threshold = max_x1 - 0.4 * (max_x1 - min_x0)
-                    return [line for line in coverage if line.rect.x0 < x0_threshold]
-                else:
-                    return []
-
-            coverage_by_generating_line = [filter_coverage(coverage) for coverage in coverage_by_generating_line]
-            max_coverage = max(coverage_by_generating_line, key=len)
-            description_clusters.append(max_coverage)
-            is_description = [line for line in is_description if line not in max_coverage]
-
-        candidate_rects = []
-
-        for cluster in description_clusters:
-            best_y0 = min([line.rect.y0 for line in cluster])
-            best_y1 = max([line.rect.y1 for line in cluster])
-
-            min_description_x0 = min(
-                [
-                    line.rect.x0 - 0.01 * line.rect.width for line in cluster
-                ]  # How did we determine the 0.01? Should it be a parameter? What would it do if we were to change it?
-            )
-            max_description_x0 = max(
-                [
-                    line.rect.x0 + 0.2 * line.rect.width for line in cluster
-                ]  # How did we determine the 0.2? Should it be a parameter? What would it do if we were to change it?
-            )
-            good_lines = [
-                line
-                for line in candidate_description
-                if line.rect.y0 >= best_y0 and line.rect.y1 <= best_y1
-                if min_description_x0 < line.rect.x0 < max_description_x0
-            ]
-            best_x0 = min([line.rect.x0 for line in good_lines])
-            best_x1 = max([line.rect.x1 for line in good_lines])
-
-            # expand to include entire last block
-            def is_below(best_x0, best_y1, line):
-                # How did we determine the constants 5 and 10?
-                # Should they be parameters?
-                # What would happen do if we were to change them?
-                return (
-                    (line.rect.x0 > best_x0 - 5)
-                    and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa B023
-                    and (line.rect.y0 < best_y1 + 10)
-                    and (line.rect.y1 > best_y1)
-                )
-
-            continue_search = True
-            while continue_search:
-                line = next((line for line in self.lines if is_below(best_x0, best_y1, line)), None)
-                if line:
-                    best_x0 = min(best_x0, line.rect.x0)
-                    best_x1 = max(best_x1, line.rect.x1)
-                    best_y1 = line.rect.y1
-                else:
-                    continue_search = False
-
-            candidate_rects.append(pymupdf.Rect(best_x0, best_y0, best_x1, best_y1))
-
-        if len(candidate_rects) == 0:
-            return None
-        if sidebar:
-            return max(
-                candidate_rects,
-                key=lambda rect: MaterialDescriptionRectWithSidebar(sidebar, rect, self.lines).score_match_old,
-            )
-        else:
-            return candidate_rects[0]
-
 
 def process_page(
     text_lines: list[TextLine], geometric_lines: list[Line], language: str, page_number: int, **matching_params: dict
@@ -667,17 +462,9 @@ def process_page(
     Returns:
         list[ExtractedBorehole]: Extracted borehole layers from the page.
     """
-    new = MaterialDescriptionRectWithSidebarExtractor(
+    return MaterialDescriptionRectWithSidebarExtractor(
         text_lines, geometric_lines, language, page_number, **matching_params
     ).process_page()
-
-    old = MaterialDescriptionRectWithSidebarExtractor(
-        text_lines, geometric_lines, language, page_number, **matching_params
-    ).process_page_old()
-
-    if new != old:
-        print("DIIIIIF", new, old)
-    return new
 
 
 def match_columns(
