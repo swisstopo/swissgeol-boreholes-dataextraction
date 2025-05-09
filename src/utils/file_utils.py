@@ -28,13 +28,13 @@ def flatten(dictionary: dict, parent_key: str = "", separator: str = "__") -> di
     return dict(items)
 
 
-def read_params(params_name: str) -> dict:
+def read_params(config_filename: str) -> dict:
     """Read parameters from a yaml file.
 
     Args:
-        params_name (str): Name of the params yaml file.
+        config_filename (str): Name of the params yaml file.
     """
-    config_path = PROJECT_ROOT / "config" / params_name
+    config_path = PROJECT_ROOT / "config" / config_filename
 
     if not config_path.exists():
         raise FileNotFoundError(f"Provided parameter file not found: {config_path}")

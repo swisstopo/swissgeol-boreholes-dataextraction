@@ -208,9 +208,9 @@ def main(
         model_path (Path): Path to the trained model.
         classification_system (str): The classification system used to classify the data.
     """
-    if classification_system == "lithology" and classifier_type != "dummy":
+    if classification_system == "lithology" and classifier_type not in ["dummy", "bert"]:
         raise NotImplementedError(
-            "Currently, only the dummy classifier is supported with classification system 'lithology'."
+            "Currently, only the dummy and bert classifier are supported with classification system 'lithology'."
         )
 
     if mlflow_tracking:
@@ -226,7 +226,7 @@ def main(
     elif classifier_type == "baseline":
         classifier = BaselineClassifier()
     elif classifier_type == "bert":
-        classifier = BertClassifier(model_path)
+        classifier = BertClassifier(model_path, classification_system)
     elif classifier_type == "bedrock":
         classifier = AWSBedrockClassifier(out_directory_bedrock, max_concurrent_calls=1, api_call_delay=0.0)
 
