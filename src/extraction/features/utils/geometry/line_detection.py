@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from numpy.typing import ArrayLike
 from utils.file_utils import read_params
 
-from .geometric_line_utilities import drop_vertical_lines, merge_parallel_lines_quadtree
+from .geometric_line_utilities import drop_vertical_lines, separate_vertical_lines, merge_parallel_lines_quadtree
 from .geometry_dataclasses import Line
 from .util import line_from_array
 
@@ -61,16 +61,43 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
         line_detection_params (dict): The parameters for the line detection algorithm.
 
     Returns:
-        list[Line]: The detected lines as a list.
+        tuple[list[Line], list[Line]]: A tuple containing (non_vertical_lines, vertical_lines)
     """
-    lines = detect_lines_lsd(
+    all_lines = detect_lines_lsd(
         page,
         lsd_params=line_detection_params["lsd"],
         scale_factor=line_detection_params["pdf_scale_factor"],
     )
-    lines = drop_vertical_lines(lines, threshold=line_detection_params["vertical_lines_threshold"])
-    merging_params = line_detection_params["line_merging_params"]
 
-    return merge_parallel_lines_quadtree(
-        lines, tol=merging_params["merging_tolerance"], angle_threshold=merging_params["angle_threshold"]
+    # Separate vertical and non-vertical lines
+    non_vertical_lines, vertical_lines = separate_vertical_lines(
+        all_lines, threshold=line_detection_params["vertical_lines_threshold"]
     )
+
+    # Only merge the non-vertical lines
+    merging_params = line_detection_params["line_merging_params"]
+    merged_non_vertical_lines = merge_parallel_lines_quadtree(
+        non_vertical_lines, tol=merging_params["merging_tolerance"], angle_threshold=merging_params["angle_threshold"]
+    )
+
+    # Also merge vertical lines separately
+    merged_vertical_lines = merge_parallel_lines_quadtree(
+        vertical_lines, tol=merging_params["merging_tolerance"], angle_threshold=merging_params["angle_threshold"]
+    )
+
+    return merged_non_vertical_lines, merged_vertical_lines
+
+
+# Add backward compatibility wrapper
+def extract_non_vertical_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]:
+    """Extract only non-vertical lines from a pdf page (backward compatibility).
+
+    Args:
+        page (pymupdf.Page): The page to extract lines from.
+        line_detection_params (dict): The parameters for the line detection algorithm.
+
+    Returns:
+        list[Line]: The detected non-vertical lines.
+    """
+    non_vertical_lines, _ = extract_lines(page, line_detection_params)
+    return non_vertical_lines
