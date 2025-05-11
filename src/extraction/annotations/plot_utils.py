@@ -76,19 +76,59 @@ def _convert_line_to_grid(line: Line, scale_factor: float) -> Line:
     return Line(start, end)
 
 
-def plot_lines(page: pymupdf.Page, lines: list[Line], scale_factor: float = 2) -> cv2.COLOR_RGB2BGR:
-    """Given a page object and the lines detected in the page, plot the page with the detected lines.
+def plot_lines(page: pymupdf.Page, non_vertical_lines: list[Line], vertical_lines: list[Line] = None, 
+               scale_factor: float = 2.0) -> np.ndarray:
+    """Plot detected lines on a page image.
 
     Args:
-        page (pymupdf.Page): The page to draw the lines in.
-        lines (ArrayLike): The lines detected in the pdf.
-        scale_factor (float, optional): The scale factor to apply to the pdf. Defaults to 2.
+        page (pymupdf.Page): The page to plot lines on.
+        non_vertical_lines (list[Line]): The non-vertical lines to plot.
+        vertical_lines (list[Line], optional): The vertical lines to plot. Defaults to None.
+        scale_factor (float, optional): The scale factor. Defaults to 2.0.
+
+    Returns:
+        np.ndarray: The image with the lines drawn on it.
     """
-    open_cv_img = convert_page_to_opencv_img(page, scale_factor=scale_factor)
+    pix = page.get_pixmap(matrix=pymupdf.Matrix(scale_factor, scale_factor))
+    img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, 3)
+    img_copy = img.copy()
 
-    open_cv_img = _draw_lines(open_cv_img, lines, scale_factor=scale_factor)
+    # Draw non-vertical lines in one color (green)
+    for line in non_vertical_lines:
+        cv2.line(
+            img_copy,
+            (int(line.start.x), int(line.start.y)),
+            (int(line.end.x), int(line.end.y)),
+            (0, 255, 0),
+            2,
+        )
 
-    return open_cv_img
+    # Draw vertical lines in a different color (red)
+    if vertical_lines:
+        for line in vertical_lines:
+            cv2.line(
+                img_copy,
+                (int(line.start.x), int(line.start.y)),
+                (int(line.end.x), int(line.end.y)),
+                (0, 0, 255),
+                2,
+            )
+
+    return img_copy
+
+
+def plot_single_line_set(page: pymupdf.Page, lines: list[Line], scale_factor: float = 2.0) -> np.ndarray:
+    """Plot a single set of lines (backward compatibility).
+
+    Args:
+        page (pymupdf.Page): The page to plot lines on.
+        lines (list[Line]): The lines to plot.
+        scale_factor (float, optional): The scale factor. Defaults to 2.0.
+
+    Returns:
+        np.ndarray: The image with the lines drawn on it.
+    """
+    return plot_lines(page, lines, None, scale_factor)
 
 
 def draw_blocks_and_lines(page: pymupdf.Page, blocks: list[TextBlock], lines: list[Line] = None):
