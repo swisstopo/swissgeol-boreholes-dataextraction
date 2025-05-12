@@ -61,11 +61,15 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
 
         result = []
         for block in blocks:
-            depth_intervals = []
-            depth_interval = AToBIntervalExtractor.from_material_description_lines(block.lines)
-            if depth_interval:
-                depth_intervals.append(depth_interval)
-            result.append(IntervalBlockGroup(depth_intervals=depth_intervals, blocks=[block]))
+            interval_block_pairs = AToBIntervalExtractor.from_material_description_lines(block.lines)
+            interval_block_pairs = AToBIntervalExtractor.partitions_and_sublayers_with_text(interval_block_pairs)
+
+            result.extend(
+                [
+                    IntervalBlockGroup(depth_intervals=[pair.depth_interval], blocks=[pair.block])
+                    for pair in interval_block_pairs
+                ]
+            )
 
         return result
 

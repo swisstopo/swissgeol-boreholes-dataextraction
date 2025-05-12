@@ -5,6 +5,7 @@ import re
 from extraction.features.utils.text.textline import TextWord
 
 from ...base.sidebar_entry import DepthColumnEntry
+from ...interval.a_to_b_interval_extractor import AToBIntervalExtractor
 from ...interval.interval import AToBInterval
 from ..classes.a_to_b_sidebar import AToBSidebar
 from ..utils.cluster import Cluster
@@ -62,70 +63,8 @@ class AToBSidebarExtractor:
         return [
             sidebar_segment
             for cluster in clusters
-            for sidebar_segment in AToBSidebar(get_most_detailed_intervals(cluster.entries)).break_on_mismatch()
+            for sidebar_segment in AToBSidebar(
+                AToBIntervalExtractor.partitions_and_sublayers(cluster.entries)
+            ).break_on_mismatch()
             if sidebar_segment.is_valid()
         ]
-
-
-def _is_partitioned(interval: AToBInterval, following_intervals: list[AToBInterval]) -> bool:
-    current_end = interval.start.value
-    for following_interval in following_intervals:
-        if following_interval.start.value == current_end:
-            current_end = following_interval.end.value
-            if current_end == interval.end.value:
-                return True
-            if current_end > interval.end.value:
-                return False
-        else:
-            return False
-    return False
-
-
-def _number_of_subintervals(interval: AToBInterval, following_intervals: list[AToBInterval]) -> bool:
-    count = 0
-    for following_interval in following_intervals:
-        if interval.start.value <= following_interval.start.value <= interval.end.value and (
-            interval.start.value <= following_interval.end.value <= interval.end.value
-        ):
-            count += 1
-        else:
-            break
-    return count
-
-
-def get_most_detailed_intervals(intervals: list[AToBInterval]) -> list[AToBInterval]:
-    """Takes a list of intervals and returns the most detailed list of intervals.
-
-    This is done by finding the list of intervals that can be continued from one to the other, that contains the most
-    details and that reach the biggest depth.
-
-    Args:
-        intervals (list[AToBInterval]): The list of intervals.
-
-    Returns:
-        list[AToBInterval]: The ordered list
-    """
-    intervals = intervals.copy()  # don't mutate the original object
-
-    continue_search = True
-    while continue_search:
-        continue_search = False
-        for index, interval in enumerate(intervals):
-            if _is_partitioned(interval, intervals[index + 1 :]):
-                # TODO: instead of removing this interval, keep it, but mark it as a "parent interval", so that the
-                # corresponding description does not get appended to the preceding interval.
-                intervals.pop(index)
-                continue_search = True
-                break
-
-    continue_search = True
-    while continue_search:
-        continue_search = False
-        for index, interval in enumerate(intervals):
-            subinterval_count = _number_of_subintervals(interval, intervals[index + 1 :])
-            if subinterval_count > 0:
-                del intervals[index + 1 : index + subinterval_count + 1]
-                continue_search = True
-                break
-
-    return intervals

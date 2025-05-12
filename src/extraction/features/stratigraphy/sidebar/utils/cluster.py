@@ -6,11 +6,7 @@ from collections.abc import Callable
 from typing import Generic, Self, TypeVar
 
 import pymupdf
-from extraction.features.utils.geometry.util import (
-    compute_outer_rect,
-    x_distance_with_y_constraint,
-    x_overlap_significant_largest,
-)
+from extraction.features.utils.geometry.util import x_overlap_significant_largest
 
 EntryT = TypeVar("EntryT")
 
@@ -45,50 +41,3 @@ class Cluster(abc.ABC, Generic[EntryT]):
                 clusters.append(Cluster(entry_to_rect(entry), [entry], entry_to_rect))
 
         return clusters
-
-    @classmethod
-    def merge_close_clusters(cls, clusters: list["Cluster[EntryT]"]) -> list["Cluster[EntryT]"]:
-        """Iteratively merge clusters that are close to each other.
-
-        Args:
-            clusters (list[Cluster[EntryT]]): A list of Cluster objects to merge.
-
-        Returns:
-            list[Cluster[EntryT]]: A list of merged Cluster objects.
-        """
-        current_clusters = clusters.copy()  # Make a copy to avoid mutating the input
-
-        while True:
-            # Flag to track if any merges occurred in this pass
-            merged_occurred = False
-            new_clusters = []
-
-            while current_clusters:
-                base_cluster = current_clusters.pop(0)  # take first cluster
-                entries = base_cluster.entries.copy()
-                rect = compute_outer_rect(entries)
-
-                # Check remaining clusters for potential merges
-                remains = []
-                for other in current_clusters:
-                    other_rect = compute_outer_rect(other.entries)
-                    dist = x_distance_with_y_constraint(rect, other_rect, 0.6)
-                    if dist is not None and dist <= 100.0:
-                        # Merge with base cluster
-                        entries += other.entries
-                        rect = compute_outer_rect(entries)
-                        merged_occurred = True
-                    else:
-                        remains.append(other)
-
-                # Add the (potentially) merged cluster to new list
-                new_clusters.append(cls(rect, entries, base_cluster.entry_to_rect))
-                # Continue with remaining unmerged clusters
-                current_clusters = remains
-
-            # If no merges happened this pass, we're done
-            if not merged_occurred:
-                return new_clusters
-
-            # Otherwise, do another pass with the new clusters
-            current_clusters = new_clusters
