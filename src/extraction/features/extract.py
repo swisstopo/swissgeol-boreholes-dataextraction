@@ -443,29 +443,24 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
 
 def process_page(
-    text_lines: list[TextLine], 
-    geometric_lines: list[Line], 
-    language: str, 
-    page_number: int, 
-    vertical_lines: list[Line] = None,
-    **params: dict
+    text_lines: list[TextLine], geometric_lines: list[Line], language: str, page_number: int, **matching_params: dict
 ) -> list[ExtractedBorehole]:
-    """Process a single page of a pdf.
-    
+    """Process a single PDF page and extract borehole information.
+
+    Acts as a simple interface to MaterialDescriptionRectWithSidebarExtractor without requiring direct class usage.
+
     Args:
         text_lines (list[TextLine]): All text lines on the page.
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
-        vertical_lines (list[Line], optional): Vertical lines that might be useful for sidebar extraction.
         language (str): Language of the page (used in parsing).
         page_number (int): The page number (0-indexed).
-        **params (dict): Additional parameters for the matching pipeline.
-        
+        **matching_params (dict): Additional parameters for the matching pipeline.
+
     Returns:
         list[ExtractedBorehole]: Extracted borehole layers from the page.
     """
-    # For now, just ignore vertical_lines to maintain existing functionality
     return MaterialDescriptionRectWithSidebarExtractor(
-        text_lines, geometric_lines, language, page_number, **params
+        text_lines, geometric_lines, language, page_number, **matching_params
     ).process_page()
 
 
