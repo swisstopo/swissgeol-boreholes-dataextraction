@@ -3,8 +3,11 @@ model_path: "google-bert/bert-base-multilingual-uncased"
 
 # Data parameters
 classification_system: "lithology"
-train_subset: "nagra_deepwells_splits/train.json"
-eval_subset: "nagra_deepwells_splits/val.json"
+#train_subset: "nagra_deepwells_splits/train.json"
+# train_subset: deepwells_ground_truth.json
+# eval_subset: "nagra_subset.json"
+train_subset: "nagra_ground_truth.json"
+eval_subset: "deepwells_ground_truth.json"
 
 # Training hyperparameters
 batch_size: 32
@@ -19,6 +22,7 @@ max_grad_norm: 5.0
 unfreeze_layers:
   - "classifier"
   - "pooler"
+# - "layer_11"
 use_class_balancing: "false"
 
 # Inference parameters
