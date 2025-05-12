@@ -6,7 +6,6 @@ from pathlib import Path
 
 import click
 from dotenv import load_dotenv
-from utils.file_utils import read_params
 
 from classification import DATAPATH
 from classification.classifiers.aws_bedrock_classifier import AWSBedrockClassifier
@@ -22,6 +21,7 @@ from classification.utils.data_utils import (
     write_per_language_per_class_predictions,
     write_predictions,
 )
+from utils.file_utils import read_params
 
 load_dotenv()
 classification_params = read_params("classification_params.yml")
@@ -80,16 +80,18 @@ def log_ml_flow_infos(
     # Log model and id, prompt and parameter versions if anthropic model used
     if isinstance(classifier, AWSBedrockClassifier):
         mlflow.log_param("anthropic_model_id", os.environ.get("ANTHROPIC_MODEL_ID"))
+        config_file = "bedrock_config_uscs.yml" if classification_system == "uscs" else "bedrock_config_lithology.yml"
+        config = read_params(f"bedrock/{config_file}")
 
-        prompt_version = read_params("bedrock/bedrock_config.yml")["prompt_version"]
+        prompt_version = config.get("prompt_version")
         if prompt_version:
             mlflow.log_param("anthropic_prompt_version", prompt_version)
 
-        class_param_version = read_params("bedrock/bedrock_config.yml")["uscs_pattern_version"]
-        if class_param_version:
-            mlflow.log_param("anthropic_class_param_version", class_param_version)
+        class_pattern_version = config.get("pattern_version")
+        if class_pattern_version:
+            mlflow.log_param("anthropic_class_pattern_version", class_pattern_version)
 
-        reasoning_mode = read_params("bedrock/bedrock_config.yml")["reasoning_mode"]
+        reasoning_mode = config.get("reasoning_mode")
         if reasoning_mode:
             mlflow.log_param("anthropic_reasoning_mode", reasoning_mode)
 
@@ -228,7 +230,9 @@ def main(
     elif classifier_type == "bert":
         classifier = BertClassifier(model_path, classification_system)
     elif classifier_type == "bedrock":
-        classifier = AWSBedrockClassifier(out_directory_bedrock, max_concurrent_calls=1, api_call_delay=0.0)
+        classifier = AWSBedrockClassifier(
+            out_directory_bedrock, classification_system, max_concurrent_calls=1, api_call_delay=0.0
+        )
 
     # classify
     logger.info(
