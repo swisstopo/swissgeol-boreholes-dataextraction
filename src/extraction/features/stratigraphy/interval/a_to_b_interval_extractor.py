@@ -62,16 +62,6 @@ class AToBIntervalExtractor:
 
         return entries
 
-    @staticmethod
-    def aggregate_depth_intervals(intervals: list[Interval]):
-        if intervals:
-            # Merge the sub layers into one depth interval.
-            start = min([entry.start for entry in intervals], key=lambda start_entry: start_entry.value)
-            end = max([entry.end for entry in intervals], key=lambda end_entry: end_entry.value)
-            return AToBInterval(start, end)
-        else:
-            return None
-
     @classmethod
     def from_text(cls, text_line: TextLine, require_start_of_string: bool = True) -> AToBInterval | None:
         """Attempts to extract a AToBInterval from a string.
