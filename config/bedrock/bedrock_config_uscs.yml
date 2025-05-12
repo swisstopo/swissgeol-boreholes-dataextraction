@@ -1,8 +1,10 @@
 # Prompt version (version tag to be used from the classification_prompts.yml in MLFlow)
+prompts_file: bedrock/uscs_classification_prompts.yml
 prompt_version: baseline
 
 # Classification parameter version (version tag to be used from the classification_patterns_bedrock.yml in MLFlow)
-uscs_pattern_version: baseline
+pattern_file: bedrock/uscs_classification_patterns_bedrock.yml
+pattern_version: baseline
 
 # temperature - answer creativity for the LLM model
 temperature: 0.0
