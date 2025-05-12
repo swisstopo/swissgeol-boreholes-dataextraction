@@ -301,7 +301,12 @@ def start_pipeline(
                     if not mlflow_tracking:
                         logger.warning("MLFlow tracking is not enabled. MLFLow is required to store the images.")
                     else:
-                        img = plot_lines(page, geometric_lines, vertical_lines, scale_factor=line_detection_params["pdf_scale_factor"])
+                        img = plot_lines(
+                            page,
+                            geometric_lines,
+                            vertical_lines,
+                            scale_factor=line_detection_params["pdf_scale_factor"],
+                        )
                         mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
             # create list of BoreholePrediction objects with all the separate lists

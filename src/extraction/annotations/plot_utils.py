@@ -76,14 +76,19 @@ def _convert_line_to_grid(line: Line, scale_factor: float) -> Line:
     return Line(start, end)
 
 
-def plot_lines(page: pymupdf.Page, non_vertical_lines: list[Line], vertical_lines: list[Line] = None, 
-               scale_factor: float = 2) -> cv2.COLOR_RGB2BGR:
+def plot_lines(
+    page: pymupdf.Page, non_vertical_lines: list[Line], vertical_lines: list[Line] = None, scale_factor: float = 2
+) -> cv2.COLOR_RGB2BGR:
     """Given a page object and the lines detected in the page, plot the page with the detected lines.
 
     Args:
         page (pymupdf.Page): The page to draw the lines in.
-        lines (ArrayLike): The lines detected in the pdf.
+        non_vertical_lines (list[Line]): The non-vertical lines to plot.
+        vertical_lines (list[Line], optional): The vertical lines to plot. Defaults to None.
         scale_factor (float, optional): The scale factor to apply to the pdf. Defaults to 2.
+
+    Returns:
+        open_cv_img: The page image with the lines drawn on it.
     """
     open_cv_img = convert_page_to_opencv_img(page, scale_factor=scale_factor)
 
@@ -93,6 +98,7 @@ def plot_lines(page: pymupdf.Page, non_vertical_lines: list[Line], vertical_line
         open_cv_img = _draw_lines(open_cv_img, vertical_lines, scale_factor=scale_factor)
 
     return open_cv_img
+
 
 def plot_single_line_set(page: pymupdf.Page, lines: list[Line], scale_factor: float = 2.0) -> np.ndarray:
     """Plot a single set of lines (backward compatibility).
