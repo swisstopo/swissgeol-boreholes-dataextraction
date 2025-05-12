@@ -17,7 +17,7 @@ from extraction.features.utils.data_extractor import (
     ExtractedFeature,
     FeatureOnPage,
 )
-from extraction.features.utils.text.extract_text import extract_text_lines_from_bbox
+from extraction.features.utils.text.extract_text import extract_text_lines
 from extraction.features.utils.text.textline import TextLine
 
 logger = logging.getLogger(__name__)
@@ -183,20 +183,17 @@ class ElevationExtractor(DataExtractor):
         else:
             raise ValueError("Could not extract all required information from the lines provided.")
 
-    def extract_elevation_from_bbox(
-        self, pdf_page: pymupdf.Page, page_number: int, bbox: pymupdf.Rect | None = None
-    ) -> list[FeatureOnPage[Elevation]]:
+    def extract_elevation_from_page(self, pdf_page: pymupdf.Page, page_number: int) -> list[FeatureOnPage[Elevation]]:
         """Extract the elevation information from a bounding box.
 
         Args:
             pdf_page (pymupdf.Page): The PDF page.
-            bbox (pymupdf.Rect | None): The bounding box.
             page_number (int): The page number.
 
         Returns:
             list[FeatureOnPage[Elevation]]: The extracted elevation information.
         """
-        lines = extract_text_lines_from_bbox(pdf_page, bbox)
+        lines = extract_text_lines(pdf_page)
 
         found_elevation_values = self.get_elevation_near_key(lines, page_number)
 
@@ -222,9 +219,9 @@ class ElevationExtractor(DataExtractor):
         Returns:
             list[FeatureOnPage[Elevation]]: The extracted elevation information.
         """
-        elevations: list[Elevation] = []
+        elevations: list[FeatureOnPage[Elevation]] = []
         for page in document:
             page_number = page.number + 1  # page.number is 0-based
-            elevations.extend(self.extract_elevation_from_bbox(page, page_number))
+            elevations.extend(self.extract_elevation_from_page(page, page_number))
 
         return elevations
