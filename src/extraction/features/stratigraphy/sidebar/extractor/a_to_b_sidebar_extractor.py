@@ -59,20 +59,38 @@ class AToBSidebarExtractor:
         pairs = [(entry, find_pair(entry)) for entry in entries]
         intervals = [AToBInterval(first, second) for first, second in pairs if second]
         clusters = Cluster[AToBInterval].create_clusters(intervals, lambda interval: interval.rect)
-        merged_clusters = Cluster[AToBInterval].merge_close_clusters(clusters)
-        clusters.extend(merged_clusters)
-
-        detailed_sidebars = [AToBSidebar(get_most_detailed_intervals(clust.entries)) for clust in clusters]
-        detailed_sidebars = [detailed_sidebar for detailed_sidebar in detailed_sidebars if detailed_sidebar.is_valid()]
-        sidebars = [
+        return [
             sidebar_segment
             for cluster in clusters
-            for sidebar_segment in AToBSidebar(cluster.entries).break_on_mismatch()
+            for sidebar_segment in AToBSidebar(get_most_detailed_intervals(cluster.entries)).break_on_mismatch()
             if sidebar_segment.is_valid()
         ]
 
-        # return unique sidebars by comparing each intervals.
-        return list({tuple(sb.entries): sb for sb in sidebars + detailed_sidebars}.values())
+
+def _is_partitioned(interval: AToBInterval, following_intervals: list[AToBInterval]) -> bool:
+    current_end = interval.start.value
+    for following_interval in following_intervals:
+        if following_interval.start.value == current_end:
+            current_end = following_interval.end.value
+            if current_end == interval.end.value:
+                return True
+            if current_end > interval.end.value:
+                return False
+        else:
+            return False
+    return False
+
+
+def _number_of_subintervals(interval: AToBInterval, following_intervals: list[AToBInterval]) -> bool:
+    count = 0
+    for following_interval in following_intervals:
+        if interval.start.value <= following_interval.start.value <= interval.end.value and (
+            interval.start.value <= following_interval.end.value <= interval.end.value
+        ):
+            count += 1
+        else:
+            break
+    return count
 
 
 def get_most_detailed_intervals(intervals: list[AToBInterval]) -> list[AToBInterval]:
@@ -88,31 +106,26 @@ def get_most_detailed_intervals(intervals: list[AToBInterval]) -> list[AToBInter
         list[AToBInterval]: The ordered list
     """
     intervals = intervals.copy()  # don't mutate the original object
-    # Sort intervals by depth (interval close to the surface first) and thickness (small interval first).
-    intervals.sort(key=lambda x: (x.start.value, x.end.value))
 
-    current_intervals = [intervals[0]]
-    processed_intervals = {intervals[0]}
-    most_detailed_intervals = []  # stores the deepest list of continued interval found so far
-
-    while current_intervals:
-        current_interval = current_intervals[-1]
-        found = False
-        for interval in intervals:
-            if interval in processed_intervals:
-                continue
-            # from the current (deepest) interval, look for interval that starts with the ending value (we stop at
-            # the first interval found as they are sorted, so we will get the smallest one). We also ensure that the
-            # interval found is below the current, to remove any noise.
-            if current_interval.end.value == interval.start.value and current_interval.rect.y0 <= interval.rect.y0:
-                current_intervals.append(interval)
-                processed_intervals.add(interval)
-                found = True
+    continue_search = True
+    while continue_search:
+        continue_search = False
+        for index, interval in enumerate(intervals):
+            if _is_partitioned(interval, intervals[index + 1 :]):
+                # TODO: instead of removing this interval, keep it, but mark it as a "parent interval", so that the
+                # corresponding description does not get appended to the preceding interval.
+                intervals.pop(index)
+                continue_search = True
                 break
-        if not found:
-            # if we did not found an interval to continue the search, we store the result if it is the best so far,
-            # and continue the search from the previous interval, by poping the last added.
-            if not most_detailed_intervals or current_intervals[-1].end.value > most_detailed_intervals[-1].end.value:
-                most_detailed_intervals = current_intervals.copy()
-            current_intervals.pop()
-    return most_detailed_intervals
+
+    continue_search = True
+    while continue_search:
+        continue_search = False
+        for index, interval in enumerate(intervals):
+            subinterval_count = _number_of_subintervals(interval, intervals[index + 1 :])
+            if subinterval_count > 0:
+                del intervals[index + 1 : index + subinterval_count + 1]
+                continue_search = True
+                break
+
+    return intervals
