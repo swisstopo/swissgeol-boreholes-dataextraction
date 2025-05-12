@@ -271,7 +271,6 @@ def start_pipeline(
                 logger.info("Processing page %s", page_number)
 
                 text_lines = extract_text_lines(page)
-                #geometric_lines = extract_lines(page, line_detection_params)
                 geometric_lines, vertical_lines = extract_lines(page, line_detection_params)
                 extracted_boreholes = process_page(
                     text_lines, geometric_lines, file_metadata.language, page_number, **matching_params

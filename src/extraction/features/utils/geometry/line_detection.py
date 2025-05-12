@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from numpy.typing import ArrayLike
 from utils.file_utils import read_params
 
-from .geometric_line_utilities import drop_vertical_lines, separate_vertical_lines, merge_parallel_lines_quadtree
+from .geometric_line_utilities import separate_vertical_lines, merge_parallel_lines_quadtree
 from .geometry_dataclasses import Line
 from .util import line_from_array
 
@@ -86,18 +86,3 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
     )
 
     return merged_non_vertical_lines, merged_vertical_lines
-
-
-# Add backward compatibility wrapper
-def extract_non_vertical_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]:
-    """Extract only non-vertical lines from a pdf page (backward compatibility).
-
-    Args:
-        page (pymupdf.Page): The page to extract lines from.
-        line_detection_params (dict): The parameters for the line detection algorithm.
-
-    Returns:
-        list[Line]: The detected non-vertical lines.
-    """
-    non_vertical_lines, _ = extract_lines(page, line_detection_params)
-    return non_vertical_lines
