@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from numpy.typing import ArrayLike
 from utils.file_utils import read_params
 
-from .geometric_line_utilities import separate_vertical_lines, merge_parallel_lines_quadtree
+from .geometric_line_utilities import merge_parallel_lines_quadtree, separate_vertical_lines
 from .geometry_dataclasses import Line
 from .util import line_from_array
 

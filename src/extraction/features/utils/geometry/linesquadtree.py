@@ -101,7 +101,7 @@ class LinesQuadTree:
     def _qtree_delete(self, point: Point, line_key: str):
         coordinates = (round(point.x), round(point.y))
         qtree_point = self.qtree.find(coordinates)
-        if qtree_point and line_key in qtree_point.data:
+        if qtree_point in qtree_point.data:
             qtree_point.data.remove(line_key)
             # If the data is now empty, then we could theoretically completely remove the point from the quad tree.
             # However, the current implementation from the quads library does not support removing points. Therefore,
