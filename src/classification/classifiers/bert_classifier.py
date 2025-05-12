@@ -32,10 +32,8 @@ class BertClassifier:
         Args:
             classification_system_str (str): The classification system used (`uscs` or `lithology`).
         """
-        if classification_system_str == "uscs":
-            self.model_config = read_params("bert_config_uscs.yml")
-        else:
-            self.model_config = read_params("bert_config_lithology.yml")
+        config_file = "bert_config_uscs.yml" if classification_system_str == "uscs" else "bert_config_lithology.yml"
+        self.model_config = read_params(f"bedrock/{config_file}")
 
     def classify(self, layer_descriptions: list[LayerInformations]):
         """Classifies the description of the LayerInformations objects.
