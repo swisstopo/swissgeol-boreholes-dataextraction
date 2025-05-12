@@ -4,7 +4,6 @@ import math
 from dataclasses import dataclass
 
 import pymupdf
-from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
 from extraction.features.utils.geometry.geometry_dataclasses import BoundingBox
 from extraction.features.utils.text.find_description import get_description_lines
 from extraction.features.utils.text.textline import TextLine
@@ -58,15 +57,12 @@ class MaterialDescriptionRectWithSidebar:
 
         geometry_score = self.material_description_rect.width - 1.64 * x_distance + height - 2 * y_distance
 
-        noise_coef = 10.0 if isinstance(self.sidebar, AAboveBSidebar) else 0.0
-        noise_penalty_multiplier = math.pow(0.8, noise_coef * self.noise_count / len(self.sidebar.entries))
+        noise_penalty_multiplier = math.pow(0.8, 10 * self.noise_count / len(self.sidebar.entries))
 
         description_lines = get_description_lines(self.lines, self.material_description_rect)
         num_lines_score = len(description_lines)
 
-        sidebar_found_bonus = 130.0  # to prioritize sidebar-material pairs over material description without sidebar
-
-        return (geometry_score + num_lines_score + sidebar_found_bonus) * noise_penalty_multiplier
+        return (geometry_score + num_lines_score) * noise_penalty_multiplier
 
 
 @dataclass
