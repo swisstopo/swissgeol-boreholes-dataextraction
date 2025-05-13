@@ -9,6 +9,7 @@ from extraction.features.stratigraphy.interval.interval import AToBInterval, Int
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.text.textline import TextLine
 
+from ...interval.a_to_b_interval_extractor import AToBIntervalExtractor
 from .sidebar import Sidebar
 
 
@@ -41,10 +42,34 @@ class AToBSidebar(Sidebar[AToBInterval]):
         """
         segments = []
         segment_start = 0
-        for index, current_entry in enumerate(self.entries):
-            if index >= 1 and current_entry.start.value < self.entries[index - 1].end.value:
-                # (_, big) || (small, _)
-                segments.append(self.entries[segment_start:index])
+        index = 0
+        while index < len(self.entries):
+            # We allow sublayers with depths lower than the end of the current entry, as long as the next layer
+            # has a start depth that exactly matches the current end depth.
+            current_interval = self.entries[index]
+            sublayer_count = AToBIntervalExtractor.number_of_subintervals(current_interval, self.entries[index + 1 :])
+
+            if sublayer_count > 8:
+                depths_ok = False
+            else:
+                if index + sublayer_count + 1 >= len(self.entries):
+                    depths_ok = True
+                else:
+                    next_interval = self.entries[index + sublayer_count + 1]
+                    if sublayer_count == 0:
+                        # no subintervals, the next interval should not start higher than the end of the current
+                        # interval
+                        depths_ok = current_interval.end.value <= next_interval.start.value
+                    else:
+                        # no subintervals, the next interval should start exactly at the end of the current interval
+                        depths_ok = current_interval.end.value == next_interval.start.value
+
+            if depths_ok:
+                # all good, continue with the next interval
+                index += sublayer_count + 1
+            else:
+                segments.append(self.entries[segment_start : index + 1])
+                index += 1
                 segment_start = index
 
         final_segment = self.entries[segment_start:]
@@ -61,16 +86,17 @@ class AToBSidebar(Sidebar[AToBInterval]):
         Returns:
             bool: True if the depth column is valid, False otherwise.
         """
-        if len(self.entries) <= 2:
+        filtered_entries = [entry for entry in self.entries if not entry.skip_interval]
+        if len(filtered_entries) <= 2:
             return False
 
         # At least half of the "end" values must match the subsequent "start" value (e.g. 2-5m, 5-9m).
         sequence_matches_count = 0
-        for index, entry in enumerate(self.entries):
-            if index >= 1 and self.entries[index - 1].end.value == entry.start.value:
+        for index, entry in enumerate(filtered_entries):
+            if index >= 1 and filtered_entries[index - 1].end.value == entry.start.value:
                 sequence_matches_count += 1
 
-        return sequence_matches_count / (len(self.entries) - 1) > 0.5
+        return sequence_matches_count / (len(filtered_entries) - 1) > 0.5
 
     def identify_groups(
         self,
@@ -93,14 +119,20 @@ class AToBSidebar(Sidebar[AToBInterval]):
         groups = []
         line_index = 0
 
-        for interval_index, interval in enumerate(self.entries):
+        filtered_entries = [entry for entry in self.entries if not entry.is_sublayer]
+
+        for interval_index, interval in enumerate(filtered_entries):
             # don't allow a layer above depth 0
             if interval.start is None and interval.end.value == 0:
                 continue
 
-            next_interval = self.entries[interval_index + 1] if interval_index + 1 < len(self.entries) else None
+            next_interval = (
+                filtered_entries[interval_index + 1] if interval_index + 1 < len(filtered_entries) else None
+            )
 
             matched_blocks = interval.matching_blocks(description_lines, line_index, next_interval)
             line_index += sum([len(block.lines) for block in matched_blocks])
-            groups.append(IntervalBlockGroup(depth_intervals=[interval], blocks=matched_blocks))
+
+            if not interval.is_parent:
+                groups.append(IntervalBlockGroup(depth_intervals=[interval], blocks=matched_blocks))
         return groups

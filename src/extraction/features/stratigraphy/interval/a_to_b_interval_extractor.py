@@ -134,14 +134,14 @@ class AToBIntervalExtractor:
         return False
 
     @staticmethod
-    def partitions_and_sublayers(intervals: list[AToBInterval]) -> list[AToBInterval]:
+    def partitions_and_sublayers(intervals: list[Interval]) -> list[Interval]:
         """Takes a list of intervals and returns the most detailed list of intervals.
 
         Args:
-            intervals (list[AToBInterval]): The list of intervals.
+            intervals (list[Interval]): The list of intervals.
 
         Returns:
-            list[AToBInterval]: The ordered list
+            list[Interval]: The ordered list
         """
         intervals = intervals.copy()  # don't mutate the original object
 
@@ -149,20 +149,26 @@ class AToBIntervalExtractor:
         while continue_search:
             continue_search = False
             for index, interval in enumerate(intervals):
-                if AToBIntervalExtractor.is_partitioned(interval, intervals[index + 1 :]):
-                    # TODO: instead of removing this interval, keep it, but mark it as a "parent interval", so that the
-                    # corresponding description does not get appended to the preceding interval.
-                    intervals.pop(index)
-                    continue_search = True
-                    break
+                if not interval.skip_interval:
+                    following_intervals = [
+                        interval for interval in intervals[index + 1 :] if not interval.skip_interval
+                    ]
+                    if AToBIntervalExtractor.is_partitioned(interval, following_intervals):
+                        intervals[index].is_parent = True
+                        continue_search = True
+                        break
 
         continue_search = True
         while continue_search:
             continue_search = False
-            for index, interval in enumerate(intervals):
-                subinterval_count = AToBIntervalExtractor.number_of_subintervals(interval, intervals[index + 1 :])
+            filtered_intervals = [interval for interval in intervals if not interval.skip_interval]
+            for index, interval in enumerate(filtered_intervals):
+                subinterval_count = AToBIntervalExtractor.number_of_subintervals(
+                    interval, filtered_intervals[index + 1 :]
+                )
                 if subinterval_count > 0:
-                    del intervals[index + 1 : index + subinterval_count + 1]
+                    for step in range(subinterval_count):
+                        filtered_intervals[index + step + 1].is_sublayer = True
                     continue_search = True
                     break
 
@@ -170,37 +176,21 @@ class AToBIntervalExtractor:
 
     @staticmethod
     def partitions_and_sublayers_with_text(pairs: list[IntervalBlockPair]) -> list[IntervalBlockPair]:
-        # TODO avoid duplicated code between this method and partitions_and_sublayers
         pairs = pairs.copy()  # don't mutate the original object
-        intervals = [pair.depth_interval for pair in pairs]
+        intervals = [pair.depth_interval for pair in pairs if pair.depth_interval]
+        AToBIntervalExtractor.partitions_and_sublayers(intervals)
 
-        continue_search = True
-        while continue_search:
-            continue_search = False
-            for index, interval in enumerate(intervals):
-                if not interval:
-                    continue
-                if AToBIntervalExtractor.is_partitioned(interval, intervals[index + 1 :]):
-                    intervals.pop(index)
-                    pairs.pop(index)
-                    continue_search = True
-                    break
+        processed_pairs = []
+        current_block = None
+        current_interval = None
+        for pair in pairs:
+            if pair.depth_interval and pair.depth_interval.is_sublayer and current_block:
+                current_block = current_block.concatenate(pair.block)
+            else:
+                if current_block:
+                    processed_pairs.append(IntervalBlockPair(current_interval, current_block))
+                current_block = pair.block
+                current_interval = pair.depth_interval
 
-        continue_search = True
-        while continue_search:
-            continue_search = False
-            for index, interval in enumerate(intervals):
-                if not interval:
-                    continue
-                subinterval_count = AToBIntervalExtractor.number_of_subintervals(interval, intervals[index + 1 :])
-                if subinterval_count > 0:
-                    merged_block = pairs[index].block
-                    for pair in pairs[index + 1 : index + subinterval_count + 1]:
-                        merged_block = merged_block.concatenate(pair.block)
-                    merged_pair = IntervalBlockPair(interval, merged_block)
-                    pairs = pairs[:index] + [merged_pair] + pairs[index + subinterval_count + 1 :]
-                    del intervals[index + 1 : index + subinterval_count + 1]
-                    continue_search = True
-                    break
-
-        return pairs
+        processed_pairs.append(IntervalBlockPair(current_interval, current_block))
+        return processed_pairs
