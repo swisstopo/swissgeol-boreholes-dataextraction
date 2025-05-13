@@ -6,7 +6,15 @@ from extraction.features.stratigraphy.interval.interval import Interval, Interva
 
 
 def number_of_subintervals(interval: Interval, following_intervals: list[Interval]) -> int:
-    """Count how many of the following intervals can be considered as sublayers of the given interval."""
+    """Counts how many of the following intervals are completely contained within a given interval.
+
+    Args:
+        interval (Interval): The main interval to compare against.
+        following_intervals (list[Interval]): A list of subsequent intervals to check.
+
+    Returns:
+        int: The number of contiguous intervals in `following_intervals` that are fully contained in `interval`.
+    """
     count = 0
     for following_interval in following_intervals:
         if interval.start.value <= following_interval.start.value <= interval.end.value and (
@@ -19,9 +27,14 @@ def number_of_subintervals(interval: Interval, following_intervals: list[Interva
 
 
 def is_partitioned(interval: Interval, following_intervals: list[Interval]) -> bool:
-    """Check if the interval is precisely partitioned by some of the following intervals.
+    """Determines whether a sequence of following intervals forms a complete partition of the given interval.
 
-    For example, the interval 0m-2m can be partitioned by the three intervals 0m-0.5m, 0.5m-1.5m and 1.5m-2m.
+    Args:
+        interval (Interval): The interval to test for partitioning.
+        following_intervals (list[Interval]): A list of subsequent intervals.
+
+    Returns:
+        bool: True if the subsequent intervals exactly partition the input interval, False otherwise.
     """
     current_end = interval.start.value
     for following_interval in following_intervals:
@@ -39,50 +52,52 @@ def is_partitioned(interval: Interval, following_intervals: list[Interval]) -> b
 T = TypeVar("T", bound=Interval)
 
 
-def detect_partitions_and_sublayers(intervals: list[T]) -> list[T]:
-    """Detect partitions and sublayers in a list of depth intervals.
+def annotate_intervals(intervals: list[T]) -> None:
+    """Mutate each Interval object by setting the flags is parent or is_sublayer.
+
+    This function marks is_parent any interval that fully partitions one or more later intervals.
+    It also marks is_sublayer any interval that is contained in another but is not part of it's partition.
 
     Args:
-        intervals (list[Interval]): The list of intervals.
-
-    Returns:
-        list[Interval]: The list with the relevant attributes set for each interval.
+        intervals (list[T]): the list of interval to analyse and mutate the flags.
     """
-    intervals = intervals.copy()  # don't mutate the original object
-
-    continue_search = True
-    while continue_search:
-        continue_search = False
-        for index, interval in enumerate(intervals):
-            if not interval.skip_interval:
-                following_intervals = [interval for interval in intervals[index + 1 :] if not interval.skip_interval]
-                if is_partitioned(interval, following_intervals):
-                    intervals[index].is_parent = True
-                    continue_search = True
-                    break
-
-    continue_search = True
-    while continue_search:
-        continue_search = False
-        filtered_intervals = [interval for interval in intervals if not interval.skip_interval]
-        for index, interval in enumerate(filtered_intervals):
-            subinterval_count = number_of_subintervals(interval, filtered_intervals[index + 1 :])
-            if subinterval_count > 0:
-                for step in range(subinterval_count):
-                    filtered_intervals[index + step + 1].is_sublayer = True
-                continue_search = True
+    # 1) Mark parents
+    while True:
+        for i, current_interval in enumerate(intervals):
+            if current_interval.skip_interval:
+                continue
+            # all later, non-skipped intervals
+            following_intervals = [interval for interval in intervals[i + 1 :] if not interval.skip_interval]
+            if is_partitioned(current_interval, following_intervals):
+                current_interval.is_parent = True
                 break
+        else:
+            # if the for-loop completes without breaking, this else condition is evaluated, and breaks the while-loop
+            break
 
-    return intervals
+    # 2) Mark sublayers
+    while True:
+        # work only on the non-skipped list
+        valid_intervals = [interval for interval in intervals if not interval.skip_interval]
+        for i, current_interval in enumerate(valid_intervals):
+            subinterval_count = number_of_subintervals(current_interval, valid_intervals[i + 1 :])
+            if subinterval_count:
+                for child_interval in valid_intervals[i + 1 : i + 1 + subinterval_count]:
+                    child_interval.is_sublayer = True
+                break
+        else:
+            # if the for-loop completes without breaking, this else condition is evaluated, and breaks the while-loop
+            break
 
 
-def detect_partitions_and_sublayers_with_text(pairs: list[IntervalBlockPair]) -> list[IntervalBlockPair]:
-    """Detect partitions and sublayers in a list of depth interval, also adjusting text blocks where relevant."""
-    pairs = pairs.copy()  # don't mutate the original object
-    intervals = [pair.depth_interval for pair in pairs if pair.depth_interval]
-    detect_partitions_and_sublayers(intervals)
+def aggregate_non_skipped_intervals(
+    pairs: list[IntervalBlockPair],
+) -> list[IntervalBlockPair]:
+    """Build a new list of IntervalBlockPair where skipped intervals blocks.
 
-    processed_pairs = []
+    are merged into the last non-skipped intervals block.
+    """
+    processed_pairs: list[IntervalBlockPair] = []
     current_block = None
     current_interval = None
     for pair in pairs:
@@ -98,3 +113,21 @@ def detect_partitions_and_sublayers_with_text(pairs: list[IntervalBlockPair]) ->
 
     processed_pairs.append(IntervalBlockPair(current_interval, current_block))
     return processed_pairs
+
+
+def get_optimal_intervals_with_text(
+    pairs: list[IntervalBlockPair],
+) -> list[IntervalBlockPair]:
+    """Annotate all depth_intervals in-place for parent/sublayer and merge valid the intervals and text blocks.
+
+    Args:
+        pairs (list[IntervalBlockPair]): list of intervals and text blocks.
+
+    Return:
+        list[IntervalBlockPair]: the cleaned list, with optimal partitions filtered and text block conserved.
+    """
+    # 1) annotate the intervals you have
+    annotate_intervals([p.depth_interval for p in pairs if p.depth_interval])
+
+    # 2) rebuild & merge text blocks
+    return aggregate_non_skipped_intervals(pairs)
