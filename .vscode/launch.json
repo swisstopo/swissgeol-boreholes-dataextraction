@@ -13,8 +13,8 @@
                 "-i",
                 //"example/example_borehole_profile.pdf",
                 //"data/subset_zurich",
-                //"data/zurich",
-                "data/zurich/267123021-bp.pdf"
+                "data/zurich",
+                //"data/zurich/267123021-bp.pdf"
                 //"data/zurich/695265010-bp.pdf",
                 // "data/zurich/268123018-bp.pdf", // 2 bh, one with gw
                 // "data/zurich/269126084-bp.pdf", // 2 gw in the same borehole
@@ -39,8 +39,9 @@
                 //"data/nagra/Dossier III_Appendix_A_TRU1-1_Lithostratigraphy_1_2500_0000-1310.pdf",
                 // "data/nagra",
                 "-g",
-                //"data/zurich_ground_truth.json"
-                "data/geoquat_ground_truth.json"
+                "data/zurich_ground_truth.json",
+                //"data/geoquat_ground_truth.json",
+                "-l"
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
