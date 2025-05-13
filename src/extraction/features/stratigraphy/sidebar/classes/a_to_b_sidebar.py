@@ -35,7 +35,13 @@ class AToBSidebar(Sidebar[AToBInterval]):
         return "AToBSidebar({})".format(", ".join([str(entry) for entry in self.entries]))
 
     def break_on_mismatch(self) -> list[AToBSidebar]:
-        """Breaks the sidebar into segments where the depths are not in an arithmetic progression.
+        """Breaks the sidebar into segments where the depths clearly don't belong to the same boreholes.
+
+        This method tries to take into account cases where the depths are not always increasing, e.g. because of
+        partitioned layers / sublayers.
+
+        This method might become redundant after we implement a more reliable detection/separation of borehole profiles
+        in the isssue https://github.com/swisstopo/swissgeol-boreholes-dataextraction/issues/195
 
         Returns:
             list[AToBSidebar]: A list of depth column segments.

@@ -184,12 +184,14 @@ class AToBIntervalExtractor:
         current_block = None
         current_interval = None
         for pair in pairs:
-            if pair.depth_interval and pair.depth_interval.is_sublayer and current_block:
-                current_block = current_block.concatenate(pair.block)
+            if pair.depth_interval and pair.depth_interval.skip_interval:
+                current_block = current_block.concatenate(pair.block) if current_block else pair.block
             else:
-                if current_block:
+                if current_interval:
                     processed_pairs.append(IntervalBlockPair(current_interval, current_block))
-                current_block = pair.block
+                    current_block = pair.block
+                else:
+                    current_block = current_block.concatenate(pair.block) if current_block else pair.block
                 current_interval = pair.depth_interval
 
         processed_pairs.append(IntervalBlockPair(current_interval, current_block))
