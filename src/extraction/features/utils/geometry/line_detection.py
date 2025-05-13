@@ -53,15 +53,16 @@ def detect_lines_lsd(page: pymupdf.Page, scale_factor=2, lsd_params=None) -> Arr
     return [line_from_array(line, scale_factor) for line in lines]
 
 
-def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]:
+def extract_lines(page: pymupdf.Page, line_detection_params: dict, line_type: str = "non_vertical") -> list[Line]:
     """Extract lines from a pdf page.
 
     Args:
         page (pymupdf.Page): The page to extract lines from.
         line_detection_params (dict): The parameters for the line detection algorithm.
+        line_type (str): The type of lines to extract, 'non_vertical', 'vertical', or 'all'. Default, 'non_vertical'.
 
     Returns:
-        tuple[list[Line], list[Line]]: A tuple containing (non_vertical_lines, vertical_lines)
+        list[Line]: The detected lines as a list
     """
     all_lines = detect_lines_lsd(
         page,
@@ -69,20 +70,34 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
         scale_factor=line_detection_params["pdf_scale_factor"],
     )
 
-    # Separate vertical and non-vertical lines
-    non_vertical_lines, vertical_lines = separate_vertical_lines(
-        all_lines, threshold=line_detection_params["vertical_lines_threshold"]
-    )
-
-    # Only merge the non-vertical lines
     merging_params = line_detection_params["line_merging_params"]
-    merged_non_vertical_lines = merge_parallel_lines_quadtree(
-        non_vertical_lines, tol=merging_params["merging_tolerance"], angle_threshold=merging_params["angle_threshold"]
-    )
 
-    # Also merge vertical lines separately
-    merged_vertical_lines = merge_parallel_lines_quadtree(
-        vertical_lines, tol=merging_params["merging_tolerance"], angle_threshold=merging_params["angle_threshold"]
-    )
+    if line_type == "all":
+        merged_lines = merge_parallel_lines_quadtree(
+            all_lines, tol=merging_params["merging_tolerance"], angle_threshold=merging_params["angle_threshold"]
+        )
 
-    return merged_non_vertical_lines, merged_vertical_lines
+    elif line_type == "non_vertical":
+        non_vertical_lines, _ = separate_vertical_lines(
+            all_lines, threshold=line_detection_params["vertical_lines_threshold"]
+        )
+
+        merged_lines = merge_parallel_lines_quadtree(
+            non_vertical_lines,
+            tol=merging_params["merging_tolerance"],
+            angle_threshold=merging_params["angle_threshold"],
+        )
+
+    elif line_type == "vertical":
+        _, vertical_lines = separate_vertical_lines(
+            all_lines, threshold=line_detection_params["vertical_lines_threshold"]
+        )
+
+        merged_lines = merge_parallel_lines_quadtree(
+            vertical_lines, tol=merging_params["merging_tolerance"], angle_threshold=merging_params["angle_threshold"]
+        )
+
+    else:
+        raise ValueError(f"Invalid line type: {line_type}. Must be 'non_vertical', 'vertical', or 'all'.")
+
+    return merged_lines

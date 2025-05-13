@@ -6,9 +6,9 @@ from extraction.features.utils.geometry.geometric_line_utilities import (
     _get_orthogonal_projection_to_line,
     _merge_lines,
     _odr_regression,
-    drop_vertical_lines,
     is_point_on_line,
     merge_parallel_lines_quadtree,
+    separate_vertical_lines,
 )
 from extraction.features.utils.geometry.geometry_dataclasses import Line, Point
 
@@ -140,17 +140,26 @@ def test_merge_lines(merge_lines_case):  # noqa: D103
     assert pytest.approx(merged_line.end.tuple) == expected_merged_line.end.tuple
 
 
-def test_drop_vertical_lines():  # noqa: D103
+def test_separate_vertical_lines():  # noqa: D103
     lines = [
         Line(Point(0, 0), Point(1, 0)),  # slope = 0
         Line(Point(0, 0), Point(1, -0.1)),  # slope = -0.1
         Line(Point(0, 0), Point(1, 2)),  # slope = 2
         Line(Point(0, 0), Point(1, 10)),  # slope = 10
     ]
-    result = drop_vertical_lines(lines, threshold=2)  # lines with abs(slopes) smaller than 0.5 are kept
-    assert len(result) == 2, "Only two lines should remain"
-    assert pytest.approx(result[0].slope) == 0, "The first remaining line should have slope 0"
-    assert pytest.approx(result[1].slope) == -0.1, "The second remaining line should have slope -0.1"
+    non_vertical_lines, vertical_lines = separate_vertical_lines(
+        lines, threshold=2
+    )  # separation threshold is 1/2 = 0.5
+
+    # Test non_vertical_lines
+    assert len(non_vertical_lines) == 2, "Should have 2 non-vertical lines"
+    assert pytest.approx(non_vertical_lines[0].slope) == 0, "First non-vertical line should have slope 0"
+    assert pytest.approx(non_vertical_lines[1].slope) == -0.1, "Second non-vertical line should have slope -0.1"
+
+    # Test vertical_lines
+    assert len(vertical_lines) == 2, "Should have 2 vertical lines"
+    assert pytest.approx(vertical_lines[0].slope) == 2, "First vertical line should have slope 2"
+    assert pytest.approx(vertical_lines[1].slope) == 10, "Second vertical line should have slope 10"
 
 
 def test_is_point_on_line():  # noqa: D103

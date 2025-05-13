@@ -271,7 +271,7 @@ def start_pipeline(
                 logger.info("Processing page %s", page_number)
 
                 text_lines = extract_text_lines(page)
-                geometric_lines, vertical_lines = extract_lines(page, line_detection_params)
+                geometric_lines = extract_lines(page, line_detection_params, line_type="non_vertical")
                 extracted_boreholes = process_page(
                     text_lines, geometric_lines, file_metadata.language, page_number, **matching_params
                 )
@@ -304,7 +304,7 @@ def start_pipeline(
                         img = plot_lines(
                             page,
                             geometric_lines,
-                            vertical_lines,
+                            vertical_lines = extract_lines(page, line_detection_params, line_type="vertical"),
                             scale_factor=line_detection_params["pdf_scale_factor"],
                         )
                         mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")

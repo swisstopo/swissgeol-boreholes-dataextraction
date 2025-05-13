@@ -100,20 +100,6 @@ def plot_lines(
     return open_cv_img
 
 
-def plot_single_line_set(page: pymupdf.Page, lines: list[Line], scale_factor: float = 2.0) -> np.ndarray:
-    """Plot a single set of lines (backward compatibility).
-
-    Args:
-        page (pymupdf.Page): The page to plot lines on.
-        lines (list[Line]): The lines to plot.
-        scale_factor (float, optional): The scale factor. Defaults to 2.0.
-
-    Returns:
-        np.ndarray: The image with the lines drawn on it.
-    """
-    return plot_lines(page, lines, None, scale_factor)
-
-
 def draw_blocks_and_lines(page: pymupdf.Page, blocks: list[TextBlock], lines: list[Line] = None):
     """Draw the blocks and lines on the page.
 
