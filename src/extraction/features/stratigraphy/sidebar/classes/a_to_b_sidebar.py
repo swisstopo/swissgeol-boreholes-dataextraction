@@ -6,10 +6,13 @@ from dataclasses import dataclass
 
 import pymupdf
 from extraction.features.stratigraphy.interval.interval import AToBInterval, IntervalBlockGroup
+from extraction.features.stratigraphy.interval.partitions_and_sublayers import (
+    detect_partitions_and_sublayers,
+    number_of_subintervals,
+)
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.text.textline import TextLine
 
-from ...interval.a_to_b_interval_extractor import AToBIntervalExtractor
 from .sidebar import Sidebar
 
 
@@ -53,7 +56,7 @@ class AToBSidebar(Sidebar[AToBInterval]):
             # We allow sublayers with depths lower than the end of the current entry, as long as the next layer
             # has a start depth that exactly matches the current end depth.
             current_interval = self.entries[index]
-            sublayer_count = AToBIntervalExtractor.number_of_subintervals(current_interval, self.entries[index + 1 :])
+            sublayer_count = number_of_subintervals(current_interval, self.entries[index + 1 :])
 
             if sublayer_count > 8:
                 depths_ok = False
@@ -83,6 +86,9 @@ class AToBSidebar(Sidebar[AToBInterval]):
             segments.append(final_segment)
 
         return [AToBSidebar(segment) for segment in segments]
+
+    def process(self) -> list[AToBSidebar]:
+        return [AToBSidebar(detect_partitions_and_sublayers(segment.entries)) for segment in self.break_on_mismatch()]
 
     def is_valid(self) -> bool:
         """Checks if the sidebar is valid.

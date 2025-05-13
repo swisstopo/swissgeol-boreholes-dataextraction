@@ -7,7 +7,7 @@ from extraction.features.utils.text.textline import TextLine
 
 from ...utils.text.textblock import TextBlock
 from ..base.sidebar_entry import DepthColumnEntry
-from .interval import AToBInterval, Interval, IntervalBlockPair
+from .interval import AToBInterval, IntervalBlockPair
 
 
 class AToBIntervalExtractor:
@@ -106,93 +106,3 @@ class AToBIntervalExtractor:
                 DepthColumnEntry.from_string_value(rect_from_group_index(2), match.group(2)),
             )
         return None
-
-    @staticmethod
-    def number_of_subintervals(interval: Interval, following_intervals: list[Interval]) -> bool:
-        count = 0
-        for following_interval in following_intervals:
-            if interval.start.value <= following_interval.start.value <= interval.end.value and (
-                interval.start.value <= following_interval.end.value <= interval.end.value
-            ):
-                count += 1
-            else:
-                break
-        return count
-
-    @staticmethod
-    def is_partitioned(interval: Interval, following_intervals: list[Interval]) -> bool:
-        current_end = interval.start.value
-        for following_interval in following_intervals:
-            if following_interval.start.value == current_end:
-                current_end = following_interval.end.value
-                if current_end == interval.end.value:
-                    return True
-                if current_end > interval.end.value:
-                    return False
-            else:
-                return False
-        return False
-
-    @staticmethod
-    def partitions_and_sublayers(intervals: list[Interval]) -> list[Interval]:
-        """Takes a list of intervals and returns the most detailed list of intervals.
-
-        Args:
-            intervals (list[Interval]): The list of intervals.
-
-        Returns:
-            list[Interval]: The ordered list
-        """
-        intervals = intervals.copy()  # don't mutate the original object
-
-        continue_search = True
-        while continue_search:
-            continue_search = False
-            for index, interval in enumerate(intervals):
-                if not interval.skip_interval:
-                    following_intervals = [
-                        interval for interval in intervals[index + 1 :] if not interval.skip_interval
-                    ]
-                    if AToBIntervalExtractor.is_partitioned(interval, following_intervals):
-                        intervals[index].is_parent = True
-                        continue_search = True
-                        break
-
-        continue_search = True
-        while continue_search:
-            continue_search = False
-            filtered_intervals = [interval for interval in intervals if not interval.skip_interval]
-            for index, interval in enumerate(filtered_intervals):
-                subinterval_count = AToBIntervalExtractor.number_of_subintervals(
-                    interval, filtered_intervals[index + 1 :]
-                )
-                if subinterval_count > 0:
-                    for step in range(subinterval_count):
-                        filtered_intervals[index + step + 1].is_sublayer = True
-                    continue_search = True
-                    break
-
-        return intervals
-
-    @staticmethod
-    def partitions_and_sublayers_with_text(pairs: list[IntervalBlockPair]) -> list[IntervalBlockPair]:
-        pairs = pairs.copy()  # don't mutate the original object
-        intervals = [pair.depth_interval for pair in pairs if pair.depth_interval]
-        AToBIntervalExtractor.partitions_and_sublayers(intervals)
-
-        processed_pairs = []
-        current_block = None
-        current_interval = None
-        for pair in pairs:
-            if pair.depth_interval and pair.depth_interval.skip_interval:
-                current_block = current_block.concatenate(pair.block) if current_block else pair.block
-            else:
-                if current_interval:
-                    processed_pairs.append(IntervalBlockPair(current_interval, current_block))
-                    current_block = pair.block
-                else:
-                    current_block = current_block.concatenate(pair.block) if current_block else pair.block
-                current_interval = pair.depth_interval
-
-        processed_pairs.append(IntervalBlockPair(current_interval, current_block))
-        return processed_pairs
