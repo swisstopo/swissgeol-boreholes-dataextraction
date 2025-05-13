@@ -304,7 +304,7 @@ def start_pipeline(
                         img = plot_lines(
                             page,
                             geometric_lines,
-                            vertical_lines = extract_lines(page, line_detection_params, line_type="vertical"),
+                            additional_lines=extract_lines(page, line_detection_params, line_type="vertical"),
                             scale_factor=line_detection_params["pdf_scale_factor"],
                         )
                         mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
