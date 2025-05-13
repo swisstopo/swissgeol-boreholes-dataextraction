@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import pymupdf
 from extraction.features.stratigraphy.interval.interval import AToBInterval, IntervalBlockGroup
 from extraction.features.stratigraphy.interval.partitions_and_sublayers import (
-    detect_partitions_and_sublayers,
+    annotate_intervals,
     number_of_subintervals,
 )
 from extraction.features.utils.geometry.geometry_dataclasses import Line
@@ -88,7 +88,12 @@ class AToBSidebar(Sidebar[AToBInterval]):
         return [AToBSidebar(segment) for segment in segments]
 
     def process(self) -> list[AToBSidebar]:
-        return [AToBSidebar(detect_partitions_and_sublayers(segment.entries)) for segment in self.break_on_mismatch()]
+        sidebar_list = []
+        for segment in self.break_on_mismatch():
+            annotate_intervals(segment.entries)
+            sidebar_list.append(AToBSidebar(segment.entries))
+
+        return sidebar_list
 
     def is_valid(self) -> bool:
         """Checks if the sidebar is valid.

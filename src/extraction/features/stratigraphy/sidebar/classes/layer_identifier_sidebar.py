@@ -13,7 +13,9 @@ from utils.file_utils import read_params
 from ...base.sidebar_entry import LayerIdentifierEntry
 from ...interval.a_to_b_interval_extractor import AToBIntervalExtractor
 from ...interval.interval import IntervalBlockGroup
-from ...interval.partitions_and_sublayers import detect_partitions_and_sublayers_with_text
+from ...interval.partitions_and_sublayers import (
+    get_optimal_intervals_with_text,
+)
 from .sidebar import Sidebar
 
 logger = logging.getLogger(__name__)
@@ -65,7 +67,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         last_end_depth = None
         for block in blocks:
             interval_block_pairs = AToBIntervalExtractor.from_material_description_lines(block.lines)
-            interval_block_pairs = detect_partitions_and_sublayers_with_text(interval_block_pairs)
+            interval_block_pairs = get_optimal_intervals_with_text(interval_block_pairs)
 
             new_groups = [
                 IntervalBlockGroup(depth_intervals=[pair.depth_interval], blocks=[pair.block])
