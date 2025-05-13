@@ -60,11 +60,13 @@ class AToBSidebarExtractor:
         pairs = [(entry, find_pair(entry)) for entry in entries]
         intervals = [AToBInterval(first, second) for first, second in pairs if second]
         clusters = Cluster[AToBInterval].create_clusters(intervals, lambda interval: interval.rect)
-        return [
+        sidebar_segments = [
             sidebar_segment
             for cluster in clusters
-            for sidebar_segment in AToBSidebar(
-                AToBIntervalExtractor.partitions_and_sublayers(cluster.entries)
-            ).break_on_mismatch()
-            if sidebar_segment.is_valid()
+            for sidebar_segment in AToBSidebar(cluster.entries).break_on_mismatch()
         ]
+        sidebar_segments = [
+            AToBSidebar(AToBIntervalExtractor.partitions_and_sublayers(sidebar_segment.entries))
+            for sidebar_segment in sidebar_segments
+        ]
+        return [sidebar_segment for sidebar_segment in sidebar_segments if sidebar_segment.is_valid()]
