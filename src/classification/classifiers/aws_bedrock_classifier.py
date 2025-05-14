@@ -38,7 +38,7 @@ class AWSBedrockClassifier:
         """
         self.init_config(classification_system_str)
         self.classification_system = ExistingClassificationSystems.get_classification_system_type(
-            classification_system_str.lower()
+            classification_system_str
         )
 
         self.bedrock_client = boto3.client(service_name="bedrock-runtime", region_name=os.environ.get("AWS_REGION"))
@@ -48,10 +48,13 @@ class AWSBedrockClassifier:
         # Bedrock parameters
         reasoning_mode = self.config["reasoning_mode"]
 
-        self.class_patterns = read_params(self.config["pattern_file"])[self.config["pattern_version"]]
+        self.pattern_version = self.config["pattern_version"]
+        self.class_patterns = read_params(self.config["pattern_file"])[self.pattern_version]
 
-        mode = "reasoning" if reasoning_mode else "classification"
-        self.classification_prompts = read_params(self.config["prompts_file"])[mode][self.config["prompt_version"]]
+        self.reasoning_mode = reasoning_mode
+        str_mode = "reasoning" if self.reasoning_mode else "classification"
+        self.prompt_version = self.config["prompt_version"]
+        self.classification_prompts = read_params(self.config["prompts_file"])[str_mode][self.prompt_version]
 
         self.bedrock_out_directory = bedrock_out_directory
         self.max_concurrent_calls = max_concurrent_calls

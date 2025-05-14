@@ -80,20 +80,9 @@ def log_ml_flow_infos(
     # Log model and id, prompt and parameter versions if anthropic model used
     if isinstance(classifier, AWSBedrockClassifier):
         mlflow.log_param("anthropic_model_id", os.environ.get("ANTHROPIC_MODEL_ID"))
-        config_file = "bedrock_config_uscs.yml" if classification_system == "uscs" else "bedrock_config_lithology.yml"
-        config = read_params(f"bedrock/{config_file}")
-
-        prompt_version = config.get("prompt_version")
-        if prompt_version:
-            mlflow.log_param("anthropic_prompt_version", prompt_version)
-
-        class_pattern_version = config.get("pattern_version")
-        if class_pattern_version:
-            mlflow.log_param("anthropic_class_pattern_version", class_pattern_version)
-
-        reasoning_mode = config.get("reasoning_mode")
-        if reasoning_mode:
-            mlflow.log_param("anthropic_reasoning_mode", reasoning_mode)
+        mlflow.log_param("anthropic_prompt_version", classifier.prompt_version)
+        mlflow.log_param("anthropic_class_pattern_version", classifier.pattern_version)
+        mlflow.log_param("anthropic_reasoning_mode", classifier.reasoning_mode)
 
     # Log input data and output predictions
     mlflow.log_artifact(str(file_path), "input_data")
