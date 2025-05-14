@@ -3,11 +3,6 @@ model_path: "google-bert/bert-base-multilingual-uncased"
 
 # Data parameters
 classification_system: "lithology"
-#train_subset: "nagra_deepwells_splits/train.json"
-# train_subset: deepwells_ground_truth.json
-# eval_subset: "nagra_subset.json"
-# train_subset: "nagra_ground_truth.json"
-# eval_subset: "deepwells_ground_truth.json"
 train_subset: "nagra_deepwells_custom_split/train.json"
 eval_subset: "nagra_deepwells_custom_split/val.json"
 

@@ -28,13 +28,13 @@ def load_layers(json_paths: list[str]) -> list[tuple[str, int, dict, dict]]:
 
 
 def load_borehole_reports(json_paths: list[str]) -> list[tuple[str, str, list[dict]]]:
-    """Load the report containing all the layers from multiple JSON files.
+    """Load the reports containing all the layers from multiple JSON files.
 
     Args:
         json_paths (list[str]): List of paths to JSON files.
 
     Returns:
-        list[tuple[str, str, list[dict]]]: List of tuples (report name, json name, report dictionary).
+        list[tuple[str, str, list[dict]]]: List of tuples (report name, json name, borehole list).
     """
     all_reports = []
     for path in json_paths:
@@ -80,17 +80,19 @@ def split_layers(
 def split_reports(reports, train_frac=0.8, val_frac=0.1, eval_sets_nagra_ratio=0.3, seed=42):
     """Split a list of reports into train, validation, and test subsets.
 
-    note: as we split by reports and not by layers, the required proportion of the splits might not be exact.
+    Note: as we split by reports and not by layers, the required proportion of the splits might not be exact.
 
     Args:
         reports (list[tuple[str, str, list[dict]]]): List of tuples (report name, json name, report dictionary).
         train_frac (float): Fraction of layers to assign to the training set.
         val_frac (float): Fraction of layers to assign to the validation set. The test fraction is implicitly
             `1 - train_frac - val_frac`.
-        eval_sets_nagra_ratio (float): Maximum allowed proportion of the nagra dataset that must be in the validation
-            set at most. This measure is done because there is a lot of similarity between the layers in nagra, and
-            having many of them in the eval sets causes the metrics to be too good (close to 100%), which is not
-            representative of its real performance on more generalized boreholes data.
+        eval_sets_nagra_ratio (float): Target maximum proportion of Nagra data in the validation set.
+            This constraint exists because the Nagra dataset contains highly similar geological layers.
+            Including too many Nagra entries in the evaluation set can lead to unrealistically high metrics
+            (e.g., F1 scores close to 1.0), which do not reflect real-world performance on more diverse borehole data.
+            The imbalance arises because the Nagra dataset is significantly larger than the Deepwells dataset (~20k
+            layers vs. ~4k), which biases the trained model toward recognizing Nagra-style layers more effectively.
         seed (int): Random seed for reproducibility.
 
     Returns:
