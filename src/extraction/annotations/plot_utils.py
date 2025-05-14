@@ -76,9 +76,7 @@ def _convert_line_to_grid(line: Line, scale_factor: float) -> Line:
     return Line(start, end)
 
 
-def plot_lines(
-    page: pymupdf.Page, geometric_lines: list[Line], scale_factor: float = 2
-) -> cv2.COLOR_RGB2BGR:
+def plot_lines(page: pymupdf.Page, geometric_lines: list[Line], scale_factor: float = 2) -> cv2.COLOR_RGB2BGR:
     """Given a page object and the lines detected in the page, plot the page with the detected lines.
 
     Args:
