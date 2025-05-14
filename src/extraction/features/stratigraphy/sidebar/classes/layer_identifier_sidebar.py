@@ -79,11 +79,10 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
                 and interval_block_pairs[-1].depth_interval
             ):
                 new_start_depth = interval_block_pairs[0].depth_interval.start.value
-                if new_start_depth == last_end_depth:
-                    result.extend(new_groups)
-                else:
+                if new_start_depth != last_end_depth:
+                    # only use this group without depth indications if the depths are discontinued
                     result.extend(provisional_groups)
-                    result.extend(new_groups)
+                result.extend(new_groups)
                 provisional_groups = []
                 last_end_depth = interval_block_pairs[-1].depth_interval.end.value
             else:

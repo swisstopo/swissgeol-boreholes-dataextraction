@@ -6,7 +6,7 @@ from extraction.features.stratigraphy.interval.interval import Interval, Interva
 
 
 def number_of_subintervals(interval: Interval, following_intervals: list[Interval]) -> int:
-    """Counts how many of the following intervals are completely contained within a given interval.
+    """Counts how many of the following intervals are completely contained within the given interval.
 
     Args:
         interval (Interval): The main interval to compare against.
@@ -55,8 +55,9 @@ T = TypeVar("T", bound=Interval)
 def set_interval_hierarchy_flags(intervals: list[T]) -> None:
     """Mutate each Interval object by setting the flags is parent or is_sublayer.
 
-    This function marks is_parent any interval that fully partitions one or more later intervals.
-    It also marks is_sublayer any interval that is contained in another but is not part of it's partition.
+    This function marks is_parent any interval that is fully partitioned by one or more later intervals.
+    It also marks is_sublayer any interval that is contained in another interval but is not part of it's complete
+    partition.
 
     Args:
         intervals (list[T]): the list of interval to analyse and mutate the flags.
@@ -93,9 +94,19 @@ def set_interval_hierarchy_flags(intervals: list[T]) -> None:
 def aggregate_non_skipped_intervals(
     pairs: list[IntervalBlockPair],
 ) -> list[IntervalBlockPair]:
-    """Build a new list of IntervalBlockPair where skipped intervals blocks.
+    """Build a new list of IntervalBlockPair.
 
-    are merged into the last non-skipped intervals block.
+    The list takes into account whether each interval is marked as a parent or sublayer.
+    As a result, any text block associated with a skipped interval is merged into the block of the previous
+    non-skipped interval.
+
+    Args:
+        pairs (list[IntervalBlockPair]): list of depth interval and text block pairs. They must have been previously
+            processed by the function set_interval_hierarchy_flags to set their internal flags.
+
+    Returns:
+        list[IntervalBlockPair]: the list containing only the relevant intervals, but with all text informations
+            preserved.
     """
     processed_pairs: list[IntervalBlockPair] = []
     current_block = None
