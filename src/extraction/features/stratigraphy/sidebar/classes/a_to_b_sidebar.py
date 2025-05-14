@@ -7,8 +7,8 @@ from dataclasses import dataclass
 import pymupdf
 from extraction.features.stratigraphy.interval.interval import AToBInterval, IntervalBlockGroup
 from extraction.features.stratigraphy.interval.partitions_and_sublayers import (
-    annotate_intervals,
     number_of_subintervals,
+    set_interval_hierarchy_flags,
 )
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.text.textline import TextLine
@@ -66,11 +66,11 @@ class AToBSidebar(Sidebar[AToBInterval]):
                 else:
                     next_interval = self.entries[index + sublayer_count + 1]
                     if sublayer_count == 0:
-                        # no subintervals, the next interval should not start higher than the end of the current
-                        # interval
+                        # no subintervals, the next interval must start deeper or at the same depth than the end of
+                        # the current interval
                         depths_ok = current_interval.end.value <= next_interval.start.value
                     else:
-                        # no subintervals, the next interval should start exactly at the end of the current interval
+                        # subintervals, the next interval should start exactly at the end of the current interval
                         depths_ok = current_interval.end.value == next_interval.start.value
 
             if depths_ok:
@@ -90,7 +90,7 @@ class AToBSidebar(Sidebar[AToBInterval]):
     def process(self) -> list[AToBSidebar]:
         sidebar_list = []
         for segment in self.break_on_mismatch():
-            annotate_intervals(segment.entries)
+            set_interval_hierarchy_flags(segment.entries)
             sidebar_list.append(AToBSidebar(segment.entries))
 
         return sidebar_list
