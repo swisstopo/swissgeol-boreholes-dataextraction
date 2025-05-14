@@ -1,8 +1,9 @@
-# Prompt version (version tag to be used from the classification_prompts.yml in MLFlow)
+# Config file for unconsolidated soil classification
+# Prompt file and version
 prompts_file: bedrock/lithology_classification_prompts.yml
 prompt_version: baseline
 
-# Classification parameter version (version tag to be used from the classification_patterns_bedrock.yml in MLFlow)
+# Pattern file and parameter version
 pattern_file: bedrock/lithology_classification_patterns_bedrock.yml
 pattern_version: baseline
 

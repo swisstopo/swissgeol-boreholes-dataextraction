@@ -5,9 +5,10 @@ import yaml
 in_file = "config/lithology_classification_params.yml"
 out_file = "config/bedrock/lithology_classification_patterns_bedrock.yml"
 
+# list of initial entries that must be classified as unconsolidated
 unconsolidated = ["clay", "marl", "silt", "peat", "sand", "pebble", "loam"]
 
-# Load your input YAML
+# Load input YAML
 with open(in_file, encoding="utf-8") as f:
     data = yaml.safe_load(f)
 
@@ -24,6 +25,8 @@ for lang, classes in data["lithology_patterns"].items():
 
         # Set the new format
         output["baseline"][lang][rock] = f"{label_str}: {description}"
+
+    # add Unconsolidated entry
     output["baseline"][lang]["Unconsolidated"] = (
         f"unconsolidated material: Any unconsolidated material like {', '.join(unconsolidated)}"
     )
