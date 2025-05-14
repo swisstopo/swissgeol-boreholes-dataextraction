@@ -104,7 +104,7 @@ def aggregate_non_skipped_intervals(
         pairs (list[IntervalBlockPair]): list of depth interval and text block pairs. They must have been previously
             processed by the function set_interval_hierarchy_flags to set their internal flags.
 
-    Return:
+    Returns:
         list[IntervalBlockPair]: the list containing only the relevant intervals, but with all text informations
             preserved.
     """
@@ -134,7 +134,7 @@ def get_optimal_intervals_with_text(
     Args:
         pairs (list[IntervalBlockPair]): list of intervals and text blocks.
 
-    Return:
+    Returns:
         list[IntervalBlockPair]: the cleaned list, with optimal partitions filtered and text block conserved.
     """
     # 1) annotate the intervals
