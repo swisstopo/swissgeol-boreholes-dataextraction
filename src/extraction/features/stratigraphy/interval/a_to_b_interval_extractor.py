@@ -17,21 +17,18 @@ class AToBIntervalExtractor:
     def from_material_description_lines(lines: list[TextLine]) -> list[IntervalBlockPair]:
         """Extract depth interval from text lines from a material description.
 
-        TODO update docs
-
-        For borehole profiles in the Deriaz layout, the depth interval is usually found in the text of the material
-        description. Often, these text descriptions contain a further separation into multiple sub layers.
-        These sub layers have their own depth intervals. This function extracts the overall depth interval,
-        spanning across all mentioned sub layers.
-
+        For borehole profiles using the Deriaz layout, depth intervals are typically embedded within the material
+        description text. These descriptions often further subdivide into multiple sublayers, each with its own
+        distinct depth interval. This function extracts all such depth intervals found in the description, along with
+        their corresponding text blocks. Decisions about which intervals to keep or discard are handled by downstream
+        processing.
         For example (from GeoQuat 12306):
             1) REMBLAIS HETEROGENES
                0.00 - 0.08 m : Revêtement bitumineux
                0.08- 0.30 m : Grave d'infrastructure
                0.30 - 1.40 m : Grave dans importante matrice de sable
                                moyen, brun beige, pulvérulent.
-        From this material description, this method will extract a single depth interval that starts at 0m and ends
-        at 1.40m.
+        From this material description, this method will extract all depth intervals.
 
         Args:
             lines (list[TextLine]): The lines to extract the depth interval from.

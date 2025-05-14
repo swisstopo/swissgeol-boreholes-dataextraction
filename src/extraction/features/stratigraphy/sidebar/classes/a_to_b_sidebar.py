@@ -98,7 +98,8 @@ class AToBSidebar(Sidebar[AToBInterval]):
     def is_valid(self) -> bool:
         """Checks if the sidebar is valid.
 
-        An AToBSidebar is valid if it is strictly increasing and the depth intervals are significant.
+        An AToBSidebar is valid if its depth intervals are mostly increasing and are significant.
+        This function only consider the effective intervals (i.e. not the parents or the sublayers).
 
         Returns:
             bool: True if the depth column is valid, False otherwise.
