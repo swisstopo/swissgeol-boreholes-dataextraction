@@ -201,17 +201,17 @@ Repeat steps 1 and 2 of the [data extraction pipeline](#run-data-extraction) to 
 
 ### 2. Choose Hyperparameters  
 
-Modify the file `config/bert_config.yml` to set the hyperparameters for training and data processing.  
+Modify the file `config/bert_config_uscs.yml` to set the hyperparameters for training and data processing. Data sources used for training and validation are specified in this file.
 
 ### 3. Train the Model  
 
 To fine-tune BERT from the base model on Hugging Face, run:  
 
 ```bash
-fine-tune-bert -f path/to/your/data.json
+fine-tune-bert -cf bert_config_uscs.yml
 ```  
 
-- Use `-f` or `--file-path` to specify the path to the JSON file containing the descriptions and ground truth for each layer.  
+- Use `-cf` or `--config-file-path` to specify the config file containing the training parameters.
 - By default, the initial model is the one specified in the config file (loaded from hugging face). However, you can continue training from a specific checkpoint by providing a local model path with `-c` or `--model-checkpoint`.  
 
 The pipeline stores a checkpoint of the model after each epoch and logs training details in the `models` directory. The model name corresponds to the timestamp when training was launched.  
