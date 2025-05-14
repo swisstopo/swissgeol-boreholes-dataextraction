@@ -14,23 +14,6 @@ from .linesquadtree import LinesQuadTree
 logger = logging.getLogger(__name__)
 
 
-def separate_vertical_lines(lines: list[Line], threshold: float = 0.1) -> tuple[list[Line], list[Line]]:
-    """Given a list of lines, separate vertical lines from non-vertical lines.
-
-    The algorithm identifies vertical lines as those whose absolute slope is larger than 1 / threshold.
-
-    Args:
-        lines (list[Line]): The input lines.
-        threshold (float, optional): The threshold to determine if a line is vertical. Defaults to 0.1.
-
-    Returns:
-        tuple[list[Line], list[Line]]: A tuple containing (non_vertical_lines, vertical_lines)
-    """
-    non_vertical_lines = [line for line in lines if np.abs(line.slope) < 1 / threshold]
-    vertical_lines = [line for line in lines if np.abs(line.slope) >= 1 / threshold]
-    return non_vertical_lines, vertical_lines
-
-
 def is_point_on_line(line: Line, point: Point, tol=10) -> ArrayLike:
     """Check if a point is on a line.
 

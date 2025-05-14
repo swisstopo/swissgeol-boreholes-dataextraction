@@ -77,14 +77,13 @@ def _convert_line_to_grid(line: Line, scale_factor: float) -> Line:
 
 
 def plot_lines(
-    page: pymupdf.Page, geometric_lines: list[Line], additional_lines: list[Line] = None, scale_factor: float = 2
+    page: pymupdf.Page, geometric_lines: list[Line], scale_factor: float = 2
 ) -> cv2.COLOR_RGB2BGR:
     """Given a page object and the lines detected in the page, plot the page with the detected lines.
 
     Args:
         page (pymupdf.Page): The page to draw the lines in.
         geometric_lines (list[Line]): The geometric_lines lines to plot.
-        additional_lines (list[Line], optional): Additional lines to plot. Defaults to None.
         scale_factor (float, optional): The scale factor to apply to the pdf. Defaults to 2.
 
     Returns:
@@ -93,9 +92,6 @@ def plot_lines(
     open_cv_img = convert_page_to_opencv_img(page, scale_factor=scale_factor)
 
     open_cv_img = _draw_lines(open_cv_img, geometric_lines, scale_factor=scale_factor)
-
-    if additional_lines:
-        open_cv_img = _draw_lines(open_cv_img, additional_lines, scale_factor=scale_factor)
 
     return open_cv_img
 
