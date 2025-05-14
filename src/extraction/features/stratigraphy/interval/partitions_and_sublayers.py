@@ -52,7 +52,7 @@ def is_partitioned(interval: Interval, following_intervals: list[Interval]) -> b
 T = TypeVar("T", bound=Interval)
 
 
-def annotate_intervals(intervals: list[T]) -> None:
+def set_interval_hierarchy_flags(intervals: list[T]) -> None:
     """Mutate each Interval object by setting the flags is parent or is_sublayer.
 
     This function marks is_parent any interval that fully partitions one or more later intervals.
@@ -126,8 +126,8 @@ def get_optimal_intervals_with_text(
     Return:
         list[IntervalBlockPair]: the cleaned list, with optimal partitions filtered and text block conserved.
     """
-    # 1) annotate the intervals you have
-    annotate_intervals([p.depth_interval for p in pairs if p.depth_interval])
+    # 1) annotate the intervals
+    set_interval_hierarchy_flags([p.depth_interval for p in pairs if p.depth_interval])
 
     # 2) rebuild & merge text blocks
     return aggregate_non_skipped_intervals(pairs)
