@@ -104,7 +104,7 @@ def aggregate_non_skipped_intervals(
         pairs (list[IntervalBlockPair]): list of depth interval and text block pairs. They must have been previously
             processed by the function set_interval_hierarchy_flags to set their internal flags.
 
-    Returns:
+    Return:
         list[IntervalBlockPair]: the list containing only the relevant intervals, but with all text informations
             preserved.
     """
