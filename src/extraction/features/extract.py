@@ -111,11 +111,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         # We order the boreholes with the highest score first. When one borehole is actually present in the ground
         # truth, but more than one are detected, we want the most correct to be assigned
-        boreholes = [
+        return [
             self._create_borehole_from_pair(pair)
             for pair in sorted(non_duplicated_pairs, key=lambda pair: pair.score_match, reverse=True)
         ]
-        return [borehole for borehole in boreholes if borehole.predictions]
 
     def _find_intersecting_indices(
         self, material_descriptions_sidebar_pairs: list[MaterialDescriptionRectWithSidebar]
@@ -299,7 +298,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
         a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words)
         used_entry_rects = []
-
         for column in a_to_b_sidebars:
             for entry in column.entries:
                 used_entry_rects.extend([entry.start.rect, entry.end.rect])
@@ -365,6 +363,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         description_clusters = []
         while len(is_description) > 0:
+            # 0.4 instead of 0.5 slightly improves geoquat/validation/A76.pdf
             coverage_by_generating_line = [
                 [other for other in is_description if x_overlap_significant_smallest(line.rect, other.rect, 0.4)]
                 for line in is_description
