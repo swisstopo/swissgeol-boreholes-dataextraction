@@ -7,8 +7,8 @@ from dataclasses import dataclass
 import pymupdf
 from extraction.features.stratigraphy.interval.interval import AToBInterval, IntervalBlockGroup
 from extraction.features.stratigraphy.interval.partitions_and_sublayers import (
-    detect_partitions_and_sublayers,
     number_of_subintervals,
+    set_interval_hierarchy_flags,
 )
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.text.textline import TextLine
@@ -66,11 +66,11 @@ class AToBSidebar(Sidebar[AToBInterval]):
                 else:
                     next_interval = self.entries[index + sublayer_count + 1]
                     if sublayer_count == 0:
-                        # no subintervals, the next interval should not start higher than the end of the current
-                        # interval
+                        # no subintervals, the next interval must start deeper or at the same depth than the end of
+                        # the current interval
                         depths_ok = current_interval.end.value <= next_interval.start.value
                     else:
-                        # no subintervals, the next interval should start exactly at the end of the current interval
+                        # subintervals, the next interval should start exactly at the end of the current interval
                         depths_ok = current_interval.end.value == next_interval.start.value
 
             if depths_ok:
@@ -88,12 +88,18 @@ class AToBSidebar(Sidebar[AToBInterval]):
         return [AToBSidebar(segment) for segment in segments]
 
     def process(self) -> list[AToBSidebar]:
-        return [AToBSidebar(detect_partitions_and_sublayers(segment.entries)) for segment in self.break_on_mismatch()]
+        sidebar_list = []
+        for segment in self.break_on_mismatch():
+            set_interval_hierarchy_flags(segment.entries)
+            sidebar_list.append(AToBSidebar(segment.entries))
+
+        return sidebar_list
 
     def is_valid(self) -> bool:
         """Checks if the sidebar is valid.
 
-        An AToBSidebar is valid if it is strictly increasing and the depth intervals are significant.
+        An AToBSidebar is valid if its depth intervals are mostly increasing and are significant.
+        This function only consider the effective intervals (i.e. not the parents or the sublayers).
 
         Returns:
             bool: True if the depth column is valid, False otherwise.
