@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import os
 import re
 import uuid
@@ -12,7 +13,10 @@ import boto3
 from classification.utils.classification_classes import ExistingClassificationSystems
 from classification.utils.data_loader import LayerInformations
 from classification.utils.data_utils import write_api_failures, write_predictions
+from tqdm import tqdm
 from utils.file_utils import read_params
+
+logger = logging.getLogger(__name__)
 
 
 class AWSBedrockClassifier:
@@ -154,14 +158,14 @@ class AWSBedrockClassifier:
 
         semaphore = asyncio.Semaphore(self.max_concurrent_calls)
 
-        for filename, filename_layers in layers_by_filename.items():
-            print(f"Processing file: {filename} with {len(filename_layers)} layers")
+        for filename, filename_layers in tqdm(layers_by_filename.items()):
+            logger.info(f"Processing file: {filename} with {len(filename_layers)} layers")
             path = f"{Path(filename).stem}.json"
 
             async def process_layer(layer: LayerInformations):
                 async with semaphore:
                     try:
-                        print(f"Classifying layer: {layer.filename}_{layer.borehole_index}_{layer.layer_index}")
+                        logger.debug(f"Classifying layer: {layer.filename}_{layer.borehole_index}_{layer.layer_index}")
 
                         await asyncio.sleep(self.api_call_delay)
 
@@ -189,7 +193,7 @@ class AWSBedrockClassifier:
 
                     except Exception as e:
                         error_msg = str(e)
-                        print(f"API call failed for '{layer.filename}, {layer.layer_index}': {error_msg}")
+                        logger.warning(f"API call failed for '{layer.filename}, {layer.layer_index}': {error_msg}")
                         layer.prediction_class = self.classification_system.get_default_class_value()
 
                         # Return failure info
