@@ -10,8 +10,6 @@ lsd:
 
 pdf_scale_factor: 2
 
-vertical_lines_threshold: 0.6
-
 line_merging_params:
   merging_tolerance: 3.  # maximum distance between two lines that are merged
   angle_threshold: 5  # maximum difference in degrees two line segments can have in order to be merged.
