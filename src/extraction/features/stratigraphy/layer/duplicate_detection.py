@@ -31,7 +31,7 @@ def remove_duplicate_layers(
 
     Args:
         current_page_index: (int): the current page index (starting from 0)
-        document (pumypdf.Document): The whole document.
+        document (pymupdf.Document): The whole document.
         previous_layers_with_bb (LayersInDocument): The layers of the previous page, with their bounding box.
         current_layers_with_bb (LayersInDocument): The layers of the current page, with their bounding box.
         img_template_probability_threshold (float): The threshold for the template matching probability
@@ -43,8 +43,8 @@ def remove_duplicate_layers(
     if current_page_index == 0:
         return current_layers_with_bb.boreholes_layers_with_bb
 
-    previous_page = (document[current_page_index - 1],)
-    current_page = (document[current_page_index],)
+    previous_page = document[current_page_index - 1]
+    current_page = document[current_page_index]
 
     non_duplicated_extracted_boreholes: list[ExtractedBorehole] = []
     # iterate on all the borehole profiles identified on this page
