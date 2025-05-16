@@ -284,17 +284,13 @@ def start_pipeline(
                 )
                 all_groundwater_entries.groundwater_feature_list.extend(groundwater_entries)
 
-                if page_index > 0:
-                    layer_with_bb_predictions = remove_duplicate_layers(
-                        previous_page=doc[page_index - 1],
-                        current_page=page,
-                        previous_layers_with_bb=layers_with_bb_in_document,
-                        current_layers_with_bb=processed_page_results,
-                        img_template_probability_threshold=matching_params["img_template_probability_threshold"],
-                    )
-                else:
-                    layer_with_bb_predictions = processed_page_results.boreholes_layers_with_bb
-
+                layer_with_bb_predictions = remove_duplicate_layers(
+                    current_page_index=page_index,
+                    document=doc,
+                    previous_layers_with_bb=layers_with_bb_in_document,
+                    current_layers_with_bb=processed_page_results,
+                    img_template_probability_threshold=matching_params["img_template_probability_threshold"],
+                )
                 layers_with_bb_in_document.assign_layers_to_boreholes(layer_with_bb_predictions)
 
                 if draw_lines:  # could be changed to if draw_lines and mlflow_tracking:

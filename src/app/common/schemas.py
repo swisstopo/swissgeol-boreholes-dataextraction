@@ -575,7 +575,7 @@ class ExtractStratigraphyRequest(ABC, BaseModel):
         This must be a valid file path, and the file should be accessible by the API.""",
     )
 
-    model_config = ConfigDict(json_schema_extra={"example": {"filename": "1007.pdf"}})
+    model_config = ConfigDict(json_schema_extra={"example": {"filename": "geoquat/validation/1007.pdf"}})
 
     @field_validator("filename", mode="before")
     @classmethod

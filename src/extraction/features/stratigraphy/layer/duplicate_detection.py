@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 def remove_duplicate_layers(
-    previous_page: pymupdf.Page,
-    current_page: pymupdf.Page,
+    current_page_index: int,
+    document: pymupdf.Document,
     previous_layers_with_bb: LayersInDocument,
     current_layers_with_bb: LayersInDocument,
     img_template_probability_threshold: float,
@@ -30,8 +30,8 @@ def remove_duplicate_layers(
     duplicate layers. If there is no depth column, we use template matching to compare the layers.
 
     Args:
-        previous_page (pymupdf.Page): The previous page.
-        current_page (pymupdf.Page): The current page containing the layers to check for duplicates.
+        current_page_index: (int): the current page index (starting from 0)
+        document (pumypdf.Document): The whole document.
         previous_layers_with_bb (LayersInDocument): The layers of the previous page, with their bounding box.
         current_layers_with_bb (LayersInDocument): The layers of the current page, with their bounding box.
         img_template_probability_threshold (float): The threshold for the template matching probability
@@ -40,6 +40,12 @@ def remove_duplicate_layers(
         list[ExtractedBorehole]: The layers of the boreholes on the current page without duplicates. Their bounding
             boxes are kept the same.
     """
+    if current_page_index == 0:
+        return current_layers_with_bb.boreholes_layers_with_bb
+
+    previous_page = (document[current_page_index - 1],)
+    current_page = (document[current_page_index],)
+
     non_duplicated_extracted_boreholes: list[ExtractedBorehole] = []
     # iterate on all the borehole profiles identified on this page
     for current_borehole_layers_with_bb in current_layers_with_bb.boreholes_layers_with_bb:

@@ -351,7 +351,7 @@ class GroundwaterLevelExtractor(DataExtractor):
             1. if that gives no results, search for coordinates close to an explicit "groundwater" label (e.g. "Gswp")
 
         Args:
-            page_number (int): The page number (1-based) of the PDF document.
+            page_number (int): The page number (1-indexed) of the PDF document.
             lines (list[TextLine]): The lines of text to extract the groundwater information from.
             document (pymupdf.Document): The document used to extract groundwater from illustration.
 

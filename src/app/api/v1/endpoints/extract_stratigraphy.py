@@ -43,22 +43,19 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
 
     layers_with_bb_in_document = LayersInDocument([], filename)
     for page_index, page in enumerate(document):
-        # TODO should be funcs
         page_number = page_index + 1
         text_lines = extract_text_lines(page)
         geometric_lines = extract_lines(page, line_detection_params)
         extracted_boreholes = process_page(text_lines, geometric_lines, language, page_number, **matching_params)
-        processed_page_results = LayersInDocument(extracted_boreholes, filename)
-        if page_index > 0:
-            layer_with_bb_predictions = remove_duplicate_layers(
-                previous_page=document[page_index - 1],
-                current_page=page,
-                previous_layers_with_bb=layers_with_bb_in_document,
-                current_layers_with_bb=processed_page_results,
-                img_template_probability_threshold=matching_params["img_template_probability_threshold"],
-            )
-        else:
-            layer_with_bb_predictions = processed_page_results.boreholes_layers_with_bb
+        layers_on_page = LayersInDocument(extracted_boreholes, filename)
+
+        layer_with_bb_predictions = remove_duplicate_layers(
+            current_page_index=page_index,
+            document=document,
+            previous_layers_with_bb=layers_with_bb_in_document,
+            current_layers_with_bb=layers_on_page,
+            img_template_probability_threshold=matching_params["img_template_probability_threshold"],
+        )
         layers_with_bb_in_document.assign_layers_to_boreholes(layer_with_bb_predictions)
 
     if not layers_with_bb_in_document.boreholes_layers_with_bb:

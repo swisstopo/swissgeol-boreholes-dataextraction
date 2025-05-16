@@ -453,7 +453,7 @@ def process_page(
         text_lines (list[TextLine]): All text lines on the page.
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
         language (str): Language of the page (used in parsing).
-        page_number (int): The page number (0-indexed).
+        page_number (int): The page number (1-indexed).
         **matching_params (dict): Additional parameters for the matching pipeline.
 
     Returns:
