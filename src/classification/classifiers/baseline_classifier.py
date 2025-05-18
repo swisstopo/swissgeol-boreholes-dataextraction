@@ -19,9 +19,9 @@ class BaselineClassifier:
         """Initialize with configurable threshold.
 
         Args:
+            classification_system_str (str): The classification system used (`uscs` or `lithology`)
             match_threshold (float): Minimum coverage for matches (default: 0.75)
         """
-
         self.init_config(classification_system_str)
 
         self.classification_system = ExistingClassificationSystems.get_classification_system_type(
@@ -40,7 +40,9 @@ class BaselineClassifier:
         Args:
             classification_system (str): The classification system used (`uscs` or `lithology`).
         """
-        config_file = "classification_params.yml" if classification_system == "uscs" else "lithology_classification_params.yml"
+        config_file = (
+            "classification_params.yml" if classification_system == "uscs" else "lithology_classification_params.yml"
+        )
         self.classification_params = read_params(config_file)
 
     def get_stemmer(self, language: str) -> SnowballStemmer:
