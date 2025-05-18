@@ -201,7 +201,7 @@ def main(
     """
     classifier_type = classifier_type.lower()
     classification_system = classification_system.lower()
-    if classification_system == "lithology" and classifier_type not in ["dummy", "bedrock"]:
+    if classification_system == "lithology" and classifier_type not in ["dummy", "bedrock", "baseline"]:
         raise NotImplementedError(
             "Currently, only the dummy and bedrock classifier are supported with classification system 'lithology'."
         )
@@ -217,7 +217,7 @@ def main(
     if classifier_type == "dummy":
         classifier = DummyClassifier()
     elif classifier_type == "baseline":
-        classifier = BaselineClassifier()
+        classifier = BaselineClassifier(classification_system)
     elif classifier_type == "bert":
         classifier = BertClassifier(model_path)
     elif classifier_type == "bedrock":
