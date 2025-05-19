@@ -11,7 +11,7 @@ from utils.file_utils import read_params
 class BaselineClassifier:
     """Baseline classifier class.
 
-    The BaselineClassifier works by matching stemmed USCS patterns against layer descriptions using
+    The BaselineClassifier works by matching stemmed class patterns against layer descriptions using
     a flexible ordered sequence matching algorithm.
     """
 
@@ -104,18 +104,18 @@ class BaselineClassifier:
         return None
 
     def classify(self, layer_descriptions: list[LayerInformations]):
-        """Classifies the material descriptions of layer information objects into USCS soil classes.
+        """Classifies the material descriptions of layer information objects into the slected classes.
 
         The method modifies the input object, layer_descriptions by setting their prediction_class attribute.
         The approach is as follows:
 
-        1. Tokenize and stem both the material description and the USCS pattern keywords
+        1. Tokenize and stem both the material description and the pattern keywords
         2. Find matches between description and patterns using partial matching
         3. Scores matches based on three criteria (in priority order):
            - Coverage: Percentage of pattern words matched in the description
            - Complexity: Length/specificity of the pattern (longer patterns preferred)
            - Position: Earlier matches in the text are preferred
-        4. Assigns the best matching USCS class to the layer object
+        4. Assigns the best class from the selected classification system to the layer object.
 
         For layers with no matches, assigns the default class 'kA' (no classification).
 
