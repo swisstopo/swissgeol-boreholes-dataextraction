@@ -48,7 +48,7 @@ def load_borehole_reports(json_paths: list[str]) -> list[tuple[str, str, list[di
 
 
 def split_layers(
-    layers: list[tuple[str, int, dict, dict]], train_frac: float = 0.7, val_frac: float = 0.15, seed: int = 42
+    layers: list[tuple[str, int, dict, dict]], train_frac: float = 0.8, val_frac: float = 0.1, seed: int = 42
 ) -> tuple[list[tuple[str, int, dict, dict]], list[tuple[str, int, dict, dict]], list[tuple[str, int, dict, dict]]]:
     """Split a list of layers into train, validation, and test subsets.
 
@@ -195,13 +195,12 @@ def main() -> None:
         None
     """
     json_paths = ["data/deepwells_ground_truth.json", "data/nagra_ground_truth.json"]
-    output_dir = "data/nagra_deepwells_custom_split"
+    output_dir = "data/lithology_splits"
 
     reports = load_borehole_reports(json_paths)
     n = len([r for r in reports if r[1] == "nagra"])
     print("tot", len(reports), "nagra", n)
 
-    # train, val, test = split_layers(layers, train_frac=0.7, val_frac=0.15, seed=42)
     train_reports, val_reports, test_reports = split_reports(
         reports, train_frac=0.8, val_frac=0.1, eval_sets_nagra_ratio=0.3, seed=42
     )
