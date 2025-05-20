@@ -34,8 +34,7 @@ class MaterialDescriptionRectWithSidebar:
           descriptions
         - positively influenced by the number of text lines contained in the material decription rectangle
         The resulting score is also reduced if the sidebar has a high noise count (many unrelated tokens in between
-        the extracted depths values). This noise is not taken into account if the sidebar is extracted from text (if it
-        is of type LayerIdentifierSidebar or AtoBSidebar).
+        the extracted depths values).
 
         Pairs without a sidebar receive a default score of 0.
 

@@ -58,6 +58,9 @@ class AToBSidebar(Sidebar[AToBInterval]):
             current_interval = self.entries[index]
             sublayer_count = number_of_subintervals(current_interval, self.entries[index + 1 :])
 
+            # It seems reasonable that a single "parent" layer should not have more than 8 sublayers. This check
+            # ensures that when e.g. a scale "1:100" is misinterpreted as a parent layer from 1m to 100m, the entire
+            # borehole profile below is not incorrectly reduced to being sublayers of this incorrectly extracted layer.
             if sublayer_count > 8:
                 depths_ok = False
             else:
