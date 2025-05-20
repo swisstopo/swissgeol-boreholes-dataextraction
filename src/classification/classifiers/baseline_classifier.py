@@ -104,7 +104,7 @@ class BaselineClassifier:
         return None
 
     def classify(self, layer_descriptions: list[LayerInformations]):
-        """Classifies the material descriptions of layer information objects into the slected classes.
+        """Classifies the material descriptions of layer information objects into the selected classes.
 
         The method modifies the input object, layer_descriptions by setting their prediction_class attribute.
         The approach is as follows:
