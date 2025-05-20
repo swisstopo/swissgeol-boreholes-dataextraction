@@ -13,7 +13,6 @@ def create_subset(input_file, output_file, fraction=0.1, seed=42):
     if not isinstance(data, dict):
         raise ValueError("Expected a JSON object (dictionary) at the root.")
 
-    # Get the keys and pick the first 10% (or random 10%, you can decide)
     keys = list(data.keys())
     subset_size = max(1, int(len(keys) * fraction))
     random.seed(seed)
