@@ -199,10 +199,9 @@ def main(
         model_path (Path): Path to the trained model.
         classification_system (str): The classification system used to classify the data.
     """
-    if classification_system == "lithology" and classifier_type not in ["dummy", "bert", "bedrock"]:
+    if classification_system == "lithology" and classifier_type != "dummy":
         raise NotImplementedError(
-            "Currently, only the dummy, bedrock and bert classifier are supported with classification system "
-            "'lithology'."
+            "Currently, only the dummy classifier is supported with classification system 'lithology'."
         )
 
     if mlflow_tracking:
