@@ -14,8 +14,9 @@
                 //"example/example_borehole_profile.pdf",
                 //"data/subset_zurich",
                 //"data/zurich",
-                "data/zurich/267123060-bp.pdf",
-                //"data/zurich/695265010-bp.pdf",
+                // "data/geoquat/B83rot.pdf",
+                // "data/geoquat/validation/B83.pdf",
+                "data/geoquat/validation/2537.pdf",
                 // "data/zurich/268123018-bp.pdf", // 2 bh, one with gw
                 // "data/zurich/269126084-bp.pdf", // 2 gw in the same borehole
                 // "data/zurich/267125339-bp.pdf", //groundwater detected
@@ -40,8 +41,8 @@
                 // "data/nagra",
                 "-g",
                 "data/zurich_ground_truth.json",
-                //"data/geoquat_ground_truth.json",
-                "-l"
+                // "data/geoquat_ground_truth.json"
+                "-l",
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
