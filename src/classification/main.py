@@ -201,10 +201,6 @@ def main(
     """
     classifier_type = classifier_type.lower()
     classification_system = classification_system.lower()
-    if classification_system == "lithology" and classifier_type not in ["dummy", "bedrock", "baseline"]:
-        raise NotImplementedError(
-            "Currently, only dummy, baseline, bert and bedrock classifier are supported with classification system 'lithology'."
-        )
 
     if mlflow_tracking:
         setup_mlflow_tracking(file_path, out_directory, file_subset_directory)
