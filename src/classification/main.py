@@ -6,6 +6,7 @@ from pathlib import Path
 
 import click
 from dotenv import load_dotenv
+from utils.file_utils import read_params
 
 from classification import DATAPATH
 from classification.classifiers.aws_bedrock_classifier import AWSBedrockClassifier
@@ -21,7 +22,6 @@ from classification.utils.data_utils import (
     write_per_language_per_class_predictions,
     write_predictions,
 )
-from utils.file_utils import read_params
 
 load_dotenv()
 classification_params = read_params("classification_params.yml")
@@ -199,9 +199,10 @@ def main(
         model_path (Path): Path to the trained model.
         classification_system (str): The classification system used to classify the data.
     """
-    if classification_system == "lithology" and classifier_type not in ["dummy", "bert"]:
+    if classification_system == "lithology" and classifier_type not in ["dummy", "bert", "bedrock"]:
         raise NotImplementedError(
-            "Currently, only the dummy and bert classifier are supported with classification system 'lithology'."
+            "Currently, only the dummy, bedrock and bert classifier are supported with classification system "
+            "'lithology'."
         )
 
     if mlflow_tracking:
