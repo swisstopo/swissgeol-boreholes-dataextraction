@@ -1,0 +1,17 @@
+# Config file for lithology classification
+# Prompt file and version
+prompts_file: bedrock/uscs_classification_prompts.yml
+prompt_version: baseline
+
+# Pattern file and parameter version
+pattern_file: bedrock/uscs_classification_patterns_bedrock.yml
+pattern_version: baseline
+
+# temperature - answer creativity for the LLM model
+temperature: 0.0
+
+# Maximum response tokens
+max_tokens: 2048
+
+# Parameter indicating if Reasoning (Chain of Thought) mode should be used. Warning this significantly increases latency
+reasoning_mode: False

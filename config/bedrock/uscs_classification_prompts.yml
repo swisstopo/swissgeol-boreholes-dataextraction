@@ -6,7 +6,7 @@ classification:
 
       This is a list of Unified Soil CLassification System (USCS) categories
       <classifications>
-      {uscs_patterns}
+      {class_patterns}
       </classifications>
 
       <rules>
@@ -34,7 +34,7 @@ classification:
 
       Bellow is a list of USCS categories for the specific language
       <classifications>
-      {uscs_patterns}
+      {class_patterns}
       </classifications>
 
       <rules>
@@ -62,7 +62,7 @@ reasoning:
 
         This is a list of relevant Unified Soil CLassification System (USCS) categories
         <classifications>
-        {uscs_patterns}
+        {class_patterns}
         </classifications>
 
         <rules>
@@ -106,7 +106,7 @@ reasoning:
 
       Bellow is a list of USCS categories for the specific language
       <classifications>
-      {uscs_patterns}
+      {class_patterns}
       </classifications>
 
       <rules>
