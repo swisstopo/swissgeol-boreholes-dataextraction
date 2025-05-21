@@ -82,7 +82,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         if material_description_rect_without_sidebar:
             material_descriptions_sidebar_pairs.append(
                 MaterialDescriptionRectWithSidebar(
-                    sidebar=None, material_description_rect=material_description_rect_without_sidebar
+                    sidebar=None, material_description_rect=material_description_rect_without_sidebar, lines=self.lines
                 )
             )
 
@@ -285,7 +285,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             material_description_rect = self._find_material_description_column(layer_identifier_sidebar)
             if material_description_rect:
                 material_descriptions_sidebar_pairs.append(
-                    MaterialDescriptionRectWithSidebar(layer_identifier_sidebar, material_description_rect)
+                    MaterialDescriptionRectWithSidebar(layer_identifier_sidebar, material_description_rect, self.lines)
                 )
         return material_descriptions_sidebar_pairs
 
@@ -319,6 +319,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     MaterialDescriptionRectWithSidebar(
                         sidebar=sidebar_noise.sidebar,
                         material_description_rect=material_description_rect,
+                        lines=self.lines,
                         noise_count=sidebar_noise.noise_count,
                     )
                 )
@@ -362,8 +363,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         description_clusters = []
         while len(is_description) > 0:
+            # 0.4 instead of 0.5 slightly improves geoquat/validation/A76.pdf
             coverage_by_generating_line = [
-                [other for other in is_description if x_overlap_significant_smallest(line.rect, other.rect, 0.5)]
+                [other for other in is_description if x_overlap_significant_smallest(line.rect, other.rect, 0.4)]
                 for line in is_description
             ]
 
@@ -436,7 +438,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         if sidebar:
             return max(
                 candidate_rects,
-                key=lambda rect: MaterialDescriptionRectWithSidebar(sidebar, rect).score_match,
+                key=lambda rect: MaterialDescriptionRectWithSidebar(sidebar, rect, self.lines).score_match,
             )
         else:
             return candidate_rects[0]

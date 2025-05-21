@@ -31,8 +31,6 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"
 
-model_config = read_params("bert_config.yml")
-
 
 class WeightedLabelSmoother:
     """Label Smoothing with optional per-class weighting for classification tasks.
@@ -86,7 +84,7 @@ class WeightedLabelSmoother:
 
 
 def setup_mlflow_tracking(
-    file_path: Path,
+    model_config: dict,
     out_directory: Path,
     experiment_name: str = "Bert training",
 ):
@@ -95,7 +93,10 @@ def setup_mlflow_tracking(
         mlflow.end_run()  # Ensure the previous run is closed
     mlflow.set_experiment(experiment_name)
     mlflow.start_run()
-    mlflow.set_tag("json file_path", str(file_path))
+    mlflow.set_tag("classification system", str(model_config["classification_system"]))
+    json_path = model_config.get("json_file_name")
+    json_path = json_path if json_path else model_config.get("train_subset").split("/")[0]
+    mlflow.set_tag("json file path", json_path)
     mlflow.set_tag("out_directory", str(out_directory))
     mlflow.log_params(model_config)
 
@@ -103,11 +104,11 @@ def setup_mlflow_tracking(
 def common_options(f):
     """Decorator to add common options to commands."""
     f = click.option(
-        "-f",
-        "--file-path",
+        "-cf",
+        "--config-file-path",
         required=True,
-        type=click.Path(exists=True, path_type=Path),
-        help="Path to the json file.",
+        type=str,
+        help="Name (not path) of the configuration yml file inside the `config` folder.",
     )(f)
     f = click.option(
         "-c",
@@ -128,24 +129,27 @@ def common_options(f):
 
 @click.command()
 @common_options
-def train_model(file_path: Path, out_directory: Path, model_checkpoint: Path):
+def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: Path):
     """Train a BERT model using the specified datasets and configurations from the YAML config file."""
-    out_directory = out_directory / time.strftime("%Y%m%d-%H%M%S")
+    model_config = read_params(config_file_path)
+
+    out_directory = out_directory / model_config["classification_system"] / time.strftime("%Y%m%d-%H%M%S")
 
     if mlflow_tracking:
         logger.info("Logging to MLflow.")
-        setup_mlflow_tracking(file_path, out_directory)
+        setup_mlflow_tracking(model_config, out_directory)
 
     # Initialize the model and tokenizer, freeze layers, put in train mode
+
     model_path = model_config["model_path"] if model_checkpoint is None else model_checkpoint
     logger.info(f"Loading pretrained model from {model_path}.")
-    bert_model = BertModel(model_path)
+    bert_model = BertModel(model_path, model_config["classification_system"])
     bert_model.freeze_all_layers()
     bert_model.unfreeze_list(model_config.get("unfreeze_layers", []))
     bert_model.model.train()
 
     # Initialize the trainer
-    trainer = setup_trainer(bert_model, file_path, out_directory)
+    trainer = setup_trainer(bert_model, model_config, out_directory)
 
     # Start training
     logger.info("Beginning the training.")
@@ -158,10 +162,11 @@ def train_model(file_path: Path, out_directory: Path, model_checkpoint: Path):
     trainer.save_state()
 
 
-def setup_training_args(out_directory: Path) -> TrainingArguments:
+def setup_training_args(model_config: dict, out_directory: Path) -> TrainingArguments:
     """Create a TrainingArgument object from the config file.
 
     Args:
+        model_config (dict): The dictionary containing the model configuration.
         out_directory (Path): The directory for storing the model.
 
     Returns:
@@ -190,22 +195,42 @@ def setup_training_args(out_directory: Path) -> TrainingArguments:
     return training_args
 
 
-def setup_data(bert_model: BertModel, file_path: Path) -> tuple[datasets.Dataset, datasets.Dataset]:
+def setup_data(bert_model: BertModel, model_config: dict) -> tuple[datasets.Dataset, datasets.Dataset]:
     """Create tokenized datasets for the train and evaluation parts.
 
     Args:
         bert_model (BertModel): The bert model and tokenizer.
-        file_path (Path) : The path to the json file with the description and labels.
+        model_config (dict): The dictionary containing the model configuration.
 
     Returns:
         tuple[datasets.Dataset, datasets.Dataset]: the training arguments.
     """
-    train_subset = model_config["train_subset"]
-    eval_subset = model_config["eval_subset"]
+    if model_config["classification_system"] == "uscs":
+        # the data is not stored the same way for uscs and lithology. Currently the reports names enumerated in the
+        # json file only locally exists for uscs.
+        # Once all of the files are available, we will be able to use the code without the need for this
+        # if-else block.
+        train_file_path = DATAPATH / model_config["json_file_name"]
+        train_subset = DATAPATH / model_config["train_subset"]
+        eval_file_path = DATAPATH / model_config["json_file_name"]
+        eval_subset = DATAPATH / model_config["eval_subset"]
+    elif model_config["classification_system"] == "lithology":
+        train_file_path = DATAPATH / model_config["train_subset"]
+        train_subset = None
+        eval_file_path = DATAPATH / model_config["eval_subset"]
+        eval_subset = None
 
-    train_data = load_data(file_path, file_subset_directory=DATAPATH / train_subset)
+    train_data = load_data(
+        train_file_path,
+        file_subset_directory=train_subset,
+        classification_system_str=model_config["classification_system"],
+    )
     train_dataset = bert_model.get_tokenized_dataset(train_data)
-    eval_data = load_data(file_path, file_subset_directory=DATAPATH / eval_subset)
+    eval_data = load_data(
+        eval_file_path,
+        file_subset_directory=eval_subset,
+        classification_system_str=model_config["classification_system"],
+    )
     eval_dataset = bert_model.get_tokenized_dataset(eval_data)
     return train_dataset, eval_dataset
 
@@ -247,23 +272,23 @@ def compute_trainset_weights(
     return scaled_weights
 
 
-def setup_trainer(bert_model: BertModel, file_path: Path, out_directory: Path) -> Trainer:
+def setup_trainer(bert_model: BertModel, model_config: dict, out_directory: Path) -> Trainer:
     """Create a Trainer object.
 
     Args:
         bert_model (BertModel): The bert model and tokenizer.
-        file_path (Path): The path to the json file with the description and labels.
+        model_config (dict): The dictionary containing the model configuration.
         out_directory (Path): The directory for storing the model.
 
     Returns:
         Trainer: The trainer obect.
     """
     # load the training arguments from the config file
-    training_args = setup_training_args(out_directory)
+    training_args = setup_training_args(model_config, out_directory)
 
     # Load datasets
     logger.info("Loading datasets (transformers librairy).")
-    train_dataset, eval_dataset = setup_data(bert_model, file_path)
+    train_dataset, eval_dataset = setup_data(bert_model, model_config)
 
     # Define a custom compute_metrics function
     def compute_metrics(eval_pred: EvalPrediction) -> dict[str, float]:
@@ -305,5 +330,5 @@ def setup_trainer(bert_model: BertModel, file_path: Path, out_directory: Path) -
 
 
 if __name__ == "__main__":
-    # run: fine-tune-bert -f data/geoquat_ground_truth.json -c models/your_chekpoint_model_folder
+    # run: fine-tune-bert -cf bert_config_uscs.yml -c models/your_chekpoint_model_folder
     train_model()

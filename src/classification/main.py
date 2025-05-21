@@ -80,18 +80,9 @@ def log_ml_flow_infos(
     # Log model and id, prompt and parameter versions if anthropic model used
     if isinstance(classifier, AWSBedrockClassifier):
         mlflow.log_param("anthropic_model_id", os.environ.get("ANTHROPIC_MODEL_ID"))
-
-        prompt_version = read_params("bedrock/bedrock_config.yml")["prompt_version"]
-        if prompt_version:
-            mlflow.log_param("anthropic_prompt_version", prompt_version)
-
-        class_param_version = read_params("bedrock/bedrock_config.yml")["uscs_pattern_version"]
-        if class_param_version:
-            mlflow.log_param("anthropic_class_param_version", class_param_version)
-
-        reasoning_mode = read_params("bedrock/bedrock_config.yml")["reasoning_mode"]
-        if reasoning_mode:
-            mlflow.log_param("anthropic_reasoning_mode", reasoning_mode)
+        mlflow.log_param("anthropic_prompt_version", classifier.prompt_version)
+        mlflow.log_param("anthropic_class_pattern_version", classifier.pattern_version)
+        mlflow.log_param("anthropic_reasoning_mode", classifier.reasoning_mode)
 
     # Log input data and output predictions
     mlflow.log_artifact(str(file_path), "input_data")
@@ -208,9 +199,10 @@ def main(
         model_path (Path): Path to the trained model.
         classification_system (str): The classification system used to classify the data.
     """
-    if classification_system == "lithology" and classifier_type != "dummy":
+    if classification_system == "lithology" and classifier_type not in ["dummy", "bedrock", "bert"]:
         raise NotImplementedError(
-            "Currently, only the dummy classifier is supported with classification system 'lithology'."
+            "Currently, only the dummy, bedrock and bert classifiers are supported with classification system "
+            "'lithology'."
         )
 
     if mlflow_tracking:
@@ -226,9 +218,11 @@ def main(
     elif classifier_type == "baseline":
         classifier = BaselineClassifier()
     elif classifier_type == "bert":
-        classifier = BertClassifier(model_path)
+        classifier = BertClassifier(model_path, classification_system)
     elif classifier_type == "bedrock":
-        classifier = AWSBedrockClassifier(out_directory_bedrock, max_concurrent_calls=1, api_call_delay=0.0)
+        classifier = AWSBedrockClassifier(
+            out_directory_bedrock, classification_system, max_concurrent_calls=1, api_call_delay=0.0
+        )
 
     # classify
     logger.info(

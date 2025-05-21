@@ -5,55 +5,59 @@ import re
 import pymupdf
 from extraction.features.utils.text.textline import TextLine
 
+from ...utils.text.textblock import TextBlock
 from ..base.sidebar_entry import DepthColumnEntry
-from .interval import AToBInterval
+from .interval import AToBInterval, IntervalBlockPair
 
 
 class AToBIntervalExtractor:
     """Methods for finding AToBInterval instances (e.g. "0.5m - 1.8m") in a text."""
 
-    @classmethod
-    def from_material_description_lines(cls, lines: list[TextLine]) -> AToBInterval | None:
+    @staticmethod
+    def from_material_description_lines(lines: list[TextLine]) -> list[IntervalBlockPair]:
         """Extract depth interval from text lines from a material description.
 
-        For borehole profiles in the Deriaz layout, the depth interval is usually found in the text of the material
-        description. Often, these text descriptions contain a further separation into multiple sub layers.
-        These sub layers have their own depth intervals. This function extracts the overall depth interval,
-        spanning across all mentioned sub layers.
-
+        For borehole profiles using the Deriaz layout, depth intervals are typically embedded within the material
+        description text. These descriptions often further subdivide into multiple sublayers, each with its own
+        distinct depth interval. This function extracts all such depth intervals found in the description, along with
+        their corresponding text blocks. Decisions about which intervals to keep or discard are handled by downstream
+        processing.
         For example (from GeoQuat 12306):
             1) REMBLAIS HETEROGENES
                0.00 - 0.08 m : Revêtement bitumineux
                0.08- 0.30 m : Grave d'infrastructure
                0.30 - 1.40 m : Grave dans importante matrice de sable
                                moyen, brun beige, pulvérulent.
-        From this material description, this method will extract a single depth interval that starts at 0m and ends
-        at 1.40m.
+        From this material description, this method will extract all depth intervals.
 
         Args:
             lines (list[TextLine]): The lines to extract the depth interval from.
 
         Returns:
-            AToBInterval | None: The depth interval (if any) or None (if no depth interval was found).
+            list[IntervalBlockPair]: a list of interval-block-pairs that can be extracted from the given lines
         """
-        depth_entries = []
+        entries = []
+        current_block = []
+        current_interval = None
+        start_depth = None
         for line in lines:
-            try:
-                a_to_b_depth_entry = AToBIntervalExtractor.from_text(line, require_start_of_string=False)
-                # require_start_of_string = False because the depth interval may not always start at the beginning
-                # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
-                if a_to_b_depth_entry:
-                    depth_entries.append(a_to_b_depth_entry)
-            except ValueError:
-                pass
+            a_to_b_interval = AToBIntervalExtractor.from_text(line, require_start_of_string=False)
+            # require_start_of_string = False because the depth interval may not always start at the beginning
+            # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
+            if a_to_b_interval:
+                # We assume that the first depth encountered is the start depth, and we reject further depth values
+                # smaller than this first one. This avoids some false positives (e.g. GeoQuat 3339.pdf).
+                if not start_depth:
+                    start_depth = a_to_b_interval.start.value
+                if a_to_b_interval.start.value >= start_depth:
+                    if current_interval:
+                        entries.append(IntervalBlockPair(current_interval, TextBlock(current_block)))
+                        current_block = []
+                    current_interval = a_to_b_interval
+            current_block.append(line)
+        entries.append(IntervalBlockPair(current_interval, TextBlock(current_block)))
 
-        if depth_entries:
-            # Merge the sub layers into one depth interval.
-            start = min([entry.start for entry in depth_entries], key=lambda start_entry: start_entry.value)
-            end = max([entry.end for entry in depth_entries], key=lambda end_entry: end_entry.value)
-            return AToBInterval(start, end)
-        else:
-            return None
+        return entries
 
     @classmethod
     def from_text(cls, text_line: TextLine, require_start_of_string: bool = True) -> AToBInterval | None:
