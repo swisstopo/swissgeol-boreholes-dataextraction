@@ -185,7 +185,10 @@ def _are_parallel(line1: Line, line2: Line, angle_threshold: float) -> bool:
     Returns:
         bool: True if the lines are parallel, False otherwise.
     """
-    return np.abs(atan(line1.slope) - atan(line2.slope)) < angle_threshold * pi / 180
+    return (
+        np.abs(atan(line1.slope) - atan(line2.slope)) < angle_threshold * pi / 180
+        or np.pi - np.abs(atan(line1.slope) - atan(line2.slope)) < angle_threshold * pi / 180
+    )
 
 
 def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: float) -> list[Line]:

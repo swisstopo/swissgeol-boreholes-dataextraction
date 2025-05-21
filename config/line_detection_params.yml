@@ -10,7 +10,7 @@ lsd:
 
 hough:
   target_width: 2000
-  blur_dist: 15
+  blur_dist: 5
   morph_kernel_size: 6
   min_line_length: 150  # Minimum length of line (adjust based on your image)
   max_line_gap: 5  # Maximum allowed gap between line segments
@@ -21,5 +21,7 @@ hough:
 pdf_scale_factor: 2
 
 line_merging_params:
-  merging_tolerance: 20.  # maximum distance between two lines that are merged for a reference image of width=2000
+  reference_size: 1000
+  merging_tolerance: 10.  # maximum distance between two lines that are merged for a reference image of width=2000
   angle_threshold: 5  # maximum difference in degrees between two line segments that are merged
+  min_line_length: 180

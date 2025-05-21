@@ -63,7 +63,7 @@ def detect_lines_hough(page: pymupdf.Page, hough_params: dict) -> ArrayLike:
         hough_params (dict): The parameters for the bluring and hough transform.
 
     Returns:
-        tuple[list[Line], float]: The lines detected in the pdf and the scale_ratio of the document
+        list[Line]: The lines detected in the pdf
     """
     pix = page.get_pixmap()
     img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, 3)
@@ -74,31 +74,33 @@ def detect_lines_hough(page: pymupdf.Page, hough_params: dict) -> ArrayLike:
     scale_ratio = target_width / w  # resize to a fixed size, to work with the chosen parameters
     new_size = (target_width, int(h * scale_ratio))  # carefull size is (w,h) for resizing
     gray = cv2.resize(gray, new_size)
-    cv2.imwrite("data/debug_cv_gray.png", gray)
+    os.makedirs("data/debug_cv", exist_ok=True)
+    cv2.imwrite("data/debug_cv/debug_cv1_gray.png", gray)
 
     blur_dist = hough_params["blur_dist"]
-    blurred = cv2.bilateralFilter(gray, blur_dist, blur_dist * 5, blur_dist * 5)  # dist, sigma_color, sigma space
-    cv2.imwrite("data/debug_cv_blur.png", blurred)
+    blurred = cv2.bilateralFilter(gray, blur_dist, 75, blur_dist * 5)  # dist, sigma_color, sigma space
+    cv2.imwrite("data/debug_cv/debug_cv2_blur2.png", blurred)
 
     # Apply binary thresholding with otsu method, that minimizes the intra-class variance.
-    _, thresh = cv2.threshold(blurred, 100, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    cv2.imwrite("data/debug_cv_otsu.png", thresh)
+    _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    cv2.imwrite("data/debug_cv/debug_cv3_otsu.png", thresh)
 
     morph_kernel_size = hough_params["morph_kernel_size"]
-    kernel = np.ones((morph_kernel_size, morph_kernel_size), np.uint8)
-    morphed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-    morphed = cv2.morphologyEx(morphed, cv2.MORPH_OPEN, kernel)
-    # morphed = cv2.morphologyEx(morphed, cv2.MORPH_DILATE, kernel)
-    cv2.imwrite("data/debug_cv_morph.png", morphed)
+    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (morph_kernel_size, 3))
+    horizontal = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, horizontal_kernel, iterations=2)
+    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, morph_kernel_size))
+    vertical = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, vertical_kernel, iterations=2)
+    combined = cv2.bitwise_or(horizontal, vertical)
+    cv2.imwrite("data/debug_cv/debug_cv4_morph_VH.png", combined)
 
     min_line_length = hough_params["min_line_length"]  # Minimum length of line (adjust based on your image)
     max_line_gap = hough_params["max_line_gap"]  # Maximum allowed gap between line segments
     rho = hough_params["rho"]  # Distance resolution in the accumulartor space in pixels
     theta = np.pi / 180 * hough_params["theta_deg"]  # Angular resolution in the accumulator space in radian
     threshold = hough_params["threshold"]  # Minimum number of votes to consider a line
-    lines = cv2.HoughLinesP(morphed, rho, theta, threshold, minLineLength=min_line_length, maxLineGap=max_line_gap)
+    lines = cv2.HoughLinesP(combined, rho, theta, threshold, minLineLength=min_line_length, maxLineGap=max_line_gap)
 
-    return [line_from_array(line, scale_ratio) for line in lines], scale_ratio
+    return [line_from_array(line, scale_ratio) for line in lines]
 
 
 def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]:
@@ -111,106 +113,24 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
     Returns:
         list[Line]: The detected lines as a list.
     """
-    lines = detect_lines_lsd(
+    lines2 = detect_lines_lsd(
         page,
         lsd_params=line_detection_params["lsd"],
         scale_factor=line_detection_params["pdf_scale_factor"],
     )
-    lines, scale_ratio = detect_lines_hough(
-        page,
-        hough_params=line_detection_params["hough"],
-    )
+    # lines = detect_lines_hough(
+    #     page,
+    #     hough_params=line_detection_params["hough"],
+    # )
 
     merging_params = line_detection_params["line_merging_params"]
 
-    # other_merge = advanced_merge_lines(
-    #     lines,
-    # )
+    width = page.rect[2]
+    scaling_factor = width / merging_params["reference_size"]
 
     # return lines
-    tol = merging_params["merging_tolerance"] * scale_ratio
+    tol = merging_params["merging_tolerance"] * scaling_factor
     angle_tol = merging_params["angle_threshold"]
-    merged = merge_parallel_lines_quadtree(lines, tol=tol, angle_threshold=angle_tol)
+    merged = merge_parallel_lines_quadtree(lines2, tol=tol, angle_threshold=angle_tol)
+    merged = [line for line in merged if line.length >= merging_params["min_line_length"] * scaling_factor]
     return merged
-
-
-# def fancy(tresh):
-#     # closing = cv.morphologyEx(img, cv.MORPH_CLOSE, kernel)
-#     canny_edges = cv2.Canny(tresh, 50, 150, apertureSize=3)
-#     cv2.imwrite("data/debug_cv_edge_canny.png", canny_edges)
-#     kernel = np.ones((10, 10), np.uint8)
-#     morphed = cv2.morphologyEx(canny_edges, cv2.MORPH_CLOSE, kernel)
-#     morphed = cv2.morphologyEx(morphed, cv2.MORPH_DILATE, kernel)
-#     cv2.imwrite("data/debug_cv_edge_morphed.png", morphed)
-
-#     # Step 3: Line segment detection using Probabilistic Hough Transform
-#     min_line_length = 300  # Minimum length of line (adjust based on your image)
-#     max_line_gap = 5  # Maximum allowed gap between line segments
-#     rho = 10  # Distance resolution in pixels
-#     theta = np.pi / 45  # Angular resolution in radians pi/60 = possible angles every 4 degree
-#     threshold = 10000  # Minimum number of votes to consider a line
-
-#     lines2 = cv2.HoughLinesP(morphed, rho, theta, threshold, minLineLength=min_line_length, maxLineGap=max_line_gap)
-#     return lines2
-
-
-# def fancy(gray):
-#     # First approach: Simple Gaussian blur
-#     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-
-#     # Second approach: CLAHE (Contrast Limited Adaptive Histogram Equalization)
-#     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-#     clahe_image = clahe.apply(gray)
-
-#     # Apply adaptive thresholding to both approaches
-#     thresh1 = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-
-#     thresh2 = cv2.adaptiveThreshold(clahe_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
-
-#     # Combine results
-#     combined_thresh = cv2.bitwise_or(thresh1, thresh2)
-#     cv2.imwrite("data/combined_tresh.png", combined_thresh)
-
-#     # Step 2: Multi-scale edge detection
-#     # Use a combination of edge detection methods
-#     edges1 = cv2.Canny(gray, 30, 150, apertureSize=3)
-#     cv2.imwrite("data/debug_canny.png", edges1)
-#     edges2 = cv2.Canny(clahe_image, 30, 150, apertureSize=3)
-#     cv2.imwrite("data/debug_cann_clahe.png", edges2)
-
-#     # Combine edges
-#     combined_edges = cv2.bitwise_or(edges1, edges2)
-
-#     # Apply morphological operations to ensure line continuity
-#     kernel_line = np.ones((1, 5), np.uint8)  # Horizontal kernel
-#     dilated_h = cv2.dilate(combined_edges, kernel_line, iterations=1)
-#     kernel_line = np.ones((5, 1), np.uint8)  # Vertical kernel
-#     dilated_v = cv2.dilate(combined_edges, kernel_line, iterations=1)
-
-#     # Combine horizontal and vertical dilations
-#     dilated_edges = cv2.bitwise_or(dilated_h, dilated_v)
-
-#     # Additional closing operation to ensure connectivity
-#     kernel = np.ones((3, 3), np.uint8)
-#     closed_edges = cv2.morphologyEx(dilated_edges, cv2.MORPH_CLOSE, kernel, iterations=1)
-#     cv2.imwrite("data/debug_close_edges.png", closed_edges)
-
-#     # Step 3: Multi-scale line detection
-#     # Detect lines at multiple scales and parameters
-
-#     # First pass - detect longer lines
-#     lines1 = cv2.HoughLinesP(closed_edges, rho=1, theta=np.pi / 180, threshold=40, minLineLength=40, maxLineGap=20)
-
-#     # Second pass - detect shorter, potentially discontinuous lines
-#     lines2 = cv2.HoughLinesP(closed_edges, rho=1, theta=np.pi / 180, threshold=20, minLineLength=20, maxLineGap=30)
-
-#     # Combine all detected lines
-#     all_lines = []
-
-#     if lines1 is not None:
-#         all_lines.extend([line[0] for line in lines1])
-
-#     if lines2 is not None:
-#         all_lines.extend([line[0] for line in lines2])
-
-#     return lines1
