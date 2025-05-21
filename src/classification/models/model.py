@@ -15,7 +15,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers.models.bert.modeling_bert import BertForSequenceClassification
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
-from classification.utils.classification_classes import USCSSystem
+from classification.utils.classification_classes import ClassificationSystem, ExistingClassificationSystems
 from classification.utils.data_loader import LayerInformations
 
 logger = logging.getLogger(__name__)
@@ -24,30 +24,57 @@ logger = logging.getLogger(__name__)
 class BertModel:
     """Class for BERT model and tokenizer."""
 
-    def __init__(self, model_path: str | Path):
+    def __init__(self, model_path: str | Path, classification_system_str: str):
         """Initialize a pretrained BERT model from the transformers librairy.
 
         Args:
             model_path (str): A string containing the model name.
+            classification_system_str (str): The classification system used to classify the data.
         """
-        self.num_class = len(USCSSystem.USCSClasses)
-        self.id2label = {class_.value: class_.name for class_ in USCSSystem.USCSClasses}
-        self.label2id = {class_.name: class_.value for class_ in USCSSystem.USCSClasses}
-        # Check if model_path is a valid directory for a locally saved model
-        if os.path.isdir(model_path):
-            logger.info(f"Model and tokenizer loaded from local path: {model_path}")
-        else:
-            logger.info(f"Pretrained model and tokenizer loaded from remote source: {model_path}")
+        self.classification_system_str = classification_system_str
+        self._setup_classification_system()
 
-        self.tokenizer: BertTokenizerFast = AutoTokenizer.from_pretrained(model_path)
-        self.model: BertForSequenceClassification = AutoModelForSequenceClassification.from_pretrained(
-            model_path,
-            num_labels=self.num_class,
-            id2label=self.id2label,
-            label2id=self.label2id,
+        self.model_path = model_path
+        self._load_model()
+
+    def _setup_classification_system(self) -> None:
+        """Set up label mappings based on the classification system."""
+        classification_system = ExistingClassificationSystems.get_classification_system_type(
+            self.classification_system_str
         )
+        classes = classification_system.get_enum()
+        self.num_class = len(classes)
+        self.id2label = {class_.value: class_.name for class_ in classes}
+        self.label2id = {class_.name: class_.value for class_ in classes}
+        self.id2classEnum = {class_.value: class_ for class_ in classes}
 
-        self.id2classEnum = {class_.value: class_ for class_ in USCSSystem.USCSClasses}
+    def _load_model(self) -> None:
+        """Load the model and tokennizer with the correct number of labels and mappings."""
+        # Check if model_path is a valid directory for a locally saved model
+        if os.path.isdir(self.model_path):
+            logger.info(f"Model and tokenizer loaded from local path: {self.model_path}")
+        else:
+            logger.info(f"Pretrained model and tokenizer loaded from remote source: {self.model_path}")
+
+        self.tokenizer: BertTokenizerFast = AutoTokenizer.from_pretrained(self.model_path)
+        try:
+            self.model: BertForSequenceClassification = AutoModelForSequenceClassification.from_pretrained(
+                self.model_path,
+                num_labels=self.num_class,
+                id2label=self.id2label,
+                label2id=self.label2id,
+            )
+        except RuntimeError as e:
+            error_message = str(e)
+            if "size mismatch for classifier" in error_message:
+                raise ValueError(
+                    f"Model loading failed due to a mismatch in the number of output classes.\n"
+                    f"Expected {self.num_class} classes, but the loaded model seems to have a different number.\n"
+                    f"This often happens if you try to load a model trained for a different task (e.g., lithology vs"
+                    f" USCS classification).\nOriginal error: {error_message}"
+                ) from e
+            else:
+                raise  # Re-raise the original exception if it's not a size mismatch
 
     def freeze_all_layers(self):
         """Freeze all layers (base bert model + classifier)."""
@@ -235,19 +262,19 @@ class BertModel:
         idx = torch.argmax(outputs.logits, dim=1).item()
         return idx
 
-    def predict_uscs_class(self, text: str) -> USCSSystem.USCSClasses:
+    def predict_class(self, text: str) -> ClassificationSystem.EnumMember:
         """Runs prediction on a single text input.
 
         Args:
             text (str): the text to predict the label index from.
 
         Returns:
-            int: the uscs class of the predicted label.
+            ClassificationSystem.EnumMember: The predicted class the text input.
         """
         idx = self.predict_idx(text)
         return self.id2classEnum[idx]
 
-    def predict_uscs_class_batched(self, texts: list[str], batch_size: int) -> list[USCSSystem.USCSClasses]:
+    def predict_class_batched(self, texts: list[str], batch_size: int) -> list[ClassificationSystem.EnumMember]:
         """Runs batch prediction on multiple text inputs.
 
         Args:
@@ -255,7 +282,7 @@ class BertModel:
             batch_size (int): batch size for the inference.
 
         Returns:
-            list[USCSClasses]: Predicted USCS class for each text.
+            list[ClassificationSystem.EnumMember]: The predicted class for each text.
         """
         inputs = [self.tokenize_text(text) for text in texts]
 
@@ -273,5 +300,5 @@ class BertModel:
                 predicted_indices = torch.argmax(outputs.logits, dim=1).tolist()
                 predictions.extend(predicted_indices)
 
-        # Convert indices to USCSClasses
+        # Convert indices to Enum classes
         return [self.id2classEnum[idx] for idx in predictions]

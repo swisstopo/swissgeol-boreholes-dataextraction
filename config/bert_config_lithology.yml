@@ -2,8 +2,9 @@
 model_path: "google-bert/bert-base-multilingual-uncased"
 
 # Data parameters
-train_subset: "geoquat/train"
-eval_subset: "geoquat/validation"
+classification_system: "lithology"
+train_subset: "nagra_deepwells_custom_split/train.json"
+eval_subset: "nagra_deepwells_custom_split/val.json"
 
 # Training hyperparameters
 batch_size: 32
@@ -19,7 +20,7 @@ unfreeze_layers:
   - "classifier"
   - "pooler"
   - "layer_11"
-use_class_balancing: "true"
+use_class_balancing: "false"
 
 # Inference parameters
 inference_batch_size: 32
