@@ -215,7 +215,7 @@ def main(
     elif classifier_type == "baseline":
         classifier = BaselineClassifier(classification_system)
     elif classifier_type == "bert":
-        classifier = BertClassifier(model_path)
+        classifier = BertClassifier(model_path, classification_system)
     elif classifier_type == "bedrock":
         classifier = AWSBedrockClassifier(
             out_directory_bedrock, classification_system, max_concurrent_calls=1, api_call_delay=0.0

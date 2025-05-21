@@ -14,22 +14,6 @@ from .linesquadtree import LinesQuadTree
 logger = logging.getLogger(__name__)
 
 
-def drop_vertical_lines(lines: list[Line], threshold: float = 0.1) -> ArrayLike:
-    """Given a list of lines, remove the lines that are close to vertical.
-
-    The algorithm will drop every line whose absolute slope is larger than 1 / threshold.
-
-    Args:
-        lines (ArrayLike): The lines to remove the vertical lines from.
-        threshold (float, optional): The threshold to determine if a line is vertical. The larger the threshold,
-                                     the fewer lines are considered. Defaults to 0.1.
-
-    Returns:
-        ArrayLike: The lines with the vertical lines removed.
-    """
-    return [line for line in lines if np.abs(line.slope) < 1 / threshold]
-
-
 def is_point_on_line(line: Line, point: Point, tol=10) -> ArrayLike:
     """Check if a point is on a line.
 

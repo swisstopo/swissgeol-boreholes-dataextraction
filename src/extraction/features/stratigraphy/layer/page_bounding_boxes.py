@@ -5,6 +5,8 @@ from dataclasses import dataclass
 
 import pymupdf
 from extraction.features.utils.geometry.geometry_dataclasses import BoundingBox
+from extraction.features.utils.text.find_description import get_description_lines
+from extraction.features.utils.text.textline import TextLine
 
 from ..sidebar.classes.sidebar import Sidebar
 
@@ -15,6 +17,7 @@ class MaterialDescriptionRectWithSidebar:
 
     sidebar: Sidebar | None
     material_description_rect: pymupdf.Rect
+    lines: list[TextLine]
     noise_count: int = 0
 
     @property
@@ -29,6 +32,7 @@ class MaterialDescriptionRectWithSidebar:
         - negatively influenced by vertical distance between the top of the sidebar and the top of the material
           descriptions, and the vertical distance between the bottom of the sidebar and the bottom of the material
           descriptions
+        - positively influenced by the number of text lines contained in the material decription rectangle
         The resulting score is also reduced if the sidebar has a high noise count (many unrelated tokens in between
         the extracted depths values).
 
@@ -37,21 +41,25 @@ class MaterialDescriptionRectWithSidebar:
         Returns:
             float: The score of the match. Better matches have a higher score value.
         """
-        if self.sidebar:
-            rect = self.sidebar.rect()
-            top = rect.y0
-            bottom = rect.y1
-            right = rect.x1
-            x_distance = abs(right - self.material_description_rect.x0)
-            y_distance = abs(top - self.material_description_rect.y0) + abs(bottom - self.material_description_rect.y1)
+        if not self.sidebar:
+            return 0.0
+        rect = self.sidebar.rect()
+        sidebar_top, sidebar_bottom, sidebar_right = rect.y0, rect.y1, rect.x1
+        material_left = self.material_description_rect.x0
+        material_top, material_bottom = self.material_description_rect.y0, self.material_description_rect.y1
+        x_distance = abs(sidebar_right - material_left)
+        y_distance = abs(sidebar_top - material_top) + abs(sidebar_bottom - material_bottom)
 
-            height = bottom - top
+        height = sidebar_bottom - sidebar_top
 
-            return (self.material_description_rect.width - x_distance + height - 2 * y_distance) * math.pow(
-                0.8, 10 * self.noise_count / len(self.sidebar.entries)
-            )
-        else:
-            return 0
+        geometry_score = self.material_description_rect.width - 1.64 * x_distance + height - 2 * y_distance
+
+        noise_penalty_multiplier = math.pow(0.8, 10 * self.noise_count / len(self.sidebar.entries))
+
+        description_lines = get_description_lines(self.lines, self.material_description_rect)
+        num_lines_score = len(description_lines)
+
+        return (geometry_score + num_lines_score) * noise_penalty_multiplier
 
 
 @dataclass

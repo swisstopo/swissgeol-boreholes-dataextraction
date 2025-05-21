@@ -2,6 +2,7 @@
 
 import csv
 import json
+import logging
 import os
 import shutil
 from collections import Counter, OrderedDict
@@ -15,6 +16,8 @@ from classification.utils.data_loader import LayerInformations
 from utils.file_utils import read_params
 
 classification_params = read_params("classification_params.yml")
+
+logger = logging.getLogger(__name__)
 
 
 def get_data_language_count(layer_descriptions: list[LayerInformations]) -> dict[str, int]:
@@ -109,14 +112,16 @@ def write_api_failures(api_failures: list, output_directory: Path, filename: str
                 existing_failures = json.load(f)
         except json.JSONDecodeError:
             # Overwrite the file if it isn't a valid JSON
-            print(f"Warning: Existing file {failures_path} contained invalid JSON and will be overwritten")
+            logger.warning(f"Existing file {failures_path} contained invalid JSON and will be overwritten")
 
     all_failures = existing_failures + api_failures
 
     with open(failures_path, "w") as f:
         json.dump(all_failures, f, indent=2)
 
-    print(f"Recorded {len(api_failures)} failed API calls to {failures_path}, total records: {len(all_failures)}")
+    logger.warning(
+        f"Recorded {len(api_failures)} failed API calls to {failures_path}, total failed records: {len(all_failures)}"
+    )
 
 
 @dataclass

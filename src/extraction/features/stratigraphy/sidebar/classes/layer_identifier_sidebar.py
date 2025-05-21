@@ -13,6 +13,9 @@ from utils.file_utils import read_params
 from ...base.sidebar_entry import LayerIdentifierEntry
 from ...interval.a_to_b_interval_extractor import AToBIntervalExtractor
 from ...interval.interval import IntervalBlockGroup
+from ...interval.partitions_and_sublayers import (
+    get_optimal_intervals_with_text,
+)
 from .sidebar import Sidebar
 
 logger = logging.getLogger(__name__)
@@ -60,12 +63,35 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             blocks.extend(matched_block)
 
         result = []
+        provisional_groups = []
+        last_end_depth = None
         for block in blocks:
-            depth_intervals = []
-            depth_interval = AToBIntervalExtractor.from_material_description_lines(block.lines)
-            if depth_interval:
-                depth_intervals.append(depth_interval)
-            result.append(IntervalBlockGroup(depth_intervals=depth_intervals, blocks=[block]))
+            interval_block_pairs = AToBIntervalExtractor.from_material_description_lines(block.lines)
+            interval_block_pairs = get_optimal_intervals_with_text(interval_block_pairs)
+
+            new_groups = [
+                IntervalBlockGroup(depth_intervals=[pair.depth_interval], blocks=[pair.block])
+                for pair in interval_block_pairs
+            ]
+            if (
+                interval_block_pairs
+                and interval_block_pairs[0].depth_interval
+                and interval_block_pairs[-1].depth_interval
+            ):
+                new_start_depth = interval_block_pairs[0].depth_interval.start.value
+                if new_start_depth != last_end_depth:
+                    # only use this group without depth indications if the depths are discontinued
+                    result.extend(provisional_groups)
+                result.extend(new_groups)
+                provisional_groups = []
+                last_end_depth = interval_block_pairs[-1].depth_interval.end.value
+            else:
+                # If we don't have a depth interval, then we only use this data if the start of the next depth interval
+                # does not match the end of the last interval.
+                # Like this, we avoid including headers such as "6) Retrait würmien" as a separate layer, even when
+                # they have their own indicator in the profile.
+                provisional_groups.extend(new_groups)
+        result.extend(provisional_groups)
 
         return result
 

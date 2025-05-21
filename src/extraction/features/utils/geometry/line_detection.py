@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from numpy.typing import ArrayLike
 from utils.file_utils import read_params
 
-from .geometric_line_utilities import drop_vertical_lines, merge_parallel_lines_quadtree
+from .geometric_line_utilities import merge_parallel_lines_quadtree
 from .geometry_dataclasses import Line
 from .util import line_from_array
 
@@ -68,7 +68,7 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
         lsd_params=line_detection_params["lsd"],
         scale_factor=line_detection_params["pdf_scale_factor"],
     )
-    lines = drop_vertical_lines(lines, threshold=line_detection_params["vertical_lines_threshold"])
+
     merging_params = line_detection_params["line_merging_params"]
 
     return merge_parallel_lines_quadtree(

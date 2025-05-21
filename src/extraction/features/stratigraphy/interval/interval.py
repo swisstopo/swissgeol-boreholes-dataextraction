@@ -26,9 +26,15 @@ class Interval(ABC):
         super().__init__()
         self.start = start
         self.end = end
+        self.is_parent = False
+        self.is_sublayer = False
 
     def __repr__(self):
         return f"({self.start}, {self.end})"
+
+    @property
+    def skip_interval(self) -> bool:
+        return self.is_parent or self.is_sublayer
 
     @abstractmethod
     def matching_blocks(self, *args, **kwargs):
