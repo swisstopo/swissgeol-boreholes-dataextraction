@@ -10,13 +10,16 @@ from collections import defaultdict
 from pathlib import Path
 
 import boto3
-from classification.utils.classification_classes import ExistingClassificationSystems
+import mlflow
+from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformations
 from classification.utils.data_utils import write_api_failures, write_predictions
 from tqdm import tqdm
 from utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
+
+CONFIG_MAPINGS = read_params("classifier_config_paths.yml")
 
 
 class AWSBedrockClassifier:
@@ -25,7 +28,7 @@ class AWSBedrockClassifier:
     def __init__(
         self,
         bedrock_out_directory: Path | None,
-        classification_system_str: str,
+        classification_system: type[ClassificationSystem],
         max_concurrent_calls: int = 1,
         api_call_delay: float = 0.0,
     ):
@@ -36,15 +39,12 @@ class AWSBedrockClassifier:
 
         Args:
             bedrock_out_directory (Path): Directory to write prediction outputs and API failures
-            classification_system_str (str): the classification system used to classify the descriptions.
+            classification_system (type[ClassificationSystem]): the classification system used
             max_concurrent_calls (int): Maximum number of concurrent API calls (default: 1)
             api_call_delay (float): Delay between API calls in seconds (default: 0)
         """
-        self.init_config(classification_system_str)
-        self.classification_system = ExistingClassificationSystems.get_classification_system_type(
-            classification_system_str
-        )
-
+        self.init_config(classification_system)
+        self.classification_system = classification_system
         self.bedrock_client = boto3.client(service_name="bedrock-runtime", region_name=os.environ.get("AWS_REGION"))
         self.anthropic_version = os.environ.get("ANTHROPIC_VERSION")
         self.model_id = os.environ.get("ANTHROPIC_MODEL_ID")
@@ -64,14 +64,25 @@ class AWSBedrockClassifier:
         self.max_concurrent_calls = max_concurrent_calls
         self.api_call_delay = api_call_delay
 
-    def init_config(self, classification_system: str):
+    def init_config(self, classification_system: type[ClassificationSystem]):
         """Initialize the model config dict based on the classification system.
 
         Args:
-            classification_system (str): The classification system used (`uscs` or `lithology`).
+            classification_system (type[ClassificationSystem]): The classification system used.
         """
-        config_file = "bedrock_config_uscs.yml" if classification_system == "uscs" else "bedrock_config_lithology.yml"
-        self.config = read_params(f"bedrock/{config_file}")
+        config_file = CONFIG_MAPINGS[self.get_name()][classification_system.get_name()]
+        self.config = read_params(config_file)
+
+    def get_name(self) -> str:
+        """Returns a string with the name of the classifier."""
+        return "bedrock"
+
+    def log_params(self):
+        """Log model and id, prompt and parameter versions if anthropic model used."""
+        mlflow.log_param("anthropic_model_id", os.environ.get("ANTHROPIC_MODEL_ID"))
+        mlflow.log_param("anthropic_prompt_version", self.prompt_version)
+        mlflow.log_param("anthropic_class_pattern_version", self.pattern_version)
+        mlflow.log_param("anthropic_reasoning_mode", self.reasoning_mode)
 
     def create_message(
         self, max_tokens: int, temperature: float, anthropic_version: str, material_description: str, language: str
