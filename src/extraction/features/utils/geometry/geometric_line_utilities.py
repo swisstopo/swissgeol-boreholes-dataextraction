@@ -70,7 +70,8 @@ def _odr_regression(x: ArrayLike, y: ArrayLike, weights: ArrayLike = None) -> tu
     nominator = -2 * np.sum(np.dot(weights, (x - x_mean) * (y - y_mean)))
     denominator = np.sum(np.dot(weights, (y - y_mean) ** 2 - (x - x_mean) ** 2))
     if nominator == 0 and denominator == 0:
-        logger.warning(
+        # most of those lines are small, and will likelly be deleted at the next step
+        logger.debug(
             "The line merging problem is ill defined as both nominator and denominator for arctan are 0. "
             "We return phi=np.nan and r=np.nan."
         )
@@ -185,7 +186,10 @@ def _are_parallel(line1: Line, line2: Line, angle_threshold: float) -> bool:
     Returns:
         bool: True if the lines are parallel, False otherwise.
     """
-    return np.abs(atan(line1.slope) - atan(line2.slope)) < angle_threshold * pi / 180
+    return (
+        np.abs(atan(line1.slope) - atan(line2.slope)) < angle_threshold * pi / 180
+        or np.pi - np.abs(atan(line1.slope) - atan(line2.slope)) < angle_threshold * pi / 180
+    )
 
 
 def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: float) -> list[Line]:

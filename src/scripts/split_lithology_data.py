@@ -199,7 +199,7 @@ def main() -> None:
 
     reports = load_borehole_reports(json_paths)
     n = len([r for r in reports if r[1] == "nagra"])
-    print("tot", len(reports), "nagra", n)
+    print("total number of reports", len(reports), f"of which {n} are nagra")
 
     train_reports, val_reports, test_reports = split_reports(
         reports, train_frac=0.8, val_frac=0.1, eval_sets_nagra_ratio=0.3, seed=42

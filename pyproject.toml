@@ -41,6 +41,7 @@ dependencies = [
     "torch",
     "accelerate",
     "rdflib",
+    "pyinstrument==5.0.1",
 ]
 
 [project.optional-dependencies]
