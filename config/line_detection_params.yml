@@ -22,6 +22,7 @@ pdf_scale_factor: 2
 
 line_merging_params:
   reference_size: 1000
-  merging_tolerance: 10.  # maximum distance between two lines that are merged for a reference image of width=2000
+  merging_tolerance: 8.  # maximum distance between two lines that are merged for a reference image of width=2000
   angle_threshold: 5  # maximum difference in degrees between two line segments that are merged
   min_line_length: 180
+  horizontal_slope_tolerance: 0.1

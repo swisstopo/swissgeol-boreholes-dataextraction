@@ -113,7 +113,7 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
     Returns:
         list[Line]: The detected lines as a list.
     """
-    lines2 = detect_lines_lsd(
+    lines = detect_lines_lsd(
         page,
         lsd_params=line_detection_params["lsd"],
         scale_factor=line_detection_params["pdf_scale_factor"],
@@ -131,6 +131,12 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
     # return lines
     tol = merging_params["merging_tolerance"] * scaling_factor
     angle_tol = merging_params["angle_threshold"]
-    merged = merge_parallel_lines_quadtree(lines2, tol=tol, angle_threshold=angle_tol)
-    merged = [line for line in merged if line.length >= merging_params["min_line_length"] * scaling_factor]
+    min_line_length = merging_params["min_line_length"]
+    horizontal_slope_tolerance = merging_params["horizontal_slope_tolerance"]
+    merged = merge_parallel_lines_quadtree(lines, tol=tol, angle_threshold=angle_tol)
+    merged = [
+        line
+        for line in merged
+        if line.length >= min_line_length * scaling_factor or abs(line.slope) <= horizontal_slope_tolerance
+    ]
     return merged
