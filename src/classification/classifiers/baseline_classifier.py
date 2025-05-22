@@ -2,10 +2,12 @@
 
 import re
 
-from classification.utils.classification_classes import ExistingClassificationSystems
+from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformations
 from nltk.stem.snowball import SnowballStemmer
 from utils.file_utils import read_params
+
+CONFIG_MAPINGS = read_params("classifier_config_paths.yml")
 
 
 class BaselineClassifier:
@@ -15,18 +17,16 @@ class BaselineClassifier:
     a flexible ordered sequence matching algorithm.
     """
 
-    def __init__(self, classification_system_str: str, match_threshold=0.75):
+    def __init__(self, classification_system: type[ClassificationSystem], match_threshold=0.75):
         """Initialize with configurable threshold.
 
         Args:
-            classification_system_str (str): The classification system used (`uscs` or `lithology`)
+            classification_system (type[ClassificationSystem]): The classification system used.
             match_threshold (float): Minimum coverage for matches (default: 0.75)
         """
-        self.init_config(classification_system_str)
+        self.init_config(classification_system)
 
-        self.classification_system = ExistingClassificationSystems.get_classification_system_type(
-            classification_system_str
-        )
+        self.classification_system = classification_system
 
         self.match_threshold = match_threshold
 
@@ -34,16 +34,22 @@ class BaselineClassifier:
 
         self.stemmers = {}
 
-    def init_config(self, classification_system: str):
+    def init_config(self, classification_system: type[ClassificationSystem]):
         """Initialize the model config dict based on the classification system.
 
         Args:
-            classification_system (str): The classification system used (`uscs` or `lithology`).
+            classification_system (type[ClassificationSystem]): The classification system used.
         """
-        config_file = (
-            "classification_params.yml" if classification_system == "uscs" else "lithology_classification_params.yml"
-        )
+        config_file = CONFIG_MAPINGS[self.get_name()][classification_system.get_name()]
         self.classification_params = read_params(config_file)
+
+    def get_name(self) -> str:
+        """Returns a string with the name of the classifier."""
+        return "baseline"
+
+    def log_params(self):
+        """No parameters to log."""
+        return
 
     def get_stemmer(self, language: str) -> SnowballStemmer:
         """Get or create a stemmer for the specified language with German as a fallback option.

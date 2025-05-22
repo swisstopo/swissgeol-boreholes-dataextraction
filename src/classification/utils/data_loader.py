@@ -7,7 +7,7 @@ from os import listdir
 from os.path import isfile, join
 from pathlib import Path
 
-from classification.utils.classification_classes import ClassificationSystem, ExistingClassificationSystems
+from classification.utils.classification_classes import ClassificationSystem
 from utils.file_utils import read_params
 from utils.language_detection import detect_language_of_text
 
@@ -35,14 +35,14 @@ class LayerInformations:
 
 
 def load_data(
-    json_path: Path, file_subset_directory: Path | None, classification_system_str: str
+    json_path: Path, file_subset_directory: Path | None, classification_system: type[ClassificationSystem]
 ) -> list[LayerInformations]:
     """Loads the data from the ground truth json file.
 
     Args:
         json_path (Path): the ground truth json file path
         file_subset_directory (Path): Path to the directory containing the file whose names are used.
-        classification_system_str (str): The classification system used to classify the data.
+        classification_system ( type[ClassificationSystem]): The classification system used to classify the data.
 
     Returns:
         list[LayerInformations]: the data formated as a list of LayerInformations objects
@@ -75,9 +75,6 @@ def load_data(
             for layer_index, layer in enumerate(borehole["layers"]):
                 if not layer["material_description"]:
                     continue
-                classification_system = ExistingClassificationSystems.get_classification_system_type(
-                    classification_system_str.lower()
-                )
                 layer_key = classification_system.get_layer_ground_truth_key()
                 class_str = layer.get(layer_key, None)
                 if not class_str:

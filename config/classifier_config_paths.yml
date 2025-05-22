@@ -1,0 +1,12 @@
+dummy:
+  uscs: null
+  lithology: null
+baseline:
+  uscs: classification_params.yml
+  lithology: lithology_classification_params.yml
+bert:
+  uscs: bert/bert_config_uscs.yml
+  lithology: bert/bert_config_lithology.yml
+bedrock:
+  uscs: bedrock/bedrock_config_uscs.yml
+  lithology: bedrock/bedrock_config_lithology.yml

@@ -19,3 +19,11 @@ class DummyClassifier:
         """
         for layer in layer_descriptions:
             layer.prediction_class = layer.class_system.get_dummy_classifier_class_value()
+
+    def get_name(self) -> str:
+        """Returns a string with the name of the classifier."""
+        return "dummy"
+
+    def log_params(self):
+        """No parameters to log."""
+        return
