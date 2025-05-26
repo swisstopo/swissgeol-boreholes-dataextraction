@@ -3,10 +3,12 @@
 import pymupdf
 import rtree
 from extraction.features.stratigraphy.interval.interval import AAboveBInterval, Interval, IntervalBlockPair
+from extraction.features.stratigraphy.layer.duplicate_detection import remove_duplicate_layers
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
     Layer,
     LayerDepths,
+    LayersInDocument,
 )
 from extraction.features.stratigraphy.layer.page_bounding_boxes import (
     MaterialDescriptionRectWithSidebar,
@@ -442,26 +444,43 @@ class MaterialDescriptionRectWithSidebarExtractor:
             return candidate_rects[0]
 
 
-def process_page(
-    text_lines: list[TextLine], geometric_lines: list[Line], language: str, page_number: int, **matching_params: dict
-) -> list[ExtractedBorehole]:
+def extract_page(
+    existing_layers: LayersInDocument,
+    text_lines: list[TextLine],
+    geometric_lines: list[Line],
+    language: str,
+    page_index: int,
+    document: pymupdf.Document,
+    **matching_params: dict,
+) -> None:
     """Process a single PDF page and extract borehole information.
 
     Acts as a simple interface to MaterialDescriptionRectWithSidebarExtractor without requiring direct class usage.
 
     Args:
+        existing_layers: the main LayersInDocument instance, containing the already detected layers.
         text_lines (list[TextLine]): All text lines on the page.
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
         language (str): Language of the page (used in parsing).
-        page_number (int): The page number (1-indexed).
+        page_index (int): The page index (0-indexed).
+        document (pymupdf.Document): the document.
         **matching_params (dict): Additional parameters for the matching pipeline.
 
     Returns:
         list[ExtractedBorehole]: Extracted borehole layers from the page.
     """
-    return MaterialDescriptionRectWithSidebarExtractor(
-        text_lines, geometric_lines, language, page_number, **matching_params
+    extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(
+        text_lines, geometric_lines, language, page_index + 1, **matching_params
     ).process_page()
+
+    layer_with_bb_predictions = remove_duplicate_layers(
+        current_page_index=page_index,
+        document=document,
+        previous_layers_with_bb=existing_layers.boreholes_layers_with_bb,
+        current_layers_with_bb=extracted_boreholes,
+        img_template_probability_threshold=matching_params["img_template_probability_threshold"],
+    )
+    existing_layers.assign_layers_to_boreholes(layer_with_bb_predictions)
 
 
 def match_columns(

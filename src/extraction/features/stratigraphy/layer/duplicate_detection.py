@@ -8,7 +8,7 @@ import numpy as np
 import pymupdf
 from extraction.annotations.plot_utils import convert_page_to_opencv_img
 
-from .layer import ExtractedBorehole, Layer, LayersInDocument
+from .layer import ExtractedBorehole, Layer
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 def remove_duplicate_layers(
     current_page_index: int,
     document: pymupdf.Document,
-    previous_layers_with_bb: LayersInDocument,
-    current_layers_with_bb: LayersInDocument,
+    previous_layers_with_bb: list[ExtractedBorehole],
+    current_layers_with_bb: list[ExtractedBorehole],
     img_template_probability_threshold: float,
 ) -> list[ExtractedBorehole]:
     """Remove duplicate layers from the current page based on the layers of the previous page.
@@ -41,14 +41,14 @@ def remove_duplicate_layers(
             boxes are kept the same.
     """
     if current_page_index == 0:
-        return current_layers_with_bb.boreholes_layers_with_bb
+        return current_layers_with_bb
 
     previous_page = document[current_page_index - 1]
     current_page = document[current_page_index]
 
     non_duplicated_extracted_boreholes: list[ExtractedBorehole] = []
     # iterate on all the borehole profiles identified on this page
-    for current_borehole_layers_with_bb in current_layers_with_bb.boreholes_layers_with_bb:
+    for current_borehole_layers_with_bb in current_layers_with_bb:
         current_borehole_layers = current_borehole_layers_with_bb.predictions
         sorted_layers = sorted(current_borehole_layers, key=lambda x: x.material_description.rect.y0)
         first_non_duplicated_layer_index = 0
@@ -69,7 +69,7 @@ def remove_duplicate_layers(
                 current_material_description = layer.material_description
                 current_depth_interval = layer.depths
                 # iterate on all the layers in the previously identified borehole profiles
-                for previous_borehole_layers_with_bb in previous_layers_with_bb.boreholes_layers_with_bb:
+                for previous_borehole_layers_with_bb in previous_layers_with_bb:
                     previous_borehole_layers = previous_borehole_layers_with_bb.predictions
                     for previous_layer in previous_borehole_layers:
                         if previous_layer.depths is None:

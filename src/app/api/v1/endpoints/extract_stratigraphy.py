@@ -6,8 +6,7 @@ from app.common.schemas import (
     BoreholeLayerSchema,
     ExtractStratigraphyResponse,
 )
-from extraction.features.extract import process_page
-from extraction.features.stratigraphy.layer.duplicate_detection import remove_duplicate_layers
+from extraction.features.extract import extract_page
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.features.utils.geometry.line_detection import extract_lines
 from extraction.features.utils.text.extract_text import extract_text_lines
@@ -43,23 +42,18 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
 
     layers_with_bb_in_document = LayersInDocument([], filename)
     for page_index, page in enumerate(document):
-        page_number = page_index + 1
         text_lines = extract_text_lines(page)
         geometric_lines = extract_lines(page, line_detection_params)
-        extracted_boreholes = process_page(text_lines, geometric_lines, language, page_number, **matching_params)
-        layers_on_page = LayersInDocument(extracted_boreholes, filename)
 
-        layer_with_bb_predictions = remove_duplicate_layers(
-            current_page_index=page_index,
-            document=document,
-            previous_layers_with_bb=layers_with_bb_in_document,
-            current_layers_with_bb=layers_on_page,
-            img_template_probability_threshold=matching_params["img_template_probability_threshold"],
+        extract_page(
+            layers_with_bb_in_document,
+            text_lines,
+            geometric_lines,
+            language,
+            page_index,
+            document,
+            **matching_params,
         )
-        layers_with_bb_in_document.assign_layers_to_boreholes(layer_with_bb_predictions)
-
-    if not layers_with_bb_in_document.boreholes_layers_with_bb:
-        raise HTTPException(status_code=404, detail="No boreholes found in PDF.")
 
     extracted_stratigraphy = create_response_object(layers_with_bb_in_document)
 
