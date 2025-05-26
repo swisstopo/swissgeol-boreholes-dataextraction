@@ -10,7 +10,6 @@ from extraction.features.extract import extract_page
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.features.utils.geometry.line_detection import extract_lines
 from extraction.features.utils.text.extract_text import extract_text_lines
-from fastapi import HTTPException
 from utils.file_utils import read_params
 from utils.language_detection import detect_language_of_document
 
@@ -31,10 +30,7 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
     Returns:
         List[BoreholeExtraction]: List of boreholes with their stratigraphy layers and bounding boxes.
     """
-    try:
-        document = load_pdf_from_aws(filename)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail="Cannot open PDF file") from e
+    document = load_pdf_from_aws(filename)
 
     language = detect_language_of_document(
         document, matching_params["default_language"], matching_params["material_description"].keys()

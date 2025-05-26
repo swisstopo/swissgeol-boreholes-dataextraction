@@ -7,7 +7,7 @@ import boto3
 import numpy as np
 import pymupdf
 from app.common.config import config
-from botocore.exceptions import ClientError, NoCredentialsError
+from botocore.exceptions import ClientError, EndpointConnectionError, NoCredentialsError
 from dotenv import load_dotenv
 from fastapi import HTTPException
 from PIL import Image
@@ -26,6 +26,7 @@ def get_s3_client():
     global _s3_client
     if _s3_client is None:
         _s3_client = create_s3_client()
+    _s3_test_client(_s3_client)
     return _s3_client
 
 
@@ -46,6 +47,30 @@ def create_s3_client():
     except (NoCredentialsError, ClientError) as e:
         print(f"Error accessing S3 with custom credentials: {e}")
         raise HTTPException(status_code=500, detail="Failed to access S3.") from None
+
+
+def _s3_test_client(s3_client: boto3.client):
+    """Test the s3 client by trying a simple operation.
+
+    Args:
+        s3_client (boto3.client): The S3 client.
+    """
+    try:
+        s3_client.list_buckets()
+        return None
+
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        if error_code in ["InvalidAccessKeyId", "SignatureDoesNotMatch"]:
+            raise HTTPException(status_code=401, detail="Invalid AWS credentials.") from None
+        else:
+            raise HTTPException(status_code=500, detail=f"AWS Client error: {error_code}") from None
+    except EndpointConnectionError as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Server misconfiguration: could not connect to S3 endpoint URL: "
+            f"{e.kwargs.get('endpoint_url', 'Unknown')}",
+        ) from None
 
 
 def load_pdf_from_aws(filename: Path) -> pymupdf.Document:
