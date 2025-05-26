@@ -32,8 +32,8 @@ def remove_duplicate_layers(
     Args:
         current_page_index: (int): the current page index (starting from 0)
         document (pymupdf.Document): The whole document.
-        previous_layers_with_bb (LayersInDocument): The layers of the previous page, with their bounding box.
-        current_layers_with_bb (LayersInDocument): The layers of the current page, with their bounding box.
+        previous_layers_with_bb (list[ExtractedBorehole]): The layers of the previous page, with their bounding box.
+        current_layers_with_bb (list[ExtractedBorehole]): The layers of the current page, with their bounding box.
         img_template_probability_threshold (float): The threshold for the template matching probability
 
     Returns:
