@@ -185,11 +185,12 @@ def save_split(split_data: dict[str, list[dict]], output_path: str) -> None:
         json.dump(split_data, f, indent=2, ensure_ascii=False)
 
 
-def main() -> None:
+def main(use_layers_split=True) -> None:
     """Main execution function to load, split, reconstruct, and save the datasets.
 
     Args:
-        None
+        use_layers_split (bool): wether to randomly split all the layers (without consiration of the boreholes they
+            come from) or to split the data by keeping all layers from a report in the same split.
 
     Returns:
         None
@@ -197,19 +198,26 @@ def main() -> None:
     json_paths = ["data/deepwells_ground_truth.json", "data/nagra_ground_truth.json"]
     output_dir = "data/lithology_splits"
 
-    reports = load_borehole_reports(json_paths)
-    n = len([r for r in reports if r[1] == "nagra"])
-    print("tot", len(reports), "nagra", n)
+    if use_layers_split:
+        layers = load_layers(json_paths)
+        train_layers, val_layers, test_layers = split_layers(layers, train_frac=0.8, val_frac=0.1, seed=42)
 
-    train_reports, val_reports, test_reports = split_reports(
-        reports, train_frac=0.8, val_frac=0.1, eval_sets_nagra_ratio=0.3, seed=42
-    )
+        train_structure = reconstruct_structure(train_layers)
+        val_structure = reconstruct_structure(val_layers)
+        test_structure = reconstruct_structure(test_layers)
+    else:
+        reports = load_borehole_reports(json_paths)
+        n = len([r for r in reports if r[1] == "nagra"])
+        print("tot", len(reports), "nagra", n)
+
+        train_reports, val_reports, test_reports = split_reports(
+            reports, train_frac=0.8, val_frac=0.1, eval_sets_nagra_ratio=0.3, seed=42
+        )
+        train_structure = reconstruct_structure_reports(train_reports)
+        val_structure = reconstruct_structure_reports(val_reports)
+        test_structure = reconstruct_structure_reports(test_reports)
 
     os.makedirs(output_dir, exist_ok=True)
-
-    train_structure = reconstruct_structure_reports(train_reports)
-    val_structure = reconstruct_structure_reports(val_reports)
-    test_structure = reconstruct_structure_reports(test_reports)
 
     save_split(train_structure, os.path.join(output_dir, "train.json"))
     save_split(val_structure, os.path.join(output_dir, "val.json"))
