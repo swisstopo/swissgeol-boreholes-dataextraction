@@ -33,6 +33,20 @@ material_description:
       - mergel
       - kernmaterial
       - dito
+      - dolomit
+      - sandstein
+      - kristallin
+      - gneis
+      - tonstein
+      - kalke
+      - siltsteine
+      - siltig
+      - mikritisch
+      - laminiert
+      - ton
+      - feinsand
+      - mittelsand
+      - grobsand
     excluding_expressions:
       - herr
       - ende

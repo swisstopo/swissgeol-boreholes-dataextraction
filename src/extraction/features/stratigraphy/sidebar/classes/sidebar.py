@@ -32,6 +32,7 @@ class Sidebar(abc.ABC, Generic[EntryT]):
     """
 
     entries: list[EntryT]
+    skipped_entries: list[EntryT] | None = None
 
     def rects(self) -> list[pymupdf.Rect]:
         """Get the rectangles of the depth column entries."""
@@ -113,7 +114,10 @@ def noise_count(sidebar: Sidebar, line_rtree: rtree.index.Index) -> int:
 
     def not_in_entries(line: TextLine) -> bool:
         line_rect = line.rect
-        return not any(line_rect.intersects(entry.rect) for entry in sidebar.entries)
+        return not any(line_rect.intersects(entry.rect) for entry in sidebar.entries) and (
+            not sidebar.skipped_entries
+            or not any(line_rect.intersects(entry.rect) for entry in sidebar.skipped_entries)
+        )
 
     return sum(1 for line in intersecting_lines if significant_intersection(line) and not_in_entries(line))
 

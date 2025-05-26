@@ -120,7 +120,7 @@ class LayerDepths:
         Returns:
             bool: True if the depth intervals match, False otherwise.
         """
-        if self.start is None:
+        if self.start is None and self.end is not None:
             return (start == 0) and (end == self.end.value)
 
         if (self.start is not None) and (self.end is not None):

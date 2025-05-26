@@ -123,6 +123,9 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         integer_entries = [entry for entry in self.entries if not entry.has_decimal_point]
         if integer_entries and AAboveBSidebar.is_close_to_arithmetic_progression(integer_entries):
             self.entries = [entry for entry in self.entries if entry not in integer_entries]
+            if not self.skipped_entries:
+                self.skipped_entries = []
+            self.skipped_entries.extend(integer_entries)
         return self
 
     def make_ascending(self):
@@ -173,7 +176,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         if final_segment:
             segments.append(final_segment)
 
-        return [AAboveBSidebar(segment) for segment in segments]
+        return [AAboveBSidebar(segment, self.skipped_entries) for segment in segments]
 
     def identify_groups(
         self,
