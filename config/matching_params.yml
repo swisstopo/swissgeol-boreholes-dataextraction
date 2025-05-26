@@ -12,12 +12,6 @@ depth_column_params:  # these params should be optimized as soon as there is rel
 
 default_language: de
 
-borehole_detection:
-  description_alignment_threshold: 5.0
-  min_description_score: 20.0
-  min_lines_per_description: 3
-  max_description_line_length: 120
-
 material_description:
   de:
     including_expressions:
@@ -30,15 +24,16 @@ material_description:
       - siltig
       - siltstein
       - kies
+      - kiesig
+      - kiessand
       - ton
+      - tonig
       - asphalt
       - asphaltdeckschicht
       - humus
       - braun
       - braunschwarz
-      - grau
       - weich
-      - hart
       - wurzel
       - belag
       - strassenbelag
@@ -102,12 +97,7 @@ material_description:
       - materiau
       - matrice sableuse
       - enrobé  # accent --> check what happens if it's removed
-      - terrain
-      - remblais
-      - remblai
-      - molasse
       - phase
-      - formations
       - limoneuse
       - argileuse
       - argileux

@@ -355,7 +355,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         is_description = [
             line
             for line in candidate_description
-            if line.is_description(self.params["material_description"][self.language])
+            if line.is_description(self.params["material_description"], self.language)
         ]
 
         if len(candidate_description) == 0:

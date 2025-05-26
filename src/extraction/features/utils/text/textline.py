@@ -49,13 +49,16 @@ class TextLine:
         self.words = words
         self.page_number = words[0].page_number
 
-    def is_description(self, material_description):
+    def is_description(self, material_description: dict, language: str):
         """Check if the line is a material description.
 
         Uses stemming to handle word variations across german, french, english and italian.
+
+        Args:
+            material_description (dict): The material description dictionary containing the used expressions.
+            language (str): The language of the material description, e.g. "de", "fr", "en", "it".
         """
         text_lower = self.text.lower()
-        language = next(iter(material_description.keys()))
 
         # Create appropriate stemmer based on language
         stemmer_languages = {"de": "german", "fr": "french", "en": "english", "it": "italian"}
@@ -68,7 +71,7 @@ class TextLine:
 
         # Check for matches in including expressions
         found_inclusion = False
-        for word in material_description["including_expressions"]:
+        for word in material_description[language]["including_expressions"]:
             stemmed_word = stemmer.stem(word.lower())
             if stemmed_word in stemmed_text_tokens:
                 found_inclusion = True
@@ -76,7 +79,7 @@ class TextLine:
 
         # Check for matches in excluding expressions
         found_exclusion = False
-        for word in material_description["excluding_expressions"]:
+        for word in material_description[language]["excluding_expressions"]:
             stemmed_word = stemmer.stem(word.lower())
             if stemmed_word in stemmed_text_tokens:
                 found_exclusion = True
