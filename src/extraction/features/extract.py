@@ -335,8 +335,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Returns:
             pymupdf.Rect | None: The material description column.
         """
-        print()
-        print("-- ", sidebar)
         if sidebar:
             above_sidebar = [
                 line
