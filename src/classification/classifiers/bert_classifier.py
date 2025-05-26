@@ -4,16 +4,14 @@ from pathlib import Path
 
 import mlflow
 import numpy as np
+from classification.classifiers.classifier import Classifier
 from classification.models.model import BertModel
 from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformations
 from transformers import Trainer, TrainingArguments
-from utils.file_utils import read_params
-
-CONFIG_MAPINGS = read_params("classifier_config_paths.yml")
 
 
-class BertClassifier:
+class BertClassifier(Classifier):
     """Classifier class that uses the BERT model."""
 
     def __init__(self, model_path: Path | None, classification_system: type[ClassificationSystem]):
@@ -24,21 +22,12 @@ class BertClassifier:
             classification_system (type[ClassificationSystem]): the classification system used to classify
                 the descriptions.
         """
-        self.init_model_config(classification_system)
+        self.init_config(classification_system)
         if model_path is None:
             # load pretrained from transformers lib (bad)
-            model_path = self.model_config["model_path"]
+            model_path = self.config["model_path"]
         self.model_path = model_path
         self.bert_model = BertModel(model_path, classification_system)
-
-    def init_model_config(self, classification_system: type[ClassificationSystem]):
-        """Initialize the model config dict based on the classification system.
-
-        Args:
-            classification_system (type[ClassificationSystem])): The classification system used.
-        """
-        config_file = CONFIG_MAPINGS[self.get_name()][classification_system.get_name()]
-        self.model_config = read_params(config_file)
 
     def get_name(self) -> str:
         """Returns a string with the name of the classifier."""
@@ -61,7 +50,7 @@ class BertClassifier:
         trainer = Trainer(
             model=self.bert_model.model,
             processing_class=self.bert_model.tokenizer,
-            args=TrainingArguments(per_device_eval_batch_size=self.model_config["inference_batch_size"]),
+            args=TrainingArguments(per_device_eval_batch_size=self.config["inference_batch_size"]),
         )
         output = trainer.predict(eval_dataset)
         predicted_indices = list(np.argmax(output.predictions, axis=1))

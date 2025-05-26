@@ -2,7 +2,7 @@ dummy:
   uscs: null
   lithology: null
 baseline:
-  uscs: classification_params.yml
+  uscs: uscs_classification_params.yml
   lithology: lithology_classification_params.yml
 bert:
   uscs: bert/bert_config_uscs.yml

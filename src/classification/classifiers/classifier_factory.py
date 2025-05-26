@@ -6,7 +6,7 @@ from pathlib import Path
 from classification.classifiers.aws_bedrock_classifier import AWSBedrockClassifier
 from classification.classifiers.baseline_classifier import BaselineClassifier
 from classification.classifiers.bert_classifier import BertClassifier
-from classification.classifiers.classifier_protocol import ClassifierTypes
+from classification.classifiers.classifier import ClassifierTypes
 from classification.classifiers.dummy_classifier import DummyClassifier
 from classification.utils.classification_classes import ClassificationSystem
 

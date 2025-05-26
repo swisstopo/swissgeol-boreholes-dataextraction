@@ -1,9 +1,10 @@
 """Dummy classifier module."""
 
+from classification.classifiers.classifier import Classifier
 from classification.utils.data_loader import LayerInformations
 
 
-class DummyClassifier:
+class DummyClassifier(Classifier):
     """Dummy classifier class.
 
     Assigns the most common class to all descriptions

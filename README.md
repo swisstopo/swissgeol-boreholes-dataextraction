@@ -255,7 +255,7 @@ The project structure and the most important files are as follows:
     - `output_description_classification/`: output of the classification pipeline
   - `config/`: Contains configuration files for the classification pipeline.
     - `bert_config.yml`: Configuration file for fine-tuning the BERT model.
-    - `classification_params.yml`: Configuration file containing variables used for the classification pipeline.
+    - `uscs_classification_params.yml`: Configuration file containing variables used for the classification pipeline.
     - `line_detection_params.yml`: Configuration file for the line detection.
     - `matching_params.yml`: Configuration file containing variables used for the data extraction pipeline.
   - `tests/` : The tests for the project.

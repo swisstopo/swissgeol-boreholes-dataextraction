@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 from utils.file_utils import read_params
 
 from classification import DATAPATH
+from classification.classifiers.classifier import Classifier, ClassifierTypes
 from classification.classifiers.classifier_factory import ClassifierFactory
-from classification.classifiers.classifier_protocol import Classifier, ClassifierTypes
 from classification.evaluation.evaluate import evaluate
 from classification.utils.classification_classes import ExistingClassificationSystems
 from classification.utils.data_loader import LayerInformations, load_data
@@ -22,7 +22,7 @@ from classification.utils.data_utils import (
 )
 
 load_dotenv()
-classification_params = read_params("classification_params.yml")
+classification_params = read_params("uscs_classification_params.yml")
 
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 if mlflow_tracking:

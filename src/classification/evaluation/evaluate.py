@@ -16,7 +16,7 @@ mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlo
 if mlflow_tracking:
     import mlflow
 
-classification_params = read_params("classification_params.yml")
+classification_params = read_params("uscs_classification_params.yml")
 
 
 @dataclass

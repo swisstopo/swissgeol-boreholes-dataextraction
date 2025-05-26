@@ -11,6 +11,7 @@ from pathlib import Path
 
 import boto3
 import mlflow
+from classification.classifiers.classifier import Classifier
 from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformations
 from classification.utils.data_utils import write_api_failures, write_predictions
@@ -19,10 +20,8 @@ from utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
 
-CONFIG_MAPINGS = read_params("classifier_config_paths.yml")
 
-
-class AWSBedrockClassifier:
+class AWSBedrockClassifier(Classifier):
     """AWSBedrockClassifier class uses AWS Bedrock with underlying Anthropic LLM models."""
 
     def __init__(
@@ -63,15 +62,6 @@ class AWSBedrockClassifier:
         self.bedrock_out_directory = bedrock_out_directory
         self.max_concurrent_calls = max_concurrent_calls
         self.api_call_delay = api_call_delay
-
-    def init_config(self, classification_system: type[ClassificationSystem]):
-        """Initialize the model config dict based on the classification system.
-
-        Args:
-            classification_system (type[ClassificationSystem]): The classification system used.
-        """
-        config_file = CONFIG_MAPINGS[self.get_name()][classification_system.get_name()]
-        self.config = read_params(config_file)
 
     def get_name(self) -> str:
         """Returns a string with the name of the classifier."""

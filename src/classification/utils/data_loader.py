@@ -11,7 +11,7 @@ from classification.utils.classification_classes import ClassificationSystem
 from utils.file_utils import read_params
 from utils.language_detection import detect_language_of_text
 
-classification_params = read_params("classification_params.yml")
+classification_params = read_params("uscs_classification_params.yml")
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +57,7 @@ def load_data(
         logger.info(f"Using files from subset directory: {file_subset_directory}")
         filename_subset = {f for f in listdir(file_subset_directory) if isfile(join(file_subset_directory, f))}
     layer_descriptions: list[LayerInformations] = []
+    total_layers = skipped_count = 0
     for filename, boreholes in data.items():
         if filename_subset is not None and filename not in filename_subset:
             continue
@@ -77,12 +78,14 @@ def load_data(
                     continue
                 layer_key = classification_system.get_layer_ground_truth_key()
                 class_str = layer.get(layer_key, None)
+                total_layers += 1
                 if not class_str:
                     logger.debug(
                         f"Skipping layer: no {layer_key} in ground truth for {filename} borehole "
                         f"{borehole['borehole_index']}, layer {layer_index} with "
                         f"description {layer['material_description']}."
                     )
+                    skipped_count += 1
                     continue
 
                 ground_truth_class = classification_system.map_most_similar_class(class_str)
@@ -100,4 +103,8 @@ def load_data(
                         llm_reasoning=None,
                     )
                 )
+    logger.info(
+        f"Skipped {skipped_count} layers without groundtruh out of {total_layers}, "
+        f"which is {skipped_count / total_layers * 100:2f}%"
+    )
     return layer_descriptions
