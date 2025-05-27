@@ -45,7 +45,7 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
         text_lines = extract_text_lines(page)
         geometric_lines = extract_lines(page, line_detection_params)
 
-        extract_page(
+        page_layers = extract_page(
             layers_with_bb_in_document,
             text_lines,
             geometric_lines,
@@ -54,6 +54,7 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
             document,
             **matching_params,
         )
+        layers_with_bb_in_document.assign_layers_to_boreholes(page_layers)
 
     extracted_stratigraphy = create_response_object(layers_with_bb_in_document)
 

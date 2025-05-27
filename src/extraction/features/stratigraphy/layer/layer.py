@@ -232,7 +232,7 @@ class LayersInDocument:
         If we want to be more robust, a matching should be done to determine which layers goes with which borehole.
 
         Args:
-            layer_predictions (list[ExtractedBorehole]): List containing the a list of all layers of all boreholes
+            layer_predictions (list[ExtractedBorehole]): List containing all boreholes with all layers
         """
         if not layer_predictions:
             return
@@ -240,6 +240,6 @@ class LayersInDocument:
             # first page
             self.boreholes_layers_with_bb = layer_predictions
         else:
-            # second page, use assumption, also fot the bounding boxes
+            # second page, use assumption, also for the bounding boxes
             self.boreholes_layers_with_bb[0].bounding_boxes.extend(layer_predictions[0].bounding_boxes)
             self.boreholes_layers_with_bb[0].predictions.extend(layer_predictions[0].predictions)

@@ -445,20 +445,20 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
 
 def extract_page(
-    existing_layers: LayersInDocument,
+    layers_from_previous_pages: LayersInDocument,
     text_lines: list[TextLine],
     geometric_lines: list[Line],
     language: str,
     page_index: int,
     document: pymupdf.Document,
     **matching_params: dict,
-) -> None:
+) -> list[ExtractedBorehole]:
     """Process a single PDF page and extract borehole information.
 
     Acts as a simple interface to MaterialDescriptionRectWithSidebarExtractor without requiring direct class usage.
 
     Args:
-        existing_layers: the main LayersInDocument instance, containing the already detected layers.
+        layers_from_previous_pages: LayersInDocument instance containing the already detected layers.
         text_lines (list[TextLine]): All text lines on the page.
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
         language (str): Language of the page (used in parsing).
@@ -473,14 +473,13 @@ def extract_page(
         text_lines, geometric_lines, language, page_index + 1, **matching_params
     ).process_page()
 
-    layer_with_bb_predictions = remove_duplicate_layers(
+    return remove_duplicate_layers(
         current_page_index=page_index,
         document=document,
-        previous_layers_with_bb=existing_layers.boreholes_layers_with_bb,
+        previous_layers_with_bb=layers_from_previous_pages.boreholes_layers_with_bb,
         current_layers_with_bb=extracted_boreholes,
         img_template_probability_threshold=matching_params["img_template_probability_threshold"],
     )
-    existing_layers.assign_layers_to_boreholes(layer_with_bb_predictions)
 
 
 def match_columns(
