@@ -8,15 +8,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 dotenv.load_dotenv(override=True)
 
+DEFAULT_BUCKET_NAME = "stijnvermeeren-boreholes-integration-tmp"
+
 
 def get_aws_bucket_name() -> str:
     """Get the AWS bucket name."""
-    bucket_name = os.getenv("AWS_S3_BUCKET")
-    default_name = "stijnvermeeren-boreholes-integration-tmp"
-    if not bucket_name:
-        print(f"No bucket name provided, defaulting to {default_name}")
-        return default_name
-    return bucket_name
+    return os.getenv("AWS_S3_BUCKET") if os.getenv("AWS_S3_BUCKET") else DEFAULT_BUCKET_NAME
 
 
 class Config(BaseSettings):

@@ -6,7 +6,7 @@ from pathlib import Path
 import boto3
 import numpy as np
 import pymupdf
-from app.common.config import config
+from app.common.config import DEFAULT_BUCKET_NAME, config
 from app.common.log import get_app_logger
 from botocore.exceptions import ClientError, EndpointConnectionError, NoCredentialsError
 from dotenv import load_dotenv
@@ -39,7 +39,9 @@ def create_s3_client():
         boto3.client: The S3 client.
     """
     if not config.aws_endpoint:
-        print("No endpoint provided, a client with an empty endpoint value might have an unexpected behaviour.")
+        logger.warning(
+            "No endpoint provided, a client with an empty endpoint value might have an unexpected behaviour."
+        )
     try:
         s3_client = boto3.client(
             "s3",
@@ -123,6 +125,8 @@ def load_data_from_aws(filename: Path, prefix: str = "") -> bytes:
 
     # Check if the document exists in S3
     try:
+        if config.bucket_name == DEFAULT_BUCKET_NAME:
+            logger.warning(f"No bucket name provided, defaulting to {DEFAULT_BUCKET_NAME}")
         s3_object = s3_client.get_object(Bucket=config.bucket_name, Key=str(prefix / filename))
     except s3_client.exceptions.NoSuchKey:
         raise HTTPException(status_code=404, detail=f"Document {prefix / filename} not found in S3 bucket.") from None
