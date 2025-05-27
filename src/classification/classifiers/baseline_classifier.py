@@ -15,21 +15,19 @@ class BaselineClassifier(Classifier):
     a flexible ordered sequence matching algorithm.
     """
 
-    def __init__(self, classification_system: type[ClassificationSystem], match_threshold=0.75):
+    def __init__(self, classification_system: type[ClassificationSystem]):
         """Initialize with configurable threshold.
 
         Args:
             classification_system (type[ClassificationSystem]): The classification system used.
-            match_threshold (float): Minimum coverage for matches (default: 0.75)
         """
         self.init_config(classification_system)
 
         self.classification_system = classification_system
 
-        self.match_threshold = match_threshold
+        self.match_threshold = self.config["match_threshold"]
 
-        self.stemmer_languages = {"de": "german", "fr": "french", "en": "english", "it": "italian"}
-
+        self.stemmer_languages = self.config["stemmer_languages"]
         self.stemmers = {}
 
     def get_name(self) -> str:
@@ -50,7 +48,7 @@ class BaselineClassifier(Classifier):
             SnowballStemmer: The stemmer for the specified language
         """
         if language not in self.stemmers:
-            stemmer_lang = self.stemmer_languages.get(language, "german")
+            stemmer_lang = self.stemmer_languages.get(language, self.config["default_stemmer_language"])
             self.stemmers[language] = SnowballStemmer(stemmer_lang)
 
         return self.stemmers[language]

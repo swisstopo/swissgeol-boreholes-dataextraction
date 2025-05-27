@@ -1,0 +1,2 @@
+default_language: "de"
+supported_language: ["de", "fr", "en", "it"]

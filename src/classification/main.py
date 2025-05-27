@@ -22,7 +22,7 @@ from classification.utils.data_utils import (
 )
 
 load_dotenv()
-classification_params = read_params("uscs_classification_params.yml")
+classification_params = read_params("classification_params.yml")
 
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 if mlflow_tracking:

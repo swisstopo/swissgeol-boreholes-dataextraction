@@ -189,7 +189,7 @@ def main(use_layers_split=True) -> None:
     """Main execution function to load, split, reconstruct, and save the datasets.
 
     Args:
-        use_layers_split (bool): wether to randomly split all the layers (without consiration of the boreholes they
+        use_layers_split (bool): whether to randomly split all the layers (without consideration of the boreholes they
             come from) or to split the data by keeping all layers from a report in the same split.
 
     Returns:

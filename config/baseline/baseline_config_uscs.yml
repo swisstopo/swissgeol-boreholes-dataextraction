@@ -1,5 +1,10 @@
-default_language: "de"
-supported_language: ["de","fr","en","it"]
+stemmer_languages:
+  "de": "german"
+  "fr": "french"
+  "en": "english"
+  "it": "italian"
+default_stemmer_language: "german"
+match_threshold: 0.75
 patterns:
   de:
     CH: ["fetter Ton"]
