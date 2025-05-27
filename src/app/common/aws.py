@@ -7,12 +7,14 @@ import boto3
 import numpy as np
 import pymupdf
 from app.common.config import config
+from app.common.log import get_app_logger
 from botocore.exceptions import ClientError, EndpointConnectionError, NoCredentialsError
 from dotenv import load_dotenv
 from fastapi import HTTPException
 from PIL import Image
 
 load_dotenv()
+logger = get_app_logger()
 
 _s3_client = None  # Global reference to the S3 client
 
@@ -36,6 +38,8 @@ def create_s3_client():
     Returns:
         boto3.client: The S3 client.
     """
+    if not config.aws_endpoint:
+        print("No endpoint provided, a client with an empty endpoint value might have an unexpected behaviour.")
     try:
         s3_client = boto3.client(
             "s3",

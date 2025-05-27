@@ -11,7 +11,12 @@ dotenv.load_dotenv(override=True)
 
 def get_aws_bucket_name() -> str:
     """Get the AWS bucket name."""
-    return os.getenv("AWS_S3_BUCKET") if os.getenv("AWS_S3_BUCKET") else "stijnvermeeren-boreholes-integration-tmp"
+    bucket_name = os.getenv("AWS_S3_BUCKET")
+    default_name = "stijnvermeeren-boreholes-integration-tmp"
+    if not bucket_name:
+        print(f"No bucket name provided, defaulting to {default_name}")
+        return default_name
+    return bucket_name
 
 
 class Config(BaseSettings):
