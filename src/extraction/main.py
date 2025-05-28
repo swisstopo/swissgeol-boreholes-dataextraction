@@ -9,7 +9,7 @@ import click
 import pymupdf
 from dotenv import load_dotenv
 from tqdm import tqdm
-from utils.file_utils import flatten, profile, read_params
+from utils.file_utils import flatten, read_params
 
 from extraction import DATAPATH
 from extraction.annotations.draw import draw_predictions
@@ -187,7 +187,6 @@ def setup_mlflow_tracking(
     mlflow.set_tag("git_commit_sha", commit.id)
 
 
-@profile
 def start_pipeline(
     input_directory: Path,
     ground_truth_path: Path,
