@@ -2,34 +2,41 @@
 
 import re
 
-from classification.utils.classification_classes import USCSSystem
+from classification.classifiers.classifier import Classifier
+from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformations
 from nltk.stem.snowball import SnowballStemmer
-from utils.file_utils import read_params
-
-classification_params = read_params("classification_params.yml")
 
 
-class BaselineClassifier:
+class BaselineClassifier(Classifier):
     """Baseline classifier class.
 
-    The BaselineClassifier works by matching stemmed USCS patterns against layer descriptions using
+    The BaselineClassifier works by matching stemmed class patterns against layer descriptions using
     a flexible ordered sequence matching algorithm.
     """
 
-    def __init__(self, match_threshold=0.75):
+    def __init__(self, classification_system: type[ClassificationSystem]):
         """Initialize with configurable threshold.
 
         Args:
-            match_threshold (float): Minimum coverage for matches (default: 0.75)
+            classification_system (type[ClassificationSystem]): The classification system used.
         """
-        self.match_threshold = match_threshold
+        self.init_config(classification_system)
 
-        self.uscs_patterns = classification_params["uscs_patterns"]
+        self.classification_system = classification_system
 
-        self.stemmer_languages = {"de": "german", "fr": "french", "en": "english", "it": "italian"}
+        self.match_threshold = self.config["match_threshold"]
 
+        self.stemmer_languages = self.config["stemmer_languages"]
         self.stemmers = {}
+
+    def get_name(self) -> str:
+        """Returns a string with the name of the classifier."""
+        return "baseline"
+
+    def log_params(self):
+        """No parameters to log."""
+        return
 
     def get_stemmer(self, language: str) -> SnowballStemmer:
         """Get or create a stemmer for the specified language with German as a fallback option.
@@ -41,7 +48,7 @@ class BaselineClassifier:
             SnowballStemmer: The stemmer for the specified language
         """
         if language not in self.stemmers:
-            stemmer_lang = self.stemmer_languages.get(language, "german")
+            stemmer_lang = self.stemmer_languages.get(language, self.config["default_stemmer_language"])
             self.stemmers[language] = SnowballStemmer(stemmer_lang)
 
         return self.stemmers[language]
@@ -90,18 +97,18 @@ class BaselineClassifier:
         return None
 
     def classify(self, layer_descriptions: list[LayerInformations]):
-        """Classifies the material descriptions of layer information objects into USCS soil classes.
+        """Classifies the material descriptions of layer information objects into the selected classes.
 
         The method modifies the input object, layer_descriptions by setting their prediction_class attribute.
         The approach is as follows:
 
-        1. Tokenize and stem both the material description and the USCS pattern keywords
+        1. Tokenize and stem both the material description and the pattern keywords
         2. Find matches between description and patterns using partial matching
         3. Scores matches based on three criteria (in priority order):
            - Coverage: Percentage of pattern words matched in the description
            - Complexity: Length/specificity of the pattern (longer patterns preferred)
            - Position: Earlier matches in the text are preferred
-        4. Assigns the best matching USCS class to the layer object
+        4. Assigns the best class from the selected classification system to the layer object.
 
         For layers with no matches, assigns the default class 'kA' (no classification).
 
@@ -109,7 +116,7 @@ class BaselineClassifier:
             layer_descriptions (list[LayerInformations]): The LayerInformations object
         """
         for layer in layer_descriptions:
-            patterns = self.uscs_patterns[layer.language]
+            patterns = self.config["patterns"][layer.language]
             description = layer.material_description.lower()
             language = layer.language
             stemmer = self.get_stemmer(language)
@@ -121,7 +128,7 @@ class BaselineClassifier:
             matches = []
 
             for class_key, class_keyphrases in patterns.items():
-                uscs_class = USCSSystem.map_most_similar_class(class_key)
+                predicted_class = self.classification_system.map_most_similar_class(class_key)
                 for class_keyphrase in class_keyphrases:
                     # Tokenize the pattern into separate words and stem them
                     pattern_tokens = re.findall(r"\b\w+\b", class_keyphrase)
@@ -137,7 +144,7 @@ class BaselineClassifier:
                         coverage, match_positions, matched_words = result
                         matches.append(
                             {
-                                "class": uscs_class,
+                                "class": predicted_class,
                                 "coverage": coverage,
                                 "complexity": len(pattern_tokens),
                                 "matched_words": matched_words,

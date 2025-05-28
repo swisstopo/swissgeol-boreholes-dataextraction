@@ -9,12 +9,10 @@ from dotenv import load_dotenv
 from utils.file_utils import read_params
 
 from classification import DATAPATH
-from classification.classifiers.aws_bedrock_classifier import AWSBedrockClassifier
-from classification.classifiers.baseline_classifier import BaselineClassifier
-from classification.classifiers.bert_classifier import BertClassifier
-from classification.classifiers.classifier_protocol import Classifier
-from classification.classifiers.dummy_classifier import DummyClassifier
+from classification.classifiers.classifier import Classifier, ClassifierTypes
+from classification.classifiers.classifier_factory import ClassifierFactory
 from classification.evaluation.evaluate import evaluate
+from classification.utils.classification_classes import ExistingClassificationSystems
 from classification.utils.data_loader import LayerInformations, load_data
 from classification.utils.data_utils import (
     get_data_class_count,
@@ -72,17 +70,9 @@ def log_ml_flow_infos(
     # Log the classification systems used
     mlflow.log_param("classification_systems", classification_system)
 
-    # Log classifier name
+    # Log classifier name and parameters
     mlflow.log_param("classifier_type", classifier.__class__.__name__)
-    if isinstance(classifier, BertClassifier) and os.path.isdir(classifier.model_path):
-        mlflow.log_param("model_name", "/".join(classifier.model_path.parts[-2:]))
-
-    # Log model and id, prompt and parameter versions if anthropic model used
-    if isinstance(classifier, AWSBedrockClassifier):
-        mlflow.log_param("anthropic_model_id", os.environ.get("ANTHROPIC_MODEL_ID"))
-        mlflow.log_param("anthropic_prompt_version", classifier.prompt_version)
-        mlflow.log_param("anthropic_class_pattern_version", classifier.pattern_version)
-        mlflow.log_param("anthropic_reasoning_mode", classifier.reasoning_mode)
+    classifier.log_params()
 
     # Log input data and output predictions
     mlflow.log_artifact(str(file_path), "input_data")
@@ -199,34 +189,25 @@ def main(
         model_path (Path): Path to the trained model.
         classification_system (str): The classification system used to classify the data.
     """
-    if classification_system == "lithology" and classifier_type not in ["dummy", "bedrock", "bert"]:
-        raise NotImplementedError(
-            "Currently, only the dummy, bedrock and bert classifiers are supported with classification system "
-            "'lithology'."
-        )
+    classifier_type_instance = ClassifierTypes.infer_type(classifier_type.lower())
+    classification_system_cls = ExistingClassificationSystems.get_classification_system_type(
+        classification_system.lower()
+    )
 
     if mlflow_tracking:
         setup_mlflow_tracking(file_path, out_directory, file_subset_directory)
 
     logger.info(f"Loading data from {file_path}")
-    layer_descriptions = load_data(file_path, file_subset_directory, classification_system)
+    layer_descriptions = load_data(file_path, file_subset_directory, classification_system_cls)
 
-    if model_path is not None and classifier_type != "bert":
-        logger.warning("Model path is only used with classifier 'bert'.")
-    if classifier_type == "dummy":
-        classifier = DummyClassifier()
-    elif classifier_type == "baseline":
-        classifier = BaselineClassifier()
-    elif classifier_type == "bert":
-        classifier = BertClassifier(model_path, classification_system)
-    elif classifier_type == "bedrock":
-        classifier = AWSBedrockClassifier(
-            out_directory_bedrock, classification_system, max_concurrent_calls=1, api_call_delay=0.0
-        )
+    classifier = ClassifierFactory.create_classifier(
+        classifier_type_instance, classification_system_cls, model_path, out_directory_bedrock
+    )
 
     # classify
     logger.info(
-        f"Classifying layer description into {classification_system} classes with {classifier.__class__.__name__}"
+        f"Classifying layer description into {classification_system_cls.get_name()} classes "
+        f"with {classifier.__class__.__name__}"
     )
     classifier.classify(layer_descriptions)
 
@@ -239,7 +220,7 @@ def main(
     write_per_language_per_class_predictions(layer_descriptions, classification_metrics, out_directory)
 
     if mlflow_tracking:
-        log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier, classification_system)
+        log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier, classification_system_cls)
 
     if mlflow_tracking:
         mlflow.end_run()

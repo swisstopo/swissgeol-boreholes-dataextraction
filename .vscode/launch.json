@@ -83,17 +83,18 @@
             "module": "src.classification.main",
             "args": [
                 "-f",
-                // "data/geoquat_ground_truth.json",
-                 "data/deepwells_ground_truth.json",
-                //"data/nagra_ground_truth.json",
-                // "-s",
-                // "data/geoquat/validation",
+                "data/geoquat_ground_truth.json",
+                // "data/lithology_splits/val.json",
+                "-s",
+                "data/geoquat/validation",
                 "-c",
-                "dummy",
+                "baseline",
                 "-p",
-                "models/balance_best/20250416-192401_best_stage2_balance/checkpoint-8340_very_best",
+                "models/lithology/20250526-172024_new_data_s2/checkpoint-1331_best",
+                //"models/uscs/balance_best/20250416-192401_best_stage2_balance/checkpoint-8340_very_best",
                 "-cs",
-                "lithology"
+                // "lithology"
+                "uscs"
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
