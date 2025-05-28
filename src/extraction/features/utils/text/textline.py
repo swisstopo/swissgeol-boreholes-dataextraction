@@ -58,34 +58,32 @@ class TextLine:
             material_description (dict): The material description dictionary containing the used expressions.
             language (str): The language of the material description, e.g. "de", "fr", "en", "it".
         """
-        text_lower = self.text.lower()
-
         # Create appropriate stemmer based on language
         stemmer_languages = {"de": "german", "fr": "french", "en": "english", "it": "italian"}
         stemmer_lang = stemmer_languages.get(language, "german")
         stemmer = SnowballStemmer(stemmer_lang)
 
         # Tokenize and stem words in the text
+        text_lower = self.text.lower()
         text_tokens = re.findall(r"\b\w+\b", text_lower)
         stemmed_text_tokens = {stemmer.stem(token) for token in text_tokens}
 
         # Check for matches in including expressions
-        found_inclusion = False
-        for word in material_description[language]["including_expressions"]:
-            stemmed_word = stemmer.stem(word.lower())
-            if stemmed_word in stemmed_text_tokens:
-                found_inclusion = True
-                break
+        found_inclusion = any(
+            stemmer.stem(word.lower()) in stemmed_text_tokens
+            for word in material_description[language]["including_expressions"]
+        )
+
+        if not found_inclusion:
+            return False
 
         # Check for matches in excluding expressions
-        found_exclusion = False
-        for word in material_description[language]["excluding_expressions"]:
-            stemmed_word = stemmer.stem(word.lower())
-            if stemmed_word in stemmed_text_tokens:
-                found_exclusion = True
-                break
+        found_exclusion = any(
+            stemmer.stem(word.lower()) in stemmed_text_tokens
+            for word in material_description[language]["excluding_expressions"]
+        )
 
-        return found_inclusion and not found_exclusion
+        return not found_exclusion
 
     @property
     def text(self) -> str:
