@@ -1,6 +1,7 @@
 """This module defines the FastAPI endpoint for extracting all boreholes with their stratigraphy."""
 
 from app.common.aws import load_pdf_from_aws
+from app.common.helpers import load_png
 from app.common.schemas import (
     BoreholeExtractionSchema,
     BoreholeLayerSchema,
@@ -10,7 +11,6 @@ from extraction.features.extract import extract_page
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.features.utils.geometry.line_detection import extract_lines
 from extraction.features.utils.text.extract_text import extract_text_lines
-from fastapi import HTTPException
 from utils.file_utils import read_params
 from utils.language_detection import detect_language_of_document
 
@@ -31,17 +31,22 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
     Returns:
         List[BoreholeExtraction]: List of boreholes with their stratigraphy layers and bounding boxes.
     """
-    try:
-        document = load_pdf_from_aws(filename)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail="Cannot open PDF file") from e
+    # 1. load the pdf
+    document = load_pdf_from_aws(filename)
 
     language = detect_language_of_document(
         document, matching_params["default_language"], matching_params["material_description"].keys()
     )
 
+    pdf_img_scalings = []
+
     layers_with_bb_in_document = LayersInDocument([], filename)
     for page_index, page in enumerate(document):
+        # 2. load the png image to infer the scaling, MUST have been generated before
+        png_page = load_png(filename, page_index + 1)  # page number is 1-indexed
+        pdf_img_scalings.append((png_page.shape[1] / page.rect.width, png_page.shape[0] / page.rect.height))
+
+        # 3. extract layers
         text_lines = extract_text_lines(page)
         geometric_lines = extract_lines(page, line_detection_params)
 
@@ -56,16 +61,20 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
         )
         layers_with_bb_in_document.assign_layers_to_boreholes(page_layers)
 
-    extracted_stratigraphy = create_response_object(layers_with_bb_in_document)
+    extracted_stratigraphy = create_response_object(layers_with_bb_in_document, pdf_img_scalings)
 
     return extracted_stratigraphy
 
 
-def create_response_object(layers_with_bb: LayersInDocument) -> ExtractStratigraphyResponse:
+def create_response_object(
+    layers_with_bb: LayersInDocument, pdf_img_scalings: list[tuple[float]]
+) -> ExtractStratigraphyResponse:
     """Create a response object from the extracted layers with bounding boxes.
 
     Args:
         layers_with_bb (LayersInDocument): Object containing borehole layers with bounding boxes.
+        pdf_img_scalings (list): list of 2-tuples containing the height and width scalings to convert the coordinates
+            from pdf to png. This scaling is chosen at the png creation, and could potentially be simplified.
 
     Returns:
         ExtractStratigraphyResponse: Response object containing the extracted stratigraphy data.
@@ -77,7 +86,7 @@ def create_response_object(layers_with_bb: LayersInDocument) -> ExtractStratigra
         page_numbers = set()
 
         for prediction in borehole.predictions:
-            layer = BoreholeLayerSchema.from_prediction(prediction)
+            layer = BoreholeLayerSchema.from_prediction(prediction, pdf_img_scalings)
             layers.append(layer)
 
             if layer.material_description:
