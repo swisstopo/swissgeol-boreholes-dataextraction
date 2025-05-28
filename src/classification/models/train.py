@@ -19,6 +19,7 @@ from utils.file_utils import read_params
 from classification import DATAPATH
 from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
 from classification.models.model import BertModel
+from classification.utils.classification_classes import ExistingClassificationSystems
 from classification.utils.data_loader import load_data
 
 if __name__ == "__main__":
@@ -132,8 +133,11 @@ def common_options(f):
 def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: Path):
     """Train a BERT model using the specified datasets and configurations from the YAML config file."""
     model_config = read_params(config_file_path)
+    classification_system = ExistingClassificationSystems.get_classification_system_type(
+        model_config["classification_system"].lower()
+    )
 
-    out_directory = out_directory / model_config["classification_system"] / time.strftime("%Y%m%d-%H%M%S")
+    out_directory = out_directory / classification_system.get_name() / time.strftime("%Y%m%d-%H%M%S")
 
     if mlflow_tracking:
         logger.info("Logging to MLflow.")
@@ -143,7 +147,7 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
 
     model_path = model_config["model_path"] if model_checkpoint is None else model_checkpoint
     logger.info(f"Loading pretrained model from {model_path}.")
-    bert_model = BertModel(model_path, model_config["classification_system"])
+    bert_model = BertModel(model_path, classification_system)
     bert_model.freeze_all_layers()
     bert_model.unfreeze_list(model_config.get("unfreeze_layers", []))
     bert_model.model.train()
@@ -220,16 +224,19 @@ def setup_data(bert_model: BertModel, model_config: dict) -> tuple[datasets.Data
         eval_file_path = DATAPATH / model_config["eval_subset"]
         eval_subset = None
 
+    classification_system = ExistingClassificationSystems.get_classification_system_type(
+        model_config["classification_system"].lower()
+    )
     train_data = load_data(
         train_file_path,
         file_subset_directory=train_subset,
-        classification_system_str=model_config["classification_system"],
+        classification_system=classification_system,
     )
     train_dataset = bert_model.get_tokenized_dataset(train_data)
     eval_data = load_data(
         eval_file_path,
         file_subset_directory=eval_subset,
-        classification_system_str=model_config["classification_system"],
+        classification_system=classification_system,
     )
     eval_dataset = bert_model.get_tokenized_dataset(eval_data)
     return train_dataset, eval_dataset
