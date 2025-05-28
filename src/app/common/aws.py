@@ -51,7 +51,7 @@ def create_s3_client():
         )
         return s3_client
     except (NoCredentialsError, ClientError) as e:
-        print(f"Error accessing S3 with custom credentials: {e}")
+        logger.error(f"Error accessing S3 with custom credentials: {e}")
         raise HTTPException(status_code=500, detail="Failed to access S3.") from None
 
 
@@ -62,8 +62,7 @@ def _s3_test_client(s3_client: boto3.client):
         s3_client (boto3.client): The S3 client.
     """
     try:
-        s3_client.list_buckets()
-        return None
+        client_response = s3_client.list_buckets()
 
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
@@ -77,6 +76,9 @@ def _s3_test_client(s3_client: boto3.client):
             detail="Server misconfiguration: could not connect to S3 endpoint URL: "
             f"{e.kwargs.get('endpoint_url', 'Unknown')}",
         ) from None
+
+    if config.bucket_name and config.bucket_name not in {bucket["Name"] for bucket in client_response["Buckets"]}:
+        raise HTTPException(status_code=404, detail=f"No bucket named {config.bucket_name}") from None
 
 
 def load_pdf_from_aws(filename: Path) -> pymupdf.Document:
@@ -126,6 +128,7 @@ def load_data_from_aws(filename: Path, prefix: str = "") -> bytes:
     # Check if the document exists in S3
     try:
         if config.bucket_name == DEFAULT_BUCKET_NAME:
+            # logging is here to avoid circular imports error in the config module
             logger.warning(f"No bucket name provided, defaulting to {DEFAULT_BUCKET_NAME}")
         s3_object = s3_client.get_object(Bucket=config.bucket_name, Key=str(prefix / filename))
     except s3_client.exceptions.NoSuchKey:
