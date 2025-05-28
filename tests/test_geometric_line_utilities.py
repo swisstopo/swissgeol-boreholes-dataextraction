@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 from extraction.features.utils.geometry.geometric_line_utilities import (
+    _are_parallel,
     _get_orthogonal_projection_to_line,
     _merge_lines,
     _odr_regression,
@@ -163,3 +164,23 @@ def test_merge_parallel_lines_quadtree():  # noqa: D103
     ]
     merged_lines = merge_parallel_lines_quadtree(lines, tol=1, angle_threshold=1)
     assert len(merged_lines) == 2, "There should be 2 lines after merging"
+
+
+@pytest.mark.parametrize(
+    "line1, line2, expected",
+    [
+        # Two vertical lines (x = constant), nearly parallel
+        (Line(Point(0, 0), Point(0, 10)), Line(Point(1e-6, 0), Point(1e-6, 10)), True),
+        # Two vertical lines, one with opposite direction, still parallel
+        (Line(Point(0, 0), Point(0, 10)), Line(Point(0, 10), Point(0, 0)), True),
+        # Slightly off vertical (shows tan discontinuity), this fails if the 2nd condition in are_parallel is not there
+        (Line(Point(0, 0), Point(1e-6, 10)), Line(Point(0, 0), Point(-1e-6, 10)), True),
+        # One vertical, one not quite vertical – angle should exceed threshold
+        (Line(Point(0, 0), Point(0, 10)), Line(Point(0, 0), Point(1, 10)), False),
+    ],
+)
+def test_are_parallel_vertical_cases(line1, line2, expected):  # noqa: D103
+    angle_threshold = 5.0  # degrees
+
+    result = _are_parallel(line1, line2, angle_threshold)
+    assert result == expected, f"Expected {expected} for lines {line1} and {line2}, got {result}"
