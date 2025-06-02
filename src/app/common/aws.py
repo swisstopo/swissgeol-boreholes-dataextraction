@@ -1,6 +1,7 @@
 """Series of utility functions for the aws connection to get the groundwater stratigraphy."""
 
 import io
+import os
 from pathlib import Path
 
 import boto3
@@ -78,7 +79,9 @@ def _s3_test_client(s3_client: boto3.client):
         ) from None
 
     if config.bucket_name and config.bucket_name not in {bucket["Name"] for bucket in client_response["Buckets"]}:
-        raise HTTPException(status_code=404, detail=f"No bucket named {config.bucket_name}") from None
+        raise HTTPException(
+            status_code=404, detail=f"No bucket named {config.bucket_name} owned by the current aws account."
+        ) from None
 
 
 def load_pdf_from_aws(filename: Path) -> pymupdf.Document:
@@ -127,7 +130,7 @@ def load_data_from_aws(filename: Path, prefix: str = "") -> bytes:
 
     # Check if the document exists in S3
     try:
-        if config.bucket_name == DEFAULT_BUCKET_NAME:
+        if not os.getenv("AWS_S3_BUCKET"):
             # logging is here to avoid circular imports error in the config module
             logger.warning(f"No bucket name provided, defaulting to {DEFAULT_BUCKET_NAME}")
         s3_object = s3_client.get_object(Bucket=config.bucket_name, Key=str(prefix / filename))
