@@ -115,7 +115,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             self._create_borehole_from_pair(pair)
             for pair in sorted(non_duplicated_pairs, key=lambda pair: pair.score_match, reverse=True)
         ]
-        return [borehole for borehole in boreholes if len(borehole.predictions) > self.params["min_num_layers"]]
+        return [borehole for borehole in boreholes if len(borehole.predictions) >= self.params["min_num_layers"]]
 
     def _find_intersecting_indices(
         self, material_descriptions_sidebar_pairs: list[MaterialDescriptionRectWithSidebar]
