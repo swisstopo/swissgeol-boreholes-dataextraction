@@ -41,7 +41,12 @@ class PNGRequest(BaseModel):
 
     filename: Path  # This will ensure the filename is a Path object
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)  # This allows using non-standard types like Path
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,  # This allows using non-standard types like Path
+        json_schema_extra={
+            "example": {"filename": "geoquat/validation/1007.pdf"},
+        },
+    )
 
     @field_validator("filename", mode="before")
     @classmethod
@@ -140,6 +145,18 @@ class BoundingBox(BaseModel):
         width_factor = target_width / original_width
         height_factor = target_height / original_height
 
+        return self.rescale_factor(width_factor, height_factor)
+
+    def rescale_factor(self, width_factor: float, height_factor: float) -> "BoundingBox":
+        """Rescale the bounding box given a factor for each dimension.
+
+        Args:
+            width_factor (float): The ratio of the target image width by original the image width.
+            height_factor (float): The ratio of the target image height by original the image height.
+
+        Returns:
+            BoundingBox: The rescaled bounding box.
+        """
         return BoundingBox(
             x0=self.x0 * width_factor,
             y0=self.y0 * height_factor,
@@ -191,6 +208,43 @@ class BoundingBoxWithPage(BoundingBox):
         if v <= 0:
             raise ValueError("Page number must be a positive integer")
         return v
+
+    def rescale(
+        self, original_width: float, original_height: float, target_width: float, target_height: float
+    ) -> "BoundingBoxWithPage":
+        """Rescale the bounding box by a factor given the original and target dimensions.
+
+        Args:
+            original_width (float): The original width of the image.
+            original_height (float): The original height of the image.
+            target_width (float): The target width of the image.
+            target_height (float): The target height of the image.
+
+        Returns:
+            BoundingBoxWithPage: The rescaled bounding box.
+        """
+        width_factor = target_width / original_width
+        height_factor = target_height / original_height
+
+        return self.rescale_factor(width_factor, height_factor)
+
+    def rescale_factor(self, width_factor: float, height_factor: float) -> "BoundingBoxWithPage":
+        """Rescale the bounding box given a factor for each dimension.
+
+        Args:
+            width_factor (float): The ratio of the target image width by original the image width.
+            height_factor (float): The ratio of the target image height by original the image height.
+
+        Returns:
+            BoundingBoxWithPage: The rescaled bounding box.
+        """
+        return BoundingBoxWithPage(
+            x0=self.x0 * width_factor,
+            y0=self.y0 * height_factor,
+            x1=self.x1 * width_factor,
+            y1=self.y1 * height_factor,
+            page_number=self.page_number,
+        )
 
 
 class Coordinates(BaseModel):
@@ -245,7 +299,9 @@ class BoundingBoxesRequest(ABC, BaseModel):
         index (e.g., 1 for the first page), applicable for multi-page files like PDFs.""",
     )
 
-    model_config = ConfigDict(json_schema_extra={"example": {"filename": "1007.pdf", "page_number": 1}})
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"filename": "geoquat/validation/1007.pdf", "page_number": 1}}
+    )
 
     @field_validator("filename", mode="before")
     @classmethod
@@ -342,7 +398,7 @@ class ExtractDataRequest(ABC, BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "filename": "1007.pdf",
+                "filename": "geoquat/validation/1007.pdf",
                 "page_number": 1,
                 "bbox": {"x0": 0.0, "y0": 0.0, "x1": 200.0, "y1": 200.0},
                 "format": FormatTypes.COORDINATES.value,  # Adjust as needed
@@ -465,7 +521,9 @@ class LayerMaterialDescriptionSchema(BaseModel):
     bounding_boxes: list[BoundingBoxWithPage]
 
     @classmethod
-    def from_prediction(cls, prediction: FeatureOnPage[MaterialDescription]) -> "LayerMaterialDescriptionSchema":
+    def from_prediction(
+        cls, prediction: FeatureOnPage[MaterialDescription], pdf_img_scalings: list[tuple[float]]
+    ) -> "LayerMaterialDescriptionSchema":
         return cls(
             text=prediction.feature.text,
             bounding_boxes=[
@@ -475,7 +533,7 @@ class LayerMaterialDescriptionSchema(BaseModel):
                     y0=line_feature.rect.y0,
                     x1=line_feature.rect.x1,
                     y1=line_feature.rect.y1,
-                )
+                ).rescale_factor(*pdf_img_scalings[line_feature.page - 1])
                 for line_feature in prediction.feature.lines
             ],
         )
@@ -492,7 +550,10 @@ class LayerDepthSchema(BaseModel):
     bounding_boxes: list[BoundingBoxWithPage]
 
     @classmethod
-    def from_prediction(cls, prediction: LayerDepthsEntry, fallback_page: int) -> "LayerDepthSchema":
+    def from_prediction(
+        cls, prediction: LayerDepthsEntry, pdf_img_scalings: list[tuple[float]], fallback_page: int
+    ) -> "LayerDepthSchema":
+        page_scalings = pdf_img_scalings[fallback_page - 1]
         return cls(
             depth=prediction.value,
             bounding_boxes=[
@@ -502,7 +563,7 @@ class LayerDepthSchema(BaseModel):
                     y0=prediction.rect.y0,
                     x1=prediction.rect.x1,
                     y1=prediction.rect.y1,
-                )
+                ).rescale_factor(*page_scalings)
             ],
         )
 
@@ -519,18 +580,22 @@ class BoreholeLayerSchema(BaseModel):
     end: LayerDepthSchema | None
 
     @classmethod
-    def from_prediction(cls, prediction: Layer) -> "BoreholeLayerSchema":
+    def from_prediction(cls, prediction: Layer, pdf_img_scalings: list[tuple[float]]) -> "BoreholeLayerSchema":
         material_descr = prediction.material_description
-        material_descr = LayerMaterialDescriptionSchema.from_prediction(material_descr) if material_descr else None
+        material_descr = (
+            LayerMaterialDescriptionSchema.from_prediction(material_descr, pdf_img_scalings)
+            if material_descr
+            else None
+        )
 
         fallback_page = material_descr.bounding_boxes[0].page_number if material_descr else 1
         start = (
-            LayerDepthSchema.from_prediction(prediction.depths.start, fallback_page)
+            LayerDepthSchema.from_prediction(prediction.depths.start, pdf_img_scalings, fallback_page)
             if prediction.depths and prediction.depths.start
             else None
         )
         end = (
-            LayerDepthSchema.from_prediction(prediction.depths.end, fallback_page)
+            LayerDepthSchema.from_prediction(prediction.depths.end, pdf_img_scalings, fallback_page)
             if prediction.depths and prediction.depths.end
             else None
         )
@@ -563,7 +628,7 @@ class ExtractStratigraphyRequest(ABC, BaseModel):
     ### Fields
 
     **Attributes:**
-    - **filename** (`Path`): Path to the PDF file. _Example_: `"1007.pdf"`
+    - **filename** (`Path`): Path to the PDF file. _Example_: `"geoquat/validation/1007.pdf"`
 
     ### Validation
     - **Filename Validator:** Ensures filename is not empty.

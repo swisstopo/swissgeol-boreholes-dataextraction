@@ -273,7 +273,7 @@ def start_pipeline(
                 geometric_lines = extract_lines(page, line_detection_params)
 
                 # extract the statigraphy
-                extract_page(
+                page_layers = extract_page(
                     layers_with_bb_in_document,
                     text_lines,
                     geometric_lines,
@@ -282,6 +282,7 @@ def start_pipeline(
                     doc,
                     **matching_params,
                 )
+                layers_with_bb_in_document.assign_layers_to_boreholes(page_layers)
 
                 # Extract the groundwater levels
                 groundwater_extractor = GroundwaterLevelExtractor(file_metadata.language)
