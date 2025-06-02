@@ -3,7 +3,7 @@
 import logging
 import queue
 from itertools import combinations
-from math import atan, cos, pi, sin
+from math import cos, sin
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -187,8 +187,8 @@ def _are_parallel(line1: Line, line2: Line, angle_threshold: float) -> bool:
         bool: True if the lines are parallel, False otherwise.
     """
     return (
-        np.abs(atan(line1.slope) - atan(line2.slope)) < angle_threshold * pi / 180
-        or np.pi - np.abs(atan(line1.slope) - atan(line2.slope)) < angle_threshold * pi / 180
+        np.abs(line1.angle - line2.angle) < angle_threshold
+        or 180 - np.abs(line1.angle - line2.angle) < angle_threshold
     )
 
 

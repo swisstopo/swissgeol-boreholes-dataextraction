@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -44,14 +45,14 @@ class Line:
     def distance_to(self, point: Point) -> float:
         """Calculate the distance of a point to the line.
 
+        Taken from https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
+
         Args:
             point (Point): The point to calculate the distance to.
 
         Returns:
             float: The distance of the point to the line.
         """
-        # Calculate the distance of the point to the line:
-        #  Taken from https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
         return np.abs(
             (self.end.x - self.start.x) * (self.start.y - point.y)
             - (self.start.x - point.x) * (self.end.y - self.start.y)
@@ -61,6 +62,14 @@ class Line:
     def slope(self) -> float:
         """Calculate the slope of the line."""
         return (self.end.y - self.start.y) / (self.end.x - self.start.x) if self.end.x - self.start.x != 0 else np.inf
+
+    @property
+    def angle(self) -> float:
+        """Angle of the line with the x-axis in degrees, ranging from -90 (exclusive) to +90 (inclusive)."""
+        if self.start.x == self.end.x:
+            return 90
+        else:
+            return math.atan(self.slope) / math.pi * 180
 
     @property
     def intercept(self) -> float:

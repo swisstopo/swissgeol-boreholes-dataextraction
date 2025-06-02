@@ -118,8 +118,9 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
         lsd_params=line_detection_params["lsd"],
         scale_factor=line_detection_params["pdf_scale_factor"],
     )
-    # we currently use lsd as it is more precise detecting smalls lines. The following comments shows how the hough
-    # transform line segment detector could be call, if we need it latter on.
+    # We currently use lsd as it is more precise detecting smalls lines. The following comments shows how the hough
+    # transform line segment detector could be called, in case we need it later on.
+    #
     # lines = detect_lines_hough(page, hough_params=line_detection_params["hough"])
 
     merging_params = line_detection_params["line_merging_params"]
