@@ -111,10 +111,11 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         # We order the boreholes with the highest score first. When one borehole is actually present in the ground
         # truth, but more than one are detected, we want the most correct to be assigned
-        return [
+        boreholes = [
             self._create_borehole_from_pair(pair)
             for pair in sorted(non_duplicated_pairs, key=lambda pair: pair.score_match, reverse=True)
         ]
+        return [borehole for borehole in boreholes if len(borehole.predictions) > self.params["min_num_layers"]]
 
     def _find_intersecting_indices(
         self, material_descriptions_sidebar_pairs: list[MaterialDescriptionRectWithSidebar]
@@ -257,26 +258,23 @@ class MaterialDescriptionRectWithSidebarExtractor:
             list[IntervalBlockPair]: The interval block pairs.
         """
         description_lines = get_description_lines(self.lines, pair.material_description_rect)
-        if len(description_lines) > 1:
-            if pair.sidebar:
-                return match_columns(
-                    pair.sidebar,
-                    description_lines,
-                    self.geometric_lines,
-                    pair.material_description_rect,
-                    **self.params,
-                )
-            else:
-                description_blocks = get_description_blocks(
-                    description_lines,
-                    self.geometric_lines,
-                    pair.material_description_rect,
-                    self.params["block_line_ratio"],
-                    self.params["left_line_length_threshold"],
-                )
-                return [IntervalBlockPair(block=block, depth_interval=None) for block in description_blocks]
+        if pair.sidebar:
+            return match_columns(
+                pair.sidebar,
+                description_lines,
+                self.geometric_lines,
+                pair.material_description_rect,
+                **self.params,
+            )
         else:
-            return []
+            description_blocks = get_description_blocks(
+                description_lines,
+                self.geometric_lines,
+                pair.material_description_rect,
+                self.params["block_line_ratio"],
+                self.params["left_line_length_threshold"],
+            )
+            return [IntervalBlockPair(block=block, depth_interval=None) for block in description_blocks]
 
     def _find_layer_identifier_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
         layer_identifier_sidebars = LayerIdentifierSidebarExtractor.from_lines(self.lines)
