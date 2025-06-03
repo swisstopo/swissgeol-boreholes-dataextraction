@@ -3,12 +3,24 @@
 import boto3
 import pytest
 from app.common.aws import get_s3_client
-from app.common.config import TEST_BUCKET_NAME, config
+from app.common.config import config
 from app.main import app
 from fastapi.testclient import TestClient
 from moto import mock_aws
 
-config.bucket_name = TEST_BUCKET_NAME
+TEST_BUCKET_NAME = "test-bucket"
+
+
+@pytest.fixture(autouse=True, scope="session")
+def override_bucket_name():
+    """Automatically override the bucket name before the test session."""
+    config.bucket_name = TEST_BUCKET_NAME
+
+
+@pytest.fixture(scope="session")
+def test_bucket_name():
+    """Returns the name of the test bucket."""
+    return TEST_BUCKET_NAME
 
 
 @pytest.fixture(scope="function")

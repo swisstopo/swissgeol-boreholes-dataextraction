@@ -8,7 +8,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 dotenv.load_dotenv(override=True)
 
-TEST_BUCKET_NAME = "test-bucket"
 DEFAULT_BUCKET_NAME = "stijnvermeeren-boreholes-integration-tmp"
 
 
