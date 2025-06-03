@@ -148,6 +148,7 @@ def post_extract_data(
     ### Status Codes
     - **200 OK**: Successful extraction, returning the specified data type.
     - **400 Bad Request**: Input request was invalid, typically due to misformatted or missing parameters.
+    - **401 Unauthorized**: Wrong or incomplete credentials.
     - **404 Not Found**: Requested data could not be found within the specified bounding box or page.
     - **500 Internal Server Error**: An error occurred on the server side during data extraction.
 
@@ -174,6 +175,7 @@ def post_extract_data(
     tags=["extract_stratigraphy"],
     responses={
         400: {"model": BadRequestResponse, "description": "Bad request"},
+        401: {"model": BadRequestResponse, "description": "Unauthorized"},
         404: {"model": BadRequestResponse, "description": "No boreholes found in PDF"},
         500: {"model": BadRequestResponse, "description": "Internal server error"},
     },
@@ -193,6 +195,7 @@ def post_extract_stratigraphy(request: ExtractStratigraphyRequest) -> ExtractStr
     ### Status Codes
     - 200: Successful extraction
     - 400: Invalid request or unable to open PDF
+    - 401: Unauthorized: Wrong or incomplete credentials.
     - 404: No boreholes found
     - 500: Internal error
     """
