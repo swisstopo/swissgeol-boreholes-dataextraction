@@ -78,9 +78,6 @@ def _test_s3_client(s3_client: boto3.client):
             detail="Server misconfiguration: could not connect to S3 endpoint URL: "
             f"{e.kwargs.get('endpoint_url', 'Unknown')}",
         ) from None
-    if config.test_bucket_name in client_buckets:
-        # testing with the test client
-        return
     if config.bucket_name and config.bucket_name not in client_buckets:
         raise HTTPException(
             status_code=404, detail=f"No bucket named {config.bucket_name} owned by the current aws account."

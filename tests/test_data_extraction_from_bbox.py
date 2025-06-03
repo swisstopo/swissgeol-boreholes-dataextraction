@@ -12,7 +12,7 @@ from pathlib import Path
 import pymupdf
 import pytest
 from app.common.aws import load_pdf_from_aws
-from app.common.config import config
+from app.common.config import TEST_BUCKET_NAME
 from app.common.schemas import BoundingBox, ExtractDataRequest, FormatTypes
 from fastapi.testclient import TestClient
 
@@ -65,13 +65,11 @@ def get_text_request_on_rotated_pdf():
 @pytest.fixture(scope="function")
 def upload_test_pdf(s3_client):
     """Upload a test PDF file to S3."""
-    s3_client.upload_file(Filename=str(TEST_PDF_PATH), Bucket=config.test_bucket_name, Key=str(TEST_PDF_KEY))
-    s3_client.upload_file(
-        Filename=str(TEST_ROTATED_PDF_PATH), Bucket=config.test_bucket_name, Key=str(TEST_ROTATED_PDF_KEY)
-    )
+    s3_client.upload_file(Filename=str(TEST_PDF_PATH), Bucket=TEST_BUCKET_NAME, Key=str(TEST_PDF_KEY))
+    s3_client.upload_file(Filename=str(TEST_ROTATED_PDF_PATH), Bucket=TEST_BUCKET_NAME, Key=str(TEST_ROTATED_PDF_KEY))
     s3_client.upload_file(
         Filename=str(TEST_CLIPPING_BEHAVIOR_PDF_PATH),
-        Bucket=config.test_bucket_name,
+        Bucket=TEST_BUCKET_NAME,
         Key=str(TEST_CLIPPING_BEHAVIOR_PDF_KEY),
     )
 
@@ -79,13 +77,11 @@ def upload_test_pdf(s3_client):
 @pytest.fixture(scope="function")
 def upload_test_png(s3_client, upload_test_pdf):
     """Upload a test PNG file to S3."""
-    s3_client.upload_file(Filename=str(TEST_PNG_PATH), Bucket=config.test_bucket_name, Key=str(TEST_PNG_KEY))
-    s3_client.upload_file(
-        Filename=str(TEST_ROTATED_PNG_PATH), Bucket=config.test_bucket_name, Key=str(TEST_ROTATED_PNG_KEY)
-    )
+    s3_client.upload_file(Filename=str(TEST_PNG_PATH), Bucket=TEST_BUCKET_NAME, Key=str(TEST_PNG_KEY))
+    s3_client.upload_file(Filename=str(TEST_ROTATED_PNG_PATH), Bucket=TEST_BUCKET_NAME, Key=str(TEST_ROTATED_PNG_KEY))
     s3_client.upload_file(
         Filename=str(TEST_CLIPPING_BEHAVIOR_PNG_PATH),
-        Bucket=config.test_bucket_name,
+        Bucket=TEST_BUCKET_NAME,
         Key=str(TEST_CLIPPING_BEHAVIOR_PNG_KEY),
     )
 

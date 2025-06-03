@@ -31,7 +31,6 @@ class Config(BaseSettings):
     # AWS Settings
     ###########################################################
     bucket_name: str = get_aws_bucket_name()
-    test_bucket_name: str = TEST_BUCKET_NAME
 
     ###########################################################
     # AWS Credentials

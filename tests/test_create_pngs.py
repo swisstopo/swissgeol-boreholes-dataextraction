@@ -13,7 +13,7 @@ running the tests.
 from pathlib import Path
 
 import pytest
-from app.common.config import config
+from app.common.config import TEST_BUCKET_NAME, config
 from botocore.exceptions import ClientError
 from fastapi.testclient import TestClient
 
@@ -26,7 +26,7 @@ TEST_PNG_PATH = Path(__file__).parent.parent / "example" / "sample-1.png"
 @pytest.fixture(scope="function")
 def upload_test_pdf(s3_client):
     """Upload a test PDF file to S3."""
-    s3_client.upload_file(Filename=str(TEST_PDF_PATH), Bucket=config.test_bucket_name, Key=TEST_PDF_KEY)
+    s3_client.upload_file(Filename=str(TEST_PDF_PATH), Bucket=TEST_BUCKET_NAME, Key=TEST_PDF_KEY)
 
 
 def test_upload_png_to_s3(s3_client):
@@ -39,7 +39,7 @@ def test_upload_png_to_s3(s3_client):
     )
 
     # Assert that the file is in the test bucket
-    response = s3_client.get_object(Bucket=config.test_bucket_name, Key=TEST_PNG_KEY)
+    response = s3_client.get_object(Bucket=TEST_BUCKET_NAME, Key=TEST_PNG_KEY)
     assert response is not None
 
 
@@ -54,7 +54,7 @@ def test_create_pngs_success(test_client: TestClient, s3_client, upload_test_pdf
     # Verify that PNG files are uploaded to S3
     for png_url in json_response["keys"]:
         try:
-            s3_client.head_object(Bucket=config.test_bucket_name, Key=png_url)
+            s3_client.head_object(Bucket=TEST_BUCKET_NAME, Key=png_url)
         except ClientError:
             pytest.fail(f"PNG file {png_url} not found in S3.")
 
