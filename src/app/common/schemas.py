@@ -44,7 +44,7 @@ class PNGRequest(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,  # This allows using non-standard types like Path
         json_schema_extra={
-            "example": {"filename": "geoquat/validation/1007.pdf"},
+            "example": {"filename": "1007.pdf"},
         },
     )
 
@@ -299,9 +299,7 @@ class BoundingBoxesRequest(ABC, BaseModel):
         index (e.g., 1 for the first page), applicable for multi-page files like PDFs.""",
     )
 
-    model_config = ConfigDict(
-        json_schema_extra={"example": {"filename": "geoquat/validation/1007.pdf", "page_number": 1}}
-    )
+    model_config = ConfigDict(json_schema_extra={"example": {"filename": "1007.pdf", "page_number": 1}})
 
     @field_validator("filename", mode="before")
     @classmethod
@@ -398,9 +396,9 @@ class ExtractDataRequest(ABC, BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "filename": "geoquat/validation/1007.pdf",
+                "filename": "1007.pdf",
                 "page_number": 1,
-                "bbox": {"x0": 0.0, "y0": 0.0, "x1": 200.0, "y1": 200.0},
+                "bbox": {"x0": 0.0, "y0": 0.0, "x1": 2000.0, "y1": 600.0},
                 "format": FormatTypes.COORDINATES.value,  # Adjust as needed
             }
         }
@@ -587,7 +585,8 @@ class BoreholeLayerSchema(BaseModel):
             if material_descr
             else None
         )
-
+        # TODO the fallback page is a temporary solution, as Layer do not possess any `page` attribute. Issue #228 on
+        # Github refers to this problem (https://github.com/swisstopo/swissgeol-boreholes-dataextraction/issues/228).
         fallback_page = material_descr.bounding_boxes[0].page_number if material_descr else 1
         start = (
             LayerDepthSchema.from_prediction(prediction.depths.start, pdf_img_scalings, fallback_page)
@@ -628,7 +627,7 @@ class ExtractStratigraphyRequest(ABC, BaseModel):
     ### Fields
 
     **Attributes:**
-    - **filename** (`Path`): Path to the PDF file. _Example_: `"geoquat/validation/1007.pdf"`
+    - **filename** (`Path`): Path to the PDF file. _Example_: `"1007.pdf"`
 
     ### Validation
     - **Filename Validator:** Ensures filename is not empty.
@@ -640,7 +639,7 @@ class ExtractStratigraphyRequest(ABC, BaseModel):
         This must be a valid file path, and the file should be accessible by the API.""",
     )
 
-    model_config = ConfigDict(json_schema_extra={"example": {"filename": "geoquat/validation/1007.pdf"}})
+    model_config = ConfigDict(json_schema_extra={"example": {"filename": "1007.pdf"}})
 
     @field_validator("filename", mode="before")
     @classmethod
