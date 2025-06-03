@@ -8,16 +8,16 @@ import numpy as np
 import pymupdf
 from extraction.annotations.plot_utils import convert_page_to_opencv_img
 
-from .layer import ExtractedBorehole, Layer, LayersInDocument
+from .layer import ExtractedBorehole, Layer
 
 logger = logging.getLogger(__name__)
 
 
 def remove_duplicate_layers(
-    previous_page: pymupdf.Page,
-    current_page: pymupdf.Page,
-    previous_layers_with_bb: LayersInDocument,
-    current_layers_with_bb: LayersInDocument,
+    current_page_index: int,
+    document: pymupdf.Document,
+    previous_layers_with_bb: list[ExtractedBorehole],
+    current_layers_with_bb: list[ExtractedBorehole],
     img_template_probability_threshold: float,
 ) -> list[ExtractedBorehole]:
     """Remove duplicate layers from the current page based on the layers of the previous page.
@@ -30,19 +30,25 @@ def remove_duplicate_layers(
     duplicate layers. If there is no depth column, we use template matching to compare the layers.
 
     Args:
-        previous_page (pymupdf.Page): The previous page.
-        current_page (pymupdf.Page): The current page containing the layers to check for duplicates.
-        previous_layers_with_bb (LayersInDocument): The layers of the previous page, with their bounding box.
-        current_layers_with_bb (LayersInDocument): The layers of the current page, with their bounding box.
+        current_page_index: (int): the current page index (starting from 0)
+        document (pymupdf.Document): The whole document.
+        previous_layers_with_bb (list[ExtractedBorehole]): The layers of the previous page, with their bounding box.
+        current_layers_with_bb (list[ExtractedBorehole]): The layers of the current page, with their bounding box.
         img_template_probability_threshold (float): The threshold for the template matching probability
 
     Returns:
         list[ExtractedBorehole]: The layers of the boreholes on the current page without duplicates. Their bounding
             boxes are kept the same.
     """
+    if current_page_index == 0:
+        return current_layers_with_bb
+
+    previous_page = document[current_page_index - 1]
+    current_page = document[current_page_index]
+
     non_duplicated_extracted_boreholes: list[ExtractedBorehole] = []
     # iterate on all the borehole profiles identified on this page
-    for current_borehole_layers_with_bb in current_layers_with_bb.boreholes_layers_with_bb:
+    for current_borehole_layers_with_bb in current_layers_with_bb:
         current_borehole_layers = current_borehole_layers_with_bb.predictions
         sorted_layers = sorted(current_borehole_layers, key=lambda x: x.material_description.rect.y0)
         first_non_duplicated_layer_index = 0
@@ -63,7 +69,7 @@ def remove_duplicate_layers(
                 current_material_description = layer.material_description
                 current_depth_interval = layer.depths
                 # iterate on all the layers in the previously identified borehole profiles
-                for previous_borehole_layers_with_bb in previous_layers_with_bb.boreholes_layers_with_bb:
+                for previous_borehole_layers_with_bb in previous_layers_with_bb:
                     previous_borehole_layers = previous_borehole_layers_with_bb.predictions
                     for previous_layer in previous_borehole_layers:
                         if previous_layer.depths is None:

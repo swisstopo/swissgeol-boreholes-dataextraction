@@ -8,6 +8,8 @@ from app.common.aws import load_pdf_from_aws, upload_file_to_s3
 from app.common.schemas import PNGResponse
 from fastapi import HTTPException
 
+IMG_SCALING_FACTOR = 3
+
 
 def create_pngs(aws_filename: Path) -> PNGResponse:
     """Convert a PDF document to PNG images. Please note that this function will overwrite any existing PNG files.
@@ -36,10 +38,10 @@ def create_pngs(aws_filename: Path) -> PNGResponse:
 
     # Convert each page of the PDF to PNG
     try:
-        for page_number in range(pdf_document.page_count):
-            page = pdf_document.load_page(page_number)
-            pix = page.get_pixmap(matrix=pymupdf.Matrix(3, 3))
-            png_filename = f"{filename}-{page_number + 1}.png"
+        for page_index in range(pdf_document.page_count):
+            page = pdf_document.load_page(page_index)
+            pix = page.get_pixmap(matrix=pymupdf.Matrix(IMG_SCALING_FACTOR, IMG_SCALING_FACTOR))
+            png_filename = f"{filename}-{page_index + 1}.png"
             png_path = f"/tmp/{png_filename}"  # Local path to save the PNG
             s3_bucket_png_path = f"dataextraction/{png_filename}"
 
