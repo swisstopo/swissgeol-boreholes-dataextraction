@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 from extraction.features.utils.geometry.geometric_line_utilities import (
+    _are_close,
     _are_parallel,
     _get_orthogonal_projection_to_line,
     _merge_lines,
@@ -138,6 +139,28 @@ def test_merge_lines(merge_lines_case):  # noqa: D103
     merged_line = _merge_lines(line1, line2)
     assert pytest.approx(merged_line.start.tuple) == expected_merged_line.start.tuple
     assert pytest.approx(merged_line.end.tuple) == expected_merged_line.end.tuple
+
+
+def test_are_close():  # noqa: D103
+    line1 = Line(Point(0, 0), Point(0, 10))
+    line2 = Line(Point(0, 11), Point(0, 20))
+    assert _are_close(line1, line2, tol=5), "Two lines that almost extend each other should be considered close"
+    assert _are_close(line2, line1, tol=5), "Two lines that almost extend each other should be considered close"
+
+    line1 = Line(Point(0, 0), Point(0, 20))
+    line2 = Line(Point(1, 8), Point(1, 12))
+    assert _are_close(
+        line1, line2, tol=5
+    ), "A line that is almost a sub-segment of another line should be considered close"
+    # TODO ensure this test passes, see #230.
+    # assert _are_close(line2, line1, tol=5),
+    #     "A line that is almost a sub-segment of another line should be considered close"
+
+    line1 = Line(Point(0, 0), Point(0, 0.1))
+    line2 = Line(Point(2, 0), Point(2, 0.1))
+    # TODO ensure these tests pass, see #230.
+    # assert not _are_close(line1, line2, tol=5), "Two very short parallel lines should not be considered close"
+    # assert not _are_close(line2, line1, tol=5), "Two very short parallel lines should not be considered close"
 
 
 def test_is_point_on_line():  # noqa: D103

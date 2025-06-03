@@ -43,7 +43,7 @@ class Line:
         self.length = self.start.distance_to(self.end)
 
     def distance_to(self, point: Point) -> float:
-        """Calculate the distance of a point to the line.
+        """Calculate the distance of a point to the (unbounded extension of the) line.
 
         Taken from https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line#Line_defined_by_two_points
 
