@@ -8,6 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 dotenv.load_dotenv(override=True)
 
+TEST_BUCKET_NAME = "test-bucket"
 DEFAULT_BUCKET_NAME = "stijnvermeeren-boreholes-integration-tmp"
 
 
@@ -30,7 +31,7 @@ class Config(BaseSettings):
     # AWS Settings
     ###########################################################
     bucket_name: str = get_aws_bucket_name()
-    test_bucket_name: str = "test-bucket"
+    test_bucket_name: str = TEST_BUCKET_NAME
 
     ###########################################################
     # AWS Credentials

@@ -29,7 +29,7 @@ def get_s3_client():
     global _s3_client
     if _s3_client is None:
         _s3_client = create_s3_client()
-    _s3_test_client(_s3_client)
+    _test_s3_client(_s3_client)
     return _s3_client
 
 
@@ -56,7 +56,7 @@ def create_s3_client():
         raise HTTPException(status_code=500, detail="Failed to access S3.") from None
 
 
-def _s3_test_client(s3_client: boto3.client):
+def _test_s3_client(s3_client: boto3.client):
     """Test the s3 client by trying a simple operation.
 
     Args:
@@ -64,6 +64,7 @@ def _s3_test_client(s3_client: boto3.client):
     """
     try:
         client_response = s3_client.list_buckets()
+        client_buckets = {bucket["Name"] for bucket in client_response["Buckets"]}
 
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
@@ -77,8 +78,10 @@ def _s3_test_client(s3_client: boto3.client):
             detail="Server misconfiguration: could not connect to S3 endpoint URL: "
             f"{e.kwargs.get('endpoint_url', 'Unknown')}",
         ) from None
-
-    if config.bucket_name and config.bucket_name not in {bucket["Name"] for bucket in client_response["Buckets"]}:
+    if config.test_bucket_name in client_buckets:
+        # testing with the test client
+        return
+    if config.bucket_name and config.bucket_name not in client_buckets:
         raise HTTPException(
             status_code=404, detail=f"No bucket named {config.bucket_name} owned by the current aws account."
         ) from None
