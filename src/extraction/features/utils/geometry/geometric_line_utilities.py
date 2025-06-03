@@ -3,7 +3,7 @@
 import logging
 import queue
 from itertools import combinations
-from math import atan, cos, pi, sin
+from math import cos, sin
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -14,22 +14,24 @@ from .linesquadtree import LinesQuadTree
 logger = logging.getLogger(__name__)
 
 
-def is_point_on_line(line: Line, point: Point, tol=10) -> ArrayLike:
+def is_point_on_line(line: Line, point: Point, tol=10) -> bool:
     """Check if a point is on a line.
 
     The check is done by calculating the slope and y-intercept of the line and then checking if the point satisfies
-    the equation of the line with some margin tol. Since the lines are only line segments,
-    the function also checks if the respecting end points of the line segments overlap. Again, here we
-    allow for some margin, tol / 2 for the y-coordinate and tol for the x-coordinate. We assume lines are horizontal,
-    and allow for less margin in the y-coordinate to keep merged lines horizontal.
+    the equation of the line with some margin tol. Since the lines is only a line segments, the function also checks
+    if the point is between the start and end points of the segment. Again, here we allow for some margin, tol / 2 for
+    the y-coordinate and tol for the x-coordinate. We assume lines are horizontal, and allow for less margin in the
+    y-coordinate to keep merged lines horizontal.
+
+    TODO remove the special treatment for horizontal lines and treat all lines eqaully. See #230.
 
     Args:
-        line (Line): Line as detected by LSD:
+        line (Line): a line segment
         point (Point): any point
-        tol (int, optional): Tolerance to check if point is on line. Defaults to 10.
+        tol (int, optional): Tolerance to check if point is on the line. Defaults to 10.
 
     Returns:
-        ArrayLike: True if the point is on the line, False otherwise.
+        bool: True if the point is on the line (within the allowed tolerance), False otherwise.
     """
     x_start = np.min([line.start.x, line.end.x])
     x_end = np.max([line.start.x, line.end.x])
@@ -70,7 +72,8 @@ def _odr_regression(x: ArrayLike, y: ArrayLike, weights: ArrayLike = None) -> tu
     nominator = -2 * np.sum(np.dot(weights, (x - x_mean) * (y - y_mean)))
     denominator = np.sum(np.dot(weights, (y - y_mean) ** 2 - (x - x_mean) ** 2))
     if nominator == 0 and denominator == 0:
-        logger.warning(
+        # most of those lines are small, and will likelly be deleted at the next step
+        logger.debug(
             "The line merging problem is ill defined as both nominator and denominator for arctan are 0. "
             "We return phi=np.nan and r=np.nan."
         )
@@ -163,6 +166,8 @@ def _get_orthogonal_projection_to_line(point: Point, phi: float, r: float) -> Po
 def _are_close(line1: Line, line2: Line, tol: int) -> bool:
     """Check if two lines are close to each other.
 
+    TODO: ensure this method behaves symmetrically, see #230.
+
     Args:
         line1 (Line): The first line.
         line2 (Line): The second line.
@@ -185,7 +190,10 @@ def _are_parallel(line1: Line, line2: Line, angle_threshold: float) -> bool:
     Returns:
         bool: True if the lines are parallel, False otherwise.
     """
-    return np.abs(atan(line1.slope) - atan(line2.slope)) < angle_threshold * pi / 180
+    return (
+        np.abs(line1.angle - line2.angle) < angle_threshold
+        or 180 - np.abs(line1.angle - line2.angle) < angle_threshold
+    )
 
 
 def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: float) -> list[Line]:

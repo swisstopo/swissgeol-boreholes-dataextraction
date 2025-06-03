@@ -25,7 +25,7 @@ def _draw_lines(open_cv_img, lines, scale_factor=1):
                 line.start.tuple,
                 line.end.tuple,
                 color,
-                1,
+                3,
             )
             cv2.circle(open_cv_img, line.start.tuple, radius=1, color=(0, 0, 255), thickness=-1)
             cv2.circle(open_cv_img, line.end.tuple, radius=1, color=(0, 0, 255), thickness=-1)
