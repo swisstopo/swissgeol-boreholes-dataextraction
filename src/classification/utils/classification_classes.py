@@ -35,6 +35,12 @@ class ClassificationSystem(ABC):
 
     @classmethod
     @abstractmethod
+    def get_name(cls) -> str:
+        """Return the name of the system used as a string."""
+        ...
+
+    @classmethod
+    @abstractmethod
     def get_layer_ground_truth_key(cls) -> str:
         """Return the key in the layer dictionary that retrieves the ground truth class string."""
         ...
@@ -98,6 +104,11 @@ class USCSSystem(ClassificationSystem):
     def get_enum(cls) -> type[USCSClasses]:
         """Return the USCSClasses Enum."""
         return cls.USCSClasses
+
+    @classmethod
+    def get_name(cls) -> str:
+        """Return the name of the system used as a string."""
+        return "uscs"
 
     @classmethod
     def get_layer_ground_truth_key(cls) -> str:
@@ -188,6 +199,11 @@ class LithologySystem(ClassificationSystem):
     def get_enum(cls) -> type[LithologyClasses]:
         """Return the USCSClasses Enum."""
         return cls.LithologyClasses
+
+    @classmethod
+    def get_name(cls) -> str:
+        """Return the name of the system used as a string."""
+        return "lithology"
 
     @classmethod
     def get_layer_ground_truth_key(cls) -> str:

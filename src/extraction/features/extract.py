@@ -3,10 +3,12 @@
 import pymupdf
 import rtree
 from extraction.features.stratigraphy.interval.interval import AAboveBInterval, Interval, IntervalBlockPair
+from extraction.features.stratigraphy.layer.duplicate_detection import remove_duplicate_layers
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
     Layer,
     LayerDepths,
+    LayersInDocument,
 )
 from extraction.features.stratigraphy.layer.page_bounding_boxes import (
     MaterialDescriptionRectWithSidebar,
@@ -111,10 +113,11 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         # We order the boreholes with the highest score first. When one borehole is actually present in the ground
         # truth, but more than one are detected, we want the most correct to be assigned
-        return [
+        boreholes = [
             self._create_borehole_from_pair(pair)
             for pair in sorted(non_duplicated_pairs, key=lambda pair: pair.score_match, reverse=True)
         ]
+        return [borehole for borehole in boreholes if len(borehole.predictions) >= self.params["min_num_layers"]]
 
     def _find_intersecting_indices(
         self, material_descriptions_sidebar_pairs: list[MaterialDescriptionRectWithSidebar]
@@ -257,26 +260,23 @@ class MaterialDescriptionRectWithSidebarExtractor:
             list[IntervalBlockPair]: The interval block pairs.
         """
         description_lines = get_description_lines(self.lines, pair.material_description_rect)
-        if len(description_lines) > 1:
-            if pair.sidebar:
-                return match_columns(
-                    pair.sidebar,
-                    description_lines,
-                    self.geometric_lines,
-                    pair.material_description_rect,
-                    **self.params,
-                )
-            else:
-                description_blocks = get_description_blocks(
-                    description_lines,
-                    self.geometric_lines,
-                    pair.material_description_rect,
-                    self.params["block_line_ratio"],
-                    self.params["left_line_length_threshold"],
-                )
-                return [IntervalBlockPair(block=block, depth_interval=None) for block in description_blocks]
+        if pair.sidebar:
+            return match_columns(
+                pair.sidebar,
+                description_lines,
+                self.geometric_lines,
+                pair.material_description_rect,
+                **self.params,
+            )
         else:
-            return []
+            description_blocks = get_description_blocks(
+                description_lines,
+                self.geometric_lines,
+                pair.material_description_rect,
+                self.params["block_line_ratio"],
+                self.params["left_line_length_threshold"],
+            )
+            return [IntervalBlockPair(block=block, depth_interval=None) for block in description_blocks]
 
     def _find_layer_identifier_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
         layer_identifier_sidebars = LayerIdentifierSidebarExtractor.from_lines(self.lines)
@@ -444,26 +444,42 @@ class MaterialDescriptionRectWithSidebarExtractor:
             return candidate_rects[0]
 
 
-def process_page(
-    text_lines: list[TextLine], geometric_lines: list[Line], language: str, page_number: int, **matching_params: dict
+def extract_page(
+    layers_from_previous_pages: LayersInDocument,
+    text_lines: list[TextLine],
+    geometric_lines: list[Line],
+    language: str,
+    page_index: int,
+    document: pymupdf.Document,
+    **matching_params: dict,
 ) -> list[ExtractedBorehole]:
     """Process a single PDF page and extract borehole information.
 
     Acts as a simple interface to MaterialDescriptionRectWithSidebarExtractor without requiring direct class usage.
 
     Args:
+        layers_from_previous_pages: LayersInDocument instance containing the already detected layers.
         text_lines (list[TextLine]): All text lines on the page.
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
         language (str): Language of the page (used in parsing).
-        page_number (int): The page number (0-indexed).
+        page_index (int): The page index (0-indexed).
+        document (pymupdf.Document): the document.
         **matching_params (dict): Additional parameters for the matching pipeline.
 
     Returns:
         list[ExtractedBorehole]: Extracted borehole layers from the page.
     """
-    return MaterialDescriptionRectWithSidebarExtractor(
-        text_lines, geometric_lines, language, page_number, **matching_params
+    extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(
+        text_lines, geometric_lines, language, page_index + 1, **matching_params
     ).process_page()
+
+    return remove_duplicate_layers(
+        current_page_index=page_index,
+        document=document,
+        previous_layers_with_bb=layers_from_previous_pages.boreholes_layers_with_bb,
+        current_layers_with_bb=extracted_boreholes,
+        img_template_probability_threshold=matching_params["img_template_probability_threshold"],
+    )
 
 
 def match_columns(

@@ -1,18 +1,21 @@
 """Series of utility functions for the aws connection to get the groundwater stratigraphy."""
 
 import io
+import os
 from pathlib import Path
 
 import boto3
 import numpy as np
 import pymupdf
-from app.common.config import config
-from botocore.exceptions import ClientError, NoCredentialsError
+from app.common.config import DEFAULT_BUCKET_NAME, config
+from app.common.log import get_app_logger
+from botocore.exceptions import ClientError, EndpointConnectionError, NoCredentialsError
 from dotenv import load_dotenv
 from fastapi import HTTPException
 from PIL import Image
 
 load_dotenv()
+logger = get_app_logger()
 
 _s3_client = None  # Global reference to the S3 client
 
@@ -26,6 +29,7 @@ def get_s3_client():
     global _s3_client
     if _s3_client is None:
         _s3_client = create_s3_client()
+    _test_s3_client(_s3_client)
     return _s3_client
 
 
@@ -35,6 +39,10 @@ def create_s3_client():
     Returns:
         boto3.client: The S3 client.
     """
+    if not config.aws_endpoint:
+        logger.warning(
+            "No endpoint provided, a client with an empty endpoint value might have an unexpected behaviour."
+        )
     try:
         s3_client = boto3.client(
             "s3",
@@ -44,8 +52,36 @@ def create_s3_client():
         )
         return s3_client
     except (NoCredentialsError, ClientError) as e:
-        print(f"Error accessing S3 with custom credentials: {e}")
+        logger.error(f"Error accessing S3 with custom credentials: {e}")
         raise HTTPException(status_code=500, detail="Failed to access S3.") from None
+
+
+def _test_s3_client(s3_client: boto3.client):
+    """Test the s3 client by trying a simple operation.
+
+    Args:
+        s3_client (boto3.client): The S3 client.
+    """
+    try:
+        client_response = s3_client.list_buckets()
+        client_buckets = {bucket["Name"] for bucket in client_response["Buckets"]}
+
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        if error_code in ["InvalidAccessKeyId", "SignatureDoesNotMatch"]:
+            raise HTTPException(status_code=401, detail="Invalid AWS credentials.") from None
+        else:
+            raise HTTPException(status_code=500, detail=f"AWS Client error: {error_code}") from None
+    except EndpointConnectionError as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Server misconfiguration: could not connect to S3 endpoint URL: "
+            f"{e.kwargs.get('endpoint_url', 'Unknown')}",
+        ) from None
+    if config.bucket_name and config.bucket_name not in client_buckets:
+        raise HTTPException(
+            status_code=404, detail=f"No bucket named {config.bucket_name} owned by the current aws account."
+        ) from None
 
 
 def load_pdf_from_aws(filename: Path) -> pymupdf.Document:
@@ -94,6 +130,9 @@ def load_data_from_aws(filename: Path, prefix: str = "") -> bytes:
 
     # Check if the document exists in S3
     try:
+        if not os.getenv("AWS_S3_BUCKET"):
+            # logging is here to avoid circular imports error in the config module
+            logger.warning(f"No bucket name provided, defaulting to {DEFAULT_BUCKET_NAME}")
         s3_object = s3_client.get_object(Bucket=config.bucket_name, Key=str(prefix / filename))
     except s3_client.exceptions.NoSuchKey:
         raise HTTPException(status_code=404, detail=f"Document {prefix / filename} not found in S3 bucket.") from None

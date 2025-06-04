@@ -15,7 +15,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers.models.bert.modeling_bert import BertForSequenceClassification
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
-from classification.utils.classification_classes import ClassificationSystem, ExistingClassificationSystems
+from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformations
 
 logger = logging.getLogger(__name__)
@@ -24,14 +24,14 @@ logger = logging.getLogger(__name__)
 class BertModel:
     """Class for BERT model and tokenizer."""
 
-    def __init__(self, model_path: str | Path, classification_system_str: str):
+    def __init__(self, model_path: str | Path, classification_system: type[ClassificationSystem]):
         """Initialize a pretrained BERT model from the transformers librairy.
 
         Args:
             model_path (str): A string containing the model name.
-            classification_system_str (str): The classification system used to classify the data.
+            classification_system (type[ClassificationSystem]): The classification system used to classify the data.
         """
-        self.classification_system_str = classification_system_str
+        self.classification_system = classification_system
         self._setup_classification_system()
 
         self.model_path = model_path
@@ -39,10 +39,7 @@ class BertModel:
 
     def _setup_classification_system(self) -> None:
         """Set up label mappings based on the classification system."""
-        classification_system = ExistingClassificationSystems.get_classification_system_type(
-            self.classification_system_str
-        )
-        classes = classification_system.get_enum()
+        classes = self.classification_system.get_enum()
         self.num_class = len(classes)
         self.id2label = {class_.value: class_.name for class_ in classes}
         self.label2id = {class_.name: class_.value for class_ in classes}

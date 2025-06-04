@@ -24,12 +24,12 @@ TEST_PNG_PATH = Path(__file__).parent.parent / "example" / "sample-1.png"
 
 
 @pytest.fixture(scope="function")
-def upload_test_pdf(s3_client):
+def upload_test_pdf(s3_client, test_bucket_name):
     """Upload a test PDF file to S3."""
-    s3_client.upload_file(Filename=str(TEST_PDF_PATH), Bucket=config.test_bucket_name, Key=TEST_PDF_KEY)
+    s3_client.upload_file(Filename=str(TEST_PDF_PATH), Bucket=test_bucket_name, Key=TEST_PDF_KEY)
 
 
-def test_upload_png_to_s3(s3_client):
+def test_upload_png_to_s3(s3_client, test_bucket_name):
     """Test uploading a PNG file to mocked AWS S3."""
     # The method under test
     s3_client.upload_file(
@@ -39,11 +39,11 @@ def test_upload_png_to_s3(s3_client):
     )
 
     # Assert that the file is in the test bucket
-    response = s3_client.get_object(Bucket=config.test_bucket_name, Key=TEST_PNG_KEY)
+    response = s3_client.get_object(Bucket=test_bucket_name, Key=TEST_PNG_KEY)
     assert response is not None
 
 
-def test_create_pngs_success(test_client: TestClient, s3_client, upload_test_pdf):
+def test_create_pngs_success(test_client: TestClient, s3_client, upload_test_pdf, test_bucket_name):
     """Test the create_pngs endpoint with a valid request."""
     response = test_client.post("/api/V1/create_pngs", json={"filename": TEST_PDF_KEY.rsplit("/", 1)[-1]})
     assert response.status_code == 200
@@ -54,7 +54,7 @@ def test_create_pngs_success(test_client: TestClient, s3_client, upload_test_pdf
     # Verify that PNG files are uploaded to S3
     for png_url in json_response["keys"]:
         try:
-            s3_client.head_object(Bucket=config.test_bucket_name, Key=png_url)
+            s3_client.head_object(Bucket=test_bucket_name, Key=png_url)
         except ClientError:
             pytest.fail(f"PNG file {png_url} not found in S3.")
 

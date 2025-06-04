@@ -254,8 +254,11 @@ The project structure and the most important files are as follows:
       - `predictions.json` : The output file of the project, containing the results of the data extraction process.
     - `output_description_classification/`: output of the classification pipeline
   - `config/`: Contains configuration files for the classification pipeline.
-    - `bert_config.yml`: Configuration file for fine-tuning the BERT model.
-    - `classification_params.yml`: Configuration file containing variables used for the classification pipeline.
+    - `baseline/`: folder containing config files for using the baseline classifier.
+    - `bert/` : folder containing config files for fine-tuning and infering using the BERT model.
+    - `bedrock/`: folder containing config files for using the aws bedrock classifier.
+    - `classification_params.yml`: Configuration file containing general variables used for the classification pipeline.
+    - `classifier_config_paths.yml`: file containing the paths to all config files, for each classifier and classification system.
     - `line_detection_params.yml`: Configuration file for the line detection.
     - `matching_params.yml`: Configuration file containing variables used for the data extraction pipeline.
   - `tests/` : The tests for the project.

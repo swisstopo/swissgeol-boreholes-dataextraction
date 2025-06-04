@@ -13,6 +13,9 @@ from enum import Enum
 from pathlib import Path
 
 import pymupdf
+from extraction.features.stratigraphy.layer.layer import Layer, LayerDepthsEntry
+from extraction.features.utils.data_extractor import FeatureOnPage
+from extraction.features.utils.text.textblock import MaterialDescription
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -38,7 +41,12 @@ class PNGRequest(BaseModel):
 
     filename: Path  # This will ensure the filename is a Path object
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)  # This allows using non-standard types like Path
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,  # This allows using non-standard types like Path
+        json_schema_extra={
+            "example": {"filename": "1007.pdf"},
+        },
+    )
 
     @field_validator("filename", mode="before")
     @classmethod
@@ -137,6 +145,18 @@ class BoundingBox(BaseModel):
         width_factor = target_width / original_width
         height_factor = target_height / original_height
 
+        return self.rescale_factor(width_factor, height_factor)
+
+    def rescale_factor(self, width_factor: float, height_factor: float) -> "BoundingBox":
+        """Rescale the bounding box given a factor for each dimension.
+
+        Args:
+            width_factor (float): The ratio of the target image width by original the image width.
+            height_factor (float): The ratio of the target image height by original the image height.
+
+        Returns:
+            BoundingBox: The rescaled bounding box.
+        """
         return BoundingBox(
             x0=self.x0 * width_factor,
             y0=self.y0 * height_factor,
@@ -167,6 +187,63 @@ class BoundingBox(BaseModel):
             y0=rect.y0,
             x1=rect.x1,
             y1=rect.y1,
+        )
+
+
+class BoundingBoxWithPage(BoundingBox):
+    """Extends BoundingBox by adding page number metadata."""
+
+    page_number: int = Field(
+        ...,
+        description="The page number in the PDF where this bounding box is located (1-based index).",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"page_number": 2, "x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0}}
+    )
+
+    @field_validator("page_number")
+    @classmethod
+    def validate_page_number(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("Page number must be a positive integer")
+        return v
+
+    def rescale(
+        self, original_width: float, original_height: float, target_width: float, target_height: float
+    ) -> "BoundingBoxWithPage":
+        """Rescale the bounding box by a factor given the original and target dimensions.
+
+        Args:
+            original_width (float): The original width of the image.
+            original_height (float): The original height of the image.
+            target_width (float): The target width of the image.
+            target_height (float): The target height of the image.
+
+        Returns:
+            BoundingBoxWithPage: The rescaled bounding box.
+        """
+        width_factor = target_width / original_width
+        height_factor = target_height / original_height
+
+        return self.rescale_factor(width_factor, height_factor)
+
+    def rescale_factor(self, width_factor: float, height_factor: float) -> "BoundingBoxWithPage":
+        """Rescale the bounding box given a factor for each dimension.
+
+        Args:
+            width_factor (float): The ratio of the target image width by original the image width.
+            height_factor (float): The ratio of the target image height by original the image height.
+
+        Returns:
+            BoundingBoxWithPage: The rescaled bounding box.
+        """
+        return BoundingBoxWithPage(
+            x0=self.x0 * width_factor,
+            y0=self.y0 * height_factor,
+            x1=self.x1 * width_factor,
+            y1=self.y1 * height_factor,
+            page_number=self.page_number,
         )
 
 
@@ -321,7 +398,7 @@ class ExtractDataRequest(ABC, BaseModel):
             "example": {
                 "filename": "1007.pdf",
                 "page_number": 1,
-                "bbox": {"x0": 0.0, "y0": 0.0, "x1": 200.0, "y1": 200.0},
+                "bbox": {"x0": 0.0, "y0": 0.0, "x1": 2000.0, "y1": 600.0},
                 "format": FormatTypes.COORDINATES.value,  # Adjust as needed
             }
         }
@@ -428,3 +505,213 @@ class ExtractNumberResponse(ExtractDataResponse):
     @property
     def response_type(self):
         return "number"
+
+
+class LayerMaterialDescriptionSchema(BaseModel):
+    """Schema for representing a material description within a borehole layer.
+
+    A material description consists of a text string (e.g., "Kies", "Ton") and one or
+    more bounding boxes across one or more pages that visually localize the description
+    within the source document.
+    """
+
+    text: str
+    bounding_boxes: list[BoundingBoxWithPage]
+
+    @classmethod
+    def from_prediction(
+        cls, prediction: FeatureOnPage[MaterialDescription], pdf_img_scalings: list[tuple[float]]
+    ) -> "LayerMaterialDescriptionSchema":
+        return cls(
+            text=prediction.feature.text,
+            bounding_boxes=[
+                BoundingBoxWithPage(
+                    page_number=line_feature.page,
+                    x0=line_feature.rect.x0,
+                    y0=line_feature.rect.y0,
+                    x1=line_feature.rect.x1,
+                    y1=line_feature.rect.y1,
+                ).rescale_factor(*pdf_img_scalings[line_feature.page - 1])
+                for line_feature in prediction.feature.lines
+            ],
+        )
+
+
+class LayerDepthSchema(BaseModel):
+    """Schema for representing a depth marker within a borehole layer.
+
+    A depth marker includes a depth value (in meters) and a list of bounding boxes
+    that indicate where this depth is mentioned or displayed within the PDF.
+    """
+
+    depth: float
+    bounding_boxes: list[BoundingBoxWithPage]
+
+    @classmethod
+    def from_prediction(
+        cls, prediction: LayerDepthsEntry, pdf_img_scalings: list[tuple[float]], fallback_page: int
+    ) -> "LayerDepthSchema":
+        page_scalings = pdf_img_scalings[fallback_page - 1]
+        return cls(
+            depth=prediction.value,
+            bounding_boxes=[
+                BoundingBoxWithPage(
+                    page_number=fallback_page,  # page is taken from material_description as a fallback
+                    x0=prediction.rect.x0,
+                    y0=prediction.rect.y0,
+                    x1=prediction.rect.x1,
+                    y1=prediction.rect.y1,
+                ).rescale_factor(*page_scalings)
+            ],
+        )
+
+
+class BoreholeLayerSchema(BaseModel):
+    """Schema for a single stratigraphic layer in a borehole.
+
+    Each layer may consist of a material description, a start depth, and an end depth.
+    Any of these components may be absent if not detected during extraction.
+    """
+
+    material_description: LayerMaterialDescriptionSchema | None
+    start: LayerDepthSchema | None
+    end: LayerDepthSchema | None
+
+    @classmethod
+    def from_prediction(cls, prediction: Layer, pdf_img_scalings: list[tuple[float]]) -> "BoreholeLayerSchema":
+        material_descr = prediction.material_description
+        material_descr = (
+            LayerMaterialDescriptionSchema.from_prediction(material_descr, pdf_img_scalings)
+            if material_descr
+            else None
+        )
+        # TODO the fallback page is a temporary solution, as Layer do not possess any `page` attribute. Issue #228 on
+        # Github refers to this problem (https://github.com/swisstopo/swissgeol-boreholes-dataextraction/issues/228).
+        fallback_page = material_descr.bounding_boxes[0].page_number if material_descr else 1
+        start = (
+            LayerDepthSchema.from_prediction(prediction.depths.start, pdf_img_scalings, fallback_page)
+            if prediction.depths and prediction.depths.start
+            else None
+        )
+        end = (
+            LayerDepthSchema.from_prediction(prediction.depths.end, pdf_img_scalings, fallback_page)
+            if prediction.depths and prediction.depths.end
+            else None
+        )
+
+        return cls(
+            material_description=material_descr,
+            start=start,
+            end=end,
+        )
+
+
+class BoreholeExtractionSchema(BaseModel):
+    """Schema for representing an extracted borehole and its associated layers.
+
+    Each borehole includes the list of pages it spans (`page_numbers`) and a list of
+    extracted stratigraphic layers (`layers`). This allows downstream consumers to
+    map layers to visual representations in the PDF and construct full profiles.
+    """
+
+    page_numbers: list[int]
+    layers: list[BoreholeLayerSchema]
+
+
+class ExtractStratigraphyRequest(ABC, BaseModel):
+    """Request schema for the `extract_stratigraphy` endpoint.
+
+    This endpoint processes a PDF and extracts all borehole stratigraphy information
+    without needing page number or bounding box input.
+
+    ### Fields
+
+    **Attributes:**
+    - **filename** (`Path`): Path to the PDF file. _Example_: `"1007.pdf"`
+
+    ### Validation
+    - **Filename Validator:** Ensures filename is not empty.
+    """
+
+    filename: Path = Field(
+        ...,
+        description="""Path to the input PDF document that contains borehole stratigraphy. 
+        This must be a valid file path, and the file should be accessible by the API.""",
+    )
+
+    model_config = ConfigDict(json_schema_extra={"example": {"filename": "1007.pdf"}})
+
+    @field_validator("filename", mode="before")
+    @classmethod
+    def validate_filename(cls, value: str) -> str:
+        """Ensure the filename is not empty."""
+        return validate_filename(value)
+
+
+class ExtractStratigraphyResponse(BaseModel):
+    """Response schema for the `extract_stratigraphy` endpoint.
+
+    Returns structured borehole information extracted from the full PDF document.
+
+    ### Fields
+    - **boreholes** (`List[BoreholeExtraction]`): List of extracted borehole entries.
+    """
+
+    boreholes: list[BoreholeExtractionSchema] = Field(
+        ...,
+        description="List of all boreholes extracted from the document, including stratigraphy layers and metadata.",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "boreholes": [
+                    {
+                        "page_numbers": [2, 3],
+                        "layers": [
+                            {
+                                "material_description": {
+                                    "text": "Kies",
+                                    "bounding_boxes": [
+                                        {"page_number": 2, "x0": 100.0, "y0": 50.0, "x1": 200.0, "y1": 65.0}
+                                    ],
+                                },
+                                "start": {
+                                    "depth": 0.0,
+                                    "bounding_boxes": [
+                                        {"page_number": 2, "x0": 90.0, "y0": 45.0, "x1": 120.0, "y1": 60.0}
+                                    ],
+                                },
+                                "end": {
+                                    "depth": 1.2,
+                                    "bounding_boxes": [
+                                        {"page_number": 2, "x0": 90.0, "y0": 70.0, "x1": 120.0, "y1": 85.0}
+                                    ],
+                                },
+                            },
+                            {
+                                "material_description": {
+                                    "text": "Ton",
+                                    "bounding_boxes": [
+                                        {"page_number": 3, "x0": 100.0, "y0": 50.0, "x1": 200.0, "y1": 65.0}
+                                    ],
+                                },
+                                "start": {
+                                    "depth": 0.0,
+                                    "bounding_boxes": [
+                                        {"page_number": 3, "x0": 90.0, "y0": 45.0, "x1": 120.0, "y1": 60.0}
+                                    ],
+                                },
+                                "end": {
+                                    "depth": 1.2,
+                                    "bounding_boxes": [
+                                        {"page_number": 3, "x0": 90.0, "y0": 70.0, "x1": 120.0, "y1": 85.0}
+                                    ],
+                                },
+                            },
+                        ],
+                    }
+                ]
+            }
+        }
+    )
