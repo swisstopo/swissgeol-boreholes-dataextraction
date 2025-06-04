@@ -70,11 +70,12 @@ def _insert_cv_image_to_page(doc: fitz.Document, cv_img: np.ndarray, original_re
     new_page.insert_image(new_page.rect, stream=img_bytes)
 
 
-def _deskew_image(image: np.ndarray) -> np.ndarray:
+def _deskew_image(image: np.ndarray, croping_allowed: bool = False) -> np.ndarray:
     """Detect and correct skew in an image using OpenCV.
 
     Args:
         image: Input image as numpy array (BGR format)
+        croping_allowed (bool): whether to crop the image and keep the same zoom level or the opposite.
 
     Returns:
         Deskewed image as numpy array
@@ -135,35 +136,55 @@ def _deskew_image(image: np.ndarray) -> np.ndarray:
 
     # Calculate rotation matrix
     center = (w // 2, h // 2)
-    rotation_matrix = cv2.getRotationMatrix2D(center, skew_angle, 1.0)
 
-    # Calculate new bounding dimensions after rotation
-    cos_angle = abs(rotation_matrix[0, 0])
-    sin_angle = abs(rotation_matrix[0, 1])
-    new_w = int((h * sin_angle) + (w * cos_angle))
-    new_h = int((h * cos_angle) + (w * sin_angle))
+    if croping_allowed:
+        rotation_matrix = cv2.getRotationMatrix2D(center, skew_angle, 1.0)
 
-    # Adjust the rotation matrix to account for translation
-    rotation_matrix[0, 2] += (new_w / 2) - center[0]
-    rotation_matrix[1, 2] += (new_h / 2) - center[1]
+        # Calculate new bounding dimensions after rotation
+        cos_angle = abs(rotation_matrix[0, 0])
+        sin_angle = abs(rotation_matrix[0, 1])
+        new_w = int((h * sin_angle) + (w * cos_angle))
+        new_h = int((h * cos_angle) + (w * sin_angle))
 
-    # Apply rotation with white background
-    rotated = cv2.warpAffine(
-        image,
-        rotation_matrix,
-        (new_w, new_h),
-        flags=cv2.INTER_CUBIC,
-        borderMode=cv2.BORDER_CONSTANT,
-        borderValue=(255, 255, 255),
-    )
+        # Adjust the rotation matrix to account for translation
+        rotation_matrix[0, 2] += (new_w / 2) - center[0]
+        rotation_matrix[1, 2] += (new_h / 2) - center[1]
 
-    # Crop back to original size if the rotated image is larger
-    if new_w > w or new_h > h:
-        start_x = max(0, (new_w - w) // 2)
-        start_y = max(0, (new_h - h) // 2)
-        end_x = min(new_w, start_x + w)
-        end_y = min(new_h, start_y + h)
-        rotated = rotated[start_y:end_y, start_x:end_x]
+        # Apply rotation with white background
+        rotated = cv2.warpAffine(
+            image,
+            rotation_matrix,
+            (new_w, new_h),
+            flags=cv2.INTER_CUBIC,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=(255, 255, 255),
+        )
+
+        # Crop back to original size if the rotated image is larger
+        if new_w > w or new_h > h:
+            start_x = max(0, (new_w - w) // 2)
+            start_y = max(0, (new_h - h) // 2)
+            end_x = min(new_w, start_x + w)
+            end_y = min(new_h, start_y + h)
+            rotated = rotated[start_y:end_y, start_x:end_x]
+    else:
+        # Calculate scale factor to fit rotated content within original dimensions
+        cos_angle = abs(np.cos(np.radians(skew_angle)))
+        sin_angle = abs(np.sin(np.radians(skew_angle)))
+        scale_factor = min(w / (w * cos_angle + h * sin_angle), h / (w * sin_angle + h * cos_angle))
+
+        # Apply rotation with scaling to fit original dimensions
+        rotation_matrix = cv2.getRotationMatrix2D(center, skew_angle, scale_factor)
+
+        # Apply rotation with white background, keeping original dimensions
+        rotated = cv2.warpAffine(
+            image,
+            rotation_matrix,
+            (w, h),
+            flags=cv2.INTER_CUBIC,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=(255, 255, 255),
+        )
 
     return rotated
 
