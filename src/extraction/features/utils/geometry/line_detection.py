@@ -52,6 +52,10 @@ def detect_lines_lsd(page: pymupdf.Page, scale_factor=2, lsd_params=None) -> Arr
 
     # Detect lines in the image
     lines = lsd.detect(gray)[0]
+
+    if lines is None:
+        return []
+
     return [line_from_array(line, scale_factor) for line in lines]
 
 
@@ -122,6 +126,9 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
     # transform line segment detector could be called, in case we need it later on.
     #
     # lines = detect_lines_hough(page, hough_params=line_detection_params["hough"])
+
+    if not lines:
+        return []
 
     merging_params = line_detection_params["line_merging_params"]
 
