@@ -52,7 +52,7 @@ def detect_lines_lsd(page: pymupdf.Page, scale_factor=2, lsd_params=None) -> Arr
     lines = lsd.detect(gray)[0]
 
     if lines is None:
-        return None
+        return []
 
     return [line_from_array(line, scale_factor) for line in lines]
 
@@ -73,8 +73,8 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
         scale_factor=line_detection_params["pdf_scale_factor"],
     )
 
-    if lines is None:
-        return None
+    if not lines:
+        return []
 
     merging_params = line_detection_params["line_merging_params"]
 
