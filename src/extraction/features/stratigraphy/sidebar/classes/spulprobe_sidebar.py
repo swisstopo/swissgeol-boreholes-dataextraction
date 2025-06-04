@@ -2,7 +2,7 @@
 
 import pymupdf
 from extraction.features.stratigraphy.base.sidebar_entry import SpulprobeEntry
-from extraction.features.stratigraphy.interval.interval import AAboveBInterval, IntervalBlockGroup
+from extraction.features.stratigraphy.interval.interval import IntervalBlockGroup, SpulprobeInterval
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.text.find_description import get_description_blocks
@@ -55,14 +55,13 @@ class SpulprobeSidebar(Sidebar[SpulprobeEntry]):
             material_description_rect,
             params["block_line_ratio"],
             left_line_length_threshold=params["left_line_length_threshold"],
-            target_layer_count=len(depth_intervals),
+            target_layer_count=len(depth_intervals) - 1,  # first interval None->1st Sp. should not be match usually.
         )
 
         block_index = 0
 
         for interval in depth_intervals:
-            # HERE TWEAK
-            pre, exact, post = interval.matching_blocks(all_blocks, block_index, params["min_block_clearance"])
+            pre, exact, post = interval.matching_blocks(all_blocks, block_index)
             block_index += len(pre) + len(exact) + len(post)
 
             current_blocks.extend(pre)
@@ -81,7 +80,7 @@ class SpulprobeSidebar(Sidebar[SpulprobeEntry]):
 
         return groups
 
-    def get_intervals(self) -> list[AAboveBInterval]:
+    def get_intervals(self) -> list[SpulprobeInterval]:
         """Creates a list of depth intervals from Spulprobe entries.
 
         The first depth interval begins with the first Sp. tag.
@@ -89,13 +88,13 @@ class SpulprobeSidebar(Sidebar[SpulprobeEntry]):
         Returns:
             list[AAboveBInterval]: A list of depth intervals.
         """
-        depth_intervals = []
-        # depth_intervals.append(AAboveBInterval(None, self.entries[0])) # NO interval from 0 to first Sp.
+        intervals = []
+        intervals.append(SpulprobeInterval(None, self.entries[0]))
         for i in range(len(self.entries) - 1):
-            depth_intervals.append(AAboveBInterval(self.entries[i], self.entries[i + 1]))
-        depth_intervals.append(
-            AAboveBInterval(self.entries[len(self.entries) - 1], None)
+            intervals.append(SpulprobeInterval(self.entries[i], self.entries[i + 1]))
+        intervals.append(
+            SpulprobeInterval(self.entries[len(self.entries) - 1], None)
         )  # even though no open ended intervals are allowed, they are still useful for matching,
         # especially for documents where the material description rectangle is too tall
         # (and includes additional lines below the actual material descriptions).
-        return depth_intervals
+        return intervals

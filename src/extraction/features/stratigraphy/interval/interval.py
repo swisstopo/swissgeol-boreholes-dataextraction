@@ -166,3 +166,83 @@ class AToBInterval(Interval):
                 break
 
         return [TextBlock(matched_lines)] if matched_lines else []
+
+
+class SpulprobeInterval(Interval):
+    """Class for depth intervals where the delimitations are Spulprobe tags."""
+
+    def matching_blocks(
+        self, all_blocks: list[TextBlock], block_index: int
+    ) -> tuple[list[TextBlock], list[TextBlock], list[TextBlock]]:
+        """Calculates pre, exact and post blocks for the boundary interval.
+
+        Pre contains all the blocks that are supposed to come before the interval.
+        Exact contains all the blocks that are supposed to be inside the interval.
+        Post contains all the blocks that are supposed to come after the interval.
+
+        We consider blocks to be clearly separated when the spacing between them is at least half the jump from one
+        line to another within the block, unlike in AaboveBIntervals, where the value is fixed (might reconsider?).
+
+        Args:
+            all_blocks (list[TextBlock]): All blocks available blocks.
+            block_index (int): Index of the current block.
+
+        Returns:
+            tuple[list[TextBlock], list[TextBlock], list[TextBlock]]: Pre, exact and post blocks.
+        """
+        pre, exact, post = [], [], []
+
+        all_line_jump = [  # distance from the top of one line to the next
+            next_line.rect.y0 - line.rect.y0
+            for block in all_blocks
+            for line, next_line in zip(block.lines, block.lines[1:], strict=False)
+        ]
+        average_line_jump = sum(all_line_jump) / len(all_line_jump)
+
+        min_block_gap = average_line_jump * 0.4  # bit less than half of the jump is visually good
+
+        while block_index < len(all_blocks) and (
+            self.end is None or all_blocks[block_index].rect.y1 < self.end.rect.y1
+        ):
+            current_block = all_blocks[block_index]
+
+            # only exact match when sufficient distance to previous and next blocks, to avoid a vertically shifted
+            #  description "accidentally" being nicely contained in the depth interval.
+            distances_above = [
+                current_block.rect.y0 - other.rect.y1 for other in all_blocks if other.rect.y0 < current_block.rect.y0
+            ]
+            distance_above_ok_for_exact = len(distances_above) == 0 or min(distances_above) > min_block_gap
+
+            exact_match_blocks = []
+            exact_match_index = block_index
+            if distance_above_ok_for_exact:
+                continue_exact_match = True
+                can_end_exact_match = True
+                while continue_exact_match and exact_match_index < len(all_blocks):
+                    exact_match_block = all_blocks[exact_match_index]
+                    exact_match_rect = exact_match_block.rect
+                    if (self.start is None or abs(exact_match_rect.y0 - self.start.rect.y0) < min_block_gap) and (
+                        self.end is None or exact_match_rect.y1 < self.end.rect.y0
+                    ):
+                        exact_match_blocks.append(exact_match_block)
+                        exact_match_index += 1
+                        distances_below = [other.rect.y0 - exact_match_block.rect.y1 for other in all_blocks]
+                        distances_below = [distance for distance in distances_below if distance > 0]
+                        can_end_exact_match = len(distances_below) == 0 or min(distances_below) > min_block_gap
+                    else:
+                        continue_exact_match = False
+
+                if not can_end_exact_match:
+                    exact_match_blocks = []
+
+            if exact_match_blocks:
+                exact.extend(exact_match_blocks)
+                block_index = exact_match_index - 1
+            elif exact:
+                post.append(current_block)
+            else:
+                pre.append(current_block)
+
+            block_index += 1
+
+        return pre, exact, post
