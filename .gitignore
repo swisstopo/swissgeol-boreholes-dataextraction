@@ -7,6 +7,9 @@ data-legacy/
 /mlartifacts
 /models/
 
+# Ignore local VSCode launch config
+.vscode/launch.json
+
 # Templated gitignores for python projects. Sourced from https://github.com/github/gitignore/blob/main/Python.gitignore
 # Byte-compiled / optimized / DLL files
 __pycache__/
