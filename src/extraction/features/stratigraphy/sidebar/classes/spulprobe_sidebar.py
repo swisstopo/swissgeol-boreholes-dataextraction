@@ -10,7 +10,7 @@ from extraction.features.utils.text.textline import TextLine
 
 
 class SpulprobeSidebar(Sidebar[SpulprobeEntry]):
-    """Spulprobe sidebar."""
+    """Spulprobe sidebar where entries are depths in the form `Sp. X m`."""
 
     def identify_groups(
         self,
@@ -29,19 +29,6 @@ class SpulprobeSidebar(Sidebar[SpulprobeEntry]):
 
         Returns:
             list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
-
-        Example return value:
-            [
-                IntervalBlockGroup(
-                    depth_intervals=[AAboveBInterval(None, 0.1), AAboveBInterval(0.1, 0.3), ...],
-                    blocks=[TextBlock(...), TextBlock(...), ...]
-                ),
-                IntervalBlockGroup(
-                    depth_intervals=[AAboveBInterval(0.3, 0.7)],
-                    blocks=[TextBlock(...), TextBlock(...), ...]
-                ),
-                ...
-            ]
         """
         depth_intervals = self.get_intervals()
 
@@ -76,12 +63,12 @@ class SpulprobeSidebar(Sidebar[SpulprobeEntry]):
     def get_intervals(self) -> list[SpulprobeInterval]:
         """Creates a list of depth intervals from Spulprobe entries.
 
-        The first depth interval begins with the first Sp. tag.
-
         Returns:
             list[AAboveBInterval]: A list of depth intervals.
         """
         intervals = []
+        # we need the open-ended interval for blocks that began on the previous page and that should not be matched
+        # to any Sp. entry on the current page.
         intervals.append(SpulprobeInterval(None, self.entries[0]))
         for i in range(len(self.entries) - 1):
             intervals.append(SpulprobeInterval(self.entries[i], self.entries[i + 1]))

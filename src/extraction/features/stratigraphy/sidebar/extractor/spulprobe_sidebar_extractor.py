@@ -2,6 +2,7 @@
 
 import re
 
+import pymupdf
 from extraction.features.stratigraphy.base.sidebar_entry import SpulprobeEntry
 from extraction.features.stratigraphy.sidebar.classes.spulprobe_sidebar import SpulprobeSidebar
 from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
@@ -10,14 +11,21 @@ from extraction.features.utils.text.textline import TextLine
 
 
 class SpulprobeSidebarExtractor:
-    """spul."""
+    """Spulprobe sidebar extractor, in charge of identifying Sp. tags, and extracting the associate depth."""
 
     spulprobe_pattern = r"\bSp\.?"
     depths_pattern = r"\d+(?:[.,]\d+)?"
 
     @classmethod
     def find_spulprobe_entries(cls, lines: list[TextLine]) -> list[SpulprobeEntry]:
-        """Find the spul."""
+        """Find the spulprobe entries.
+
+        Args:
+            lines (list[TextLine]): The text lines to search in.
+
+        Returns:
+            list[SpulprobeEntry]: A list of SpulprobeEntry objects found in the lines.
+        """
         entries = []
         for line in sorted(lines, key=lambda line: (line.rect.y0, line.rect.x0)):
             if len(line.words) > 0:
@@ -39,7 +47,19 @@ class SpulprobeSidebarExtractor:
         return entries
 
     @classmethod
-    def search_depths_in_lines_on_the_right(cls, current_line: TextLine, lines: list[TextLine]):
+    def search_depths_in_lines_on_the_right(
+        cls, current_line: TextLine, lines: list[TextLine]
+    ) -> tuple[list[float], pymupdf.Rect]:
+        """Searches for depths in lines that are to the right of the line with the Sp. tag.
+
+        Args:
+            current_line (TextLine): The current line where the Sp. tag was identified.
+            lines (list[TextLine]): The list of lines to search in.
+
+        Returns:
+            tuple[list[float], pymupdf.Rect] : A tuple containing a list of depths found and the rectangle of the
+                line where they were found.
+        """
         for line in lines:
             if line == current_line:
                 continue
@@ -52,7 +72,14 @@ class SpulprobeSidebarExtractor:
 
     @classmethod
     def find_in_lines(cls, lines: list[TextLine]) -> list[SpulprobeSidebar]:
-        """Finds all ..."""
+        """Find Spulprobe sidebars in the given lines.
+
+        Args:
+            lines (list[TextLine]): The text lines to search in.
+
+        Returns:
+            list[SpulprobeSidebar]: A list of SpulprobeSidebar objects found in the lines.
+        """
         entries = cls.find_spulprobe_entries(lines)
 
         clusters = Cluster[SpulprobeEntry].create_clusters(entries, lambda entry: entry.rect)

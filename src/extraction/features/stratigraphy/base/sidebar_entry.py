@@ -55,6 +55,6 @@ class LayerIdentifierEntry(SidebarEntry[str]):
 
 @dataclass
 class SpulprobeEntry(SidebarEntry[float]):
-    """Sidebar entry of type Sp. X m, for boreholes with dicrete sampled depth instead of continued intervals."""
+    """Sidebar entry of type Sp. X m, for boreholes with dicrete sampled depths instead of continued intervals."""
 
     ...
