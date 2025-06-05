@@ -166,3 +166,35 @@ class AToBInterval(Interval):
                 break
 
         return [TextBlock(matched_lines)] if matched_lines else []
+
+
+class SpulprobeInterval(Interval):
+    """Class for depth intervals where the delimitations are Spulprobe tags."""
+
+    def matching_blocks(
+        self, all_blocks: list[TextBlock], block_index: int
+    ) -> tuple[list[TextBlock], list[TextBlock], list[TextBlock]]:
+        """Calculates pre and exact blocks for the boundary interval.
+
+        Pre contains all the blocks that are supposed to come before the interval and were not previously matched.
+        Exact contains all the blocks that are supposed to be inside the interval (aligned with the SP. entry).
+
+        Args:
+            all_blocks (list[TextBlock]): All blocks available blocks.
+            block_index (int): Index of the current block, the first that is not matched yet.
+
+        Returns:
+            tuple[list[TextBlock], list[TextBlock]]: Pre and exact blocks.
+        """
+        y_top = self.start.rect.y0
+
+        candidate_distances = [
+            (idx, abs(block.rect.y0 - y_top)) for idx, block in enumerate(all_blocks) if idx >= block_index
+        ]
+
+        # Chose the closest block
+        best_idx, _ = min(candidate_distances, key=lambda x: x[1])
+        exact = [all_blocks[best_idx]]
+        pre = [block for i, block in enumerate(all_blocks) if i >= block_index and i < best_idx]
+
+        return pre, exact

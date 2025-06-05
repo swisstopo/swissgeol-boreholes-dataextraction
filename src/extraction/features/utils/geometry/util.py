@@ -144,3 +144,24 @@ def line_from_array(line: ArrayLike, scale_factor: float) -> Line:
     start = Point(int(line[0][0] / scale_factor), int(line[0][1] / scale_factor))
     end = Point(int(line[0][2] / scale_factor), int(line[0][3] / scale_factor))
     return Line(start, end)
+
+
+def compute_outer_rect(rects: list[pymupdf.Rect]) -> pymupdf.Rect:
+    """Compute the outer rectangle that contains all rectangles of each entry.
+
+    Args:
+        rects (list[pymupdf.Rect]): List of pymupdf.Rects.
+
+    Returns:
+        pymupdf.Rect: The minimal rectangle containing all input rectangles.
+    """
+    if not rects:
+        raise ValueError("Entries list is empty.")
+
+    # Start with the first rect
+    outer_rect: pymupdf.Rect = rects[0]
+
+    for rect in rects[1:]:
+        outer_rect |= rect  # Expand the outer_rect to include entry.rect
+
+    return outer_rect

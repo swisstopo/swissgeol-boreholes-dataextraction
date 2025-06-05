@@ -112,7 +112,7 @@ class TextBlock:
         max_line_width = max([line.rect.width for line in self.lines])
 
         first_line_start = self.lines[0].rect.x0
-        indentation_low = min_line_start + 0.02 * max_line_width
+        indentation_low = min_line_start + 0.03 * max_line_width
         indentation_high = min_line_start + 0.2 * max_line_width
 
         # don't do anything if the first line already indented (e.g. centered text)
