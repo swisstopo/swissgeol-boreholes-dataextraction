@@ -1,4 +1,4 @@
-"""Module for the extraction of Sidebars comming from Sp. sampled entries."""
+"""Module for the extraction of Sidebars coming from Sp. sampled entries."""
 
 import re
 
@@ -43,8 +43,6 @@ class SpulprobeSidebarExtractor:
         for line in lines:
             if line == current_line:
                 continue
-
-            # if abs(line.rect.y0 - current_line.rect.y0) < tol and abs(line.rect.y1 - current_line.rect.y1) < tol:
             if not y_overlap_significant_smallest(current_line.rect, line.rect, 0.9):
                 continue
             if line.rect.x0 < current_line.rect.x1:

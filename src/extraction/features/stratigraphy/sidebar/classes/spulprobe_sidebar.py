@@ -47,8 +47,6 @@ class SpulprobeSidebar(Sidebar[SpulprobeEntry]):
 
         groups = []
 
-        current_intervals = []
-        current_blocks = []
         all_blocks = get_description_blocks(
             description_lines,
             geometric_lines,
@@ -57,27 +55,22 @@ class SpulprobeSidebar(Sidebar[SpulprobeEntry]):
             left_line_length_threshold=params["left_line_length_threshold"],
             target_layer_count=len(depth_intervals) - 1,  # first interval None->1st Sp. should not be match usually.
         )
+        all_blocks.sort(key=lambda b: (b.rect.y0, b.rect.x0))
 
         block_index = 0
-
-        for interval in depth_intervals:
-            pre, exact, post = interval.matching_blocks(all_blocks, block_index)
-            block_index += len(pre) + len(exact) + len(post)
+        current_blocks = []
+        # we start with interval being the first Sp. interval (prev_interval is the open-ended starting interval)
+        for prev_interval, interval in zip(depth_intervals, depth_intervals[1:], strict=False):
+            pre, exact = interval.matching_blocks(all_blocks, block_index)
+            block_index += len(pre) + len(exact)
 
             current_blocks.extend(pre)
-            if exact:
-                if len(current_intervals) > 0 or len(current_blocks) > 0:
-                    groups.append(IntervalBlockGroup(depth_intervals=current_intervals, blocks=current_blocks))
-                groups.append(IntervalBlockGroup(depth_intervals=[interval], blocks=exact))
-                current_blocks = post
-                current_intervals = []
-            else:
-                # last open ended interval is conventional with Spulprobe
-                current_intervals.append(interval)
+            groups.append(IntervalBlockGroup(depth_intervals=[prev_interval], blocks=current_blocks))
+            current_blocks = exact.copy()
 
-        if len(current_intervals) > 0 or len(current_blocks) > 0:
-            groups.append(IntervalBlockGroup(depth_intervals=current_intervals, blocks=current_blocks))
-
+        # pick up all the remaining blocks, and assign them to the last interval
+        current_blocks.extend(all_blocks[block_index:])
+        groups.append(IntervalBlockGroup(depth_intervals=[interval], blocks=current_blocks))
         return groups
 
     def get_intervals(self) -> list[SpulprobeInterval]:
