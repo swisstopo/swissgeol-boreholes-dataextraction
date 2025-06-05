@@ -4,20 +4,20 @@ import os
 from pathlib import Path
 
 import cv2
-import fitz
 import numpy as np
+import pymupdf
 
 
-def deskew(doc: fitz.Document) -> fitz.Document:
+def deskew(doc: pymupdf.Document) -> pymupdf.Document:
     """Deskew a scanned PDF document by detecting and correcting slight skews in each page.
 
     Args:
-        doc: Input fitz.Document object containing scanned pages
+        doc: Input pymupdf.Document object containing scanned pages
 
     Returns:
-        New fitz.Document object with deskewed pages
+        New pymupdf.Document object with deskewed pages
     """
-    new_doc = fitz.open()
+    new_doc = pymupdf.open()
 
     for page_num in range(len(doc)):
         page = doc[page_num]
@@ -34,10 +34,10 @@ def deskew(doc: fitz.Document) -> fitz.Document:
     return new_doc
 
 
-def _page_to_cv_image(page: fitz.Page) -> np.ndarray:
-    """Convert a fitz page to OpenCV image format."""
+def _page_to_cv_image(page: pymupdf.Page) -> np.ndarray:
+    """Convert a pymupdf page to OpenCV image format."""
     # Render with 2x resolution for better quality
-    mat = fitz.Matrix(2.0, 2.0)
+    mat = pymupdf.Matrix(2.0, 2.0)
     pix = page.get_pixmap(matrix=mat)
 
     # Convert directly to numpy array (RGB format)
@@ -53,7 +53,7 @@ def _page_to_cv_image(page: fitz.Page) -> np.ndarray:
         return cv2.cvtColor(img_array, cv2.COLOR_GRAY2BGR)
 
 
-def _insert_cv_image_to_page(doc: fitz.Document, cv_img: np.ndarray, original_rect: fitz.Rect):
+def _insert_cv_image_to_page(doc: pymupdf.Document, cv_img: np.ndarray, original_rect: pymupdf.Rect):
     """Insert OpenCV image into a new page in the document."""
     # Convert BGR back to RGB
     rgb_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
@@ -70,6 +70,36 @@ def _insert_cv_image_to_page(doc: fitz.Document, cv_img: np.ndarray, original_re
     new_page.insert_image(new_page.rect, stream=img_bytes)
 
 
+def find_document_contour_and_clean(gray, output_path=None):
+    """Find the largest white/document contour and make everything outside it white."""
+    # Read image
+    original = gray.copy()
+
+    # Create binary image - white areas become white, dark areas become black
+    _, binary = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+
+    # Find contours
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if not contours:
+        return gray
+
+    # Find the largest contour (should be the document)
+    largest_contour = max(contours, key=cv2.contourArea)
+
+    # Create mask from the largest contour
+    mask = np.zeros(gray.shape, np.uint8)
+    cv2.fillPoly(mask, [largest_contour], 255)
+
+    # Create result image - start with all white
+    result = np.ones_like(gray) * 255
+
+    # Copy original image only inside the mask
+    result[mask > 0] = original[mask > 0]
+
+    return result
+
+
 def _deskew_image(image: np.ndarray, croping_allowed: bool = False) -> np.ndarray:
     """Detect and correct skew in an image using OpenCV.
 
@@ -83,18 +113,17 @@ def _deskew_image(image: np.ndarray, croping_allowed: bool = False) -> np.ndarra
     # Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Apply Gaussian blur to reduce noise
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    cleaned_image = find_document_contour_and_clean(gray)
 
     # Apply threshold to get binary image
-    _, binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    _, binary = cv2.threshold(cleaned_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
     # Invert if necessary (text should be white on black background for line detection)
     if np.mean(binary) > 127:
         binary = cv2.bitwise_not(binary)
 
     # Apply morphological operations to enhance line detection
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (30, 1))
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (30, 1))  # very horizontal
     binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
 
     # Detect lines using HoughLinesP
@@ -191,7 +220,7 @@ def _deskew_image(image: np.ndarray, croping_allowed: bool = False) -> np.ndarra
 
 # Example usage:
 if __name__ == "__main__":
-    folder = "data/deepwells_test"
+    folder = "data/deepwells"
     output_folder = "data/deepwells_deskewed"
 
     # Create output folder if it doesn't exist
@@ -204,13 +233,13 @@ if __name__ == "__main__":
 
         try:
             # Load PDF document
-            input_doc = fitz.open(str(file_path))
+            input_doc = pymupdf.open(str(file_path))
 
             # Deskew the document
             deskewed_doc = deskew(input_doc)
 
             # Create output filename
-            output_path = Path(output_folder) / f"deskewed_{file_path.name}"
+            output_path = Path(output_folder) / f"{file_path.name}"
 
             # Save the result
             deskewed_doc.save(str(output_path))
