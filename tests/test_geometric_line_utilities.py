@@ -3,6 +3,8 @@
 import numpy as np
 import pytest
 from extraction.features.utils.geometry.geometric_line_utilities import (
+    _are_close,
+    _are_parallel,
     _get_orthogonal_projection_to_line,
     _merge_lines,
     _odr_regression,
@@ -139,6 +141,28 @@ def test_merge_lines(merge_lines_case):  # noqa: D103
     assert pytest.approx(merged_line.end.tuple) == expected_merged_line.end.tuple
 
 
+def test_are_close():  # noqa: D103
+    line1 = Line(Point(0, 0), Point(0, 10))
+    line2 = Line(Point(0, 11), Point(0, 20))
+    assert _are_close(line1, line2, tol=5), "Two lines that almost extend each other should be considered close"
+    assert _are_close(line2, line1, tol=5), "Two lines that almost extend each other should be considered close"
+
+    line1 = Line(Point(0, 0), Point(0, 20))
+    line2 = Line(Point(1, 8), Point(1, 12))
+    assert _are_close(
+        line1, line2, tol=5
+    ), "A line that is almost a sub-segment of another line should be considered close"
+    # TODO ensure this test passes, see #230.
+    # assert _are_close(line2, line1, tol=5),
+    #     "A line that is almost a sub-segment of another line should be considered close"
+
+    line1 = Line(Point(0, 0), Point(0, 0.1))
+    line2 = Line(Point(2, 0), Point(2, 0.1))
+    # TODO ensure these tests pass, see #230.
+    # assert not _are_close(line1, line2, tol=5), "Two very short parallel lines should not be considered close"
+    # assert not _are_close(line2, line1, tol=5), "Two very short parallel lines should not be considered close"
+
+
 def test_is_point_on_line():  # noqa: D103
     line = Line(Point(0, 0), Point(100, 100))
 
@@ -163,3 +187,23 @@ def test_merge_parallel_lines_quadtree():  # noqa: D103
     ]
     merged_lines = merge_parallel_lines_quadtree(lines, tol=1, angle_threshold=1)
     assert len(merged_lines) == 2, "There should be 2 lines after merging"
+
+
+@pytest.mark.parametrize(
+    "line1, line2, expected",
+    [
+        # Two vertical lines (x = constant), nearly parallel
+        (Line(Point(0, 0), Point(0, 10)), Line(Point(1e-6, 0), Point(1e-6, 10)), True),
+        # Two vertical lines, one with opposite direction, still parallel
+        (Line(Point(0, 0), Point(0, 10)), Line(Point(0, 10), Point(0, 0)), True),
+        # Slightly off vertical (shows tan discontinuity), this fails if the 2nd condition in are_parallel is not there
+        (Line(Point(0, 0), Point(1e-6, 10)), Line(Point(0, 0), Point(-1e-6, 10)), True),
+        # One vertical, one not quite vertical – angle should exceed threshold
+        (Line(Point(0, 0), Point(0, 10)), Line(Point(0, 0), Point(1, 10)), False),
+    ],
+)
+def test_are_parallel_vertical_cases(line1, line2, expected):  # noqa: D103
+    angle_threshold = 5.0  # degrees
+
+    result = _are_parallel(line1, line2, angle_threshold)
+    assert result == expected, f"Expected {expected} for lines {line1} and {line2}, got {result}"

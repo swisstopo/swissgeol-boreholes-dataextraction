@@ -3,12 +3,15 @@
 from app.api.v1.endpoints.bounding_boxes import bounding_boxes
 from app.api.v1.endpoints.create_pngs import create_pngs
 from app.api.v1.endpoints.extract_data import extract_data
+from app.api.v1.endpoints.extract_stratigraphy import extract_stratigraphy
 from app.common.schemas import (
     BoundingBoxesRequest,
     BoundingBoxesResponse,
     ExtractCoordinatesResponse,
     ExtractDataRequest,
     ExtractNumberResponse,
+    ExtractStratigraphyRequest,
+    ExtractStratigraphyResponse,
     ExtractTextResponse,
     PNGRequest,
     PNGResponse,
@@ -145,6 +148,7 @@ def post_extract_data(
     ### Status Codes
     - **200 OK**: Successful extraction, returning the specified data type.
     - **400 Bad Request**: Input request was invalid, typically due to misformatted or missing parameters.
+    - **401 Unauthorized**: Wrong or incomplete credentials.
     - **404 Not Found**: Requested data could not be found within the specified bounding box or page.
     - **500 Internal Server Error**: An error occurred on the server side during data extraction.
 
@@ -161,3 +165,38 @@ def post_extract_data(
     except ValueError as e:
         # Handle a known ValueError and return a 400 status
         raise HTTPException(status_code=400, detail=str(e)) from None
+
+
+####################################################################################################
+### Extract Stratigraphy
+@router.post(
+    "/extract_stratigraphy",
+    response_model=ExtractStratigraphyResponse,
+    tags=["extract_stratigraphy"],
+    responses={
+        400: {"model": BadRequestResponse, "description": "Bad request"},
+        401: {"model": BadRequestResponse, "description": "Unauthorized"},
+        404: {"model": BadRequestResponse, "description": "No boreholes found in PDF"},
+        500: {"model": BadRequestResponse, "description": "Internal server error"},
+    },
+)
+def post_extract_stratigraphy(request: ExtractStratigraphyRequest) -> ExtractStratigraphyResponse:
+    """Extract all boreholes with stratigraphy (depths and material descriptions) from the entire PDF file.
+
+    Scans all pages of the PDF and returns all boreholes found,
+    each containing page numbers and stratigraphy layers with bounding boxes.
+
+    ### Request Body
+    - **filename**: The PDF filename to process.
+
+    ### Returns
+    - List of boreholes with layers and bounding boxes.
+
+    ### Status Codes
+    - 200: Successful extraction
+    - 400: Invalid request or unable to open PDF
+    - 401: Unauthorized: Wrong or incomplete credentials.
+    - 404: No boreholes found
+    - 500: Internal error
+    """
+    return extract_stratigraphy(request.filename)

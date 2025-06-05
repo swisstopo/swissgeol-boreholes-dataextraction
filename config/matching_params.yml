@@ -5,6 +5,7 @@ left_line_length_threshold: 7
 duplicate_similarity_threshold: 0.5
 layer_identifier_acceptance_ratio: 0.5
 img_template_probability_threshold: 0.62
+min_num_layers: 2
 
 depth_column_params:  # these params should be optimized as soon as there is reliable evaluation data
   noise_count_threshold: 1.25
@@ -16,23 +17,41 @@ material_description:
   de:
     including_expressions:
       - sand
+      - sandig
+      - feinsand
+      - mittelsand
+      - sandstein
       - silt
+      - siltig
+      - siltstein
       - kies
+      - kiesig
+      - kiessand
+      - ton
+      - tonig
       - asphalt
+      - asphaltdeckschicht
       - humus
       - braun
-      - grau
+      - braunschwarz
       - weich
-      - hart
       - wurzel
       - belag
+      - strassenbelag
+      - schwarzbelag
+      - teerbelag
+      - betonbelag
+      - bitumenbelag
+      - asphaltbelag
       - stein
       - beige
       - beton
       - kreide
       - mergel
       - kernmaterial
+      - lehm
       - dito
+      - seebodenlehm
     excluding_expressions:
       - herr
       - ende
@@ -79,12 +98,7 @@ material_description:
       - materiau
       - matrice sableuse
       - enrobé  # accent --> check what happens if it's removed
-      - terrain
-      - remblais
-      - remblai
-      - molasse
       - phase
-      - formations
       - limoneuse
       - argileuse
       - argileux

@@ -15,7 +15,7 @@ from extraction import DATAPATH
 from extraction.annotations.draw import draw_predictions
 from extraction.annotations.plot_utils import plot_lines
 from extraction.evaluation.benchmark.score import evaluate_all_predictions
-from extraction.features.extract import process_page
+from extraction.features.extract import extract_page
 from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
     GroundwaterLevelExtractor,
@@ -25,7 +25,6 @@ from extraction.features.predictions.borehole_predictions import BoreholePredict
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.predictions.predictions import BoreholeListBuilder
-from extraction.features.stratigraphy.layer.duplicate_detection import remove_duplicate_layers
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.features.utils.geometry.line_detection import extract_lines
 from extraction.features.utils.text.extract_text import extract_text_lines
@@ -272,10 +271,18 @@ def start_pipeline(
 
                 text_lines = extract_text_lines(page)
                 geometric_lines = extract_lines(page, line_detection_params)
-                extracted_boreholes = process_page(
-                    text_lines, geometric_lines, file_metadata.language, page_number, **matching_params
+
+                # extract the statigraphy
+                page_layers = extract_page(
+                    layers_with_bb_in_document,
+                    text_lines,
+                    geometric_lines,
+                    file_metadata.language,
+                    page_index,
+                    doc,
+                    **matching_params,
                 )
-                processed_page_results = LayersInDocument(extracted_boreholes, filename)
+                layers_with_bb_in_document.assign_layers_to_boreholes(page_layers)
 
                 # Extract the groundwater levels
                 groundwater_extractor = GroundwaterLevelExtractor(file_metadata.language)
@@ -283,19 +290,6 @@ def start_pipeline(
                     page_number=page_number, lines=text_lines, document=doc
                 )
                 all_groundwater_entries.groundwater_feature_list.extend(groundwater_entries)
-
-                if page_index > 0:
-                    layer_with_bb_predictions = remove_duplicate_layers(
-                        previous_page=doc[page_index - 1],
-                        current_page=page,
-                        previous_layers_with_bb=layers_with_bb_in_document,
-                        current_layers_with_bb=processed_page_results,
-                        img_template_probability_threshold=matching_params["img_template_probability_threshold"],
-                    )
-                else:
-                    layer_with_bb_predictions = processed_page_results.boreholes_layers_with_bb
-
-                layers_with_bb_in_document.assign_layers_to_boreholes(layer_with_bb_predictions)
 
                 if draw_lines:  # could be changed to if draw_lines and mlflow_tracking:
                     if not mlflow_tracking:
