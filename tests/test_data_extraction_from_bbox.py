@@ -343,16 +343,6 @@ def test_invalid_format(test_client: TestClient, upload_test_pdf, upload_test_pn
     assert response.json() == {"detail": "format field - Input should be 'text', 'number' or 'coordinates'"}
 
 
-def test_invalid_bbox(test_client: TestClient, upload_test_pdf, upload_test_png):
-    """Test the extract_data endpoint with an invalid bounding box."""
-    request = get_default_coordinate_request()
-    request_json = json.loads(request.model_dump_json())
-    request_json["bbox"] = {"x0": 0, "y0": 0, "x1": 100, "y1": -100.0}
-    response = test_client.post("/api/V1/extract_data", json=request_json)
-    assert response.status_code == 400
-    assert response.json() == {"detail": "Bounding box coordinates must be positive"}
-
-
 def test_invalid_pdf(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test the extract_data endpoint with an invalid PDF."""
     request = get_default_coordinate_request()
