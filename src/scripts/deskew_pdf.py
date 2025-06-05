@@ -53,13 +53,15 @@ def _page_to_cv_image(page: pymupdf.Page) -> np.ndarray:
         return cv2.cvtColor(img_array, cv2.COLOR_GRAY2BGR)
 
 
-def _insert_cv_image_to_page(doc: pymupdf.Document, cv_img: np.ndarray, original_rect: pymupdf.Rect):
+def _insert_cv_image_to_page(
+    doc: pymupdf.Document, cv_img: np.ndarray, original_rect: pymupdf.Rect, jpeg_quality: int = 85
+) -> None:
     """Insert OpenCV image into a new page in the document."""
     # Convert BGR back to RGB
     rgb_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
 
     # Convert to bytes
-    success, img_encoded = cv2.imencode(".png", cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR))
+    success, img_encoded = cv2.imencode(".jpg", rgb_img, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality])
     if not success:
         raise ValueError("Failed to encode image")
 
@@ -221,7 +223,7 @@ def _deskew_image(image: np.ndarray, croping_allowed: bool = False) -> np.ndarra
 # Example usage:
 if __name__ == "__main__":
     folder = "data/deepwells"
-    output_folder = "data/deepwells_deskewed"
+    output_folder = "data/deepwells_unskewed"
 
     # Create output folder if it doesn't exist
     os.makedirs(output_folder, exist_ok=True)
