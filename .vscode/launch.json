@@ -87,11 +87,12 @@
                 // "data/lithology_splits/val.json",
                 "-s",
                 "data/geoquat/validation",
+                // "data/geoquat/just_one_file",
                 "-c",
-                "baseline",
+                "bert",
                 "-p",
-                "models/lithology/20250526-172024_new_data_s2/checkpoint-1331_best",
-                //"models/uscs/balance_best/20250416-192401_best_stage2_balance/checkpoint-8340_very_best",
+                // "models/lithology/20250526-172024_new_data_s2/checkpoint-1331_best",
+                "models/uscs/balance_best/20250416-192401_best_stage2_balance/checkpoint-8340_very_best",
                 "-cs",
                 // "lithology"
                 "uscs"
