@@ -132,7 +132,7 @@ def load_data(
 def resolve_reference(material_description: str, previous_layers: list[LayerInformations]) -> str:
     """This function identifies if a layer description is a reference to a previous layer.
 
-    If it is, it first find the layer it refers to by looking for depths references in the material description.
+    If it is, it first finds the layer it refers to by looking for depths references in the material description.
     Then, it replaces the reference with the material description of the referenced layer. If no depth reference is
     found, we assume it refers to the layer immediately before it in the list of previous layers.
     If the material description does not contain any reference keywords, it returns the material description as is.
@@ -152,17 +152,23 @@ def resolve_reference(material_description: str, previous_layers: list[LayerInfo
     # Extract the depth references from the material description
     depth_str_references = re.findall(r"\d+(?:[.,]\d+)?", material_description)
     depth_str_references = depth_str_references[:2]  # We only consider the first two depth references
+
+    # clean the references and find a match
     clean_depth_references = [float(depth.replace(",", ".")) for depth in depth_str_references]
     clean_depth_references.sort()
-    if len(clean_depth_references) != 2:
-        raise NotImplementedError("The case of a single depth reference is not implemented yet. Might happen with Sp.")
+
+    def match_layer(layer, depths_to_match):
+        if len(depths_to_match) == 0:
+            return False  # No reference found — fallback to previous layer
+        elif len(depths_to_match) == 1:
+            return layer.layer_depths.start == depths_to_match[0]
+        elif len(depths_to_match) == 2:
+            return layer.layer_depths == Depths(depths_to_match[0], depths_to_match[1])
+        return False
+
     referenced_layer = next(
-        (
-            layer
-            for layer in previous_layers[::-1]  # Iterate in reverse order to find the most recent layer
-            if layer.layer_depths == Depths(clean_depth_references[0], clean_depth_references[1])
-        ),
-        previous_layers[-1],
+        (layer for layer in reversed(previous_layers) if match_layer(layer, clean_depth_references)),
+        previous_layers[-1],  # Fallback to last previous layer
     )
 
     # Replace the reference in the material description with the actual description of the referenced layer
