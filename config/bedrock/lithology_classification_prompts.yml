@@ -13,19 +13,20 @@ classification:
       In case the field is empty or no corresponding category can be found please provide a classification kA.
       Think through your reasoning before making the classification. 
       Classify the material description using ONLY the classifications listed above and place it in <answer></answer> tags. 
-      Answer ONLY with the classification and nothing else.
+      Answer ONLY with the classification inside the answer tags and nothing else.
       </rules>
 
-    user_prompt:
+    user_prompt_instruction:
       using the material description from a layer below, classify the material into lithology categories
 
+      Classify the material description using only 1 lithology category and place your answer in <answer></answer> tags.
+      ONLY place the classifaction in the answer tags. Do not answer anything else, your answer should consist of only the Lithology category inside the answer tags. 
+
+    user_prompt_description:
       This is the material description
       <material_description>
       {material_description}
       </material_description>
-
-      Classify the material description using only 1 lithology category and place your answer in <answer></answer> tags.
-      ONLY place the classifaction in the answer tags. Nothing else. Do not provide additional information.
 
 reasoning:
   baseline:
@@ -58,17 +59,18 @@ reasoning:
         Once finished reasoning, classify the layer using ONLY the classification labels in the list and place it in <answer></answer> tags. Assign a final reward score.
         </rules>
 
-    user_prompt:
+    user_prompt_instruction:
       using the material description from a layer below, classify the material into lithology categories
-
-      This is the material description
-      <material_description>
-      {material_description}
-      </material_description>
 
       Classify the material description using only 1 lithology category listed in the system prompt.
       In case the field is empty or no corresponding category can be found please provide a classification kA.
       Remember to think step-by-step before classifying the borehole layer and place your thoughts in <thinking></thinking> tags.
       When you are finished thinking, classify the borehole layer and place your answer in <answer></answer> tags. 
       ONLY place the classifaction in the answer tags, nothing else.
+
+    user_prompt_description:
+      This is the material description
+      <material_description>
+      {material_description}
+      </material_description>
 
