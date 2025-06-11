@@ -89,24 +89,40 @@ class AWSBedrockClassifier(Classifier):
         Returns:
             body (dict): The message body for the Bedrock API.
         """
-        language_patterns = self.class_patterns[language]
+        language_patterns = self.class_patterns
 
         system_message = self.classification_prompts["system_prompt"].format(class_patterns=language_patterns)
-        user_message = self.classification_prompts["user_prompt"].format(material_description=material_description)
+        user_message_instructions = self.classification_prompts["user_prompt_instruction"]
+        user_message_description = self.classification_prompts["user_prompt_description"].format(material_description=material_description)
 
         body = json.dumps(
             {
                 "anthropic_version": anthropic_version,
                 "max_tokens": max_tokens,
                 "temperature": temperature,
-                "system": system_message,
+                "system": [
+                    {
+                        "type": "text",
+                        "text": system_message,
+                        "cache_control": {
+                            "type": "ephemeral"
+                        }
+                    }
+                ],
                 "messages": [
                     {
                         "role": "user",
                         "content": [
                             {
                                 "type": "text",
-                                "text": user_message,
+                                "text": user_message_instructions,
+                                "cache_control": {
+                                    "type": "ephemeral"
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": user_message_description
                             }
                         ],
                     },
