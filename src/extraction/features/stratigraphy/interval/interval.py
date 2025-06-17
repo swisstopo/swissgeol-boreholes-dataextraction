@@ -191,6 +191,8 @@ class SpulprobeInterval(Interval):
         candidate_distances = [
             (idx, abs(block.rect.y0 - y_top)) for idx, block in enumerate(all_blocks) if idx >= block_index
         ]
+        if not candidate_distances:
+            return [], []
 
         # Chose the closest block
         best_idx, _ = min(candidate_distances, key=lambda x: x[1])
