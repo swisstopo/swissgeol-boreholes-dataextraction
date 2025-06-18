@@ -52,6 +52,15 @@ material_description:
       - lehm
       - dito
       - seebodenlehm
+      - dolomit
+      - kristallin
+      - gneis
+      - tonstein
+      - kalke
+      - siltsteine
+      - mikritisch
+      - laminiert
+      - grobsand
     excluding_expressions:
       - herr
       - ende
