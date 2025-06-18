@@ -290,7 +290,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         return material_descriptions_sidebar_pairs
 
     def _find_depth_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
-        material_descriptions_sidebar_pairs = []
         line_rtree = rtree.index.Index()
         for line in self.lines:
             line_rtree.insert(id(line), (line.rect.x0, line.rect.y0, line.rect.x1, line.rect.y1), obj=line)
@@ -312,28 +311,19 @@ class MaterialDescriptionRectWithSidebarExtractor:
             )
         )
 
-        for sidebar_noise in sidebars_noise:
-            material_description_rect = self._find_material_description_column(sidebar_noise.sidebar)
-            if material_description_rect:
-                material_descriptions_sidebar_pairs.append(
-                    MaterialDescriptionRectWithSidebar(
-                        sidebar=sidebar_noise.sidebar,
-                        material_description_rect=material_description_rect,
-                        lines=self.lines,
-                        noise_count=sidebar_noise.noise_count,
-                    )
-                )
+        # assign all sidebar to their best match
+        material_descriptions_sidebar_pairs = self._match_sidebars_to_description_rects(sidebars_noise)
 
         return material_descriptions_sidebar_pairs
 
-    def _find_material_description_column(self, sidebar: Sidebar | None) -> pymupdf.Rect | None:
-        """Find the material description column given a depth column.
+    def _find_all_material_description_candidates(self, sidebar: Sidebar | None) -> list[pymupdf.Rect]:
+        """Find all material description candidates on the page.
 
         Args:
-            sidebar (Sidebar | None): The sidebar to be associated with the material descriptions.
+            sidebar (Sidebar | None): The sidebar for which we want to find the material descriptions.
 
         Returns:
-            pymupdf.Rect | None: The material description column.
+            list[pymupdf.Rect]: A list of candidate rectangles for material descriptions.
         """
         if sidebar:
             above_sidebar = [
@@ -359,7 +349,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         ]
 
         if len(candidate_description) == 0:
-            return
+            return []
 
         description_clusters = []
         while len(is_description) > 0:
@@ -390,16 +380,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
             best_y0 = min([line.rect.y0 for line in cluster])
             best_y1 = max([line.rect.y1 for line in cluster])
 
-            min_description_x0 = min(
-                [
-                    line.rect.x0 - 0.01 * line.rect.width for line in cluster
-                ]  # How did we determine the 0.01? Should it be a parameter? What would it do if we were to change it?
-            )
-            max_description_x0 = max(
-                [
-                    line.rect.x0 + 0.2 * line.rect.width for line in cluster
-                ]  # How did we determine the 0.2? Should it be a parameter? What would it do if we were to change it?
-            )
+            min_description_x0 = min([line.rect.x0 - 0.01 * line.rect.width for line in cluster])
+            max_description_x0 = max([line.rect.x0 + 0.2 * line.rect.width for line in cluster])
             good_lines = [
                 line
                 for line in candidate_description
@@ -411,12 +393,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
             # expand to include entire last block
             def is_below(best_x0, best_y1, line):
-                # How did we determine the constants 5 and 10?
-                # Should they be parameters?
-                # What would happen do if we were to change them?
                 return (
                     (line.rect.x0 > best_x0 - 5)
-                    and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa B023
+                    and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
                     and (line.rect.y0 < best_y1 + 10)
                     and (line.rect.y1 > best_y1)
                 )
@@ -432,6 +411,18 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     continue_search = False
 
             candidate_rects.append(pymupdf.Rect(best_x0, best_y0, best_x1, best_y1))
+        return candidate_rects
+
+    def _find_material_description_column(self, sidebar: Sidebar | None) -> pymupdf.Rect | None:
+        """Find the best material description column for a given depth column.
+
+        Args:
+            sidebar (Sidebar | None): The sidebar to be associated with the material descriptions.
+
+        Returns:
+            pymupdf.Rect | None: The material description column.
+        """
+        candidate_rects = self._find_all_material_description_candidates(sidebar)
 
         if len(candidate_rects) == 0:
             return None
@@ -442,6 +433,83 @@ class MaterialDescriptionRectWithSidebarExtractor:
             )
         else:
             return candidate_rects[0]
+
+    def _match_sidebars_to_description_rects(
+        self, sidebars_noise: list[SidebarNoise]
+    ) -> list[MaterialDescriptionRectWithSidebar]:
+        """Matches sidebar objects to material description rectangles based on score.
+
+        The algorithm performs greedy matching: each sidebar is paired with the material description rectangle that
+        yields the highest score. If the top-scoring rectangle is already matched to another sidebar, the next
+        best is considered, and so on. If all potential rectangles are taken, the highest-scoring one is still
+        assigned as a default (allowing multiple sidebars to share the same rectangle if necessary).
+
+        Parameters:
+            sidebars_noise (List[SidebarNoise]): List of sidebar objects to match.
+
+        Returns:
+            List[MaterialDescriptionRectWithSidebar]: List of matched pairs.
+        """
+        # Store all possible matched rect with the associate scores in a dictionary: (s_idx, rect) -> score
+        score_map = {
+            (s_idx, rect): MaterialDescriptionRectWithSidebar(sn.sidebar, rect, self.lines).score_match
+            for s_idx, sn in enumerate(sidebars_noise)
+            for rect in self._find_all_material_description_candidates(sn.sidebar)
+        }
+
+        matched_pairs = []
+        used_sidebars_idx = set()
+        used_descr_rects = set()
+
+        # Step 1: Greedy match based on max scores
+        while True:
+            # Filter available scores
+            available_scores = {
+                (s_idx, rect): v
+                for (s_idx, rect), v in score_map.items()
+                if s_idx not in used_sidebars_idx  # don't re-match an already matched sidebar
+                and not any(rect.intersects(used_rect) for used_rect in used_descr_rects)  # don't share the same rect
+            }
+            if not available_scores:
+                break
+
+            # Get best available match
+            (best_sidebar_idx, best_rect), _ = max(available_scores.items(), key=lambda x: x[1])
+            matched_pairs.append(
+                MaterialDescriptionRectWithSidebar(
+                    sidebars_noise[best_sidebar_idx].sidebar,
+                    best_rect,
+                    self.lines,
+                    sidebars_noise[best_sidebar_idx].noise_count,
+                )
+            )
+            used_sidebars_idx.add(best_sidebar_idx)
+            used_descr_rects.add(best_rect)
+
+        # continue here, assign remaining, chekc that score is lower than the assigned before,
+        # check that discarded after, check vs main that no changes
+
+        # Step 2: Assign remaining sidebars (if any) to best match (reuse descr_rects)
+        remaining_sidebars_idx = [s_idx for s_idx in range(len(sidebars_noise)) if s_idx not in used_sidebars_idx]
+        for s_idx in remaining_sidebars_idx:
+            sidebar = sidebars_noise[s_idx].sidebar
+            mat_rects = self._find_all_material_description_candidates(sidebar)
+            if not mat_rects:
+                continue
+            best_rect = max(
+                mat_rects,
+                key=lambda rect: MaterialDescriptionRectWithSidebar(sidebar, rect, self.lines).score_match,
+            )
+            matched_pairs.append(
+                MaterialDescriptionRectWithSidebar(
+                    sidebar,
+                    best_rect,
+                    self.lines,
+                    sidebars_noise[s_idx].noise_count,
+                )
+            )
+
+        return matched_pairs
 
 
 def extract_page(
