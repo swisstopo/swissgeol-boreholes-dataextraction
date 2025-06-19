@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import statistics
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import product
 
 import numpy as np
@@ -34,6 +34,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
     """
 
     entries: list[DepthColumnEntry]
+    skipped_entries: list[DepthColumnEntry] = field(default_factory=list)
 
     def __repr__(self):
         return "AAboveBSidebar({})".format(", ".join([str(entry) for entry in self.entries]))

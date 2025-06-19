@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import abc
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Generic, TypeVar
 
 import pymupdf
@@ -32,11 +32,11 @@ class Sidebar(abc.ABC, Generic[EntryT]):
     """
 
     entries: list[EntryT]
-    skipped_entries: list[EntryT] = None
+    skipped_entries: list[EntryT] = field(default_factory=list)
 
     @property
     def all_entries(self):
-        return self.entries + self.skipped_entries if self.skipped_entries else self.entries
+        return self.entries + self.skipped_entries
 
     def rects(self) -> list[pymupdf.Rect]:
         """Get the rectangles of the depth column entries."""
