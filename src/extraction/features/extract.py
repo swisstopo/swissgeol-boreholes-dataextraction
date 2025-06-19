@@ -452,7 +452,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         """
         # Store all possible matched rect with the associate scores in a dictionary: (s_idx, rect) -> score
         score_map = {
-            (s_idx, rect): MaterialDescriptionRectWithSidebar(sn.sidebar, rect, self.lines).score_match
+            (s_idx, rect): MaterialDescriptionRectWithSidebar(sn.sidebar, rect, self.lines, sn.noise_count).score_match
             for s_idx, sn in enumerate(sidebars_noise)
             for rect in self._find_all_material_description_candidates(sn.sidebar)
         }
@@ -493,21 +493,15 @@ class MaterialDescriptionRectWithSidebarExtractor:
         remaining_sidebars_idx = [s_idx for s_idx in range(len(sidebars_noise)) if s_idx not in used_sidebars_idx]
         for s_idx in remaining_sidebars_idx:
             sidebar = sidebars_noise[s_idx].sidebar
+            noise = sidebars_noise[s_idx].noise_count
             mat_rects = self._find_all_material_description_candidates(sidebar)
             if not mat_rects:
                 continue
             best_rect = max(
                 mat_rects,
-                key=lambda rect: MaterialDescriptionRectWithSidebar(sidebar, rect, self.lines).score_match,
+                key=lambda rect: MaterialDescriptionRectWithSidebar(sidebar, rect, self.lines, noise).score_match,
             )
-            matched_pairs.append(
-                MaterialDescriptionRectWithSidebar(
-                    sidebar,
-                    best_rect,
-                    self.lines,
-                    sidebars_noise[s_idx].noise_count,
-                )
-            )
+            matched_pairs.append(MaterialDescriptionRectWithSidebar(sidebar, best_rect, self.lines, noise))
 
         return matched_pairs
 
