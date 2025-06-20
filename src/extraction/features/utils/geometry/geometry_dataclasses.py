@@ -23,6 +23,10 @@ class Point:
     def tuple(self) -> tuple[float, float]:
         return self.x, self.y
 
+    @property
+    def as_numpy(self) -> np.ndarray:
+        return np.array(self.tuple)
+
     def distance_to(self, point: Point) -> float:
         return np.sqrt((self.x - point.x) ** 2 + (self.y - point.y) ** 2)
 
