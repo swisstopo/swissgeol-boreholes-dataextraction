@@ -7,9 +7,7 @@ import cv2
 import numpy as np
 import pymupdf
 from dotenv import load_dotenv
-from extraction.features.utils.geometry.geometric_line_utilities import (
-    merge_parallel_lines_quadtree,
-)
+from extraction.features.utils.geometry.geometric_line_utilities import merge_parallel_lines_quadtree
 from numpy.typing import ArrayLike
 from utils.file_utils import read_params
 
@@ -138,12 +136,10 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
     # return lines
     tol = merging_params["merging_tolerance"] * scaling_factor
     angle_tol = merging_params["angle_threshold"]
-    min_line_length = merging_params["min_line_length"]
+    min_line_length = merging_params["min_line_length"] * scaling_factor
     horizontal_slope_tolerance = merging_params["horizontal_slope_tolerance"]
     merged = merge_parallel_lines_quadtree(lines, tol=tol, angle_threshold=angle_tol)
     merged = [
-        line
-        for line in merged
-        if line.length >= min_line_length * scaling_factor or line.is_horizontal(horizontal_slope_tolerance)
+        line for line in merged if line.length >= min_line_length or line.is_horizontal(horizontal_slope_tolerance)
     ]
     return merged

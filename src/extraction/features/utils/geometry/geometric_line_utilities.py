@@ -1,7 +1,7 @@
 """This module contains utility functions to work with geometric lines."""
 
+import heapq
 import logging
-import queue
 from itertools import combinations
 from math import cos, sin
 
@@ -261,7 +261,7 @@ def _orthogonal_projection_lenght_short_onto_long(short: Line, long: Line) -> fl
     return np.linalg.norm(clipped_end - clipped_start)
 
 
-def _following_coefecient(line1: Line, line2: Line):
+def _following_coeficient(line1: Line, line2: Line):
     long, short = (line1, line2) if line1.length > line2.length else (line2, line1)
     len_proj = _orthogonal_projection_lenght_short_onto_long(short, long)
     overlap_ratio = len_proj / short.length
@@ -276,7 +276,7 @@ def _are_mergeable(line1: Line, line2: Line, tol: float, angle_threshold: float)
     # Adjust distance tolerance based on orientation:
     # when lines follow each other (coef ≈ 1), allow full tolerance
     # when lines are side-by-side (coef ≈ 0), be more strict: only tol / 3
-    coef = _following_coefecient(line1, line2)
+    coef = _following_coeficient(line1, line2)
     distance_tolerance = tol * coef + perp_tol * (1 - coef)
 
     return _are_close(line1, line2, tol=distance_tolerance)
@@ -287,6 +287,8 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
 
     Uses a quadtree to quickly find lines that are close to each other. The algorithm is more efficient than the
     naive approach.
+    The use of a sorted heap is necessary to make the process deterministic and merging the longest lines first gives
+    better results.
 
     Args:
         lines (list[Line]): The lines to merge.
@@ -303,16 +305,13 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
     height = max(max_end_y, max_start_y)
     lines_quad_tree = LinesQuadTree(width, height)
 
-    # merging the biggest lines first is more robust
-    lines = sorted(lines, key=lambda line: line.length)
-
-    keys_queue = queue.Queue()
+    keys_queue = []
     for line in lines:
         line_key = lines_quad_tree.add(line)
-        keys_queue.put(line_key)
+        heapq.heappush(keys_queue, (-line.length, line_key))  # heaps are sorted with smallest first
 
-    while not keys_queue.empty():
-        line_key = keys_queue.get()
+    while keys_queue:
+        _, line_key = heapq.heappop(keys_queue)
 
         if line_key not in lines_quad_tree.hashmap:
             # already seen
@@ -331,7 +330,7 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
             lines_quad_tree.remove(neighbour_key)
             lines_quad_tree.remove(line_key)
             new_key = lines_quad_tree.add(new_line)
-            keys_queue.put(new_key)
+            heapq.heappush(keys_queue, (-new_line.length, new_key))
             break
 
     return list(lines_quad_tree.hashmap.values())
