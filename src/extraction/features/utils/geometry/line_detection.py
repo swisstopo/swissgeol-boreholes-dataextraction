@@ -144,6 +144,6 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
     merged = [
         line
         for line in merged
-        if line.length >= min_line_length * scaling_factor or abs(line.slope) <= horizontal_slope_tolerance
+        if line.length >= min_line_length * scaling_factor or line.is_horizontal(horizontal_slope_tolerance)
     ]
     return merged

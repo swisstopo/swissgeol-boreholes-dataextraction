@@ -67,6 +67,10 @@ class Line:
         """Calculate the slope of the line."""
         return (self.end.y - self.start.y) / (self.end.x - self.start.x) if self.end.x - self.start.x != 0 else np.inf
 
+    def is_horizontal(self, horizontal_slope_tolerance) -> bool:
+        """Checks if a line is horizontal."""
+        return abs(self.slope) <= horizontal_slope_tolerance
+
     @property
     def angle(self) -> float:
         """Angle of the line with the x-axis in degrees, ranging from -90 (exclusive) to +90 (inclusive)."""
