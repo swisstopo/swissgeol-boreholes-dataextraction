@@ -308,7 +308,10 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
     keys_queue = []
     for line in lines:
         line_key = lines_quad_tree.add(line)
-        heapq.heappush(keys_queue, (-line.length, line_key))  # heaps are sorted with smallest first
+        keys_queue.append((-line.length, line_key))
+
+    # building the heap in one go is faster than iterativelly using heappush: O(n) vs O(n log(n))
+    heapq.heapify(keys_queue)
 
     while keys_queue:
         _, line_key = heapq.heappop(keys_queue)
