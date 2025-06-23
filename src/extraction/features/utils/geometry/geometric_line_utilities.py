@@ -19,9 +19,7 @@ def is_point_on_line(line: Line, point: Point, tol=10) -> bool:
 
     The check is done by calculating the slope and y-intercept of the line and then checking if the point satisfies
     the equation of the line with some margin tol. Since the lines is only a line segments, the function also checks
-    if the point is between the start and end points of the segment. Again, here we allow for some margin, tol / 2 for
-    the y-coordinate and tol for the x-coordinate. We assume lines are horizontal, and allow for less margin in the
-    y-coordinate to keep merged lines horizontal.
+    if the point is between the start and end points of the segment.
 
     Args:
         line (Line): a line segment
@@ -175,8 +173,7 @@ def _are_close(line1: Line, line2: Line, tol: int) -> bool:
     Returns:
         bool: True if the lines are close, False otherwise.
     """
-    min_tol = 2
-    adaptive_tol = min(max(min_tol, min(line1.length, line2.length) / 2), tol)
+    adaptive_tol = min(max(tol / 10, min(line1.length, line2.length)), tol)
     return (
         is_point_on_line(line1, line2.start, tol=adaptive_tol)
         or is_point_on_line(line1, line2.end, tol=adaptive_tol)
@@ -277,8 +274,8 @@ def _are_mergeable(line1: Line, line2: Line, tol: float, angle_threshold: float)
 
     perp_tol = tol / 3
     # Adjust distance tolerance based on orientation:
-    # When lines follow each other (coef ≈ 1), allow full tolerance (`tol`)
-    # When lines are side-by-side (coef ≈ 0), be more strict: only `tol / 3`
+    # when lines follow each other (coef ≈ 1), allow full tolerance
+    # when lines are side-by-side (coef ≈ 0), be more strict: only tol / 3
     coef = _following_coefecient(line1, line2)
     distance_tolerance = tol * coef + perp_tol * (1 - coef)
 
@@ -326,13 +323,15 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
             lines_quad_tree.neighbouring_lines(line_key, tol).items(), key=lambda pair: -pair[1].length
         )  # merging the biggest lines first is more robust
         for neighbour_key, neighbour_line in neighbours:
-            if _are_mergeable(line, neighbour_line, tol, angle_threshold):
-                new_line = _merge_lines(line, neighbour_line)
-                if new_line is not None:
-                    lines_quad_tree.remove(neighbour_key)
-                    lines_quad_tree.remove(line_key)
-                    new_key = lines_quad_tree.add(new_line)
-                    keys_queue.put(new_key)
-                    break
+            if not _are_mergeable(line, neighbour_line, tol, angle_threshold):
+                continue
+            new_line = _merge_lines(line, neighbour_line)
+            if new_line is None:
+                continue
+            lines_quad_tree.remove(neighbour_key)
+            lines_quad_tree.remove(line_key)
+            new_key = lines_quad_tree.add(new_line)
+            keys_queue.put(new_key)
+            break
 
     return list(lines_quad_tree.hashmap.values())
