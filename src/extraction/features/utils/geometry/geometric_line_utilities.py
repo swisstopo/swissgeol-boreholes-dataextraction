@@ -173,7 +173,7 @@ def _are_close(line1: Line, line2: Line, tol: int) -> bool:
     Returns:
         bool: True if the lines are close, False otherwise.
     """
-    adaptive_tol = min(max(tol / 10, min(line1.length, line2.length)), tol)
+    adaptive_tol = min(max(tol / 10, max(line1.length, line2.length)), tol)
     return (
         is_point_on_line(line1, line2.start, tol=adaptive_tol)
         or is_point_on_line(line1, line2.end, tol=adaptive_tol)
