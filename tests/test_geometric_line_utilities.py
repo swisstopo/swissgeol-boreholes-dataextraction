@@ -9,6 +9,7 @@ from extraction.features.utils.geometry.geometric_line_utilities import (
     _get_orthogonal_projection_to_line,
     _merge_lines,
     _odr_regression,
+    is_point_near_line,
     is_point_on_line,
     merge_parallel_lines_quadtree,
 )
@@ -141,25 +142,22 @@ def test_merge_lines(merge_lines_case):  # noqa: D103
     assert pytest.approx(merged_line.end.tuple) == expected_merged_line.end.tuple
 
 
-def test_are_close():  # noqa: D103
-    line1 = Line(Point(0, 0), Point(0, 10))
-    line2 = Line(Point(0, 11), Point(0, 20))
-    assert _are_close(line1, line2, tol=5), "Two lines that almost extend each other should be considered close"
-    assert _are_close(line2, line1, tol=5), "Two lines that almost extend each other should be considered close"
-
-    line1 = Line(Point(0, 0), Point(0, 20))
-    line2 = Line(Point(1, 8), Point(1, 12))
-    assert _are_close(
-        line1, line2, tol=5
-    ), "A line that is almost a sub-segment of another line should be considered close"
-    assert _are_close(
-        line2, line1, tol=5
-    ), "A line that is almost a sub-segment of another line should be considered close"
-
-    line1 = Line(Point(0, 0), Point(0, 0.1))
-    line2 = Line(Point(2, 0), Point(2, 0.1))
-    assert not _are_close(line1, line2, tol=5), "Two very short parallel lines should not be considered close"
-    assert not _are_close(line2, line1, tol=5), "Two very short parallel lines should not be considered close"
+@pytest.mark.parametrize(
+    "line1, line2, tol, expected",
+    [
+        # "Two lines that almost extend each other should be considered close"
+        (Line(Point(0, 0), Point(0, 10)), Line(Point(0, 11), Point(0, 20)), 5, True),
+        (Line(Point(0, 11), Point(0, 20)), Line(Point(0, 0), Point(0, 10)), 5, True),
+        # "A line that is almost a sub-segment of another line should be considered close"
+        (Line(Point(0, 0), Point(0, 20)), Line(Point(1, 8), Point(1, 12)), 5, True),
+        (Line(Point(1, 8), Point(1, 12)), Line(Point(0, 0), Point(0, 20)), 5, True),
+        # "Two very short parallel lines should not be considered close"
+        (Line(Point(0, 0), Point(0, 0.1)), Line(Point(2, 0), Point(2, 0.1)), 5, False),
+        (Line(Point(2, 0), Point(2, 0.1)), Line(Point(0, 0), Point(0, 0.1)), 5, False),
+    ],
+)
+def test_are_close(line1, line2, tol, expected):  # noqa: D103
+    assert _are_close(line1, line2, tol) == expected
 
 
 def test_is_point_on_line():  # noqa: D103
@@ -186,6 +184,23 @@ def test_merge_parallel_lines_quadtree():  # noqa: D103
     ]
     merged_lines = merge_parallel_lines_quadtree(lines, tol=1, angle_threshold=1)
     assert len(merged_lines) == 2, "There should be 2 lines after merging"
+
+
+@pytest.mark.parametrize(
+    "line, point, tol, tol_line, expected",
+    [
+        # Point is slightly above the line but within tol_line
+        (Line(Point(0, 0), Point(10, 0)), Point(5, 2), 10, 3, True),
+        # Point is too far from the line vertically
+        (Line(Point(0, 0), Point(10, 0)), Point(5, 5), 10, 3, False),
+        # Point is aligned with the line but outside of tol
+        (Line(Point(0, 0), Point(10, 0)), Point(21, 0), 10, 3, False),
+        # Point is just outside segment range, but within tol
+        (Line(Point(0, 0), Point(10, 0)), Point(20, 0), 10, 3, True),
+    ],
+)
+def test_is_point_near_line(line, point, tol, tol_line, expected):  # noqa: D103
+    assert is_point_near_line(line, point, tol=tol, line_tol=tol_line) == expected
 
 
 @pytest.mark.parametrize(

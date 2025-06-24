@@ -1,7 +1,7 @@
 """This module contains utility functions to work with geometric lines."""
 
-import heapq
 import logging
+import queue
 from itertools import combinations
 from math import cos, sin
 
@@ -14,7 +14,7 @@ from .linesquadtree import LinesQuadTree
 logger = logging.getLogger(__name__)
 
 
-def is_point_on_line(line: Line, point: Point, tol=10) -> bool:
+def is_point_on_line(line: Line, point: Point, tol: int = 10) -> bool:
     """Check if a point is on a line.
 
     The check is done by calculating the slope and y-intercept of the line and then checking if the point satisfies
@@ -36,6 +36,37 @@ def is_point_on_line(line: Line, point: Point, tol=10) -> bool:
 
     # Check if the point satisfies the equation of the line
     return (line.distance_to(point) < tol) and (
+        (x_start - tol <= point.x <= x_end + tol) and (y_start - tol <= point.y <= y_end + tol)
+    )
+
+
+def is_point_near_line(line: Line, point: Point, tol: int = 10, line_tol: int = 3) -> bool:
+    """Check if a point is near a line segment.
+
+    This is done by computing the slope and y-intercept of the line, and checking whether the point satisfies
+    the line equation within a vertical tolerance (`tol_line`). Since the line is a finite segment, the function
+    also checks whether the point lies within or near the segment's bounds, using a second tolerance (`tol`).
+
+    The purpose of using two tolerances is to ensure that:
+    - the point is closely aligned with the line direction (controlled by `tol_line`),
+    - but we still allow the point to lie beyond the segment's endpoints (controlled by `tol`).
+
+    Args:
+        line (Line): A line segment.
+        point (Point): The point to check.
+        tol (int, optional): Tolerance for point's position along the segment's direction. Defaults to 10.
+        line_tol (int, optional): Tolerance for point's distance from the line. Defaults to 3.
+
+    Returns:
+        bool: True if the point is near the line within the specified tolerances, False otherwise.
+    """
+    x_start = np.min([line.start.x, line.end.x])
+    x_end = np.max([line.start.x, line.end.x])
+    y_start = np.min([line.start.y, line.end.y])
+    y_end = np.max([line.start.y, line.end.y])
+
+    # Check if the point satisfies the equation of the line
+    return (line.distance_to(point) < line_tol) and (
         (x_start - tol <= point.x <= x_end + tol) and (y_start - tol <= point.y <= y_end + tol)
     )
 
@@ -160,10 +191,17 @@ def _get_orthogonal_projection_to_line(point: Point, phi: float, r: float) -> Po
 
 
 def _are_close(line1: Line, line2: Line, tol: int) -> bool:
-    """Check if two lines are close to each other.
+    """Check if two lines are close to each other, using an adaptive tolerance.
 
-    We use an adaptive tolerance to avoid merging very small lines that are relatively far apart compared to
-    their size.
+    This function determines whether two line segments are spatially close enough to be considered for merging.
+    It uses an adaptive tolerance to prevent merging very short lines that are relatively far apart in proportion
+    to their length.
+
+    The effective tolerance (`adaptive_tol`) scales based on the maximum length of the two lines, capped at the
+    given `tol`, but not smaller than `tol / 10`. Additionally, a stricter sub-tolerance (`line_tol`) is used
+    to assess alignment accuracy (e.g. how well endpoints align with the direction of the other line).
+
+    The check is performed by testing whether either endpoint of one line lies near the other line segment.
 
     Args:
         line1 (Line): The first line.
@@ -174,11 +212,12 @@ def _are_close(line1: Line, line2: Line, tol: int) -> bool:
         bool: True if the lines are close, False otherwise.
     """
     adaptive_tol = min(max(tol / 10, max(line1.length, line2.length)), tol)
+    line_tol = adaptive_tol / 3
     return (
-        is_point_on_line(line1, line2.start, tol=adaptive_tol)
-        or is_point_on_line(line1, line2.end, tol=adaptive_tol)
-        or is_point_on_line(line2, line1.start, tol=adaptive_tol)
-        or is_point_on_line(line2, line1.end, tol=adaptive_tol)
+        is_point_near_line(line1, line2.start, tol=adaptive_tol, line_tol=line_tol)
+        or is_point_near_line(line1, line2.end, tol=adaptive_tol, line_tol=line_tol)
+        or is_point_near_line(line2, line1.start, tol=adaptive_tol, line_tol=line_tol)
+        or is_point_near_line(line2, line1.end, tol=adaptive_tol, line_tol=line_tol)
     )
 
 
@@ -199,87 +238,8 @@ def _are_parallel(line1: Line, line2: Line, angle_threshold: float) -> bool:
     )
 
 
-def _orthogonal_projection_point_on_segment(P: Point, line: Line) -> tuple[np.ndarray, bool]:
-    """Projects the point P onto the line (extended) and checks if the projection lies on the segment."""
-    P, A, B = (p.as_numpy for p in (P, line.start, line.end))
-    AB = B - A
-    AP = P - A
-    t = np.dot(AP, AB) / np.dot(AB, AB)
-    projection = A + t * AB
-    is_on_segment = 0 <= t <= 1
-    return projection, is_on_segment
-
-
-def _clamp_projection_to_segment(proj: np.ndarray, line: Line) -> np.ndarray:
-    """Clamp a projected point to the segment AB if it lies outside."""
-    A, B = (p.as_numpy for p in (line.start, line.end))
-    AB = B - A
-    t = np.dot(proj - A, AB) / np.dot(AB, AB)
-    if t < 0:
-        return A
-    elif t > 1:
-        return B
-    else:
-        return proj
-
-
-def _orthogonal_projection_lenght_short_onto_long(short: Line, long: Line) -> float:
-    """Computes the length of the orthogonal projection of the short line onto the long one."""
-    proj_start, start_on = _orthogonal_projection_point_on_segment(short.start, long)
-    proj_end, end_on = _orthogonal_projection_point_on_segment(short.end, long)
-
-    # Clamp projections to segment if they are outside
-    if not start_on:
-        proj_start = _clamp_projection_to_segment(proj_start, long)
-    if not end_on:
-        proj_end = _clamp_projection_to_segment(proj_end, long)
-
-    # Check if projections overlap segment
-    # If projections are in opposite order along segment, length = 0
-    # To check order, project scalar t values for both points:
-    long_start, long_end = long.start.as_numpy, long.end.as_numpy
-    AB = long_end - long_start
-    t_start = np.dot(proj_start - long_start, AB) / np.dot(AB, AB)
-    t_end = np.dot(proj_end - long_start, AB) / np.dot(AB, AB)
-
-    if t_start > t_end:
-        t_start, t_end = t_end, t_start
-        proj_start, proj_end = proj_end, proj_start
-
-    if t_end < 0 or t_start > 1:
-        # No overlap with segment
-        return 0.0
-
-    # Clamp t values between 0 and 1 to handle floating point imprecision near segment boundaries
-    t_start = max(0, t_start)
-    t_end = min(1, t_end)
-
-    # Final clipped points
-    clipped_start = long_start + t_start * AB
-    clipped_end = long_start + t_end * AB
-
-    return np.linalg.norm(clipped_end - clipped_start)
-
-
-def _following_coeficient(line1: Line, line2: Line):
-    long, short = (line1, line2) if line1.length > line2.length else (line2, line1)
-    len_proj = _orthogonal_projection_lenght_short_onto_long(short, long)
-    overlap_ratio = len_proj / short.length
-    return 1 - overlap_ratio
-
-
 def _are_mergeable(line1: Line, line2: Line, tol: float, angle_threshold: float) -> bool:
-    if not _are_parallel(line1, line2, angle_threshold=angle_threshold):
-        return False
-
-    perp_tol = tol / 3
-    # Adjust distance tolerance based on orientation:
-    # when lines follow each other (coef ≈ 1), allow full tolerance
-    # when lines are side-by-side (coef ≈ 0), be more strict: only tol / 3
-    coef = _following_coeficient(line1, line2)
-    distance_tolerance = tol * coef + perp_tol * (1 - coef)
-
-    return _are_close(line1, line2, tol=distance_tolerance)
+    return _are_parallel(line1, line2, angle_threshold=angle_threshold) and _are_close(line1, line2, tol=tol)
 
 
 def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: float) -> list[Line]:
@@ -305,16 +265,15 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
     height = max(max_end_y, max_start_y)
     lines_quad_tree = LinesQuadTree(width, height)
 
-    keys_queue = []
+    lines = sorted(lines, key=lambda line: -line.length)
+
+    keys_queue = queue.Queue()
     for line in lines:
         line_key = lines_quad_tree.add(line)
-        keys_queue.append((-line.length, line_key))
+        keys_queue.put(line_key)
 
-    # building the heap in one go is faster than iterativelly using heappush: O(n) vs O(n log(n))
-    heapq.heapify(keys_queue)
-
-    while keys_queue:
-        _, line_key = heapq.heappop(keys_queue)
+    while not keys_queue.empty():
+        line_key = keys_queue.get()
 
         if line_key not in lines_quad_tree.hashmap:
             # already seen
@@ -333,7 +292,7 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
             lines_quad_tree.remove(neighbour_key)
             lines_quad_tree.remove(line_key)
             new_key = lines_quad_tree.add(new_line)
-            heapq.heappush(keys_queue, (-new_line.length, new_key))
+            keys_queue.put(new_key)
             break
 
     return list(lines_quad_tree.hashmap.values())
