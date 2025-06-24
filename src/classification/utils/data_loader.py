@@ -158,13 +158,11 @@ def resolve_reference(material_description: str, previous_layers: list[LayerInfo
     clean_depth_references.sort()
 
     def match_layer(layer, depths_to_match):
-        if len(depths_to_match) == 0:
-            return False  # No reference found — fallback to previous layer
-        elif len(depths_to_match) == 1:
+        if len(depths_to_match) == 1:
             return layer.layer_depths.start == depths_to_match[0]
         elif len(depths_to_match) == 2:
             return layer.layer_depths == Depths(depths_to_match[0], depths_to_match[1])
-        return False
+        return False  # No reference found - fallback to previous layer
 
     referenced_layer = next(
         (layer for layer in reversed(previous_layers) if match_layer(layer, clean_depth_references)),
