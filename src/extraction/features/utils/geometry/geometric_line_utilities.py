@@ -44,7 +44,7 @@ def is_point_near_line(line: Line, point: Point, tol: int = 10, line_tol: int = 
     """Check if a point is near a line segment.
 
     This is done by computing the slope and y-intercept of the line, and checking whether the point satisfies
-    the line equation within a vertical tolerance (`tol_line`). Since the line is a finite segment, the function
+    the line equation within a tolerance (`tol_line`). Since the line is a finite segment, the function
     also checks whether the point lies within or near the segment's bounds, using a second tolerance (`tol`).
 
     The purpose of using two tolerances is to ensure that:
@@ -212,7 +212,7 @@ def _are_close(line1: Line, line2: Line, tol: int) -> bool:
         bool: True if the lines are close, False otherwise.
     """
     adaptive_tol = min(max(tol / 10, max(line1.length, line2.length)), tol)
-    line_tol = adaptive_tol / 3
+    line_tol = adaptive_tol / 3  # we are 3 times more strict in the direction perpendicular to the line
     return (
         is_point_near_line(line1, line2.start, tol=adaptive_tol, line_tol=line_tol)
         or is_point_near_line(line1, line2.end, tol=adaptive_tol, line_tol=line_tol)
@@ -247,8 +247,6 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
 
     Uses a quadtree to quickly find lines that are close to each other. The algorithm is more efficient than the
     naive approach.
-    The use of a sorted heap is necessary to make the process deterministic and merging the longest lines first gives
-    better results.
 
     Args:
         lines (list[Line]): The lines to merge.
@@ -265,6 +263,7 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
     height = max(max_end_y, max_start_y)
     lines_quad_tree = LinesQuadTree(width, height)
 
+    # sorting ensures consistency by merging the biggest lines first
     lines = sorted(lines, key=lambda line: -line.length)
 
     keys_queue = queue.Queue()
