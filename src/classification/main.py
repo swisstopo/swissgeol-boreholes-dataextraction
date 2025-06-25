@@ -98,7 +98,14 @@ def common_options(f):
         "--file-path",
         required=True,
         type=click.Path(exists=True, path_type=Path),
-        help="Path to the json file.",
+        help="Path to the prediction json file.",
+    )(f)
+    f = click.option(
+        "-g",
+        "--ground-truth-path",
+        type=click.Path(exists=True, path_type=Path),
+        default=None,
+        help="Path to the ground truth file, if different from file_path.",
     )(f)
     f = click.option(
         "-o",
@@ -150,6 +157,7 @@ def common_options(f):
 @common_options
 def click_pipeline(
     file_path: Path,
+    ground_truth_path: Path,
     out_directory: Path,
     out_directory_bedrock: Path,
     file_subset_directory: Path,
@@ -160,6 +168,7 @@ def click_pipeline(
     """Run the description classification pipeline."""
     main(
         file_path,
+        ground_truth_path,
         out_directory,
         out_directory_bedrock,
         file_subset_directory,
@@ -171,6 +180,7 @@ def click_pipeline(
 
 def main(
     file_path: Path,
+    ground_truth_path: Path,
     out_directory: Path,
     out_directory_bedrock: Path,
     file_subset_directory: Path,
@@ -181,7 +191,8 @@ def main(
     """Main pipeline to classify the layer's soil descriptions.
 
     Args:
-        file_path (Path): Path to the ground truth json file.
+        file_path (Path): Path to the json file we want to predict from.
+        ground_truth_path (Path): Path the the ground truth file, if file_path is the predictions.
         out_directory (Path): Path to output directory
         out_directory_bedrock (Path): Path to output directory for bedrock API files
         file_subset_directory (Path): Path to the directory containing the file whose names are used.
@@ -189,6 +200,13 @@ def main(
         model_path (Path): Path to the trained model.
         classification_system (str): The classification system used to classify the data.
     """
+    # TODO gorund truth should be handle diff vs predictions
+    if ground_truth_path and file_subset_directory:
+        logger.warning(
+            "The subset directory provided will not be used, the pipeline will predict the class of all"
+            " layers in the predictions file given."  # TODO better
+        )
+
     classifier_type_instance = ClassifierTypes.infer_type(classifier_type.lower())
     classification_system_cls = ExistingClassificationSystems.get_classification_system_type(
         classification_system.lower()
@@ -198,7 +216,7 @@ def main(
         setup_mlflow_tracking(file_path, out_directory, file_subset_directory)
 
     logger.info(f"Loading data from {file_path}")
-    layer_descriptions = load_data(file_path, file_subset_directory, classification_system_cls)
+    layer_descriptions = load_data(file_path, ground_truth_path, file_subset_directory, classification_system_cls)
 
     classifier = ClassifierFactory.create_classifier(
         classifier_type_instance, classification_system_cls, model_path, out_directory_bedrock
