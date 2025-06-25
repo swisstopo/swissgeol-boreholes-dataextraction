@@ -47,7 +47,7 @@
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
-            "python": "${workspaceFolder}/swisstopo/bin/python3",
+            "python": "${workspaceFolder}/env/bin/python3"
         },
         {
             "name": "Python: Run boreholes-classify-descriptions",

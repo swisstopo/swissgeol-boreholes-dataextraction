@@ -64,7 +64,7 @@ class SpulprobeSidebar(Sidebar[SpulprobeEntry]):
         """Creates a list of depth intervals from Spulprobe entries.
 
         Returns:
-            list[AAboveBInterval]: A list of depth intervals.
+            list[SpulprobeInterval]: A list of depth intervals.
         """
         intervals = []
         # we need the open-ended interval for blocks that began on the previous page and that should not be matched

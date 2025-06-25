@@ -102,12 +102,12 @@ def find_document_contour_and_clean(gray, output_path=None):
     return result
 
 
-def _deskew_image(image: np.ndarray, croping_allowed: bool = False) -> np.ndarray:
+def _deskew_image(image: np.ndarray, cropping_allowed: bool = False) -> np.ndarray:
     """Detect and correct skew in an image using OpenCV.
 
     Args:
         image: Input image as numpy array (BGR format)
-        croping_allowed (bool): whether to crop the image and keep the same zoom level or the opposite.
+        cropping_allowed (bool): whether to crop the image and keep the same zoom level or the opposite.
 
     Returns:
         Deskewed image as numpy array
@@ -168,7 +168,7 @@ def _deskew_image(image: np.ndarray, croping_allowed: bool = False) -> np.ndarra
     # Calculate rotation matrix
     center = (w // 2, h // 2)
 
-    if croping_allowed:
+    if cropping_allowed:
         rotation_matrix = cv2.getRotationMatrix2D(center, skew_angle, 1.0)
 
         # Calculate new bounding dimensions after rotation

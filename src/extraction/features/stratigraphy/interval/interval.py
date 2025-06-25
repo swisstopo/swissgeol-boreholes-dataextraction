@@ -180,8 +180,8 @@ class SpulprobeInterval(Interval):
         Exact contains all the blocks that are supposed to be inside the interval (aligned with the SP. entry).
 
         Args:
-            all_blocks (list[TextBlock]): All blocks available blocks.
-            block_index (int): Index of the current block, the first that is not matched yet.
+            all_blocks (list[TextBlock]): All available blocks.
+            block_index (int): Index of the first unmatched block.
 
         Returns:
             tuple[list[TextBlock], list[TextBlock]]: Pre and exact blocks.
@@ -197,6 +197,6 @@ class SpulprobeInterval(Interval):
         # Chose the closest block
         best_idx, _ = min(candidate_distances, key=lambda x: x[1])
         exact = [all_blocks[best_idx]]
-        pre = [block for i, block in enumerate(all_blocks) if i >= block_index and i < best_idx]
+        pre = all_blocks[block_index:best_idx]
 
         return pre, exact
