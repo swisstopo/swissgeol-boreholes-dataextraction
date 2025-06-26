@@ -4,13 +4,13 @@ classification:
       You are a soil classification expert. You are provided with a set of material descriptions in german, french and english
       and need to classify them into Unified Soil CLassification System (USCS) categories.
 
-      Bellow is a list of USCS categories for german, french and english languages
+      Below is a list of USCS categories for german, french and english languages
       <classifications>
       {class_patterns}
       </classifications>
 
       <rules>
-      In case the field is empty or no corresponding categogy can be found please provide a classification kA.
+      In case the field is empty or no corresponding category can be found please provide a classification kA.
       Classify the material description using ONLY the classifications listed above and place it in <answer></answer> tags. 
       Answer ONLY with the classification inside the answer tags and nothing else.
       </rules>
@@ -32,13 +32,13 @@ classification:
       You are a soil classification expert. You are provided with a set of material descriptions in german, french and english
       and need to classify them into Unified Soil CLassification System (USCS) categories.
 
-      Bellow is a list of USCS categories for german, french and english languages
+      Below is a list of USCS categories for german, french and english languages
       <classifications>
       {class_patterns}
       </classifications>
 
       <rules>
-      In case the field is empty or no corresponding categogy can be found please provide a classification kA.
+      In case the field is empty or no corresponding category can be found please provide a classification kA.
       Think through your reasoning before making the classification. 
       Classify the material description using ONLY the classifications listed above and place it in <answer></answer> tags. 
       Answer ONLY with the classification inside the answer tags and nothing else.
@@ -107,7 +107,7 @@ reasoning:
       You are a soil classification expert. You are provided with a set of material descriptions in german, french or english
       and need to classify them into Unified Soil CLassification System (USCS) categories.
 
-      Bellow is a list of USCS categories for the specific language
+      Below is a list of USCS categories for the specific language
       <classifications>
       {class_patterns}
       </classifications>
