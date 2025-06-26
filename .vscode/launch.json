@@ -32,7 +32,7 @@
                 //"data/geoquat/validation/13080.pdf", //has f1=0, detects 1x the same, and not the right things
                 //"data/zurich/267125439-bp.pdf",
                 //"data/geoquat/validation/A7111.pdf",
-                //"data/geoquat/validation",
+                "data/geoquat/validation",
                 //"data/geoquat/train", #14225.pdfok, A11406.pdfNO, 1488.pdf, 14273.pdfok and A1304
                 // "data/geoquat/validation/937.pdf",
                 //"data/geoquat/test/A8005.pdf",
@@ -87,11 +87,12 @@
                 // "data/lithology_splits/val.json",
                 "-s",
                 "data/geoquat/validation",
+                // "data/geoquat/just_one_file",
                 "-c",
-                "baseline",
+                "bert",
                 "-p",
-                "models/lithology/20250526-172024_new_data_s2/checkpoint-1331_best",
-                //"models/uscs/balance_best/20250416-192401_best_stage2_balance/checkpoint-8340_very_best",
+                // "models/lithology/20250526-172024_new_data_s2/checkpoint-1331_best",
+                "models/uscs/balance_best/20250416-192401_best_stage2_balance/checkpoint-8340_very_best",
                 "-cs",
                 // "lithology"
                 "uscs"

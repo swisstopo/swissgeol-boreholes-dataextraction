@@ -17,23 +17,41 @@ material_description:
   de:
     including_expressions:
       - sand
+      - sandig
+      - feinsand
+      - mittelsand
+      - sandstein
       - silt
+      - siltig
+      - siltstein
       - kies
+      - kiesig
+      - kiessand
+      - ton
+      - tonig
       - asphalt
+      - asphaltdeckschicht
       - humus
       - braun
-      - grau
+      - braunschwarz
       - weich
-      - hart
       - wurzel
       - belag
+      - strassenbelag
+      - schwarzbelag
+      - teerbelag
+      - betonbelag
+      - bitumenbelag
+      - asphaltbelag
       - stein
       - beige
       - beton
       - kreide
       - mergel
       - kernmaterial
+      - lehm
       - dito
+      - seebodenlehm
     excluding_expressions:
       - herr
       - ende
@@ -80,12 +98,7 @@ material_description:
       - materiau
       - matrice sableuse
       - enrobé  # accent --> check what happens if it's removed
-      - terrain
-      - remblais
-      - remblai
-      - molasse
       - phase
-      - formations
       - limoneuse
       - argileuse
       - argileux

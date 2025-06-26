@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import re
+
 import pymupdf
 from extraction.features.utils.geometry.util import x_overlap_significant_largest
+from nltk.stem.snowball import SnowballStemmer
 from utils.file_utils import read_params
 
 material_description = read_params("matching_params.yml")["material_description"]
@@ -46,11 +49,41 @@ class TextLine:
         self.words = words
         self.page_number = words[0].page_number
 
-    def is_description(self, material_description):
-        """Check if the line is a material description."""
-        return any(
-            self.text.lower().find(word) > -1 for word in material_description["including_expressions"]
-        ) and not any(self.text.lower().find(word) > -1 for word in material_description["excluding_expressions"])
+    def is_description(self, material_description: dict, language: str):
+        """Check if the line is a material description.
+
+        Uses stemming to handle word variations across german, french, english and italian.
+
+        Args:
+            material_description (dict): The material description dictionary containing the used expressions.
+            language (str): The language of the material description, e.g. "de", "fr", "en", "it".
+        """
+        # Create appropriate stemmer based on language
+        stemmer_languages = {"de": "german", "fr": "french", "en": "english", "it": "italian"}
+        stemmer_lang = stemmer_languages.get(language, "german")
+        stemmer = SnowballStemmer(stemmer_lang)
+
+        # Tokenize and stem words in the text
+        text_lower = self.text.lower()
+        text_tokens = re.findall(r"\b\w+\b", text_lower)
+        stemmed_text_tokens = {stemmer.stem(token) for token in text_tokens}
+
+        # Check for matches in including expressions
+        found_inclusion = any(
+            stemmer.stem(word.lower()) in stemmed_text_tokens
+            for word in material_description[language]["including_expressions"]
+        )
+
+        if not found_inclusion:
+            return False
+
+        # Check for matches in excluding expressions
+        found_exclusion = any(
+            stemmer.stem(word.lower()) in stemmed_text_tokens
+            for word in material_description[language]["excluding_expressions"]
+        )
+
+        return not found_exclusion
 
     @property
     def text(self) -> str:

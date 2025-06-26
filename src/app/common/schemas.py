@@ -120,14 +120,6 @@ class BoundingBox(BaseModel):
 
     model_config = ConfigDict(json_schema_extra={"example": {"x0": 0.0, "y0": 0.0, "x1": 100.0, "y1": 100.0}})
 
-    @field_validator("x0", "y0", "x1", "y1")
-    @classmethod
-    def bbox_corners_must_be_positive(cls, v: int) -> int:
-        """Validate that the edges of the bounding box are positive."""
-        if v < 0.0:
-            raise ValueError("Bounding box coordinates must be positive")
-        return v
-
     def rescale(
         self, original_width: float, original_height: float, target_width: float, target_height: float
     ) -> "BoundingBox":
