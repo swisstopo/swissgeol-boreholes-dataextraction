@@ -5,9 +5,12 @@ import abc
 import numpy as np
 import pymupdf
 from extraction.features.utils.geometry.geometry_dataclasses import Line
+from utils.file_utils import read_params
 
 from .textblock import TextBlock
 from .textline import TextLine
+
+merging_params = read_params("line_detection_params.yml")["line_merging_params"]
 
 
 class DescriptionBlockSplitter(metaclass=abc.ABCMeta):
@@ -63,7 +66,8 @@ class SplitDescriptionBlockByLine(DescriptionBlockSplitter):
         super().__init__()
         self.threshold = threshold
         self.material_description_rect = material_description_rect
-        self.geometric_lines = geometric_lines
+        horizontal_slope_tolerance = merging_params["horizontal_slope_tolerance"]
+        self.horizontal_lines = [line for line in geometric_lines if line.is_horizontal(horizontal_slope_tolerance)]
         self.set_terminated_by_line_flag = True
 
     def separator_condition(self, last_line: TextLine, current_line: TextLine) -> bool:
@@ -79,7 +83,7 @@ class SplitDescriptionBlockByLine(DescriptionBlockSplitter):
         """
         last_line_y_coordinate = (last_line.rect.y0 + last_line.rect.y1) / 2
         current_line_y_coordinate = (current_line.rect.y0 + current_line.rect.y1) / 2
-        for line in self.geometric_lines:
+        for line in self.horizontal_lines:
             line_left_x = np.min([line.start.x, line.end.x])
             line_right_x = np.max([line.start.x, line.end.x])
             line_y_coordinate = (line.start.y + line.end.y) / 2
@@ -109,7 +113,8 @@ class SplitDescriptionBlockByLeftHandSideSeparator(DescriptionBlockSplitter):
         super().__init__()
         self.length_threshold = length_threshold
         self.set_terminated_by_line_flag = False
-        self.geometric_lines = geometric_lines
+        horizontal_slope_tolerance = merging_params["horizontal_slope_tolerance"]
+        self.horizontal_lines = [line for line in geometric_lines if line.is_horizontal(horizontal_slope_tolerance)]
 
     def separator_condition(self, last_line: TextLine, current_line: TextLine) -> bool:
         """Check if a block is separated by a line segment on the left side of the block.
@@ -124,7 +129,7 @@ class SplitDescriptionBlockByLeftHandSideSeparator(DescriptionBlockSplitter):
         last_line_y_coordinate = (last_line.rect.y0 + last_line.rect.y1) / 2
         current_line_y_coordinate = (current_line.rect.y0 + current_line.rect.y1) / 2
 
-        for line in self.geometric_lines:
+        for line in self.horizontal_lines:
             line_y_coordinate = (line.start.y + line.end.y) / 2
 
             line_cuts_lefthandside_of_text = (line.start.x < last_line.rect.x0 < line.end.x) and (

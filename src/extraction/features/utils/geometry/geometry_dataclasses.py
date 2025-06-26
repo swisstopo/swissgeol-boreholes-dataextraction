@@ -23,6 +23,10 @@ class Point:
     def tuple(self) -> tuple[float, float]:
         return self.x, self.y
 
+    @property
+    def as_numpy(self) -> np.ndarray:
+        return np.array(self.tuple)
+
     def distance_to(self, point: Point) -> float:
         return np.sqrt((self.x - point.x) ** 2 + (self.y - point.y) ** 2)
 
@@ -62,6 +66,10 @@ class Line:
     def slope(self) -> float:
         """Calculate the slope of the line."""
         return (self.end.y - self.start.y) / (self.end.x - self.start.x) if self.end.x - self.start.x != 0 else np.inf
+
+    def is_horizontal(self, horizontal_slope_tolerance) -> bool:
+        """Checks if a line is horizontal."""
+        return abs(self.slope) <= horizontal_slope_tolerance
 
     @property
     def angle(self) -> float:
