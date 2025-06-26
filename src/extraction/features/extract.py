@@ -29,6 +29,7 @@ from extraction.features.stratigraphy.sidebar.extractor.a_to_b_sidebar_extractor
 from extraction.features.stratigraphy.sidebar.extractor.layer_identifier_sidebar_extractor import (
     LayerIdentifierSidebarExtractor,
 )
+from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
 from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.geometry.util import x_overlap, x_overlap_significant_smallest
@@ -296,19 +297,30 @@ class MaterialDescriptionRectWithSidebarExtractor:
             line_rtree.insert(id(line), (line.rect.x0, line.rect.y0, line.rect.x1, line.rect.y1), obj=line)
 
         words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
-        a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words)
-        used_entry_rects = []
-        for column in a_to_b_sidebars:
-            for entry in column.entries:
-                used_entry_rects.extend([entry.start.rect, entry.end.rect])
 
         # create sidebars with noise count
+        spulprobe_sidebars = SpulprobeSidebarExtractor.find_in_lines(self.lines)
         sidebars_noise: list[SidebarNoise] = [
-            SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree)) for sidebar in a_to_b_sidebars
+            SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
+            for sidebar in spulprobe_sidebars
         ]
+        used_entry_rects = {entry.rect for sidebar in spulprobe_sidebars for entry in sidebar.entries}
+
+        a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words)
+        sidebars_noise.extend(
+            [
+                SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
+                for sidebar in a_to_b_sidebars
+            ]
+        )
+        for column in a_to_b_sidebars:
+            for entry in column.entries:
+                used_entry_rects.add(entry.start.rect)
+                used_entry_rects.add(entry.end.rect)
+
         sidebars_noise.extend(
             AAboveBSidebarExtractor.find_in_words(
-                words, line_rtree, used_entry_rects, sidebar_params=self.params["depth_column_params"]
+                words, line_rtree, list(used_entry_rects), sidebar_params=self.params["depth_column_params"]
             )
         )
 
