@@ -45,7 +45,7 @@ class AAboveBSidebarExtractor:
         filtered_columns = [
             column
             for numeric_column in numeric_columns
-            for column in numeric_column.make_ascending().break_on_double_descending()
+            for column in numeric_column.remove_integer_scale().make_ascending().break_on_double_descending()
             if not column.close_to_arithmetic_progression()
         ]
 
@@ -57,9 +57,6 @@ class AAboveBSidebarExtractor:
             return sidebar_validator.reduce_until_valid(sidebar_noise, line_rtree)
 
         validated_sidebars = list(filter(None, map(process_column, filtered_columns)))
-
-        for sidebar_noise in validated_sidebars:
-            sidebar_noise.sidebar.remove_integer_scale()
 
         sidebars_by_length = sorted(
             [sidebar_noise for sidebar_noise in validated_sidebars if sidebar_noise.sidebar],

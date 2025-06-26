@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import statistics
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import product
 
 import numpy as np
@@ -34,6 +34,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
     """
 
     entries: list[DepthColumnEntry]
+    skipped_entries: list[DepthColumnEntry] = field(default_factory=list)
 
     def __repr__(self):
         return "AAboveBSidebar({})".format(", ".join([str(entry) for entry in self.entries]))
@@ -122,6 +123,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         """Removes arithmetically progressing integers from this sidebar, as they are likely a scale."""
         integer_entries = [entry for entry in self.entries if not entry.has_decimal_point]
         if integer_entries and AAboveBSidebar.is_close_to_arithmetic_progression(integer_entries):
+            self.skipped_entries = integer_entries
             self.entries = [entry for entry in self.entries if entry not in integer_entries]
         return self
 
@@ -173,7 +175,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         if final_segment:
             segments.append(final_segment)
 
-        return [AAboveBSidebar(segment) for segment in segments]
+        return [AAboveBSidebar(segment, self.skipped_entries) for segment in segments]
 
     def identify_groups(
         self,
