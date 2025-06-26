@@ -1,0 +1,115 @@
+{
+    // Copy this file to .vscode/launch.json and customize it locally
+    // This file is a template and is not used directly by VSCode
+
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Run boreholes-extract-all",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.extraction.main",
+            "args": [
+                "-i",
+                "data/zurich",
+                "-g",
+                "data/zurich_ground_truth.json"
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "${workspaceFolder}/env/bin/python3"
+        },
+        {
+            "name": "Python: Run scoring",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.extraction.evaluation.benchmark.score",
+            "args": [
+                "--no-mlflow-tracking"
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "${workspaceFolder}/env/bin/python3"
+        },
+        {
+            "name": "Python: Run label studio to GT",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.scripts.label_studio_annotation_to_ground_truth",
+            "args": [
+                "-a",
+                "/Users/david.cleres/Downloads/project-2-at-2024-08-15-13-55-e7d6ebf7.json",
+                "-o",
+                "data/label-studio/zurich_ground_truth.json"
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "${workspaceFolder}/env/bin/python3"
+        },
+        {
+            "name": "Python: Run boreholes-classify-descriptions",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.classification.main",
+            "args": [
+                "-f",
+                "data/geoquat_ground_truth.json",
+                "-s",
+                "data/geoquat/validation",
+                "-c",
+                "bert",
+                "-p",
+                "models/uscs/your_model_folder",
+                "-cs",
+                "uscs"
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "${workspaceFolder}/env/bin/python3"
+        },
+        {
+            "name": "API",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/",
+            "module": "uvicorn",
+            "args": [
+                "src.app.main:app",
+                "--reload",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8002"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "python": "${workspaceFolder}/swisstopo/bin/python3"
+        },
+        {
+            "name": "Python: Run pytests",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "pytest",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "${workspaceFolder}/env/bin/python3"
+        },
+        {
+            "name": "Python: Run bert-training",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.classification.models.train",
+            "args": [
+                "-cf",
+                "bert/bert_config_lithology.yml"
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "${workspaceFolder}/env/bin/python3"
+        }
+    ]
+}

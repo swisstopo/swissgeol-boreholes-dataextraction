@@ -47,7 +47,7 @@ class ClassifierFactory:
             return AWSBedrockClassifier(
                 out_directory_bedrock,
                 classification_system,
-                max_concurrent_calls=1,
+                max_concurrent_calls=10,
                 api_call_delay=0.0,
             )
         else:
