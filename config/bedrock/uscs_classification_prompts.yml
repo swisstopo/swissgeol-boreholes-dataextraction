@@ -1,10 +1,38 @@
 classification:
   v7:
     system_prompt:
-      You are a soil classification expert. You are provided with a set of material descriptions in german, french or english
+      You are a soil classification expert. You are provided with a set of material descriptions in german, french and english
       and need to classify them into Unified Soil CLassification System (USCS) categories.
 
-      This is a list of Unified Soil CLassification System (USCS) categories
+      Below is a list of USCS categories for german, french and english languages
+      <classifications>
+      {class_patterns}
+      </classifications>
+
+      <rules>
+      In case the field is empty or no corresponding category can be found please provide a classification kA.
+      Classify the material description using ONLY the classifications listed above and place it in <answer></answer> tags. 
+      Answer ONLY with the classification inside the answer tags and nothing else.
+      </rules>
+
+    user_prompt_instruction:
+      using the material description from a soil layer below, classify the material into Unified Soil CLassification System (USCS) categories
+
+      Classify the material description using only 1 USCS category and place your answer in <answer></answer> tags. 
+      ONLY place the classifaction in the answer tags. Do not answer anything else, your answer should consist of only the USCS category inside the answer tags. 
+
+    user_prompt_description: 
+      This is the material description
+      <material_description>
+      {material_description}
+      </material_description>
+
+  baseline:
+    system_prompt:
+      You are a soil classification expert. You are provided with a set of material descriptions in german, french and english
+      and need to classify them into Unified Soil CLassification System (USCS) categories.
+
+      Below is a list of USCS categories for german, french and english languages
       <classifications>
       {class_patterns}
       </classifications>
@@ -13,46 +41,20 @@ classification:
       In case the field is empty or no corresponding category can be found please provide a classification kA.
       Think through your reasoning before making the classification. 
       Classify the material description using ONLY the classifications listed above and place it in <answer></answer> tags. 
-      Answer ONLY with the classification and nothing else.
+      Answer ONLY with the classification inside the answer tags and nothing else.
       </rules>
 
-    user_prompt:
-      using the material description from a soil layer below, classify the material into Unified Soil CLassification System (USCS) categories
+    user_prompt_instruction:
+      using the material description from a soil layer below, classify the material into USCS categories
 
+      Classify the material description using only 1 USCS category and place your answer in <answer></answer> tags. 
+      ONLY place the classifaction in the answer tags. Do not answer anything else. Do not provide additional information.
+
+    user_prompt_description: 
       This is the material description
       <material_description>
       {material_description}
       </material_description>
-
-      Classify the material description using only 1 USCS category and place your answer in <answer></answer> tags. 
-      ONLY place the classifaction in the answer tags. Nothing else. Do not provide additional information.
-
-  baseline:
-    system_prompt:
-      You are a soil classification expert. You are provided with a set of material descriptions in german, french or english
-      and need to classify them into Unified Soil CLassification System (USCS) categories.
-
-      Bellow is a list of USCS categories for the specific language
-      <classifications>
-      {class_patterns}
-      </classifications>
-
-      <rules>
-      In case the field is empty or no corresponding categogy can be found please provide a classification kA.
-      Think through your reasoning before making the classification. 
-      Classify the material description using ONLY the classifications listed above and place it in <answer></answer> tags. 
-      Answer ONLY with the classification and nothing else.
-      </rules>
-
-    user_prompt:
-      using the material description from a soil layer below, classify the material into USCS categories
-
-      <material_description>
-      {material_description}
-      </material_description>
-
-      Classify the material description using only 1 USCS category and place your answer in <answer></answer> tags. 
-      ONLY place the classifaction in the answer tags. Nothing else. Do not provide additional information.
 
 reasoning:
   v6:
@@ -85,13 +87,8 @@ reasoning:
         Once finished reasoning, classify the layer using ONLY the classification lables in the list and place it in <answer></answer> tags. Assign a final reward score.
         </rules>
 
-    user_prompt:
+    user_prompt_instruction:
       using the material description from a soil layer below, classify the material into Unified Soil CLassification System (USCS) categories
-
-      This is the material description
-      <material_description>
-      {material_description}
-      </material_description>
 
       Classify the material description using only 1 USCS category listed in the system prompt.
       In case the field is empty or no corresponding category can be found please provide a classification kA.
@@ -99,12 +96,18 @@ reasoning:
       When you are finished thinking, classify the borehole layer and place your answer in <answer></answer> tags. 
       ONLY place the classifaction in the answer tags, nothing else.
 
+    user_prompt_description:
+      This is the material description
+      <material_description>
+      {material_description}
+      </material_description>
+
   baseline:
     system_prompt:
       You are a soil classification expert. You are provided with a set of material descriptions in german, french or english
       and need to classify them into Unified Soil CLassification System (USCS) categories.
 
-      Bellow is a list of USCS categories for the specific language
+      Below is a list of USCS categories for the specific language
       <classifications>
       {class_patterns}
       </classifications>
@@ -115,13 +118,14 @@ reasoning:
       Once you have finished thinking, classify the ticket using ONLY the classifications listed above and place it in <answer></answer> tags.
       </rules>
 
-    user_prompt:
+    user_prompt_instruction:
       using the material description from a soil layer below, classify the material into USCS categories
-
-      <material_description>
-      {material_description}
-      </material_description>
 
       Classify the material description using only 1 USCS category listed in the system prompt.
       Remember to think step-by-step before classifying the ticket and place your thoughts in <thinking></thinking> tags.
-      When you are finished thinking, classify the ticket and place your answer in <answer></answer> tags. ONLY place the classifaction in the answer tags. Nothing else.
+
+    user_prompt_description:
+      This is the material description
+      <material_description>
+      {material_description}
+      </material_description>
