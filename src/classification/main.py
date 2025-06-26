@@ -13,7 +13,7 @@ from classification.classifiers.classifier import Classifier, ClassifierTypes
 from classification.classifiers.classifier_factory import ClassifierFactory
 from classification.evaluation.evaluate import evaluate
 from classification.utils.classification_classes import ExistingClassificationSystems
-from classification.utils.data_loader import LayerInformations, load_data
+from classification.utils.data_loader import LayerInformation, prepare_classification_data
 from classification.utils.data_utils import (
     get_data_class_count,
     get_data_language_count,
@@ -51,7 +51,7 @@ def setup_mlflow_tracking(
 def log_ml_flow_infos(
     file_path: Path,
     out_directory: Path,
-    layer_descriptions: list[LayerInformations],
+    layer_descriptions: list[LayerInformation],
     classifier: Classifier,
     classification_system: str,
 ):
@@ -98,7 +98,7 @@ def common_options(f):
         "--file-path",
         required=True,
         type=click.Path(exists=True, path_type=Path),
-        help="Path to the prediction json file.",
+        help="Path to the json file containing the material descriptions to classify.",
     )(f)
     f = click.option(
         "-g",
@@ -200,11 +200,10 @@ def main(
         model_path (Path): Path to the trained model.
         classification_system (str): The classification system used to classify the data.
     """
-    # TODO gorund truth should be handle diff vs predictions
     if ground_truth_path and file_subset_directory:
         logger.warning(
-            "The subset directory provided will not be used, the pipeline will predict the class of all"
-            " layers in the predictions file given."  # TODO better
+            "The provided subset directory will be ignored because predictions are being loaded from a file. "
+            "All layers in the predictions file will be classified."
         )
 
     classifier_type_instance = ClassifierTypes.infer_type(classifier_type.lower())
@@ -215,8 +214,12 @@ def main(
     if mlflow_tracking:
         setup_mlflow_tracking(file_path, out_directory, file_subset_directory)
 
-    logger.info(f"Loading data from {file_path}")
-    layer_descriptions = load_data(file_path, ground_truth_path, file_subset_directory, classification_system_cls)
+    logger.info(
+        f"Loading data from {file_path}" + (f" and ground truth from {ground_truth_path}" if ground_truth_path else "")
+    )
+    layer_descriptions = prepare_classification_data(
+        file_path, ground_truth_path, file_subset_directory, classification_system_cls
+    )
 
     classifier = ClassifierFactory.create_classifier(
         classifier_type_instance, classification_system_cls, model_path, out_directory_bedrock
