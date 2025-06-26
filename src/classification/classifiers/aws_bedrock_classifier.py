@@ -98,7 +98,7 @@ class AWSBedrockClassifier(Classifier):
         )
 
         # Cache control enables prompt, it works by adding portions of the prompt context to a cache, we can leverage
-        # the cache to skip recomputation of inputs for promots that are repeated, e.g., USCS or Lithology classes:
+        # the cache to skip recomputation of inputs for prompts that are repeated, e.g., USCS or Lithology classes:
         # https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html
         body = json.dumps(
             {
