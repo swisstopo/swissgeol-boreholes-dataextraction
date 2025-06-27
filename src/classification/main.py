@@ -202,8 +202,8 @@ def main(
     """
     if ground_truth_path and file_subset_directory:
         logger.warning(
-            "The provided subset directory will be ignored because predictions are being loaded from a file. "
-            "All layers in the predictions file will be classified."
+            "The provided subset directory will be ignored because description are being loaded from the prediction"
+            " file. All layers in the prediction file will be classified."
         )
 
     classifier_type_instance = ClassifierTypes.infer_type(classifier_type.lower())

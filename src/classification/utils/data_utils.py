@@ -146,7 +146,7 @@ class KeyClassConfig:
 def write_per_language_per_class_predictions(
     layers_with_predictions: list[LayerInformation], classification_metrics: AllClassificationMetrics, out_dir: Path
 ):
-    """Creates json files that sumarizes the predictions.
+    """Creates json files that summarizes the predictions.
 
     Creates one folder for each language and one for the global predictions. In each folder creates an overview file,
         one folder for the grouping by predictions and one for the grouping by ground truth. In those folders, we

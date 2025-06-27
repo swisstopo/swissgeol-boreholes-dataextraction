@@ -7,9 +7,7 @@ from pathlib import Path
 import Levenshtein
 from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_formatter import format_data
-from utils.file_utils import parse_text, read_params
-
-classification_params = read_params("classification_params.yml")
+from utils.file_utils import parse_text
 
 logger = logging.getLogger(__name__)
 

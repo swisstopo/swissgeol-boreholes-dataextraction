@@ -169,6 +169,8 @@ def resolve_reference_all_layers(layers):
     """
 
     def match_layer(layer, depths_to_match):
+        if layer["depth_interval"] is None:
+            return False
         if len(depths_to_match) == 1:
             return layer["depth_interval"]["start"] == depths_to_match[0]
         elif len(depths_to_match) == 2:
@@ -208,14 +210,13 @@ def resolve_reference(
     Returns:
         str: The resolved material description, with references replaced by actual descriptions.
     """
-    matched_kw = next(
-        (
-            kw
-            for kw in classification_params["reference_key_words"]
-            if material_description.lower().startswith(kw.lower())
-        ),
-        None,
-    )
+    matched_kw = None
+    for kw in classification_params["reference_key_words"]:
+        pattern = r"^[\s\-]*(" + re.escape(kw) + r")"
+        match = re.match(pattern, material_description, re.IGNORECASE)
+        if match:
+            matched_kw = match.group()  # Actual matched part from material_description
+            break
 
     if not matched_kw:
         return material_description  # No reference found, return as is
