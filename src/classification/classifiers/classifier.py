@@ -4,14 +4,14 @@ from abc import ABC, abstractmethod
 from enum import Enum
 
 from classification.utils.classification_classes import ClassificationSystem
-from classification.utils.data_loader import LayerInformations
+from classification.utils.data_loader import LayerInformation
 from utils.file_utils import read_params
 
 CONFIG_MAPINGS = read_params("classifier_config_paths.yml")
 
 
 class Classifier(ABC):
-    """Classifier Protocol."""
+    """Classifier abstract base class."""
 
     def init_config(self, classification_system: type[ClassificationSystem]):
         """Initialize the model config dict based on the classification system.
@@ -33,13 +33,13 @@ class Classifier(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def classify(self, layer_descriptions: list[LayerInformations]) -> None:
-        """Classifies the description of the LayerInformations objects.
+    def classify(self, layer_descriptions: list[LayerInformation]) -> None:
+        """Classifies the description of the LayerInformation objects.
 
         This method will populate the prediction_class attribute of each object.
 
         Args:
-            layer_descriptions (list[LayerInformations]): The LayerInformations object
+            layer_descriptions (list[LayerInformation]): The LayerInformation object
 
         """
         raise NotImplementedError

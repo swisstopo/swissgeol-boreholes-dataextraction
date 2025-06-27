@@ -4,7 +4,7 @@ import re
 
 from classification.classifiers.classifier import Classifier
 from classification.utils.classification_classes import ClassificationSystem
-from classification.utils.data_loader import LayerInformations
+from classification.utils.data_loader import LayerInformation
 from nltk.stem.snowball import SnowballStemmer
 
 
@@ -96,7 +96,7 @@ class BaselineClassifier(Classifier):
 
         return None
 
-    def classify(self, layer_descriptions: list[LayerInformations]):
+    def classify(self, layer_descriptions: list[LayerInformation]):
         """Classifies the material descriptions of layer information objects into the selected classes.
 
         The method modifies the input object, layer_descriptions by setting their prediction_class attribute.
@@ -113,7 +113,7 @@ class BaselineClassifier(Classifier):
         For layers with no matches, assigns the default class 'kA' (no classification).
 
         Args:
-            layer_descriptions (list[LayerInformations]): The LayerInformations object
+            layer_descriptions (list[LayerInformation]): The LayerInformation object
         """
         for layer in layer_descriptions:
             patterns = self.config["patterns"][layer.language]
