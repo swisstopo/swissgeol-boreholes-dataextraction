@@ -11,7 +11,7 @@ from utils.file_utils import parse_text
 
 logger = logging.getLogger(__name__)
 
-MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD = 0.9
+MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD = 0.7
 
 
 @dataclass
@@ -130,7 +130,7 @@ def prepare_classification_data(
                 if not single_file_mode:
                     ground_truth_match = find_matching_layer(layer, ground_truth_layers)
                     if ground_truth_match is None:
-                        logger.info(f"No ground truth found for layer {layer_index}: {layer['material_description']}.")
+                        logger.info(f"No ground truth found for file {filename}: {layer['material_description']}.")
                         continue
                     ground_truth_layers.remove(ground_truth_match)
                 else:

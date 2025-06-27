@@ -171,14 +171,9 @@ def resolve_reference_all_layers(layers):
     def match_layer(layer, depths_to_match):
         if layer["depth_interval"] is None:
             return False
-        if len(depths_to_match) == 1:
-            return layer["depth_interval"]["start"] == depths_to_match[0]
-        elif len(depths_to_match) == 2:
-            return (
-                layer["depth_interval"]["start"] == depths_to_match[0]
-                and layer["depth_interval"]["end"] == depths_to_match[1]
-            )
-        return False  # No reference found - fallback to previous layer
+        if len(depths_to_match) == 0:
+            return False  # No reference found - fallback to previous layer
+        return layer["depth_interval"]["start"] == depths_to_match[0]
 
     previous_layers = []
     for layer in layers:
@@ -225,13 +220,12 @@ def resolve_reference(
         return material_description
     # Extract the depth references from the material description
     depth_str_references = re.findall(r"\d+(?:[.,]\d+)?\s*m?", material_description)
-    depth_str_references = depth_str_references[:2]  # There should be at most two depth references (start and end)
+    depth_str_references = depth_str_references[:1]  # Only the starting depth is usefull
 
     # clean the references and find a match
     clean_depth_references = [
         float(depth.replace(",", ".").replace("m", "").strip()) for depth in depth_str_references
     ]
-    clean_depth_references.sort()
 
     referenced_layer = next(
         (layer for layer in reversed(previous_layers) if match_layer(layer, clean_depth_references)),

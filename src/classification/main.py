@@ -220,6 +220,9 @@ def main(
     layer_descriptions = prepare_classification_data(
         file_path, ground_truth_path, file_subset_directory, classification_system_cls
     )
+    if not layer_descriptions:
+        logger.warning("No data to classify.")
+        return
 
     classifier = ClassifierFactory.create_classifier(
         classifier_type_instance, classification_system_cls, model_path, out_directory_bedrock
