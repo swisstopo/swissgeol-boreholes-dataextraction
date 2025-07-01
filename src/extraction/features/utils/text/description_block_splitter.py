@@ -4,6 +4,7 @@ import abc
 
 import numpy as np
 import pymupdf
+
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from utils.file_utils import read_params
 

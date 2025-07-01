@@ -1,5 +1,8 @@
 """Main router for the app."""
 
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
 from app.api.v1.endpoints.bounding_boxes import bounding_boxes
 from app.api.v1.endpoints.create_pngs import create_pngs
 from app.api.v1.endpoints.extract_data import extract_data
@@ -16,8 +19,6 @@ from app.common.schemas import (
     PNGRequest,
     PNGResponse,
 )
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/V1")
 
