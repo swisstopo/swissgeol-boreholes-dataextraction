@@ -498,9 +498,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
             used_sidebars_idx.add(best_sidebar_idx)
             used_descr_rects.add(best_rect)
 
-        # continue here, assign remaining, chekc that score is lower than the assigned before,
-        # check that discarded after, check vs main that no changes
-
         # Step 2: Assign remaining sidebars (if any) to best match (reuse descr_rects)
         remaining_sidebars_idx = [s_idx for s_idx in range(len(sidebars_noise)) if s_idx not in used_sidebars_idx]
         for s_idx in remaining_sidebars_idx:
