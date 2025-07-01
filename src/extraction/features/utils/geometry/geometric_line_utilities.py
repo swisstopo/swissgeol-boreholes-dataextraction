@@ -14,16 +14,12 @@ from .linesquadtree import LinesQuadTree
 logger = logging.getLogger(__name__)
 
 
-def is_point_on_line(line: Line, point: Point, tol=10) -> bool:
+def is_point_on_line(line: Line, point: Point, tol: int = 10) -> bool:
     """Check if a point is on a line.
 
     The check is done by calculating the slope and y-intercept of the line and then checking if the point satisfies
     the equation of the line with some margin tol. Since the lines is only a line segments, the function also checks
-    if the point is between the start and end points of the segment. Again, here we allow for some margin, tol / 2 for
-    the y-coordinate and tol for the x-coordinate. We assume lines are horizontal, and allow for less margin in the
-    y-coordinate to keep merged lines horizontal.
-
-    TODO remove the special treatment for horizontal lines and treat all lines eqaully. See #230.
+    if the point is between the start and end points of the segment.
 
     Args:
         line (Line): a line segment
@@ -40,7 +36,41 @@ def is_point_on_line(line: Line, point: Point, tol=10) -> bool:
 
     # Check if the point satisfies the equation of the line
     return (line.distance_to(point) < tol) and (
-        (x_start - tol <= point.x <= x_end + tol) and (y_start - tol / 2 <= point.y <= y_end + tol / 2)
+        (x_start - tol <= point.x <= x_end + tol) and (y_start - tol <= point.y <= y_end + tol)
+    )
+
+
+def is_point_near_line(line: Line, point: Point, segment_extension_tol: int = 10, perpendicular_tol: int = 3) -> bool:
+    """Check if a point is near a line segment.
+
+    This is done by computing the slope and y-intercept of the line, and checking whether the point satisfies
+    the line equation within a tolerance (`perpendicular_tol`). Since the line is a finite segment, the function
+    also checks whether the point lies within or near the segment's bounds, using a second tolerance
+    (`segment_extension_tol`).
+
+    The purpose of using two tolerances is to ensure that:
+    - the point is closely aligned with the line direction (controlled by `perpendicular_tol`),
+    - but we still allow the point to lie beyond the segment's endpoints (controlled by `segment_extension_tol`).
+
+    Args:
+        line (Line): A line segment.
+        point (Point): The point to check.
+        segment_extension_tol (int, optional): Tolerance for point's position (along x and y).
+        perpendicular_tol (int, optional): Max perpendicular distance from line to consider alignment.
+
+    Returns:
+        bool: True if the point is near the line within the specified tolerances, False otherwise.
+    """
+    if line.distance_to(point) >= perpendicular_tol:
+        return False
+
+    x_start, x_end = sorted([line.start.x, line.end.x])
+    y_start, y_end = sorted([line.start.y, line.end.y])
+
+    # Check if the point satisfies the equation of the line
+    return (
+        x_start - segment_extension_tol <= point.x <= x_end + segment_extension_tol
+        and y_start - segment_extension_tol <= point.y <= y_end + segment_extension_tol
     )
 
 
@@ -164,19 +194,34 @@ def _get_orthogonal_projection_to_line(point: Point, phi: float, r: float) -> Po
 
 
 def _are_close(line1: Line, line2: Line, tol: int) -> bool:
-    """Check if two lines are close to each other.
+    """Check if two lines are close to each other, using an adaptive tolerance.
 
-    TODO: ensure this method behaves symmetrically, see #230.
+    This function determines whether two line segments are spatially close enough to be considered for merging.
+    It uses an adaptive tolerance to prevent merging very short lines that are relatively far apart in proportion
+    to their length.
+
+    The effective tolerance (`adaptive_tol`) scales based on the maximum length of the two lines, capped at the
+    given `tol`, but not smaller than `tol / 10`. Additionally, a stricter sub-tolerance (`line_tol`) is used
+    to assess alignment accuracy (e.g. how well endpoints align with the direction of the other line).
+
+    The check is performed by testing whether either endpoint of one line lies near the other line segment.
 
     Args:
         line1 (Line): The first line.
         line2 (Line): The second line.
-        tol (int, optional): The tolerance to check if the lines are close.
+        tol (int): The tolerance to check if the lines are close.
 
     Returns:
         bool: True if the lines are close, False otherwise.
     """
-    return is_point_on_line(line1, line2.start, tol=tol) or is_point_on_line(line1, line2.end, tol=tol)
+    adaptive_tol = min(max(tol / 10, max(line1.length, line2.length)), tol)
+    line_tol = adaptive_tol / 3  # we are 3 times more strict in the direction perpendicular to the line
+    return (
+        is_point_near_line(line1, line2.start, segment_extension_tol=adaptive_tol, perpendicular_tol=line_tol)
+        or is_point_near_line(line1, line2.end, segment_extension_tol=adaptive_tol, perpendicular_tol=line_tol)
+        or is_point_near_line(line2, line1.start, segment_extension_tol=adaptive_tol, perpendicular_tol=line_tol)
+        or is_point_near_line(line2, line1.end, segment_extension_tol=adaptive_tol, perpendicular_tol=line_tol)
+    )
 
 
 def _are_parallel(line1: Line, line2: Line, angle_threshold: float) -> bool:
@@ -194,6 +239,10 @@ def _are_parallel(line1: Line, line2: Line, angle_threshold: float) -> bool:
         np.abs(line1.angle - line2.angle) < angle_threshold
         or 180 - np.abs(line1.angle - line2.angle) < angle_threshold
     )
+
+
+def _are_mergeable(line1: Line, line2: Line, tol: float, angle_threshold: float) -> bool:
+    return _are_parallel(line1, line2, angle_threshold=angle_threshold) and _are_close(line1, line2, tol=tol)
 
 
 def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: float) -> list[Line]:
@@ -217,6 +266,9 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
     height = max(max_end_y, max_start_y)
     lines_quad_tree = LinesQuadTree(width, height)
 
+    # sorting ensures consistency by merging the biggest lines first
+    lines = sorted(lines, key=lambda line: -line.length)
+
     keys_queue = queue.Queue()
     for line in lines:
         line_key = lines_quad_tree.add(line)
@@ -225,19 +277,24 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
     while not keys_queue.empty():
         line_key = keys_queue.get()
 
-        if line_key in lines_quad_tree.hashmap:
-            line = lines_quad_tree.hashmap[line_key]
+        if line_key not in lines_quad_tree.hashmap:
+            # Line was already merged and removed from quadtree
+            continue
+        line = lines_quad_tree.hashmap[line_key]
 
-            for neighbour_key, neighbour_line in lines_quad_tree.neighbouring_lines(line_key, tol).items():
-                if _are_parallel(line, neighbour_line, angle_threshold=angle_threshold) and _are_close(
-                    line, neighbour_line, tol=tol
-                ):
-                    new_line = _merge_lines(line, neighbour_line)
-                    if new_line is not None:
-                        lines_quad_tree.remove(neighbour_key)
-                        lines_quad_tree.remove(line_key)
-                        new_key = lines_quad_tree.add(new_line)
-                        keys_queue.put(new_key)
-                        break
+        neighbours = sorted(
+            lines_quad_tree.neighbouring_lines(line_key, tol).items(), key=lambda pair: -pair[1].length
+        )  # merging the biggest lines first is more robust
+        for neighbour_key, neighbour_line in neighbours:
+            if not _are_mergeable(line, neighbour_line, tol, angle_threshold):
+                continue
+            new_line = _merge_lines(line, neighbour_line)
+            if new_line is None:
+                continue
+            lines_quad_tree.remove(neighbour_key)
+            lines_quad_tree.remove(line_key)
+            new_key = lines_quad_tree.add(new_line)
+            keys_queue.put(new_key)
+            break
 
     return list(lines_quad_tree.hashmap.values())
