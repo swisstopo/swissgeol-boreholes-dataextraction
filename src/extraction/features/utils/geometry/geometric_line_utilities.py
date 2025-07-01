@@ -40,34 +40,37 @@ def is_point_on_line(line: Line, point: Point, tol: int = 10) -> bool:
     )
 
 
-def is_point_near_line(line: Line, point: Point, tol: int = 10, line_tol: int = 3) -> bool:
+def is_point_near_line(line: Line, point: Point, segment_extension_tol: int = 10, perpendicular_tol: int = 3) -> bool:
     """Check if a point is near a line segment.
 
     This is done by computing the slope and y-intercept of the line, and checking whether the point satisfies
-    the line equation within a tolerance (`tol_line`). Since the line is a finite segment, the function
-    also checks whether the point lies within or near the segment's bounds, using a second tolerance (`tol`).
+    the line equation within a tolerance (`perpendicular_tol`). Since the line is a finite segment, the function
+    also checks whether the point lies within or near the segment's bounds, using a second tolerance
+    (`segment_extension_tol`).
 
     The purpose of using two tolerances is to ensure that:
-    - the point is closely aligned with the line direction (controlled by `tol_line`),
-    - but we still allow the point to lie beyond the segment's endpoints (controlled by `tol`).
+    - the point is closely aligned with the line direction (controlled by `perpendicular_tol`),
+    - but we still allow the point to lie beyond the segment's endpoints (controlled by `segment_extension_tol`).
 
     Args:
         line (Line): A line segment.
         point (Point): The point to check.
-        tol (int, optional): Tolerance for point's position along the segment's direction. Defaults to 10.
-        line_tol (int, optional): Tolerance for point's distance from the line. Defaults to 3.
+        segment_extension_tol (int, optional): Tolerance for point's position (along x and y).
+        perpendicular_tol (int, optional): Max perpendicular distance from line to consider alignment.
 
     Returns:
         bool: True if the point is near the line within the specified tolerances, False otherwise.
     """
-    x_start = np.min([line.start.x, line.end.x])
-    x_end = np.max([line.start.x, line.end.x])
-    y_start = np.min([line.start.y, line.end.y])
-    y_end = np.max([line.start.y, line.end.y])
+    if line.distance_to(point) >= perpendicular_tol:
+        return False
+
+    x_start, x_end = sorted([line.start.x, line.end.x])
+    y_start, y_end = sorted([line.start.y, line.end.y])
 
     # Check if the point satisfies the equation of the line
-    return (line.distance_to(point) < line_tol) and (
-        (x_start - tol <= point.x <= x_end + tol) and (y_start - tol <= point.y <= y_end + tol)
+    return (
+        x_start - segment_extension_tol <= point.x <= x_end + segment_extension_tol
+        and y_start - segment_extension_tol <= point.y <= y_end + segment_extension_tol
     )
 
 
@@ -214,10 +217,10 @@ def _are_close(line1: Line, line2: Line, tol: int) -> bool:
     adaptive_tol = min(max(tol / 10, max(line1.length, line2.length)), tol)
     line_tol = adaptive_tol / 3  # we are 3 times more strict in the direction perpendicular to the line
     return (
-        is_point_near_line(line1, line2.start, tol=adaptive_tol, line_tol=line_tol)
-        or is_point_near_line(line1, line2.end, tol=adaptive_tol, line_tol=line_tol)
-        or is_point_near_line(line2, line1.start, tol=adaptive_tol, line_tol=line_tol)
-        or is_point_near_line(line2, line1.end, tol=adaptive_tol, line_tol=line_tol)
+        is_point_near_line(line1, line2.start, segment_extension_tol=adaptive_tol, perpendicular_tol=line_tol)
+        or is_point_near_line(line1, line2.end, segment_extension_tol=adaptive_tol, perpendicular_tol=line_tol)
+        or is_point_near_line(line2, line1.start, segment_extension_tol=adaptive_tol, perpendicular_tol=line_tol)
+        or is_point_near_line(line2, line1.end, segment_extension_tol=adaptive_tol, perpendicular_tol=line_tol)
     )
 
 
@@ -275,7 +278,7 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
         line_key = keys_queue.get()
 
         if line_key not in lines_quad_tree.hashmap:
-            # already seen
+            # Line was already merged and removed from quadtree
             continue
         line = lines_quad_tree.hashmap[line_key]
 

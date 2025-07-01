@@ -200,7 +200,7 @@ def test_merge_parallel_lines_quadtree():  # noqa: D103
     ],
 )
 def test_is_point_near_line(line, point, tol, tol_line, expected):  # noqa: D103
-    assert is_point_near_line(line, point, tol=tol, line_tol=tol_line) == expected
+    assert is_point_near_line(line, point, segment_extension_tol=tol, perpendicular_tol=tol_line) == expected
 
 
 @pytest.mark.parametrize(
