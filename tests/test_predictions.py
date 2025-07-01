@@ -5,6 +5,7 @@ from unittest.mock import Mock
 
 import pymupdf
 import pytest
+
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.evaluation.layer_evaluator import LayerEvaluator
 from extraction.evaluation.utility import evaluate, evaluate_single

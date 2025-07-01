@@ -6,6 +6,7 @@ from collections.abc import Callable
 from copy import deepcopy
 
 import Levenshtein
+
 from extraction.evaluation.benchmark.metrics import OverallMetrics
 from extraction.evaluation.evaluation_dataclasses import Metrics
 from extraction.features.predictions.borehole_predictions import (

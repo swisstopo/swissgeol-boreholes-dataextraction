@@ -4,9 +4,10 @@ import os
 from pathlib import Path
 
 import pymupdf
+from fastapi import HTTPException
+
 from app.common.aws import load_pdf_from_aws, upload_file_to_s3
 from app.common.schemas import PNGResponse
-from fastapi import HTTPException
 
 IMG_SCALING_FACTOR = 3
 

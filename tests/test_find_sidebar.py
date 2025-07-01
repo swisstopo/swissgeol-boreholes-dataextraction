@@ -3,6 +3,7 @@
 import pymupdf
 import pytest
 import rtree
+
 from extraction.features.stratigraphy.sidebar.extractor.a_above_b_sidebar_extractor import (
     AAboveBSidebarExtractor,
 )

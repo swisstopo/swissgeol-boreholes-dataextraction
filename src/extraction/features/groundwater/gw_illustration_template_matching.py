@@ -12,6 +12,7 @@ from pathlib import Path
 import numpy as np
 import pymupdf
 import skimage as ski
+
 from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwaterLevelExtractor
 from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.text.textline import TextLine

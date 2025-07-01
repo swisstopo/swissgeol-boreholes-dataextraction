@@ -6,6 +6,7 @@ from pathlib import Path
 
 import click
 import yaml
+
 from scripts.load_rdf_to_csv import load_rdf_to_csv
 
 

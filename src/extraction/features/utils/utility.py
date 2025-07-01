@@ -1,7 +1,8 @@
 """Utility functions for the data extractor module."""
 
-from extraction.features.utils.text.textline import TextLine
 from pymupdf import Rect
+
+from extraction.features.utils.text.textline import TextLine
 
 
 def get_lines_near_rect(

@@ -2,11 +2,12 @@
 
 import boto3
 import pytest
+from fastapi.testclient import TestClient
+from moto import mock_aws
+
 from app.common.aws import get_s3_client
 from app.common.config import config
 from app.main import app
-from fastapi.testclient import TestClient
-from moto import mock_aws
 
 TEST_BUCKET_NAME = "test-bucket"
 

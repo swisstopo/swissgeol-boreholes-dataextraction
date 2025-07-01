@@ -6,6 +6,7 @@ import cv2
 import Levenshtein
 import numpy as np
 import pymupdf
+
 from extraction.annotations.plot_utils import convert_page_to_opencv_img
 
 from .layer import ExtractedBorehole, Layer

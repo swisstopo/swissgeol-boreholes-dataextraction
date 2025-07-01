@@ -13,10 +13,11 @@ from enum import Enum
 from pathlib import Path
 
 import pymupdf
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepthsEntry
 from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.text.textblock import MaterialDescription
-from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def validate_filename(value: str) -> str:

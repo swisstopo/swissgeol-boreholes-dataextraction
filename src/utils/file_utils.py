@@ -6,8 +6,9 @@ import time
 from collections.abc import MutableMapping
 
 import yaml
-from extraction import PROJECT_ROOT
 from pyinstrument import Profiler
+
+from extraction import PROJECT_ROOT
 
 
 def flatten(dictionary: dict, parent_key: str = "", separator: str = "__") -> dict:
