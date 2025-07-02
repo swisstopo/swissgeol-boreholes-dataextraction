@@ -64,7 +64,7 @@ def parse_text(text: str) -> str:
         str: Parsed text.
     """
     not_alphanum = re.compile(r"[^\w\d]", re.U)
-    return not_alphanum.sub("", text).lower()
+    return not_alphanum.sub("", text).lower() if text else ""
 
 
 def timeit(func):

@@ -13,7 +13,7 @@ import boto3
 import mlflow
 from classification.classifiers.classifier import Classifier
 from classification.utils.classification_classes import ClassificationSystem
-from classification.utils.data_loader import LayerInformations
+from classification.utils.data_loader import LayerInformation
 from classification.utils.data_utils import write_api_failures, write_predictions
 from tqdm import tqdm
 from utils.file_utils import read_params
@@ -148,7 +148,7 @@ class AWSBedrockClassifier(Classifier):
 
         return {"Model Answer": answer, "Reasoning": reasoning}
 
-    async def classify_async(self, layer_descriptions: list[LayerInformations]):
+    async def classify_async(self, layer_descriptions: list[LayerInformation]):
         """Classifies the material descriptions of layer information objects into the chosen classification system.
 
         The method modifies the input object, layer_descriptions by setting their prediction_class attribute.
@@ -161,7 +161,7 @@ class AWSBedrockClassifier(Classifier):
         api_failures = []
         run_id = str(uuid.uuid4())
 
-        layers_by_filename: dict[str, list[LayerInformations]] = defaultdict(list)
+        layers_by_filename: dict[str, list[LayerInformation]] = defaultdict(list)
         for layer in layer_descriptions:
             layers_by_filename[layer.filename].append(layer)
 
@@ -171,7 +171,7 @@ class AWSBedrockClassifier(Classifier):
             logger.info(f"Processing file: {filename} with {len(filename_layers)} layers")
             path = f"{Path(filename).stem}.json"
 
-            async def process_layer(layer: LayerInformations):
+            async def process_layer(layer: LayerInformation):
                 async with semaphore:
                     try:
                         logger.debug(f"Classifying layer: {layer.filename}_{layer.borehole_index}_{layer.layer_index}")
@@ -225,5 +225,5 @@ class AWSBedrockClassifier(Classifier):
                 write_predictions(filename_layers, self.bedrock_out_directory, path)
                 write_api_failures(api_failures, self.bedrock_out_directory)
 
-    def classify(self, layer_descriptions: list[LayerInformations]):
+    def classify(self, layer_descriptions: list[LayerInformation]):
         asyncio.run(self.classify_async(layer_descriptions))

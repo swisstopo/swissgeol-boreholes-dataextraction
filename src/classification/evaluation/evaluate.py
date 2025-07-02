@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 from classification.utils.classification_classes import ClassificationSystem
-from classification.utils.data_loader import LayerInformations
+from classification.utils.data_loader import LayerInformation
 from extraction.evaluation.evaluation_dataclasses import Metrics
 from utils.file_utils import read_params
 
@@ -192,11 +192,11 @@ class AllClassificationMetrics:
         }
 
 
-def evaluate(layer_descriptions: list[LayerInformations]) -> AllClassificationMetrics:
-    """Evaluates the predictions of the LayerInformations objects against the ground truth.
+def evaluate(layer_descriptions: list[LayerInformation]) -> AllClassificationMetrics:
+    """Evaluates the predictions of the LayerInformation objects against the ground truth.
 
     Args:
-        layer_descriptions (list[LayerInformations]): the LayerInformations objects
+        layer_descriptions (list[LayerInformation]): the LayerInformation objects
 
     Returns:
         AllClassificationMetrics: the holder for the metrics
@@ -218,11 +218,11 @@ def evaluate(layer_descriptions: list[LayerInformations]) -> AllClassificationMe
     return all_classification_metrics
 
 
-def per_class_metrics_from_layers(layers: list[LayerInformations]) -> dict[ClassificationSystem.EnumMember, Metrics]:
+def per_class_metrics_from_layers(layers: list[LayerInformation]) -> dict[ClassificationSystem.EnumMember, Metrics]:
     """Compute per-class classification metrics.
 
     Args:
-        layers (list[LayerInformations]): the layers to compute the metrics from.
+        layers (list[LayerInformation]): the layers to compute the metrics from.
 
     Returns:
         Dict[ClassEnum, Metrics]: A dictionary mapping each class to its TP, FP, FN.

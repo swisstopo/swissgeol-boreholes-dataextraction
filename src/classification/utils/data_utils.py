@@ -12,7 +12,7 @@ from pathlib import Path
 
 from classification.evaluation.evaluate import AllClassificationMetrics
 from classification.utils.classification_classes import ClassificationSystem
-from classification.utils.data_loader import LayerInformations
+from classification.utils.data_loader import LayerInformation
 from utils.file_utils import read_params
 
 classification_params = read_params("classification_params.yml")
@@ -20,11 +20,11 @@ classification_params = read_params("classification_params.yml")
 logger = logging.getLogger(__name__)
 
 
-def get_data_language_count(layer_descriptions: list[LayerInformations]) -> dict[str, int]:
+def get_data_language_count(layer_descriptions: list[LayerInformation]) -> dict[str, int]:
     """Returns the count of sample for each language.
 
     Args:
-        layer_descriptions (list[LayerInformations]): All the layers.
+        layer_descriptions (list[LayerInformation]): All the layers.
 
     Returns:
         dict[str,int]: the count for each language.
@@ -33,11 +33,11 @@ def get_data_language_count(layer_descriptions: list[LayerInformations]) -> dict
     return language_counts
 
 
-def get_data_class_count(layer_descriptions: list[LayerInformations]) -> dict[str, int]:
+def get_data_class_count(layer_descriptions: list[LayerInformation]) -> dict[str, int]:
     """Returns the count of sample for each class.
 
     Args:
-        layer_descriptions (list[LayerInformations]): All the layers.
+        layer_descriptions (list[LayerInformation]): All the layers.
 
     Returns:
         dict[str,int]: the count for each class.
@@ -47,12 +47,12 @@ def get_data_class_count(layer_descriptions: list[LayerInformations]) -> dict[st
 
 
 def write_predictions(
-    layers_with_predictions: list[LayerInformations], out_dir: Path, out_path: str = "class_predictions.json"
+    layers_with_predictions: list[LayerInformation], out_dir: Path, out_path: str = "class_predictions.json"
 ):
     """Writes the predictions and ground truth data to a JSON file.
 
     Args:
-        layers_with_predictions (list[LayerInformations]): List of layers with predictions.
+        layers_with_predictions (list[LayerInformation]): List of layers with predictions.
         out_dir (Path): Path to the output directory.
         out_path (str): Name of the output file (default: "class_predictions.json").
     """
@@ -136,24 +136,24 @@ class KeyClassConfig:
         metric_used: the metric name ("recall" or "precision")
     """
 
-    get_first_key_class: Callable[[LayerInformations], ClassificationSystem.EnumMember]
-    get_second_key_class: Callable[[LayerInformations], ClassificationSystem.EnumMember]
+    get_first_key_class: Callable[[LayerInformation], ClassificationSystem.EnumMember]
+    get_second_key_class: Callable[[LayerInformation], ClassificationSystem.EnumMember]
     first_key_str: str
     second_key_str: str
     metric_used: str
 
 
 def write_per_language_per_class_predictions(
-    layers_with_predictions: list[LayerInformations], classification_metrics: AllClassificationMetrics, out_dir: Path
+    layers_with_predictions: list[LayerInformation], classification_metrics: AllClassificationMetrics, out_dir: Path
 ):
-    """Creates json files that sumarizes the predictions.
+    """Creates json files that summarizes the predictions.
 
     Creates one folder for each language and one for the global predictions. In each folder creates an overview file,
         one folder for the grouping by predictions and one for the grouping by ground truth. In those folders, we
         create a file for each class seen in the data and write the predictions and ground truth data for each.
 
     Args:
-        layers_with_predictions (list[LayerInformations]): List of layers with predictions.
+        layers_with_predictions (list[LayerInformation]): List of layers with predictions.
         classification_metrics (AllClassificationMetrics): The classification metrics computed for the predictions.
         out_dir (Path): Path to the output directory.
 
@@ -203,12 +203,12 @@ def write_per_language_per_class_predictions(
         )
 
 
-def write_overview(metrics_dict: dict[str, float], layers_with_predictions: list[LayerInformations], out_dir: Path):
+def write_overview(metrics_dict: dict[str, float], layers_with_predictions: list[LayerInformation], out_dir: Path):
     """Write an overview CSV containing performance metrics for each class.
 
     Args:
         metrics_dict (dict[str, float]): Flat dictionary with metrics, e.g., 'global_CL_f1': 0.5.
-        layers_with_predictions (list[LayerInformations]): List of layer predictions.
+        layers_with_predictions (list[LayerInformation]): List of layer predictions.
         out_dir (Path): Directory where the overview.csv will be written.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -254,7 +254,7 @@ def write_overview(metrics_dict: dict[str, float], layers_with_predictions: list
 
 
 def write_per_class_predictions(
-    layers_with_predictions: list[LayerInformations],
+    layers_with_predictions: list[LayerInformation],
     key_class_config: KeyClassConfig,
     metrics_dict: dict[str, float],
     out_dir: Path,
@@ -262,7 +262,7 @@ def write_per_class_predictions(
     """Creates one file for each class seen in the data and write the predictions and ground truth data for each.
 
     Args:
-        layers_with_predictions (list[LayerInformations]): List of layers with predictions.
+        layers_with_predictions (list[LayerInformation]): List of layers with predictions.
         key_class_config (KeyClassConfig): Functions and labels according to the grouping that should be applied.
         metrics_dict (dict[str, float]): the dict containing the relevent metrics.
         out_dir (Path): Path to the output directory.
@@ -307,14 +307,14 @@ def write_per_class_predictions(
 
 
 def build_class_stats(
-    samples_for_class: list[LayerInformations],
+    samples_for_class: list[LayerInformation],
     first_key_class: ClassificationSystem.EnumMember,
     key_class_config: KeyClassConfig,
 ) -> tuple[OrderedDict, dict, int]:
     """Builds detailed statistics and sample data for a specific class.
 
     Args:
-        samples_for_class (list[LayerInformations]): Layers matching the first key class.
+        samples_for_class (list[LayerInformation]): Layers matching the first key class.
         first_key_class (ClassificationSystem.EnumMember): The class being analyzed.
         key_class_config (KeyClassConfig): Functions and labels according to the grouping that was used.
 
