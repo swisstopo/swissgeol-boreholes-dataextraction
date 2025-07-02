@@ -3,7 +3,6 @@
 import json
 import logging
 import re
-from collections.abc import Callable
 from os import listdir
 from os.path import isfile, join
 from pathlib import Path
@@ -167,17 +166,11 @@ def resolve_reference_all_layers(layers: list[dict]) -> list[dict]:
     Returns:
         list[dict]: The list of layers with resolved references.
     """
-
-    def match_layer(layer, depths_to_match):
-        if layer["depth_interval"] is None or len(depths_to_match) == 0:
-            return False  # No reference found or no depths to match - fallback to previous layer
-        return layer["depth_interval"]["start"] == depths_to_match[0]
-
     previous_layers = []
     for layer in layers:
         if not layer["material_description"]:
             continue
-        layer["material_description"] = resolve_reference(layer["material_description"], previous_layers, match_layer)
+        layer["material_description"] = resolve_reference(layer["material_description"], previous_layers)
         previous_layers.append(layer)
     return layers
 
@@ -185,7 +178,6 @@ def resolve_reference_all_layers(layers: list[dict]) -> list[dict]:
 def resolve_reference(
     material_description: str,
     previous_layers: list[dict],
-    match_layer: Callable[[dict], bool],
 ) -> str:
     """This function identifies if a layer description is a reference to a previous layer.
 
@@ -197,16 +189,14 @@ def resolve_reference(
     Args:
         material_description (str): The material description to check.
         previous_layers (list[T]): The list of previous layers to check against.
-        match_layer (Callable[[T], bool]): A function that checks if a layer matches the given depth references.
-        get_material_description (Callable[[T], str]): A function that retrieves the material description from a layer.
 
     Returns:
         str: The resolved material description, with references replaced by actual descriptions.
     """
     matched_kw = None
     for kw in classification_params["reference_key_words"]:
-        pattern = r"^[\s\-]*(" + re.escape(kw) + r")"
-        match = re.match(pattern, material_description, re.IGNORECASE)
+        from_start = r"^[\s\-]*(" + re.escape(kw) + r")"
+        match = re.match(from_start, material_description, re.IGNORECASE)
         if match:
             matched_kw = match.group()  # Actual matched part from material_description
             break
@@ -218,20 +208,32 @@ def resolve_reference(
         return material_description
     # Extract the depth references from the material description
     depth_str_references = re.findall(r"\d+(?:[.,]\d+)?\s*m?", material_description)
-    depth_str_references = depth_str_references[:1]  # Only the starting depth is usefull
+    depth_str_references = depth_str_references[:2]  # only the first two can be references
 
-    # clean the references and find a match
-    clean_depth_references = [
-        float(depth.replace(",", ".").replace("m", "").strip()) for depth in depth_str_references
-    ]
+    last_str_depth = depth_str_references[-1].strip() if depth_str_references else None
+    if not last_str_depth:
+        referenced_layer = previous_layers[-1]
+    else:
+        last_depth_pos = material_description.find(last_str_depth)
+        sp_match = re.search(r"[Ss]p", material_description[:last_depth_pos])
+        if sp_match:
+            last_str_depth = depth_str_references[0].strip()  # with Sp, only the first depth is relevant
 
-    referenced_layer = next(
-        (layer for layer in reversed(previous_layers) if match_layer(layer, clean_depth_references)),
-        previous_layers[-1],  # Fallback to last previous layer
-    )
+        # clean the references and find a match
+        clean_depth_reference = float(last_str_depth.replace(",", ".").replace("m", "").strip())
+
+        def match_layer(layer, depths_to_match):
+            if layer["depth_interval"] is None:
+                return False  # No reference found - fallback to previous layer
+            return layer["depth_interval"]["start"] == depths_to_match
+
+        referenced_layer = next(
+            (layer for layer in reversed(previous_layers) if match_layer(layer, clean_depth_reference)),
+            previous_layers[-1],  # Fallback to last previous layer
+        )
 
     # Replace the reference in the material description with the actual description of the referenced layer
-    pattern = rf"^.*?{re.escape(depth_str_references[-1]) if depth_str_references else re.escape(matched_kw)}"
+    pattern = rf"^.*?{re.escape(last_str_depth) if depth_str_references else re.escape(matched_kw)}"
 
     # Replace it
     return re.sub(pattern, referenced_layer["material_description"], material_description).strip()
