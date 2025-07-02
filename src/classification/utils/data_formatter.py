@@ -45,7 +45,7 @@ def format_ground_truth_file(ground_truth: dict, file_subset_directory: Path | N
     }
 
 
-def get_file_language(boreholes: list):
+def get_file_language(boreholes: list) -> str:
     """Detect the language of the material descriptions in the boreholes.
 
     Args:
@@ -115,7 +115,7 @@ def format_layer(layer: dict) -> dict:
     }
 
 
-def format_depths(depths: dict) -> dict:
+def format_depths(depths: dict) -> dict | None:
     """Format the depths data to match the ground truth format.
 
     Args:
@@ -158,7 +158,7 @@ def resolve_reference_all_files(files: dict):
     return files
 
 
-def resolve_reference_all_layers(layers):
+def resolve_reference_all_layers(layers: list[dict]) -> list[dict]:
     """This function resolve material_description references in-place for a list of layers.
 
     Args:
@@ -169,10 +169,8 @@ def resolve_reference_all_layers(layers):
     """
 
     def match_layer(layer, depths_to_match):
-        if layer["depth_interval"] is None:
-            return False
-        if len(depths_to_match) == 0:
-            return False  # No reference found - fallback to previous layer
+        if layer["depth_interval"] is None or len(depths_to_match) == 0:
+            return False  # No reference found or no depths to match - fallback to previous layer
         return layer["depth_interval"]["start"] == depths_to_match[0]
 
     previous_layers = []
@@ -239,7 +237,7 @@ def resolve_reference(
     return re.sub(pattern, referenced_layer["material_description"], material_description).strip()
 
 
-def format_data(descriptions_path: Path, ground_truth_path: Path | None, file_subset_directory: Path | None) -> tuple:
+def format_data(descriptions_path: Path, ground_truth_path: Path | None) -> tuple:
     """Load and format description and ground truth data for classification.
 
     Args:
@@ -251,24 +249,33 @@ def format_data(descriptions_path: Path, ground_truth_path: Path | None, file_su
         tuple:
             - descriptions (dict): Parsed and formatted descriptions data.
             - ground_truth (dict): Parsed and formatted ground truth data.
-            - single_file_mode (bool): True if descriptions and labels come from the same file.
     """
-    single_file_mode = ground_truth_path is None
-    if single_file_mode:
-        logger.info("Using single-file mode: extracting texts and labels from the same file.")
-        with open(descriptions_path, encoding="utf-8") as f:
-            descriptions = json.load(f)
-        descriptions = format_ground_truth_file(descriptions, file_subset_directory)
-        descriptions = resolve_reference_all_files(descriptions)
-        ground_truth = descriptions  # carefull, shared reference
+    with open(descriptions_path, encoding="utf-8") as f:
+        descriptions = json.load(f)
+    descriptions = format_descriptions_file(descriptions)
+    descriptions = resolve_reference_all_files(descriptions)
 
-    else:
-        with open(descriptions_path, encoding="utf-8") as f:
-            descriptions = json.load(f)
-        descriptions = format_descriptions_file(descriptions)
-        descriptions = resolve_reference_all_files(descriptions)
+    with open(ground_truth_path, encoding="utf-8") as f:
+        ground_truth = json.load(f)
+    ground_truth = resolve_reference_all_files(ground_truth)
+    return descriptions, ground_truth
 
-        with open(ground_truth_path, encoding="utf-8") as f:
-            ground_truth = json.load(f)
-        ground_truth = resolve_reference_all_files(ground_truth)
-    return descriptions, ground_truth, single_file_mode
+
+def format_data_one_file(descriptions_path: Path, file_subset_directory: Path | None) -> tuple:
+    """Load and format description and ground truth data for classification.
+
+    Args:
+        descriptions_path (Path): Path to the JSON file containing the text descriptions.
+        file_subset_directory (Path | None): Optional directory to subset files when using single-file mode.
+
+    Returns: data.Parsed and formatted
+        tuple:
+            - descriptions (dict): Parsed and formatted descriptions data.
+            - ground_truth (dict): The same file, as it also contains the ground truth
+    """
+    logger.info("Using single-file mode: extracting texts and labels from the same file.")
+    with open(descriptions_path, encoding="utf-8") as f:
+        descriptions = json.load(f)
+    descriptions = format_ground_truth_file(descriptions, file_subset_directory)
+    descriptions = resolve_reference_all_files(descriptions)
+    return descriptions, descriptions

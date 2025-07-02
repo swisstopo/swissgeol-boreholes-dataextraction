@@ -6,7 +6,7 @@ from pathlib import Path
 
 import Levenshtein
 from classification.utils.classification_classes import ClassificationSystem
-from classification.utils.data_formatter import format_data
+from classification.utils.data_formatter import format_data, format_data_one_file
 from utils.file_utils import parse_text
 
 logger = logging.getLogger(__name__)
@@ -107,9 +107,13 @@ def prepare_classification_data(
     Returns:
         list[LayerInformation]: List of structured layer information entries.
     """
-    descriptions, ground_truth, single_file_mode = format_data(
-        descriptions_path, ground_truth_path, file_subset_directory
-    )
+    # determine if two or one files are passed, if only one it must contain both descriptions and ground truths
+    single_file_mode = ground_truth_path is None
+
+    if single_file_mode:
+        descriptions, ground_truth = format_data_one_file(descriptions_path, file_subset_directory)
+    else:
+        descriptions, ground_truth = format_data(descriptions_path, ground_truth_path)
 
     layer_class_key = classification_system.get_layer_ground_truth_key()
 
