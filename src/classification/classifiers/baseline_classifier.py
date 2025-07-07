@@ -2,10 +2,11 @@
 
 import re
 
+from nltk.stem.snowball import SnowballStemmer
+
 from classification.classifiers.classifier import Classifier
 from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformation
-from nltk.stem.snowball import SnowballStemmer
 
 
 class BaselineClassifier(Classifier):

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import Levenshtein
+
 from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_formatter import format_data, format_data_one_file
 from utils.file_utils import parse_text

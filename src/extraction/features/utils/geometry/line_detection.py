@@ -7,8 +7,9 @@ import cv2
 import numpy as np
 import pymupdf
 from dotenv import load_dotenv
-from extraction.features.utils.geometry.geometric_line_utilities import merge_parallel_lines_quadtree
 from numpy.typing import ArrayLike
+
+from extraction.features.utils.geometry.geometric_line_utilities import merge_parallel_lines_quadtree
 from utils.file_utils import read_params
 
 from .geometry_dataclasses import Line

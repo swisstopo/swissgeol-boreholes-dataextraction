@@ -14,13 +14,13 @@ import torch.nn as nn
 from dotenv import load_dotenv
 from transformers import DataCollatorWithPadding, EvalPrediction, Trainer, TrainingArguments
 from transformers.modeling_outputs import SequenceClassifierOutput
-from utils.file_utils import read_params
 
 from classification import DATAPATH
 from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
 from classification.models.model import BertModel
 from classification.utils.classification_classes import ExistingClassificationSystems
 from classification.utils.data_loader import prepare_classification_data
+from utils.file_utils import read_params
 
 if __name__ == "__main__":
     # Only configure logging if this script is run directly (e.g. training pipeline entrypoint)

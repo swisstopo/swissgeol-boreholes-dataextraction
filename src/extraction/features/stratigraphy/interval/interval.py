@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 import pymupdf
+
 from extraction.features.utils.text.textblock import TextBlock
 from extraction.features.utils.text.textline import TextLine
 

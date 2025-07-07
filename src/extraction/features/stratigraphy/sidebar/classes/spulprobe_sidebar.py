@@ -1,6 +1,7 @@
 """Module for the spulprobe sidebars."""
 
 import pymupdf
+
 from extraction.features.stratigraphy.base.sidebar_entry import SpulprobeEntry
 from extraction.features.stratigraphy.interval.interval import IntervalBlockGroup, SpulprobeInterval
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar

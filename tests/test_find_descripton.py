@@ -1,6 +1,7 @@
 """Test suite for the find_description module."""
 
 import pymupdf
+
 from extraction.features.utils.geometry.geometry_dataclasses import Line, Point
 from extraction.features.utils.text.find_description import get_description_blocks
 from extraction.features.utils.text.textline import TextLine, TextWord

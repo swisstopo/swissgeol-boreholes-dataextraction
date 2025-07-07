@@ -5,6 +5,7 @@ import logging
 import cv2
 import numpy as np
 import pymupdf
+
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.text.textblock import TextBlock
 

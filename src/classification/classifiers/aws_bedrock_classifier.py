@@ -11,11 +11,12 @@ from pathlib import Path
 
 import boto3
 import mlflow
+from tqdm import tqdm
+
 from classification.classifiers.classifier import Classifier
 from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformation
 from classification.utils.data_utils import write_api_failures, write_predictions
-from tqdm import tqdm
 from utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
