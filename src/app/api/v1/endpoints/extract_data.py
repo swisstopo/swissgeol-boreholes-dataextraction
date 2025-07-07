@@ -3,6 +3,8 @@
 import re
 
 import pymupdf
+from fastapi import HTTPException
+
 from app.common.helpers import load_pdf_page, load_png
 from app.common.schemas import (
     BoundingBox,
@@ -21,7 +23,6 @@ from extraction.features.metadata.coordinate_extraction import (
 )
 from extraction.features.utils.text.extract_text import extract_text_lines
 from extraction.features.utils.text.textline import TextLine
-from fastapi import HTTPException
 from utils.file_utils import read_params
 from utils.language_detection import detect_language_of_text
 

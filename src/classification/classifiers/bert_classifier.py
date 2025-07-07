@@ -4,11 +4,12 @@ from pathlib import Path
 
 import mlflow
 import numpy as np
+from transformers import Trainer, TrainingArguments
+
 from classification.classifiers.classifier import Classifier
 from classification.models.model import BertModel
 from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformation
-from transformers import Trainer, TrainingArguments
 
 
 class BertClassifier(Classifier):

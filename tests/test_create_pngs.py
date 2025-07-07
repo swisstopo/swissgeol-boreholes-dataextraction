@@ -13,9 +13,10 @@ running the tests.
 from pathlib import Path
 
 import pytest
-from app.common.config import config
 from botocore.exceptions import ClientError
 from fastapi.testclient import TestClient
+
+from app.common.config import config
 
 TEST_PDF_KEY = "sample.pdf"
 TEST_PDF_PATH = Path(__file__).parent.parent / "example" / "example_borehole_profile.pdf"
