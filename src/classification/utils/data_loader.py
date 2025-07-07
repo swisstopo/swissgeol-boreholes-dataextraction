@@ -1,32 +1,21 @@
 """Data loader module."""
 
-import json
 import logging
-import re
 from dataclasses import dataclass
-from os import listdir
-from os.path import isfile, join
 from pathlib import Path
 
+import Levenshtein
 from classification.utils.classification_classes import ClassificationSystem
-from utils.file_utils import read_params
-from utils.language_detection import detect_language_of_text
-
-classification_params = read_params("classification_params.yml")
+from classification.utils.data_formatter import format_data, format_data_one_file
+from utils.file_utils import parse_text
 
 logger = logging.getLogger(__name__)
 
-
-@dataclass
-class Depths:
-    """Dataclass to represent the depths of a layer."""
-
-    start: float
-    end: float
+MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD = 0.7
 
 
 @dataclass
-class LayerInformations:
+class LayerInformation:
     """Class for each layer in the ground truth json file.
 
     A layer is either classified into USCS or lithology, but never both.
@@ -36,7 +25,6 @@ class LayerInformations:
     borehole_index: int
     layer_index: int
     language: str
-    layer_depths: Depths
     material_description: str
     class_system: type[ClassificationSystem]  # note: class_system is the class, and not an instance of the class
     ground_truth_class: None | ClassificationSystem.EnumMember
@@ -44,134 +32,142 @@ class LayerInformations:
     llm_reasoning: None | str  # dynamically set,
 
 
-def load_data(
-    json_path: Path, file_subset_directory: Path | None, classification_system: type[ClassificationSystem]
-) -> list[LayerInformations]:
-    """Loads the data from the ground truth json file.
+def is_valid_depth_interval(layer_depths, start: float, end: float) -> bool:
+    """Validate if self and the depth interval start-end match.
 
     Args:
-        json_path (Path): the ground truth json file path
-        file_subset_directory (Path): Path to the directory containing the file whose names are used.
-        classification_system ( type[ClassificationSystem]): The classification system used to classify the data.
+        layer_depths (dict): The depths of the current layer.
+        start (float): The start value of the ground truth interval.
+        end (float): The end value of the ground truth interval.
 
     Returns:
-        list[LayerInformations]: the data formated as a list of LayerInformations objects
+        bool: True if the depth intervals match, False otherwise.
     """
-    with open(json_path, encoding="utf-8") as f:
-        data = json.load(f)
+    if layer_depths is None:
+        return False
 
-    if file_subset_directory is None:
-        logger.info(f"Using all filenames in: {json_path}")
-        filename_subset = None
+    layer_start = layer_depths["start"]
+    layer_end = layer_depths["end"]
+    if layer_start is None:
+        return (start == 0) and (end == layer_end)
+
+    if (layer_start is not None) and (layer_end is not None):
+        return start == layer_start and end == layer_end
+
+    return False
+
+
+def find_matching_layer(layer, unmatched_ground_truth_layers) -> None | dict:
+    """Find a matching layer in the ground truth layers.
+
+    Args:
+        layer (dict): The layer to match.
+        unmatched_ground_truth_layers (list): The list of unmatched ground truth layers.
+
+    Returns:
+        None | dict: The matching layer from the ground truth layers or None if no match is found.
+    """
+    parsed_text = parse_text(layer["material_description"])
+    possible_matches = [
+        ground_truth_layer
+        for ground_truth_layer in unmatched_ground_truth_layers
+        if Levenshtein.ratio(parsed_text, parse_text(ground_truth_layer["material_description"]))
+        > MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD
+    ]
+
+    if not possible_matches:
+        return None
+
+    for possible_match in possible_matches:
+        start = possible_match["depth_interval"]["start"]
+        end = possible_match["depth_interval"]["end"]
+
+        if is_valid_depth_interval(layer["depth_interval"], start, end):
+            return possible_match
+
+    return max(possible_matches, key=lambda x: Levenshtein.ratio(parsed_text, parse_text(x["material_description"])))
+
+
+def prepare_classification_data(
+    descriptions_path: Path,
+    ground_truth_path: Path | None,
+    file_subset_directory: Path | None,
+    classification_system: type[ClassificationSystem],
+) -> list[LayerInformation]:
+    """Load and combine material descriptions and ground truth data into a structured list.
+
+    Args:
+        descriptions_path (Path): Path to the JSON file containing the descriptions (or the file that contains
+            descriptions and ground truth in single-file mode).
+        ground_truth_path (Path | None): Path to the ground truth JSON file (or None if using single-file mode).
+        file_subset_directory (Path | None): Directory containing a subset of filenames to use (only used if
+            ground_truth_path is not provided).
+        classification_system (type[ClassificationSystem]): The classification system class.
+
+    Returns:
+        list[LayerInformation]: List of structured layer information entries.
+    """
+    # determine if two or one files are passed, if only one it must contain both descriptions and ground truths
+    single_file_mode = ground_truth_path is None
+
+    if single_file_mode:
+        descriptions, ground_truth = format_data_one_file(descriptions_path, file_subset_directory)
     else:
-        logger.info(f"Using files from subset directory: {file_subset_directory}")
-        filename_subset = {f for f in listdir(file_subset_directory) if isfile(join(file_subset_directory, f))}
-    layer_descriptions: list[LayerInformations] = []
-    total_layers = skipped_count = 0
-    for filename, boreholes in data.items():
-        if filename_subset is not None and filename not in filename_subset:
+        descriptions, ground_truth = format_data(descriptions_path, ground_truth_path)
+
+    layer_class_key = classification_system.get_layer_ground_truth_key()
+
+    layer_descriptions: list[LayerInformation] = []
+    total_layers = 0
+    for filename, boreholes in descriptions.items():
+        if filename not in ground_truth:
+            logger.warning(f"No matching ground truth for the file {filename}.")
             continue
-        all_text = " ".join(
-            [
-                lay["material_description"]
-                for bh in boreholes
-                for lay in bh["layers"]
-                if lay["material_description"] is not None
-            ]
-        )
-        language = detect_language_of_text(
-            all_text, classification_params["default_language"], classification_params["supported_language"]
-        )
+
+        # Collect all layers from ground truth boreholes (safe since duplicate layers can be mixed).
+        ground_truth_layers = [layer for borehole in ground_truth[filename] for layer in borehole["layers"]]
+
         for borehole in boreholes:
-            borehole_descriptions: list[LayerInformations] = []
             for layer_index, layer in enumerate(borehole["layers"]):
+                total_layers += 1
                 if not layer["material_description"]:
                     continue
-                layer_key = classification_system.get_layer_ground_truth_key()
-                class_str = layer.get(layer_key, None)
-                total_layers += 1
+
+                if not single_file_mode:
+                    ground_truth_match = find_matching_layer(layer, ground_truth_layers)
+                    if ground_truth_match is None:
+                        logger.info(f"No ground truth found for file {filename}: {layer['material_description']}.")
+                        continue
+                    ground_truth_layers.remove(ground_truth_match)
+                else:
+                    ground_truth_match = layer
+
+                class_str = ground_truth_match.get(layer_class_key, None)
                 if not class_str:
                     logger.debug(
-                        f"Skipping layer: no {layer_key} in ground truth for {filename} borehole "
-                        f"{borehole['borehole_index']}, layer {layer_index} with "
-                        f"description {layer['material_description']}."
+                        f"Skipping layer: no {layer_class_key} in ground truth for {filename},"
+                        f" layer: {layer['material_description']}."
                     )
-                    skipped_count += 1
                     continue
 
                 ground_truth_class = classification_system.map_most_similar_class(class_str)
 
-                material_description = resolve_reference(layer["material_description"], borehole_descriptions)
-                if material_description != layer["material_description"]:
-                    logger.debug(
-                        f"Resolved reference: {filename} borehole {borehole['borehole_index']}, layer {layer_index}."
-                    )
-
-                borehole_descriptions.append(
-                    LayerInformations(
+                layer_descriptions.append(
+                    LayerInformation(
                         filename,
                         borehole["borehole_index"],
                         layer_index,
-                        language,
-                        Depths(layer["depth_interval"]["start"], layer["depth_interval"]["end"]),
-                        material_description,
+                        borehole["language"],
+                        layer["material_description"],
                         classification_system,
                         ground_truth_class,
                         prediction_class=None,
                         llm_reasoning=None,
                     )
                 )
-            layer_descriptions.extend(borehole_descriptions)
+    skipped_count = total_layers - len(layer_descriptions)
     logger.info(
         f"Skipped {skipped_count} layers without groundtruh out of {total_layers}, "
         f"which is {skipped_count / total_layers * 100:2f}%"
     )
     return layer_descriptions
-
-
-def resolve_reference(material_description: str, previous_layers: list[LayerInformations]) -> str:
-    """This function identifies if a layer description is a reference to a previous layer.
-
-    If it is, it first finds the layer it refers to by looking for depths references in the material description.
-    Then, it replaces the reference with the material description of the referenced layer. If no depth reference is
-    found, we assume it refers to the layer immediately before it in the list of previous layers.
-    If the material description does not contain any reference keywords, it returns the material description as is.
-
-    Args:
-        material_description (str): The material description to check.
-        previous_layers (list[LayerInformations]): The list of previous layers to check against.
-
-    Returns:
-        str: The resolved material description, with references replaced by actual descriptions.
-    """
-    if not any(material_description.lower().startswith(kw) for kw in classification_params["reference_key_words"]):
-        return material_description  # No reference found, return as is
-    if not previous_layers:
-        logger.warning("How can this layer reference a previous layer if there is no previous layer?")
-        return material_description
-    # Extract the depth references from the material description
-    depth_str_references = re.findall(r"\d+(?:[.,]\d+)?", material_description)
-    depth_str_references = depth_str_references[:2]  # We only consider the first two depth references
-
-    # clean the references and find a match
-    clean_depth_references = [float(depth.replace(",", ".")) for depth in depth_str_references]
-    clean_depth_references.sort()
-
-    def match_layer(layer, depths_to_match):
-        if len(depths_to_match) == 1:
-            return layer.layer_depths.start == depths_to_match[0]
-        elif len(depths_to_match) == 2:
-            return layer.layer_depths == Depths(depths_to_match[0], depths_to_match[1])
-        return False  # No reference found - fallback to previous layer
-
-    referenced_layer = next(
-        (layer for layer in reversed(previous_layers) if match_layer(layer, clean_depth_references)),
-        previous_layers[-1],  # Fallback to last previous layer
-    )
-
-    # Replace the reference in the material description with the actual description of the referenced layer
-    last_depth = depth_str_references[-1]
-    pattern = rf"^.*?{re.escape(last_depth)}"  # Match the entire string up to the last depth reference
-
-    # Replace it
-    return re.sub(pattern, referenced_layer.material_description, material_description).strip()
