@@ -133,7 +133,7 @@ def format_depths(depths: dict) -> dict | None:
     )
 
 
-def resolve_reference_all_files(files: dict):
+def resolve_reference_all_files(files: dict) -> dict:
     """Resolve layer references across all boreholes in all files.
 
     This function updates the 'layers' field of each borehole in-place by resolving any references
@@ -204,7 +204,7 @@ def resolve_reference(
     if not matched_kw:
         return material_description  # No reference found, return as is
     if not previous_layers:
-        logger.warning("How can this layer reference a previous layer if there is no previous layer?")
+        logger.warning(f"Reference keyword found but no previous layer exists: '{material_description}'")
         return material_description
     # Extract the depth references from the material description
     depth_str_references = re.findall(r"\d+(?:[.,]\d+)?\s*m?", material_description)
@@ -214,6 +214,7 @@ def resolve_reference(
     if not last_str_depth:
         referenced_layer = previous_layers[-1]
     else:
+        # Adjust for "Spulprobe" depth format
         last_depth_pos = material_description.find(last_str_depth)
         sp_match = re.search(r"[Ss]p", material_description[:last_depth_pos])
         if sp_match:
@@ -245,7 +246,6 @@ def format_data(descriptions_path: Path, ground_truth_path: Path | None) -> tupl
     Args:
         descriptions_path (Path): Path to the JSON file containing the text descriptions.
         ground_truth_path (Path | None): Path to the ground truth JSON file (or None if using a combined file).
-        file_subset_directory (Path | None): Optional directory to subset files when using single-file mode.
 
     Returns:
         tuple:

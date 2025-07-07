@@ -118,6 +118,7 @@ def prepare_classification_data(
     layer_class_key = classification_system.get_layer_ground_truth_key()
 
     layer_descriptions: list[LayerInformation] = []
+    total_layers = 0
     for filename, boreholes in descriptions.items():
         if filename not in ground_truth:
             logger.warning(f"No matching ground truth for the file {filename}.")
@@ -128,6 +129,7 @@ def prepare_classification_data(
 
         for borehole in boreholes:
             for layer_index, layer in enumerate(borehole["layers"]):
+                total_layers += 1
                 if not layer["material_description"]:
                     continue
 
@@ -163,4 +165,9 @@ def prepare_classification_data(
                         llm_reasoning=None,
                     )
                 )
+    skipped_count = total_layers - len(layer_descriptions)
+    logger.info(
+        f"Skipped {skipped_count} layers without groundtruh out of {total_layers}, "
+        f"which is {skipped_count / total_layers * 100:2f}%"
+    )
     return layer_descriptions

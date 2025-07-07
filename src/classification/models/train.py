@@ -229,14 +229,14 @@ def setup_data(bert_model: BertModel, model_config: dict) -> tuple[datasets.Data
     )
     train_data = prepare_classification_data(
         train_file_path,
-        None,
+        ground_truth_path=None,
         file_subset_directory=train_subset,
         classification_system=classification_system,
     )
     train_dataset = bert_model.get_tokenized_dataset(train_data)
     eval_data = prepare_classification_data(
         eval_file_path,
-        None,
+        ground_truth_path=None,
         file_subset_directory=eval_subset,
         classification_system=classification_system,
     )
