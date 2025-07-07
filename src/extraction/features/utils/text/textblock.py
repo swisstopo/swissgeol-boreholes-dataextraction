@@ -7,7 +7,6 @@ from typing import Self
 
 import numpy as np
 import pymupdf
-
 from extraction.features.utils.data_extractor import (
     ExtractedFeature,
     FeatureOnPage,

@@ -3,7 +3,6 @@
 import re
 
 import pymupdf
-
 from extraction.features.stratigraphy.base.sidebar_entry import SpulprobeEntry
 from extraction.features.stratigraphy.sidebar.classes.spulprobe_sidebar import SpulprobeSidebar
 from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster

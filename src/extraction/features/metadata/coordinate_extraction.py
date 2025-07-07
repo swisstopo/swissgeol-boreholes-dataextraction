@@ -7,7 +7,6 @@ from dataclasses import dataclass
 
 import pymupdf
 import regex
-
 from extraction.features.utils.data_extractor import (
     DataExtractor,
     ExtractedFeature,

@@ -3,9 +3,8 @@
 import math
 
 import pytest
-from sklearn.metrics import f1_score, precision_score, recall_score
-
 from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
+from sklearn.metrics import f1_score, precision_score, recall_score
 
 
 def _sklearn_macro(y_true, y_pred):

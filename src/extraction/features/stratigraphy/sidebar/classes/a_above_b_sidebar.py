@@ -8,7 +8,6 @@ from itertools import product
 
 import numpy as np
 import pymupdf
-
 from extraction.features.stratigraphy.interval.interval import AAboveBInterval, IntervalBlockGroup
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.text.find_description import get_description_blocks

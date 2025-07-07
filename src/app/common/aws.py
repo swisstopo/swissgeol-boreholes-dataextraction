@@ -7,13 +7,12 @@ from pathlib import Path
 import boto3
 import numpy as np
 import pymupdf
+from app.common.config import DEFAULT_BUCKET_NAME, config
+from app.common.log import get_app_logger
 from botocore.exceptions import ClientError, EndpointConnectionError, NoCredentialsError
 from dotenv import load_dotenv
 from fastapi import HTTPException
 from PIL import Image
-
-from app.common.config import DEFAULT_BUCKET_NAME, config
-from app.common.log import get_app_logger
 
 load_dotenv()
 logger = get_app_logger()

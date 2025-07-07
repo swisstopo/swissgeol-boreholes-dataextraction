@@ -2,6 +2,9 @@
 
 import os
 
+import app.common.log as log
+from app.api.v1.router import router as v1_router
+from app.common.log import get_app_logger
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -9,10 +12,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 from mangum import Mangum
-
-import app.common.log as log
-from app.api.v1.router import router as v1_router
-from app.common.log import get_app_logger
 
 # Set up logging
 log.setup_logging()

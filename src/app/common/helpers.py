@@ -4,7 +4,6 @@ from pathlib import Path
 
 import numpy as np
 import pymupdf
-
 from app.common.aws import load_pdf_from_aws, load_png_from_aws
 
 

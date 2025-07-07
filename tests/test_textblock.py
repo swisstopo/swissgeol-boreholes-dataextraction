@@ -1,7 +1,6 @@
 """Test suite for the textblock module."""
 
 import pymupdf
-
 from extraction.features.utils.text.textblock import TextBlock, block_distance
 from extraction.features.utils.text.textline import TextLine, TextWord
 
@@ -63,9 +62,9 @@ def test_block_distance():  # noqa: D103
     page_number = 1
     block_1 = TextBlock([TextLine([TextWord(pymupdf.Rect(0, 0, 5, 1), "Hello", page_number)])])
     block_2 = TextBlock([TextLine([TextWord(pymupdf.Rect(0, 2, 5, 3), "Hello", page_number)])])
-    assert block_distance(block_1, block_2) == 1, (
-        "The distance should be measured from the bottom of the first block to the top of the second block."
-    )
-    assert block_distance(block_2, block_1) == -3, (
-        "The distance should negative when the second block is above the first block."
-    )
+    assert (
+        block_distance(block_1, block_2) == 1
+    ), "The distance should be measured from the bottom of the first block to the top of the second block."
+    assert (
+        block_distance(block_2, block_1) == -3
+    ), "The distance should negative when the second block is above the first block."

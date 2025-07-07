@@ -6,6 +6,7 @@ from pathlib import Path
 
 import click
 from dotenv import load_dotenv
+from utils.file_utils import read_params
 
 from classification import DATAPATH
 from classification.classifiers.classifier import Classifier, ClassifierTypes
@@ -19,7 +20,6 @@ from classification.utils.data_utils import (
     write_per_language_per_class_predictions,
     write_predictions,
 )
-from utils.file_utils import read_params
 
 load_dotenv()
 classification_params = read_params("classification_params.yml")

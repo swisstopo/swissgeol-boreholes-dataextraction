@@ -10,7 +10,6 @@ from typing import Generic, Self, TypeVar
 
 import pymupdf
 import regex
-
 from extraction.features.utils.text.textline import TextLine
 from utils.file_utils import read_params
 

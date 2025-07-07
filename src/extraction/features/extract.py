@@ -2,7 +2,6 @@
 
 import pymupdf
 import rtree
-
 from extraction.features.stratigraphy.interval.interval import AAboveBInterval, Interval, IntervalBlockPair
 from extraction.features.stratigraphy.layer.duplicate_detection import remove_duplicate_layers
 from extraction.features.stratigraphy.layer.layer import (

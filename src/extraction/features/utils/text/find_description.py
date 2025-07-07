@@ -1,7 +1,6 @@
 """This module contains functions to find the description (blocks) of a material in a pdf page."""
 
 import pymupdf
-
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 
 from .description_block_splitter import (

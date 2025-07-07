@@ -8,7 +8,6 @@ from typing import Generic, TypeVar
 
 import pymupdf
 import rtree
-
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.geometry.util import x_overlap_significant_smallest
 from extraction.features.utils.text.textline import TextLine

@@ -2,7 +2,6 @@
 
 import numpy as np
 import pytest
-
 from extraction.features.utils.geometry.geometric_line_utilities import (
     _are_close,
     _are_mergeable,

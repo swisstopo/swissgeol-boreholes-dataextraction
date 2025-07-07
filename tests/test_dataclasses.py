@@ -1,7 +1,6 @@
 """Test suite for the dataclasses module."""
 
 import pytest
-
 from extraction.features.utils.geometry.geometry_dataclasses import Line, Point
 
 

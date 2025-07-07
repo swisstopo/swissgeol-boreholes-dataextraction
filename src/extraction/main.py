@@ -9,6 +9,7 @@ import click
 import pymupdf
 from dotenv import load_dotenv
 from tqdm import tqdm
+from utils.file_utils import flatten, read_params
 
 from extraction import DATAPATH
 from extraction.annotations.draw import draw_predictions
@@ -27,7 +28,6 @@ from extraction.features.predictions.predictions import BoreholeListBuilder
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.features.utils.geometry.line_detection import extract_lines
 from extraction.features.utils.text.extract_text import extract_text_lines
-from utils.file_utils import flatten, read_params
 
 load_dotenv()
 

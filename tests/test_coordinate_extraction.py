@@ -2,7 +2,6 @@
 
 import pymupdf
 import pytest
-
 from extraction import DATAPATH
 from extraction.features.metadata.coordinate_extraction import (
     Coordinate,

@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pandas as pd
 from dotenv import load_dotenv
-
 from extraction import DATAPATH
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions

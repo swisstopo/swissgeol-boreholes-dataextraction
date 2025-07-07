@@ -11,10 +11,9 @@ from pathlib import Path
 
 import pymupdf
 import pytest
-from fastapi.testclient import TestClient
-
 from app.common.aws import load_pdf_from_aws
 from app.common.schemas import BoundingBox, ExtractDataRequest, FormatTypes
+from fastapi.testclient import TestClient
 
 TEST_PDF_KEY = Path("sample.pdf")
 TEST_PDF_PATH = Path(__file__).parent.parent / "example" / "example_borehole_profile.pdf"

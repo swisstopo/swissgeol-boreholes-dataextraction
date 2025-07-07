@@ -3,7 +3,6 @@
 import re
 
 import pymupdf
-
 from extraction.features.utils.text.textline import TextLine
 
 from ...utils.text.textblock import TextBlock

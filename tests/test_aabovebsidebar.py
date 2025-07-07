@@ -1,7 +1,6 @@
 """Test suite for the find_depth_columns module."""
 
 import pymupdf
-
 from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
 from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import (
     AAboveBSidebar,
@@ -41,9 +40,9 @@ def test_aabovebsidebar_closetoarithmeticprogression():  # noqa: D103
             DepthColumnEntry(rect=pymupdf.Rect(), value=20.5),
         ]
     )
-    assert not sidebar.close_to_arithmetic_progression(), (
-        "The sidebar should not be recognized as arithmetic progression"
-    )
+    assert (
+        not sidebar.close_to_arithmetic_progression()
+    ), "The sidebar should not be recognized as arithmetic progression"
 
 
 def test_aabovebsidebar_removeintegerscale():  # noqa: D103

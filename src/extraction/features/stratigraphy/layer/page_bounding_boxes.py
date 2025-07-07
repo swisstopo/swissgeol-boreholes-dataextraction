@@ -4,7 +4,6 @@ import math
 from dataclasses import dataclass
 
 import pymupdf
-
 from extraction.features.utils.geometry.geometry_dataclasses import BoundingBox
 from extraction.features.utils.text.find_description import get_description_lines
 from extraction.features.utils.text.textline import TextLine

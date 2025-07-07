@@ -4,7 +4,6 @@ from collections import defaultdict
 from collections.abc import Callable
 
 import pandas as pd
-
 from extraction.evaluation.evaluation_dataclasses import Metrics
 
 

@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import NamedTuple
 
 import pymupdf
-
 from extraction.features.metadata.coordinate_extraction import Coordinate, CoordinateExtractor
 from extraction.features.metadata.elevation_extraction import Elevation, ElevationExtractor
 from extraction.features.utils.data_extractor import FeatureOnPage

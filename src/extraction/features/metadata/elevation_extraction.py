@@ -11,7 +11,6 @@ from dataclasses import dataclass
 
 import numpy as np
 import pymupdf
-
 from extraction.features.groundwater.utility import extract_elevation
 from extraction.features.utils.data_extractor import (
     DataExtractor,

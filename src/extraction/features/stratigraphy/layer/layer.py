@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 
 import pymupdf
-
 from extraction.features.utils.data_extractor import (
     ExtractedFeature,
     FeatureOnPage,

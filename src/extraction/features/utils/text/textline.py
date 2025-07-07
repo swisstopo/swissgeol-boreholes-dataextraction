@@ -5,9 +5,8 @@ from __future__ import annotations
 import re
 
 import pymupdf
-from nltk.stem.snowball import SnowballStemmer
-
 from extraction.features.utils.geometry.util import x_overlap_significant_largest
+from nltk.stem.snowball import SnowballStemmer
 from utils.file_utils import read_params
 
 material_description = read_params("matching_params.yml")["material_description"]

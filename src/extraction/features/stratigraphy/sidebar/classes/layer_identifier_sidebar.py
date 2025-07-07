@@ -5,7 +5,6 @@ import re
 from dataclasses import dataclass
 
 import pymupdf
-
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.text.textblock import TextBlock
 from extraction.features.utils.text.textline import TextLine

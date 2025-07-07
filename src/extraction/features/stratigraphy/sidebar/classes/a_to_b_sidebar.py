@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import pymupdf
-
 from extraction.features.stratigraphy.interval.interval import AToBInterval, IntervalBlockGroup
 from extraction.features.stratigraphy.interval.partitions_and_sublayers import (
     number_of_subintervals,

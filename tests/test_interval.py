@@ -1,7 +1,6 @@
 """Test suite for the interval module."""
 
 import pymupdf
-
 from extraction.features.stratigraphy.interval.a_to_b_interval_extractor import AToBIntervalExtractor
 from extraction.features.utils.text.textline import TextLine, TextWord
 

@@ -2,7 +2,6 @@
 
 import pymupdf
 import rtree
-
 from extraction.features.utils.text.textline import TextWord
 
 from ...base.sidebar_entry import DepthColumnEntry
