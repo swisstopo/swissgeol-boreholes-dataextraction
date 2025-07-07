@@ -16,7 +16,7 @@ from transformers.models.bert.modeling_bert import BertForSequenceClassification
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
 from classification.utils.classification_classes import ClassificationSystem
-from classification.utils.data_loader import LayerInformations
+from classification.utils.data_loader import LayerInformation
 
 logger = logging.getLogger(__name__)
 
@@ -196,11 +196,11 @@ class BertModel:
             logger.debug(f"Unfreezing Param: {name}")
             param.requires_grad = True
 
-    def get_tokenized_dataset(self, layers: list[LayerInformations]) -> datasets.Dataset:
+    def get_tokenized_dataset(self, layers: list[LayerInformation]) -> datasets.Dataset:
         """Create a tokenized datasets.Dataset object from a list of layers.
 
         Args:
-            layers (list[LayerInformations]): A list of layers.
+            layers (list[LayerInformation]): A list of layers.
 
         Returns:
             datasets.Dataset: the dataset, with tokenized informations.
