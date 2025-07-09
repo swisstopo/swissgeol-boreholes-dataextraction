@@ -48,11 +48,14 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.repository_owner  }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
+      - name: Create clean build context
+        run: |
+          mkdir -p /tmp/build-context
+          rsync -av --exclude='.git' --exclude='.github' . /tmp/build-context/
       - name: Build and push Docker image (api)
         uses: docker/build-push-action@v5
         with:
-          context: ./
+          context: /tmp/build-context 
           push: true
           build-args: |
             VERSION=${{ env.VERSION }}
