@@ -18,8 +18,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1  # Only fetch the latest commit
 
       - name: Set environment variables
         run: |
@@ -48,14 +46,11 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.repository_owner  }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create clean build context
-        run: |
-          mkdir -p /tmp/build-context
-          rsync -av --exclude='.git' --exclude='.github' . /tmp/build-context/
+
       - name: Build and push Docker image (api)
         uses: docker/build-push-action@v5
         with:
-          context: /tmp/build-context 
+          context: ./
           push: true
           build-args: |
             VERSION=${{ env.VERSION }}
