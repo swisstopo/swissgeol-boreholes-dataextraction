@@ -4,8 +4,9 @@ from pathlib import Path
 
 import boto3
 import click
-from stratigraphy import DATAPATH
 from tqdm import tqdm
+
+from extraction import DATAPATH
 
 
 @click.command()

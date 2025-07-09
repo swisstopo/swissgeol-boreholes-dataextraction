@@ -1,7 +1,7 @@
 # Config file for unconsolidated soil classification
 # Prompt file and version
 prompts_file: bedrock/lithology_classification_prompts.yml
-prompt_version: baseline
+prompt_version: v1
 
 # Pattern file and parameter version
 pattern_file: bedrock/lithology_classification_patterns_bedrock.yml
