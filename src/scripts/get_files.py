@@ -6,7 +6,7 @@ import boto3
 import click
 from tqdm import tqdm
 
-from stratigraphy import DATAPATH
+from extraction import DATAPATH
 
 
 @click.command()
