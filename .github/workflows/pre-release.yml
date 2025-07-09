@@ -18,41 +18,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1  # Only fetch the latest commit
 
       - name: Set environment variables
         run: |
           echo VERSION=$(cat VERSION).$GITHUB_RUN_NUMBER >> $GITHUB_ENV
           echo BASE_IMAGE_NAME=$REGISTRY/$(echo ${GITHUB_REPOSITORY,,}) >> $GITHUB_ENV
           echo COMMITED_AT=$(git show -s --format=%cI `git rev-parse HEAD`) >> $GITHUB_ENV
-
-      - name: Debug what's taking up space
-        run: |
-          echo "=== CURRENT DIRECTORY SIZE ==="
-          du -sh .
-          echo ""
-          echo "=== TOP 10 LARGEST FILES/FOLDERS ==="
-          du -sh * .* 2>/dev/null | sort -hr | head -20
-          echo ""
-          echo "=== .git FOLDER SIZE ==="
-          if [ -d ".git" ]; then
-            du -sh .git
-            echo "Contents of .git:"
-            du -sh .git/* 2>/dev/null | sort -hr | head -10
-          else
-            echo ".git folder not found"
-          fi
-          echo ""
-          echo "=== BUILD CONTEXT SIZE ==="
-          if [ -d "/tmp/build-context" ]; then
-            du -sh /tmp/build-context
-            echo "Contents of build context:"
-            du -sh /tmp/build-context/* 2>/dev/null | sort -hr | head -10
-          fi
-          echo ""
-          echo "=== LARGE FILES (>100MB) ==="
-          find . -type f -size +100M -exec ls -lh {} \; 2>/dev/null | head -10
 
       - name: Collect Docker image metadata (api)
         id: meta-api
@@ -75,14 +46,11 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.repository_owner  }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create clean build context
-        run: |
-          mkdir -p /tmp/build-context
-          rsync -av --exclude='.git' --exclude='.github' . /tmp/build-context/
+
       - name: Build and push Docker image (api)
         uses: docker/build-push-action@v5
         with:
-          context: /tmp/build-context 
+          context: ./
           push: true
           build-args: |
             VERSION=${{ env.VERSION }}
