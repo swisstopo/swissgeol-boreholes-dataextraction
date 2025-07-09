@@ -34,6 +34,32 @@ def deskew(doc: pymupdf.Document) -> pymupdf.Document:
     return new_doc
 
 
+def deskew_v2(doc: pymupdf.Document) -> pymupdf.Document:
+    """Deskew a scanned PDF document by detecting and correcting slight skews in each page.
+
+    Args:
+        doc: Input pymupdf.Document object containing scanned pages
+
+    Returns:
+        New pymupdf.Document object with deskewed pages
+    """
+    new_doc = pymupdf.open()
+
+    for page_num in range(len(doc)):
+        page = doc[page_num]
+
+        # Get image directly as numpy array
+        cv_img = _page_to_cv_image(page)
+
+        # Deskew the image
+        deskewed_img = rotate_and_crop_document(cv_img)
+
+        # Insert deskewed image into new document
+        _insert_cv_image_to_page(new_doc, deskewed_img, page.rect)
+
+    return new_doc
+
+
 def _page_to_cv_image(page: pymupdf.Page) -> np.ndarray:
     """Convert a pymupdf page to OpenCV image format."""
     # Render with 2x resolution for better quality
@@ -70,36 +96,6 @@ def _insert_cv_image_to_page(
     # Create new page and insert image
     new_page = doc.new_page(width=original_rect.width, height=original_rect.height)
     new_page.insert_image(new_page.rect, stream=img_bytes)
-
-
-def find_document_contour_and_clean(gray, output_path=None):
-    """Find the largest white/document contour and make everything outside it white."""
-    # Read image
-    original = gray.copy()
-
-    # Create binary image - white areas become white, dark areas become black
-    _, binary = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
-
-    # Find contours
-    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    if not contours:
-        return gray
-
-    # Find the largest contour (should be the document)
-    largest_contour = max(contours, key=cv2.contourArea)
-
-    # Create mask from the largest contour
-    mask = np.zeros(gray.shape, np.uint8)
-    cv2.fillPoly(mask, [largest_contour], 255)
-
-    # Create result image - start with all white
-    result = np.ones_like(gray) * 255
-
-    # Copy original image only inside the mask
-    result[mask > 0] = original[mask > 0]
-
-    return result
 
 
 def _deskew_image(image: np.ndarray, cropping_allowed: bool = False) -> np.ndarray:
@@ -220,10 +216,97 @@ def _deskew_image(image: np.ndarray, cropping_allowed: bool = False) -> np.ndarr
     return rotated
 
 
+def find_document_contour_and_clean(gray, output_path=None):
+    """Find the largest white/document contour and make everything outside it white."""
+    # Read image
+    original = gray.copy()
+
+    # Create binary image - white areas become white, dark areas become black
+    _, binary = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+
+    # Find contours
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if not contours:
+        return gray
+
+    # Find the largest contour (should be the document)
+    largest_contour = max(contours, key=cv2.contourArea)
+
+    # Create mask from the largest contour
+    mask = np.zeros(gray.shape, np.uint8)
+    cv2.fillPoly(mask, [largest_contour], 255)
+
+    # Create result image - start with all white
+    result = np.ones_like(gray) * 255
+
+    # Copy original image only inside the mask
+    result[mask > 0] = original[mask > 0]
+
+    return result
+
+
+def rotate_and_crop_document(image):
+    """Find the document contour, rotate and crop the document to fit the contour region."""
+    original = image.copy()
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Threshold to get binary image
+    _, binary = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+
+    # Find contours
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return gray  # No contour found
+
+    # Find the largest contour
+    largest_contour = max(contours, key=cv2.contourArea)
+
+    # Get minimum area rectangle
+    rect = cv2.minAreaRect(largest_contour)
+    box = cv2.boxPoints(rect)
+    box = np.int0(box)
+
+    # Order the box points in top-left, top-right, bottom-right, bottom-left order
+    def order_points(pts):
+        rect = np.zeros((4, 2), dtype="float32")
+        s = pts.sum(axis=1)
+        rect[0] = pts[np.argmin(s)]
+        rect[2] = pts[np.argmax(s)]
+
+        diff = np.diff(pts, axis=1)
+        rect[1] = pts[np.argmin(diff)]
+        rect[3] = pts[np.argmax(diff)]
+
+        return rect
+
+    ordered_box = order_points(box)
+
+    # Compute width and height of new image
+    (tl, tr, br, bl) = ordered_box
+    widthA = np.linalg.norm(br - bl)
+    widthB = np.linalg.norm(tr - tl)
+    maxWidth = int(max(widthA, widthB))
+
+    heightA = np.linalg.norm(tr - br)
+    heightB = np.linalg.norm(tl - bl)
+    maxHeight = int(max(heightA, heightB))
+
+    # Destination points for perspective transform
+    dst = np.array([[0, 0], [maxWidth - 1, 0], [maxWidth - 1, maxHeight - 1], [0, maxHeight - 1]], dtype="float32")
+
+    # Compute the perspective transform matrix and apply it
+    M = cv2.getPerspectiveTransform(ordered_box, dst)
+    warped = cv2.warpPerspective(original, M, (maxWidth, maxHeight))
+
+    return warped
+
+
 # Example usage:
 if __name__ == "__main__":
-    folder = "data/deepwells"
-    output_folder = "data/deepwells_unskewed"
+    folder = "data/_test_to_deskew"
+    output_folder = "data/_test_deskewed"
 
     # Create output folder if it doesn't exist
     os.makedirs(output_folder, exist_ok=True)
@@ -238,7 +321,7 @@ if __name__ == "__main__":
             input_doc = pymupdf.open(str(file_path))
 
             # Deskew the document
-            deskewed_doc = deskew(input_doc)
+            deskewed_doc = deskew_v2(input_doc)
 
             # Create output filename
             output_path = Path(output_folder) / f"{file_path.name}"
