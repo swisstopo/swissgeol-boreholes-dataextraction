@@ -30,7 +30,7 @@ class LayerIdentifierSidebarExtractor:
             list[LayerIdentifierEntry]: The layer identifier sidebar entries.
         """
         entries = []
-        for line in sorted(lines, key=lambda line: line.rect.y0):
+        for line in sorted(lines, key=lambda line: line.p_rect.rect.y0):
             if len(line.words) > 0:
                 # Only match in the first word of every line, to avoid e.g. matching with "cm)" in a material
                 # description containing an expression like "(diameter max 6 cm)".
@@ -38,7 +38,7 @@ class LayerIdentifierSidebarExtractor:
                 regex = re.compile(r"\b[\da-z-]+\)")
                 match = regex.match(first_word.text)
                 if match and len(first_word.text) < 7:
-                    entries.append(LayerIdentifierEntry(rect=first_word.rect, value=first_word.text))
+                    entries.append(LayerIdentifierEntry(rect=first_word.p_rect.rect, value=first_word.text))
         return entries
 
     @classmethod

@@ -112,13 +112,13 @@ def noise_count(sidebar: Sidebar, line_rtree: rtree.index.Index) -> int:
     intersecting_lines = _get_intersecting_lines(line_rtree, sidebar_rect)
 
     def significant_intersection(line: TextLine) -> bool:
-        line_rect = line.rect
+        line_rect = line.p_rect.rect
         x_overlap = x_overlap_significant_smallest(sidebar_rect, line_rect, 0.25)
         intersects = line_rect.intersects(sidebar_rect)
         return x_overlap and intersects
 
     def not_in_entries(line: TextLine) -> bool:
-        line_rect = line.rect
+        line_rect = line.p_rect.rect
         return not any(line_rect.intersects(entry.rect) for entry in sidebar.all_entries)
 
     return sum(1 for line in intersecting_lines if significant_intersection(line) and not_in_entries(line))

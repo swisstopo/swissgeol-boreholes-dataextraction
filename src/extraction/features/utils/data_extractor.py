@@ -190,7 +190,7 @@ class DataExtractor:
         Returns:
             list[TextLine]: The lines close to the key.
         """
-        key_rect = key_line.rect
+        key_rect = key_line.p_rect.rect
         feature_lines = self.get_axis_aligned_lines(lines, key_rect)
 
         # Insert key_line first and remove duplicates
@@ -201,7 +201,7 @@ class DataExtractor:
         # - vertical distance between the top of the feature line and the top of key_line
         # - horizontal position (left-first) for lines with identical vertical position
         feature_lines_sorted = sorted(
-            feature_lines, key=lambda line: (abs(line.rect.y0 - key_line.rect.y0), line.rect.x0)
+            feature_lines, key=lambda line: (abs(line.p_rect.rect.y0 - key_line.p_rect.rect.y0), line.p_rect.rect.x0)
         )
 
         return feature_lines_sorted
@@ -235,8 +235,8 @@ class DataExtractor:
             rect.y1 + self.search_below_factor * rect.height,
         )
 
-        horizontal_lines = {line for line in lines if line.rect.intersects(horizontal_rect)}
-        vertical_lines = {line for line in lines if line.rect.intersects(vertical_rect)}
+        horizontal_lines = {line for line in lines if line.p_rect.rect.intersects(horizontal_rect)}
+        vertical_lines = {line for line in lines if line.p_rect.rect.intersects(vertical_rect)}
 
         feature_lines = horizontal_lines | vertical_lines
 

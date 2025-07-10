@@ -67,16 +67,16 @@ class TextBlock:
         self.text = " ".join([line.text for line in self.lines])
         if self.line_count:
             self.rect = pymupdf.Rect(
-                min(line.rect.x0 for line in self.lines),
-                min(line.rect.y0 for line in self.lines),
-                max(line.rect.x1 for line in self.lines),
-                max(line.rect.y1 for line in self.lines),
+                min(line.p_rect.rect.x0 for line in self.lines),
+                min(line.p_rect.rect.y0 for line in self.lines),
+                max(line.p_rect.rect.x1 for line in self.lines),
+                max(line.p_rect.rect.y1 for line in self.lines),
             )
         else:
             self.rect = pymupdf.Rect()
 
         # go through all the lines and check if they are on the same page
-        page_number_set = set(line.page_number for line in self.lines)
+        page_number_set = set(line.p_rect.page_number for line in self.lines)
         assert len(page_number_set) < 2, "TextBlock spans multiple pages"
         if page_number_set:
             self.page_number = page_number_set.pop()
@@ -108,11 +108,11 @@ class TextBlock:
         if len(self.lines) == 0:
             return []
 
-        line_starts = [line.rect.x0 for line in self.lines]
+        line_starts = [line.p_rect.rect.x0 for line in self.lines]
         min_line_start = min(line_starts)
-        max_line_width = max([line.rect.width for line in self.lines])
+        max_line_width = max([line.p_rect.rect.width for line in self.lines])
 
-        first_line_start = self.lines[0].rect.x0
+        first_line_start = self.lines[0].p_rect.rect.x0
         indentation_low = min_line_start + 0.03 * max_line_width
         indentation_high = min_line_start + 0.2 * max_line_width
 
@@ -121,14 +121,14 @@ class TextBlock:
             return [self]
         # don't do anything if we don't have any lines at a reasonable indentation
         # (2%-20% of max width from leftmost edge)
-        if all(line.rect.x0 < indentation_low or line.rect.x0 > indentation_high for line in self.lines):
+        if all(line.p_rect.rect.x0 < indentation_low or line.p_rect.rect.x0 > indentation_high for line in self.lines):
             return [self]
 
         # split based on indentation
         blocks = []
         current_block_lines = []
         for line in self.lines:
-            if line.rect.x0 < indentation_low:
+            if line.p_rect.rect.x0 < indentation_low:
                 # start new block
                 if current_block_lines:
                     blocks.append(TextBlock(current_block_lines))
@@ -161,12 +161,12 @@ class TextBlock:
             if len(line.text.split(" ")) == 1 and not any(
                 char in line.text for char in [".", ",", ";", ":", "!", "?"]
             ):  # sometimes single words in text are delimited by a punctuation.
-                if _is_close(line.rect.y0, y0_coordinates, 1):
+                if _is_close(line.p_rect.rect.y0, y0_coordinates, 1):
                     number_horizontally_close += 1
-                if _is_close(line.rect.x0, x0_coordinates, 1):
+                if _is_close(line.p_rect.rect.x0, x0_coordinates, 1):
                     number_vertically_close += 1
-                x0_coordinates.append(line.rect.x0)
-                y0_coordinates.append(line.rect.y0)
+                x0_coordinates.append(line.p_rect.rect.x0)
+                y0_coordinates.append(line.p_rect.rect.y0)
         return number_horizontally_close > 1 or number_vertically_close > 2
 
 

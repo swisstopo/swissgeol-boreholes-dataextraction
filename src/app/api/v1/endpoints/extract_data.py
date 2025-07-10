@@ -67,7 +67,9 @@ def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataRespons
             word
             for word in text_line.words
             if user_defined_bbox.to_pymupdf_rect().contains(
-                pymupdf.Point((word.rect.x0 + word.rect.x1) / 2, (word.rect.y0 + word.rect.y1) / 2)
+                pymupdf.Point(
+                    (word.p_rect.rect.x0 + word.p_rect.rect.x1) / 2, (word.p_rect.rect.y0 + word.p_rect.rect.y1) / 2
+                )
             )
         ]
         if words:
@@ -189,7 +191,7 @@ def extract_text(text_lines: list[TextLine]) -> ExtractTextResponse:
 
     text_based_bbox = pymupdf.Rect()
     for text_line in text_lines:
-        text_based_bbox = text_based_bbox.include_rect(text_line.rect)
+        text_based_bbox = text_based_bbox.include_rect(text_line.p_rect.rect)
 
     if text:
         bbox = BoundingBox.load_from_pymupdf_rect(text_based_bbox)
@@ -211,10 +213,10 @@ def extract_number(text_lines: list[TextLine]) -> ExtractNumberResponse:
         number = extract_number_from_text(text_line.text)
         if number:
             bbox = BoundingBox(
-                x0=text_line.rect.x0,
-                y0=text_line.rect.y0,
-                x1=text_line.rect.x1,
-                y1=text_line.rect.y1,
+                x0=text_line.p_rect.rect.x0,
+                y0=text_line.p_rect.rect.y0,
+                x1=text_line.p_rect.rect.x1,
+                y1=text_line.p_rect.rect.y1,
             )
             return ExtractNumberResponse(bbox=bbox, number=number[0])
 

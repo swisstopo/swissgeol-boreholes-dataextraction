@@ -159,7 +159,7 @@ class ElevationExtractor(DataExtractor):
             elevation = extract_elevation(text)
             if elevation:
                 # Pattern for matching depth (e.g., "1,48 m u.T.")
-                matched_lines_rect.append(line.rect)
+                matched_lines_rect.append(line.p_rect.rect)
                 break
 
         # Get the union of all matched lines' rectangles

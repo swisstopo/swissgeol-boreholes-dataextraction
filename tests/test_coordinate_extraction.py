@@ -250,13 +250,13 @@ def test_CoordinateExtractor_get_coordinates_from_lines_rect():  # noqa: D103
     """Test the extraction of coordinates from a list of text lines with different rect formats."""
     lines = _create_simple_lines(["start", "2600000 1200000", "end"])
     coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
-    assert coordinates[0].rect == lines[1].rect
+    assert coordinates[0].rect == lines[1].p_rect.rect
     assert coordinates[0].page == 1
 
     lines = _create_simple_lines(["start", "2600000", "1200000", "end"])
     coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
-    expected_rect = lines[1].rect
-    expected_rect.include_rect(lines[2].rect)
+    expected_rect = lines[1].p_rect.rect
+    expected_rect.include_rect(lines[2].p_rect.rect)
     assert coordinates[0].rect == expected_rect
     assert coordinates[0].page == 1
 

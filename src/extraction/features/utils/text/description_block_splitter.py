@@ -82,8 +82,8 @@ class SplitDescriptionBlockByLine(DescriptionBlockSplitter):
         Returns:
             bool: True if the block is separated by a line, False otherwise.
         """
-        last_line_y_coordinate = (last_line.rect.y0 + last_line.rect.y1) / 2
-        current_line_y_coordinate = (current_line.rect.y0 + current_line.rect.y1) / 2
+        last_line_y_coordinate = (last_line.p_rect.rect.y0 + last_line.p_rect.rect.y1) / 2
+        current_line_y_coordinate = (current_line.p_rect.rect.y0 + current_line.p_rect.rect.y1) / 2
         for line in self.horizontal_lines:
             line_left_x = np.min([line.start.x, line.end.x])
             line_right_x = np.max([line.start.x, line.end.x])
@@ -127,14 +127,14 @@ class SplitDescriptionBlockByLeftHandSideSeparator(DescriptionBlockSplitter):
         Returns:
             bool: True if the block is separated by a line segment, False otherwise.
         """
-        last_line_y_coordinate = (last_line.rect.y0 + last_line.rect.y1) / 2
-        current_line_y_coordinate = (current_line.rect.y0 + current_line.rect.y1) / 2
+        last_line_y_coordinate = (last_line.p_rect.rect.y0 + last_line.p_rect.rect.y1) / 2
+        current_line_y_coordinate = (current_line.p_rect.rect.y0 + current_line.p_rect.rect.y1) / 2
 
         for line in self.horizontal_lines:
             line_y_coordinate = (line.start.y + line.end.y) / 2
 
-            line_cuts_lefthandside_of_text = (line.start.x < last_line.rect.x0 < line.end.x) and (
-                line.start.x < current_line.rect.x0 < line.end.x
+            line_cuts_lefthandside_of_text = (line.start.x < last_line.p_rect.rect.x0 < line.end.x) and (
+                line.start.x < current_line.p_rect.rect.x0 < line.end.x
             )
             is_line_long_enough = (
                 np.abs(line.start.x - line.end.x) > self.length_threshold
@@ -171,8 +171,9 @@ class SplitDescriptionBlockByVerticalSpace(DescriptionBlockSplitter):
             bool: True if the block is separated by sufficient vertical space, False otherwise.
         """
         return (
-            current_line.rect.y0 > last_line.rect.y1 + 5
+            current_line.p_rect.rect.y0 > last_line.p_rect.rect.y1 + 5
             or (  # upper boundary of line is higher up than lower boundary plus 5 points of last line.
-                current_line.rect.y0 > last_line.rect.y1 and current_line.rect.y0 > last_line.rect.y0 + self.threshold
+                current_line.p_rect.rect.y0 > last_line.p_rect.rect.y1
+                and current_line.p_rect.rect.y0 > last_line.p_rect.rect.y0 + self.threshold
             )
         )

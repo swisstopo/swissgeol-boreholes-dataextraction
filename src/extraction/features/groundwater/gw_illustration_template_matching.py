@@ -121,7 +121,9 @@ def get_groundwater_from_illustration(
                 line_center_y = (line_rect.y0 + line_rect.y1) / 2
                 return math.sqrt((line_center_x - key_center_x) ** 2 + (line_center_y - key_center_y) ** 2)
 
-            groundwater_info_lines.sort(key=lambda line: distance_to_key_center(line.rect, pdf_illustration_rect))
+            groundwater_info_lines.sort(
+                key=lambda line: distance_to_key_center(line.p_rect.rect, pdf_illustration_rect)
+            )
             try:
                 extracted_gw = groundwater_extractor.get_groundwater_info_from_lines(
                     groundwater_info_lines, page_number
@@ -139,7 +141,7 @@ def get_groundwater_from_illustration(
                     for line in groundwater_info_lines:
                         # if the rectangle of the line is in contact with the rectangle of the extracted
                         # groundwater information, remove the line
-                        if line.rect.intersects(extracted_gw.rect):
+                        if line.p_rect.rect.intersects(extracted_gw.rect):
                             lines.remove(line)
 
             except ValueError as error:

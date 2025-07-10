@@ -161,7 +161,7 @@ class AToBInterval(Interval):
         matched_lines = []
 
         for current_line in all_lines[line_index:]:
-            if y1_threshold is None or current_line.rect.y1 < y1_threshold:
+            if y1_threshold is None or current_line.p_rect.rect.y1 < y1_threshold:
                 matched_lines.append(current_line)
             else:
                 break
