@@ -519,12 +519,12 @@ class LayerMaterialDescriptionSchema(BaseModel):
             text=prediction.feature.text,
             bounding_boxes=[
                 BoundingBoxWithPage(
-                    page_number=line_feature.page,
-                    x0=line_feature.rect.x0,
-                    y0=line_feature.rect.y0,
-                    x1=line_feature.rect.x1,
-                    y1=line_feature.rect.y1,
-                ).rescale_factor(*pdf_img_scalings[line_feature.page - 1])
+                    page_number=line_feature.p_rect.page_number,
+                    x0=line_feature.p_rect.rect.x0,
+                    y0=line_feature.p_rect.rect.y0,
+                    x1=line_feature.p_rect.rect.x1,
+                    y1=line_feature.p_rect.rect.y1,
+                ).rescale_factor(*pdf_img_scalings[line_feature.p_rect.page_number - 1])
                 for line_feature in prediction.feature.lines
             ],
         )

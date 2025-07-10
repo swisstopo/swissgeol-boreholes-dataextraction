@@ -141,7 +141,7 @@ def get_groundwater_from_illustration(
                     for line in groundwater_info_lines:
                         # if the rectangle of the line is in contact with the rectangle of the extracted
                         # groundwater information, remove the line
-                        if line.p_rect.rect.intersects(extracted_gw.rect):
+                        if line.p_rect.rect.intersects(extracted_gw.p_rect.rect):
                             lines.remove(line)
 
             except ValueError as error:

@@ -51,7 +51,7 @@ def remove_duplicate_layers(
     # iterate on all the borehole profiles identified on this page
     for current_borehole_layers_with_bb in current_layers_with_bb:
         current_borehole_layers = current_borehole_layers_with_bb.predictions
-        sorted_layers = sorted(current_borehole_layers, key=lambda x: x.material_description.rect.y0)
+        sorted_layers = sorted(current_borehole_layers, key=lambda x: x.material_description.p_rect.rect.y0)
         first_non_duplicated_layer_index = 0
         count_consecutive_non_duplicate_layers = 0
         for layer_index, layer in enumerate(sorted_layers):
@@ -160,7 +160,7 @@ def check_duplicate_layer_by_template_matching(
         previous_page, scale_factor=scale_factor, color_mode=cv2.COLOR_BGR2GRAY
     )
 
-    [x0, y_start, x1, y_end] = current_layer.material_description.rect
+    [x0, y_start, x1, y_end] = current_layer.material_description.p_rect.rect
     x_start = int(scale_factor * min(x0, current_page.rect.width * 0.2))  # 0.2 is a magic number that works well
     x_end = int(scale_factor * min(max(x1, current_page.rect.width * 0.8), previous_page.rect.width - 1))
     y_start = int(scale_factor * max(y_start, 0))  # do not go higher up as otherwise we remove too many layers.

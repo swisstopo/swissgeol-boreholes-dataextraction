@@ -21,6 +21,7 @@ from extraction.features.metadata.coordinate_extraction import (
     LV03Coordinate,
     LV95Coordinate,
 )
+from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.text.extract_text import extract_text_lines
 from extraction.features.utils.text.textline import TextLine
 from utils.file_utils import read_params
@@ -148,12 +149,12 @@ def extract_coordinates(
         system (LV03 or LV95). The bounding box is in PDF coordinates.
     """
 
-    def create_response(coord_feature, srs):
+    def create_response(coord_feature: FeatureOnPage, srs):
         bbox = BoundingBox(
-            x0=coord_feature.rect.x0,
-            y0=coord_feature.rect.y0,
-            x1=coord_feature.rect.x1,
-            y1=coord_feature.rect.y1,
+            x0=coord_feature.p_rect.rect.x0,
+            y0=coord_feature.p_rect.rect.y0,
+            x1=coord_feature.p_rect.rect.x1,
+            y1=coord_feature.p_rect.rect.y1,
         )
         return ExtractCoordinatesResponse(
             bbox=bbox,
