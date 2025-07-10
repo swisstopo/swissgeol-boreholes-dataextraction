@@ -25,6 +25,24 @@ jobs:
           echo BASE_IMAGE_NAME=$REGISTRY/$(echo ${GITHUB_REPOSITORY,,}) >> $GITHUB_ENV
           echo COMMITED_AT=$(git show -s --format=%cI `git rev-parse HEAD`) >> $GITHUB_ENV
 
+      - name: Debug build environment
+        run: |
+          echo "=== ARCHITECTURE ==="
+          uname -a
+          echo ""
+          echo "=== DOCKER INFO ==="
+          docker info
+          echo ""
+          echo "=== PYTHON VERSION ==="
+          python --version
+          echo ""
+          echo "=== DISK SPACE BEFORE BUILD ==="
+          df -h
+          echo ""
+          echo "=== COMPARING REQUIREMENTS ==="
+          pip-compile --generate-hashes pyproject.toml
+          head -20 requirements.txt
+
       - name: Collect Docker image metadata (api)
         id: meta-api
         uses: docker/metadata-action@v5
