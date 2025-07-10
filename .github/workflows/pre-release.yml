@@ -23,27 +23,6 @@ jobs:
           echo VERSION=$(cat VERSION).$GITHUB_RUN_NUMBER >> $GITHUB_ENV
           echo BASE_IMAGE_NAME=$REGISTRY/$(echo ${GITHUB_REPOSITORY,,}) >> $GITHUB_ENV
           echo COMMITED_AT=$(git show -s --format=%cI `git rev-parse HEAD`) >> $GITHUB_ENV
-      
-      - name: Debug build environment
-        run: |
-          echo "=== ARCHITECTURE ==="
-          uname -a
-          echo ""
-          echo "=== DOCKER INFO ==="
-          docker info
-          echo ""
-          echo "=== DISK SPACE BEFORE BUILD ==="
-          df -h
-          echo ""
-          echo "=== BUILD CONTEXT SIZE ==="
-          du -sh .
-          echo ""
-          echo "=== DOCKERFILE CONTENT ==="
-          cat Dockerfile
-          echo ""
-          echo "=== PYTHON VERSION ==="
-          python3 --version
-          
       - name: Collect Docker image metadata (api)
         id: meta-api
         uses: docker/metadata-action@v5
@@ -65,7 +44,6 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.repository_owner  }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
       - name: Build and push Docker image (api)
         uses: docker/build-push-action@v5
         with:
@@ -89,9 +67,6 @@ jobs:
           echo ""
           echo "=== TOTAL IMAGE SIZE ==="
           docker image inspect ${{ env.BASE_IMAGE_NAME }}-api:v${{ env.VERSION }} --format='{{.Size}}' | numfmt --to=iec
-          echo ""
-          echo "=== DISK SPACE AFTER BUILD ==="
-          df -h
           echo ""
           echo "=== DOCKER SYSTEM INFO ==="
           docker system df
