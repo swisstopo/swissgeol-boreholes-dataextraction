@@ -12,6 +12,7 @@ from extraction.features.utils.data_extractor import (
     ExtractedFeature,
     FeatureOnPage,
 )
+from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage
 
 from .textline import TextLine
 
@@ -66,14 +67,15 @@ class TextBlock:
         self.line_count = len(self.lines)
         self.text = " ".join([line.text for line in self.lines])
         if self.line_count:
-            self.rect = pymupdf.Rect(
+            rect = pymupdf.Rect(
                 min(line.p_rect.rect.x0 for line in self.lines),
                 min(line.p_rect.rect.y0 for line in self.lines),
                 max(line.p_rect.rect.x1 for line in self.lines),
                 max(line.p_rect.rect.y1 for line in self.lines),
             )
         else:
-            self.rect = pymupdf.Rect()
+            rect = pymupdf.Rect()
+        self.p_rect = RectWithPage(rect, self.lines[0].p_rect.page_number)
 
         # go through all the lines and check if they are on the same page
         page_number_set = set(line.p_rect.page_number for line in self.lines)
@@ -193,4 +195,4 @@ def block_distance(block1: TextBlock, block2: TextBlock) -> float:
     if block1.is_terminated_by_line:
         return np.inf
     else:
-        return block2.rect.y0 - block1.rect.y1
+        return block2.p_rect.rect.y0 - block1.p_rect.rect.y1

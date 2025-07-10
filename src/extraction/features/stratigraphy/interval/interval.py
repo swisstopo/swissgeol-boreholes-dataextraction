@@ -89,14 +89,16 @@ class AAboveBInterval(Interval):
         pre, exact, post = [], [], []
 
         while block_index < len(all_blocks) and (
-            self.end is None or all_blocks[block_index].rect.y1 < self.end.rect.y1
+            self.end is None or all_blocks[block_index].p_rect.rect.y1 < self.end.rect.y1
         ):
             current_block = all_blocks[block_index]
 
             # only exact match when sufficient distance to previous and next blocks, to avoid a vertically shifted
             #  description "accidentally" being nicely contained in the depth interval.
             distances_above = [
-                current_block.rect.y0 - other.rect.y1 for other in all_blocks if other.rect.y0 < current_block.rect.y0
+                current_block.p_rect.rect.y0 - other.p_rect.rect.y1
+                for other in all_blocks
+                if other.p_rect.rect.y0 < current_block.p_rect.rect.y0
             ]
             distance_above_ok_for_exact = len(distances_above) == 0 or min(distances_above) > min_block_clearance
 
@@ -107,13 +109,15 @@ class AAboveBInterval(Interval):
                 can_end_exact_match = True
                 while continue_exact_match and exact_match_index < len(all_blocks):
                     exact_match_block = all_blocks[exact_match_index]
-                    exact_match_rect = exact_match_block.rect
+                    exact_match_rect = exact_match_block.p_rect.rect
                     if (
                         self.start is None or exact_match_rect.y0 > (self.start.rect.y0 + self.start.rect.y1) / 2
                     ) and (self.end is None or exact_match_rect.y1 < (self.end.rect.y0 + self.end.rect.y1) / 2):
                         exact_match_blocks.append(exact_match_block)
                         exact_match_index += 1
-                        distances_below = [other.rect.y0 - exact_match_block.rect.y1 for other in all_blocks]
+                        distances_below = [
+                            other.p_rect.rect.y0 - exact_match_block.p_rect.rect.y1 for other in all_blocks
+                        ]
                         distances_below = [distance for distance in distances_below if distance > 0]
                         can_end_exact_match = len(distances_below) == 0 or min(distances_below) > min_block_clearance
                     else:
@@ -190,7 +194,7 @@ class SpulprobeInterval(Interval):
         y_top = self.start.rect.y0
 
         candidate_distances = [
-            (idx, abs(block.rect.y0 - y_top)) for idx, block in enumerate(all_blocks) if idx >= block_index
+            (idx, abs(block.p_rect.rect.y0 - y_top)) for idx, block in enumerate(all_blocks) if idx >= block_index
         ]
         if not candidate_distances:
             return [], []

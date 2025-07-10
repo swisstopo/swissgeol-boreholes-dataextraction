@@ -36,7 +36,7 @@ def test_post_init():  # noqa: D103
     tb = TextBlock([TextLine([TextWord(pymupdf.Rect(0, 0, 5, 1), "Hello", page_number)])])
     assert tb.line_count == 1, "The line count should be 1"
     assert tb.text == "Hello", "The text should be 'Hello'"
-    assert tb.rect == pymupdf.Rect(0, 0, 5, 1), "The rect should be the same as the line's rect"
+    assert tb.p_rect.rect == pymupdf.Rect(0, 0, 5, 1), "The rect should be the same as the line's rect"
 
 
 def test_post_init_longer_text():  # noqa: D103
@@ -55,7 +55,9 @@ def test_post_init_longer_text():  # noqa: D103
     )
     assert tb.line_count == 2, "The line count should be 2"
     assert tb.text == "Hello It's me", "Lines and words should be joined with a space"
-    assert tb.rect == pymupdf.Rect(0, 0, 10, 2), "The block's rect should surround the rects of the individual words"
+    assert tb.p_rect.rect == pymupdf.Rect(0, 0, 10, 2), (
+        "The block's rect should surround the rects of the individual words"
+    )
 
 
 def test_block_distance():  # noqa: D103

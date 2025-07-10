@@ -241,7 +241,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                             for text_line in pair.block.lines
                         ],
                     ),
-                    rect=pair.block.rect,
+                    rect=pair.block.p_rect.rect,
                     page=self.page_number,
                 ),
                 depths=LayerDepths.from_interval(pair.depth_interval) if pair.depth_interval else None,
