@@ -36,6 +36,10 @@ dependencies = [
     "numpy<2",
     "rtree",
     "nltk",
+    "transformers",
+    "datasets",
+    "torch",
+    "accelerate",
     "rdflib",
     "pyinstrument==5.0.1",
 ]
