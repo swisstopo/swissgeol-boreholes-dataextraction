@@ -11,12 +11,13 @@ WORKDIR /app
 COPY pyproject.toml /app/
 
 # Install pip-tools and use it to resolve dependencies
-RUN pip install --no-cache-dir pip-tools \
-    && pip-compile --generate-hashes \
-    && pip-sync
+RUN pip install --no-cache-dir .
 
 # Curl installation step for health check
-RUN apt-get update && apt-get install -y curl
+RUN apt-get update && \
+    apt-get install -y curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy the rest of the application source code into the container
 COPY ./src /app/src
