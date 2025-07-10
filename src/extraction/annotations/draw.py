@@ -72,7 +72,7 @@ def draw_predictions(
                         if coordinates is not None and page_number == coordinates.p_rect.page_number:
                             draw_feature(
                                 shape,
-                                coordinates.p_rect.page_number * page.derotation_matrix,
+                                coordinates.p_rect.rect * page.derotation_matrix,
                                 coordinates.feature.is_correct,
                                 "purple",
                             )
@@ -248,9 +248,9 @@ def draw_layer(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, layer: L
             # line from depth interval to material description
             depths_rect = pymupdf.Rect()
             if layer.depths.start:
-                depths_rect.include_rect(layer.depths.start.p_rect.rect)
+                depths_rect.include_rect(layer.depths.start.rect)
             if layer.depths.end:
-                depths_rect.include_rect(layer.depths.end.p_rect.rect)
+                depths_rect.include_rect(layer.depths.end.rect)
 
             if not layer.material_description.p_rect.rect.contains(depths_rect):
                 # Depths are separate from the material description: draw a line connecting them

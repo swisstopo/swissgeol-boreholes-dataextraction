@@ -542,14 +542,14 @@ class LayerDepthSchema(BaseModel):
 
     @classmethod
     def from_prediction(
-        cls, prediction: LayerDepthsEntry, pdf_img_scalings: list[tuple[float]], fallback_page: int
+        cls, prediction: LayerDepthsEntry, pdf_img_scalings: list[tuple[float]], page_number: int
     ) -> "LayerDepthSchema":
-        page_scalings = pdf_img_scalings[fallback_page - 1]
+        page_scalings = pdf_img_scalings[page_number - 1]
         return cls(
             depth=prediction.value,
             bounding_boxes=[
                 BoundingBoxWithPage(
-                    page_number=fallback_page,  # page is taken from material_description as a fallback
+                    page_number=page_number,  # page is taken from material_description as a fallback
                     x0=prediction.rect.x0,
                     y0=prediction.rect.y0,
                     x1=prediction.rect.x1,
@@ -578,25 +578,20 @@ class BoreholeLayerSchema(BaseModel):
             if material_descr
             else None
         )
-        # TODO the fallback page is a temporary solution, as Layer do not possess any `page` attribute. Issue #228 on
-        # Github refers to this problem (https://github.com/swisstopo/swissgeol-boreholes-dataextraction/issues/228).
-        fallback_page = material_descr.bounding_boxes[0].page_number if material_descr else 1
+        # the page number of Layer is the same for both depth entries
+        layer_page_number = prediction.material_description.p_rect.page_number
         start = (
-            LayerDepthSchema.from_prediction(prediction.depths.start, pdf_img_scalings, fallback_page)
+            LayerDepthSchema.from_prediction(prediction.depths.start, pdf_img_scalings, layer_page_number)
             if prediction.depths and prediction.depths.start
             else None
         )
         end = (
-            LayerDepthSchema.from_prediction(prediction.depths.end, pdf_img_scalings, fallback_page)
+            LayerDepthSchema.from_prediction(prediction.depths.end, pdf_img_scalings, layer_page_number)
             if prediction.depths and prediction.depths.end
             else None
         )
 
-        return cls(
-            material_description=material_descr,
-            start=start,
-            end=end,
-        )
+        return cls(material_description=material_descr, start=start, end=end)
 
 
 class BoreholeExtractionSchema(BaseModel):
