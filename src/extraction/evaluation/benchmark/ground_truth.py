@@ -24,6 +24,7 @@ class GroundTruth:
         # Load the ground truth data
         with open(path, encoding="utf-8") as in_file:
             ground_truth = json.load(in_file)
+            self.ground_truth_orig = ground_truth
 
         # Parse the ground truth data
         for file_name, ground_truth_item in ground_truth.items():
@@ -34,6 +35,7 @@ class GroundTruth:
                     {
                         "material_description": parse_text(layer["material_description"]),
                         "depth_interval": layer["depth_interval"],
+                        "orig": layer,
                     }
                     for layer in layers
                     if layer["material_description"] is not None and parse_text(layer["material_description"]) != ""

@@ -43,7 +43,14 @@ def evaluate_all_predictions(
     # Evaluate the borehole extraction
     #############################
     matched_with_ground_truth = predictions.match_with_ground_truth(ground_truth)
+
     metrics = matched_with_ground_truth.evaluate_geology()
+
+    # Load the ground truth data
+    with open(
+        "/home/stijn3/lgd-utils/boreholes-data-extraction-ground-truth/zurich_ground_truth.json", "w", encoding="utf-8"
+    ) as out_file:
+        json.dump(ground_truth.ground_truth_orig, out_file, indent=4, ensure_ascii=False)
 
     metrics.document_level_metrics_df().to_csv(
         temp_directory / "document_level_metrics.csv", index_label="document_name"

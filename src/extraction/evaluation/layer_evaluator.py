@@ -208,6 +208,11 @@ class LayerEvaluator:
         for layer in predicted_layers.layers:
             match, depth_interval_is_correct = LayerEvaluator.find_matching_layer(layer, unmatched_layers)
             if match:
+                if layer.depths:
+                    if layer.depths.start:
+                        match["orig"]["depth_interval"]["start"] = layer.depths.start.value
+                    if layer.depths.end:
+                        match["orig"]["depth_interval"]["end"] = layer.depths.end.value
                 layer.material_description.feature.is_correct = True
                 layer.is_correct = depth_interval_is_correct
             else:
