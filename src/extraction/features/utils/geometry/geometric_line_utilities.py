@@ -14,32 +14,6 @@ from .linesquadtree import LinesQuadTree
 logger = logging.getLogger(__name__)
 
 
-def is_point_on_line(line: Line, point: Point, tol: int = 10) -> bool:
-    """Check if a point is on a line.
-
-    The check is done by calculating the slope and y-intercept of the line and then checking if the point satisfies
-    the equation of the line with some margin tol. Since the lines is only a line segments, the function also checks
-    if the point is between the start and end points of the segment.
-
-    Args:
-        line (Line): a line segment
-        point (Point): any point
-        tol (int, optional): Tolerance to check if point is on the line. Defaults to 10.
-
-    Returns:
-        bool: True if the point is on the line (within the allowed tolerance), False otherwise.
-    """
-    x_start = np.min([line.start.x, line.end.x])
-    x_end = np.max([line.start.x, line.end.x])
-    y_start = np.min([line.start.y, line.end.y])
-    y_end = np.max([line.start.y, line.end.y])
-
-    # Check if the point satisfies the equation of the line
-    return (line.distance_to(point) < tol) and (
-        (x_start - tol <= point.x <= x_end + tol) and (y_start - tol <= point.y <= y_end + tol)
-    )
-
-
 def is_point_near_line(line: Line, point: Point, segment_extension_tol: int = 10, perpendicular_tol: int = 3) -> bool:
     """Check if a point is near a line segment.
 

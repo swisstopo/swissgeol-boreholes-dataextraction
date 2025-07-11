@@ -11,7 +11,6 @@ from extraction.features.utils.geometry.geometric_line_utilities import (
     _merge_lines,
     _odr_regression,
     is_point_near_line,
-    is_point_on_line,
     merge_parallel_lines_quadtree,
 )
 from extraction.features.utils.geometry.geometry_dataclasses import Line, Point
@@ -161,22 +160,6 @@ def test_are_close(line1, line2, tol, expected):  # noqa: D103
     assert _are_close(line1, line2, tol) == expected
 
 
-def test_is_point_on_line():  # noqa: D103
-    line = Line(Point(0, 0), Point(100, 100))
-
-    # Test with a point that is on the line
-    point = Point(55.5, 55.5)
-    assert is_point_on_line(line, point, tol=1), "The point should be on the line"
-
-    # Test with a point that is not on the line
-    point = Point(10, 0)
-    assert not is_point_on_line(line, point, tol=5), "The point should not be on the line"
-
-    # Test with a point that is close to the line, within the tolerance
-    point = Point(50, 55)
-    assert is_point_on_line(line, point, tol=6), "The point should be on the line within the tolerance"
-
-
 def test_merge_parallel_lines_quadtree():  # noqa: D103
     lines = [
         Line(Point(0, 0), Point(1, 1)),  # line 1
@@ -198,6 +181,11 @@ def test_merge_parallel_lines_quadtree():  # noqa: D103
         (Line(Point(0, 0), Point(10, 0)), Point(21, 0), 10, 3, False),
         # Point is just outside segment range, but within tol
         (Line(Point(0, 0), Point(10, 0)), Point(20, 0), 10, 3, True),
+        # Tests with a diagonal line
+        (Line(Point(0, 0), Point(100, 100)), Point(55.5, 55.5), 1, 1, True),
+        (Line(Point(0, 0), Point(100, 100)), Point(0, 5), 1, 1, False),
+        (Line(Point(0, 0), Point(100, 100)), Point(100, 95), 1, 1, False),
+        (Line(Point(0, 0), Point(100, 100)), Point(100, 95), 10, 10, True),
     ],
 )
 def test_is_point_near_line(line, point, tol, tol_line, expected):  # noqa: D103
