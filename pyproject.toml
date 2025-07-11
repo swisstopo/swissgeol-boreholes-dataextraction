@@ -36,10 +36,6 @@ dependencies = [
     "numpy<2",
     "rtree",
     "nltk",
-    "transformers",
-    "datasets",
-    "torch",
-    "accelerate",
     "rdflib",
     "pyinstrument==5.0.1",
 ]
@@ -47,7 +43,11 @@ dependencies = [
 [project.optional-dependencies]
 test = [
     "pytest==8.1.1",
-    "pytest-cov==5.0.0"
+    "pytest-cov==5.0.0",
+    "transformers",
+    "datasets",
+    "torch",
+    "accelerate",
 ]
 lint = [
     "pre-commit==3.6.2",

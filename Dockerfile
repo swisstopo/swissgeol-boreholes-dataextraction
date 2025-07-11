@@ -11,7 +11,9 @@ WORKDIR /app
 COPY pyproject.toml /app/
 
 # Install pip-tools and use it to resolve dependencies
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir pip-tools \
+    && pip-compile --generate-hashes \
+    && pip-sync
 
 # Curl installation step for health check
 RUN apt-get update && \
