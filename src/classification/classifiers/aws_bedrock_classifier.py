@@ -45,7 +45,9 @@ class AWSBedrockClassifier(Classifier):
         """
         self.init_config(classification_system)
         self.classification_system = classification_system
-        self.bedrock_client = boto3.client(service_name="bedrock-runtime", region_name=os.environ.get("AWS_DEFAULT_REGION"))
+        self.bedrock_client = boto3.client(
+            service_name="bedrock-runtime", region_name=os.environ.get("AWS_DEFAULT_REGION")
+        )
         self.anthropic_version = os.environ.get("ANTHROPIC_VERSION")
         self.model_id = os.environ.get("ANTHROPIC_MODEL_ID")
 
