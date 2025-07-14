@@ -1,19 +1,24 @@
-# Use an official Python runtime as a parent image - Use the latest slim version as the base image
-FROM python:3.12-slim
+## Build stage
+# Use the specifidied Pyhon-slim version as the base image
+FROM python:3.12-slim AS builder
 
-# Set arguments to be passed from build-args
-ARG VERSION
-
-# Set the working directory in the container
 WORKDIR /app
-
-# Copy pyproject.toml and any other configuration (optional)
 COPY pyproject.toml /app/
 
 # Install pip-tools and use it to resolve dependencies
 RUN pip install --no-cache-dir pip-tools \
     && pip-compile --generate-hashes \
     && pip-sync
+
+## Runtime stage
+FROM python:3.12-slim
+
+# Set arguments to be passed from build-args
+ARG VERSION
+
+WORKDIR /app
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Curl installation step for health check
 RUN apt-get update && \
@@ -27,7 +32,7 @@ COPY ./config /app/config
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app/src 
+ENV PYTHONPATH=/app/src
 ENV APP_VERSION=$VERSION
 
 # Expose port 8000 for the FastAPI Borehole app
