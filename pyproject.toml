@@ -38,10 +38,6 @@ dependencies = [
     "nltk",
     "rdflib",
     "pyinstrument==5.0.1",
-    "transformers",
-    "datasets",
-    "torch",
-    "accelerate",
 ]
 
 [project.optional-dependencies]
