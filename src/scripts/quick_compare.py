@@ -65,8 +65,6 @@ def compare_pdfs(folder1: str, folder2: str) -> None:
         return
 
     for idx, filename in enumerate(common_files):
-        if idx < 54:
-            continue
         path1 = folder1 / filename
         path2 = folder2 / filename
 

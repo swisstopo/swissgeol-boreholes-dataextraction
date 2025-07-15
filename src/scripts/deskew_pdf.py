@@ -24,8 +24,6 @@ def deskew_doc(doc: pymupdf.Document) -> pymupdf.Document:
 
         cv_img = _page_to_cv_image(page)
 
-        # if page_num < 37:
-        #     continue
         deskewed_img = _deskew_image(cv_img)
 
         _insert_cv_image_to_page(new_doc, deskewed_img, page.rect)
@@ -109,7 +107,7 @@ def _deskew_image(image: np.ndarray) -> np.ndarray:
 
 
 def find_outside_contour(gray: np.ndarray) -> np.ndarray | None:
-    """Find the document out contour, which is likelly the contour of the page on the background.
+    """Find the document out contour, which is likely the contour of the page on the background.
 
     This function finds the largest white contour present in the image.
 
@@ -306,7 +304,7 @@ def find_lines_angle(gray: np.ndarray) -> float:
 
     # too many lines usually means a grid is on the page, we can't rely on hugh transform to deskew.
     if len(lines) > 1000:
-        print("Too many lines, skiped.")
+        print("Too many lines, skipped.")
         return 0.0
 
     # Calculate angles of all detected lines
@@ -370,8 +368,8 @@ if __name__ == "__main__":
 
         try:
             with pymupdf.open(file_path) as input_doc:
-                # only try deskewing if the document was scaned
-                deskewed_doc = pymupdf.open(file_path) if is_digitally_born(input_doc) else deskew_doc(input_doc)
+                # only try deskewing if the document was scanned
+                deskewed_doc = input_doc if is_digitally_born(input_doc) else deskew_doc(input_doc)
 
                 deskewed_doc.save(Path(output_folder) / file_path.name)
                 deskewed_doc.close()
