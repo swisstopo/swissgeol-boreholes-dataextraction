@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 
 from extraction import DATAPATH
-from extraction.annotations.draw import draw_predictions
+from extraction.annotations.draw import draw_predictions, draw_table_predictions
 from extraction.annotations.plot_utils import plot_lines
 from extraction.evaluation.benchmark.score import evaluate_all_predictions
 from extraction.features.extract import extract_page
@@ -94,6 +94,13 @@ def common_options(f):
         help="Whether to draw lines on pdf pages. Defaults to False.",
     )(f)
     f = click.option(
+        "-t",
+        "--draw-tables",
+        is_flag=True,
+        default=False,
+        help="Whether to draw detected table structures on pdf pages. Defaults to False.",
+    )(f)
+    f = click.option(
         "-c",
         "--csv",
         is_flag=True,
@@ -116,6 +123,7 @@ def click_pipeline(
     metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
+    draw_tables: bool = False,
     csv: bool = False,
     part: str = "all",
 ):
@@ -128,6 +136,7 @@ def click_pipeline(
         metadata_path=metadata_path,
         skip_draw_predictions=skip_draw_predictions,
         draw_lines=draw_lines,
+        draw_tables=draw_tables,
         csv=csv,
         part=part,
     )
@@ -194,6 +203,7 @@ def start_pipeline(
     metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
+    draw_tables: bool = False,
     csv: bool = False,
     part: str = "all",
 ):
@@ -213,6 +223,7 @@ def start_pipeline(
         predictions_path (Path): The path to the predictions file.
         skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
         draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.
+        draw_tables (bool, optional): Whether to draw detected table structures on pdf pages. Defaults to False.
         metadata_path (Path): The path to the metadata file.
         csv (bool): Whether to generate a CSV output. Defaults to False.
         part (str, optional): The part of the pipeline to run. Defaults to "all".
@@ -345,6 +356,11 @@ def start_pipeline(
 
     if input_directory and draw_directory:
         draw_predictions(predictions, input_directory, draw_directory, document_level_metadata_metrics)
+
+    # Draw table structures if requested
+    if draw_tables:
+        logger.info("Drawing table structures...")
+        draw_table_predictions(input_directory, out_directory)
 
 
 if __name__ == "__main__":

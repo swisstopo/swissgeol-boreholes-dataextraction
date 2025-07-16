@@ -1,5 +1,6 @@
 """Contains the main extraction pipeline for stratigraphy."""
 
+import logging
 import pymupdf
 import rtree
 
@@ -31,6 +32,7 @@ from extraction.features.stratigraphy.sidebar.extractor.layer_identifier_sidebar
     LayerIdentifierSidebarExtractor,
 )
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
+from extraction.features.table_detection import detect_table_structures, filter_extraction_pairs_by_tables
 from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.geometry.util import x_overlap, x_overlap_significant_smallest
@@ -46,12 +48,15 @@ from extraction.features.utils.text.textblock import (
 )
 from extraction.features.utils.text.textline import TextLine
 
+logger = logging.getLogger(__name__)
+
 
 class MaterialDescriptionRectWithSidebarExtractor:
     """Class with methods to extract pairs of a material description rect with a corresponding sidebar."""
 
     def __init__(
-        self, lines: list[TextLine], geometric_lines: list[Line], language: str, page_number: int, **params: dict
+        self, lines: list[TextLine], geometric_lines: list[Line], language: str, page_number: int, 
+        page_width: float, page_height: float, **params: dict
     ):
         """Creates a new MaterialDescriptionRectWithSidebarExtractor.
 
@@ -60,12 +65,16 @@ class MaterialDescriptionRectWithSidebarExtractor:
             geometric_lines (list[Line]): The geometric lines of the page.
             language (str): The language of the page.
             page_number (int): The page number.
+            page_width (float): The width of the page.
+            page_height (float): The height of the page.
             **params (dict): Additional parameters for the matching pipeline.
         """
         self.lines = lines
         self.geometric_lines = geometric_lines
         self.language = language
         self.page_number = page_number
+        self.page_width = page_width
+        self.page_height = page_height
         self.params = params
 
     def process_page(self) -> list[ExtractedBorehole]:
@@ -79,6 +88,17 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Returns:
             ProcessPageResult: a list of the extracted layers and a list of relevant bounding boxes.
         """
+        # Step 1: Detect table structures on the page to guide extraction
+        table_structures = detect_table_structures(
+            geometric_lines=self.geometric_lines,
+            text_lines=self.lines,
+            page_width=self.page_width,
+            page_height=self.page_height
+        )
+
+        logger.debug(f"Detected {len(table_structures)} table structures on page {self.page_number}")
+
+        # Step 2: Find material description and sidebar pairs using existing logic
         material_descriptions_sidebar_pairs = self._find_layer_identifier_sidebar_pairs()
         material_descriptions_sidebar_pairs.extend(self._find_depth_sidebar_pairs())
 
@@ -96,6 +116,14 @@ class MaterialDescriptionRectWithSidebarExtractor:
             pair for pair in material_descriptions_sidebar_pairs if pair.score_match >= 0
         ]
 
+        # Step 3: Apply table-based filtering to reduce duplicates from the start
+        if table_structures:
+            material_descriptions_sidebar_pairs = filter_extraction_pairs_by_tables(
+                material_descriptions_sidebar_pairs, table_structures
+            )
+            logger.debug(f"After table filtering: {len(material_descriptions_sidebar_pairs)} pairs remaining")
+
+        # Step 4: Apply remaining deduplication filters 
         # remove pairs that have any of their elements (sidebar, material description) intersecting with others.
         to_delete = self._find_intersecting_indices(material_descriptions_sidebar_pairs)
         filtered_pairs = [
@@ -119,7 +147,11 @@ class MaterialDescriptionRectWithSidebarExtractor:
             self._create_borehole_from_pair(pair)
             for pair in sorted(non_duplicated_pairs, key=lambda pair: pair.score_match, reverse=True)
         ]
+
+        logger.info(f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(table_structures)} table structures")
         return [borehole for borehole in boreholes if len(borehole.predictions) >= self.params["min_num_layers"]]
+
+
 
     def _find_intersecting_indices(
         self, material_descriptions_sidebar_pairs: list[MaterialDescriptionRectWithSidebar]
@@ -541,8 +573,14 @@ def extract_page(
     Returns:
         list[ExtractedBorehole]: Extracted borehole layers from the page.
     """
+    # Get page dimensions from the document
+    page = document[page_index]
+    page_rect = page.rect
+    page_width = page_rect.width
+    page_height = page_rect.height
+    
     extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(
-        text_lines, geometric_lines, language, page_index + 1, **matching_params
+        text_lines, geometric_lines, language, page_index + 1, page_width, page_height, **matching_params
     ).process_page()
 
     return remove_duplicate_layers(

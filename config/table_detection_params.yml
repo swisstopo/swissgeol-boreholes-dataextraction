@@ -1,0 +1,54 @@
+# Table detection parameters for borehole PDF documents
+# These parameters control the detection of table-like structures in borehole profiles
+
+# Basic table size constraints
+min_table_width: 50.0      # Minimum width for a valid table structure (pixels)
+min_table_height: 50.0     # Minimum height for a valid table structure (pixels)
+
+# Performance optimization thresholds  
+max_lines_threshold: 4000   # Skip table detection if more than this many geometric lines
+max_horizontal_lines: 100   # Maximum horizontal lines to process efficiently
+max_vertical_lines: 100      # Maximum vertical lines to process efficiently
+
+# Quality thresholds
+min_confidence_threshold: 0.3    # Minimum confidence score to accept a table
+overlap_removal_threshold: 0.4   # Overlap threshold for removing duplicate tables
+
+# Line filtering parameters
+angle_tolerance: 5.0        # Tolerance in degrees for line angle classification
+
+# Line length filtering ratios (multiplied by table dimensions)
+line_length_ratios:
+  horizontal_min_ratio: 0.5  # Horizontal lines must be at least 50% of table width
+  vertical_min_ratio: 0.3    # Vertical lines must be at least 30% of table height
+
+# Page boundary detection (prevents detecting full page as table)
+page_boundary_detection:
+  enabled: true                    # Enable page boundary line filtering
+  boundary_tolerance: 50.0         # Distance from page edge to consider as boundary (pixels)
+  min_boundary_coverage: 0.1       # Minimum coverage of page edge to consider as boundary (0.0-1.0)
+
+# Table candidate validation
+candidate_validation:
+  max_candidates_to_check: 20      # Maximum number of vertical line pairs to check
+  min_vertical_lines: 2            # Minimum vertical lines required for structure
+  parallel_tolerance: 10.0         # Maximum angle difference for parallel vertical lines
+  tall_structure_height_ratio: 3.0 # Height/width ratio threshold for tall structures
+  min_horizontal_lines: 1          # Minimum horizontal lines required for structure
+
+# Confidence scoring weights
+confidence_scoring:
+  base_line_weight: 0.08          # Weight per line in confidence calculation
+  horizontal_line_bonus: 0.4      # Bonus for having horizontal lines (prioritizes full tables)
+  parallel_vertical_bonus: 0.25   # Bonus for parallel vertical lines
+  text_presence_weight: 0.02      # Weight per text line within table
+  max_text_bonus: 0.3             # Maximum bonus from text presence
+  both_directions_bonus: 0.2      # Bonus for tables with both horizontal and vertical lines
+
+# Multi-table detection (for detecting separate table regions)
+multi_table_detection:
+  enabled: true                   # Enable detection of multiple separate table regions
+  clustering_distance: 150.0     # Maximum distance to group lines into same table region
+  min_lines_per_cluster: 4       # Minimum lines required to form a table cluster
+  text_presence_weight: 0.02      # Weight per text line within table
+  max_text_bonus: 0.3             # Maximum bonus from text presence
