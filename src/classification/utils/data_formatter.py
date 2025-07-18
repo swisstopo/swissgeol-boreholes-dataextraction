@@ -220,8 +220,8 @@ def resolve_reference(
         if sp_match:
             last_str_depth = depth_str_references[0].strip()  # with Sp, only the first depth is relevant
 
-        # clean the references and find a match
-        clean_depth_reference = float(last_str_depth.replace(",", ".").replace("m", "").strip())
+        # clean the first depth reference.
+        clean_depth_reference = float(depth_str_references[0].replace(",", ".").replace("m", "").strip())
 
         def match_layer(layer, depths_to_match):
             if layer["depth_interval"] is None:
