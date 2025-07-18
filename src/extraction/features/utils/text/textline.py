@@ -7,6 +7,7 @@ import re
 import pymupdf
 from nltk.stem.snowball import SnowballStemmer
 
+from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage
 from extraction.features.utils.geometry.util import x_overlap_significant_largest
 from utils.file_utils import read_params
 
@@ -22,12 +23,11 @@ class TextWord:
     """
 
     def __init__(self, rect: pymupdf.Rect, text: str, page: int):
-        self.rect = rect
+        self.p_rect = RectWithPage(rect, page)
         self.text = text
-        self.page_number = page
 
     def __repr__(self) -> str:
-        return f"TextWord({self.rect}, {self.text})"
+        return f"TextWord({self.p_rect.rect}, {self.text})"
 
 
 class TextLine:
@@ -42,13 +42,12 @@ class TextLine:
 
         Args:
             words (list[TextWord]): The words that make up the line.
-            page_number (int): The page number of the line. The first page has idx 1.
         """
-        self.rect = pymupdf.Rect()
+        rect = pymupdf.Rect()
         for word in words:
-            self.rect.include_rect(word.rect)
+            rect.include_rect(word.p_rect.rect)
+        self.p_rect = RectWithPage(rect, words[0].p_rect.page_number)
         self.words = words
-        self.page_number = words[0].page_number
 
     def is_description(self, material_description: dict, language: str):
         """Check if the line is a material description.
@@ -92,7 +91,7 @@ class TextLine:
         return " ".join([word.text for word in self.words])
 
     def __repr__(self) -> str:
-        return f"TextLine({self.text}, {self.rect})"
+        return f"TextLine({self.text}, {self.p_rect.rect})"
 
     """
     Check if the current line can be trusted as a stand-alone line, even if it is only a tailing segment of a line that
@@ -109,7 +108,7 @@ class TextLine:
         """Check if the current line is the start of a new line."""
 
         def significant_overlap(line: TextLine) -> bool:
-            return x_overlap_significant_largest(line.rect, self.rect, 0.5)
+            return x_overlap_significant_largest(line.p_rect.rect, self.p_rect.rect, 0.5)
 
         matching_lines_before = [line for line in raw_lines_before if significant_overlap(line)]
         matching_lines_after = [line for line in raw_lines_after if significant_overlap(line)]
@@ -118,14 +117,17 @@ class TextLine:
             exact_points = 0
             indentation_points = 0
             for other in lines:
-                line_height = self.rect.height
-                if max(other.rect.y0 - self.rect.y1, self.rect.y0 - other.rect.y1) > 5 * line_height:
+                line_height = self.p_rect.rect.height
+                if (
+                    max(other.p_rect.rect.y0 - self.p_rect.rect.y1, self.p_rect.rect.y0 - other.p_rect.rect.y1)
+                    > 5 * line_height
+                ):
                     # too far away vertically
                     return exact_points, indentation_points
 
-                if abs(other.rect.x0 - self.rect.x0) < 0.2 * line_height:
+                if abs(other.p_rect.rect.x0 - self.p_rect.rect.x0) < 0.2 * line_height:
                     exact_points += 1
-                elif 0 < other.rect.x0 - self.rect.x0 < 2 * line_height:
+                elif 0 < other.p_rect.rect.x0 - self.p_rect.rect.x0 < 2 * line_height:
                     indentation_points += 1
                 else:
                     # other line is more to the left, and significantly more to the right (allowing for indentation)
@@ -144,6 +146,6 @@ class TextLine:
         """Convert the TextLine object to a JSON serializable dictionary."""
         return {
             "text": self.text,
-            "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
-            "page": self.page_number,
+            "rect": [self.p_rect.rect.x0, self.p_rect.rect.y0, self.p_rect.rect.x1, self.p_rect.rect.y1],
+            "page": self.p_rect.page_number,
         }

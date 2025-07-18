@@ -32,6 +32,6 @@ def get_lines_near_rect(
         rect.x1 + search_right_factor * rect.width,
         rect.y1 + search_below_factor * rect.height,
     )
-    feature_lines = [line for line in lines if line.rect.intersects(search_rect)]
+    feature_lines = [line for line in lines if line.p_rect.rect.intersects(search_rect)]
 
     return feature_lines

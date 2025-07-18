@@ -43,7 +43,7 @@ class SpulprobeSidebar(Sidebar[SpulprobeEntry]):
             left_line_length_threshold=params["left_line_length_threshold"],
             target_layer_count=len(depth_intervals) - 1,  # first interval None->1st Sp. should not be match usually.
         )
-        all_blocks.sort(key=lambda b: (b.rect.y0, b.rect.x0))
+        all_blocks.sort(key=lambda b: (b.p_rect.rect.y0, b.p_rect.rect.x0))
 
         block_index = 0
         current_blocks = []

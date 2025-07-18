@@ -50,7 +50,8 @@ class AToBSidebarExtractor:
                     [
                         word.text
                         for word in all_words
-                        if entry.rect.x0 < word.rect.x0 < other.rect.x0 and min_y0 <= word.rect.y0 <= max_y0
+                        if entry.rect.x0 < word.p_rect.rect.x0 < other.rect.x0
+                        and min_y0 <= word.p_rect.rect.y0 <= max_y0
                     ]
                 )
                 if re.fullmatch(r"\W*m?\W*", in_between_text):

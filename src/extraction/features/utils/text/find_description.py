@@ -30,10 +30,10 @@ def get_description_lines(lines: list[TextLine], material_description_rect: pymu
     filtered_lines = [
         line
         for line in lines
-        if line.rect.x0 < material_description_rect.x1 - 0.4 * material_description_rect.width
-        if material_description_rect.contains(line.rect)
+        if line.p_rect.rect.x0 < material_description_rect.x1 - 0.4 * material_description_rect.width
+        if material_description_rect.contains(line.p_rect.rect)
     ]
-    return sorted([line for line in filtered_lines if line], key=lambda line: line.rect.y0)
+    return sorted([line for line in filtered_lines if line], key=lambda line: line.p_rect.rect.y0)
 
 
 def get_description_blocks(
@@ -63,8 +63,8 @@ def get_description_blocks(
     """
     distances = []
     for line_index in range(len(description_lines) - 1):
-        line1rect = description_lines[line_index].rect
-        line2rect = description_lines[line_index + 1].rect
+        line1rect = description_lines[line_index].p_rect.rect
+        line2rect = description_lines[line_index + 1].p_rect.rect
         if line2rect.y0 > line1rect.y0 + line1rect.height / 2:
             distances.append(line2rect.y0 - line1rect.y0)
 

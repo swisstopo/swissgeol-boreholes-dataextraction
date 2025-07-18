@@ -27,14 +27,14 @@ class DepthColumnEntryExtractor:
         entries = []
         regex = re.compile(r"^-?\.?([0-9]+(\.[0-9]*)?)[müMN\\.]*$")
 
-        for word in sorted(all_words, key=lambda word: word.rect.y0):
+        for word in sorted(all_words, key=lambda word: word.p_rect.rect.y0):
             try:
                 input_string = word.text.strip().replace(",", ".")
                 # numbers such as '.40' are not supported. The reason is that sometimes the OCR
                 # recognizes a '-' as a '.' and we just ommit the leading '.' to avoid this issue.
                 match = regex.match(input_string)
                 if match:
-                    entries.append(DepthColumnEntry.from_string_value(word.rect, match.group(1)))
+                    entries.append(DepthColumnEntry.from_string_value(word.p_rect.rect, match.group(1)))
 
                 elif include_splits:
                     # support for e.g. "1.10-1.60m" extracted as a single word

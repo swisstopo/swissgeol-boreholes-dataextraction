@@ -94,7 +94,7 @@ def test_aabovebsidebarextractor_arithmetic_progression():  # noqa: D103
     ]
     word_rtree = rtree.index.Index()
     for i, word in enumerate(all_words):
-        word_rtree.insert(i, (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1))
+        word_rtree.insert(i, (word.p_rect.rect.x0, word.p_rect.rect.y0, word.p_rect.rect.x1, word.p_rect.rect.y1))
     """Test the AAboveBSidebarExtractor with an arithmetic progression."""
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
@@ -117,7 +117,9 @@ def test_aabovebsidebarextractor():  # noqa: D103
     ]
     word_rtree = rtree.index.Index()
     for word in all_words:
-        word_rtree.insert(id(word), (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
+        word_rtree.insert(
+            id(word), (word.p_rect.rect.x0, word.p_rect.rect.y0, word.p_rect.rect.x1, word.p_rect.rect.y1), obj=word
+        )
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,
@@ -151,7 +153,9 @@ def test_aabovebsidebarextractor_two_column():  # noqa: D103
     ]
     word_rtree = rtree.index.Index()
     for word in all_words:
-        word_rtree.insert(id(word), (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
+        word_rtree.insert(
+            id(word), (word.p_rect.rect.x0, word.p_rect.rect.y0, word.p_rect.rect.x1, word.p_rect.rect.y1), obj=word
+        )
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,

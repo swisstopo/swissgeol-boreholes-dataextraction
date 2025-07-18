@@ -77,7 +77,7 @@ def _convert_line_to_grid(line: Line, scale_factor: float) -> Line:
     return Line(start, end)
 
 
-def plot_lines(page: pymupdf.Page, geometric_lines: list[Line], scale_factor: float = 2) -> cv2.COLOR_RGB2BGR:
+def plot_lines(page: pymupdf.Page, geometric_lines: list[Line], scale_factor: float = 2) -> np.ndarray:
     """Given a page object and the lines detected in the page, plot the page with the detected lines.
 
     Args:
@@ -111,7 +111,7 @@ def draw_blocks_and_lines(page: pymupdf.Page, blocks: list[TextBlock], lines: li
     for block in blocks:  # draw all blocks in the page
         pymupdf.utils.draw_rect(
             page,
-            block.rect() * page.derotation_matrix,
+            block.p_rect.rect * page.derotation_matrix,
             color=pymupdf.utils.getColor("orange"),
         )
 

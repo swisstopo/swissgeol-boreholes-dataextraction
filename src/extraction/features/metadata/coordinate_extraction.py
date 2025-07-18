@@ -257,7 +257,7 @@ class CoordinateExtractor(DataExtractor):
 
         results = []
         for match in pattern.finditer(full_text):
-            match_lines = [
+            match_lines: list[TextLine] = [
                 entry["line"]
                 for entry in lines_with_position
                 if entry["end"] >= match.start() and entry["start"] < match.end()
@@ -265,7 +265,7 @@ class CoordinateExtractor(DataExtractor):
 
             rect = pymupdf.Rect()
             for line in match_lines:
-                rect.include_rect(line.rect)
+                rect.include_rect(line.p_rect.rect)
             results.append((match, rect))
         return results
 

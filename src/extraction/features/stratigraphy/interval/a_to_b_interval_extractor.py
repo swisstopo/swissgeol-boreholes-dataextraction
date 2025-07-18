@@ -95,7 +95,7 @@ class AToBIntervalExtractor:
             # `end_word_index + 1` because the end of the range is exclusive by default, whereas we also want to
             # include the word with this index
             for word_index in range(start_word_index, end_word_index + 1):
-                rect.include_rect(text_line.words[word_index].rect)
+                rect.include_rect(text_line.words[word_index].p_rect.rect)
             return rect
 
         if match:

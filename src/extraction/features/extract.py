@@ -235,13 +235,13 @@ class MaterialDescriptionRectWithSidebarExtractor:
                         lines=[
                             FeatureOnPage(
                                 feature=MaterialDescriptionLine(text_line.text),
-                                rect=text_line.rect,
-                                page=text_line.page_number,
+                                rect=text_line.p_rect.rect,
+                                page=text_line.p_rect.page_number,
                             )
                             for text_line in pair.block.lines
                         ],
                     ),
-                    rect=pair.block.rect,
+                    rect=pair.block.p_rect.rect,
                     page=self.page_number,
                 ),
                 depths=LayerDepths.from_interval(pair.depth_interval) if pair.depth_interval else None,
@@ -294,9 +294,13 @@ class MaterialDescriptionRectWithSidebarExtractor:
     def _find_depth_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
         line_rtree = rtree.index.Index()
         for line in self.lines:
-            line_rtree.insert(id(line), (line.rect.x0, line.rect.y0, line.rect.x1, line.rect.y1), obj=line)
+            line_rtree.insert(
+                id(line),
+                (line.p_rect.rect.x0, line.p_rect.rect.y0, line.p_rect.rect.x1, line.p_rect.rect.y1),
+                obj=line,
+            )
 
-        words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
+        words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.p_rect.rect.y0)
 
         # create sidebars with noise count
         spulprobe_sidebars = SpulprobeSidebarExtractor.find_in_lines(self.lines)
@@ -342,10 +346,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
             above_sidebar = [
                 line
                 for line in self.lines
-                if x_overlap(line.rect, sidebar.rect()) and line.rect.y0 < sidebar.rect().y0
+                if x_overlap(line.p_rect.rect, sidebar.rect()) and line.p_rect.rect.y0 < sidebar.rect().y0
             ]
 
-            min_y0 = max(line.rect.y0 for line in above_sidebar) if above_sidebar else -1
+            min_y0 = max(line.p_rect.rect.y0 for line in above_sidebar) if above_sidebar else -1
 
             def check_y0_condition(y0):
                 return y0 > min_y0 and y0 < sidebar.rect().y1
@@ -354,7 +358,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             def check_y0_condition(y0):
                 return True
 
-        candidate_description = [line for line in self.lines if check_y0_condition(line.rect.y0)]
+        candidate_description = [line for line in self.lines if check_y0_condition(line.p_rect.rect.y0)]
         is_description = [
             line
             for line in candidate_description
@@ -364,21 +368,25 @@ class MaterialDescriptionRectWithSidebarExtractor:
         if len(candidate_description) == 0:
             return []
 
-        description_clusters = []
+        description_clusters: list[list[TextLine]] = []
         while len(is_description) > 0:
             # 0.4 instead of 0.5 slightly improves geoquat/validation/A76.pdf
             coverage_by_generating_line = [
-                [other for other in is_description if x_overlap_significant_smallest(line.rect, other.rect, 0.4)]
+                [
+                    other
+                    for other in is_description
+                    if x_overlap_significant_smallest(line.p_rect.rect, other.p_rect.rect, 0.4)
+                ]
                 for line in is_description
             ]
 
-            def filter_coverage(coverage):
+            def filter_coverage(coverage: list[TextLine]) -> list[TextLine]:
                 if coverage:
-                    min_x0 = min(line.rect.x0 for line in coverage)
-                    max_x1 = max(line.rect.x1 for line in coverage)
+                    min_x0 = min(line.p_rect.rect.x0 for line in coverage)
+                    max_x1 = max(line.p_rect.rect.x1 for line in coverage)
                     # how did we determine the 0.4? Should it be a parameter? What would it do if we were to change it?
                     x0_threshold = max_x1 - 0.4 * (max_x1 - min_x0)
-                    return [line for line in coverage if line.rect.x0 < x0_threshold]
+                    return [line for line in coverage if line.p_rect.rect.x0 < x0_threshold]
                 else:
                     return []
 
@@ -390,36 +398,36 @@ class MaterialDescriptionRectWithSidebarExtractor:
         candidate_rects = []
 
         for cluster in description_clusters:
-            best_y0 = min([line.rect.y0 for line in cluster])
-            best_y1 = max([line.rect.y1 for line in cluster])
+            best_y0 = min([line.p_rect.rect.y0 for line in cluster])
+            best_y1 = max([line.p_rect.rect.y1 for line in cluster])
 
-            min_description_x0 = min([line.rect.x0 - 0.01 * line.rect.width for line in cluster])
-            max_description_x0 = max([line.rect.x0 + 0.2 * line.rect.width for line in cluster])
+            min_description_x0 = min([line.p_rect.rect.x0 - 0.01 * line.p_rect.rect.width for line in cluster])
+            max_description_x0 = max([line.p_rect.rect.x0 + 0.2 * line.p_rect.rect.width for line in cluster])
             good_lines = [
                 line
                 for line in candidate_description
-                if line.rect.y0 >= best_y0 and line.rect.y1 <= best_y1
-                if min_description_x0 < line.rect.x0 < max_description_x0
+                if line.p_rect.rect.y0 >= best_y0 and line.p_rect.rect.y1 <= best_y1
+                if min_description_x0 < line.p_rect.rect.x0 < max_description_x0
             ]
-            best_x0 = min([line.rect.x0 for line in good_lines])
-            best_x1 = max([line.rect.x1 for line in good_lines])
+            best_x0 = min([line.p_rect.rect.x0 for line in good_lines])
+            best_x1 = max([line.p_rect.rect.x1 for line in good_lines])
 
             # expand to include entire last block
-            def is_below(best_x0, best_y1, line):
+            def is_below(best_x0, best_y1, line: TextLine):
                 return (
-                    (line.rect.x0 > best_x0 - 5)
-                    and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
-                    and (line.rect.y0 < best_y1 + 10)
-                    and (line.rect.y1 > best_y1)
+                    (line.p_rect.rect.x0 > best_x0 - 5)
+                    and (line.p_rect.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
+                    and (line.p_rect.rect.y0 < best_y1 + 10)
+                    and (line.p_rect.rect.y1 > best_y1)
                 )
 
             continue_search = True
             while continue_search:
                 line = next((line for line in self.lines if is_below(best_x0, best_y1, line)), None)
                 if line:
-                    best_x0 = min(best_x0, line.rect.x0)
-                    best_x1 = max(best_x1, line.rect.x1)
-                    best_y1 = line.rect.y1
+                    best_x0 = min(best_x0, line.p_rect.rect.x0)
+                    best_x1 = max(best_x1, line.p_rect.rect.x1)
+                    best_y1 = line.p_rect.rect.y1
                 else:
                     continue_search = False
 
@@ -673,7 +681,7 @@ def split_blocks_by_textline_length(blocks: list[TextBlock], target_split_count:
     Returns:
         List[TextBlock]: The split textblocks.
     """
-    line_lengths = sorted([line.rect.x1 for block in blocks for line in block.lines[:-1]])
+    line_lengths = sorted([line.p_rect.rect.x1 for block in blocks for line in block.lines[:-1]])
     if len(line_lengths) <= target_split_count:  # In that case each line is a block
         return [TextBlock([line]) for block in blocks for line in block.lines]
     else:
@@ -684,9 +692,9 @@ def split_blocks_by_textline_length(blocks: list[TextBlock], target_split_count:
             for line_index in range(block.line_count):
                 line = block.lines[line_index]
                 current_block_lines.append(line)
-                if line_index < block.line_count - 1 and line.rect.x1 in cutoff_values:
+                if line_index < block.line_count - 1 and line.p_rect.rect.x1 in cutoff_values:
                     split_blocks.append(TextBlock(current_block_lines))
-                    cutoff_values.remove(line.rect.x1)
+                    cutoff_values.remove(line.p_rect.rect.x1)
                     current_block_lines = []
             if current_block_lines:
                 split_blocks.append(TextBlock(current_block_lines))

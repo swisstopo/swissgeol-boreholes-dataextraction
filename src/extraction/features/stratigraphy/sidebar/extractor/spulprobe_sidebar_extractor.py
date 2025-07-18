@@ -28,7 +28,7 @@ class SpulprobeSidebarExtractor:
             list[SpulprobeEntry]: A list of SpulprobeEntry objects found in the lines.
         """
         entries = []
-        for line in sorted(lines, key=lambda line: (line.rect.y0, line.rect.x0)):
+        for line in sorted(lines, key=lambda line: (line.p_rect.rect.y0, line.p_rect.rect.x0)):
             if len(line.words) > 0:
                 # Only match in the first word of every line.
                 first_word = line.words[0]
@@ -37,12 +37,12 @@ class SpulprobeSidebarExtractor:
                 if not match:
                     continue
                 depths = [float(m.replace(",", ".")) for m in re.findall(cls.depths_pattern, line.text)]
-                entry_rect = line.rect
+                entry_rect = line.p_rect.rect
                 if not depths:
                     depths, line_rect = cls.search_depths_in_lines_on_the_right(line, lines)
                     if not depths:
                         continue
-                    entry_rect = compute_outer_rect([line.rect, line_rect])
+                    entry_rect = compute_outer_rect([line.p_rect.rect, line_rect])
                 most_shallow = min(depths)
                 entries.append(SpulprobeEntry(rect=entry_rect, value=most_shallow))
         return entries
@@ -64,11 +64,11 @@ class SpulprobeSidebarExtractor:
         for line in lines:
             if line == current_line:
                 continue
-            if not y_overlap_significant_smallest(current_line.rect, line.rect, 0.9):
+            if not y_overlap_significant_smallest(current_line.p_rect.rect, line.p_rect.rect, 0.9):
                 continue
-            if line.rect.x0 < current_line.rect.x1:
+            if line.p_rect.rect.x0 < current_line.p_rect.rect.x1:
                 continue
-            return [float(m.replace(",", ".")) for m in re.findall(cls.depths_pattern, line.text)], line.rect
+            return [float(m.replace(",", ".")) for m in re.findall(cls.depths_pattern, line.text)], line.p_rect.rect
         return [], None
 
     @classmethod

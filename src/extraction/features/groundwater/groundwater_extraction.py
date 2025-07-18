@@ -225,12 +225,14 @@ class GroundwaterLevelExtractor(DataExtractor):
         extracted_groundwater_list = []
 
         for groundwater_key_line in groundwater_key_lines:
-            key_rect = groundwater_key_line.rect
+            key_rect = groundwater_key_line.p_rect.rect
             groundwater_info_lines = self.get_lines_near_key(lines, groundwater_key_line)
 
             # sort the lines by their proximity to the key line center, compute the distance to the key line center
             key_center = (key_rect.x0 + key_rect.x1) / 2
-            groundwater_info_lines.sort(key=lambda line: abs((line.rect.x0 + line.rect.x1) / 2 - key_center))
+            groundwater_info_lines.sort(
+                key=lambda line: abs((line.p_rect.rect.x0 + line.p_rect.rect.x1) / 2 - key_center)
+            )
 
             extracted_groundwater = self.get_groundwater_info_from_lines(groundwater_info_lines, page)
             if extracted_groundwater:
@@ -270,7 +272,7 @@ class GroundwaterLevelExtractor(DataExtractor):
 
                 elevation = extract_elevation(text)
 
-                matched_lines_rect.append(line.rect)
+                matched_lines_rect.append(line.p_rect.rect)
             else:
                 # Pattern for matching date
                 if not date:
@@ -279,7 +281,7 @@ class GroundwaterLevelExtractor(DataExtractor):
                         text = text.replace(extracted_date_str, "").strip()
                         date = extracted_date
                         matched_lines_rect.append(
-                            line.rect
+                            line.p_rect.rect
                         )  # Add the rectangle of the line to the matched lines list to make sure it is drawn
                         # in the output image.
                 else:
@@ -293,14 +295,14 @@ class GroundwaterLevelExtractor(DataExtractor):
                 if not depth:
                     depth = extract_depth(text, MAX_DEPTH)
                     if depth:
-                        matched_lines_rect.append(line.rect)
+                        matched_lines_rect.append(line.p_rect.rect)
                         text = text.replace(str(depth), "").strip()
 
                 # Pattern for matching elevation (e.g., "457,69 m U.M.")
                 if not elevation:
                     elevation = extract_elevation(text)
                     if elevation:
-                        matched_lines_rect.append(line.rect)
+                        matched_lines_rect.append(line.p_rect.rect)
 
             # If all required data is found, break early
             if date and depth and elevation:

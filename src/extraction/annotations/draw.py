@@ -69,22 +69,25 @@ def draw_predictions(
                         groundwaters = borehole_predictions.groundwater_in_borehole
                         bh_layers = borehole_predictions.layers_in_borehole
 
-                        if coordinates is not None and page_number == coordinates.page:
+                        if coordinates is not None and page_number == coordinates.p_rect.page_number:
                             draw_feature(
                                 shape,
-                                coordinates.rect * page.derotation_matrix,
+                                coordinates.p_rect.rect * page.derotation_matrix,
                                 coordinates.feature.is_correct,
                                 "purple",
                             )
-                        if elevation is not None and page_number == elevation.page:
+                        if elevation is not None and page_number == elevation.p_rect.page_number:
                             draw_feature(
-                                shape, elevation.rect * page.derotation_matrix, elevation.feature.is_correct, "blue"
+                                shape,
+                                elevation.p_rect.rect * page.derotation_matrix,
+                                elevation.feature.is_correct,
+                                "blue",
                             )
                         for groundwater_entry in groundwaters.groundwater_feature_list:
-                            if page_number == groundwater_entry.page:
+                            if page_number == groundwater_entry.p_rect.page_number:
                                 draw_feature(
                                     shape,
-                                    groundwater_entry.rect * page.derotation_matrix,
+                                    groundwater_entry.p_rect.rect * page.derotation_matrix,
                                     groundwater_entry.feature.is_correct,
                                     "pink",
                                 )
@@ -96,7 +99,11 @@ def draw_predictions(
                         draw_material_descriptions(
                             shape,
                             page.derotation_matrix,
-                            [layer for layer in bh_layers.layers if layer.material_description.page == page_number],
+                            [
+                                layer
+                                for layer in bh_layers.layers
+                                if layer.material_description.p_rect.page_number == page_number
+                            ],
                         )
 
                     shape.commit()  # Commit all the drawing operations to the page
@@ -158,9 +165,9 @@ def draw_material_descriptions(shape: pymupdf.Shape, derotation_matrix: pymupdf.
         layers (LayerPrediction): The predictions for the page.
     """
     for index, layer in enumerate(layers):
-        if layer.material_description.rect is not None:
+        if layer.material_description.p_rect.rect is not None:
             shape.draw_rect(
-                pymupdf.Rect(layer.material_description.rect) * derotation_matrix,
+                pymupdf.Rect(layer.material_description.p_rect.rect) * derotation_matrix,
             )
             shape.finish(color=pymupdf.utils.getColor("orange"))
         draw_layer(shape=shape, derotation_matrix=derotation_matrix, layer=layer, index=index)
@@ -218,7 +225,7 @@ def draw_layer(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, layer: L
 
         # background color for material description
         for line in [line for line in material_description.lines]:
-            shape.draw_rect(line.rect * derotation_matrix)
+            shape.draw_rect(line.p_rect.rect * derotation_matrix)
             shape.finish(
                 color=pymupdf.utils.getColor(color),
                 fill_opacity=0.2,
@@ -228,8 +235,8 @@ def draw_layer(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, layer: L
             if material_description.is_correct is not None:
                 correct_color = "green" if material_description.is_correct else "red"
                 shape.draw_line(
-                    line.rect.top_left * derotation_matrix,
-                    line.rect.bottom_left * derotation_matrix,
+                    line.p_rect.rect.top_left * derotation_matrix,
+                    line.p_rect.rect.bottom_left * derotation_matrix,
                 )
                 shape.finish(
                     color=pymupdf.utils.getColor(correct_color),
@@ -245,11 +252,11 @@ def draw_layer(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, layer: L
             if layer.depths.end:
                 depths_rect.include_rect(layer.depths.end.rect)
 
-            if not layer.material_description.rect.contains(depths_rect):
+            if not layer.material_description.p_rect.rect.contains(depths_rect):
                 # Depths are separate from the material description: draw a line connecting them
                 line_anchor = layer.depths.line_anchor
                 if line_anchor:
-                    rect = layer.material_description.rect
+                    rect = layer.material_description.p_rect.rect
                     shape.draw_line(
                         line_anchor * derotation_matrix,
                         pymupdf.Point(rect.x0, (rect.y0 + rect.y1) / 2) * derotation_matrix,
