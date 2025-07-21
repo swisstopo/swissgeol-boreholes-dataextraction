@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass
+from typing import Protocol
 
 import numpy as np
 import pymupdf
@@ -115,3 +116,21 @@ class RectWithPage:
 
     rect: pymupdf.Rect
     page_number: int
+
+
+class SupportsRectWithPage(Protocol):
+    """Protocol to ensure that a class has a rect_with_page attribute."""
+
+    rect_with_page: RectWithPage
+
+
+class RectWithPageMixin:
+    """Mixin class to facilitate the access to the rect and page_number of a SupportsRectWithPage object."""
+
+    @property
+    def rect(self: SupportsRectWithPage):
+        return self.rect_with_page.rect
+
+    @property
+    def page_number(self: SupportsRectWithPage):
+        return self.rect_with_page.page_number

@@ -519,12 +519,12 @@ class LayerMaterialDescriptionSchema(BaseModel):
             text=prediction.feature.text,
             bounding_boxes=[
                 BoundingBoxWithPage(
-                    page_number=line_feature.page,
+                    page_number=line_feature.page_number,
                     x0=line_feature.rect.x0,
                     y0=line_feature.rect.y0,
                     x1=line_feature.rect.x1,
                     y1=line_feature.rect.y1,
-                ).rescale_factor(*pdf_img_scalings[line_feature.page - 1])
+                ).rescale_factor(*pdf_img_scalings[line_feature.page_number - 1])
                 for line_feature in prediction.feature.lines
             ],
         )
@@ -579,7 +579,7 @@ class BoreholeLayerSchema(BaseModel):
             else None
         )
         # the page number of Layer is the same for both depth entries
-        layer_page_number = prediction.material_description.page
+        layer_page_number = prediction.material_description.page_number
         start = (
             LayerDepthSchema.from_prediction(prediction.depths.start, pdf_img_scalings, layer_page_number)
             if prediction.depths and prediction.depths.start

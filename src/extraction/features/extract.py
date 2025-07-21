@@ -364,7 +364,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         if len(candidate_description) == 0:
             return []
 
-        description_clusters = []
+        description_clusters: list[list[TextLine]] = []
         while len(is_description) > 0:
             # 0.4 instead of 0.5 slightly improves geoquat/validation/A76.pdf
             coverage_by_generating_line = [
@@ -372,7 +372,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 for line in is_description
             ]
 
-            def filter_coverage(coverage):
+            def filter_coverage(coverage: list[TextLine]) -> list[TextLine]:
                 if coverage:
                     min_x0 = min(line.rect.x0 for line in coverage)
                     max_x1 = max(line.rect.x1 for line in coverage)
@@ -405,7 +405,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             best_x1 = max([line.rect.x1 for line in good_lines])
 
             # expand to include entire last block
-            def is_below(best_x0, best_y1, line):
+            def is_below(best_x0, best_y1, line: TextLine):
                 return (
                     (line.rect.x0 > best_x0 - 5)
                     and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023

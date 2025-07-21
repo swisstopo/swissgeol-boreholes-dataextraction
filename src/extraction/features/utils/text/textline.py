@@ -7,14 +7,14 @@ import re
 import pymupdf
 from nltk.stem.snowball import SnowballStemmer
 
-from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage
+from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from extraction.features.utils.geometry.util import x_overlap_significant_largest
 from utils.file_utils import read_params
 
 material_description = read_params("matching_params.yml")["material_description"]
 
 
-class TextWord:
+class TextWord(RectWithPageMixin):
     """Class to represent a word on a specific location on a PDF page.
 
     A TextWord object consists of a pymupdf Rectangle object and a string.
@@ -26,19 +26,11 @@ class TextWord:
         self.rect_with_page = RectWithPage(rect, page)
         self.text = text
 
-    @property
-    def rect(self):
-        return self.rect_with_page.rect
-
-    @property
-    def page_number(self):
-        return self.rect_with_page.page_number
-
     def __repr__(self) -> str:
         return f"TextWord({self.rect}, {self.text})"
 
 
-class TextLine:
+class TextLine(RectWithPageMixin):
     """Class to represent TextLine objects.
 
     A TextLine object is a collection of DepthInterval objects.
@@ -57,17 +49,6 @@ class TextLine:
             rect.include_rect(word.rect)
         self.rect_with_page = RectWithPage(rect, words[0].page_number)
         self.words = words
-
-    @property
-    def rect(self):
-        return self.rect_with_page.rect
-
-    @property
-    def page_number(self):
-        return self.rect_with_page.page_number
-
-    # Doing so, I really dont see the point of creating a RectWithPage object, as it is directly abstracted and
-    # never accessed from outside the class.
 
     def is_description(self, material_description: dict, language: str):
         """Check if the line is a material description.
