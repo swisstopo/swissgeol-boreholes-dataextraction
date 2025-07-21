@@ -75,6 +75,8 @@ material_description:
       - pumpversuch
       - kernbohrung
       - bohrradius
+      - Vollrohr
+      - Filterrohr
 
   fr:
     including_expressions:
@@ -114,7 +116,6 @@ material_description:
       - mousse
     excluding_expressions:
       - monsieur
-      - fin
       - profil
       - description
       - signatures

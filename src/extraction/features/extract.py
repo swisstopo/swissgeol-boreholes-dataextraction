@@ -360,6 +360,11 @@ class MaterialDescriptionRectWithSidebarExtractor:
             for line in candidate_description
             if line.is_description(self.params["material_description"], self.language)
         ]
+        is_not_description = [
+            line
+            for line in candidate_description
+            if line.is_not_description(self.params["material_description"], self.language)
+        ]
 
         if len(candidate_description) == 0:
             return []
@@ -376,7 +381,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 if coverage:
                     min_x0 = min(line.rect.x0 for line in coverage)
                     max_x1 = max(line.rect.x1 for line in coverage)
-                    # how did we determine the 0.4? Should it be a parameter? What would it do if we were to change it?
                     x0_threshold = max_x1 - 0.4 * (max_x1 - min_x0)
                     return [line for line in coverage if line.rect.x0 < x0_threshold]
                 else:
@@ -403,6 +407,20 @@ class MaterialDescriptionRectWithSidebarExtractor:
             ]
             best_x0 = min([line.rect.x0 for line in good_lines])
             best_x1 = max([line.rect.x1 for line in good_lines])
+
+            # check that no lines that have excluded words are contained in the rect
+            cluster_rect = pymupdf.Rect(best_x0, best_y0, best_x1, best_y1)
+            non_description_in_rect = [
+                excl_line
+                for excl_line in is_not_description
+                if x_overlap_significant_smallest(excl_line.rect, cluster_rect, 0.5)
+                and best_y0 < excl_line.rect.y0
+                and excl_line.rect.y1 < best_y1
+            ]
+
+            # the rect is valid only when description lines are clearly more numerous than non-description lines.
+            if len(non_description_in_rect) / len(good_lines) > 0.15:
+                continue
 
             # expand to include entire last block
             def is_below(best_x0, best_y1, line):

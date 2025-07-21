@@ -50,6 +50,35 @@ class TextLine:
         self.words = words
         self.page_number = words[0].page_number
 
+    def _get_stemmer(self, language: str) -> SnowballStemmer:
+        """Get the appropriate stemmer for the given language.
+
+        Args:
+            language (str): The language for which to get the stemmer, e.g. "de", "fr", "en", "it".
+
+        Returns:
+            SnowballStemmer: The stemmer for the specified language.
+        """
+        # Create appropriate stemmer based on language
+        stemmer_languages = {"de": "german", "fr": "french", "en": "english", "it": "italian"}
+        stemmer_lang = stemmer_languages.get(language, "german")
+        return SnowballStemmer(stemmer_lang)
+
+    def _stem_text(self, stemmer: SnowballStemmer, text: str) -> set:
+        """Stem the text using the provided stemmer.
+
+        Args:
+            stemmer (SnowballStemmer): The stemmer to use for stemming.
+            text (str): The text to stem.
+
+        Returns:
+            set: A set of stemmed words from the text.
+        """
+        # Tokenize and stem words in the text
+        text_lower = text.lower()
+        text_tokens = re.findall(r"\b\w+\b", text_lower)
+        return {stemmer.stem(token) for token in text_tokens}
+
     def is_description(self, material_description: dict, language: str):
         """Check if the line is a material description.
 
@@ -59,15 +88,8 @@ class TextLine:
             material_description (dict): The material description dictionary containing the used expressions.
             language (str): The language of the material description, e.g. "de", "fr", "en", "it".
         """
-        # Create appropriate stemmer based on language
-        stemmer_languages = {"de": "german", "fr": "french", "en": "english", "it": "italian"}
-        stemmer_lang = stemmer_languages.get(language, "german")
-        stemmer = SnowballStemmer(stemmer_lang)
-
-        # Tokenize and stem words in the text
-        text_lower = self.text.lower()
-        text_tokens = re.findall(r"\b\w+\b", text_lower)
-        stemmed_text_tokens = {stemmer.stem(token) for token in text_tokens}
+        stemmer = self._get_stemmer(language)
+        stemmed_text_tokens = self._stem_text(stemmer, self.text)
 
         # Check for matches in including expressions
         found_inclusion = any(
@@ -85,6 +107,26 @@ class TextLine:
         )
 
         return not found_exclusion
+
+    def is_not_description(self, material_description: dict, language: str):
+        """Check if the line is a material description.
+
+        Uses stemming to handle word variations across german, french, english and italian.
+
+        Args:
+            material_description (dict): The material description dictionary containing the used expressions.
+            language (str): The language of the material description, e.g. "de", "fr", "en", "it".
+        """
+        stemmer = self._get_stemmer(language)
+        stemmed_text_tokens = self._stem_text(stemmer, self.text)
+
+        # Check for matches in excluding expressions
+        found_exclusion = any(
+            stemmer.stem(word.lower()) in stemmed_text_tokens
+            for word in material_description[language]["excluding_expressions"]
+        )
+
+        return found_exclusion
 
     @property
     def text(self) -> str:
