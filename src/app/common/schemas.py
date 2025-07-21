@@ -579,7 +579,7 @@ class BoreholeLayerSchema(BaseModel):
             else None
         )
         # the page number of Layer is the same for both depth entries
-        layer_page_number = prediction.material_description.p_rect.page_number
+        layer_page_number = prediction.material_description.page
         start = (
             LayerDepthSchema.from_prediction(prediction.depths.start, pdf_img_scalings, layer_page_number)
             if prediction.depths and prediction.depths.start
