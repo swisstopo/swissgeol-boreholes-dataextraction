@@ -107,3 +107,11 @@ class BoundingBox:
     @classmethod
     def from_json(cls, data) -> BoundingBox:
         return cls(rect=pymupdf.Rect(data))
+
+
+@dataclass
+class RectWithPage:
+    """Dataclass to store a rectangle and the page number it appears on."""
+
+    rect: pymupdf.Rect
+    page_number: int

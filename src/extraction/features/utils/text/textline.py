@@ -7,6 +7,7 @@ import re
 import pymupdf
 from nltk.stem.snowball import SnowballStemmer
 
+from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage
 from extraction.features.utils.geometry.util import x_overlap_significant_largest
 from utils.file_utils import read_params
 
@@ -22,9 +23,16 @@ class TextWord:
     """
 
     def __init__(self, rect: pymupdf.Rect, text: str, page: int):
-        self.rect = rect
+        self.rect_with_page = RectWithPage(rect, page)
         self.text = text
-        self.page_number = page
+
+    @property
+    def rect(self):
+        return self.rect_with_page.rect
+
+    @property
+    def page_number(self):
+        return self.rect_with_page.page_number
 
     def __repr__(self) -> str:
         return f"TextWord({self.rect}, {self.text})"
@@ -44,11 +52,22 @@ class TextLine:
             words (list[TextWord]): The words that make up the line.
             page_number (int): The page number of the line. The first page has idx 1.
         """
-        self.rect = pymupdf.Rect()
+        rect = pymupdf.Rect()
         for word in words:
-            self.rect.include_rect(word.rect)
+            rect.include_rect(word.rect)
+        self.rect_with_page = RectWithPage(rect, words[0].page_number)
         self.words = words
-        self.page_number = words[0].page_number
+
+    @property
+    def rect(self):
+        return self.rect_with_page.rect
+
+    @property
+    def page_number(self):
+        return self.rect_with_page.page_number
+
+    # Doing so, I really dont see the point of creating a RectWithPage object, as it is directly abstracted and
+    # never accessed from outside the class.
 
     def is_description(self, material_description: dict, language: str):
         """Check if the line is a material description.
