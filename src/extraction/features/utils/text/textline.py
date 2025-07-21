@@ -109,7 +109,7 @@ class TextLine:
         return not found_exclusion
 
     def is_not_description(self, material_description: dict, language: str):
-        """Check if the line is a material description.
+        """Check if the line contains excluded expressions for material description.
 
         Uses stemming to handle word variations across german, french, english and italian.
 
