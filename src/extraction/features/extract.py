@@ -504,7 +504,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             A pair is valid if:
             - The sidebar index has not been used yet.
             - The rectangle has not been used yet.
-            - The potential pair does not have an already matched sidebar or rectangle between its element.
+            - The potential pair does not have an already matched sidebar or rectangle between its elements.
             """
             joined_rect = sidebars_noise[s_idx].sidebar.rect().include_rect(mat_desc_rect)
 
