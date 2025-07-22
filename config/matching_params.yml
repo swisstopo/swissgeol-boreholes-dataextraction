@@ -61,6 +61,7 @@ material_description:
       - mikritisch
       - laminiert
       - grobsand
+      - auffullung
     excluding_expressions:
       - herr
       - ende

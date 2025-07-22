@@ -492,14 +492,37 @@ class MaterialDescriptionRectWithSidebarExtractor:
         used_sidebars_idx = set()
         used_descr_rects = set()
 
+        def is_valid_pair(
+            s_idx: int,
+            mat_desc_rect: pymupdf.Rect,
+            used_sidebars_idx: set[int],
+            sidebars_noise: list[SidebarNoise],
+            matched_pairs: list[MaterialDescriptionRectWithSidebar],
+        ) -> bool:
+            """Check if a sidebar index and material description rectangle can form a valid pair.
+
+            A pair is valid if:
+            - The sidebar index has not been used yet.
+            - The rectangle has not been used yet.
+            - The potential pair does not have an already matched sidebar or rectangle between its element.
+            """
+            joined_rect = sidebars_noise[s_idx].sidebar.rect().include_rect(mat_desc_rect)
+
+            return (
+                s_idx not in used_sidebars_idx  # don't re-match an already matched sidebar
+                and not any(
+                    joined_rect.intersects(pair.sidebar.rect().include_rect(pair.material_description_rect))
+                    for pair in matched_pairs
+                )  # don't allow taking the same rect or crossing pairs (pair having another pair element in between)
+            )
+
         # Step 1: Greedy match based on max scores
         while True:
             # Filter available scores
             available_scores = {
                 (s_idx, rect): v
                 for (s_idx, rect), v in score_map.items()
-                if s_idx not in used_sidebars_idx  # don't re-match an already matched sidebar
-                and not any(rect.intersects(used_rect) for used_rect in used_descr_rects)  # don't share the same rect
+                if is_valid_pair(s_idx, rect, used_sidebars_idx, sidebars_noise, matched_pairs)
             }
             if not available_scores:
                 break
