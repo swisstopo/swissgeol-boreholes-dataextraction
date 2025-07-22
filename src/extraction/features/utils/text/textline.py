@@ -7,13 +7,14 @@ import re
 import pymupdf
 from nltk.stem.snowball import SnowballStemmer
 
+from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from extraction.features.utils.geometry.util import x_overlap_significant_largest
 from utils.file_utils import read_params
 
 material_description = read_params("matching_params.yml")["material_description"]
 
 
-class TextWord:
+class TextWord(RectWithPageMixin):
     """Class to represent a word on a specific location on a PDF page.
 
     A TextWord object consists of a pymupdf Rectangle object and a string.
@@ -22,15 +23,14 @@ class TextWord:
     """
 
     def __init__(self, rect: pymupdf.Rect, text: str, page: int):
-        self.rect = rect
+        self.rect_with_page = RectWithPage(rect, page)
         self.text = text
-        self.page_number = page
 
     def __repr__(self) -> str:
         return f"TextWord({self.rect}, {self.text})"
 
 
-class TextLine:
+class TextLine(RectWithPageMixin):
     """Class to represent TextLine objects.
 
     A TextLine object is a collection of DepthInterval objects.
@@ -44,11 +44,11 @@ class TextLine:
             words (list[TextWord]): The words that make up the line.
             page_number (int): The page number of the line. The first page has idx 1.
         """
-        self.rect = pymupdf.Rect()
+        rect = pymupdf.Rect()
         for word in words:
-            self.rect.include_rect(word.rect)
+            rect.include_rect(word.rect)
+        self.rect_with_page = RectWithPage(rect, words[0].page_number)
         self.words = words
-        self.page_number = words[0].page_number
 
     def is_description(self, material_description: dict, language: str):
         """Check if the line is a material description.

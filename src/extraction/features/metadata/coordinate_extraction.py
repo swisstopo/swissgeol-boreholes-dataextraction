@@ -244,7 +244,7 @@ class CoordinateExtractor(DataExtractor):
 
     @staticmethod
     def _match_text_with_rect(
-        lines: list[TextLine], pattern: regex.Regex, preprocess=lambda x: x
+        lines: list[TextLine], pattern: regex.Pattern, preprocess=lambda x: x
     ) -> list[(regex.Match, pymupdf.Rect)]:
         full_text = ""
         lines_with_position = []
@@ -257,7 +257,7 @@ class CoordinateExtractor(DataExtractor):
 
         results = []
         for match in pattern.finditer(full_text):
-            match_lines = [
+            match_lines: list[TextLine] = [
                 entry["line"]
                 for entry in lines_with_position
                 if entry["end"] >= match.start() and entry["start"] < match.end()

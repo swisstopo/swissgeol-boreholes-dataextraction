@@ -222,7 +222,7 @@ class BoreholeListBuilder:
                 assert borehole_index not in borehole_index_to_matched_elem_index
                 assert available_elements
                 # if multiple element are bound to the same borehole, always pick the highest on the page
-                best_element = min(available_elements, key=lambda elem: (elem.page, elem.rect.y0))
+                best_element = min(available_elements, key=lambda elem: (elem.page_number, elem.rect.y0))
                 # fill the mapping borehole_index -> element and remove the element from the element list
                 borehole_index_to_matched_elem_index[borehole_index] = best_element
                 element_list.remove(best_element)
@@ -231,7 +231,7 @@ class BoreholeListBuilder:
 
     def _compute_distance(self, feat: FeatureOnPage, bounding_boxes: list[PageBoundingBoxes]) -> float:
         """Computes the distance between a FeatureOnPage objects and the bounding boxes of one borehole."""
-        bbox = next((bbox for bbox in bounding_boxes if bbox.page == feat.page), None)
+        bbox = next((bbox for bbox in bounding_boxes if bbox.page == feat.page_number), None)
         if bbox is None:
             # the current boreholes layers don't appear on the page where the element is
             return float("inf")

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass
+from typing import Protocol
 
 import numpy as np
 import pymupdf
@@ -107,3 +108,29 @@ class BoundingBox:
     @classmethod
     def from_json(cls, data) -> BoundingBox:
         return cls(rect=pymupdf.Rect(data))
+
+
+@dataclass
+class RectWithPage:
+    """Dataclass to store a rectangle and the page number it appears on."""
+
+    rect: pymupdf.Rect
+    page_number: int
+
+
+class SupportsRectWithPage(Protocol):
+    """Protocol to ensure that a class has a rect_with_page attribute."""
+
+    rect_with_page: RectWithPage
+
+
+class RectWithPageMixin:
+    """Mixin class to facilitate the access to the rect and page_number of a SupportsRectWithPage object."""
+
+    @property
+    def rect(self: SupportsRectWithPage):
+        return self.rect_with_page.rect
+
+    @property
+    def page_number(self: SupportsRectWithPage):
+        return self.rect_with_page.page_number

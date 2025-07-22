@@ -243,7 +243,7 @@ def test_CoordinateExtractor_get_coordinates_from_lines(text, expected):  # noqa
     expected_east, expected_north = expected
     assert coordinates[0].feature.east.coordinate_value == expected_east
     assert coordinates[0].feature.north.coordinate_value == expected_north
-    assert coordinates[0].page == 1
+    assert coordinates[0].page_number == 1
 
 
 def test_CoordinateExtractor_get_coordinates_from_lines_rect():  # noqa: D103
@@ -251,14 +251,14 @@ def test_CoordinateExtractor_get_coordinates_from_lines_rect():  # noqa: D103
     lines = _create_simple_lines(["start", "2600000 1200000", "end"])
     coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
     assert coordinates[0].rect == lines[1].rect
-    assert coordinates[0].page == 1
+    assert coordinates[0].page_number == 1
 
     lines = _create_simple_lines(["start", "2600000", "1200000", "end"])
     coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
     expected_rect = lines[1].rect
     expected_rect.include_rect(lines[2].rect)
     assert coordinates[0].rect == expected_rect
-    assert coordinates[0].page == 1
+    assert coordinates[0].page_number == 1
 
     # Example from 269126143-bp.pdf (a slash in the middle of the coordinates as misread by OCR as the digit 1)
     lines = _create_simple_lines(["269578211260032"])
