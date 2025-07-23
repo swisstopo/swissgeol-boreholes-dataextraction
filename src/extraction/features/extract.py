@@ -144,12 +144,12 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         for i, pair in enumerate(material_descriptions_sidebar_pairs):
             mat_rect = pair.material_description_rect
-            sidebar_rect = pair.sidebar.rect() if pair.sidebar else None
+            sidebar_rect = pair.sidebar.rect if pair.sidebar else None
 
             # Build the list of other rectangles
             remaining_pairs = material_descriptions_sidebar_pairs[i + 1 :]
             other_mat_rects = [p.material_description_rect for p in remaining_pairs]
-            other_sidebar_rects = [p.sidebar.rect() if p.sidebar else None for p in remaining_pairs]
+            other_sidebar_rects = [p.sidebar.rect if p.sidebar else None for p in remaining_pairs]
 
             # Check all conditions
             if (
@@ -340,15 +340,13 @@ class MaterialDescriptionRectWithSidebarExtractor:
         """
         if sidebar:
             above_sidebar = [
-                line
-                for line in self.lines
-                if x_overlap(line.rect, sidebar.rect()) and line.rect.y0 < sidebar.rect().y0
+                line for line in self.lines if x_overlap(line.rect, sidebar.rect) and line.rect.y0 < sidebar.rect.y0
             ]
 
             min_y0 = max(line.rect.y0 for line in above_sidebar) if above_sidebar else -1
 
             def check_y0_condition(y0):
-                return y0 > min_y0 and y0 < sidebar.rect().y1
+                return y0 > min_y0 and y0 < sidebar.rect.y1
         else:
 
             def check_y0_condition(y0):
@@ -506,12 +504,14 @@ class MaterialDescriptionRectWithSidebarExtractor:
             - The rectangle has not been used yet.
             - The potential pair does not have an already matched sidebar or rectangle between its elements.
             """
-            joined_rect = sidebars_noise[s_idx].sidebar.rect().include_rect(mat_desc_rect)
+            joined_rect = pymupdf.Rect(sidebars_noise[s_idx].sidebar.rect).include_rect(mat_desc_rect)
 
             return (
                 s_idx not in used_sidebars_idx  # don't re-match an already matched sidebar
                 and not any(
-                    joined_rect.intersects(pair.sidebar.rect().include_rect(pair.material_description_rect))
+                    joined_rect.intersects(
+                        pymupdf.Rect(pair.sidebar.rect).include_rect(pair.material_description_rect)
+                    )
                     for pair in matched_pairs
                 )  # don't allow taking the same rect or crossing pairs (pair having another pair element in between)
             )

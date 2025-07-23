@@ -44,7 +44,7 @@ class MaterialDescriptionRectWithSidebar:
         """
         if not self.sidebar:
             return 0.0
-        rect = self.sidebar.rect()
+        rect = self.sidebar.rect
         sidebar_top, sidebar_bottom, sidebar_right = rect.y0, rect.y1, rect.x1
         material_left = self.material_description_rect.x0
         material_top, material_bottom = self.material_description_rect.y0, self.material_description_rect.y1
@@ -103,7 +103,7 @@ class PageBoundingBoxes:
     ) -> "PageBoundingBoxes":
         """Convert a MaterialDescriptionRectWithSidebar instance to a BoundingBoxes object."""
         if pair.sidebar:
-            depth_column_bbox = BoundingBox(pair.sidebar.rect())
+            depth_column_bbox = BoundingBox(pair.sidebar.rect)
             depth_column_entry_bboxes = [BoundingBox(entry.rect) for entry in pair.sidebar.entries]
         else:
             depth_column_bbox = None
