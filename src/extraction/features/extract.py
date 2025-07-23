@@ -91,7 +91,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         # Step 1: Detect table structures on the page to guide extraction
         table_structures = detect_table_structures(
             geometric_lines=self.geometric_lines,
-            text_lines=self.lines,
             page_width=self.page_width,
             page_height=self.page_height
         )
@@ -579,9 +578,23 @@ def extract_page(
     page_width = page_rect.width
     page_height = page_rect.height
     
+    # Detect table structures on the page
+    table_structures = detect_table_structures(
+        geometric_lines=geometric_lines,
+        page_width=page_width,
+        page_height=page_height
+    )
+    
+    # Extract boreholes
     extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(
         text_lines, geometric_lines, language, page_index + 1, page_width, page_height, **matching_params
     ).process_page()
+
+    # Add table structures to the extracted boreholes
+    for borehole in extracted_boreholes:
+        for bbox in borehole.bounding_boxes:
+            if bbox.page == page_index + 1:
+                bbox.table_structures = [table.to_json() for table in table_structures]
 
     return remove_duplicate_layers(
         current_page_index=page_index,

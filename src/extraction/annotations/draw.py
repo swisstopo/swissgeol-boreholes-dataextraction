@@ -318,7 +318,7 @@ def draw_layer(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, layer: L
 def draw_table_structures(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, tables: list[TableStructure]) -> None:
     """Draw table structures on a pdf page.
 
-    Each table is drawn in a different color to distinguish between multiple detected tables.
+    If multiple tables are available each is drawn in a different color to distinguish between the detected tables.
 
     Args:
         shape (pymupdf.Shape): The shape object for drawing.
@@ -336,11 +336,10 @@ def draw_table_structures(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matri
         ("darkgreen", "lightseagreen"),
         ("darkblue", "lightsteelblue")
     ]
-    
+
     for index, table in enumerate(tables):
-        # Use different colors for each table, cycling through the color list
         main_color, light_color = table_colors[index % len(table_colors)]
-        
+
         # Draw the table bounding rectangle
         shape.draw_rect(table.bounding_rect * derotation_matrix)
         shape.finish(
@@ -348,23 +347,24 @@ def draw_table_structures(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matri
             width=3,
             stroke_opacity=0.8
         )
-        
-        # Draw horizontal lines in a lighter shade
+
+        # Draw horizontal and vertical lines in a lighter shade
         for h_line in table.horizontal_lines:
             start_point = pymupdf.Point(h_line.start.x, h_line.start.y)
             end_point = pymupdf.Point(h_line.end.x, h_line.end.y)
             shape.draw_line(start_point * derotation_matrix, end_point * derotation_matrix)
+
         shape.finish(
             color=pymupdf.utils.getColor(light_color),
             width=1,
             stroke_opacity=0.6
         )
-        
-        # Draw vertical lines in a lighter shade
+
         for v_line in table.vertical_lines:
             start_point = pymupdf.Point(v_line.start.x, v_line.start.y)
             end_point = pymupdf.Point(v_line.end.x, v_line.end.y)
             shape.draw_line(start_point * derotation_matrix, end_point * derotation_matrix)
+
         shape.finish(
             color=pymupdf.utils.getColor(light_color),
             width=1,
@@ -373,61 +373,67 @@ def draw_table_structures(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matri
 
 
 def draw_table_predictions(
-    directory: Path,
+    predictions: OverallFilePredictions,
     out_directory: Path,
+    input_directory: Path = None,
 ) -> None:
-    """Draw table structures on pdf pages.
+    """Draw table structures on pdf pages from predictions.
 
-    Detects and draws table structures on PDF pages, saving them as images in a 'tables' subdirectory.
+    Reads table structures from the predictions JSON and draws them on PDF pages,
+    saving images in a 'tables' subdirectory.
 
     Args:
-        directory (Path): Path to the directory containing the pdf files, or path to a single pdf file.
+        predictions (OverallFilePredictions): The predictions containing table structure data.
         out_directory (Path): Path to the output directory where the images will be saved.
+        input_directory (Path, optional): Path to the directory containing PDF files.
     """
-    if directory.is_file():  # deal with the case when we pass a file instead of a directory
-        files = [directory.name]
-        directory = directory.parent
-    else:
-        import os
-        _, _, files = next(os.walk(directory))
-        files = [f for f in files if f.endswith('.pdf')]
-
     # Create tables subdirectory
     tables_directory = out_directory / "tables"
     tables_directory.mkdir(parents=True, exist_ok=True)
-    
-    # Load line detection parameters
-    line_detection_params = read_params("line_detection_params.yml")
 
-    for filename in files:
+    for file_prediction in predictions.file_predictions_list:
+        filename = file_prediction.file_name
         logger.info("Drawing table structures for file %s", filename)
-        try:
-            # Clear cache to avoid cache contamination across different files
-            pymupdf.TOOLS.store_shrink(100)
 
-            with pymupdf.Document(directory / filename) as doc:
+        # Find the PDF file
+        pdf_path = None
+        if input_directory:
+            if input_directory.is_file() and input_directory.name == filename:
+                pdf_path = input_directory
+            else:
+                pdf_path = input_directory / filename
+
+        if not pdf_path or not pdf_path.exists():
+            logger.warning(f"Could not find PDF file {filename}")
+            continue
+
+        try:
+            with pymupdf.Document(pdf_path) as doc:
                 for page_index, page in enumerate(doc):
                     page_number = page_index + 1
-                    shape = page.new_shape()  # Create a shape object for drawing
+                    shape = page.new_shape()
 
-                    # Extract text lines and geometric lines for table detection
-                    text_lines = extract_text_lines(page)
-                    geometric_lines = extract_lines(page, line_detection_params)
+                    # Collect table structures for this page from all boreholes
+                    page_table_structures = []
+                    for borehole_prediction in file_prediction.borehole_predictions_list:
+                        for bbox in borehole_prediction.bounding_boxes:
+                            if bbox.page == page_number and bbox.table_structures:
+                                for table_data in bbox.table_structures:
+                                    # Reconstruct TableStructure from JSON
+                                    table_structure = TableStructure.from_json(table_data)
+                                    page_table_structures.append(table_structure)
 
-                    # Detect table structures
-                    table_structures = detect_table_structures(
-                        geometric_lines=geometric_lines,
-                        text_lines=text_lines
-                    )
+                    if page_table_structures:
+                        logger.info(f"Drawing {len(page_table_structures)} table structures on page {page_number} of {filename}")
 
-                    logger.info(f"Detected {len(table_structures)} table structures on page {page_number} of {filename}")
-
-                    # Draw the detected table structures
-                    draw_table_structures(shape, page.derotation_matrix, table_structures)
+                        # Draw the detected table structures
+                        draw_table_structures(shape, page.derotation_matrix, page_table_structures)
+                    else:
+                        logger.info(f"No table structures found for page {page_number} of {filename}")
 
                     shape.commit()  # Commit all the drawing operations to the page
 
-                    # Save the image with table structures
+                    # Save the image 
                     tmp_file_path = tables_directory / f"{filename}_tables_page{page_number}.png"
                     pymupdf.utils.get_pixmap(page, matrix=pymupdf.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
 
@@ -441,5 +447,3 @@ def draw_table_predictions(
         except (FileNotFoundError, pymupdf.FileDataError) as e:
             logger.error("Error opening file %s: %s", filename, e)
             continue
-
-        logger.info("Finished drawing table structures for file %s", filename)

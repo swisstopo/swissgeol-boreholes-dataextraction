@@ -71,6 +71,7 @@ class PageBoundingBoxes:
     depth_column_entry_bboxes: list[BoundingBox]
     material_description_bbox: BoundingBox
     page: int
+    table_structures: list[dict] | None
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -78,16 +79,22 @@ class PageBoundingBoxes:
         Returns:
             dict: The object as a dictionary.
         """
-        return {
+        result = {
             "sidebar_rect": self.sidebar_bbox.to_json() if self.sidebar_bbox else None,
             "depth_column_entries": [entry.to_json() for entry in self.depth_column_entry_bboxes],
             "material_description_rect": self.material_description_bbox.to_json(),
             "page": self.page,
         }
 
+        if self.table_structures is not None:
+            result["table_structures"] = self.table_structures
+
+        return result
+
     @classmethod
     def from_json(cls, data) -> "PageBoundingBoxes":
         """Convert a JSON data structure to a BoundingBoxes object."""
+
         return cls(
             sidebar_bbox=BoundingBox.from_json(data["sidebar_rect"])
             if "sidebar_rect" in data and data["sidebar_rect"]
@@ -95,6 +102,7 @@ class PageBoundingBoxes:
             depth_column_entry_bboxes=[BoundingBox.from_json(entry) for entry in data["depth_column_entries"]],
             material_description_bbox=BoundingBox.from_json(data["material_description_rect"]),
             page=data["page"],
+            table_structures=data.get("table_structures")
         )
 
     @classmethod

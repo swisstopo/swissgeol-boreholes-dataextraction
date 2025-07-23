@@ -360,7 +360,7 @@ def start_pipeline(
     # Draw table structures if requested
     if draw_tables:
         logger.info("Drawing table structures...")
-        draw_table_predictions(input_directory, out_directory)
+        draw_table_predictions(predictions, out_directory, input_directory)
 
 
 if __name__ == "__main__":
