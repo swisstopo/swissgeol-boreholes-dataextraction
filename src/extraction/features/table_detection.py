@@ -9,6 +9,8 @@ from extraction.features.utils.geometry.geometry_dataclasses import Point, Line
 
 from utils.file_utils import read_params
 
+from extraction.features.stratigraphy.layer.page_bounding_boxes import MaterialDescriptionRectWithSidebar
+
 logger = logging.getLogger(__name__)
 
 
@@ -75,7 +77,8 @@ class TableStructure:
 def detect_table_structures(
     geometric_lines: List[Line],
     page_width: float = None,
-    page_height: float = None
+    page_height: float = None,
+    text_lines: List = None
 ) -> List[TableStructure]:
     """Detect large table structures on a page.
 
@@ -83,6 +86,7 @@ def detect_table_structures(
         geometric_lines: List of detected geometric lines
         page_width: Page width 
         page_height: Page height
+        text_lines: List of text lines for text content analysis
 
     Returns:
         List containing at most one large table structure
@@ -107,11 +111,11 @@ def detect_table_structures(
 
     # Find the dominant table structure
     table_candidate = _find_dominant_table_structure(
-        horizontal_lines, vertical_lines, config, page_width, page_height
+        horizontal_lines, vertical_lines, config, page_width, page_height, text_lines
     )
 
     if table_candidate and table_candidate.confidence >= config.get('min_confidence'):
-        logger.info(f"Detected large table structure (confidence: {table_candidate.confidence:.3f})")
+        logger.info(f"Detected table structure (confidence: {table_candidate.confidence:.3f})")
         return [table_candidate]
 
     logger.debug("No significant table structure found")
@@ -172,7 +176,8 @@ def _find_dominant_table_structure(
     vertical_lines: List[Line], 
     config: dict,
     page_width: float = None,
-    page_height: float = None
+    page_height: float = None,
+    text_lines: List = None
 ) -> Optional[TableStructure]:
     """Find the single dominant table structure on the page."""
 
@@ -199,12 +204,11 @@ def _find_dominant_table_structure(
 
     # Calculate metrics
     area = refined_rect.width * refined_rect.height
-    line_density = len(table_horizontal_lines + table_vertical_lines) / (area / 10000)
+    line_density = len(table_horizontal_lines + table_vertical_lines) / (area / 10000) # normalization of area
 
     # Calculate confidence based on structure quality
     confidence = _calculate_structure_confidence(
-        refined_rect, table_horizontal_lines, table_vertical_lines,
-        line_density, config, page_width, page_height
+        refined_rect, table_horizontal_lines, table_vertical_lines, config, page_width, page_height, text_lines
     )
 
     return TableStructure(
@@ -227,7 +231,7 @@ def _refine_table_bounds(
     if len(vertical_lines) >= 2:
         # Sort by length and position to find structural lines
         v_sorted = sorted(vertical_lines, key=lambda l: l.length, reverse=True)
-        main_verticals = v_sorted[:min(6, len(v_sorted))]  # Top 6 longest
+        main_verticals = v_sorted[:min(10, len(v_sorted))]  # Top 10 longest
 
         # Get x-coordinates of main vertical lines
         x_positions = []
@@ -246,7 +250,7 @@ def _refine_table_bounds(
         refined_max_x = initial_rect.x1
 
     # Find the main horizontal boundaries
-    if len(horizontal_lines) >= 3:
+    if len(horizontal_lines) >= 2:
         # Sort by position to find top and bottom structural lines
         h_sorted = sorted(horizontal_lines, key=lambda l: (l.start.y + l.end.y) / 2)
         top_line = h_sorted[0]
@@ -295,7 +299,8 @@ def _calculate_structure_confidence(
     v_lines: List[Line],
     config: dict,
     page_width: float = None,
-    page_height: float = None
+    page_height: float = None,
+    text_lines: List = None
 ) -> float:
     """Calculate confidence score for the table structure."""
 
@@ -305,64 +310,139 @@ def _calculate_structure_confidence(
     if page_width and page_height:
         page_area = page_width * page_height
         area_ratio = area / page_area
-        size_score = min(1.0, area_ratio / config.get('min_table_area_ratio'))
+        area_scoring = config.get('area_scoring', {})
+        size_score = min(
+            area_scoring.get('max_area_bonus'),
+            area_ratio / area_scoring.get('min_table_area_ratio')
+        )
     else:
-        # Fallback based on absolute size
-        size_score = min(1.0, area / 50000)
+        # Fallback to 0 if no page dimensions are available
+        size_score = 0
 
     # Line structure score - more lines indicate better structure
+    line_scoring = config.get('line_scoring', {})
     total_lines = len(h_lines) + len(v_lines)
-    line_score = min(1.0, total_lines / 15.0)  # 15 lines = perfect score
+    line_score = min(
+        line_scoring.get('max_line_bonus'), 
+        total_lines / line_scoring.get('max_n_lines_bonus')
+    ) 
 
-    # Balance score - good tables have both horizontal and vertical lines
-    h_count, v_count = len(h_lines), len(v_lines)
-    if h_count > 0 and v_count > 0:
-        balance_score = min(h_count, v_count) / max(h_count, v_count)
-    else:
-        balance_score = 0.0
-
-    # Line span score - lines should span significant portions
-    h_span_score = _calculate_span_score(h_lines, rect.width, is_horizontal=True)
-    v_span_score = _calculate_span_score(v_lines, rect.height, is_horizontal=False)
-    span_score = (h_span_score + v_span_score) / 2
+    # Text bonus score - bonus for text content within the table structure
+    text_bonus = 0.0
+    if text_lines:
+        text_within = [line for line in text_lines if rect.intersects(line.rect)]
+        if text_within:
+            text_scoring = config.get('text_scoring', {})
+            text_bonus = min(
+                text_scoring.get('max_text_bonus'),
+                len(text_within) * text_scoring.get('text_presence_weight')
+            )
 
     # Weighted combination
     total_confidence = (
-        size_score * 0.35 +      # Size is important for "large" structures  
-        line_score * 0.25 +      # Line count matters
-        balance_score * 0.20 +   # Need both h and v lines
-        span_score * 0.20        # Lines should span the structure
+        size_score +      # Size is important for "large" structures 
+        line_score +      # Line count matters
+        text_bonus        # Text content indicates actual table usage
     )
 
     return min(1.0, total_confidence)
 
 
-def _calculate_span_score(lines: List[Line], dimension: float, is_horizontal: bool) -> float:
-    """Calculate how well lines span across the structure."""
-    if not lines or dimension <= 0:
-        return 0.0
 
-    spans = []
-    for line in lines:
-        if is_horizontal:
-            line_span = abs(line.end.x - line.start.x)
-        else:
-            line_span = abs(line.end.y - line.start.y)
-
-        span_ratio = line_span / dimension
-        spans.append(min(1.0, span_ratio))
-
-    # Average span ratio of all lines
-    return sum(spans) / len(spans) if spans else 0.0
-
-
-# Compatibility function for existing code
 def filter_extraction_pairs_by_tables(
-    material_description_pairs: List,
+    material_description_pairs: List["MaterialDescriptionRectWithSidebar"],
     table_structures: List[TableStructure],
-) -> List:
-    """Filter material description pairs by table structures."""
-    if not table_structures:
+    proximity_buffer: float = 50.0
+) -> List["MaterialDescriptionRectWithSidebar"]:
+    """Filter material description pairs by table structures.
+
+    Keeps pairs that are either inside table structures or within proximity of them.
+    Falls back to all pairs if no table structures are detected.
+
+    Args:
+        material_description_pairs: List of MaterialDescriptionRectWithSidebar objects
+        table_structures: List of detected table structures
+        proximity_buffer: Distance in pixels for "close to table" consideration
+
+    Returns:
+        Filtered list of material description pairs
+    """
+
+    if not material_description_pairs:
         return material_description_pairs
 
-    return material_description_pairs
+    filtered_pairs = []
+
+    for pair in material_description_pairs:
+        if _is_pair_relevant_to_tables(pair, table_structures, proximity_buffer):
+            filtered_pairs.append(pair)
+
+    return filtered_pairs
+
+
+def _is_pair_relevant_to_tables(
+    pair: "MaterialDescriptionRectWithSidebar",
+    table_structures: List[TableStructure],
+    proximity_buffer: float
+) -> bool:
+    """Check if a material description pair is relevant to any table structure.
+
+    Args:
+        pair: MaterialDescriptionRectWithSidebar object
+        table_structures: List of table structures
+        proximity_buffer: Distance threshold for proximity check
+
+    Returns:
+        True if pair is inside or near any table structure
+    """
+    material_rect = pair.material_description_rect
+    sidebar_rect = pair.sidebar.rect() if pair.sidebar else None
+
+    for table in table_structures:
+        # Check if material description is inside or near table
+        if _is_rect_relevant_to_table(material_rect, table, proximity_buffer):
+            return True
+
+        # Check if sidebar is inside or near table
+        if sidebar_rect and _is_rect_relevant_to_table(sidebar_rect, table, proximity_buffer):
+            return True
+
+    return False
+
+
+def _is_rect_relevant_to_table(
+    rect: pymupdf.Rect, 
+    table: TableStructure, 
+    proximity_buffer: float
+) -> bool:
+    """Check if a rectangle is inside or near a table structure.
+
+    Args:
+        rect: Rectangle to check
+        table: Table structure
+        proximity_buffer: Distance threshold for proximity
+
+    Returns:
+        True if rectangle is inside table or within proximity buffer
+    """
+    table_rect = table.bounding_rect
+
+    # Check if rectangle is inside table
+    if table.contains_rect(rect):
+        return True
+
+    # Check if rectangle is within proximity buffer of table
+    expanded_table_rect = pymupdf.Rect(
+        table_rect.x0 - proximity_buffer,
+        table_rect.y0 - proximity_buffer,
+        table_rect.x1 + proximity_buffer,
+        table_rect.y1 + proximity_buffer
+    )
+
+    # Check for any overlap with expanded table area
+    return not (
+        rect.x1 < expanded_table_rect.x0 or
+        rect.x0 > expanded_table_rect.x1 or
+        rect.y1 < expanded_table_rect.y0 or
+        rect.y0 > expanded_table_rect.y1
+    )

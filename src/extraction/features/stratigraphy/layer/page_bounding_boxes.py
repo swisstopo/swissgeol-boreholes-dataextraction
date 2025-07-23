@@ -121,6 +121,7 @@ class PageBoundingBoxes:
             depth_column_entry_bboxes=depth_column_entry_bboxes,
             material_description_bbox=BoundingBox(pair.material_description_rect),
             page=page_number,
+            table_structures=None
         )
 
     def get_outer_rect(self) -> pymupdf.Rect:

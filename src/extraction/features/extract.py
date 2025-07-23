@@ -92,10 +92,11 @@ class MaterialDescriptionRectWithSidebarExtractor:
         table_structures = detect_table_structures(
             geometric_lines=self.geometric_lines,
             page_width=self.page_width,
-            page_height=self.page_height
+            page_height=self.page_height,
+            text_lines=self.lines
         )
 
-        logger.debug(f"Detected {len(table_structures)} table structures on page {self.page_number}")
+        logger.info(f"Detected {len(table_structures)} table structures on page {self.page_number}")
 
         # Step 2: Find material description and sidebar pairs using existing logic
         material_descriptions_sidebar_pairs = self._find_layer_identifier_sidebar_pairs()
@@ -115,15 +116,15 @@ class MaterialDescriptionRectWithSidebarExtractor:
             pair for pair in material_descriptions_sidebar_pairs if pair.score_match >= 0
         ]
 
-        # Step 3: Apply table-based filtering to reduce duplicates from the start
+        # Step 3: Apply table-based filtering to reduce duplicates
         if table_structures:
+            logger.info(f"Before table filtering: {len(material_descriptions_sidebar_pairs)} pairs available")
             material_descriptions_sidebar_pairs = filter_extraction_pairs_by_tables(
-                material_descriptions_sidebar_pairs, table_structures
+                material_descriptions_sidebar_pairs, table_structures, proximity_buffer=50
             )
-            logger.debug(f"After table filtering: {len(material_descriptions_sidebar_pairs)} pairs remaining")
+            logger.info(f"After table filtering: {len(material_descriptions_sidebar_pairs)} pairs remaining")
 
-        # Step 4: Apply remaining deduplication filters 
-        # remove pairs that have any of their elements (sidebar, material description) intersecting with others.
+        # Step 4: remove pairs that have any of their elements (sidebar, material description) intersecting with others.
         to_delete = self._find_intersecting_indices(material_descriptions_sidebar_pairs)
         filtered_pairs = [
             item for index, item in enumerate(material_descriptions_sidebar_pairs) if index not in to_delete
@@ -582,7 +583,8 @@ def extract_page(
     table_structures = detect_table_structures(
         geometric_lines=geometric_lines,
         page_width=page_width,
-        page_height=page_height
+        page_height=page_height,
+        text_lines=text_lines
     )
     
     # Extract boreholes
