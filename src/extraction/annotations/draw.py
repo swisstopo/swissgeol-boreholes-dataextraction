@@ -11,10 +11,7 @@ from dotenv import load_dotenv
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
-from extraction.features.table_detection import TableStructure, detect_table_structures
-from extraction.features.utils.geometry.line_detection import extract_lines
-from extraction.features.utils.text.extract_text import extract_text_lines
-from utils.file_utils import read_params
+from extraction.features.utils.table_detection import TableStructure
 
 load_dotenv()
 
@@ -315,7 +312,9 @@ def draw_layer(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, layer: L
                     )
 
 
-def draw_table_structures(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, tables: list[TableStructure]) -> None:
+def draw_table_structures(
+    shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, tables: list[TableStructure]
+) -> None:
     """Draw table structures on a pdf page.
 
     If multiple tables are available each is drawn in a different color to distinguish between the detected tables.
@@ -328,13 +327,13 @@ def draw_table_structures(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matri
     # Define colors for different tables
     table_colors = [
         ("purple", "mediumpurple"),
-        ("blue", "lightblue"), 
+        ("blue", "lightblue"),
         ("green", "lightgreen"),
         ("red", "lightcoral"),
         ("orange", "peachpuff"),
         ("brown", "tan"),
         ("darkgreen", "lightseagreen"),
-        ("darkblue", "lightsteelblue")
+        ("darkblue", "lightsteelblue"),
     ]
 
     for index, table in enumerate(tables):
@@ -342,11 +341,7 @@ def draw_table_structures(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matri
 
         # Draw the table bounding rectangle
         shape.draw_rect(table.bounding_rect * derotation_matrix)
-        shape.finish(
-            color=pymupdf.utils.getColor(main_color),
-            width=3,
-            stroke_opacity=0.8
-        )
+        shape.finish(color=pymupdf.utils.getColor(main_color), width=3, stroke_opacity=0.8)
 
         # Draw horizontal and vertical lines in a lighter shade
         for h_line in table.horizontal_lines:
@@ -354,22 +349,14 @@ def draw_table_structures(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matri
             end_point = pymupdf.Point(h_line.end.x, h_line.end.y)
             shape.draw_line(start_point * derotation_matrix, end_point * derotation_matrix)
 
-        shape.finish(
-            color=pymupdf.utils.getColor(light_color),
-            width=1,
-            stroke_opacity=0.6
-        )
+        shape.finish(color=pymupdf.utils.getColor(light_color), width=1, stroke_opacity=0.6)
 
         for v_line in table.vertical_lines:
             start_point = pymupdf.Point(v_line.start.x, v_line.start.y)
             end_point = pymupdf.Point(v_line.end.x, v_line.end.y)
             shape.draw_line(start_point * derotation_matrix, end_point * derotation_matrix)
 
-        shape.finish(
-            color=pymupdf.utils.getColor(light_color),
-            width=1,
-            stroke_opacity=0.6
-        )
+        shape.finish(color=pymupdf.utils.getColor(light_color), width=1, stroke_opacity=0.6)
 
 
 def draw_table_predictions(
@@ -424,7 +411,9 @@ def draw_table_predictions(
                                     page_table_structures.append(table_structure)
 
                     if page_table_structures:
-                        logger.info(f"Drawing {len(page_table_structures)} table structures on page {page_number} of {filename}")
+                        logger.info(
+                            f"Drawing {len(page_table_structures)} table structure on page {page_number} of {filename}"
+                        )
 
                         # Draw the detected table structures
                         draw_table_structures(shape, page.derotation_matrix, page_table_structures)
@@ -433,13 +422,14 @@ def draw_table_predictions(
 
                     shape.commit()  # Commit all the drawing operations to the page
 
-                    # Save the image 
+                    # Save the image
                     tmp_file_path = tables_directory / f"{filename}_tables_page{page_number}.png"
                     pymupdf.utils.get_pixmap(page, matrix=pymupdf.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
 
                     if mlflow_tracking:
                         try:
                             import mlflow
+
                             mlflow.log_artifact(tmp_file_path, artifact_path="table_pages")
                         except NameError:
                             logger.warning("MLFlow could not be imported. Skipping logging of artifact.")

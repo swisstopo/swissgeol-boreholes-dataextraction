@@ -94,7 +94,6 @@ class PageBoundingBoxes:
     @classmethod
     def from_json(cls, data) -> "PageBoundingBoxes":
         """Convert a JSON data structure to a BoundingBoxes object."""
-
         return cls(
             sidebar_bbox=BoundingBox.from_json(data["sidebar_rect"])
             if "sidebar_rect" in data and data["sidebar_rect"]
@@ -102,7 +101,7 @@ class PageBoundingBoxes:
             depth_column_entry_bboxes=[BoundingBox.from_json(entry) for entry in data["depth_column_entries"]],
             material_description_bbox=BoundingBox.from_json(data["material_description_rect"]),
             page=data["page"],
-            table_structures=data.get("table_structures")
+            table_structures=data.get("table_structures"),
         )
 
     @classmethod
@@ -121,7 +120,7 @@ class PageBoundingBoxes:
             depth_column_entry_bboxes=depth_column_entry_bboxes,
             material_description_bbox=BoundingBox(pair.material_description_rect),
             page=page_number,
-            table_structures=None
+            table_structures=None,
         )
 
     def get_outer_rect(self) -> pymupdf.Rect:
