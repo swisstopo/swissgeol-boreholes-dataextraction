@@ -93,20 +93,12 @@ def detect_table_structures(
     """
     config = read_params('table_detection_params.yml')
 
-    # Need sufficient lines for a meaningful table
-    if len(geometric_lines) < config.get('min_total_lines'):
-        logger.debug(f"Insufficient lines ({len(geometric_lines)}) for table detection")
-        return []
-
     # Filter and classify lines
     filtered_lines = _filter_significant_lines(geometric_lines, config, page_width, page_height)
     horizontal_lines, vertical_lines = _separate_by_orientation(filtered_lines, config)
 
-    logger.debug(f"Found {len(horizontal_lines)} horizontal, {len(vertical_lines)} vertical lines")
-
     # Need substantial line structure for a table
     if len(horizontal_lines) < 4 or len(vertical_lines) < 2:
-        logger.debug("Insufficient line structure for table detection")
         return []
 
     # Find the dominant table structure
@@ -118,7 +110,7 @@ def detect_table_structures(
         logger.info(f"Detected table structure (confidence: {table_candidate.confidence:.3f})")
         return [table_candidate]
 
-    logger.debug("No significant table structure found")
+    logger.info("No significant table structure found")
     return []
 
 
@@ -165,7 +157,7 @@ def _separate_by_orientation(lines: List[Line], config: dict) -> Tuple[List[Line
         if angle <= angle_tolerance or angle >= (180 - angle_tolerance):
             horizontal_lines.append(line)
         # Vertical lines (close to 90°)
-        elif abs(angle - 90) <= angle_tolerance:
+        elif angle - 90 <= angle_tolerance:
             vertical_lines.append(line)
 
     return horizontal_lines, vertical_lines
@@ -204,7 +196,7 @@ def _find_dominant_table_structure(
 
     # Calculate metrics
     area = refined_rect.width * refined_rect.height
-    line_density = len(table_horizontal_lines + table_vertical_lines) / (area / 10000) # normalization of area
+    line_density = len(table_horizontal_lines + table_vertical_lines) / (area / 10000) # normalize the area
 
     # Calculate confidence based on structure quality
     confidence = _calculate_structure_confidence(
@@ -241,7 +233,7 @@ def _refine_table_bounds(
 
         if x_positions:
             refined_min_x = min(x_positions) - 10  # Small buffer
-            refined_max_x = max(x_positions) + 10
+            refined_max_x = max(x_positions) + 10. # Small buffer
         else:
             refined_min_x = initial_rect.x0
             refined_max_x = initial_rect.x1
@@ -312,7 +304,7 @@ def _calculate_structure_confidence(
         area_ratio = area / page_area
         area_scoring = config.get('area_scoring', {})
         size_score = min(
-            area_scoring.get('max_area_bonus'),
+            area_scoring.get('area_weights'),
             area_ratio / area_scoring.get('min_table_area_ratio')
         )
     else:
@@ -323,9 +315,9 @@ def _calculate_structure_confidence(
     line_scoring = config.get('line_scoring', {})
     total_lines = len(h_lines) + len(v_lines)
     line_score = min(
-        line_scoring.get('max_line_bonus'), 
+        line_scoring.get('line_weights'),
         total_lines / line_scoring.get('max_n_lines_bonus')
-    ) 
+    )
 
     # Text bonus score - bonus for text content within the table structure
     text_bonus = 0.0
@@ -334,16 +326,12 @@ def _calculate_structure_confidence(
         if text_within:
             text_scoring = config.get('text_scoring', {})
             text_bonus = min(
-                text_scoring.get('max_text_bonus'),
+                text_scoring.get('text_weights'),
                 len(text_within) * text_scoring.get('text_presence_weight')
             )
 
     # Weighted combination
-    total_confidence = (
-        size_score +      # Size is important for "large" structures 
-        line_score +      # Line count matters
-        text_bonus        # Text content indicates actual table usage
-    )
+    total_confidence = (size_score + line_score + text_bonus)
 
     return min(1.0, total_confidence)
 
@@ -411,8 +399,8 @@ def _is_pair_relevant_to_tables(
 
 
 def _is_rect_relevant_to_table(
-    rect: pymupdf.Rect, 
-    table: TableStructure, 
+    rect: pymupdf.Rect,
+    table: TableStructure,
     proximity_buffer: float
 ) -> bool:
     """Check if a rectangle is inside or near a table structure.

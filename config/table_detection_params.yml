@@ -1,9 +1,8 @@
 # Line requirements for meaningful table detection, number of lines and minimum length
-min_total_lines: 3
-min_line_length: 50
+min_line_length: 20
 
 # Angle requirements - degrees of tolerance for classification for horizontal/vertical lines
-angle_tolerance: 5.0
+angle_tolerance: 5
 
 # Distance from page edge to ignore "scan artifacts"
 page_boundary_margin: 5
@@ -11,17 +10,17 @@ page_boundary_margin: 5
 # Confidence threshold for table detection
 min_confidence: 0.6
 
-# Area bonus for confidence calculation
+# Table area score for confidence calculation
 area_scoring:
-  max_area_bonus: 0.4
+  area_weights: 0.4
   min_table_area_ratio: 0.8
 
-# Line bonus for confidence calculation
+# Line score for confidence calculation
 line_scoring:
-  max_line_bonus: 0.2
+  line_weights: 0.2
   max_n_lines_bonus: 120
 
 # Text bonus scoring for confidence calculation
 text_scoring:
-  max_text_bonus: 0.4        # Maximum bonus from text presence (0.0 - 1.0)
-  text_presence_weight: 0.002 # Weight per text line found within table (e.g., 0.02 * 10 lines = 0.3 max)
+  text_weights: 0.4
+  text_presence_weight: 0.002
