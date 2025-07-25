@@ -115,9 +115,11 @@ class StructureLine:
         # TODO docstring and unit tests
         if self.is_vertical == other.is_vertical:
             position_ok = abs(self.position - other.position) < tolerance
-            start_end_ok = (self.start - tolerance <= min(other.start, other.end) <= self.end + tolerance) or (
-                self.start - tolerance <= max(other.start, other.end) <= self.end + tolerance
-            )
+            min_self = min(self.start, self.end)
+            max_self = max(self.start, self.end)
+            min_other = min(other.start, other.end)
+            max_other = max(other.start, other.end)
+            start_end_ok = not (max_self + tolerance < min_other) and not (max_other + tolerance < min_self)
             return position_ok and start_end_ok
         else:
             return (self.start - tolerance < other.position < self.end + tolerance) and (
