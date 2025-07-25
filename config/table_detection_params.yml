@@ -2,10 +2,7 @@
 min_line_length: 20
 
 # Angle requirements - degrees of tolerance for classification for horizontal/vertical lines
-angle_tolerance: 5
-
-# Distance from page edge to ignore "scan artifacts"
-page_boundary_margin: 5
+angle_tolerance: 10
 
 # Confidence threshold for table detection
 min_confidence: 0.6
