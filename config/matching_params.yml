@@ -11,6 +11,8 @@ depth_column_params:  # these params should be optimized as soon as there is rel
   noise_count_threshold: 1.25
   noise_count_offset: 2.5
 
+non_description_lines_ratio: 0.15
+
 default_language: de
 
 material_description:

@@ -417,7 +417,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             ]
 
             # the rect is valid only when description lines are clearly more numerous than non-description lines.
-            if len(non_description_in_rect) / len(good_lines) > 0.15:
+            if len(non_description_in_rect) / len(good_lines) > self.params["non_description_lines_ratio"]:
                 continue
 
             # expand to include entire last block
@@ -504,14 +504,12 @@ class MaterialDescriptionRectWithSidebarExtractor:
             - The rectangle has not been used yet.
             - The potential pair does not have an already matched sidebar or rectangle between its elements.
             """
-            joined_rect = pymupdf.Rect(sidebars_noise[s_idx].sidebar.rect).include_rect(mat_desc_rect)
+            joined_rect = joined_rect = sidebars_noise[s_idx].sidebar.rect | mat_desc_rect
 
             return (
                 s_idx not in used_sidebars_idx  # don't re-match an already matched sidebar
-                and not any(
-                    joined_rect.intersects(
-                        pymupdf.Rect(pair.sidebar.rect).include_rect(pair.material_description_rect)
-                    )
+                and all(
+                    (joined_rect & (pair.sidebar.rect | pair.material_description_rect)).is_empty
                     for pair in matched_pairs
                 )  # don't allow taking the same rect or crossing pairs (pair having another pair element in between)
             )
