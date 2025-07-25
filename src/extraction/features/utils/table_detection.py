@@ -282,5 +282,39 @@ def _pair_conflicts_with_tables(
             if not (sidebar_rect_inside or sidebar_rect_outside):
                 return True
 
-        # no conflict
-        return False
+    # no conflict
+    return False
+
+
+def _contained_in_table_index(
+    pair: "MaterialDescriptionRectWithSidebar", table_structures: list[TableStructure], proximity_buffer: float = 50
+) -> int:
+    """Returns the index of the first table structure that contains this pair, or -1 if none is found.
+
+    Args:
+        pair: MaterialDescriptionRectWithSidebar object
+        table_structures: List of table structures
+        proximity_buffer: Distance threshold for proximity check
+
+    Returns:
+        The index of the first table structure that contains this pair, or -1 if none is found
+    """
+    material_rect = pair.material_description_rect
+    sidebar_rect = pair.sidebar.rect() if pair.sidebar else None
+
+    for index, table in enumerate(table_structures):
+        # Check if rectangle is within proximity buffer of table
+        expanded_table_rect = pymupdf.Rect(
+            table.bounding_rect.x0 - proximity_buffer,
+            table.bounding_rect.y0 - proximity_buffer,
+            table.bounding_rect.x1 + proximity_buffer,
+            table.bounding_rect.y1 + proximity_buffer,
+        )
+
+        material_rect_inside = expanded_table_rect.contains(material_rect)
+        sidebar_rect_inside = expanded_table_rect.contains(sidebar_rect) if sidebar_rect else True
+
+        if material_rect_inside and sidebar_rect_inside:
+            return index
+
+    return -1
