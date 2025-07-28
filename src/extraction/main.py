@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 import click
+import cv2
 import pymupdf
 from dotenv import load_dotenv
 from tqdm import tqdm
@@ -319,12 +320,20 @@ def start_pipeline(
 
                 # Draw table structures if requested
                 if draw_tables:
-                    if not mlflow_tracking:
-                        logger.warning("MLFlow tracking is not enabled. MLFLow is required to store the images.")
-                    else:
-                        # TODO ensure that the tables drawn here are not showing up when drawing lines later on
-                        img = plot_tables(page, table_structures)
+                    # TODO ensure that the tables drawn here are not showing up when drawing lines later on
+                    img = plot_tables(page, table_structures)
+                    
+                    # Save to local directory if available
+                    if draw_directory:
+                        table_img_path = draw_directory / f"{Path(filename).stem}_page_{page.number + 1}_tables.png"
+                        cv2.imwrite(str(table_img_path), img)
+                        logger.info(f"Saved table visualization to {table_img_path}")
+                    
+                    # Also log to MLflow if tracking is enabled
+                    if mlflow_tracking:
                         mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_tables.png")
+                    elif not draw_directory:
+                        logger.warning("Neither MLFlow tracking nor local draw directory is enabled. Table images will not be saved.")
 
                 if draw_lines:  # could be changed to if draw_lines and mlflow_tracking:
                     if not mlflow_tracking:

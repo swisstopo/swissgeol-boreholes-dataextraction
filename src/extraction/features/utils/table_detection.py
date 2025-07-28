@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import pymupdf
 
 from extraction.features.stratigraphy.layer.page_bounding_boxes import MaterialDescriptionRectWithSidebar
-from extraction.features.utils.geometry.geometry_dataclasses import Line
+from extraction.features.utils.geometry.geometry_dataclasses import Line, Point
 from utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ class TableStructure:
 def detect_table_structures(
     geometric_lines: list[Line], page_width: float = None, page_height: float = None, text_lines: list = None
 ) -> list[TableStructure]:
-    """Detect large table structures on a page.
+    """Detect multiple non-overlapping table structures on a page.
 
     Args:
         geometric_lines: List of detected geometric lines
@@ -36,15 +36,14 @@ def detect_table_structures(
         text_lines: List of text lines for text content analysis
 
     Returns:
-        List containing at most one large table structure
+        List of detected table structures
     """
     config = read_params("table_detection_params.yml")
 
     # Filter and classify lines
-    filtered_lines = _filter_significant_lines(geometric_lines, config, page_width, page_height)
+    filtered_lines = _filter_significant_lines(geometric_lines, config)
     structure_lines = _separate_by_orientation(filtered_lines, config)
 
-    # Find the dominant table structure
     table_candidates = _find_table_structures(structure_lines, config, page_width, page_height, text_lines)
     table_candidates = [
         table
@@ -59,8 +58,7 @@ def detect_table_structures(
 
 
 def _filter_significant_lines(
-    lines: list[Line], config: dict, page_width: float = None, page_height: float = None
-) -> list[Line]:
+    lines: list[Line], config: dict) -> list[Line]:
     """Filter to keep only significantly long lines that could form table structures."""
     min_length = config.get("min_line_length")
 
@@ -100,7 +98,6 @@ def _separate_by_orientation(lines: list[Line], config: dict) -> list["Structure
 
     return structure_lines
 
-
 @dataclasses.dataclass
 class StructureLine:
     """Helper class for representing horizontal and vertical lines in a table structure."""
@@ -134,46 +131,222 @@ def _find_table_structures(
     page_height: float = None,
     text_lines: list = None,
 ) -> list[TableStructure]:
-    """Find the all table structures on the page."""
-    line_partitions = []
+    """Find multiple non-intersecting table structures using region-based detection.
 
-    while lines:
-        current_partition = []
-        unprocessed = [lines.pop()]
-        while unprocessed:
-            current_line = unprocessed.pop()
-            remaining_lines = []
-            for line in lines:
-                if current_line.connects_with(line):
-                    unprocessed.append(line)
-                else:
-                    remaining_lines.append(line)
-            current_partition.append(current_line)
-            lines = remaining_lines
-        line_partitions.append(current_partition)
+    Args:
+        filtered_lines: List of horizontal lines
+        vertical_lines: List of vertical lines
+        config: Configuration parameters
+        page_width: Page width
+        page_height: Page height
+        text_lines: List of text lines for content analysis
 
-    return [_create_table_structure(lines, config, page_width, page_height, text_lines) for lines in line_partitions]
+    Returns:
+        List of table structures
+    """
+    # Find line groups using region grouping
+    table_regions = _find_table_regions(lines, config)
+
+    detected_tables = []
+
+    for region_h_lines, region_v_lines in table_regions:
+        # define a minimum structure for a table
+        if len(region_h_lines) < 2 or len(region_v_lines) < 2:
+            continue
+
+        # Create table structure for this region
+        table = _create_table_from_region(
+            region_h_lines, region_v_lines, config, page_width, page_height, text_lines
+        )
+
+        if table and table.confidence >= config.get("min_confidence"):
+            # Check for bounding box intersection
+            if not _table_overlaps(table, detected_tables):
+                detected_tables.append(table)
+
+    # Sort by confidence (highest first)
+    detected_tables.sort(key=lambda t: t.confidence, reverse=True)
+
+    # Limit number of tables
+    max_tables = config.get("max_additional_tables", 2) + 1
+    return detected_tables[:max_tables]
 
 
-def _create_table_structure(
-    lines: list[StructureLine],
+def _find_table_regions(lines: list[StructureLine], config: dict) -> list[tuple[list[Line], list[Line]]]:
+    """Find regions of connected lines that could form table structures.
+
+    Args:
+        lines: List of structure lines
+        config: Configuration parameters
+
+    Returns:
+        List of tuples containing horizontal and vertical lines for each detected region
+    """
+    line_groups = []
+
+    for line in lines:
+        # Find which existing groups this line should join
+        matching_groups = []
+
+        for group_idx, group in enumerate(line_groups):
+            if _line_connects_to_group(line, group, config):
+                matching_groups.append(group_idx)
+
+        if not matching_groups:
+            # Create new group
+            line_groups.append([line])
+        elif len(matching_groups) == 1:
+            # Add to existing group
+            line_groups[matching_groups[0]].append(line)
+        else:
+            # Merge multiple groups and add line
+            merged_group = [line]
+            for group_idx in sorted(matching_groups, reverse=True):
+                merged_group.extend(line_groups.pop(group_idx))
+            line_groups.append(merged_group)
+
+    # Convert groups to regions with structure requirements
+    regions = []
+    for group in line_groups:
+        group_h_lines = [line.line for line in group if not line.is_vertical]
+        group_v_lines = [line.line for line in group if line.is_vertical]
+
+        if len(group_h_lines) >= 3 and len(group_v_lines) >= 2:
+            regions.append((group_h_lines, group_v_lines))
+
+    return regions
+
+
+def _line_connects_to_group(line: StructureLine, group: list[Line], config: dict) -> bool:
+    """Connection check combining line intersection, endpoint proximity and T-junction check.
+
+    Args:
+        line: The line to check
+        group: The group of lines to check against
+        config: Configuration parameters
+    Returns:
+        True if the line connects to the group, False otherwise
+    """
+    connection_threshold = config.get("connection_threshold")
+
+    for group_line in group:
+        # 1. Check line intersection
+        if _lines_intersect(line, group_line):
+            return True
+
+        # 2. Check endpoint proximity with Euclidean distance
+        for p1 in [line.line.start, line.line.end]:
+            for p2 in [group_line.line.start, group_line.line.end]:
+                if ((p1.x - p2.x)**2 + (p1.y - p2.y)**2)**0.5 <= connection_threshold:
+                    return True
+
+        # 3. Check T-junction (point near line)
+        for point in [line.line.start, line.line.end]:
+            if _point_near_line(point, group_line.line, connection_threshold):
+                return True
+
+        for point in [group_line.line.start, group_line.line.end]:
+            if _point_near_line(point, line.line, connection_threshold):
+                return True
+
+    return False
+
+
+def _point_near_line(point: Point, line: Line, threshold: float) -> bool:
+    """Simplified point-to-line distance check."""
+    px, py = point.x - line.start.x, point.y - line.start.y
+    lx, ly = line.end.x - line.start.x, line.end.y - line.start.y
+
+    line_length_sq = lx*lx + ly*ly
+    if line_length_sq == 0:
+        distance = ((point.x - line.start.x)**2 + (point.y - line.start.y)**2)**0.5
+        return distance <= threshold
+
+    t = (px*lx + py*ly) / line_length_sq
+
+    if t < 0 or t > 1:
+        return False
+
+    proj_x = line.start.x + t * lx
+    proj_y = line.start.y + t * ly
+
+    distance = ((point.x - proj_x)**2 + (point.y - proj_y)**2)**0.5
+    return distance <= threshold
+
+
+def _lines_intersect(line1: StructureLine, line2: StructureLine) -> bool:
+    """Check if two line segments intersect.
+
+    Args:
+        line1: First line segment
+        line2: Second line segment
+
+    Returns:
+        True if line segments intersect
+    """
+    # Get line endpoints
+    x1, y1 = line1.line.start.x, line1.line.start.y
+    x2, y2 = line1.line.end.x, line1.line.end.y
+    x3, y3 = line2.line.start.x, line2.line.start.y
+    x4, y4 = line2.line.end.x, line2.line.end.y
+
+    # Calculate line intersection using determinants
+    denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+
+    # Lines are parallel if denominator is 0
+    if abs(denom) < 1e-10:
+        return False
+
+    # Calculate intersection parameters
+    t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom
+    u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom
+
+    # Lines intersect if both parameters are between 0 and 1
+    return 0 <= t <= 1 and 0 <= u <= 1
+
+
+def _table_overlaps(table: TableStructure, existing_tables: list[TableStructure]) -> bool:
+    """Simplified overlap check using bounding box intersection."""
+    for existing_table in existing_tables:
+        if table.bounding_rect.intersects(existing_table.bounding_rect):
+            return True
+    return False
+
+
+def _create_table_from_region(
+    horizontal_lines: list[Line],
+    vertical_lines: list[Line],
     config: dict,
     page_width: float = None,
     page_height: float = None,
     text_lines: list = None,
-) -> TableStructure:
-    """Create a table structure from a collection of connected lines."""
-    all_lines: list[Line] = [line.line for line in lines]
-    horizontal_lines: list[Line] = [line.line for line in lines if not line.is_vertical]
-    vertical_lines: list[Line] = [line.line for line in lines if line.is_vertical]
+) -> TableStructure | None:
+    """Create a table structure from a region of connected lines.
 
-    # Calculate bounding box of all lines
+    This uses the proven confidence calculation from the original algorithm.
+
+    Args:
+        horizontal_lines: Horizontal lines in this region
+        vertical_lines: Vertical lines in this region
+        config: Configuration parameters
+        page_width: Page width
+        page_height: Page height
+        text_lines: Text lines for content analysis
+
+    Returns:
+        TableStructure object or None
+    """
+    all_lines = horizontal_lines + vertical_lines
+    if not all_lines:
+        return None
+
+    # Calculate bounding box of this region
     min_x = min(min(line.start.x, line.end.x) for line in all_lines)
     max_x = max(max(line.start.x, line.end.x) for line in all_lines)
     min_y = min(min(line.start.y, line.end.y) for line in all_lines)
     max_y = max(max(line.start.y, line.end.y) for line in all_lines)
 
-    # Create initial bounding rectangle
+    # Create bounding rectangle for this specific region
     bounding_rect = pymupdf.Rect(min_x, min_y, max_x, max_y)
 
     # Calculate metrics
@@ -181,7 +354,6 @@ def _create_table_structure(
     # normalize the area
     line_density = len(horizontal_lines + vertical_lines) / (area / 10000) if area > 0 else 0
 
-    # Calculate confidence based on structure quality
     confidence = _calculate_structure_confidence(
         bounding_rect, horizontal_lines, vertical_lines, config, page_width, page_height, text_lines
     )
@@ -318,3 +490,4 @@ def _contained_in_table_index(
             return index
 
     return -1
+
