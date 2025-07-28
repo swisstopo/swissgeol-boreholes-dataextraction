@@ -253,7 +253,18 @@ def _line_connects_to_group(line: StructureLine, group: list[Line], config: dict
 
 
 def _point_near_line(point: Point, line: Line, threshold: float) -> bool:
-    """Simplified point-to-line distance check."""
+    """Point-to-line distance check.
+
+    Point-to-line segment distance calculation using vector projection 
+    and parametric line representation
+
+    Args:
+        point: The point to check
+        line: The line to check against
+        threshold: Distance threshold for proximity
+    Returns:
+        True if the point is near the line, False otherwise
+    """
     px, py = point.x - line.start.x, point.y - line.start.y
     lx, ly = line.end.x - line.start.x, line.end.y - line.start.y
 
@@ -276,6 +287,9 @@ def _point_near_line(point: Point, line: Line, threshold: float) -> bool:
 
 def _lines_intersect(line1: StructureLine, line2: StructureLine) -> bool:
     """Check if two line segments intersect.
+
+    This approach uses line-line intersection calculation:
+    https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
 
     Args:
         line1: First line segment
@@ -306,7 +320,7 @@ def _lines_intersect(line1: StructureLine, line2: StructureLine) -> bool:
 
 
 def _table_overlaps(table: TableStructure, existing_tables: list[TableStructure]) -> bool:
-    """Simplified overlap check using bounding box intersection."""
+    """Overlap check using bounding box intersection."""
     for existing_table in existing_tables:
         if table.bounding_rect.intersects(existing_table.bounding_rect):
             return True
@@ -322,8 +336,6 @@ def _create_table_from_region(
     text_lines: list = None,
 ) -> TableStructure | None:
     """Create a table structure from a region of connected lines.
-
-    This uses the proven confidence calculation from the original algorithm.
 
     Args:
         horizontal_lines: Horizontal lines in this region
@@ -351,7 +363,7 @@ def _create_table_from_region(
 
     # Calculate metrics
     area = bounding_rect.width * bounding_rect.height
-    # normalize the area
+    # Normalize the area
     line_density = len(horizontal_lines + vertical_lines) / (area / 10000) if area > 0 else 0
 
     confidence = _calculate_structure_confidence(
@@ -376,7 +388,20 @@ def _calculate_structure_confidence(
     page_height: float = None,
     text_lines: list = None,
 ) -> float:
-    """Calculate confidence score for the table structure."""
+    """Calculate confidence score for the table structure.
+
+    Args:
+        rect: Bounding rectangle of the table structure
+        h_lines: List of horizontal lines in the structure
+        v_lines: List of vertical lines in the structure
+        config: Configuration parameters
+        page_width: Page width
+        page_height: Page height
+        text_lines: List of text lines for content analysis
+
+    Returns:
+        Confidence score between 0 and 1
+    """
     area = rect.width * rect.height
 
     # Size score - larger tables are more likely to be significant
