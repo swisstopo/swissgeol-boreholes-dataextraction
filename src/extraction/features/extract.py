@@ -38,7 +38,6 @@ from extraction.features.utils.geometry.util import x_overlap, x_overlap_signifi
 from extraction.features.utils.table_detection import (
     TableStructure,
     _contained_in_table_index,
-    _pair_conflicts_with_tables,
 )
 from extraction.features.utils.text.find_description import (
     get_description_blocks,
@@ -122,11 +121,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         # Step 2: Apply table-based filtering to reduce duplicates
         if self.table_structures:
             logger.info(f"Before table filtering: {len(material_descriptions_sidebar_pairs)} pairs available")
-            material_descriptions_sidebar_pairs = [
-                pair
-                for pair in material_descriptions_sidebar_pairs
-                if not _pair_conflicts_with_tables(pair, self.table_structures, proximity_buffer=50)
-            ]
 
             table_filtered_pairs = []
             used_indices = set()

@@ -312,10 +312,7 @@ def _lines_intersect(line1: StructureLine, line2: StructureLine) -> bool:
 
 def _table_overlaps(table: TableStructure, existing_tables: list[TableStructure]) -> bool:
     """Overlap check using bounding box intersection."""
-    for existing_table in existing_tables:
-        if table.bounding_rect.intersects(existing_table.bounding_rect):
-            return True
-    return False
+    return any(table.bounding_rect.intersects(existing_table.bounding_rect) for existing_table in existing_tables)
 
 
 def _create_table_from_region(
@@ -424,54 +421,6 @@ def _calculate_structure_confidence(
     total_confidence = size_score + line_score + text_bonus
 
     return min(1.0, total_confidence)
-
-
-def _pair_conflicts_with_tables(
-    pair: "MaterialDescriptionRectWithSidebar", table_structures: list[TableStructure], proximity_buffer: float = 50
-) -> bool:
-    """Check if a material description pair is relevant to any table structure.
-
-    Args:
-        pair: MaterialDescriptionRectWithSidebar object
-        table_structures: List of table structures
-        proximity_buffer: Distance threshold for proximity check
-
-    Returns:
-        True if pair is inside or near any table structure
-    """
-    material_rect = pair.material_description_rect
-    sidebar_rect = pair.sidebar.rect() if pair.sidebar else None
-
-    for table in table_structures:
-        # Check if rectangle is within proximity buffer of table
-        expanded_table_rect = pymupdf.Rect(
-            table.bounding_rect.x0 - proximity_buffer,
-            table.bounding_rect.y0 - proximity_buffer,
-            table.bounding_rect.x1 + proximity_buffer,
-            table.bounding_rect.y1 + proximity_buffer,
-        )
-        shrunk_table_rect = pymupdf.Rect(
-            table.bounding_rect.x0 + proximity_buffer,
-            table.bounding_rect.y0 + proximity_buffer,
-            table.bounding_rect.x1 - proximity_buffer,
-            table.bounding_rect.y1 - proximity_buffer,
-        )
-
-        material_rect_inside = expanded_table_rect.contains(material_rect)
-        material_rect_outside = not shrunk_table_rect.intersects(material_rect)
-        if not (material_rect_inside or material_rect_outside):
-            return True
-
-        # Note: we currently allow the material rect to be inside the table and the sidebar rect to be outside,
-        # or vice versa. Otherwise, we get bad results for e.g. 267124180-bp.pdf.
-        if sidebar_rect:
-            sidebar_rect_inside = expanded_table_rect.contains(sidebar_rect)
-            sidebar_rect_outside = not shrunk_table_rect.intersects(sidebar_rect)
-            if not (sidebar_rect_inside or sidebar_rect_outside):
-                return True
-
-    # no conflict
-    return False
 
 
 def _contained_in_table_index(
