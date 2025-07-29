@@ -1,11 +1,14 @@
 # Line requirements for meaningful table detection, number of lines and minimum length
 min_line_length: 20
 
-# Angle requirements - degrees of tolerance for classification for horizontal/vertical lines
+# Angle requirements
 angle_tolerance: 5
 
-# Distance from page edge to ignore "scan artifacts"
-page_boundary_margin: 5
+# Maximum number of additional tables to detect beyond the main table
+max_additional_tables: 2
+
+# Connection threshold for line groups
+connection_threshold: 5.0 
 
 # Confidence threshold for table detection
 min_confidence: 0.6
@@ -13,7 +16,7 @@ min_confidence: 0.6
 # Table area score for confidence calculation
 area_scoring:
   area_weights: 0.4
-  min_table_area_ratio: 0.8
+  min_table_area_ratio: 0.3
 
 # Line score for confidence calculation
 line_scoring:

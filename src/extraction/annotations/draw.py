@@ -8,6 +8,7 @@ import pandas as pd
 import pymupdf
 from dotenv import load_dotenv
 
+from extraction.annotations.plot_utils import convert_page_to_opencv_img
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
@@ -349,7 +350,7 @@ def draw_table_structures(
             end_point = pymupdf.Point(h_line.end.x, h_line.end.y)
             shape.draw_line(start_point * derotation_matrix, end_point * derotation_matrix)
 
-        shape.finish(color=pymupdf.utils.getColor(light_color), width=1, stroke_opacity=0.6)
+        shape.finish(color=pymupdf.utils.getColor(light_color), width=2, stroke_opacity=0.6)
 
         for v_line in table.vertical_lines:
             start_point = pymupdf.Point(v_line.start.x, v_line.start.y)
@@ -359,81 +360,14 @@ def draw_table_structures(
         shape.finish(color=pymupdf.utils.getColor(light_color), width=1, stroke_opacity=0.6)
 
 
-def draw_table_predictions(
-    predictions: OverallFilePredictions,
-    out_directory: Path,
-    input_directory: Path = None,
-) -> None:
-    """Draw table structures on pdf pages from predictions.
-
-    Reads table structures from the predictions JSON and draws them on PDF pages,
-    saving images in a 'tables' subdirectory.
+def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure]):
+    """Draw table structures on a pdf page.
 
     Args:
-        predictions (OverallFilePredictions): The predictions containing table structure data.
-        out_directory (Path): Path to the output directory where the images will be saved.
-        input_directory (Path, optional): Path to the directory containing PDF files.
+        page:               The PDF page.
+        table_structures:   The identified table structures on the page.
     """
-    # Create tables subdirectory
-    tables_directory = out_directory / "tables"
-    tables_directory.mkdir(parents=True, exist_ok=True)
-
-    for file_prediction in predictions.file_predictions_list:
-        filename = file_prediction.file_name
-        logger.info("Drawing table structures for file %s", filename)
-
-        # Find the PDF file
-        pdf_path = None
-        if input_directory:
-            if input_directory.is_file() and input_directory.name == filename:
-                pdf_path = input_directory
-            else:
-                pdf_path = input_directory / filename
-
-        if not pdf_path or not pdf_path.exists():
-            logger.warning(f"Could not find PDF file {filename}")
-            continue
-
-        try:
-            with pymupdf.Document(pdf_path) as doc:
-                for page_index, page in enumerate(doc):
-                    page_number = page_index + 1
-                    shape = page.new_shape()
-
-                    # Collect table structures for this page from all boreholes
-                    page_table_structures = []
-                    for borehole_prediction in file_prediction.borehole_predictions_list:
-                        for bbox in borehole_prediction.bounding_boxes:
-                            if bbox.page == page_number and bbox.table_structures:
-                                for table_data in bbox.table_structures:
-                                    # Reconstruct TableStructure from JSON
-                                    table_structure = TableStructure.from_json(table_data)
-                                    page_table_structures.append(table_structure)
-
-                    if page_table_structures:
-                        logger.info(
-                            f"Drawing {len(page_table_structures)} table structure on page {page_number} of {filename}"
-                        )
-
-                        # Draw the detected table structures
-                        draw_table_structures(shape, page.derotation_matrix, page_table_structures)
-                    else:
-                        logger.info(f"No table structures found for page {page_number} of {filename}")
-
-                    shape.commit()  # Commit all the drawing operations to the page
-
-                    # Save the image
-                    tmp_file_path = tables_directory / f"{filename}_tables_page{page_number}.png"
-                    pymupdf.utils.get_pixmap(page, matrix=pymupdf.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
-
-                    if mlflow_tracking:
-                        try:
-                            import mlflow
-
-                            mlflow.log_artifact(tmp_file_path, artifact_path="table_pages")
-                        except NameError:
-                            logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
-
-        except (FileNotFoundError, pymupdf.FileDataError) as e:
-            logger.error("Error opening file %s: %s", filename, e)
-            continue
+    shape = page.new_shape()
+    draw_table_structures(shape, page.derotation_matrix, table_structures)
+    shape.commit()
+    return convert_page_to_opencv_img(page, scale_factor=2)

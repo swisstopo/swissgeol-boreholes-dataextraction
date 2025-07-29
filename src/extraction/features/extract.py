@@ -17,7 +17,6 @@ from extraction.features.stratigraphy.layer.page_bounding_boxes import (
     MaterialDescriptionRectWithSidebar,
     PageBoundingBoxes,
 )
-from extraction.features.stratigraphy.sidebar.classes.layer_identifier_sidebar import LayerIdentifierSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import (
     Sidebar,
     SidebarNoise,
@@ -33,10 +32,14 @@ from extraction.features.stratigraphy.sidebar.extractor.layer_identifier_sidebar
     LayerIdentifierSidebarExtractor,
 )
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
-from extraction.features.utils.table_detection import detect_table_structures, filter_extraction_pairs_by_tables
 from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.geometry.util import x_overlap, x_overlap_significant_smallest
+from extraction.features.utils.table_detection import (
+    TableStructure,
+    _contained_in_table_index,
+    _pair_conflicts_with_tables,
+)
 from extraction.features.utils.text.find_description import (
     get_description_blocks,
     get_description_lines,
@@ -59,6 +62,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self,
         lines: list[TextLine],
         geometric_lines: list[Line],
+        table_structures: list[TableStructure],
         language: str,
         page_number: int,
         page_width: float,
@@ -70,6 +74,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Args:
             lines (list[TextLine]): all the text lines on the page.
             geometric_lines (list[Line]): The geometric lines of the page.
+            table_structures (list[TableStructure]): The identified table structures of the page.
             language (str): The language of the page.
             page_number (int): The page number.
             page_width (float): The width of the page.
@@ -78,6 +83,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         """
         self.lines = lines
         self.geometric_lines = geometric_lines
+        self.table_structures = table_structures
         self.language = language
         self.page_number = page_number
         self.page_width = page_width
@@ -95,17 +101,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Returns:
             ProcessPageResult: a list of the extracted layers and a list of relevant bounding boxes.
         """
-        # Step 1: Detect table structures on the page to guide extraction
-        table_structures = detect_table_structures(
-            geometric_lines=self.geometric_lines,
-            page_width=self.page_width,
-            page_height=self.page_height,
-            text_lines=self.lines,
-        )
-
-        logger.info(f"Detected {len(table_structures)} table structures on page {self.page_number}")
-
-        # Step 2: Find material description and sidebar pairs using existing logic
+        # Step 1: Find material description and sidebar pairs using existing logic
         material_descriptions_sidebar_pairs = self._find_layer_identifier_sidebar_pairs()
         material_descriptions_sidebar_pairs.extend(self._find_depth_sidebar_pairs())
 
@@ -117,19 +113,35 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 )
             )
 
-        material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match)  # lowest score first
+        material_descriptions_sidebar_pairs.sort(key=lambda pair: -pair.score_match)  # highest score first
 
         material_descriptions_sidebar_pairs = [
             pair for pair in material_descriptions_sidebar_pairs if pair.score_match >= 0
         ]
 
-        # Step 3: Apply table-based filtering to reduce duplicates
-        if table_structures:
+        # Step 2: Apply table-based filtering to reduce duplicates
+        if self.table_structures:
             logger.info(f"Before table filtering: {len(material_descriptions_sidebar_pairs)} pairs available")
-            material_descriptions_sidebar_pairs = filter_extraction_pairs_by_tables(
-                material_descriptions_sidebar_pairs, table_structures, proximity_buffer=50
-            )
+            material_descriptions_sidebar_pairs = [
+                pair
+                for pair in material_descriptions_sidebar_pairs
+                if not _pair_conflicts_with_tables(pair, self.table_structures, proximity_buffer=50)
+            ]
+
+            table_filtered_pairs = []
+            used_indices = set()
+            for pair in material_descriptions_sidebar_pairs:
+                index = _contained_in_table_index(pair, self.table_structures, proximity_buffer=50)
+                if index != -1:
+                    if index not in used_indices:
+                        table_filtered_pairs.append(pair)
+                        used_indices.add(index)
+                else:
+                    table_filtered_pairs.append(pair)
+            material_descriptions_sidebar_pairs = table_filtered_pairs
             logger.info(f"After table filtering: {len(material_descriptions_sidebar_pairs)} pairs remaining")
+
+        material_descriptions_sidebar_pairs.reverse()  # lowest score first
 
         # Step 4: remove pairs that have any of their elements (sidebar, material description) intersecting with others
         to_delete = self._find_intersecting_indices(material_descriptions_sidebar_pairs)
@@ -144,19 +156,15 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         filtered_pairs = [item for index, item in enumerate(filtered_pairs) if index not in to_delete]
 
-        # remove pairs that are likely duplicates of others.
-        to_delete = self._find_duplicated_pairs_indices(filtered_pairs)
-        non_duplicated_pairs = [item for index, item in enumerate(filtered_pairs) if index not in to_delete]
-
         # We order the boreholes with the highest score first. When one borehole is actually present in the ground
         # truth, but more than one are detected, we want the most correct to be assigned
         boreholes = [
             self._create_borehole_from_pair(pair)
-            for pair in sorted(non_duplicated_pairs, key=lambda pair: pair.score_match, reverse=True)
+            for pair in sorted(filtered_pairs, key=lambda pair: pair.score_match, reverse=True)
         ]
 
         logger.info(
-            f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(table_structures)} tables"
+            f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(self.table_structures)} tables"
         )
         return [borehole for borehole in boreholes if len(borehole.predictions) >= self.params["min_num_layers"]]
 
@@ -198,66 +206,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 or (sidebar_rect and intersects_any(sidebar_rect, other_sidebar_rects))
             ):
                 to_delete.append(i)
-        return to_delete
-
-    def _find_duplicated_pairs_indices(self, filtered_pairs: list[MaterialDescriptionRectWithSidebar]) -> list[int]:
-        """Identify indices of pairs that are likely duplicates.
-
-        This is done because the informations about the same borehole could be represented in multiple ways.
-        We only want to keep multiple pairs if they belong to different boreholes in the given pdf page.
-        If duplication is found, we delete the first element, as the pairs are sorted from lowest score first.
-
-        Args:
-            filtered_pairs (list[MaterialDescriptionRectWithSidebar]): The filtered pairs.
-
-        Returns:
-            list[int]: A list containing the indexes of pairs that are duplicated and that should be deleted.
-        """
-        if len(filtered_pairs) <= 1:
-            # only one pair, can't be a duplicate
-            return []
-
-        all_interval_lists = [
-            [interval.depth_interval for interval in self._get_interval_block_pairs(pair)] for pair in filtered_pairs
-        ]
-        no_depths = any([all(interval is None for interval in interval_list) for interval_list in all_interval_lists])
-        if no_depths:
-            # if a sidebar does not have depths associate with it, we check if all the sidebars contains layer
-            # identifiers like a), b), ...
-            if all([isinstance(p.sidebar, LayerIdentifierSidebar) for p in filtered_pairs]):
-                # We create a set with all the layer identifier entries of each sidebars, we will check for
-                # duplicates using those elements
-                all_element_sets = [set([entry.value for entry in p.sidebar.entries]) for p in filtered_pairs]
-            else:
-                return []  # otherwise, we don't delete anything
-        else:
-            # If all the sidebars have depths associate with them, we create sets with all the depths appearing in
-            # each interval list and check for duplicates using those elements.
-            all_element_sets = []
-            for interval_list in all_interval_lists:
-                depth_set = set()
-                for interval in interval_list:
-                    if interval is None:
-                        continue
-                    if interval.start:
-                        depth_set.add(interval.start.value)
-                    if interval.end:
-                        depth_set.add(interval.end.value)
-                all_element_sets.append(depth_set)
-
-        to_delete = []
-        # Compare the element sets (depths or layer identifiers) and compute their overlap ratio.
-        # If two sets share many of the same elements, they are likely duplicates.
-        for i, depth in enumerate(all_element_sets):
-            for other_depth in all_element_sets[i + 1 :]:
-                intersection_len = len(depth & other_depth)
-                min_len = min(len(depth), len(other_depth))
-
-                similarity_score = intersection_len / min_len if min_len != 0 else 0
-
-                if similarity_score > self.params["duplicate_similarity_threshold"]:
-                    to_delete.append(i)
-
         return to_delete
 
     def _create_borehole_from_pair(self, pair: MaterialDescriptionRectWithSidebar) -> ExtractedBorehole:
@@ -559,6 +507,7 @@ def extract_page(
     layers_from_previous_pages: LayersInDocument,
     text_lines: list[TextLine],
     geometric_lines: list[Line],
+    table_structures: list[TableStructure],
     language: str,
     page_index: int,
     document: pymupdf.Document,
@@ -572,6 +521,7 @@ def extract_page(
         layers_from_previous_pages: LayersInDocument instance containing the already detected layers.
         text_lines (list[TextLine]): All text lines on the page.
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
+        table_structures (list[TableStructure]): The identified table structures.
         language (str): Language of the page (used in parsing).
         page_index (int): The page index (0-indexed).
         document (pymupdf.Document): the document.
@@ -586,21 +536,17 @@ def extract_page(
     page_width = page_rect.width
     page_height = page_rect.height
 
-    # Detect table structures on the page
-    table_structures = detect_table_structures(
-        geometric_lines=geometric_lines, page_width=page_width, page_height=page_height, text_lines=text_lines
-    )
-
     # Extract boreholes
     extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(
-        text_lines, geometric_lines, language, page_index + 1, page_width, page_height, **matching_params
+        text_lines,
+        geometric_lines,
+        table_structures,
+        language,
+        page_index + 1,
+        page_width,
+        page_height,
+        **matching_params,
     ).process_page()
-
-    # Add table structures to the extracted boreholes
-    for borehole in extracted_boreholes:
-        for bbox in borehole.bounding_boxes:
-            if bbox.page == page_index + 1:
-                bbox.table_structures = [table.to_json() for table in table_structures]
 
     return remove_duplicate_layers(
         current_page_index=page_index,
