@@ -202,7 +202,7 @@ def _find_table_regions(lines: list[StructureLine], config: dict) -> list[tuple[
         group_h_lines = [line.line for line in group if not line.is_vertical]
         group_v_lines = [line.line for line in group if line.is_vertical]
 
-        if len(group_h_lines) >= 3 and len(group_v_lines) >= 2:
+        if len(group_h_lines) >= 1 and len(group_v_lines) >= 1:
             regions.append((group_h_lines, group_v_lines))
 
     return regions

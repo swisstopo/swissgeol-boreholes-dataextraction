@@ -1,4 +1,4 @@
-# Line requirements for meaningful table detection, number of lines and minimum length
+# Line length requirements for meaningful table detection
 min_line_length: 20
 
 # Angle requirements
