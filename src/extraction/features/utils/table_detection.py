@@ -160,12 +160,7 @@ def _find_table_structures(
         if table and table.confidence >= config.get("min_confidence") and not _table_overlaps(table, detected_tables):
             detected_tables.append(table)
 
-    # Sort by confidence (highest first)
-    detected_tables.sort(key=lambda t: t.confidence, reverse=True)
-
-    # Limit number of tables
-    max_tables = config.get("max_additional_tables", 2) + 1
-    return detected_tables[:max_tables]
+    return detected_tables
 
 
 def _find_table_regions(lines: list[StructureLine], config: dict) -> list[tuple[list[Line], list[Line]]]:

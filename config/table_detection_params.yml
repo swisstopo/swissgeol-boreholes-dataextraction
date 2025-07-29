@@ -4,11 +4,8 @@ min_line_length: 20
 # Angle requirements
 angle_tolerance: 5
 
-# Maximum number of additional tables to detect beyond the main table
-max_additional_tables: 2
-
 # Connection threshold for line groups
-connection_threshold: 5.0 
+connection_threshold: 5.0
 
 # Confidence threshold for table detection
 min_confidence: 0.6
