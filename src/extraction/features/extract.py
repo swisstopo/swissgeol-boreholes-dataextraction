@@ -353,21 +353,23 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 return True
 
         candidate_description = [line for line in self.lines if check_y0_condition(line.rect.y0)]
-        is_description = [
-            line
-            for line in candidate_description
-            if line.is_description(self.params["material_description"], self.language)
-        ]
+
         is_not_description = [
             line
             for line in candidate_description
-            if line.is_not_description(self.params["material_description"], self.language)
+            if line.is_description(self.params["material_description"], self.language, search_excluding=True)
+        ]
+        is_description = [
+            line
+            for line in candidate_description
+            if line.is_description(self.params["material_description"], self.language, search_excluding=False)
+            and line not in is_not_description
         ]
 
         if len(candidate_description) == 0:
             return []
 
-        description_clusters = []
+        description_clusters: list[list[TextLine]] = []
         while len(is_description) > 0:
             # 0.4 instead of 0.5 slightly improves geoquat/validation/A76.pdf
             coverage_by_generating_line = [
@@ -375,7 +377,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 for line in is_description
             ]
 
-            def filter_coverage(coverage):
+            def filter_coverage(coverage: list[TextLine]) -> list[TextLine]:
                 if coverage:
                     min_x0 = min(line.rect.x0 for line in coverage)
                     max_x1 = max(line.rect.x1 for line in coverage)
@@ -421,7 +423,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 continue
 
             # expand to include entire last block
-            def is_below(best_x0, best_y1, line):
+            def is_below(best_x0, best_y1, line: TextLine):
                 return (
                     (line.rect.x0 > best_x0 - 5)
                     and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
