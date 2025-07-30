@@ -286,17 +286,12 @@ def start_pipeline(
                 geometric_lines = extract_lines(page, line_detection_params)
 
                 # Detect table structures on the page
-                page = doc[page_index]
-                page_rect = page.rect
-                page_width = page_rect.width
-                page_height = page_rect.height
                 table_structures = detect_table_structures(
-                    geometric_lines=geometric_lines,
-                    page_width=page_width,
-                    page_height=page_height,
-                    text_lines=text_lines,
+                    page_index,
+                    doc,
+                    geometric_lines,
+                    text_lines,
                 )
-                logger.info(f"Detected {len(table_structures)} table structures on page {page_index + 1}")
 
                 # extract the statigraphy
                 page_layers = extract_page(
@@ -322,12 +317,10 @@ def start_pipeline(
                 if draw_tables:
                     img = plot_tables(page, table_structures)
 
-                    # Save to local directory if available
                     if draw_directory:
                         table_img_path = draw_directory / f"{Path(filename).stem}_page_{page.number + 1}_tables.png"
                         cv2.imwrite(str(table_img_path), img)
 
-                    # Also log to MLflow if tracking is enabled
                     if mlflow_tracking:
                         mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_tables.png")
 

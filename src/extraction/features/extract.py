@@ -120,7 +120,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         # Step 2: Apply table-based filtering to reduce duplicates
         if self.table_structures:
-            logger.info(f"Before table filtering: {len(material_descriptions_sidebar_pairs)} pairs available")
 
             table_filtered_pairs = []
             used_indices = set()
@@ -133,7 +132,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 else:
                     table_filtered_pairs.append(pair)
             material_descriptions_sidebar_pairs = table_filtered_pairs
-            logger.info(f"After table filtering: {len(material_descriptions_sidebar_pairs)} pairs remaining")
 
         material_descriptions_sidebar_pairs.reverse()  # lowest score first
 
@@ -157,7 +155,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             for pair in sorted(filtered_pairs, key=lambda pair: pair.score_match, reverse=True)
         ]
 
-        logger.info(
+        logger.debug(
             f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(self.table_structures)} tables"
         )
         return [borehole for borehole in boreholes if len(borehole.predictions) >= self.params["min_num_layers"]]
@@ -526,9 +524,8 @@ def extract_page(
     """
     # Get page dimensions from the document
     page = document[page_index]
-    page_rect = page.rect
-    page_width = page_rect.width
-    page_height = page_rect.height
+    page_width = page.rect.width
+    page_height = page.rect.height
 
     # Extract boreholes
     extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(

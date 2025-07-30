@@ -52,12 +52,11 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
         geometric_lines = extract_lines(page, line_detection_params)
 
         # Detect table structures on the page
-        # TODO avoid code duplication with main.py
-        page_rect = page.rect
-        page_width = page_rect.width
-        page_height = page_rect.height
         table_structures = detect_table_structures(
-            geometric_lines=geometric_lines, page_width=page_width, page_height=page_height, text_lines=text_lines
+            page_index,
+            document,
+            geometric_lines,
+            text_lines
         )
 
         page_layers = extract_page(

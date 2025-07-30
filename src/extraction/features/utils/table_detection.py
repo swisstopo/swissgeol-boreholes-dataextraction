@@ -25,20 +25,27 @@ class TableStructure:
 
 
 def detect_table_structures(
-    geometric_lines: list[Line], page_width: float = None, page_height: float = None, text_lines: list = None
+    page_index: int,
+    document: pymupdf.Document,
+    geometric_lines: list[Line],
+    text_lines: None,
 ) -> list[TableStructure]:
     """Detect multiple non-overlapping table structures on a page.
 
     Args:
-        geometric_lines: List of detected geometric lines
-        page_width: Page width
-        page_height: Page height
-        text_lines: List of text lines for text content analysis
+        page_index (int): The page index (0-indexed).
+        document (pymupdf.Document): the document.
+        text_lines (list[TextLine]): All text lines on the page.
+        geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
 
     Returns:
         List of detected table structures
     """
     config = read_params("table_detection_params.yml")
+    # Get page dimensions from the document
+    page = document[page_index]
+    page_width = page.rect.width
+    page_height = page.rect.height
 
     # Filter and classify lines
     filtered_lines = _filter_significant_lines(geometric_lines, config)
@@ -53,7 +60,7 @@ def detect_table_structures(
         if table.confidence >= config.get("min_confidence")
     ]
     for table in table_candidates:
-        logger.info(f"Detected table structure (confidence: {table.confidence:.3f})")
+        logger.debug(f"Detected table structure (confidence: {table.confidence:.3f})")
     return table_candidates
 
 
