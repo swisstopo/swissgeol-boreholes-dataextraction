@@ -208,7 +208,7 @@ def _find_table_regions(lines: list[StructureLine], config: dict) -> list[tuple[
     return regions
 
 
-def _line_connects_to_group(line: StructureLine, group: list[Line], config: dict) -> bool:
+def _line_connects_to_group(line: StructureLine, group: list[StructureLine], config: dict) -> bool:
     """Connection check combining line intersection, endpoint proximity and T-junction check.
 
     Args:
@@ -222,92 +222,25 @@ def _line_connects_to_group(line: StructureLine, group: list[Line], config: dict
 
     for group_line in group:
         # 1. Check line intersection
-        if _lines_intersect(line, group_line):
+        if line.line.intersects_with(group_line.line):
             return True
 
         # 2. Check endpoint proximity with Euclidean distance
         for p1 in [line.line.start, line.line.end]:
             for p2 in [group_line.line.start, group_line.line.end]:
-                if ((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2) ** 0.5 <= connection_threshold:
+                if p1.distance_to(p2) <= connection_threshold:
                     return True
 
         # 3. Check T-junction (point near line)
         for point in [line.line.start, line.line.end]:
-            if _point_near_line(point, group_line.line, connection_threshold):
+            if group_line.line.point_near_segment(point, connection_threshold):
                 return True
 
         for point in [group_line.line.start, group_line.line.end]:
-            if _point_near_line(point, line.line, connection_threshold):
+            if line.line.point_near_segment(point, connection_threshold):
                 return True
 
     return False
-
-
-def _point_near_line(point: Point, line: Line, threshold: float) -> bool:
-    """Point-to-line distance check.
-
-    Point-to-line segment distance calculation using vector projection
-    and parametric line representation
-
-    Args:
-        point: The point to check
-        line: The line to check against
-        threshold: Distance threshold for proximity
-    Returns:
-        True if the point is near the line, False otherwise
-    """
-    px, py = point.x - line.start.x, point.y - line.start.y
-    lx, ly = line.end.x - line.start.x, line.end.y - line.start.y
-
-    line_length_sq = lx * lx + ly * ly
-    if line_length_sq == 0:
-        distance = ((point.x - line.start.x) ** 2 + (point.y - line.start.y) ** 2) ** 0.5
-        return distance <= threshold
-
-    t = (px * lx + py * ly) / line_length_sq
-
-    if t < 0 or t > 1:
-        return False
-
-    proj_x = line.start.x + t * lx
-    proj_y = line.start.y + t * ly
-
-    distance = ((point.x - proj_x) ** 2 + (point.y - proj_y) ** 2) ** 0.5
-    return distance <= threshold
-
-
-def _lines_intersect(line1: StructureLine, line2: StructureLine) -> bool:
-    """Check if two line segments intersect.
-
-    This approach uses line-line intersection calculation:
-    https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection
-
-    Args:
-        line1: First line segment
-        line2: Second line segment
-
-    Returns:
-        True if line segments intersect
-    """
-    # Get line endpoints
-    x1, y1 = line1.line.start.x, line1.line.start.y
-    x2, y2 = line1.line.end.x, line1.line.end.y
-    x3, y3 = line2.line.start.x, line2.line.start.y
-    x4, y4 = line2.line.end.x, line2.line.end.y
-
-    # Calculate line intersection using determinants
-    denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
-
-    # Lines are parallel if denominator is 0
-    if abs(denom) < 1e-10:
-        return False
-
-    # Calculate intersection parameters
-    t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom
-    u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom
-
-    # Lines intersect if both parameters are between 0 and 1
-    return 0 <= t <= 1 and 0 <= u <= 1
 
 
 def _table_overlaps(table: TableStructure, existing_tables: list[TableStructure]) -> bool:
