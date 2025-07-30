@@ -62,7 +62,6 @@ class Line:
             - (self.start.x - point.x) * (self.end.y - self.start.y)
         ) / np.sqrt((self.end.x - self.start.x) ** 2 + (self.end.y - self.start.y) ** 2)
 
-
     def distance_to_segment(self, point: Point) -> float:
         """Calculate the distance of a point to the line segment (bounded by endpoints).
 
@@ -110,7 +109,7 @@ class Line:
         """
         return self.distance_to_segment(point) <= threshold
 
-    def intersects_with(self, other: "Line") -> bool:
+    def intersects_with(self, other: Line) -> bool:
         """Check if this line segment intersects with another line segment.
 
         Uses line-line intersection calculation with determinants.
@@ -141,7 +140,6 @@ class Line:
 
         # Lines intersect if both parameters are between 0 and 1
         return 0 <= t <= 1 and 0 <= u <= 1
-
 
     @property
     def slope(self) -> float:

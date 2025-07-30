@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import pymupdf
 
 from extraction.features.stratigraphy.layer.page_bounding_boxes import MaterialDescriptionRectWithSidebar
-from extraction.features.utils.geometry.geometry_dataclasses import Line, Point
+from extraction.features.utils.geometry.geometry_dataclasses import Line
 from utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
@@ -109,7 +109,15 @@ class StructureLine:
     line: Line
 
     def connects_with(self, other: "StructureLine", tolerance: float = 10.0) -> bool:
-        # TODO docstring and unit tests
+        """Check if this line connects with another line within a given tolerance.
+
+        Args:
+            other: Another StructureLine to check connection with
+            tolerance: Distance threshold for connection
+
+        Returns:
+            bool: True if lines connect, False otherwise
+        """
         if self.is_vertical == other.is_vertical:
             position_ok = abs(self.position - other.position) < tolerance
             min_self = min(self.start, self.end)
