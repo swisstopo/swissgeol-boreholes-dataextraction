@@ -41,8 +41,18 @@ class AToBIntervalExtractor:
         current_block = []
         current_interval = None
         start_depth = None
+        prev_line = None
+        prev_interval = None
+        combined_interval = None
         for line in lines:
             a_to_b_interval = AToBIntervalExtractor.from_text(line, require_start_of_string=False)
+            if prev_line and not a_to_b_interval and not prev_interval:
+                combined_lines = TextLine(prev_line.words + line.words)
+                combined_interval = AToBIntervalExtractor.from_text(combined_lines, require_start_of_string=False)
+            prev_interval = a_to_b_interval.copy() if a_to_b_interval else None
+            prev_line = line
+            if combined_interval:
+                a_to_b_interval = combined_interval
             # require_start_of_string = False because the depth interval may not always start at the beginning
             # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
             if a_to_b_interval:
@@ -103,4 +113,15 @@ class AToBIntervalExtractor:
                 DepthColumnEntry.from_string_value(rect_from_group_index(1), match.group(1)),
                 DepthColumnEntry.from_string_value(rect_from_group_index(2), match.group(2)),
             )
+
+        open_ended_words = ["des", "dès", "a partir de", "à partir de", "from"]
+        words_pattern = "|".join([re.escape(w) for w in open_ended_words])
+
+        # Use non-capturing group for the alternation
+        fallback_query = rf"(?:{words_pattern})\s*([0-9]+(?:\.[0-9]+)?)\s*[müMN]?"
+        fallback_regex = re.compile(fallback_query, re.IGNORECASE)
+        match = fallback_regex.search(input_string)
+        if match:
+            return AToBInterval(DepthColumnEntry.from_string_value(rect_from_group_index(1), match.group(1)), None)
+
         return None

@@ -144,6 +144,9 @@ class AToBInterval(Interval):
     def __repr__(self):
         return f"({self.start}, {self.end})"
 
+    def copy(self):
+        return AToBInterval(self.start, self.end)
+
     @property
     def rect(self) -> pymupdf.Rect:
         """Get the rectangle surrounding the interval."""

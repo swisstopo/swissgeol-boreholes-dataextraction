@@ -4,6 +4,7 @@ import logging
 import re
 from dataclasses import dataclass
 
+import numpy as np
 import pymupdf
 
 from extraction.features.utils.geometry.geometry_dataclasses import Line
@@ -53,16 +54,6 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         Returns:
             list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
         """
-
-        def _is_header(line: TextLine) -> bool:
-            return any(
-                line.text.replace(identifier.value, "").isupper()
-                and y_overlap_significant_smallest(line.rect, identifier.rect, 0.8)
-                for identifier in self.entries
-            )
-
-        non_header_lines = [line for line in description_lines if not _is_header(line)]
-
         blocks = []
         line_index = 0
         for layer_identifier_idx, _layer_index in enumerate(self.entries):
@@ -70,7 +61,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
                 self.entries[layer_identifier_idx + 1] if layer_identifier_idx + 1 < len(self.entries) else None
             )
 
-            matched_block = self.matching_blocks(non_header_lines, line_index, next_layer_identifier)
+            matched_block = self.matching_blocks(description_lines, line_index, next_layer_identifier)
             line_index += sum([len(block.lines) for block in matched_block])
             blocks.extend(matched_block)
 
@@ -81,8 +72,13 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             interval_block_pairs = AToBIntervalExtractor.from_material_description_lines(block.lines)
             interval_block_pairs = get_optimal_intervals_with_text(interval_block_pairs)
 
+            ignored_lines = self.filter_header_lines(interval_block_pairs)
+
             new_groups = [
-                IntervalBlockGroup(depth_intervals=[pair.depth_interval], blocks=[pair.block])
+                IntervalBlockGroup(
+                    depth_intervals=[pair.depth_interval],
+                    blocks=[self._clean_block(pair.block, ignored_lines)],
+                )
                 for pair in interval_block_pairs
             ]
             if (
@@ -96,7 +92,11 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
                     result.extend(provisional_groups)
                 result.extend(new_groups)
                 provisional_groups = []
-                last_end_depth = interval_block_pairs[-1].depth_interval.end.value
+                last_end_depth = (
+                    interval_block_pairs[-1].depth_interval.end.value
+                    if interval_block_pairs[-1].depth_interval.end
+                    else None
+                )
             else:
                 # If we don't have a depth interval, then we only use this data if the start of the next depth interval
                 # does not match the end of the last interval.
@@ -106,6 +106,60 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         result.extend(provisional_groups)
 
         return result
+
+    def filter_header_lines(self, interval_block_pairs):
+        """.."""
+
+        def get_header(block: TextBlock) -> list[TextLine]:
+            return [
+                line
+                for line in block.lines
+                if any(y_overlap_significant_smallest(line.rect, identifier.rect, 0.8) for identifier in self.entries)
+            ]
+
+        def _is_header_capitalized(header_lines: list[TextLine]) -> bool:
+            """Requires 70% of the letters to be capital, the layer identifier in the front is ignored."""
+            text = "".join([line.text for line in header_lines])
+            return any(
+                np.mean([1 if char.isupper() else 0 for char in text.replace(identifier.value, "") if char.isalpha()])
+                > 0.7
+                for identifier in self.entries
+            )
+
+        block_lines_header = get_header(interval_block_pairs[0].block)  # should be before pairs creation
+        other_lines = [
+            line for pair in interval_block_pairs for line in pair.block.lines if line not in block_lines_header
+        ]
+        # (
+        #     interval_block_pairs[0].block.lines[0]
+        #     if interval_block_pairs and _is_header(interval_block_pairs[0].block)
+        #     else None
+        # )
+        ignore_lines = block_lines_header
+        if not other_lines:
+            # no other lines than the header, header is considered as a regular line
+            ignore_lines = []
+
+        if not any(pair.depth_interval for pair in interval_block_pairs) and not _is_header_capitalized(
+            block_lines_header
+        ):
+            # no depth information and no capitalization: the text is mainly just description, we keep it.
+            ignore_lines = []
+        return ignore_lines
+
+    def _clean_block(self, block: TextBlock, ignored_lines: list[TextLine]) -> TextLine:
+        """Remove the headers in ignored_lines, the layer identificator and the depths ?? TODO."""
+        new_lines = []
+        for line in block.lines:
+            if line in ignored_lines:
+                continue
+            valid_words = [
+                word for word in line.words if word.text.strip() not in {entry.value for entry in self.entries}
+            ]
+            if valid_words:
+                new_lines.append(TextLine(valid_words))
+
+        return TextBlock(new_lines)
 
     @staticmethod
     def matching_blocks(

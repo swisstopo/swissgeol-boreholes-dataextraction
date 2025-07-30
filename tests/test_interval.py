@@ -46,3 +46,10 @@ def test_atobintervalextractor_fromtext():  # noqa: D103
     ]
     interval = AToBIntervalExtractor.from_text(TextLine(words), require_start_of_string=False)
     assert interval is not None, "With require_start_of_string=False, matches that are at the start are allowed."
+
+    words = [
+        TextWord(pymupdf.Rect(0, 0, 4, 1), "Argile", page=1),
+        TextWord(pymupdf.Rect(4, 0, 6, 1), "dès 4m.", page=1),
+    ]
+    interval = AToBIntervalExtractor.from_text(TextLine(words), require_start_of_string=False)
+    assert interval is not None and interval.end is None, "Open-ended intervals are allowed."
