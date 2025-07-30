@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import pymupdf
 
 from extraction.features.utils.geometry.geometry_dataclasses import Line
+from extraction.features.utils.geometry.util import y_overlap_significant_smallest
 from extraction.features.utils.text.textblock import TextBlock
 from extraction.features.utils.text.textline import TextLine
 from utils.file_utils import read_params
@@ -52,6 +53,16 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         Returns:
             list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
         """
+
+        def _is_header(line: TextLine) -> bool:
+            return any(
+                line.text.replace(identifier.value, "").isupper()
+                and y_overlap_significant_smallest(line.rect, identifier.rect, 0.8)
+                for identifier in self.entries
+            )
+
+        non_header_lines = [line for line in description_lines if not _is_header(line)]
+
         blocks = []
         line_index = 0
         for layer_identifier_idx, _layer_index in enumerate(self.entries):
@@ -59,7 +70,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
                 self.entries[layer_identifier_idx + 1] if layer_identifier_idx + 1 < len(self.entries) else None
             )
 
-            matched_block = self.matching_blocks(description_lines, line_index, next_layer_identifier)
+            matched_block = self.matching_blocks(non_header_lines, line_index, next_layer_identifier)
             line_index += sum([len(block.lines) for block in matched_block])
             blocks.extend(matched_block)
 

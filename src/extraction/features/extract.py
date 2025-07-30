@@ -144,12 +144,12 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         for i, pair in enumerate(material_descriptions_sidebar_pairs):
             mat_rect = pair.material_description_rect
-            sidebar_rect = pair.sidebar.rect() if pair.sidebar else None
+            sidebar_rect = pair.sidebar.rect if pair.sidebar else None
 
             # Build the list of other rectangles
             remaining_pairs = material_descriptions_sidebar_pairs[i + 1 :]
             other_mat_rects = [p.material_description_rect for p in remaining_pairs]
-            other_sidebar_rects = [p.sidebar.rect() if p.sidebar else None for p in remaining_pairs]
+            other_sidebar_rects = [p.sidebar.rect if p.sidebar else None for p in remaining_pairs]
 
             # Check all conditions
             if (
@@ -340,25 +340,30 @@ class MaterialDescriptionRectWithSidebarExtractor:
         """
         if sidebar:
             above_sidebar = [
-                line
-                for line in self.lines
-                if x_overlap(line.rect, sidebar.rect()) and line.rect.y0 < sidebar.rect().y0
+                line for line in self.lines if x_overlap(line.rect, sidebar.rect) and line.rect.y0 < sidebar.rect.y0
             ]
 
             min_y0 = max(line.rect.y0 for line in above_sidebar) if above_sidebar else -1
 
             def check_y0_condition(y0):
-                return y0 > min_y0 and y0 < sidebar.rect().y1
+                return y0 > min_y0 and y0 < sidebar.rect.y1
         else:
 
             def check_y0_condition(y0):
                 return True
 
         candidate_description = [line for line in self.lines if check_y0_condition(line.rect.y0)]
+
+        is_not_description = [
+            line
+            for line in candidate_description
+            if line.is_description(self.params["material_description"], self.language, search_excluding=True)
+        ]
         is_description = [
             line
             for line in candidate_description
-            if line.is_description(self.params["material_description"], self.language)
+            if line.is_description(self.params["material_description"], self.language, search_excluding=False)
+            and line not in is_not_description
         ]
 
         if len(candidate_description) == 0:
@@ -376,7 +381,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 if coverage:
                     min_x0 = min(line.rect.x0 for line in coverage)
                     max_x1 = max(line.rect.x1 for line in coverage)
-                    # how did we determine the 0.4? Should it be a parameter? What would it do if we were to change it?
                     x0_threshold = max_x1 - 0.4 * (max_x1 - min_x0)
                     return [line for line in coverage if line.rect.x0 < x0_threshold]
                 else:
@@ -403,6 +407,20 @@ class MaterialDescriptionRectWithSidebarExtractor:
             ]
             best_x0 = min([line.rect.x0 for line in good_lines])
             best_x1 = max([line.rect.x1 for line in good_lines])
+
+            # check that no lines that have excluded words are contained in the rect
+            cluster_rect = pymupdf.Rect(best_x0, best_y0, best_x1, best_y1)
+            non_description_in_rect = [
+                excl_line
+                for excl_line in is_not_description
+                if x_overlap_significant_smallest(excl_line.rect, cluster_rect, 0.5)
+                and best_y0 < excl_line.rect.y0
+                and excl_line.rect.y1 < best_y1
+            ]
+
+            # the rect is valid only when description lines are clearly more numerous than non-description lines.
+            if len(non_description_in_rect) / len(good_lines) > self.params["non_description_lines_ratio"]:
+                continue
 
             # expand to include entire last block
             def is_below(best_x0, best_y1, line: TextLine):
@@ -474,14 +492,37 @@ class MaterialDescriptionRectWithSidebarExtractor:
         used_sidebars_idx = set()
         used_descr_rects = set()
 
+        def is_valid_pair(
+            s_idx: int,
+            mat_desc_rect: pymupdf.Rect,
+            used_sidebars_idx: set[int],
+            sidebars_noise: list[SidebarNoise],
+            matched_pairs: list[MaterialDescriptionRectWithSidebar],
+        ) -> bool:
+            """Check if a sidebar index and material description rectangle can form a valid pair.
+
+            A pair is valid if:
+            - The sidebar index has not been used yet.
+            - The rectangle has not been used yet.
+            - The potential pair does not have an already matched sidebar or rectangle between its elements.
+            """
+            joined_rect = joined_rect = sidebars_noise[s_idx].sidebar.rect | mat_desc_rect
+
+            return (
+                s_idx not in used_sidebars_idx  # don't re-match an already matched sidebar
+                and all(
+                    (joined_rect & (pair.sidebar.rect | pair.material_description_rect)).is_empty
+                    for pair in matched_pairs
+                )  # don't allow taking the same rect or crossing pairs (pair having another pair element in between)
+            )
+
         # Step 1: Greedy match based on max scores
         while True:
             # Filter available scores
             available_scores = {
                 (s_idx, rect): v
                 for (s_idx, rect), v in score_map.items()
-                if s_idx not in used_sidebars_idx  # don't re-match an already matched sidebar
-                and not any(rect.intersects(used_rect) for used_rect in used_descr_rects)  # don't share the same rect
+                if is_valid_pair(s_idx, rect, used_sidebars_idx, sidebars_noise, matched_pairs)
             }
             if not available_scores:
                 break

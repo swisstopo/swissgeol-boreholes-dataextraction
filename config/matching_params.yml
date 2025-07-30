@@ -11,6 +11,8 @@ depth_column_params:  # these params should be optimized as soon as there is rel
   noise_count_threshold: 1.25
   noise_count_offset: 2.5
 
+non_description_lines_ratio: 0.15
+
 default_language: de
 
 material_description:
@@ -61,6 +63,7 @@ material_description:
       - mikritisch
       - laminiert
       - grobsand
+      - auffullung
     excluding_expressions:
       - herr
       - ende
@@ -75,6 +78,8 @@ material_description:
       - pumpversuch
       - kernbohrung
       - bohrradius
+      - Vollrohr
+      - Filterrohr
 
   fr:
     including_expressions:
@@ -101,7 +106,7 @@ material_description:
       - revetement
       - pierre
       - beige
-      - beton
+      - béton
       - craie
       - marne
       - materiau
@@ -114,7 +119,6 @@ material_description:
       - mousse
     excluding_expressions:
       - monsieur
-      - fin
       - profil
       - description
       - signatures

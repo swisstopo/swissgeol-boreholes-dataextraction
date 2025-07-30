@@ -76,7 +76,7 @@ class LayerIdentifierSidebarExtractor:
         # layer_identifier_acceptance_ratio specified in the config file.
         for sidebar in sidebars_by_length:
             if (
-                not any(result_sidebar.rect().contains(sidebar.rect()) for result_sidebar in result)
+                not any(result_sidebar.rect.contains(sidebar.rect) for result_sidebar in result)
                 and sidebar.has_regular_progression()
             ):
                 result.append(sidebar)
