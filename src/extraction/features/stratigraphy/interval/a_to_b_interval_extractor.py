@@ -43,16 +43,14 @@ class AToBIntervalExtractor:
         start_depth = None
         prev_line = None
         prev_interval = None
-        combined_interval = None
         for line in lines:
             a_to_b_interval = AToBIntervalExtractor.from_text(line, require_start_of_string=False)
             if prev_line and not a_to_b_interval and not prev_interval:
+                # if depth was not found in the previous and current lines, we look for a depth wrapping arround.
                 combined_lines = TextLine(prev_line.words + line.words)
-                combined_interval = AToBIntervalExtractor.from_text(combined_lines, require_start_of_string=False)
+                a_to_b_interval = AToBIntervalExtractor.from_text(combined_lines, require_start_of_string=False)
             prev_interval = a_to_b_interval.copy() if a_to_b_interval else None
             prev_line = line
-            if combined_interval:
-                a_to_b_interval = combined_interval
             # require_start_of_string = False because the depth interval may not always start at the beginning
             # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
             if a_to_b_interval:
