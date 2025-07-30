@@ -79,7 +79,7 @@ class TextLine:
         text_tokens = re.findall(r"\b\w+\b", text_lower)
         return {stemmer.stem(token) for token in text_tokens}
 
-    def is_description(self, material_description: dict, language: str):
+    def is_description(self, material_description: dict, language: str, search_excluding: bool = False):
         """Check if the line is a material description.
 
         Uses stemming to handle word variations across german, french, english and italian.
@@ -87,46 +87,16 @@ class TextLine:
         Args:
             material_description (dict): The material description dictionary containing the used expressions.
             language (str): The language of the material description, e.g. "de", "fr", "en", "it".
+            search_excluding (bool): Whether to look for including or excluding keywords in the layer description.
         """
         stemmer = self._get_stemmer(language)
         stemmed_text_tokens = self._stem_text(stemmer, self.text)
 
-        # Check for matches in including expressions
-        found_inclusion = any(
-            stemmer.stem(word.lower()) in stemmed_text_tokens
-            for word in material_description[language]["including_expressions"]
+        # Check for matches in including or excluding expressions
+        keyword = "including_expressions" if not search_excluding else "excluding_expressions"
+        return any(
+            stemmer.stem(word.lower()) in stemmed_text_tokens for word in material_description[language][keyword]
         )
-
-        if not found_inclusion:
-            return False
-
-        # Check for matches in excluding expressions
-        found_exclusion = any(
-            stemmer.stem(word.lower()) in stemmed_text_tokens
-            for word in material_description[language]["excluding_expressions"]
-        )
-
-        return not found_exclusion
-
-    def is_not_description(self, material_description: dict, language: str):
-        """Check if the line contains excluded expressions for material description.
-
-        Uses stemming to handle word variations across german, french, english and italian.
-
-        Args:
-            material_description (dict): The material description dictionary containing the used expressions.
-            language (str): The language of the material description, e.g. "de", "fr", "en", "it".
-        """
-        stemmer = self._get_stemmer(language)
-        stemmed_text_tokens = self._stem_text(stemmer, self.text)
-
-        # Check for matches in excluding expressions
-        found_exclusion = any(
-            stemmer.stem(word.lower()) in stemmed_text_tokens
-            for word in material_description[language]["excluding_expressions"]
-        )
-
-        return found_exclusion
 
     @property
     def text(self) -> str:

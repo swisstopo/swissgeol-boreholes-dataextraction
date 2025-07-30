@@ -353,15 +353,17 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 return True
 
         candidate_description = [line for line in self.lines if check_y0_condition(line.rect.y0)]
-        is_description = [
-            line
-            for line in candidate_description
-            if line.is_description(self.params["material_description"], self.language)
-        ]
+
         is_not_description = [
             line
             for line in candidate_description
-            if line.is_not_description(self.params["material_description"], self.language)
+            if line.is_description(self.params["material_description"], self.language, search_excluding=True)
+        ]
+        is_description = [
+            line
+            for line in candidate_description
+            if line.is_description(self.params["material_description"], self.language, search_excluding=False)
+            and line not in is_not_description
         ]
 
         if len(candidate_description) == 0:
