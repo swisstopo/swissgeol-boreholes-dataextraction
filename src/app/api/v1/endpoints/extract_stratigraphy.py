@@ -52,12 +52,7 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
         geometric_lines = extract_lines(page, line_detection_params)
 
         # Detect table structures on the page
-        table_structures = detect_table_structures(
-            page_index,
-            document,
-            geometric_lines,
-            text_lines
-        )
+        table_structures = detect_table_structures(page_index, document, geometric_lines, text_lines)
 
         page_layers = extract_page(
             layers_with_bb_in_document,

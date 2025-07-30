@@ -120,7 +120,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         # Step 2: Apply table-based filtering to reduce duplicates
         if self.table_structures:
-
             table_filtered_pairs = []
             used_indices = set()
             for pair in material_descriptions_sidebar_pairs:
