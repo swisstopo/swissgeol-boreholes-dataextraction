@@ -1,6 +1,5 @@
 """This module contains functionalities to detect table like structures."""
 
-import dataclasses
 import logging
 from dataclasses import dataclass
 
@@ -49,9 +48,9 @@ def detect_table_structures(
 
     # Filter and classify lines
     filtered_lines = _filter_significant_lines(geometric_lines, config)
-    structure_lines = _separate_by_orientation(filtered_lines, config)
+    filtered_lines = _filter_by_orientation(filtered_lines, config)
 
-    table_candidates = _find_table_structures(structure_lines, config, page_width, page_height, text_lines)
+    table_candidates = _find_table_structures(filtered_lines, config, page_width, page_height, text_lines)
     table_candidates = [
         table
         for table in table_candidates
@@ -71,76 +70,26 @@ def _filter_significant_lines(lines: list[Line], config: dict) -> list[Line]:
     return [line for line in lines if line.length > min_length]
 
 
-def _separate_by_orientation(lines: list[Line], config: dict) -> list["StructureLine"]:
-    """Separate lines into horizontal and vertical based on angle and tolerance."""
+def _filter_by_orientation(lines: list[Line], config: dict) -> list[Line]:
+    """Only keep horizontal and vertical lines based on angle and tolerance."""
     angle_tolerance = config.get("angle_tolerance")
-    structure_lines = []
+    lines = []
 
     for line in lines:
         angle = abs(line.angle)
 
         # Horizontal lines (close to 0° or 180°)
         if angle <= angle_tolerance or angle >= (180 - angle_tolerance):
-            structure_lines.append(
-                StructureLine(
-                    start=min(line.start.x, line.end.x),
-                    end=max(line.start.x, line.end.x),
-                    position=(line.start.y + line.end.y) / 2,
-                    is_vertical=False,
-                    line=line,
-                )
-            )
+            lines.append(line)
         # Vertical lines (close to 90°)
         elif angle - 90 <= angle_tolerance:
-            structure_lines.append(
-                StructureLine(
-                    start=min(line.start.y, line.end.y),
-                    end=max(line.start.y, line.end.y),
-                    position=(line.start.x + line.end.x) / 2,
-                    is_vertical=True,
-                    line=line,
-                )
-            )
+            lines.append(lines)
 
-    return structure_lines
-
-
-@dataclasses.dataclass
-class StructureLine:
-    """Helper class for representing horizontal and vertical lines in a table structure."""
-
-    start: float
-    end: float
-    position: float
-    is_vertical: bool
-    line: Line
-
-    def connects_with(self, other: "StructureLine", tolerance: float = 10.0) -> bool:
-        """Check if this line connects with another line within a given tolerance.
-
-        Args:
-            other: Another StructureLine to check connection with
-            tolerance: Distance threshold for connection
-
-        Returns:
-            bool: True if lines connect, False otherwise
-        """
-        if self.is_vertical == other.is_vertical:
-            position_ok = abs(self.position - other.position) < tolerance
-            min_self = min(self.start, self.end)
-            max_self = max(self.start, self.end)
-            min_other = min(other.start, other.end)
-            max_other = max(other.start, other.end)
-            start_end_ok = not (max_self + tolerance < min_other) and not (max_other + tolerance < min_self)
-            return position_ok and start_end_ok
-        else:
-            return (self.start - tolerance < other.position < self.end + tolerance) and (
-                other.start - tolerance < self.position < other.end + tolerance
-            )
+    return lines
 
 
 def _find_table_structures(
-    lines: list[StructureLine],
+    lines: list[Line],
     config: dict,
     page_width: float = None,
     page_height: float = None,
@@ -149,7 +98,7 @@ def _find_table_structures(
     """Find multiple non-intersecting table structures using region-based detection.
 
     Args:
-        lines: List of structure lines
+        lines: List of lines
         config: Configuration parameters
         page_width: Page width
         page_height: Page height
@@ -178,11 +127,11 @@ def _find_table_structures(
     return detected_tables
 
 
-def _find_table_regions(lines: list[StructureLine], config: dict) -> list[tuple[list[Line], list[Line]]]:
+def _find_table_regions(lines: list[Line], config: dict) -> list[tuple[list[Line], list[Line]]]:
     """Find regions of connected lines that could form table structures.
 
     Args:
-        lines: List of structure lines
+        lines: List of lines
         config: Configuration parameters
 
     Returns:
@@ -214,8 +163,8 @@ def _find_table_regions(lines: list[StructureLine], config: dict) -> list[tuple[
     # Convert groups to regions with structure requirements
     regions = []
     for group in line_groups:
-        group_h_lines = [line.line for line in group if not line.is_vertical]
-        group_v_lines = [line.line for line in group if line.is_vertical]
+        group_h_lines = [line for line in group if abs(line.angle) < 45]
+        group_v_lines = [line for line in group if abs(line.angle) > 45]
 
         if len(group_h_lines) >= 1 and len(group_v_lines) >= 1:
             regions.append((group_h_lines, group_v_lines))
@@ -223,7 +172,7 @@ def _find_table_regions(lines: list[StructureLine], config: dict) -> list[tuple[
     return regions
 
 
-def _line_connects_to_group(line: StructureLine, group: list[StructureLine], config: dict) -> bool:
+def _line_connects_to_group(line: Line, group: list[Line], config: dict) -> bool:
     """Connection check combining line intersection, endpoint proximity and T-junction check.
 
     Args:
@@ -237,22 +186,22 @@ def _line_connects_to_group(line: StructureLine, group: list[StructureLine], con
 
     for group_line in group:
         # 1. Check line intersection
-        if line.line.intersects_with(group_line.line):
+        if line.intersects_with(group_line.line):
             return True
 
         # 2. Check endpoint proximity with Euclidean distance
-        for p1 in [line.line.start, line.line.end]:
-            for p2 in [group_line.line.start, group_line.line.end]:
+        for p1 in [line.start, line.end]:
+            for p2 in [group_line.start, group_line.end]:
                 if p1.distance_to(p2) <= connection_threshold:
                     return True
 
         # 3. Check T-junction (point near line)
-        for point in [line.line.start, line.line.end]:
-            if group_line.line.point_near_segment(point, connection_threshold):
+        for point in [line.start, line.end]:
+            if group_line.point_near_segment(point, connection_threshold):
                 return True
 
-        for point in [group_line.line.start, group_line.line.end]:
-            if line.line.point_near_segment(point, connection_threshold):
+        for point in [group_line.start, group_line.end]:
+            if line.point_near_segment(point, connection_threshold):
                 return True
 
     return False
@@ -300,11 +249,9 @@ def _create_table_from_region(
     # Calculate metrics
     area = bounding_rect.width * bounding_rect.height
     # Normalize the area
-    line_density = len(horizontal_lines + vertical_lines) / (area / 10000) if area > 0 else 0
+    line_density = len(all_lines) / (area / 10000) if area > 0 else 0
 
-    confidence = _calculate_structure_confidence(
-        bounding_rect, horizontal_lines, vertical_lines, config, page_width, page_height, text_lines
-    )
+    confidence = _calculate_structure_confidence(bounding_rect, all_lines, config, page_width, page_height, text_lines)
 
     return TableStructure(
         bounding_rect=bounding_rect,
@@ -317,8 +264,7 @@ def _create_table_from_region(
 
 def _calculate_structure_confidence(
     rect: pymupdf.Rect,
-    h_lines: list[Line],
-    v_lines: list[Line],
+    lines: list[Line],
     config: dict,
     page_width: float = None,
     page_height: float = None,
@@ -328,8 +274,7 @@ def _calculate_structure_confidence(
 
     Args:
         rect: Bounding rectangle of the table structure
-        h_lines: List of horizontal lines in the structure
-        v_lines: List of vertical lines in the structure
+        lines: List of lines in the structure
         config: Configuration parameters
         page_width: Page width
         page_height: Page height
@@ -352,8 +297,7 @@ def _calculate_structure_confidence(
 
     # Line structure score - more lines indicate better structure
     line_scoring = config.get("line_scoring", {})
-    total_lines = len(h_lines) + len(v_lines)
-    line_score = min(line_scoring.get("line_weights"), total_lines / line_scoring.get("max_n_lines_bonus"))
+    line_score = min(line_scoring.get("line_weights"), lines / line_scoring.get("max_n_lines_bonus"))
 
     # Text bonus score - bonus for text content within the table structure
     text_bonus = 0.0

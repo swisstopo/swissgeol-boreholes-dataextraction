@@ -15,7 +15,6 @@ from extraction.features.utils.geometry.geometric_line_utilities import (
     merge_parallel_lines_quadtree,
 )
 from extraction.features.utils.geometry.geometry_dataclasses import Line, Point
-from extraction.features.utils.table_detection import StructureLine
 
 
 # Remember, phi is orthogonal to the line we are to parameterize
@@ -345,80 +344,3 @@ def test_intersects_with(line1, line2, expected):
     assert result == expected
     reverse_result = line2.intersects_with(line1)
     assert result == reverse_result, f"Intersection should be symmetric: {line1} with {line2}"
-
-
-@pytest.mark.parametrize(
-    "line1, line2, tolerance, expected",
-    [
-        # Test case: Two parallel horizontal lines that are close enough (same orientation)
-        (
-            StructureLine(start=0, end=10, position=5, is_vertical=False, line=Line(Point(0, 5), Point(10, 5))),
-            StructureLine(start=2, end=8, position=7, is_vertical=False, line=Line(Point(2, 7), Point(8, 7))),
-            5.0,
-            True,
-        ),
-        # Test case: Two parallel horizontal lines that are too far apart (same orientation)
-        (
-            StructureLine(start=0, end=10, position=5, is_vertical=False, line=Line(Point(0, 5), Point(10, 5))),
-            StructureLine(start=2, end=8, position=15, is_vertical=False, line=Line(Point(2, 15), Point(8, 15))),
-            5.0,
-            False,
-        ),
-        # Test case: Two horizontal lines that are close in position but don't overlap in range
-        (
-            StructureLine(start=0, end=5, position=5, is_vertical=False, line=Line(Point(0, 5), Point(5, 5))),
-            StructureLine(start=10, end=15, position=6, is_vertical=False, line=Line(Point(10, 6), Point(15, 6))),
-            2.0,
-            False,
-        ),
-        # Test case: Two parallel vertical lines that are close enough (same orientation)
-        (
-            StructureLine(start=0, end=10, position=5, is_vertical=True, line=Line(Point(5, 0), Point(5, 10))),
-            StructureLine(start=2, end=8, position=7, is_vertical=True, line=Line(Point(7, 2), Point(7, 8))),
-            5.0,
-            True,
-        ),
-        # Test case: Two parallel vertical lines that are too far apart (same orientation)
-        (
-            StructureLine(start=0, end=10, position=5, is_vertical=True, line=Line(Point(5, 0), Point(5, 10))),
-            StructureLine(start=2, end=8, position=15, is_vertical=True, line=Line(Point(15, 2), Point(15, 8))),
-            5.0,
-            False,
-        ),
-        # Test case: Horizontal and vertical lines that intersect (different orientations)
-        (
-            StructureLine(start=0, end=10, position=5, is_vertical=False, line=Line(Point(0, 5), Point(10, 5))),
-            StructureLine(start=0, end=10, position=5, is_vertical=True, line=Line(Point(5, 0), Point(5, 10))),
-            1.0,
-            True,
-        ),
-        # Test case: Horizontal and vertical lines that don't intersect (different orientations)
-        (
-            StructureLine(start=0, end=4, position=5, is_vertical=False, line=Line(Point(0, 5), Point(4, 5))),
-            StructureLine(start=6, end=10, position=8, is_vertical=True, line=Line(Point(8, 6), Point(8, 10))),
-            1.0,
-            False,
-        ),
-        # Test case: Horizontal and vertical lines that are just outside tolerance (different orientations)
-        (
-            StructureLine(start=0, end=3, position=5, is_vertical=False, line=Line(Point(0, 5), Point(3, 5))),
-            StructureLine(start=6, end=10, position=4, is_vertical=True, line=Line(Point(4, 6), Point(4, 10))),
-            0.5,
-            False,
-        ),
-        # Test case: Two overlapping horizontal lines (same orientation)
-        (
-            StructureLine(start=0, end=10, position=5, is_vertical=False, line=Line(Point(0, 5), Point(10, 5))),
-            StructureLine(start=5, end=15, position=5.5, is_vertical=False, line=Line(Point(5, 5.5), Point(15, 5.5))),
-            1.0,
-            True,
-        ),
-    ],
-)
-def test_connects_with(line1, line2, tolerance, expected):
-    """Test the connects_with method of the StructureLine class."""
-    result = line1.connects_with(line2, tolerance)
-    assert result == expected
-    # Test symmetry
-    reverse_result = line2.connects_with(line1, tolerance)
-    assert result == reverse_result, f"Connection should be symmetric: {line1} with {line2}"
