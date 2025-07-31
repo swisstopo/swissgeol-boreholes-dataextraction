@@ -155,13 +155,11 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             line for pair in interval_block_pairs for line in pair.block.lines if line not in block_lines_header
         ]
 
-        if not other_lines:
-            # No other lines than the header, treat header as a regular line
-            return []
-
+        header_capitalized = _is_header_capitalized(block_lines_header)
         has_depth_info = any(pair.depth_interval for pair in interval_block_pairs)
-        if not has_depth_info and not _is_header_capitalized(block_lines_header):
-            # No depth info and header not capitalized, treat header as part of the description
+        if not header_capitalized and (not has_depth_info or not other_lines):
+            # If the header is not capitalized, and there is no other lines than the header, or no depth info are found
+            # we treat the header as part of the description
             return []
 
         return block_lines_header
