@@ -6,12 +6,13 @@ import os
 from pathlib import Path
 
 import click
+import cv2
 import pymupdf
 from dotenv import load_dotenv
 from tqdm import tqdm
 
 from extraction import DATAPATH
-from extraction.annotations.draw import draw_predictions
+from extraction.annotations.draw import draw_predictions, plot_tables
 from extraction.annotations.plot_utils import plot_lines
 from extraction.evaluation.benchmark.score import evaluate_all_predictions
 from extraction.features.extract import extract_page
@@ -26,6 +27,7 @@ from extraction.features.predictions.overall_file_predictions import OverallFile
 from extraction.features.predictions.predictions import BoreholeListBuilder
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.features.utils.geometry.line_detection import extract_lines
+from extraction.features.utils.table_detection import detect_table_structures
 from extraction.features.utils.text.extract_text import extract_text_lines
 from utils.file_utils import flatten, read_params
 
@@ -94,6 +96,13 @@ def common_options(f):
         help="Whether to draw lines on pdf pages. Defaults to False.",
     )(f)
     f = click.option(
+        "-t",
+        "--draw-tables",
+        is_flag=True,
+        default=False,
+        help="Whether to draw detected table structures on pdf pages. Defaults to False.",
+    )(f)
+    f = click.option(
         "-c",
         "--csv",
         is_flag=True,
@@ -116,6 +125,7 @@ def click_pipeline(
     metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
+    draw_tables: bool = False,
     csv: bool = False,
     part: str = "all",
 ):
@@ -128,6 +138,7 @@ def click_pipeline(
         metadata_path=metadata_path,
         skip_draw_predictions=skip_draw_predictions,
         draw_lines=draw_lines,
+        draw_tables=draw_tables,
         csv=csv,
         part=part,
     )
@@ -194,6 +205,7 @@ def start_pipeline(
     metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
+    draw_tables: bool = False,
     csv: bool = False,
     part: str = "all",
 ):
@@ -213,6 +225,7 @@ def start_pipeline(
         predictions_path (Path): The path to the predictions file.
         skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
         draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.
+        draw_tables (bool, optional): Whether to draw detected table structures on pdf pages. Defaults to False.
         metadata_path (Path): The path to the metadata file.
         csv (bool): Whether to generate a CSV output. Defaults to False.
         part (str, optional): The part of the pipeline to run. Defaults to "all".
@@ -272,11 +285,20 @@ def start_pipeline(
                 text_lines = extract_text_lines(page)
                 geometric_lines = extract_lines(page, line_detection_params)
 
+                # Detect table structures on the page
+                table_structures = detect_table_structures(
+                    page_index,
+                    doc,
+                    geometric_lines,
+                    text_lines,
+                )
+
                 # extract the statigraphy
                 page_layers = extract_page(
                     layers_with_bb_in_document,
                     text_lines,
                     geometric_lines,
+                    table_structures,
                     file_metadata.language,
                     page_index,
                     doc,
@@ -290,6 +312,22 @@ def start_pipeline(
                     page_number=page_number, lines=text_lines, document=doc
                 )
                 all_groundwater_entries.groundwater_feature_list.extend(groundwater_entries)
+
+                # Draw table structures if requested
+                if draw_tables:
+                    img = plot_tables(page, table_structures, page_index)
+
+                    if draw_directory:
+                        table_img_path = draw_directory / f"{Path(filename).stem}_page_{page.number + 1}_tables.png"
+                        cv2.imwrite(str(table_img_path), img)
+
+                    if mlflow_tracking:
+                        mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_tables.png")
+
+                    elif not draw_directory:
+                        logger.warning(
+                            "MLFlow tracking and local draw directory is not enabled. Table images will not be saved."
+                        )
 
                 if draw_lines:  # could be changed to if draw_lines and mlflow_tracking:
                     if not mlflow_tracking:
