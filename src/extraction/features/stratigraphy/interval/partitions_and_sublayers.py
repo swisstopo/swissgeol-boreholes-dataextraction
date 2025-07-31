@@ -15,10 +15,14 @@ def number_of_subintervals(interval: Interval, following_intervals: list[Interva
     Returns:
         int: The number of contiguous intervals in `following_intervals` that are fully contained in `interval`.
     """
+    if interval.end is None:
+        # open-ended interval contains all of the intervals starting after it.
+        return len(following_intervals)
     count = 0
     for following_interval in following_intervals:
         if interval.start.value <= following_interval.start.value <= interval.end.value and (
-            interval.start.value <= following_interval.end.value <= interval.end.value
+            following_interval.end is None  # open ended works as if it was contained
+            or interval.start.value <= following_interval.end.value <= interval.end.value
         ):
             count += 1
         else:
@@ -36,8 +40,12 @@ def is_partitioned(interval: Interval, following_intervals: list[Interval]) -> b
     Returns:
         bool: True if the subsequent intervals exactly partition the input interval, False otherwise.
     """
+    if interval.end is None:
+        return False  # open-ended can't be partitionned
     current_end = interval.start.value
     for following_interval in following_intervals:
+        if following_interval.end is None:
+            continue  # open-ended can't be part of a partition
         if following_interval.start.value == current_end:
             current_end = following_interval.end.value
             if current_end == interval.end.value:
