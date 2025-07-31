@@ -89,6 +89,9 @@ def test_aabovebsidebar_makeascending():  # noqa: D103
     # ensure a "noise" value "0.0" does not influence the result
     run_test([1.0, 2.0, 3.0, 0.0, 4.0], [1.0, 2.0, 3.0, 0.0, 4.0])
 
+    # edge case
+    run_test([], [])
+
 
 def test_generate_alternatives():
     """Test generate_alternatives function for alternative options to OCR mistakes."""

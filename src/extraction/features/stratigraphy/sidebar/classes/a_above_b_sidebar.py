@@ -130,6 +130,9 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
 
     def make_ascending(self):
         """Adjust entries in this sidebar for an ascending order."""
+        if not self.entries:
+            return self
+
         median_value = np.median(np.array([entry.value for entry in self.entries]))
 
         for i, entry in enumerate(self.entries):

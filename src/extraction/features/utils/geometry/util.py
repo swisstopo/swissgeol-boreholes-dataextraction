@@ -141,8 +141,9 @@ def line_from_array(line: ArrayLike, scale_factor: float) -> Line:
     Returns:
         Line: The converted line.
     """
-    start = Point(int(line[0][0] / scale_factor), int(line[0][1] / scale_factor))
-    end = Point(int(line[0][2] / scale_factor), int(line[0][3] / scale_factor))
+    start = Point(line[0][0] / scale_factor, line[0][1] / scale_factor)
+    end = Point(line[0][2] / scale_factor, line[0][3] / scale_factor)
+
     return Line(start, end)
 
 
