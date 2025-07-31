@@ -362,7 +362,7 @@ def _contained_in_table_index(
         The index of the first table structure that contains this pair, or -1 if none is found
     """
     material_rect = pair.material_description_rect
-    sidebar_rect = pair.sidebar.rect() if pair.sidebar else None
+    sidebar_rect = pair.sidebar.rect if pair.sidebar else None
 
     for index, table in enumerate(table_structures):
         # Check if rectangle is within proximity buffer of table
