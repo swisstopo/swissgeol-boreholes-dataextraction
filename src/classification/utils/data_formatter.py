@@ -194,7 +194,7 @@ def resolve_reference(
         str: The resolved material description, with references replaced by actual descriptions.
     """
     key_words = "|".join([re.escape(kw) for kw in classification_params["reference_key_words"]])
-    key_word_query = rf"^[\s\-]*(?:{key_words})\b"
+    key_word_query = rf"^[\s\-]*(?:{key_words})\b"  # contains the capturing group
     depth_query = r"(\d+(?:[.,]\d+)?)"
     unit_query = r"(?:\s*(?=[müMN])?[müMN])?\b"  #  non-consuming lookahead
     total_query = (
