@@ -5,10 +5,13 @@ import re
 import pymupdf
 
 from extraction.features.utils.text.textline import TextLine
+from utils.file_utils import read_params
 
 from ...utils.text.textblock import TextBlock
 from ..base.sidebar_entry import DepthColumnEntry
 from .interval import AToBInterval, IntervalBlockPair
+
+matching_params = read_params("matching_params.yml")
 
 
 class AToBIntervalExtractor:
@@ -112,11 +115,10 @@ class AToBIntervalExtractor:
                 DepthColumnEntry.from_string_value(rect_from_group_index(2), match.group(2)),
             )
 
-        open_ended_words = ["des", "dès", "a partir de", "à partir de", "from"]
+        open_ended_words = matching_params["open_ended_depth_key"]
         words_pattern = "|".join([re.escape(w) for w in open_ended_words])
 
-        # Use non-capturing group for the alternation
-        fallback_query = rf"(?:{words_pattern})\s*([0-9]+(?:\.[0-9]+)?)\s*[müMN]?"
+        fallback_query = rf"(?:{words_pattern})\s*([0-9]+(?:\.[0-9]+)?)\s*[müMN]*"
         fallback_regex = re.compile(fallback_query, re.IGNORECASE)
         match = fallback_regex.search(input_string)
         if match:

@@ -15,7 +15,7 @@ from utils.file_utils import read_params
 
 from ...base.sidebar_entry import LayerIdentifierEntry
 from ...interval.a_to_b_interval_extractor import AToBIntervalExtractor
-from ...interval.interval import IntervalBlockGroup
+from ...interval.interval import IntervalBlockGroup, IntervalBlockPair
 from ...interval.partitions_and_sublayers import (
     get_optimal_intervals_with_text,
 )
@@ -69,10 +69,12 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         provisional_groups = []
         last_end_depth = None
         for block in blocks:
+            block_lines_header = self._get_header(block)  # Get the header lines from the block
+
             interval_block_pairs = AToBIntervalExtractor.from_material_description_lines(block.lines)
             interval_block_pairs = get_optimal_intervals_with_text(interval_block_pairs)
 
-            ignored_lines = self.filter_header_lines(interval_block_pairs)
+            ignored_lines = self._filter_header_lines(block_lines_header, interval_block_pairs)
 
             new_groups = [
                 IntervalBlockGroup(
@@ -107,18 +109,41 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
 
         return result
 
-    def filter_header_lines(self, interval_block_pairs):
-        """.."""
+    def _get_header(self, block: TextBlock) -> list[TextLine]:
+        """Get the header lines from a block.
 
-        def get_header(block: TextBlock) -> list[TextLine]:
-            return [
-                line
-                for line in block.lines
-                if any(y_overlap_significant_smallest(line.rect, identifier.rect, 0.8) for identifier in self.entries)
-            ]
+        Header lines are defined as lines that overlap significantly with the layer identifiers.
+
+        Args:
+            block (TextBlock): The block from which to extract the header lines.
+
+        Returns:
+            list[TextLine]: A list of header lines that overlap significantly with the layer identifiers.
+        """
+        return [
+            line
+            for line in block.lines
+            if any(y_overlap_significant_smallest(line.rect, identifier.rect, 0.8) for identifier in self.entries)
+        ]
+
+    def _filter_header_lines(
+        self, block_lines_header: list[TextLine], interval_block_pairs: list[IntervalBlockPair]
+    ) -> list[TextLine]:
+        """Filters out header lines from the blocks based on the layer identifiers.
+
+        Args:
+            block_lines_header (list[TextLine]): The header lines.
+            interval_block_pairs (list[IntervalBlockPair]): The list of interval block pairs to filter.
+
+        Returns:
+            list[TextLine]: A list of lines that should be ignored, such as headers or layer identifiers.
+        """
 
         def _is_header_capitalized(header_lines: list[TextLine]) -> bool:
-            """Requires 70% of the letters to be capital, the layer identifier in the front is ignored."""
+            """Check if the header lines are capitalized.
+
+            We require 70% of the letters in the header to be uppercase, excluding the layer identifier itself.
+            """
             text = "".join([line.text for line in header_lines])
             return any(
                 np.mean([1 if char.isupper() else 0 for char in text.replace(identifier.value, "") if char.isalpha()])
@@ -126,40 +151,42 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
                 for identifier in self.entries
             )
 
-        block_lines_header = get_header(interval_block_pairs[0].block)  # should be before pairs creation
         other_lines = [
             line for pair in interval_block_pairs for line in pair.block.lines if line not in block_lines_header
         ]
-        # (
-        #     interval_block_pairs[0].block.lines[0]
-        #     if interval_block_pairs and _is_header(interval_block_pairs[0].block)
-        #     else None
-        # )
-        ignore_lines = block_lines_header
-        if not other_lines:
-            # no other lines than the header, header is considered as a regular line
-            ignore_lines = []
 
-        if not any(pair.depth_interval for pair in interval_block_pairs) and not _is_header_capitalized(
-            block_lines_header
-        ):
-            # no depth information and no capitalization: the text is mainly just description, we keep it.
-            ignore_lines = []
-        return ignore_lines
+        if not other_lines:
+            # No other lines than the header, treat header as a regular line
+            return []
+
+        has_depth_info = any(pair.depth_interval for pair in interval_block_pairs)
+        if not has_depth_info and not _is_header_capitalized(block_lines_header):
+            # No depth info and header not capitalized, treat header as part of the description
+            return []
+
+        return block_lines_header
 
     def _clean_block(self, block: TextBlock, ignored_lines: list[TextLine]) -> TextLine:
-        """Remove the headers in ignored_lines, the layer identificator and the depths ?? TODO."""
-        new_lines = []
-        for line in block.lines:
-            if line in ignored_lines:
-                continue
-            valid_words = [
-                word for word in line.words if word.text.strip() not in {entry.value for entry in self.entries}
-            ]
-            if valid_words:
-                new_lines.append(TextLine(valid_words))
+        """Remove the headers in ignored_lines and the layer identifiers from the block.
 
-        return TextBlock(new_lines)
+        Args:
+            block (TextBlock): The block to clean.
+            ignored_lines (list[TextLine]): The lines to ignore, such as headers.
+
+        Returns:
+            TextBlock: The cleaned block with the ignored lines and layer identifiers removed.
+        """
+        # Create set of entry values
+        entry_values = {entry.value.strip() for entry in self.entries}
+
+        new_word_lists = [
+            [word for word in line.words if word.text.strip() not in entry_values]
+            for line in block.lines
+            if line not in ignored_lines
+        ]
+
+        # Only keep lines that have words remaining after filtering
+        return TextBlock([TextLine(words) for words in new_word_lists if words])
 
     @staticmethod
     def matching_blocks(
