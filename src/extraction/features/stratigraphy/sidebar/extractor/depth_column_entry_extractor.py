@@ -40,7 +40,9 @@ class DepthColumnEntryExtractor:
                     # support for e.g. "1.10-1.60m" extracted as a single word
                     a_to_b_interval = AToBIntervalExtractor.from_text(TextLine([word]))
                     if a_to_b_interval:
-                        entries.extend([a_to_b_interval.start, a_to_b_interval.end])
+                        entries.append(a_to_b_interval.start)
+                        if a_to_b_interval.end is not None:
+                            entries.append(a_to_b_interval.end)
             except ValueError:
                 pass
         return entries
