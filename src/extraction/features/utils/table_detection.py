@@ -115,29 +115,6 @@ class StructureLine:
     is_vertical: bool
     line: Line
 
-    def connects_with(self, other: "StructureLine", tolerance: float = 10.0) -> bool:
-        """Check if this line connects with another line within a given tolerance.
-
-        Args:
-            other: Another StructureLine to check connection with
-            tolerance: Distance threshold for connection
-
-        Returns:
-            bool: True if lines connect, False otherwise
-        """
-        if self.is_vertical == other.is_vertical:
-            position_ok = abs(self.position - other.position) < tolerance
-            min_self = min(self.start, self.end)
-            max_self = max(self.start, self.end)
-            min_other = min(other.start, other.end)
-            max_other = max(other.start, other.end)
-            start_end_ok = not (max_self + tolerance < min_other) and not (max_other + tolerance < min_self)
-            return position_ok and start_end_ok
-        else:
-            return (self.start - tolerance < other.position < self.end + tolerance) and (
-                other.start - tolerance < self.position < other.end + tolerance
-            )
-
 
 def _find_table_structures(
     lines: list[StructureLine],

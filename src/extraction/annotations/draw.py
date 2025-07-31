@@ -360,14 +360,24 @@ def draw_table_structures(
         shape.finish(color=pymupdf.utils.getColor(light_color), width=1, stroke_opacity=0.6)
 
 
-def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure]):
+def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure], page_index: int):
     """Draw table structures on a pdf page.
 
     Args:
         page:               The PDF page.
         table_structures:   The identified table structures on the page.
+        page_index:         The index of the page in the document (0-based).
     """
-    shape = page.new_shape()
-    draw_table_structures(shape, page.derotation_matrix, table_structures)
+    temp_doc = pymupdf.open()
+    temp_doc.insert_pdf(page.parent, from_page=page_index, to_page=page_index)
+    temp_page = temp_doc[0]
+
+    shape = temp_page.new_shape()
+    draw_table_structures(shape, temp_page.derotation_matrix, table_structures)
     shape.commit()
-    return convert_page_to_opencv_img(page, scale_factor=2)
+
+    result = convert_page_to_opencv_img(temp_page, scale_factor=2)
+
+    temp_doc.close()
+
+    return result

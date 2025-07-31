@@ -315,7 +315,7 @@ def start_pipeline(
 
                 # Draw table structures if requested
                 if draw_tables:
-                    img = plot_tables(page, table_structures)
+                    img = plot_tables(page, table_structures, page_index)
 
                     if draw_directory:
                         table_img_path = draw_directory / f"{Path(filename).stem}_page_{page.number + 1}_tables.png"
