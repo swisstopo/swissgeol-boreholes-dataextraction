@@ -55,6 +55,8 @@ The project is under active development and there is no release to this date. Th
 #### Requirements on the input PDFs
 The input PDF files must contain digital text content. For PDF files that are not _digitally-born_ (e.g. scanned documents), this means that OCR must be performed, and the OCR results stored in the PDF file, before using the file as an input for this data extraction pipeline. The quality of the extracted data is dependent on the quality of the OCR. At swisstopo, we use the [AWS Textract](https://aws.amazon.com/textract/) service together with our own code from the [swissgeol-ocr](https://github.com/swisstopo/swissgeol-ocr) repository for this purpose.
 
+We also provide the script `src/scripts/deskew_pdf.py` that can unskew document that have been rotated or warped during their scanning. This script is applied to all documents in a given folder, and will produce a copy of those documents, unskewed. It is important to note that any ocr done before this step will be lost, and that it must be redone after the deskewing.
+
 #### Test Regions and Languages
 The pipeline has been optimized for and tested on boreholes profiles from Switzerland that have been written in German or (to a more limited extent) in French.
 

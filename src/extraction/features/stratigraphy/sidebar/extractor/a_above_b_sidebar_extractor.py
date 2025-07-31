@@ -68,9 +68,7 @@ class AAboveBSidebarExtractor:
         result = []
         # Remove sidebar_noise that are fully contained in a longer sidebar
         for sidebar_noise in sidebars_by_length:
-            if not any(
-                result_sidebar.sidebar.rect().contains(sidebar_noise.sidebar.rect()) for result_sidebar in result
-            ):
+            if not any(result_sidebar.sidebar.rect.contains(sidebar_noise.sidebar.rect) for result_sidebar in result):
                 result.append(sidebar_noise)
 
         return result

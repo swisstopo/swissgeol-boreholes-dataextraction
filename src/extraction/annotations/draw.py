@@ -71,19 +71,19 @@ def draw_predictions(
                         groundwaters = borehole_predictions.groundwater_in_borehole
                         bh_layers = borehole_predictions.layers_in_borehole
 
-                        if coordinates is not None and page_number == coordinates.page:
+                        if coordinates is not None and page_number == coordinates.page_number:
                             draw_feature(
                                 shape,
                                 coordinates.rect * page.derotation_matrix,
                                 coordinates.feature.is_correct,
                                 "purple",
                             )
-                        if elevation is not None and page_number == elevation.page:
+                        if elevation is not None and page_number == elevation.page_number:
                             draw_feature(
                                 shape, elevation.rect * page.derotation_matrix, elevation.feature.is_correct, "blue"
                             )
                         for groundwater_entry in groundwaters.groundwater_feature_list:
-                            if page_number == groundwater_entry.page:
+                            if page_number == groundwater_entry.page_number:
                                 draw_feature(
                                     shape,
                                     groundwater_entry.rect * page.derotation_matrix,
@@ -98,7 +98,11 @@ def draw_predictions(
                         draw_material_descriptions(
                             shape,
                             page.derotation_matrix,
-                            [layer for layer in bh_layers.layers if layer.material_description.page == page_number],
+                            [
+                                layer
+                                for layer in bh_layers.layers
+                                if layer.material_description.page_number == page_number
+                            ],
                         )
 
                     shape.commit()  # Commit all the drawing operations to the page

@@ -13,10 +13,10 @@ from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.geometry.util import x_overlap_significant_smallest
 from extraction.features.utils.text.textline import TextLine
 
-from ...base.sidebar_entry import DepthColumnEntry
+from ...base.sidebar_entry import SidebarEntry
 from ...interval.interval import IntervalBlockGroup
 
-EntryT = TypeVar("EntryT", bound=DepthColumnEntry)
+EntryT = TypeVar("EntryT", bound=SidebarEntry)
 
 
 @dataclass
@@ -43,6 +43,7 @@ class Sidebar(abc.ABC, Generic[EntryT]):
         """Get the rectangles of the depth column entries."""
         return [entry.rect for entry in self.entries]
 
+    @property
     def rect(self) -> pymupdf.Rect:
         """Get the bounding box of the depth column entries."""
         x0 = min([rect.x0 for rect in self.rects()])
@@ -108,7 +109,7 @@ def noise_count(sidebar: Sidebar, line_rtree: rtree.index.Index) -> int:
     Returns:
         int: The number of text lines that intersect with the Sidebar entries but are not part of it.
     """
-    sidebar_rect = sidebar.rect()
+    sidebar_rect = sidebar.rect
     intersecting_lines = _get_intersecting_lines(line_rtree, sidebar_rect)
 
     def significant_intersection(line: TextLine) -> bool:

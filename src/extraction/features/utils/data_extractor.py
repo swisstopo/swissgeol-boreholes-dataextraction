@@ -11,6 +11,7 @@ from typing import Generic, Self, TypeVar
 import pymupdf
 import regex
 
+from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from extraction.features.utils.text.textline import TextLine
 from utils.file_utils import read_params
 
@@ -49,13 +50,12 @@ class ExtractedFeature(metaclass=ABCMeta):
 T = TypeVar("T", bound=ExtractedFeature)
 
 
-@dataclass
-class FeatureOnPage(Generic[T]):
+class FeatureOnPage(Generic[T], RectWithPageMixin):
     """Class for an extracted feature, together with the page and where on that page the feature was extracted from."""
 
-    feature: T
-    rect: pymupdf.Rect  # The rectangle that contains the extracted information
-    page: int  # The page number of the PDF document
+    def __init__(self, feature: T, rect: pymupdf.Rect, page: int):
+        self.feature = feature
+        self.rect_with_page = RectWithPage(rect, page)
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -66,7 +66,7 @@ class FeatureOnPage(Generic[T]):
         result = self.feature.to_json()
         result.update(
             {
-                "page": self.page if self.page else None,
+                "page": self.page_number if self.page_number else None,
                 "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
             }
         )
