@@ -15,7 +15,6 @@ from extraction.features.utils.geometry.geometric_line_utilities import (
     merge_parallel_lines_quadtree,
 )
 from extraction.features.utils.geometry.geometry_dataclasses import Line, Point
-from extraction.features.utils.table_detection import StructureLine
 
 
 # Remember, phi is orthogonal to the line we are to parameterize
