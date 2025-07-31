@@ -145,11 +145,11 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             We require 70% of the letters in the header to be uppercase, excluding the layer identifier itself.
             """
             text = "".join([line.text for line in header_lines])
-            return any(
-                np.mean([1 if char.isupper() else 0 for char in text.replace(identifier.value, "") if char.isalpha()])
-                > 0.7
-                for identifier in self.entries
-            )
+            for identifier in self.entries:
+                letters = [c for c in text.replace(identifier.value, "") if c.isalpha()]
+                if letters and np.mean([c.isupper() for c in letters]) > 0.7:
+                    return True
+            return False
 
         other_lines = [
             line for pair in interval_block_pairs for line in pair.block.lines if line not in block_lines_header
@@ -166,7 +166,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
 
         return block_lines_header
 
-    def _clean_block(self, block: TextBlock, ignored_lines: list[TextLine]) -> TextLine:
+    def _clean_block(self, block: TextBlock, ignored_lines: list[TextLine]) -> TextBlock:
         """Remove the headers in ignored_lines and the layer identifiers from the block.
 
         Args:
