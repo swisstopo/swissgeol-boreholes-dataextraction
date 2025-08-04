@@ -8,9 +8,11 @@ import pandas as pd
 import pymupdf
 from dotenv import load_dotenv
 
+from extraction.annotations.plot_utils import convert_page_to_opencv_img
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
+from extraction.features.utils.table_detection import TableStructure
 
 load_dotenv()
 
@@ -313,3 +315,73 @@ def draw_layer(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, layer: L
                         width=6,
                         stroke_opacity=0.5,
                     )
+
+
+def draw_table_structures(
+    shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, tables: list[TableStructure]
+) -> None:
+    """Draw table structures on a pdf page.
+
+    If multiple tables are available each is drawn in a different color to distinguish between the detected tables.
+
+    Args:
+        shape (pymupdf.Shape): The shape object for drawing.
+        derotation_matrix (pymupdf.Matrix): The derotation matrix of the page.
+        tables (list[TableStructure]): List of detected table structures.
+    """
+    # Define colors for different tables
+    table_colors = [
+        ("purple", "mediumpurple"),
+        ("blue", "lightblue"),
+        ("green", "lightgreen"),
+        ("red", "lightcoral"),
+        ("orange", "peachpuff"),
+        ("brown", "tan"),
+        ("darkgreen", "lightseagreen"),
+        ("darkblue", "lightsteelblue"),
+    ]
+
+    for index, table in enumerate(tables):
+        main_color, light_color = table_colors[index % len(table_colors)]
+
+        # Draw the table bounding rectangle
+        shape.draw_rect(table.bounding_rect * derotation_matrix)
+        shape.finish(color=pymupdf.utils.getColor(main_color), width=3, stroke_opacity=0.8)
+
+        # Draw horizontal and vertical lines in a lighter shade
+        for h_line in table.horizontal_lines:
+            start_point = pymupdf.Point(h_line.start.x, h_line.start.y)
+            end_point = pymupdf.Point(h_line.end.x, h_line.end.y)
+            shape.draw_line(start_point * derotation_matrix, end_point * derotation_matrix)
+
+        shape.finish(color=pymupdf.utils.getColor(light_color), width=2, stroke_opacity=0.6)
+
+        for v_line in table.vertical_lines:
+            start_point = pymupdf.Point(v_line.start.x, v_line.start.y)
+            end_point = pymupdf.Point(v_line.end.x, v_line.end.y)
+            shape.draw_line(start_point * derotation_matrix, end_point * derotation_matrix)
+
+        shape.finish(color=pymupdf.utils.getColor(light_color), width=1, stroke_opacity=0.6)
+
+
+def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure], page_index: int):
+    """Draw table structures on a pdf page.
+
+    Args:
+        page:               The PDF page.
+        table_structures:   The identified table structures on the page.
+        page_index:         The index of the page in the document (0-based).
+    """
+    temp_doc = pymupdf.open()
+    temp_doc.insert_pdf(page.parent, from_page=page_index, to_page=page_index)
+    temp_page = temp_doc[0]
+
+    shape = temp_page.new_shape()
+    draw_table_structures(shape, temp_page.derotation_matrix, table_structures)
+    shape.commit()
+
+    result = convert_page_to_opencv_img(temp_page, scale_factor=2)
+
+    temp_doc.close()
+
+    return result

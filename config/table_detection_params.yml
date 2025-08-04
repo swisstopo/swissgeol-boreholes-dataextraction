@@ -1,0 +1,26 @@
+# Line length requirements for meaningful table detection
+min_line_length: 20
+
+# Angle requirements
+angle_tolerance: 5
+
+# Connection threshold for line groups
+connection_threshold: 5.0
+
+# Confidence threshold for table detection
+min_confidence: 0.6
+
+# Table area score for confidence calculation
+area_scoring:
+  area_weights: 0.4
+  min_table_area_ratio: 0.3
+
+# Line score for confidence calculation
+line_scoring:
+  line_weights: 0.2
+  max_n_lines_bonus: 120
+
+# Text bonus scoring for confidence calculation
+text_scoring:
+  text_weights: 0.4
+  text_presence_weight: 0.002
