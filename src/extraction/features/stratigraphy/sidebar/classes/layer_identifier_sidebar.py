@@ -1,7 +1,6 @@
 """Module for the layer identifier sidebars."""
 
 import logging
-import re
 from dataclasses import dataclass
 
 import pymupdf
@@ -138,81 +137,3 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             return [TextBlock(matched_lines)]
         else:
             return []
-
-    def strictly_contains(self, other: "LayerIdentifierSidebar") -> bool:
-        """Check if the layer identifier column strictly contains another layer identifier column.
-
-        Args:
-            other (LayerIdentifierSidebar): The other layer identifier column to check if it is strictly contained.
-
-        Returns:
-            bool: True if the layer identifier column strictly contains the other layer identifier column, False
-            otherwise.
-        """
-        return len(other.entries) < len(self.entries) and all(
-            other_entry in self.entries for other_entry in other.entries
-        )
-
-    def is_contained(self, rect: pymupdf.Rect) -> bool:
-        """Check if the layer identifier column is contained in another rectangle.
-
-        Args:
-            rect (pymupdf.Rect): The rectangle to check if it contains the layer identifier column.
-
-        Returns:
-            bool: True if the layer identifier column is contained in the rectangle, False otherwise.
-        """
-        return (
-            rect.x0 <= self.rect().x0
-            and self.rect().x1 <= rect.x1
-            and rect.y0 <= self.rect().y0
-            and self.rect().y1 <= rect.y1
-        )
-
-    def _standardize_key(self, value: str) -> list[str | int]:
-        """Splits a string into parts: [int, str, int] for natural sorting.
-
-        Example: '6d12)' → [6, 'd', 12]
-
-        Args:
-            value (str): the value to convert to standartized key.
-
-        Returns:
-            list[str | int]: the list containing the key in order.
-        """
-        value = value.strip().replace(")", "").lower()
-
-        # Split into alternating numbers and letters
-        parts = re.findall(r"\d+|[a-z]+", value)
-        # conversion to int needed because 2 < 12 for example (with strings, '12' < '2', because '1' < '2')
-        key = [int(p) if p.isdigit() else p for p in parts]
-        return key
-
-    def has_regular_progression(self):
-        """Checks if a LayerIdentifierSidebar object is valid.
-
-        This check is particularly useful to reject cases where columns of heights are detected, due to the letter
-            "m)" which could indicate meters (e.g., 350.0 m in deepwell Arsch). It also rejects some invalid sidebars
-            that appear in other documents.
-
-        Returns:
-            bool: Indicates whether the sidebar follows a logical order.
-        """
-        valid_count = 0
-        for entry, next_entry in zip(self.entries, self.entries[1:], strict=False):
-            current = self._standardize_key(entry.value)
-            next_ = self._standardize_key(next_entry.value)
-
-            try:
-                if current < next_:
-                    valid_count += 1
-            except TypeError as e:
-                # happens when comparing a string with an int, it is usually due to a extraction error (e.g. "e" < 2)
-                logger.warning(
-                    f"{e} encountered during comparison between {entry.value} and {next_entry.value}. This is "
-                    "typically due to extraction issues, such as mixing strings and numbers (l -> 1, q -> 9)."
-                )
-                continue
-
-        valid_ratio = valid_count / (len(self.entries) - 1)
-        return valid_ratio > matching_params["layer_identifier_acceptance_ratio"]
