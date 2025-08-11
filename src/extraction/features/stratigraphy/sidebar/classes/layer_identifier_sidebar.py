@@ -74,7 +74,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             interval_block_pairs = AToBIntervalExtractor.from_material_description_lines(block.lines)
             interval_block_pairs = get_optimal_intervals_with_text(interval_block_pairs)
 
-            ignored_lines = self._filter_header_lines(block_lines_header, interval_block_pairs)
+            ignored_lines = block_lines_header if self._ignore_header(block_lines_header, interval_block_pairs) else []
 
             new_groups = [
                 IntervalBlockGroup(
@@ -114,6 +114,8 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
 
         Header lines are defined as lines that overlap significantly with the layer identifiers.
 
+        Note: In rare cases where the header spans multiple lines, only the first line is considered the header.
+
         Args:
             block (TextBlock): The block from which to extract the header lines.
 
@@ -126,17 +128,17 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             if any(y_overlap_significant_smallest(line.rect, identifier.rect, 0.8) for identifier in self.entries)
         ]
 
-    def _filter_header_lines(
+    def _ignore_header(
         self, block_lines_header: list[TextLine], interval_block_pairs: list[IntervalBlockPair]
-    ) -> list[TextLine]:
-        """Filters out header lines from the blocks based on the layer identifiers.
+    ) -> bool:
+        """Analyse whether to ignore header lines from the blocks based on the layer identifiers.
 
         Args:
             block_lines_header (list[TextLine]): The header lines.
             interval_block_pairs (list[IntervalBlockPair]): The list of interval block pairs to filter.
 
         Returns:
-            list[TextLine]: A list of lines that should be ignored, such as headers or layer identifiers.
+            bool: True if the header lines should be ignored, False otherwise.
         """
 
         def _is_header_capitalized(header_lines: list[TextLine]) -> bool:
@@ -157,12 +159,10 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
 
         header_capitalized = _is_header_capitalized(block_lines_header)
         has_depth_info = any(pair.depth_interval for pair in interval_block_pairs)
-        if not header_capitalized and (not has_depth_info or not other_lines):
-            # If the header is not capitalized, and there is no other lines than the header, or no depth info are found
-            # we treat the header as part of the description
-            return []
 
-        return block_lines_header
+        # If the header is not capitalized, and there is no other lines than the header, or no depth info are found
+        # we treat the header as part of the description
+        return bool(header_capitalized or (has_depth_info and other_lines))
 
     def _clean_block(self, block: TextBlock, ignored_lines: list[TextLine]) -> TextBlock:
         """Remove the headers in ignored_lines and the layer identifiers from the block.

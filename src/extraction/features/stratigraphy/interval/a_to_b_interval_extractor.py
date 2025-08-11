@@ -52,7 +52,7 @@ class AToBIntervalExtractor:
                 # if depth was not found in the previous and current lines, we look for a depth wrapping arround.
                 combined_lines = TextLine(prev_line.words + line.words)
                 a_to_b_interval = AToBIntervalExtractor.from_text(combined_lines, require_start_of_string=False)
-            prev_interval = a_to_b_interval.copy() if a_to_b_interval else None
+            prev_interval = a_to_b_interval
             prev_line = line
             # require_start_of_string = False because the depth interval may not always start at the beginning
             # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
