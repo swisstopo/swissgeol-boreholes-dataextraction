@@ -22,9 +22,13 @@ def previous_layers():  # noqa: D103
         ("Do but finer.", "Gravel, coarse but finer."),
         ("Dolomite, light grey", "Dolomite, light grey"),
         ("Dirt with 1.0-2.0m depth", "Dirt with 1.0-2.0m depth"),
+        ("wie 2.0 m.ü.M", "Clay, grey, soft"),
+        ("wie 2.0 ", "Clay, grey, soft "),  # extra space should not be matched
+        ("wie 2.0 mit viel stein.", "Clay, grey, soft mit viel stein."),  # the "m" of "mit" should not be matched
     ],
 )
 def test_resolve_reference(description, expected, previous_layers):
     """Test reference resolution with various scenarios."""
     result = resolve_reference(description, previous_layers)
+    print(f"Input: {description}, Resolved: {result}, Expected: {expected}")
     assert result == expected
