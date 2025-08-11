@@ -9,7 +9,6 @@ from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.geometry.util import y_overlap_significant_smallest
 from extraction.features.utils.text.textblock import TextBlock
 from extraction.features.utils.text.textline import TextLine
-from utils.file_utils import read_params
 
 from ...base.sidebar_entry import LayerIdentifierEntry
 from ...interval.a_to_b_interval_extractor import AToBIntervalExtractor
@@ -20,7 +19,6 @@ from ...interval.partitions_and_sublayers import (
 from .sidebar import Sidebar
 
 logger = logging.getLogger(__name__)
-matching_params = read_params("matching_params.yml")
 
 
 @dataclass
@@ -64,11 +62,8 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
 
         blocks = []
         line_index = 0
-        for layer_identifier_idx, _layer_index in enumerate(self.entries):
-            next_layer_identifier = (
-                self.entries[layer_identifier_idx + 1] if layer_identifier_idx + 1 < len(self.entries) else None
-            )
-
+        # skip the first layer identifier, and use None for the last block
+        for next_layer_identifier in self.entries[1:] + [None]:
             matched_block = self.matching_blocks(non_header_lines, line_index, next_layer_identifier)
             line_index += sum([len(block.lines) for block in matched_block])
             blocks.extend(matched_block)
