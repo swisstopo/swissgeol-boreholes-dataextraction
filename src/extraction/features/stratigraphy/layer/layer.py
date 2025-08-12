@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import pymupdf
 
 from extraction.features.utils.data_extractor import ExtractedFeature
+from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from extraction.features.utils.text.textblock import MaterialDescription
 from utils.file_utils import parse_text
 
@@ -12,8 +13,7 @@ from ..interval.interval import Interval
 from .page_bounding_boxes import PageBoundingBoxes
 
 
-@dataclass
-class LayerDepthsEntry:
+class LayerDepthsEntry(RectWithPageMixin):
     """Represents the upper or lower limit of a layer, used specifically for visualization and evaluation.
 
     Unlike `DepthColumnEntry` in `sidebarentry.py`, this class holds the extracted depth information,
@@ -21,14 +21,16 @@ class LayerDepthsEntry:
     data serialization, such as `to_json()`.
     """
 
-    value: float
-    rect: pymupdf.Rect
+    def __init__(self, value: float, rect: pymupdf.Rect, page_number: int):
+        self.value = value
+        self.rect_with_page = RectWithPage(rect, page_number)
 
     def to_json(self):
         """Convert the LayerDepthsEntry object to a JSON serializable format."""
         return {
             "value": self.value,
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
+            "page_number": self.page_number if self.page_number else None,
         }
 
     @classmethod
@@ -41,7 +43,7 @@ class LayerDepthsEntry:
         Returns:
             DepthColumnEntry: the corresponding LayerDepthsEntry object.
         """
-        return cls(value=data["value"], rect=pymupdf.Rect(data["rect"]))
+        return cls(value=data["value"], rect=pymupdf.Rect(data["rect"]), page_number=data["page_number"])
 
 
 @dataclass
@@ -103,9 +105,11 @@ class LayerDepths:
         Returns:
             LayerDepths: the corresponding LayerDepths object.
         """
+        start = interval.start
+        end = interval.end
         return cls(
-            start=LayerDepthsEntry(interval.start.value, interval.start.rect) if interval.start else None,
-            end=LayerDepthsEntry(interval.end.value, interval.end.rect) if interval.end else None,
+            start=LayerDepthsEntry(start.value, start.rect, start.page_number) if start else None,
+            end=LayerDepthsEntry(end.value, end.rect, end.page_number) if end else None,
         )
 
     def is_valid_depth_interval(self, start: float, end: float) -> bool:

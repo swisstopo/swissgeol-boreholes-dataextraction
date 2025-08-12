@@ -32,5 +32,7 @@ def test_has_regular_progression(entries, expected):
     It detects if a layer identifier sidebar, like 1), 2), 3) is valid or not. This test is usefull because some
     entries in the document might look like sidebar but actually are not.
     """
-    sidebar = LayerIdentifierSidebar([LayerIdentifierEntry(rect=None, value=value) for value in entries])
+    sidebar = LayerIdentifierSidebar(
+        [LayerIdentifierEntry(rect=None, value=value, page_number=0) for value in entries]
+    )
     assert sidebar.has_regular_progression() == expected

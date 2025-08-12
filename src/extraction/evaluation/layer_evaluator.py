@@ -40,8 +40,8 @@ class LayerEvaluator:
     def get_layer_metrics(self) -> OverallMetrics:
         """Calculate metrics for layer predictions."""
 
-        def per_layer_action(layer):
-            if parse_text(layer.material_description.feature.text) == "":
+        def per_layer_action(layer: Layer):
+            if parse_text(layer.material_description.text) == "":
                 logger.warning("Empty string found in predictions")
 
         return self.calculate_metrics(

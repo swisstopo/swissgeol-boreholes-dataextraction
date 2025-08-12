@@ -93,7 +93,9 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
         [
             Layer(
                 material_description=MaterialDescription(text=descr, lines=[]),
-                depths=LayerDepths(LayerDepthsEntry(start, pymupdf.Rect()), LayerDepthsEntry(end, pymupdf.Rect())),
+                depths=LayerDepths(
+                    LayerDepthsEntry(start, pymupdf.Rect(), 0), LayerDepthsEntry(end, pymupdf.Rect(), 0)
+                ),
             )
             for descr, start, end in [
                 ("HUMUS", None, 1),
@@ -106,7 +108,9 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
         [
             Layer(
                 material_description=MaterialDescription(text=descr, lines=[]),
-                depths=LayerDepths(LayerDepthsEntry(start, pymupdf.Rect()), LayerDepthsEntry(end, pymupdf.Rect())),
+                depths=LayerDepths(
+                    LayerDepthsEntry(start, pymupdf.Rect(), 0), LayerDepthsEntry(end, pymupdf.Rect(), 0)
+                ),
             )
             for descr, start, end in [
                 ("KIES, Sand,", 0.0, 0.5),
