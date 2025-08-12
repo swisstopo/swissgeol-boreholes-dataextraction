@@ -158,11 +158,16 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         ]
 
         header_capitalized = _is_header_capitalized(block_lines_header)
-        has_depth_info = any(pair.depth_interval for pair in interval_block_pairs)
 
-        # If the header is not capitalized, and there is no other lines than the header, or no depth info are found
-        # we treat the header as part of the description
-        return bool(header_capitalized or (has_depth_info and other_lines))
+        depths_in_header = bool(
+            AToBIntervalExtractor.from_text(
+                TextLine([word for line in block_lines_header for word in line.words]), require_start_of_string=False
+            )
+        )
+
+        # If the header is capitalized, or there is other lines than the header and depth info are found in the header
+        # we exclude the header from the material description.
+        return bool(header_capitalized or (depths_in_header and other_lines))
 
     def _clean_block(self, block: TextBlock, ignored_lines: list[TextLine]) -> TextBlock:
         """Remove the headers in ignored_lines and the layer identifiers from the block.
