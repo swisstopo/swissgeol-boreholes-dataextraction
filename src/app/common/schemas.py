@@ -515,7 +515,7 @@ class LayerMaterialDescriptionSchema(BaseModel):
         cls, prediction: MaterialDescription, pdf_img_scalings: list[tuple[float]]
     ) -> "LayerMaterialDescriptionSchema":
         return cls(
-            text=prediction.feature.text,
+            text=prediction.text,
             bounding_boxes=[
                 BoundingBoxWithPage(
                     page_number=line_feature.page_number,
@@ -540,15 +540,13 @@ class LayerDepthSchema(BaseModel):
     bounding_boxes: list[BoundingBoxWithPage]
 
     @classmethod
-    def from_prediction(
-        cls, prediction: LayerDepthsEntry, pdf_img_scalings: list[tuple[float]], page_number: int
-    ) -> "LayerDepthSchema":
-        page_scalings = pdf_img_scalings[page_number - 1]
+    def from_prediction(cls, prediction: LayerDepthsEntry, pdf_img_scalings: list[tuple[float]]) -> "LayerDepthSchema":
+        page_scalings = pdf_img_scalings[prediction.page_number - 1]
         return cls(
             depth=prediction.value,
             bounding_boxes=[
                 BoundingBoxWithPage(
-                    page_number=page_number,  # page is taken from material_description as a fallback
+                    page_number=prediction.page_number,
                     x0=prediction.rect.x0,
                     y0=prediction.rect.y0,
                     x1=prediction.rect.x1,
@@ -577,17 +575,13 @@ class BoreholeLayerSchema(BaseModel):
             if material_descr
             else None
         )
-        # the page number of Layer is the same for both depth entries TODO will not be the case anymore
-        layer_page_number = next(
-            p_rect.page_number for p_rect in prediction.material_description.rects_with_pages
-        )  # temporary
         start = (
-            LayerDepthSchema.from_prediction(prediction.depths.start, pdf_img_scalings, layer_page_number)
+            LayerDepthSchema.from_prediction(prediction.depths.start, pdf_img_scalings)
             if prediction.depths and prediction.depths.start
             else None
         )
         end = (
-            LayerDepthSchema.from_prediction(prediction.depths.end, pdf_img_scalings, layer_page_number)
+            LayerDepthSchema.from_prediction(prediction.depths.end, pdf_img_scalings)
             if prediction.depths and prediction.depths.end
             else None
         )
