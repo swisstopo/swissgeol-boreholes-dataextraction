@@ -46,15 +46,14 @@ class LayerEvaluator:
 
         return self.calculate_metrics(
             per_layer_filter=lambda layer: True,
-            per_layer_condition=lambda layer: layer.material_description.feature.is_correct,
+            per_layer_condition=lambda layer: layer.material_description.is_correct,
             per_layer_action=per_layer_action,
         )
 
     def get_depth_interval_metrics(self) -> OverallMetrics:
         """Calculate metrics for depth interval predictions."""
         return self.calculate_metrics(
-            per_layer_filter=lambda layer: layer.material_description.feature.is_correct
-            and layer.is_correct is not None,
+            per_layer_filter=lambda layer: layer.material_description.is_correct and layer.is_correct is not None,
             per_layer_condition=lambda layer: layer.is_correct,
         )
 
@@ -208,10 +207,10 @@ class LayerEvaluator:
         for layer in predicted_layers.layers:
             match, depth_interval_is_correct = LayerEvaluator.find_matching_layer(layer, unmatched_layers)
             if match:
-                layer.material_description.feature.is_correct = True
+                layer.material_description.is_correct = True
                 layer.is_correct = depth_interval_is_correct
             else:
-                layer.material_description.feature.is_correct = False
+                layer.material_description.is_correct = False
                 layer.is_correct = None
             matching_score += 1 if depth_interval_is_correct else 0
             matching_score += 1 if match else 0
@@ -231,7 +230,7 @@ class LayerEvaluator:
             tuple[dict, bool] | tuple[None, None]: The matching layer and a boolean indicating if the depth interval
                                 is correct. None if no match was found.
         """
-        parsed_text = parse_text(layer.material_description.feature.text)
+        parsed_text = parse_text(layer.material_description.text)
         possible_matches = [
             ground_truth_layer
             for ground_truth_layer in unmatched_layers

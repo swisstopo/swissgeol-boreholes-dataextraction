@@ -4,10 +4,7 @@ from dataclasses import dataclass
 
 import pymupdf
 
-from extraction.features.utils.data_extractor import (
-    ExtractedFeature,
-    FeatureOnPage,
-)
+from extraction.features.utils.data_extractor import ExtractedFeature
 from extraction.features.utils.text.textblock import MaterialDescription
 from utils.file_utils import parse_text
 
@@ -139,7 +136,7 @@ class Layer(ExtractedFeature):
     main data structure used for representing stratigraphy in the `ExtractedBorehole` class.
     """
 
-    material_description: FeatureOnPage[MaterialDescription]
+    material_description: MaterialDescription
     depths: LayerDepths | None
 
     def __str__(self) -> str:
@@ -151,7 +148,7 @@ class Layer(ExtractedFeature):
         return f"Layer(material_description={self.material_description}, depths={self.depths})"
 
     def description_nonempty(self) -> bool:
-        return parse_text(self.material_description.feature.text) != ""
+        return parse_text(self.material_description.text) != ""
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -174,7 +171,7 @@ class Layer(ExtractedFeature):
         Returns:
             list[LayerPrediction]: A list of LayerPrediction objects.
         """
-        material_prediction = FeatureOnPage.from_json(data["material_description"], MaterialDescription)
+        material_prediction = MaterialDescription.from_json(data["material_description"])
         depths = LayerDepths.from_json(data["depths"]) if ("depths" in data and data["depths"] is not None) else None
 
         return Layer(material_description=material_prediction, depths=depths)

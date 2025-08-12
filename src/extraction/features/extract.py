@@ -207,20 +207,16 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         borehole_layers = [
             Layer(
-                material_description=FeatureOnPage(
-                    feature=MaterialDescription(
-                        text=pair.block.text,
-                        lines=[
-                            FeatureOnPage(
-                                feature=MaterialDescriptionLine(text_line.text),
-                                rect=text_line.rect,
-                                page=text_line.page_number,
-                            )
-                            for text_line in pair.block.lines
-                        ],
-                    ),
-                    rect=pair.block.rect,
-                    page=self.page_number,
+                material_description=MaterialDescription(
+                    text=pair.block.text,
+                    lines=[
+                        FeatureOnPage(
+                            feature=MaterialDescriptionLine(text_line.text),
+                            rect=text_line.rect,
+                            page=text_line.page_number,
+                        )
+                        for text_line in pair.block.lines
+                    ],
                 ),
                 depths=LayerDepths.from_interval(pair.depth_interval) if pair.depth_interval else None,
             )

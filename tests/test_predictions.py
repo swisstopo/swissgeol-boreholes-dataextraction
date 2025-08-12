@@ -92,7 +92,7 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
     layers_in_borehole = LayersInBorehole(
         [
             Layer(
-                material_description=FeatureOnPage(MaterialDescription(text=descr, lines=[]), pymupdf.Rect(), 0),
+                material_description=MaterialDescription(text=descr, lines=[]),
                 depths=LayerDepths(LayerDepthsEntry(start, pymupdf.Rect()), LayerDepthsEntry(end, pymupdf.Rect())),
             )
             for descr, start, end in [
@@ -105,7 +105,7 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
     layers_in_borehole_2 = LayersInBorehole(
         [
             Layer(
-                material_description=FeatureOnPage(MaterialDescription(text=descr, lines=[]), pymupdf.Rect(), 0),
+                material_description=MaterialDescription(text=descr, lines=[]),
                 depths=LayerDepths(LayerDepthsEntry(start, pymupdf.Rect()), LayerDepthsEntry(end, pymupdf.Rect())),
             )
             for descr, start, end in [
@@ -114,6 +114,7 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
             ]
         ]
     )
+    # TODO add overlapping one
 
     dt_date = datetime(2024, 10, 1)
     groundwater_on_page = FeatureOnPage(

@@ -16,7 +16,6 @@ import pymupdf
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepthsEntry
-from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.text.textblock import MaterialDescription
 
 
@@ -513,7 +512,7 @@ class LayerMaterialDescriptionSchema(BaseModel):
 
     @classmethod
     def from_prediction(
-        cls, prediction: FeatureOnPage[MaterialDescription], pdf_img_scalings: list[tuple[float]]
+        cls, prediction: MaterialDescription, pdf_img_scalings: list[tuple[float]]
     ) -> "LayerMaterialDescriptionSchema":
         return cls(
             text=prediction.feature.text,
@@ -525,7 +524,7 @@ class LayerMaterialDescriptionSchema(BaseModel):
                     x1=line_feature.rect.x1,
                     y1=line_feature.rect.y1,
                 ).rescale_factor(*pdf_img_scalings[line_feature.page_number - 1])
-                for line_feature in prediction.feature.lines
+                for line_feature in prediction.lines
             ],
         )
 
@@ -578,8 +577,10 @@ class BoreholeLayerSchema(BaseModel):
             if material_descr
             else None
         )
-        # the page number of Layer is the same for both depth entries
-        layer_page_number = prediction.material_description.page_number
+        # the page number of Layer is the same for both depth entries TODO will not be the case anymore
+        layer_page_number = next(
+            p_rect.page_number for p_rect in prediction.material_description.rects_with_pages
+        )  # temporary
         start = (
             LayerDepthSchema.from_prediction(prediction.depths.start, pdf_img_scalings, layer_page_number)
             if prediction.depths and prediction.depths.start
