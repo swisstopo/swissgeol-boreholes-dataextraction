@@ -30,5 +30,4 @@ def previous_layers():  # noqa: D103
 def test_resolve_reference(description, expected, previous_layers):
     """Test reference resolution with various scenarios."""
     result = resolve_reference(description, previous_layers)
-    print(f"Input: {description}, Resolved: {result}, Expected: {expected}")
     assert result == expected
