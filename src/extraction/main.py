@@ -109,6 +109,13 @@ def common_options(f):
         default=False,
         help="Whether to generate CSV output. Defaults to False.",
     )(f)
+    f = click.option(
+        "-ma",
+        "--matching-analytics",
+        is_flag=True,
+        default=False,
+        help="Whether to enable matching parameters analytics. Defaults to False.",
+    )(f)
     return f
 
 
@@ -127,6 +134,7 @@ def click_pipeline(
     draw_lines: bool = False,
     draw_tables: bool = False,
     csv: bool = False,
+    matching_analytics: bool = False,
     part: str = "all",
 ):
     """Run the boreholes data extraction pipeline."""
@@ -140,6 +148,7 @@ def click_pipeline(
         draw_lines=draw_lines,
         draw_tables=draw_tables,
         csv=csv,
+        matching_analytics=matching_analytics,
         part=part,
     )
 
@@ -154,6 +163,7 @@ def click_pipeline_metadata(
     metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
+    matching_analytics: bool = False,
 ):
     """Run only the metadata part of the pipeline."""
     start_pipeline(
@@ -164,6 +174,7 @@ def click_pipeline_metadata(
         metadata_path=metadata_path,
         skip_draw_predictions=skip_draw_predictions,
         draw_lines=draw_lines,
+        matching_analytics=matching_analytics,
         part="metadata",
     )
 
@@ -207,6 +218,7 @@ def start_pipeline(
     draw_lines: bool = False,
     draw_tables: bool = False,
     csv: bool = False,
+    matching_analytics: bool = False,
     part: str = "all",
 ):
     """Run the boreholes data extraction pipeline.
@@ -228,8 +240,14 @@ def start_pipeline(
         draw_tables (bool, optional): Whether to draw detected table structures on pdf pages. Defaults to False.
         metadata_path (Path): The path to the metadata file.
         csv (bool): Whether to generate a CSV output. Defaults to False.
+        matching_analytics (bool): Whether to enable matching parameters analytics. Defaults to False.
         part (str, optional): The part of the pipeline to run. Defaults to "all".
     """  # noqa: D301
+    # Initialize analytics if enabled
+    if matching_analytics:
+        from extraction.features.analytics.matching_params_analytics import initialize_analytics
+        initialize_analytics(matching_params["material_description"])
+    
     if mlflow_tracking:
         setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
 
@@ -383,6 +401,13 @@ def start_pipeline(
 
     if input_directory and draw_directory:
         draw_predictions(predictions, input_directory, draw_directory, document_level_metadata_metrics)
+
+    # Finalize analytics if enabled
+    if matching_analytics:
+        from extraction.features.analytics.matching_params_analytics import finalize_analytics
+        analytics_output_path = out_directory / "matching_params_analytics.json"
+        finalize_analytics(analytics_output_path)
+        logger.info(f"Matching parameters analytics saved to {analytics_output_path}")
 
 
 if __name__ == "__main__":

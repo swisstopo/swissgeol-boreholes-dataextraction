@@ -18,55 +18,44 @@ material_description:
     including_expressions:
       - sand
       - sandig
-      - feinsand
-      - mittelsand
-      - sandstein
+      #- feinsand
       - silt
       - siltig
       - siltstein
       - kies
       - kiesig
-      - kiessand
       - ton
       - tonig
       - asphalt
       - asphaltdeckschicht
       - humus
       - braun
-      - braunschwarz
       - weich
       - wurzel
       - belag
-      - strassenbelag
-      - schwarzbelag
-      - teerbelag
-      - betonbelag
-      - bitumenbelag
-      - asphaltbelag
       - stein
       - beige
       - beton
       - kreide
       - mergel
-      - kernmaterial
+      - kern
       - lehm
       - dito
-      - seebodenlehm
       - dolomit
       - kristallin
       - gneis
-      - tonstein
       - kalke
-      - siltsteine
       - mikritisch
       - laminiert
-      - grobsand
+      - grob
       - auffullung
+      - schlacke
     excluding_expressions:
       - herr
       - ende
       - profil
       - beschreibung
+      - materialbeschreibung
       - signaturen
       - mischprobe
       - projekt
@@ -76,6 +65,7 @@ material_description:
       - pumpversuch
       - kernbohrung
       - bohrradius
+      - wasserzutritt
       - Vollrohr
       - Filterrohr
 

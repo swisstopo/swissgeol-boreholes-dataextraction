@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import logging
 
 import pymupdf
 from nltk.stem.snowball import SnowballStemmer
@@ -10,8 +11,12 @@ from nltk.stem.snowball import SnowballStemmer
 from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from extraction.features.utils.geometry.util import x_overlap_significant_largest
 from utils.file_utils import read_params
+from compound_split import char_split
 
 material_description = read_params("matching_params.yml")["material_description"]
+
+
+logger = logging.getLogger(__name__)
 
 
 class TextWord(RectWithPageMixin):
@@ -87,10 +92,41 @@ class TextLine(RectWithPageMixin):
         Args:
             material_description (dict): The material description dictionary containing the used expressions.
             language (str): The language of the material description, e.g. "de", "fr", "en", "it".
-            search_excluding (bool): Whether to look for including or excluding keywords in the layer description.
         """
-        stemmer = self._get_stemmer(language)
-        stemmed_text_tokens = self._stem_text(stemmer, self.text)
+        # Track matches if analytics is enabled
+        try:
+            from extraction.features.analytics.matching_params_analytics import get_analytics
+            analytics = get_analytics()
+            if analytics:
+                matched_expressions = analytics.track_matches(self.text, language, search_excluding)
+                # Return True if any expressions matched
+                return len(matched_expressions) > 0
+        except ImportError:
+            # If analytics module is not available, fall back to original implementation
+            pass
+        
+        # Original implementation (fallback when analytics is disabled)
+        # Create appropriate stemmer based on language
+        stemmer_languages = {"de": "german", "fr": "french", "en": "english", "it": "italian"}
+        stemmer_lang = stemmer_languages.get(language, "german")
+        stemmer = SnowballStemmer(stemmer_lang)
+
+        # Tokenize and stem words in the text
+        text_lower = self.text.lower()
+        text_tokens = re.findall(r"\b\w+\b", text_lower)
+        if language == "de" and not search_excluding:
+            german_char_split_list = []
+
+            for token in text_tokens:
+                german_char_split = char_split.split_compound(token)[0]
+                if german_char_split[0] > 0.4:
+                    german_char_split_list.extend(german_char_split[1:])
+                else:
+                    german_char_split_list.append(token)
+
+            text_tokens = german_char_split_list
+
+        stemmed_text_tokens = {stemmer.stem(token) for token in text_tokens}
 
         # Check for matches in including or excluding expressions
         keyword = "including_expressions" if not search_excluding else "excluding_expressions"
