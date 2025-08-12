@@ -58,10 +58,16 @@ class Line:
         Returns:
             float: The distance of the point to the line.
         """
-        return np.abs(
-            (self.end.x - self.start.x) * (self.start.y - point.y)
-            - (self.start.x - point.x) * (self.end.y - self.start.y)
-        ) / np.sqrt((self.end.x - self.start.x) ** 2 + (self.end.y - self.start.y) ** 2)
+        if self.length == 0:
+            return self.start.distance_to(point)
+        else:
+            return (
+                np.abs(
+                    (self.end.x - self.start.x) * (self.start.y - point.y)
+                    - (self.start.x - point.x) * (self.end.y - self.start.y)
+                )
+                / self.length
+            )
 
     def distance_to_segment(self, point: Point) -> float:
         """Calculate the distance of a point to the line segment (bounded by endpoints).
