@@ -52,7 +52,7 @@ def remove_duplicate_layers(
     for current_borehole_layers_with_bb in current_layers_with_bb:
         current_borehole_layers = current_borehole_layers_with_bb.predictions
 
-        assert len(set(page for layer in current_borehole_layers for page in layer.material_description.pages)) == 1, (
+        assert len({page for layer in current_borehole_layers for page in layer.material_description.pages}) == 1, (
             "At this point, all layers should be on the same page."
         )
         sorted_layers = sorted(
