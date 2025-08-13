@@ -58,23 +58,40 @@ class LayerDepths:
     start: LayerDepthsEntry | None
     end: LayerDepthsEntry | None
 
-    @property
-    def line_anchor(self) -> pymupdf.Point | None:
+    def get_line_anchor(self, page_number) -> pymupdf.Point | None:
         if self.start and self.end:
-            return pymupdf.Point(
-                max(self.start.rect.x1, self.end.rect.x1), (self.start.rect.y0 + self.end.rect.y1) / 2
-            )
+            if self.start.page_number == self.end.page_number:
+                return pymupdf.Point(
+                    max(self.start.rect.x1, self.end.rect.x1), (self.start.rect.y0 + self.end.rect.y1) / 2
+                )
+            else:
+                if self.start.page_number == page_number:
+                    return pymupdf.Point(self.start.rect.x1, self.start.rect.y1)
+                elif self.end.page_number == page_number:
+                    # anchor at the top of the page
+                    return pymupdf.Point(self.end.rect.x1, 0)
+                else:
+                    return None
         elif self.start:
             return pymupdf.Point(self.start.rect.x1, self.start.rect.y1)
         elif self.end:
             return pymupdf.Point(self.end.rect.x1, self.end.rect.y0)
 
-    @property
-    def background_rect(self) -> pymupdf.Rect | None:
-        if self.start and self.end and self.start.rect.y1 < self.end.rect.y0:
+    def get_background_rect(self, page_number) -> pymupdf.Rect | None:
+        if not (self.start and self.end):
+            return None
+        if self.start.page_number != self.end.page_number:
+            if page_number == self.start.page_number:
+                return pymupdf.Rect(self.start.rect.x0, self.start.rect.y1, self.start.rect.x1, 10000)  # page bottom
+            elif page_number == self.end.page_number:
+                return pymupdf.Rect(self.end.rect.x0, 0, self.end.rect.x1, self.end.rect.y0)
+            else:
+                return None
+        if self.start.rect.y1 < self.end.rect.y0:
             return pymupdf.Rect(
                 self.start.rect.x0, self.start.rect.y1, max(self.start.rect.x1, self.end.rect.x1), self.end.rect.y0
             )
+        return None
 
     def to_json(self):
         """Convert the LayerDepths object to a JSON serializable format."""
@@ -243,5 +260,27 @@ class LayersInDocument:
             self.boreholes_layers_with_bb = layer_predictions
         else:
             # second page, use assumption, also for the bounding boxes
-            self.boreholes_layers_with_bb[0].bounding_boxes.extend(layer_predictions[0].bounding_boxes)
-            self.boreholes_layers_with_bb[0].predictions.extend(layer_predictions[0].predictions)
+            main_borehole = self.boreholes_layers_with_bb[0]
+            borehole_continuation = layer_predictions[0]
+            if (
+                (main_borehole.predictions and main_borehole.predictions[-1].depths)  # ensure depths exist
+                and main_borehole.predictions[-1].depths.end is None
+                and (borehole_continuation.predictions and borehole_continuation.predictions[0].depths)  # same
+                and borehole_continuation.predictions[0].depths.start is None
+            ):
+                # if the last interval of the previous page is open-ended, and the first of this page has no start
+                # value, it probably means that they refer to the same layer.
+                main_borehole.predictions[-1] = self._build_spanning_layer(borehole_continuation.predictions[0])
+                borehole_continuation.predictions = borehole_continuation.predictions[1:]
+            main_borehole.bounding_boxes.extend(borehole_continuation.bounding_boxes)
+            main_borehole.predictions.extend(borehole_continuation.predictions)
+
+    def _build_spanning_layer(self, first_next_layer: Layer) -> Layer:
+        last_prev_layer = self.boreholes_layers_with_bb[0].predictions[-1]
+        return Layer(
+            material_description=MaterialDescription(
+                text=last_prev_layer.material_description.text + " " + first_next_layer.material_description.text,
+                lines=last_prev_layer.material_description.lines + first_next_layer.material_description.lines,
+            ),
+            depths=LayerDepths(start=last_prev_layer.depths.start, end=first_next_layer.depths.end),
+        )

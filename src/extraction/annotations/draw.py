@@ -268,7 +268,7 @@ def draw_layer(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, layer: L
 
             if not mat_descr_rect.contains(depths_rect):
                 # Depths are separate from the material description: draw a line connecting them
-                line_anchor = layer.depths.line_anchor
+                line_anchor = layer.depths.get_line_anchor(page_number)
                 if line_anchor:
                     rect = mat_descr_rect
                     shape.draw_line(
@@ -280,7 +280,7 @@ def draw_layer(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, layer: L
                     )
 
                 # background color for depth interval
-                background_rect = layer.depths.background_rect
+                background_rect = layer.depths.get_background_rect(page_number)
                 if background_rect is not None:
                     shape.draw_rect(
                         background_rect * derotation_matrix,
