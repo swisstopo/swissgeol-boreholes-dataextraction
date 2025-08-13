@@ -43,8 +43,9 @@ class SpulprobeSidebarExtractor:
                     if not depths:
                         continue
                     entry_rect = compute_outer_rect([line.rect, line_rect])
+                page_number = line.page_number
                 most_shallow = min(depths)
-                entries.append(SpulprobeEntry(rect=entry_rect, value=most_shallow))
+                entries.append(SpulprobeEntry(rect=entry_rect, value=most_shallow, page_number=page_number))
         return entries
 
     @classmethod

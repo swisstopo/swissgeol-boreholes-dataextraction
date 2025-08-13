@@ -21,13 +21,16 @@ from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.predictions.predictions import AllBoreholePredictionsWithGroundTruth
 from extraction.features.stratigraphy.layer.layer import (
+    ExtractedBorehole,
     Layer,
     LayerDepths,
     LayerDepthsEntry,
     LayersInBorehole,
+    LayersInDocument,
 )
 from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.text.textblock import MaterialDescription
+from extraction.features.utils.text.textline import TextLine, TextWord
 
 
 @pytest.fixture
@@ -92,8 +95,10 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
     layers_in_borehole = LayersInBorehole(
         [
             Layer(
-                material_description=FeatureOnPage(MaterialDescription(text=descr, lines=[]), pymupdf.Rect(), 0),
-                depths=LayerDepths(LayerDepthsEntry(start, pymupdf.Rect()), LayerDepthsEntry(end, pymupdf.Rect())),
+                material_description=MaterialDescription(text=descr, lines=[]),
+                depths=LayerDepths(
+                    LayerDepthsEntry(start, pymupdf.Rect(), 0), LayerDepthsEntry(end, pymupdf.Rect(), 0)
+                ),
             )
             for descr, start, end in [
                 ("HUMUS", None, 1),
@@ -105,8 +110,10 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
     layers_in_borehole_2 = LayersInBorehole(
         [
             Layer(
-                material_description=FeatureOnPage(MaterialDescription(text=descr, lines=[]), pymupdf.Rect(), 0),
-                depths=LayerDepths(LayerDepthsEntry(start, pymupdf.Rect()), LayerDepthsEntry(end, pymupdf.Rect())),
+                material_description=MaterialDescription(text=descr, lines=[]),
+                depths=LayerDepths(
+                    LayerDepthsEntry(start, pymupdf.Rect(), 0), LayerDepthsEntry(end, pymupdf.Rect(), 0)
+                ),
             )
             for descr, start, end in [
                 ("KIES, Sand,", 0.0, 0.5),
@@ -270,3 +277,40 @@ def test_evaluate_single(value, ground_truth, expected):
     """Test count_against_ground_truth with various scenarios."""
     metrics = evaluate_single(value, ground_truth, lambda a, b: a == b).metrics
     assert (metrics.tp, metrics.fp, metrics.fn) == expected
+
+
+def test_assign_layers_to_boreholes():
+    """Tests the merging of layer across two pages when both are open-ended."""
+    existing_borehole = ExtractedBorehole(
+        [
+            Layer(
+                material_description=MaterialDescription(text="first layer", lines=[]),
+                depths=LayerDepths(LayerDepthsEntry(0, pymupdf.Rect(), 0), LayerDepthsEntry(1, pymupdf.Rect(), 0)),
+            ),
+            Layer(
+                material_description=MaterialDescription(
+                    text="second", lines=[TextLine([TextWord(pymupdf.Rect(), "second", 0)])]
+                ),
+                depths=LayerDepths(LayerDepthsEntry(1, pymupdf.Rect(), 0), None),
+            ),
+        ],
+        [],
+    )
+    next_page_borehole = ExtractedBorehole(
+        [
+            Layer(
+                material_description=MaterialDescription(
+                    text="layer", lines=[TextLine([TextWord(pymupdf.Rect(), "layer", 1)])]
+                ),
+                depths=LayerDepths(None, LayerDepthsEntry(2, pymupdf.Rect(), 1)),
+            ),
+        ],
+        [],
+    )
+
+    layers_in_doc = LayersInDocument([existing_borehole], "test.pdf")
+    layers_in_doc.assign_layers_to_boreholes([next_page_borehole])
+    assert len(layers_in_doc.boreholes_layers_with_bb[0].predictions) == 2
+    assert layers_in_doc.boreholes_layers_with_bb[0].predictions[1].material_description.text == "second layer"
+    assert layers_in_doc.boreholes_layers_with_bb[0].predictions[1].depths.start.value == 1
+    assert layers_in_doc.boreholes_layers_with_bb[0].predictions[1].depths.end.value == 2

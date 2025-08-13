@@ -149,7 +149,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
             # Assign the first valid correction
             for new_value in new_values:
                 if self._valid_value(i, new_value):
-                    self.entries[i] = DepthColumnEntry(rect=entry.rect, value=new_value)
+                    self.entries[i] = DepthColumnEntry(rect=entry.rect, value=new_value, page_number=entry.page_number)
                     break
         return self
 

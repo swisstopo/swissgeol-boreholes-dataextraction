@@ -38,7 +38,11 @@ class LayerIdentifierSidebarExtractor:
                 regex = re.compile(r"\b[\da-z-]+\)")
                 match = regex.match(first_word.text)
                 if match and len(first_word.text) < 7:
-                    entries.append(LayerIdentifierEntry(rect=first_word.rect, value=first_word.text))
+                    entries.append(
+                        LayerIdentifierEntry(
+                            rect=first_word.rect, value=first_word.text, page_number=first_word.page_number
+                        )
+                    )
         return entries
 
     @classmethod
