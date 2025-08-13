@@ -18,7 +18,6 @@ material_description:
     including_expressions:
       - sand
       - sandig
-      #- feinsand
       - silt
       - siltig
       - siltstein
@@ -48,7 +47,7 @@ material_description:
       - mikritisch
       - laminiert
       - grob
-      - auffullung
+      - auffüllung
       - schlacke
     excluding_expressions:
       - herr
@@ -56,15 +55,16 @@ material_description:
       - profil
       - beschreibung
       - materialbeschreibung
+      - kiesprospektion
       - signaturen
-      - mischprobe
+      - mischprobe # Should be reviewed, currently not used
       - projekt
       - ort
       - adresse
       - wetter
       - pumpversuch
       - kernbohrung
-      - bohrradius
+      - bohrradius # Should be reviewed, currently not used
       - wasserzutritt
       - Vollrohr
       - Filterrohr
@@ -72,17 +72,17 @@ material_description:
   fr:
     including_expressions:
       - sol
-      - végétal  # remove accents generally; ocr might be wrong
+      - végétal
       - dallage
       - terre
       - bitume
       - bitumineux
-      - grave d'infrastructure  # what happens if we remove this?
+      - grave d'infrastructure  # Should be reviewed, currently not used
       - sable
       - limon
       - gravier
       - asphalte
-      - humus  # hummus maybe?
+      - humus
       - brun
       - gris
       - grise
@@ -97,27 +97,27 @@ material_description:
       - béton
       - craie
       - marne
-      - materiau
-      - matrice sableuse
-      - enrobé  # accent --> check what happens if it's removed
+      - materiau # Should be reviewed, currently not used
+      - matrice sableuse # Should be reviewed, currently not used
+      - enrobé
       - phase
       - limoneuse
       - argileuse
       - argileux
-      - mousse
+      - mousse # Should be reviewed, currently not used
     excluding_expressions:
-      - monsieur
+      - monsieur # Should be reviewed, currently not used
       - profil
       - description
-      - signatures
-      - echantillon mixte
+      - signatures # Should be reviewed, currently not used
+      - echantillon mixte # Should be reviewed, currently not used
       - projet
       - lieu
       - adresse
       - temps
-      - essai de pompage
+      - essai de pompage # Should be reviewed, currently not used
       - carottage
-      - rayon de forage
+      - rayon de forage # Should be reviewed, currently not used
       - remarque
       - piezometre
       - profondeur
@@ -149,7 +149,7 @@ material_description:
       - marl
       - core material
       - limestone
-      - ditto
+      - ditto # Should be reviewed, currently not used
       - alternation
       - leucosome
     excluding_expressions:
@@ -163,21 +163,21 @@ material_description:
       - location
       - address
       - weather
-      - pump test
+      - pump test # Should be reviewed, currently not used
       - core drilling
       - drilling radius
 
 coordinate_keys:
   de:
-    - Koordinaten        
-    - Koordinate         
-    - Koord.             
+    - Koordinaten
+    - Koordinate
+    - Koord.
   en:
-    - coordinates        
-    - coordinate         
+    - coordinates
+    - coordinate
   fr:
-    - coordonnées        
-    - coordonn           
+    - coordonnées
+    - coordonn
 
 groundwater_keys:
   de:
@@ -188,7 +188,7 @@ groundwater_keys:
     - GWSP
     - Gwsp
     - gwsp
-    - G.W.Sp 
+    - G.W.Sp
     - GW.SP.
     - W.SP.
     - W.SP
@@ -198,7 +198,7 @@ groundwater_keys:
     - Wsp
     - GW-Spiegel
     - Grundwasser
-    - Spiegel           
+    - Spiegel
   fr:
     - nappe phréatique
     - nappe
@@ -207,39 +207,39 @@ groundwater_keys:
     - venue d'eau
     - niveau d'eau
   en:
-    - groundwater   
+    - groundwater
     - ground-water
     - ground-water level
 
 groundwater_fp_keys:
   de:
-    - Wasserstau            
-    - Grundwasser-          
-    - Grundwasserfassung   
-    - GW/ # makes it possible to avoid false positives like "GW/" from the USCS Nomenclature columns     
+    - Wasserstau
+    - Grundwasser-
+    - Grundwasserfassung
+    - GW/ # makes it possible to avoid false positives like "GW/" from the USCS Nomenclature columns
 
 groundwater_unit_keys:
   de:
-    - m ü. M.            
+    - m ü. M.
     - müM
     - M.ü.T.
     - MüT
     - M.u.T.
     - MuT
     - m.u.T.
-  
+
   fr:
     - m/mer
 
 elevation_keys:
   de:
-    - Kote OK Terrain   
-    - Höhenlage        
-    - Höhe            
-    - Kote           
-    - OK Terrain    
-    - OKT          
-    - Ansatzhöhe 
+    - Kote OK Terrain
+    - Höhenlage
+    - Höhe
+    - Kot
+    - OK Terrain
+    - OKT
+    - Ansatzhöhe
     - Terrainkote
     - Terrainhöhe
 

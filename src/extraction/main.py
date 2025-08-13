@@ -246,8 +246,9 @@ def start_pipeline(
     # Initialize analytics if enabled
     if matching_analytics:
         from extraction.features.analytics.matching_params_analytics import initialize_analytics
+
         initialize_analytics(matching_params["material_description"])
-    
+
     if mlflow_tracking:
         setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
 
@@ -405,6 +406,7 @@ def start_pipeline(
     # Finalize analytics if enabled
     if matching_analytics:
         from extraction.features.analytics.matching_params_analytics import finalize_analytics
+
         analytics_output_path = out_directory / "matching_params_analytics.json"
         finalize_analytics(analytics_output_path)
         logger.info(f"Matching parameters analytics saved to {analytics_output_path}")
