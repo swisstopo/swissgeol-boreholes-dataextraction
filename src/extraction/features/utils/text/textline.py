@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import re
 
 import pymupdf
@@ -11,10 +10,11 @@ from nltk.stem.snowball import SnowballStemmer
 
 from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from extraction.features.utils.geometry.util import x_overlap_significant_largest
+from extraction.features.utils.text.matching_params_analytics import track_match
 from utils.file_utils import read_params
-from extraction.features.analytics.matching_params_analytics import track_match
 
 material_description = read_params("matching_params.yml")["material_description"]
+
 
 class TextWord(RectWithPageMixin):
     """Class to represent a word on a specific location on a PDF page.
@@ -71,6 +71,8 @@ class TextLine(RectWithPageMixin):
 
     def _split_compounds(self, tokens: list[str], extend_on_split=True) -> list[str]:
         """Split compound words using char_split and return processed list.
+        This method uses  an ngram-based compound splitter for German language based on
+        Tuggener, Don (2016):  https://pypi.org/project/compound-split/
 
         Args:
             tokens (List[str]): List of tokens to process.
@@ -119,7 +121,7 @@ class TextLine(RectWithPageMixin):
             ):
                 track_match(item, language, search_excluding)
                 return True
-            
+
         return False
 
     def is_description(self, material_description: dict, language: str, search_excluding: bool = False):

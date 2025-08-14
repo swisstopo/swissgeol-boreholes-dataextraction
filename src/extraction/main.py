@@ -245,7 +245,7 @@ def start_pipeline(
     """  # noqa: D301
     # Initialize analytics if enabled
     if matching_analytics:
-        from extraction.features.analytics.matching_params_analytics import initialize_analytics
+        from extraction.features.utils.text.matching_params_analytics import initialize_analytics
 
         initialize_analytics(matching_params["material_description"])
 
@@ -405,7 +405,7 @@ def start_pipeline(
 
     # Finalize analytics if enabled
     if matching_analytics:
-        from extraction.features.analytics.matching_params_analytics import finalize_analytics
+        from extraction.features.utils.text.matching_params_analytics import finalize_analytics
 
         analytics_output_path = out_directory / "matching_params_analytics.json"
         finalize_analytics(analytics_output_path)

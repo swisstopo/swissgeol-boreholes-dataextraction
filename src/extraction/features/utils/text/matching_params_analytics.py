@@ -5,8 +5,6 @@ import logging
 from collections import defaultdict
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
-
 
 class MatchingParamsAnalytics:
     """Analytics tracker for matching parameters."""
@@ -54,19 +52,41 @@ class MatchingParamsAnalytics:
 
         return summary
 
+    def _convert_tuples_to_strings(self, data):
+        """Convert tuple keys to string representations for JSON serialization.
+
+        Args:
+            data: The data structure to convert
+
+        Returns:
+            The data structure with tuple keys converted to strings
+        """
+        if isinstance(data, dict):
+            converted = {}
+            for key, value in data.items():
+                # Convert tuple keys to string representation
+                if isinstance(key, tuple):
+                    string_key = " + ".join(str(item) for item in key)
+                else:
+                    string_key = key
+                converted[string_key] = self._convert_tuples_to_strings(value)
+            return converted
+        elif isinstance(data, list):
+            return [self._convert_tuples_to_strings(item) for item in data]
+        else:
+            return data
+
     def save_analytics(self, output_path: Path):
         """Save analytics data to JSON file."""
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         analytics_data = {
-            "summary": self.get_summary(),
+            "summary": self._convert_tuples_to_strings(self.get_summary()),
             "configuration": {"material_description_params": self.material_description_params},
         }
 
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(analytics_data, f, indent=2, ensure_ascii=False)
-
-        logger.info(f"Analytics saved to {output_path}")
 
 
 # Global instance
