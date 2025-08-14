@@ -71,6 +71,7 @@ class TextLine(RectWithPageMixin):
 
     def _split_compounds(self, tokens: list[str], extend_on_split=True) -> list[str]:
         """Split compound words using char_split and return processed list.
+
         This method uses  an ngram-based compound splitter for German language based on
         Tuggener, Don (2016):  https://pypi.org/project/compound-split/
 

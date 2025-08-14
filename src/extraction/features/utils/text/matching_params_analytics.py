@@ -1,7 +1,6 @@
 """Module for tracking matching parameter usage in material descriptions."""
 
 import json
-import logging
 from collections import defaultdict
 from pathlib import Path
 
@@ -65,10 +64,7 @@ class MatchingParamsAnalytics:
             converted = {}
             for key, value in data.items():
                 # Convert tuple keys to string representation
-                if isinstance(key, tuple):
-                    string_key = " + ".join(str(item) for item in key)
-                else:
-                    string_key = key
+                string_key = " + ".join(str(item) for item in key) if isinstance(key, tuple) else key
                 converted[string_key] = self._convert_tuples_to_strings(value)
             return converted
         elif isinstance(data, list):
