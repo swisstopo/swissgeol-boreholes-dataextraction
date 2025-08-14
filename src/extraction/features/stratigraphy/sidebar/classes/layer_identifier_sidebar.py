@@ -147,9 +147,9 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
                     return True
             return False
 
-        other_lines = [
-            line for pair in interval_block_pairs for line in pair.block.lines if line not in block_lines_header
-        ]
+        other_lines_presence = any(
+            [line not in block_lines_header for pair in interval_block_pairs for line in pair.block.lines]
+        )
 
         header_capitalized = _is_header_capitalized(block_lines_header)
 
@@ -161,7 +161,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
 
         # If the header is capitalized, or there is other lines than the header and depth info are found in the header
         # we exclude the header from the material description.
-        return bool(header_capitalized or (depths_in_header and other_lines))
+        return header_capitalized or (depths_in_header and other_lines_presence)
 
     def _clean_block(self, block: TextBlock, ignored_lines: list[TextLine]) -> TextBlock:
         """Remove the headers in ignored_lines and the layer identifiers from the block.
