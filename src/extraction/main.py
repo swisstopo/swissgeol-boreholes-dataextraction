@@ -14,6 +14,7 @@ from tqdm import tqdm
 from extraction import DATAPATH
 from extraction.annotations.draw import draw_predictions, plot_tables
 from extraction.annotations.plot_utils import plot_lines
+from extraction.elimination.non_borehole_rejection import is_borehole_page
 from extraction.evaluation.benchmark.score import evaluate_all_predictions
 from extraction.features.extract import extract_page
 from extraction.features.groundwater.groundwater_extraction import (
@@ -284,6 +285,12 @@ def start_pipeline(
 
                 text_lines = extract_text_lines(page)
                 geometric_lines = extract_lines(page, line_detection_params)
+
+                if not is_borehole_page(text_lines, file_metadata.language):
+                    logger.info(
+                        f"Document {in_path}, page {page_index} (0-based) is not a borehole. Skipping extraction"
+                    )
+                    continue
 
                 # Detect table structures on the page
                 table_structures = detect_table_structures(

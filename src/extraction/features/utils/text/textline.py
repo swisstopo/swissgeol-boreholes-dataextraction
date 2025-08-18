@@ -50,7 +50,8 @@ class TextLine(RectWithPageMixin):
         self.rect_with_page = RectWithPage(rect, words[0].page_number)
         self.words = words
 
-    def _get_stemmer(self, language: str) -> SnowballStemmer:
+    @classmethod
+    def _get_stemmer(cls, language: str) -> SnowballStemmer:
         """Get the appropriate stemmer for the given language.
 
         Args:
@@ -64,7 +65,8 @@ class TextLine(RectWithPageMixin):
         stemmer_lang = stemmer_languages.get(language, "german")
         return SnowballStemmer(stemmer_lang)
 
-    def _stem_text(self, stemmer: SnowballStemmer, text: str) -> set:
+    @classmethod
+    def _stem_text(cls, stemmer: SnowballStemmer, text: str) -> set:
         """Stem the text using the provided stemmer.
 
         Args:
