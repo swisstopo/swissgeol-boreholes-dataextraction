@@ -43,15 +43,18 @@ def test_background_rect():  # noqa: D103
     start = LayerDepthsEntry(5, pymupdf.Rect(0, 0, 1, 1), 0)
     end = LayerDepthsEntry(10, pymupdf.Rect(0, 2, 1, 3), 0)
     depths = LayerDepths(start, end)
-    assert depths.get_background_rect(0) == pymupdf.Rect(start.rect.x0, start.rect.y1, start.rect.x1, end.rect.y0), (
+    page_height = 10000  # Simulating a large page height
+    assert depths.get_background_rect(0, page_height) == pymupdf.Rect(
+        start.rect.x0, start.rect.y1, start.rect.x1, end.rect.y0
+    ), "The background rect should be (0, 1, 1, 2)"
+    assert depths.get_background_rect(0, page_height) == pymupdf.Rect(0, 1, 1, 2), (
         "The background rect should be (0, 1, 1, 2)"
     )
-    assert depths.get_background_rect(0) == pymupdf.Rect(0, 1, 1, 2), "The background rect should be (0, 1, 1, 2)"
 
     rect = pymupdf.Rect(0, 0, 1, 1)
     start = LayerDepthsEntry(5, rect, 0)
     end = LayerDepthsEntry(10, rect, 0)
-    assert LayerDepths(start, end).get_background_rect(0) is None, (
+    assert LayerDepths(start, end).get_background_rect(0, page_height) is None, (
         "When start and end depths are overlapping, there should be no background rect."
     )
 
@@ -59,5 +62,9 @@ def test_background_rect():  # noqa: D103
     start = LayerDepthsEntry(5, pymupdf.Rect(0, 1, 1, 2), 0)
     end = LayerDepthsEntry(10, pymupdf.Rect(0, 0.5, 1, 1), 1)
     depths = LayerDepths(start, end)
-    assert depths.get_background_rect(0) == pymupdf.Rect(0, 2, 1, 10000), "From the start to the bottom of the page"
-    assert depths.get_background_rect(1) == pymupdf.Rect(0, 0, 1, 0.5), "From the top of the page to the end"
+    assert depths.get_background_rect(0, page_height) == pymupdf.Rect(0, 2, 1, page_height), (
+        "From the start to the bottom of the page"
+    )
+    assert depths.get_background_rect(1, page_height) == pymupdf.Rect(0, 0, 1, 0.5), (
+        "From the top of the page to the end"
+    )

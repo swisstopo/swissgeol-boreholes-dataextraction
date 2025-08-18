@@ -55,8 +55,10 @@ class DepthColumnEntry(SidebarEntry[float]):
 class LayerIdentifierEntry(SidebarEntry[str]):
     """Class for a layer identifier entry."""
 
+    pass
+
 
 class SpulprobeEntry(SidebarEntry[float]):
     """Sidebar entry of type Sp. X m, for boreholes with dicrete sampled depths instead of continued intervals."""
 
-    ...
+    pass

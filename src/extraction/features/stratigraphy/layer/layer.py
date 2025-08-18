@@ -30,7 +30,7 @@ class LayerDepthsEntry(RectWithPageMixin):
         return {
             "value": self.value,
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
-            "page_number": self.page_number if self.page_number else None,
+            "page": self.page_number if self.page_number else None,
         }
 
     @classmethod
@@ -43,7 +43,7 @@ class LayerDepthsEntry(RectWithPageMixin):
         Returns:
             DepthColumnEntry: the corresponding LayerDepthsEntry object.
         """
-        return cls(value=data["value"], rect=pymupdf.Rect(data["rect"]), page_number=data["page_number"])
+        return cls(value=data["value"], rect=pymupdf.Rect(data["rect"]), page_number=data["page"])
 
 
 @dataclass
@@ -59,6 +59,14 @@ class LayerDepths:
     end: LayerDepthsEntry | None
 
     def get_line_anchor(self, page_number) -> pymupdf.Point | None:
+        """Get the anchor point for the line connecting the start and end depths.
+
+        Args:
+            page_number (int): The page number for which to get the anchor point.
+
+        Returns:
+            pymupdf.Point | None: The anchor point for the line, or None if not applicable.
+        """
         if self.start and self.end:
             if self.start.page_number == self.end.page_number:
                 return pymupdf.Point(
@@ -77,12 +85,21 @@ class LayerDepths:
         elif self.end:
             return pymupdf.Point(self.end.rect.x1, self.end.rect.y0)
 
-    def get_background_rect(self, page_number) -> pymupdf.Rect | None:
+    def get_background_rect(self, page_number: int, page_height: float) -> pymupdf.Rect | None:
+        """Get the background rectangle for the layer depths.
+
+        Args:
+            page_number (int): The page number for which to get the background rectangle.
+            page_height (float): The height of the page.
+
+        Returns:
+            pymupdf.Rect | None: The background rectangle for the layer depths, or None if not applicable.
+        """
         if not (self.start and self.end):
             return None
         if self.start.page_number != self.end.page_number:
             if page_number == self.start.page_number:
-                return pymupdf.Rect(self.start.rect.x0, self.start.rect.y1, self.start.rect.x1, 10000)  # page bottom
+                return pymupdf.Rect(self.start.rect.x0, self.start.rect.y1, self.start.rect.x1, page_height)
             elif page_number == self.end.page_number:
                 return pymupdf.Rect(self.end.rect.x0, 0, self.end.rect.x1, self.end.rect.y0)
             else:
@@ -264,9 +281,11 @@ class LayersInDocument:
             borehole_continuation = layer_predictions[0]
             if (
                 (main_borehole.predictions and main_borehole.predictions[-1].depths)  # ensure depths exist
-                and main_borehole.predictions[-1].depths.end is None
-                and (borehole_continuation.predictions and borehole_continuation.predictions[0].depths)  # same
-                and borehole_continuation.predictions[0].depths.start is None
+                and main_borehole.predictions[-1].depths.start is not None  # start value is set
+                and main_borehole.predictions[-1].depths.end is None  # end value is None
+                and (borehole_continuation.predictions and borehole_continuation.predictions[0].depths)  # depths exist
+                and borehole_continuation.predictions[0].depths.start is None  # start value is None
+                and borehole_continuation.predictions[0].depths.end is not None  # end value is not None
             ):
                 # if the last interval of the previous page is open-ended, and the first of this page has no start
                 # value, it probably means that they refer to the same layer.

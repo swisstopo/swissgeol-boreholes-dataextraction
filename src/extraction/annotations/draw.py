@@ -98,14 +98,7 @@ def draw_predictions(
                         draw_material_descriptions(
                             shape,
                             page.derotation_matrix,
-                            [
-                                layer
-                                for layer in bh_layers.layers
-                                if any(
-                                    p_rect.page_number == page_number
-                                    for p_rect in layer.material_description.rects_with_pages
-                                )
-                            ],
+                            [layer for layer in bh_layers.layers if page_number in layer.material_description.pages],
                             page_number,
                         )
 
@@ -171,9 +164,7 @@ def draw_material_descriptions(
         page_number (int): The page number.
     """
     for index, layer in enumerate(layers):
-        rect = next(
-            p_rect.rect for p_rect in layer.material_description.rects_with_pages if p_rect.page_number == page_number
-        )
+        rect = layer.material_description.rect_for_page(page_number)
         if rect is not None:
             shape.draw_rect(
                 pymupdf.Rect(rect) * derotation_matrix,
@@ -231,9 +222,7 @@ def draw_layer(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, layer: L
     """
     material_description = layer.material_description
     mat_descr_lines = [line for line in material_description.lines if line.page_number == page_number]
-    mat_descr_rect = next(
-        p_rect.rect for p_rect in layer.material_description.rects_with_pages if p_rect.page_number == page_number
-    )
+    mat_descr_rect = layer.material_description.rect_for_page(page_number)
     if mat_descr_lines:
         color = colors[index % len(colors)]
 
@@ -280,7 +269,7 @@ def draw_layer(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, layer: L
                     )
 
                 # background color for depth interval
-                background_rect = layer.depths.get_background_rect(page_number)
+                background_rect = layer.depths.get_background_rect(page_number, shape.page.rect.height)
                 if background_rect is not None:
                     shape.draw_rect(
                         background_rect * derotation_matrix,
