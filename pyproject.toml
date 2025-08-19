@@ -38,6 +38,7 @@ dependencies = [
     "nltk",
     "rdflib",
     "pyinstrument==5.0.1",
+    "shapely==2.1.1",
 ]
 
 [project.optional-dependencies]
