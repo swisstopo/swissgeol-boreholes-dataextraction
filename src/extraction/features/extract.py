@@ -43,6 +43,7 @@ from extraction.features.utils.text.find_description import (
     get_description_blocks,
     get_description_lines,
 )
+from extraction.features.utils.text.matching_params_analytics import MatchingParamsAnalytics
 from extraction.features.utils.text.textblock import (
     MaterialDescription,
     MaterialDescriptionLine,
@@ -66,6 +67,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         page_number: int,
         page_width: float,
         page_height: float,
+        analytics: MatchingParamsAnalytics = None,
         **params: dict,
     ):
         """Creates a new MaterialDescriptionRectWithSidebarExtractor.
@@ -78,6 +80,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             page_number (int): The page number.
             page_width (float): The width of the page.
             page_height (float): The height of the page.
+            analytics (MatchingParamsAnalytics): The analytics tracker for matching parameters.
             **params (dict): Additional parameters for the matching pipeline.
         """
         self.lines = lines
@@ -87,6 +90,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self.page_number = page_number
         self.page_width = page_width
         self.page_height = page_height
+        self.analytics = analytics
         self.params = params
 
     def process_page(self) -> list[ExtractedBorehole]:
@@ -335,12 +339,12 @@ class MaterialDescriptionRectWithSidebarExtractor:
         is_not_description = [
             line
             for line in candidate_description
-            if line.is_description(self.params["material_description"], self.language, search_excluding=True)
+            if line.is_description(self.params, self.language, self.analytics, search_excluding=True)
         ]
         is_description = [
             line
             for line in candidate_description
-            if line.is_description(self.params["material_description"], self.language, search_excluding=False)
+            if line.is_description(self.params, self.language, self.analytics, search_excluding=False)
             and line not in is_not_description
         ]
 
@@ -543,6 +547,7 @@ def extract_page(
     language: str,
     page_index: int,
     document: pymupdf.Document,
+    analytics: MatchingParamsAnalytics,
     **matching_params: dict,
 ) -> list[ExtractedBorehole]:
     """Process a single PDF page and extract borehole information.
@@ -557,6 +562,7 @@ def extract_page(
         language (str): Language of the page (used in parsing).
         page_index (int): The page index (0-indexed).
         document (pymupdf.Document): the document.
+        analytics (MatchingParamsAnalytics): The analytics tracker for matching parameters.
         **matching_params (dict): Additional parameters for the matching pipeline.
 
     Returns:
@@ -576,6 +582,7 @@ def extract_page(
         page_index + 1,
         page_width,
         page_height,
+        analytics,
         **matching_params,
     ).process_page()
 
