@@ -123,6 +123,8 @@ class AToBIntervalExtractor:
         fallback_regex = re.compile(fallback_query, re.IGNORECASE)
         match = fallback_regex.search(input_string)
         if match:
-            return AToBInterval(DepthColumnEntry.from_string_value(rect_from_group_index(1), match.group(1)), None)
+            return AToBInterval(
+                DepthColumnEntry.from_string_value(rect_from_group_index(1), match.group(1), page_number), None
+            )
 
         return None
