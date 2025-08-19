@@ -89,7 +89,6 @@ def is_borehole_page(text_lines: list[TextLine], language: str) -> bool:
     Returns:
         bool: True if the page is a borehole page, False otherwise.
     """
-    """Classifies Page as Text Page based on word density in TextBlocks and average words per TextLine."""
     if not text_lines:
         return False
     words_per_line = [len(line.words) for line in text_lines]
@@ -115,6 +114,10 @@ def is_borehole_page(text_lines: list[TextLine], language: str) -> bool:
             material_words += 1
     material_words_ratio = material_words / total_words if total_words else 0.0
 
+    # Lillemor's rule
+    # return not (word_density > 0.5 and mean_words_per_line > 3 and material_words_ratio < 0.015)
+
+    # Thresholds obtained by fitting a decision tree and simplifying the classification rules
     return (material_words_ratio <= 0.06 and (mean_words_per_line <= 2.08 or word_density <= 0.39)) or (
         material_words_ratio > 0.06 and mean_words_per_line >= 1.20
     )
