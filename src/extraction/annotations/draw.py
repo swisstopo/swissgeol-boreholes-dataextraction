@@ -240,9 +240,9 @@ def draw_layer(
 
         if layer.depths:
             depths_rect = pymupdf.Rect()
-            if layer.depths.start:
+            if layer.depths.start and layer.depths.start.page_number == page_number:
                 depths_rect.include_rect(layer.depths.start.rect)
-            if layer.depths.end:
+            if layer.depths.end and layer.depths.end.page_number == page_number:
                 depths_rect.include_rect(layer.depths.end.rect)
 
             if any(sidebar_rect.contains(depths_rect) for sidebar_rect in sidebar_rects):
@@ -285,21 +285,21 @@ def draw_layer(
                         )
             else:
                 # Depths are extracted from the material description: only draw bounding boxes
-                if layer.depths.start:
+                if layer.depths.start and layer.depths.start.page_number == page_number:
                     shape.draw_rect(pymupdf.Rect(layer.depths.start.rect) * derotation_matrix)
-                if layer.depths.end:
+                if layer.depths.end and layer.depths.end.page_number == page_number:
                     shape.draw_rect(pymupdf.Rect(layer.depths.end.rect) * derotation_matrix)
                 shape.finish(color=pymupdf.utils.getColor("purple"))
 
                 # draw green line if depth interval is correct else red line
                 if layer.is_correct is not None:
                     depth_is_correct_color = "green" if layer.is_correct else "red"
-                    if layer.depths.start:
+                    if layer.depths.start and layer.depths.start.page_number == page_number:
                         shape.draw_line(
                             layer.depths.start.rect.bottom_left * derotation_matrix,
                             layer.depths.start.rect.bottom_right * derotation_matrix,
                         )
-                    if layer.depths.end:
+                    if layer.depths.end and layer.depths.end.page_number == page_number:
                         shape.draw_line(
                             layer.depths.end.rect.bottom_left * derotation_matrix,
                             layer.depths.end.rect.bottom_right * derotation_matrix,
