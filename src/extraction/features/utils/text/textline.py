@@ -98,7 +98,7 @@ class TextLine(RectWithPageMixin):
         analytics: MatchingParamsAnalytics | None = None,
         search_excluding: bool = False,
     ) -> bool:
-        """Check if any of the patterns match the targets, in case patern is a tuple all parts of the tuple must match.
+        """Check if any of the patterns match the targets for german use a second check against compound split.
 
         Args:
             patterns (List): A list of patterns to match against.
@@ -114,15 +114,18 @@ class TextLine(RectWithPageMixin):
         stemmer = self._get_stemmer(language)
 
         patterns = [stemmer.stem(p.lower()) for p in patterns]
-        targets = [stemmer.stem(t.lower()) for t in targets]
+        targets = {stemmer.stem(t.lower()) for t in targets}
 
-        targets_split = (
-            set() if language != "de" or search_excluding else self._split_compounds(targets, split_threshold)
-        )
-        targets_split = {stemmer.stem(t.lower()) for t in targets_split}
+        if language == "de" and not search_excluding:
+            targets_split = self._split_compounds(targets, split_threshold)
+            targets_split = {stemmer.stem(t.lower()) for t in targets_split}
+
+            targets_to_check = targets | targets_split
+        else:
+            targets_to_check = targets
 
         for item in patterns:
-            if item in targets_split or item in targets:
+            if item in targets_to_check:
                 track_match(analytics, item, language, search_excluding)
                 return True
 
@@ -137,10 +140,11 @@ class TextLine(RectWithPageMixin):
     ) -> bool:
         """Check if the line is a material description.
 
-        Uses stemming to handle word variations across german, french, english and italian.
+        Uses stemming to handle word variations across german, french, english and italian and
+        additionally compound split in case of german.
 
         Args:
-            parameters (dict): The parameter description dictionary containing the used expressions and thresholds.
+            parameters (dict): The parameter dictionary containing the used expressions and thresholds.
             language (str): The language of the material description, e.g. "de", "fr", "en", "it".
             analytics (MatchingParamsAnalytics): The analytics tracker for matching parameters.
             search_excluding (bool): If True, search for excluding expressions, otherwise for including expressions.
