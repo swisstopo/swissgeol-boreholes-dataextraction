@@ -10,10 +10,7 @@ from nltk.stem.snowball import SnowballStemmer
 
 from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from extraction.features.utils.geometry.util import x_overlap_significant_largest
-from extraction.features.utils.text.matching_params_analytics import track_match
-from utils.file_utils import read_params
-
-material_description = read_params("matching_params.yml")["material_description"]
+from extraction.features.utils.text.matching_params_analytics import MatchingParamsAnalytics, track_match
 
 
 class TextWord(RectWithPageMixin):
@@ -69,7 +66,7 @@ class TextLine(RectWithPageMixin):
             self.stemmers[language] = SnowballStemmer(stemmer_lang)
         return self.stemmers[language]
 
-    def _split_compounds(self, tokens: list[str], extend_on_split=True) -> list[str]:
+    def _split_compounds(self, tokens: list[str], split_threshold: float) -> list[str]:
         """Split compound words using char_split and return processed list.
 
         This method uses  an ngram-based compound splitter for German language based on
@@ -77,8 +74,7 @@ class TextLine(RectWithPageMixin):
 
         Args:
             tokens (List[str]): List of tokens to process.
-            extend_on_split (bool): If True, extend the list with split parts, otherwise replace
-                                    the original token with the new compound tuple.
+            split_threshold (float): Threshold for splitting compounds
 
         Returns:
             List[str]: Processed list of tokens with compounds split.
@@ -86,69 +82,81 @@ class TextLine(RectWithPageMixin):
         processed_tokens = []
         for token in tokens:
             comp_split = char_split.split_compound(token)[0]
-            if comp_split[0] > 0.4:
-                if extend_on_split:
-                    processed_tokens.extend(comp_split[1:])
-                else:
-                    processed_tokens.append(comp_split[1:])
+            if comp_split[0] > split_threshold:
+                processed_tokens.extend(comp_split[1:])
             else:
                 processed_tokens.append(token)
 
         return processed_tokens
 
     def _find_matching_expressions(
-        self, patterns: list, targets: list[str], language: str, search_excluding: bool = False
+        self,
+        patterns: list,
+        split_threshold: float,
+        targets: list[str],
+        language: str,
+        analytics: MatchingParamsAnalytics | None = None,
+        search_excluding: bool = False,
     ) -> bool:
         """Check if any of the patterns match the targets, in case patern is a tuple all parts of the tuple must match.
 
         Args:
             patterns (List): A list of patterns to match against.
+            split_threshold (float): Threshold for splitting compounds.
             targets (List[str]): A list of target strings to match against.
             language (str): The language of the patterns, used for stemming.
+            analytics ([MatchingParamsAnalytics]): Aanalytics instance to track matches.
             search_excluding (bool): Whether this is for excluding expressions (for analytics).
 
         Returns:
             bool: True if any pattern matches, False otherwise.
         """
         stemmer = self._get_stemmer(language)
-        stemmed_targets = {stemmer.stem(t.lower()) for t in targets}
+
+        patterns = [stemmer.stem(p.lower()) for p in patterns]
+        targets = [stemmer.stem(t.lower()) for t in targets]
+
+        targets_split = (
+            set() if language != "de" or search_excluding else self._split_compounds(targets, split_threshold)
+        )
+        targets_split = {stemmer.stem(t.lower()) for t in targets_split}
 
         for item in patterns:
-            if (
-                isinstance(item, str)
-                and stemmer.stem(item.lower()) in stemmed_targets
-                or isinstance(item, tuple)
-                and all(stemmer.stem(part.lower()) in stemmed_targets for part in item)
-            ):
-                track_match(item, language, search_excluding)
+            if item in targets_split or item in targets:
+                track_match(analytics, item, language, search_excluding)
                 return True
 
         return False
 
-    def is_description(self, material_description: dict, language: str, search_excluding: bool = False):
+    def is_description(
+        self,
+        parameters: dict,
+        language: str,
+        analytics: MatchingParamsAnalytics | None = None,
+        search_excluding: bool = False,
+    ) -> bool:
         """Check if the line is a material description.
 
         Uses stemming to handle word variations across german, french, english and italian.
 
         Args:
-            material_description (dict): The material description dictionary containing the used expressions.
+            parameters (dict): The parameter description dictionary containing the used expressions and thresholds.
             language (str): The language of the material description, e.g. "de", "fr", "en", "it".
+            analytics (MatchingParamsAnalytics): The analytics tracker for matching parameters.
             search_excluding (bool): If True, search for excluding expressions, otherwise for including expressions.
 
         Returns:
             bool: True if the line contains any of the material description expressions, False otherwise.
         """
         # Tokenize and stem words in the text
-        text_tokens = re.findall(r"\b\w+\b", self.text.lower())
-        keyword = "including_expressions" if not search_excluding else "excluding_expressions"
-        material_description = material_description[language][keyword]
+        text_tokens = re.findall(r"\b\w+\b", self.text)
+        exp_type = "including_expressions" if not search_excluding else "excluding_expressions"
+        patterns = parameters["material_description"][language][exp_type]
+        split_threshold = parameters.get("compound_split_threshold", 0.4)
 
-        # Split compounds if the language is German and not searching excluding expressions
-        if language == "de" and not search_excluding:
-            text_tokens = self._split_compounds(text_tokens)
-            material_description = self._split_compounds(material_description, extend_on_split=False)
-
-        return self._find_matching_expressions(material_description, text_tokens, language, search_excluding)
+        return self._find_matching_expressions(
+            patterns, split_threshold, text_tokens, language, analytics, search_excluding
+        )
 
     @property
     def text(self) -> str:

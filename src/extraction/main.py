@@ -29,6 +29,7 @@ from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.features.utils.geometry.line_detection import extract_lines
 from extraction.features.utils.table_detection import detect_table_structures
 from extraction.features.utils.text.extract_text import extract_text_lines
+from extraction.features.utils.text.matching_params_analytics import create_analytics
 from utils.file_utils import flatten, read_params
 
 load_dotenv()
@@ -244,10 +245,7 @@ def start_pipeline(
         part (str, optional): The part of the pipeline to run. Defaults to "all".
     """  # noqa: D301
     # Initialize analytics if enabled
-    if matching_analytics:
-        from extraction.features.utils.text.matching_params_analytics import initialize_analytics
-
-        initialize_analytics(matching_params["material_description"])
+    analytics = create_analytics(matching_params["material_description"] if matching_analytics else None)
 
     if mlflow_tracking:
         setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
@@ -321,6 +319,7 @@ def start_pipeline(
                     file_metadata.language,
                     page_index,
                     doc,
+                    analytics,
                     **matching_params,
                 )
                 layers_with_bb_in_document.assign_layers_to_boreholes(page_layers)
@@ -405,10 +404,8 @@ def start_pipeline(
 
     # Finalize analytics if enabled
     if matching_analytics:
-        from extraction.features.utils.text.matching_params_analytics import finalize_analytics
-
         analytics_output_path = out_directory / "matching_params_analytics.json"
-        finalize_analytics(analytics_output_path)
+        analytics.save_analytics(analytics_output_path)
         logger.info(f"Matching parameters analytics saved to {analytics_output_path}")
 
 

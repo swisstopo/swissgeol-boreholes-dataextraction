@@ -51,33 +51,12 @@ class MatchingParamsAnalytics:
 
         return summary
 
-    def _convert_tuples_to_strings(self, data):
-        """Convert tuple keys to string representations for JSON serialization.
-
-        Args:
-            data: The data structure to convert
-
-        Returns:
-            The data structure with tuple keys converted to strings
-        """
-        if isinstance(data, dict):
-            converted = {}
-            for key, value in data.items():
-                # Convert tuple keys to string representation
-                string_key = " + ".join(str(item) for item in key) if isinstance(key, tuple) else key
-                converted[string_key] = self._convert_tuples_to_strings(value)
-            return converted
-        elif isinstance(data, list):
-            return [self._convert_tuples_to_strings(item) for item in data]
-        else:
-            return data
-
     def save_analytics(self, output_path: Path):
         """Save analytics data to JSON file."""
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         analytics_data = {
-            "summary": self._convert_tuples_to_strings(self.get_summary()),
+            "summary": self.get_summary(),
             "configuration": {"material_description_params": self.material_description_params},
         }
 
@@ -85,28 +64,28 @@ class MatchingParamsAnalytics:
             json.dump(analytics_data, f, indent=2, ensure_ascii=False)
 
 
-# Global instance
-_analytics_instance: MatchingParamsAnalytics | None = None
+def create_analytics(material_description_params: dict | None = None) -> MatchingParamsAnalytics | None:
+    """Create analytics instance if parameters provided.
+
+    Args:
+        material_description_params: Material description parameters, or None to disable analytics
+
+    Returns:
+        Analytics instance or None if disabled
+    """
+    return MatchingParamsAnalytics(material_description_params) if material_description_params else None
 
 
-def initialize_analytics(material_description_params: dict) -> None:
-    """Initialize global analytics instance."""
-    global _analytics_instance
-    _analytics_instance = MatchingParamsAnalytics(material_description_params)
+def track_match(
+    analytics: MatchingParamsAnalytics | None, expression: str, language: str, is_excluding: bool = False
+) -> None:
+    """Track a match if analytics is enabled.
 
-
-def get_analytics() -> MatchingParamsAnalytics | None:
-    """Get global analytics instance."""
-    return _analytics_instance
-
-
-def track_match(expression: str, language: str, is_excluding: bool = False) -> None:
-    """Convenience function to track a match if analytics is enabled."""
-    if _analytics_instance:
-        _analytics_instance.track_expression_match(expression, language, is_excluding)
-
-
-def finalize_analytics(output_path: Path) -> None:
-    """Save and cleanup analytics."""
-    if _analytics_instance:
-        _analytics_instance.save_analytics(output_path)
+    Args:
+        analytics: Analytics instance or None
+        expression: The matched expression
+        language: Language code
+        is_excluding: Whether this is an excluding expression
+    """
+    if analytics:
+        analytics.track_expression_match(expression, language, is_excluding)

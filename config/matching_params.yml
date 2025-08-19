@@ -13,6 +13,8 @@ non_description_lines_ratio: 0.15
 
 default_language: de
 
+compound_split_threshold: 0.4
+
 material_description:
   de:
     including_expressions:
@@ -26,7 +28,7 @@ material_description:
       - ton
       - tonig
       - asphalt
-      - asphaltdeckschicht
+      - asphaltdeckschicht # is not split by the compound splitter
       - humus
       - braun
       - weich
@@ -236,7 +238,7 @@ elevation_keys:
     - Kote OK Terrain
     - Höhenlage
     - Höhe
-    - Kot
+    - Kote
     - OK Terrain
     - OKT
     - Ansatzhöhe
