@@ -5,10 +5,13 @@ import re
 import pymupdf
 
 from extraction.features.utils.text.textline import TextLine
+from utils.file_utils import read_params
 
 from ...utils.text.textblock import TextBlock
 from ..base.sidebar_entry import DepthColumnEntry
 from .interval import AToBInterval, IntervalBlockPair
+
+matching_params = read_params("matching_params.yml")
 
 
 class AToBIntervalExtractor:
@@ -41,8 +44,16 @@ class AToBIntervalExtractor:
         current_block = []
         current_interval = None
         start_depth = None
+        prev_line = None
+        prev_interval = None
         for line in lines:
             a_to_b_interval = AToBIntervalExtractor.from_text(line, require_start_of_string=False)
+            if prev_line and not a_to_b_interval and not prev_interval:
+                # if depth was not found in the previous and current lines, we look for a depth wrapping arround.
+                combined_lines = TextLine(prev_line.words + line.words)
+                a_to_b_interval = AToBIntervalExtractor.from_text(combined_lines, require_start_of_string=False)
+            prev_interval = a_to_b_interval
+            prev_line = line
             # require_start_of_string = False because the depth interval may not always start at the beginning
             # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
             if a_to_b_interval:
@@ -104,4 +115,14 @@ class AToBIntervalExtractor:
                 DepthColumnEntry.from_string_value(rect_from_group_index(1), match.group(1), page_number),
                 DepthColumnEntry.from_string_value(rect_from_group_index(2), match.group(2), page_number),
             )
+
+        open_ended_words = matching_params["open_ended_depth_key"]
+        words_pattern = "|".join([re.escape(w) for w in open_ended_words])
+
+        fallback_query = rf"(?:{words_pattern})\s*([0-9]+(?:\.[0-9]+)?)\s*[müMN]*"
+        fallback_regex = re.compile(fallback_query, re.IGNORECASE)
+        match = fallback_regex.search(input_string)
+        if match:
+            return AToBInterval(DepthColumnEntry.from_string_value(rect_from_group_index(1), match.group(1)), None)
+
         return None
