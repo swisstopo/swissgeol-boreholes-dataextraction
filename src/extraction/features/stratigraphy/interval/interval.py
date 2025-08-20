@@ -91,8 +91,8 @@ class IntervalBlockPair:
             return sorted(variants, reverse=True)  # longest pattern first
 
         depth_pattern = (
-            rf"^\s*-?\s*(?:{'|'.join(str_variants(self.depth_interval.start.value))})\s*m?\s*"
-            rf"-?\s*(?:{'|'.join(str_variants(self.depth_interval.end.value))})\s*m?\s*[;:.]*\s*"
+            rf"^\s*-?\s*(?:{'|'.join([re.escape(v) for v in str_variants(self.depth_interval.start.value)])})\s*m?\s*"
+            rf"-?\s*(?:{'|'.join([re.escape(v) for v in str_variants(self.depth_interval.end.value)])})\s*m?[;:.\s]*"
         )
 
         first_line = self.block.lines[0].text
