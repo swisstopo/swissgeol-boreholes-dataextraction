@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+import Levenshtein
+import numpy as np
 import pymupdf
 
 from extraction.features.utils.text.textblock import TextBlock
@@ -64,6 +67,50 @@ class IntervalBlockPair:
 
     depth_interval: Interval | None
     block: TextBlock
+
+    def get_clean_block(self) -> TextBlock:
+        """Clean the text block by removing the depth information from the first line if it begins the line.
+
+        Returns:
+            TextBlock: The cleaned text block.
+        """
+        if not (self.depth_interval and self.depth_interval.start and self.depth_interval.end and self.block.lines):
+            return self.block
+
+        def str_variants(x: float):
+            """Generate string variants for a given float value."""
+            int_part, frac_part = f"{x:.3f}".split(".")
+            variants = {int_part} if float(x).is_integer() else set()
+            seps = [".", ","]
+            for sep in seps:
+                if frac_part[1:] == "00":
+                    variants.add(f"{int_part}{sep}{frac_part[:1]}")
+                if frac_part[2] == "0":
+                    variants.add(f"{int_part}{sep}{frac_part[:2]}")
+                variants.add(f"{int_part}{sep}{frac_part}")
+            return sorted(variants, reverse=True)  # longest pattern first
+
+        depth_pattern = (
+            rf"^\s*-?\s*(?:{'|'.join(str_variants(self.depth_interval.start.value))})\s*m?\s*"
+            rf"-?\s*(?:{'|'.join(str_variants(self.depth_interval.end.value))})\s*m?\s*[;:.]*\s*"
+        )
+
+        first_line = self.block.lines[0].text
+        new_first_line = re.sub(depth_pattern, "", first_line, flags=re.IGNORECASE).strip()
+        if first_line == new_first_line:
+            return self.block
+
+        # use Levenshtein distance instead of exact match in case of unmatched character in a TextWord
+        idx = int(
+            np.argmax(
+                [
+                    Levenshtein.ratio(" ".join(w.text for w in self.block.lines[0].words[i:]), new_first_line)
+                    for i in range(len(self.block.lines[0].words) + 1)
+                ]
+            )
+        )
+        new_text_line = [TextLine(self.block.lines[0].words[idx:])] if self.block.lines[0].words[idx:] else []
+        return TextBlock(new_text_line + self.block.lines[1:], self.block.is_terminated_by_line)
 
 
 class AAboveBInterval(Interval):
