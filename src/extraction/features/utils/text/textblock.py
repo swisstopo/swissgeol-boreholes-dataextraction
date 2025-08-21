@@ -40,6 +40,33 @@ class MaterialDescription(ExtractedFeature):
     text: str
     lines: list[FeatureOnPage[MaterialDescriptionLine]]
 
+    @property
+    def rects_with_pages(self) -> list[RectWithPage]:
+        """Get the bounding rectangles of the material description."""
+        all_pages = {line.page_number for line in self.lines}
+        if not all_pages:
+            return []
+        return [
+            RectWithPage(
+                rect=pymupdf.Rect(
+                    min(line.rect_with_page.rect.x0 for line in self.lines if line.page_number == page),
+                    min(line.rect_with_page.rect.y0 for line in self.lines if line.page_number == page),
+                    max(line.rect_with_page.rect.x1 for line in self.lines if line.page_number == page),
+                    max(line.rect_with_page.rect.y1 for line in self.lines if line.page_number == page),
+                ),
+                page_number=page,
+            )
+            for page in sorted(list(all_pages))
+        ]
+
+    @property
+    def pages(self) -> list[int]:
+        return sorted(p_rect.page_number for p_rect in self.rects_with_pages)
+
+    def rect_for_page(self, page_number: int) -> pymupdf.Rect | None:
+        """Get the bounding rectangle for a specific page."""
+        return next((p_rect.rect for p_rect in self.rects_with_pages if p_rect.page_number == page_number), None)
+
     def to_json(self):
         """Convert the MaterialDescription object to a JSON serializable dictionary."""
         return {"text": self.text, "lines": [line.to_json() for line in self.lines]}

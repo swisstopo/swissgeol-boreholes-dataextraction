@@ -84,6 +84,7 @@ class AToBIntervalExtractor:
             AToBInterval | None: The extracted AToBInterval or None if none is found.
         """
         input_string = text_line.text.strip().replace(",", ".")
+        page_number = text_line.page_number
 
         # for every character in input_string, list the index of the word this character originates from
         char_index_to_word_index = []
@@ -111,8 +112,8 @@ class AToBIntervalExtractor:
 
         if match:
             return AToBInterval(
-                DepthColumnEntry.from_string_value(rect_from_group_index(1), match.group(1)),
-                DepthColumnEntry.from_string_value(rect_from_group_index(2), match.group(2)),
+                DepthColumnEntry.from_string_value(rect_from_group_index(1), match.group(1), page_number),
+                DepthColumnEntry.from_string_value(rect_from_group_index(2), match.group(2), page_number),
             )
 
         open_ended_words = matching_params["open_ended_depth_key"]
@@ -122,6 +123,8 @@ class AToBIntervalExtractor:
         fallback_regex = re.compile(fallback_query, re.IGNORECASE)
         match = fallback_regex.search(input_string)
         if match:
-            return AToBInterval(DepthColumnEntry.from_string_value(rect_from_group_index(1), match.group(1)), None)
+            return AToBInterval(
+                DepthColumnEntry.from_string_value(rect_from_group_index(1), match.group(1), page_number), None
+            )
 
         return None
