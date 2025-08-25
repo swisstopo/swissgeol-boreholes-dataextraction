@@ -113,8 +113,8 @@ class TextLine(RectWithPageMixin):
         """
         stemmer = self._get_stemmer(language)
 
-        patterns = [stemmer.stem(p.lower()) for p in patterns]
-        targets = {stemmer.stem(t.lower()) for t in targets}
+        patterns = {stemmer.stem(p.lower()) for p in patterns}
+        targets = {t.lower() for t in targets}
 
         if language == "de" and not search_excluding:
             targets_split = self._split_compounds(targets, split_threshold)
