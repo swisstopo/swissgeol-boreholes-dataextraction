@@ -37,6 +37,7 @@ dependencies = [
     "nltk==3.9.1",
     "rdflib==7.1.4",
     "pyinstrument==5.1.1",
+    "compound_split==1.0.2"
 ]
 
 [project.optional-dependencies]
