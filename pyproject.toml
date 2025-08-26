@@ -9,65 +9,66 @@ description = "Python project to analyse borehole profiles."
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 dependencies = [
-    "boto3",
-    "pandas",
-    "levenshtein",
-    "python-dotenv",
-    "setuptools",
-    "tqdm",
-    "fastapi",
-    "uvicorn",
-    "pydantic_settings",
-    "pydantic",
-    "httpx",
-    "moto",
-    "pillow",
-    "mangum",
-    "awslambdaric",
-    "scikit-learn>=1.4.0",
-    "click>=8.0.0",
-    "PyYAML>=6.0.1",
-    "langdetect>=1.0.9",
-    "regex",
-    "backoff",
-    "PyMuPDF==1.25.5",
-    "opencv-python-headless",
-    "quads>=1.1.0",
-    "numpy<2",
-    "rtree",
-    "nltk",
-    "rdflib",
-    "pyinstrument==5.0.1",
+    "boto3==1.40.12",
+    "pandas==2.3.1",
+    "levenshtein==0.27.1",
+    "python-dotenv==1.1.1",
+    "setuptools==80.9.0",
+    "fastapi==0.116.1",
+    "uvicorn==0.35.0",
+    "pydantic_settings==2.10.1",
+    "pydantic==2.11.7",
+    "httpx==0.28.1",
+    "moto==5.1.10",
+    "pillow==11.3.0",
+    "mangum==0.19.0",
+    "awslambdaric==3.1.1",
+    "scikit-learn==1.7.1",
+    "click==8.2.1",
+    "PyYAML==6.0.2",
+    "langdetect==1.0.9",
+    "regex==2025.7.34",
+    "backoff==2.2.1",
+    "PyMuPDF==1.26.3",
+    "opencv-python-headless==4.12.0.88",
+    "quads==1.1.0",
+    "numpy==2.2.6",
+    "rtree==1.4.1",
+    "nltk==3.9.1",
+    "rdflib==7.1.4",
+    "pyinstrument==5.1.1",
     "compound_split==1.0.2"
 ]
 
 [project.optional-dependencies]
 test = [
-    "pytest==8.1.1",
-    "pytest-cov==5.0.0",
-    "transformers",
-    "datasets",
-    "torch",
-    "accelerate",
+    "pytest==8.4.1",
+    "pytest-cov==6.2.1",
 ]
 lint = [
-    "pre-commit==3.6.2",
+    "pre-commit==4.3.0",
 ]
 experiment-tracking = [
-    "mlflow==2.22.0",
-    "pygit2"
+    "mlflow==3.2.0",
+    "pygit2==1.18.2"
 ]
 visualize = [
-    "matplotlib==3.8.0"
+    "matplotlib==3.10.5"
 ]
 devtools = [
-    "tqdm"
+    "tqdm==4.67.1"
 ]
 groundwater-illustration-matching = [
-    "scikit-image==0.24.0"
+    "scikit-image==0.25.2"
+]
+deep-learning = [
+    "transformers==4.55.2",
+    "datasets==4.0.0",
+    "torch==2.8.0",
+    "accelerate==1.10.0",
 ]
 
-all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize, devtools, groundwater-illustration-matching]"]
+all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize, devtools, groundwater-illustration-matching, deep-learning]"]
 
 [project.scripts]
 boreholes-extract-all = "extraction.main:click_pipeline"

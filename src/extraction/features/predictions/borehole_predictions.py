@@ -51,7 +51,7 @@ class BoreholePredictions:
         for layer_index, layer in enumerate(self.layers_in_borehole.layers):
             start_depth = layer.depths.start.value if layer.depths and layer.depths.start else None
             end_depth = layer.depths.end.value if layer.depths and layer.depths.end else None
-            material_description = layer.material_description.feature.text if layer.material_description else None
+            material_description = layer.material_description.text if layer.material_description else None
 
             writer.writerow(
                 [

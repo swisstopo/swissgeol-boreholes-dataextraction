@@ -193,51 +193,38 @@ def resolve_reference(
     Returns:
         str: The resolved material description, with references replaced by actual descriptions.
     """
-    matched_kw = None
-    for kw in classification_params["reference_key_words"]:
-        from_start = r"^[\s\-]*(" + re.escape(kw) + r")"
-        match = re.match(from_start, material_description, re.IGNORECASE)
-        if match:
-            matched_kw = match.group()  # Actual matched part from material_description
-            break
+    key_words = "|".join([re.escape(kw) for kw in classification_params["reference_key_words"]])
+    key_word_query = rf"^[\s\-]*(?:{key_words})\b"  # contains the capturing group
+    depth_query = r"(\d+(?:[.,]\d+)?)"
+    unit_query = r"(?:\s*(?:[müMN][.\s]*)+)?\b"
+    total_query = (
+        rf"{key_word_query}"  # match the keyword
+        rf"(?:(?:[\s.]|Sp)*-?"  # open optional non-capturing group and allow for various separators (./Sp./-)
+        rf"{depth_query}{unit_query}"  # match the first depth with its optional unit
+        rf"(?:[\s-]*"  # open second optional non-capturing group and allow for various separators
+        rf"{depth_query}{unit_query})?)?"  # match the second depth with its optional unit
+    )
 
-    if not matched_kw:
-        return material_description  # No reference found, return as is
+    match = re.match(total_query, material_description, re.IGNORECASE)
+    if not match:
+        return material_description
     if not previous_layers:
         logger.warning(f"Reference keyword found but no previous layer exists: '{material_description}'")
         return material_description
-    # Extract the depth references from the material description
-    depth_str_references = re.findall(r"\d+(?:[.,]\d+)?\s*m?", material_description)
-    depth_str_references = depth_str_references[:2]  # only the first two can be references
-
-    last_str_depth = depth_str_references[-1].strip() if depth_str_references else None
-    if not last_str_depth:
+    if not match.group(1):  # no depth reference, fallback to the previous layer
         referenced_layer = previous_layers[-1]
     else:
-        # Adjust for "Spulprobe" depth format
-        last_depth_pos = material_description.find(last_str_depth)
-        sp_match = re.search(r"[Ss]p", material_description[:last_depth_pos])
-        if sp_match:
-            last_str_depth = depth_str_references[0].strip()  # with Sp, only the first depth is relevant
-
-        # clean the first depth reference.
-        clean_depth_reference = float(depth_str_references[0].replace(",", ".").replace("m", "").strip())
+        clean_depth_reference = float(match.group(1).replace(",", ".").strip())
 
         def match_layer(layer, depths_to_match):
-            if layer["depth_interval"] is None:
-                return False  # No reference found - fallback to previous layer
-            return layer["depth_interval"]["start"] == depths_to_match
+            return layer["depth_interval"]["start"] == depths_to_match if layer["depth_interval"] else False
 
         referenced_layer = next(
             (layer for layer in reversed(previous_layers) if match_layer(layer, clean_depth_reference)),
             previous_layers[-1],  # Fallback to last previous layer
         )
 
-    # Replace the reference in the material description with the actual description of the referenced layer
-    pattern = rf"^.*?{re.escape(last_str_depth) if depth_str_references else re.escape(matched_kw)}"
-
-    # Replace it
-    return re.sub(pattern, referenced_layer["material_description"], material_description).strip()
+    return referenced_layer["material_description"] + material_description[match.end() :]
 
 
 def format_data(descriptions_path: Path, ground_truth_path: Path | None) -> tuple:

@@ -46,7 +46,7 @@ class TextLine(RectWithPageMixin):
         rect = pymupdf.Rect()
         for word in words:
             rect.include_rect(word.rect)
-        self.rect_with_page = RectWithPage(rect, words[0].page_number)
+        self.rect_with_page = RectWithPage(rect, next((word.page_number for word in words), None))
         self.words = words
         self.stemmers = {}
         self.stemmer_languages = {"de": "german", "fr": "french", "en": "english", "it": "italian"}
