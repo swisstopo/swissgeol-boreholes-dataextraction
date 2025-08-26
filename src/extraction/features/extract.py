@@ -6,12 +6,14 @@ import pymupdf
 import rtree
 
 from extraction.features.stratigraphy.interval.interval import AAboveBInterval, Interval, IntervalBlockPair
-from extraction.features.stratigraphy.layer.duplicate_detection import remove_duplicate_layers
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
     Layer,
     LayerDepths,
     LayersInDocument,
+)
+from extraction.features.stratigraphy.layer.overlap_detection import (
+    remove_scan_overlap_layers,
 )
 from extraction.features.stratigraphy.layer.page_bounding_boxes import (
     MaterialDescriptionRectWithSidebar,
@@ -574,13 +576,10 @@ def extract_page(
         page_height,
         **matching_params,
     ).process_page()
-
-    return remove_duplicate_layers(
+    return remove_scan_overlap_layers(
         current_page_index=page_index,
-        document=document,
         previous_layers_with_bb=layers_from_previous_pages.boreholes_layers_with_bb,
         current_layers_with_bb=extracted_boreholes,
-        img_template_probability_threshold=matching_params["img_template_probability_threshold"],
     )
 
 
