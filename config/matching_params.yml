@@ -5,6 +5,10 @@ left_line_length_threshold: 7
 img_template_probability_threshold: 0.62
 min_num_layers: 2
 
+# Table filtering parameters
+max_pairs_per_table: 6  # Maximum number of pairs to keep per table structure
+table_score_threshold: 0  # Minimum score threshold for pairs within tables
+
 depth_column_params:  # these params should be optimized as soon as there is reliable evaluation data
   noise_count_threshold: 1.25
   noise_count_offset: 2.5

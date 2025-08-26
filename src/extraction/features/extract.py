@@ -112,8 +112,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 )
             )
 
-        material_descriptions_sidebar_pairs.sort(key=lambda pair: -pair.score_match)  # highest score first
-
         material_descriptions_sidebar_pairs = [
             pair for pair in material_descriptions_sidebar_pairs if pair.score_match >= 0
         ]
@@ -121,20 +119,34 @@ class MaterialDescriptionRectWithSidebarExtractor:
         # Step 2: Apply table-based filtering to reduce duplicates
         if self.table_structures:
             table_filtered_pairs = []
-            used_indices = set()
+            table_score_threshold = self.params.get("table_score_threshold")
+
+            # Group pairs by table index
+            table_groups = {}
+            non_table_pairs = []
+
             for pair in material_descriptions_sidebar_pairs:
                 index = _contained_in_table_index(pair, self.table_structures, proximity_buffer=50)
                 if index != -1:
-                    if index not in used_indices:
-                        table_filtered_pairs.append(pair)
-                        used_indices.add(index)
+                    if index not in table_groups:
+                        table_groups[index] = []
+                    table_groups[index].append(pair)
                 else:
-                    table_filtered_pairs.append(pair)
+                    non_table_pairs.append(pair)
+
+            # Keep pairs that meet criteria per table
+            for _, pairs in table_groups.items():
+                # Filter by score threshold
+                qualifying_pairs = [p for p in pairs if p.score_match >= table_score_threshold]
+                table_filtered_pairs.extend(qualifying_pairs)
+
+            # Add all non-table pairs
+            table_filtered_pairs.extend(non_table_pairs)
             material_descriptions_sidebar_pairs = table_filtered_pairs
 
         material_descriptions_sidebar_pairs.reverse()  # lowest score first
 
-        # Step 4: remove pairs that have any of their elements (sidebar, material description) intersecting with others
+        # Step 3: remove pairs that have any of their elements (sidebar, material description) intersecting with others
         to_delete = self._find_intersecting_indices(material_descriptions_sidebar_pairs)
         filtered_pairs = [
             item for index, item in enumerate(material_descriptions_sidebar_pairs) if index not in to_delete
