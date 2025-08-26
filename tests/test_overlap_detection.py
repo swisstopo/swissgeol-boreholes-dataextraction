@@ -53,7 +53,7 @@ def test_find_last_duplicate_wrong_line_grouping(create_layer):
     prev_layers = [create_layer("Layer A"), create_layer("Layer B"), create_layer("Layer C")]
     current_layers = [
         create_layer("Layer B"),
-        create_layer("Layer"),  # description incorectly split,
+        create_layer("Layer"),  # description incorrectly split,
         create_layer("C"),  # the algorithm will also pick up this layer
         create_layer("Layer D"),
     ]

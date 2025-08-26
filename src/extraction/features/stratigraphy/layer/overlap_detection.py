@@ -103,7 +103,7 @@ def find_last_duplicate_layer_index(previous_page_layers: list[Layer], sorted_la
                 compare_against_idx -= 1
                 continue
 
-            # If the merge is not a duplicated, this is the standart case, and we continue verifying the layers above.
+            # If the merge is not a duplicated, this is the standard case, and we continue verifying the layers above.
             if bottom_duplicate_idx is None:
                 bottom_duplicate_idx = layer_idx
             layer_idx -= 1
@@ -114,7 +114,7 @@ def find_last_duplicate_layer_index(previous_page_layers: list[Layer], sorted_la
         if bottom_duplicate_idx is None:
             layer_idx -= 1
             continue
-        # 4. No duplicate was found, but we previously found a duplicate (bottom_duplicate_idx was set), it likelly
+        # 4. No duplicate was found, but we previously found a duplicate (bottom_duplicate_idx was set), it likely
         # was a false positive and we reset the search
         layer_idx = bottom_duplicate_idx - 1  # just above the false positive
         bottom_duplicate_idx = None
