@@ -112,6 +112,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 )
             )
 
+        material_descriptions_sidebar_pairs.sort(key=lambda pair: -pair.score_match)  # highest score first
+
         material_descriptions_sidebar_pairs = [
             pair for pair in material_descriptions_sidebar_pairs if pair.score_match >= 0
         ]
