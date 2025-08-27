@@ -8,6 +8,7 @@ import pymupdf
 
 from extraction.features.stratigraphy.layer.page_bounding_boxes import MaterialDescriptionRectWithSidebar
 from extraction.features.utils.geometry.geometry_dataclasses import Line
+from extraction.features.utils.text.textline import TextLine
 from utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
@@ -24,19 +25,35 @@ class TableStructure:
     line_density: float
 
 
+def detect_structure_lines(geometric_lines: list[Line]) -> list["StructureLine"]:
+    """Detect significant horizonal and vertical lines in a document.
+
+    Args:
+        geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
+
+    Returns:
+        List of detected structure lines
+    """
+    config = read_params("table_detection_params.yml")
+
+    # Filter and classify lines
+    filtered_lines = _filter_significant_lines(geometric_lines, config)
+    return _separate_by_orientation(filtered_lines, config)
+
+
 def detect_table_structures(
     page_index: int,
     document: pymupdf.Document,
-    geometric_lines: list[Line],
-    text_lines: None,
+    structure_lines: list["StructureLine"],
+    text_lines: list[TextLine],
 ) -> list[TableStructure]:
     """Detect multiple non-overlapping table structures on a page.
 
     Args:
         page_index (int): The page index (0-indexed).
         document (pymupdf.Document): the document.
+        structure_lines (list[StructureLine]): Vertical and horizonal structure lines.
         text_lines (list[TextLine]): All text lines on the page.
-        geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
 
     Returns:
         List of detected table structures
@@ -46,10 +63,6 @@ def detect_table_structures(
     page = document[page_index]
     page_width = page.rect.width
     page_height = page.rect.height
-
-    # Filter and classify lines
-    filtered_lines = _filter_significant_lines(geometric_lines, config)
-    structure_lines = _separate_by_orientation(filtered_lines, config)
 
     table_candidates = _find_table_structures(structure_lines, config, page_width, page_height, text_lines)
     table_candidates = [

@@ -27,7 +27,7 @@ from extraction.features.predictions.overall_file_predictions import OverallFile
 from extraction.features.predictions.predictions import BoreholeListBuilder
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.features.utils.geometry.line_detection import extract_lines
-from extraction.features.utils.table_detection import detect_table_structures
+from extraction.features.utils.table_detection import detect_structure_lines, detect_table_structures
 from extraction.features.utils.text.extract_text import extract_text_lines
 from extraction.features.utils.text.matching_params_analytics import create_analytics
 from utils.file_utils import flatten, read_params
@@ -303,18 +303,15 @@ def start_pipeline(
                 geometric_lines = extract_lines(page, line_detection_params)
 
                 # Detect table structures on the page
-                table_structures = detect_table_structures(
-                    page_index,
-                    doc,
-                    geometric_lines,
-                    text_lines,
-                )
+                structure_lines = detect_structure_lines(geometric_lines)
+                table_structures = detect_table_structures(page_index, doc, structure_lines, text_lines)
 
                 # extract the statigraphy
                 page_layers = extract_page(
                     layers_with_bb_in_document,
                     text_lines,
                     geometric_lines,
+                    structure_lines,
                     table_structures,
                     file_metadata.language,
                     page_index,
