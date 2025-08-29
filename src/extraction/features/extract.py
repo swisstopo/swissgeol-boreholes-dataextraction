@@ -114,14 +114,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         material_descriptions_sidebar_pairs.sort(key=lambda pair: -pair.score_match)  # highest score first
 
-        material_descriptions_sidebar_pairs = [
-            pair for pair in material_descriptions_sidebar_pairs if pair.score_match >= 0
-        ]
-
-        # Step 2: Apply table-based filtering to reduce duplicates
+        # Step 2: Filter pairs based on table structures if no table structures are present, we only filter by score
         if self.table_structures:
             table_filtered_pairs = []
-            table_score_threshold = self.params.get("table_score_threshold")
 
             # Group pairs by table index
             table_groups = {}
@@ -139,12 +134,17 @@ class MaterialDescriptionRectWithSidebarExtractor:
             # Keep pairs that meet criteria per table
             for _, pairs in table_groups.items():
                 # Filter by score threshold
-                qualifying_pairs = [p for p in pairs if p.score_match >= table_score_threshold]
+                qualifying_pairs = [p for p in pairs if p.score_match >= 0]
                 table_filtered_pairs.extend(qualifying_pairs)
 
             # Add all non-table pairs
             table_filtered_pairs.extend(non_table_pairs)
             material_descriptions_sidebar_pairs = table_filtered_pairs
+
+        else:
+            material_descriptions_sidebar_pairs = [
+                pair for pair in material_descriptions_sidebar_pairs if pair.score_match >= 0
+            ]
 
         material_descriptions_sidebar_pairs.reverse()  # lowest score first
 
