@@ -11,7 +11,7 @@ from .layer import ExtractedBorehole, Layer
 logger = logging.getLogger(__name__)
 
 
-matching_params = read_params("matching_params.yml")  # add the duplicate tresh to the params 0.95
+matching_params = read_params("matching_params.yml")
 
 
 def remove_scan_overlap_layers(
@@ -74,7 +74,7 @@ def find_last_duplicate_layer_index(previous_page_layers: list[Layer], sorted_la
     layer_idx = len(sorted_layers) - 1  # begin from the bottom of the current page, then validate upwards
 
     bottom_duplicate_idx = None
-    t = matching_params["duplicate_layer_threshold"]
+    duplicate_layer_threshold = matching_params["duplicate_layer_threshold"]
 
     while layer_idx >= 0:
         current_layer = sorted_layers[layer_idx]
@@ -87,7 +87,11 @@ def find_last_duplicate_layer_index(previous_page_layers: list[Layer], sorted_la
         previous_page_layer = previous_page_layers[compare_against_idx]
 
         # 1. check of the current layer with the compare_against_idx'th layer of previous page.
-        if _is_duplicate(current_layer.material_description.text, previous_page_layer.material_description.text, t):
+        if _is_duplicate(
+            current_layer.material_description.text,
+            previous_page_layer.material_description.text,
+            duplicate_layer_threshold,
+        ):
             # 2. check in case of wrong lines split of the merged layer with the compare_against_idx'th layer of
             # previous page.
             layer_idx_delta = 1
@@ -95,7 +99,9 @@ def find_last_duplicate_layer_index(previous_page_layers: list[Layer], sorted_la
                 text_merged = " ".join(
                     [sorted_layers[layer_idx - 1].material_description.text, current_layer.material_description.text]
                 )
-                if _is_duplicate(text_merged, previous_page_layer.material_description.text, t):
+                if _is_duplicate(
+                    text_merged, previous_page_layer.material_description.text, duplicate_layer_threshold
+                ):
                     # If the merged is also a duplicate, we should skip both layers.
                     layer_idx_delta = 2
 
