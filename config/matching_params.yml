@@ -2,7 +2,7 @@
 block_line_ratio: 0.20
 min_block_clearance: 10
 left_line_length_threshold: 7
-img_template_probability_threshold: 0.62
+duplicate_layer_threshold: 0.95
 min_num_layers: 2
 
 depth_column_params:  # these params should be optimized as soon as there is reliable evaluation data
