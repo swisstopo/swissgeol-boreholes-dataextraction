@@ -38,6 +38,7 @@ from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.geometry.util import x_overlap, x_overlap_significant_smallest
 from extraction.features.utils.table_detection import (
+    StructureLine,
     TableStructure,
     _contained_in_table_index,
 )
@@ -64,6 +65,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self,
         lines: list[TextLine],
         geometric_lines: list[Line],
+        structure_lines: list[StructureLine],
         table_structures: list[TableStructure],
         language: str,
         page_number: int,
@@ -77,6 +79,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Args:
             lines (list[TextLine]): all the text lines on the page.
             geometric_lines (list[Line]): The geometric lines of the page.
+            structure_lines (list[StructureLine]): Significant horizontal and vertical lines.
             table_structures (list[TableStructure]): The identified table structures of the page.
             language (str): The language of the page.
             page_number (int): The page number.
@@ -87,6 +90,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         """
         self.lines = lines
         self.geometric_lines = geometric_lines
+        self.structure_lines = structure_lines
         self.table_structures = table_structures
         self.language = language
         self.page_number = page_number
@@ -147,11 +151,41 @@ class MaterialDescriptionRectWithSidebarExtractor:
         ]
 
         # remove pairs with no sidebar if there is more than one pair.
-        to_delete = (
-            [] if len(filtered_pairs) <= 1 else [i for i, pair in enumerate(filtered_pairs) if not pair.sidebar]
-        )
+        if len(filtered_pairs) > 1:
+            filtered_pairs = [pair for pair in filtered_pairs if pair.sidebar]
 
-        filtered_pairs = [item for index, item in enumerate(filtered_pairs) if index not in to_delete]
+        # remove pairs with no sidebar and not contained in a table structure
+        def in_table_structure(rect: pymupdf.Rect, table: TableStructure) -> bool:
+            intersection = table.bounding_rect & pair.material_description_rect
+            material_description_area = rect.width * rect.height
+            intersection_area = intersection.width * intersection.height
+            return intersection_area >= 0.9 * material_description_area
+
+        def nearby_structure_lines(rect: pymupdf.Rect) -> bool:
+            """Checks if there are structure lines indicative of a borehole profile near the given rect.
+
+            The total length (either left or right) must be larger than the height of the given rect, to avoid
+            false positives with scan artifacts / page edges.
+            """
+            rect_left = pymupdf.Rect(rect.x0 - rect.width, rect.y0, (rect.x0 + rect.x1) / 2, rect.y1)
+            rect_right = pymupdf.Rect((rect.x0 + rect.x1) / 2, rect.y0, rect.x1 + rect.width, rect.y1)
+            return structure_line_length(rect_left) > rect.height or structure_line_length(rect_right) > rect.height
+
+        def structure_line_length(rect: pymupdf.Rect) -> float:
+            """Counts the total length of vertical structure lines after taking an intersection with the given rect."""
+            length = 0
+            for line in self.structure_lines:
+                if line.is_vertical and rect.x0 <= line.position <= rect.x1:
+                    length += max(0, min(rect.y1, line.end) - max(rect.y0, line.start))
+            return length
+
+        filtered_pairs = [
+            pair
+            for pair in filtered_pairs
+            if pair.sidebar
+            or any(in_table_structure(pair.material_description_rect, table) for table in self.table_structures)
+            or nearby_structure_lines(pair.material_description_rect)
+        ]
 
         # We order the boreholes with the highest score first. When one borehole is actually present in the ground
         # truth, but more than one are detected, we want the most correct to be assigned
@@ -541,6 +575,7 @@ def extract_page(
     layers_from_previous_pages: LayersInDocument,
     text_lines: list[TextLine],
     geometric_lines: list[Line],
+    structure_lines: list[StructureLine],
     table_structures: list[TableStructure],
     language: str,
     page_index: int,
@@ -556,6 +591,7 @@ def extract_page(
         layers_from_previous_pages: LayersInDocument instance containing the already detected layers.
         text_lines (list[TextLine]): All text lines on the page.
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
+        structure_lines (list[StructureLine]): Significant vertical and horizontal lines
         table_structures (list[TableStructure]): The identified table structures.
         language (str): Language of the page (used in parsing).
         page_index (int): The page index (0-indexed).
@@ -575,6 +611,7 @@ def extract_page(
     extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(
         text_lines,
         geometric_lines,
+        structure_lines,
         table_structures,
         language,
         page_index + 1,

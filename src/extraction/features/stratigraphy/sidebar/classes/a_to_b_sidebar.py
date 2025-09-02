@@ -118,7 +118,7 @@ class AToBSidebar(Sidebar[AToBInterval]):
             if index >= 1 and filtered_entries[index - 1].end.value == entry.start.value:
                 sequence_matches_count += 1
 
-        return sequence_matches_count / (len(filtered_entries) - 1) > 0.5
+        return sequence_matches_count / (len(filtered_entries) - 1) >= 0.5
 
     def identify_groups(
         self,
