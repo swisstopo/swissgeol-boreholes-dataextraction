@@ -128,13 +128,19 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     if index not in table_groups:
                         table_groups[index] = []
                     table_groups[index].append(pair)
-                else:
+
+                elif pair.score_match >= 0:
                     non_table_pairs.append(pair)
 
             # Keep pairs that meet criteria per table
             for _, pairs in table_groups.items():
-                # Filter by score threshold
-                qualifying_pairs = [p for p in pairs if p.score_match >= 0]
+                qualifying_pairs = [
+                    p
+                    for p in pairs
+                    if p.score_match >= 0
+                    and p.material_description_rect.width
+                    > self.params["material_description_column_width"] * self.page_width
+                ]
                 table_filtered_pairs.extend(qualifying_pairs)
 
             # Add all non-table pairs
