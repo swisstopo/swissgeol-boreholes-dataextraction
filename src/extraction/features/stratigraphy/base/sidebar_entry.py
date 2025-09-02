@@ -46,7 +46,7 @@ class DepthColumnEntry(SidebarEntry[float]):
         Returns:
             DepthColumnEntry: The depth column entry object.
         """
-        return cls(rect=rect, value=abs(float(string_value)), has_decimal_point="." in string_value)
+        return cls(rect=rect, value=abs(float(string_value.replace(",", "."))), has_decimal_point="." in string_value)
 
 
 class LayerIdentifierEntry(SidebarEntry[str]):

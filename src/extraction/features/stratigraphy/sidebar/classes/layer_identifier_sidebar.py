@@ -156,7 +156,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         depths_in_header = bool(
             AToBIntervalExtractor.from_text(
                 TextLine([word for line in block_lines_header for word in line.words]), require_start_of_string=False
-            )
+            )[0]
         )
 
         # If the header is capitalized, or there is other lines than the header and depth info are found in the header

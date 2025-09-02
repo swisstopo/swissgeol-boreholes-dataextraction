@@ -204,8 +204,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         # this must not be flattened anymore, i.e. we keep the /per borehole separation
         interval_block_pairs = self._get_interval_block_pairs(pair)
-        for interval_block_pair in interval_block_pairs:
-            interval_block_pair.block = interval_block_pair.get_clean_block()
 
         borehole_layers = [
             Layer(
