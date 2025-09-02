@@ -154,7 +154,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         # remove pairs with no sidebar and not contained in a table structure
         def in_table_structure(rect: pymupdf.Rect, table: TableStructure) -> bool:
-            intersection = pymupdf.Rect(table.bounding_rect).intersect(pair.material_description_rect)
+            intersection = table.bounding_rect & pair.material_description_rect
             material_description_area = rect.width * rect.height
             intersection_area = intersection.width * intersection.height
             return intersection_area >= 0.9 * material_description_area
