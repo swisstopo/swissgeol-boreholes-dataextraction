@@ -130,9 +130,7 @@ class AToBIntervalExtractor:
         def remaining_line() -> TextLine:
             if char_index_to_word_index[depths_match.start(1)] != 0:  # group 1 is the whole depth matching
                 return text_line  # the depths found do not start the line
-            return TextLine(
-                [w for i, w in enumerate(text_line.words) if i > char_index_to_word_index[depths_match.end(1) - 1]]
-            )
+            return TextLine(text_line.words[char_index_to_word_index[depths_match.end(1) - 1] + 1 :])
 
         if depths_match:
             return (
