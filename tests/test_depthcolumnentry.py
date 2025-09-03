@@ -10,7 +10,7 @@ def test_from_string_value():
     rect = pymupdf.Rect(0, 0, 10, 10)
 
     def run_test(string_in, value_out, has_decimal_point):
-        depth_entry = DepthColumnEntry.from_string_value(rect, string_in)
+        depth_entry = DepthColumnEntry.from_string_value(rect, string_in, page_number=0)
         assert depth_entry.value == value_out
         assert depth_entry.has_decimal_point is has_decimal_point
 

@@ -4,10 +4,8 @@ from dataclasses import dataclass
 
 import pymupdf
 
-from extraction.features.utils.data_extractor import (
-    ExtractedFeature,
-    FeatureOnPage,
-)
+from extraction.features.utils.data_extractor import ExtractedFeature
+from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from extraction.features.utils.text.textblock import MaterialDescription
 from utils.file_utils import parse_text
 
@@ -15,8 +13,7 @@ from ..interval.interval import Interval
 from .page_bounding_boxes import PageBoundingBoxes
 
 
-@dataclass
-class LayerDepthsEntry:
+class LayerDepthsEntry(RectWithPageMixin):
     """Represents the upper or lower limit of a layer, used specifically for visualization and evaluation.
 
     Unlike `DepthColumnEntry` in `sidebarentry.py`, this class holds the extracted depth information,
@@ -24,14 +21,16 @@ class LayerDepthsEntry:
     data serialization, such as `to_json()`.
     """
 
-    value: float
-    rect: pymupdf.Rect
+    def __init__(self, value: float, rect: pymupdf.Rect, page_number: int):
+        self.value = value
+        self.rect_with_page = RectWithPage(rect, page_number)
 
     def to_json(self):
         """Convert the LayerDepthsEntry object to a JSON serializable format."""
         return {
             "value": self.value,
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
+            "page": self.page_number if self.page_number else None,
         }
 
     @classmethod
@@ -44,7 +43,7 @@ class LayerDepthsEntry:
         Returns:
             DepthColumnEntry: the corresponding LayerDepthsEntry object.
         """
-        return cls(value=data["value"], rect=pymupdf.Rect(data["rect"]))
+        return cls(value=data["value"], rect=pymupdf.Rect(data["rect"]), page_number=data["page"])
 
 
 @dataclass
@@ -59,23 +58,57 @@ class LayerDepths:
     start: LayerDepthsEntry | None
     end: LayerDepthsEntry | None
 
-    @property
-    def line_anchor(self) -> pymupdf.Point | None:
+    def get_line_anchor(self, page_number) -> pymupdf.Point | None:
+        """Get the anchor point for the line connecting the start and end depths.
+
+        Args:
+            page_number (int): The page number for which to get the anchor point.
+
+        Returns:
+            pymupdf.Point | None: The anchor point for the line, or None if not applicable.
+        """
         if self.start and self.end:
-            return pymupdf.Point(
-                max(self.start.rect.x1, self.end.rect.x1), (self.start.rect.y0 + self.end.rect.y1) / 2
-            )
+            if self.start.page_number == self.end.page_number:
+                return pymupdf.Point(
+                    max(self.start.rect.x1, self.end.rect.x1), (self.start.rect.y0 + self.end.rect.y1) / 2
+                )
+            else:
+                if self.start.page_number == page_number:
+                    return pymupdf.Point(self.start.rect.x1, self.start.rect.y1)
+                elif self.end.page_number == page_number:
+                    # anchor at the top of the page
+                    return pymupdf.Point(self.end.rect.x1, 0)
+                else:
+                    return None
         elif self.start:
             return pymupdf.Point(self.start.rect.x1, self.start.rect.y1)
         elif self.end:
             return pymupdf.Point(self.end.rect.x1, self.end.rect.y0)
 
-    @property
-    def background_rect(self) -> pymupdf.Rect | None:
-        if self.start and self.end and self.start.rect.y1 < self.end.rect.y0:
+    def get_background_rect(self, page_number: int, page_height: float) -> pymupdf.Rect | None:
+        """Get the background rectangle for the layer depths.
+
+        Args:
+            page_number (int): The page number for which to get the background rectangle.
+            page_height (float): The height of the page.
+
+        Returns:
+            pymupdf.Rect | None: The background rectangle for the layer depths, or None if not applicable.
+        """
+        if not (self.start and self.end):
+            return None
+        if self.start.page_number != self.end.page_number:
+            if page_number == self.start.page_number:
+                return pymupdf.Rect(self.start.rect.x0, self.start.rect.y1, self.start.rect.x1, page_height)
+            elif page_number == self.end.page_number:
+                return pymupdf.Rect(self.end.rect.x0, 0, self.end.rect.x1, self.end.rect.y0)
+            else:
+                return None
+        if self.start.rect.y1 < self.end.rect.y0:
             return pymupdf.Rect(
                 self.start.rect.x0, self.start.rect.y1, max(self.start.rect.x1, self.end.rect.x1), self.end.rect.y0
             )
+        return None
 
     def to_json(self):
         """Convert the LayerDepths object to a JSON serializable format."""
@@ -106,9 +139,11 @@ class LayerDepths:
         Returns:
             LayerDepths: the corresponding LayerDepths object.
         """
+        start = interval.start
+        end = interval.end
         return cls(
-            start=LayerDepthsEntry(interval.start.value, interval.start.rect) if interval.start else None,
-            end=LayerDepthsEntry(interval.end.value, interval.end.rect) if interval.end else None,
+            start=LayerDepthsEntry(start.value, start.rect, start.page_number) if start else None,
+            end=LayerDepthsEntry(end.value, end.rect, end.page_number) if end else None,
         )
 
     def is_valid_depth_interval(self, start: float, end: float) -> bool:
@@ -139,7 +174,7 @@ class Layer(ExtractedFeature):
     main data structure used for representing stratigraphy in the `ExtractedBorehole` class.
     """
 
-    material_description: FeatureOnPage[MaterialDescription]
+    material_description: MaterialDescription
     depths: LayerDepths | None
 
     def __str__(self) -> str:
@@ -151,7 +186,7 @@ class Layer(ExtractedFeature):
         return f"Layer(material_description={self.material_description}, depths={self.depths})"
 
     def description_nonempty(self) -> bool:
-        return parse_text(self.material_description.feature.text) != ""
+        return parse_text(self.material_description.text) != ""
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -174,7 +209,7 @@ class Layer(ExtractedFeature):
         Returns:
             list[LayerPrediction]: A list of LayerPrediction objects.
         """
-        material_prediction = FeatureOnPage.from_json(data["material_description"], MaterialDescription)
+        material_prediction = MaterialDescription.from_json(data["material_description"])
         depths = LayerDepths.from_json(data["depths"]) if ("depths" in data and data["depths"] is not None) else None
 
         return Layer(material_description=material_prediction, depths=depths)
@@ -242,5 +277,29 @@ class LayersInDocument:
             self.boreholes_layers_with_bb = layer_predictions
         else:
             # second page, use assumption, also for the bounding boxes
-            self.boreholes_layers_with_bb[0].bounding_boxes.extend(layer_predictions[0].bounding_boxes)
-            self.boreholes_layers_with_bb[0].predictions.extend(layer_predictions[0].predictions)
+            main_borehole = self.boreholes_layers_with_bb[0]
+            borehole_continuation = layer_predictions[0]
+            if (
+                (main_borehole.predictions and main_borehole.predictions[-1].depths)  # ensure depths exist
+                and main_borehole.predictions[-1].depths.start is not None  # start value is set
+                and main_borehole.predictions[-1].depths.end is None  # end value is None
+                and (borehole_continuation.predictions and borehole_continuation.predictions[0].depths)  # depths exist
+                and borehole_continuation.predictions[0].depths.start is None  # start value is None
+                and borehole_continuation.predictions[0].depths.end is not None  # end value is not None
+            ):
+                # if the last interval of the previous page is open-ended, and the first of this page has no start
+                # value, it probably means that they refer to the same layer.
+                main_borehole.predictions[-1] = self._build_spanning_layer(borehole_continuation.predictions[0])
+                borehole_continuation.predictions = borehole_continuation.predictions[1:]
+            main_borehole.bounding_boxes.extend(borehole_continuation.bounding_boxes)
+            main_borehole.predictions.extend(borehole_continuation.predictions)
+
+    def _build_spanning_layer(self, first_next_layer: Layer) -> Layer:
+        last_prev_layer = self.boreholes_layers_with_bb[0].predictions[-1]
+        return Layer(
+            material_description=MaterialDescription(
+                text=last_prev_layer.material_description.text + " " + first_next_layer.material_description.text,
+                lines=last_prev_layer.material_description.lines + first_next_layer.material_description.lines,
+            ),
+            depths=LayerDepths(start=last_prev_layer.depths.start, end=first_next_layer.depths.end),
+        )

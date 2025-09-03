@@ -5,13 +5,12 @@ from __future__ import annotations
 import re
 
 import pymupdf
+from compound_split import char_split
 from nltk.stem.snowball import SnowballStemmer
 
 from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from extraction.features.utils.geometry.util import x_overlap_significant_largest
-from utils.file_utils import read_params
-
-material_description = read_params("matching_params.yml")["material_description"]
+from extraction.features.utils.text.matching_params_analytics import MatchingParamsAnalytics, track_match
 
 
 class TextWord(RectWithPageMixin):
@@ -49,6 +48,8 @@ class TextLine(RectWithPageMixin):
             rect.include_rect(word.rect)
         self.rect_with_page = RectWithPage(rect, next((word.page_number for word in words), None))
         self.words = words
+        self.stemmers = {}
+        self.stemmer_languages = {"de": "german", "fr": "french", "en": "english", "it": "italian"}
 
     def _get_stemmer(self, language: str) -> SnowballStemmer:
         """Get the appropriate stemmer for the given language.
@@ -60,42 +61,105 @@ class TextLine(RectWithPageMixin):
             SnowballStemmer: The stemmer for the specified language.
         """
         # Create appropriate stemmer based on language
-        stemmer_languages = {"de": "german", "fr": "french", "en": "english", "it": "italian"}
-        stemmer_lang = stemmer_languages.get(language, "german")
-        return SnowballStemmer(stemmer_lang)
+        if language not in self.stemmers:
+            stemmer_lang = self.stemmer_languages.get(language, "german")
+            self.stemmers[language] = SnowballStemmer(stemmer_lang)
+        return self.stemmers[language]
 
-    def _stem_text(self, stemmer: SnowballStemmer, text: str) -> set:
-        """Stem the text using the provided stemmer.
+    def _split_compounds(self, tokens: list[str], split_threshold: float) -> list[str]:
+        """Split compound words using char_split and return processed list.
+
+        This method uses  an ngram-based compound splitter for German language based on
+        Tuggener, Don (2016):  https://pypi.org/project/compound-split/
 
         Args:
-            stemmer (SnowballStemmer): The stemmer to use for stemming.
-            text (str): The text to stem.
+            tokens (List[str]): List of tokens to process.
+            split_threshold (float): Threshold for splitting compounds
 
         Returns:
-            set: A set of stemmed words from the text.
+            List[str]: Processed list of tokens with compounds split.
         """
-        # Tokenize and stem words in the text
-        text_lower = text.lower()
-        text_tokens = re.findall(r"\b\w+\b", text_lower)
-        return {stemmer.stem(token) for token in text_tokens}
+        processed_tokens = []
+        for token in tokens:
+            comp_split = char_split.split_compound(token)[0]
+            if comp_split[0] > split_threshold:
+                processed_tokens.extend(comp_split[1:])
+            else:
+                processed_tokens.append(token)
 
-    def is_description(self, material_description: dict, language: str, search_excluding: bool = False):
-        """Check if the line is a material description.
+        return processed_tokens
 
-        Uses stemming to handle word variations across german, french, english and italian.
+    def _find_matching_expressions(
+        self,
+        patterns: list,
+        split_threshold: float,
+        targets: list[str],
+        language: str,
+        analytics: MatchingParamsAnalytics | None = None,
+        search_excluding: bool = False,
+    ) -> bool:
+        """Check if any of the patterns match the targets for german use a second check against compound split.
 
         Args:
-            material_description (dict): The material description dictionary containing the used expressions.
-            language (str): The language of the material description, e.g. "de", "fr", "en", "it".
-            search_excluding (bool): Whether to look for including or excluding keywords in the layer description.
+            patterns (List): A list of patterns to match against.
+            split_threshold (float): Threshold for splitting compounds.
+            targets (List[str]): A list of target strings to match against.
+            language (str): The language of the patterns, used for stemming.
+            analytics ([MatchingParamsAnalytics]): Aanalytics instance to track matches.
+            search_excluding (bool): Whether this is for excluding expressions (for analytics).
+
+        Returns:
+            bool: True if any pattern matches, False otherwise.
         """
         stemmer = self._get_stemmer(language)
-        stemmed_text_tokens = self._stem_text(stemmer, self.text)
 
-        # Check for matches in including or excluding expressions
-        keyword = "including_expressions" if not search_excluding else "excluding_expressions"
-        return any(
-            stemmer.stem(word.lower()) in stemmed_text_tokens for word in material_description[language][keyword]
+        patterns = {stemmer.stem(p.lower()) for p in patterns}
+        targets_stemmed = {stemmer.stem(t.lower()) for t in targets}
+
+        if language == "de" and not search_excluding:
+            targets_split = self._split_compounds(targets, split_threshold)
+            targets_split = {stemmer.stem(t.lower()) for t in targets_split}
+
+            targets_to_check = targets_stemmed | targets_split
+        else:
+            targets_to_check = targets_stemmed
+
+        for item in patterns:
+            if item in targets_to_check:
+                track_match(analytics, item, language, search_excluding)
+                return True
+
+        return False
+
+    def is_description(
+        self,
+        parameters: dict,
+        language: str,
+        analytics: MatchingParamsAnalytics | None = None,
+        search_excluding: bool = False,
+    ) -> bool:
+        """Check if the line is a material description.
+
+        Uses stemming to handle word variations across german, french, english and italian and
+        additionally compound split in case of german.
+
+        Args:
+            parameters (dict): The parameter dictionary containing the used expressions and thresholds.
+            language (str): The language of the material description, e.g. "de", "fr", "en", "it".
+            analytics (MatchingParamsAnalytics): The analytics tracker for matching parameters.
+            search_excluding (bool): If True, search for excluding expressions, otherwise for including expressions.
+
+        Returns:
+            bool: True if the line contains any of the material description expressions, False otherwise.
+        """
+        # Tokenize and stem words in the text
+        text_tokens = re.findall(r"\b\w+\b", self.text)
+        exp_type = "including_expressions" if not search_excluding else "excluding_expressions"
+        patterns = parameters["material_description"][language][exp_type]
+        split_threshold = parameters.get("compound_split_threshold", 0.4)
+
+        return self._find_matching_expressions(
+            patterns, split_threshold, text_tokens, language, analytics, search_excluding
         )
 
     @property

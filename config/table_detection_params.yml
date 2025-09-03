@@ -18,9 +18,9 @@ area_scoring:
 # Line score for confidence calculation
 line_scoring:
   line_weights: 0.2
-  max_n_lines_bonus: 120
+  max_n_lines_bonus: 30
 
 # Text bonus scoring for confidence calculation
 text_scoring:
   text_weights: 0.4
-  text_presence_weight: 0.002
+  text_presence_weight: 0.01

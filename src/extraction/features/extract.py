@@ -6,12 +6,14 @@ import pymupdf
 import rtree
 
 from extraction.features.stratigraphy.interval.interval import AAboveBInterval, Interval, IntervalBlockPair
-from extraction.features.stratigraphy.layer.duplicate_detection import remove_duplicate_layers
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
     Layer,
     LayerDepths,
     LayersInDocument,
+)
+from extraction.features.stratigraphy.layer.overlap_detection import (
+    remove_scan_overlap_layers,
 )
 from extraction.features.stratigraphy.layer.page_bounding_boxes import (
     MaterialDescriptionRectWithSidebar,
@@ -36,6 +38,7 @@ from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.geometry.util import x_overlap, x_overlap_significant_smallest
 from extraction.features.utils.table_detection import (
+    StructureLine,
     TableStructure,
     _contained_in_table_index,
 )
@@ -43,6 +46,7 @@ from extraction.features.utils.text.find_description import (
     get_description_blocks,
     get_description_lines,
 )
+from extraction.features.utils.text.matching_params_analytics import MatchingParamsAnalytics
 from extraction.features.utils.text.textblock import (
     MaterialDescription,
     MaterialDescriptionLine,
@@ -61,11 +65,13 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self,
         lines: list[TextLine],
         geometric_lines: list[Line],
+        structure_lines: list[StructureLine],
         table_structures: list[TableStructure],
         language: str,
         page_number: int,
         page_width: float,
         page_height: float,
+        analytics: MatchingParamsAnalytics = None,
         **params: dict,
     ):
         """Creates a new MaterialDescriptionRectWithSidebarExtractor.
@@ -73,20 +79,24 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Args:
             lines (list[TextLine]): all the text lines on the page.
             geometric_lines (list[Line]): The geometric lines of the page.
+            structure_lines (list[StructureLine]): Significant horizontal and vertical lines.
             table_structures (list[TableStructure]): The identified table structures of the page.
             language (str): The language of the page.
             page_number (int): The page number.
             page_width (float): The width of the page.
             page_height (float): The height of the page.
+            analytics (MatchingParamsAnalytics): The analytics tracker for matching parameters.
             **params (dict): Additional parameters for the matching pipeline.
         """
         self.lines = lines
         self.geometric_lines = geometric_lines
+        self.structure_lines = structure_lines
         self.table_structures = table_structures
         self.language = language
         self.page_number = page_number
         self.page_width = page_width
         self.page_height = page_height
+        self.analytics = analytics
         self.params = params
 
     def process_page(self) -> list[ExtractedBorehole]:
@@ -141,11 +151,41 @@ class MaterialDescriptionRectWithSidebarExtractor:
         ]
 
         # remove pairs with no sidebar if there is more than one pair.
-        to_delete = (
-            [] if len(filtered_pairs) <= 1 else [i for i, pair in enumerate(filtered_pairs) if not pair.sidebar]
-        )
+        if len(filtered_pairs) > 1:
+            filtered_pairs = [pair for pair in filtered_pairs if pair.sidebar]
 
-        filtered_pairs = [item for index, item in enumerate(filtered_pairs) if index not in to_delete]
+        # remove pairs with no sidebar and not contained in a table structure
+        def in_table_structure(rect: pymupdf.Rect, table: TableStructure) -> bool:
+            intersection = table.bounding_rect & pair.material_description_rect
+            material_description_area = rect.width * rect.height
+            intersection_area = intersection.width * intersection.height
+            return intersection_area >= 0.9 * material_description_area
+
+        def nearby_structure_lines(rect: pymupdf.Rect) -> bool:
+            """Checks if there are structure lines indicative of a borehole profile near the given rect.
+
+            The total length (either left or right) must be larger than the height of the given rect, to avoid
+            false positives with scan artifacts / page edges.
+            """
+            rect_left = pymupdf.Rect(rect.x0 - rect.width, rect.y0, (rect.x0 + rect.x1) / 2, rect.y1)
+            rect_right = pymupdf.Rect((rect.x0 + rect.x1) / 2, rect.y0, rect.x1 + rect.width, rect.y1)
+            return structure_line_length(rect_left) > rect.height or structure_line_length(rect_right) > rect.height
+
+        def structure_line_length(rect: pymupdf.Rect) -> float:
+            """Counts the total length of vertical structure lines after taking an intersection with the given rect."""
+            length = 0
+            for line in self.structure_lines:
+                if line.is_vertical and rect.x0 <= line.position <= rect.x1:
+                    length += max(0, min(rect.y1, line.end) - max(rect.y0, line.start))
+            return length
+
+        filtered_pairs = [
+            pair
+            for pair in filtered_pairs
+            if pair.sidebar
+            or any(in_table_structure(pair.material_description_rect, table) for table in self.table_structures)
+            or nearby_structure_lines(pair.material_description_rect)
+        ]
 
         # We order the boreholes with the highest score first. When one borehole is actually present in the ground
         # truth, but more than one are detected, we want the most correct to be assigned
@@ -207,20 +247,16 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         borehole_layers = [
             Layer(
-                material_description=FeatureOnPage(
-                    feature=MaterialDescription(
-                        text=pair.block.text,
-                        lines=[
-                            FeatureOnPage(
-                                feature=MaterialDescriptionLine(text_line.text),
-                                rect=text_line.rect,
-                                page=text_line.page_number,
-                            )
-                            for text_line in pair.block.lines
-                        ],
-                    ),
-                    rect=pair.block.rect,
-                    page=self.page_number,
+                material_description=MaterialDescription(
+                    text=pair.block.text,
+                    lines=[
+                        FeatureOnPage(
+                            feature=MaterialDescriptionLine(text_line.text),
+                            rect=text_line.rect,
+                            page=text_line.page_number,
+                        )
+                        for text_line in pair.block.lines
+                    ],
                 ),
                 depths=LayerDepths.from_interval(pair.depth_interval) if pair.depth_interval else None,
             )
@@ -335,12 +371,12 @@ class MaterialDescriptionRectWithSidebarExtractor:
         is_not_description = [
             line
             for line in candidate_description
-            if line.is_description(self.params["material_description"], self.language, search_excluding=True)
+            if line.is_description(self.params, self.language, self.analytics, search_excluding=True)
         ]
         is_description = [
             line
             for line in candidate_description
-            if line.is_description(self.params["material_description"], self.language, search_excluding=False)
+            if line.is_description(self.params, self.language, self.analytics, search_excluding=False)
             and line not in is_not_description
         ]
 
@@ -539,10 +575,12 @@ def extract_page(
     layers_from_previous_pages: LayersInDocument,
     text_lines: list[TextLine],
     geometric_lines: list[Line],
+    structure_lines: list[StructureLine],
     table_structures: list[TableStructure],
     language: str,
     page_index: int,
     document: pymupdf.Document,
+    analytics: MatchingParamsAnalytics,
     **matching_params: dict,
 ) -> list[ExtractedBorehole]:
     """Process a single PDF page and extract borehole information.
@@ -553,10 +591,12 @@ def extract_page(
         layers_from_previous_pages: LayersInDocument instance containing the already detected layers.
         text_lines (list[TextLine]): All text lines on the page.
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
+        structure_lines (list[StructureLine]): Significant vertical and horizontal lines
         table_structures (list[TableStructure]): The identified table structures.
         language (str): Language of the page (used in parsing).
         page_index (int): The page index (0-indexed).
         document (pymupdf.Document): the document.
+        analytics (MatchingParamsAnalytics): The analytics tracker for matching parameters.
         **matching_params (dict): Additional parameters for the matching pipeline.
 
     Returns:
@@ -571,20 +611,19 @@ def extract_page(
     extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(
         text_lines,
         geometric_lines,
+        structure_lines,
         table_structures,
         language,
         page_index + 1,
         page_width,
         page_height,
+        analytics,
         **matching_params,
     ).process_page()
-
-    return remove_duplicate_layers(
+    return remove_scan_overlap_layers(
         current_page_index=page_index,
-        document=document,
         previous_layers_with_bb=layers_from_previous_pages.boreholes_layers_with_bb,
         current_layers_with_bb=extracted_boreholes,
-        img_template_probability_threshold=matching_params["img_template_probability_threshold"],
     )
 
 

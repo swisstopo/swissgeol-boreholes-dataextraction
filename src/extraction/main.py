@@ -27,8 +27,9 @@ from extraction.features.predictions.overall_file_predictions import OverallFile
 from extraction.features.predictions.predictions import BoreholeListBuilder
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.features.utils.geometry.line_detection import extract_lines
-from extraction.features.utils.table_detection import detect_table_structures
+from extraction.features.utils.table_detection import detect_structure_lines, detect_table_structures
 from extraction.features.utils.text.extract_text import extract_text_lines
+from extraction.features.utils.text.matching_params_analytics import create_analytics
 from utils.file_utils import flatten, read_params
 
 load_dotenv()
@@ -109,6 +110,13 @@ def common_options(f):
         default=False,
         help="Whether to generate CSV output. Defaults to False.",
     )(f)
+    f = click.option(
+        "-ma",
+        "--matching-analytics",
+        is_flag=True,
+        default=False,
+        help="Whether to enable matching parameters analytics. Defaults to False.",
+    )(f)
     return f
 
 
@@ -127,6 +135,7 @@ def click_pipeline(
     draw_lines: bool = False,
     draw_tables: bool = False,
     csv: bool = False,
+    matching_analytics: bool = False,
     part: str = "all",
 ):
     """Run the boreholes data extraction pipeline."""
@@ -140,6 +149,7 @@ def click_pipeline(
         draw_lines=draw_lines,
         draw_tables=draw_tables,
         csv=csv,
+        matching_analytics=matching_analytics,
         part=part,
     )
 
@@ -154,6 +164,7 @@ def click_pipeline_metadata(
     metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
+    matching_analytics: bool = False,
 ):
     """Run only the metadata part of the pipeline."""
     start_pipeline(
@@ -164,6 +175,7 @@ def click_pipeline_metadata(
         metadata_path=metadata_path,
         skip_draw_predictions=skip_draw_predictions,
         draw_lines=draw_lines,
+        matching_analytics=matching_analytics,
         part="metadata",
     )
 
@@ -207,6 +219,7 @@ def start_pipeline(
     draw_lines: bool = False,
     draw_tables: bool = False,
     csv: bool = False,
+    matching_analytics: bool = False,
     part: str = "all",
 ):
     """Run the boreholes data extraction pipeline.
@@ -228,8 +241,12 @@ def start_pipeline(
         draw_tables (bool, optional): Whether to draw detected table structures on pdf pages. Defaults to False.
         metadata_path (Path): The path to the metadata file.
         csv (bool): Whether to generate a CSV output. Defaults to False.
+        matching_analytics (bool): Whether to enable matching parameters analytics. Defaults to False.
         part (str, optional): The part of the pipeline to run. Defaults to "all".
     """  # noqa: D301
+    # Initialize analytics if enabled
+    analytics = create_analytics(matching_params["material_description"] if matching_analytics else None)
+
     if mlflow_tracking:
         setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
 
@@ -286,22 +303,20 @@ def start_pipeline(
                 geometric_lines = extract_lines(page, line_detection_params)
 
                 # Detect table structures on the page
-                table_structures = detect_table_structures(
-                    page_index,
-                    doc,
-                    geometric_lines,
-                    text_lines,
-                )
+                structure_lines = detect_structure_lines(geometric_lines)
+                table_structures = detect_table_structures(page_index, doc, structure_lines, text_lines)
 
                 # extract the statigraphy
                 page_layers = extract_page(
                     layers_with_bb_in_document,
                     text_lines,
                     geometric_lines,
+                    structure_lines,
                     table_structures,
                     file_metadata.language,
                     page_index,
                     doc,
+                    analytics,
                     **matching_params,
                 )
                 layers_with_bb_in_document.assign_layers_to_boreholes(page_layers)
@@ -383,6 +398,12 @@ def start_pipeline(
 
     if input_directory and draw_directory:
         draw_predictions(predictions, input_directory, draw_directory, document_level_metadata_metrics)
+
+    # Finalize analytics if enabled
+    if matching_analytics:
+        analytics_output_path = out_directory / "matching_params_analytics.json"
+        analytics.save_analytics(analytics_output_path)
+        logger.info(f"Matching parameters analytics saved to {analytics_output_path}")
 
 
 if __name__ == "__main__":

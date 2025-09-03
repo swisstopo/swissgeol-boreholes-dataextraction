@@ -92,6 +92,7 @@ class AToBIntervalExtractor:
                 depth related words or None if none is found.
         """
         input_string = text_line.text
+        page_number = text_line.page_number
 
         # for every character in input_string, list the index of the word this character originates from
         char_index_to_word_index = []
@@ -136,8 +137,8 @@ class AToBIntervalExtractor:
         if depths_match:
             return (
                 AToBInterval(
-                    DepthColumnEntry.from_string_value(rect_from_group_index(2), depths_match.group(2)),
-                    DepthColumnEntry.from_string_value(rect_from_group_index(3), depths_match.group(3)),
+                    DepthColumnEntry.from_string_value(rect_from_group_index(2), depths_match.group(2), page_number),
+                    DepthColumnEntry.from_string_value(rect_from_group_index(3), depths_match.group(3), page_number),
                 ),
                 remaining_line(),
             )
@@ -152,7 +153,7 @@ class AToBIntervalExtractor:
         depths_match = fallback_regex.search(input_string)
         if depths_match:
             return AToBInterval(
-                DepthColumnEntry.from_string_value(rect_from_group_index(2), depths_match.group(2)), None
+                DepthColumnEntry.from_string_value(rect_from_group_index(2), depths_match.group(2), page_number), None
             ), remaining_line()
 
         return None, text_line
