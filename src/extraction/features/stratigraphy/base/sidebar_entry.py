@@ -48,7 +48,10 @@ class DepthColumnEntry(SidebarEntry[float]):
             DepthColumnEntry: The depth column entry object.
         """
         return cls(
-            rect=rect, value=abs(float(string_value)), page_number=page_number, has_decimal_point="." in string_value
+            rect=rect,
+            value=abs(float(string_value.replace(",", "."))),
+            page_number=page_number,
+            has_decimal_point="." in string_value,
         )
 
 
