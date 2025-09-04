@@ -82,7 +82,9 @@ class OverallMetricsCatalog:
             self.layer_metrics.to_dataframe("F1", lambda metric: metric.f1),
             self.layer_metrics.to_dataframe("precision", lambda metric: metric.precision),
             self.layer_metrics.to_dataframe("recall", lambda metric: metric.recall),
-            self.depth_interval_metrics.to_dataframe("Depth_interval_accuracy", lambda metric: metric.precision),
+            self.depth_interval_metrics.to_dataframe("Depth_interval_f1", lambda metric: metric.f1),
+            self.depth_interval_metrics.to_dataframe("Depth_interval_recall", lambda metric: metric.recall),
+            self.depth_interval_metrics.to_dataframe("Depth_interval_precision", lambda metric: metric.precision),
             self.layer_metrics.to_dataframe("Number Elements", lambda metric: metric.tp + metric.fn),
             self.layer_metrics.to_dataframe("Number wrong elements", lambda metric: metric.fp + metric.fn),
             self.groundwater_metrics.to_dataframe("groundwater", lambda metric: metric.f1),
@@ -108,9 +110,9 @@ class OverallMetricsCatalog:
                 "F1": self.layer_metrics.pseudo_macro_f1() if self.layer_metrics else None,
                 "recall": self.layer_metrics.macro_recall() if self.layer_metrics else None,
                 "precision": self.layer_metrics.macro_precision() if self.layer_metrics else None,
-                "depth_interval_accuracy": self.depth_interval_metrics.macro_precision()  # precision ?
-                if self.depth_interval_metrics
-                else None,
+                "depth_interval_f1": self.depth_interval_metrics.macro_f1(),
+                "depth_interval_recall": self.depth_interval_metrics.macro_recall(),
+                "depth_interval_precision": self.depth_interval_metrics.macro_precision(),
                 "material_description_f1": self.material_description_metrics.macro_f1(),
                 "material_description_recall": self.material_description_metrics.macro_recall(),
                 "material_description_precision": self.material_description_metrics.macro_precision(),
@@ -140,6 +142,8 @@ class OverallMetricsCatalog:
                 result[f"{lang}_precision"] = getattr(self, material_description_key).macro_precision()
 
             if getattr(self, depth_key) and getattr(self, depth_key).metrics:
-                result[f"{lang}_depth_interval_accuracy"] = getattr(self, depth_key).macro_precision()
+                result[f"{lang}_depth_interval_f1"] = getattr(self, depth_key).macro_f1()
+                result[f"{lang}_depth_interval_recall"] = getattr(self, depth_key).macro_recall()
+                result[f"{lang}_depth_interval_precision"] = getattr(self, depth_key).macro_precision()
 
         return dict(result)  # Convert defaultdict back to a regular dict

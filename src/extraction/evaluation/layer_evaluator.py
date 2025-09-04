@@ -46,6 +46,7 @@ class LayerEvaluator:
                 logger.warning("Empty string found in predictions")
 
         return self.calculate_metrics(
+            num_ground_truth_fn=lambda ground_truth_layers: len(ground_truth_layers),
             per_layer_filter=lambda layer: True,
             per_layer_condition=lambda layer: layer.material_description.is_correct,
             per_layer_action=per_layer_action,
@@ -53,18 +54,26 @@ class LayerEvaluator:
 
     def get_layer_metrics(self) -> OverallMetrics:
         return self.calculate_metrics(
-            per_layer_filter=lambda layer: True, per_layer_condition=lambda layer: layer.is_correct
+            num_ground_truth_fn=lambda ground_truth_layers: len(ground_truth_layers),
+            per_layer_filter=lambda layer: True,
+            per_layer_condition=lambda layer: layer.is_correct,
         )
 
     def get_depth_interval_metrics(self) -> OverallMetrics:
         """Calculate metrics for depth interval predictions."""
+
+        def num_ground_truth_fn(ground_truth_layers: list[dict]):
+            return sum(lay["depth_interval"] is not None for lay in ground_truth_layers)
+
         return self.calculate_metrics(
-            per_layer_filter=lambda layer: layer.depths is not None,
-            per_layer_condition=lambda layer: layer.depths.is_correct,
+            num_ground_truth_fn=num_ground_truth_fn,
+            per_layer_filter=lambda layer: True,
+            per_layer_condition=lambda layer: layer.depths is not None and layer.depths.is_correct,
         )
 
     def calculate_metrics(
         self,
+        num_ground_truth_fn: Callable[[list[dict]], int],
         per_layer_filter: Callable[[Layer], bool],
         per_layer_condition: Callable[[Layer], bool],
         per_layer_action: Callable[[Layer], None] | None = None,
@@ -72,6 +81,7 @@ class LayerEvaluator:
         """Calculate metrics based on a condition per layer, after applying a filter.
 
         Args:
+            num_ground_truth_fn (Callable[[list[dict]], int]): Function that returns the number of ground truth.
             per_layer_filter (Callable[[LayerPrediction], bool]): Function to filter layers to consider.
             per_layer_condition (Callable[[LayerPrediction], bool]): Function that returns True if the layer is a hit.
             per_layer_action (Optional[Callable[[LayerPrediction], None]]): Optional action to perform per layer.
@@ -88,8 +98,8 @@ class LayerEvaluator:
             fn_for_all_boreholes = 0
 
             for borehole_data in file.boreholes:
-                number_of_truth_values = len(borehole_data.ground_truth)
-                hits = 0
+                number_of_truth_values = num_ground_truth_fn(borehole_data.ground_truth)
+                tp = 0
                 total_predictions = 0
 
                 layers = borehole_data.layers.layers if borehole_data.layers else []
@@ -99,11 +109,13 @@ class LayerEvaluator:
                     if per_layer_filter(layer):
                         total_predictions += 1
                         if per_layer_condition(layer):
-                            hits += 1
+                            tp += 1
+                    else:
+                        raise ValueError("NO GT")
 
-                fn = number_of_truth_values - hits
+                fn = number_of_truth_values - tp
 
-                hits_for_all_borehole += hits
+                hits_for_all_borehole += tp
                 total_predictions_for_all_boreholes += total_predictions
                 fn_for_all_boreholes += fn
 
@@ -141,8 +153,10 @@ class LayerEvaluator:
         for gt_idx, ground_truth_layers in all_ground_truth_layers.items():
             for pred_idx, predicted_layers in enumerate(borehole_layers_copy):
                 # evaluation loop
+                # matching_score, _ = LayerEvaluator.compute_borehole_affinity(
                 matching_score, _ = LayerEvaluator.compute_borehole_affinity_and_mapping(
-                    ground_truth_layers, predicted_layers
+                    ground_truth_layers,
+                    predicted_layers,
                 )
                 pred_vs_gt_matching_score[gt_idx][pred_idx] = matching_score
 
@@ -186,10 +200,10 @@ class LayerEvaluator:
         # now compute the real statistics for the matched pairs of boreholes
         for borehole_data in result:
             if borehole_data.predictions:
+                # This method makes an internal modification to borehole_layers
                 # LayerEvaluator.compute_borehole_affinity(
                 #     borehole_data.ground_truth.get("layers", []), borehole_data.predictions.layers_in_borehole
                 # )
-                # This method makes an internal modification to borehole_layers
                 LayerEvaluator.compute_borehole_affinity_and_mapping(
                     borehole_data.ground_truth.get("layers", []), borehole_data.predictions.layers_in_borehole
                 )
@@ -221,9 +235,6 @@ class LayerEvaluator:
             return 0.0, []
 
         P, G = len(preds), len(ground_truth_layers)
-        ground_truth_layers = sorted(
-            ground_truth_layers, key=lambda gt: (gt["depth_interval"]["start"], gt["depth_interval"]["end"])
-        )
 
         # Precompute pairwise scores
         pair_score, pair_sim, pair_depth = LayerEvaluator._compute_scores(ground_truth_layers, preds, P, G)
@@ -407,8 +418,10 @@ class LayerEvaluator:
                 pred.depths.is_correct = False
             pred.is_correct = False
             pred.is_correct = None
+            pred.matched_ground_truth_idx = None
         for m in mapping:
             pred = preds[m["pred_idx"]]
+            pred.matched_ground_truth_idx = m["gt_idx"]
             pred.material_description.is_correct = (
                 m["material_similarity"] >= MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD
             )
