@@ -4,6 +4,7 @@ import logging
 from collections import defaultdict
 from collections.abc import Callable
 from copy import deepcopy
+from typing import Any
 
 import Levenshtein
 
@@ -135,10 +136,12 @@ class LayerEvaluator:
         for gt_idx, ground_truth_layers in all_ground_truth_layers.items():
             for pred_idx, predicted_layers in enumerate(borehole_layers_copy):
                 # evaluation loop
-                matching_score = LayerEvaluator.compute_borehole_affinity(ground_truth_layers, predicted_layers)
+                matching_score, _ = LayerEvaluator.compute_borehole_affinity_and_mapping(
+                    ground_truth_layers, predicted_layers
+                )
                 pred_vs_gt_matching_score[gt_idx][pred_idx] = matching_score
 
-        # matching
+        # matching of all the boreholes detected to a borehole in the ground truth
         result = []
         assigned_preds = set()
         while pred_vs_gt_matching_score:
@@ -175,80 +178,144 @@ class LayerEvaluator:
             if index not in assigned_preds:
                 result.append(BoreholePredictionsWithGroundTruth(predictions=pred, ground_truth={}))
 
-        # TODO properly disentangle the matching and the evaluations
-        # now compute the real statistics for the matched pairs
+        # now compute the real statistics for the matched pairs of boreholes
         for borehole_data in result:
             if borehole_data.predictions:
                 # This method makes an internal modification to borehole_layers
-                LayerEvaluator.compute_borehole_affinity(
+                LayerEvaluator.compute_borehole_affinity_and_mapping(
                     borehole_data.ground_truth.get("layers", []), borehole_data.predictions.layers_in_borehole
                 )
         return result
 
     @staticmethod
-    def compute_borehole_affinity(ground_truth_layers: list[dict], predicted_layers: LayersInBorehole) -> float:
-        """Computes the matching score between a prediction and a groundtruth borehole.
+    def compute_borehole_affinity_and_mapping(
+        ground_truth_layers: list[dict[str, Any]],
+        predicted_layers: "LayersInBorehole",
+    ) -> tuple[float, list[dict[str, Any]]]:
+        preds = predicted_layers.layers
+        if not preds or not ground_truth_layers:
+            return 0.0, []
 
-        This is relevant when there is more than one borehole per pdf. Computing this score allows to match the
-        predictions identified in the document against the correct groundtruth. The matching score is computed by
-        comparing the layers of each borehole identified to each layers in the groudtruth.
+        P, G = len(preds), len(ground_truth_layers)
+        ground_truth_layers = sorted(
+            ground_truth_layers, key=lambda gt: (gt["depth_interval"]["start"], gt["depth_interval"]["end"])
+        )
 
-        Args:
-            ground_truth_layers (list[dict]): list containing the ground truth for the layers
-            predicted_layers (LayersInBorehole): object containing the list of the predicted layers
+        # Precompute pairwise scores
+        pair_score, pair_sim, pair_depth = LayerEvaluator._compute_scores(ground_truth_layers, preds, P, G)
 
-        Returns:
-            matching_score (float): a score that captures the similarity between the boreholes (1 is best, 0 is worst)
-        """
-        unmatched_layers = ground_truth_layers.copy()
-        matching_score = 0
-        if not predicted_layers.layers:
-            return 0
-        for layer in predicted_layers.layers:
-            match, depth_interval_is_correct = LayerEvaluator.find_matching_layer(layer, unmatched_layers)
-            if match:
-                layer.material_description.is_correct = True
-                layer.is_correct = depth_interval_is_correct
-            else:
-                layer.material_description.is_correct = False
-                layer.is_correct = None
-            matching_score += 1 if depth_interval_is_correct else 0
-            matching_score += 1 if match else 0
-        matching_score /= 2 * len(predicted_layers.layers)
-        return matching_score
+        # DP table and pointer
+        dp, ptr = LayerEvaluator._build_dp_table(P, G, pair_score)
+
+        # Backtrack to recover mapping
+        mapping = LayerEvaluator._get_mapping(P, G, pair_score, pair_sim, pair_depth, ptr)
+
+        # update predicted layer flags
+        LayerEvaluator._update_prediction_flags(preds, mapping)
+
+        matching_score = dp[P][G] / 2.0  # maximum is one point per layer
+        return matching_score, mapping
 
     @staticmethod
-    def find_matching_layer(layer: Layer, unmatched_layers: list[dict]) -> tuple[dict, bool] | tuple[None, None]:
-        """Find the matching layer in the ground truth, if any, and remove it from the list of unmatched layers.
+    def _compute_scores(ground_truth_layers, preds, P, G):
+        pair_score = [[0.0] * G for _ in range(P)]
+        pair_sim = [[0.0] * G for _ in range(P)]
+        pair_depth = [[False] * G for _ in range(P)]
 
-        Args:
-            layer (Layer): The layer to match.
-            unmatched_layers (list[dict]): The layers from the ground truth that were not yet matched during the
-                                            current evaluation.
+        def compute_pair(pred_i: int, gt_j: int):
+            pred_layer = preds[pred_i]
+            gt_layer = ground_truth_layers[gt_j]
+            parsed_text = parse_text(pred_layer.material_description.text)
+            sim_score = Levenshtein.ratio(parsed_text, parse_text(gt_layer["material_description"]))
+            depth_score = 0.0
+            if pred_layer.depths is not None:
+                if (pred_layer.depths.start is None and gt_layer["depth_interval"]["start"] == 0) or (
+                    pred_layer.depths.start is not None
+                    and pred_layer.depths.start.value == gt_layer["depth_interval"]["start"]
+                ):
+                    depth_score += 0.5
+                if (
+                    pred_layer.depths.end is not None
+                    and pred_layer.depths.end.value == gt_layer["depth_interval"]["end"]
+                ):
+                    depth_score += 0.5
+            return sim_score + depth_score, sim_score, depth_score == 1.0
 
-        Returns:
-            tuple[dict, bool] | tuple[None, None]: The matching layer and a boolean indicating if the depth interval
-                                is correct. None if no match was found.
-        """
-        parsed_text = parse_text(layer.material_description.text)
-        possible_matches = [
-            ground_truth_layer
-            for ground_truth_layer in unmatched_layers
-            if Levenshtein.ratio(parsed_text, ground_truth_layer["material_description"])
-            > MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD
-        ]
+        for i in range(P):
+            for j in range(G):
+                s, sim, d_ok = compute_pair(i, j)
+                pair_score[i][j] = s
+                pair_sim[i][j] = sim
+                pair_depth[i][j] = d_ok
+        return pair_score, pair_sim, pair_depth
 
-        if not possible_matches:
-            return None, None
+    @staticmethod
+    def _build_dp_table(P, G, pair_score):
+        dp = [[0.0] * (G + 1) for _ in range(P + 1)]
+        ptr = [["None"] * (G + 1) for _ in range(P + 1)]
 
-        for possible_match in possible_matches:
-            start = possible_match["depth_interval"]["start"]
-            end = possible_match["depth_interval"]["end"]
+        for i in range(1, P + 1):
+            for j in range(1, G + 1):
+                diag = dp[i - 1][j - 1] + pair_score[i - 1][j - 1]
+                up = dp[i - 1][j]
+                left = dp[i][j - 1]
+                # tie-break: diag > up > left
+                candidates = [("diag", diag, 3), ("up", up, 2), ("left", left, 1)]
+                choice = max(candidates, key=lambda x: (x[1], x[2]))  # break tie with prioritize matching
+                dp[i][j] = choice[1]
+                ptr[i][j] = choice[0]
+        return dp, ptr
 
-            if layer.depths is not None and layer.depths.is_valid_depth_interval(start, end):
-                unmatched_layers.remove(possible_match)
-                return possible_match, True
+    @staticmethod
+    def _get_mapping(P, G, pair_score, pair_sim, pair_depth, ptr):
+        i, j = P, G
+        mapping = []
+        while i > 0 and j > 0:
+            move = ptr[i][j]
+            if move == "diag":
+                pi, gj = i - 1, j - 1
+                mapping.append(
+                    {
+                        "pred_idx": pi,
+                        "gt_idx": gj,
+                        "material_similarity": pair_sim[pi][gj],
+                        "depth_ok": pair_depth[pi][gj],
+                        "pair_score": pair_score[pi][gj],
+                    }
+                )
+                i, j = i - 1, j - 1
+            elif move == "up":
+                i -= 1
+            elif move == "left":
+                j -= 1
+            else:
+                break
+        mapping.reverse()
+        return mapping
 
-        match = max(possible_matches, key=lambda x: Levenshtein.ratio(parsed_text, x["material_description"]))
-        unmatched_layers.remove(match)
-        return match, False
+    @staticmethod
+    def _update_prediction_flags(preds, mapping):
+        for pred in preds:
+            pred.material_description.is_correct = False
+            # if pred.depths is not None:
+            #     pred.depths.is_correct = False
+            # pred.is_correct = False
+            pred.is_correct = None
+        for m in mapping:
+            pi: int = m["pred_idx"]
+            layer = preds[pi]
+
+            layer.material_description.is_correct = True
+            layer.is_correct = m["depth_ok"]
+            # pi: int = m["pred_idx"]
+            # preds[pi].material_description.is_correct = (
+            #     m["material_similarity"] >= MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD
+            # )
+            # if preds[pi].depths is not None:
+            #     preds[pi].depths.is_correct = m["depth_ok"]
+
+            # preds[pi].is_correct = (
+            #     preds[pi].material_description.is_correct
+            #     and preds[pi].depths is not None
+            #     and preds[pi].depths.is_correct
+            # )
