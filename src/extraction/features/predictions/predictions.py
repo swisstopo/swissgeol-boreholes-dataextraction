@@ -294,8 +294,9 @@ class AllBoreholePredictionsWithGroundTruth:
             for file in self.predictions_list
         ]
         evaluator = LayerEvaluator(layers_list)
-        all_metrics.layer_metrics = evaluator.get_layer_metrics()
+        all_metrics.material_description_metrics = evaluator.get_material_description_metrics()
         all_metrics.depth_interval_metrics = evaluator.get_depth_interval_metrics()
+        all_metrics.layer_metrics = evaluator.get_layer_metrics()
 
         predictions_by_language = {language: [] for language in languages}
         for borehole_data in layers_list:
@@ -304,12 +305,9 @@ class AllBoreholePredictionsWithGroundTruth:
 
         for language, language_predictions_list in predictions_by_language.items():
             evaluator = LayerEvaluator(language_predictions_list)
-            setattr(
-                all_metrics,
-                f"{language}_layer_metrics",
-                evaluator.get_layer_metrics(),
-            )
+            setattr(all_metrics, f"{language}_layer_metrics", evaluator.get_layer_metrics())
             setattr(all_metrics, f"{language}_depth_interval_metrics", evaluator.get_depth_interval_metrics())
+            setattr(all_metrics, f"{language}_material_description_metrics", evaluator.get_depth_interval_metrics())
 
         logger.info("Macro avg:")
         logger.info(

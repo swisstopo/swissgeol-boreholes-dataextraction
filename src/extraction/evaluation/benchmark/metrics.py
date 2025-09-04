@@ -63,6 +63,7 @@ class OverallMetricsCatalog:
     """Keeps track of all different relevant metrics that are computed for a dataset."""
 
     def __init__(self, languages: set[str]):
+        self.material_description_metrics = OverallMetrics()
         self.layer_metrics = OverallMetrics()
         self.depth_interval_metrics = OverallMetrics()
         self.groundwater_metrics = OverallMetrics()
@@ -73,6 +74,7 @@ class OverallMetricsCatalog:
         for lang in languages:
             setattr(self, f"{lang}_layer_metrics", OverallMetrics())
             setattr(self, f"{lang}_depth_interval_metrics", OverallMetrics())
+            setattr(self, f"{lang}_material_description_metrics", OverallMetrics())
 
     def document_level_metrics_df(self) -> pd.DataFrame:
         """Return a DataFrame with all the document level metrics."""
@@ -106,9 +108,12 @@ class OverallMetricsCatalog:
                 "F1": self.layer_metrics.pseudo_macro_f1() if self.layer_metrics else None,
                 "recall": self.layer_metrics.macro_recall() if self.layer_metrics else None,
                 "precision": self.layer_metrics.macro_precision() if self.layer_metrics else None,
-                "depth_interval_accuracy": self.depth_interval_metrics.macro_precision()
+                "depth_interval_accuracy": self.depth_interval_metrics.macro_precision()  # precision ?
                 if self.depth_interval_metrics
                 else None,
+                "material_description_f1": self.material_description_metrics.macro_f1(),
+                "material_description_recall": self.material_description_metrics.macro_recall(),
+                "material_description_precision": self.material_description_metrics.macro_precision(),
                 "groundwater_f1": groundwater_metrics.f1,
                 "groundwater_recall": groundwater_metrics.recall,
                 "groundwater_precision": groundwater_metrics.precision,
@@ -122,11 +127,17 @@ class OverallMetricsCatalog:
         for lang in self.languages:
             layer_key = f"{lang}_layer_metrics"
             depth_key = f"{lang}_depth_interval_metrics"
+            material_description_key = f"{lang}_material_description_metrics"
 
             if getattr(self, layer_key) and getattr(self, layer_key).metrics:
                 result[f"{lang}_F1"] = getattr(self, layer_key).pseudo_macro_f1()
                 result[f"{lang}_recall"] = getattr(self, layer_key).macro_recall()
                 result[f"{lang}_precision"] = getattr(self, layer_key).macro_precision()
+
+            if getattr(self, material_description_key) and getattr(self, material_description_key).metrics:
+                result[f"{lang}_F1"] = getattr(self, material_description_key).macro_f1()
+                result[f"{lang}_recall"] = getattr(self, material_description_key).macro_recall()
+                result[f"{lang}_precision"] = getattr(self, material_description_key).macro_precision()
 
             if getattr(self, depth_key) and getattr(self, depth_key).metrics:
                 result[f"{lang}_depth_interval_accuracy"] = getattr(self, depth_key).macro_precision()

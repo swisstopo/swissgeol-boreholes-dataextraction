@@ -57,8 +57,8 @@ def test_case_2():
 @pytest.mark.parametrize(
     "test_case,expected_mapping,expected_score",
     [
-        pytest.param("test_case_1", [(0, 0), (1, 1), (2, 2)], 1.5, id="order_preserving_match"),
-        pytest.param("test_case_2", [(2, 0)], 1.0, id="perfect_depth_match"),
+        pytest.param("test_case_1", [(0, 0), (1, 1), (2, 2)], 0.5, id="order_preserving_match"),
+        pytest.param("test_case_2", [(2, 0)], 1 / 3, id="perfect_depth_match"),
     ],
 )
 def test_layer_matching(test_case, expected_mapping, expected_score, request):
