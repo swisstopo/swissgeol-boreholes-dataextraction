@@ -25,6 +25,9 @@ class LayerDepthsEntry(RectWithPageMixin):
         self.value = value
         self.rect_with_page = RectWithPage(rect, page_number)
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.value})"
+
     def to_json(self):
         """Convert the LayerDepthsEntry object to a JSON serializable format."""
         return {
