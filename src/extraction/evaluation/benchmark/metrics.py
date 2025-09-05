@@ -39,16 +39,6 @@ class OverallMetrics:
         else:
             return 0
 
-    def pseudo_macro_f1(self) -> float:
-        """Compute a "pseudo" macro F1 score by using the values of the macro precision and macro recall.
-
-        TODO: we probably should not use this metric, and use the proper macro F1 score instead.
-        """
-        if self.metrics and self.macro_precision() + self.macro_recall() > 0:
-            return 2 * self.macro_precision() * self.macro_recall() / (self.macro_precision() + self.macro_recall())
-        else:
-            return 0
-
     def to_dataframe(self, name: str, fn: Callable[[Metrics], float]) -> pd.DataFrame:
         """Convert the metrics to a DataFrame."""
         series = pd.Series({filename: fn(metric) for filename, metric in self.metrics.items()})
@@ -85,6 +75,13 @@ class OverallMetricsCatalog:
             self.depth_interval_metrics.to_dataframe("Depth_interval_f1", lambda metric: metric.f1),
             self.depth_interval_metrics.to_dataframe("Depth_interval_recall", lambda metric: metric.recall),
             self.depth_interval_metrics.to_dataframe("Depth_interval_precision", lambda metric: metric.precision),
+            self.material_description_metrics.to_dataframe("material_description_f1", lambda metric: metric.f1),
+            self.material_description_metrics.to_dataframe(
+                "material_description_recall", lambda metric: metric.recall
+            ),
+            self.material_description_metrics.to_dataframe(
+                "material_description_precision", lambda metric: metric.precision
+            ),
             self.layer_metrics.to_dataframe("Number Elements", lambda metric: metric.tp + metric.fn),
             self.layer_metrics.to_dataframe("Number wrong elements", lambda metric: metric.fp + metric.fn),
             self.groundwater_metrics.to_dataframe("groundwater", lambda metric: metric.f1),
@@ -107,9 +104,9 @@ class OverallMetricsCatalog:
         # Populate the basic metrics
         result.update(
             {
-                "F1": self.layer_metrics.pseudo_macro_f1() if self.layer_metrics else None,
-                "recall": self.layer_metrics.macro_recall() if self.layer_metrics else None,
-                "precision": self.layer_metrics.macro_precision() if self.layer_metrics else None,
+                "Layer_1": self.layer_metrics.macro_f1() if self.layer_metrics else None,
+                "layer_recall": self.layer_metrics.macro_recall() if self.layer_metrics else None,
+                "layer_precision": self.layer_metrics.macro_precision() if self.layer_metrics else None,
                 "depth_interval_f1": self.depth_interval_metrics.macro_f1(),
                 "depth_interval_recall": self.depth_interval_metrics.macro_recall(),
                 "depth_interval_precision": self.depth_interval_metrics.macro_precision(),
