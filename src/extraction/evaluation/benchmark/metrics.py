@@ -124,23 +124,12 @@ class OverallMetricsCatalog:
 
         # Add dynamic language-specific metrics only if they exist
         for lang in self.languages:
-            layer_key = f"{lang}_layer_metrics"
-            depth_key = f"{lang}_depth_interval_metrics"
-            material_description_key = f"{lang}_material_description_metrics"
+            for metric_topic in ["layer", "depth_interval", "material_description"]:
+                key = f"{lang}_{metric_topic}_metrics"
 
-            if getattr(self, layer_key) and getattr(self, layer_key).metrics:
-                result[f"{lang}_F1"] = getattr(self, layer_key).pseudo_macro_f1()
-                result[f"{lang}_recall"] = getattr(self, layer_key).macro_recall()
-                result[f"{lang}_precision"] = getattr(self, layer_key).macro_precision()
-
-            if getattr(self, material_description_key) and getattr(self, material_description_key).metrics:
-                result[f"{lang}_F1"] = getattr(self, material_description_key).macro_f1()
-                result[f"{lang}_recall"] = getattr(self, material_description_key).macro_recall()
-                result[f"{lang}_precision"] = getattr(self, material_description_key).macro_precision()
-
-            if getattr(self, depth_key) and getattr(self, depth_key).metrics:
-                result[f"{lang}_depth_interval_f1"] = getattr(self, depth_key).macro_f1()
-                result[f"{lang}_depth_interval_recall"] = getattr(self, depth_key).macro_recall()
-                result[f"{lang}_depth_interval_precision"] = getattr(self, depth_key).macro_precision()
+                if getattr(self, key) and getattr(self, key).metrics:
+                    result[f"{lang}_{metric_topic}_f1"] = getattr(self, key).macro_f1()
+                    result[f"{lang}_{metric_topic}_recall"] = getattr(self, key).macro_recall()
+                    result[f"{lang}_{metric_topic}_precision"] = getattr(self, key).macro_precision()
 
         return dict(result)  # Convert defaultdict back to a regular dict
