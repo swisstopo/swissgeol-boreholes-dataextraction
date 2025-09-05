@@ -3,14 +3,17 @@
 FROM python:3.12-slim AS builder
 
 WORKDIR /app
-COPY pyproject.toml /app/
+# COPY pyproject.toml /app/
+COPY requirements.txt /app/
 
 # Install pip-tools and use it to resolve dependencies
 RUN pip install --no-cache-dir pip-tools \
-    && pip-compile --generate-hashes \
+    # && pip-compile --strip-extras --generate-hashes\
     && pip-sync
+# RUN pip install -r requirements.txt
 
-## Runtime stage
+
+    ## Runtime stage
 FROM python:3.12-slim
 
 # Set arguments to be passed from build-args
