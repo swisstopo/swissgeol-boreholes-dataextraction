@@ -179,7 +179,6 @@ class Layer(ExtractedFeature):
 
     material_description: MaterialDescription
     depths: LayerDepths | None
-    matched_ground_truth_idx: int | None = None
 
     def __str__(self) -> str:
         """Converts the object to a string.

@@ -307,7 +307,9 @@ class AllBoreholePredictionsWithGroundTruth:
             evaluator = LayerEvaluator(language_predictions_list)
             setattr(all_metrics, f"{language}_layer_metrics", evaluator.get_layer_metrics())
             setattr(all_metrics, f"{language}_depth_interval_metrics", evaluator.get_depth_interval_metrics())
-            setattr(all_metrics, f"{language}_material_description_metrics", evaluator.get_depth_interval_metrics())
+            setattr(
+                all_metrics, f"{language}_material_description_metrics", evaluator.get_material_description_metrics()
+            )
 
         logger.info("Macro avg:")
         logger.info(

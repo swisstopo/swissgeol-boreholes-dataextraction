@@ -4,7 +4,7 @@ import pymupdf
 import pytest
 
 from extraction.evaluation.layer_evaluator import LayerEvaluator
-from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry, LayersInBorehole
+from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry
 from extraction.features.utils.text.textblock import MaterialDescription, MaterialDescriptionLine
 
 
@@ -19,13 +19,12 @@ def create_test_layer(text: str, start: float, end: float) -> Layer:
 @pytest.fixture
 def test_case_1():
     """Test fixture for case where match pred[0] -> gt[0] is good enough."""
-    preds = LayersInBorehole(
-        layers=[
-            create_test_layer("C", start=0.0, end=1.0),
-            create_test_layer("B", start=1.0, end=2.0),
-            create_test_layer("A", start=0.0, end=1.0),
-        ]
-    )
+    preds = [
+        create_test_layer("C", start=0.0, end=1.0),
+        create_test_layer("B", start=1.0, end=2.0),
+        create_test_layer("A", start=0.0, end=1.0),
+    ]
+
     gt = [
         {"material_description": "A", "depth_interval": {"start": 0.0, "end": 1.0}},
         {"material_description": "B", "depth_interval": {"start": 1.0, "end": 2.0}},
@@ -38,13 +37,12 @@ def test_case_1():
 @pytest.fixture
 def test_case_2():
     """Test fixture for case where match gt[0] -> pred[2] is too good (it will be the only match)."""
-    preds = LayersInBorehole(
-        layers=[
-            create_test_layer("C", start=0.0, end=1.5),
-            create_test_layer("B", start=1.5, end=2.5),
-            create_test_layer("A", start=0.0, end=1.0),
-        ]
-    )
+    preds = [
+        create_test_layer("C", start=0.0, end=1.5),
+        create_test_layer("B", start=1.5, end=2.5),
+        create_test_layer("A", start=0.0, end=1.0),
+    ]
+
     gt = [
         {"material_description": "A", "depth_interval": {"start": 0.0, "end": 1.0}},
         {"material_description": "B", "depth_interval": {"start": 1.0, "end": 2.0}},

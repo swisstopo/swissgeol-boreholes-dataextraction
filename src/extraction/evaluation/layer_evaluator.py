@@ -248,7 +248,7 @@ class LayerEvaluator:
         # Precompute pairwise scores
         pair_score, pair_sim, pair_depth = LayerEvaluator._compute_scores(ground_truth_layers, predicted_layers, P, G)
 
-        # DP table and pointer
+        # Build DP table and pointer
         dp, ptr = LayerEvaluator._build_dp_table(P, G, pair_score)
 
         # Backtrack to recover mapping
@@ -423,11 +423,8 @@ class LayerEvaluator:
             if pred.depths is not None:
                 pred.depths.is_correct = False
             pred.is_correct = False
-            pred.is_correct = None
-            pred.matched_ground_truth_idx = None
         for m in mapping:
-            pred = preds[m["pred_idx"]]
-            pred.matched_ground_truth_idx = m["gt_idx"]
+            pred: Layer = preds[m["pred_idx"]]
             pred.material_description.is_correct = (
                 m["material_similarity"] >= MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD
             )
