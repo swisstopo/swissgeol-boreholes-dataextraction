@@ -112,8 +112,6 @@ class LayerEvaluator:
                         total_predictions += 1
                         if per_layer_condition(layer):
                             tp += 1
-                    else:
-                        raise ValueError("NO GT")
 
                 fn = number_of_truth_values - tp
 
@@ -151,10 +149,8 @@ class LayerEvaluator:
             if borehole_data.predictions:
                 predicted_layers = borehole_data.predictions.layers_in_borehole.layers
                 groud_truth_layers = borehole_data.ground_truth.get("layers", [])
-                # _, mapping = LayerEvaluator.compute_borehole_affinity(groud_truth_layers, predicted_layers)  # old
                 _, mapping = LayerEvaluator.compute_borehole_affinity_and_mapping(groud_truth_layers, predicted_layers)
-                # This method modifies the internal state of predictions and updates their flags
-                LayerEvaluator._update_prediction_flags(predicted_layers, mapping)
+                LayerEvaluator._update_prediction_flags(predicted_layers, mapping)  # modifies predicted_layers flags
         return matched_boreholes
 
     @staticmethod
@@ -180,9 +176,6 @@ class LayerEvaluator:
         pred_vs_gt_matching_score = defaultdict(dict)
         for gt_idx, ground_truth_layers in all_ground_truth_layers.items():
             for pred_idx, predicted_layers in enumerate(borehole_layers):
-                # matching_score, _ = LayerEvaluator.compute_borehole_affinity( # OLD
-                #     ground_truth_layers, deepcopy(predicted_layers.layers)
-                # )
                 matching_score, _ = LayerEvaluator.compute_borehole_affinity_and_mapping(
                     ground_truth_layers, predicted_layers.layers
                 )
@@ -444,92 +437,3 @@ class LayerEvaluator:
             pred.is_correct = (
                 pred.material_description.is_correct and pred.depths is not None and pred.depths.is_correct
             )
-
-    # OLD
-    @staticmethod
-    def compute_borehole_affinity(
-        ground_truth_layers: list[dict], predicted_layers: list[Layer]
-    ) -> tuple[float, list[dict]]:
-        """Computes the matching score between a prediction and a groundtruth borehole.
-
-        This is relevant when there is more than one borehole per pdf. Computing this score allows to match the
-        predictions identified in the document against the correct groundtruth. The matching score is computed by
-        comparing the layers of each borehole identified to each layers in the groudtruth.
-
-        Args:
-            ground_truth_layers (list[dict]): list containing the ground truth for the layers
-            predicted_layers (list[Layer]): object containing the list of the predicted layers
-
-        Returns:
-            tuple containing:
-                - matching_score (float): a score that captures the similarity between the boreholes (1 is best, 0 is
-                    worst)
-                - mapping (list[dict]): a list of mappings between predicted and ground truth layers
-        """
-        unmatched_layers = ground_truth_layers.copy()
-        matching_score = 0
-        if not predicted_layers:
-            return 0
-        mapping = []
-        for layer in predicted_layers:
-            match, depth_interval_is_correct = LayerEvaluator.find_matching_layer(layer, unmatched_layers)
-            if match:
-                layer.material_description.is_correct = True
-                if layer.depths is not None:
-                    layer.depths.is_correct = depth_interval_is_correct
-                layer.is_correct = depth_interval_is_correct
-                mapping.append(
-                    {
-                        "pred_idx": predicted_layers.index(layer),
-                        "gt_idx": ground_truth_layers.index(match),
-                        "material_similarity": Levenshtein.ratio(
-                            parse_text(layer.material_description.text), match["material_description"]
-                        ),
-                        "depth_ok": depth_interval_is_correct,
-                    }
-                )
-            else:
-                layer.material_description.is_correct = False
-                layer.is_correct = False
-                if layer.depths is not None:
-                    layer.depths.is_correct = False
-            matching_score += 1 if depth_interval_is_correct else 0
-            matching_score += 1 if match else 0
-        matching_score /= 2 * len(predicted_layers)
-        return matching_score, mapping
-
-    @staticmethod
-    def find_matching_layer(layer: Layer, unmatched_layers: list[dict]) -> tuple[dict, bool] | tuple[None, None]:
-        """Find the matching layer in the ground truth, if any, and remove it from the list of unmatched layers.
-
-        Args:
-            layer (Layer): The layer to match.
-            unmatched_layers (list[dict]): The layers from the ground truth that were not yet matched during the
-                                            current evaluation.
-
-        Returns:
-            tuple[dict, bool] | tuple[None, None]: The matching layer and a boolean indicating if the depth interval
-                                is correct. None if no match was found.
-        """
-        parsed_text = parse_text(layer.material_description.text)
-        possible_matches = [
-            ground_truth_layer
-            for ground_truth_layer in unmatched_layers
-            if Levenshtein.ratio(parsed_text, ground_truth_layer["material_description"])
-            > MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD
-        ]
-
-        if not possible_matches:
-            return None, None
-
-        for possible_match in possible_matches:
-            start = possible_match["depth_interval"]["start"]
-            end = possible_match["depth_interval"]["end"]
-
-            if layer.depths is not None and layer.depths.is_valid_depth_interval(start, end):
-                unmatched_layers.remove(possible_match)
-                return possible_match, True
-
-        match = max(possible_matches, key=lambda x: Levenshtein.ratio(parsed_text, x["material_description"]))
-        unmatched_layers.remove(match)
-        return match, False
