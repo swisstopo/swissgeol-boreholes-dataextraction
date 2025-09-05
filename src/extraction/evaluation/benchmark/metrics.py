@@ -104,7 +104,7 @@ class OverallMetricsCatalog:
         # Populate the basic metrics
         result.update(
             {
-                "Layer_1": self.layer_metrics.macro_f1() if self.layer_metrics else None,
+                "Layer_f1": self.layer_metrics.macro_f1() if self.layer_metrics else None,
                 "layer_recall": self.layer_metrics.macro_recall() if self.layer_metrics else None,
                 "layer_precision": self.layer_metrics.macro_precision() if self.layer_metrics else None,
                 "depth_interval_f1": self.depth_interval_metrics.macro_f1(),

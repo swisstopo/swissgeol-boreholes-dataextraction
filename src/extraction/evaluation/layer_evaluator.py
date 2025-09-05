@@ -3,7 +3,6 @@
 import logging
 from collections import defaultdict
 from collections.abc import Callable
-from copy import deepcopy
 from typing import Any
 
 import Levenshtein
@@ -15,7 +14,7 @@ from extraction.features.predictions.borehole_predictions import (
     FileLayersWithGroundTruth,
 )
 from extraction.features.predictions.file_predictions import FilePredictions
-from extraction.features.stratigraphy.layer.layer import Layer, LayersInBorehole
+from extraction.features.stratigraphy.layer.layer import Layer
 from utils.file_utils import parse_text
 
 logger = logging.getLogger(__name__)
@@ -38,6 +37,13 @@ class LayerEvaluator:
         """
         self.file_layers_list = file_layers_list
 
+    def get_layer_metrics(self) -> OverallMetrics:
+        return self.calculate_metrics(
+            num_ground_truth_fn=lambda ground_truth_layers: len(ground_truth_layers),
+            per_layer_filter=lambda layer: True,
+            per_layer_condition=lambda layer: layer.is_correct,
+        )
+
     def get_material_description_metrics(self) -> OverallMetrics:
         """Calculate metrics for layer predictions."""
 
@@ -45,18 +51,14 @@ class LayerEvaluator:
             if parse_text(layer.material_description.text) == "":
                 logger.warning("Empty string found in predictions")
 
+        def num_ground_truth_fn(ground_truth_layers: list[dict]):
+            return sum(lay["material_description"] is not None for lay in ground_truth_layers)
+
         return self.calculate_metrics(
-            num_ground_truth_fn=lambda ground_truth_layers: len(ground_truth_layers),
+            num_ground_truth_fn=num_ground_truth_fn,
             per_layer_filter=lambda layer: True,
             per_layer_condition=lambda layer: layer.material_description.is_correct,
             per_layer_action=per_layer_action,
-        )
-
-    def get_layer_metrics(self) -> OverallMetrics:
-        return self.calculate_metrics(
-            num_ground_truth_fn=lambda ground_truth_layers: len(ground_truth_layers),
-            per_layer_filter=lambda layer: True,
-            per_layer_condition=lambda layer: layer.is_correct,
         )
 
     def get_depth_interval_metrics(self) -> OverallMetrics:
@@ -142,26 +144,52 @@ class LayerEvaluator:
         Returns:
             list[BoreholePredictionsWithGroundTruth]
         """
-        borehole_layers = [bh.layers_in_borehole for bh in file_predictions.borehole_predictions_list]
+        matched_boreholes = LayerEvaluator.match_boreholes_to_ground_truth(file_predictions, ground_truth_for_file)
+
+        # now compute the real statistics for the matched pairs of boreholes
+        for borehole_data in matched_boreholes:
+            if borehole_data.predictions:
+                predicted_layers = borehole_data.predictions.layers_in_borehole.layers
+                groud_truth_layers = borehole_data.ground_truth.get("layers", [])
+                # _, mapping = LayerEvaluator.compute_borehole_affinity(groud_truth_layers, predicted_layers)  # old
+                _, mapping = LayerEvaluator.compute_borehole_affinity_and_mapping(groud_truth_layers, predicted_layers)
+                # This method modifies the internal state of predictions and updates their flags
+                LayerEvaluator._update_prediction_flags(predicted_layers, mapping)
+        return matched_boreholes
+
+    @staticmethod
+    def match_boreholes_to_ground_truth(
+        file_predictions: FilePredictions, ground_truth_for_file: dict
+    ) -> list[BoreholePredictionsWithGroundTruth]:
+        """Match predicted boreholes to ground truth boreholes.
+
+        This method compares the predicted boreholes with the ground truth boreholes  and establishes a mapping
+            between them based on their similarity.
+
+        Args:
+            file_predictions (FilePredictions): all predictions for the file
+            ground_truth_for_file (dict): the ground truth for the file
+
+        Returns:
+            list[BoreholePredictionsWithGroundTruth] : A list of matched borehole predictions with their ground truth.
+        """
         all_ground_truth_layers = {
             idx: borehole_data["layers"] for idx, borehole_data in ground_truth_for_file.items()
         }
-
+        borehole_layers = [bh.layers_in_borehole for bh in file_predictions.borehole_predictions_list]
         pred_vs_gt_matching_score = defaultdict(dict)
-        # make a copy of borehole_layers to avoid modifying internal state during matching
-        borehole_layers_copy = deepcopy(borehole_layers)
         for gt_idx, ground_truth_layers in all_ground_truth_layers.items():
-            for pred_idx, predicted_layers in enumerate(borehole_layers_copy):
-                # evaluation loop
-                # matching_score, _ = LayerEvaluator.compute_borehole_affinity(
+            for pred_idx, predicted_layers in enumerate(borehole_layers):
+                # matching_score, _ = LayerEvaluator.compute_borehole_affinity( # OLD
+                #     ground_truth_layers, deepcopy(predicted_layers.layers)
+                # )
                 matching_score, _ = LayerEvaluator.compute_borehole_affinity_and_mapping(
-                    ground_truth_layers,
-                    predicted_layers,
+                    ground_truth_layers, predicted_layers.layers
                 )
                 pred_vs_gt_matching_score[gt_idx][pred_idx] = matching_score
 
         # matching of all the boreholes detected to a borehole in the ground truth
-        result = []
+        matched_boreholes = []
         assigned_preds = set()
         while pred_vs_gt_matching_score:
             max_score = float("-inf")
@@ -172,7 +200,7 @@ class LayerEvaluator:
                         best_matches = (gt_idx, pred_idx)
 
             gt_best_idx, pred_best_idx = best_matches
-            result.append(
+            matched_boreholes.append(
                 BoreholePredictionsWithGroundTruth(
                     file_predictions.borehole_predictions_list[pred_best_idx], ground_truth_for_file[gt_best_idx]
                 )
@@ -182,37 +210,26 @@ class LayerEvaluator:
             # Remove the matched gt_idx from consideration
             del pred_vs_gt_matching_score[gt_best_idx]
 
-            if len(assigned_preds) == len(borehole_layers_copy):
+            if len(assigned_preds) == len(borehole_layers):
                 # all preds have been assigned
                 break
 
         # add entries with missing predictions for all unmatched ground truth boreholes (will count as false negatives)
         for gt_idx in pred_vs_gt_matching_score:
-            result.append(
+            matched_boreholes.append(
                 BoreholePredictionsWithGroundTruth(predictions=None, ground_truth=ground_truth_for_file[gt_idx])
             )
 
         # add entries with missing ground truth for all unmatched prediction boreholes (will count as false positives)
         for index, pred in enumerate(file_predictions.borehole_predictions_list):
             if index not in assigned_preds:
-                result.append(BoreholePredictionsWithGroundTruth(predictions=pred, ground_truth={}))
-
-        # now compute the real statistics for the matched pairs of boreholes
-        for borehole_data in result:
-            if borehole_data.predictions:
-                # This method makes an internal modification to borehole_layers
-                # LayerEvaluator.compute_borehole_affinity(
-                #     borehole_data.ground_truth.get("layers", []), borehole_data.predictions.layers_in_borehole
-                # )
-                LayerEvaluator.compute_borehole_affinity_and_mapping(
-                    borehole_data.ground_truth.get("layers", []), borehole_data.predictions.layers_in_borehole
-                )
-        return result
+                matched_boreholes.append(BoreholePredictionsWithGroundTruth(predictions=pred, ground_truth={}))
+        return matched_boreholes
 
     @staticmethod
     def compute_borehole_affinity_and_mapping(
         ground_truth_layers: list[dict[str, Any]],
-        predicted_layers: LayersInBorehole,
+        predicted_layers: list[Layer],
     ) -> tuple[float, list[dict]]:
         """Computes the matching score between a prediction and a groundtruth borehole.
 
@@ -230,23 +247,19 @@ class LayerEvaluator:
                     truth layers. Maximum is 1.0.
                 - mapping (list[dict]): a list of mappings between predicted and ground truth layers.
         """
-        preds = predicted_layers.layers
-        if not preds or not ground_truth_layers:
+        if not predicted_layers or not ground_truth_layers:
             return 0.0, []
 
-        P, G = len(preds), len(ground_truth_layers)
+        P, G = len(predicted_layers), len(ground_truth_layers)
 
         # Precompute pairwise scores
-        pair_score, pair_sim, pair_depth = LayerEvaluator._compute_scores(ground_truth_layers, preds, P, G)
+        pair_score, pair_sim, pair_depth = LayerEvaluator._compute_scores(ground_truth_layers, predicted_layers, P, G)
 
         # DP table and pointer
         dp, ptr = LayerEvaluator._build_dp_table(P, G, pair_score)
 
         # Backtrack to recover mapping
         mapping = LayerEvaluator._get_mapping(P, G, pair_score, pair_sim, pair_depth, ptr)
-
-        # update predicted layer flags
-        LayerEvaluator._update_prediction_flags(preds, mapping)
 
         matching_score = dp[P][G] / (2.0 * max(P, G))  # maximum is 1.
         return matching_score, mapping
@@ -435,7 +448,7 @@ class LayerEvaluator:
     # OLD
     @staticmethod
     def compute_borehole_affinity(
-        ground_truth_layers: list[dict], predicted_layers: LayersInBorehole
+        ground_truth_layers: list[dict], predicted_layers: list[Layer]
     ) -> tuple[float, list[dict]]:
         """Computes the matching score between a prediction and a groundtruth borehole.
 
@@ -445,7 +458,7 @@ class LayerEvaluator:
 
         Args:
             ground_truth_layers (list[dict]): list containing the ground truth for the layers
-            predicted_layers (LayersInBorehole): object containing the list of the predicted layers
+            predicted_layers (list[Layer]): object containing the list of the predicted layers
 
         Returns:
             tuple containing:
@@ -455,10 +468,10 @@ class LayerEvaluator:
         """
         unmatched_layers = ground_truth_layers.copy()
         matching_score = 0
-        if not predicted_layers.layers:
+        if not predicted_layers:
             return 0
         mapping = []
-        for layer in predicted_layers.layers:
+        for layer in predicted_layers:
             match, depth_interval_is_correct = LayerEvaluator.find_matching_layer(layer, unmatched_layers)
             if match:
                 layer.material_description.is_correct = True
@@ -467,7 +480,7 @@ class LayerEvaluator:
                 layer.is_correct = depth_interval_is_correct
                 mapping.append(
                     {
-                        "pred_idx": predicted_layers.layers.index(layer),
+                        "pred_idx": predicted_layers.index(layer),
                         "gt_idx": ground_truth_layers.index(match),
                         "material_similarity": Levenshtein.ratio(
                             parse_text(layer.material_description.text), match["material_description"]
@@ -482,7 +495,7 @@ class LayerEvaluator:
                     layer.depths.is_correct = False
             matching_score += 1 if depth_interval_is_correct else 0
             matching_score += 1 if match else 0
-        matching_score /= 2 * len(predicted_layers.layers)
+        matching_score /= 2 * len(predicted_layers)
         return matching_score, mapping
 
     @staticmethod

@@ -311,11 +311,10 @@ class AllBoreholePredictionsWithGroundTruth:
 
         logger.info("Macro avg:")
         logger.info(
-            "F1: %.1f%%, precision: %.1f%%, recall: %.1f%%, depth_interval_f1: %.1f%%",
+            "layer f1: %.1f%%, depth interval f1: %.1f%%, material description f1: %.1f%%",
             all_metrics.layer_metrics.macro_f1() * 100,
-            all_metrics.layer_metrics.macro_precision() * 100,
-            all_metrics.layer_metrics.macro_recall() * 100,
             all_metrics.depth_interval_metrics.macro_f1() * 100,
+            all_metrics.material_description_metrics.macro_f1() * 100,
         )
 
         # TODO groundwater should not be in evaluate_geology(), it should be handle by a higher-level function call
