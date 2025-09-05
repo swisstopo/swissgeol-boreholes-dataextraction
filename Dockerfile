@@ -7,12 +7,10 @@ WORKDIR /app
 COPY requirements.txt /app/
 
 # Install pip-tools and use it to resolve dependencies
-# RUN pip install --no-cache-dir pip-tools \
-#     && pip-sync
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir pip-tools \
+    && pip-sync
 
-
-    ## Runtime stage
+## Runtime stage
 FROM python:3.12-slim
 
 # Set arguments to be passed from build-args
