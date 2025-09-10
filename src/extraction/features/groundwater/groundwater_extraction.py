@@ -406,10 +406,10 @@ class GroundwaterLevelExtractor(DataExtractor):
         Returns:
             list[FeatureOnPage[Groundwater]]: the extracted coordinates (if any)
         """
-        grounwater_lines_list = self.get_text_lines_near_key(lines)
-        grounwater_lines_list.extend(self.get_text_lines_near_symbol(lines, geometric_lines, extracted_boreholes))
+        groundwater_lines_list = self.get_text_lines_near_key(lines)
+        groundwater_lines_list.extend(self.get_text_lines_near_symbol(lines, geometric_lines, extracted_boreholes))
 
-        found_groundwaters = self.get_groundwater_infos_from_lines(grounwater_lines_list, page_number)
+        found_groundwaters = self.get_groundwater_infos_from_lines(groundwater_lines_list, page_number)
 
         unique_groundwaters = self.filter_duplicates(found_groundwaters)
 
