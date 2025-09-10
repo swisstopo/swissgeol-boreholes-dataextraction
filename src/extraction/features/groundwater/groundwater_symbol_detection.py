@@ -17,12 +17,29 @@ from extraction.features.utils.text.textline import TextLine
 logger = logging.getLogger(__name__)
 
 
-def get_entry_near_symbol(
+def get_rects_near_symbol(
     lines: list[TextLine],
     geometric_lines: list[Line],
     seen_depths: list[LayerDepthsEntry],
 ) -> list[pymupdf.Rect]:
-    """Doc."""
+    """Identifies groundwater entries by analyzing text lines and geometric lines in a document.
+
+    It looks for either depth values (numbers) or dates, and checks if they are associated with nearby
+    horizontal lines that could indicate groundwater symbols. The function filters out depths that are stratigraphy
+    informations. Typically, groundwater symbols look like that:
+
+            ------------------------
+                -----------------
+
+
+    Args:
+        lines (list[TextLine]): The list of text lines to search.
+        geometric_lines (list[Line]): The list of geometric lines to consider.
+        seen_depths (list[LayerDepthsEntry]): The list of seen depth entries.
+
+    Returns:
+        list[pymupdf.Rect]: The list of bounding boxes for the groundwater entries.
+    """
     gw_entry_rects = []
     for text_line in lines:
         depth_pattern = re.compile(r"^-?([0-9]+(?:[\.,][0-9]+)?)")
@@ -61,7 +78,7 @@ def get_entry_near_symbol(
 
 
 def is_valid_pair(l_top: Line, l_bot: Line, hit_line: TextLine, text_lines: list[TextLine]):
-    """Check if the given line pair is valid based on various heuristics.
+    """Check if the given line pair represents a groundwater symbol based on various heuristics.
 
     Args:
         l_top (Line): The top line.
@@ -88,8 +105,8 @@ def is_valid_pair(l_top: Line, l_bot: Line, hit_line: TextLine, text_lines: list
     return rel_size_ok and global_size_ok and pos_ok and pos_to_bb_ok and gap_ok and no_bb_in_gab
 
 
-def get_valid_pairs(lines: list[Line], line: TextLine, text_lines: list[TextLine]):
-    """Get all valid pairs of lines based on the given heuristics.
+def get_valid_pairs(lines: list[Line], line: TextLine, text_lines: list[TextLine]) -> list[tuple[Line, Line]]:
+    """Get all valid pairs of lines that could represent a groundwater symbol.
 
     Args:
         lines (list[Line]): The list of lines to consider.
