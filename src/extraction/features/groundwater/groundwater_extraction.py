@@ -4,10 +4,11 @@ import datetime
 import logging
 from dataclasses import dataclass
 
+import numpy as np
 import pymupdf
 from scipy.stats import pearsonr
 
-from extraction.features.groundwater.gw_illustration_template_matching import get_entry_near_symbol
+from extraction.features.groundwater.groundwater_symbol_detection import get_entry_near_symbol
 from extraction.features.groundwater.utility import extract_date, extract_depth, extract_elevation
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer
 from extraction.features.utils.data_extractor import (
@@ -113,102 +114,58 @@ class Groundwater(ExtractedFeature):
             layers (list[Layer]): The list of layers in the borehole.
             feature_rect (pymupdf.Rect): The bounding box of the groundwater feature.
         """
-        if terrain_elevation is None:
+        if self.depth is None:
+            if self.elevation is not None and terrain_elevation is not None:
+                self.depth = round(terrain_elevation - self.elevation, 2)
+
+            else:
+                self.depth = self.infer_depth(layers, feature_rect)
+
+        if self.depth is None:
             return
-        if self.depth is None and self.elevation is None:
-            return
-            # y_value = (feature_rect.y0 + feature_rect.y1) / 2
 
-            # Step 1: Prepare y and depth differences
-            y_diffs = []
-            depth_diffs = []
-
-            for i, layer_i in enumerate(layers):
-                for j, layer_j in enumerate(layers):
-                    if j <= i:
-                        continue  # skip repeats and self-pairs
-
-                    # y-midpoints
-                    y_i = (layer_i.rect.y0 + layer_i.rect.y1) / 2
-                    y_j = (layer_j.rect.y0 + layer_j.rect.y1) / 2
-
-                    # known depths
-                    d_i = layer_i.depth
-                    d_j = layer_j.depth
-
-                    if d_i is not None and d_j is not None:
-                        y_diffs.append(abs(y_i - y_j))
-                        depth_diffs.append(abs(d_i - d_j))
-
-            # Step 2: Compute correlation
-            if len(y_diffs) > 1:  # need at least 2 points
-                pearson_corr, pearson_p = pearsonr(y_diffs, depth_diffs)
-                print("Pearson correlation:", pearson_corr, "p=", pearson_p)
-
-                # Step 3: Decide if y-values are meaningful
-                if abs(pearson_corr) > 0.7:  # threshold for "high enough"
-                    print("Y-positions are correlated with depth. Inferring missing depths...")
-
-                    # Determine if axis is inverted
-                    invert = pearson_corr < 0
-
-                    # Step 4: Infer missing depths using cross-rule
-                    for i, layer in enumerate(layers):
-                        if layer.depth is None:
-                            # find nearest layers with known depths above and below
-                            known_above = None
-                            known_below = None
-
-                            y_layer = (layer.rect.y0 + layer.rect.y1) / 2
-                            if invert:
-                                y_layer = -y_layer  # flip axis if inverted
-
-                            for other_layer in layers:
-                                if other_layer.depth is None:
-                                    continue
-                                y_other = (other_layer.rect.y0 + other_layer.rect.y1) / 2
-                                if invert:
-                                    y_other = -y_other
-
-                                if y_other <= y_layer:
-                                    if (
-                                        known_above is None
-                                        or y_other > (known_above.rect.y0 + known_above.rect.y1) / 2
-                                    ):
-                                        known_above = other_layer
-                                else:
-                                    if (
-                                        known_below is None
-                                        or y_other < (known_below.rect.y0 + known_below.rect.y1) / 2
-                                    ):
-                                        known_below = other_layer
-
-                            if known_above and known_below:
-                                # linear interpolation
-                                y_top = (known_above.rect.y0 + known_above.rect.y1) / 2
-                                y_bottom = (known_below.rect.y0 + known_below.rect.y1) / 2
-                                if invert:
-                                    y_top, y_bottom = -y_top, -y_bottom
-
-                                rel_pos = (y_layer - y_top) / (y_bottom - y_top)
-                                layer.depth = known_above.depth + rel_pos * (known_below.depth - known_above.depth)
-                                print(f"Inferred depth for layer {i}: {layer.depth}")
-
-                else:
-                    print("Y-positions do not correlate with depth. Cannot infer missing depths.")
-
-        if self.depth is None and self.elevation is not None:  # if was not already set
-            self.depth = round(terrain_elevation - self.elevation, 2)
-        if self.elevation is None and self.depth is not None:  # if was not already set
+        if self.elevation is None and terrain_elevation is not None:
             self.elevation = round(terrain_elevation - self.depth, 2)
-        # sanity checks here to correct mistake (e.g. wrong depth extracted... )
-        prec = 0.5
-        if round(terrain_elevation - self.elevation, 2) - self.depth > prec:  # account for approx, up to 0.5m
-            logger.warning(
-                f"Extracted groundwater height informations (depth = {self.depth}, elevation = {self.elevation}) "
-                f"do not match the constraint 'terrain_elevation - gw_elevation = gw_depth': {terrain_elevation} "
-                f"- {self.elevation} = {round(terrain_elevation - self.elevation, 2)} != {self.depth} ± {prec}"
+
+    def infer_depth(self, layers: list[Layer], feature_rect: pymupdf.Rect) -> float | None:
+        """Infers the depth of the groundwater feature based on the given layers and feature rectangle.
+
+        Args:
+            layers (list[Layer]): The list of layers in the borehole.
+            feature_rect (pymupdf.Rect): The bounding box of the groundwater feature.
+
+        Returns:
+            float | None: The inferred depth of the groundwater feature, or None if it could not be determined.
+        """
+        # Step 1: Prepare depths and y-values
+        depths = np.array(
+            sorted(
+                {
+                    (d.value, (d.rect.y0 + d.rect.y1) / 2)  # to identify duplicates
+                    for layer in layers
+                    if layer.depths is not None
+                    for d in (layer.depths.start, layer.depths.end)
+                    if d is not None
+                },
+                key=lambda d: d[0],
             )
+        )
+        if depths.size == 0:
+            return None
+
+        # Step 2: Compute correlation
+        corr, p_val = pearsonr(depths[:, 0], depths[:, 1])
+        if corr < 0.95 or p_val > 0.01:
+            return None
+
+        # Step 3: fit the linear regression and infer the depth
+        y_value = (feature_rect.y0 + feature_rect.y1) / 2
+        if y_value < min(depths[:, 1]) or y_value > max(depths[:, 1]):  # out of bounds, not reliable
+            return None
+        a, b = np.polyfit(depths[:, 0], depths[:, 1], 1)
+        depth = round((y_value - b) / a, 2)
+        logger.info(f"Infered depth for groundwater: {depth}")
+        return depth
 
 
 @dataclass
@@ -323,33 +280,6 @@ class GroundwaterLevelExtractor(DataExtractor):
 
         rects = get_entry_near_symbol(lines, geometric_lines, seen_depths)
 
-        # option draw
-        # page = document.load_page(page_number - 1)
-        # scaling = 3
-        # pix = pymupdf.utils.get_pixmap(page, matrix=pymupdf.Matrix(scaling, scaling), clip=page.rect)
-        # img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
-        # if pix.n == 4:
-        #     img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
-
-        # for pair in pairs:
-        #     img_debug = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        #     l1, l2 = pair
-        #     cv2.line(
-        #         img_debug,
-        #         (int(l1.start.x) * scaling, int(l1.start.y) * scaling),
-        #         (int(l1.end.x) * scaling, int(l1.end.y) * scaling),
-        #         (0, 255, 0),
-        #         2,
-        #     )  # green
-        #     cv2.line(
-        #         img_debug,
-        #         (int(l2.start.x) * scaling, int(l2.start.y) * scaling),
-        #         (int(l2.end.x) * scaling, int(l2.end.y) * scaling),
-        #         (255, 0, 0),
-        #         2,
-        #     )  # blue
-        # cv2.imwrite("debug.png", img_debug)
-
         groundwater_info_lines = [
             get_lines_near_rect(
                 self.search_left_factor,
@@ -425,6 +355,31 @@ class GroundwaterLevelExtractor(DataExtractor):
             page=page_number,
         )
 
+    def filter_duplicates(self, found_groundwaters):
+        """Filters out duplicate groundwater features from the list.
+
+        Args:
+            found_groundwaters (list[FeatureOnPage[Groundwater]]): The list of found groundwater features.
+
+        Returns:
+            list[FeatureOnPage[Groundwater]]: The filtered list of unique groundwater features.
+        """
+        unique_groundwaters = []
+        for gw in found_groundwaters:
+            keep = True
+            to_remove = []
+            for other_gw in unique_groundwaters:
+                if gw.rect.intersects(other_gw.rect):
+                    if gw.rect.get_area() > other_gw.rect.get_area():
+                        to_remove.append(other_gw)  # replace smaller with bigger
+                    else:
+                        keep = False  # skip gw
+            for other_gw in to_remove:
+                unique_groundwaters.remove(other_gw)
+            if keep:
+                unique_groundwaters.append(gw)
+        return unique_groundwaters
+
     def extract_groundwater(
         self,
         page_number: int,
@@ -433,11 +388,6 @@ class GroundwaterLevelExtractor(DataExtractor):
         extracted_boreholes: list[ExtractedBorehole],
     ) -> list[FeatureOnPage[Groundwater]]:
         """Extracts the groundwater information from a borehole profile.
-
-        Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
-        page.
-        Algorithm description:
-            1. if that gives no results, search for coordinates close to an explicit "groundwater" label (e.g. "Gswp")
 
         Args:
             page_number (int): The page number (1-indexed) of the PDF document.
@@ -464,28 +414,3 @@ class GroundwaterLevelExtractor(DataExtractor):
 
         logger.info("No groundwater found in this borehole profile.")
         return []
-
-    def filter_duplicates(self, found_groundwaters):
-        """Filters out duplicate groundwater features from the list.
-
-        Args:
-            found_groundwaters (list[FeatureOnPage[Groundwater]]): The list of found groundwater features.
-
-        Returns:
-            list[FeatureOnPage[Groundwater]]: The filtered list of unique groundwater features.
-        """
-        unique_groundwaters = []
-        for gw in found_groundwaters:
-            keep = True
-            to_remove = []
-            for other_gw in unique_groundwaters:
-                if gw.rect.intersects(other_gw.rect):
-                    if gw.rect.get_area() > other_gw.rect.get_area():
-                        to_remove.append(other_gw)  # replace smaller with bigger
-                    else:
-                        keep = False  # skip gw
-            for other_gw in to_remove:
-                unique_groundwaters.remove(other_gw)
-            if keep:
-                unique_groundwaters.append(gw)
-        return unique_groundwaters
