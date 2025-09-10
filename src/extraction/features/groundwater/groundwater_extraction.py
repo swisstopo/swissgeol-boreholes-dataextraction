@@ -103,7 +103,7 @@ class Groundwater(ExtractedFeature):
             "elevation": self.elevation,
         }
 
-    def infer_infos(self, terrain_elevation: float, layers: list[Layer], feature_rect: pymupdf.Rect):
+    def infer_infos(self, terrain_elevation: float | None, layers: list[Layer], feature_rect: pymupdf.Rect):
         """Sets the depth and elevation of the groundwater.
 
         If both informations is missing, it tries to infer them from the given layers and the feature rectangle.
@@ -113,6 +113,8 @@ class Groundwater(ExtractedFeature):
             layers (list[Layer]): The list of layers in the borehole.
             feature_rect (pymupdf.Rect): The bounding box of the groundwater feature.
         """
+        if terrain_elevation is None:
+            return
         if self.depth is None and self.elevation is None:
             return
             # y_value = (feature_rect.y0 + feature_rect.y1) / 2
