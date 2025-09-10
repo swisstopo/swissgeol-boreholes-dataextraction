@@ -159,7 +159,7 @@ class Groundwater(ExtractedFeature):
             return None
 
         # Step 3: fit the linear regression and infer the depth
-        y_value = (feature_rect.y0 + feature_rect.y1) / 2
+        y_value = feature_rect.y1  # the groundwater limit is usually bellow the date (or elevation) bounding box.
         if y_value < min(depths[:, 1]) or y_value > max(depths[:, 1]):  # out of bounds, not reliable
             return None
         a, b = np.polyfit(depths[:, 0], depths[:, 1], 1)
@@ -297,12 +297,10 @@ class GroundwaterLevelExtractor(DataExtractor):
     def get_groundwater_infos_from_lines(
         self, lines_list: list[list[TextLine]], page_number: int
     ) -> list[FeatureOnPage[Groundwater]]:
-        groundwaters = [self.get_groundwater_info_from_lines(lines, page_number) for lines in lines_list]
-        return [gw for gw in groundwaters if gw]
+        groundwaters = [self.get_groundwater_from_lines(lines, page_number) for lines in lines_list]
+        return [gw for gw in groundwaters if gw is not None]
 
-    def get_groundwater_info_from_lines(
-        self, lines: list[TextLine], page_number: int
-    ) -> FeatureOnPage[Groundwater] | None:
+    def get_groundwater_from_lines(self, lines: list[TextLine], page_number: int) -> FeatureOnPage[Groundwater] | None:
         """Extracts the groundwater information from a list of text lines.
 
         Args:
@@ -348,7 +346,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         for rect in matched_lines_rect[1:]:
             rect_union |= rect
 
-        # return anyway, we could infer informations latter
+        # return anyway, we can infer informations later
         return FeatureOnPage(
             feature=Groundwater(depth=depth, date=date, elevation=elevation),
             rect=rect_union,
@@ -399,10 +397,8 @@ class GroundwaterLevelExtractor(DataExtractor):
             list[FeatureOnPage[Groundwater]]: the extracted coordinates (if any)
         """
         grounwater_lines_list = self.get_text_lines_near_key(lines, page_number)
-
         grounwater_lines_list.extend(self.get_text_lines_near_symbole(lines, geometric_lines, extracted_boreholes))
 
-        # found_groundwater = self.get_groundwater_near_key(lines, page_number)
         found_groundwaters = self.get_groundwater_infos_from_lines(grounwater_lines_list, page_number)
 
         unique_groundwaters = self.filter_duplicates(found_groundwaters)
