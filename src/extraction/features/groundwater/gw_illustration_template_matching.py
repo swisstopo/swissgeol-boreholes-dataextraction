@@ -5,147 +5,107 @@ the groundwater illustration was found in the document of interest.
 """
 
 import logging
-import math
-import os
-from pathlib import Path
+import re
 
-import numpy as np
 import pymupdf
-import skimage as ski
 
-from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwaterLevelExtractor
-from extraction.features.utils.data_extractor import FeatureOnPage
+from extraction.features.groundwater.utility import extract_date
+from extraction.features.stratigraphy.layer.layer import LayerDepthsEntry
+from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.text.textline import TextLine
-from extraction.features.utils.utility import get_lines_near_rect
 
 logger = logging.getLogger(__name__)
 
 
-def load_templates() -> list[np.ndarray]:
-    """Load the templates for the groundwater information.
-
-    Returns:
-        list[np.ndarray]: the loaded templates
-    """
-    templates = []
-    template_dir = os.path.join(os.path.dirname(__file__), "assets")
-    for template in os.listdir(template_dir):
-        if template.endswith(".npy"):
-            templates.append(np.load(os.path.join(template_dir, template)))
-    return templates
-
-
-def get_groundwater_from_illustration(
-    groundwater_extractor: GroundwaterLevelExtractor,
+def get_entry_near_symbol(
     lines: list[TextLine],
-    page_number: int,
-    document: pymupdf.Document,
-) -> tuple[list[FeatureOnPage[Groundwater]], list[float]]:
-    """Extracts the groundwater information from an illustration.
+    geometric_lines: list[Line],
+    seen_depths: list[LayerDepthsEntry],
+) -> list[pymupdf.Rect]:
+    """Doc."""
+    gw_entry_rects = []
+    for text_line in lines:
+        depth_pattern = re.compile(r"^-?([0-9]+(?:[\.,][0-9]+)?)")
+        match = depth_pattern.match(text_line.text)
+        if match:
+            if any(
+                float(match.group(1).replace(",", ".")) == depth.value and depth.rect.intersects(text_line.rect)
+                for depth in seen_depths
+            ):
+                continue
+        else:
+            extracted_date, _ = extract_date(text_line.text)
+            if extracted_date is None:
+                continue
+
+        def is_near_entry(line: Line, x0: float, y0: float, x1: float, y1: float):
+            dx, dy = x1 - x0, y1 - y0
+            return any(
+                x0 - dx <= line_x <= x1 + dx and y0 - dy <= line_y <= y1 + dy
+                for line_x, line_y in (line.start.as_numpy, line.end.as_numpy)
+            )
+
+        text_width = text_line.rect.x1 - text_line.rect.x0
+        horizontals_near_entry = [
+            g_line
+            for g_line in geometric_lines
+            if g_line.is_horizontal and is_near_entry(g_line, *text_line.rect) and g_line.length < 3 * text_width
+        ]
+        pairs = get_valid_pairs(horizontals_near_entry, text_line, lines)
+        if not pairs:
+            continue
+
+        gw_entry_rects.append(text_line.rect)
+
+    return gw_entry_rects
+
+
+def is_valid_pair(l_top: Line, l_bot: Line, hit_line: TextLine, text_lines: list[TextLine]):
+    """Check if the given line pair is valid based on various heuristics.
 
     Args:
-        groundwater_extractor (GroundwaterLevelExtractor): the groundwater level extractor.
-        lines (list[TextLine]): The lines of text to extract the groundwater information from.
-        page_number (int): The page number (1-based) of the PDF document.
-        document (pymupdf.Document): The document to extract groundwater from illustration from.
+        l_top (Line): The top line.
+        l_bot (Line): The bottom line.
+        hit_line (TextLine): The TextLine that contains the first detected element.
+        text_lines (list[TextLine]): The list of all text lines.
 
     Returns:
-        list[FeatureOnPage[Groundwater]]: the extracted groundwater information
-        list[float]: the confidence of the extraction
+        bool: True if the pair is valid, False otherwise.
     """
-    extracted_groundwater_list = []
-    confidence_list = []
+    avg_text_size = sum(line.rect.height for line in text_lines) / len(text_lines)
+    rel_size_ok = l_top.length * 0.8 > l_bot.length > l_top.length / 4  # bottom one is smaler, but not too small
+    global_size_ok = avg_text_size < l_top.length < 3 * avg_text_size  # size comparable to avg text height
+    pos_ok = l_top.start.x < l_bot.start.x and l_bot.end.x < l_top.end.x  # the top one fully "spans" the bottom one
+    pos_to_bb_ok = hit_line.rect.x0 < l_top.end.x and l_top.start.x < hit_line.rect.x1  # longest line overlaps the bb
+    gap_ok = l_bot.start.y - l_top.start.y < l_bot.length / 3  # gap is small, relative to the bottom line
+    no_bb_in_gab = not any(
+        l_top.start.y < (line.rect.y0 + line.rect.y1) / 2 < l_bot.start.y
+        and line.rect.x0 < l_top.end.x
+        and l_top.start.x < line.rect.x1
+        for line in text_lines
+    )  # no text line sits in between the two lines
 
-    # convert the doc to an image
-    page = document.load_page(page_number - 1)
-    filename = Path(document.name).stem
-    png_filename = f"{filename}-{page_number + 1}.png"
-    png_path = f"/tmp/{png_filename}"  # Local path to save the PNG
-    pymupdf.utils.get_pixmap(page, matrix=pymupdf.Matrix(2, 2), clip=page.rect).save(png_path)
+    return rel_size_ok and global_size_ok and pos_ok and pos_to_bb_ok and gap_ok and no_bb_in_gab
 
-    # load the image
-    img = ski.io.imread(png_path)
-    N_BEST_MATCHES = 5
-    TEMPLATE_MATCH_THRESHOLD = 0.66
 
-    # extract the groundwater information from the image
-    for template in load_templates():
-        # Compute the match of the template and the image (correlation coef)
-        result = ski.feature.match_template(img, template)
+def get_valid_pairs(lines: list[Line], line: TextLine, text_lines: list[TextLine]):
+    """Get all valid pairs of lines based on the given heuristics.
 
-        for _ in range(N_BEST_MATCHES):
-            ij = np.unravel_index(np.argmax(result), result.shape)
-            confidence = np.max(result)  # TODO - use confidence to filter out bad matches
-            if confidence < TEMPLATE_MATCH_THRESHOLD:
-                # skip this template if the confidence is too low to avoid false positives
+    Args:
+        lines (list[Line]): The list of lines to consider.
+        line (TextLine): The TextLine that contains the first detected element.
+        text_lines (list[TextLine]): The list of all text lines.
+
+    Returns:
+        list[tuple[Line, Line]]: A list of valid line pairs.
+    """
+    pairs = []
+
+    lines.sort(key=lambda line: line.start.y)  # top down
+    for i, l1 in enumerate(lines):
+        for j, l2 in enumerate(lines):
+            if j <= i:
                 continue
-            top_left = (ij[1], ij[0])
-            illustration_rect = pymupdf.Rect(
-                top_left[0], top_left[1], top_left[0] + template.shape[1], top_left[1] + template.shape[0]
-            )
-
-            # Remove the matched area from the template matching result to avoid finding the same area again
-            # for the same template
-            x_area_to_remove = int(0.75 * template.shape[1])
-            y_area_to_remove = int(0.75 * template.shape[0])
-            result[
-                int(illustration_rect.y0) - y_area_to_remove : int(illustration_rect.y1) + y_area_to_remove,
-                int(illustration_rect.x0) - x_area_to_remove : int(illustration_rect.x1) + x_area_to_remove,
-            ] = float("-inf")
-
-            # convert the illustration_rect to the coordinate system of the PDF
-            horizontal_scaling = page.rect.width / img.shape[1]
-            vertical_scaling = page.rect.height / img.shape[0]
-            pdf_illustration_rect = pymupdf.Rect(
-                illustration_rect.x0 * horizontal_scaling,
-                illustration_rect.y0 * vertical_scaling,
-                illustration_rect.x1 * horizontal_scaling,
-                illustration_rect.y1 * vertical_scaling,
-            )
-
-            # extract the groundwater information from the image using the text
-            groundwater_info_lines = get_lines_near_rect(
-                groundwater_extractor.search_left_factor,
-                groundwater_extractor.search_right_factor,
-                groundwater_extractor.search_above_factor,
-                groundwater_extractor.search_below_factor,
-                lines,
-                pdf_illustration_rect,
-            )
-
-            # sort the lines by their proximity to the key line center, compute the distance to the key line center
-            def distance_to_key_center(line_rect: pymupdf.Rect, illustration_rect: pymupdf.Rect) -> float:
-                key_center_x = (illustration_rect.x0 + illustration_rect.x1) / 2
-                key_center_y = (illustration_rect.y0 + illustration_rect.y1) / 2
-                line_center_x = (line_rect.x0 + line_rect.x1) / 2
-                line_center_y = (line_rect.y0 + line_rect.y1) / 2
-                return math.sqrt((line_center_x - key_center_x) ** 2 + (line_center_y - key_center_y) ** 2)
-
-            groundwater_info_lines.sort(key=lambda line: distance_to_key_center(line.rect, pdf_illustration_rect))
-            try:
-                extracted_gw = groundwater_extractor.get_groundwater_info_from_lines(
-                    groundwater_info_lines, page_number
-                )
-                if (
-                    (extracted_gw.groundwater.depth or extracted_gw.groundwater.elevation)
-                    and extracted_gw not in extracted_groundwater_list
-                    and extracted_gw.groundwater.date
-                ):
-                    # Only if the groundwater information is not already in the list
-                    extracted_groundwater_list.append(extracted_gw)
-                    confidence_list.append(confidence)
-
-                    # Remove the extracted groundwater information from the lines to avoid double extraction
-                    for line in groundwater_info_lines:
-                        # if the rectangle of the line is in contact with the rectangle of the extracted
-                        # groundwater information, remove the line
-                        if line.rect.intersects(extracted_gw.rect):
-                            lines.remove(line)
-
-            except ValueError as error:
-                logger.warning("ValueError: %s", error)
-                continue
-
-        # TODO: Maybe we could stop the search if we found a good match with one of the templates
-
-    return extracted_groundwater_list, confidence_list
+            if is_valid_pair(l1, l2, line, text_lines):
+                pairs.append((l1, l2))
+    return pairs

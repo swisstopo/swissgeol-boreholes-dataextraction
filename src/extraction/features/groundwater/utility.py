@@ -17,7 +17,11 @@ def extract_date(text: str) -> tuple[date | None, str | None]:
     # Validate date before parsing
     if not is_valid_date(cleaned_date_str, date_format):
         return None, None
-    return datetime.strptime(cleaned_date_str, date_format).date(), original_date_str
+    dt = datetime.strptime(cleaned_date_str, date_format)
+    if dt > datetime.now():
+        dt = dt.replace(year=dt.year - 100)
+
+    return dt.date(), original_date_str
 
 
 def is_valid_date(date_str: str, date_format: str) -> bool:
