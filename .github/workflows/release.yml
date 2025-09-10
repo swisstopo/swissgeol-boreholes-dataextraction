@@ -29,16 +29,6 @@ jobs:
           echo BASE_IMAGE_NAME=$REGISTRY/$(echo ${GITHUB_REPOSITORY,,}) >> $GITHUB_ENV
           echo COMMITED_AT=$(git show -s --format=%cI `git rev-parse HEAD`) >> $GITHUB_ENV
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Generate requirements.txt
-        run: |
-          pip install --no-cache-dir pip-tools
-          pip-compile --strip-extras --generate-hashes
-
       - name: Collect Docker image metadata (api)
         id: meta-api
         uses: docker/metadata-action@v5
