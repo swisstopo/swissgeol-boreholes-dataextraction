@@ -6,7 +6,6 @@ import time
 from collections.abc import MutableMapping
 
 import yaml
-from pyinstrument import Profiler
 
 from extraction import PROJECT_ROOT
 
@@ -81,24 +80,3 @@ def timeit(func):
         return result
 
     return timeit_wrapper
-
-
-def profile(func):
-    """Decorator that profiles a function using pyinstrument and prints the report.
-
-    Usage:
-        @profile
-        def your_function():
-            ...
-    """
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        profiler = Profiler()
-        profiler.start()
-        result = func(*args, **kwargs)
-        profiler.stop()
-        print(profiler.output_text(unicode=True, color=True))
-        return result
-
-    return wrapper
