@@ -60,9 +60,10 @@ class Groundwater(ExtractedFeature):
         Returns:
             Groundwater: The object created from the dictionary.
         """
-        date = datetime.datetime.strptime(date, DATE_FORMAT) if date is not None and date != "" else None
-        if date > datetime.datetime.now():
-            date = date.replace(year=date.year - 100)
+        if date is None or date == "":
+            return Groundwater(depth=depth, date=None, elevation=elevation)
+        date = datetime.datetime.strptime(date, DATE_FORMAT)
+        date = date.replace(year=date.year - 100) if date > datetime.datetime.now() else date
         return Groundwater(depth=depth, date=date, elevation=elevation)
 
     @classmethod
