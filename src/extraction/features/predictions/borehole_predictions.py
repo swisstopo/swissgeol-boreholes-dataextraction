@@ -97,6 +97,8 @@ class BoreholePredictionsWithGroundTruth:
     """Predictions for a specific borehole with associated ground truth."""
 
     predictions: BoreholePredictions | None
+    predictions_material_description: BoreholePredictions | None
+    predictions_depths: BoreholePredictions | None
     ground_truth: dict
 
 
