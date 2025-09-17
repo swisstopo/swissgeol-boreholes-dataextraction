@@ -16,20 +16,27 @@ from fastapi.testclient import TestClient
 from app.common.aws import load_pdf_from_aws
 from app.common.schemas import BoundingBox, ExtractDataRequest, FormatTypes
 
+# Get the project root directory (3 levels up from this file in tests/api/v1/)
+PROJECT_ROOT = Path(__file__).parents[3]
+EXAMPLE_DIR = PROJECT_ROOT / "example"
+
+# Standard test file paths
 TEST_PDF_KEY = Path("sample.pdf")
-TEST_PDF_PATH = Path(__file__).parent.parent / "example" / "example_borehole_profile.pdf"
+TEST_PDF_PATH = EXAMPLE_DIR / "example_borehole_profile.pdf"
 TEST_PNG_KEY = Path("dataextraction/sample-1.png")
-TEST_PNG_PATH = Path(__file__).parent.parent / "example" / "sample-1.png"
+TEST_PNG_PATH = EXAMPLE_DIR / "sample-1.png"
 
+# Rotated file paths (270 degrees rotation)
 TEST_ROTATED_PNG_KEY = Path("dataextraction/16132-1.png")
-TEST_ROTATED_PNG_PATH = Path(__file__).parent.parent / "example" / "16132-1.png"
+TEST_ROTATED_PNG_PATH = EXAMPLE_DIR / "16132-1.png"
 TEST_ROTATED_PDF_KEY = Path("16132.pdf")
-TEST_ROTATED_PDF_PATH = Path(__file__).parent.parent / "example" / "16132.pdf"  # Rotated PDF of 270 degrees
+TEST_ROTATED_PDF_PATH = EXAMPLE_DIR / "16132.pdf"
 
-TEST_CLIPPING_BEHAVIOR_PDF_PATH = Path(__file__).parent.parent / "example" / "clipping_test.pdf"
+# Clipping test file paths
 TEST_CLIPPING_BEHAVIOR_PDF_KEY = Path("clipping_test.pdf")
-TEST_CLIPPING_BEHAVIOR_PNG_PATH = Path(__file__).parent.parent / "example" / "clipping_test-1.png"
+TEST_CLIPPING_BEHAVIOR_PDF_PATH = EXAMPLE_DIR / "clipping_test.pdf"
 TEST_CLIPPING_BEHAVIOR_PNG_KEY = Path("dataextraction/clipping_test-1.png")
+TEST_CLIPPING_BEHAVIOR_PNG_PATH = EXAMPLE_DIR / "clipping_test-1.png"
 
 
 def get_default_small_coordinate_request():

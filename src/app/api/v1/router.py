@@ -109,7 +109,11 @@ def get_bounding_boxes(request: BoundingBoxesRequest) -> BoundingBoxesResponse:
     - **404 Not Found**: PDF file not found in S3 bucket.
     - **500 Internal Server Error**: An error occurred on the server while obtaining the bounding boxes.
     """
-    return bounding_boxes(request.filename, request.page_number)
+    try:
+        return bounding_boxes(request.filename, request.page_number)
+    except ValueError as e:
+        # Handle a known ValueError and return a 400 status
+        raise HTTPException(status_code=400, detail=str(e)) from None
 
 
 ####################################################################################################
