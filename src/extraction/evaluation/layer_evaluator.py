@@ -325,10 +325,9 @@ class LayerEvaluator:
            - Depth score: Up to 1.0 (0.5 for matching start, 0.5 for matching end)
            Total score range is 0.0 to 2.0 per pair
 
-        2. Similarity score (pair_sim): Just the text similarity using Levenshtein ratio
+        2. Similarity score (pair_mat_score): Just the text similarity using Levenshtein ratio
 
-        3. Depth flag (pair_depth): Boolean indicating perfect depth match
-           True only if both start and end depths match exactly
+        3. Depth score (pair_depth_score): score for the depth match
 
         Args:
             ground_truth_layers (list[dict[str, Any]]): The ground truth layers with
