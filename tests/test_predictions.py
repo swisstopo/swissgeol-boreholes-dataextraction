@@ -1,5 +1,6 @@
 """Test suite for the prediction module."""
 
+from copy import deepcopy
 from datetime import datetime
 from unittest.mock import Mock
 
@@ -189,7 +190,10 @@ def sample_file_prediction_with_ground_truth(
         language=sample_file_prediction.file_metadata.language,
         boreholes=[
             BoreholePredictionsWithGroundTruth(
-                predictions=borehole_preds, ground_truth=file_ground_truth.get(gt_index)
+                predictions=borehole_preds,
+                predictions_depths=deepcopy(borehole_preds),
+                predictions_material_description=deepcopy(borehole_preds),
+                ground_truth=file_ground_truth.get(gt_index),
             )
             for borehole_preds in sample_file_prediction.borehole_predictions_list
         ],

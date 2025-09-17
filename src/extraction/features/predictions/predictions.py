@@ -9,7 +9,7 @@ from typing import TypeVar
 from extraction.evaluation.benchmark.metrics import OverallMetricsCatalog
 from extraction.evaluation.evaluation_dataclasses import OverallBoreholeMetadataMetrics
 from extraction.evaluation.groundwater_evaluator import GroundwaterEvaluator
-from extraction.evaluation.layer_evaluator import LayerEvaluator
+from extraction.evaluation.layer_evaluator import LayerEvaluator, MappingType
 from extraction.evaluation.metadata_evaluator import MetadataEvaluator
 from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
@@ -258,10 +258,10 @@ class AllBoreholePredictionsWithGroundTruth:
                 file.filename,
                 [
                     BoreholeMetadataWithGroundTruth(
-                        predictions.predictions.metadata if predictions.predictions else None,
-                        predictions.ground_truth.get("metadata", {}),
+                        bh_predictions.predictions.metadata if bh_predictions.predictions else None,
+                        bh_predictions.ground_truth.get("metadata", {}),
                     )
-                    for predictions in file.boreholes
+                    for bh_predictions in file.boreholes
                 ],
             )
             for file in self.predictions_list
@@ -279,37 +279,36 @@ class AllBoreholePredictionsWithGroundTruth:
         languages = set(fp.language for fp in self.predictions_list)
         all_metrics = OverallMetricsCatalog(languages=languages)
 
-        layers_list = [
-            FileLayersWithGroundTruth(
-                file.filename,
-                file.language,
-                [
-                    BoreholeLayersWithGroundTruth(
-                        predictions.predictions.layers_in_borehole if predictions.predictions else None,
-                        predictions.ground_truth.get("layers", []),
-                    )
-                    for predictions in file.boreholes
-                ],
-            )
-            for file in self.predictions_list
-        ]
-        evaluator = LayerEvaluator(layers_list)
-        all_metrics.material_description_metrics = evaluator.get_material_description_metrics()
-        all_metrics.depth_interval_metrics = evaluator.get_depth_interval_metrics()
-        all_metrics.layer_metrics = evaluator.get_layer_metrics()
+        for mapping_type in MappingType:
+            layers_list = [
+                FileLayersWithGroundTruth(
+                    file.filename,
+                    file.language,
+                    [
+                        BoreholeLayersWithGroundTruth(
+                            getattr(bh_predictions, mapping_type.predictions_attr).layers_in_borehole
+                            if getattr(bh_predictions, mapping_type.predictions_attr)
+                            else None,
+                            bh_predictions.ground_truth.get("layers", []),
+                        )
+                        for bh_predictions in file.boreholes
+                    ],
+                )
+                for file in self.predictions_list
+            ]
 
-        predictions_by_language = {language: [] for language in languages}
-        for borehole_data in layers_list:
-            # even if metadata can be different for boreholes in the same document, langage is the same (take index 0)
-            predictions_by_language[borehole_data.language].append(borehole_data)
+            evaluator = LayerEvaluator(layers_list)
+            metric = getattr(evaluator, mapping_type.metrics_func)()
+            setattr(all_metrics, mapping_type.metrics_attr, metric)
 
-        for language, language_predictions_list in predictions_by_language.items():
-            evaluator = LayerEvaluator(language_predictions_list)
-            setattr(all_metrics, f"{language}_layer_metrics", evaluator.get_layer_metrics())
-            setattr(all_metrics, f"{language}_depth_interval_metrics", evaluator.get_depth_interval_metrics())
-            setattr(
-                all_metrics, f"{language}_material_description_metrics", evaluator.get_material_description_metrics()
-            )
+            predictions_by_language = {language: [] for language in languages}
+            for borehole_data in layers_list:
+                predictions_by_language[borehole_data.language].append(borehole_data)
+
+            for language, language_predictions_list in predictions_by_language.items():
+                evaluator = LayerEvaluator(language_predictions_list)
+                metric = getattr(evaluator, mapping_type.metrics_func)()
+                setattr(all_metrics, f"{language}_{mapping_type.metrics_attr}", metric)
 
         logger.info("Macro avg:")
         logger.info(
