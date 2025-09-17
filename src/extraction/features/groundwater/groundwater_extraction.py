@@ -8,7 +8,7 @@ import numpy as np
 import pymupdf
 from scipy.stats import pearsonr
 
-from extraction.features.groundwater.groundwater_symbol_detection import get_rects_near_symbol
+from extraction.features.groundwater.groundwater_symbol_detection import get_text_lines_near_symbol
 from extraction.features.groundwater.utility import extract_date, extract_depth, extract_elevation
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer
 from extraction.features.utils.data_extractor import (
@@ -18,7 +18,6 @@ from extraction.features.utils.data_extractor import (
 )
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.text.textline import TextLine
-from extraction.features.utils.utility import get_lines_near_rect
 
 logger = logging.getLogger(__name__)
 
@@ -260,41 +259,6 @@ class GroundwaterLevelExtractor(DataExtractor):
             )
         return extracted_lines_list
 
-    def get_text_lines_near_symbol(
-        self,
-        lines: list[TextLine],
-        geometric_lines: list[Line],
-        extracted_boreholes: list[ExtractedBorehole],
-    ) -> list[list[TextLine]]:
-        """Extracts the text lines that are close to a groundwater symbol.
-
-        Args:
-            lines (list[TextLine]): The list of text lines to search.
-            geometric_lines (list[Line]): The list of geometric lines to consider.
-            extracted_boreholes (list[ExtractedBorehole]): The list of extracted boreholes.
-
-        Returns:
-            list[list[TextLine]]: The list of text lines near groundwater symbols.
-        """
-        seen_depths = [lay.depths for bh in extracted_boreholes for lay in bh.predictions if lay.depths]
-        seen_depths = [d for depth in seen_depths for d in (depth.start, depth.end) if d]
-
-        rects = get_rects_near_symbol(lines, geometric_lines, seen_depths)
-
-        groundwater_info_lines = [
-            get_lines_near_rect(
-                self.search_left_factor,
-                self.search_right_factor,
-                self.search_above_factor,
-                self.search_below_factor,
-                lines,
-                rect,
-            )
-            for rect in rects
-        ]
-
-        return groundwater_info_lines
-
     def get_groundwater_infos_from_lines(
         self, lines_list: list[list[TextLine]], page_number: int
     ) -> list[FeatureOnPage[Groundwater]]:
@@ -373,7 +337,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         Returns:
             list[FeatureOnPage[Groundwater]]: The filtered list of unique groundwater features.
         """
-        unique_groundwaters = []
+        unique_groundwaters: list[FeatureOnPage[Groundwater]] = []
         for gw in found_groundwaters:
             keep = True
             to_remove = []
@@ -383,6 +347,23 @@ class GroundwaterLevelExtractor(DataExtractor):
                         to_remove.append(other_gw)  # replace smaller with bigger
                     else:
                         keep = False  # skip gw
+                    continue
+                if (
+                    gw.feature.date is not None
+                    and other_gw.feature.date is not None
+                    and gw.feature.date == other_gw.feature.date
+                ):
+                    # same date means that the groundwaters are duplicates shown twice on the page
+                    if gw.feature.depth is None and other_gw.feature.depth is not None:
+                        keep = False
+                    elif gw.feature.depth is None and other_gw.feature.depth is None:
+                        # both depths are None, look at elevation to break ties
+                        if gw.feature.elevation is None and other_gw.feature.elevation is not None:
+                            keep = False
+                        else:
+                            to_remove.append(other_gw)
+                    else:
+                        to_remove.append(other_gw)
             for other_gw in to_remove:
                 unique_groundwaters.remove(other_gw)
             if keep:
@@ -408,7 +389,7 @@ class GroundwaterLevelExtractor(DataExtractor):
             list[FeatureOnPage[Groundwater]]: the extracted coordinates (if any)
         """
         groundwater_lines_list = self.get_text_lines_near_key(lines)
-        groundwater_lines_list.extend(self.get_text_lines_near_symbol(lines, geometric_lines, extracted_boreholes))
+        groundwater_lines_list.extend(get_text_lines_near_symbol(lines, geometric_lines, extracted_boreholes))
 
         found_groundwaters = self.get_groundwater_infos_from_lines(groundwater_lines_list, page_number)
 
