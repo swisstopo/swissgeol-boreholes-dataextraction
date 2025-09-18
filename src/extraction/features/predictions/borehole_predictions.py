@@ -84,10 +84,10 @@ class BoreholePredictions:
             [PageBoundingBoxes.from_json(bbox_json) for bbox_json in json_object["bounding_boxes"]],
         )
 
-    def infer_missing_groundwater_infos(self):
+    def filter_groundwater_entries(self):
         """Sets the depth and elevation of the groundwater entries of this borehole."""
         borehole_terrain_elevation = self.metadata.elevation.feature.elevation if self.metadata.elevation else None
-        self.groundwater_in_borehole.infer_infos(borehole_terrain_elevation, self.layers_in_borehole.layers)
+        self.groundwater_in_borehole.filter_entries(borehole_terrain_elevation, self.layers_in_borehole.layers)
 
 
 @dataclasses.dataclass

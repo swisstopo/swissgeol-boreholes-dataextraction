@@ -10,7 +10,6 @@ import re
 import pymupdf
 
 from extraction.features.groundwater.utility import extract_date
-from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, LayerDepthsEntry
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.text.textline import TextLine
 
@@ -20,27 +19,23 @@ logger = logging.getLogger(__name__)
 def get_text_lines_near_symbol(
     lines: list[TextLine],
     geometric_lines: list[Line],
-    extracted_boreholes: list[ExtractedBorehole],
 ) -> list[list[TextLine]]:
     """Extracts the text lines that are close to a groundwater symbol.
 
     Args:
         lines (list[TextLine]): The list of text lines to search.
         geometric_lines (list[Line]): The list of geometric lines to consider.
-        extracted_boreholes (list[ExtractedBorehole]): The list of extracted boreholes.
 
     Returns:
         list[list[TextLine]]: The list of text lines near groundwater symbols.
     """
-    seen_depths = [lay.depths for bh in extracted_boreholes for lay in bh.predictions if lay.depths]
-    seen_depths = [d for depth in seen_depths for d in (depth.start, depth.end) if d]
-    groundwater_geometric_lines = get_groundwater_symbol_upper_lines(lines, geometric_lines, seen_depths)
+    groundwater_geometric_lines = get_groundwater_symbol_upper_lines(lines, geometric_lines)
     all_feature_lines: list[list[TextLine]] = []
     for geo_line in groundwater_geometric_lines:
         x0, x1, y, length = geo_line.start.x, geo_line.end.x, geo_line.start.y, geo_line.length
-        search_rect = pymupdf.Rect(x0 - length, y - length, x1 + length, y + length)
+        search_rect = pymupdf.Rect(x0 - 0.5 * length, y - length, x1 + 0.5 * length, y + length)
         feature_lines = [line for line in lines if line.rect.intersects(search_rect)]
-        # sort , to treat the closest lines first
+        # sort, to first treat the lines close to the symbol
         feature_lines.sort(
             key=lambda line: ((line.rect.x0 + line.rect.x1) / 2 - (x0 + x1) / 2) ** 2
             + ((line.rect.y0 + line.rect.y1) / 2 - y) ** 2
@@ -52,7 +47,6 @@ def get_text_lines_near_symbol(
 def get_groundwater_symbol_upper_lines(
     lines: list[TextLine],
     geometric_lines: list[Line],
-    seen_depths: list[LayerDepthsEntry],
 ) -> list[Line]:
     """Extracts the upper geometric lines that belong to a groundwater symbol.
 
@@ -66,7 +60,7 @@ def get_groundwater_symbol_upper_lines(
     Args:
         lines (list[TextLine]): The list of text lines to search.
         geometric_lines (list[Line]): The list of geometric lines to consider.
-        seen_depths (list[LayerDepthsEntry]): The list of already seen depths to avoid confusion with stratigraphy.
+
 
     Returns:
         list[Line]: The list containing the upper geometric line of each groundwater symbol.
@@ -75,13 +69,7 @@ def get_groundwater_symbol_upper_lines(
     for text_line in lines:
         depth_pattern = re.compile(r"^-?([0-9]+(?:[\.,][0-9]+)?)")
         match = depth_pattern.match(text_line.text)
-        if match:
-            if any(
-                float(match.group(1).replace(",", ".")) == depth.value and depth.rect.intersects(text_line.rect)
-                for depth in seen_depths
-            ):
-                continue
-        else:
+        if not match:
             extracted_date, _ = extract_date(text_line.text)
             if extracted_date is None:
                 continue
