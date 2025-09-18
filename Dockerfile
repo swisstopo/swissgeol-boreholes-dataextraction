@@ -7,7 +7,7 @@ COPY pyproject.toml /app/
 
 # Install pip-tools and use it to resolve dependencies
 RUN pip install --no-cache-dir pip-tools \
-    && pip-compile --generate-hashes \
+    && pip-compile --generate-hashes /app/pyproject.toml \
     && pip-sync
 
 ## Runtime stage
