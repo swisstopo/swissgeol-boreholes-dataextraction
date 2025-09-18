@@ -8,7 +8,10 @@ import numpy as np
 import pymupdf
 from scipy.stats import pearsonr
 
-from extraction.features.groundwater.groundwater_symbol_detection import get_text_lines_near_symbol
+from extraction.features.groundwater.groundwater_symbol_detection import (
+    get_groundwater_symbol_upper_lines,
+    get_text_lines_near_symbol,
+)
 from extraction.features.groundwater.utility import extract_date, extract_depth, extract_elevation
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepthsEntry
 from extraction.features.utils.data_extractor import (
@@ -273,50 +276,24 @@ class GroundwaterLevelExtractor(DataExtractor):
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ü": "u"}
 
-    def get_text_lines_near_key(self, lines: list[TextLine]) -> list[list[TextLine]]:
+    def get_text_lines_near_key(self, groundwater_key_line: TextLine, lines: list[TextLine]) -> list[TextLine]:
         """Extracts the text lines that are close to an explicit "groundwater" label.
 
         Also apply some preprocessing to the text of those text lines, to deal with some common (OCR) errors.
 
         Args:
+            groundwater_key_line (TextLine): the line containing the keyword that indicates a groundwater level
             lines (list[TextLine]): all the lines of text to search in
 
         Returns:
-            list[list[TextLine]]: all found lists of textlines that appeared arround a key
+            list[TextLine]: all found lists of textlines that appeared arround a key
         """
-        # find the keys that indicates the groundwater information
-        groundwater_key_lines = self.find_feature_key(lines)
-        extracted_lines_list = []
+        key_rect = groundwater_key_line.rect
+        groundwater_info_lines = self.get_lines_near_key(lines, groundwater_key_line)
 
-        for groundwater_key_line in groundwater_key_lines:
-            key_rect = groundwater_key_line.rect
-            groundwater_info_lines = self.get_lines_near_key(lines, groundwater_key_line)
-
-            # sort the lines by their proximity to the key line center, compute the distance to the key line center
-            key_center = (key_rect.x0 + key_rect.x1) / 2
-            extracted_lines_list.append(
-                sorted(groundwater_info_lines, key=lambda line: abs((line.rect.x0 + line.rect.x1) / 2 - key_center))
-            )
-        return extracted_lines_list
-
-    def get_groundwater_infos_from_lines(
-        self, lines_list: list[list[TextLine]], page_number: int, extracted_boreholes: list[ExtractedBorehole]
-    ) -> list[FeatureOnPage[Groundwater]]:
-        """Extracts the groundwater information from all the lists of text lines identified.
-
-        Args:
-            lines_list (list[list[TextLine]]): the list of lines of text to extract the groundwater information from.
-            page_number (int): the page number (1-based) of the PDF document
-            extracted_boreholes (list[ExtractedBorehole]): The list of extracted boreholes.
-
-        Returns:
-            FeatureOnPage[Groundwater]: the extracted groundwater information
-        """
-        seen_depths = [lay.depths for bh in extracted_boreholes for lay in bh.predictions if lay.depths]
-        seen_depths = [d for depth in seen_depths for d in (depth.start, depth.end) if d]
-
-        groundwaters = [self.get_groundwater_from_lines(lines, page_number, seen_depths) for lines in lines_list]
-        return [gw for gw in groundwaters if gw is not None]
+        # sort the lines by their proximity to the key line center, compute the distance to the key line center
+        key_center = (key_rect.x0 + key_rect.x1) / 2
+        return sorted(groundwater_info_lines, key=lambda line: abs((line.rect.x0 + line.rect.x1) / 2 - key_center))
 
     def get_groundwater_from_lines(
         self, lines: list[TextLine], page_number: int, seen_depths: list[LayerDepthsEntry]
@@ -410,7 +387,7 @@ class GroundwaterLevelExtractor(DataExtractor):
     def extract_groundwater(
         self,
         page_number: int,
-        lines: list[TextLine],
+        text_lines: list[TextLine],
         geometric_lines: list[Line],
         extracted_boreholes: list[ExtractedBorehole],
     ) -> list[FeatureOnPage[Groundwater]]:
@@ -418,19 +395,29 @@ class GroundwaterLevelExtractor(DataExtractor):
 
         Args:
             page_number (int): The page number (1-indexed) of the PDF document.
-            lines (list[TextLine]): The lines of text to extract the groundwater information from.
+            text_lines (list[TextLine]): The lines of text to extract the groundwater information from.
             geometric_lines (list[Line]): The geometric lines on the page.
             extracted_boreholes (list[ExtractedBorehole]): The extracted boreholes from the page.
 
         Returns:
             list[FeatureOnPage[Groundwater]]: the extracted coordinates (if any)
         """
-        groundwater_lines_list = self.get_text_lines_near_key(lines)
-        groundwater_lines_list.extend(get_text_lines_near_symbol(lines, geometric_lines))
+        all_lines: list[list[TextLine]] = []
+        # extract text clues (e.g. GW)
+        for groundwater_key_line in self.find_feature_key(text_lines):
+            all_lines.append(self.get_text_lines_near_key(groundwater_key_line, text_lines))
+        # extract visual clues, like groundwater symbols
+        for upper_symbol_geom_line in get_groundwater_symbol_upper_lines(text_lines, geometric_lines):
+            all_lines.append(get_text_lines_near_symbol(text_lines, upper_symbol_geom_line))
 
-        found_groundwaters = self.get_groundwater_infos_from_lines(
-            groundwater_lines_list, page_number, extracted_boreholes
-        )
+        seen_depths = [lay.depths for bh in extracted_boreholes for lay in bh.predictions if lay.depths]
+        seen_depths = [d for depth in seen_depths for d in (depth.start, depth.end) if d]
+
+        found_groundwaters = []
+        for text_lines in all_lines:
+            found_groundwater = self.get_groundwater_from_lines(text_lines, page_number, seen_depths)
+            if found_groundwater:
+                found_groundwaters.append(found_groundwater)
 
         unique_groundwaters = self.remove_overlaps(found_groundwaters)
 

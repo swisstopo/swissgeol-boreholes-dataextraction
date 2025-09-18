@@ -325,7 +325,7 @@ def start_pipeline(
                 groundwater_extractor = GroundwaterLevelExtractor(file_metadata.language)
                 groundwater_entries = groundwater_extractor.extract_groundwater(
                     page_number=page_number,
-                    lines=text_lines,
+                    text_lines=text_lines,
                     geometric_lines=geometric_lines,
                     extracted_boreholes=page_layers,
                 )
