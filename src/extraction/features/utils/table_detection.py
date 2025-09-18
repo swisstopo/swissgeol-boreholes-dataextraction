@@ -160,21 +160,20 @@ def _find_table_structures(
 
         # Create table structure for this region
         table = _create_table_from_region(region_h_lines, region_v_lines, config, page_width, page_height, text_lines)
-        # Check for bounding box intersection and handle overlaps
-        if table and table.confidence >= config.get("min_confidence"):
-            overlapping_indices = _table_overlaps(table, detected_tables)
+        if table.confidence >= config.get("min_confidence"):
+            detected_tables.append(table)
 
-            if not overlapping_indices:
-                # No overlaps, add the table
-                detected_tables.append(table)
+    detected_tables = sorted(detected_tables, key=lambda t: t.confidence, reverse=True)
 
-            elif all(table.confidence > detected_tables[idx].confidence for idx in overlapping_indices):
-                # Remove overlapping tables with lower confidence
-                for idx in sorted(overlapping_indices, reverse=True):
-                    detected_tables.pop(idx)
-                detected_tables.append(table)
+    final_tables = []
+    for table in detected_tables:
+        # Check if this table overlaps with any already accepted table
+        overlapping_indices = _table_overlaps(table, final_tables)
 
-    return detected_tables
+        if not overlapping_indices:
+            final_tables.append(table)
+
+    return final_tables
 
 
 def _find_table_regions(lines: list[StructureLine], config: dict) -> list[tuple[list[Line], list[Line]]]:
