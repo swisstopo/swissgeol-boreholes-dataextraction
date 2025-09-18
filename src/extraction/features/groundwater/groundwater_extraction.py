@@ -402,20 +402,20 @@ class GroundwaterLevelExtractor(DataExtractor):
         Returns:
             list[FeatureOnPage[Groundwater]]: the extracted coordinates (if any)
         """
-        all_lines: list[list[TextLine]] = []
+        areas_of_interest: list[list[TextLine]] = []
         # extract text clues (e.g. GW)
         for groundwater_key_line in self.find_feature_key(text_lines):
-            all_lines.append(self.get_text_lines_near_key(groundwater_key_line, text_lines))
+            areas_of_interest.append(self.get_text_lines_near_key(groundwater_key_line, text_lines))
         # extract visual clues, like groundwater symbols
         for upper_symbol_geom_line in get_groundwater_symbol_upper_lines(text_lines, geometric_lines):
-            all_lines.append(get_text_lines_near_symbol(text_lines, upper_symbol_geom_line))
+            areas_of_interest.append(get_text_lines_near_symbol(text_lines, upper_symbol_geom_line))
 
         seen_depths = [lay.depths for bh in extracted_boreholes for lay in bh.predictions if lay.depths]
-        seen_depths = [d for depth in seen_depths for d in (depth.start, depth.end) if d]
+        seen_depth_entries = [d for depth in seen_depths for d in (depth.start, depth.end) if d]
 
         found_groundwaters = []
-        for text_lines in all_lines:
-            found_groundwater = self.get_groundwater_from_lines(text_lines, page_number, seen_depths)
+        for text_lines in areas_of_interest:
+            found_groundwater = self.get_groundwater_from_lines(text_lines, page_number, seen_depth_entries)
             if found_groundwater:
                 found_groundwaters.append(found_groundwater)
 
