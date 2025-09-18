@@ -366,9 +366,9 @@ def start_pipeline(
                 elevations_list=metadata.elevations,
                 coordinates_list=metadata.coordinates,
             ).build()
-            # now that the matching is done, the depths of groundwater can be set
+            # now that the matching is done, duplicated groundwater can be removed and depths info can be set
             for borehole in borehole_predictions_list:
-                borehole.infer_missing_groundwater_infos()
+                borehole.filter_groundwater_entries()
 
             # Add file predictions
             predictions.add_file_predictions(FilePredictions(borehole_predictions_list, file_metadata, filename))

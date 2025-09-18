@@ -10,7 +10,7 @@ from scipy.stats import pearsonr
 
 from extraction.features.groundwater.groundwater_symbol_detection import get_text_lines_near_symbol
 from extraction.features.groundwater.utility import extract_date, extract_depth, extract_elevation
-from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer
+from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepthsEntry
 from extraction.features.utils.data_extractor import (
     DataExtractor,
     ExtractedFeature,
@@ -193,15 +193,55 @@ class GroundwatersInBorehole:
         """
         return cls([FeatureOnPage.from_json(gw_data, Groundwater) for gw_data in json_object])
 
-    def infer_infos(self, terrain_elevation: float | None, layers: list[Layer]):
-        """Sets the depth and elevation of all groundwater entries.
+    def filter_entries(self, terrain_elevation: float | None, layers: list[Layer]):
+        """Remove duplicates and sets the depth and elevation of all groundwater entries.
 
         Args:
             terrain_elevation (float): The elevation of the terrain at the top of the borehole.
             layers (list[Layer]): The list of layers in the borehole.
         """
+        self.remove_duplicates()
         for entry in self.groundwater_feature_list:
             entry.feature.infer_infos(terrain_elevation, layers, entry.rect)
+
+    def remove_duplicates(self):
+        """Removes groundwater entries that have the same date and not a different depth.
+
+        Those entry likelly are the same information, showns twice on the page. This step can't be done during the
+        extraction process, as entries with the same date could belong to different boreholes at that point.
+        """
+        unique_groundwaters: list[FeatureOnPage[Groundwater]] = []
+        for gw in self.groundwater_feature_list:
+            keep = True
+            to_remove = []
+            for other_gw in unique_groundwaters:
+                if (
+                    gw.feature.date is not None
+                    and other_gw.feature.date is not None
+                    and gw.feature.date == other_gw.feature.date
+                ):
+                    # same date means that the groundwaters are duplicates shown twice on the page
+                    if (
+                        gw.feature.depth is not None
+                        and other_gw.feature.depth is not None
+                        and other_gw.feature.depth != gw.feature.depth
+                    ):
+                        continue
+                    elif gw.feature.depth is None and other_gw.feature.depth is not None:
+                        keep = False
+                    elif gw.feature.depth is None and other_gw.feature.depth is None:
+                        # both depths are None, look at elevation to break ties
+                        if gw.feature.elevation is None and other_gw.feature.elevation is not None:
+                            keep = False
+                        else:
+                            to_remove.append(other_gw)
+                    else:
+                        to_remove.append(other_gw)
+            for other_gw in to_remove:
+                unique_groundwaters.remove(other_gw)
+            if keep:
+                unique_groundwaters.append(gw)
+        self.groundwater_feature_list = unique_groundwaters
 
 
 @dataclass
@@ -260,25 +300,34 @@ class GroundwaterLevelExtractor(DataExtractor):
         return extracted_lines_list
 
     def get_groundwater_infos_from_lines(
-        self, lines_list: list[list[TextLine]], page_number: int
+        self, lines_list: list[list[TextLine]], page_number: int, extracted_boreholes: list[ExtractedBorehole]
     ) -> list[FeatureOnPage[Groundwater]]:
-        """Extracts the groundwater information from all the lists of text line identified.
+        """Extracts the groundwater information from all the lists of text lines identified.
 
         Args:
             lines_list (list[list[TextLine]]): the list of lines of text to extract the groundwater information from.
             page_number (int): the page number (1-based) of the PDF document
+            extracted_boreholes (list[ExtractedBorehole]): The list of extracted boreholes.
+
         Returns:
             FeatureOnPage[Groundwater]: the extracted groundwater information
         """
-        groundwaters = [self.get_groundwater_from_lines(lines, page_number) for lines in lines_list]
+        seen_depths = [lay.depths for bh in extracted_boreholes for lay in bh.predictions if lay.depths]
+        seen_depths = [d for depth in seen_depths for d in (depth.start, depth.end) if d]
+
+        groundwaters = [self.get_groundwater_from_lines(lines, page_number, seen_depths) for lines in lines_list]
         return [gw for gw in groundwaters if gw is not None]
 
-    def get_groundwater_from_lines(self, lines: list[TextLine], page_number: int) -> FeatureOnPage[Groundwater] | None:
+    def get_groundwater_from_lines(
+        self, lines: list[TextLine], page_number: int, seen_depths: list[LayerDepthsEntry]
+    ) -> FeatureOnPage[Groundwater] | None:
         """Extracts the groundwater information from a list of text lines.
 
         Args:
             lines (list[TextLine]): the lines of text to extract the groundwater information from
             page_number (int): the page number (1-based) of the PDF document
+            seen_depths (list[LayerDepthsEntry]): The list of already seen depths to avoid confusion with stratigraphy.
+
         Returns:
             FeatureOnPage[Groundwater]: the extracted groundwater information
         """
@@ -300,6 +349,11 @@ class GroundwaterLevelExtractor(DataExtractor):
 
             depth_val = extract_depth(text, MAX_DEPTH)
             if depth_val and not depth:
+                if any(
+                    depth_val == seen_depth.value and seen_depth.rect.intersects(line.rect)
+                    for seen_depth in seen_depths
+                ):
+                    continue
                 depth = depth_val
                 text = text.replace(str(depth), "").strip()
                 matched_lines_rect.append(line.rect)
@@ -326,49 +380,32 @@ class GroundwaterLevelExtractor(DataExtractor):
             page=page_number,
         )
 
-    def filter_duplicates(
+    def remove_overlaps(
         self, found_groundwaters: list[FeatureOnPage[Groundwater]]
     ) -> list[FeatureOnPage[Groundwater]]:
-        """Filters out duplicate groundwater features from the list.
+        """Filters out groundwater features that are overlapping.
 
         Args:
             found_groundwaters (list[FeatureOnPage[Groundwater]]): The list of found groundwater features.
 
         Returns:
-            list[FeatureOnPage[Groundwater]]: The filtered list of unique groundwater features.
+            list[FeatureOnPage[Groundwater]]: The filtered list of non-overlapping groundwater features.
         """
-        unique_groundwaters: list[FeatureOnPage[Groundwater]] = []
+        non_overlapping_groundwaters: list[FeatureOnPage[Groundwater]] = []
         for gw in found_groundwaters:
             keep = True
             to_remove = []
-            for other_gw in unique_groundwaters:
+            for other_gw in non_overlapping_groundwaters:
                 if gw.rect.intersects(other_gw.rect):
                     if gw.rect.get_area() > other_gw.rect.get_area():
                         to_remove.append(other_gw)  # replace smaller with bigger
                     else:
                         keep = False  # skip gw
-                    continue
-                if (
-                    gw.feature.date is not None
-                    and other_gw.feature.date is not None
-                    and gw.feature.date == other_gw.feature.date
-                ):
-                    # same date means that the groundwaters are duplicates shown twice on the page
-                    if gw.feature.depth is None and other_gw.feature.depth is not None:
-                        keep = False
-                    elif gw.feature.depth is None and other_gw.feature.depth is None:
-                        # both depths are None, look at elevation to break ties
-                        if gw.feature.elevation is None and other_gw.feature.elevation is not None:
-                            keep = False
-                        else:
-                            to_remove.append(other_gw)
-                    else:
-                        to_remove.append(other_gw)
             for other_gw in to_remove:
-                unique_groundwaters.remove(other_gw)
+                non_overlapping_groundwaters.remove(other_gw)
             if keep:
-                unique_groundwaters.append(gw)
-        return unique_groundwaters
+                non_overlapping_groundwaters.append(gw)
+        return non_overlapping_groundwaters
 
     def extract_groundwater(
         self,
@@ -389,11 +426,13 @@ class GroundwaterLevelExtractor(DataExtractor):
             list[FeatureOnPage[Groundwater]]: the extracted coordinates (if any)
         """
         groundwater_lines_list = self.get_text_lines_near_key(lines)
-        groundwater_lines_list.extend(get_text_lines_near_symbol(lines, geometric_lines, extracted_boreholes))
+        groundwater_lines_list.extend(get_text_lines_near_symbol(lines, geometric_lines))
 
-        found_groundwaters = self.get_groundwater_infos_from_lines(groundwater_lines_list, page_number)
+        found_groundwaters = self.get_groundwater_infos_from_lines(
+            groundwater_lines_list, page_number, extracted_boreholes
+        )
 
-        unique_groundwaters = self.filter_duplicates(found_groundwaters)
+        unique_groundwaters = self.remove_overlaps(found_groundwaters)
 
         if unique_groundwaters:
             groundwater_output = ", ".join([str(entry.feature) for entry in unique_groundwaters])
