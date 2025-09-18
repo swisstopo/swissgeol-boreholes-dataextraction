@@ -226,17 +226,22 @@ def draw_layer(
                 fill=pymupdf.utils.getColor(color),
                 width=0,
             )
-            if material_description.is_correct is not None:
-                correct_color = "green" if material_description.is_correct else "red"
-                shape.draw_line(
-                    line.rect.top_left * derotation_matrix,
-                    line.rect.bottom_left * derotation_matrix,
-                )
-                shape.finish(
-                    color=pymupdf.utils.getColor(correct_color),
-                    width=6,
-                    stroke_opacity=0.5,
-                )
+            _draw_correctness_line(
+                shape,
+                derotation_matrix,
+                start=pymupdf.Point(line.rect.top_left.x - 6, line.rect.top_left.y),
+                end=pymupdf.Point(line.rect.bottom_left.x - 6, line.rect.bottom_left.y),
+                is_correct=layer.is_correct,
+                width=6,
+            )
+            _draw_correctness_line(
+                shape,
+                derotation_matrix,
+                start=line.rect.top_left,
+                end=line.rect.bottom_left,
+                is_correct=material_description.is_correct,
+                width=4,
+            )
 
         if layer.depths:
             depths_rect = pymupdf.Rect()
@@ -271,18 +276,14 @@ def draw_layer(
                         width=0,
                     )
 
-                    # draw green line if depth interval is correct else red line
-                    if layer.is_correct is not None:
-                        depth_is_correct_color = "green" if layer.is_correct else "red"
-                        shape.draw_line(
-                            background_rect.top_left * derotation_matrix,
-                            background_rect.bottom_left * derotation_matrix,
-                        )
-                        shape.finish(
-                            color=pymupdf.utils.getColor(depth_is_correct_color),
-                            width=6,
-                            stroke_opacity=0.5,
-                        )
+                    _draw_correctness_line(
+                        shape,
+                        derotation_matrix,
+                        start=background_rect.top_left,
+                        end=background_rect.bottom_left,
+                        is_correct=layer.depths.is_correct,
+                        width=4,
+                    )
             else:
                 # Depths are extracted from the material description: only draw bounding boxes
                 if layer.depths.start and layer.depths.start.page_number == page_number:
@@ -291,24 +292,45 @@ def draw_layer(
                     shape.draw_rect(pymupdf.Rect(layer.depths.end.rect) * derotation_matrix)
                 shape.finish(color=pymupdf.utils.getColor("purple"))
 
-                # draw green line if depth interval is correct else red line
-                if layer.is_correct is not None:
-                    depth_is_correct_color = "green" if layer.is_correct else "red"
-                    if layer.depths.start and layer.depths.start.page_number == page_number:
-                        shape.draw_line(
-                            layer.depths.start.rect.bottom_left * derotation_matrix,
-                            layer.depths.start.rect.bottom_right * derotation_matrix,
-                        )
-                    if layer.depths.end and layer.depths.end.page_number == page_number:
-                        shape.draw_line(
-                            layer.depths.end.rect.bottom_left * derotation_matrix,
-                            layer.depths.end.rect.bottom_right * derotation_matrix,
-                        )
-                    shape.finish(
-                        color=pymupdf.utils.getColor(depth_is_correct_color),
-                        width=6,
-                        stroke_opacity=0.5,
+                if layer.depths.start and layer.depths.start.page_number == page_number:
+                    _draw_correctness_line(
+                        shape,
+                        derotation_matrix,
+                        start=layer.depths.start.rect.bottom_left,
+                        end=layer.depths.start.rect.bottom_right,
+                        is_correct=layer.depths.is_correct,
+                        width=4,
                     )
+                if layer.depths.end and layer.depths.end.page_number == page_number:
+                    _draw_correctness_line(
+                        shape,
+                        derotation_matrix,
+                        start=layer.depths.end.rect.bottom_left,
+                        end=layer.depths.end.rect.bottom_right,
+                        is_correct=layer.depths.is_correct,
+                        width=4,
+                    )
+
+
+def _draw_correctness_line(
+    shape: pymupdf.Shape,
+    derotation_matrix: pymupdf.Matrix,
+    start: pymupdf.Point,
+    end: pymupdf.Point,
+    is_correct: bool | None,
+    width: int,
+) -> None:
+    if is_correct is not None:
+        depth_is_correct_color = "green" if is_correct else "red"
+        shape.draw_line(
+            start * derotation_matrix,
+            end * derotation_matrix,
+        )
+        shape.finish(
+            color=pymupdf.utils.getColor(depth_is_correct_color),
+            width=width,
+            stroke_opacity=0.5,
+        )
 
 
 def draw_table_structures(
