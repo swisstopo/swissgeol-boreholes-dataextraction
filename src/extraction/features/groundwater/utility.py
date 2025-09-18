@@ -7,7 +7,7 @@ import regex
 
 def extract_date(text: str) -> tuple[date | None, str | None]:
     """Extract the date from a string in the format dd.mm.yyyy or dd.mm.yy."""
-    date_match = regex.search(r"(\d{1,2})\s*\.\s*(\d{1,2})\s*\.\s*(\d{2,4})", text)
+    date_match = regex.search(r"(\d{1,2})[\s\.]+(\d{1,2})[\s\.]+(\d{2,4})", text)
 
     if not date_match:
         return None, None

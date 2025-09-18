@@ -397,8 +397,8 @@ class GroundwaterLevelExtractor(DataExtractor):
             to_remove = []
             for other_gw in non_overlapping_groundwaters:
                 if gw.rect.intersects(other_gw.rect):
-                    if gw.rect.get_area() > other_gw.rect.get_area():
-                        to_remove.append(other_gw)  # replace smaller with bigger
+                    if gw.rect.get_area() < other_gw.rect.get_area():
+                        to_remove.append(other_gw)  # keep the more compact one
                     else:
                         keep = False  # skip gw
             for other_gw in to_remove:
