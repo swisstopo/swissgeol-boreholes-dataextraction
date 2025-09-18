@@ -18,10 +18,13 @@ from fastapi.testclient import TestClient
 
 from app.common.config import config
 
+# Get the project root directory (4 levels up from this file in tests/api/v1/)
+PROJECT_ROOT = Path(__file__).parents[3]
+
 TEST_PDF_KEY = "sample.pdf"
-TEST_PDF_PATH = Path(__file__).parent.parent / "example" / "example_borehole_profile.pdf"
+TEST_PDF_PATH = PROJECT_ROOT / "example" / "example_borehole_profile.pdf"
 TEST_PNG_KEY = "dataextraction/sample-1.png"
-TEST_PNG_PATH = Path(__file__).parent.parent / "example" / "sample-1.png"
+TEST_PNG_PATH = PROJECT_ROOT / "example" / "sample-1.png"
 
 
 @pytest.fixture(scope="function")

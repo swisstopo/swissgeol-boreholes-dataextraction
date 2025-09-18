@@ -64,6 +64,7 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
             language,
             page_index,
             document,
+            None,
             **matching_params,
         )
         layers_with_bb_in_document.assign_layers_to_boreholes(page_layers)

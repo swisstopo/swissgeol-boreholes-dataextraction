@@ -25,7 +25,7 @@ def test_bucket_name():
 
 
 @pytest.fixture(scope="function")
-def test_client():
+def test_client(s3_client):
     """Create a FastAPI test client."""
     return TestClient(app)
 

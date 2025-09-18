@@ -95,6 +95,8 @@ def load_pdf_from_aws(filename: Path) -> pymupdf.Document:
         pymupdf.Document: The loaded PDF document.
     """
     # Load the PDF from the S3 object
+    if not str(filename).lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Invalid request. The filename must end with '.pdf'.")
     data = load_data_from_aws(filename)
     return pymupdf.open(stream=data, filetype="pdf")
 
@@ -136,6 +138,15 @@ def load_data_from_aws(filename: Path, prefix: str = "") -> bytes:
             logger.warning(f"No bucket name provided, defaulting to {DEFAULT_BUCKET_NAME}")
         s3_object = s3_client.get_object(Bucket=config.bucket_name, Key=str(prefix / filename))
     except s3_client.exceptions.NoSuchKey:
+        # Special case for PNG files - they need to be generated first
+        if str(filename).lower().endswith(".png") and prefix == "dataextraction":
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    f"PNG file {prefix / filename} not found. "
+                    "The PNG files need to be generated first using the create_pngs endpoint."
+                ),
+            ) from None
         raise HTTPException(status_code=404, detail=f"Document {prefix / filename} not found in S3 bucket.") from None
 
     # Load the document from the S3 object
