@@ -50,15 +50,6 @@ def test_bounding_boxes_nonexistent_pdf(test_client: TestClient):
     assert response.status_code == 404
     assert response.json() == {"detail": "Document nonexistent.pdf not found in S3 bucket."}
 
-    # responses={
-    #     400: {"model": BadRequestResponse, "description": "Bad request"},
-    #     404: {
-    #         "model": BadRequestResponse,
-    #         "description": "Failed to load PDF document. The filename is not found in the bucket.",
-    #     },
-    #     500: {"model": BadRequestResponse, "description": "Internal server error"},
-    # },
-
 
 def test_bounding_boxes_invalid_page(test_client: TestClient, upload_test_pdf, upload_test_png):
     """Test request with invalid page number."""

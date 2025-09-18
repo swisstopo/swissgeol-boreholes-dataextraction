@@ -62,7 +62,7 @@ def test_extract_stratigraphy_nonexistent_pdf(test_client: TestClient):
 
 
 def test_extract_stratigraphy_nonexistent_png(test_client: TestClient, upload_test_pdf):
-    """Test request with nonexistent PDF file."""
+    """Test request with nonexistent PNG file."""
     request = ExtractStratigraphyRequest(filename=TEST_PDF_KEY)
     response = test_client.post("/api/V1/extract_stratigraphy", content=request.model_dump_json())
     assert response.status_code == 404
