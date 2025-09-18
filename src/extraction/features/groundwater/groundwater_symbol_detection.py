@@ -17,31 +17,27 @@ logger = logging.getLogger(__name__)
 
 
 def get_text_lines_near_symbol(
+    geo_line: Line,
     lines: list[TextLine],
-    geometric_lines: list[Line],
-) -> list[list[TextLine]]:
+) -> list[TextLine]:
     """Extracts the text lines that are close to a groundwater symbol.
 
     Args:
+        geo_line (Line): the upper geometric line of a groundwater symbol
         lines (list[TextLine]): The list of text lines to search.
-        geometric_lines (list[Line]): The list of geometric lines to consider.
 
     Returns:
-        list[list[TextLine]]: The list of text lines near groundwater symbols.
+        list[TextLine]: The list of text lines near groundwater symbol.
     """
-    groundwater_geometric_lines = get_groundwater_symbol_upper_lines(lines, geometric_lines)
-    all_feature_lines: list[list[TextLine]] = []
-    for geo_line in groundwater_geometric_lines:
-        x0, x1, y, length = geo_line.start.x, geo_line.end.x, geo_line.start.y, geo_line.length
-        search_rect = pymupdf.Rect(x0 - 0.5 * length, y - length, x1 + 0.5 * length, y + length)
-        feature_lines = [line for line in lines if line.rect.intersects(search_rect)]
-        # sort, to first treat the lines close to the symbol
-        feature_lines.sort(
-            key=lambda line: ((line.rect.x0 + line.rect.x1) / 2 - (x0 + x1) / 2) ** 2
-            + ((line.rect.y0 + line.rect.y1) / 2 - y) ** 2
-        )
-        all_feature_lines.append(feature_lines)
-    return all_feature_lines
+    x0, x1, y, length = geo_line.start.x, geo_line.end.x, geo_line.start.y, geo_line.length
+    search_rect = pymupdf.Rect(x0 - 0.5 * length, y - length, x1 + 0.5 * length, y + length)
+    feature_lines = [line for line in lines if line.rect.intersects(search_rect)]
+    # sort, to first treat the lines close to the symbol
+    feature_lines.sort(
+        key=lambda line: ((line.rect.x0 + line.rect.x1) / 2 - (x0 + x1) / 2) ** 2
+        + ((line.rect.y0 + line.rect.y1) / 2 - y) ** 2
+    )
+    return feature_lines
 
 
 def get_groundwater_symbol_upper_lines(
