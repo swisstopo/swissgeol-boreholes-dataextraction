@@ -59,7 +59,7 @@ from extraction.features.utils.text.textline import TextLine, TextWord
             Line(Point(103, 104), Point(117, 104)),
             TextLine([TextWord(pymupdf.Rect(110, 100, 130, 110), "12.5", 0)]),
             False,
-            "invalid_textline_inside_gab",
+            "invalid_textline_inside_gap",
         ),
     ],
 )

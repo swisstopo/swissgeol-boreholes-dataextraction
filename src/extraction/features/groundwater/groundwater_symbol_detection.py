@@ -110,12 +110,12 @@ def is_valid_pair(l_top: Line, l_bot: Line, hit_line: TextLine, text_lines: list
     pos_ok = l_top.start.x < l_bot.start.x and l_bot.end.x < l_top.end.x  # the top one fully "spans" the bottom one
     pos_to_bb_ok = hit_line.rect.x0 < l_top.end.x and l_top.start.x < hit_line.rect.x1  # longest line overlaps the bb
     gap_ok = l_bot.start.y - l_top.start.y < l_bot.length / 3  # gap is small, relative to the bottom line
-    no_bb_in_gab = not any(
+    no_bb_in_gap = not any(
         line.rect.intersects(pymupdf.Rect(l_top.start.x, l_top.start.y, l_top.end.x, l_bot.start.y))
         for line in text_lines
     )  # no text line sits in between the two lines
 
-    return rel_size_ok and global_size_ok and pos_ok and pos_to_bb_ok and gap_ok and no_bb_in_gab
+    return rel_size_ok and global_size_ok and pos_ok and pos_to_bb_ok and gap_ok and no_bb_in_gap
 
 
 def get_valid_pairs(lines: list[Line], line: TextLine, text_lines: list[TextLine]) -> list[tuple[Line, Line]]:
