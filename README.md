@@ -66,15 +66,8 @@ With regard to the extraction of coordinates, the [Swiss coordinate systems](htt
 #### Groundwater
 With the current version of the code, groundwater can only be found at depth smaller than 200 meters. This threshold is defined in `src/stratigraphy/groundwater/groundwater_extraction.py` by the constant `MAX_DEPTH`. 
 
-The groundwater is extracted in two main ways from the borehole documents. The first one aims to match a groundwater-related keyword in the text extracted from the document (e.g., groundwater, groundwater-level). The second technique focuses on extracting the groundwater-related illustration from the document by using template matching. The matching of the groundwater illustration is disabled by default as it significantly increases the runtime of the data extraction pipeline. You can control the activation of this feature by using the `IS_SEARCHING_GROUNDWATER_ILLUSTRATION` environment variable.
+The groundwater is extracted in two main ways from the borehole documents. The first one aims to match a groundwater-related keyword in the text extracted from the document (e.g., groundwater, groundwater-level). The second technique focuses on extracting the groundwater-related symbol from the document. It aims at finding 2 horizontal lines, on top of each other, satisfying some visual requirement that the groundwater symbol has.
 
-Add the following line to the `.env` document to turn on the groundwater detection:
-
-```
-IS_SEARCHING_GROUNDWATER_ILLUSTRATION="True"
-```
-
-The extraction of groundwater relies on the `scikit-image` library. This library is part of the optional dependencies of this project as part of the `groundwater_illustration_matching` dependencies in the `pyproject.toml` file. If you wish to use the template matching algorithm to determine the groundwater elevation, depth, and date, please install this dependency before running the code. 
 
 ## Project management
 

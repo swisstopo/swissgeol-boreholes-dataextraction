@@ -324,7 +324,10 @@ def start_pipeline(
                 # Extract the groundwater levels
                 groundwater_extractor = GroundwaterLevelExtractor(file_metadata.language)
                 groundwater_entries = groundwater_extractor.extract_groundwater(
-                    page_number=page_number, lines=text_lines, document=doc
+                    page_number=page_number,
+                    text_lines=text_lines,
+                    geometric_lines=geometric_lines,
+                    extracted_boreholes=page_layers,
                 )
                 all_groundwater_entries.groundwater_feature_list.extend(groundwater_entries)
 
@@ -363,9 +366,9 @@ def start_pipeline(
                 elevations_list=metadata.elevations,
                 coordinates_list=metadata.coordinates,
             ).build()
-            # now that the matching is done, the depths of groundwater can be set
+            # now that the matching is done, duplicated groundwater can be removed and depths info can be set
             for borehole in borehole_predictions_list:
-                borehole.set_groundwater_elevation_infos()
+                borehole.filter_groundwater_entries()
 
             # Add file predictions
             predictions.add_file_predictions(FilePredictions(borehole_predictions_list, file_metadata, filename))

@@ -58,9 +58,6 @@ visualize = [
 devtools = [
     "tqdm==4.67.1"
 ]
-groundwater-illustration-matching = [
-    "scikit-image==0.25.2"
-]
 deep-learning = [
     "transformers==4.55.2",
     "datasets==4.0.0",

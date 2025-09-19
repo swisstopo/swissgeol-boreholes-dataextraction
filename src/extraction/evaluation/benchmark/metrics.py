@@ -85,6 +85,7 @@ class OverallMetricsCatalog:
             self.layer_metrics.to_dataframe("Number wrong elements", lambda metric: metric.fp + metric.fn),
             self.groundwater_metrics.to_dataframe("groundwater", lambda metric: metric.f1),
             self.groundwater_depth_metrics.to_dataframe("groundwater_depth", lambda metric: metric.f1),
+            self.groundwater_depth_metrics.to_dataframe("Number of GW detected", lambda metric: metric.tp + metric.fp),
         ]
         document_level_metrics = pd.DataFrame()
         for series in all_series:
