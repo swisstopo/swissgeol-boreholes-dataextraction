@@ -4,11 +4,11 @@ import logging
 import os
 from pathlib import Path
 
-import pandas as pd
 import pymupdf
 from dotenv import load_dotenv
 
 from extraction.annotations.plot_utils import convert_page_to_opencv_img
+from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
@@ -27,7 +27,6 @@ def draw_predictions(
     predictions: OverallFilePredictions,
     directory: Path,
     out_directory: Path,
-    document_level_metadata_metrics: None | pd.DataFrame,
 ) -> None:
     """Draw predictions on pdf pages.
 
@@ -46,7 +45,6 @@ def draw_predictions(
         predictions (dict): Content of the predictions.json file.
         directory (Path): Path to the directory containing the pdf files.
         out_directory (Path): Path to the output directory where the images are saved.
-        document_level_metadata_metrics (None | pd.DataFrame): Document level metadata metrics.
     """
     if directory.is_file():  # deal with the case when we pass a file instead of a directory
         directory = directory.parent
@@ -59,61 +57,11 @@ def draw_predictions(
             pymupdf.TOOLS.store_shrink(100)
 
             with pymupdf.Document(directory / filename) as doc:
-                for page_index, page in enumerate(doc):
-                    page_number = page_index + 1
-                    shape = page.new_shape()  # Create a shape object for drawing
+                for _, page in enumerate(doc):
+                    drawer = PageDrawer(page)
+                    drawer.draw(file_prediction)
 
-                    # iterate over all boreholes identified
-                    for borehole_predictions in file_prediction.borehole_predictions_list:
-                        bounding_boxes = borehole_predictions.bounding_boxes
-                        coordinates = borehole_predictions.metadata.coordinates
-                        elevation = borehole_predictions.metadata.elevation
-                        groundwaters = borehole_predictions.groundwater_in_borehole
-                        bh_layers = borehole_predictions.layers_in_borehole
-
-                        if coordinates is not None and page_number == coordinates.page_number:
-                            draw_feature(
-                                shape,
-                                coordinates.rect * page.derotation_matrix,
-                                coordinates.feature.is_correct,
-                                "purple",
-                            )
-                        if elevation is not None and page_number == elevation.page_number:
-                            draw_feature(
-                                shape, elevation.rect * page.derotation_matrix, elevation.feature.is_correct, "blue"
-                            )
-                        for groundwater_entry in groundwaters.groundwater_feature_list:
-                            if page_number == groundwater_entry.page_number:
-                                draw_feature(
-                                    shape,
-                                    groundwater_entry.rect * page.derotation_matrix,
-                                    groundwater_entry.feature.is_correct,
-                                    "pink",
-                                )
-                        page_bounding_boxes = [bboxes for bboxes in bounding_boxes if bboxes.page == page_number]
-                        draw_depth_columns_and_material_rect(
-                            shape,
-                            page.derotation_matrix,
-                            [bboxes for bboxes in bounding_boxes if bboxes.page == page_number],
-                        )
-                        layers = [
-                            layer for layer in bh_layers.layers if page_number in layer.material_description.pages
-                        ]
-                        for index, layer in enumerate(layers):
-                            draw_layer(
-                                shape=shape,
-                                derotation_matrix=page.derotation_matrix,
-                                layer=layer,
-                                sidebar_rects=[
-                                    bboxes.sidebar_bbox.rect for bboxes in page_bounding_boxes if bboxes.sidebar_bbox
-                                ],
-                                index=index,
-                                page_number=page_number,
-                            )
-
-                    shape.commit()  # Commit all the drawing operations to the page
-
-                    tmp_file_path = out_directory / f"{filename}_page{page_number}.png"
+                    tmp_file_path = out_directory / f"{filename}_page{drawer.page_number}.png"
                     pymupdf.utils.get_pixmap(page, matrix=pymupdf.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
 
                     if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
@@ -131,206 +79,255 @@ def draw_predictions(
         logger.info("Finished drawing predictions for file %s", filename)
 
 
-def draw_feature(shape: pymupdf.Shape, rect: pymupdf.Rect, is_correct: bool | None, color: str) -> None:
-    """Draw a bounding box around the area of the page where some feature was extracted from.
+class PageDrawer:
+    """Helper class for drawing predictions on a page."""
 
-    Args:
-        shape (pymupdf.Shape): The shape object for drawing.
-        rect (pymupdf:Rect): The bounding box of the feature to draw.
-        is_correct (bool | None): whether the feature has been evaluated as correct against the ground truth
-        color (str): The name of the color to use for the bounding box of the feature.
-    """
-    shape.draw_rect(rect)
-    shape.finish(color=pymupdf.utils.getColor(color))
+    def __init__(self, page: pymupdf.Page):
+        """Creates a PageDrawer instance from a PDF page.
 
-    if is_correct is not None:
-        correct_color = "green" if is_correct else "red"
-        shape.draw_line(
-            rect.top_left,
-            rect.bottom_left,
-        )
-        shape.finish(
-            color=pymupdf.utils.getColor(correct_color),
-            width=6,
-            stroke_opacity=0.5,
-        )
+        Args:
+            page: the PDF page to draw predictions on
+        """
+        self.page = page
+        self.page_number = page.number + 1
+        self.shape = page.new_shape()  # Create a shape object for drawing
 
+    def draw(self, file_predictions: FilePredictions):
+        """Draws extracted borehole data on the page.
 
-def draw_depth_columns_and_material_rect(
-    shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, bounding_boxes: list[PageBoundingBoxes]
-):
-    """Draw depth columns as well as the material rects on a pdf page.
+        Args:
+            file_predictions: the extracted borehole data
+        """
+        # iterate over all boreholes identified
+        for borehole_predictions in file_predictions.borehole_predictions_list:
+            bounding_boxes = borehole_predictions.bounding_boxes
+            coordinates = borehole_predictions.metadata.coordinates
+            elevation = borehole_predictions.metadata.elevation
+            groundwaters = borehole_predictions.groundwater_in_borehole
+            bh_layers = borehole_predictions.layers_in_borehole
 
-    In particular, this function:
-        - draws rectangles around the depth columns,
-        - draws rectangles around the depth column entries,
-        - draws rectangles around the material description columns.
-
-    Args:
-        shape (pymupdf.Shape): The shape object for drawing.
-        derotation_matrix (pymupdf.Matrix): The derotation matrix of the page.
-        bounding_boxes (list[BoundingBoxes]): List of bounding boxes for depth column and material descriptions.
-    """
-    for bboxes in bounding_boxes:
-        if bboxes.sidebar_bbox:  # Draw rectangle for depth columns
-            shape.draw_rect(
-                pymupdf.Rect(bboxes.sidebar_bbox.rect) * derotation_matrix,
-            )
-            shape.finish(color=pymupdf.utils.getColor("green"))
-            for depth_column_entry in bboxes.depth_column_entry_bboxes:  # Draw rectangle for depth column entries
-                shape.draw_rect(
-                    pymupdf.Rect(depth_column_entry.rect) * derotation_matrix,
+            if coordinates is not None and self.page_number == coordinates.page_number:
+                self.draw_feature(
+                    coordinates.rect * self.page.derotation_matrix,
+                    coordinates.feature.is_correct,
+                    "purple",
                 )
-            shape.finish(color=pymupdf.utils.getColor("purple"))
+            if elevation is not None and self.page_number == elevation.page_number:
+                self.draw_feature(elevation.rect * self.page.derotation_matrix, elevation.feature.is_correct, "blue")
+            for groundwater_entry in groundwaters.groundwater_feature_list:
+                if self.page_number == groundwater_entry.page_number:
+                    self.draw_feature(
+                        groundwater_entry.rect * self.page.derotation_matrix,
+                        groundwater_entry.feature.is_correct,
+                        "pink",
+                    )
+            page_bounding_boxes = [bboxes for bboxes in bounding_boxes if bboxes.page == self.page_number]
+            for bboxes in page_bounding_boxes:
+                self.draw_bounding_boxes(bboxes)
 
-        shape.draw_rect(  # Draw rectangle for material description column
-            bboxes.material_description_bbox.rect * derotation_matrix,
+            layers = [layer for layer in bh_layers.layers if self.page_number in layer.material_description.pages]
+            for index, layer in enumerate(layers):
+                self.draw_layer(
+                    layer=layer,
+                    sidebar_rects=[bboxes.sidebar_bbox.rect for bboxes in page_bounding_boxes if bboxes.sidebar_bbox],
+                    index=index,
+                    page_number=self.page_number,
+                )
+
+        self.shape.commit()  # Commit all the drawing operations to the page
+
+    def draw_feature(self, rect: pymupdf.Rect, is_correct: bool | None, color: str) -> None:
+        """Draw a bounding box around the area of the page where some feature was extracted from.
+
+        Args:
+            rect (pymupdf:Rect): The bounding box of the feature to draw.
+            is_correct (bool | None): whether the feature has been evaluated as correct against the ground truth
+            color (str): The name of the color to use for the bounding box of the feature.
+        """
+        self.shape.draw_rect(rect)
+        self.shape.finish(color=pymupdf.utils.getColor(color))
+
+        self._draw_correctness_line(start=rect.top_left, end=rect.bottom_left, is_correct=is_correct, width=6)
+
+    def draw_bounding_boxes(self, bounding_boxes: PageBoundingBoxes):
+        """Draw depth columns as well as the material rects on a pdf page.
+
+        In particular, this function:
+            - draws rectangles around the depth columns,
+            - draws rectangles around the depth column entries,
+            - draws rectangles around the material description columns.
+
+        Args:
+            bounding_boxes (BoundingBoxes): bounding boxes for depth column and material descriptions.
+        """
+        if bounding_boxes.sidebar_bbox:  # Draw rectangle for depth columns
+            self.shape.draw_rect(
+                pymupdf.Rect(bounding_boxes.sidebar_bbox.rect) * self.page.derotation_matrix,
+            )
+            self.shape.finish(color=pymupdf.utils.getColor("green"))
+            for (
+                depth_column_entry
+            ) in bounding_boxes.depth_column_entry_bboxes:  # Draw rectangle for depth column entries
+                self.shape.draw_rect(
+                    pymupdf.Rect(depth_column_entry.rect) * self.page.derotation_matrix,
+                )
+            self.shape.finish(color=pymupdf.utils.getColor("purple"))
+
+        self.shape.draw_rect(  # Draw rectangle for material description column
+            bounding_boxes.material_description_bbox.rect * self.page.derotation_matrix,
         )
-        shape.finish(color=pymupdf.utils.getColor("red"))
+        self.shape.finish(color=pymupdf.utils.getColor("red"))
+
+    def draw_layer(
+        self,
+        layer: Layer,
+        sidebar_rects: list[pymupdf.Rect],
+        index: int,
+        page_number: int,
+    ):
+        """Draw layers on a pdf page.
+
+        In particular, this function:
+            - draws lines connecting the material description text layers to the depth intervals,
+            - colors the lines of the material description text layers based on whether they were correctly identified.
+
+        Args:
+            layer (Layer): The layer (depth interval and material description).
+            sidebar_rects (list[pymupdf.Rect]): The sidebar bounding boxes on the page.
+            index (int): Index of the layer.
+            page_number(int): the curent page number.
+        """
+        material_description = layer.material_description
+        mat_descr_lines = [line for line in material_description.lines if line.page_number == page_number]
+        mat_descr_rect = layer.material_description.rect_for_page(page_number)
+        if mat_descr_lines:
+            color = colors[index % len(colors)]
+
+            # background color for material description
+            for line in mat_descr_lines:
+                self.shape.draw_rect(line.rect * self.page.derotation_matrix)
+                self.shape.finish(
+                    color=pymupdf.utils.getColor(color),
+                    fill_opacity=0.2,
+                    fill=pymupdf.utils.getColor(color),
+                    width=0,
+                )
+                self._draw_correctness_line(
+                    start=pymupdf.Point(line.rect.top_left.x - 6, line.rect.top_left.y),
+                    end=pymupdf.Point(line.rect.bottom_left.x - 6, line.rect.bottom_left.y),
+                    is_correct=layer.is_correct,
+                    width=6,
+                )
+                self._draw_correctness_line(
+                    start=line.rect.top_left,
+                    end=line.rect.bottom_left,
+                    is_correct=material_description.is_correct,
+                    width=4,
+                )
+
+            if layer.depths:
+                depths_rect = pymupdf.Rect()
+                if layer.depths.start and layer.depths.start.page_number == page_number:
+                    depths_rect.include_rect(layer.depths.start.rect)
+                if layer.depths.end and layer.depths.end.page_number == page_number:
+                    depths_rect.include_rect(layer.depths.end.rect)
+
+                if any(sidebar_rect.contains(depths_rect) for sidebar_rect in sidebar_rects):
+                    # Depths are separate from the material description: draw a line connecting them
+                    line_anchor = layer.depths.get_line_anchor(page_number)
+                    if line_anchor:
+                        rect = mat_descr_rect
+                        self.shape.draw_line(
+                            line_anchor * self.page.derotation_matrix,
+                            pymupdf.Point(rect.x0, (rect.y0 + rect.y1) / 2) * self.page.derotation_matrix,
+                        )
+                        self.shape.finish(
+                            color=pymupdf.utils.getColor(color),
+                        )
+
+                    # background color for depth interval
+                    background_rect = layer.depths.get_background_rect(page_number, self.shape.page.rect.height)
+                    if background_rect is not None:
+                        self.shape.draw_rect(
+                            background_rect * self.page.derotation_matrix,
+                        )
+                        self.shape.finish(
+                            color=pymupdf.utils.getColor(color),
+                            fill_opacity=0.2,
+                            fill=pymupdf.utils.getColor(color),
+                            width=0,
+                        )
+
+                        self._draw_correctness_line(
+                            start=background_rect.top_left,
+                            end=background_rect.bottom_left,
+                            is_correct=layer.depths.is_correct,
+                            width=4,
+                        )
+                else:
+                    # Depths are extracted from the material description: only draw bounding boxes
+                    if layer.depths.start and layer.depths.start.page_number == page_number:
+                        self.shape.draw_rect(pymupdf.Rect(layer.depths.start.rect) * self.page.derotation_matrix)
+                    if layer.depths.end and layer.depths.end.page_number == page_number:
+                        self.shape.draw_rect(pymupdf.Rect(layer.depths.end.rect) * self.page.derotation_matrix)
+                    self.shape.finish(color=pymupdf.utils.getColor("purple"))
+
+                    if layer.depths.start and layer.depths.start.page_number == page_number:
+                        self._draw_correctness_line(
+                            start=layer.depths.start.rect.bottom_left,
+                            end=layer.depths.start.rect.bottom_right,
+                            is_correct=layer.depths.is_correct,
+                            width=4,
+                        )
+                    if layer.depths.end and layer.depths.end.page_number == page_number:
+                        self._draw_correctness_line(
+                            start=layer.depths.end.rect.bottom_left,
+                            end=layer.depths.end.rect.bottom_right,
+                            is_correct=layer.depths.is_correct,
+                            width=4,
+                        )
+
+    def _draw_correctness_line(
+        self,
+        start: pymupdf.Point,
+        end: pymupdf.Point,
+        is_correct: bool | None,
+        width: int,
+    ) -> None:
+        if is_correct is not None:
+            depth_is_correct_color = "green" if is_correct else "red"
+            self.shape.draw_line(
+                start * self.page.derotation_matrix,
+                end * self.page.derotation_matrix,
+            )
+            self.shape.finish(
+                color=pymupdf.utils.getColor(depth_is_correct_color),
+                width=width,
+                stroke_opacity=0.5,
+            )
 
 
-def draw_layer(
-    shape: pymupdf.Shape,
-    derotation_matrix: pymupdf.Matrix,
-    layer: Layer,
-    sidebar_rects: list[pymupdf.Rect],
-    index: int,
-    page_number: int,
-):
-    """Draw layers on a pdf page.
-
-    In particular, this function:
-        - draws lines connecting the material description text layers to the depth intervals,
-        - colors the lines of the material description text layers based on whether they were correctly identified.
+def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure], page_index: int):
+    """Draw table structures on a pdf page.
 
     Args:
-        shape (pymupdf.Shape): The shape object for drawing.
-        derotation_matrix (pymupdf.Matrix): The derotation matrix of the page.
-        layer (Layer): The layer (depth interval and material description).
-        sidebar_rects (list[pymupdf.Rect]): The sidebar bounding boxes on the page.
-        index (int): Index of the layer.
-        page_number(int): the curent page number.
+        page:               The PDF page.
+        table_structures:   The identified table structures on the page.
+        page_index:         The index of the page in the document (0-based).
     """
-    material_description = layer.material_description
-    mat_descr_lines = [line for line in material_description.lines if line.page_number == page_number]
-    mat_descr_rect = layer.material_description.rect_for_page(page_number)
-    if mat_descr_lines:
-        color = colors[index % len(colors)]
+    temp_doc = pymupdf.open()
+    temp_doc.insert_pdf(page.parent, from_page=page_index, to_page=page_index)
+    temp_page = temp_doc[0]
 
-        # background color for material description
-        for line in mat_descr_lines:
-            shape.draw_rect(line.rect * derotation_matrix)
-            shape.finish(
-                color=pymupdf.utils.getColor(color),
-                fill_opacity=0.2,
-                fill=pymupdf.utils.getColor(color),
-                width=0,
-            )
-            _draw_correctness_line(
-                shape,
-                derotation_matrix,
-                start=pymupdf.Point(line.rect.top_left.x - 6, line.rect.top_left.y),
-                end=pymupdf.Point(line.rect.bottom_left.x - 6, line.rect.bottom_left.y),
-                is_correct=layer.is_correct,
-                width=6,
-            )
-            _draw_correctness_line(
-                shape,
-                derotation_matrix,
-                start=line.rect.top_left,
-                end=line.rect.bottom_left,
-                is_correct=material_description.is_correct,
-                width=4,
-            )
+    shape = temp_page.new_shape()
+    draw_table_structures(shape, temp_page.derotation_matrix, table_structures)
+    shape.commit()
 
-        if layer.depths:
-            depths_rect = pymupdf.Rect()
-            if layer.depths.start and layer.depths.start.page_number == page_number:
-                depths_rect.include_rect(layer.depths.start.rect)
-            if layer.depths.end and layer.depths.end.page_number == page_number:
-                depths_rect.include_rect(layer.depths.end.rect)
+    result = convert_page_to_opencv_img(temp_page, scale_factor=2)
 
-            if any(sidebar_rect.contains(depths_rect) for sidebar_rect in sidebar_rects):
-                # Depths are separate from the material description: draw a line connecting them
-                line_anchor = layer.depths.get_line_anchor(page_number)
-                if line_anchor:
-                    rect = mat_descr_rect
-                    shape.draw_line(
-                        line_anchor * derotation_matrix,
-                        pymupdf.Point(rect.x0, (rect.y0 + rect.y1) / 2) * derotation_matrix,
-                    )
-                    shape.finish(
-                        color=pymupdf.utils.getColor(color),
-                    )
+    temp_doc.close()
 
-                # background color for depth interval
-                background_rect = layer.depths.get_background_rect(page_number, shape.page.rect.height)
-                if background_rect is not None:
-                    shape.draw_rect(
-                        background_rect * derotation_matrix,
-                    )
-                    shape.finish(
-                        color=pymupdf.utils.getColor(color),
-                        fill_opacity=0.2,
-                        fill=pymupdf.utils.getColor(color),
-                        width=0,
-                    )
-
-                    _draw_correctness_line(
-                        shape,
-                        derotation_matrix,
-                        start=background_rect.top_left,
-                        end=background_rect.bottom_left,
-                        is_correct=layer.depths.is_correct,
-                        width=4,
-                    )
-            else:
-                # Depths are extracted from the material description: only draw bounding boxes
-                if layer.depths.start and layer.depths.start.page_number == page_number:
-                    shape.draw_rect(pymupdf.Rect(layer.depths.start.rect) * derotation_matrix)
-                if layer.depths.end and layer.depths.end.page_number == page_number:
-                    shape.draw_rect(pymupdf.Rect(layer.depths.end.rect) * derotation_matrix)
-                shape.finish(color=pymupdf.utils.getColor("purple"))
-
-                if layer.depths.start and layer.depths.start.page_number == page_number:
-                    _draw_correctness_line(
-                        shape,
-                        derotation_matrix,
-                        start=layer.depths.start.rect.bottom_left,
-                        end=layer.depths.start.rect.bottom_right,
-                        is_correct=layer.depths.is_correct,
-                        width=4,
-                    )
-                if layer.depths.end and layer.depths.end.page_number == page_number:
-                    _draw_correctness_line(
-                        shape,
-                        derotation_matrix,
-                        start=layer.depths.end.rect.bottom_left,
-                        end=layer.depths.end.rect.bottom_right,
-                        is_correct=layer.depths.is_correct,
-                        width=4,
-                    )
-
-
-def _draw_correctness_line(
-    shape: pymupdf.Shape,
-    derotation_matrix: pymupdf.Matrix,
-    start: pymupdf.Point,
-    end: pymupdf.Point,
-    is_correct: bool | None,
-    width: int,
-) -> None:
-    if is_correct is not None:
-        depth_is_correct_color = "green" if is_correct else "red"
-        shape.draw_line(
-            start * derotation_matrix,
-            end * derotation_matrix,
-        )
-        shape.finish(
-            color=pymupdf.utils.getColor(depth_is_correct_color),
-            width=width,
-            stroke_opacity=0.5,
-        )
+    return result
 
 
 def draw_table_structures(
@@ -378,26 +375,3 @@ def draw_table_structures(
             shape.draw_line(start_point * derotation_matrix, end_point * derotation_matrix)
 
         shape.finish(color=pymupdf.utils.getColor(light_color), width=1, stroke_opacity=0.6)
-
-
-def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure], page_index: int):
-    """Draw table structures on a pdf page.
-
-    Args:
-        page:               The PDF page.
-        table_structures:   The identified table structures on the page.
-        page_index:         The index of the page in the document (0-based).
-    """
-    temp_doc = pymupdf.open()
-    temp_doc.insert_pdf(page.parent, from_page=page_index, to_page=page_index)
-    temp_page = temp_doc[0]
-
-    shape = temp_page.new_shape()
-    draw_table_structures(shape, temp_page.derotation_matrix, table_structures)
-    shape.commit()
-
-    result = convert_page_to_opencv_img(temp_page, scale_factor=2)
-
-    temp_doc.close()
-
-    return result
