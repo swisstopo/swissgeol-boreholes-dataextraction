@@ -168,9 +168,7 @@ def _find_table_structures(
     final_tables = []
     for table in detected_tables:
         # Check if this table overlaps with any already accepted table
-        overlapping_indices = _table_overlaps(table, final_tables)
-
-        if not overlapping_indices:
+        if not _table_overlaps(table, final_tables):
             final_tables.append(table)
 
     return final_tables
@@ -256,21 +254,9 @@ def _line_connects_to_group(line: StructureLine, group: list[StructureLine], con
     return False
 
 
-def _table_overlaps(table: TableStructure, existing_tables: list[TableStructure]) -> list[int]:
-    """Find indices of existing tables that overlap with the given table.
-
-    Args:
-        table: The table to check for overlaps
-        existing_tables: List of existing tables to check against
-
-    Returns:
-        List of indices of overlapping tables in existing_tables
-    """
-    overlapping_indices = []
-    for i, existing_table in enumerate(existing_tables):
-        if table.bounding_rect.intersects(existing_table.bounding_rect):
-            overlapping_indices.append(i)
-    return overlapping_indices
+def _table_overlaps(table: TableStructure, existing_tables: list[TableStructure]) -> bool:
+    """Overlap check using bounding box intersection."""
+    return any(table.bounding_rect.intersects(existing_table.bounding_rect) for existing_table in existing_tables)
 
 
 def _create_table_from_region(
