@@ -69,7 +69,7 @@ def detect_table_structures(
     table_candidates = [
         table
         for table in table_candidates
-        if len(table.horizontal_lines) >= 3
+        if len(table.horizontal_lines) >= 2
         if len(table.vertical_lines) >= 1
         if table.confidence >= config.get("min_confidence")
     ]
@@ -153,7 +153,6 @@ def _find_table_structures(
     table_regions = _find_table_regions(lines, config)
 
     detected_tables = []
-
     for region_h_lines, region_v_lines in table_regions:
         # define a minimum structure for a table
         if len(region_h_lines) < 2 or len(region_v_lines) < 2:
@@ -161,12 +160,18 @@ def _find_table_structures(
 
         # Create table structure for this region
         table = _create_table_from_region(region_h_lines, region_v_lines, config, page_width, page_height, text_lines)
-
-        # Check for bounding box intersection
-        if table and table.confidence >= config.get("min_confidence") and not _table_overlaps(table, detected_tables):
+        if table.confidence >= config.get("min_confidence"):
             detected_tables.append(table)
 
-    return detected_tables
+    detected_tables = sorted(detected_tables, key=lambda t: t.confidence, reverse=True)
+
+    final_tables = []
+    for table in detected_tables:
+        # Check if this table overlaps with any already accepted table
+        if not _table_overlaps(table, final_tables):
+            final_tables.append(table)
+
+    return final_tables
 
 
 def _find_table_regions(lines: list[StructureLine], config: dict) -> list[tuple[list[Line], list[Line]]]:
