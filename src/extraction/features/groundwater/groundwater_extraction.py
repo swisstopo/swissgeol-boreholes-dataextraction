@@ -121,7 +121,9 @@ class Groundwater(ExtractedFeature):
             if self.elevation is not None and terrain_elevation is not None:
                 self.depth = round(terrain_elevation - self.elevation, 2)
             else:
-                self.depth = self.infer_depth(layers, feature_rect)
+                # Optional method to infer groundwater depths when they are not explicitly provided.
+                # self.depth = self.infer_depth(layers, feature_rect)
+                pass
 
         if self.depth is None:
             return
@@ -131,6 +133,9 @@ class Groundwater(ExtractedFeature):
 
     def infer_depth(self, layers: list[Layer], feature_rect: pymupdf.Rect) -> float | None:
         """Infers the depth of the groundwater feature based on the given layers and feature rectangle.
+
+        TODO This method should be reviewed with a geologist to decide whether to infer missing depths from the
+        y-scale or leave them blank. If unnecessary, it should be removed.
 
         Args:
             layers (list[Layer]): The list of layers in the borehole.
@@ -166,7 +171,7 @@ class Groundwater(ExtractedFeature):
             return None
         a, b = np.polyfit(depths[:, 0], depths[:, 1], 1)
         depth = round((y_value - b) / a, 2)
-        logger.info(f"Infered depth for groundwater: {depth}")
+        logger.info(f"Inferred depth for groundwater: {depth}")
         return depth
 
 
