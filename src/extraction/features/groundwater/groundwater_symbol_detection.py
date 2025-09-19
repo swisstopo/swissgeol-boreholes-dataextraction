@@ -111,9 +111,7 @@ def is_valid_pair(l_top: Line, l_bot: Line, hit_line: TextLine, text_lines: list
     pos_to_bb_ok = hit_line.rect.x0 < l_top.end.x and l_top.start.x < hit_line.rect.x1  # longest line overlaps the bb
     gap_ok = l_bot.start.y - l_top.start.y < l_bot.length / 3  # gap is small, relative to the bottom line
     no_bb_in_gab = not any(
-        l_top.start.y < (line.rect.y0 + line.rect.y1) / 2 < l_bot.start.y
-        and line.rect.x0 < l_top.end.x
-        and l_top.start.x < line.rect.x1
+        line.rect.intersects(pymupdf.Rect(l_top.start.x, l_top.start.y, l_top.end.x, l_bot.start.y))
         for line in text_lines
     )  # no text line sits in between the two lines
 
