@@ -33,6 +33,9 @@ class LayerDepthsEntry(RectWithPageMixin):
             "page": self.page_number if self.page_number else None,
         }
 
+    def __repr__(self):
+        return f"{self.value}"
+
     @classmethod
     def from_json(cls, data: dict) -> "LayerDepthsEntry":
         """Converts a dictionary to an object.
