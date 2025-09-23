@@ -50,7 +50,7 @@ class LayerDepthsEntry(RectWithPageMixin):
 
 
 @dataclass
-class LayerDepths:
+class LayerDepths(ExtractedFeature):
     """Represents the start and end depth boundaries of a layer.
 
     Unlike the class `Interval` from `interval.py`, which is used in logical depth computations and extraction flow,

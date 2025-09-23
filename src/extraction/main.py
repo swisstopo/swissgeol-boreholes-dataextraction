@@ -395,12 +395,12 @@ def start_pipeline(
         with open(predictions_path, "w", encoding="utf8") as file:
             json.dump(predictions.to_json(), file, ensure_ascii=False)
 
-    document_level_metadata_metrics = evaluate_all_predictions(
+    evaluate_all_predictions(
         predictions=predictions, ground_truth_path=ground_truth_path, temp_directory=temp_directory
     )
 
     if input_directory and draw_directory:
-        draw_predictions(predictions, input_directory, draw_directory, document_level_metadata_metrics)
+        draw_predictions(predictions, input_directory, draw_directory)
 
     # Finalize analytics if enabled
     if matching_analytics:

@@ -39,16 +39,6 @@ class OverallMetrics:
         else:
             return 0
 
-    def pseudo_macro_f1(self) -> float:
-        """Compute a "pseudo" macro F1 score by using the values of the macro precision and macro recall.
-
-        TODO: we probably should not use this metric, and use the proper macro F1 score instead.
-        """
-        if self.metrics and self.macro_precision() + self.macro_recall() > 0:
-            return 2 * self.macro_precision() * self.macro_recall() / (self.macro_precision() + self.macro_recall())
-        else:
-            return 0
-
     def to_dataframe(self, name: str, fn: Callable[[Metrics], float]) -> pd.DataFrame:
         """Convert the metrics to a DataFrame."""
         series = pd.Series({filename: fn(metric) for filename, metric in self.metrics.items()})
@@ -63,6 +53,7 @@ class OverallMetricsCatalog:
     """Keeps track of all different relevant metrics that are computed for a dataset."""
 
     def __init__(self, languages: set[str]):
+        self.material_description_metrics = OverallMetrics()
         self.layer_metrics = OverallMetrics()
         self.depth_interval_metrics = OverallMetrics()
         self.groundwater_metrics = OverallMetrics()
@@ -73,6 +64,7 @@ class OverallMetricsCatalog:
         for lang in languages:
             setattr(self, f"{lang}_layer_metrics", OverallMetrics())
             setattr(self, f"{lang}_depth_interval_metrics", OverallMetrics())
+            setattr(self, f"{lang}_material_description_metrics", OverallMetrics())
 
     def document_level_metrics_df(self) -> pd.DataFrame:
         """Return a DataFrame with all the document level metrics."""
@@ -80,7 +72,16 @@ class OverallMetricsCatalog:
             self.layer_metrics.to_dataframe("F1", lambda metric: metric.f1),
             self.layer_metrics.to_dataframe("precision", lambda metric: metric.precision),
             self.layer_metrics.to_dataframe("recall", lambda metric: metric.recall),
-            self.depth_interval_metrics.to_dataframe("Depth_interval_accuracy", lambda metric: metric.precision),
+            self.depth_interval_metrics.to_dataframe("Depth_interval_f1", lambda metric: metric.f1),
+            self.depth_interval_metrics.to_dataframe("Depth_interval_recall", lambda metric: metric.recall),
+            self.depth_interval_metrics.to_dataframe("Depth_interval_precision", lambda metric: metric.precision),
+            self.material_description_metrics.to_dataframe("material_description_f1", lambda metric: metric.f1),
+            self.material_description_metrics.to_dataframe(
+                "material_description_recall", lambda metric: metric.recall
+            ),
+            self.material_description_metrics.to_dataframe(
+                "material_description_precision", lambda metric: metric.precision
+            ),
             self.layer_metrics.to_dataframe("Number Elements", lambda metric: metric.tp + metric.fn),
             self.layer_metrics.to_dataframe("Number wrong elements", lambda metric: metric.fp + metric.fn),
             self.groundwater_metrics.to_dataframe("groundwater", lambda metric: metric.f1),
@@ -104,12 +105,15 @@ class OverallMetricsCatalog:
         # Populate the basic metrics
         result.update(
             {
-                "F1": self.layer_metrics.pseudo_macro_f1() if self.layer_metrics else None,
-                "recall": self.layer_metrics.macro_recall() if self.layer_metrics else None,
-                "precision": self.layer_metrics.macro_precision() if self.layer_metrics else None,
-                "depth_interval_accuracy": self.depth_interval_metrics.macro_precision()
-                if self.depth_interval_metrics
-                else None,
+                "layer_f1": self.layer_metrics.macro_f1() if self.layer_metrics else None,
+                "layer_recall": self.layer_metrics.macro_recall() if self.layer_metrics else None,
+                "layer_precision": self.layer_metrics.macro_precision() if self.layer_metrics else None,
+                "depth_interval_f1": self.depth_interval_metrics.macro_f1(),
+                "depth_interval_recall": self.depth_interval_metrics.macro_recall(),
+                "depth_interval_precision": self.depth_interval_metrics.macro_precision(),
+                "material_description_f1": self.material_description_metrics.macro_f1(),
+                "material_description_recall": self.material_description_metrics.macro_recall(),
+                "material_description_precision": self.material_description_metrics.macro_precision(),
                 "groundwater_f1": groundwater_metrics.f1,
                 "groundwater_recall": groundwater_metrics.recall,
                 "groundwater_precision": groundwater_metrics.precision,
@@ -121,15 +125,12 @@ class OverallMetricsCatalog:
 
         # Add dynamic language-specific metrics only if they exist
         for lang in self.languages:
-            layer_key = f"{lang}_layer_metrics"
-            depth_key = f"{lang}_depth_interval_metrics"
+            for metric_topic in ["layer", "depth_interval", "material_description"]:
+                key = f"{lang}_{metric_topic}_metrics"
 
-            if getattr(self, layer_key) and getattr(self, layer_key).metrics:
-                result[f"{lang}_F1"] = getattr(self, layer_key).pseudo_macro_f1()
-                result[f"{lang}_recall"] = getattr(self, layer_key).macro_recall()
-                result[f"{lang}_precision"] = getattr(self, layer_key).macro_precision()
-
-            if getattr(self, depth_key) and getattr(self, depth_key).metrics:
-                result[f"{lang}_depth_interval_accuracy"] = getattr(self, depth_key).macro_precision()
+                if getattr(self, key) and getattr(self, key).metrics:
+                    result[f"{lang}_{metric_topic}_f1"] = getattr(self, key).macro_f1()
+                    result[f"{lang}_{metric_topic}_recall"] = getattr(self, key).macro_recall()
+                    result[f"{lang}_{metric_topic}_precision"] = getattr(self, key).macro_precision()
 
         return dict(result)  # Convert defaultdict back to a regular dict
