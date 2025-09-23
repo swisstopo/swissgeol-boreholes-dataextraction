@@ -63,19 +63,12 @@ def _test_s3_client(s3_client: boto3.client):
     Args:
         s3_client (boto3.client): The S3 client.
     """
+    if config.bucket_name is None:
+        raise HTTPException(status_code=500, detail="AWS S3 bucket name must be defined.") from None
+
     try:
-        if config.bucket_name:
-            # Test bucket access with a lightweight operation
-            s3_client.head_bucket(Bucket=config.bucket_name)
-
-        else:
-            # Test basic S3 connectivity by listing buckets (requires s3:ListAllMyBuckets permissions)
-            logger.warning(
-                "No S3 bucket configured, S3 connectivity test will be carried out with listing buckets. "
-                "Ensure that the s3:ListAllMyBuckets permissions are available."
-            )
-            s3_client.list_buckets()
-
+        # Test bucket access with a lightweight operation
+        s3_client.head_bucket(Bucket=config.bucket_name)
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
         error_message = e.response["Error"]["Message"]
