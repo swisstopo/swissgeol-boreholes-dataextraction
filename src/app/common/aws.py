@@ -83,11 +83,11 @@ def _test_s3_client(s3_client: boto3.client):
 
         logger.error(f"S3 ClientError - Code: {error_code}, HTTP: {http_status}, Message: {error_message}")
 
-        if http_status == 403:
+        if http_status == 403 and config.bucket_name:
             raise HTTPException(
                 status_code=403, detail=f"Access denied to the bucket {config.bucket_name}. Check the AWS permissions."
             ) from None
-        elif http_status == 404:
+        elif http_status == 404 and config.bucket_name:
             raise HTTPException(status_code=404, detail=f"Bucket {config.bucket_name} does not exist.") from None
         else:
             raise HTTPException(
