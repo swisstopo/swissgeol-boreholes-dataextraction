@@ -20,6 +20,7 @@ from utils.file_utils import parse_text
 logger = logging.getLogger(__name__)
 
 MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD = 0.9
+MAX_DEPTH_SCORE = 1.0
 
 
 class LayerEvaluator:
@@ -144,6 +145,26 @@ class LayerEvaluator:
         """
         matched_boreholes = LayerEvaluator.match_boreholes_to_ground_truth(file_predictions, ground_truth_for_file)
 
+        # Utility functions to set correctness flags on predicted layers
+        def set_depths_flag(predicted_layer, ground_truth_layer):
+            if predicted_layer.depths is not None:
+                predicted_layer.depths.is_correct = (
+                    score_depths(predicted_layer, ground_truth_layer) == MAX_DEPTH_SCORE
+                )
+
+        def set_material_description_flag(predicted_layer, groud_truth_layers):
+            predicted_layer.material_description.is_correct = (
+                score_material_descriptions(predicted_layer, groud_truth_layers)
+                >= MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD
+            )
+
+        def set_layer_flag(predicted_layer, groud_truth_layers):
+            predicted_layer.is_correct = (
+                score_depths(predicted_layer, groud_truth_layers) == MAX_DEPTH_SCORE
+                and score_material_descriptions(predicted_layer, groud_truth_layers)
+                >= MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD
+            )
+
         # now compute the real statistics for the matched pairs of boreholes
         for borehole_data in matched_boreholes:
             if borehole_data.predictions:
@@ -155,35 +176,23 @@ class LayerEvaluator:
                         pred.depths.is_correct = False
                     pred.is_correct = False
 
-                groud_truth_layers = borehole_data.ground_truth.get("layers", [])
+                ground_truth_layers = borehole_data.ground_truth.get("layers", [])
 
-                _, depths_mapping = LayerEvaluator.compute_borehole_affinity_and_mapping(
-                    groud_truth_layers, predicted_layers, score_depths
+                LayerEvaluator.apply_mapping(ground_truth_layers, predicted_layers, score_depths, set_depths_flag)
+                LayerEvaluator.apply_mapping(
+                    ground_truth_layers, predicted_layers, score_material_descriptions, set_material_description_flag
                 )
-                for predicted_layer, ground_truth_layer in depths_mapping:
-                    if predicted_layer.depths is not None:
-                        predicted_layer.depths.is_correct = score_depths(predicted_layer, ground_truth_layer) == 1.0
-
-                _, material_description_mapping = LayerEvaluator.compute_borehole_affinity_and_mapping(
-                    groud_truth_layers, predicted_layers, score_material_descriptions
-                )
-                for predicted_layer, ground_truth_layer in material_description_mapping:
-                    predicted_layer.material_description.is_correct = (
-                        score_material_descriptions(predicted_layer, ground_truth_layer)
-                        >= MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD
-                    )
-
-                _, combined_mapping = LayerEvaluator.compute_borehole_affinity_and_mapping(
-                    groud_truth_layers, predicted_layers, score_layer
-                )
-                for predicted_layer, ground_truth_layer in combined_mapping:
-                    predicted_layer.is_correct = (
-                        score_depths(predicted_layer, ground_truth_layer) == 1.0
-                        and score_material_descriptions(predicted_layer, ground_truth_layer)
-                        >= MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD
-                    )
+                LayerEvaluator.apply_mapping(ground_truth_layers, predicted_layers, score_layer, set_layer_flag)
 
         return matched_boreholes
+
+    @staticmethod
+    def apply_mapping(ground_truth_layers, predicted_layers, scoring_fn, set_flag_fn):
+        _, mapping = LayerEvaluator.compute_borehole_affinity_and_mapping(
+            ground_truth_layers, predicted_layers, scoring_fn
+        )
+        for predicted_layer, ground_truth_layer in mapping:
+            set_flag_fn(predicted_layer, ground_truth_layer)
 
     @staticmethod
     def match_boreholes_to_ground_truth(
@@ -292,7 +301,7 @@ class LayerEvaluator:
             for predicted_layer_index, ground_truth_layer_index in mapping
         ]
 
-        matching_score = dp[P][G] / (2.0 * max(P, G))  # maximum is 1.
+        matching_score = dp[P][G] / max(P, G)  # maximum is 1.
         return matching_score, layer_mapping
 
     @staticmethod
