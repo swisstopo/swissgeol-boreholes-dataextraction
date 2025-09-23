@@ -63,25 +63,35 @@ def _test_s3_client(s3_client: boto3.client):
     Args:
         s3_client (boto3.client): The S3 client.
     """
-    try:
-        client_response = s3_client.list_buckets()
-        client_buckets = {bucket["Name"] for bucket in client_response["Buckets"]}
+    if config.bucket_name is None:
+        raise HTTPException(status_code=500, detail="AWS S3 bucket name must be defined.") from None
 
+    try:
+        # Test bucket access with a lightweight operation
+        s3_client.head_bucket(Bucket=config.bucket_name)
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
-        if error_code in ["InvalidAccessKeyId", "SignatureDoesNotMatch"]:
-            raise HTTPException(status_code=401, detail="Invalid AWS credentials.") from None
+        error_message = e.response["Error"]["Message"]
+        http_status = e.response["ResponseMetadata"]["HTTPStatusCode"]
+
+        logger.error(f"S3 ClientError - Code: {error_code}, HTTP: {http_status}, Message: {error_message}")
+
+        if http_status == 403 and config.bucket_name:
+            raise HTTPException(
+                status_code=403, detail=f"Access denied to the bucket {config.bucket_name}. Check the AWS permissions."
+            ) from None
+        elif http_status == 404 and config.bucket_name:
+            raise HTTPException(status_code=404, detail=f"Bucket {config.bucket_name} does not exist.") from None
         else:
-            raise HTTPException(status_code=500, detail=f"AWS Client error: {error_code}") from None
+            raise HTTPException(
+                status_code=500, detail=f"AWS Client error: {error_code}, message: {error_message}"
+            ) from None
+
     except EndpointConnectionError as e:
         raise HTTPException(
             status_code=500,
             detail="Server misconfiguration: could not connect to S3 endpoint URL: "
             f"{e.kwargs.get('endpoint_url', 'Unknown')}",
-        ) from None
-    if config.bucket_name and config.bucket_name not in client_buckets:
-        raise HTTPException(
-            status_code=404, detail=f"No bucket named {config.bucket_name} owned by the current aws account."
         ) from None
 
 
