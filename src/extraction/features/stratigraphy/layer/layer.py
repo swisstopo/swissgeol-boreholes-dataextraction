@@ -300,7 +300,7 @@ class LayersInDocument:
         borehole_continuation = self._identify_borehole_continuation(layer_predictions)
         remaining_boreholes = [borehole for borehole in layer_predictions if borehole is not borehole_continuation]
 
-        # 3. Is the the current borehole likelly to be the continuation of the previous.
+        # 3. Is the current borehole likely to be the continuation of the previous.
         if not self._is_continuation(borehole_to_extend, borehole_continuation, current_page):
             self.boreholes_layers_with_bb.extend(layer_predictions)
             return
@@ -393,7 +393,7 @@ class LayersInDocument:
             and current_sidebar_bbox is not None
             and x_overlap_significant_smallest(prev_sidebar_bbox.rect, current_sidebar_bbox.rect, SIDEBAR_BBOX_OVERLAP)
         ):
-            return True  # if sidebars overlaps slighly, it is a continuation
+            return True  # if sidebars overlaps slightly, it is a continuation
 
         prev_mat_bbox = next(
             bbox.material_description_bbox
