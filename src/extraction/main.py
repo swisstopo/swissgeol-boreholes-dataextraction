@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 
 from extraction import DATAPATH
-from extraction.annotations.draw import draw_predictions, plot_tables
+from extraction.annotations.draw import draw_predictions, plot_tables, plot_strip_logs
 from extraction.annotations.plot_utils import plot_lines
 from extraction.evaluation.benchmark.score import evaluate_all_predictions
 from extraction.features.extract import extract_page
@@ -26,8 +26,8 @@ from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.predictions.predictions import BoreholeListBuilder
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
-from extraction.features.utils.geometry.line_detection import extract_lines
-from extraction.features.utils.table_detection import detect_structure_lines, detect_table_structures
+from extraction.features.utils.geometry.line_detection import extract_circles, extract_lines
+from extraction.features.utils.table_detection import detect_structure_lines, detect_table_structures, detect_strip_logs
 from extraction.features.utils.text.extract_text import extract_text_lines
 from extraction.features.utils.text.matching_params_analytics import create_analytics
 from utils.file_utils import flatten, read_params
@@ -104,6 +104,13 @@ def common_options(f):
         help="Whether to draw detected table structures on pdf pages. Defaults to False.",
     )(f)
     f = click.option(
+        "-st",
+        "--draw-strip-logs",
+        is_flag=True,
+        default=False,
+        help="Whether to draw detected strip log structures on pdf pages. Defaults to False.",
+    )(f)
+    f = click.option(
         "-c",
         "--csv",
         is_flag=True,
@@ -134,6 +141,7 @@ def click_pipeline(
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
     draw_tables: bool = False,
+    draw_strip_logs: bool = False,
     csv: bool = False,
     matching_analytics: bool = False,
     part: str = "all",
@@ -148,6 +156,7 @@ def click_pipeline(
         skip_draw_predictions=skip_draw_predictions,
         draw_lines=draw_lines,
         draw_tables=draw_tables,
+        draw_strip_logs=draw_strip_logs,
         csv=csv,
         matching_analytics=matching_analytics,
         part=part,
@@ -218,6 +227,7 @@ def start_pipeline(
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
     draw_tables: bool = False,
+    draw_strip_logs: bool = False,
     csv: bool = False,
     matching_analytics: bool = False,
     part: str = "all",
@@ -239,6 +249,7 @@ def start_pipeline(
         skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
         draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.
         draw_tables (bool, optional): Whether to draw detected table structures on pdf pages. Defaults to False.
+        draw_strip_logs (bool, optional): Whether to draw detected strip log structures on pdf pages. Defaults to False.
         metadata_path (Path): The path to the metadata file.
         csv (bool): Whether to generate a CSV output. Defaults to False.
         matching_analytics (bool): Whether to enable matching parameters analytics. Defaults to False.
@@ -301,10 +312,14 @@ def start_pipeline(
 
                 text_lines = extract_text_lines(page)
                 geometric_lines = extract_lines(page, line_detection_params)
+                geometric_circles = extract_circles(page, line_detection_params, text_lines)
 
                 # Detect table structures on the page
                 structure_lines = detect_structure_lines(geometric_lines)
                 table_structures = detect_table_structures(page_index, doc, structure_lines, text_lines)
+
+                # Detect strip logs on the page
+                strip_logs = detect_strip_logs(page_index, doc, structure_lines, geometric_circles, text_lines)
 
                 # extract the statigraphy
                 page_layers = extract_page(
@@ -313,6 +328,7 @@ def start_pipeline(
                     geometric_lines,
                     structure_lines,
                     table_structures,
+                    strip_logs,
                     file_metadata.language,
                     page_index,
                     doc,
@@ -338,6 +354,20 @@ def start_pipeline(
 
                     if mlflow_tracking:
                         mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_tables.png")
+
+                    elif not draw_directory:
+                        logger.warning("draw_directory is not defined. Skipping saving table image.")
+
+                # Draw strip logs if requested
+                if draw_strip_logs:
+                    img = plot_strip_logs(page, strip_logs, page_index)
+
+                    if draw_directory:
+                        strip_img_path = draw_directory / f"{Path(filename).stem}_page_{page.number + 1}_strip_logs.png"
+                        cv2.imwrite(str(strip_img_path), img)
+
+                    if mlflow_tracking:
+                        mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_strip_logs.png")
 
                     elif not draw_directory:
                         logger.warning(

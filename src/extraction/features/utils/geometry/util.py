@@ -5,7 +5,7 @@ from collections.abc import Callable
 import pymupdf
 from numpy.typing import ArrayLike
 
-from .geometry_dataclasses import Line, Point
+from .geometry_dataclasses import Circle, Line, Point
 
 
 def axis_overlap(rect1: pymupdf.Rect, rect2: pymupdf.Rect, axis: str) -> float:
@@ -145,6 +145,23 @@ def line_from_array(line: ArrayLike, scale_factor: float) -> Line:
     end = Point(line[0][2] / scale_factor, line[0][3] / scale_factor)
 
     return Line(start, end)
+
+
+def circle_from_array(circle: ArrayLike, scale_factor: float) -> Circle:
+    """Convert a circle in the format of [x, y, radius] to a Circle object.
+
+    Args:
+        circle (ArrayLike): circle as represented by an array of three numbers [x, y, radius].
+        scale_factor (float): The scale factor to apply to the circles. Required when
+                              the pdf page was scaled before detecting circles.
+
+    Returns:
+        Circle: The converted circle.
+    """
+    center = Point(circle[0] / scale_factor, circle[1] / scale_factor)
+    radius = circle[2] / scale_factor
+
+    return Circle(center, radius)
 
 
 def compute_outer_rect(rects: list[pymupdf.Rect]) -> pymupdf.Rect:

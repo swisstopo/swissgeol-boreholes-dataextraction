@@ -24,3 +24,37 @@ line_scoring:
 text_scoring:
   text_weights: 0.3
   text_presence_weight: 0.01
+
+# Strip log detection parameters
+strip_logs:
+  # Minimum length for vertical lines to be considered strip boundaries
+  min_vertical_length: 0.01
+
+  # Maximum width for a strip log structure
+  max_strip_width: 100
+
+  # Minimum aspect ratio (height/width) for strip logs
+  min_aspect_ratio: 3.0
+
+  # Minimum horizontal line density per 10000 square units
+  min_horizontal_density: 5.0
+
+  # Minimum circle density per 10000 square units
+  min_circle_density: 2.0
+
+  # Minimum confidence threshold for strip log detection
+  min_confidence: 0.5
+
+  # Minimum number of horizontal lines required
+  min_horizontal_lines: 3
+
+  # Minimum number of vertical lines required
+  min_vertical_lines: 2
+
+  # Confidence calculation weights
+  aspect_weight: 0.2
+  line_density_weight: 0.2
+  circle_weight: 0.4
+
+  # Penalty for text within strip log region
+  text_penalty: 0.1

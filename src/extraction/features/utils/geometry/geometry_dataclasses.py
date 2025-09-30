@@ -219,3 +219,11 @@ class RectWithPageMixin:
     @property
     def page_number(self: SupportsRectWithPage):
         return self.rect_with_page.page_number
+
+
+@dataclass
+class Circle:
+    """Class to represent a circle in 2D space."""
+
+    center: Point
+    radius: float

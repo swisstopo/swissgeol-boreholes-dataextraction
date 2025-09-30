@@ -12,7 +12,7 @@ from extraction.annotations.plot_utils import convert_page_to_opencv_img
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
-from extraction.features.utils.table_detection import TableStructure
+from extraction.features.utils.table_detection import TableStructure, StripLog
 
 load_dotenv()
 
@@ -358,6 +358,61 @@ def draw_table_structures(
         shape.finish(color=pymupdf.utils.getColor(light_color), width=1, stroke_opacity=0.6)
 
 
+def draw_strip_logs(
+    shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, strip_logs: list[StripLog]
+) -> None:
+    """Draw strip log structures on a pdf page.
+
+    Each strip log is drawn with a distinctive color to distinguish between different detected strip logs.
+
+    Args:
+        shape (pymupdf.Shape): The shape object for drawing.
+        derotation_matrix (pymupdf.Matrix): The derotation matrix of the page.
+        strip_logs (list[StripLog]): List of detected strip log structures.
+    """
+    # Define colors for different strip logs
+    strip_colors = [
+        ("darkred", "lightcoral"),
+        ("darkgreen", "lightgreen"),
+        ("darkblue", "lightblue"),
+        ("darkorange", "peachpuff"),
+        ("darkviolet", "plum"),
+        ("darkgoldenrod", "khaki"),
+        ("darkslategray", "lightsteelblue"),
+        ("maroon", "mistyrose"),
+    ]
+
+    for index, strip in enumerate(strip_logs):
+        main_color, light_color = strip_colors[index % len(strip_colors)]
+
+        # Draw the strip log bounding rectangle with thick border
+        shape.draw_rect(strip.bounding_rect * derotation_matrix)
+        shape.finish(color=pymupdf.utils.getColor(main_color), width=4, stroke_opacity=0.9)
+
+        # Draw vertical boundary lines
+        for v_line in strip.vertical_lines:
+            start_point = pymupdf.Point(v_line.start.x, v_line.start.y)
+            end_point = pymupdf.Point(v_line.end.x, v_line.end.y)
+            shape.draw_line(start_point * derotation_matrix, end_point * derotation_matrix)
+
+        shape.finish(color=pymupdf.utils.getColor(main_color), width=3, stroke_opacity=0.8)
+
+        # Draw horizontal lines in lighter shade
+        for h_line in strip.horizontal_lines:
+            start_point = pymupdf.Point(h_line.start.x, h_line.start.y)
+            end_point = pymupdf.Point(h_line.end.x, h_line.end.y)
+            shape.draw_line(start_point * derotation_matrix, end_point * derotation_matrix)
+
+        shape.finish(color=pymupdf.utils.getColor(light_color), width=1, stroke_opacity=0.5)
+
+        # Draw circles within the strip log
+        for circle in strip.circles:
+            center = pymupdf.Point(circle.center.x, circle.center.y) * derotation_matrix
+            shape.draw_circle(center, circle.radius)
+
+        shape.finish(color=pymupdf.utils.getColor(main_color), width=2, stroke_opacity=0.7)
+
+
 def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure], page_index: int):
     """Draw table structures on a pdf page.
 
@@ -372,6 +427,29 @@ def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure], page
 
     shape = temp_page.new_shape()
     draw_table_structures(shape, temp_page.derotation_matrix, table_structures)
+    shape.commit()
+
+    result = convert_page_to_opencv_img(temp_page, scale_factor=2)
+
+    temp_doc.close()
+
+    return result
+
+
+def plot_strip_logs(page: pymupdf.Page, strip_logs: list[StripLog], page_index: int):
+    """Draw strip log structures on a pdf page.
+
+    Args:
+        page:               The PDF page.
+        strip_logs:         The identified strip log structures on the page.
+        page_index:         The index of the page in the document (0-based).
+    """
+    temp_doc = pymupdf.open()
+    temp_doc.insert_pdf(page.parent, from_page=page_index, to_page=page_index)
+    temp_page = temp_doc[0]
+
+    shape = temp_page.new_shape()
+    draw_strip_logs(shape, temp_page.derotation_matrix, strip_logs)
     shape.commit()
 
     result = convert_page_to_opencv_img(temp_page, scale_factor=2)

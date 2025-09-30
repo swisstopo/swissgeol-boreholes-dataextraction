@@ -12,8 +12,8 @@ from numpy.typing import ArrayLike
 from extraction.features.utils.geometry.geometric_line_utilities import merge_parallel_lines_quadtree
 from utils.file_utils import read_params
 
-from .geometry_dataclasses import Line
-from .util import line_from_array
+from .geometry_dataclasses import Circle, Line
+from .util import circle_from_array, line_from_array
 
 load_dotenv()
 
@@ -104,6 +104,131 @@ def detect_lines_hough(page: pymupdf.Page, hough_params: dict) -> ArrayLike:
     lines = cv2.HoughLinesP(combined, rho, theta, threshold, minLineLength=min_line_length, maxLineGap=max_line_gap)
 
     return [line_from_array(line, scale_ratio) for line in lines]
+
+
+def detect_circles_hough(page: pymupdf.Page, hough_circles_params: dict) -> list[Circle]:
+    """Detect circles in a pdf page using HoughCircles algorithm.
+
+    Args:
+        page (pymupdf.Page): The page to detect circles in.
+        hough_circles_params (dict): Parameters for HoughCircles detection.
+
+    Returns:
+        list[Circle]: The detected circles as a list.
+    """
+    # Convert PDF page to image
+    pix = page.get_pixmap(matrix=pymupdf.Matrix(2, 2))
+    img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, 3)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Apply Gaussian blur to reduce noise
+    gray = cv2.GaussianBlur(gray, (5, 5), 0)
+    gray = cv2.Canny(gray, 50, 150)
+
+    circles = cv2.HoughCircles(
+        gray,
+        method=cv2.HOUGH_GRADIENT,
+        dp=hough_circles_params["dp"],
+        minDist=hough_circles_params["min_dist"],
+        param1=hough_circles_params["param1"],
+        param2=hough_circles_params["param2"],
+        minRadius=hough_circles_params["min_radius"],
+        maxRadius=hough_circles_params["max_radius"]
+    )
+
+    if circles is None:
+        return []
+
+    # Convert detected circles to Circle objects
+    circles = np.round(circles[0, :]).astype("int")
+    detected_circles = []
+
+    for (x, y, radius) in circles:
+        # Convert back from scaled coordinates to PDF coordinates
+        detected_circles.append(circle_from_array([x, y, radius], scale_factor=2))
+
+    return detected_circles
+
+
+def _circle_intersects_with_text(circle: Circle, text_lines: list, text_proximity_threshold: float = 2.0) -> bool:
+    """Check if a circle intersects with or is too close to any text line.
+
+    Args:
+        circle (Circle): The circle to check.
+        text_lines (list): List of TextLine objects.
+        text_proximity_threshold (float): Minimum distance from text line edges in pixels.
+
+    Returns:
+        bool: True if the circle intersects or is too close to text, False otherwise.
+    """
+    for text_line in text_lines:
+        # Create an expanded rectangle around the text line to account for proximity threshold
+        expanded_rect = pymupdf.Rect(
+            text_line.rect.x0 - text_proximity_threshold,
+            text_line.rect.y0 - text_proximity_threshold,
+            text_line.rect.x1 + text_proximity_threshold,
+            text_line.rect.y1 + text_proximity_threshold
+        )
+
+        # Check if the circle center is within the expanded text rectangle
+        if expanded_rect.contains(pymupdf.Point(circle.center.x, circle.center.y)):
+            return True
+
+        # Check if any part of the circle intersects with the expanded text rectangle
+        # Find the closest point on the rectangle to the circle center
+        closest_x = max(expanded_rect.x0, min(circle.center.x, expanded_rect.x1))
+        closest_y = max(expanded_rect.y0, min(circle.center.y, expanded_rect.y1))
+
+        # Calculate distance from circle center to closest point on rectangle
+        distance = ((circle.center.x - closest_x) ** 2 + (circle.center.y - closest_y) ** 2) ** 0.5
+
+        # If the distance is less than the circle radius, there's an intersection
+        if distance < circle.radius:
+            return True
+
+    return False
+
+
+def extract_circles(page: pymupdf.Page, line_detection_params: dict, text_lines: list = None) -> list[Circle]:
+    """Extract circles from a pdf page.
+
+    Args:
+        page (pymupdf.Page): The page to extract circles from.
+        line_detection_params (dict): The parameters for the circle detection algorithm.
+        text_lines (list): List of TextLine objects for filtering circles on text (optional).
+
+    Returns:
+        list[Circle]: The detected circles as a list.
+    """
+    if "hough_circles" not in line_detection_params:
+        logger.warning("No hough_circles parameters found in configuration. Returning empty circle list.")
+        return []
+
+    circles = detect_circles_hough(page, hough_circles_params=line_detection_params["hough_circles"])
+
+    if not circles:
+        return []
+
+    # If text lines are provided, filter out circles that intersect with text
+    if text_lines is not None:
+        text_filtered_circles = []
+        text_proximity_threshold = line_detection_params.get("hough_circles", {}).get("text_proximity_threshold", 2.0)
+
+        for circle in circles:
+            is_on_text = _circle_intersects_with_text(circle, text_lines, text_proximity_threshold)
+            if not is_on_text:
+                text_filtered_circles.append(circle)
+
+        filtered_circles = text_filtered_circles
+        if mlflow_tracking:
+            logger.info(f"Filtered out {len(circles) - len(filtered_circles)} circles intersecting with text")
+    else:
+        filtered_circles = circles
+
+    if mlflow_tracking and filtered_circles:
+        logger.info(f"Detected {len(filtered_circles)} circles on page")
+
+    return filtered_circles
 
 
 def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]:
