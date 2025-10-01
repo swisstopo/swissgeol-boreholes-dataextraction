@@ -199,7 +199,7 @@ class BoundingBox:
 class RectWithPage:
     """Dataclass to store a rectangle and the page number it appears on."""
 
-    rect: pymupdf.Rect
+    rect: pymupdf.Rect | None
     page_number: int
 
 

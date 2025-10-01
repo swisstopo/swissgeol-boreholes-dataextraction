@@ -552,7 +552,9 @@ class LayerDepthSchema(BaseModel):
                     x1=prediction.rect.x1,
                     y1=prediction.rect.y1,
                 ).rescale_factor(*page_scalings)
-            ],
+            ]
+            if prediction.rect
+            else [],
         )
 
 

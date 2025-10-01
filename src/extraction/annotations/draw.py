@@ -227,7 +227,7 @@ class PageDrawer:
 
             if layer.depths:
                 depths_rect = pymupdf.Rect()
-                if layer.depths.start and layer.depths.start.page_number == page_number:
+                if layer.depths.start and layer.depths.start.rect and layer.depths.start.page_number == page_number:
                     depths_rect.include_rect(layer.depths.start.rect)
                 if layer.depths.end and layer.depths.end.page_number == page_number:
                     depths_rect.include_rect(layer.depths.end.rect)
@@ -266,13 +266,21 @@ class PageDrawer:
                         )
                 else:
                     # Depths are extracted from the material description: only draw bounding boxes
-                    if layer.depths.start and layer.depths.start.page_number == page_number:
+                    if (
+                        layer.depths.start
+                        and layer.depths.start.rect
+                        and layer.depths.start.page_number == page_number
+                    ):
                         self.shape.draw_rect(pymupdf.Rect(layer.depths.start.rect) * self.page.derotation_matrix)
                     if layer.depths.end and layer.depths.end.page_number == page_number:
                         self.shape.draw_rect(pymupdf.Rect(layer.depths.end.rect) * self.page.derotation_matrix)
                     self.shape.finish(color=pymupdf.utils.getColor("purple"))
 
-                    if layer.depths.start and layer.depths.start.page_number == page_number:
+                    if (
+                        layer.depths.start
+                        and layer.depths.start.rect
+                        and layer.depths.start.page_number == page_number
+                    ):
                         self._draw_correctness_line(
                             start=layer.depths.start.rect.bottom_left,
                             end=layer.depths.start.rect.bottom_right,

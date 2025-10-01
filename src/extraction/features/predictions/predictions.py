@@ -83,6 +83,9 @@ class BoreholeListBuilder:
         # only criterion for the number of boreholes in the document is the number of borehole layers identified.
         self._num_boreholes = len(self._layers_with_bb_in_document.boreholes_layers_with_bb)
 
+        # If the first layer of a borehole has no starting depth and meet some conditions, replace the None by 0.0
+        self._layers_with_bb_in_document.normalize_first_layer()
+
         # for each element, perform the perfect matching with the borehole layers, and retrieve the matching dict
         borehole_idx_to_elevation = self._one_to_one_match_element_to_borehole(self._elevations_list)
         borehole_idx_to_coordinate = self._one_to_one_match_element_to_borehole(self._coordinates_list)

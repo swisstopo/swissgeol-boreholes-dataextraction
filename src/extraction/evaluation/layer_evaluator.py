@@ -424,7 +424,7 @@ def score_depths(layer: Layer, ground_truth: dict) -> float:
     ground_truth_end = ground_truth["depth_interval"]["end"]
 
     if layer.depths is not None:
-        if (layer.depths.start is None and (ground_truth_start == 0 or ground_truth_start is None)) or (
+        if (layer.depths.start is None and ground_truth_start is None) or (
             layer.depths.start is not None and layer.depths.start.value == ground_truth_start
         ):
             depth_score += 0.5

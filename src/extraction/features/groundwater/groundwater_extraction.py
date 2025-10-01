@@ -155,7 +155,7 @@ class Groundwater(ExtractedFeature):
                     for layer in layers
                     if layer.depths is not None
                     for d in (layer.depths.start, layer.depths.end)
-                    if d is not None
+                    if d is not None and d.rect is not None
                 },
                 key=lambda d: d[0],
             )
@@ -419,7 +419,7 @@ class GroundwaterLevelExtractor(DataExtractor):
             areas_of_interest.append(get_text_lines_near_symbol(text_lines, upper_symbol_geom_line))
 
         seen_depths = [lay.depths for bh in extracted_boreholes for lay in bh.predictions if lay.depths]
-        seen_depth_entries = [d for depth in seen_depths for d in (depth.start, depth.end) if d]
+        seen_depth_entries = [d for depth in seen_depths for d in (depth.start, depth.end) if d and d.rect]
 
         found_groundwaters = []
         for text_lines in areas_of_interest:

@@ -21,7 +21,7 @@ class LayerDepthsEntry(RectWithPageMixin):
     data serialization, such as `to_json()`.
     """
 
-    def __init__(self, value: float, rect: pymupdf.Rect, page_number: int):
+    def __init__(self, value: float, rect: pymupdf.Rect | None, page_number: int):
         self.value = value
         self.rect_with_page = RectWithPage(rect, page_number)
 
@@ -46,7 +46,9 @@ class LayerDepthsEntry(RectWithPageMixin):
         Returns:
             DepthColumnEntry: the corresponding LayerDepthsEntry object.
         """
-        return cls(value=data["value"], rect=pymupdf.Rect(data["rect"]), page_number=data["page"])
+        return cls(
+            value=data["value"], rect=pymupdf.Rect(data["rect"]) if data["rect"] else None, page_number=data["page"]
+        )
 
 
 @dataclass
@@ -70,7 +72,7 @@ class LayerDepths(ExtractedFeature):
         Returns:
             pymupdf.Point | None: The anchor point for the line, or None if not applicable.
         """
-        if self.start and self.end:
+        if self.start and self.start.rect and self.end:
             if self.start.page_number == self.end.page_number:
                 return pymupdf.Point(
                     max(self.start.rect.x1, self.end.rect.x1), (self.start.rect.y0 + self.end.rect.y1) / 2
@@ -83,7 +85,7 @@ class LayerDepths(ExtractedFeature):
                     return pymupdf.Point(self.end.rect.x1, 0)
                 else:
                     return None
-        elif self.start:
+        elif self.start and self.start.rect:
             return pymupdf.Point(self.start.rect.x1, self.start.rect.y1)
         elif self.end:
             return pymupdf.Point(self.end.rect.x1, self.end.rect.y0)
@@ -98,7 +100,7 @@ class LayerDepths(ExtractedFeature):
         Returns:
             pymupdf.Rect | None: The background rectangle for the layer depths, or None if not applicable.
         """
-        if not (self.start and self.end):
+        if not (self.start and self.start.rect and self.end):
             return None
         if self.start.page_number != self.end.page_number:
             if page_number == self.start.page_number:
@@ -159,9 +161,6 @@ class LayerDepths(ExtractedFeature):
         Returns:
             bool: True if the depth intervals match, False otherwise.
         """
-        if self.start is None:
-            return (start == 0) and (end == self.end.value)
-
         if (self.start is not None) and (self.end is not None):
             return start == self.start.value and end == self.end.value
 
@@ -306,3 +305,21 @@ class LayersInDocument:
             ),
             depths=LayerDepths(start=last_prev_layer.depths.start, end=first_next_layer.depths.end),
         )
+
+    def normalize_first_layer(self):
+        """Normalize the first layer of each borehole.
+
+        This means that for the first layer of each borehole, if it has no start depth, but has an end depth, we set
+        the start depth to 0. This is due to the depth 0.0 often being not explicitly mentioned in the text.
+        This step is done after all layers have been assigned to boreholes, so that we can be sure that we have the
+        full context of the borehole.
+        """
+        for borehole in self.boreholes_layers_with_bb:
+            if (
+                borehole.predictions
+                and borehole.predictions[0].depths
+                and borehole.predictions[0].depths.start is None
+                and borehole.predictions[0].depths.end is not None
+            ):
+                end_page = borehole.predictions[0].depths.end.page_number
+                borehole.predictions[0].depths.start = LayerDepthsEntry(0.0, None, end_page)
