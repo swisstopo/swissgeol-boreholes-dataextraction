@@ -372,45 +372,22 @@ def draw_strip_logs(
     """
     # Define colors for different strip logs
     strip_colors = [
-        ("darkred", "lightcoral"),
-        ("darkgreen", "lightgreen"),
-        ("darkblue", "lightblue"),
-        ("darkorange", "peachpuff"),
-        ("darkviolet", "plum"),
-        ("darkgoldenrod", "khaki"),
-        ("darkslategray", "lightsteelblue"),
-        ("maroon", "mistyrose"),
+        "blue",
+        "green",
+        "red",
+        "orange",
+        "brown",
+        "purple",
+        "darkgreen",
+        "darkblue",
     ]
 
     for index, strip in enumerate(strip_logs):
-        main_color, light_color = strip_colors[index % len(strip_colors)]
+        main_color = strip_colors[index % len(strip_colors)]
 
         # Draw the strip log bounding rectangle with thick border
         shape.draw_rect(strip.bounding_rect * derotation_matrix)
         shape.finish(color=pymupdf.utils.getColor(main_color), width=4, stroke_opacity=0.9)
-
-        # Draw vertical boundary lines
-        for v_line in strip.vertical_lines:
-            start_point = pymupdf.Point(v_line.start.x, v_line.start.y)
-            end_point = pymupdf.Point(v_line.end.x, v_line.end.y)
-            shape.draw_line(start_point * derotation_matrix, end_point * derotation_matrix)
-
-        shape.finish(color=pymupdf.utils.getColor(main_color), width=3, stroke_opacity=0.8)
-
-        # Draw horizontal lines in lighter shade
-        for h_line in strip.horizontal_lines:
-            start_point = pymupdf.Point(h_line.start.x, h_line.start.y)
-            end_point = pymupdf.Point(h_line.end.x, h_line.end.y)
-            shape.draw_line(start_point * derotation_matrix, end_point * derotation_matrix)
-
-        shape.finish(color=pymupdf.utils.getColor(light_color), width=1, stroke_opacity=0.5)
-
-        # Draw circles within the strip log
-        for circle in strip.circles:
-            center = pymupdf.Point(circle.center.x, circle.center.y) * derotation_matrix
-            shape.draw_circle(center, circle.radius)
-
-        shape.finish(color=pymupdf.utils.getColor(main_color), width=2, stroke_opacity=0.7)
 
 
 def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure], page_index: int):

@@ -26,7 +26,8 @@ from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.predictions.predictions import BoreholeListBuilder
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
-from extraction.features.utils.geometry.line_detection import extract_circles, extract_lines
+from extraction.features.utils.geometry.line_detection import extract_lines
+from extraction.features.utils.geometry.circle_detection import extract_circles
 from extraction.features.utils.table_detection import detect_structure_lines, detect_table_structures, detect_strip_logs
 from extraction.features.utils.text.extract_text import extract_text_lines
 from extraction.features.utils.text.matching_params_analytics import create_analytics
@@ -104,7 +105,7 @@ def common_options(f):
         help="Whether to draw detected table structures on pdf pages. Defaults to False.",
     )(f)
     f = click.option(
-        "-st",
+        "-sl",
         "--draw-strip-logs",
         is_flag=True,
         default=False,
@@ -312,14 +313,15 @@ def start_pipeline(
 
                 text_lines = extract_text_lines(page)
                 geometric_lines = extract_lines(page, line_detection_params)
-                geometric_circles = extract_circles(page, line_detection_params, text_lines)
 
                 # Detect table structures on the page
                 structure_lines = detect_structure_lines(geometric_lines)
                 table_structures = detect_table_structures(page_index, doc, structure_lines, text_lines)
 
                 # Detect strip logs on the page
-                strip_logs = detect_strip_logs(page_index, doc, structure_lines, geometric_circles, text_lines)
+                geometric_circles = extract_circles(page, line_detection_params, text_lines)
+                #strip_logs = detect_strip_logs(page_index, doc, structure_lines, geometric_circles, text_lines)
+                strip_logs = detect_strip_logs(structure_lines, geometric_circles, text_lines)
 
                 # extract the statigraphy
                 page_layers = extract_page(
@@ -370,9 +372,7 @@ def start_pipeline(
                         mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_strip_logs.png")
 
                     elif not draw_directory:
-                        logger.warning(
-                            "MLFlow tracking and local draw directory is not enabled. Table images will not be saved."
-                        )
+                        logger.warning("draw_directory is not defined. Skipping saving table image.")
 
                 if draw_lines:  # could be changed to if draw_lines and mlflow_tracking:
                     if not mlflow_tracking:
