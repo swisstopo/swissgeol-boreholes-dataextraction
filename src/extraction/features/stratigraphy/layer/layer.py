@@ -1,5 +1,6 @@
 """Layer class definition."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
@@ -7,7 +8,6 @@ import pymupdf
 
 from extraction.features.utils.data_extractor import ExtractedFeature
 from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
-from extraction.features.utils.geometry.util import x_overlap_significant_smallest
 from extraction.features.utils.text.textblock import MaterialDescription
 from utils.file_utils import parse_text
 
@@ -325,21 +325,17 @@ class LayersInDocument:
         """
         assert current_page > 1, "Can't be here on the first page"
 
-        boreholes_with_score = []
-        for borehole in self.boreholes_layers_with_bb:
+        def get_score(current_page, borehole):
             prev_page_bbox = next((bbox for bbox in borehole.bounding_boxes if bbox.page == current_page - 1), None)
-            if not prev_page_bbox:
-                continue
+            assert prev_page_bbox is not None
+            outer_rect = prev_page_bbox.get_outer_rect()
+            return -(outer_rect.y1 + outer_rect.width)  # want maximum score -> take the negative
 
-            outer_rect = prev_page_bbox.get_outer_rect()  # get the boreholes outer Rect
-            boreholes_with_score.append((borehole, outer_rect.y1 + outer_rect.width))
-
-        if not boreholes_with_score:
-            # no boreholes on the previous page, the ones detected here can't be the continuation of any
-            return None
-
-        boreholes_with_score.sort(key=lambda x: x[1], reverse=True)  # highest score first
-        return boreholes_with_score[0][0]
+        return self._get_borehole_min_score(
+            choices=self.boreholes_layers_with_bb,
+            score_func=lambda bh: get_score(current_page, bh),
+            filter_func=lambda bh: any(bbox.page == current_page - 1 for bbox in bh.bounding_boxes),
+        )
 
     def _identify_borehole_continuation(self, layer_predictions: list[ExtractedBorehole]) -> ExtractedBorehole:
         """Identify the borehole on the current page that is most likely to be the continuation of the previous.
@@ -350,10 +346,28 @@ class LayersInDocument:
         Returns:
             ExtractedBorehole: The borehole that is most likely to be the continuation of the previous.
         """
-        return min(
-            [(borehole, borehole.bounding_boxes[0].get_outer_rect().y0) for borehole in layer_predictions],
-            key=lambda x: x[1],  # sort by y0 value
-        )[0]  # grab the borehole with the smallest y0
+        return self._get_borehole_min_score(
+            choices=layer_predictions,
+            score_func=lambda bh: bh.bounding_boxes[0].get_outer_rect().y0,
+            filter_func=lambda bh: True,
+        )
+
+    def _get_borehole_min_score(
+        self,
+        choices: list[ExtractedBorehole],
+        score_func: Callable[[ExtractedBorehole], float],
+        filter_func: Callable[[ExtractedBorehole], bool],
+    ):
+        """Utilitary function to return a reference to the borehole with the minimum score.
+
+        The score is computed with the provided score function, and only for boreholes that pass the filter function.
+
+        Args:
+            choices (list[ExtractedBorehole]): List of boreholes to choose from.
+            score_func (Callable[[ExtractedBorehole], float]): Function to compute the score for each borehole.
+            filter_func (Callable[[ExtractedBorehole], bool], optional): Function to filter boreholes.
+        """
+        return min(((bh, score_func(bh)) for bh in choices if filter_func(bh)), key=lambda x: x[1])[0]
 
     def _is_continuation(
         self, borehole_to_extend: ExtractedBorehole, borehole_continuation: ExtractedBorehole, current_page: int
@@ -376,36 +390,9 @@ class LayersInDocument:
 
         ok_layers = [lay for lay in borehole_continuation.predictions if lay.depths is not None]
         depths = [d.value for lay in ok_layers for d in (lay.depths.start, lay.depths.end) if d is not None]
-        if (
-            depths
-            and prev_depths
-            and np.quantile(depths, DEPTHS_QUANTILE_SLACK) >= np.quantile(prev_depths, 1 - DEPTHS_QUANTILE_SLACK)
-        ):
-            # use quantile to allow some slack (e.g. few undetected duplicated layers)
-            return True  # if depths are continue, it is a continuation
-
-        prev_sidebar_bbox = next(
-            bbox.sidebar_bbox for bbox in borehole_to_extend.bounding_boxes if bbox.page == current_page - 1
-        )
-        current_sidebar_bbox = borehole_continuation.bounding_boxes[0].sidebar_bbox
-        if (
-            prev_sidebar_bbox is not None
-            and current_sidebar_bbox is not None
-            and x_overlap_significant_smallest(prev_sidebar_bbox.rect, current_sidebar_bbox.rect, SIDEBAR_BBOX_OVERLAP)
-        ):
-            return True  # if sidebars overlaps slightly, it is a continuation
-
-        prev_mat_bbox = next(
-            bbox.material_description_bbox
-            for bbox in borehole_to_extend.bounding_boxes
-            if bbox.page == current_page - 1
-        )
-        current_mat_bbox = borehole_continuation.bounding_boxes[0].material_description_bbox
-        return (
-            prev_mat_bbox is not None
-            and current_mat_bbox is not None
-            and x_overlap_significant_smallest(prev_mat_bbox.rect, current_mat_bbox.rect, MAT_DESCR_BBOX_OVERLAP)
-        )  # if material bounding box overlaps significantly, it is a continuation
+        # use quantile to allow some slack (e.g. few undetected duplicated layers)
+        # if depth values decrease, it must be a new borehole
+        return not (depths and prev_depths and depths[0] < np.quantile(prev_depths, 1 - DEPTHS_QUANTILE_SLACK))
 
     def _merge_boreholes(self, borehole_to_extend: ExtractedBorehole, borehole_continuation: ExtractedBorehole):
         """Merge the layers of the current borehole into the borehole to extend.
