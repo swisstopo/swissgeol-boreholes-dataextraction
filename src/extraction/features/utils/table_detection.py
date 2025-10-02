@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import dataclasses
 import logging
 from dataclasses import dataclass
@@ -607,43 +609,53 @@ def _calculate_strip_confidence(
     area = rect.width * rect.height
 
     # Aspect ratio score (height/width)
-    if rect.width > strip_config.get("min_width"):
+    if rect.width < strip_config.get("min_width"):
+        confidence = 0
+    else:
         aspect_scoring = strip_config.get("aspect")
         aspect_ratio = rect.height / rect.width
         aspect_score = min(aspect_scoring.get("aspect_weight"), aspect_ratio / aspect_scoring.get("min_aspect_ratio"))
-    else:
-        aspect_score = 0.0
 
-    # Horizontal line density score
-    if area > 0:
+        # Horizontal line density score
         line_scoring = strip_config.get("line_density")
         h_line_density = len(horizontal_lines) / (area / 10000)
-        density_score = min(
+        line_density = min(
             line_scoring.get("line_density_weight"), h_line_density / line_scoring.get("min_horizontal_density")
         )
-    else:
-        density_score = 0.0
 
-    # Circle density score
-    if len(circles) > strip_config.get("min_circle_count"):
+        # Circle density score
         circle_scoring = strip_config.get("circle_density")
         circle_density = len(circles) / (area / 10000)
         circle_score = min(
             circle_scoring.get("circle_weight"), circle_density / circle_scoring.get("min_circle_density")
         )
-    else:
-        circle_score = 0.0
 
-    # Penalty for text within the region (strip logs should have no text)
-    text_penalty = 0.0
-    if text_lines:
-        text_within = [line for line in text_lines if rect.intersects(line.rect)]
-        if text_within:
-            text_penalty = len(text_within) * strip_config.get("text_penalty")
+        # Penalty for text within the region (strip logs should have no text)
+        text_penalty = 0.0
+        if text_lines:
+            text_within = [line for line in text_lines if rect.intersects(line.rect)]
+            meaningful_texts = []
 
-    confidence = max(0.0, aspect_score + density_score + circle_score - text_penalty)
+            for line in text_within:
+                if line.text.strip() and not _is_numeric_pattern(line.text.strip()):
+                    meaningful_texts.append(line)
+
+            if meaningful_texts:
+                text_penalty = len(meaningful_texts) * strip_config.get("text_penalty")
+
+        confidence = aspect_score + line_density + circle_score - text_penalty
 
     return min(1.0, confidence)
+
+def _is_numeric_pattern(text_content: str) -> bool:
+    """Check if text matches common numeric patterns in strip logs."""
+    # Remove all whitespace for pattern matching
+    clean_text = text_content.replace(' ', '')
+
+    # Pattern for combinations of digits and dots (0, 0.0, 00, 0.0.0, 08, .00, etc.)
+    numeric_pattern = re.compile(r'^[08.]+$')
+
+    return bool(numeric_pattern.match(clean_text))
 
 
 def _is_valid_strip_log(strip: StripLog, config: dict) -> bool:
