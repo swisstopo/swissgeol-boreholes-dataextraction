@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import re
-
 import dataclasses
 import logging
+import re
 from dataclasses import dataclass
 
 import pymupdf
@@ -647,13 +646,14 @@ def _calculate_strip_confidence(
 
     return min(1.0, confidence)
 
+
 def _is_numeric_pattern(text_content: str) -> bool:
     """Check if text matches common numeric patterns in strip logs."""
     # Remove all whitespace for pattern matching
-    clean_text = text_content.replace(' ', '')
+    clean_text = text_content.replace(" ", "")
 
     # Pattern for combinations of digits and dots (0, 0.0, 00, 0.0.0, 08, .00, etc.)
-    numeric_pattern = re.compile(r'^[08.]+$')
+    numeric_pattern = re.compile(r"^[08.]+$")
 
     return bool(numeric_pattern.match(clean_text))
 
