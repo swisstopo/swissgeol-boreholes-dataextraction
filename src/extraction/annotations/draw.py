@@ -12,7 +12,7 @@ from extraction.annotations.plot_utils import convert_page_to_opencv_img
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
-from extraction.features.utils.table_detection import TableStructure, StripLog
+from extraction.features.utils.table_detection import StripLog, TableStructure
 
 load_dotenv()
 
@@ -358,9 +358,7 @@ def draw_table_structures(
         shape.finish(color=pymupdf.utils.getColor(light_color), width=1, stroke_opacity=0.6)
 
 
-def draw_strip_logs(
-    shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, strip_logs: list[StripLog]
-) -> None:
+def draw_strip_logs(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, strip_logs: list[StripLog]) -> None:
     """Draw strip log structures on a pdf page.
 
     Each strip log is drawn with a distinctive color to distinguish between different detected strip logs.

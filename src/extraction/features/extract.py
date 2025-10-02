@@ -38,9 +38,9 @@ from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.geometry.util import x_overlap, x_overlap_significant_smallest
 from extraction.features.utils.table_detection import (
+    StripLog,
     StructureLine,
     TableStructure,
-    StripLog,
     _contained_in_table_index,
 )
 from extraction.features.utils.text.find_description import (
@@ -83,6 +83,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             geometric_lines (list[Line]): The geometric lines of the page.
             structure_lines (list[StructureLine]): Significant horizontal and vertical lines.
             table_structures (list[TableStructure]): The identified table structures of the page.
+            strip_logs (list[StripLog]): The identified strip logs of the page.
             language (str): The language of the page.
             page_number (int): The page number.
             page_width (float): The width of the page.

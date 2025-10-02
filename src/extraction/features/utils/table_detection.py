@@ -71,7 +71,7 @@ def detect_table_structures(
         for table in table_candidates
         if len(table.horizontal_lines) >= 2
         if len(table.vertical_lines) >= 1
-        if table.confidence >= config.get("min_confidence")
+        if table.confidence >= config["tables"]["min_confidence"]
     ]
     for table in table_candidates:
         logger.debug(f"Detected table structure (confidence: {table.confidence:.3f})")
@@ -80,14 +80,14 @@ def detect_table_structures(
 
 def _filter_significant_lines(lines: list[Line], config: dict) -> list[Line]:
     """Filter to keep only significantly long lines that could form table structures."""
-    min_length = config.get("min_line_length")
+    min_length = config["tables"]["min_line_length"]
 
     return [line for line in lines if line.length > min_length]
 
 
 def _separate_by_orientation(lines: list[Line], config: dict) -> list[StructureLine]:
     """Separate lines into horizontal and vertical based on angle and tolerance."""
-    angle_tolerance = config.get("angle_tolerance")
+    angle_tolerance = config["tables"]["angle_tolerance"]
     structure_lines = []
 
     for line in lines:
@@ -160,7 +160,7 @@ def _find_table_structures(
 
         # Create table structure for this region
         table = _create_table_from_region(region_h_lines, region_v_lines, config, page_width, page_height, text_lines)
-        if table.confidence >= config.get("min_confidence"):
+        if table.confidence >= config["tables"]["min_confidence"]:
             detected_tables.append(table)
 
     detected_tables = sorted(detected_tables, key=lambda t: t.confidence, reverse=True)
@@ -229,7 +229,7 @@ def _line_connects_to_group(line: StructureLine, group: list[StructureLine], con
     Returns:
         True if the line connects to the group, False otherwise
     """
-    connection_threshold = config.get("connection_threshold")
+    connection_threshold = config["tables"]["connection_threshold"]
 
     for group_line in group:
         # 1. Check line intersection
@@ -335,19 +335,20 @@ def _calculate_structure_confidence(
         Confidence score between 0 and 1
     """
     area = rect.width * rect.height
+    table_config = config.get("tables", {})
 
     # Size score - larger tables are more likely to be significant
     if page_width and page_height:
         page_area = page_width * page_height
         area_ratio = area / page_area
-        area_scoring = config.get("area_scoring", {})
+        area_scoring = table_config.get("area_scoring", {})
         size_score = min(area_scoring.get("area_weights"), area_ratio / area_scoring.get("min_table_area_ratio"))
     else:
         # Fallback to 0 if no page dimensions are available
         size_score = 0
 
     # Line structure score - more lines indicate better structure
-    line_scoring = config.get("line_scoring", {})
+    line_scoring = table_config.get("line_scoring", {})
     total_lines = len(h_lines) + len(v_lines)
     line_score = min(line_scoring.get("line_weights"), total_lines / line_scoring.get("max_n_lines_bonus"))
 
@@ -356,7 +357,7 @@ def _calculate_structure_confidence(
     if text_lines:
         text_within = [line for line in text_lines if rect.intersects(line.rect)]
         if text_within:
-            text_scoring = config.get("text_scoring", {})
+            text_scoring = table_config.get("text_scoring", {})
             text_bonus = min(
                 text_scoring.get("text_weights"), len(text_within) * text_scoring.get("text_presence_weight")
             )
@@ -404,6 +405,7 @@ def _contained_in_table_index(
 @dataclass
 class StripLog:
     """Represents a detected strip log or soil profile structure."""
+
     bounding_rect: pymupdf.Rect
     vertical_lines: list[Line]
     horizontal_lines: list[Line]
@@ -435,18 +437,12 @@ def detect_strip_logs(
     Returns:
         List of detected strip log structures
     """
-
-    # Get strip log specific configuration
-    strip_config = config.get("strip_logs", {})
-
-    strip_candidates = _find_strip_log_structures(
-        structure_lines, circles, strip_config, text_lines
-    )
+    strip_candidates = _find_strip_log_structures(structure_lines, circles, config, text_lines)
 
     # Filter based on strip log criteria
     filtered_strips = []
     for strip in strip_candidates:
-        if _is_valid_strip_log(strip, strip_config):
+        if _is_valid_strip_log(strip, config):
             filtered_strips.append(strip)
 
     return filtered_strips
@@ -455,7 +451,7 @@ def detect_strip_logs(
 def _find_strip_log_structures(
     structure_lines: list[StructureLine],
     circles: list[Circle],
-    strip_config: dict,
+    config: dict,
     text_lines: list[TextLine] = None,
 ) -> list[StripLog]:
     """Find strip log structures on a page.
@@ -463,23 +459,24 @@ def _find_strip_log_structures(
     Args:
         structure_lines: List of structure lines
         circles: List of detected circles
-        strip_config: Strip log specific configuration parameters
+        config: Strip log specific configuration parameters
         text_lines: List of text lines for content analysis
 
     Returns:
         List of detected strip log candidates
     """
-    vertical_lines = [
-        line for line in structure_lines
-        if line.is_vertical
-        ]
+    vertical_lines = sorted([line for line in structure_lines if line.is_vertical], key=lambda line: line.position)
     horizontal_lines = [line for line in structure_lines if not line.is_vertical]
 
     strip_candidates = []
 
-    # Find pairs of vertical lines that could bound a strip
     for i, first_line in enumerate(vertical_lines):
-        for second_line in vertical_lines[i+1:]:
+        for offset in range(1, 3):
+            j = i + offset
+            if j >= len(vertical_lines):
+                break
+            second_line = vertical_lines[j]
+
             # Check if lines could form a strip (reasonable distance apart)
             strip_height = max(first_line.end, second_line.end) - min(first_line.start, second_line.start)
 
@@ -491,7 +488,7 @@ def _find_strip_log_structures(
                 min(first_line.position, second_line.position),
                 min(first_line.start, second_line.start),
                 max(first_line.position, second_line.position),
-                max(first_line.end, second_line.end)
+                max(first_line.end, second_line.end),
             )
 
             # Find horizontal lines and circles within this region
@@ -504,8 +501,8 @@ def _find_strip_log_structures(
                 [first_line.line, second_line.line],
                 [line.line for line in region_horizontals],
                 region_circles,
-                strip_config,
-                text_lines
+                config,
+                text_lines,
             )
 
             if strip:
@@ -522,13 +519,21 @@ def _find_strip_log_structures(
     return final_strips
 
 
-def _find_horizontal_lines_in_region(horizontal_lines: list[StructureLine], region: pymupdf.Rect) -> list[StructureLine]:
-    """Find horizontal lines that intersect with a strip region."""
+def _find_horizontal_lines_in_region(
+    horizontal_lines: list[StructureLine], region: pymupdf.Rect
+) -> list[StructureLine]:
+    """Find horizontal lines that intersect with a strip region.
+
+    Args:
+        horizontal_lines: List of horizontal structure lines
+        region: The bounding rectangle of the strip region
+    Returns:
+        List of horizontal structure lines within the region
+    """
     lines_in_region = []
     for line in horizontal_lines:
         # For horizontal lines, check if position is within y bounds and line overlaps x bounds
-        if (region.y0 <= line.position <= region.y1 and
-            line.start <= region.x1 and line.end >= region.x0):
+        if region.y0 <= line.position <= region.y1 and line.start <= region.x1 and line.end >= region.x0:
             lines_in_region.append(line)
     return lines_in_region
 
@@ -538,8 +543,7 @@ def _find_circles_in_region(circles: list[Circle], region: pymupdf.Rect) -> list
     circles_in_region = []
     for circle in circles:
         # Check if circle center is within the region
-        if (region.x0 <= circle.center.x <= region.x1 and
-            region.y0 <= circle.center.y <= region.y1):
+        if region.x0 <= circle.center.x <= region.x1 and region.y0 <= circle.center.y <= region.y1:
             circles_in_region.append(circle)
     return circles_in_region
 
@@ -549,17 +553,27 @@ def _create_strip_log_from_region(
     vertical_lines: list[Line],
     horizontal_lines: list[Line],
     circles: list[Circle],
-    strip_config: dict,
+    config: dict,
     text_lines: list[TextLine] = None,
 ) -> StripLog | None:
-    """Create a strip log structure from a detected region."""
+    """Create a strip log structure from a detected region.
+
+    Args:
+        region_rect: Bounding rectangle of the strip region
+        vertical_lines: Vertical lines defining the strip
+        horizontal_lines: Horizontal lines within the strip
+        circles: Circles within the strip
+        config: Strip log specific configuration parameters
+        text_lines: List of text lines for content analysis
+
+    Returns:
+        StripLog object or None if criteria not met
+    """
     if not vertical_lines:
         return None
 
     # Calculate confidence
-    confidence = _calculate_strip_confidence(
-        region_rect, horizontal_lines, circles, strip_config, text_lines
-    )
+    confidence = _calculate_strip_confidence(region_rect, horizontal_lines, circles, config, text_lines)
 
     return StripLog(
         bounding_rect=region_rect,
@@ -574,33 +588,49 @@ def _calculate_strip_confidence(
     rect: pymupdf.Rect,
     horizontal_lines: list[Line],
     circles: list[Circle],
-    strip_config: dict,
+    config: dict,
     text_lines: list[TextLine] = None,
 ) -> float:
-    """Calculate confidence score for a strip log structure."""
+    """Calculate confidence score for a strip log structure.
 
-    # Aspect ratio score (strip should be tall and narrow)
-    if rect.width > 0:
+    Args:
+        rect: Bounding rectangle of the strip log
+        horizontal_lines: Horizontal lines within the strip
+        circles: Circles within the strip
+        config: Strip log specific configuration parameters
+        text_lines: List of text lines for content analysis
+
+    Returns:
+        Confidence score between 0 and 1
+    """
+    strip_config = config.get("strip_logs", {})
+    area = rect.width * rect.height
+
+    # Aspect ratio score (height/width)
+    if rect.width > strip_config.get("min_width"):
+        aspect_scoring = strip_config.get("aspect")
         aspect_ratio = rect.height / rect.width
-        min_aspect_ratio = strip_config.get("min_aspect_ratio")
-        aspect_score = min(1.0, aspect_ratio / min_aspect_ratio) * strip_config.get("aspect_weight")
+        aspect_score = min(aspect_scoring.get("aspect_weight"), aspect_ratio / aspect_scoring.get("min_aspect_ratio"))
     else:
         aspect_score = 0.0
 
     # Horizontal line density score
-    area = rect.width * rect.height
     if area > 0:
+        line_scoring = strip_config.get("line_density")
         h_line_density = len(horizontal_lines) / (area / 10000)
-        min_h_density = strip_config.get("min_horizontal_density")
-        density_score = min(1.0, h_line_density / min_h_density) * strip_config.get("line_density_weight")
+        density_score = min(
+            line_scoring.get("line_density_weight"), h_line_density / line_scoring.get("min_horizontal_density")
+        )
     else:
         density_score = 0.0
 
     # Circle density score
-    if len(circles) > 10:
+    if len(circles) > strip_config.get("min_circle_count"):
+        circle_scoring = strip_config.get("circle_density")
         circle_density = len(circles) / (area / 10000)
-        min_circle_density = strip_config.get("min_circle_density")
-        circle_score = min(1.0, circle_density / min_circle_density) * strip_config.get("circle_weight")
+        circle_score = min(
+            circle_scoring.get("circle_weight"), circle_density / circle_scoring.get("min_circle_density")
+        )
     else:
         circle_score = 0.0
 
@@ -613,20 +643,19 @@ def _calculate_strip_confidence(
 
     confidence = max(0.0, aspect_score + density_score + circle_score - text_penalty)
 
-    tt = confidence
-
     return min(1.0, confidence)
 
 
-def _is_valid_strip_log(strip: StripLog, strip_config: dict) -> bool:
+def _is_valid_strip_log(strip: StripLog, config: dict) -> bool:
     """Check if a strip log candidate meets the minimum criteria."""
+    strip_config = config.get("strip_logs", {})
     min_confidence = strip_config.get("min_confidence")
     min_horizontal_lines = strip_config.get("min_horizontal_lines")
 
     return (
-        strip.confidence >= min_confidence and
-        len(strip.horizontal_lines) >= min_horizontal_lines and
-        len(strip.vertical_lines) >= 2
+        strip.confidence >= min_confidence
+        and len(strip.horizontal_lines) >= min_horizontal_lines
+        and len(strip.vertical_lines) >= 2
     )
 
 

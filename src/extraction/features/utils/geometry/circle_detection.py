@@ -21,8 +21,10 @@ mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlo
 
 line_detection_params = read_params("line_detection_params.yml")
 
+
 def detect_circles_hough(page: pymupdf.Page, hough_circles_params: dict) -> list[Circle]:
     """Detect circles in a pdf page using HoughCircles algorithm.
+
     For more infromation around the parameters see: https://docs.opencv.org/4.x/d3/de5/tutorial_js_houghcircles.html
 
     Args:
@@ -54,7 +56,7 @@ def detect_circles_hough(page: pymupdf.Page, hough_circles_params: dict) -> list
         param1=hough_circles_params["param1"],
         param2=hough_circles_params["param2"],
         minRadius=hough_circles_params["min_radius"],
-        maxRadius=hough_circles_params["max_radius"]
+        maxRadius=hough_circles_params["max_radius"],
     )
 
     if circles is None:
@@ -64,11 +66,12 @@ def detect_circles_hough(page: pymupdf.Page, hough_circles_params: dict) -> list
     circles = np.round(circles[0, :]).astype("int")
     detected_circles = []
 
-    for (x, y, radius) in circles:
+    for x, y, radius in circles:
         # Convert back from scaled coordinates to PDF coordinates
         detected_circles.append(circle_from_array([x, y, radius], scale_factor=2))
 
     return detected_circles
+
 
 def _circle_intersects_with_text(circle: Circle, text_lines: list, text_proximity_threshold: float = 2.0) -> bool:
     """Check if a circle intersects with or is too close to any text line."""
@@ -78,7 +81,7 @@ def _circle_intersects_with_text(circle: Circle, text_lines: list, text_proximit
             text_line.rect.x0 - text_proximity_threshold,
             text_line.rect.y0 - text_proximity_threshold,
             text_line.rect.x1 + text_proximity_threshold,
-            text_line.rect.y1 + text_proximity_threshold
+            text_line.rect.y1 + text_proximity_threshold,
         )
 
         # Find the closest point on the rectangle to the circle center
@@ -118,7 +121,8 @@ def extract_circles(page: pymupdf.Page, line_detection_params: dict, text_lines:
         text_proximity_threshold = hough_circle_parameters.get("text_proximity_threshold")
 
         filtered_circles = [
-            circle for circle in circles
+            circle
+            for circle in circles
             if not _circle_intersects_with_text(circle, text_lines, text_proximity_threshold)
         ]
 

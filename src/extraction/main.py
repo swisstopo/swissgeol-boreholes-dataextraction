@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 
 from extraction import DATAPATH
-from extraction.annotations.draw import draw_predictions, plot_tables, plot_strip_logs
+from extraction.annotations.draw import draw_predictions, plot_strip_logs, plot_tables
 from extraction.annotations.plot_utils import plot_lines
 from extraction.evaluation.benchmark.score import evaluate_all_predictions
 from extraction.features.extract import extract_page
@@ -26,9 +26,13 @@ from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.predictions.predictions import BoreholeListBuilder
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
-from extraction.features.utils.geometry.line_detection import extract_lines
 from extraction.features.utils.geometry.circle_detection import extract_circles
-from extraction.features.utils.table_detection import detect_structure_lines, detect_table_structures, detect_strip_logs
+from extraction.features.utils.geometry.line_detection import extract_lines
+from extraction.features.utils.table_detection import (
+    detect_strip_logs,
+    detect_structure_lines,
+    detect_table_structures,
+)
 from extraction.features.utils.text.extract_text import extract_text_lines
 from extraction.features.utils.text.matching_params_analytics import create_analytics
 from utils.file_utils import flatten, read_params
@@ -250,7 +254,7 @@ def start_pipeline(
         skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
         draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.
         draw_tables (bool, optional): Whether to draw detected table structures on pdf pages. Defaults to False.
-        draw_strip_logs (bool, optional): Whether to draw detected strip log structures on pdf pages. Defaults to False.
+        draw_strip_logs (bool, optional): Whether to draw detected strip log structures on pages. Defaults to False.
         metadata_path (Path): The path to the metadata file.
         csv (bool): Whether to generate a CSV output. Defaults to False.
         matching_analytics (bool): Whether to enable matching parameters analytics. Defaults to False.
@@ -320,7 +324,7 @@ def start_pipeline(
 
                 # Detect strip logs on the page
                 geometric_circles = extract_circles(page, line_detection_params, text_lines)
-                #strip_logs = detect_strip_logs(page_index, doc, structure_lines, geometric_circles, text_lines)
+                # strip_logs = detect_strip_logs(page_index, doc, structure_lines, geometric_circles, text_lines)
                 strip_logs = detect_strip_logs(structure_lines, geometric_circles, text_lines)
 
                 # extract the statigraphy
@@ -365,7 +369,9 @@ def start_pipeline(
                     img = plot_strip_logs(page, strip_logs, page_index)
 
                     if draw_directory:
-                        strip_img_path = draw_directory / f"{Path(filename).stem}_page_{page.number + 1}_strip_logs.png"
+                        strip_img_path = (
+                            draw_directory / f"{Path(filename).stem}_page_{page.number + 1}_strip_logs.png"
+                        )
                         cv2.imwrite(str(strip_img_path), img)
 
                     if mlflow_tracking:
