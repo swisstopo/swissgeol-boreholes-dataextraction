@@ -5,12 +5,11 @@ from __future__ import annotations
 import re
 
 import pymupdf
-from compound_split import char_split
-from nltk.stem.snowball import SnowballStemmer
 
 from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from extraction.features.utils.geometry.util import x_overlap_significant_largest
-from extraction.features.utils.text.matching_params_analytics import MatchingParamsAnalytics, track_match
+from extraction.features.utils.text.matching_params_analytics import MatchingParamsAnalytics
+from extraction.features.utils.text.stemmer import find_matching_expressions
 
 
 class TextWord(RectWithPageMixin):
@@ -32,7 +31,7 @@ class TextWord(RectWithPageMixin):
 class TextLine(RectWithPageMixin):
     """Class to represent TextLine objects.
 
-    A TextLine object is a collection of DepthInterval objects.
+    A TextLine object is a collection of TextWord objects.
     It is used to represent a line of text in a PDF document.
     """
 
@@ -48,88 +47,14 @@ class TextLine(RectWithPageMixin):
             rect.include_rect(word.rect)
         self.rect_with_page = RectWithPage(rect, next((word.page_number for word in words), None))
         self.words = words
-        self.stemmers = {}
-        self.stemmer_languages = {"de": "german", "fr": "french", "en": "english", "it": "italian"}
 
-    def _get_stemmer(self, language: str) -> SnowballStemmer:
-        """Get the appropriate stemmer for the given language.
+    def __repr__(self) -> str:
+        return f"TextLine({self.text}, {self.rect})"
 
-        Args:
-            language (str): The language for which to get the stemmer, e.g. "de", "fr", "en", "it".
-
-        Returns:
-            SnowballStemmer: The stemmer for the specified language.
-        """
-        # Create appropriate stemmer based on language
-        if language not in self.stemmers:
-            stemmer_lang = self.stemmer_languages.get(language, "german")
-            self.stemmers[language] = SnowballStemmer(stemmer_lang)
-        return self.stemmers[language]
-
-    def _split_compounds(self, tokens: list[str], split_threshold: float) -> list[str]:
-        """Split compound words using char_split and return processed list.
-
-        This method uses  an ngram-based compound splitter for German language based on
-        Tuggener, Don (2016):  https://pypi.org/project/compound-split/
-
-        Args:
-            tokens (List[str]): List of tokens to process.
-            split_threshold (float): Threshold for splitting compounds
-
-        Returns:
-            List[str]: Processed list of tokens with compounds split.
-        """
-        processed_tokens = []
-        for token in tokens:
-            comp_split = char_split.split_compound(token)[0]
-            if comp_split[0] > split_threshold:
-                processed_tokens.extend(comp_split[1:])
-            else:
-                processed_tokens.append(token)
-
-        return processed_tokens
-
-    def _find_matching_expressions(
-        self,
-        patterns: list,
-        split_threshold: float,
-        targets: list[str],
-        language: str,
-        analytics: MatchingParamsAnalytics | None = None,
-        search_excluding: bool = False,
-    ) -> bool:
-        """Check if any of the patterns match the targets for german use a second check against compound split.
-
-        Args:
-            patterns (List): A list of patterns to match against.
-            split_threshold (float): Threshold for splitting compounds.
-            targets (List[str]): A list of target strings to match against.
-            language (str): The language of the patterns, used for stemming.
-            analytics ([MatchingParamsAnalytics]): Aanalytics instance to track matches.
-            search_excluding (bool): Whether this is for excluding expressions (for analytics).
-
-        Returns:
-            bool: True if any pattern matches, False otherwise.
-        """
-        stemmer = self._get_stemmer(language)
-
-        patterns = {stemmer.stem(p.lower()) for p in patterns}
-        targets_stemmed = {stemmer.stem(t.lower()) for t in targets}
-
-        if language == "de" and not search_excluding:
-            targets_split = self._split_compounds(targets, split_threshold)
-            targets_split = {stemmer.stem(t.lower()) for t in targets_split}
-
-            targets_to_check = targets_stemmed | targets_split
-        else:
-            targets_to_check = targets_stemmed
-
-        for item in patterns:
-            if item in targets_to_check:
-                track_match(analytics, item, language, search_excluding)
-                return True
-
-        return False
+    @property
+    def text(self) -> str:
+        """Get the text of the line."""
+        return " ".join([word.text for word in self.words])
 
     def is_description(
         self,
@@ -158,31 +83,28 @@ class TextLine(RectWithPageMixin):
         patterns = parameters["material_description"][language][exp_type]
         split_threshold = parameters.get("compound_split_threshold", 0.4)
 
-        return self._find_matching_expressions(
-            patterns, split_threshold, text_tokens, language, analytics, search_excluding
-        )
-
-    @property
-    def text(self) -> str:
-        """Get the text of the line."""
-        return " ".join([word.text for word in self.words])
-
-    def __repr__(self) -> str:
-        return f"TextLine({self.text}, {self.rect})"
-
-    """
-    Check if the current line can be trusted as a stand-alone line, even if it is only a tailing segment of a line that
-    was directly extracted from the PDF. This decision is made based on the location (especially x0-coordinates) of the
-    lines above and below. If there are enough lines with matching x0-coordinates, then we can assume that this lines
-    also belongs to the same "column" in the page layout. This is necessary, because text extraction from PDF sometimes
-    extracts text lines too "inclusively", resulting in lines that span across different columns.
-
-    The logic is still not very robust. A more robust solution will be possible once we include line detection as a
-    feature in this pipeline as well.
-    """
+        return find_matching_expressions(patterns, split_threshold, text_tokens, language, analytics, search_excluding)
 
     def is_line_start(self, raw_lines_before: list[TextLine], raw_lines_after: list[TextLine]) -> bool:
-        """Check if the current line is the start of a new line."""
+        """Determine whether this line can be considered the start of a properly aligned text block.
+
+        This method checks whether the line's x0-coordinate (left margin) aligns with surrounding
+        lines above and below. If enough nearby lines share the same left margin (within a tolerance),
+        the current line is assumed to belong to the same column and can be trusted as the start
+        of a valid text segment.
+
+        The check is necessary because PDF text extraction sometimes merges or splits lines in a way
+        that spans multiple columns. This heuristic helps ensure column consistency, though it is
+        not fully robust until line detection is integrated more directly.
+
+        Args:
+            raw_lines_before (list[TextLine]): Neighboring lines before this line.
+            raw_lines_after (list[TextLine]): Neighboring lines after this line.
+
+        Returns:
+            bool: True if the line aligns consistently with its neighbors and can be trusted
+                as the start of a column, False otherwise.
+        """
 
         def significant_overlap(line: TextLine) -> bool:
             return x_overlap_significant_largest(line.rect, self.rect, 0.5)
