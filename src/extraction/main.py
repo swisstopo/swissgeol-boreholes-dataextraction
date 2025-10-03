@@ -20,6 +20,7 @@ from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
     GroundwaterLevelExtractor,
 )
+from extraction.features.metadata.borehole_name_extraction import extract_borehole_names
 from extraction.features.metadata.metadata import FileMetadata, MetadataInDocument
 from extraction.features.predictions.borehole_predictions import BoreholePredictions
 from extraction.features.predictions.file_predictions import FilePredictions
@@ -301,6 +302,8 @@ def start_pipeline(
 
                 text_lines = extract_text_lines(page)
                 geometric_lines = extract_lines(page, line_detection_params)
+
+                extract_borehole_names(text_lines)
 
                 # Detect table structures on the page
                 structure_lines = detect_structure_lines(geometric_lines)
