@@ -14,8 +14,6 @@ from ..interval.interval import Interval
 from .page_bounding_boxes import PageBoundingBoxes
 
 DEPTHS_QUANTILE_SLACK = 0.1
-SIDEBAR_BBOX_OVERLAP = 0.5
-MAT_DESCR_BBOX_OVERLAP = 0.9
 
 
 class LayerDepthsEntry(RectWithPageMixin):
