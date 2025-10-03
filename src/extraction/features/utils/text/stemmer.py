@@ -74,7 +74,6 @@ def find_matching_expressions(
     Returns:
         bool: True if any pattern matches, False otherwise.
     """
-    # stemmer = get_stemmer(language)
     stemmer = _get_stemmer(language)
 
     patterns = {stemmer.stem(p.lower()) for p in patterns}
