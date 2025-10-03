@@ -45,5 +45,4 @@ def test_find_matching_expressions(patterns, split_threshold, targets, language,
     result = find_matching_expressions(
         patterns, split_threshold, targets, language, analytics=None, search_excluding=search_excluding
     )
-    print(expected)
     assert result == expected
