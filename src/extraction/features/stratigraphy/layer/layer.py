@@ -1,6 +1,5 @@
 """Layer class definition."""
 
-from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
@@ -327,15 +326,12 @@ class LayersInDocument:
 
         def get_score(current_page, borehole):
             prev_page_bbox = next((bbox for bbox in borehole.bounding_boxes if bbox.page == current_page - 1), None)
-            assert prev_page_bbox is not None
+            if prev_page_bbox is None:
+                return float("-inf")
             outer_rect = prev_page_bbox.get_outer_rect()
-            return -(outer_rect.y1 + outer_rect.width)  # want maximum score -> take the negative
+            return outer_rect.y1 + outer_rect.width
 
-        return self._get_borehole_min_score(
-            choices=self.boreholes_layers_with_bb,
-            score_func=lambda bh: get_score(current_page, bh),
-            filter_func=lambda bh: any(bbox.page == current_page - 1 for bbox in bh.bounding_boxes),
-        )
+        return max(self.boreholes_layers_with_bb, key=lambda borehole: get_score(current_page, borehole))
 
     def _identify_borehole_continuation(self, layer_predictions: list[ExtractedBorehole]) -> ExtractedBorehole:
         """Identify the borehole on the current page that is most likely to be the continuation of the previous.
@@ -346,28 +342,7 @@ class LayersInDocument:
         Returns:
             ExtractedBorehole: The borehole that is most likely to be the continuation of the previous.
         """
-        return self._get_borehole_min_score(
-            choices=layer_predictions,
-            score_func=lambda bh: bh.bounding_boxes[0].get_outer_rect().y0,
-            filter_func=lambda bh: True,
-        )
-
-    def _get_borehole_min_score(
-        self,
-        choices: list[ExtractedBorehole],
-        score_func: Callable[[ExtractedBorehole], float],
-        filter_func: Callable[[ExtractedBorehole], bool],
-    ):
-        """Utilitary function to return a reference to the borehole with the minimum score.
-
-        The score is computed with the provided score function, and only for boreholes that pass the filter function.
-
-        Args:
-            choices (list[ExtractedBorehole]): List of boreholes to choose from.
-            score_func (Callable[[ExtractedBorehole], float]): Function to compute the score for each borehole.
-            filter_func (Callable[[ExtractedBorehole], bool], optional): Function to filter boreholes.
-        """
-        return min(((bh, score_func(bh)) for bh in choices if filter_func(bh)), key=lambda x: x[1])[0]
+        return min(layer_predictions, key=lambda bh: bh.bounding_boxes[0].get_outer_rect().y0)
 
     def _is_continuation(
         self, borehole_to_extend: ExtractedBorehole, borehole_continuation: ExtractedBorehole, current_page: int
