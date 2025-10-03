@@ -83,6 +83,9 @@ class BoreholeListBuilder:
         # only criterion for the number of boreholes in the document is the number of borehole layers identified.
         self._num_boreholes = len(self._layers_with_bb_in_document.boreholes_layers_with_bb)
 
+        # If the first layer of a borehole has no starting depth and meet some conditions, replace the None by 0.0
+        self._layers_with_bb_in_document.normalize_first_layer()
+
         # for each element, perform the perfect matching with the borehole layers, and retrieve the matching dict
         borehole_idx_to_elevation = self._one_to_one_match_element_to_borehole(self._elevations_list)
         borehole_idx_to_coordinate = self._one_to_one_match_element_to_borehole(self._coordinates_list)
@@ -294,8 +297,9 @@ class AllBoreholePredictionsWithGroundTruth:
             for file in self.predictions_list
         ]
         evaluator = LayerEvaluator(layers_list)
-        all_metrics.layer_metrics = evaluator.get_layer_metrics()
+        all_metrics.material_description_metrics = evaluator.get_material_description_metrics()
         all_metrics.depth_interval_metrics = evaluator.get_depth_interval_metrics()
+        all_metrics.layer_metrics = evaluator.get_layer_metrics()
 
         predictions_by_language = {language: [] for language in languages}
         for borehole_data in layers_list:
@@ -304,20 +308,18 @@ class AllBoreholePredictionsWithGroundTruth:
 
         for language, language_predictions_list in predictions_by_language.items():
             evaluator = LayerEvaluator(language_predictions_list)
-            setattr(
-                all_metrics,
-                f"{language}_layer_metrics",
-                evaluator.get_layer_metrics(),
-            )
+            setattr(all_metrics, f"{language}_layer_metrics", evaluator.get_layer_metrics())
             setattr(all_metrics, f"{language}_depth_interval_metrics", evaluator.get_depth_interval_metrics())
+            setattr(
+                all_metrics, f"{language}_material_description_metrics", evaluator.get_material_description_metrics()
+            )
 
         logger.info("Macro avg:")
         logger.info(
-            "F1: %.1f%%, precision: %.1f%%, recall: %.1f%%, depth_interval_precision: %.1f%%",
+            "layer f1: %.1f%%, depth interval f1: %.1f%%, material description f1: %.1f%%",
             all_metrics.layer_metrics.macro_f1() * 100,
-            all_metrics.layer_metrics.macro_precision() * 100,
-            all_metrics.layer_metrics.macro_recall() * 100,
-            all_metrics.depth_interval_metrics.macro_precision() * 100,
+            all_metrics.depth_interval_metrics.macro_f1() * 100,
+            all_metrics.material_description_metrics.macro_f1() * 100,
         )
 
         # TODO groundwater should not be in evaluate_geology(), it should be handle by a higher-level function call

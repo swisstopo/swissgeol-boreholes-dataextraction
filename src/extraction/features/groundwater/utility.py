@@ -7,7 +7,7 @@ import regex
 
 def extract_date(text: str) -> tuple[date | None, str | None]:
     """Extract the date from a string in the format dd.mm.yyyy or dd.mm.yy."""
-    date_match = regex.search(r"(\d{1,2})\s*\.\s*(\d{1,2})\s*\.\s*(\d{2,4})", text)
+    date_match = regex.search(r"(\d{1,2})[\s\.]+(\d{1,2})[\s\.]+(\d{2,4})", text)
 
     if not date_match:
         return None, None
@@ -17,7 +17,11 @@ def extract_date(text: str) -> tuple[date | None, str | None]:
     # Validate date before parsing
     if not is_valid_date(cleaned_date_str, date_format):
         return None, None
-    return datetime.strptime(cleaned_date_str, date_format).date(), original_date_str
+    dt = datetime.strptime(cleaned_date_str, date_format)
+    if dt > datetime.now():
+        dt = dt.replace(year=dt.year - 100)
+
+    return dt.date(), original_date_str
 
 
 def is_valid_date(date_str: str, date_format: str) -> bool:

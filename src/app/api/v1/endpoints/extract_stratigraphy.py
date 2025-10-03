@@ -80,6 +80,7 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
         )
         layers_with_bb_in_document.assign_layers_to_boreholes(page_layers)
 
+    layers_with_bb_in_document.normalize_first_layer()
     extracted_stratigraphy = create_response_object(layers_with_bb_in_document, pdf_img_scalings)
 
     return extracted_stratigraphy

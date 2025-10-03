@@ -212,16 +212,3 @@ def test_evaluate_multiple_documents(groundtruth, groundwater_at_2m22, groundwat
     assert overall_metrics.groundwater_metrics[1].groundwater_metrics.tp == 2.0
     assert overall_metrics.groundwater_metrics[1].groundwater_metrics.fn == 0.0
     assert overall_metrics.groundwater_metrics[1].groundwater_metrics.fp == 0.0
-
-
-@pytest.mark.parametrize(
-    "test_input,expected",
-    [
-        ({"depth": 2.22, "date": "2016-04-18", "elevation": 448.07}, True),  # Valid case
-        ({"depth": -1, "date": "2016-04-18", "elevation": 448.07}, False),  # Invalid depth
-    ],
-)
-def test_groundwater_validation(test_input, expected):
-    """Test the is_valid method of the Groundwater class."""
-    groundwater = Groundwater.from_json(test_input)
-    assert groundwater.is_valid() == expected

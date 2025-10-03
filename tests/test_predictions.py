@@ -281,6 +281,13 @@ def test_evaluate_single(value, ground_truth, expected):
 
 def test_assign_layers_to_boreholes():
     """Tests the merging of layer across two pages when both are open-ended."""
+
+    def get_mock_bb(page_number: int):
+        fake_bb = Mock()
+        fake_bb.page = page_number
+        fake_bb.get_outer_rect.return_value = pymupdf.Rect(0, 0, 100, 200)
+        return fake_bb
+
     existing_borehole = ExtractedBorehole(
         [
             Layer(
@@ -294,7 +301,7 @@ def test_assign_layers_to_boreholes():
                 depths=LayerDepths(LayerDepthsEntry(1, pymupdf.Rect(), 0), None),
             ),
         ],
-        [],
+        [get_mock_bb(1)],
     )
     next_page_borehole = ExtractedBorehole(
         [
@@ -305,7 +312,7 @@ def test_assign_layers_to_boreholes():
                 depths=LayerDepths(None, LayerDepthsEntry(2, pymupdf.Rect(), 1)),
             ),
         ],
-        [],
+        [get_mock_bb(2)],
     )
 
     layers_in_doc = LayersInDocument([existing_borehole], "test.pdf")

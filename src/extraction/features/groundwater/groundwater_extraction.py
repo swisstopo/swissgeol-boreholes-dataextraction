@@ -1,20 +1,25 @@
 """This module contains the GroundwaterLevelExtractor class."""
 
+import datetime
 import logging
-import os
 from dataclasses import dataclass
-from datetime import date as dt
-from datetime import datetime
 
 import numpy as np
 import pymupdf
+from scipy.stats import pearsonr
 
+from extraction.features.groundwater.groundwater_symbol_detection import (
+    get_groundwater_symbol_upper_lines,
+    get_text_lines_near_symbol,
+)
 from extraction.features.groundwater.utility import extract_date, extract_depth, extract_elevation
+from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepthsEntry
 from extraction.features.utils.data_extractor import (
     DataExtractor,
     ExtractedFeature,
     FeatureOnPage,
 )
+from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.text.textline import TextLine
 
 logger = logging.getLogger(__name__)
@@ -31,19 +36,11 @@ class Groundwater(ExtractedFeature):
     """Abstract class for Groundwater Information."""
 
     depth: float  # Depth of the groundwater relative to the surface
-    date: dt | None = (
+    date: datetime.date | None = (
         None  # Date of the groundwater measurement, if several dates
         # are present, the date of the document the last measurement is taken
     )
     elevation: float | None = None  # Elevation of the groundwater relative to the mean sea level
-
-    def is_valid(self) -> bool:
-        """Checks if the information is valid.
-
-        Returns:
-            bool: True if the information is valid, otherwise False.
-        """
-        return self.depth > 0
 
     def __str__(self) -> str:
         """Converts the object to a string.
@@ -65,7 +62,10 @@ class Groundwater(ExtractedFeature):
         Returns:
             Groundwater: The object created from the dictionary.
         """
-        date = datetime.strptime(date, DATE_FORMAT).date() if date is not None and date != "" else None
+        if date is None or date == "":
+            return Groundwater(depth=depth, date=None, elevation=elevation)
+        date = datetime.datetime.strptime(date, DATE_FORMAT)
+        date = date.replace(year=date.year - 100) if date > datetime.datetime.now() else date
         return Groundwater(depth=depth, date=date, elevation=elevation)
 
     @classmethod
@@ -107,26 +107,75 @@ class Groundwater(ExtractedFeature):
             "elevation": self.elevation,
         }
 
-    def set_elevation_infos(self, terrain_elevation: float):
-        """Sets the depth and elevation of the groundwater.
+    def infer_infos(self, terrain_elevation: float | None, layers: list[Layer], feature_rect: pymupdf.Rect):
+        """Sets the depth or elevation of the groundwater, knowing one and the terrain elevation.
+
+        If both informations are missing, tries to infer them from the given layers and the feature rectangle.
 
         Args:
             terrain_elevation (float): The elevation of the terrain at the top of the borehole.
+            layers (list[Layer]): The list of layers in the borehole.
+            feature_rect (pymupdf.Rect): The bounding box of the groundwater feature.
         """
-        if self.depth is None and self.elevation is None:  # can't do anything
+        if self.depth is None:
+            if self.elevation is not None and terrain_elevation is not None:
+                self.depth = round(terrain_elevation - self.elevation, 2)
+            else:
+                # TODO https://github.com/swisstopo/swissgeol-boreholes-dataextraction/issues/293
+                # Optional method to infer groundwater depths when they are not explicitly provided.
+                #
+                # self.depth = self.infer_depth(layers, feature_rect)
+                pass
+
+        if self.depth is None:
             return
-        if self.depth is None and self.elevation is not None:  # if was not already set
-            self.depth = round(terrain_elevation - self.elevation, 2)
-        if self.elevation is None and self.depth is not None:  # if was not already set
+
+        if self.elevation is None and terrain_elevation is not None:
             self.elevation = round(terrain_elevation - self.depth, 2)
-        # sanity checks here to correct mistake (e.g. wrong depth extracted... )
-        prec = 0.5
-        if round(terrain_elevation - self.elevation, 2) - self.depth > prec:  # account for approx, up to 0.5m
-            logger.warning(
-                f"Extracted groundwater height informations (depth = {self.depth}, elevation = {self.elevation}) "
-                f"do not match the constraint 'terrain_elevation - gw_elevation = gw_depth': {terrain_elevation} "
-                f"- {self.elevation} = {round(terrain_elevation - self.elevation, 2)} != {self.depth} ± {prec}"
+
+    def infer_depth(self, layers: list[Layer], feature_rect: pymupdf.Rect) -> float | None:
+        """Infers the depth of the groundwater feature based on the given layers and feature rectangle.
+
+        TODO https://github.com/swisstopo/swissgeol-boreholes-dataextraction/issues/293
+        This method should be reviewed with a geologist to decide whether to infer missing depths from the y-scale
+        or leave them blank. If unnecessary, it should be removed.
+
+        Args:
+            layers (list[Layer]): The list of layers in the borehole.
+            feature_rect (pymupdf.Rect): The bounding box of the groundwater feature.
+
+        Returns:
+            float | None: The inferred depth of the groundwater feature, or None if it could not be determined.
+        """
+        # Step 1: Prepare depths and y-values
+        depths = np.array(
+            sorted(
+                {
+                    (d.value, (d.rect.y0 + d.rect.y1) / 2)
+                    for layer in layers
+                    if layer.depths is not None
+                    for d in (layer.depths.start, layer.depths.end)
+                    if d is not None and d.rect is not None
+                },
+                key=lambda d: d[0],
             )
+        )
+        if depths.size == 0:
+            return None
+
+        # Step 2: Compute correlation
+        corr, p_val = pearsonr(depths[:, 0], depths[:, 1])
+        if corr < 0.95 or p_val > 0.01:
+            return None
+
+        # Step 3: fit the linear regression and infer the depth
+        y_value = feature_rect.y1  # the groundwater limit is usually bellow the date (or elevation) bounding box.
+        if y_value < min(depths[:, 1]) or y_value > max(depths[:, 1]):  # out of bounds, not reliable
+            return None
+        a, b = np.polyfit(depths[:, 0], depths[:, 1], 1)
+        depth = round((y_value - b) / a, 2)
+        logger.info(f"Inferred depth for groundwater: {depth}")
+        return depth
 
 
 @dataclass
@@ -155,14 +204,55 @@ class GroundwatersInBorehole:
         """
         return cls([FeatureOnPage.from_json(gw_data, Groundwater) for gw_data in json_object])
 
-    def set_elevation_infos(self, terrain_elevation: float):
-        """Sets the depth and elevation of all groundwater entries.
+    def filter_entries(self, terrain_elevation: float | None, layers: list[Layer]):
+        """Remove duplicates and sets the depth and elevation of all groundwater entries.
 
         Args:
             terrain_elevation (float): The elevation of the terrain at the top of the borehole.
+            layers (list[Layer]): The list of layers in the borehole.
         """
+        self.remove_duplicates()
         for entry in self.groundwater_feature_list:
-            entry.feature.set_elevation_infos(terrain_elevation)
+            entry.feature.infer_infos(terrain_elevation, layers, entry.rect)
+
+    def remove_duplicates(self):
+        """Removes groundwater entries that have the same date and not a different depth.
+
+        Those entry likelly are the same information, showns twice on the page. This step can't be done during the
+        extraction process, as entries with the same date could belong to different boreholes at that point.
+        """
+        unique_groundwaters: list[FeatureOnPage[Groundwater]] = []
+        for gw in self.groundwater_feature_list:
+            keep = True
+            to_remove = []
+            for other_gw in unique_groundwaters:
+                if (
+                    gw.feature.date is not None
+                    and other_gw.feature.date is not None
+                    and gw.feature.date == other_gw.feature.date
+                ):
+                    # same date means that the groundwaters are duplicates shown twice on the page
+                    if (
+                        gw.feature.depth is not None
+                        and other_gw.feature.depth is not None
+                        and other_gw.feature.depth != gw.feature.depth
+                    ):
+                        continue
+                    elif gw.feature.depth is None and other_gw.feature.depth is not None:
+                        keep = False
+                    elif gw.feature.depth is None and other_gw.feature.depth is None:
+                        # both depths are None, look at elevation to break ties
+                        if gw.feature.elevation is None and other_gw.feature.elevation is not None:
+                            keep = False
+                        else:
+                            to_remove.append(other_gw)
+                    else:
+                        to_remove.append(other_gw)
+            for other_gw in to_remove:
+                unique_groundwaters.remove(other_gw)
+            if keep:
+                unique_groundwaters.append(gw)
+        self.groundwater_feature_list = unique_groundwaters
 
 
 @dataclass
@@ -186,8 +276,6 @@ class GroundwaterLevelExtractor(DataExtractor):
 
     feature_name = "groundwater"
 
-    is_searching_groundwater_illustration: bool = False
-
     # look for elevation values to the left, right and/or immediately below the key
     search_left_factor: float = 2
     search_right_factor: float = 8
@@ -196,186 +284,155 @@ class GroundwaterLevelExtractor(DataExtractor):
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ü": "u"}
 
-    def __init__(self, language):
-        """Initializes the GroundwaterLevelExtractor object.
-
-        Args:
-            language (str): the language of the document.
-        """
-        super().__init__(language)
-
-        self.is_searching_groundwater_illustration = os.getenv("IS_SEARCHING_GROUNDWATER_ILLUSTRATION") == "True"
-        if self.is_searching_groundwater_illustration:
-            logger.info("Searching for groundwater information in illustrations.")
-
-    def get_groundwater_near_key(self, lines: list[TextLine], page: int) -> list[FeatureOnPage[Groundwater]]:
-        """Find groundwater information from text lines that are close to an explicit "groundwater" label.
+    def get_text_lines_near_key(self, groundwater_key_line: TextLine, lines: list[TextLine]) -> list[TextLine]:
+        """Extracts the text lines that are close to an explicit "groundwater" label.
 
         Also apply some preprocessing to the text of those text lines, to deal with some common (OCR) errors.
 
         Args:
+            groundwater_key_line (TextLine): the line containing the keyword that indicates a groundwater level
             lines (list[TextLine]): all the lines of text to search in
-            page (int): the page number (1-based) of the PDF document
 
         Returns:
-            list[FeatureOnPage[Groundwater]]: all found groundwater information
+            list[TextLine]: all found lists of textlines that appeared arround a key
         """
-        # find the key that indicates the groundwater information
-        groundwater_key_lines = self.find_feature_key(lines)
-        extracted_groundwater_list = []
+        key_rect = groundwater_key_line.rect
+        groundwater_info_lines = self.get_lines_near_key(lines, groundwater_key_line)
 
-        for groundwater_key_line in groundwater_key_lines:
-            key_rect = groundwater_key_line.rect
-            groundwater_info_lines = self.get_lines_near_key(lines, groundwater_key_line)
+        # sort the lines by their proximity to the key line center, compute the distance to the key line center
+        key_center = (key_rect.x0 + key_rect.x1) / 2
+        return sorted(groundwater_info_lines, key=lambda line: abs((line.rect.x0 + line.rect.x1) / 2 - key_center))
 
-            # sort the lines by their proximity to the key line center, compute the distance to the key line center
-            key_center = (key_rect.x0 + key_rect.x1) / 2
-            groundwater_info_lines.sort(key=lambda line: abs((line.rect.x0 + line.rect.x1) / 2 - key_center))
-
-            extracted_groundwater = self.get_groundwater_info_from_lines(groundwater_info_lines, page)
-            if extracted_groundwater:
-                # if the depth or elevation is extracted, add the extracted groundwater information to the list
-                extracted_groundwater_list.append(extracted_groundwater)
-
-        return extracted_groundwater_list
-
-    def get_groundwater_info_from_lines(self, lines: list[TextLine], page: int) -> FeatureOnPage[Groundwater] | None:
+    def get_groundwater_from_lines(
+        self, lines: list[TextLine], page_number: int, seen_depths: list[LayerDepthsEntry]
+    ) -> FeatureOnPage[Groundwater] | None:
         """Extracts the groundwater information from a list of text lines.
 
         Args:
             lines (list[TextLine]): the lines of text to extract the groundwater information from
-            page (int): the page number (1-based) of the PDF document
+            page_number (int): the page number (1-based) of the PDF document
+            seen_depths (list[LayerDepthsEntry]): The list of already seen depths to avoid confusion with stratigraphy.
+
         Returns:
             FeatureOnPage[Groundwater]: the extracted groundwater information
         """
-        date: dt | None = None
+        date: datetime.date | None = None
         depth: float | None = None
         elevation: float | None = None
 
         matched_lines_rect = []
-        for idx, line in enumerate(lines):
+        for line in lines:
             text = self.preprocess(line.text)
 
-            # The first line is the keyword line that contains the groundwater keyword
-            if idx == 0:
-                # Check if the keyword line contains the date, depth, and elevation, extract them
-                extracted_date, extracted_date_str = extract_date(text)
-                if extracted_date_str:
-                    text = text.replace(extracted_date_str, "").strip()
-                    date = extracted_date
-
-                depth = extract_depth(text, MAX_DEPTH)
-                if depth:
-                    text = text.replace(str(depth), "").strip()
-
-                elevation = extract_elevation(text)
-
+            extracted_date, extracted_date_str = extract_date(text)
+            if extracted_date_str and not date:
+                date = extracted_date
+                text = text.replace(extracted_date_str, "").strip()
                 matched_lines_rect.append(line.rect)
-            else:
-                # Pattern for matching date
-                if not date:
-                    extracted_date, extracted_date_str = extract_date(text)
-                    if extracted_date_str:
-                        text = text.replace(extracted_date_str, "").strip()
-                        date = extracted_date
-                        matched_lines_rect.append(
-                            line.rect
-                        )  # Add the rectangle of the line to the matched lines list to make sure it is drawn
-                        # in the output image.
-                else:
-                    # If a second date is present in the lines around the groundwater key, then we skip this line,
-                    # instead of potentially falsely extracting a depth value from the date.
-                    extracted_date, extracted_date_str = extract_date(text)
-                    if extracted_date_str:
-                        continue
+            elif extracted_date_str and date:
+                continue  # skip extra dates
 
-                # Pattern for matching depth (e.g., "1,48 m u.T.")
-                if not depth:
-                    depth = extract_depth(text, MAX_DEPTH)
-                    if depth:
-                        matched_lines_rect.append(line.rect)
-                        text = text.replace(str(depth), "").strip()
+            depth_val = extract_depth(text, MAX_DEPTH)
+            if depth_val and not depth:
+                if any(
+                    depth_val == seen_depth.value and seen_depth.rect.intersects(line.rect)
+                    for seen_depth in seen_depths
+                ):
+                    continue
+                depth = depth_val
+                text = text.replace(str(depth), "").strip()
+                matched_lines_rect.append(line.rect)
 
-                # Pattern for matching elevation (e.g., "457,69 m U.M.")
-                if not elevation:
-                    elevation = extract_elevation(text)
-                    if elevation:
-                        matched_lines_rect.append(line.rect)
+            elevation_val = extract_elevation(text)
+            if elevation_val and not elevation:
+                elevation = elevation_val
+                matched_lines_rect.append(line.rect)
 
-            # If all required data is found, break early
             if date and depth and elevation:
                 break
 
-        # Get the union of all matched lines' rectangles
-        if len(matched_lines_rect) > 0:
-            # make sure the rectangles are unique - As some lines can contain both date and depth
-            unique_matched_lines_rect = []
-            for rect in matched_lines_rect:
-                if rect not in unique_matched_lines_rect:
-                    unique_matched_lines_rect.append(rect)
+        if not matched_lines_rect:
+            return None
 
-            rect_array = np.array(unique_matched_lines_rect)
-            x0 = rect_array[:, 0].min()
-            y0 = rect_array[:, 1].min()
-            x1 = rect_array[:, 2].max()
-            y1 = rect_array[:, 3].max()
-            rect_union = pymupdf.Rect(x0, y0, x1, y1)
-        else:
-            rect_union = None
+        rect_union = matched_lines_rect[0]
+        for rect in matched_lines_rect[1:]:
+            rect_union |= rect
 
-        # Return the populated data class if all values are found
-        # if date and depth and elevation:
-        #   # TODO: Make sure the elevation is extracted to add it here
-        # if date and depth:  # elevation is optional
-        #   # TODO: IF the date is not provided for the groundwater (most of the time because there was only one
-        # drilling date - chose the date of the document. Date needs to be extracted from the document separately)
-        if depth or elevation:
-            return FeatureOnPage(
-                feature=Groundwater(depth=depth, date=date, elevation=elevation),
-                rect=rect_union,
-                page=page,
-            )
-        else:
-            logger.warning("Could not extract groundwater depth nor elevation from the lines near the key.")
+        # return anyway, we can infer informations later
+        return FeatureOnPage(
+            feature=Groundwater(depth=depth, date=date, elevation=elevation),
+            rect=rect_union,
+            page=page_number,
+        )
+
+    def remove_overlaps(
+        self, found_groundwaters: list[FeatureOnPage[Groundwater]]
+    ) -> list[FeatureOnPage[Groundwater]]:
+        """Filters out groundwater features that are overlapping.
+
+        Args:
+            found_groundwaters (list[FeatureOnPage[Groundwater]]): The list of found groundwater features.
+
+        Returns:
+            list[FeatureOnPage[Groundwater]]: The filtered list of non-overlapping groundwater features.
+        """
+        non_overlapping_groundwaters: list[FeatureOnPage[Groundwater]] = []
+        for gw in found_groundwaters:
+            keep = True
+            to_remove = []
+            for other_gw in non_overlapping_groundwaters:
+                if gw.rect.intersects(other_gw.rect):
+                    if gw.rect.get_area() < other_gw.rect.get_area():
+                        to_remove.append(other_gw)  # keep the more compact one
+                    else:
+                        keep = False  # skip gw
+            for other_gw in to_remove:
+                non_overlapping_groundwaters.remove(other_gw)
+            if keep:
+                non_overlapping_groundwaters.append(gw)
+        return non_overlapping_groundwaters
 
     def extract_groundwater(
         self,
         page_number: int,
-        lines: list[TextLine],
-        document: pymupdf.Document,
+        text_lines: list[TextLine],
+        geometric_lines: list[Line],
+        extracted_boreholes: list[ExtractedBorehole],
     ) -> list[FeatureOnPage[Groundwater]]:
         """Extracts the groundwater information from a borehole profile.
 
-        Processes the borehole profile page by page and tries to find the coordinates in the respective text of the
-        page.
-        Algorithm description:
-            1. if that gives no results, search for coordinates close to an explicit "groundwater" label (e.g. "Gswp")
-
         Args:
             page_number (int): The page number (1-indexed) of the PDF document.
-            lines (list[TextLine]): The lines of text to extract the groundwater information from.
-            document (pymupdf.Document): The document used to extract groundwater from illustration.
+            text_lines (list[TextLine]): The lines of text to extract the groundwater information from.
+            geometric_lines (list[Line]): The geometric lines on the page.
+            extracted_boreholes (list[ExtractedBorehole]): The extracted boreholes from the page.
 
         Returns:
             list[FeatureOnPage[Groundwater]]: the extracted coordinates (if any)
         """
-        found_groundwater = self.get_groundwater_near_key(lines, page_number)
-        if not found_groundwater and self.is_searching_groundwater_illustration:
-            from extraction.features.groundwater.gw_illustration_template_matching import (
-                get_groundwater_from_illustration,
-            )
+        areas_of_interest: list[list[TextLine]] = []
+        # extract text clues (e.g. GW)
+        for groundwater_key_line in self.find_feature_key(text_lines):
+            areas_of_interest.append(self.get_text_lines_near_key(groundwater_key_line, text_lines))
+        # extract visual clues, like groundwater symbols
+        for upper_symbol_geom_line in get_groundwater_symbol_upper_lines(text_lines, geometric_lines):
+            areas_of_interest.append(get_text_lines_near_symbol(text_lines, upper_symbol_geom_line))
 
-            # Extract groundwater from illustration
-            found_groundwater, confidence_list = get_groundwater_from_illustration(self, lines, page_number, document)
+        seen_depths = [lay.depths for bh in extracted_boreholes for lay in bh.predictions if lay.depths]
+        seen_depth_entries = [d for depth in seen_depths for d in (depth.start, depth.end) if d and d.rect]
 
+        found_groundwaters = []
+        for text_lines in areas_of_interest:
+            found_groundwater = self.get_groundwater_from_lines(text_lines, page_number, seen_depth_entries)
             if found_groundwater:
-                logger.info("Confidence list: %s", confidence_list)
-                logger.info("Found groundwater from illustration on page %s: %s", page_number, found_groundwater)
+                found_groundwaters.append(found_groundwater)
 
-        if found_groundwater:
-            groundwater_output = ", ".join([str(entry.feature) for entry in found_groundwater])
+        unique_groundwaters = self.remove_overlaps(found_groundwaters)
+
+        if unique_groundwaters:
+            groundwater_output = ", ".join([str(entry.feature) for entry in unique_groundwaters])
             logger.info("Found groundwater information on page %s: %s", page_number, groundwater_output)
-            return found_groundwater
+            return unique_groundwaters
 
         logger.info("No groundwater found in this borehole profile.")
         return []

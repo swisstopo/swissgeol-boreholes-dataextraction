@@ -49,8 +49,6 @@ def is_valid_depth_interval(layer_depths, start: float, end: float) -> bool:
 
     layer_start = layer_depths["start"]
     layer_end = layer_depths["end"]
-    if layer_start is None:
-        return (start == 0) and (end == layer_end)
 
     if (layer_start is not None) and (layer_end is not None):
         return start == layer_start and end == layer_end

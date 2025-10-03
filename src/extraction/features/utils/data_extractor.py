@@ -57,6 +57,9 @@ class FeatureOnPage(Generic[T], RectWithPageMixin):
         self.feature = feature
         self.rect_with_page = RectWithPage(rect, page)
 
+    def __repr__(self):
+        return f"{self.feature}"
+
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
 
