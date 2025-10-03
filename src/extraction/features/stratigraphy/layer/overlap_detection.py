@@ -15,9 +15,8 @@ matching_params = read_params("matching_params.yml")
 
 
 def remove_scan_overlap_layers(
-    current_page_index: int,
-    previous_layers_with_bb: list[ExtractedBorehole],
-    current_layers_with_bb: list[ExtractedBorehole],
+    previous_page_boreholes: list[ExtractedBorehole],
+    current_page_boreholes: list[ExtractedBorehole],
 ) -> list[ExtractedBorehole]:
     """Remove duplicate layers caused by overlapping scanned pages.
 
@@ -25,22 +24,18 @@ def remove_scan_overlap_layers(
     duplicates. Layers are compared from bottom to top based on their material descriptions.
 
     Args:
-        current_page_index (int): Current page index
-        previous_layers_with_bb (list[ExtractedBorehole]): Layers from previous page
-        current_layers_with_bb (list[ExtractedBorehole]): Layers from current page
+        previous_page_boreholes (list[ExtractedBorehole]): Layers from previous page
+        current_page_boreholes (list[ExtractedBorehole]): Layers from current page
 
     Returns:
         list[ExtractedBorehole]: Current page layers with duplicates removed
     """
-    if current_page_index == 0:
-        return current_layers_with_bb
-
-    previous_page_layers = [lay for boreholes in previous_layers_with_bb for lay in boreholes.predictions]
+    previous_page_layers = [lay for boreholes in previous_page_boreholes for lay in boreholes.predictions]
     if not previous_page_layers:
-        return current_layers_with_bb
+        return current_page_boreholes
 
     non_duplicated_extracted_boreholes: list[ExtractedBorehole] = []
-    for current_borehole in current_layers_with_bb:
+    for current_borehole in current_page_boreholes:
         assert (
             len({page for layer in current_borehole.predictions for page in layer.material_description.pages}) == 1
         ), "At this point, all layers should be on the same page."
