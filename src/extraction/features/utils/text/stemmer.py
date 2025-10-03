@@ -68,7 +68,7 @@ def find_matching_expressions(
         split_threshold (float): Threshold for splitting compounds.
         targets (List[str]): A list of target strings to match against.
         language (str): The language of the patterns, used for stemming.
-        analytics ([MatchingParamsAnalytics]): Aanalytics instance to track matches.
+        analytics ([MatchingParamsAnalytics]): Analytics instance to track matches.
         search_excluding (bool): Whether this is for excluding expressions (for analytics).
 
     Returns:
