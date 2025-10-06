@@ -14,10 +14,10 @@ logger = logging.getLogger(__name__)
 matching_params = read_params("matching_params.yml")
 
 
-def remove_scan_overlap_layers(
+def select_boreholes_with_scan_overlap(
     previous_page_boreholes: list[ExtractedBorehole],
     current_page_boreholes: list[ExtractedBorehole],
-) -> list[ExtractedBorehole]:
+) -> (ExtractedBorehole | None, ExtractedBorehole | None):
     """Remove duplicate layers caused by overlapping scanned pages.
 
     Compare layers from current page with those from previous page to identify and remove
@@ -28,29 +28,18 @@ def remove_scan_overlap_layers(
         current_page_boreholes (list[ExtractedBorehole]): Layers from current page
 
     Returns:
-        list[ExtractedBorehole]: Current page layers with duplicates removed
+        (ExtractedBorehole | None, ExtractedBorehole | None, int | None):
+                the boreholes to be extended, the continuing borehole, and the number of duplicate layers, if any
     """
-    previous_page_layers = [lay for boreholes in previous_page_boreholes for lay in boreholes.predictions]
-    if not previous_page_layers:
-        return current_page_boreholes
-
-    non_duplicated_extracted_boreholes: list[ExtractedBorehole] = []
     for current_borehole in current_page_boreholes:
-        assert (
-            len({page for layer in current_borehole.predictions for page in layer.material_description.pages}) == 1
-        ), "At this point, all layers should be on the same page."
-        bottom_duplicate_idx = find_last_duplicate_layer_index(previous_page_layers, current_borehole.predictions)
-
-        if bottom_duplicate_idx is not None:
-            non_duplicated_extracted_boreholes.append(
-                ExtractedBorehole(
-                    predictions=current_borehole.predictions[bottom_duplicate_idx + 1 :],
-                    bounding_boxes=current_borehole.bounding_boxes,
-                )
+        for previous_page_borehole in previous_page_boreholes:
+            bottom_duplicate_idx = find_last_duplicate_layer_index(
+                previous_page_borehole.predictions, current_borehole.predictions
             )
-        else:
-            non_duplicated_extracted_boreholes.append(current_borehole)
-    return non_duplicated_extracted_boreholes
+
+            if bottom_duplicate_idx is not None:
+                return previous_page_borehole, current_borehole, bottom_duplicate_idx
+    return None, None, None
 
 
 def find_last_duplicate_layer_index(previous_page_layers: list[Layer], sorted_layers: list[Layer]) -> int | None:
@@ -59,8 +48,8 @@ def find_last_duplicate_layer_index(previous_page_layers: list[Layer], sorted_la
     The last duplicated layer is the deepest one that is duplicated, starting from the top.
 
     Args:
-        previous_page_layers (list[Layer]): Layers from previous page sorted from top to bottom
-        sorted_layers (list[Layer]): Layers from current page sorted from top to bottom
+        previous_page_layers (list[Layer]): Layers from a borehole on the previous page sorted from top to bottom
+        sorted_layers (list[Layer]): Layers from a borehole on the current page sorted from top to bottom
 
     Returns:
         int | None: Index of the last duplicate layer or None if not found

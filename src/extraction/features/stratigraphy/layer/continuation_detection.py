@@ -3,7 +3,7 @@
 import numpy as np
 
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepths, LayerDepthsEntry
-from extraction.features.stratigraphy.layer.overlap_detection import remove_scan_overlap_layers
+from extraction.features.stratigraphy.layer.overlap_detection import select_boreholes_with_scan_overlap
 from extraction.features.utils.text.textblock import MaterialDescription
 
 DEPTHS_QUANTILE_SLACK = 0.1
@@ -24,16 +24,18 @@ def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[E
     for index, boreholes_on_page in enumerate(boreholes_per_page):
         page_number = index + 1
 
-        # 1. remove overlaps
-        boreholes_on_page = remove_scan_overlap_layers(
+        # 1. merge boreholes that are continued from the previous page based on overlaps
+        borehole_to_extend, borehole_continuation, duplicate_layer_count = select_boreholes_with_scan_overlap(
             previous_page_boreholes=previous_page_boreholes,
             current_page_boreholes=boreholes_on_page,
         )
 
-        # 2. merge boreholes that are continued from the previous page
-        borehole_to_extend, borehole_continuation = _select_boreholes_for_merge(
-            previous_page_boreholes, boreholes_on_page, page_number
-        )
+        # 2. alternatively, merge boreholes that are continued from the previous page based on depths and position
+        if not (borehole_to_extend and borehole_continuation and duplicate_layer_count):
+            borehole_to_extend, borehole_continuation = _select_boreholes_for_merge(
+                previous_page_boreholes, boreholes_on_page, page_number
+            )
+
         if borehole_to_extend and borehole_continuation:
             other_boreholes_previous = [
                 borehole for borehole in previous_page_boreholes if borehole is not borehole_to_extend
@@ -41,6 +43,11 @@ def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[E
             other_boreholes_current = [
                 borehole for borehole in boreholes_on_page if borehole is not borehole_continuation
             ]
+            if duplicate_layer_count is not None:
+                borehole_continuation = ExtractedBorehole(
+                    predictions=borehole_continuation.predictions[duplicate_layer_count + 1 :],
+                    bounding_boxes=borehole_continuation.bounding_boxes,
+                )
             _merge_boreholes(borehole_to_extend, borehole_continuation)
 
             finished_boreholes.extend(other_boreholes_previous)
