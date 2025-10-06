@@ -20,13 +20,13 @@ from extraction.features.predictions.borehole_predictions import (
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.predictions.predictions import AllBoreholePredictionsWithGroundTruth
+from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
     Layer,
     LayerDepths,
     LayerDepthsEntry,
     LayersInBorehole,
-    LayersInDocument,
 )
 from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.text.textblock import MaterialDescription
@@ -279,7 +279,7 @@ def test_evaluate_single(value, ground_truth, expected):
     assert (metrics.tp, metrics.fp, metrics.fn) == expected
 
 
-def test_assign_layers_to_boreholes():
+def test_merge_boreholes():
     """Tests the merging of layer across two pages when both are open-ended."""
 
     def get_mock_bb(page_number: int):
@@ -288,7 +288,7 @@ def test_assign_layers_to_boreholes():
         fake_bb.get_outer_rect.return_value = pymupdf.Rect(0, 0, 100, 200)
         return fake_bb
 
-    existing_borehole = ExtractedBorehole(
+    first_page_borehole = ExtractedBorehole(
         [
             Layer(
                 material_description=MaterialDescription(text="first layer", lines=[]),
@@ -315,9 +315,9 @@ def test_assign_layers_to_boreholes():
         [get_mock_bb(2)],
     )
 
-    layers_in_doc = LayersInDocument([existing_borehole], "test.pdf")
-    layers_in_doc.assign_layers_to_boreholes([next_page_borehole])
-    assert len(layers_in_doc.boreholes_layers_with_bb[0].predictions) == 2
-    assert layers_in_doc.boreholes_layers_with_bb[0].predictions[1].material_description.text == "second layer"
-    assert layers_in_doc.boreholes_layers_with_bb[0].predictions[1].depths.start.value == 1
-    assert layers_in_doc.boreholes_layers_with_bb[0].predictions[1].depths.end.value == 2
+    merged_boreholes = merge_boreholes([[first_page_borehole], [next_page_borehole]])
+
+    assert len(merged_boreholes[0].predictions) == 2
+    assert merged_boreholes[0].predictions[1].material_description.text == "second layer"
+    assert merged_boreholes[0].predictions[1].depths.start.value == 1
+    assert merged_boreholes[0].predictions[1].depths.end.value == 2
