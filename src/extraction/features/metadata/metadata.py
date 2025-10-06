@@ -63,6 +63,7 @@ class BoreholeMetadata:
 
     elevation: FeatureOnPage[Elevation] | None = None
     coordinates: FeatureOnPage[Coordinate] | None = None
+    name: None
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
