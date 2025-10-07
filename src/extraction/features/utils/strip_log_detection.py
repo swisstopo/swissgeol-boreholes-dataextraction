@@ -2,22 +2,22 @@
 
 from __future__ import annotations
 
-import dataclasses
 import logging
 import re
 from dataclasses import dataclass
 
 import pymupdf
 
-from extraction.features.utils.table_detection import StructureLine, detect_structure_lines
 from extraction.features.utils.geometry.circle_detection import extract_circles
 from extraction.features.utils.geometry.geometry_dataclasses import Circle, Line
+from extraction.features.utils.table_detection import StructureLine, detect_structure_lines
 from extraction.features.utils.text.textline import TextLine
 from utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
 
 config = read_params("table_detection_params.yml")
+
 
 @dataclass
 class StripLog:
@@ -90,8 +90,7 @@ def _find_strip_log_structures(
     strip_candidates = []
 
     for i, first_line in enumerate(vertical_lines):
-        for second_line in vertical_lines[i+1:i+4]:
-
+        for second_line in vertical_lines[i + 1 : i + 4]:
             # Check if lines could form a strip (reasonable distance apart)
             strip_height = max(first_line.end, second_line.end) - min(first_line.start, second_line.start)
 
@@ -105,11 +104,6 @@ def _find_strip_log_structures(
                 max(first_line.position, second_line.position),
                 max(first_line.end, second_line.end),
             )
-
-            # Early exit for strips that are too wide
-            max_strip_width = 20 #config.get("strip_logs", {}).get("max_width", float('inf'))
-            if strip_rect.width > max_strip_width:
-                continue
 
             # Find horizontal lines and circles within this region
             region_horizontals = _find_horizontal_lines_in_region(horizontal_lines, strip_rect)

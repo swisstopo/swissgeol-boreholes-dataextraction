@@ -1,7 +1,6 @@
 """Script for line detection in pdf pages."""
 
 import logging
-import os
 
 import cv2
 import numpy as np
@@ -15,8 +14,6 @@ from .geometry_dataclasses import Circle
 load_dotenv()
 
 logger = logging.getLogger(__name__)
-
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 
 line_detection_params = read_params("line_detection_params.yml")
 

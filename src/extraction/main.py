@@ -349,36 +349,6 @@ def start_pipeline(
                 )
                 all_groundwater_entries.groundwater_feature_list.extend(groundwater_entries)
 
-                # # Draw table structures if requested
-                # if draw_tables:
-                #     img = plot_tables(page, table_structures, page_index)
-
-                #     if draw_directory:
-                #         table_img_path = draw_directory / f"{Path(filename).stem}_page_{page.number + 1}_tables.png"
-                #         cv2.imwrite(str(table_img_path), img)
-
-                #     if mlflow_tracking:
-                #         mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_tables.png")
-
-                #     elif not draw_directory:
-                #         logger.warning("draw_directory is not defined. Skipping saving table image.")
-
-                # # Draw strip logs if requested
-                # if draw_strip_logs:
-                #     img = plot_strip_logs(page, strip_logs, page_index)
-
-                #     if draw_directory:
-                #         strip_img_path = (
-                #             draw_directory / f"{Path(filename).stem}_page_{page.number + 1}_strip_logs.png"
-                #         )
-                #         cv2.imwrite(str(strip_img_path), img)
-
-                #     if mlflow_tracking:
-                #         mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_strip_logs.png")
-
-                #     elif not draw_directory:
-                #         logger.warning("draw_directory is not defined. Skipping saving table image.")
-
                 # Draw table structures if requested
                 if draw_tables:
                     img = plot_tables(page, table_structures, page_index)

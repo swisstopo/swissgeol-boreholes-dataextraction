@@ -1,15 +1,22 @@
 """Contains utility functions for plotting stratigraphic data."""
 
 import logging
+import os
 from pathlib import Path
 
 import cv2
-import mlflow
 import numpy as np
 import pymupdf
+from dotenv import load_dotenv
 
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.text.textblock import TextBlock
+
+load_dotenv()
+
+mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
+if mlflow_tracking:
+    import mlflow
 
 logger = logging.getLogger(__name__)
 
