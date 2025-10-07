@@ -10,6 +10,7 @@ from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.evaluation.layer_evaluator import LayerEvaluator
 from extraction.evaluation.utility import evaluate, evaluate_single
 from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
+from extraction.features.metadata.borehole_name_extraction import BoreholeName
 from extraction.features.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
 from extraction.features.metadata.metadata import BoreholeMetadata, FileMetadata
 from extraction.features.predictions.borehole_predictions import (
@@ -62,6 +63,7 @@ def sample_file_prediction() -> FilePredictions:
     groundwater_in_bh = GroundwatersInBorehole(groundwater_feature_list=[groundwater_on_page])
 
     file_metadata = FileMetadata(language="en", filename=filename, page_dimensions=[Mock(width=10, height=20)])
+    # TODO adapt tests
     metadata = BoreholeMetadata(coordinates=coord, elevation=None)
 
     return FilePredictions(
@@ -131,7 +133,8 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
     groundwater_in_bh = GroundwatersInBorehole(groundwater_feature_list=[groundwater_on_page])
 
     file_metadata = FileMetadata(language="en", filename=filename, page_dimensions=[Mock(width=10, height=20)])
-    metadata = BoreholeMetadata(coordinates=coord, elevation=None)
+    # TODO adapt tests
+    metadata = BoreholeMetadata(coordinates=coord, elevation=None, name=BoreholeName("TODO", 1.0, pymupdf.Rect, 0))
 
     return FilePredictions(
         [
