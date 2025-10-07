@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
-import pymupdf
-
-from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
+from extraction.features.utils.data_extractor import ExtractedFeature, FeatureOnPage
 from extraction.features.utils.geometry.util import y_overlap_significant_smallest
 from extraction.features.utils.text.textline import TextLine
 
@@ -17,24 +16,63 @@ excluded_keywords = ["N", "Nº", "Nr", "Nummer"]  # TODO those in config
 MIN_VERTICAL_OVERLAP = 0.9
 
 
-class BoreholeName(RectWithPageMixin):
-    """Class to hold the name of a borehole."""
+@dataclass
+class Name(ExtractedFeature):
+    """Abstract class for Name Information."""
 
-    def __init__(self, name: str, confidence: float, rect: pymupdf.Rect, page: int):
-        self.name = name
-        self.confidence = confidence
-        self.rect_with_page = RectWithPage(rect, page)
+    name: str  # Name of the borhole
+    confidence: float
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}: {self.name}"
+    def __post_init__(self):
+        """Checks if the information is valid."""
+        if not isinstance(self.name, str):
+            raise ValueError("Name must be a string")
+        if not isinstance(self.name, str):
+            raise ValueError("Confidence must be a float")
 
-    def __hash__(self) -> int:
-        """Make BoreholeName hashable for use in sets.
+    def __str__(self) -> str:
+        """Converts the object to a string.
 
         Returns:
-            Hash based on name, page and rect coordinates
+            str: The object as a string.
         """
-        return hash((self.name, self.page_number, self.rect))
+        return f"Name(name={self.name}, confidence={self.confidence})"
+
+    def to_json(self) -> dict:
+        """Converts the object to a dictionary.
+
+        Returns:
+            dict: The object as a dictionary.
+        """
+        return {"name": self.name, "confidence": self.confidence}
+
+    @classmethod
+    def from_json(cls, data: dict) -> Name:
+        """Converts a dictionary to an object.
+
+        Args:
+            data (dict): A dictionary representing the elevation information.
+
+        Returns:
+            Name: The borhole's name information object.
+        """
+        return cls(name=data["name"], confidence=data["confidence"])
+
+
+@dataclass
+class NameInDocument:
+    """Class for extracted borehole name information from a document."""
+
+    name_feature_list: list[FeatureOnPage[Name]]
+    filename: str
+
+    def to_json(self) -> list[dict]:
+        """Converts the object to a list of dictionaries.
+
+        Returns:
+            list[dict]: The object as a list of dictionaries.
+        """
+        return [entry.to_json() for entry in self.name_feature_list]
 
 
 def _find_clossest_nearby_line(current_line: TextLine, all_lines: list[TextLine]) -> TextLine | None:
@@ -80,7 +118,7 @@ def _clean_name(text: str) -> str:
     return cleaned.strip()
 
 
-def extract_borehole_names(text_lines: list[TextLine]) -> str | None:
+def extract_borehole_names(text_lines: list[TextLine]) -> list[FeatureOnPage[Name]] | None:
     """Extract borehole name from text lines.
 
     The borehole name can appear either:
@@ -94,7 +132,7 @@ def extract_borehole_names(text_lines: list[TextLine]) -> str | None:
         The extracted borehole name if found, None otherwise
     """
     pattern = "(" + "|".join(re.escape(kw) + r"\b" for kw in keywords) + ")"
-    candidates: list[BoreholeName] = []  # [(name, confidence), ...]
+    candidates: list[Name] = []
 
     for current_line in text_lines:
         match = re.search(pattern, current_line.text, re.IGNORECASE)
@@ -113,12 +151,19 @@ def extract_borehole_names(text_lines: list[TextLine]) -> str | None:
                 continue
             confidence = 1 / (1 + hit_line.rect.x0 - current_line.rect.x1)
             cleaned_name = _clean_name(hit_line.text)
-        candidates.append(BoreholeName(cleaned_name, confidence, hit_line.rect, hit_line.page_number))
+
+        # Define name feature
+        candidates.append(
+            FeatureOnPage(
+                feature=Name(name=cleaned_name, confidence=confidence), rect=hit_line.rect, page=hit_line.page_number
+            )
+        )
 
     if not candidates:
         return None
 
     # Return the candidate with highest confidence
-    candidates.sort(key=lambda bh_name: (bh_name.confidence, -bh_name.rect.y0), reverse=True)
+    candidates.sort(key=lambda bh_name: (bh_name.feature.confidence, -bh_name.rect.y0), reverse=True)
     unique_candidates = list(set(candidates))
-    return unique_candidates  # TODO then each should be mapped to the clossest borehole, like elevations for example.
+
+    return unique_candidates
