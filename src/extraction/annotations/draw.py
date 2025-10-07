@@ -103,6 +103,7 @@ class PageDrawer:
             bounding_boxes = borehole_predictions.bounding_boxes
             coordinates = borehole_predictions.metadata.coordinates
             elevation = borehole_predictions.metadata.elevation
+            name = borehole_predictions.metadata.name
             groundwaters = borehole_predictions.groundwater_in_borehole
             bh_layers = borehole_predictions.layers_in_borehole
 
@@ -114,6 +115,8 @@ class PageDrawer:
                 )
             if elevation is not None and self.page_number == elevation.page_number:
                 self.draw_feature(elevation.rect * self.page.derotation_matrix, elevation.feature.is_correct, "blue")
+            if name is not None and self.page_number == name.page_number:
+                self.draw_feature(name.rect * self.page.derotation_matrix, name.feature.is_correct, "yellow")
             for groundwater_entry in groundwaters.groundwater_feature_list:
                 if self.page_number == groundwater_entry.page_number:
                     self.draw_feature(

@@ -17,7 +17,7 @@ MIN_VERTICAL_OVERLAP = 0.9
 
 
 @dataclass
-class Name(ExtractedFeature):
+class BoreholeName(ExtractedFeature):
     """Abstract class for Name Information."""
 
     name: str  # Name of the borhole
@@ -47,7 +47,7 @@ class Name(ExtractedFeature):
         return {"name": self.name, "confidence": self.confidence}
 
     @classmethod
-    def from_json(cls, data: dict) -> Name:
+    def from_json(cls, data: dict) -> BoreholeName:
         """Converts a dictionary to an object.
 
         Args:
@@ -63,7 +63,7 @@ class Name(ExtractedFeature):
 class NameInDocument:
     """Class for extracted borehole name information from a document."""
 
-    name_feature_list: list[FeatureOnPage[Name]]
+    name_feature_list: list[FeatureOnPage[BoreholeName]]
     filename: str
 
     def to_json(self) -> list[dict]:
@@ -118,7 +118,7 @@ def _clean_name(text: str) -> str:
     return cleaned.strip()
 
 
-def extract_borehole_names(text_lines: list[TextLine]) -> list[FeatureOnPage[Name]] | None:
+def extract_borehole_names(text_lines: list[TextLine]) -> list[FeatureOnPage[BoreholeName]]:
     """Extract borehole name from text lines.
 
     The borehole name can appear either:
@@ -129,10 +129,10 @@ def extract_borehole_names(text_lines: list[TextLine]) -> list[FeatureOnPage[Nam
         text_lines: List of TextLine objects to search through
 
     Returns:
-        The extracted borehole name if found, None otherwise
+        A list of extracted borehole names, if found
     """
     pattern = "(" + "|".join(re.escape(kw) + r"\b" for kw in keywords) + ")"
-    candidates: list[Name] = []
+    candidates: list[BoreholeName] = []
 
     for current_line in text_lines:
         match = re.search(pattern, current_line.text, re.IGNORECASE)
@@ -155,14 +155,16 @@ def extract_borehole_names(text_lines: list[TextLine]) -> list[FeatureOnPage[Nam
         # Define name feature
         candidates.append(
             FeatureOnPage(
-                feature=Name(name=cleaned_name, confidence=confidence), rect=hit_line.rect, page=hit_line.page_number
+                feature=BoreholeName(name=cleaned_name, confidence=confidence),
+                rect=hit_line.rect,
+                page=hit_line.page_number,
             )
         )
 
     if not candidates:
-        return None
+        return []
 
-    # Return the candidate with highest confidence
+    # Sort the candidates by highest confidence and height on the page
     candidates.sort(key=lambda bh_name: (bh_name.feature.confidence, -bh_name.rect.y0), reverse=True)
     unique_candidates = list(set(candidates))
 

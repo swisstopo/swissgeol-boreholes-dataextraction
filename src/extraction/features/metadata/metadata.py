@@ -6,7 +6,7 @@ from typing import NamedTuple
 
 import pymupdf
 
-from extraction.features.metadata.borehole_name_extraction import Name
+from extraction.features.metadata.borehole_name_extraction import BoreholeName
 from extraction.features.metadata.coordinate_extraction import Coordinate, CoordinateExtractor
 from extraction.features.metadata.elevation_extraction import Elevation, ElevationExtractor
 from extraction.features.utils.data_extractor import FeatureOnPage
@@ -64,7 +64,7 @@ class BoreholeMetadata:
 
     elevation: FeatureOnPage[Elevation] | None = None
     coordinates: FeatureOnPage[Coordinate] | None = None
-    name: FeatureOnPage[Name] | None = None
+    name: FeatureOnPage[BoreholeName] = None
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -93,7 +93,7 @@ class BoreholeMetadata:
             FeatureOnPage.from_json(json_metadata["coordinates"], Coordinate)
             if json_metadata["coordinates"]
             else None,
-            FeatureOnPage.from_json(json_metadata["name"], Name) if json_metadata["name"] else None,
+            FeatureOnPage.from_json(json_metadata["name"], BoreholeName) if json_metadata["name"] else None,
         )
 
 

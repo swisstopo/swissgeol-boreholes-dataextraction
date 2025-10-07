@@ -145,5 +145,6 @@ class MetadataEvaluator:
             math.isclose(int(extracted_coordinates.north.coordinate_value), ground_truth_north, abs_tol=2)
         )
 
+    @staticmethod
     def match_name(extracted_name: BoreholeName, ground_truth_name: dict):
         return Levenshtein.ratio(extracted_name.name, ground_truth_name) > NAME_SIMILARITY_THRESHOLD
