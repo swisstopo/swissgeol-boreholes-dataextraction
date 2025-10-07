@@ -24,6 +24,7 @@ from extraction.features.predictions.borehole_predictions import BoreholePredict
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.predictions.predictions import BoreholeListBuilder
+from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.features.utils.geometry.line_detection import extract_lines
 from extraction.features.utils.strip_log_detection import detect_strip_logs
@@ -303,7 +304,7 @@ def start_pipeline(
             metadata = MetadataInDocument.from_document(doc, file_metadata.language)
 
             # Save the predictions to the overall predictions object, initialize common variables
-            layers_with_bb_in_document = LayersInDocument([], filename)
+            boreholes_per_page = []
             all_groundwater_entries = GroundwaterInDocument([], filename)
 
             if part != "all":
@@ -325,7 +326,6 @@ def start_pipeline(
 
                 # extract the statigraphy
                 page_layers = extract_page(
-                    layers_with_bb_in_document,
                     text_lines,
                     geometric_lines,
                     structure_lines,
@@ -337,7 +337,7 @@ def start_pipeline(
                     analytics,
                     **matching_params,
                 )
-                layers_with_bb_in_document.assign_layers_to_boreholes(page_layers)
+                boreholes_per_page.append(page_layers)
 
                 # Extract the groundwater levels
                 groundwater_extractor = GroundwaterLevelExtractor(file_metadata.language)
@@ -369,6 +369,8 @@ def start_pipeline(
                             scale_factor=line_detection_params["pdf_scale_factor"],
                         )
                         mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
+
+            layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page), filename)
 
             # create list of BoreholePrediction objects with all the separate lists
             borehole_predictions_list: list[BoreholePredictions] = BoreholeListBuilder(

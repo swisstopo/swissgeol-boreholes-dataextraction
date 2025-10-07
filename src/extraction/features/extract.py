@@ -10,10 +10,6 @@ from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
     Layer,
     LayerDepths,
-    LayersInDocument,
-)
-from extraction.features.stratigraphy.layer.overlap_detection import (
-    remove_scan_overlap_layers,
 )
 from extraction.features.stratigraphy.layer.page_bounding_boxes import (
     MaterialDescriptionRectWithSidebar,
@@ -596,7 +592,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
 
 def extract_page(
-    layers_from_previous_pages: LayersInDocument,
     text_lines: list[TextLine],
     geometric_lines: list[Line],
     structure_lines: list[StructureLine],
@@ -613,7 +608,6 @@ def extract_page(
     Acts as a simple interface to MaterialDescriptionRectWithSidebarExtractor without requiring direct class usage.
 
     Args:
-        layers_from_previous_pages: LayersInDocument instance containing the already detected layers.
         text_lines (list[TextLine]): All text lines on the page.
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
         structure_lines (list[StructureLine]): Significant vertical and horizontal lines
@@ -634,7 +628,7 @@ def extract_page(
     page_height = page.rect.height
 
     # Extract boreholes
-    extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(
+    return MaterialDescriptionRectWithSidebarExtractor(
         text_lines,
         geometric_lines,
         structure_lines,
@@ -647,11 +641,6 @@ def extract_page(
         analytics,
         **matching_params,
     ).process_page()
-    return remove_scan_overlap_layers(
-        current_page_index=page_index,
-        previous_layers_with_bb=layers_from_previous_pages.boreholes_layers_with_bb,
-        current_layers_with_bb=extracted_boreholes,
-    )
 
 
 def match_columns(
