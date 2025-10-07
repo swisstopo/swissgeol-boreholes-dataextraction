@@ -67,7 +67,7 @@ def _select_boreholes_for_merge(
     previous_page_boreholes: list[ExtractedBorehole],
     current_page_boreholes: list[ExtractedBorehole],
     current_page_number: int,
-) -> (ExtractedBorehole | None, ExtractedBorehole | None):
+) -> tuple[ExtractedBorehole | None, ExtractedBorehole | None]:
     """Select which boreholes (if any) on two adjacent pages should extend each other.
 
     Args:
