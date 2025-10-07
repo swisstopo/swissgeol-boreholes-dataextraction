@@ -17,7 +17,7 @@ matching_params = read_params("matching_params.yml")
 def select_boreholes_with_scan_overlap(
     previous_page_boreholes: list[ExtractedBorehole],
     current_page_boreholes: list[ExtractedBorehole],
-) -> (ExtractedBorehole | None, ExtractedBorehole | None):
+) -> tuple[ExtractedBorehole | None, ExtractedBorehole | None, int | None]:
     """Remove duplicate layers caused by overlapping scanned pages.
 
     Compare layers from current page with those from previous page to identify and remove
