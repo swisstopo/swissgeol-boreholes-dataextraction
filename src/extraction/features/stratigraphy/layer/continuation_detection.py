@@ -76,7 +76,7 @@ def _select_boreholes_for_merge(
         current_page_number (int): The current page number.
 
     Returns:
-        (ExtractedBorehole, ExtractedBorehole) | None: a pair of boreholes, or None if nothing should be merged.
+        tuple[ExtractedBorehole | None, ExtractedBorehole | None]: a pair of boreholes, or None if nothing should be merged.
     """
     if previous_page_boreholes and current_page_boreholes:
         # 1. Out of the previously detected boreholes, determine which one should be continued.
