@@ -37,22 +37,24 @@ def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[E
             )
 
         if borehole_to_extend and borehole_continuation:
-            other_boreholes_previous = [
-                borehole for borehole in previous_page_boreholes if borehole is not borehole_to_extend
-            ]
-            other_boreholes_current = [
-                borehole for borehole in boreholes_on_page if borehole is not borehole_continuation
-            ]
             if last_duplicate_layer_index is not None:
                 borehole_continuation = ExtractedBorehole(
                     predictions=borehole_continuation.predictions[last_duplicate_layer_index + 1 :],
                     bounding_boxes=borehole_continuation.bounding_boxes,
                 )
-            _merge_boreholes(borehole_to_extend, borehole_continuation)
+            merged_borehole = _merge_boreholes(borehole_to_extend, borehole_continuation)
 
-            finished_boreholes.extend(other_boreholes_previous)
-            previous_page_boreholes = other_boreholes_current
-            previous_page_boreholes.append(borehole_to_extend)
+            # declare all unaffected boreholes from the previous page as finished
+            unaffected_boreholes_previous_page = [
+                borehole for borehole in previous_page_boreholes if borehole is not borehole_to_extend
+            ]
+            finished_boreholes.extend(unaffected_boreholes_previous_page)
+
+            # put all boreholes from the current page in the list previous_page_boreholes for the next iteration
+            unaffected_boreholes_current_page = [
+                borehole for borehole in boreholes_on_page if borehole is not borehole_continuation
+            ]
+            previous_page_boreholes = unaffected_boreholes_current_page + [merged_borehole]
         else:
             finished_boreholes.extend(previous_page_boreholes)
             previous_page_boreholes = boreholes_on_page
@@ -157,7 +159,9 @@ def _is_continuation(
     return not (depths and prev_depths and depths[0] < np.quantile(prev_depths, 1 - DEPTHS_QUANTILE_SLACK))
 
 
-def _merge_boreholes(borehole_to_extend: ExtractedBorehole, borehole_continuation: ExtractedBorehole):
+def _merge_boreholes(
+    borehole_to_extend: ExtractedBorehole, borehole_continuation: ExtractedBorehole
+) -> ExtractedBorehole:
     """Merge the layers of the current borehole into the borehole to extend.
 
     If the last layer of the previous borehole and the first layer of the current borehole appear to be the same
@@ -167,12 +171,14 @@ def _merge_boreholes(borehole_to_extend: ExtractedBorehole, borehole_continuatio
         borehole_to_extend (ExtractedBorehole): The borehole from the previous page
         borehole_continuation (ExtractedBorehole): The borehole from the current page
 
-    Note:
-        This method modifies the state of the borehole_to_extend object by updating its predictions and bounding
+    Returns:
+        ExtractedBorehole: the merged borehole
     """
     # Do the last layer of the previous borehole and the first of the current belong to the same layer.
     last_prev_layer = borehole_to_extend.predictions[-1] if borehole_to_extend.predictions else None
     first_next_layer = borehole_continuation.predictions[0] if borehole_continuation.predictions else None
+
+    new_predictions = borehole_to_extend.predictions + borehole_continuation.predictions
 
     if last_prev_layer and first_next_layer:
         last_prev_depths = last_prev_layer.depths
@@ -185,10 +191,15 @@ def _merge_boreholes(borehole_to_extend: ExtractedBorehole, borehole_continuatio
             # if the last interval of the previous page is open-ended, and the first of this page has no start
             # value, it probably means that they refer to the same layer.
 
-            borehole_to_extend.predictions[-1] = _build_spanning_layer(last_prev_layer, first_next_layer)
-            borehole_continuation.predictions = borehole_continuation.predictions[1:]
-    borehole_to_extend.bounding_boxes.extend(borehole_continuation.bounding_boxes)
-    borehole_to_extend.predictions.extend(borehole_continuation.predictions)
+            spanning_layer = _build_spanning_layer(last_prev_layer, first_next_layer)
+            new_predictions = (
+                borehole_to_extend.predictions[:-1] + [spanning_layer] + borehole_continuation.predictions[1:]
+            )
+
+    return ExtractedBorehole(
+        predictions=new_predictions,
+        bounding_boxes=borehole_to_extend.bounding_boxes + borehole_continuation.bounding_boxes,
+    )
 
 
 def _build_spanning_layer(last_prev_layer: Layer, first_next_layer: Layer) -> Layer:
