@@ -25,13 +25,13 @@ def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[E
         page_number = index + 1
 
         # 1. merge boreholes that are continued from the previous page based on overlaps
-        borehole_to_extend, borehole_continuation, duplicate_layer_count = select_boreholes_with_scan_overlap(
+        borehole_to_extend, borehole_continuation, last_duplicate_layer_index = select_boreholes_with_scan_overlap(
             previous_page_boreholes=previous_page_boreholes,
             current_page_boreholes=boreholes_on_page,
         )
 
         # 2. alternatively, merge boreholes that are continued from the previous page based on depths and position
-        if not (borehole_to_extend and borehole_continuation and duplicate_layer_count):
+        if not (borehole_to_extend and borehole_continuation and last_duplicate_layer_index is not None):
             borehole_to_extend, borehole_continuation = _select_boreholes_for_merge(
                 previous_page_boreholes, boreholes_on_page, page_number
             )
@@ -43,9 +43,9 @@ def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[E
             other_boreholes_current = [
                 borehole for borehole in boreholes_on_page if borehole is not borehole_continuation
             ]
-            if duplicate_layer_count is not None:
+            if last_duplicate_layer_index is not None:
                 borehole_continuation = ExtractedBorehole(
-                    predictions=borehole_continuation.predictions[duplicate_layer_count + 1 :],
+                    predictions=borehole_continuation.predictions[last_duplicate_layer_index + 1 :],
                     bounding_boxes=borehole_continuation.bounding_boxes,
                 )
             _merge_boreholes(borehole_to_extend, borehole_continuation)
@@ -76,7 +76,8 @@ def _select_boreholes_for_merge(
         current_page_number (int): The current page number.
 
     Returns:
-        tuple[ExtractedBorehole | None, ExtractedBorehole | None]: a pair of boreholes, or None if nothing should be merged.
+        tuple[ExtractedBorehole | None, ExtractedBorehole | None]:
+                A pair of boreholes, or None if nothing should be merged.
     """
     if previous_page_boreholes and current_page_boreholes:
         # 1. Out of the previously detected boreholes, determine which one should be continued.

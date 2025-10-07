@@ -29,7 +29,8 @@ def select_boreholes_with_scan_overlap(
 
     Returns:
         (ExtractedBorehole | None, ExtractedBorehole | None, int | None):
-                the boreholes to be extended, the continuing borehole, and the number of duplicate layers, if any
+                The boreholes to be extended, the continuing borehole, and the index of the last duplicated
+                layer in the continuing borehole, if any.
     """
     for current_borehole in current_page_boreholes:
         for previous_page_borehole in previous_page_boreholes:
