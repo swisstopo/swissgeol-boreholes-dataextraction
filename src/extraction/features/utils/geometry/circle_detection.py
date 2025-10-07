@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 from utils.file_utils import read_params
 
 from .geometry_dataclasses import Circle
-from .util import circle_from_array
 
 load_dotenv()
 
@@ -48,7 +47,7 @@ def detect_circles_hough(page: pymupdf.Page, hough_circles_params: dict) -> list
     # Apply Gaussian blur to smooth the image and reduce noise
     gray = cv2.GaussianBlur(gray, (5, 5), 0)
 
-    circles = cv2.HoughCircles(
+    circle_arrays = cv2.HoughCircles(
         gray,
         method=cv2.HOUGH_GRADIENT,
         dp=hough_circles_params["dp"],
@@ -59,22 +58,26 @@ def detect_circles_hough(page: pymupdf.Page, hough_circles_params: dict) -> list
         maxRadius=hough_circles_params["max_radius"],
     )
 
-    if circles is None:
+    if circle_arrays is None:
         return []
 
     # Convert detected circles to Circle objects
-    circles = np.round(circles[0, :]).astype("int")
-    detected_circles = []
+    circle_arrays = np.round(circle_arrays[0, :]).astype("int")
 
-    for x, y, radius in circles:
-        # Convert back from scaled coordinates to PDF coordinates
-        detected_circles.append(circle_from_array([x, y, radius], scale_factor=2))
-
-    return detected_circles
+    return [Circle.circle_from_array(array, scale_factor=2) for array in circle_arrays]
 
 
 def _circle_intersects_with_text(circle: Circle, text_lines: list, text_proximity_threshold: float = 2.0) -> bool:
-    """Check if a circle intersects with or is too close to any text line."""
+    """Check if a circle intersects with or is too close to any text line.
+
+    Args:
+        circle (Circle): The circle to check.
+        text_lines (list): List of TextLine objects to check against.
+        text_proximity_threshold (float): The distance threshold to consider proximity to text.
+
+    Returns:
+        bool: True if the circle intersects with or is too close to any text line, False otherwise.
+    """
     for text_line in text_lines:
         # Create an expanded rectangle around the text line
         expanded_rect = pymupdf.Rect(

@@ -9,7 +9,6 @@ from app.common.schemas import (
 )
 from extraction.features.extract import extract_page
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
-from extraction.features.utils.geometry.circle_detection import extract_circles
 from extraction.features.utils.geometry.line_detection import extract_lines
 from extraction.features.utils.table_detection import (
     detect_strip_logs,
@@ -58,12 +57,10 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
 
         # Detect table structures on the page
         structure_lines = detect_structure_lines(geometric_lines)
-        table_structures = detect_table_structures(page_index, document, structure_lines, text_lines)
+        table_structures = detect_table_structures(page_index, document, geometric_lines, text_lines)
 
-        # Detect geometric circles and strip logs on the page
-        geometric_circles = extract_circles(page, line_detection_params, text_lines)
-        # strip_logs = detect_strip_logs(page_index, document, structure_lines, geometric_circles, text_lines)
-        strip_logs = detect_strip_logs(structure_lines, geometric_circles, text_lines)
+        # Detect strip logs on the page
+        strip_logs = detect_strip_logs(page, geometric_lines, line_detection_params, text_lines)
 
         page_layers = extract_page(
             layers_with_bb_in_document,

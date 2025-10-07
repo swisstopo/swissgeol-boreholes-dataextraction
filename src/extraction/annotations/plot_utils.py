@@ -1,8 +1,10 @@
 """Contains utility functions for plotting stratigraphic data."""
 
 import logging
+from pathlib import Path
 
 import cv2
+import mlflow
 import numpy as np
 import pymupdf
 
@@ -121,3 +123,16 @@ def draw_blocks_and_lines(page: pymupdf.Page, blocks: list[TextBlock], lines: li
         open_cv_img = _draw_lines(open_cv_img, lines, scale_factor=scale_factor)
 
     return open_cv_img
+
+
+def save_visualization(img, filename, page_number, visualization_type, draw_directory, mlflow_tracking):
+    """Save visualization image to file and/or MLflow."""
+    if draw_directory:
+        img_path = draw_directory / f"{Path(filename).stem}_page_{page_number}_{visualization_type}.png"
+        cv2.imwrite(str(img_path), img)
+
+    if mlflow_tracking:
+        mlflow.log_image(img, f"pages/{filename}_page_{page_number}_{visualization_type}.png")
+
+    elif not draw_directory:
+        logger.warning(f"draw_directory is not defined. Skipping saving {visualization_type} image.")

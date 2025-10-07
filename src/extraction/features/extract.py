@@ -37,8 +37,8 @@ from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extrac
 from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.geometry.util import x_overlap, x_overlap_significant_smallest
+from extraction.features.utils.strip_log_detection import StripLog
 from extraction.features.utils.table_detection import (
-    StripLog,
     StructureLine,
     TableStructure,
     _contained_in_table_index,
@@ -95,7 +95,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self.geometric_lines = geometric_lines
         self.structure_lines = structure_lines
         self.table_structures = table_structures
-        self.strip_logs = strip_logs
+        self.strip_logs = strip_logs  # added for future usage
         self.language = language
         self.page_number = page_number
         self.page_width = page_width

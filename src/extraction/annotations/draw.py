@@ -12,7 +12,8 @@ from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
-from extraction.features.utils.table_detection import StripLog, TableStructure
+from extraction.features.utils.strip_log_detection import StripLog
+from extraction.features.utils.table_detection import TableStructure
 
 load_dotenv()
 
@@ -419,9 +420,9 @@ def plot_strip_logs(page: pymupdf.Page, strip_logs: list[StripLog], page_index: 
     """Draw strip log structures on a pdf page.
 
     Args:
-        page:               The PDF page.
-        strip_logs:         The identified strip log structures on the page.
-        page_index:         The index of the page in the document (0-based).
+        page: The PDF page.
+        strip_logs: The identified strip log structures on the page.
+        page_index: The index of the page in the document (0-based).
     """
     temp_doc = pymupdf.open()
     temp_doc.insert_pdf(page.parent, from_page=page_index, to_page=page_index)
