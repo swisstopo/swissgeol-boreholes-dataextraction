@@ -11,8 +11,8 @@ from extraction.features.extract import extract_page
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.features.utils.geometry.line_detection import extract_lines
+from extraction.features.utils.strip_log_detection import detect_strip_logs
 from extraction.features.utils.table_detection import (
-    detect_strip_logs,
     detect_structure_lines,
     detect_table_structures,
 )
