@@ -37,7 +37,6 @@ def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[E
             )
 
         if borehole_to_extend and borehole_continuation:
-            print(last_duplicate_layer_index)
             if last_duplicate_layer_index is not None:
                 borehole_continuation_without_duplicates = ExtractedBorehole(
                     predictions=borehole_continuation.predictions[last_duplicate_layer_index + 1 :],
