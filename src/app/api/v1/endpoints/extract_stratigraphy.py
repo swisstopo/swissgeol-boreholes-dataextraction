@@ -11,7 +11,11 @@ from extraction.features.extract import extract_page
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.features.utils.geometry.line_detection import extract_lines
-from extraction.features.utils.table_detection import detect_structure_lines, detect_table_structures
+from extraction.features.utils.strip_log_detection import detect_strip_logs
+from extraction.features.utils.table_detection import (
+    detect_structure_lines,
+    detect_table_structures,
+)
 from extraction.features.utils.text.extract_text import extract_text_lines
 from utils.file_utils import read_params
 from utils.language_detection import detect_language_of_document
@@ -56,12 +60,16 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
         structure_lines = detect_structure_lines(geometric_lines)
         table_structures = detect_table_structures(page_index, document, structure_lines, text_lines)
 
+        # Detect strip logs on the page
+        strip_logs = detect_strip_logs(page, geometric_lines, line_detection_params, text_lines)
+
         boreholes_per_page.append(
             extract_page(
                 text_lines,
                 geometric_lines,
                 structure_lines,
                 table_structures,
+                strip_logs,
                 language,
                 page_index,
                 document,

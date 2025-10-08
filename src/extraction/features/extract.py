@@ -33,6 +33,7 @@ from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extrac
 from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.geometry.util import x_overlap, x_overlap_significant_smallest
+from extraction.features.utils.strip_log_detection import StripLog
 from extraction.features.utils.table_detection import (
     StructureLine,
     TableStructure,
@@ -63,6 +64,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         geometric_lines: list[Line],
         structure_lines: list[StructureLine],
         table_structures: list[TableStructure],
+        strip_logs: list[StripLog],
         language: str,
         page_number: int,
         page_width: float,
@@ -77,6 +79,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             geometric_lines (list[Line]): The geometric lines of the page.
             structure_lines (list[StructureLine]): Significant horizontal and vertical lines.
             table_structures (list[TableStructure]): The identified table structures of the page.
+            strip_logs (list[StripLog]): The identified strip logs of the page.
             language (str): The language of the page.
             page_number (int): The page number.
             page_width (float): The width of the page.
@@ -88,6 +91,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self.geometric_lines = geometric_lines
         self.structure_lines = structure_lines
         self.table_structures = table_structures
+        self.strip_logs = strip_logs  # added for future usage
         self.language = language
         self.page_number = page_number
         self.page_width = page_width
@@ -592,6 +596,7 @@ def extract_page(
     geometric_lines: list[Line],
     structure_lines: list[StructureLine],
     table_structures: list[TableStructure],
+    strip_logs: list[StripLog],
     language: str,
     page_index: int,
     document: pymupdf.Document,
@@ -607,6 +612,7 @@ def extract_page(
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
         structure_lines (list[StructureLine]): Significant vertical and horizontal lines
         table_structures (list[TableStructure]): The identified table structures.
+        strip_logs (list[StripLog]): The identified strip log structures.
         language (str): Language of the page (used in parsing).
         page_index (int): The page index (0-indexed).
         document (pymupdf.Document): the document.
@@ -627,6 +633,7 @@ def extract_page(
         geometric_lines,
         structure_lines,
         table_structures,
+        strip_logs,
         language,
         page_index + 1,
         page_width,
