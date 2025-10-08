@@ -1,0 +1,22 @@
+# All parameters used for the line detection pipeline
+
+# Overlap threshold for closest line detection.
+min_vertical_overlap: 0.9
+
+# Keyword for borehole name detection
+keywords: [
+    "kernbohrung",
+    "bohrung",
+    "sondierung",
+    "sondage",
+    "baggerschlitz",
+    "baggerschacht",
+    "bohrstelle",
+    "sondierschacht",
+    "schachtprofil",
+    "forage",
+    "tranchée",
+]
+
+# Keyword to ignore in borehole name detection
+excluded_keywords: ["n.r", "n", "nº", "nr", "nummer", "no"]

@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 
 matching_params = read_params("matching_params.yml")
 line_detection_params = read_params("line_detection_params.yml")
+name_detection_params = read_params("name_detection_params.yml")
 
 
 def common_options(f):
@@ -303,7 +304,7 @@ def start_pipeline(
 
                 text_lines = extract_text_lines(page)
                 geometric_lines = extract_lines(page, line_detection_params)
-                name_entries = extract_borehole_names(text_lines)
+                name_entries = extract_borehole_names(text_lines, name_detection_params)
                 all_name_entries.name_feature_list.extend(name_entries)
 
                 # Detect table structures on the page

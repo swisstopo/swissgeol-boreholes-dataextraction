@@ -11,24 +11,6 @@ from extraction.features.utils.data_extractor import ExtractedFeature, FeatureOn
 from extraction.features.utils.geometry.util import y_overlap_significant_smallest
 from extraction.features.utils.text.textline import TextLine
 
-# TODO those in config
-keywords = [
-    "bohrung",
-    "sondierung",
-    "sondage",
-    "baggerschlitz",
-    "baggerschacht",
-    "bohrstelle",
-    "sondierschacht",
-    "schachtprofil",
-    "forage",
-    "tranchée",
-]
-
-excluded_keywords = ["n.r", "n", "nº", "nr", "nummer", "no"]
-
-MIN_VERTICAL_OVERLAP = 0.9
-
 
 @dataclass
 class BoreholeName(ExtractedFeature):
@@ -89,12 +71,15 @@ class NameInDocument:
         return [entry.to_json() for entry in self.name_feature_list]
 
 
-def _find_closest_nearby_line(current_line: TextLine, all_lines: list[TextLine]) -> TextLine | None:
+def _find_closest_nearby_line(
+    current_line: TextLine, all_lines: list[TextLine], min_vertical_overlap: float
+) -> TextLine | None:
     """Find the line that is the closest to the current line on the right.
 
     Args:
-        current_line: The line containing the keyword.
-        all_lines: All text lines from the document.
+        current_line (TextLine): The line containing the keyword.
+        all_lines (list[TextLine]): All text lines from the document.
+        min_vertical_overlap (float): Overlap threshold for closest line detection.
 
     Returns:
         TextLine | None: List of nearby lines that could contain the title.
@@ -103,7 +88,7 @@ def _find_closest_nearby_line(current_line: TextLine, all_lines: list[TextLine])
         line
         for line in all_lines
         if line.rect.x0 > current_line.rect.x1
-        and y_overlap_significant_smallest(current_line.rect, line.rect, MIN_VERTICAL_OVERLAP)
+        and y_overlap_significant_smallest(current_line.rect, line.rect, min_vertical_overlap)
     ]
     return min(nearby_lines, key=lambda line: line.rect.x0 - current_line.rect.x1) if nearby_lines else None
 
@@ -167,7 +152,9 @@ def _match_any_keyword(text: str, keywords: list[str]) -> re.Match | None:
     return re.search(pattern, text, re.IGNORECASE)
 
 
-def extract_borehole_names(text_lines: list[TextLine]) -> list[FeatureOnPage[BoreholeName]]:
+def extract_borehole_names(
+    text_lines: list[TextLine], name_detection_params: dict
+) -> list[FeatureOnPage[BoreholeName]]:
     """Extract borehole name from text lines.
 
     The borehole name can appear either:
@@ -176,11 +163,15 @@ def extract_borehole_names(text_lines: list[TextLine]) -> list[FeatureOnPage[Bor
 
     Args:
         text_lines (list[TextLine]): List of TextLine objects to search through
+        name_detection_params (dict): The parameters for the name detection algorithm.
 
     Returns:
         list[FeatureOnPage[BoreholeName]]: A list of extracted borehole names, if found
     """
     candidates: list[BoreholeName] = []
+    keywords = name_detection_params.get("keywords", [])
+    excluded_keywords = name_detection_params.get("excluded_keywords", [])
+    min_vertical_overlap = name_detection_params.get("min_vertical_overlap", 1.0)
 
     for line in text_lines:
         # Check line for keyword
@@ -201,7 +192,7 @@ def extract_borehole_names(text_lines: list[TextLine]) -> list[FeatureOnPage[Bor
             continue
 
         # Fallback: closest line to the right
-        hit_line = _find_closest_nearby_line(line, text_lines)
+        hit_line = _find_closest_nearby_line(line, text_lines, min_vertical_overlap)
         if not hit_line:
             continue
 
