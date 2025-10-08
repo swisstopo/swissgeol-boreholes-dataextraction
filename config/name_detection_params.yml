@@ -4,19 +4,19 @@
 min_vertical_overlap: 0.9
 
 # Keyword for borehole name detection
-keywords: [
+matching_keywords: [
+    "baggerschlitz",
+    "bohrstelle",
+    "forage",
     "kernbohrung",
-    "bohrung",
+    "probenahmestelle",
+    "schacht",
+    "schachtprofil",
     "sondierung",
     "sondage",
-    "baggerschlitz",
-    "baggerschacht",
-    "bohrstelle",
-    "sondierschacht",
-    "schachtprofil",
-    "forage",
     "tranchée",
+    "bohrung",
 ]
 
 # Keyword to ignore in borehole name detection
-excluded_keywords: ["n.r", "n", "nº", "nr", "nummer", "no"]
+excluded_keywords: ["nr.", "nr", "n°", "nº", "no", "nummer"]

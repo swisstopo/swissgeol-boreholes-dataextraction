@@ -2,8 +2,6 @@
 
 import math
 
-import Levenshtein
-
 from extraction.evaluation.evaluation_dataclasses import (
     FileBoreholeMetadataMetrics,
     Metrics,
@@ -13,8 +11,10 @@ from extraction.evaluation.utility import evaluate_single
 from extraction.features.metadata.borehole_name_extraction import BoreholeName
 from extraction.features.metadata.coordinate_extraction import Coordinate
 from extraction.features.predictions.borehole_predictions import FileMetadataWithGroundTruth
+from utils.file_utils import read_params
+from utils.language_filtering import normalize_spaces, remove_any_keyword
 
-NAME_SIMILARITY_THRESHOLD = 0.8
+name_detection_params = read_params("name_detection_params.yml")
 
 
 class MetadataEvaluator:
@@ -146,5 +146,29 @@ class MetadataEvaluator:
         )
 
     @staticmethod
-    def match_name(extracted_name: BoreholeName, ground_truth_name: dict):
-        return Levenshtein.ratio(extracted_name.name, ground_truth_name) > NAME_SIMILARITY_THRESHOLD
+    def match_name(extracted_name: BoreholeName, ground_truth_name: dict, ignore_spaces: bool = True) -> bool:
+        """Check matching between extracted and ground truth names.
+
+        The matching is based on the filtered and normalized text. Keywords such as "bohrung" or "n°" are ignored.
+
+        Args:
+            extracted_name (BoreholeName): BoreholeName object that include detected name.
+            ground_truth_name (dict): Groud truth name.
+            ignore_spaces (bool, optional): Indicate if spaces are ignored during matching. Defaults to True.
+
+        Returns:
+            bool: True if texts match, False otherwise.
+        """
+        # Define keywords are matching names and excluded ones
+        keywords_set_a = name_detection_params.get("matching_keywords", [])
+        keywords_set_b = name_detection_params.get("excluded_keywords", [])
+        keywords = keywords_set_a + keywords_set_b
+        # Noramlize strings
+        extracted_name = normalize_spaces(remove_any_keyword(extracted_name.name, keywords))
+        ground_truth_name = normalize_spaces(remove_any_keyword(ground_truth_name, keywords))
+        # Check if space should be ignored
+        if ignore_spaces:
+            extracted_name = extracted_name.replace(" ", "")
+            ground_truth_name = ground_truth_name.replace(" ", "")
+        # Return comparison
+        return extracted_name == ground_truth_name

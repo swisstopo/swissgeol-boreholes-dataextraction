@@ -10,6 +10,7 @@ import pymupdf
 from extraction.features.utils.data_extractor import ExtractedFeature, FeatureOnPage
 from extraction.features.utils.geometry.util import y_overlap_significant_smallest
 from extraction.features.utils.text.textline import TextLine
+from utils.language_filtering import match_any_keyword, normalize_spaces, remove_any_keyword
 
 
 @dataclass
@@ -93,8 +94,8 @@ def _find_closest_nearby_line(
     return min(nearby_lines, key=lambda line: line.rect.x0 - current_line.rect.x1) if nearby_lines else None
 
 
-def _remove_any_keyword(text: str, keywords: list[str]) -> str | None:
-    """Remove predefined keywords and normalize the given text.
+def _clean_borehole_name(text: str, excluded_keywords: list[str]) -> str | None:
+    """Clean borehole name and normalize the given text.
 
     This function scans the input text for any of the provided keywords (case-insensitive),
     removes them, and performs basic cleanup by replacing punctuation and collapsing
@@ -102,24 +103,21 @@ def _remove_any_keyword(text: str, keywords: list[str]) -> str | None:
 
     Args:
         text (str): The input text to clean.
-        keywords (list[str]): A list of keywords to remove from the text.
+        excluded_keywords (list[str]): A list of keywords to remove from the text.
 
     Returns:
         str | None: The cleaned and normalized text or None if empty text.
     """
-    # Build regex pattern for keywords (escaped and followed by a word boundary)
-    pattern = "(" + r"\b" + "|".join(re.escape(kw) + r"\b" for kw in keywords) + ")"
-
     # Remove matched keywords (case-insensitive)
-    cleaned = re.sub(pattern, " ", text, flags=re.IGNORECASE)
+    cleaned = remove_any_keyword(text, excluded_keywords)
 
     # Remove scale from text (eg: "1:100")
     cleaned = re.sub(r"1:\d{1,3}", " ", cleaned)
+    cleaned = re.sub(r"\(.*?\)", " ", cleaned)
 
     # Replace punctuation, normalize whitespace and remove trailing spaces
     cleaned = re.sub(r"[:._]", " ", cleaned)
-    cleaned = re.sub(r"\s+", " ", cleaned)
-    cleaned = cleaned.strip()
+    cleaned = normalize_spaces(cleaned)
     # TODO could check that the name != filename (avoid those cantonal ID, e.g. 5115.pdf, see issue description)
 
     # Check if result is empty
@@ -129,37 +127,21 @@ def _remove_any_keyword(text: str, keywords: list[str]) -> str | None:
     return cleaned
 
 
-def _match_any_keyword(text: str, keywords: list[str]) -> re.Match | None:
-    """Search a text for the first occurrence of any keyword from a predefined list.
-
-    The search is case-insensitive and all special characters in the keywords are
-    properly escaped to ensure literal matching. Each keyword is treated as a whole word
-    or as the ending of a longer word (e.g., "bohrung" matches "bohrung" or "sondierbohrung").
-    If multiple keywords are present in the text, only the first match (in reading order)
-    is returned.
-
-    Args:
-        text (str): The text to search within.
-        keywords (list[str]): A list of keywords to look for.
-
-    Returns:
-        re.Match | None: A re.Match object for the first found keyword, or None
-        if no match is found.
-    """
-    # Build a regex pattern that matches keywords
-    pattern = "(" + "|".join(re.escape(kw) + r"\b" for kw in keywords) + ")"
-    # Perform a case-insensitive search
-    return re.search(pattern, text, re.IGNORECASE)
-
-
 def extract_borehole_names(
     text_lines: list[TextLine], name_detection_params: dict
 ) -> list[FeatureOnPage[BoreholeName]]:
-    """Extract borehole name from text lines.
+    """Extract borehole names from text lines using keyword anchors and a right-side fallback.
 
-    The borehole name can appear either:
-    - In the same line as one of the keywords
-    - In a nearby line to the right of a line containing a keyword
+    The algorithm scans each line for any `matching_keywords` at the end of a word
+    (to avoid plural/inflected forms). If a keyword is found:
+    - **Same-line extraction:** take the substring **after** the match on the same line; clean it
+        by removing any `excluded_keywords`. If a non-empty name remains, emit a candidate with
+        confidence = 1.0 and the line’s bounding box.
+    - **Right-side fallback:** if same-line fails, find the closest line to the **right** that
+        vertically overlaps by at least `min_vertical_overlap`. Compute confidence as
+        `dy / (1 + dy + dx)` where `dy` is the right-line height and `dx` is the horizontal gap.
+        If a cleaned name is found there, emit a candidate whose bounding box is the union of the
+        anchor line and the right-side line.
 
     Args:
         text_lines (list[TextLine]): List of TextLine objects to search through
@@ -169,19 +151,19 @@ def extract_borehole_names(
         list[FeatureOnPage[BoreholeName]]: A list of extracted borehole names, if found
     """
     candidates: list[BoreholeName] = []
-    keywords = name_detection_params.get("keywords", [])
+    matching_keywords = name_detection_params.get("matching_keywords", [])
     excluded_keywords = name_detection_params.get("excluded_keywords", [])
     min_vertical_overlap = name_detection_params.get("min_vertical_overlap", 1.0)
 
     for line in text_lines:
-        # Check line for keyword
-        match = _match_any_keyword(line.text, keywords)
+        # Check line for keyword - Enforce end to avoid plural form
+        match = match_any_keyword(line.text, matching_keywords, end=True)
         if not match:
             continue
 
         # Try same-line first
         same_line_name = line.text[match.end() :]
-        if cleaned := _remove_any_keyword(same_line_name, excluded_keywords):
+        if cleaned := _clean_borehole_name(same_line_name, excluded_keywords):
             candidates.append(
                 FeatureOnPage(
                     feature=BoreholeName(name=cleaned, confidence=1.0),
@@ -197,10 +179,11 @@ def extract_borehole_names(
             continue
 
         # Confidence based on horizontal gap (non-negative)
+        dy = max(0.0, hit_line.rect.y1 - hit_line.rect.y0)
         dx = max(0.0, hit_line.rect.x0 - line.rect.x1)
-        confidence = 1.0 / (1.0 + dx)
+        confidence = dy / (1 + dy + dx)
 
-        if cleaned := _remove_any_keyword(hit_line.text, excluded_keywords):
+        if cleaned := _clean_borehole_name(hit_line.text, excluded_keywords):
             # Define new bounding box as merge of both
             candidates.append(
                 FeatureOnPage(
@@ -219,6 +202,7 @@ def extract_borehole_names(
         return []
 
     # Sort the candidates by highest confidence and height on the page
+    # TODO Use confidence for better matching
     candidates.sort(key=lambda bh_name: (bh_name.feature.confidence, -bh_name.rect.y0), reverse=True)
     unique_candidates = list(set(candidates))
 
