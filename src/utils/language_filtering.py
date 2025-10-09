@@ -56,8 +56,7 @@ def remove_any_keyword(text: str, keywords: list[str]) -> str:
         str: The cleaned text with all matching keywords removed.
     """
     # Build regex pattern for keywords (escaped and followed by a word boundary)
-    pattern = "(" + "|".join(r"(?<!\w)" + re.escape(kw) + r"(?!\w)" for kw in keywords) + ")"
-
+    pattern = "(" + "|".join(r"(?<!\w)" + re.escape(kw) + r"(?=\W|\d|$)" for kw in keywords) + ")"
     # Remove matched keywords (case-insensitive)
     cleaned = re.sub(pattern, "", text, flags=re.IGNORECASE)
     return cleaned

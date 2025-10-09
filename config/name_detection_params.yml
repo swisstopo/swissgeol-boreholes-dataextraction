@@ -5,17 +5,26 @@ min_vertical_overlap: 0.9
 
 # Keyword for borehole name detection
 matching_keywords: [
+    # Composed
+    "baggerschacht",
     "baggerschlitz",
     "bohrstelle",
     "forage",
     "kernbohrung",
     "probenahmestelle",
-    "schacht",
+    "rammkernbohrung",
+    "rammsondierung",
+    "rotationsbohrung",
+    "rotationskernbohrung",
     "schachtprofil",
-    "sondierung",
+    "sondierbohrung",
+    "sondierschacht",
     "sondage",
     "tranchée",
+    # Root
     "bohrung",
+    "schacht",
+    "sondierung",
 ]
 
 # Keyword to ignore in borehole name detection
