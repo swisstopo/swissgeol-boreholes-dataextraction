@@ -9,6 +9,7 @@ from typing import Protocol
 
 import numpy as np
 import pymupdf
+from numpy.typing import ArrayLike
 
 logger = logging.getLogger(__name__)
 
@@ -219,3 +220,27 @@ class RectWithPageMixin:
     @property
     def page_number(self: SupportsRectWithPage):
         return self.rect_with_page.page_number
+
+
+@dataclass
+class Circle:
+    """Class to represent a circle in 2D space."""
+
+    center: Point
+    radius: float
+
+    def circle_from_array(circle: ArrayLike, scale_factor: float) -> Circle:
+        """Convert a circle in the format of [x, y, radius] to a Circle object.
+
+        Args:
+            circle (ArrayLike): circle as represented by an array of three numbers [x, y, radius].
+            scale_factor (float): The scale factor to apply to the circles. Required when
+                                the pdf page was scaled before detecting circles.
+
+        Returns:
+            Circle: The converted circle.
+        """
+        center = Point(circle[0] / scale_factor, circle[1] / scale_factor)
+        radius = circle[2] / scale_factor
+
+        return Circle(center, radius)

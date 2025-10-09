@@ -8,9 +8,14 @@ from app.common.schemas import (
     ExtractStratigraphyResponse,
 )
 from extraction.features.extract import extract_page
+from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.features.utils.geometry.line_detection import extract_lines
-from extraction.features.utils.table_detection import detect_structure_lines, detect_table_structures
+from extraction.features.utils.strip_log_detection import detect_strip_logs
+from extraction.features.utils.table_detection import (
+    detect_structure_lines,
+    detect_table_structures,
+)
 from extraction.features.utils.text.extract_text import extract_text_lines
 from utils.file_utils import read_params
 from utils.language_detection import detect_language_of_document
@@ -41,7 +46,7 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
 
     pdf_img_scalings = []
 
-    layers_with_bb_in_document = LayersInDocument([], filename)
+    boreholes_per_page = []
     for page_index, page in enumerate(document):
         # 2. load the png image to infer the scaling, MUST have been generated before
         png_page = load_png(filename, page_index + 1)  # page number is 1-indexed
@@ -55,21 +60,25 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
         structure_lines = detect_structure_lines(geometric_lines)
         table_structures = detect_table_structures(page_index, document, structure_lines, text_lines)
 
-        page_layers = extract_page(
-            layers_with_bb_in_document,
-            text_lines,
-            geometric_lines,
-            structure_lines,
-            table_structures,
-            language,
-            page_index,
-            document,
-            None,
-            **matching_params,
-        )
-        layers_with_bb_in_document.assign_layers_to_boreholes(page_layers)
+        # Detect strip logs on the page
+        strip_logs = detect_strip_logs(page, geometric_lines, line_detection_params, text_lines)
 
-    layers_with_bb_in_document.normalize_first_layer()
+        boreholes_per_page.append(
+            extract_page(
+                text_lines,
+                geometric_lines,
+                structure_lines,
+                table_structures,
+                strip_logs,
+                language,
+                page_index,
+                document,
+                None,
+                **matching_params,
+            )
+        )
+
+    layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page), filename)
     extracted_stratigraphy = create_response_object(layers_with_bb_in_document, pdf_img_scalings)
 
     return extracted_stratigraphy
