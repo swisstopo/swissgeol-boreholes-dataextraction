@@ -12,6 +12,7 @@ from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
+from extraction.features.utils.strip_log_detection import StripLog
 from extraction.features.utils.table_detection import TableStructure
 
 load_dotenv()
@@ -386,3 +387,56 @@ def draw_table_structures(
             shape.draw_line(start_point * derotation_matrix, end_point * derotation_matrix)
 
         shape.finish(color=pymupdf.utils.getColor(light_color), width=1, stroke_opacity=0.6)
+
+
+def draw_strip_logs(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, strip_logs: list[StripLog]) -> None:
+    """Draw strip log structures on a pdf page.
+
+    Each strip log is drawn with a distinctive color to distinguish between different detected strip logs.
+
+    Args:
+        shape (pymupdf.Shape): The shape object for drawing.
+        derotation_matrix (pymupdf.Matrix): The derotation matrix of the page.
+        strip_logs (list[StripLog]): List of detected strip log structures.
+    """
+    # Define colors for different strip logs
+    strip_colors = [
+        "blue",
+        "green",
+        "red",
+        "orange",
+        "brown",
+        "purple",
+        "darkgreen",
+        "darkblue",
+    ]
+
+    for index, strip in enumerate(strip_logs):
+        main_color = strip_colors[index % len(strip_colors)]
+
+        # Draw the strip log bounding rectangle with thick border
+        shape.draw_rect(strip.bounding_rect * derotation_matrix)
+        shape.finish(color=pymupdf.utils.getColor(main_color), width=4, stroke_opacity=0.9)
+
+
+def plot_strip_logs(page: pymupdf.Page, strip_logs: list[StripLog], page_index: int):
+    """Draw strip log structures on a pdf page.
+
+    Args:
+        page: The PDF page.
+        strip_logs: The identified strip log structures on the page.
+        page_index: The index of the page in the document (0-based).
+    """
+    temp_doc = pymupdf.open()
+    temp_doc.insert_pdf(page.parent, from_page=page_index, to_page=page_index)
+    temp_page = temp_doc[0]
+
+    shape = temp_page.new_shape()
+    draw_strip_logs(shape, temp_page.derotation_matrix, strip_logs)
+    shape.commit()
+
+    result = convert_page_to_opencv_img(temp_page, scale_factor=2)
+
+    temp_doc.close()
+
+    return result
