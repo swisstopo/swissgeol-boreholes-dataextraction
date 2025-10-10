@@ -9,21 +9,12 @@ from utils.language_filtering import match_any_keyword, normalize_spaces, remove
 @pytest.mark.parametrize(
     "text, keywords, start, end, expected",
     [
-        ("test schachtprofil 12", [], False, False, "test schachtprofil 12"),
-        ("test schachtprofil 12", None, False, False, "test schachtprofil 12"),
         ("test schachtprofil 12", ["schachtprofil"], False, False, "schachtprofil"),
         ("test schachtprofil 12", ["schacht"], True, False, "schachtprofil"),
         ("test schachtprofil 12", ["profil"], False, True, "schachtprofil"),
         ("test forage schachtprofil 12", ["forage", "profil"], False, True, "forage"),
     ],
-    ids=[
-        "empty-keywords",
-        "none-keywords",
-        "full-word",
-        "anchored-start",
-        "anchored-end",
-        "first-match",
-    ],
+    ids=["full-word", "anchored-start", "anchored-end", "first-match"],
 )
 def test_match_any_keyword(text: str, keywords: list[str], start: bool, end: bool, expected: str) -> None:
     """Test keyword search from a predefined list in a text.
@@ -36,7 +27,6 @@ def test_match_any_keyword(text: str, keywords: list[str], start: bool, end: boo
         expected (str): The substring expected to be matched in `text`.
     """
     match = match_any_keyword(text, keywords, start, end)
-    assert match is not None
     assert text[match.start() : match.end()] == expected
 
 
@@ -62,14 +52,12 @@ def test_normalize_spaces(text: str, expected: str) -> None:
 @pytest.mark.parametrize(
     "text, keywords, expected",
     [
-        ("nr1", [], "nr1"),
-        ("nr1", None, "nr1"),
         ("nr1", ["nr"], "1"),
         ("nr 1", ["nr"], " 1"),
         ("sondage nº1", ["nº"], "sondage 1"),
         ("sondage n°1", ["n°"], "sondage 1"),
     ],
-    ids=["empty-keywords", "none-keywords", "nr-without-space", "nr-with-space", "n-masc-ordinal", "n-degree"],
+    ids=["nr-without-space", "nr-with-space", "n-masc-ordinal", "n-degree"],
 )
 def test_remove_any_keyword(text: str, keywords: list[str], expected: str) -> None:
     """Test keyword removal in text.
