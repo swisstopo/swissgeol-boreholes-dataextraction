@@ -109,10 +109,11 @@ def _clean_borehole_name(text: str, excluded_keywords: list[str]) -> str | None:
         str | None: The cleaned and normalized text or None if empty text.
     """
     # Remove matched keywords (case-insensitive)
-    cleaned = remove_any_keyword(text, excluded_keywords)
+    if excluded_keywords is not None and len(excluded_keywords) != 0:
+        text = remove_any_keyword(text, excluded_keywords)
 
     # Remove scale from text (eg: "1:100")
-    cleaned = re.sub(r"1:\d{1,3}", " ", cleaned)
+    cleaned = re.sub(r"1:\d{1,3}", " ", text)
     cleaned = re.sub(r"\(.*?\)", " ", cleaned)
 
     # Replace punctuation, normalize whitespace and remove trailing spaces
