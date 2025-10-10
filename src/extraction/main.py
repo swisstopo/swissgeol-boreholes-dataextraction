@@ -306,10 +306,9 @@ def start_pipeline(
             metadata = MetadataInDocument.from_document(doc, file_metadata.language)
 
             # Save the predictions to the overall predictions object, initialize common variables
-            layers_with_bb_in_document = LayersInDocument([], filename)
+            all_groundwater_entries = GroundwaterInDocument([], filename)
             all_name_entries = NameInDocument([], filename)
             boreholes_per_page = []
-            all_groundwater_entries = GroundwaterInDocument([], filename)
 
             if part != "all":
                 continue

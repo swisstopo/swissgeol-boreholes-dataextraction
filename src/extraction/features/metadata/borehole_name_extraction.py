@@ -118,7 +118,6 @@ def _clean_borehole_name(text: str, excluded_keywords: list[str]) -> str | None:
     # Replace punctuation, normalize whitespace and remove trailing spaces
     cleaned = re.sub(r"[:._]", " ", cleaned)
     cleaned = normalize_spaces(cleaned)
-    # TODO could check that the name != filename (avoid those cantonal ID, e.g. 5115.pdf, see issue description)
 
     # Check if result is empty
     if len(cleaned) == 0:
@@ -150,7 +149,7 @@ def extract_borehole_names(
     Returns:
         list[FeatureOnPage[BoreholeName]]: A list of extracted borehole names, if found
     """
-    candidates: list[BoreholeName] = []
+    candidates: list[FeatureOnPage[BoreholeName]] = []
     matching_keywords = name_detection_params.get("matching_keywords", [])
     excluded_keywords = name_detection_params.get("excluded_keywords", [])
     min_vertical_overlap = name_detection_params.get("min_vertical_overlap", 1.0)
