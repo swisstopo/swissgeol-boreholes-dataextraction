@@ -15,6 +15,7 @@ from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
     GroundwatersInBorehole,
 )
+from extraction.features.metadata.borehole_name_extraction import NameInDocument
 from extraction.features.metadata.coordinate_extraction import Coordinate
 from extraction.features.metadata.elevation_extraction import Elevation
 from extraction.features.metadata.metadata import BoreholeMetadata
@@ -51,6 +52,7 @@ class BoreholeListBuilder:
         layers_with_bb_in_document: LayersInDocument,
         file_name: str,
         groundwater_in_doc: GroundwaterInDocument,
+        names_in_doc: NameInDocument,
         elevations_list: list[FeatureOnPage[Elevation] | None],
         coordinates_list: list[FeatureOnPage[Coordinate] | None],
     ):
@@ -61,7 +63,7 @@ class BoreholeListBuilder:
             holding a list of layers and a list of bounding boxes.
             file_name (str): The name of the processed document.
             groundwater_in_doc (GroundwaterInDocument): Contains detected groundwater entries for boreholes.
-
+            names_in_doc (NameInDocument): Contains detected names entries for boreholes.
             elevations_list (list[FeatureOnPage[Elevation] | None]): List of terrain elevation values for detected
                 boreholes.
             coordinates_list (list[FeatureOnPage[Coordinate] | None]): List of borehole coordinates.
@@ -69,6 +71,7 @@ class BoreholeListBuilder:
         self._layers_with_bb_in_document = layers_with_bb_in_document
         self._file_name = file_name
         self._groundwater_in_doc = groundwater_in_doc
+        self._names_in_doc = names_in_doc
         self._elevations_list = elevations_list
         self._coordinates_list = coordinates_list
 
@@ -86,6 +89,7 @@ class BoreholeListBuilder:
         # for each element, perform the perfect matching with the borehole layers, and retrieve the matching dict
         borehole_idx_to_elevation = self._one_to_one_match_element_to_borehole(self._elevations_list)
         borehole_idx_to_coordinate = self._one_to_one_match_element_to_borehole(self._coordinates_list)
+        borehole_idx_to_name = self._one_to_one_match_element_to_borehole(self._names_in_doc.name_feature_list)
 
         # for groundwater entries, assign each of them to the closest borehole
         borehole_idx_to_list_groundwater = self._many_to_one_match_element_to_borehole(
@@ -100,6 +104,7 @@ class BoreholeListBuilder:
                 BoreholeMetadata(
                     borehole_idx_to_elevation[borehole_index],
                     borehole_idx_to_coordinate[borehole_index],
+                    borehole_idx_to_name[borehole_index],
                 ),
                 GroundwatersInBorehole(borehole_idx_to_list_groundwater[borehole_index]),
                 layers_in_borehole_with_bb.bounding_boxes,
