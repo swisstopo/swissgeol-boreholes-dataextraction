@@ -2,7 +2,7 @@
 
 import pytest
 
-from extraction.features.utils.text.stemmer import _split_compounds, find_matching_expressions
+from extraction.features.utils.text.stemmer import _split_compounds, find_matching_expressions, _match_patterns
 
 
 @pytest.mark.parametrize(
@@ -21,6 +21,30 @@ from extraction.features.utils.text.stemmer import _split_compounds, find_matchi
 def test_split_compounds(tokens, split_threshold, expected):
     """Test the _split_compounds method with various inputs."""
     result = _split_compounds(tokens, split_threshold)
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "patterns, targets, expected",
+    [
+        (["sand", "argile", "rock"], ["argile"], ["argile"]),
+        (["rock"], ["sand", "argile", "rock"], ["rock"]),
+        (["sand", "argile", "rock"], ["argile", "rock"], ["argile", "rock"]),
+        (["sand", "argile", "rock"], ["argile", "argile"], ["argile", "argile"]),
+        (["sand", "argile"], ["rock"], []),
+        (["rock"], ["sand", "argile"], []),
+    ],
+    ids=["many-to-one", "one-to-many", "many-to-many", "redunduncy", "many-to-none", "none-to-many"],
+)
+def test_match_patterns(patterns: list[str], targets: list[str], expected: list[str]) -> None:
+    """Test that `_match_patterns` correctly identifies matching elements between patterns and targets.
+
+    Args:
+        patterns (list[str]): The list of pattern strings to search for.
+        targets (list[str]): The list of target strings to check against.
+        expected (list[str]): The expected list of matched patterns.
+    """
+    result = _match_patterns(patterns, targets)
     assert result == expected
 
 
