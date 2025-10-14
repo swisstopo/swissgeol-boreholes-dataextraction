@@ -2,7 +2,7 @@
 
 import pytest
 
-from extraction.features.utils.text.stemmer import _split_compounds, find_matching_expressions, _match_patterns
+from extraction.features.utils.text.stemmer import _match_patterns, _split_compounds, find_matching_expressions
 
 
 @pytest.mark.parametrize(
