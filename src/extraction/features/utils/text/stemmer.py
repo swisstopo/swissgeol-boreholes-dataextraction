@@ -14,10 +14,6 @@ _LANGUAGE_MAPPING = {
 _DEFAULT_LANGUAGE = "german"
 _stemmers: dict[str, SnowballStemmer] = {}
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 
 def _get_stemmer(language: str) -> SnowballStemmer:
     """Return a cached stemmer instance for the given language.
