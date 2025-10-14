@@ -41,7 +41,7 @@ def match_any_keyword(text: str, keywords: list[str], start: bool = False, end: 
     return re.search(pattern, text, re.IGNORECASE)
 
 
-def remove_any_keyword(text: str, keywords: list[str]) -> str | None:
+def remove_any_keyword(text: str, keywords: list[str]) -> str:
     """Remove all occurrences of specified keywords from the text.
 
     The removal is case-insensitive and literal — special characters in keywords
@@ -58,8 +58,6 @@ def remove_any_keyword(text: str, keywords: list[str]) -> str | None:
         str: The cleaned text with all matching keywords removed.
     """
     # Build regex pattern for keywords (escaped and followed by a word boundary)
-    if keywords is None or len(keywords) == 0:
-        return None
     pattern = "(" + "|".join(r"(?<!\w)" + re.escape(kw) + r"(?=\W|\d|$)" for kw in keywords) + ")"
     # Remove matched keywords (case-insensitive)
     cleaned = re.sub(pattern, "", text, flags=re.IGNORECASE)

@@ -10,11 +10,22 @@ from utils.language_filtering import match_any_keyword, normalize_spaces, remove
     "text, keywords, start, end, expected",
     [
         ("test schachtprofil 12", ["schachtprofil"], False, False, "schachtprofil"),
+        ("test Schachtprofil 12", ["schachtprofil"], False, False, "Schachtprofil"),
         ("test schachtprofil 12", ["schacht"], True, False, "schachtprofil"),
+        ("test schachtprofil 12", ["schacht"], False, True, None),
         ("test schachtprofil 12", ["profil"], False, True, "schachtprofil"),
+        ("test schachtprofil 12", ["profil"], True, False, None),
         ("test forage schachtprofil 12", ["forage", "profil"], False, True, "forage"),
     ],
-    ids=["full-word", "anchored-start", "anchored-end", "first-match"],
+    ids=[
+        "full-word",
+        "ignore-case",
+        "anchored-start",
+        "neg-anchored-start",
+        "anchored-end",
+        "neg-anchored-end",
+        "first-match",
+    ],
 )
 def test_match_any_keyword(text: str, keywords: list[str], start: bool, end: bool, expected: str) -> None:
     """Test keyword search from a predefined list in a text.
@@ -27,7 +38,11 @@ def test_match_any_keyword(text: str, keywords: list[str], start: bool, end: boo
         expected (str): The substring expected to be matched in `text`.
     """
     match = match_any_keyword(text, keywords, start, end)
-    assert text[match.start() : match.end()] == expected
+
+    if expected:
+        assert text[match.start() : match.end()] == expected
+    else:
+        assert match is None
 
 
 @pytest.mark.parametrize(
@@ -54,10 +69,12 @@ def test_normalize_spaces(text: str, expected: str) -> None:
     [
         ("nr1", ["nr"], "1"),
         ("nr 1", ["nr"], " 1"),
+        ("Nr 1", ["nr"], " 1"),
         ("sondage nº1", ["nº"], "sondage 1"),
         ("sondage n°1", ["n°"], "sondage 1"),
+        ("sondage Nr nº 1", ["nr", "nº"], "sondage   1"),
     ],
-    ids=["nr-without-space", "nr-with-space", "n-masc-ordinal", "n-degree"],
+    ids=["nr-without-space", "nr-with-space", "ignore-case", "n-masc-ordinal", "n-degree", "multiple-keywords"],
 )
 def test_remove_any_keyword(text: str, keywords: list[str], expected: str) -> None:
     """Test keyword removal in text.
