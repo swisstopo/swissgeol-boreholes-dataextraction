@@ -10,7 +10,7 @@ DEPTHS_QUANTILE_SLACK = 0.1
 
 
 def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[ExtractedBorehole]:
-    """Merge boreholes that were extracted from different pages.
+    """Merge boreholes that were extracted from different pages into continuous borehole.
 
     This method will attempt to match the predicted boreholes to the boreholes from previous pages based on their
     positions and continuity. If a match is found, the layers are merged; otherwise, new boreholes are added.
@@ -36,15 +36,32 @@ def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[E
                 previous_page_boreholes, boreholes_on_page, page_number
             )
 
+        # 3. If borehole merge possible, apply it
         if borehole_to_extend and borehole_continuation:
+            # --- Case A: Boreholes have overlapping layers ---
             if last_duplicate_layer_index is not None:
+                # Compute indices to cut duplicate layers at the overlap
+                upper_id, lower_id = _find_optimal_split(
+                    borehole_to_extend, borehole_continuation, last_duplicate_layer_index
+                )
+                # Keep only the non-duplicated part of the borehole from the previous page
+                borehole_to_extend_without_duplicates = ExtractedBorehole(
+                    predictions=borehole_to_extend.predictions[:upper_id],
+                    bounding_boxes=borehole_to_extend.bounding_boxes,
+                )
+                # Keep only the new layers from the continuation borehole on the current page
                 borehole_continuation_without_duplicates = ExtractedBorehole(
-                    predictions=borehole_continuation.predictions[last_duplicate_layer_index + 1 :],
+                    predictions=borehole_continuation.predictions[lower_id:],
                     bounding_boxes=borehole_continuation.bounding_boxes,
                 )
+            # --- Case B: Boreholes are continuous but without explicit overlap ---
             else:
+                borehole_to_extend_without_duplicates = borehole_to_extend
                 borehole_continuation_without_duplicates = borehole_continuation
-            merged_borehole = _merge_boreholes(borehole_to_extend, borehole_continuation_without_duplicates)
+
+            merged_borehole = _merge_boreholes(
+                borehole_to_extend_without_duplicates, borehole_continuation_without_duplicates
+            )
 
             # declare all unaffected boreholes from the previous page as finished
             unaffected_boreholes_previous_page = [
@@ -159,6 +176,46 @@ def _is_continuation(
     # use quantile to allow some slack (e.g. few undetected duplicated layers)
     # if depth values decrease, it must be a new borehole
     return not (depths and prev_depths and depths[0] < np.quantile(prev_depths, 1 - DEPTHS_QUANTILE_SLACK))
+
+
+def _find_optimal_split(
+    borehole_to_extend: ExtractedBorehole, borehole_continuation: ExtractedBorehole, last_duplicate_layer_index: int
+) -> tuple[int, int]:
+    """Find cut indices to remove duplicated layers when merging two boreholes.
+
+    When a borehole continues on the next page, some top layers of the new page
+    may duplicate the bottom layers of the previous page. This function walks the
+    overlap (from the bottom up) and shifts the split upward if the upper
+    layer lacks depth information while the corresponding lower layer has it.
+    This preserves the most complete layer data across the boundary.
+
+    Args:
+        borehole_to_extend (ExtractedBorehole): The borehole from the previous page.
+        borehole_continuation (ExtractedBorehole): The borehole from the current page.
+        last_duplicate_layer_index (int): The index of the last duplicated layer in the continuing borehole.
+
+    Returns:
+        tuple[int, int]: `(id_upper_end, id_lower_start)` such that concatenating these two slices removes
+        duplicates while keeping the most informative depth entries.
+    """
+    # Check the number of layer that overlaps
+    n_overlap = min(len(borehole_to_extend.predictions), last_duplicate_layer_index)
+    offset = 0
+
+    # Check if threshold should be moved
+    for i in range(n_overlap):
+        upper_layer = borehole_to_extend.predictions[-(i + 1)]
+        lower_layer = borehole_continuation.predictions[last_duplicate_layer_index - (i + 1)]
+        # It is possible that the information of the upper layers is cut (), check if we can retrieve information from the lower layers
+        if not upper_layer.depth_nonempty() and lower_layer.depth_nonempty():
+            offset += 1
+            continue
+        # As soon as information is missing in the lower layer, stop iteration
+        break
+    # Define cut ids
+    id_upper_end = len(borehole_to_extend.predictions) - offset
+    id_lower_start = last_duplicate_layer_index - offset
+    return id_upper_end, id_lower_start
 
 
 def _merge_boreholes(
