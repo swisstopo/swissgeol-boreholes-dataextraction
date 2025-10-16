@@ -10,6 +10,7 @@ from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.evaluation.layer_evaluator import LayerEvaluator
 from extraction.evaluation.utility import evaluate, evaluate_single
 from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
+from extraction.features.metadata.borehole_name_extraction import BoreholeName
 from extraction.features.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
 from extraction.features.metadata.metadata import BoreholeMetadata, FileMetadata
 from extraction.features.predictions.borehole_predictions import (
@@ -44,6 +45,11 @@ def sample_file_prediction() -> FilePredictions:
         rect=pymupdf.Rect(),
         page=1,
     )
+    name = FeatureOnPage(
+        feature=BoreholeName(name="SST KB5", confidence=1.0),
+        rect=pymupdf.Rect(),
+        page=1,
+    )
 
     layer1 = Mock(
         material_description=Mock(text="Sand"), depth_interval=Mock(start=Mock(value=10), end=Mock(value=20))
@@ -62,7 +68,8 @@ def sample_file_prediction() -> FilePredictions:
     groundwater_in_bh = GroundwatersInBorehole(groundwater_feature_list=[groundwater_on_page])
 
     file_metadata = FileMetadata(language="en", filename=filename, page_dimensions=[Mock(width=10, height=20)])
-    metadata = BoreholeMetadata(coordinates=coord, elevation=None)
+    # TODO adapt tests
+    metadata = BoreholeMetadata(coordinates=coord, elevation=None, name=name)
 
     return FilePredictions(
         [
@@ -88,6 +95,12 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
         feature=LV95Coordinate(
             east=CoordinateEntry(coordinate_value=2789456), north=CoordinateEntry(coordinate_value=1123012)
         ),
+        rect=pymupdf.Rect(),
+        page=1,
+    )
+
+    name = FeatureOnPage(
+        feature=BoreholeName(name="SST KB5", confidence=1.0),
         rect=pymupdf.Rect(),
         page=1,
     )
@@ -131,7 +144,7 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
     groundwater_in_bh = GroundwatersInBorehole(groundwater_feature_list=[groundwater_on_page])
 
     file_metadata = FileMetadata(language="en", filename=filename, page_dimensions=[Mock(width=10, height=20)])
-    metadata = BoreholeMetadata(coordinates=coord, elevation=None)
+    metadata = BoreholeMetadata(coordinates=coord, elevation=None, name=name)
 
     return FilePredictions(
         [
@@ -204,6 +217,7 @@ def test_to_json(sample_file_prediction: FilePredictions):
     assert len(result["boreholes"][0]["layers"]) == 2
     assert result["boreholes"][0]["metadata"]["coordinates"]["E"] == 2789456
     assert result["language"] == "en"
+    assert result["boreholes"][0]["metadata"]["name"]["name"] == "SST KB5"
 
 
 def test_overall_file_predictions(sample_file_prediction: FilePredictions):

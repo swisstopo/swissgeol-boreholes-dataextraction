@@ -80,6 +80,7 @@ class BoreholeMetadataMetrics(metaclass=abc.ABCMeta):
 
     elevation_metrics: Metrics
     coordinates_metrics: Metrics
+    name_metrics: Metrics
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -90,6 +91,7 @@ class BoreholeMetadataMetrics(metaclass=abc.ABCMeta):
         return {
             **self.elevation_metrics.to_json("elevation"),
             **self.coordinates_metrics.to_json("coordinate"),
+            **self.name_metrics.to_json("borehole_name"),
         }
 
 
@@ -105,6 +107,7 @@ class FileBoreholeMetadataMetrics(BoreholeMetadataMetrics):
             data={
                 "elevation": [self.elevation_metrics.f1],
                 "coordinate": [self.coordinates_metrics.f1],
+                "borehole_name": [self.name_metrics.f1],
             },
             index=[self.filename],
         )
@@ -128,7 +131,10 @@ class OverallBoreholeMetadataMetrics(metaclass=abc.ABCMeta):
         coordinates_metrics = Metrics.micro_average(
             [metadata.coordinates_metrics for metadata in self.borehole_metadata_metrics]
         )
-        return BoreholeMetadataMetrics(elevation_metrics=elevation_metrics, coordinates_metrics=coordinates_metrics)
+        name_metrics = Metrics.micro_average([metadata.name_metrics for metadata in self.borehole_metadata_metrics])
+        return BoreholeMetadataMetrics(
+            elevation_metrics=elevation_metrics, coordinates_metrics=coordinates_metrics, name_metrics=name_metrics
+        )
 
     def get_document_level_metrics(self) -> pd.DataFrame:
         """Get metrics aggregated at the document level.
