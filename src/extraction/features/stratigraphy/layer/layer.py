@@ -196,7 +196,7 @@ class Layer(ExtractedFeature):
         Returns:
             bool: True if both `depths.start` and `depths.end` are defined, False otherwise.
         """
-        return not (self.depths.end is None or self.depths.start is None)
+        return bool(self.depths and self.depths.start and self.depths.end)
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.

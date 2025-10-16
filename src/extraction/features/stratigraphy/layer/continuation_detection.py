@@ -49,7 +49,7 @@ def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[E
                     predictions=borehole_to_extend.predictions[:upper_id],
                     bounding_boxes=borehole_to_extend.bounding_boxes,
                 )
-                # Keep only the new layers from the continuation borehole on the current page
+                # Keep only the new layers from the continuation borehole on the current
                 borehole_continuation_without_duplicates = ExtractedBorehole(
                     predictions=borehole_continuation.predictions[lower_id:],
                     bounding_boxes=borehole_continuation.bounding_boxes,
@@ -199,14 +199,15 @@ def _find_optimal_split(
         duplicates while keeping the most informative depth entries.
     """
     # Check the number of layer that overlaps
-    n_overlap = min(len(borehole_to_extend.predictions), last_duplicate_layer_index)
+    n_overlap = min(len(borehole_to_extend.predictions), last_duplicate_layer_index + 1)
     offset = 0
 
     # Check if threshold should be moved
     for i in range(n_overlap):
         upper_layer = borehole_to_extend.predictions[-(i + 1)]
-        lower_layer = borehole_continuation.predictions[last_duplicate_layer_index - (i + 1)]
-        # It is possible that the information of the upper layers is cut (), check if we can retrieve information from the lower layers
+        lower_layer = borehole_continuation.predictions[last_duplicate_layer_index - i]
+        # It is possible that the information of the upper layers is cut (), check if we can retrieve information from
+        # the lower layers
         if not upper_layer.depth_nonempty() and lower_layer.depth_nonempty():
             offset += 1
             continue
@@ -214,7 +215,7 @@ def _find_optimal_split(
         break
     # Define cut ids
     id_upper_end = len(borehole_to_extend.predictions) - offset
-    id_lower_start = last_duplicate_layer_index - offset
+    id_lower_start = 1 + last_duplicate_layer_index - offset
     return id_upper_end, id_lower_start
 
 
