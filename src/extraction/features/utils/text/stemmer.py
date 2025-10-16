@@ -67,11 +67,7 @@ def _match_patterns(patterns: list[str], targets: list[str]) -> list[str]:
         list[str]: A list of patterns that were found in the targets.
         The list is empty if no matches are found.
     """
-    matches = []
-    for target in targets:
-        if target in patterns:
-            matches.append(target)
-    return matches
+    return [target for target in targets if target in patterns]
 
 
 def find_matching_expressions(
@@ -112,6 +108,6 @@ def find_matching_expressions(
     target_matches = _match_patterns(patterns, targets_to_check)
 
     # Update match traking
-    [track_match(analytics, m, language, search_excluding) for m in target_matches]
+    [track_match(analytics, match, language, search_excluding) for match in target_matches]
 
     return len(target_matches) != 0
