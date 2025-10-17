@@ -29,18 +29,19 @@ class TableStructure:
     line_density: float
 
 
-def detect_structure_lines(geometric_lines: list[Line]) -> list[StructureLine]:
+def detect_structure_lines(geometric_lines: list[Line], filter_lines=True) -> list[StructureLine]:
     """Detect significant horizonal and vertical lines in a document.
 
     Args:
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
+        filter_lines (bool, optional): Whether to filter lines before classification. Defaults to True.
 
     Returns:
         List of detected structure lines
     """
     # Filter and classify lines
-    filtered_lines = _filter_significant_lines(geometric_lines, config)
-    return _separate_by_orientation(filtered_lines, config)
+    final_lines = _filter_significant_lines(geometric_lines, config) if filter_lines else geometric_lines
+    return _separate_by_orientation(final_lines, config)
 
 
 def detect_table_structures(
@@ -71,7 +72,7 @@ def detect_table_structures(
         for table in table_candidates
         if len(table.horizontal_lines) >= 2
         if len(table.vertical_lines) >= 1
-        if table.confidence >= config.get("min_confidence")
+        if table.confidence >= config["tables"]["min_confidence"]
     ]
     for table in table_candidates:
         logger.debug(f"Detected table structure (confidence: {table.confidence:.3f})")
@@ -80,14 +81,14 @@ def detect_table_structures(
 
 def _filter_significant_lines(lines: list[Line], config: dict) -> list[Line]:
     """Filter to keep only significantly long lines that could form table structures."""
-    min_length = config.get("min_line_length")
+    min_length = config["tables"]["min_line_length"]
 
     return [line for line in lines if line.length > min_length]
 
 
 def _separate_by_orientation(lines: list[Line], config: dict) -> list[StructureLine]:
     """Separate lines into horizontal and vertical based on angle and tolerance."""
-    angle_tolerance = config.get("angle_tolerance")
+    angle_tolerance = config["tables"]["angle_tolerance"]
     structure_lines = []
 
     for line in lines:
@@ -160,7 +161,7 @@ def _find_table_structures(
 
         # Create table structure for this region
         table = _create_table_from_region(region_h_lines, region_v_lines, config, page_width, page_height, text_lines)
-        if table.confidence >= config.get("min_confidence"):
+        if table.confidence >= config["tables"]["min_confidence"]:
             detected_tables.append(table)
 
     detected_tables = sorted(detected_tables, key=lambda t: t.confidence, reverse=True)
@@ -229,7 +230,7 @@ def _line_connects_to_group(line: StructureLine, group: list[StructureLine], con
     Returns:
         True if the line connects to the group, False otherwise
     """
-    connection_threshold = config.get("connection_threshold")
+    connection_threshold = config["tables"]["connection_threshold"]
 
     for group_line in group:
         # 1. Check line intersection
@@ -335,19 +336,20 @@ def _calculate_structure_confidence(
         Confidence score between 0 and 1
     """
     area = rect.width * rect.height
+    table_config = config.get("tables", {})
 
     # Size score - larger tables are more likely to be significant
     if page_width and page_height:
         page_area = page_width * page_height
         area_ratio = area / page_area
-        area_scoring = config.get("area_scoring", {})
+        area_scoring = table_config.get("area_scoring", {})
         size_score = min(area_scoring.get("area_weights"), area_ratio / area_scoring.get("min_table_area_ratio"))
     else:
         # Fallback to 0 if no page dimensions are available
         size_score = 0
 
     # Line structure score - more lines indicate better structure
-    line_scoring = config.get("line_scoring", {})
+    line_scoring = table_config.get("line_scoring", {})
     total_lines = len(h_lines) + len(v_lines)
     line_score = min(line_scoring.get("line_weights"), total_lines / line_scoring.get("max_n_lines_bonus"))
 
@@ -356,7 +358,7 @@ def _calculate_structure_confidence(
     if text_lines:
         text_within = [line for line in text_lines if rect.intersects(line.rect)]
         if text_within:
-            text_scoring = config.get("text_scoring", {})
+            text_scoring = table_config.get("text_scoring", {})
             text_bonus = min(
                 text_scoring.get("text_weights"), len(text_within) * text_scoring.get("text_presence_weight")
             )

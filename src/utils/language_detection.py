@@ -1,7 +1,7 @@
 """This module contains functionalities for language detection of a document."""
 
 import pymupdf
-from langdetect import detect
+from langdetect import DetectorFactory, detect
 from langdetect.lang_detect_exception import LangDetectException
 
 
@@ -38,17 +38,19 @@ def detect_language_of_document(doc: pymupdf.Document, default_language: str, su
     return detect_language_of_text(text, default_language, supported_languages)
 
 
-def detect_language_of_text(text: str, default_language: str, supported_languages: list) -> str:
+def detect_language_of_text(text: str, default_language: str, supported_languages: list, seed: int = 0) -> str:
     """Detects the language of a text.
 
     Args:
         text (str): The text to detect the language of.
         default_language (str): The default language to use if the language detection fails.
         supported_languages (list): A list of supported languages.
+        seed (int): Define seed for language detection.
 
     Returns:
         str: The detected language of the document. One of supported_languages.
     """
+    DetectorFactory.seed = seed
     try:
         language = detect(text)
     except LangDetectException:
