@@ -100,17 +100,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self.params = params
 
     def process_page(self) -> list[ExtractedBorehole]:
-        """Process a single page of a pdf.
-
-        Finds all descriptions and depth intervals on the page and matches them.
-
-        TODO: Ideally, one function does one thing. This function does a lot of things. It should be split into
-        smaller functions.
-
-        Returns:
-            ProcessPageResult: a list of the extracted layers and a list of relevant bounding boxes.
-        """
-        # Step 1: Find material description and sidebar pairs using existing logic
+        # Step 1: Find all potential pairs
         material_descriptions_sidebar_pairs = self._find_layer_identifier_sidebar_pairs()
         material_descriptions_sidebar_pairs.extend(self._find_depth_sidebar_pairs())
 
@@ -118,106 +108,154 @@ class MaterialDescriptionRectWithSidebarExtractor:
         if material_description_rect_without_sidebar:
             material_descriptions_sidebar_pairs.append(
                 MaterialDescriptionRectWithSidebar(
-                    sidebar=None, material_description_rect=material_description_rect_without_sidebar, lines=self.lines
+                    sidebar=None,
+                    material_description_rect=material_description_rect_without_sidebar,
+                    lines=self.lines
                 )
             )
 
-        material_descriptions_sidebar_pairs.sort(key=lambda pair: -pair.score_match)  # highest score first
+        # Step 2: Sort once by score (highest first)
+        material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match, reverse=True)
 
-        # Step 2: Filter pairs based on table structures if no table structures are present, we only filter by score
-        if self.table_structures:
-            table_filtered_pairs = []
+        # Step 3: Apply filter chain
+        filtered_pairs = self._filter_by_score(material_descriptions_sidebar_pairs)
+        filtered_pairs = self._filter_by_table_criteria(filtered_pairs)
+        filtered_pairs = self._filter_by_intersections(filtered_pairs)
+        filtered_pairs = self._filter_pairs_without_sidebars(filtered_pairs)
 
-            # Group pairs by table index
-            table_groups = {}
-            non_table_pairs = []
-
-            for pair in material_descriptions_sidebar_pairs:
-                index = _contained_in_table_index(pair, self.table_structures, proximity_buffer=50)
-                if index != -1:
-                    if index not in table_groups:
-                        table_groups[index] = []
-                    table_groups[index].append(pair)
-
-                elif pair.score_match >= 0:
-                    non_table_pairs.append(pair)
-
-            # Keep pairs that meet criteria per table
-            for _, pairs in table_groups.items():
-                qualifying_pairs = [
-                    p
-                    for p in pairs
-                    if p.score_match >= 0
-                    and p.material_description_rect.width
-                    > self.params["material_description_column_width"] * self.page_width
-                ]
-                table_filtered_pairs.extend(qualifying_pairs)
-
-            # Add all non-table pairs
-            table_filtered_pairs.extend(non_table_pairs)
-            material_descriptions_sidebar_pairs = table_filtered_pairs
-
-        else:
-            material_descriptions_sidebar_pairs = [
-                pair for pair in material_descriptions_sidebar_pairs if pair.score_match >= 0
-            ]
-
-        material_descriptions_sidebar_pairs.reverse()  # lowest score first
-
-        # Step 3: remove pairs that have any of their elements (sidebar, material description) intersecting with others
-        to_delete = self._find_intersecting_indices(material_descriptions_sidebar_pairs)
-        filtered_pairs = [
-            item for index, item in enumerate(material_descriptions_sidebar_pairs) if index not in to_delete
-        ]
-
-        # remove pairs with no sidebar if there is more than one pair.
-        if len(filtered_pairs) > 1:
-            filtered_pairs = [pair for pair in filtered_pairs if pair.sidebar]
-
-        # remove pairs with no sidebar and not contained in a table structure
-        def in_table_structure(rect: pymupdf.Rect, table: TableStructure) -> bool:
-            intersection = table.bounding_rect & pair.material_description_rect
-            material_description_area = rect.width * rect.height
-            intersection_area = intersection.width * intersection.height
-            return intersection_area >= 0.9 * material_description_area
-
-        def nearby_structure_lines(rect: pymupdf.Rect) -> bool:
-            """Checks if there are structure lines indicative of a borehole profile near the given rect.
-
-            The total length (either left or right) must be larger than the height of the given rect, to avoid
-            false positives with scan artifacts / page edges.
-            """
-            rect_left = pymupdf.Rect(rect.x0 - rect.width, rect.y0, (rect.x0 + rect.x1) / 2, rect.y1)
-            rect_right = pymupdf.Rect((rect.x0 + rect.x1) / 2, rect.y0, rect.x1 + rect.width, rect.y1)
-            return structure_line_length(rect_left) > rect.height or structure_line_length(rect_right) > rect.height
-
-        def structure_line_length(rect: pymupdf.Rect) -> float:
-            """Counts the total length of vertical structure lines after taking an intersection with the given rect."""
-            length = 0
-            for line in self.structure_lines:
-                if line.is_vertical and rect.x0 <= line.position <= rect.x1:
-                    length += max(0, min(rect.y1, line.end) - max(rect.y0, line.start))
-            return length
-
-        filtered_pairs = [
-            pair
-            for pair in filtered_pairs
-            if pair.sidebar
-            or any(in_table_structure(pair.material_description_rect, table) for table in self.table_structures)
-            or nearby_structure_lines(pair.material_description_rect)
-        ]
-
-        # We order the boreholes with the highest score first. When one borehole is actually present in the ground
-        # truth, but more than one are detected, we want the most correct to be assigned
-        boreholes = [
-            self._create_borehole_from_pair(pair)
-            for pair in sorted(filtered_pairs, key=lambda pair: pair.score_match, reverse=True)
-        ]
+        # Step 4: Create boreholes
+        boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
 
         logger.debug(
             f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(self.table_structures)} tables"
         )
         return [borehole for borehole in boreholes if len(borehole.predictions) >= self.params["min_num_layers"]]
+
+
+    def _filter_by_score(
+        self,
+        pairs: list[MaterialDescriptionRectWithSidebar]
+    ) -> list[MaterialDescriptionRectWithSidebar]:
+        """Filter pairs by minimum score threshold."""
+        return [pair for pair in pairs if pair.score_match >= 0]
+
+
+    def _filter_by_table_criteria(
+        self,
+        pairs: list[MaterialDescriptionRectWithSidebar]
+    ) -> list[MaterialDescriptionRectWithSidebar]:
+        """Filter pairs based on table containment and width requirements."""
+        if not self.table_structures:
+            return pairs
+
+        filtered = []
+        for pair in pairs:
+            table_index = _contained_in_table_index(pair, self.table_structures, proximity_buffer=50)
+
+            # If not in table - keep it
+            if table_index == -1:
+                filtered.append(pair)
+            # If in table - check width requirement
+            else:
+                min_width = self.params["material_description_column_width"] * self.page_width
+                if pair.material_description_rect.width > min_width:
+                    filtered.append(pair)
+
+        return filtered
+
+
+    def _filter_by_intersections(
+        self,
+        pairs: list[MaterialDescriptionRectWithSidebar]
+    ) -> list[MaterialDescriptionRectWithSidebar]:
+        """Remove pairs that intersect with higher-scoring pairs."""
+        pairs_lowest_first = list(reversed(pairs))  # pairs come in highest-first
+        to_delete = self._find_intersecting_indices(pairs_lowest_first)
+
+        # Filter out the indices marked for deletion
+        filtered = [pair for i, pair in enumerate(pairs_lowest_first) if i not in to_delete]
+
+        # Reverse back to highest-first for consistency
+        return list(reversed(filtered))
+
+
+    def _filter_pairs_without_sidebars(
+        self,
+        pairs: list[MaterialDescriptionRectWithSidebar]
+    ) -> list[MaterialDescriptionRectWithSidebar]:
+        """Filter pairs without sidebars based on special criteria."""
+        if len(pairs) <= 1:
+            return pairs
+
+        filtered = []
+        for pair in pairs:
+            if pair.sidebar:
+                filtered.append(pair)
+            elif self._pair_meets_no_sidebar_exception(pair):
+                filtered.append(pair)
+
+        return filtered
+
+
+    def _pair_meets_no_sidebar_exception(
+        self,
+        pair: MaterialDescriptionRectWithSidebar
+    ) -> bool:
+        """Check if a pair without sidebar meets exception criteria.
+
+        A pair without a sidebar can still be valid if:
+        1. It's contained within a table structure (>90% overlap), OR
+        2. It has significant vertical structure lines nearby
+
+        Args:
+            pair: The pair to validate
+
+        Returns:
+            True if the pair meets exception criteria, False otherwise
+        """
+        rect = pair.material_description_rect
+
+        # Exception 1: Check if contained in a table structure
+        for table in self.table_structures:
+            intersection = table.bounding_rect & rect
+            material_area = rect.width * rect.height
+            intersection_area = intersection.width * intersection.height
+            if intersection_area >= 0.9 * material_area:
+                return True
+
+        # Exception 2: Check for nearby vertical structure lines
+        if self._has_nearby_structure_lines(rect):
+            return True
+
+        return False
+
+
+    def _has_nearby_structure_lines(self, rect: pymupdf.Rect) -> bool:
+        """Check if there are significant vertical structure lines near the rect.
+
+        Checks both left and right sides of the rect. The total length of structure
+        lines must exceed the rect's height to avoid false positives from scan artifacts.
+
+        Args:
+            rect: The rectangle to check around
+
+        Returns:
+            True if significant structure lines are found, False otherwise
+        """
+        rect_left = pymupdf.Rect(rect.x0 - rect.width, rect.y0, (rect.x0 + rect.x1) / 2, rect.y1)
+        rect_right = pymupdf.Rect((rect.x0 + rect.x1) / 2, rect.y0, rect.x1 + rect.width, rect.y1)
+
+        def structure_line_length(search_rect: pymupdf.Rect) -> float:
+            """Calculate total length of vertical structure lines within a rectangle."""
+            length = 0
+            for line in self.structure_lines:
+                if line.is_vertical and search_rect.x0 <= line.position <= search_rect.x1:
+                    # Calculate the intersection length
+                    length += max(0, min(search_rect.y1, line.end) - max(search_rect.y0, line.start))
+            return length
+
+        return (structure_line_length(rect_left) > rect.height or
+                structure_line_length(rect_right) > rect.height)
 
     def _find_intersecting_indices(
         self, material_descriptions_sidebar_pairs: list[MaterialDescriptionRectWithSidebar]
@@ -235,6 +273,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Returns:
             list[int]: The indices of elements that overlap with others and should be removed.
         """
+        material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match)
         to_delete = []
 
         def intersects_any(rect, others):
@@ -297,7 +336,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         """
         description_lines = get_description_lines(self.lines, pair.material_description_rect)
         if pair.sidebar:
-            return match_columns(
+            return _match_columns(
                 pair.sidebar,
                 description_lines,
                 self.geometric_lines,
@@ -647,7 +686,7 @@ def extract_page(
     )
 
 
-def match_columns(
+def _match_columns(
     sidebar: Sidebar,
     description_lines: list[TextLine],
     geometric_lines: list[Line],
@@ -673,11 +712,11 @@ def match_columns(
     return [
         element
         for group in sidebar.identify_groups(description_lines, geometric_lines, material_description_rect, **params)
-        for element in transform_groups(group.depth_intervals, group.blocks)
+        for element in _transform_groups(group.depth_intervals, group.blocks)
     ]
 
 
-def transform_groups(depth_intervals: list[Interval], blocks: list[TextBlock]) -> list[IntervalBlockPair]:
+def _transform_groups(depth_intervals: list[Interval], blocks: list[TextBlock]) -> list[IntervalBlockPair]:
     """Transforms the text blocks such that their number equals the number of depth intervals.
 
     If there are more depth intervals than text blocks, text blocks are splitted. When there
@@ -699,7 +738,7 @@ def transform_groups(depth_intervals: list[Interval], blocks: list[TextBlock]) -
         return [IntervalBlockPair(depth_interval=depth_interval, block=concatenated_block)]
     else:
         if len(blocks) < len(depth_intervals):
-            blocks = split_blocks_by_textline_length(blocks, target_split_count=len(depth_intervals) - len(blocks))
+            blocks = _split_blocks_by_textline_length(blocks, target_split_count=len(depth_intervals) - len(blocks))
 
         if len(blocks) > len(depth_intervals):
             # create additional depth intervals with end & start value None to match the number of blocks
@@ -711,47 +750,7 @@ def transform_groups(depth_intervals: list[Interval], blocks: list[TextBlock]) -
         ]
 
 
-def merge_blocks_by_vertical_spacing(blocks: list[TextBlock], target_merge_count: int) -> list[TextBlock]:
-    """Merge textblocks without any geometric lines that separates them.
-
-    Note: Deprecated. Currently not in use anymore. Kept here until we are sure that it is not needed anymore.
-
-    The logic looks at the distances between the textblocks and merges them if they are closer
-    than a certain cutoff.
-
-    Args:
-        blocks (List[TextBlock]): Textblocks that are to be merged.
-        target_merge_count (int): the number of merges that we'd like to happen (i.e. we'd like the total number of
-                                  blocks to be reduced by this number)
-
-    Returns:
-        List[TextBlock]: The merged textblocks.
-    """
-    distances = []
-    for block_index in range(len(blocks) - 1):
-        distances.append(block_distance(blocks[block_index], blocks[block_index + 1]))
-    cutoff = sorted(distances)[target_merge_count - 1]  # merge all blocks that have a distance smaller than this
-    merged_count = 0
-    merged_blocks = []
-    current_merged_block = blocks[0]
-    for block_index in range(len(blocks) - 1):
-        new_block = blocks[block_index + 1]
-        if (
-            merged_count < target_merge_count
-            and block_distance(blocks[block_index], blocks[block_index + 1]) <= cutoff
-        ):
-            current_merged_block = current_merged_block.concatenate(new_block)
-            merged_count += 1
-        else:
-            merged_blocks.append(current_merged_block)
-            current_merged_block = new_block
-
-    if current_merged_block.lines:
-        merged_blocks.append(current_merged_block)
-    return merged_blocks
-
-
-def split_blocks_by_textline_length(blocks: list[TextBlock], target_split_count: int) -> list[TextBlock]:
+def _split_blocks_by_textline_length(blocks: list[TextBlock], target_split_count: int) -> list[TextBlock]:
     """Split textblocks without any geometric lines that separates them.
 
     The logic looks at the lengths of the text lines and cuts them off
