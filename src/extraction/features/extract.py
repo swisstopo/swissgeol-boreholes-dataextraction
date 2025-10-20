@@ -118,10 +118,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
         material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match, reverse=True)
 
         # Step 3: Apply filter chain
-        filtered_pairs = self._filter_by_score(material_descriptions_sidebar_pairs)
+        filtered_pairs = [pair for pair in material_descriptions_sidebar_pairs if pair.score_match >= 0]
         filtered_pairs = self._filter_by_table_criteria(filtered_pairs)
         filtered_pairs = self._filter_by_intersections(filtered_pairs)
-        filtered_pairs = self._filter_pairs_without_sidebars(filtered_pairs)
 
         # Step 4: Create boreholes
         boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
@@ -130,14 +129,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
             f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(self.table_structures)} tables"
         )
         return [borehole for borehole in boreholes if len(borehole.predictions) >= self.params["min_num_layers"]]
-
-
-    def _filter_by_score(
-        self,
-        pairs: list[MaterialDescriptionRectWithSidebar]
-    ) -> list[MaterialDescriptionRectWithSidebar]:
-        """Filter pairs by minimum score threshold."""
-        return [pair for pair in pairs if pair.score_match >= 0]
 
 
     def _filter_by_table_criteria(
@@ -169,134 +160,46 @@ class MaterialDescriptionRectWithSidebarExtractor:
         pairs: list[MaterialDescriptionRectWithSidebar]
     ) -> list[MaterialDescriptionRectWithSidebar]:
         """Remove pairs that intersect with higher-scoring pairs."""
-        pairs_lowest_first = list(reversed(pairs))  # pairs come in highest-first
-        to_delete = self._find_intersecting_indices(pairs_lowest_first)
+        if not pairs:
+                return []
 
-        # Filter out the indices marked for deletion
-        filtered = [pair for i, pair in enumerate(pairs_lowest_first) if i not in to_delete]
+        kept_pairs = []
 
-        # Reverse back to highest-first for consistency
-        return list(reversed(filtered))
-
-
-    def _filter_pairs_without_sidebars(
-        self,
-        pairs: list[MaterialDescriptionRectWithSidebar]
-    ) -> list[MaterialDescriptionRectWithSidebar]:
-        """Filter pairs without sidebars based on special criteria."""
-        if len(pairs) <= 1:
-            return pairs
-
-        filtered = []
         for pair in pairs:
-            if pair.sidebar:
-                filtered.append(pair)
-            elif self._pair_meets_no_sidebar_exception(pair):
-                filtered.append(pair)
+            # Check if this pair intersects with any already-kept (higher-scoring) pair
+            has_conflict = any(
+                self._pairs_intersect(pair, kept_pair) 
+                for kept_pair in kept_pairs
+            )
 
-        return filtered
+            # Only keep if no conflicts found
+            if not has_conflict:
+                kept_pairs.append(pair)
 
+        return kept_pairs
 
-    def _pair_meets_no_sidebar_exception(
-        self,
-        pair: MaterialDescriptionRectWithSidebar
-    ) -> bool:
-        """Check if a pair without sidebar meets exception criteria.
+    def _pairs_intersect(self, pair1, pair2) -> bool:
+            """Check if two pairs have any intersecting rectangles."""
+            mat1, mat2 = pair1.material_description_rect, pair2.material_description_rect
+            side1 = pair1.sidebar.rect if pair1.sidebar else None
+            side2 = pair2.sidebar.rect if pair2.sidebar else None
 
-        A pair without a sidebar can still be valid if:
-        1. It's contained within a table structure (>90% overlap), OR
-        2. It has significant vertical structure lines nearby
-
-        Args:
-            pair: The pair to validate
-
-        Returns:
-            True if the pair meets exception criteria, False otherwise
-        """
-        rect = pair.material_description_rect
-
-        # Exception 1: Check if contained in a table structure
-        for table in self.table_structures:
-            intersection = table.bounding_rect & rect
-            material_area = rect.width * rect.height
-            intersection_area = intersection.width * intersection.height
-            if intersection_area >= 0.9 * material_area:
+            # Material rects always exist
+            if mat1.intersects(mat2):
                 return True
 
-        # Exception 2: Check for nearby vertical structure lines
-        if self._has_nearby_structure_lines(rect):
-            return True
+            # Check material with opposite sidebar
+            if side2 and mat1.intersects(side2):
+                return True
+            if side1 and mat2.intersects(side1):
+                return True
 
-        return False
+            # Check both sidebars
+            if side1 and side2 and side1.intersects(side2):
+                return True
 
+            return False
 
-    def _has_nearby_structure_lines(self, rect: pymupdf.Rect) -> bool:
-        """Check if there are significant vertical structure lines near the rect.
-
-        Checks both left and right sides of the rect. The total length of structure
-        lines must exceed the rect's height to avoid false positives from scan artifacts.
-
-        Args:
-            rect: The rectangle to check around
-
-        Returns:
-            True if significant structure lines are found, False otherwise
-        """
-        rect_left = pymupdf.Rect(rect.x0 - rect.width, rect.y0, (rect.x0 + rect.x1) / 2, rect.y1)
-        rect_right = pymupdf.Rect((rect.x0 + rect.x1) / 2, rect.y0, rect.x1 + rect.width, rect.y1)
-
-        def structure_line_length(search_rect: pymupdf.Rect) -> float:
-            """Calculate total length of vertical structure lines within a rectangle."""
-            length = 0
-            for line in self.structure_lines:
-                if line.is_vertical and search_rect.x0 <= line.position <= search_rect.x1:
-                    # Calculate the intersection length
-                    length += max(0, min(search_rect.y1, line.end) - max(search_rect.y0, line.start))
-            return length
-
-        return (structure_line_length(rect_left) > rect.height or
-                structure_line_length(rect_right) > rect.height)
-
-    def _find_intersecting_indices(
-        self, material_descriptions_sidebar_pairs: list[MaterialDescriptionRectWithSidebar]
-    ) -> list[int]:
-        """Identifies overlapping material descriptions or sidebars.
-
-        This function scans through all material description/sidebar pairs and returns a list of indices
-        that should be removed due to overlaps. If an intersection is found between two elements, only
-        the first (lower-indexed) element is marked for deletion.
-
-        Args:
-            material_descriptions_sidebar_pairs (list[MaterialDescriptionRectWithSidebar]): a list of pairs consisting
-                of a material description rectangle and an optional sidebar.
-
-        Returns:
-            list[int]: The indices of elements that overlap with others and should be removed.
-        """
-        material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match)
-        to_delete = []
-
-        def intersects_any(rect, others):
-            return any(rect.intersects(other) for other in others if other is not None)
-
-        for i, pair in enumerate(material_descriptions_sidebar_pairs):
-            mat_rect = pair.material_description_rect
-            sidebar_rect = pair.sidebar.rect if pair.sidebar else None
-
-            # Build the list of other rectangles
-            remaining_pairs = material_descriptions_sidebar_pairs[i + 1 :]
-            other_mat_rects = [p.material_description_rect for p in remaining_pairs]
-            other_sidebar_rects = [p.sidebar.rect if p.sidebar else None for p in remaining_pairs]
-
-            # Check all conditions
-            if (
-                intersects_any(mat_rect, other_mat_rects)
-                or intersects_any(mat_rect, other_sidebar_rects)
-                or (sidebar_rect and intersects_any(sidebar_rect, other_mat_rects))
-                or (sidebar_rect and intersects_any(sidebar_rect, other_sidebar_rects))
-            ):
-                to_delete.append(i)
-        return to_delete
 
     def _create_borehole_from_pair(self, pair: MaterialDescriptionRectWithSidebar) -> ExtractedBorehole:
         bounding_boxes = PageBoundingBoxes.from_material_description_rect_with_sidebar(pair, self.page_number)
