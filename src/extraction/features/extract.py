@@ -99,6 +99,13 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self.params = params
 
     def process_page(self) -> list[ExtractedBorehole]:
+        """Process a single page of a pdf.
+
+        Finds all descriptions and depth intervals on the page and matches them.
+
+        Returns:
+            ProcessPageResult: a list of the extracted layers and a list of relevant bounding boxes.
+        """
         # Step 1: Find all potential pairs
         material_descriptions_sidebar_pairs = self._find_layer_identifier_sidebar_pairs()
         material_descriptions_sidebar_pairs.extend(self._find_depth_sidebar_pairs())
@@ -138,7 +145,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         for pair in pairs:
             table_index = _contained_in_table_index(pair, self.table_structures, proximity_buffer=50)
 
-            # If not in table - keep it
+            # If not in table - keep it as is
             if table_index == -1:
                 filtered.append(pair)
             # If in table - check width requirement
@@ -160,32 +167,31 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         for pair in pairs:
             # Check if this pair intersects with any already-kept (higher-scoring) pair
-            has_conflict = any(self._pairs_intersect(pair, kept_pair) for kept_pair in kept_pairs)
+            intersects = any(self._pairs_intersect(pair, kept_pair) for kept_pair in kept_pairs)
 
             # Only keep if no conflicts found
-            if not has_conflict:
+            if not intersects:
                 kept_pairs.append(pair)
 
         return kept_pairs
 
     def _pairs_intersect(self, pair1, pair2) -> bool:
         """Check if two pairs have any intersecting rectangles."""
-        mat1, mat2 = pair1.material_description_rect, pair2.material_description_rect
-        side1 = pair1.sidebar.rect if pair1.sidebar else None
-        side2 = pair2.sidebar.rect if pair2.sidebar else None
+        mat_desc1, mat_desc2 = pair1.material_description_rect, pair2.material_description_rect
+        sidebar1 = pair1.sidebar.rect if pair1.sidebar else None
+        sidebar2 = pair2.sidebar.rect if pair2.sidebar else None
 
-        # Material rects always exist
-        if mat1.intersects(mat2):
+        if mat_desc1.intersects(mat_desc2):
             return True
 
         # Check material with opposite sidebar
-        if side2 and mat1.intersects(side2):
+        if sidebar2 and mat_desc1.intersects(sidebar2):
             return True
-        if side1 and mat2.intersects(side1):
+        if sidebar1 and mat_desc2.intersects(sidebar1):
             return True
 
         # Check both sidebars
-        return bool(side1 and side2 and side1.intersects(side2))
+        return bool(sidebar1 and sidebar2 and sidebar1.intersects(sidebar2))
 
     def _create_borehole_from_pair(self, pair: MaterialDescriptionRectWithSidebar) -> ExtractedBorehole:
         bounding_boxes = PageBoundingBoxes.from_material_description_rect_with_sidebar(pair, self.page_number)
