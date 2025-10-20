@@ -123,55 +123,10 @@ class TextBlock(RectWithPageMixin):
         new_lines.extend(other.lines)
         return TextBlock(new_lines)
 
-    # LGD-288: sometimes indentation is the only significant signal for deciding where we need to split the material
-    # descriptions of adjacent layers.
-    def split_based_on_indentation(self) -> list[TextBlock]:
-        """Split the text block based on indentation.
-
-        Returns:
-            list[TextBlock]: The split text blocks.
-        """
-        if len(self.lines) == 0:
-            return []
-
-        line_starts = [line.rect.x0 for line in self.lines]
-        min_line_start = min(line_starts)
-        max_line_width = max([line.rect.width for line in self.lines])
-
-        first_line_start = self.lines[0].rect.x0
-        indentation_low = min_line_start + 0.03 * max_line_width
-        indentation_high = min_line_start + 0.2 * max_line_width
-
-        # don't do anything if the first line already indented (e.g. centered text)
-        if first_line_start > indentation_low:
-            return [self]
-        # don't do anything if we don't have any lines at a reasonable indentation
-        # (2%-20% of max width from leftmost edge)
-        if all(line.rect.x0 < indentation_low or line.rect.x0 > indentation_high for line in self.lines):
-            return [self]
-
-        # split based on indentation
-        blocks = []
-        current_block_lines = []
-        for line in self.lines:
-            if line.rect.x0 < indentation_low:
-                # start new block
-                if current_block_lines:
-                    blocks.append(TextBlock(current_block_lines))
-                current_block_lines = [line]
-            else:
-                # continue block
-                current_block_lines.append(line)
-
-        if current_block_lines:
-            blocks.append(TextBlock(current_block_lines))
-
-        if self.is_terminated_by_line:  # if the block was terminated by a line, then the last block should be as well
-            blocks[-1].is_terminated_by_line = True
-        return blocks
-
     def _is_legend(self) -> bool:
         """Check if the current block contains / is a legend.
+
+        Note: deprecated method.
 
         Legends are characterized by having multiple lines of a single word (e.g. "sand", "kies", etc.). Furthermore
         these words are usually aligned in either the x or y direction.

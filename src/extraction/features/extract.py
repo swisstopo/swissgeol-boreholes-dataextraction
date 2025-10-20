@@ -5,7 +5,7 @@ import logging
 import pymupdf
 import rtree
 
-from extraction.features.stratigraphy.interval.interval import AAboveBInterval, Interval, IntervalBlockPair
+from extraction.features.stratigraphy.interval.interval import IntervalBlockPair
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
     Layer,
@@ -39,10 +39,7 @@ from extraction.features.utils.table_detection import (
     TableStructure,
     _contained_in_table_index,
 )
-from extraction.features.utils.text.find_description import (
-    get_description_blocks,
-    get_description_lines,
-)
+from extraction.features.utils.text.find_description import get_description_lines
 from extraction.features.utils.text.matching_params_analytics import MatchingParamsAnalytics
 from extraction.features.utils.text.textblock import (
     MaterialDescription,
@@ -51,6 +48,8 @@ from extraction.features.utils.text.textblock import (
     block_distance,
 )
 from extraction.features.utils.text.textline import TextLine
+from extraction.features.utils.text.textline_affinity import Affinity, get_line_affinity
+from utils.dynamic_matching import IntervalToLinesDP
 
 logger = logging.getLogger(__name__)
 
@@ -296,23 +295,18 @@ class MaterialDescriptionRectWithSidebarExtractor:
             list[IntervalBlockPair]: The interval block pairs.
         """
         description_lines = get_description_lines(self.lines, pair.material_description_rect)
-        if pair.sidebar:
-            return match_columns(
-                pair.sidebar,
-                description_lines,
-                self.geometric_lines,
-                pair.material_description_rect,
-                **self.params,
-            )
-        else:
-            description_blocks = get_description_blocks(
-                description_lines,
-                self.geometric_lines,
-                pair.material_description_rect,
-                self.params["block_line_ratio"],
-                self.params["left_line_length_threshold"],
-            )
-            return [IntervalBlockPair(block=block, depth_interval=None) for block in description_blocks]
+        line_affinities = get_line_affinity(
+            description_lines,
+            pair.material_description_rect,
+            self.geometric_lines,
+            block_line_ratio=self.params["block_line_ratio"],
+            left_line_length_threshold=self.params["left_line_length_threshold"],
+        )
+        return (
+            match_lines_to_interval(pair, description_lines, line_affinities)
+            if pair.sidebar
+            else get_pairs_based_on_line_affinity(description_lines, line_affinities)
+        )
 
     def _find_layer_identifier_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
         layer_identifier_sidebars = LayerIdentifierSidebarExtractor.from_lines(self.lines)
@@ -643,74 +637,11 @@ def extract_page(
     ).process_page()
 
 
-def match_columns(
-    sidebar: Sidebar,
-    description_lines: list[TextLine],
-    geometric_lines: list[Line],
-    material_description_rect: pymupdf.Rect,
-    **params: dict,
-) -> list[IntervalBlockPair]:
-    """Match the layers that can be derived from the sidebar with the description lines.
-
-    This function identifies groups of depth intervals and text blocks that are likely to match.
-    The actual matching between text blocks and depth intervals is handled by the implementation of the actual Sidebar
-    instance (e.b. AAboveBSidebar, AToBSidebar).
-
-    Args:
-        sidebar (Sidebar): The sidebar.
-        description_lines (list[TextLine]): The description lines.
-        geometric_lines (list[Line]): The geometric lines.
-        material_description_rect (pymupdf.Rect): The material description rectangle.
-        **params (dict): Additional parameters for the matching pipeline.
-
-    Returns:
-        list[IntervalBlockPair]: The matched depth intervals and text blocks.
-    """
-    return [
-        element
-        for group in sidebar.identify_groups(description_lines, geometric_lines, material_description_rect, **params)
-        for element in transform_groups(group.depth_intervals, group.blocks)
-    ]
-
-
-def transform_groups(depth_intervals: list[Interval], blocks: list[TextBlock]) -> list[IntervalBlockPair]:
-    """Transforms the text blocks such that their number equals the number of depth intervals.
-
-    If there are more depth intervals than text blocks, text blocks are splitted. When there
-    are more text blocks than depth intervals, text blocks are merged. If the number of text blocks
-    and depth intervals equals, we proceed with the pairing.
-
-    Args:
-        depth_intervals (List[Interval]): The depth intervals from the pdf.
-        blocks (List[TextBlock]): Found textblocks from the pdf.
-
-    Returns:
-        List[IntervalBlockPair]: Pairing of text blocks and depth intervals.
-    """
-    if len(depth_intervals) <= 1:
-        concatenated_block = TextBlock(
-            [line for block in blocks for line in block.lines]
-        )  # concatenate all text lines within a block; line separation flag does not matter here.
-        depth_interval = depth_intervals[0] if len(depth_intervals) else None
-        return [IntervalBlockPair(depth_interval=depth_interval, block=concatenated_block)]
-    else:
-        if len(blocks) < len(depth_intervals):
-            blocks = split_blocks_by_textline_length(blocks, target_split_count=len(depth_intervals) - len(blocks))
-
-        if len(blocks) > len(depth_intervals):
-            # create additional depth intervals with end & start value None to match the number of blocks
-            depth_intervals.extend([AAboveBInterval(None, None) for _ in range(len(blocks) - len(depth_intervals))])
-
-        return [
-            IntervalBlockPair(depth_interval=depth_interval, block=block)
-            for depth_interval, block in zip(depth_intervals, blocks, strict=False)
-        ]
-
-
 def merge_blocks_by_vertical_spacing(blocks: list[TextBlock], target_merge_count: int) -> list[TextBlock]:
     """Merge textblocks without any geometric lines that separates them.
 
     Note: Deprecated. Currently not in use anymore. Kept here until we are sure that it is not needed anymore.
+    TODO could use this ??
 
     The logic looks at the distances between the textblocks and merges them if they are closer
     than a certain cutoff.
@@ -747,41 +678,49 @@ def merge_blocks_by_vertical_spacing(blocks: list[TextBlock], target_merge_count
     return merged_blocks
 
 
-def split_blocks_by_textline_length(blocks: list[TextBlock], target_split_count: int) -> list[TextBlock]:
-    """Split textblocks without any geometric lines that separates them.
-
-    The logic looks at the lengths of the text lines and cuts them off
-    if there are textlines that are shorter than others.
-    # TODO: Extend documentation about logic.
+def match_lines_to_interval(
+    pair: MaterialDescriptionRectWithSidebar, description_lines: list[TextLine], affinities: list[Affinity]
+) -> list[IntervalBlockPair]:
+    """Match the description lines to the pair intervals.
 
     Args:
-        blocks (List[TextBlock]): Textblocks that are to be split.
-        target_split_count (int): the number of splits that we'd like to happen (i.e. we'd like the total number of
-                                  blocks to be increased by this number)
+        pair (MaterialDescriptionRectWithSidebar): The material description rect with sidebar.
+        description_lines (list[TextLine]): The description lines.
+        affinities (list[Affinity]): the affinity between each line pair, previously computed.
 
     Returns:
-        List[TextBlock]: The split textblocks.
+        list[IntervalBlockPair]: The matched depth intervals and text blocks.
     """
-    line_lengths = sorted([line.rect.x1 for block in blocks for line in block.lines[:-1]])
-    if len(line_lengths) <= target_split_count:  # In that case each line is a block
-        return [TextBlock([line]) for block in blocks for line in block.lines]
-    else:
-        cutoff_values = line_lengths[:target_split_count]  # all lines inside cutoff_values will be split line
-        split_blocks = []
-        current_block_lines = []
-        for block in blocks:
-            for line_index in range(block.line_count):
-                line = block.lines[line_index]
-                current_block_lines.append(line)
-                if line_index < block.line_count - 1 and line.rect.x1 in cutoff_values:
-                    split_blocks.append(TextBlock(current_block_lines))
-                    cutoff_values.remove(line.rect.x1)
-                    current_block_lines = []
-            if current_block_lines:
-                split_blocks.append(TextBlock(current_block_lines))
-                current_block_lines = []
-            if (
-                block.is_terminated_by_line
-            ):  # If block was terminated by a line, populate the flag to the last element of split_blocks.
-                split_blocks[-1].is_terminated_by_line = True
-        return split_blocks
+    depth_interval_zones = pair.sidebar.get_interval_zone()
+    # affinities can differ depending on sidebar type
+    affinity_scores = pair.sidebar.dp_weighted_affinities(affinities)
+    dp = IntervalToLinesDP(depth_interval_zones, description_lines, affinity_scores)
+    _, mapping = dp.solve(pair.sidebar.dp_scoring_fn)
+
+    return pair.sidebar.post_processing(mapping)  # different post processing is needed depending on sidebar type
+
+
+def get_pairs_based_on_line_affinity(
+    description_lines: list[TextLine], affinities: list[Affinity]
+) -> list[IntervalBlockPair]:
+    """Based on the line affinity, group the description lines into blocks.
+
+    The grouping is done based on the presence of geometric lines, the indentation of lines
+    and the vertical spacing between lines.
+
+    Args:
+        description_lines (list[TextLine]): The text lines to group into blocks.
+        affinities (list[Affinity]): the affinity between each line pair, previously computed.
+
+    Returns:
+        list[IntervalBlockPair]: A list of objects containing the description lines without any interval.
+    """
+    pairs = []
+    prev_block_idx = 0
+    for line_idx, affinity in enumerate(affinities):
+        if affinity.total_affinity() < 0.0:  # note: the affinity of the first line is always 0.0
+            pairs.append(IntervalBlockPair(None, TextBlock(description_lines[prev_block_idx:line_idx])))
+            prev_block_idx = line_idx
+
+    pairs.append(IntervalBlockPair(None, TextBlock(description_lines[prev_block_idx:])))
+    return pairs

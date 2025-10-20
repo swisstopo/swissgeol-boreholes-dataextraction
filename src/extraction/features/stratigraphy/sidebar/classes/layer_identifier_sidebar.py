@@ -4,16 +4,15 @@ import logging
 from dataclasses import dataclass
 
 import numpy as np
-import pymupdf
 
-from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.geometry.util import y_overlap_significant_smallest
 from extraction.features.utils.text.textblock import TextBlock
 from extraction.features.utils.text.textline import TextLine
+from extraction.features.utils.text.textline_affinity import Affinity
 
 from ...base.sidebar_entry import LayerIdentifierEntry
 from ...interval.a_to_b_interval_extractor import AToBIntervalExtractor
-from ...interval.interval import IntervalBlockGroup, IntervalBlockPair
+from ...interval.interval import IntervalBlockPair, IntervalZone
 from ...interval.partitions_and_sublayers import (
     get_optimal_intervals_with_text,
 )
@@ -33,50 +32,97 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
 
     entries: list[LayerIdentifierEntry]
 
-    def identify_groups(
-        self,
-        description_lines: list[TextLine],
-        geometric_lines: list[Line],
-        material_description_rect: pymupdf.Rect,
-        **params,
-    ) -> list[IntervalBlockGroup]:
-        """Divide the description lines into blocks based on the layer identifier entries.
-
-        Args:
-            description_lines (list[TextLine]): A list of text lines that are part of the description.
-            geometric_lines (list[Line]): A list of geometric lines that are part of the description.
-            material_description_rect (pymupdf.Rect): The bounding box of the material description.
-            params (dict): A dictionary of relevant parameters.
+    def get_interval_zone(self) -> list[IntervalZone]:
+        """Get the interval zones defined by the sidebar entries.
 
         Returns:
-            list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
+            list[IntervalZone]: A list of interval zones.
         """
-        blocks = []
-        line_index = 0
-        # skip the first layer identifier, and use None for the last block
-        for next_layer_identifier in self.entries[1:] + [None]:
-            matched_block = self.matching_blocks(description_lines, line_index, next_layer_identifier)
-            line_index += sum([len(block.lines) for block in matched_block])
-            blocks.extend(matched_block)
+        if not self.entries:
+            return []
+        zones = [
+            IntervalZone(entry.rect, next_entry.rect, entry)
+            for entry, next_entry in zip(self.entries, self.entries[1:], strict=False)
+        ]
+        return zones + [IntervalZone(self.entries[-1].rect, None, self.entries[-1])]  # last one is open-ended
 
+    @staticmethod
+    def dp_scoring_fn(interval_zone: IntervalZone, line: TextLine) -> float:
+        """Scoring function for dynamic programming matching of description lines to interval zones.
+
+        The score equals a base score if the line is located within the interval zone, zero otherwise.
+
+        Args:
+            interval_zone (IntervalZone): The interval zone to score against.
+            line (TextLine): The text line to score.
+
+        Returns:
+            float: The score for the given interval zone and text line.
+        """
+        base_score = 3.0
+        start_top = interval_zone.start.y0 if interval_zone.start else None
+        end_top = interval_zone.end.y0 if interval_zone.end else None
+        line_mid = (line.rect.y0 + line.rect.y1) / 2
+        if (start_top is None or line_mid > start_top) and (end_top is None or line_mid < end_top):
+            return base_score  # textline is inside the depth interval
+        return 0.0
+
+    @staticmethod
+    def dp_weighted_affinities(affinities: list[Affinity]) -> list[float]:
+        """Returns the weighted affinity used for dynamic programming, with the weights specific to AAboveBSidebar.
+
+        As many headers are underlined, lines should not be used as separators too much with LayerIdentifierSidebars.
+
+        Args:
+            affinities(list[Affinity]): the affinities between each description lines
+        Return:
+            list[float] : the weighted sum of the affinities.
+        """
+        return [affinity.weighted_affinity(0.2, 0.2, 1.0, 0.5) for affinity in affinities]
+
+    def post_processing(self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]):
+        """Post-process the matched interval zones and description lines into IntervalBlockPairs.
+
+        For LayerIdentifierSidebars, we extract depth information from the text blocks because the depth is not
+        contained in the sidebar entries.
+
+        Args:
+            interval_lines_mapping (list[tuple[IntervalZone, list[TextLine]]]): The matched interval zones and
+                description lines.
+
+        Returns:
+            list[IntervalBlockPair]: The processed interval block pairs.
+        """
+        blocks = [TextBlock(lines) for zone, lines in interval_lines_mapping if lines]
+        return self.create_pairs_from_layer_identifier_blocks(blocks)
+
+    def create_pairs_from_layer_identifier_blocks(self, blocks: list[TextBlock]) -> list[IntervalBlockPair]:
+        """From the identified TextBlocks, extract depth information in the text and create IntervalBlockPairs.
+
+        For each TextBlock, depth intervals are extracted from the text lines. Further post-processing is applied to
+        remove headers and clean the text blocks.
+
+        Args:
+            blocks (list[TextBlock]): The list of text blocks to process.
+
+        Returns:
+            list[IntervalBlockPair]: The processed interval block pairs.
+        """
         result = []
-        provisional_groups = []
+        provisional_pairs = []
         last_end_depth = None
         for block in blocks:
             block_lines_header = self._get_header(block)  # Get the header lines from the block
 
-            interval_block_pairs = AToBIntervalExtractor.from_material_description_lines(block.lines)
+            interval_block_pairs = self._extract_intervals_from_lines(block.lines)
             interval_block_pairs = get_optimal_intervals_with_text(interval_block_pairs)
 
             ignored_lines = block_lines_header if self._ignore_header(block_lines_header, interval_block_pairs) else []
-
-            new_groups = [
-                IntervalBlockGroup(
-                    depth_intervals=[pair.depth_interval],
-                    blocks=[self._clean_block(pair.block, ignored_lines)],
-                )
+            interval_block_pairs = [
+                IntervalBlockPair(pair.depth_interval, self._clean_block(pair.block, ignored_lines))
                 for pair in interval_block_pairs
             ]
+
             if (
                 interval_block_pairs
                 and interval_block_pairs[0].depth_interval
@@ -85,9 +131,9 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
                 new_start_depth = interval_block_pairs[0].depth_interval.start.value
                 if new_start_depth != last_end_depth:
                     # only use this group without depth indications if the depths are discontinued
-                    result.extend(provisional_groups)
-                result.extend(new_groups)
-                provisional_groups = []
+                    result.extend(provisional_pairs)
+                result.extend(interval_block_pairs)
+                provisional_pairs = []
                 last_end_depth = (
                     interval_block_pairs[-1].depth_interval.end.value
                     if interval_block_pairs[-1].depth_interval.end
@@ -98,10 +144,68 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
                 # does not match the end of the last interval.
                 # Like this, we avoid including headers such as "6) Retrait würmien" as a separate layer, even when
                 # they have their own indicator in the profile.
-                provisional_groups.extend(new_groups)
-        result.extend(provisional_groups)
+                provisional_pairs.extend(interval_block_pairs)
+        result.extend(provisional_pairs)
 
         return result
+
+    def _extract_intervals_from_lines(self, lines: list[TextLine]) -> list[IntervalBlockPair]:
+        """Extract depth interval from text lines from a material description.
+
+        For borehole profiles using the Deriaz layout, depth intervals are typically embedded within the material
+        description text. These descriptions often further subdivide into multiple sublayers, each with its own
+        distinct depth interval. This function extracts all such depth intervals found in the description, along with
+        their corresponding text blocks. Decisions about which intervals to keep or discard are handled by downstream
+        processing.
+        For example (from GeoQuat 12306):
+            1) REMBLAIS HETEROGENES
+               0.00 - 0.08 m : Revêtement bitumineux
+               0.08- 0.30 m : Grave d'infrastructure
+               0.30 - 1.40 m : Grave dans importante matrice de sable
+                               moyen, brun beige, pulvérulent.
+        From this material description, this method will extract all depth intervals.
+
+        Args:
+            lines (list[TextLine]): The lines to extract the depth interval from.
+
+        Returns:
+            list[IntervalBlockPair]: a list of interval-block-pairs that can be extracted from the given lines
+        """
+        entries = []
+        current_block = []
+        current_interval = None
+        start_depth = None
+        prev_line = None
+        prev_interval = None
+        for idx, line in enumerate(lines):
+            a_to_b_interval, line_without_depths = AToBIntervalExtractor.from_text(line, require_start_of_string=False)
+            # First line of the block is stripped of its (potential) leading depths
+            final_line = line if idx != 0 else line_without_depths
+            if prev_line and not a_to_b_interval and not prev_interval:
+                # if depth was not found in the previous and current lines, we look for a depth wrapping arround.
+                combined_lines = TextLine(prev_line.words + line.words)
+                a_to_b_interval, _ = AToBIntervalExtractor.from_text(combined_lines, require_start_of_string=False)
+            prev_interval = a_to_b_interval
+            prev_line = line
+            # require_start_of_string = False because the depth interval may not always start at the beginning
+            # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
+            if a_to_b_interval:
+                # We assume that the first depth encountered is the start depth, and we reject further depth values
+                # smaller than this first one. This avoids some false positives (e.g. GeoQuat 3339.pdf).
+                if not start_depth:
+                    start_depth = a_to_b_interval.start.value
+                if a_to_b_interval.start.value >= start_depth:
+                    if current_interval:
+                        entries.append(IntervalBlockPair(current_interval, TextBlock(current_block)))
+                        current_block = []
+                        final_line = line_without_depths  # start of a new depth block, strip leading depth
+                    current_interval = a_to_b_interval
+            if final_line and final_line.words:
+                current_block.append(final_line)
+        if current_block:
+            entries.append(IntervalBlockPair(current_interval, TextBlock(current_block)))
+
+        return entries
 
     def _get_header(self, block: TextBlock) -> list[TextLine]:
         """Get the header lines from a block.
@@ -184,35 +288,3 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
 
         # Only keep lines that have words remaining after filtering
         return TextBlock([TextLine(words) for words in new_word_lists if words])
-
-    @staticmethod
-    def matching_blocks(
-        all_lines: list[TextLine], line_index: int, next_layer_identifier: LayerIdentifierEntry | None
-    ) -> list[TextBlock]:
-        """Adds lines to a block until the next layer identifier is reached.
-
-        Args:
-            all_lines (list[TextLine]): All TextLine objects constituting the material description.
-            line_index (int): The index of the last line that is already assigned to a block.
-            next_layer_identifier (TextLine | None): The next layer identifier.
-
-        Returns:
-            list[TextBlock]: The next block or an empty list if no lines are added.
-        """
-        y1_threshold = None
-        if next_layer_identifier:
-            next_interval_start_rect = next_layer_identifier.rect
-            y1_threshold = next_interval_start_rect.y0 + next_interval_start_rect.height / 2
-
-        matched_lines = []
-
-        for current_line in all_lines[line_index:]:
-            if y1_threshold is None or current_line.rect.y1 < y1_threshold:
-                matched_lines.append(current_line)
-            else:
-                break
-
-        if matched_lines:
-            return [TextBlock(matched_lines)]
-        else:
-            return []

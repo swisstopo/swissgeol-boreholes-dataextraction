@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
+import math
 import statistics
 from dataclasses import dataclass, field
 from itertools import product
 
 import numpy as np
-import pymupdf
 
-from extraction.features.stratigraphy.interval.interval import AAboveBInterval, IntervalBlockGroup
-from extraction.features.utils.geometry.geometry_dataclasses import Line
-from extraction.features.utils.text.find_description import get_description_blocks
+from extraction.features.stratigraphy.interval.interval import AAboveBInterval, IntervalZone
 from extraction.features.utils.text.textline import TextLine
+from extraction.features.utils.text.textline_affinity import Affinity
 
 from ...base.sidebar_entry import DepthColumnEntry
 from .sidebar import Sidebar
@@ -56,14 +55,9 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         Returns:
             list[AAboveBInterval]: A list of depth intervals.
         """
-        depth_intervals = [AAboveBInterval(None, self.entries[0])]
+        depth_intervals = [] if self.entries[0].value == 0.0 else [AAboveBInterval(None, self.entries[0])]
         for i in range(len(self.entries) - 1):
             depth_intervals.append(AAboveBInterval(self.entries[i], self.entries[i + 1]))
-        depth_intervals.append(
-            AAboveBInterval(self.entries[len(self.entries) - 1], None)
-        )  # even though no open ended intervals are allowed, they are still useful for matching,
-        # especially for documents where the material description rectangle is too tall
-        # (and includes additional lines below the actual material descriptions).
         return depth_intervals
 
     @staticmethod
@@ -181,82 +175,58 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
 
         return [AAboveBSidebar(segment, self.skipped_entries) for segment in segments]
 
-    def identify_groups(
-        self,
-        description_lines: list[TextLine],
-        geometric_lines: list[Line],
-        material_description_rect: pymupdf.Rect,
-        **params,
-    ) -> list[IntervalBlockGroup]:
-        """Identifies groups of description blocks that correspond to depth intervals.
-
-        Note: includes a heuristic of whether there should be a group corresponding to a final depth interval
-        starting from the last depth entry without any end value.
-
-        Args:
-            description_lines (list[TextLine]): A list of text lines that are part of the description.
-            geometric_lines (list[Line]): A list of geometric lines that are part of the description.
-            material_description_rect (pymupdf.Rect): The bounding box of the material description.
-            params (dict): A dictionary of relevant parameters.
+    def get_interval_zone(self):
+        """Get the interval zones defined by the sidebar entries.
 
         Returns:
-            list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
-
-        Example return value:
-            [
-                IntervalBlockGroup(
-                    depth_intervals=[AAboveBInterval(None, 0.1), AAboveBInterval(0.1, 0.3), ...],
-                    blocks=[TextBlock(...), TextBlock(...), ...]
-                ),
-                IntervalBlockGroup(
-                    depth_intervals=[AAboveBInterval(0.3, 0.7)],
-                    blocks=[TextBlock(...), TextBlock(...), ...]
-                ),
-                ...
-            ]
+            list[IntervalZone]: A list of interval zones.
         """
-        depth_intervals = self.depth_intervals()
+        return [
+            IntervalZone(
+                interval.start.rect if interval.start else None, interval.end.rect if interval.end else None, interval
+            )
+            for interval in self.depth_intervals()
+        ]
 
-        groups = []
+    @staticmethod
+    def dp_scoring_fn(interval_zone: IntervalZone, line: TextLine) -> float:
+        """Scoring function for dynamic programming matching of description lines to AAboveBInterval zones.
 
-        current_intervals = []
-        current_blocks = []
-        all_blocks = get_description_blocks(
-            description_lines,
-            geometric_lines,
-            material_description_rect,
-            params["block_line_ratio"],
-            left_line_length_threshold=params["left_line_length_threshold"],
-            target_layer_count=len(depth_intervals),
-        )
+        Adds a bonus if the line falls completely inside the interval zone, and a bonus based on how close
+        the line is to the middle of the interval zone.
 
-        block_index = 0
+        Args:
+            interval_zone (IntervalZone): The interval zone to score against.
+            line (TextLine): The text line to score.
 
-        for interval in depth_intervals:
-            # don't allow a layer above depth 0
-            if interval.start is None and interval.end.value == 0:
-                continue
+        Returns:
+            float: The score for the given interval zone and text line.
+        """
+        start_mid = ((interval_zone.start.y0 + interval_zone.start.y1) / 2) if interval_zone.start else None
+        end_mid = ((interval_zone.end.y0 + interval_zone.end.y1) / 2) if interval_zone.end else None
+        falls_inside_bonus = 0.0
+        if (start_mid is None or line.rect.y0 > start_mid) and (end_mid is None or line.rect.y1 < end_mid):
+            falls_inside_bonus = 1.0  # textline is inside the depth interval
 
-            pre, exact, post = interval.matching_blocks(all_blocks, block_index, params["min_block_clearance"])
-            block_index += len(pre) + len(exact) + len(post)
+        if not (interval_zone.end and interval_zone.start):
+            return falls_inside_bonus  # only consider if the text is alligned with the interval for start and end.
 
-            current_blocks.extend(pre)
-            if len(exact):
-                if len(current_intervals) > 0 or len(current_blocks) > 0:
-                    groups.append(IntervalBlockGroup(depth_intervals=current_intervals, blocks=current_blocks))
-                groups.append(IntervalBlockGroup(depth_intervals=[interval], blocks=exact))
-                current_blocks = post
-                current_intervals = []
-            else:
-                # The final open-ended interval should not be added, since borehole profiles do typically not come
-                # with open-ended intervals.
-                if interval.end is not None:
-                    current_intervals.append(interval)
+        mid_zone = (interval_zone.end.y0 + interval_zone.start.y1) / 2
+        line_mid = (line.rect.y0 + line.rect.y1) / 2
+        close_to_mid_zone_bonus = math.exp(-(abs(mid_zone - line_mid) / 30.0))  # 1 -> 0
+        # close_to_mid_zone_bonus = max(-1.0, 1.0 - abs(mid_zone - line_mid) / 100.0)  # even results
+        return (close_to_mid_zone_bonus + falls_inside_bonus) / 2  # mean between the two is a good tradeoff.
 
-        if len(current_intervals) > 0 or len(current_blocks) > 0:
-            groups.append(IntervalBlockGroup(depth_intervals=current_intervals, blocks=current_blocks))
+    @staticmethod
+    def dp_weighted_affinities(affinities: list[Affinity]) -> list[float]:
+        """Returns the weighted affinity used for dynamic programming, with the weights specific to AAboveBSidebar.
 
-        return groups
+        Args:
+            affinities(list[Affinity]): the affinities between each description lines
+        Return:
+            list[float] : the weighted sum of the affinities.
+        """
+        return [affinity.weighted_affinity(2.0, 1.0, 1.0, 1.0) for affinity in affinities]
 
 
 def generate_alternatives(value: float) -> list[float]:

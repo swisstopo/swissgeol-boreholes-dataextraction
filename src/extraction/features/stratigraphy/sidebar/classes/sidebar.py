@@ -9,12 +9,13 @@ from typing import Generic, TypeVar
 import pymupdf
 import rtree
 
-from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.geometry.util import x_overlap_significant_smallest
+from extraction.features.utils.text.textblock import TextBlock
 from extraction.features.utils.text.textline import TextLine
+from extraction.features.utils.text.textline_affinity import Affinity
 
 from ...base.sidebar_entry import SidebarEntry
-from ...interval.interval import IntervalBlockGroup
+from ...interval.interval import IntervalBlockPair, IntervalZone
 
 EntryT = TypeVar("EntryT", bound=SidebarEntry)
 
@@ -63,25 +64,33 @@ class Sidebar(abc.ABC, Generic[EntryT]):
         return min([rect.x1 for rect in self.rects()])
 
     @abc.abstractmethod
-    def identify_groups(
-        self,
-        description_lines: list[TextLine],
-        geometric_lines: list[Line],
-        material_description_rect: pymupdf.Rect,
-        **params,
-    ) -> list[IntervalBlockGroup]:
-        """Identifies groups of description blocks that correspond to depth intervals.
+    def get_interval_zone(self) -> list[IntervalZone]:
+        """Get the interval zones defined by the sidebar entries."""
+        pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def dp_scoring_fn(interval_zone: IntervalZone, line: TextLine) -> float:
+        """Scoring function for dynamic programming matching of description lines to interval zones."""
+        pass
+
+    @staticmethod
+    def dp_weighted_affinities(affinities: list[Affinity]) -> list[float]:
+        """Returns the weighted affinity used for dynamic programming, with the weights specific to each sidebar.
 
         Args:
-            description_lines (list[TextLine]): A list of text lines that are part of the description.
-            geometric_lines (list[Line]): A list of geometric lines that are part of the description.
-            material_description_rect (pymupdf.Rect): The bounding box of the material description.
-            params (dict): A dictionary of relevant parameters.
+            affinities(list[Affinity]): the affinities between each description lines
 
-        Returns:
-            list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
+        Return:
+            list[float] : the weighted sum of the affinities.
         """
-        pass
+        return [affinity.total_affinity() for affinity in affinities]
+
+    def post_processing(
+        self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]
+    ) -> list[IntervalBlockPair]:
+        """Post-process the matched interval zones and description lines into IntervalBlockPairs."""
+        return [IntervalBlockPair(zone.related_interval, TextBlock(lines)) for zone, lines in interval_lines_mapping]
 
 
 @dataclass

@@ -5,10 +5,10 @@ import re
 from extraction.features.utils.text.textline import TextWord
 
 from ...base.sidebar_entry import DepthColumnEntry
+from ...interval.depth_column_entry_extractor import DepthColumnEntryExtractor
 from ...interval.interval import AToBInterval
 from ..classes.a_to_b_sidebar import AToBSidebar
 from ..utils.cluster import Cluster
-from .depth_column_entry_extractor import DepthColumnEntryExtractor
 
 
 class AToBSidebarExtractor:

@@ -6,11 +6,11 @@ import rtree
 from extraction.features.utils.text.textline import TextWord
 
 from ...base.sidebar_entry import DepthColumnEntry
+from ...interval.depth_column_entry_extractor import DepthColumnEntryExtractor
 from ..classes.a_above_b_sidebar import AAboveBSidebar
 from ..classes.sidebar import SidebarNoise, noise_count
 from ..utils.a_above_b_sidebar_validator import AAboveBSidebarValidator
 from ..utils.cluster import Cluster
-from .depth_column_entry_extractor import DepthColumnEntryExtractor
 
 
 class AAboveBSidebarExtractor:
