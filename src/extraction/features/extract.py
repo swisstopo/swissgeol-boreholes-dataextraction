@@ -48,7 +48,6 @@ from extraction.features.utils.text.textblock import (
     MaterialDescription,
     MaterialDescriptionLine,
     TextBlock,
-    block_distance,
 )
 from extraction.features.utils.text.textline import TextLine
 
@@ -108,9 +107,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         if material_description_rect_without_sidebar:
             material_descriptions_sidebar_pairs.append(
                 MaterialDescriptionRectWithSidebar(
-                    sidebar=None,
-                    material_description_rect=material_description_rect_without_sidebar,
-                    lines=self.lines
+                    sidebar=None, material_description_rect=material_description_rect_without_sidebar, lines=self.lines
                 )
             )
 
@@ -130,10 +127,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
         )
         return [borehole for borehole in boreholes if len(borehole.predictions) >= self.params["min_num_layers"]]
 
-
     def _filter_by_table_criteria(
-        self,
-        pairs: list[MaterialDescriptionRectWithSidebar]
+        self, pairs: list[MaterialDescriptionRectWithSidebar]
     ) -> list[MaterialDescriptionRectWithSidebar]:
         """Filter pairs based on table containment and width requirements."""
         if not self.table_structures:
@@ -154,23 +149,18 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         return filtered
 
-
     def _filter_by_intersections(
-        self,
-        pairs: list[MaterialDescriptionRectWithSidebar]
+        self, pairs: list[MaterialDescriptionRectWithSidebar]
     ) -> list[MaterialDescriptionRectWithSidebar]:
         """Remove pairs that intersect with higher-scoring pairs."""
         if not pairs:
-                return []
+            return []
 
         kept_pairs = []
 
         for pair in pairs:
             # Check if this pair intersects with any already-kept (higher-scoring) pair
-            has_conflict = any(
-                self._pairs_intersect(pair, kept_pair) 
-                for kept_pair in kept_pairs
-            )
+            has_conflict = any(self._pairs_intersect(pair, kept_pair) for kept_pair in kept_pairs)
 
             # Only keep if no conflicts found
             if not has_conflict:
@@ -179,27 +169,23 @@ class MaterialDescriptionRectWithSidebarExtractor:
         return kept_pairs
 
     def _pairs_intersect(self, pair1, pair2) -> bool:
-            """Check if two pairs have any intersecting rectangles."""
-            mat1, mat2 = pair1.material_description_rect, pair2.material_description_rect
-            side1 = pair1.sidebar.rect if pair1.sidebar else None
-            side2 = pair2.sidebar.rect if pair2.sidebar else None
+        """Check if two pairs have any intersecting rectangles."""
+        mat1, mat2 = pair1.material_description_rect, pair2.material_description_rect
+        side1 = pair1.sidebar.rect if pair1.sidebar else None
+        side2 = pair2.sidebar.rect if pair2.sidebar else None
 
-            # Material rects always exist
-            if mat1.intersects(mat2):
-                return True
+        # Material rects always exist
+        if mat1.intersects(mat2):
+            return True
 
-            # Check material with opposite sidebar
-            if side2 and mat1.intersects(side2):
-                return True
-            if side1 and mat2.intersects(side1):
-                return True
+        # Check material with opposite sidebar
+        if side2 and mat1.intersects(side2):
+            return True
+        if side1 and mat2.intersects(side1):
+            return True
 
-            # Check both sidebars
-            if side1 and side2 and side1.intersects(side2):
-                return True
-
-            return False
-
+        # Check both sidebars
+        return bool(side1 and side2 and side1.intersects(side2))
 
     def _create_borehole_from_pair(self, pair: MaterialDescriptionRectWithSidebar) -> ExtractedBorehole:
         bounding_boxes = PageBoundingBoxes.from_material_description_rect_with_sidebar(pair, self.page_number)
