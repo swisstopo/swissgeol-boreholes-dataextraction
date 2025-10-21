@@ -48,9 +48,35 @@ class Affinity:
             + right_end_weight * self.right_end_affinity
         )
 
+    def weighted_mean_affinity(
+        self, line_weight: float, left_line_weight: float, spacing_weight: float, right_end_weight: float
+    ) -> float:
+        """Compute the weighted affinity using the provided weights."""
+        tot_weight = line_weight + left_line_weight + spacing_weight + right_end_weight
+        return self.weighted_affinity(line_weight, left_line_weight, spacing_weight, right_end_weight) / tot_weight
+
     def total_affinity(self) -> float:
         """Compute the total affinity with equal weights."""
         return self.weighted_affinity(1.0, 1.0, 1.0, 1.0)
+
+    def min(self):
+        return min(
+            self.long_lines_affinity,
+            self.lines_on_the_left_affinity,
+            self.vertical_spacing_affinity,
+            self.right_end_affinity,
+        )
+
+    def min_weighted(
+        self, line_weight: float, left_line_weight: float, spacing_weight: float, right_end_weight: float
+    ) -> float:
+        pairs = (
+            (line_weight, self.long_lines_affinity),
+            (left_line_weight, self.lines_on_the_left_affinity),
+            (spacing_weight, self.vertical_spacing_affinity),
+            (right_end_weight, self.right_end_affinity),
+        )
+        return min(weight * affinity for weight, affinity in pairs)
 
 
 class LineAffinityCalculator:
@@ -191,7 +217,11 @@ class LineAffinityCalculator:
         """
         current_rect = current_line.rect
         previous_rect = previous_line.rect
-        return max(-1.0, 1.0 - (current_rect.y1 - previous_rect.y1) / current_rect.height)
+        # score = max(-1.0, min(0.0, 1.0 - (current_rect.y1 - previous_rect.y1) / current_rect.height))
+        score = max(-1.0, 1.0 - (current_rect.y1 - previous_rect.y1) / current_rect.height)  # not capped at 0
+        # gap_penalty = -1 if current_rect.y0 - previous_rect.y1 > 0.0 else 0.0
+        # return (score + gap_penalty) / 2
+        return score
 
     def compute_right_end_affinity(self, previous_line: TextLine, current_line: TextLine) -> float:
         """Check the alignment of the right end of the lines.

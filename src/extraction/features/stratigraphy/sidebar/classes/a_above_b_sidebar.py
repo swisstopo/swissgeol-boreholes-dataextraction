@@ -226,7 +226,11 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         Return:
             list[float] : the weighted sum of the affinities.
         """
-        return [affinity.weighted_affinity(2.0, 1.0, 1.0, 1.0) for affinity in affinities]
+        affinity_importance = 5.0
+        return [affinity_importance * affinity.weighted_mean_affinity(2.0, 1.0, 1.0, 1.0) for affinity in affinities]
+
+        # good idea below
+        return [affinity.min_weighted(2.0, 1.5, 1.2, 0.0) for affinity in affinities]
 
 
 def generate_alternatives(value: float) -> list[float]:
