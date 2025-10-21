@@ -19,6 +19,7 @@ from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
     GroundwaterLevelExtractor,
 )
+from extraction.features.metadata.borehole_name_extraction import NameInDocument, extract_borehole_names
 from extraction.features.metadata.metadata import FileMetadata, MetadataInDocument
 from extraction.features.predictions.borehole_predictions import BoreholePredictions
 from extraction.features.predictions.file_predictions import FilePredictions
@@ -48,6 +49,7 @@ logger = logging.getLogger(__name__)
 
 matching_params = read_params("matching_params.yml")
 line_detection_params = read_params("line_detection_params.yml")
+name_detection_params = read_params("name_detection_params.yml")
 
 
 def common_options(f):
@@ -304,8 +306,9 @@ def start_pipeline(
             metadata = MetadataInDocument.from_document(doc, file_metadata.language)
 
             # Save the predictions to the overall predictions object, initialize common variables
-            boreholes_per_page = []
             all_groundwater_entries = GroundwaterInDocument([], filename)
+            all_name_entries = NameInDocument([], filename)
+            boreholes_per_page = []
 
             if part != "all":
                 continue
@@ -316,6 +319,8 @@ def start_pipeline(
 
                 text_lines = extract_text_lines(page)
                 geometric_lines = extract_lines(page, line_detection_params)
+                name_entries = extract_borehole_names(text_lines, name_detection_params)
+                all_name_entries.name_feature_list.extend(name_entries)
 
                 # Detect table structures on the page
                 structure_lines = detect_structure_lines(geometric_lines)
@@ -377,6 +382,7 @@ def start_pipeline(
                 layers_with_bb_in_document=layers_with_bb_in_document,
                 file_name=filename,
                 groundwater_in_doc=all_groundwater_entries,
+                names_in_doc=all_name_entries,
                 elevations_list=metadata.elevations,
                 coordinates_list=metadata.coordinates,
             ).build()
