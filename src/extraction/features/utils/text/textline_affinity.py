@@ -106,6 +106,10 @@ class LineAffinityCalculator:
             if line.rect.y0 > prev_line.rect.y0 + prev_line.rect.height / 2
         ]
         self.spacing_threshold = min(distances) * 1.15 if distances else None
+        self.at_least_one_overlap = any(
+            line.rect.y0 - prev_line.rect.y1 < 0.0
+            for prev_line, line in zip(description_lines, description_lines[1:], strict=False)
+        )
 
     def _is_spanning_description(self, line: Line) -> bool:
         """Check if a line spans the material description rectangle.
@@ -203,7 +207,8 @@ class LineAffinityCalculator:
         current_rect = current_line.rect
         previous_rect = previous_line.rect
         # score = max(-1.0, min(0.0, 1.0 - (current_rect.y1 - previous_rect.y1) / current_rect.height))
-        score = max(-1.0, 1.0 - (current_rect.y1 - previous_rect.y1) / current_rect.height)  # not capped at 0
+        h_reference = current_rect.height if self.at_least_one_overlap else self.spacing_threshold
+        score = max(-1.0, 1.0 - (current_rect.y1 - previous_rect.y1) / h_reference)  # not capped at 0
         # gap_penalty = -1 if current_rect.y0 - previous_rect.y1 > 0.0 else 0.0
         # return (score + gap_penalty) / 2
         return score
