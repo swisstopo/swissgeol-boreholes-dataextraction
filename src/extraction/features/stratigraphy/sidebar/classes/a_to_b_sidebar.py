@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 from extraction.features.stratigraphy.interval.interval import AToBInterval, IntervalBlockPair, IntervalZone
 from extraction.features.stratigraphy.interval.partitions_and_sublayers import (
@@ -27,6 +28,8 @@ class AToBSidebar(Sidebar[AToBInterval]):
     """
 
     entries: list[AToBInterval]
+
+    kind: ClassVar[str] = "a_to_b"
 
     def __repr__(self):
         """Converts the object to a string.
@@ -122,7 +125,8 @@ class AToBSidebar(Sidebar[AToBInterval]):
     def dp_scoring_fn(interval_zone: IntervalZone, line: TextLine) -> float:
         """Scoring function for dynamic programming matching of description lines to AToBInterval zones.
 
-        The score equals a base score if the line is located within the interval zone, zero otherwise.
+        The score is 1.0 if the line is located within the interval zone, 0.0 otherwise.
+        For AtoB sidebar, the zone begins and ends at the top of each rectangle bounds.
 
         Args:
             interval_zone (IntervalZone): The interval zone to score against.
@@ -131,13 +135,11 @@ class AToBSidebar(Sidebar[AToBInterval]):
         Returns:
             float: The score for the given interval zone and text line.
         """
-        # higher base, more confidence that idiidual pairing is correct (less consideration for line affinity)
-        base_score = 2.0
         start_top = interval_zone.start.y0 if interval_zone.start else None
         end_top = interval_zone.end.y0 if interval_zone.end else None
         line_mid = (line.rect.y0 + line.rect.y1) / 2
         if (start_top is None or line_mid > start_top) and (end_top is None or line_mid < end_top):
-            return base_score  # textline is inside the depth interval
+            return 1.0  # textline is inside the depth interval
         return 0.0
 
     def get_interval_zone(self) -> list[IntervalZone]:

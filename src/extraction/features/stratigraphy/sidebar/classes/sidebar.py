@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import abc
 from dataclasses import dataclass, field
-from typing import Generic, TypeVar
+from typing import ClassVar, Generic, TypeVar
 
 import pymupdf
 import rtree
@@ -13,11 +13,14 @@ from extraction.features.utils.geometry.util import x_overlap_significant_smalle
 from extraction.features.utils.text.textblock import TextBlock
 from extraction.features.utils.text.textline import TextLine
 from extraction.features.utils.text.textline_affinity import Affinity
+from utils.file_utils import read_params
 
 from ...base.sidebar_entry import SidebarEntry
 from ...interval.interval import IntervalBlockPair, IntervalZone
 
 EntryT = TypeVar("EntryT", bound=SidebarEntry)
+
+matching_params = read_params("matching_params.yml")
 
 
 @dataclass
@@ -35,6 +38,7 @@ class Sidebar(abc.ABC, Generic[EntryT]):
 
     entries: list[EntryT]
     skipped_entries: list[EntryT] = field(default_factory=list)
+    kind: ClassVar[str] = "base_sidebar"
 
     @property
     def all_entries(self):
@@ -74,17 +78,12 @@ class Sidebar(abc.ABC, Generic[EntryT]):
         """Scoring function for dynamic programming matching of description lines to interval zones."""
         pass
 
-    @staticmethod
-    def dp_weighted_affinities(affinities: list[Affinity]) -> list[float]:
-        """Returns the weighted affinity used for dynamic programming, with the weights specific to each sidebar.
-
-        Args:
-            affinities(list[Affinity]): the affinities between each description lines
-
-        Return:
-            list[float] : the weighted sum of the affinities.
-        """
-        return [affinity.total_affinity() for affinity in affinities]
+    def dp_weighted_affinities(self, affinities: list[Affinity]) -> list[float]:
+        """Returns the weighted affinity used for dynamic programming, with the weights specific to each sidebar."""
+        affinity_params = matching_params["affinity_params"][self.kind]
+        affinity_importance = affinity_params["importance"]
+        weights = affinity_params["weights"]
+        return [affinity_importance * affinity.weighted_mean_affinity(**weights) for affinity in affinities]
 
     def post_processing(
         self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]

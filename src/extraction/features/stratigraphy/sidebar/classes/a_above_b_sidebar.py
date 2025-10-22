@@ -6,12 +6,12 @@ import math
 import statistics
 from dataclasses import dataclass, field
 from itertools import product
+from typing import ClassVar
 
 import numpy as np
 
 from extraction.features.stratigraphy.interval.interval import AAboveBInterval, IntervalZone
 from extraction.features.utils.text.textline import TextLine
-from extraction.features.utils.text.textline_affinity import Affinity
 
 from ...base.sidebar_entry import DepthColumnEntry
 from .sidebar import Sidebar
@@ -35,6 +35,8 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
 
     entries: list[DepthColumnEntry]
     skipped_entries: list[DepthColumnEntry] = field(default_factory=list)
+
+    kind: ClassVar[str] = "a_above_b"
 
     def __repr__(self):
         return "AAboveBSidebar({})".format(", ".join([str(entry) for entry in self.entries]))
@@ -192,15 +194,18 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
     def dp_scoring_fn(interval_zone: IntervalZone, line: TextLine) -> float:
         """Scoring function for dynamic programming matching of description lines to AAboveBInterval zones.
 
-        Adds a bonus if the line falls completely inside the interval zone, and a bonus based on how close
-        the line is to the middle of the interval zone.
+        The score ranges from 1.0 to 0.0 and is composed of two parts.
+        A first part that ranges from 0.5 to 0.0, based on how close the line is to the middle of the interval zone.
+        And a bonus of 0.5 if the line falls completely inside the interval zone. For AaboveB sidebar, the zone
+        begins and ends at the middle of each rectangle bounds, and the line's rectangle must be fully contained
+        within the zone.
 
         Args:
             interval_zone (IntervalZone): The interval zone to score against.
             line (TextLine): The text line to score.
 
         Returns:
-            float: The score for the given interval zone and text line.
+            float: The score from 0 to 1, for the given interval zone and text line.
         """
         start_mid = ((interval_zone.start.y0 + interval_zone.start.y1) / 2) if interval_zone.start else None
         end_mid = ((interval_zone.end.y0 + interval_zone.end.y1) / 2) if interval_zone.end else None
@@ -214,23 +219,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         mid_zone = (interval_zone.end.y0 + interval_zone.start.y1) / 2
         line_mid = (line.rect.y0 + line.rect.y1) / 2
         close_to_mid_zone_bonus = math.exp(-(abs(mid_zone - line_mid) / 30.0))  # 1 -> 0
-        # close_to_mid_zone_bonus = max(-1.0, 1.0 - abs(mid_zone - line_mid) / 100.0)  # even results
         return (close_to_mid_zone_bonus + falls_inside_bonus) / 2  # mean between the two is a good tradeoff.
-
-    @staticmethod
-    def dp_weighted_affinities(affinities: list[Affinity]) -> list[float]:
-        """Returns the weighted affinity used for dynamic programming, with the weights specific to AAboveBSidebar.
-
-        Args:
-            affinities(list[Affinity]): the affinities between each description lines
-        Return:
-            list[float] : the weighted sum of the affinities.
-        """
-        affinity_importance = 5.0
-        return [affinity_importance * affinity.weighted_mean_affinity(2.0, 1.0, 1.0, 1.0) for affinity in affinities]
-
-        # good idea below
-        return [affinity.min_weighted(2.0, 1.5, 1.2, 0.0) for affinity in affinities]
 
 
 def generate_alternatives(value: float) -> list[float]:

@@ -2,13 +2,13 @@
 
 import logging
 from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 
 from extraction.features.utils.geometry.util import y_overlap_significant_smallest
 from extraction.features.utils.text.textblock import TextBlock
 from extraction.features.utils.text.textline import TextLine
-from extraction.features.utils.text.textline_affinity import Affinity
 
 from ...base.sidebar_entry import LayerIdentifierEntry
 from ...interval.a_to_b_interval_extractor import AToBIntervalExtractor
@@ -32,6 +32,8 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
 
     entries: list[LayerIdentifierEntry]
 
+    kind: ClassVar[str] = "layer_identifier"
+
     def get_interval_zone(self) -> list[IntervalZone]:
         """Get the interval zones defined by the sidebar entries.
 
@@ -50,7 +52,8 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
     def dp_scoring_fn(interval_zone: IntervalZone, line: TextLine) -> float:
         """Scoring function for dynamic programming matching of description lines to interval zones.
 
-        The score equals a base score if the line is located within the interval zone, zero otherwise.
+        The score is 1.0 if the line is located within the interval zone, 0.0 otherwise.
+        For layer identifier sidebar, the zone begins and ends at the top of each rectangle bounds.
 
         Args:
             interval_zone (IntervalZone): The interval zone to score against.
@@ -59,26 +62,12 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         Returns:
             float: The score for the given interval zone and text line.
         """
-        base_score = 3.0
         start_top = interval_zone.start.y0 if interval_zone.start else None
         end_top = interval_zone.end.y0 if interval_zone.end else None
         line_mid = (line.rect.y0 + line.rect.y1) / 2
         if (start_top is None or line_mid > start_top) and (end_top is None or line_mid < end_top):
-            return base_score  # textline is inside the depth interval
+            return 1.0  # textline is inside the depth interval
         return 0.0
-
-    @staticmethod
-    def dp_weighted_affinities(affinities: list[Affinity]) -> list[float]:
-        """Returns the weighted affinity used for dynamic programming, with the weights specific to AAboveBSidebar.
-
-        As many headers are underlined, lines should not be used as separators too much with LayerIdentifierSidebars.
-
-        Args:
-            affinities(list[Affinity]): the affinities between each description lines
-        Return:
-            list[float] : the weighted sum of the affinities.
-        """
-        return [affinity.weighted_affinity(0.2, 0.2, 1.0, 0.5) for affinity in affinities]
 
     def post_processing(self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]):
         """Post-process the matched interval zones and description lines into IntervalBlockPairs.
