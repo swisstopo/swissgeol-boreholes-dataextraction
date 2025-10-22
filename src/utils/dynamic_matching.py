@@ -163,14 +163,8 @@ class IntervalToLinesDP(DP):
             else:
                 break
 
-        if i != 0:
-            assert move == "left"
+        if move == "left":
             mapping[i - 1].reverse()
-
-        # assign remaining lines to first interval
-        assert j == 0  # all first moves should be left, thanks to the -inf top row
-        for k in range(j):
-            mapping[0].insert(0, k)
 
         mapping = OrderedDict(reversed(list(mapping.items())))
 
