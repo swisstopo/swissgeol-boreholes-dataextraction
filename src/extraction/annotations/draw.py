@@ -13,7 +13,7 @@ from extraction.features.predictions.overall_file_predictions import OverallFile
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from extraction.features.utils.strip_log_detection import StripLog
-from extraction.features.utils.table_detection import TableStructure
+from extraction.features.utils.table_detection import StructureLine, TableStructure
 
 load_dotenv()
 
@@ -411,9 +411,14 @@ def draw_strip_logs(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, str
     for index, strip in enumerate(strip_logs):
         main_color = strip_colors[index % len(strip_colors)]
 
-        # Draw the strip log bounding rectangle with thick border
-        shape.draw_rect(strip.bounding_rect * derotation_matrix)
+        # Draw the striplog bounding rectangle with thick border
+        shape.draw_rect(strip.bbox * derotation_matrix)
         shape.finish(color=pymupdf.utils.getColor(main_color), width=4, stroke_opacity=0.9)
+
+        # Draw subsections with light border
+        for section in strip.sections:
+            shape.draw_rect(section.bbox * derotation_matrix)
+            shape.finish(color=pymupdf.utils.getColor(main_color), width=1, stroke_opacity=0.3)
 
 
 def plot_strip_logs(page: pymupdf.Page, strip_logs: list[StripLog], page_index: int):

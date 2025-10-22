@@ -1,0 +1,52 @@
+# --- Striplog detection configuration ---------------------------------------
+confidence: 0.8     # Global confidence threshold for accepting a detected striplog section
+min_sections: 1     # Minimal number of section to construct a strip log
+
+# Which scoring components to use when ranking/validating candidates
+score:
+    crowding: true      # Consider image crowding density as pattern
+    text_overlap: true  # Penalize overlap with detected text lines
+    pattern: true       # Use pattern-based heuristics (e.g., circle, line)
+
+# Rasterization DPI used at different stages
+dpi:
+    table: 300  # DPI for locating striplog/table section candidates
+    score: 144  # DPI for computing feature scores
+
+# Adaptive thresholding (OpenCV) parameters
+# https://docs.opencv.org/4.x/d7/d1b/group__imgproc__misc.html#ga72b913f352e4a1b1b397736707afcde3
+threshold:
+    block_size: 11  # Size of neighborhood for local mean (must be odd)
+    c: 10           # Constant subtracted from the local mean
+
+# Table / striplog grid (pixels at dpi.table)
+table:
+    min_line_length: 40   # Minimum length for a segment in pixels to be considered a line
+    min_line_dilation: 3  # Dilation in pixels to bridge small gaps in lines before line detection
+    min_area_ratio: 0.8   # Minimum rectangularity (0–1). 1 = perfect rectangle
+    min_cell_height: 10   # Minimum cell height in pixels
+    min_cell_width: 60    # Allowed cell width range in pixels
+    max_cell_width: 500
+
+# Circle detection (only if score.pattern=True)
+hough_circles:
+  dp: 2             # Accumulator resolution inverse ratio (accum_res = img_res / dp)
+  min_dist: 3       # Minimum center-to-center distance between circles (px)
+  param1: 30        # Upper threshold for internal Canny edge detector
+  param2: 25        # Accumulator threshold for center detection (higher = fewer circles)
+  min_radius: 1     # Minimum circle radius (px)
+  max_radius: 8     # Maximum circle radius (px)
+  kernel_size: 5    # Kernel size for blurring (p)
+
+# Line Segment Detector (only if score.pattern=True)
+lsd:
+  scale: 1          # Image scale factor prior to detection (1 = original resolution)
+  sigma_scale: 0.6  # Gaussian sigma for image smoothing (relative to scale)
+  quant: 2.0        # Gradient quantization; lower = more sensitive, more segments
+  ang_th: 22.5      # Angle tolerance in degrees for region growing/merging
+  log_eps: 0.0      # -log10(eps) for NFA; larger (or smaller eps) = stricter validation
+  density_th: 0.7   # Minimum region point density for a valid segment (0–1)
+  n_bins: 1024      # Histogram bins for gradient angle quantization
+
+
+
