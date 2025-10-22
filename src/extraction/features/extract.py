@@ -35,7 +35,6 @@ from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.geometry.util import x_overlap, x_overlap_significant_smallest
 from extraction.features.utils.strip_log_detection import StripLog
 from extraction.features.utils.table_detection import (
-    StructureLine,
     TableStructure,
     _contained_in_table_index,
 )
@@ -61,7 +60,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self,
         lines: list[TextLine],
         geometric_lines: list[Line],
-        structure_lines: list[StructureLine],
         table_structures: list[TableStructure],
         strip_logs: list[StripLog],
         language: str,
@@ -76,7 +74,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Args:
             lines (list[TextLine]): all the text lines on the page.
             geometric_lines (list[Line]): The geometric lines of the page.
-            structure_lines (list[StructureLine]): Significant horizontal and vertical lines.
             table_structures (list[TableStructure]): The identified table structures of the page.
             strip_logs (list[StripLog]): The identified strip logs of the page.
             language (str): The language of the page.
@@ -88,7 +85,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         """
         self.lines = lines
         self.geometric_lines = geometric_lines
-        self.structure_lines = structure_lines
         self.table_structures = table_structures
         self.strip_logs = strip_logs  # added for future usage
         self.language = language
@@ -104,7 +100,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Finds all descriptions and depth intervals on the page and matches them.
 
         Returns:
-            ProcessPageResult: a list of the extracted layers and a list of relevant bounding boxes.
+            list[ExtractedBorehole]: The extracted boreholes from the page.
         """
         # Step 1: Find all potential pairs
         material_descriptions_sidebar_pairs = self._find_layer_identifier_sidebar_pairs()
@@ -160,9 +156,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self, pairs: list[MaterialDescriptionRectWithSidebar]
     ) -> list[MaterialDescriptionRectWithSidebar]:
         """Remove pairs that intersect with higher-scoring pairs."""
-        if not pairs:
-            return []
-
         kept_pairs = []
 
         for pair in pairs:
@@ -176,22 +169,22 @@ class MaterialDescriptionRectWithSidebarExtractor:
         return kept_pairs
 
     def _pairs_intersect(self, pair1, pair2) -> bool:
-        """Check if two pairs have any intersecting rectangles."""
-        mat_desc1, mat_desc2 = pair1.material_description_rect, pair2.material_description_rect
-        sidebar1 = pair1.sidebar.rect if pair1.sidebar else None
-        sidebar2 = pair2.sidebar.rect if pair2.sidebar else None
+        """Check if two pairs have any intersecting bounding boxes.
 
-        if mat_desc1.intersects(mat_desc2):
-            return True
+        Creates a bounding box around each pair (union of material description rect and sidebar rect,
+        if present) and checks for intersection.
+        """
+        # Create bounding box for pair1, expanding to include sidebar if present
+        bbox1 = pair1.material_description_rect
+        if pair1.sidebar:
+            bbox1 = bbox1 | pair1.sidebar.rect
 
-        # Check material with opposite sidebar
-        if sidebar2 and mat_desc1.intersects(sidebar2):
-            return True
-        if sidebar1 and mat_desc2.intersects(sidebar1):
-            return True
+        # Create bounding box for pair2 , expanding to include sidebar if present
+        bbox2 = pair2.material_description_rect
+        if pair2.sidebar:
+            bbox2 = bbox2 | pair2.sidebar.rect
 
-        # Check both sidebars
-        return bool(sidebar1 and sidebar2 and sidebar1.intersects(sidebar2))
+        return bbox1.intersects(bbox2)
 
     def _create_borehole_from_pair(self, pair: MaterialDescriptionRectWithSidebar) -> ExtractedBorehole:
         bounding_boxes = PageBoundingBoxes.from_material_description_rect_with_sidebar(pair, self.page_number)
@@ -528,7 +521,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
 def extract_page(
     text_lines: list[TextLine],
     geometric_lines: list[Line],
-    structure_lines: list[StructureLine],
     table_structures: list[TableStructure],
     strip_logs: list[StripLog],
     language: str,
@@ -544,7 +536,6 @@ def extract_page(
     Args:
         text_lines (list[TextLine]): All text lines on the page.
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
-        structure_lines (list[StructureLine]): Significant vertical and horizontal lines
         table_structures (list[TableStructure]): The identified table structures.
         strip_logs (list[StripLog]): The identified strip log structures.
         language (str): Language of the page (used in parsing).
@@ -565,7 +556,6 @@ def extract_page(
     return MaterialDescriptionRectWithSidebarExtractor(
         text_lines,
         geometric_lines,
-        structure_lines,
         table_structures,
         strip_logs,
         language,

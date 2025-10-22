@@ -13,7 +13,6 @@ from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.features.utils.geometry.line_detection import extract_lines
 from extraction.features.utils.strip_log_detection import detect_strip_logs
 from extraction.features.utils.table_detection import (
-    detect_structure_lines,
     detect_table_structures,
 )
 from extraction.features.utils.text.extract_text import extract_text_lines
@@ -57,8 +56,7 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
         geometric_lines = extract_lines(page, line_detection_params)
 
         # Detect table structures on the page
-        structure_lines = detect_structure_lines(geometric_lines)
-        table_structures = detect_table_structures(page_index, document, structure_lines, text_lines)
+        table_structures = detect_table_structures(page_index, document, geometric_lines, text_lines)
 
         # Detect strip logs on the page
         strip_logs = detect_strip_logs(page, geometric_lines, line_detection_params, text_lines)
@@ -67,7 +65,6 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
             extract_page(
                 text_lines,
                 geometric_lines,
-                structure_lines,
                 table_structures,
                 strip_logs,
                 language,

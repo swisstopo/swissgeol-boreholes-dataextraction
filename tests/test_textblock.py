@@ -2,7 +2,7 @@
 
 import pymupdf
 
-from extraction.features.utils.text.textblock import TextBlock, block_distance
+from extraction.features.utils.text.textblock import TextBlock
 from extraction.features.utils.text.textline import TextLine, TextWord
 
 
@@ -56,16 +56,3 @@ def test_post_init_longer_text():  # noqa: D103
     assert tb.line_count == 2, "The line count should be 2"
     assert tb.text == "Hello It's me", "Lines and words should be joined with a space"
     assert tb.rect == pymupdf.Rect(0, 0, 10, 2), "The block's rect should surround the rects of the individual words"
-
-
-def test_block_distance():  # noqa: D103
-    """Test the calculation of the distance between two TextBlocks."""
-    page_number = 1
-    block_1 = TextBlock([TextLine([TextWord(pymupdf.Rect(0, 0, 5, 1), "Hello", page_number)])])
-    block_2 = TextBlock([TextLine([TextWord(pymupdf.Rect(0, 2, 5, 3), "Hello", page_number)])])
-    assert block_distance(block_1, block_2) == 1, (
-        "The distance should be measured from the bottom of the first block to the top of the second block."
-    )
-    assert block_distance(block_2, block_1) == -3, (
-        "The distance should negative when the second block is above the first block."
-    )
