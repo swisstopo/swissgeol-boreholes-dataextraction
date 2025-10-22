@@ -271,7 +271,7 @@ class LayerEvaluator:
 
         Computing this score allows to match the predictions identified in the document against the correct
         groundtruth. The matching score is computed by comparing the layers of each borehole identified to each
-        layers in the groundtruth.
+        layers in the ground truth.
 
         Args:
             ground_truth_layers (list[dict]): list containing the ground truth for the layers

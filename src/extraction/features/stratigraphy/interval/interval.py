@@ -72,9 +72,9 @@ class IntervalBlockPair:
 class IntervalZone:
     """Zone on the page used to match description lines to the correct interval.
 
-    It has more context that a regular interval, as it also considers the interval after to infer the end zone for
+    It has more context than a regular interval, as it also considers the interval after to infer the end zone for
     some sidebar types. For example, an AtoB interval have its start and end rect on the same place, where its
-    coresponding IntervalZone starts at the interval rect, and ends with the next AtoB interval.
+    corresponding IntervalZone starts at the interval rect, and ends with the next AtoB interval.
     """
 
     start: pymupdf.Rect | None

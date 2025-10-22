@@ -69,7 +69,9 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             return 1.0  # textline is inside the depth interval
         return 0.0
 
-    def post_processing(self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]):
+    def post_processing(
+        self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]
+    ) -> list[IntervalBlockPair]:
         """Post-process the matched interval zones and description lines into IntervalBlockPairs.
 
         For LayerIdentifierSidebars, we extract depth information from the text blocks because the depth is not

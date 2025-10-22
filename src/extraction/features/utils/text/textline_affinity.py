@@ -182,7 +182,7 @@ class LineAffinityCalculator:
     def compute_vertical_spacing_affinity(self, previous_line: TextLine, current_line: TextLine) -> float:
         r"""Check if a block is separated by sufficient vertical space.
 
-        Uses a function like the one below, where d represents the distance between the two y1 coordinates each each 
+        Uses a function like the one below, where d represents the distance between the two y1 coordinates of each
         line rect, and h the height of the current_line rect.
 
          y ^

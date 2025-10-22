@@ -214,7 +214,9 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
             falls_inside_bonus = 1.0  # textline is inside the depth interval
 
         if not (interval_zone.end and interval_zone.start):
-            return falls_inside_bonus  # only consider if the text is alligned with the interval for start and end.
+            return (
+                falls_inside_bonus  # only consider if the text is alignedaligned with the interval for start and end.
+            )
 
         mid_zone = (interval_zone.end.y0 + interval_zone.start.y1) / 2
         line_mid = (line.rect.y0 + line.rect.y1) / 2

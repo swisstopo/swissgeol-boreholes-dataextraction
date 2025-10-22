@@ -53,7 +53,7 @@ def lines():
 @pytest.mark.parametrize(
     "affinity,expected_mapping",
     [
-        pytest.param([0.0, 0.0, 0.0], [(0, [0, 1]), (1, [2])], id="standart_map"),
+        pytest.param([0.0, 0.0, 0.0], [(0, [0, 1]), (1, [2])], id="standard_map"),
         pytest.param([0.0, -1.0, 0.0], [(0, [0]), (1, [1, 2])], id="lines_not_compatible"),
     ],
 )
