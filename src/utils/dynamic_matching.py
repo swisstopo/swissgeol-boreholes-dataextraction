@@ -111,7 +111,7 @@ class IntervalToLinesDP(DP):
                 - ptr (list[list[str]]): The pointer table storing move directions ('diag', 'up', 'left')
                     used for backtracking to recover the optimal matching.
         """
-        dp = [[0.0] * (self.nR + 1) for _ in range(self.nL + 1)]
+        dp = [[-float("inf")] * (self.nR + 1)] + [[0.0] * (self.nR + 1) for _ in range(self.nL)]
         ptr = [[None] * (self.nR + 1) for _ in range(self.nL + 1)]
 
         for i in range(1, self.nL + 1):
@@ -163,7 +163,12 @@ class IntervalToLinesDP(DP):
             else:
                 break
 
+        if i != 0:
+            assert move == "left"
+            mapping[i - 1].reverse()
+
         # assign remaining lines to first interval
+        assert j == 0  # all first moves should be left, thanks to the -inf top row
         for k in range(j):
             mapping[0].insert(0, k)
 

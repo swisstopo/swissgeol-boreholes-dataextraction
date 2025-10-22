@@ -209,17 +209,17 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         """
         start_mid = ((interval_zone.start.y0 + interval_zone.start.y1) / 2) if interval_zone.start else None
         end_mid = ((interval_zone.end.y0 + interval_zone.end.y1) / 2) if interval_zone.end else None
+        line_mid = (line.rect.y0 + line.rect.y1) / 2
         falls_inside_bonus = 0.0
         if (start_mid is None or line.rect.y0 > start_mid) and (end_mid is None or line.rect.y1 < end_mid):
             falls_inside_bonus = 1.0  # textline is inside the depth interval
 
         if not (interval_zone.end and interval_zone.start):
-            return (
-                falls_inside_bonus  # only consider if the text is alignedaligned with the interval for start and end.
-            )
+            entry_mid = start_mid if start_mid else end_mid
+            close_to_entry_bonus = math.exp(-(abs(entry_mid - line_mid) / 30.0)) if entry_mid else None
+            return (falls_inside_bonus + close_to_entry_bonus) / 2
 
         mid_zone = (interval_zone.end.y0 + interval_zone.start.y1) / 2
-        line_mid = (line.rect.y0 + line.rect.y1) / 2
         close_to_mid_zone_bonus = math.exp(-(abs(mid_zone - line_mid) / 30.0))  # 1 -> 0
         return (close_to_mid_zone_bonus + falls_inside_bonus) / 2  # mean between the two is a good tradeoff.
 
