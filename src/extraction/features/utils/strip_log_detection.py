@@ -85,12 +85,13 @@ class StripLog:
         return cls(bbox, sections)
 
 
-def _page_to_grayscale(page: pymupdf.Page, dpi: int = 72) -> tuple[np.ndarray | None, float]:
+def _page_to_grayscale(page: pymupdf.Page, dpi: int = 72, use_blur: bool = True) -> tuple[np.ndarray | None, float]:
     """Render a page to a grayscale numpy array.
 
     Args:
         page (pymupdf.Page): PyMuPDF page.
         dpi (int): Rendering resolution. Defaults to 72.
+        use_blur (bool): Apply blur to output image with standard kernel.
 
     Returns:
         np.ndarray | None: An array whose shape is defined by dpi.
@@ -102,32 +103,32 @@ def _page_to_grayscale(page: pymupdf.Page, dpi: int = 72) -> tuple[np.ndarray | 
 
     # Read image from buffer
     gray = np.frombuffer(pix_hd.samples, dtype=np.uint8).reshape(pix_hd.h, pix_hd.w)
+
+    # Blur is needed
+    if use_blur:
+        gray = cv2.GaussianBlur(gray, (5, 5), 0)
+
     return gray, dpi_scaling
 
 
-def _threshold_image(gray: np.ndarray, block_size: int, c: int, kernel_size: int = 5) -> np.ndarray:
+def _threshold_image(im_gray: np.ndarray, block_size: int, c: int) -> np.ndarray:
     """Adaptive thresholding (robust to uniform backgrounds and small noise).
 
     Args:
-        gray (np.ndarray): A NxM grayscale image.
+        im_gray (np.ndarray): A NxM grayscale image.
         block_size (int): Odd window size for local mean.
         c (int): Constant subtracted from local mean.
-        kernel_size(int): Kernel size for image blurring. Defaults to 5.
 
     Returns:
         np.ndarray: Binary NxM image with values {0, 1}.
     """
-    # Apply Gaussian blur to smooth the image and reduce noise
-    gray_blurred = cv2.GaussianBlur(gray, (kernel_size, kernel_size), 0)
-
     # Thresholding: Use adaptive for areas that ar enot white but filled with a unique color
-    thr = cv2.adaptiveThreshold(gray_blurred, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, block_size, c)
+    thr = cv2.adaptiveThreshold(im_gray, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, block_size, c)
     return thr
 
 
 def _detect_candidates_from_page(
     page: pymupdf.Page,
-    dpi_params: dict,
     threshold_param: dict,
     table_param: dict,
 ) -> list[pymupdf.Rect]:
@@ -135,7 +136,6 @@ def _detect_candidates_from_page(
 
     Args:
         page (pymupdf.Page): The page to process.
-        dpi_params (dict): Rendering parameters.
         threshold_param (dict): Thresholding parameters.
         table_param (dict): Table detection geometric/morphological constraints
 
@@ -143,10 +143,10 @@ def _detect_candidates_from_page(
         list[pymupdf.Rect]: List of candidate rectangles in page coordinates.
     """
     # Render
-    image, rescale_factor = _page_to_grayscale(page=page, dpi=dpi_params["table"])
+    im_gray, rescale_factor = _page_to_grayscale(page=page, dpi=table_param["dpi"])
 
     # Threshold
-    thr = _threshold_image(image, **threshold_param)
+    thr = _threshold_image(im_gray, **threshold_param)
 
     # Line extraction
     h_ker = cv2.getStructuringElement(cv2.MORPH_RECT, (table_param["min_line_length"], 1))
@@ -203,18 +203,18 @@ def _rescale_bboxes(bboxes: list[pymupdf.Rect], scale: float) -> list[pymupdf.Re
     return [pymupdf.Rect((scale * np.array(bbox)).astype(int).tolist()) for bbox in bboxes]
 
 
-def _score_crowding(image: np.ndarray, kernel_size: int = 5) -> float:
+def _score_crowding(im_binary: np.ndarray, kernel_size: int = 5) -> float:
     """Return foreground density after dilation (range [0, 1]).
 
     Args:
-        image (np.ndarray): Grayscale patch (uint8).
+        im_binary (np.ndarray): Binary image.
         kernel_size (int): Square kernel size for dilation. Defaults to 5.
 
     Returns:
         float: Density in [0, 1] computed as the mean of the dilated binary mask.
     """
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
-    closed = cv2.morphologyEx(image, cv2.MORPH_DILATE, kernel, iterations=1)
+    closed = cv2.morphologyEx(im_binary, cv2.MORPH_DILATE, kernel, iterations=1)
     return closed.mean()
 
 
@@ -241,11 +241,11 @@ def _score_text_disjoint(rect: pymupdf.Rect, text_lines: list[TextLine]) -> floa
     return score
 
 
-def _score_line(image: np.ndarray, lsd_params: dict) -> float:
+def _score_line(im_gray: np.ndarray, lsd_params: dict) -> float:
     """Estimate line “area” fraction via LSD.
 
     Args:
-        image (np.ndarray): Grayscale patch.
+        im_gray (np.ndarray): Grayscale patch.
         lsd_params (dict): Keyword args for `cv2.createLineSegmentDetector`.
 
     Returns:
@@ -257,7 +257,7 @@ def _score_line(image: np.ndarray, lsd_params: dict) -> float:
     lsd = cv2.createLineSegmentDetector(**lsd_params)
 
     # Detect lines in the image
-    lines, lines_width, _, _ = lsd.detect(image)
+    lines, lines_width, _, _ = lsd.detect(im_gray)
 
     if lines is None:
         return 0.0
@@ -266,17 +266,16 @@ def _score_line(image: np.ndarray, lsd_params: dict) -> float:
     lines_length = np.sqrt((lines[:, 0, 0] - lines[:, 0, 2]) ** 2 + (lines[:, 0, 1] - lines[:, 0, 3]) ** 2)
     lines_area = np.sum(lines_width.flatten() * lines_length)
 
-    return lines_area / float(image.size)
-    # return [line_from_array(line, scale_factor) for line in lines]
+    return lines_area / float(im_gray.size)
 
 
-def _score_circle(image: np.ndarray, hough_circles_params: dict) -> float:
+def _score_circle(im_gray: np.ndarray, hough_circles_params: dict) -> float:
     """Estimate circle area fraction via HoughCircles (0..1).
 
     Ref: https://docs.opencv.org/4.x/d3/de5/tutorial_js_houghcircles.html
 
     Args:
-        image (np.ndarray): Grayscale patch (single channel).
+        im_gray (np.ndarray): Grayscale patch (single channel).
         hough_circles_params (dict): Dict with keys:
             - dp: Inverse ratio of the accumulator resolution to the image resolution.
             - min_dist: Minimum distance between the centers of the detected circles.
@@ -288,12 +287,9 @@ def _score_circle(image: np.ndarray, hough_circles_params: dict) -> float:
     Returns:
         float: Fraction of area covered by circles.
     """
-    # Apply Gaussian blur to smooth the image and reduce noise
-    image = cv2.GaussianBlur(image, (hough_circles_params["kernel_size"], hough_circles_params["kernel_size"]), 0)
-
     # Detect circles
     circle_arrays = cv2.HoughCircles(
-        image,
+        im_gray,
         method=cv2.HOUGH_GRADIENT,
         dp=hough_circles_params["dp"],
         minDist=hough_circles_params["min_dist"],
@@ -303,21 +299,18 @@ def _score_circle(image: np.ndarray, hough_circles_params: dict) -> float:
         maxRadius=hough_circles_params["max_radius"],
     )
 
-    if not circle_arrays:
+    if circle_arrays is None:
         return 0
 
     # Convert detected circles to Circle objects
     circle_area = np.sum(np.pi * circle_arrays[0, :, 2] ** 2)
-    return circle_area / image.size
+    return circle_area / im_gray.size
 
 
 def _score_striplogs(
     bboxes: list[pymupdf.Rect],
     page,
-    dpi_params: dict,
     threshold_param: dict,
-    hough_circles_params: dict,
-    lsd_params: dict,
     score_params: dict,
     text_lines: list[TextLine] = None,
 ) -> list[StripLogSection]:
@@ -326,36 +319,40 @@ def _score_striplogs(
     Args:
         bboxes (list[pymupdf.Rect]): Candidate regions to be scored.
         page (_type_): The source page.
-        dpi_params (dict): Rendering parameters.
         threshold_param (dict): Thresholding parameters.
-        hough_circles_params (dict): Parameters forwarded to OpenCV HoughCircles.
-        lsd_params (dict): Parameters forwarded to OpenCV LSD.
-        score_params (dict): High-level scoring toggles/weights.
+        score_params (dict): High-level scoring parameters.
         text_lines (list[TextLine], optional): Detected text lines in page. Defaults to None.
 
     Returns:
         list[StripLogSection]: Scored sections with confidence score.
     """
-    image, scaling_factor = _page_to_grayscale(page=page, dpi=dpi_params["score"])
-    image = _threshold_image(image, **threshold_param)
+    # get parameters
+    hough_circles_params = score_params.get("hough_circles", {})
+    lsd_params = score_params.get("lsd", {})
+    toggle_params = score_params.get("toggle", {})
+
+    # Get image region and threshold it
+    im_gray, rescale_factor = _page_to_grayscale(page=page, dpi=score_params["score"])
+    im_binary = _threshold_image(im_gray, **threshold_param)
 
     strip_candidates = []
-    bboxes_px = _rescale_bboxes(bboxes, scale=1 / scaling_factor)
+    bboxes_px = _rescale_bboxes(bboxes, scale=1 / rescale_factor)
 
     for bbox, bbox_px in zip(bboxes, bboxes_px, strict=True):
         # 1) Get scaled area
-        bbox_image = image[int(bbox_px.y0) : int(bbox_px.y1), int(bbox_px.x0) : int(bbox_px.x1)]
+        im_binary_bbox = im_binary[int(bbox_px.y0) : int(bbox_px.y1), int(bbox_px.x0) : int(bbox_px.x1)]
+        im_gray_bbox = im_gray[int(bbox_px.y0) : int(bbox_px.y1), int(bbox_px.x0) : int(bbox_px.x1)]
 
         # 2) Compute local stats
         confidence = 1.0
 
-        if score_params["crowding"]:
-            confidence *= _score_crowding(bbox_image)
-        if score_params["text_overlap"]:
+        if toggle_params["crowding"]:
+            confidence *= _score_crowding(im_binary_bbox)
+        if toggle_params["text_overlap"]:
             confidence *= _score_text_disjoint(bbox, text_lines=text_lines)
-        if score_params["pattern"]:
-            circle_score = _score_circle(bbox_image, hough_circles_params)
-            line_score = _score_line(bbox_image, lsd_params)
+        if toggle_params["pattern"]:
+            circle_score = _score_circle(im_gray_bbox, hough_circles_params)
+            line_score = _score_line(im_gray_bbox, lsd_params)
             confidence *= np.clip(circle_score + 4 * line_score, a_min=0, a_max=1)
 
         strip_candidates.append(
@@ -434,20 +431,15 @@ def detect_strip_logs(
         list[StripLog]: List of merged StripLog objects that passed the confidence threshold.
     """
     # Extract parameter groups
-    dpi_params = striplog_detection_params.get("dpi", {})
     threshold_param = striplog_detection_params.get("threshold", {})
     table_param = striplog_detection_params.get("table", {})
-    hough_circles_params = striplog_detection_params.get("hough_circles", {})
-    lsd_params = striplog_detection_params.get("lsd", {})
     score_params = striplog_detection_params.get("score", {})
 
     # Candidate detection in page space
-    bboxes = _detect_candidates_from_page(page, dpi_params, threshold_param, table_param)
+    bboxes = _detect_candidates_from_page(page, threshold_param, table_param)
 
     # Candidate scoring
-    section_candidates = _score_striplogs(
-        bboxes, page, dpi_params, threshold_param, hough_circles_params, lsd_params, score_params, text_lines
-    )
+    section_candidates = _score_striplogs(bboxes, page, threshold_param, score_params, text_lines)
 
     # Confidence filtering
     section_filtered = [
