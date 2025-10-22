@@ -1,12 +1,19 @@
 # --- Striplog detection configuration ---------------------------------------
 confidence: 0.8     # Global confidence threshold for accepting a detected striplog section
-min_sections: 1     # Minimal number of section to construct a strip log
+
+
+# Merging
+merge:
+    min_sections: 1     # Minimal number of detected sections required to form a valid strip log    r_tol_width:  0.1   # TODO
+    r_tol_width: 0.1    # Maximum allowed relative difference in width between two sections
+    a_tol_height: 5     # Maximum allowed vertical gap in pixels
+
 
 # Which scoring components to use when ranking/validating candidates
 score:
     crowding: true      # Consider image crowding density as pattern
     text_overlap: true  # Penalize overlap with detected text lines
-    pattern: true       # Use pattern-based heuristics (e.g., circle, line)
+    pattern: false      # Use pattern-based heuristics (e.g., circle, line)
 
 # Rasterization DPI used at different stages
 dpi:
@@ -36,7 +43,7 @@ hough_circles:
   param2: 25        # Accumulator threshold for center detection (higher = fewer circles)
   min_radius: 1     # Minimum circle radius (px)
   max_radius: 8     # Maximum circle radius (px)
-  kernel_size: 5    # Kernel size for blurring (p)
+  kernel_size: 5    # Kernel size for blurring (px)
 
 # Line Segment Detector (only if score.pattern=True)
 lsd:

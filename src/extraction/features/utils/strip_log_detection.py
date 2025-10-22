@@ -52,8 +52,8 @@ class StripLog:
 
         Args:
             section (StripLogSection): Candidate section.
-            r_tol (float): Relative tolerance (0–1) for width and x0 alignment. TODO
-            a_tol (float): Absolute tolerance (in page units, points) for vertical gap. TODO
+            r_tol (float): Relative tolerance (0–1) for width and x0 alignment.
+            a_tol (float): Absolute tolerance (in page units, points) for vertical gap.
 
         Returns:
             bool: True if the section plausibly continues this strip log.
@@ -367,12 +367,16 @@ def _score_striplogs(
     return strip_candidates
 
 
-def _merge_sections(sections: list[StripLogSection], min_sections: int) -> list[StripLog]:
+def _merge_sections(
+    sections: list[StripLogSection], min_sections: int = 1, r_tol_width: float = 0.1, a_tol_height: int = 5
+) -> list[StripLog]:
     """Merge vertically aligned sections into strip-logs.
 
     Args:
         sections (list[StripLogSection]): Detected section candidates.
         min_sections (int): Minimum number of sections required for a StripLog to be kept.
+        r_tol_width (float): Maximum allowed relative difference in width between two sections.
+        a_tol_height (int): Maximum allowed vertical gap in pixels.
 
     Returns:
         list[StripLog]: A list of merged `StripLog` objects.
@@ -388,7 +392,8 @@ def _merge_sections(sections: list[StripLogSection], min_sections: int) -> list[
     striplogs: list[StripLog] = [StripLog.from_striplog_sections(sections=sections[0])]
     for section in sections[1:]:
         # Check if can be added
-        is_aligned = [striplog.is_aligned(section) for striplog in striplogs]
+        is_aligned = [striplog.is_aligned(section, r_tol_width, a_tol_height) for striplog in striplogs]
+
         if any(is_aligned):
             # If multiple matches, take first
             index = np.argmax(is_aligned)
@@ -450,4 +455,4 @@ def detect_strip_logs(
     ]
 
     # Vertical merging, then filter by minimum section count.
-    return _merge_sections(section_filtered, min_sections=striplog_detection_params["min_sections"])
+    return _merge_sections(section_filtered, **striplog_detection_params.get("merge", {}))
