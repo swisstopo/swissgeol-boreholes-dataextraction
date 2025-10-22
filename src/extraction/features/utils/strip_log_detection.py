@@ -309,7 +309,7 @@ def _score_circle(im_gray: np.ndarray, hough_circles_params: dict) -> float:
 
 def _score_striplogs(
     bboxes: list[pymupdf.Rect],
-    page,
+    page: pymupdf.Page,
     threshold_param: dict,
     score_params: dict,
     text_lines: list[TextLine] = None,
@@ -318,7 +318,7 @@ def _score_striplogs(
 
     Args:
         bboxes (list[pymupdf.Rect]): Candidate regions to be scored.
-        page (_type_): The source page.
+        page (pymupdf.Page): The source page.
         threshold_param (dict): Thresholding parameters.
         score_params (dict): High-level scoring parameters.
         text_lines (list[TextLine], optional): Detected text lines in page. Defaults to None.
