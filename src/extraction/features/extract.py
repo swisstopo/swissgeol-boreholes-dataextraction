@@ -45,7 +45,6 @@ from extraction.features.utils.text.textblock import (
     MaterialDescription,
     MaterialDescriptionLine,
     TextBlock,
-    block_distance,
 )
 from extraction.features.utils.text.textline import TextLine
 from extraction.features.utils.text.textline_affinity import Affinity, get_line_affinity
@@ -303,7 +302,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             left_line_length_threshold=self.params["left_line_length_threshold"],
         )
         return (
-            match_lines_to_interval(pair, description_lines, line_affinities)
+            match_lines_to_interval(pair.sidebar, description_lines, line_affinities)
             if pair.sidebar
             else get_pairs_based_on_line_affinity(description_lines, line_affinities)
         )
@@ -637,67 +636,26 @@ def extract_page(
     ).process_page()
 
 
-def merge_blocks_by_vertical_spacing(blocks: list[TextBlock], target_merge_count: int) -> list[TextBlock]:
-    """Merge textblocks without any geometric lines that separates them.
-
-    Note: Deprecated. Currently not in use anymore. Kept here until we are sure that it is not needed anymore.
-    TODO could use this ??
-
-    The logic looks at the distances between the textblocks and merges them if they are closer
-    than a certain cutoff.
-
-    Args:
-        blocks (List[TextBlock]): Textblocks that are to be merged.
-        target_merge_count (int): the number of merges that we'd like to happen (i.e. we'd like the total number of
-                                  blocks to be reduced by this number)
-
-    Returns:
-        List[TextBlock]: The merged textblocks.
-    """
-    distances = []
-    for block_index in range(len(blocks) - 1):
-        distances.append(block_distance(blocks[block_index], blocks[block_index + 1]))
-    cutoff = sorted(distances)[target_merge_count - 1]  # merge all blocks that have a distance smaller than this
-    merged_count = 0
-    merged_blocks = []
-    current_merged_block = blocks[0]
-    for block_index in range(len(blocks) - 1):
-        new_block = blocks[block_index + 1]
-        if (
-            merged_count < target_merge_count
-            and block_distance(blocks[block_index], blocks[block_index + 1]) <= cutoff
-        ):
-            current_merged_block = current_merged_block.concatenate(new_block)
-            merged_count += 1
-        else:
-            merged_blocks.append(current_merged_block)
-            current_merged_block = new_block
-
-    if current_merged_block.lines:
-        merged_blocks.append(current_merged_block)
-    return merged_blocks
-
-
 def match_lines_to_interval(
-    pair: MaterialDescriptionRectWithSidebar, description_lines: list[TextLine], affinities: list[Affinity]
+    sidebar: Sidebar, description_lines: list[TextLine], affinities: list[Affinity]
 ) -> list[IntervalBlockPair]:
     """Match the description lines to the pair intervals.
 
     Args:
-        pair (MaterialDescriptionRectWithSidebar): The material description rect with sidebar.
+        sidebar (Sidebar): The sidebar.
         description_lines (list[TextLine]): The description lines.
         affinities (list[Affinity]): the affinity between each line pair, previously computed.
 
     Returns:
         list[IntervalBlockPair]: The matched depth intervals and text blocks.
     """
-    depth_interval_zones = pair.sidebar.get_interval_zone()
+    depth_interval_zones = sidebar.get_interval_zone()
     # affinities can differ depending on sidebar type
-    affinity_scores = pair.sidebar.dp_weighted_affinities(affinities)
+    affinity_scores = sidebar.dp_weighted_affinities(affinities)
     dp = IntervalToLinesDP(depth_interval_zones, description_lines, affinity_scores)
-    _, mapping = dp.solve(pair.sidebar.dp_scoring_fn)
+    _, mapping = dp.solve(sidebar.dp_scoring_fn)
 
-    return pair.sidebar.post_processing(mapping)  # different post processing is needed depending on sidebar type
+    return sidebar.post_processing(mapping)  # different post processing is needed depending on sidebar type
 
 
 def get_pairs_based_on_line_affinity(

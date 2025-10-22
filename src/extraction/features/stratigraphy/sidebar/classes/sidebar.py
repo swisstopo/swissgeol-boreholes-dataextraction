@@ -79,7 +79,14 @@ class Sidebar(abc.ABC, Generic[EntryT]):
         pass
 
     def dp_weighted_affinities(self, affinities: list[Affinity]) -> list[float]:
-        """Returns the weighted affinity used for dynamic programming, with the weights specific to each sidebar."""
+        """Returns the weighted affinity used for dynamic programming, with the weights specific to each sidebar type.
+
+        Args:
+            affinities (list[Affinity]): the list containing all Affinty of each description line with the one above.
+
+        Returns:
+            list[float]: A list of floats condensing the affinities, according to the sidebar type.
+        """
         affinity_params = matching_params["affinity_params"][self.kind]
         affinity_importance = affinity_params["importance"]
         weights = affinity_params["weights"]
