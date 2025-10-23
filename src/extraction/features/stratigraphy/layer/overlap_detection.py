@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 matching_params = read_params("matching_params.yml")
 
 
-def select_boreholes_with_scan_overlap(
+def select_boreholes_with_overlap(
     previous_page_boreholes: list[ExtractedBorehole],
     current_page_boreholes: list[ExtractedBorehole],
 ) -> tuple[ExtractedBorehole | None, ExtractedBorehole | None, tuple[int, int] | None]:

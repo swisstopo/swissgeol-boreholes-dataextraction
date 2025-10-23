@@ -3,7 +3,7 @@
 import numpy as np
 
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepths, LayerDepthsEntry
-from extraction.features.stratigraphy.layer.overlap_detection import select_boreholes_with_scan_overlap
+from extraction.features.stratigraphy.layer.overlap_detection import select_boreholes_with_overlap
 from extraction.features.utils.text.textblock import MaterialDescription
 
 DEPTHS_QUANTILE_SLACK = 0.1
@@ -67,13 +67,13 @@ def _pick_merge_candidates(
             * Tuple of overlapping layer indices (upper_id, lower_id) if overlap-based merge applies, else None.
     """
     # 1) Overlap-based (returns a triple)
-    to_extend, continuation, last_dup = select_boreholes_with_scan_overlap(prev, curr)
+    to_extend, continuation, last_dup = select_boreholes_with_overlap(prev, curr)
 
     if not (to_extend is None or continuation is None or last_dup is None):
         return to_extend, continuation, last_dup
 
     # 2) Depth/position-based (returns a pair) → normalize to triple
-    to_extend, continuation = _select_boreholes_for_merge(prev, curr, page_number)
+    to_extend, continuation = _select_boreholes_for_concatenation(prev, curr, page_number)
 
     if not (to_extend is None or continuation is None):
         return to_extend, continuation, None
@@ -133,7 +133,7 @@ def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[E
     return finished_boreholes
 
 
-def _select_boreholes_for_merge(
+def _select_boreholes_for_concatenation(
     previous_page_boreholes: list[ExtractedBorehole],
     current_page_boreholes: list[ExtractedBorehole],
     current_page_number: int,
