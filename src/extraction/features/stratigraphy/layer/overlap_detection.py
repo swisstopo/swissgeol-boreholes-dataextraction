@@ -17,7 +17,7 @@ matching_params = read_params("matching_params.yml")
 def select_boreholes_with_scan_overlap(
     previous_page_boreholes: list[ExtractedBorehole],
     current_page_boreholes: list[ExtractedBorehole],
-) -> tuple[ExtractedBorehole | None, ExtractedBorehole | None, int | None]:
+) -> tuple[ExtractedBorehole | None, ExtractedBorehole | None, tuple[int, int] | None]:
     """Remove duplicate layers caused by overlapping scanned pages.
 
     Compare layers from current page with those from previous page to identify and remove
@@ -28,9 +28,9 @@ def select_boreholes_with_scan_overlap(
         current_page_boreholes (list[ExtractedBorehole]): Layers from current page
 
     Returns:
-        (ExtractedBorehole | None, ExtractedBorehole | None, int | None):
-                The boreholes to be extended, the continuing borehole, and the index of the last duplicated
-                layer in the continuing borehole, if any.
+        (ExtractedBorehole | None, ExtractedBorehole | None, tuple[int, int] | None):
+                The boreholes to be extended, the continuing borehole, and the indexes of the first and last
+                duplicated layer in the previous and continuing borehole, if any.
     """
     for current_borehole in current_page_boreholes:
         for previous_page_borehole in previous_page_boreholes:
@@ -38,12 +38,17 @@ def select_boreholes_with_scan_overlap(
                 previous_page_borehole.predictions, current_borehole.predictions
             )
 
+            # Potential overlap detected
             if bottom_duplicate_idx is not None:
-                return previous_page_borehole, current_borehole, bottom_duplicate_idx
+                # Compute indices to cut duplicate layers at the overlap
+                upper_id, lower_id = find_optimal_split(previous_page_borehole, current_borehole, bottom_duplicate_idx)
+
+                return previous_page_borehole, current_borehole, (upper_id, lower_id)
+
     return None, None, None
 
 
-def _find_optimal_split(
+def find_optimal_split(
     borehole_to_extend: ExtractedBorehole, borehole_continuation: ExtractedBorehole, last_duplicate_layer_index: int
 ) -> tuple[int, int]:
     """Find cut indices to remove duplicated layers when merging two boreholes.
