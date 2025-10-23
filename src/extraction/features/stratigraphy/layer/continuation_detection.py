@@ -67,13 +67,16 @@ def _pick_merge_candidates(
             * Tuple of overlapping layer indices (upper_id, lower_id) if overlap-based merge applies, else None.
     """
     # 1) Overlap-based (returns a triple)
-    if res := select_boreholes_with_scan_overlap(prev, curr):
-        return res  # (to_extend, continuation, last_dup)
+    to_extend, continuation, last_dup = select_boreholes_with_scan_overlap(prev, curr)
+
+    if not (to_extend is None or continuation is None or last_dup is None):
+        return to_extend, continuation, last_dup
 
     # 2) Depth/position-based (returns a pair) → normalize to triple
-    if pair := _select_boreholes_for_merge(prev, curr, page_number):
-        a, b = pair
-        return a, b, None
+    to_extend, continuation = _select_boreholes_for_merge(prev, curr, page_number)
+
+    if not (to_extend is None or continuation is None):
+        return to_extend, continuation, None
 
     return None, None, None
 
