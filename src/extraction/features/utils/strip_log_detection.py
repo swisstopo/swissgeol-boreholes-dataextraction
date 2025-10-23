@@ -332,7 +332,7 @@ def _score_striplogs(
     toggle_params = score_params.get("toggle", {})
 
     # Get image region and threshold it
-    im_gray, rescale_factor = _page_to_grayscale(page=page, dpi=score_params["score"])
+    im_gray, rescale_factor = _page_to_grayscale(page=page, dpi=score_params["dpi"])
     im_binary = _threshold_image(im_gray, **threshold_param)
 
     strip_candidates = []
