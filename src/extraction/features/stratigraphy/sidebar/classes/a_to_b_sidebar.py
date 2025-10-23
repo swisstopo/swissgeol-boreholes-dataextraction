@@ -135,12 +135,7 @@ class AToBSidebar(Sidebar[AToBInterval]):
         Returns:
             float: The score for the given interval zone and text line.
         """
-        start_top = interval_zone.start.y0 if interval_zone.start else None
-        end_top = interval_zone.end.y0 if interval_zone.end else None
-        line_mid = (line.rect.y0 + line.rect.y1) / 2
-        if (start_top is None or line_mid > start_top) and (end_top is None or line_mid < end_top):
-            return 1.0  # textline is inside the depth interval
-        return 0.0
+        return Sidebar.default_score(interval_zone, line)
 
     def get_interval_zone(self) -> list[IntervalZone]:
         """Get the interval zones defined by the sidebar entries.
@@ -154,11 +149,7 @@ class AToBSidebar(Sidebar[AToBInterval]):
         filtered_entries = [entry for entry in filtered_entries if not (entry.start is None and entry.end.value == 0)]
         if not filtered_entries:
             return []
-        zones = [
-            IntervalZone(entry.rect, next_entry.rect, entry)
-            for entry, next_entry in zip(filtered_entries, filtered_entries[1:], strict=False)
-        ]
-        return zones + [IntervalZone(filtered_entries[-1].rect, None, filtered_entries[-1])]  # last one is open-ended
+        return self.get_zones_from_entries(filtered_entries, include_open_ended=True)
 
     def post_processing(self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]):
         """Post-process the matched interval zones and description lines into IntervalBlockPairs.

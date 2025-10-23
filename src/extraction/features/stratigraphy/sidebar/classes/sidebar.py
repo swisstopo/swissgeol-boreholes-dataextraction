@@ -73,10 +73,40 @@ class Sidebar(abc.ABC, Generic[EntryT]):
         pass
 
     @staticmethod
+    def get_zones_from_entries(entries: list[EntryT], include_open_ended: bool = True):
+        zones = [
+            IntervalZone(entry.rect, next_entry.rect, entry)
+            for entry, next_entry in zip(entries, entries[1:], strict=False)
+        ]
+        if include_open_ended:
+            return zones + [IntervalZone(entries[-1].rect, None, entries[-1])]
+        return zones
+
+    @staticmethod
     @abc.abstractmethod
     def dp_scoring_fn(interval_zone: IntervalZone, line: TextLine) -> float:
         """Scoring function for dynamic programming matching of description lines to interval zones."""
         pass
+
+    def default_score(interval_zone: IntervalZone, line: TextLine) -> float:
+        """Returns a default score of 1.0 if the text line is within the zone, or 0.0 otherwise.
+
+        A text line is considered inside the zone if its middle y-coordinate lies between the top boundaries of the
+        start and end entries.
+
+        Args:
+            interval_zone (IntervalZone): The interval zone to score against.
+            line (TextLine): The text line to score.
+
+        Returns:
+            float: The score for the given interval zone and text line.
+        """
+        start_top = interval_zone.start.y0 if interval_zone.start else None
+        end_top = interval_zone.end.y0 if interval_zone.end else None
+        line_mid = (line.rect.y0 + line.rect.y1) / 2
+        if (start_top is None or line_mid > start_top) and (end_top is None or line_mid < end_top):
+            return 1.0  # textline is inside the depth interval
+        return 0.0
 
     def dp_weighted_affinities(self, affinities: list[Affinity]) -> list[float]:
         """Returns the weighted affinity used for dynamic programming, with the weights specific to each sidebar type.

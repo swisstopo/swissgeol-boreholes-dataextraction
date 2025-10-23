@@ -42,11 +42,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         """
         if not self.entries:
             return []
-        zones = [
-            IntervalZone(entry.rect, next_entry.rect, entry)
-            for entry, next_entry in zip(self.entries, self.entries[1:], strict=False)
-        ]
-        return zones + [IntervalZone(self.entries[-1].rect, None, self.entries[-1])]  # last one is open-ended
+        return self.get_zones_from_entries(self.entries, include_open_ended=True)
 
     @staticmethod
     def dp_scoring_fn(interval_zone: IntervalZone, line: TextLine) -> float:
@@ -62,12 +58,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         Returns:
             float: The score for the given interval zone and text line.
         """
-        start_top = interval_zone.start.y0 if interval_zone.start else None
-        end_top = interval_zone.end.y0 if interval_zone.end else None
-        line_mid = (line.rect.y0 + line.rect.y1) / 2
-        if (start_top is None or line_mid > start_top) and (end_top is None or line_mid < end_top):
-            return 1.0  # textline is inside the depth interval
-        return 0.0
+        return Sidebar.default_score(interval_zone, line)
 
     def post_processing(
         self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]
@@ -84,7 +75,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         Returns:
             list[IntervalBlockPair]: The processed interval block pairs.
         """
-        blocks = [TextBlock(lines) for zone, lines in interval_lines_mapping if lines]
+        blocks = [TextBlock(lines) for _, lines in interval_lines_mapping if lines]
         return self.create_pairs_from_layer_identifier_blocks(blocks)
 
     def create_pairs_from_layer_identifier_blocks(self, blocks: list[TextBlock]) -> list[IntervalBlockPair]:
