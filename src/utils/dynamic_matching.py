@@ -141,7 +141,7 @@ class IntervalToLinesDP(DP):
             ptr (list[list[str]]): The pointer table for backtracking.
 
         Returns:
-            list[Match]: The mapping between intervals and and possibly many lines.
+            list[Match]: The mapping between intervals and possibly many lines.
         """
         i, j = self.nL, self.nR
         mapping: OrderedDict[int, list[int]] = defaultdict(list)
