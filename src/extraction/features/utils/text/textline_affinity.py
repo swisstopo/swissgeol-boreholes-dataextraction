@@ -206,11 +206,8 @@ class LineAffinityCalculator:
         """
         current_rect = current_line.rect
         previous_rect = previous_line.rect
-        # score = max(-1.0, min(0.0, 1.0 - (current_rect.y1 - previous_rect.y1) / current_rect.height))
         h_reference = current_rect.height if self.at_least_one_overlap else self.spacing_threshold
         score = max(-1.0, 1.0 - (current_rect.y1 - previous_rect.y1) / h_reference)  # not capped at 0
-        # gap_penalty = -1 if current_rect.y0 - previous_rect.y1 > 0.0 else 0.0
-        # return (score + gap_penalty) / 2
         return score
 
     def compute_right_end_affinity(self, previous_line: TextLine, current_line: TextLine) -> float:
