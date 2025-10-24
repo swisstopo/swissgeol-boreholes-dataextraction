@@ -51,12 +51,6 @@ class AToBInterval(Interval):
         return pymupdf.Rect(self.start.rect).include_rect(self.end.rect)
 
 
-class SpulprobeInterval(Interval):
-    """Class for depth intervals where the delimitations are Spulprobe tags."""
-
-    pass
-
-
 @dataclass
 class IntervalBlockPair:
     """Represent the data for a single layer in the borehole profile.
