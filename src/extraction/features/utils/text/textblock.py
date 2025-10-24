@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Self
 
-import numpy as np
 import pymupdf
 
 from extraction.features.utils.data_extractor import (
@@ -153,25 +152,3 @@ class TextBlock(RectWithPageMixin):
 
 def _is_close(a: float, b: list, tolerance: float) -> bool:
     return any(abs(a - c) < tolerance for c in b)
-
-
-def block_distance(block1: TextBlock, block2: TextBlock) -> float:
-    """Calculate the distance between two text blocks.
-
-    The distance is calculated as the difference between the y-coordinates of the bottom of the first block
-    and the top of the second block.
-
-    If a block is terminated by a line, the distance to the next block is set to infinity.
-    This ensures that the block is not merged with the next block.
-
-    Args:
-        block1 (TextBlock): The first text block.
-        block2 (TextBlock): The second text block.
-
-    Returns:
-        float: The distance between the two text blocks.
-    """
-    if block1.is_terminated_by_line:
-        return np.inf
-    else:
-        return block2.rect.y0 - block1.rect.y1

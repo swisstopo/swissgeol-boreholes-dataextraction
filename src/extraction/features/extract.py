@@ -35,7 +35,6 @@ from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.geometry.util import x_overlap, x_overlap_significant_smallest
 from extraction.features.utils.strip_log_detection import StripLog
 from extraction.features.utils.table_detection import (
-    StructureLine,
     TableStructure,
     _contained_in_table_index,
 )
@@ -60,7 +59,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self,
         lines: list[TextLine],
         geometric_lines: list[Line],
-        structure_lines: list[StructureLine],
         table_structures: list[TableStructure],
         strip_logs: list[StripLog],
         language: str,
@@ -75,7 +73,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Args:
             lines (list[TextLine]): all the text lines on the page.
             geometric_lines (list[Line]): The geometric lines of the page.
-            structure_lines (list[StructureLine]): Significant horizontal and vertical lines.
             table_structures (list[TableStructure]): The identified table structures of the page.
             strip_logs (list[StripLog]): The identified strip logs of the page.
             language (str): The language of the page.
@@ -87,7 +84,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         """
         self.lines = lines
         self.geometric_lines = geometric_lines
-        self.structure_lines = structure_lines
         self.table_structures = table_structures
         self.strip_logs = strip_logs  # added for future usage
         self.language = language
@@ -102,13 +98,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         Finds all descriptions and depth intervals on the page and matches them.
 
-        TODO: Ideally, one function does one thing. This function does a lot of things. It should be split into
-        smaller functions.
-
         Returns:
-            ProcessPageResult: a list of the extracted layers and a list of relevant bounding boxes.
+            list[ExtractedBorehole]: The extracted boreholes from the page.
         """
-        # Step 1: Find material description and sidebar pairs using existing logic
+        # Step 1: Find all potential pairs
         material_descriptions_sidebar_pairs = self._find_layer_identifier_sidebar_pairs()
         material_descriptions_sidebar_pairs.extend(self._find_depth_sidebar_pairs())
 
@@ -120,142 +113,77 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 )
             )
 
-        material_descriptions_sidebar_pairs.sort(key=lambda pair: -pair.score_match)  # highest score first
+        # Step 2: Sort once by score (highest first)
+        material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match, reverse=True)
 
-        # Step 2: Filter pairs based on table structures if no table structures are present, we only filter by score
-        if self.table_structures:
-            table_filtered_pairs = []
+        # Step 3: Apply filter chain
+        filtered_pairs = [pair for pair in material_descriptions_sidebar_pairs if pair.score_match >= 0]
+        filtered_pairs = self._filter_by_table_criteria(filtered_pairs)
+        filtered_pairs = self._filter_by_intersections(filtered_pairs)
 
-            # Group pairs by table index
-            table_groups = {}
-            non_table_pairs = []
-
-            for pair in material_descriptions_sidebar_pairs:
-                index = _contained_in_table_index(pair, self.table_structures, proximity_buffer=50)
-                if index != -1:
-                    if index not in table_groups:
-                        table_groups[index] = []
-                    table_groups[index].append(pair)
-
-                elif pair.score_match >= 0:
-                    non_table_pairs.append(pair)
-
-            # Keep pairs that meet criteria per table
-            for _, pairs in table_groups.items():
-                qualifying_pairs = [
-                    p
-                    for p in pairs
-                    if p.score_match >= 0
-                    and p.material_description_rect.width
-                    > self.params["material_description_column_width"] * self.page_width
-                ]
-                table_filtered_pairs.extend(qualifying_pairs)
-
-            # Add all non-table pairs
-            table_filtered_pairs.extend(non_table_pairs)
-            material_descriptions_sidebar_pairs = table_filtered_pairs
-
-        else:
-            material_descriptions_sidebar_pairs = [
-                pair for pair in material_descriptions_sidebar_pairs if pair.score_match >= 0
-            ]
-
-        material_descriptions_sidebar_pairs.reverse()  # lowest score first
-
-        # Step 3: remove pairs that have any of their elements (sidebar, material description) intersecting with others
-        to_delete = self._find_intersecting_indices(material_descriptions_sidebar_pairs)
-        filtered_pairs = [
-            item for index, item in enumerate(material_descriptions_sidebar_pairs) if index not in to_delete
-        ]
-
-        # remove pairs with no sidebar if there is more than one pair.
-        if len(filtered_pairs) > 1:
-            filtered_pairs = [pair for pair in filtered_pairs if pair.sidebar]
-
-        # remove pairs with no sidebar and not contained in a table structure
-        def in_table_structure(rect: pymupdf.Rect, table: TableStructure) -> bool:
-            intersection = table.bounding_rect & pair.material_description_rect
-            material_description_area = rect.width * rect.height
-            intersection_area = intersection.width * intersection.height
-            return intersection_area >= 0.9 * material_description_area
-
-        def nearby_structure_lines(rect: pymupdf.Rect) -> bool:
-            """Checks if there are structure lines indicative of a borehole profile near the given rect.
-
-            The total length (either left or right) must be larger than the height of the given rect, to avoid
-            false positives with scan artifacts / page edges.
-            """
-            rect_left = pymupdf.Rect(rect.x0 - rect.width, rect.y0, (rect.x0 + rect.x1) / 2, rect.y1)
-            rect_right = pymupdf.Rect((rect.x0 + rect.x1) / 2, rect.y0, rect.x1 + rect.width, rect.y1)
-            return structure_line_length(rect_left) > rect.height or structure_line_length(rect_right) > rect.height
-
-        def structure_line_length(rect: pymupdf.Rect) -> float:
-            """Counts the total length of vertical structure lines after taking an intersection with the given rect."""
-            length = 0
-            for line in self.structure_lines:
-                if line.is_vertical and rect.x0 <= line.position <= rect.x1:
-                    length += max(0, min(rect.y1, line.end) - max(rect.y0, line.start))
-            return length
-
-        filtered_pairs = [
-            pair
-            for pair in filtered_pairs
-            if pair.sidebar
-            or any(in_table_structure(pair.material_description_rect, table) for table in self.table_structures)
-            or nearby_structure_lines(pair.material_description_rect)
-        ]
-
-        # We order the boreholes with the highest score first. When one borehole is actually present in the ground
-        # truth, but more than one are detected, we want the most correct to be assigned
-        boreholes = [
-            self._create_borehole_from_pair(pair)
-            for pair in sorted(filtered_pairs, key=lambda pair: pair.score_match, reverse=True)
-        ]
+        # Step 4: Create boreholes
+        boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
 
         logger.debug(
             f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(self.table_structures)} tables"
         )
         return [borehole for borehole in boreholes if len(borehole.predictions) >= self.params["min_num_layers"]]
 
-    def _find_intersecting_indices(
-        self, material_descriptions_sidebar_pairs: list[MaterialDescriptionRectWithSidebar]
-    ) -> list[int]:
-        """Identifies overlapping material descriptions or sidebars.
+    def _filter_by_table_criteria(
+        self, pairs: list[MaterialDescriptionRectWithSidebar]
+    ) -> list[MaterialDescriptionRectWithSidebar]:
+        """Filter pairs based on table containment and width requirements."""
+        if not self.table_structures:
+            return pairs
 
-        This function scans through all material description/sidebar pairs and returns a list of indices
-        that should be removed due to overlaps. If an intersection is found between two elements, only
-        the first (lower-indexed) element is marked for deletion.
+        filtered = []
+        for pair in pairs:
+            table_index = _contained_in_table_index(pair, self.table_structures, proximity_buffer=50)
 
-        Args:
-            material_descriptions_sidebar_pairs (list[MaterialDescriptionRectWithSidebar]): a list of pairs consisting
-                of a material description rectangle and an optional sidebar.
+            # If not in table - keep it as is
+            if table_index == -1:
+                filtered.append(pair)
+            # If in table - check width requirement
+            else:
+                min_width = self.params["material_description_column_width"] * self.page_width
+                if pair.material_description_rect.width > min_width:
+                    filtered.append(pair)
 
-        Returns:
-            list[int]: The indices of elements that overlap with others and should be removed.
+        return filtered
+
+    def _filter_by_intersections(
+        self, pairs: list[MaterialDescriptionRectWithSidebar]
+    ) -> list[MaterialDescriptionRectWithSidebar]:
+        """Remove pairs that intersect with higher-scoring pairs."""
+        kept_pairs = []
+
+        for pair in pairs:
+            # Check if this pair intersects with any already-kept (higher-scoring) pair
+            intersects = any(self._pairs_intersect(pair, kept_pair) for kept_pair in kept_pairs)
+
+            # Only keep if no conflicts found
+            if not intersects:
+                kept_pairs.append(pair)
+
+        return kept_pairs
+
+    def _pairs_intersect(self, pair1, pair2) -> bool:
+        """Check if two pairs have any intersecting bounding boxes.
+
+        Creates a bounding box around each pair (union of material description rect and sidebar rect,
+        if present) and checks for intersection.
         """
-        to_delete = []
+        # Create bounding box for pair1, expanding to include sidebar if present
+        bbox1 = pair1.material_description_rect
+        if pair1.sidebar:
+            bbox1 = bbox1 | pair1.sidebar.rect
 
-        def intersects_any(rect, others):
-            return any(rect.intersects(other) for other in others if other is not None)
+        # Create bounding box for pair2 , expanding to include sidebar if present
+        bbox2 = pair2.material_description_rect
+        if pair2.sidebar:
+            bbox2 = bbox2 | pair2.sidebar.rect
 
-        for i, pair in enumerate(material_descriptions_sidebar_pairs):
-            mat_rect = pair.material_description_rect
-            sidebar_rect = pair.sidebar.rect if pair.sidebar else None
-
-            # Build the list of other rectangles
-            remaining_pairs = material_descriptions_sidebar_pairs[i + 1 :]
-            other_mat_rects = [p.material_description_rect for p in remaining_pairs]
-            other_sidebar_rects = [p.sidebar.rect if p.sidebar else None for p in remaining_pairs]
-
-            # Check all conditions
-            if (
-                intersects_any(mat_rect, other_mat_rects)
-                or intersects_any(mat_rect, other_sidebar_rects)
-                or (sidebar_rect and intersects_any(sidebar_rect, other_mat_rects))
-                or (sidebar_rect and intersects_any(sidebar_rect, other_sidebar_rects))
-            ):
-                to_delete.append(i)
-        return to_delete
+        return bbox1.intersects(bbox2)
 
     def _create_borehole_from_pair(self, pair: MaterialDescriptionRectWithSidebar) -> ExtractedBorehole:
         bounding_boxes = PageBoundingBoxes.from_material_description_rect_with_sidebar(pair, self.page_number)
@@ -587,7 +515,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
 def extract_page(
     text_lines: list[TextLine],
     geometric_lines: list[Line],
-    structure_lines: list[StructureLine],
     table_structures: list[TableStructure],
     strip_logs: list[StripLog],
     language: str,
@@ -603,7 +530,6 @@ def extract_page(
     Args:
         text_lines (list[TextLine]): All text lines on the page.
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
-        structure_lines (list[StructureLine]): Significant vertical and horizontal lines
         table_structures (list[TableStructure]): The identified table structures.
         strip_logs (list[StripLog]): The identified strip log structures.
         language (str): Language of the page (used in parsing).
@@ -624,7 +550,6 @@ def extract_page(
     return MaterialDescriptionRectWithSidebarExtractor(
         text_lines,
         geometric_lines,
-        structure_lines,
         table_structures,
         strip_logs,
         language,
