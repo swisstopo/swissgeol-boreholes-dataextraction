@@ -14,10 +14,10 @@ logger = logging.getLogger(__name__)
 matching_params = read_params("matching_params.yml")
 
 
-def select_boreholes_with_scan_overlap(
+def select_boreholes_with_overlap(
     previous_page_boreholes: list[ExtractedBorehole],
     current_page_boreholes: list[ExtractedBorehole],
-) -> tuple[ExtractedBorehole | None, ExtractedBorehole | None, int | None]:
+) -> tuple[ExtractedBorehole | None, ExtractedBorehole | None, tuple[int, int] | None]:
     """Remove duplicate layers caused by overlapping scanned pages.
 
     Compare layers from current page with those from previous page to identify and remove
@@ -28,9 +28,9 @@ def select_boreholes_with_scan_overlap(
         current_page_boreholes (list[ExtractedBorehole]): Layers from current page
 
     Returns:
-        (ExtractedBorehole | None, ExtractedBorehole | None, int | None):
-                The boreholes to be extended, the continuing borehole, and the index of the last duplicated
-                layer in the continuing borehole, if any.
+        (ExtractedBorehole | None, ExtractedBorehole | None, tuple[int, int] | None):
+                The boreholes to be extended, the continuing borehole, and the indexes of the first and last
+                duplicated layer in the previous and continuing borehole, if any.
     """
     for current_borehole in current_page_boreholes:
         for previous_page_borehole in previous_page_boreholes:
@@ -38,9 +38,55 @@ def select_boreholes_with_scan_overlap(
                 previous_page_borehole.predictions, current_borehole.predictions
             )
 
+            # Potential overlap detected
             if bottom_duplicate_idx is not None:
-                return previous_page_borehole, current_borehole, bottom_duplicate_idx
+                # Compute indices to cut duplicate layers at the overlap
+                upper_id, lower_id = find_optimal_split(previous_page_borehole, current_borehole, bottom_duplicate_idx)
+
+                return previous_page_borehole, current_borehole, (upper_id, lower_id)
+
     return None, None, None
+
+
+def find_optimal_split(
+    borehole_to_extend: ExtractedBorehole, borehole_continuation: ExtractedBorehole, last_duplicate_layer_index: int
+) -> tuple[int, int]:
+    """Find cut indices to remove duplicated layers when merging two boreholes.
+
+    When a borehole continues on the next page, some top layers of the new page
+    may duplicate the bottom layers of the previous page. This function walks the
+    overlap (from the bottom up) and shifts the split upward if the upper
+    layer lacks depth information while the corresponding lower layer has it.
+    This preserves the most complete layer data across the boundary.
+
+    Args:
+        borehole_to_extend (ExtractedBorehole): The borehole from the previous page.
+        borehole_continuation (ExtractedBorehole): The borehole from the current page.
+        last_duplicate_layer_index (int): The index of the last duplicated layer in the continuing borehole.
+
+    Returns:
+        tuple[int, int]: `(id_upper_end, id_lower_start)` such that concatenating these two slices removes
+        duplicates while keeping the most informative depth entries.
+    """
+    # Check the number of layer that overlaps
+    n_overlap = min(len(borehole_to_extend.predictions), last_duplicate_layer_index + 1)
+    offset = 0
+
+    # Check if threshold should be moved
+    for i in range(n_overlap):
+        upper_layer = borehole_to_extend.predictions[-(i + 1)]
+        lower_layer = borehole_continuation.predictions[last_duplicate_layer_index - i]
+        # It is possible that the information of the upper layers is cut (), check if we can retrieve information from
+        # the lower layers
+        if not upper_layer.depth_nonempty() and lower_layer.depth_nonempty():
+            offset += 1
+        else:
+            # As soon as information is missing in the lower layer, stop iteration
+            break
+    # Define cut ids
+    id_upper_end = len(borehole_to_extend.predictions) - offset
+    id_lower_start = 1 + last_duplicate_layer_index - offset
+    return id_upper_end, id_lower_start
 
 
 def find_last_duplicate_layer_index(previous_page_layers: list[Layer], sorted_layers: list[Layer]) -> int | None:
