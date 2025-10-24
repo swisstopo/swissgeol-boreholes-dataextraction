@@ -15,6 +15,7 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 import pymupdf
+from scipy.sparse.csgraph import connected_components
 from skimage.measure import label, regionprops
 from skimage.morphology import remove_small_objects
 
@@ -29,6 +30,20 @@ class StripLogSection:
 
     bbox: pymupdf.Rect
     confidence: float
+
+    def aligns(self, section: StripLogSection, r_tol: float = 1e-1) -> bool:
+        """Check if a section is vertically aligned and contiguous with this strip log.
+
+        Args:
+            section (StripLogSection): Candidate section.
+            r_tol (float): Relative tolerance (0–1) for width and x0 alignment.
+
+        Returns:
+            bool: True if the section plausibly continues this strip log.
+        """
+        width_err = (self.bbox.width - section.bbox.width) / self.bbox.width
+        hori_err = np.abs(self.bbox.x0 - section.bbox.x0) / self.bbox.width
+        return (width_err < r_tol) and (hori_err < r_tol)
 
 
 @dataclass
@@ -46,23 +61,6 @@ class StripLog:
         """
         self.sections.append(section)
         self.bbox = self.bbox | section.bbox
-
-    def is_aligned(self, section: StripLogSection, r_tol: float = 1e-1, a_tol: float = 5) -> bool:
-        """Check if a section is vertically aligned and contiguous with this strip log.
-
-        Args:
-            section (StripLogSection): Candidate section.
-            r_tol (float): Relative tolerance (0–1) for width and x0 alignment.
-            a_tol (float): Absolute tolerance (in page units, points) for vertical gap.
-
-        Returns:
-            bool: True if the section plausibly continues this strip log.
-        """
-        width_err = (self.bbox.width - section.bbox.width) / self.bbox.width
-        hori_err = np.abs(self.bbox.x0 - section.bbox.x0) / self.bbox.width
-        # Positive if there is a gap; negative when rectangles overlap vertically.
-        vert_gap = max(section.bbox.y0 - self.bbox.y1, self.bbox.y0 - section.bbox.y1)
-        return (width_err < r_tol) and (hori_err < r_tol) and (vert_gap < a_tol)
 
     @classmethod
     def from_striplog_sections(cls, sections: list[StripLogSection] | StripLogSection) -> StripLog:
@@ -127,6 +125,55 @@ def _threshold_image(im_gray: np.ndarray, block_size: int, c: int) -> np.ndarray
     return thr
 
 
+def _detect_table_from_thresholded(
+    im_binary: np.ndarray, min_line_length: int, min_line_dilation: int
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Detect a table grid and label its cells from a binary page image.
+
+    Given a binarized image, this routine extracts horizontal and vertical line masks via
+    morphological operations. It removes tiny spurious components, then labels connected background
+    regions inside the grid as candidate table cells. It also returns labeled
+    masks for vertical and horizontal lines.
+
+    Args:
+        im_binary (np.ndarray): Binary image with values {0,1}.
+        min_line_length (int): Minimum line length in pixels used to build the rectangular structuring
+            elements for the morphological operations.
+        min_line_dilation (int): Square dilation kernel size (in pixels).Increases line thickness to bridge small
+            gaps and ensure grid connectivity.
+
+    Returns:
+        tuple[np.ndarray, np.ndarray, np.ndarray]:
+            - cells_labeled (np.ndarray): Labeled image of candidate table cells,
+              obtained by labeling background regions within the cleaned grid {0, 1, ..., N}.
+            - vert_labeled (np.ndarray): Labeled image of vertical line components
+              after opening/dilation values {0, 1, ..., V}.
+            - horiz_labeled (np.ndarray): Labeled image of horizontal line components
+              after opening/dilation values {0, 1, ..., H}.
+
+    """
+    # Line extraction
+    h_ker = cv2.getStructuringElement(cv2.MORPH_RECT, (min_line_length, 1))
+    v_ker = cv2.getStructuringElement(cv2.MORPH_RECT, (1, min_line_length))
+    horiz = cv2.morphologyEx(im_binary, cv2.MORPH_OPEN, h_ker, iterations=1)
+    vert = cv2.morphologyEx(im_binary, cv2.MORPH_OPEN, v_ker, iterations=1)
+    horiz_closed = cv2.morphologyEx(horiz, cv2.MORPH_DILATE, h_ker)
+    vert_closed = cv2.morphologyEx(vert, cv2.MORPH_DILATE, v_ker)
+
+    # Merge and thicken to close tiny gaps
+    grid = (cv2.add(horiz_closed, vert_closed) > 0).astype(np.uint8)
+    grid = cv2.dilate(grid, np.ones((min_line_dilation, min_line_dilation), np.uint8), iterations=1)
+
+    # Remove small connected components (in the line mask)
+    label_img = label(grid)
+    label_img = remove_small_objects(label_img, min_size=4 * min_line_length * min_line_dilation)
+
+    # Candidates are large background “cells”
+    label_img_inv = label(label_img == 0)
+
+    return label_img_inv, label(vert_closed), label(horiz_closed)
+
+
 def _detect_candidates_from_page(
     page: pymupdf.Page,
     threshold_param: dict,
@@ -148,32 +195,25 @@ def _detect_candidates_from_page(
     # Threshold
     thr = _threshold_image(im_gray, **threshold_param)
 
-    # Line extraction
-    h_ker = cv2.getStructuringElement(cv2.MORPH_RECT, (table_param["min_line_length"], 1))
-    v_ker = cv2.getStructuringElement(cv2.MORPH_RECT, (1, table_param["min_line_length"]))
-    horiz = cv2.morphologyEx(thr, cv2.MORPH_OPEN, h_ker, iterations=1)
-    vert = cv2.morphologyEx(thr, cv2.MORPH_OPEN, v_ker, iterations=1)
-    horiz_closed = cv2.morphologyEx(horiz, cv2.MORPH_DILATE, h_ker)
-    vert_closed = cv2.morphologyEx(vert, cv2.MORPH_DILATE, v_ker)
-
-    # Merge and thicken to close tiny gaps
-    grid = (cv2.add(horiz_closed, vert_closed) > 0).astype(np.uint8)
-    grid = cv2.dilate(
-        grid, np.ones((table_param["min_line_dilation"], table_param["min_line_dilation"]), np.uint8), iterations=1
+    im_table, im_vert, _ = _detect_table_from_thresholded(
+        thr, table_param["min_line_length"], table_param["min_line_dilation"]
     )
 
-    # Remove small connected components (in the line mask)
-    label_img = label(grid)
-    label_img = remove_small_objects(
-        label_img, min_size=4 * table_param["min_line_length"] * table_param["min_line_dilation"]
-    )
-
-    # Candidates are large background “cells”
-    label_img_inv = label(label_img == 0)
+    structures_bbox: list[pymupdf.Rect] = []
+    for region in regionprops(im_vert):
+        # Invert coordinate system (x;y) and (y;x) due to packages inconsitency
+        structures_bbox.append(
+            pymupdf.Rect(
+                region.bbox[1] - table_param["margin_vert_line"],
+                region.bbox[0],
+                region.bbox[3] + table_param["margin_vert_line"],
+                region.bbox[2],
+            )
+        )
 
     # Region filtering and bbox extraction
-    candidates: list[pymupdf.Rect] = []
-    for region in regionprops(label_img_inv):
+    candidates_bbox: list[pymupdf.Rect] = []
+    for region in regionprops(im_table):
         if (
             (region.image.shape[1] < table_param["min_cell_width"])
             or (region.image.shape[1] > table_param["max_cell_width"])
@@ -182,12 +222,13 @@ def _detect_candidates_from_page(
         ):
             continue
         # Invert coordinate system (x;y) and (y;x) due to packages inconsitency
-        candidates.append(pymupdf.Rect(region.bbox[1], region.bbox[0], region.bbox[3], region.bbox[2]))
+        candidates_bbox.append(pymupdf.Rect(region.bbox[1], region.bbox[0], region.bbox[3], region.bbox[2]))
 
     # Convert px -> page coords
-    candidates = _rescale_bboxes(candidates, scale=rescale_factor)
+    candidates_bbox = _rescale_bboxes(candidates_bbox, scale=rescale_factor)
+    structures_bbox = _rescale_bboxes(structures_bbox, scale=rescale_factor)
 
-    return candidates
+    return candidates_bbox, structures_bbox
 
 
 def _rescale_bboxes(bboxes: list[pymupdf.Rect], scale: float) -> list[pymupdf.Rect]:
@@ -365,15 +406,43 @@ def _score_striplogs(
 
 
 def _merge_sections(
-    sections: list[StripLogSection], min_sections: int = 1, r_tol_width: float = 0.1, a_tol_height: int = 5
+    sections: list[StripLogSection],
+    structures_bbox: list[pymupdf.Rect],
+    merge_params: dict,
 ) -> list[StripLog]:
-    """Merge vertically aligned sections into strip-logs.
+    """Merge vertically aligned and connected section candidates into contiguous strip logs.
+
+    Starting from **seed** sections (confidence ≥ `confidence_seed`), the procedure
+    grows a strip log by attaching **connected** neighbor sections whose confidence
+    is ≥ `confidence_graph`. Two sections are considered connected if:
+      1) they are vertically aligned with the seed within a horizontal tolerance, and
+      2) there exists at least one vertical structure line (from `structures_bbox`)
+         that intersects/bridges both sections (i.e., a shared connection line).
+
+    The result is a set of clusters (strip logs), each representing a vertical stack
+    of sections belonging to the same column/track.
+
+    ASCII examples
+    --------------
+    We denotes as `s` the seed cells and `c` the candidates.
+
+    Result is group {2, 3}          Result is group {1, 2}
+    +-------+                       +-------+
+    | 1 (c) |                       | 1 (c) |
+    +-------+                       +-------+
+              (not connected)       |
+    +-------+                       +-------+
+    | 2 (s) |                       | 2 (s) |
+    +-------+                       +-------+
+            | (connected)                   |
+    +-------+                               +-------+
+    | 3 (c) |                               | 3 (c) |
+    +-------+                               +-------+
 
     Args:
         sections (list[StripLogSection]): Detected section candidates.
-        min_sections (int): Minimum number of sections required for a StripLog to be kept.
-        r_tol_width (float): Maximum allowed relative difference in width between two sections.
-        a_tol_height (int): Maximum allowed vertical gap in pixels.
+        structures_bbox (list[pymupdf.Rect]): Vertical line segments that span the page.
+        merge_params (dict): Parameters relative to section merging
 
     Returns:
         list[StripLog]: A list of merged `StripLog` objects.
@@ -382,24 +451,37 @@ def _merge_sections(
     if not sections:
         return []
 
-    # Sort bounding boxes top to botttom
-    sections.sort(key=lambda section: section.bbox[1])
+    # Get seed striplogs
+    graph_sections = [strip for strip in sections if strip.confidence >= merge_params["confidence_graph"]]
+    graph_adjacency = np.zeros((len(graph_sections), len(graph_sections)), dtype=bool)
 
-    # Merge strip logs
-    striplogs: list[StripLog] = [StripLog.from_striplog_sections(sections=sections[0])]
-    for section in sections[1:]:
-        # Check if can be added
-        is_aligned = [striplog.is_aligned(section, r_tol_width, a_tol_height) for striplog in striplogs]
+    # Iterate over seed and check for graph connections
+    for i, node in enumerate(graph_sections):
+        # Check if node is potential seed
+        if node.confidence < merge_params["confidence_seed"]:
+            continue
+        # Compute connections between seed and structure lines
+        edges = [line for line in structures_bbox if line.intersects(node.bbox)]
+        # Compute instersections with other  (add constrain on width)
+        graph_adjacency[i] = [
+            any([edge.intersects(v.bbox) and node.aligns(v, merge_params["r_tol_width"]) for edge in edges])
+            for v in graph_sections
+        ]
 
-        if any(is_aligned):
-            # If multiple matches, take first
-            index = np.argmax(is_aligned)
-            striplogs[index].add_section(section)
-        else:
-            striplogs.append(StripLog.from_striplog_sections(sections=section))
+    # Ensure the matrix is symetric (avoid undirected graph)
+    graph_adjacency = (graph_adjacency + graph_adjacency.T).astype(int)
+    _, labels = connected_components(csgraph=graph_adjacency, directed=False, return_labels=True)
 
-    # Filterout strips where not enough elements
-    return [striplog for striplog in striplogs if len(striplog.sections) >= min_sections]
+    # Build striplogs and prune if too small
+    striplogs: list[StripLog] = []
+    for c in np.unique(labels):
+        cluster_indices = np.where(labels == c)[0]
+        cluster_sections = np.array(graph_sections)[cluster_indices]
+        if len(cluster_sections) < merge_params["min_sections"]:
+            continue
+        striplogs.append(StripLog.from_striplog_sections(sections=cluster_sections))
+
+    return striplogs
 
 
 def _is_numeric_pattern(text: str) -> bool:
@@ -434,17 +516,13 @@ def detect_strip_logs(
     threshold_param = striplog_detection_params.get("threshold", {})
     table_param = striplog_detection_params.get("table", {})
     score_params = striplog_detection_params.get("score", {})
+    merge_params = striplog_detection_params.get("merge", {})
 
     # Candidate detection in page space
-    bboxes = _detect_candidates_from_page(page, threshold_param, table_param)
+    section_bboxes, structures_bbox = _detect_candidates_from_page(page, threshold_param, table_param)
 
     # Candidate scoring
-    section_candidates = _score_striplogs(bboxes, page, threshold_param, score_params, text_lines)
-
-    # Confidence filtering
-    section_filtered = [
-        strip for strip in section_candidates if strip.confidence >= striplog_detection_params["confidence"]
-    ]
+    section_candidates = _score_striplogs(section_bboxes, page, threshold_param, score_params, text_lines)
 
     # Vertical merging, then filter by minimum section count.
-    return _merge_sections(section_filtered, **striplog_detection_params.get("merge", {}))
+    return _merge_sections(section_candidates, structures_bbox, merge_params)

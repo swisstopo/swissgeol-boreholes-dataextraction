@@ -418,7 +418,13 @@ def draw_strip_logs(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, str
         # Draw subsections with light border
         for section in strip.sections:
             shape.draw_rect(section.bbox * derotation_matrix)
-            shape.finish(color=pymupdf.utils.getColor(main_color), width=1, stroke_opacity=0.3)
+            shape.finish(
+                color=pymupdf.utils.getColor(main_color),
+                fill=pymupdf.utils.getColor(main_color),
+                width=1,
+                stroke_opacity=0.9,
+                fill_opacity=0.2,
+            )
 
 
 def plot_strip_logs(page: pymupdf.Page, strip_logs: list[StripLog], page_index: int):

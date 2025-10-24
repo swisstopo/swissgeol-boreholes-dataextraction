@@ -1,5 +1,4 @@
 # --- Striplog detection configuration ---------------------------------------
-confidence: 0.5     # Global confidence threshold for accepting a detected striplog section
 
 # Adaptive thresholding (OpenCV) parameters
 # https://docs.opencv.org/4.x/d7/d1b/group__imgproc__misc.html#ga72b913f352e4a1b1b397736707afcde3
@@ -12,8 +11,9 @@ table:
     dpi: 300                # DPI for locating striplog/table section candidates
     min_line_length: 40     # Minimum length for a segment in pixels to be considered a line
     min_line_dilation: 3    # Dilation in pixels to bridge small gaps in lines before line detection
+    margin_vert_line: 5     # Search area around vertical line for section connections
     min_area_ratio: 0.8     # Minimum rectangularity (0–1). 1 = perfect rectangle
-    min_cell_height: 10     # Minimum cell height in pixels
+    min_cell_height: 5      # Minimum cell height in pixels
     min_cell_width: 60      # Allowed cell width range in pixels
     max_cell_width: 500
 
@@ -46,6 +46,8 @@ score:
 
 # Merging parameters
 merge:
-    min_sections: 1     # Minimal number of detected sections required to form a valid strip log
-    r_tol_width: 0.1    # Maximum allowed relative difference in width between two sections
-    a_tol_height: 5     # Maximum allowed vertical gap in pixels
+    confidence_seed: 0.5    # Global confidence threshold for accepting a detected striplog section
+    confidence_graph: 0.3   # Minimal confidence for section to be connected to seed
+    min_sections: 2         # Minimal number of detected sections required to form a valid strip log
+    r_tol_width: 0.1        # Maximum allowed relative difference in width between two sections
+    a_tol_height: 5         # Maximum allowed vertical gap in pixels
