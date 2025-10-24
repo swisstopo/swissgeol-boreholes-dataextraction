@@ -16,20 +16,6 @@ def test_concatenate():  # noqa: D103
     assert tb3.text == "Hello World", "The text should be 'Hello World'"
 
 
-def test_split_based_on_indentation():  # noqa: D103
-    """Test the splitting of a TextBlock based on indentation."""
-    page_number = 1
-    tb = TextBlock(
-        [
-            TextLine([TextWord(pymupdf.Rect(0, 0, 20, 5), "Hello", page_number)]),
-            TextLine([TextWord(pymupdf.Rect(0, 8, 20, 13), "Hello", page_number)]),
-            TextLine([TextWord(pymupdf.Rect(3, 16, 22, 21), "World", page_number)]),  # Indented line
-        ]
-    )
-    blocks = tb.split_based_on_indentation()
-    assert len(blocks) == 2, "There should be 2 blocks after splitting"
-
-
 def test_post_init():  # noqa: D103
     """Test the post-init method of the TextBlock class."""
     page_number = 1

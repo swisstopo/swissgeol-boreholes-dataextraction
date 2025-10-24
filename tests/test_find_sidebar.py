@@ -4,14 +4,12 @@ import pymupdf
 import pytest
 import rtree
 
+from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
 from extraction.features.stratigraphy.sidebar.extractor.a_above_b_sidebar_extractor import (
     AAboveBSidebarExtractor,
 )
 from extraction.features.stratigraphy.sidebar.extractor.a_to_b_sidebar_extractor import (
     AToBSidebarExtractor,
-)
-from extraction.features.stratigraphy.sidebar.extractor.depth_column_entry_extractor import (
-    DepthColumnEntryExtractor,
 )
 from extraction.features.utils.text.textline import TextWord
 

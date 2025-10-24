@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
-import pymupdf
-
-from extraction.features.stratigraphy.interval.interval import AToBInterval, IntervalBlockGroup
+from extraction.features.stratigraphy.interval.interval import AToBInterval, IntervalBlockPair, IntervalZone
 from extraction.features.stratigraphy.interval.partitions_and_sublayers import (
     number_of_subintervals,
     set_interval_hierarchy_flags,
 )
-from extraction.features.utils.geometry.geometry_dataclasses import Line
+from extraction.features.utils.text.textblock import TextBlock
 from extraction.features.utils.text.textline import TextLine
 
 from .sidebar import Sidebar
@@ -29,6 +28,8 @@ class AToBSidebar(Sidebar[AToBInterval]):
     """
 
     entries: list[AToBInterval]
+
+    kind: ClassVar[str] = "a_to_b"
 
     def __repr__(self):
         """Converts the object to a string.
@@ -120,41 +121,47 @@ class AToBSidebar(Sidebar[AToBInterval]):
 
         return sequence_matches_count / (len(filtered_entries) - 1) >= 0.5
 
-    def identify_groups(
-        self,
-        description_lines: list[TextLine],
-        geometric_lines: list[Line],
-        material_description_rect: pymupdf.Rect,
-        **params,
-    ) -> list[IntervalBlockGroup]:
-        """Identifies groups of description blocks that correspond to depth intervals.
+    @staticmethod
+    def dp_scoring_fn(interval_zone: IntervalZone, line: TextLine) -> float:
+        """Scoring function for dynamic programming matching of description lines to AToBInterval zones.
+
+        The score is 1.0 if the line is located within the interval zone, 0.0 otherwise.
+        For AtoB sidebar, the zone begins and ends at the top of each rectangle bounds.
 
         Args:
-            description_lines (list[TextLine]): A list of text lines that are part of the description.
-            geometric_lines (list[Line]): A list of geometric lines that are part of the description.
-            material_description_rect (pymupdf.Rect): The bounding box of the material description.
-            params (dict): A dictionary of relevant parameters.
+            interval_zone (IntervalZone): The interval zone to score against.
+            line (TextLine): The text line to score.
 
         Returns:
-            list[IntervalBlockGroup]: A list of groups, where each group is a IntervalBlockGroup.
+            float: The score for the given interval zone and text line.
         """
-        groups = []
-        line_index = 0
+        return Sidebar.default_score(interval_zone, line)
 
+    def get_interval_zone(self) -> list[IntervalZone]:
+        """Get the interval zones defined by the sidebar entries.
+
+        The interval zones are created from the AToBInterval entries, filtering out sublayers and invalid layers.
+
+        Returns:
+            list[IntervalZone]: A list of interval zones.
+        """
         filtered_entries = [entry for entry in self.entries if not entry.is_sublayer]
+        filtered_entries = [entry for entry in filtered_entries if not (entry.start is None and entry.end.value == 0)]
+        if not filtered_entries:
+            return []
+        return self.get_zones_from_entries(filtered_entries, include_open_ended=True)
 
-        for interval_index, interval in enumerate(filtered_entries):
-            # don't allow a layer above depth 0
-            if interval.start is None and interval.end.value == 0:
-                continue
+    def post_processing(self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]):
+        """Post-process the matched interval zones and description lines into IntervalBlockPairs.
 
-            next_interval = (
-                filtered_entries[interval_index + 1] if interval_index + 1 < len(filtered_entries) else None
-            )
+        The post-processing filters out layers that are marked as parents.
 
-            matched_blocks = interval.matching_blocks(description_lines, line_index, next_interval)
-            line_index += sum([len(block.lines) for block in matched_blocks])
+        Args:
+            interval_lines_mapping (list[tuple[IntervalZone, list[TextLine]]]): The matched interval zones and
+                description lines.
 
-            if not interval.is_parent:
-                groups.append(IntervalBlockGroup(depth_intervals=[interval], blocks=matched_blocks))
-        return groups
+        Returns:
+            list[IntervalBlockPair]: The processed interval block pairs.
+        """
+        valid_layers = [layer for layer in interval_lines_mapping if not layer[0].related_interval.is_parent]
+        return [IntervalBlockPair(zone.related_interval, TextBlock(lines)) for zone, lines in valid_layers]
