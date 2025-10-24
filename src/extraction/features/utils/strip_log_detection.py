@@ -41,7 +41,7 @@ class StripLogSection:
         Returns:
             bool: True if the section plausibly continues this strip log.
         """
-        width_err = (self.bbox.width - section.bbox.width) / self.bbox.width
+        width_err = np.abs(self.bbox.width - section.bbox.width) / self.bbox.width
         hori_err = np.abs(self.bbox.x0 - section.bbox.x0) / self.bbox.width
         return (width_err < r_tol) and (hori_err < r_tol)
 
@@ -244,16 +244,20 @@ def _rescale_bboxes(bboxes: list[pymupdf.Rect], scale: float) -> list[pymupdf.Re
     return [pymupdf.Rect((scale * np.array(bbox)).astype(int).tolist()) for bbox in bboxes]
 
 
-def _score_crowding(im_binary: np.ndarray, kernel_size: int = 5) -> float:
+def _score_crowding(im_binary: np.ndarray, kernel_size: int = 5, margin: int = 2) -> float:
     """Return foreground density after dilation (range [0, 1]).
 
     Args:
         im_binary (np.ndarray): Binary image.
         kernel_size (int): Square kernel size for dilation. Defaults to 5.
+        margin (int): Margin cut to avoid border effect.
 
     Returns:
         float: Density in [0, 1] computed as the mean of the dilated binary mask.
     """
+    im_binary = im_binary[margin:-margin, margin:-margin]
+    if len(im_binary) == 0:
+        return 0
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
     closed = cv2.morphologyEx(im_binary, cv2.MORPH_DILATE, kernel, iterations=1)
     return closed.mean()
@@ -373,7 +377,7 @@ def _score_striplogs(
     toggle_params = score_params.get("toggle", {})
 
     # Get image region and threshold it
-    im_gray, rescale_factor = _page_to_grayscale(page=page, dpi=score_params["dpi"])
+    im_gray, rescale_factor = _page_to_grayscale(page=page, dpi=score_params["dpi"], use_blur=False)
     im_binary = _threshold_image(im_gray, **threshold_param)
 
     strip_candidates = []

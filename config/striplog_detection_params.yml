@@ -13,7 +13,7 @@ table:
     min_line_dilation: 3    # Dilation in pixels to bridge small gaps in lines before line detection
     margin_vert_line: 5     # Search area around vertical line for section connections
     min_area_ratio: 0.8     # Minimum rectangularity (0–1). 1 = perfect rectangle
-    min_cell_height: 5      # Minimum cell height in pixels
+    min_cell_height: 20     # Minimum cell height in pixels
     min_cell_width: 60      # Allowed cell width range in pixels
     max_cell_width: 500
 
@@ -47,7 +47,7 @@ score:
 # Merging parameters
 merge:
     confidence_seed: 0.5    # Global confidence threshold for accepting a detected striplog section
-    confidence_graph: 0.3   # Minimal confidence for section to be connected to seed
+    confidence_graph: 0.4   # Minimal confidence for section to be connected to seed
     min_sections: 2         # Minimal number of detected sections required to form a valid strip log
     r_tol_width: 0.1        # Maximum allowed relative difference in width between two sections
     a_tol_height: 5         # Maximum allowed vertical gap in pixels
