@@ -3,7 +3,7 @@
 import pymupdf
 import pytest
 
-from src.extraction.features.utils.strip_log_detection import StripLogSection, _is_numeric_pattern, _rescale_bboxes
+from extraction.features.utils.strip_log_detection import StripLogSection, _is_numeric_pattern, _rescale_bboxes
 
 
 @pytest.mark.parametrize(

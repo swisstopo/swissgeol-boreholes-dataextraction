@@ -13,7 +13,7 @@ from extraction.features.predictions.overall_file_predictions import OverallFile
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from extraction.features.utils.strip_log_detection import StripLog
-from extraction.features.utils.table_detection import StructureLine, TableStructure
+from extraction.features.utils.table_detection import TableStructure
 
 load_dotenv()
 
