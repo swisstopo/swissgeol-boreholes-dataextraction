@@ -7,74 +7,14 @@ import pymupdf
 from extraction.features.utils.text.textline import TextLine
 from utils.file_utils import read_params
 
-from ...utils.text.textblock import TextBlock
 from ..base.sidebar_entry import DepthColumnEntry
-from .interval import AToBInterval, IntervalBlockPair
+from .interval import AToBInterval
 
 matching_params = read_params("matching_params.yml")
 
 
 class AToBIntervalExtractor:
     """Methods for finding AToBInterval instances (e.g. "0.5m - 1.8m") in a text."""
-
-    @staticmethod
-    def from_material_description_lines(lines: list[TextLine]) -> list[IntervalBlockPair]:
-        """Extract depth interval from text lines from a material description.
-
-        For borehole profiles using the Deriaz layout, depth intervals are typically embedded within the material
-        description text. These descriptions often further subdivide into multiple sublayers, each with its own
-        distinct depth interval. This function extracts all such depth intervals found in the description, along with
-        their corresponding text blocks. Decisions about which intervals to keep or discard are handled by downstream
-        processing.
-        For example (from GeoQuat 12306):
-            1) REMBLAIS HETEROGENES
-               0.00 - 0.08 m : Revêtement bitumineux
-               0.08- 0.30 m : Grave d'infrastructure
-               0.30 - 1.40 m : Grave dans importante matrice de sable
-                               moyen, brun beige, pulvérulent.
-        From this material description, this method will extract all depth intervals.
-
-        Args:
-            lines (list[TextLine]): The lines to extract the depth interval from.
-
-        Returns:
-            list[IntervalBlockPair]: a list of interval-block-pairs that can be extracted from the given lines
-        """
-        entries = []
-        current_block = []
-        current_interval = None
-        start_depth = None
-        prev_line = None
-        prev_interval = None
-        for idx, line in enumerate(lines):
-            a_to_b_interval, line_without_depths = AToBIntervalExtractor.from_text(line, require_start_of_string=False)
-            # First line of the block is stripped of its (potential) leading depths
-            final_line = line if idx != 0 else line_without_depths
-            if prev_line and not a_to_b_interval and not prev_interval:
-                # if depth was not found in the previous and current lines, we look for a depth wrapping arround.
-                combined_lines = TextLine(prev_line.words + line.words)
-                a_to_b_interval, _ = AToBIntervalExtractor.from_text(combined_lines, require_start_of_string=False)
-            prev_interval = a_to_b_interval
-            prev_line = line
-            # require_start_of_string = False because the depth interval may not always start at the beginning
-            # of the line e.g. "Remblais Heterogene: 0.00 - 0.5m"
-            if a_to_b_interval:
-                # We assume that the first depth encountered is the start depth, and we reject further depth values
-                # smaller than this first one. This avoids some false positives (e.g. GeoQuat 3339.pdf).
-                if not start_depth:
-                    start_depth = a_to_b_interval.start.value
-                if a_to_b_interval.start.value >= start_depth:
-                    if current_interval:
-                        entries.append(IntervalBlockPair(current_interval, TextBlock(current_block)))
-                        current_block = []
-                        final_line = line_without_depths  # start of a new depth block, strip leading depth
-                    current_interval = a_to_b_interval
-            if final_line and final_line.words:
-                current_block.append(final_line)
-        if current_block:
-            entries.append(IntervalBlockPair(current_interval, TextBlock(current_block)))
-
-        return entries
 
     @classmethod
     def from_text(

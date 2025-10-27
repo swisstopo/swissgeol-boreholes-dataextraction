@@ -15,6 +15,7 @@ from extraction.features.predictions.borehole_predictions import (
 )
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
+from utils.dynamic_matching import PredToGroundTruthLayerDP
 from utils.file_utils import parse_text
 
 logger = logging.getLogger(__name__)
@@ -265,16 +266,16 @@ class LayerEvaluator:
         ground_truth_layers: list[dict[str, Any]],
         predicted_layers: list[Layer],
         scoring_fn: Callable[[Layer, dict], float],
-    ) -> tuple[float, list[(Layer, dict)]]:
+    ) -> tuple[float, list[tuple[Layer, dict]]]:
         """Computes the matching score between a prediction and a groundtruth borehole.
 
-        This is relevant when there is more than one borehole per pdf. Computing this score allows to match the
-        predictions identified in the document against the correct groundtruth. The matching score is computed by
-        comparing the layers of each borehole identified to each layers in the groudtruth.
+        Computing this score allows to match the predictions identified in the document against the correct
+        groundtruth. The matching score is computed by comparing the layers of each borehole identified to each
+        layers in the ground truth.
 
         Args:
             ground_truth_layers (list[dict]): list containing the ground truth for the layers
-            predicted_layers (LayersInBorehole): object containing the list of the predicted layers
+            predicted_layers (list[Layer]): object containing the list of the predicted layers
             scoring_fn: Callable[[Layer, dict], float]: the scoring function to be used for selecting the best mapping
 
         Returns:
@@ -283,129 +284,8 @@ class LayerEvaluator:
                     truth layers. Maximum is 1.0.
                 - mapping (list[(Layer, dict)]): a list of mappings between predicted and ground truth layers.
         """
-        if not predicted_layers or not ground_truth_layers:
-            return 0.0, []
-
-        P, G = len(predicted_layers), len(ground_truth_layers)
-
-        # Precompute pairwise scores
-        pairwise_scores = LayerEvaluator._compute_scores(ground_truth_layers, predicted_layers, P, G, scoring_fn)
-
-        # Build DP table and pointer
-        dp, ptr = LayerEvaluator._build_dp_table(P, G, pairwise_scores)
-
-        # Backtrack to recover mapping
-        mapping = LayerEvaluator._get_mapping(P, G, ptr)
-        layer_mapping = [
-            (predicted_layers[predicted_layer_index], ground_truth_layers[ground_truth_layer_index])
-            for predicted_layer_index, ground_truth_layer_index in mapping
-        ]
-
-        matching_score = dp[P][G] / max(P, G)  # maximum is 1.
-        return matching_score, layer_mapping
-
-    @staticmethod
-    def _compute_scores(
-        ground_truth_layers: list[dict[str, Any]],
-        preds: list[Layer],
-        P: int,
-        G: int,
-        scoring_fn: Callable[[Layer, dict], float],
-    ) -> list[list[float]]:
-        """Compute pairwise scores between predicted and ground truth layers.
-
-        Args:
-            ground_truth_layers (list[dict[str, Any]]): The ground truth layers with
-                material_description and depth_interval fields.
-            preds (list[Layer]): The predicted layers to evaluate.
-            P (int): The number of predicted layers.
-            G (int): The number of ground truth layers.
-            scoring_fn: Callable[[Layer, dict], float]: the scoring function to be used for selecting the best mapping.
-
-        Returns:
-            list[list[float]]: scores for each pred-gt pair.
-        """
-        pair_score = [[0.0] * G for _ in range(P)]
-
-        for i in range(P):
-            for j in range(G):
-                pair_score[i][j] = scoring_fn(preds[i], ground_truth_layers[j])
-        return pair_score
-
-    @staticmethod
-    def _build_dp_table(P: int, G: int, pair_score: list[list[float]]) -> tuple[list[list[float]], list[list[str]]]:
-        """Build the dynamic programming table for layer matching.
-
-        The algorithm finds the optimal alignment between predicted and ground truth layers
-        while preserving their relative order. It uses a dynamic programming approach where:
-        - Each cell dp[i][j] represents the best cumulative score for matching the first i
-          predictions with the first j ground truth layers
-        - Moves can be:
-          * Diagonal: Match current prediction with current ground truth (score from pair_score)
-          * Up: Skip current prediction (no additional score)
-          * Left: Skip current ground truth (no additional score)
-        - In case of equal scores, diagonal moves are preferred to preserve matching,
-          followed by up moves, then left moves.
-
-        Args:
-            P (int): The number of predicted layers.
-            G (int): The number of ground truth layers.
-            pair_score (list[list[float]]): The pairwise scores between predicted and ground truth layers.
-                Each score combines text similarity and depth matching accuracy.
-
-        Returns:
-            tuple: A tuple containing:
-                - dp (list[list[float]]): The dynamic programming table with cumulative scores
-                - ptr (list[list[str]]): The pointer table storing move directions ('diag', 'up', 'left')
-                    used for backtracking to recover the optimal matching.
-        """
-        dp = [[0.0] * (G + 1) for _ in range(P + 1)]
-        ptr = [["None"] * (G + 1) for _ in range(P + 1)]
-
-        for i in range(1, P + 1):
-            for j in range(1, G + 1):
-                diag = dp[i - 1][j - 1] + pair_score[i - 1][j - 1]
-                up = dp[i - 1][j]
-                left = dp[i][j - 1]
-                # tie-break: diag > up > left
-                candidates = [("diag", diag, 3), ("up", up, 2), ("left", left, 1)]
-                choice = max(candidates, key=lambda x: (x[1], x[2]))  # break tie with prioritize matching
-                dp[i][j] = choice[1]
-                ptr[i][j] = choice[0]
-        return dp, ptr
-
-    @staticmethod
-    def _get_mapping(
-        P: int,
-        G: int,
-        ptr: list[list[str]],
-    ) -> list[(int, int)]:
-        """Get the mapping between predicted and ground truth layers by backtracking through the DP table.
-
-        Args:
-            P (int): The number of predicted layers.
-            G (int): The number of ground truth layers.
-            ptr (list[list[str]]): The pointer table for backtracking.
-
-        Returns:
-            list[(int, int)]: The mapping between predicted and ground truth layers.
-        """
-        i, j = P, G
-        mapping = []
-        while i > 0 and j > 0:
-            move = ptr[i][j]
-            if move == "diag":
-                predicted_layer_index, ground_truth_layer_index = i - 1, j - 1
-                mapping.append((predicted_layer_index, ground_truth_layer_index))
-                i, j = i - 1, j - 1
-            elif move == "up":
-                i -= 1
-            elif move == "left":
-                j -= 1
-            else:
-                break
-        mapping.reverse()
-        return mapping
+        dp = PredToGroundTruthLayerDP(predicted_layers, ground_truth_layers, [0.0] * len(ground_truth_layers))
+        return dp.solve(scoring_fn)
 
 
 def score_material_descriptions(layer: Layer, ground_truth: dict) -> float:
