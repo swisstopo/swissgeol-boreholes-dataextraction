@@ -53,6 +53,23 @@ def _split_compounds(tokens: list[str], split_threshold: float) -> list[str]:
     return processed_tokens
 
 
+def _match_patterns(patterns: list[str], targets: list[str]) -> list[str]:
+    """Return all patterns that match any of the given targets.
+
+    This function checks whether any of the provided patterns are present
+    in the list of targets.
+
+    Args:
+        patterns (list[str]): Patterns to search for.
+        targets (list[str]): Target strings to check against.
+
+    Returns:
+        list[str]: A list of patterns that were found in the targets.
+        The list is empty if no matches are found.
+    """
+    return [target for target in targets if target in patterns]
+
+
 def find_matching_expressions(
     patterns: list,
     split_threshold: float,
@@ -87,9 +104,10 @@ def find_matching_expressions(
     else:
         targets_to_check = targets_stemmed
 
-    for item in patterns:
-        if item in targets_to_check:
-            track_match(analytics, item, language, search_excluding)
-            return True
+    # Look for any target that is part of patterns
+    target_matches = _match_patterns(patterns, targets_to_check)
 
-    return False
+    # Update match traking
+    [track_match(analytics, match, language, search_excluding) for match in target_matches]
+
+    return len(target_matches) != 0

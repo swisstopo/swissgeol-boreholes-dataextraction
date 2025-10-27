@@ -47,7 +47,7 @@ def detect_structure_lines(geometric_lines: list[Line], filter_lines=True) -> li
 def detect_table_structures(
     page_index: int,
     document: pymupdf.Document,
-    structure_lines: list[StructureLine],
+    geometric_lines: list[Line],
     text_lines: list[TextLine],
 ) -> list[TableStructure]:
     """Detect multiple non-overlapping table structures on a page.
@@ -55,7 +55,7 @@ def detect_table_structures(
     Args:
         page_index (int): The page index (0-indexed).
         document (pymupdf.Document): the document.
-        structure_lines (list[StructureLine]): Vertical and horizonal structure lines.
+        geometric_lines (list[Line]): The geometric lines on the page.
         text_lines (list[TextLine]): All text lines on the page.
 
     Returns:
@@ -66,6 +66,7 @@ def detect_table_structures(
     page_width = page.rect.width
     page_height = page.rect.height
 
+    structure_lines = detect_structure_lines(geometric_lines)
     table_candidates = _find_table_structures(structure_lines, config, page_width, page_height, text_lines)
     table_candidates = [
         table
