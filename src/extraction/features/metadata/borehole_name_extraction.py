@@ -73,7 +73,7 @@ class NameInDocument:
 
 
 def _find_closest_nearby_line(
-    current_line: TextLine, all_lines: list[TextLine], min_vertical_overlap: float
+    current_line: TextLine, all_lines: list[TextLine], min_vertical_overlap: float, max_horizontal_distance: float
 ) -> TextLine | None:
     """Find the line that is the closest to the current line on the right.
 
@@ -81,6 +81,7 @@ def _find_closest_nearby_line(
         current_line (TextLine): The line containing the keyword.
         all_lines (list[TextLine]): All text lines from the document.
         min_vertical_overlap (float): Overlap threshold for closest line detection.
+        max_horizontal_distance (float): Maximal distance to look for next text.
 
     Returns:
         TextLine | None: List of nearby lines that could contain the title.
@@ -90,6 +91,7 @@ def _find_closest_nearby_line(
         for line in all_lines
         if line.rect.x0 > current_line.rect.x1
         and y_overlap_significant_smallest(current_line.rect, line.rect, min_vertical_overlap)
+        and (line.rect.x0 - current_line.rect.x1) < max_horizontal_distance
     ]
     return min(nearby_lines, key=lambda line: line.rect.x0 - current_line.rect.x1) if nearby_lines else None
 
@@ -154,6 +156,7 @@ def extract_borehole_names(
     matching_keywords = name_detection_params.get("matching_keywords", [])
     excluded_keywords = name_detection_params.get("excluded_keywords", [])
     min_vertical_overlap = name_detection_params.get("min_vertical_overlap", 1.0)
+    max_horizontal_distance = name_detection_params.get("max_horizontal_distance", 1000)
 
     for line in text_lines:
         # Check line for keyword - Enforce end to avoid plural form
@@ -174,7 +177,7 @@ def extract_borehole_names(
             continue
 
         # Fallback: closest line to the right
-        hit_line = _find_closest_nearby_line(line, text_lines, min_vertical_overlap)
+        hit_line = _find_closest_nearby_line(line, text_lines, min_vertical_overlap, max_horizontal_distance)
         if not hit_line:
             continue
 

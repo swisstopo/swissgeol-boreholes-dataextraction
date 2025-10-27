@@ -2,6 +2,8 @@
 
 # Overlap threshold for closest next line detection.
 min_vertical_overlap: 0.9
+# Max allowed distance between keyword and next line
+max_horizontal_distance: 100000
 
 # Keyword for borehole name detection
 matching_keywords: [
