@@ -1,3 +1,5 @@
+"""Test moduile for striplog detection and merging."""
+
 import pymupdf
 import pytest
 
