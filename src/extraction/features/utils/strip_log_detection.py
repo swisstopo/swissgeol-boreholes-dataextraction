@@ -29,7 +29,7 @@ class StripLogSection:
     """Single strip log section (typically one “cell block” detected)."""
 
     bbox: pymupdf.Rect
-    confidence: float
+    confidence: float = 1.0
 
     def aligns(self, section: StripLogSection, r_tol: float = 1e-1) -> bool:
         """Check if a section is vertically aligned and contiguous with this strip log.
@@ -43,7 +43,7 @@ class StripLogSection:
         """
         width_err = np.abs(self.bbox.width - section.bbox.width) / self.bbox.width
         hori_err = np.abs(self.bbox.x0 - section.bbox.x0) / self.bbox.width
-        return (width_err < r_tol) and (hori_err < r_tol)
+        return (width_err <= r_tol) and (hori_err <= r_tol)
 
 
 @dataclass
