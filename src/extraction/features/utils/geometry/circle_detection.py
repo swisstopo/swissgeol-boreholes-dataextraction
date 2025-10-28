@@ -5,11 +5,11 @@ import logging
 import cv2
 import numpy as np
 import pymupdf
+import rtree
 from dotenv import load_dotenv
 
 from utils.file_utils import read_params
 
-import rtree
 from .geometry_dataclasses import Circle
 
 load_dotenv()
@@ -40,8 +40,6 @@ def detect_circles_hough(page: pymupdf.Page, hough_circles_params: dict) -> list
     # Convert PDF page to image
     pix = page.get_pixmap(matrix=pymupdf.Matrix(1, 1), colorspace=pymupdf.csGRAY)
     gray = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w)
-
-    # Apply Gaussian blur to smooth the image and reduce noise
     gray = cv2.GaussianBlur(gray, (5, 5), 0)
 
     circle_arrays = cv2.HoughCircles(
@@ -63,11 +61,13 @@ def detect_circles_hough(page: pymupdf.Page, hough_circles_params: dict) -> list
 
     return [Circle.circle_from_array(array, scale_factor=1) for array in circle_arrays]
 
+
 def _build_text_rtree(text_lines: list) -> rtree.index.Index:
     """Build spatial index for text lines.
 
     Args:
         text_lines (list): List of TextLine objects.
+
     Returns:
         rtree.index.Index: RTree spatial index of text lines.
     """
@@ -77,14 +77,13 @@ def _build_text_rtree(text_lines: list) -> rtree.index.Index:
         text_rtree.insert(
             id(line),
             (line.rect.x0, line.rect.y0, line.rect.x1, line.rect.y1),  # Bounding box
-            obj=line  # Store the actual object for later use
+            obj=line,  # Store the actual object for later use
         )
     return text_rtree
 
+
 def _circle_intersects_text_rtree(
-    circle: Circle,
-    text_rtree: rtree.index.Index,
-    text_proximity_threshold: float
+    circle: Circle, text_rtree: rtree.index.Index, text_proximity_threshold: float
 ) -> bool:
     """Check if circle intersects with text using spatial index.
 
@@ -94,6 +93,7 @@ def _circle_intersects_text_rtree(
         circle (Circle): The circle to check.
         text_rtree (rtree.index.Index): RTree spatial index of text lines.
         text_proximity_threshold (float): The distance threshold to consider proximity to text.
+
     Returns:
         bool: True if the circle intersects with or is too close to any text line, False
     """
@@ -102,22 +102,17 @@ def _circle_intersects_text_rtree(
         circle.center.x - circle.radius - text_proximity_threshold,  # x0
         circle.center.y - circle.radius - text_proximity_threshold,  # y0
         circle.center.x + circle.radius + text_proximity_threshold,  # x1
-        circle.center.y + circle.radius + text_proximity_threshold   # y1
+        circle.center.y + circle.radius + text_proximity_threshold,  # y1
     )
 
-    # Query RTree for potentially intersecting text lines
-    #candidate_lines = list(text_rtree.intersection(query_bbox, objects="raw"))
-
-    # Check actual intersection only for candidates
+    # Check intersection for candidates
     for text_line in text_rtree.intersection(query_bbox, objects="raw"):
-
         # Find closest point on rectangle to circle center
         closest_x = max(text_line.rect.x0, min(circle.center.x, text_line.rect.x1))
         closest_y = max(text_line.rect.y0, min(circle.center.y, text_line.rect.y1))
 
         # Calculate distance
-        distance = ((circle.center.x - closest_x) ** 2 +
-                   (circle.center.y - closest_y) ** 2) ** 0.5
+        distance = ((circle.center.x - closest_x) ** 2 + (circle.center.y - closest_y) ** 2) ** 0.5
 
         # Check intersection
         if distance < circle.radius + text_proximity_threshold:
