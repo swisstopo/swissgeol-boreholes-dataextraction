@@ -226,7 +226,11 @@ class LineAffinityCalculator:
         Returns:
             float: The affinity: -1.0 if lines are not compatible, 0.0 otherwise.
         """
-        return max(-1.0, min(0.0, -(current_line.rect.x1 - previous_line.rect.x1) / current_line.rect.width))
+        right_alignement_normalized = (current_line.rect.x1 - previous_line.rect.x1) / current_line.rect.width
+        # allow a missalignement of 15% to account for line breaks due to longer words.
+        if right_alignement_normalized < 0.15:
+            return 0
+        return max(-1.0, min(0.0, -(right_alignement_normalized)))
 
     def _indentation_affinity(self, previous_line: TextLine, current_line: TextLine):
         """Split the text block based on indentation.
