@@ -601,7 +601,7 @@ def get_pairs_based_on_line_affinity(
     pairs = []
     prev_block_idx = 0
     # reintroduce the heuristic that the presence of >=3 horiz. lines should tighten the vertical spacing constrain
-    threshold = -0.99 if sum(affinity.long_lines_affinity for affinity in affinities) <= -3.0 else 0.0
+    threshold = -0.99 if sum(affinity.long_lines_affinity for affinity in affinities) <= -3.0 else -0.15
     for line_idx, affinity in enumerate(affinities):
         if affinity.total_affinity() < threshold:  # note: the affinity of the first line is always 0.0
             pairs.append(IntervalBlockPair(None, TextBlock(description_lines[prev_block_idx:line_idx])))
