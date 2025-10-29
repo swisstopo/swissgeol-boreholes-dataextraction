@@ -29,7 +29,7 @@ def _pick_merge_candidates(
             * Extended borehole from the previous page.
             * Unaffected boreholes from the previous page.
             * Extended borehole from the current page that continues it.
-            * Unaffectecd boreholes from the current page.
+            * Unaffected boreholes from the current page.
     """
     # 1) Overlap-based (returns a triple)
     borehole_to_extend, borehole_continuation, last_duplicated_layer_index = select_boreholes_with_overlap(
