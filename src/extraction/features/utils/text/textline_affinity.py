@@ -169,11 +169,11 @@ class LineAffinityCalculator:
         Returns:
             float: The affinity: -1.0 if lines are not compatible, 0.0 otherwise.
         """
-        last_line_y_coordinate = (previous_line.rect.y0 + previous_line.rect.y1) / 2
-        current_line_y_coordinate = (current_line.rect.y0 + current_line.rect.y1) / 2
+        previous_line_y_two_thirds = previous_line.rect.y0 + (previous_line.rect.y1 - previous_line.rect.y0) * 2 / 3
+        current_line_y_one_third = current_line.rect.y0 + (current_line.rect.y1 - current_line.rect.y0) / 3
         for line in self.lines_spanning_description:
             line_y_coordinate = (line.start.y + line.end.y) / 2
-            if last_line_y_coordinate < line_y_coordinate < current_line_y_coordinate:
+            if previous_line_y_two_thirds < line_y_coordinate < current_line_y_one_third:
                 return -1.0
         return 0.0
 
@@ -187,11 +187,11 @@ class LineAffinityCalculator:
         Returns:
             float: The affinity: -1.0 if lines are not compatible, 0.0 otherwise.
         """
-        last_line_y_mid = (previous_line.rect.y0 + previous_line.rect.y1) / 2
-        current_line_y_mid = (current_line.rect.y0 + current_line.rect.y1) / 2
+        previous_line_y_two_thirds = previous_line.rect.y0 + (previous_line.rect.y1 - previous_line.rect.y0) * 2 / 3
+        current_line_y_one_third = current_line.rect.y0 + (current_line.rect.y1 - current_line.rect.y0) / 3
         for line in self.long_horizontals:
             line_y_mid = (line.start.y + line.end.y) / 2
-            geom_line_is_in_between = last_line_y_mid < line_y_mid < current_line_y_mid
+            geom_line_is_in_between = previous_line_y_two_thirds < line_y_mid < current_line_y_one_third
 
             SLACK = 2  # pixels
             line_cuts_lefthandside_of_text = (
