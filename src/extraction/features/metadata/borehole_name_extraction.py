@@ -95,9 +95,8 @@ def _find_closest_nearby_line(
     nearby_lines = [
         line
         for line in all_lines
-        if line.rect.x0 > current_line.rect.x1
+        if current_line.rect.x1 < line.rect.x0 < current_line.rect.x1 + max_horizontal_distance
         and y_overlap_significant_smallest(current_line.rect, line.rect, min_vertical_overlap)
-        and (line.rect.x0 - current_line.rect.x1) < max_horizontal_distance
     ]
     return min(nearby_lines, key=lambda line: line.rect.x0 - current_line.rect.x1) if nearby_lines else None
 
