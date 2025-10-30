@@ -31,14 +31,20 @@ class Affinity:
     lines_on_the_left_affinity: float
     vertical_spacing_affinity: float
     right_end_affinity: float
+    gap_with_previous_affinity: float
 
     @classmethod
     def get_zero_affinity(cls) -> Affinity:
         """Get an affinity with all zero values."""
-        return cls(0.0, 0.0, 0.0, 0.0)
+        return cls(0.0, 0.0, 0.0, 0.0, 0.0)
 
     def weighted_affinity(
-        self, line_weight: float, left_line_weight: float, spacing_weight: float, right_end_weight: float
+        self,
+        line_weight: float,
+        left_line_weight: float,
+        spacing_weight: float,
+        right_end_weight: float,
+        gap_weight: float,
     ) -> float:
         """Compute the weighted affinity using the provided weights."""
         return (
@@ -46,22 +52,31 @@ class Affinity:
             + left_line_weight * self.lines_on_the_left_affinity
             + spacing_weight * self.vertical_spacing_affinity
             + right_end_weight * self.right_end_affinity
+            + gap_weight * self.gap_with_previous_affinity
         )
 
     def total_affinity(self) -> float:
         """Compute the total affinity with equal weights."""
-        return self.weighted_affinity(1.0, 1.0, 1.0, 1.0)
+        return self.weighted_affinity(1.0, 1.0, 1.0, 1.0, 1.0)
 
     def weighted_mean_affinity(
-        self, line_weight: float, left_line_weight: float, spacing_weight: float, right_end_weight: float
+        self,
+        line_weight: float,
+        left_line_weight: float,
+        spacing_weight: float,
+        right_end_weight: float,
+        gap_weight: float,
     ) -> float:
         """Compute the weighted affinity using the provided weights."""
-        tot_weight = line_weight + left_line_weight + spacing_weight + right_end_weight
-        return self.weighted_affinity(line_weight, left_line_weight, spacing_weight, right_end_weight) / tot_weight
+        tot_weight = line_weight + left_line_weight + spacing_weight + right_end_weight + gap_weight
+        return (
+            self.weighted_affinity(line_weight, left_line_weight, spacing_weight, right_end_weight, gap_weight)
+            / tot_weight
+        )
 
     def mean_affinity(self) -> float:
         """Compute the mean affinity."""
-        return self.weighted_mean_affinity(1.0, 1.0, 1.0, 1.0)
+        return self.weighted_mean_affinity(1.0, 1.0, 1.0, 1.0, 1.0)
 
 
 class LineAffinityCalculator:
@@ -110,6 +125,11 @@ class LineAffinityCalculator:
             line.rect.y0 - prev_line.rect.y1 < 0.0
             for prev_line, line in zip(description_lines, description_lines[1:], strict=False)
         )
+
+        self.overlapping_distances = {description_lines[0]: None} | {
+            line: line.rect.y0 - prev_line.rect.y1
+            for prev_line, line in zip(description_lines, description_lines[1:], strict=False)
+        }
 
     def _is_spanning_description(self, line: Line) -> bool:
         """Check if a line spans the material description rectangle.
@@ -209,6 +229,30 @@ class LineAffinityCalculator:
         h_reference = current_rect.height if self.at_least_one_overlap else self.spacing_threshold
         score = max(-1.0, 1.0 - (current_rect.y1 - previous_rect.y1) / h_reference)  # not capped at 0
         return score
+
+    def compute_gap_affinity(self, previous_line: TextLine, current_line: TextLine) -> float:
+        """Check the gap between the two lines.
+
+        If the gap is significantly larger than the previous gap, it is unlikelly that the current line is the
+        continuation of the description.
+
+        Args:
+            previous_line (TextLine): The previous line.
+            current_line (TextLine): The current line.
+
+        Returns:
+            float: The affinity: 0.0 if lines are not compatible, 1.0 otherwise.
+        """
+        current_gap = self.overlapping_distances[current_line]
+        previous_gap = self.overlapping_distances[previous_line]
+        previous_line_height = previous_line.rect.height  # involved in both gaps
+        if current_gap > 0.6 * previous_line_height:
+            # gap is too big
+            return 0.0
+        if previous_gap is None or current_gap <= previous_gap + previous_line_height * 0.2:
+            # current gap is ruffly the same as the previous, or smaller
+            return 1.0
+        return 0.0
 
     def compute_right_end_affinity(self, previous_line: TextLine, current_line: TextLine) -> float:
         """Check the alignment of the right end of the lines.
@@ -312,6 +356,7 @@ def get_line_affinity(
                 calculator.compute_lines_on_the_left_affinity(previous_line, line),
                 calculator.compute_vertical_spacing_affinity(previous_line, line),
                 calculator.compute_right_end_affinity(previous_line, line),
+                calculator.compute_gap_affinity(previous_line, line),
             )
         )
 
