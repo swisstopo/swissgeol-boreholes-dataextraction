@@ -407,7 +407,7 @@ def _score_candidates(
 
         # 2) Compute local stats
         confidence = 1.0
-        # cv2.imwrite("test.png", 255 * im_binary_bbox)
+
         if toggle_params["crowding"]:
             confidence *= _score_crowding(im_binary_bbox, **crowding_params)
         if toggle_params["text_overlap"]:
