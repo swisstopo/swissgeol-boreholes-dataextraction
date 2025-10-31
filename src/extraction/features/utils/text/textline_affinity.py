@@ -126,10 +126,10 @@ class LineAffinityCalculator:
             for prev_line, line in zip(description_lines, description_lines[1:], strict=False)
         )
 
-        self.overlapping_distances = {description_lines[0]: None} | {
-            line: line.rect.y0 - prev_line.rect.y1
+        self.overlapping_distances = [None] + [
+            line.rect.y0 - prev_line.rect.y1
             for prev_line, line in zip(description_lines, description_lines[1:], strict=False)
-        }
+        ]
 
     def _is_spanning_description(self, line: Line) -> bool:
         """Check if a line spans the material description rectangle.
@@ -230,7 +230,7 @@ class LineAffinityCalculator:
         score = max(-1.0, 1.0 - (current_rect.y1 - previous_rect.y1) / h_reference)  # not capped at 0
         return score
 
-    def compute_gap_affinity(self, previous_line: TextLine, current_line: TextLine) -> float:
+    def compute_gap_affinity(self, previous_line: TextLine, prev_line_idx: int) -> float:
         """Check the gap between the two lines.
 
         If the gap is significantly larger than the previous gap, it is unlikely that the current line is the
@@ -238,13 +238,13 @@ class LineAffinityCalculator:
 
         Args:
             previous_line (TextLine): The previous line.
-            current_line (TextLine): The current line.
+            prev_line_idx (int): The index of the previous line, to acess the gaps lookup.
 
         Returns:
             float: The affinity: 0.0 if lines are not compatible, 1.0 otherwise.
         """
-        current_gap = self.overlapping_distances[current_line]
-        previous_gap = self.overlapping_distances[previous_line]
+        previous_gap = self.overlapping_distances[prev_line_idx]
+        current_gap = self.overlapping_distances[prev_line_idx + 1]
         previous_line_height = previous_line.rect.height  # involved in both gaps
         if current_gap > 0.6 * previous_line_height:
             # gap is too big
@@ -349,14 +349,14 @@ def get_line_affinity(
         block_line_ratio, left_line_length_threshold, material_description_rect, geometric_lines, description_lines
     )
     affinities = [Affinity.get_zero_affinity()]  # first line has no previous
-    for previous_line, line in zip(description_lines, description_lines[1:], strict=False):
+    for prev_line_idx, (previous_line, line) in enumerate(zip(description_lines, description_lines[1:], strict=False)):
         affinities.append(
             Affinity(
                 calculator.compute_long_lines_affinity(previous_line, line),
                 calculator.compute_lines_on_the_left_affinity(previous_line, line),
                 calculator.compute_vertical_spacing_affinity(previous_line, line),
                 calculator.compute_right_end_affinity(previous_line, line),
-                calculator.compute_gap_affinity(previous_line, line),
+                calculator.compute_gap_affinity(previous_line, prev_line_idx),
             )
         )
 
