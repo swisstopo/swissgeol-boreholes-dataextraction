@@ -24,7 +24,7 @@ class Affinity:
     long_lines_affinity: affinity based on the presence of long horizontal lines inbetween the two text lines.
     lines_on_the_left_affinity: affinity based on the presence of lines cutting the left side of the text lines.
     vertical_spacing_affinity: affinity based on the vertical spacing between the two text lines.
-    right_end_affinity: affinity based on the alignement of the right end of the two text lines.
+    right_end_affinity: affinity based on the alignment of the right end of the two text lines.
     """
 
     long_lines_affinity: float
@@ -233,7 +233,7 @@ class LineAffinityCalculator:
     def compute_gap_affinity(self, previous_line: TextLine, current_line: TextLine) -> float:
         """Check the gap between the two lines.
 
-        If the gap is significantly larger than the previous gap, it is unlikelly that the current line is the
+        If the gap is significantly larger than the previous gap, it is unlikely that the current line is the
         continuation of the description.
 
         Args:
@@ -250,14 +250,14 @@ class LineAffinityCalculator:
             # gap is too big
             return 0.0
         if previous_gap is None or current_gap <= previous_gap + previous_line_height * 0.2:
-            # current gap is ruffly the same as the previous, or smaller
+            # current gap is roughly the same as the previous, or smaller
             return 1.0
         return 0.0
 
     def compute_right_end_affinity(self, previous_line: TextLine, current_line: TextLine) -> float:
         """Check the alignment of the right end of the lines.
 
-        If the previous line ends before the current one, it is unlikelly that it is the continuation of the
+        If the previous line ends before the current one, it is unlikely that it is the continuation of the
         description. It would look something like that:
 
             This is the
@@ -270,11 +270,11 @@ class LineAffinityCalculator:
         Returns:
             float: The affinity: -1.0 if lines are not compatible, 0.0 otherwise.
         """
-        right_alignement_normalized = (current_line.rect.x1 - previous_line.rect.x1) / current_line.rect.width
-        # allow a missalignement of 15% to account for line breaks due to longer words.
-        if right_alignement_normalized < 0.15:
-            return 0
-        return max(-1.0, min(0.0, -(right_alignement_normalized)))
+        right_alignment_normalized = (current_line.rect.x1 - previous_line.rect.x1) / current_line.rect.width
+        # allow a missalignment of 15% to account for line breaks due to longer words.
+        if right_alignment_normalized < 0.15:
+            return 0.0
+        return max(-1.0, min(0.0, -(right_alignment_normalized)))
 
     def _indentation_affinity(self, previous_line: TextLine, current_line: TextLine):
         """Split the text block based on indentation.
