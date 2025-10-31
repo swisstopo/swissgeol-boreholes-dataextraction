@@ -175,32 +175,25 @@ def _detect_table_from_thresholded(
 
 
 def _detect_candidates_from_page(
-    page: pymupdf.Page,
-    threshold_param: dict,
+    im_binary: np.ndarray,
     table_param: dict,
-) -> list[pymupdf.Rect]:
+) -> tuple[list[pymupdf.Rect], list[pymupdf.Rect]]:
     """Detect table cell–like candidates on a PDF page via morphological line extraction.
 
     Args:
-        page (pymupdf.Page): The page to process.
-        threshold_param (dict): Thresholding parameters.
+        im_binary (np.ndarray): Binary image with values {0,1} for table detection.
         table_param (dict): Table detection geometric/morphological constraints
 
     Returns:
         list[pymupdf.Rect]: List of candidate rectangles in page coordinates.
+        list[pymupdf.Rect]: List of vertical structure lines bounding boxes.
     """
-    # Render
-    im_gray, rescale_factor = _page_to_grayscale(page=page, dpi=table_param["dpi"])
-
-    # Threshold
-    thr = _threshold_image(im_gray, **threshold_param)
-
-    im_table, im_vert, _ = _detect_table_from_thresholded(
-        thr, table_param["min_line_length"], table_param["min_line_dilation"]
+    im_table_labeled, im_vert_labeled, _ = _detect_table_from_thresholded(
+        im_binary, table_param["min_line_length"], table_param["min_line_dilation"]
     )
 
     structures_bbox: list[pymupdf.Rect] = []
-    for region in regionprops(im_vert):
+    for region in regionprops(im_vert_labeled):
         # Invert coordinate system (x;y) and (y;x) due to packages inconsitency
         structures_bbox.append(
             pymupdf.Rect(
@@ -213,7 +206,7 @@ def _detect_candidates_from_page(
 
     # Region filtering and bbox extraction
     candidates_bbox: list[pymupdf.Rect] = []
-    for region in regionprops(im_table):
+    for region in regionprops(im_table_labeled):
         if (
             (region.image.shape[1] < table_param["min_cell_width"])
             or (region.image.shape[1] > table_param["max_cell_width"])
@@ -223,10 +216,6 @@ def _detect_candidates_from_page(
             continue
         # Invert coordinate system (x;y) and (y;x) due to packages inconsitency
         candidates_bbox.append(pymupdf.Rect(region.bbox[1], region.bbox[0], region.bbox[3], region.bbox[2]))
-
-    # Convert px -> page coords
-    candidates_bbox = _rescale_bboxes(candidates_bbox, scale=rescale_factor)
-    structures_bbox = _rescale_bboxes(structures_bbox, scale=rescale_factor)
 
     return candidates_bbox, structures_bbox
 
@@ -247,43 +236,72 @@ def _rescale_bboxes(bboxes: list[pymupdf.Rect], scale: float) -> list[pymupdf.Re
 def _score_crowding(im_binary: np.ndarray, kernel_size: int = 5, margin: int = 2) -> float:
     """Return foreground density after dilation (range [0, 1]).
 
+    This function estimates how visually "crowded" a binary image region is by
+    measuring the average pixel density after applying a morphological dilation.
+    The dilation expands the foreground regions using a circle kernel, which helps
+    capture nearby pixel clusters and fill small gaps. A higher score indicates
+    denser or more cluttered regions, while a lower score suggests sparse content.
+
     Args:
-        im_binary (np.ndarray): Binary image.
-        kernel_size (int): Square kernel size for dilation. Defaults to 5.
-        margin (int): Margin cut to avoid border effect.
+        im_binary (np.ndarray): Binary image where foreground pixels represent detected features.
+        kernel_size (int): Circle kernel used to expand foreground regions. Defaults to 5.
+        margin (int): Number of pixels to crop from each border before computation, to reduce border artifacts.
 
     Returns:
-        float: Density in [0, 1] computed as the mean of the dilated binary mask.
+        float: Foreground density in [0, 1] representing the mean intensity of the dilated binary mask.
     """
     im_binary = im_binary[margin:-margin, margin:-margin]
     if len(im_binary) == 0:
         return 0
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
     closed = cv2.morphologyEx(im_binary, cv2.MORPH_DILATE, kernel, iterations=1)
     return closed.mean()
 
 
-def _score_text_disjoint(rect: pymupdf.Rect, text_lines: list[TextLine]) -> float:
-    """Returns fraction of area not obstructed by text.
+def _score_text_disjoint(
+    rect: pymupdf.Rect, text_lines: list[TextLine], tau: float = 5.0, penalty: float = 1.0
+) -> float:
+    """Compute a disjointness score measuring how free a region is from overlapping text.
+
+    This function penalizes regions of interest that contain text, combining area coverage
+    and textual length into a single score. The goal is to strongly penalize regions covered
+    by text, while still allowing large regions with small or sparse text to receive high scores.
+
+    - Small cells with a few short text lines → penalized mainly by `score_area`
+    - Large regions with long but thin text lines → penalized mainly by `score_length`
 
     Args:
         rect (pymupdf.Rect): Region of interest in page coordinates.
         text_lines (list[TextLine]): Optional list of detected text lines in page coordinates.
+        tau (float): Length tolerance for text within the region. Larger values make the function more
+            tolerant to long text. Defaults to 5.
+        penalty (float): Exponent controlling the steepness of the penalty curve. Larger values
+            produce harsher penalties. Defaults to 1.
 
     Returns:
         (float) Score in [0, 1]; 1.0 means no text overlap, 0.0 means fully covered by text.
     """
     if not text_lines:
         return 1.0
+
     # Detect all text overlapping area with region and sums areas
     text_within = [line for line in text_lines if rect.intersects(line.rect)]
-    # Remove text that was produce by ,aterial structure (looking like 0 or 8)
-    text_within = [line for line in text_within if not _is_numeric_pattern(line.text)]
-    # Extract areas and sum
-    text_area_within = np.sum([(line.rect & rect).get_area() for line in text_within])
+    # Remove text that was produce by OCR
+    text_within_ocr = [line for line in text_within if not _is_ocr_numeric_pattern(line.text)]
+    score_area = 1.0
+    score_length = 1.0
+
     # Text penalty given as area occupied by text
-    score = 1 - text_area_within / rect.get_area()
-    return score
+    if text_within:
+        text_area_within = np.sum([(line.rect & rect).get_area() for line in text_within])
+        score_area = 1 - text_area_within / rect.get_area()
+
+    # Text penalty given as text's length
+    if text_within_ocr:
+        text_length_within = np.mean([np.exp(-len(line.text) / tau) for line in text_within_ocr])
+        score_length = np.exp(-text_length_within / tau)
+
+    return (score_area * score_length) ** penalty
 
 
 def _score_line(im_gray: np.ndarray, lsd_params: dict) -> float:
@@ -352,61 +370,57 @@ def _score_circle(im_gray: np.ndarray, hough_circles_params: dict) -> float:
     return circle_area / im_gray.size
 
 
-def _score_striplogs(
+def _score_candidates(
     bboxes: list[pymupdf.Rect],
-    page: pymupdf.Page,
-    threshold_param: dict,
+    bboxes_dpi: list[pymupdf.Rect],
+    im_gray_dpi: np.ndarray,
+    im_binary_dpi: np.ndarray,
     score_params: dict,
     text_lines: list[TextLine] = None,
-) -> list[StripLogSection]:
+) -> list[float]:
     """Score candidate strip-log regions by visual/text features and return sections.
 
     Args:
-        bboxes (list[pymupdf.Rect]): Candidate regions to be scored.
-        page (pymupdf.Page): The source page.
-        threshold_param (dict): Thresholding parameters.
+        bboxes (list[pymupdf.Rect]): N candidate regions to be scored.
+        bboxes_dpi (list[pymupdf.Rect]): N candidate regions to be scored at image gray and binary resolution.
+        im_gray_dpi (np.ndarray): Grayscale with grayscale values {0, ..., 255}.
+        im_binary_dpi (np.ndarray): Binary image with values {0,1}.
         score_params (dict): High-level scoring parameters.
         text_lines (list[TextLine], optional): Detected text lines in page. Defaults to None.
 
     Returns:
-        list[StripLogSection]: Scored sections with confidence score.
+        list[float]: N candidate scores.
     """
     # get parameters
     hough_circles_params = score_params.get("hough_circles", {})
     lsd_params = score_params.get("lsd", {})
+    crowding_params = score_params.get("crowding", {})
+    text_overlap_params = score_params.get("text_overlap", {})
     toggle_params = score_params.get("toggle", {})
 
-    # Get image region and threshold it
-    im_gray, rescale_factor = _page_to_grayscale(page=page, dpi=score_params["dpi"], use_blur=False)
-    im_binary = _threshold_image(im_gray, **threshold_param)
+    confidences = []
 
-    strip_candidates = []
-    bboxes_px = _rescale_bboxes(bboxes, scale=1 / rescale_factor)
-
-    for bbox, bbox_px in zip(bboxes, bboxes_px, strict=True):
+    for bbox, bbox_dpi in zip(bboxes, bboxes_dpi, strict=True):
         # 1) Get scaled area
-        im_binary_bbox = im_binary[int(bbox_px.y0) : int(bbox_px.y1), int(bbox_px.x0) : int(bbox_px.x1)]
-        im_gray_bbox = im_gray[int(bbox_px.y0) : int(bbox_px.y1), int(bbox_px.x0) : int(bbox_px.x1)]
+        im_gray_bbox = im_gray_dpi[int(bbox_dpi.y0) : int(bbox_dpi.y1), int(bbox_dpi.x0) : int(bbox_dpi.x1)]
+        im_binary_bbox = im_binary_dpi[int(bbox_dpi.y0) : int(bbox_dpi.y1), int(bbox_dpi.x0) : int(bbox_dpi.x1)]
 
         # 2) Compute local stats
         confidence = 1.0
-
+        # cv2.imwrite("test.png", 255 * im_binary_bbox)
         if toggle_params["crowding"]:
-            confidence *= _score_crowding(im_binary_bbox)
+            confidence *= _score_crowding(im_binary_bbox, **crowding_params)
         if toggle_params["text_overlap"]:
-            confidence *= _score_text_disjoint(bbox, text_lines=text_lines)
+            confidence *= _score_text_disjoint(bbox, text_lines=text_lines, **text_overlap_params)
         if toggle_params["pattern"]:
             circle_score = _score_circle(im_gray_bbox, hough_circles_params)
             line_score = _score_line(im_gray_bbox, lsd_params)
             confidence *= np.clip(circle_score + 4 * line_score, a_min=0, a_max=1)
 
-        strip_candidates.append(
-            StripLogSection(
-                bbox=bbox,
-                confidence=confidence,
-            )
-        )
-    return strip_candidates
+        # 3) Append to predictions
+        confidences.append(confidence)
+
+    return confidences
 
 
 def _merge_sections(
@@ -472,6 +486,10 @@ def _merge_sections(
             for v in graph_sections
         ]
 
+    # Check if at leat one cell reached confidence_seed
+    if graph_adjacency.sum() == 0:
+        return []
+
     # Ensure the matrix is symetric (avoid undirected graph)
     graph_adjacency = (graph_adjacency + graph_adjacency.T).astype(int)
     _, labels = connected_components(csgraph=graph_adjacency, directed=False, return_labels=True)
@@ -488,8 +506,13 @@ def _merge_sections(
     return striplogs
 
 
-def _is_numeric_pattern(text: str) -> bool:
-    """Pattern for combinations of digits and dots (0, 0.0, 00, 0.0.0, 08, .00, 0-8 etc.).
+def _is_ocr_numeric_pattern(text: str) -> bool:
+    """Pattern for combinations of zeros and dots (0, 0.0, 00, 0.0.0, 0o, .00, 0-O etc.).
+
+    This function identifies text sequences that likely represent misread numbers or
+    numeric-like tokens commonly produced by OCR engines. These often contain mixtures
+    of digits (`0`, `1`, `8`) and visually similar characters (`O`, `o`), optionally
+    interspersed with punctuation such as `.`, `-`, `_`, or `:`.
 
     Args:
         text (str): Raw text to classify.
@@ -497,8 +520,13 @@ def _is_numeric_pattern(text: str) -> bool:
     Returns:
         bool: True if text is composed artifact characters.
     """
-    numeric_pattern = re.compile(r"^[\s08./-]+$")
-    return bool(numeric_pattern.match(text))
+    # - `(?<![\\w\\d])` → negative lookbehind ensures no alphanumeric before the match.
+    # - `[.\\-_:]*` → allows optional leading punctuation.
+    # - `[Oo081]` → must contain at least one valid OCR digit-like character.
+    # - `(?:[Oo081.\\-_:]*[Oo081])*` → allows internal punctuation and repeated valid characters.
+    # - `(?![\\w\\d])` → negative lookahead prevents continuation into other alphanumerics.
+    ocr_numeric_pattern = re.compile(r"(?<![\w\d])[.\-_:]*[Oo081](?:[Oo081.\-_:]*[Oo081])*(?![\w\d])", re.IGNORECASE)
+    return bool(ocr_numeric_pattern.match(text))
 
 
 def detect_strip_logs(
@@ -517,16 +545,36 @@ def detect_strip_logs(
         list[StripLog]: List of merged StripLog objects that passed the confidence threshold.
     """
     # Extract parameter groups
+    dpi = striplog_detection_params.get("dpi", 72)
     threshold_param = striplog_detection_params.get("threshold", {})
     table_param = striplog_detection_params.get("table", {})
     score_params = striplog_detection_params.get("score", {})
     merge_params = striplog_detection_params.get("merge", {})
 
-    # Candidate detection in page space
-    section_bboxes, structures_bbox = _detect_candidates_from_page(page, threshold_param, table_param)
+    # Rendering and thresholding
+    im_gray_dpi, rescale_factor = _page_to_grayscale(page=page, dpi=dpi)
+    im_thresholded_dpi = _threshold_image(im_gray_dpi, **threshold_param)
 
-    # Candidate scoring
-    section_candidates = _score_striplogs(section_bboxes, page, threshold_param, score_params, text_lines)
+    # Candidate detection in page space
+    section_bboxes_dpi, structures_bbox_dpi = _detect_candidates_from_page(im_thresholded_dpi, table_param)
+
+    # Rescale bounding boxes to match output DPI
+    section_bboxes = _rescale_bboxes(section_bboxes_dpi, scale=rescale_factor)
+    structures_bbox = _rescale_bboxes(structures_bbox_dpi, scale=rescale_factor)
+
+    # Create Striplog section candidates
+    confidences = _score_candidates(
+        section_bboxes, section_bboxes_dpi, im_gray_dpi, im_thresholded_dpi, score_params, text_lines
+    )
+
+    section_candidates = [
+        StripLogSection(
+            bbox=bbox,
+            confidence=confidence,
+        )
+        for bbox, confidence in zip(section_bboxes, confidences, strict=True)
+        if confidence > 0.3
+    ]
 
     # Vertical merging, then filter by minimum section count.
     return _merge_sections(section_candidates, structures_bbox, merge_params)
