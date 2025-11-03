@@ -262,31 +262,32 @@ def _score_crowding(im_binary: np.ndarray, kernel_size: int = 5, margin: int = 2
     return np.clip(closed.mean(), a_min=0.0, a_max=1.0)
 
 
-def _score_text_disjoint(
-    rect: pymupdf.Rect, text_lines: list[TextLine], tau: float = 5.0, penalty: float = 1.0
-) -> float:
-    """Compute a disjointness score measuring how free a region is from overlapping text.
+def _is_text(
+    rect: pymupdf.Rect, text_lines: list[TextLine], tau: float = 5.0, penalty: float = 1.0, threshold: float = 0.1
+) -> bool:
+    """Return True if the region is effectively contains text.
 
-    This function penalizes regions of interest that contain text, combining area coverage
-    and textual length into a single score. The goal is to strongly penalize regions covered
-    by text, while still allowing large regions with small or sparse text to receive high scores.
+    The method computes a penalty score in [0, 1] that reflects how much text overlaps
+    the region: higher overlap/longer text → higher penalty. The region is considered
+    positive if the final penalty is lower than `threshold`.
 
-    - Small cells with a few short text lines → penalized mainly by `score_area`
-    - Large regions with long but thin text lines → penalized mainly by `score_length`
+    Scoring (two factors, then combined and exponentiated):
+      - score area: proportion of the region covered by text
+      - length factor: penalizes long text lines that overlap the region
 
     Args:
         rect (pymupdf.Rect): Region of interest in page coordinates.
-        text_lines (list[TextLine]): Optional list of detected text lines in page coordinates.
-        tau (float): Length tolerance for text within the region. Larger values make the function more
-            tolerant to long text. Defaults to 5.
-        penalty (float): Exponent controlling the steepness of the penalty curve. Larger values
-            produce harsher penalties. Defaults to 1.
+        text_lines (list[TextLine]): Detected text lines in page coordinates.
+        tau (float): Length scale controlling tolerance to long text (larger = more tolerant), default 5.0.
+        penalty (float): Exponent controlling penalty steepness (larger = harsher), default 1.0
+        threshold : Decision threshold on the final penalty. If (penalty_score >= threshold),
+            the region is considered to be free of text, default 0.1.
 
     Returns:
-        (float) Score in [0, 1]; 1.0 means no text overlap, 0.0 means fully covered by text.
+        bool: True if the region is contains text (penalty < threshold), False otherwise.
     """
     if not text_lines:
-        return 1.0
+        return False
 
     # Detect all text overlapping area with region and sums areas
     text_within = [line for line in text_lines if rect.intersects(line.rect)]
@@ -296,15 +297,20 @@ def _score_text_disjoint(
     score_length = 1.0
 
     # Text penalty given as area occupied by text
-    if text_within:
-        text_area_within = np.sum([(line.rect & rect).get_area() for line in text_within])
+    if text_within_ocr:
+        # Compute area covered by text wrt section area
+        text_area_within = np.sum([(line.rect & rect).get_area() for line in text_within_ocr])
         score_area = 1 - text_area_within / rect.get_area()
 
-    # Text penalty given as text's length
-    if text_within_ocr:
-        score_length = np.min([np.exp(-len(line.text) / tau) for line in text_within_ocr])
+        # Compute portion of area that is overlapping with section
+        text_area_within_ocr = np.sum([(line.rect & rect).get_area() for line in text_within_ocr])
+        text_area_outside_ocr = np.sum([(line.rect).get_area() for line in text_within_ocr])
+        ocr_area_factor = text_area_within_ocr / text_area_outside_ocr
+        # make the assumption that if a text overlap with section, it has a linear contribution. For eaxmple, if
+        # "this is a text!" overlap with section at 50% (e.i. ocr_area_factor = 0.5) then only "a text!" is kept.
+        score_length = np.min([np.exp(-len(line.text) * ocr_area_factor / tau) for line in text_within_ocr])
 
-    return np.clip((score_area * score_length) ** penalty, a_min=0.0, a_max=1.0)
+    return np.clip((score_area * score_length) ** penalty, a_min=0.0, a_max=1.0) < threshold
 
 
 def _score_pattern(im_gray: np.ndarray, pattern_params: dict) -> float:
@@ -427,7 +433,7 @@ def _score_candidates(
     im_binary_dpi: np.ndarray,
     score_params: dict,
     text_lines: list[TextLine] = None,
-) -> list[float]:
+) -> tuple[list[float], list[bool]]:
     """Score candidate strip-log regions by visual/text features and return sections.
 
     Args:
@@ -448,6 +454,7 @@ def _score_candidates(
     toggle_params = score_params.get("toggle", {})
 
     confidences = []
+    is_texts = []
 
     for bbox, bbox_dpi in zip(bboxes, bboxes_dpi, strict=True):
         # 1) Get scaled area
@@ -456,17 +463,19 @@ def _score_candidates(
 
         # 2) Compute local stats
         confidence = 1.0
+        is_text = 1.0
+        cv2.imwrite("test.png", im_gray_bbox)
         if toggle_params["crowding"]:
             confidence *= _score_crowding(im_binary_bbox, **crowding_params)
-        if toggle_params["text_overlap"]:
-            confidence *= _score_text_disjoint(bbox, text_lines=text_lines, **text_overlap_params)
         if toggle_params["pattern"]:
             confidence *= _score_pattern(im_gray_bbox, pattern_params)
-
+        if toggle_params["text_overlap"]:
+            is_text = _is_text(bbox, text_lines=text_lines, **text_overlap_params)
         # 3) Append to predictions
         confidences.append(confidence)
+        is_texts.append(is_text)
 
-    return confidences
+    return confidences, is_texts
 
 
 def _merge_sections(
@@ -572,12 +581,9 @@ def _is_ocr_numeric_pattern(text: str) -> bool:
     Returns:
         bool: True if text is composed artifact characters.
     """
-    # - `(?<![\\w\\d])` → negative lookbehind ensures no alphanumeric before the match.
-    # - `[.\\-_:]*` → allows optional leading punctuation.
-    # - `[Oo081]` → must contain at least one valid OCR digit-like character.
-    # - `(?:[Oo081.\\-_:]*[Oo081])*` → allows internal punctuation and repeated valid characters.
+    # TODO :check with GPT for space and ????
     # - `(?![\\w\\d])` → negative lookahead prevents continuation into other alphanumerics.
-    ocr_numeric_pattern = re.compile(r"(?<![\w\d])[.\-_:]*[Oo081](?:[Oo081.\-_:]*[Oo081])*(?![\w\d])", re.IGNORECASE)
+    ocr_numeric_pattern = re.compile(r"^[o018|/()\-\.,=_]+$", re.IGNORECASE)
     return bool(ocr_numeric_pattern.match(text))
 
 
@@ -615,7 +621,7 @@ def detect_strip_logs(
     structures_bbox = _rescale_bboxes(structures_bbox_dpi, scale=rescale_factor)
 
     # Create Striplog section candidates
-    confidences = _score_candidates(
+    confidences, is_texts = _score_candidates(
         section_bboxes, section_bboxes_dpi, im_gray_dpi, im_thresholded_dpi, score_params, text_lines
     )
 
@@ -624,7 +630,8 @@ def detect_strip_logs(
             bbox=bbox,
             confidence=confidence,
         )
-        for bbox, confidence in zip(section_bboxes, confidences, strict=True)
+        for bbox, confidence, is_text in zip(section_bboxes, confidences, is_texts, strict=True)
+        if not is_text
     ]
 
     # Vertical merging, then filter by minimum section count.

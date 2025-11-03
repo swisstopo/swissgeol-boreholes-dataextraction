@@ -34,6 +34,7 @@ score:
     text_overlap:
         tau: 3            # Length tolerance for text within the region.
         penalty: 2        # Exponent controlling the steepness of the penalty curve.
+        threshold: 0.1    # Decision threshold on the final penalty.
 
     # Circle detection parameters (only if score.toggle.pattern=true)
     pattern:
@@ -64,7 +65,7 @@ score:
 
 # Merging parameters
 merge:
-    confidence_seed: 0.5    # Global confidence threshold for accepting a detected striplog section
-    confidence_graph: 0.1   # Minimal confidence for section to be connected to seed
+    confidence_seed: 0.6    # Global confidence threshold for accepting a detected striplog section
+    confidence_graph: 0.0   # Minimal confidence for section to be connected to seed
     min_sections: 2         # Minimal number of detected sections required to form a valid strip log
     r_tol_width: 0.2        # Maximum allowed relative difference in width between two sections
