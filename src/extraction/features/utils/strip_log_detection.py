@@ -18,6 +18,7 @@ import pymupdf
 from scipy.sparse.csgraph import connected_components
 from skimage.measure import label, regionprops
 from skimage.morphology import remove_small_objects
+from sklearn.cluster import DBSCAN
 
 from extraction.features.utils.text.textline import TextLine
 
@@ -109,19 +110,21 @@ def _page_to_grayscale(page: pymupdf.Page, dpi: int = 72, use_blur: bool = True)
     return gray, dpi_scaling
 
 
-def _threshold_image(im_gray: np.ndarray, block_size: int, c: int) -> np.ndarray:
+def _threshold_image(im_gray: np.ndarray, block_size: int, c: int, clean_size: int) -> np.ndarray:
     """Adaptive thresholding (robust to uniform backgrounds and small noise).
 
     Args:
         im_gray (np.ndarray): A NxM grayscale image.
         block_size (int): Odd window size for local mean.
         c (int): Constant subtracted from local mean.
+        clean_size (int): Minimal area to be considered in image. Used to remove small dotting from scanner.
 
     Returns:
         np.ndarray: Binary NxM image with values {0, 1}.
     """
     # Thresholding: Use adaptive for areas that ar enot white but filled with a unique color
     thr = cv2.adaptiveThreshold(im_gray, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, block_size, c)
+    thr = remove_small_objects(thr.astype(bool), min_size=clean_size).astype(np.uint8)
     return thr
 
 
@@ -157,11 +160,12 @@ def _detect_table_from_thresholded(
     v_ker = cv2.getStructuringElement(cv2.MORPH_RECT, (1, min_line_length))
     horiz = cv2.morphologyEx(im_binary, cv2.MORPH_OPEN, h_ker, iterations=1)
     vert = cv2.morphologyEx(im_binary, cv2.MORPH_OPEN, v_ker, iterations=1)
-    horiz_closed = cv2.morphologyEx(horiz, cv2.MORPH_DILATE, h_ker)
+
+    # Only perform vertical opening to avoid connecting sections
     vert_closed = cv2.morphologyEx(vert, cv2.MORPH_DILATE, v_ker)
 
     # Merge and thicken to close tiny gaps
-    grid = (cv2.add(horiz_closed, vert_closed) > 0).astype(np.uint8)
+    grid = (cv2.add(horiz, vert_closed) > 0).astype(np.uint8)
     grid = cv2.dilate(grid, np.ones((min_line_dilation, min_line_dilation), np.uint8), iterations=1)
 
     # Remove small connected components (in the line mask)
@@ -171,7 +175,7 @@ def _detect_table_from_thresholded(
     # Candidates are large background “cells”
     label_img_inv = label(label_img == 0)
 
-    return label_img_inv, label(vert_closed), label(horiz_closed)
+    return label_img_inv, label(vert_closed), label(horiz)
 
 
 def _detect_candidates_from_page(
@@ -255,7 +259,7 @@ def _score_crowding(im_binary: np.ndarray, kernel_size: int = 5, margin: int = 2
         return 0
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
     closed = cv2.morphologyEx(im_binary, cv2.MORPH_DILATE, kernel, iterations=1)
-    return closed.mean()
+    return np.clip(closed.mean(), a_min=0.0, a_max=1.0)
 
 
 def _score_text_disjoint(
@@ -298,57 +302,105 @@ def _score_text_disjoint(
 
     # Text penalty given as text's length
     if text_within_ocr:
-        text_length_within = np.mean([np.exp(-len(line.text) / tau) for line in text_within_ocr])
-        score_length = np.exp(-text_length_within / tau)
+        score_length = np.min([np.exp(-len(line.text) / tau) for line in text_within_ocr])
 
-    return (score_area * score_length) ** penalty
+    return np.clip((score_area * score_length) ** penalty, a_min=0.0, a_max=1.0)
 
 
-def _score_line(im_gray: np.ndarray, lsd_params: dict) -> float:
-    """Estimate line “area” fraction via LSD.
+def _score_pattern(im_gray: np.ndarray, pattern_params: dict) -> float:
+    """Score how strongly a page exhibits the “pattern” (lines/circles).
+
+    The function detects straight line segments (via OpenCV’s LSD) and circular features
+    (via Hough Circles), clusters their bounding-box centers with DBSCAN, and computes
+    the total area of the cluster bounding boxes normalized by the page area.
 
     Args:
-        im_gray (np.ndarray): Grayscale patch.
-        lsd_params (dict): Keyword args for `cv2.createLineSegmentDetector`.
+        im_gray (np.ndarray): Single-channel grayscale image (H×W).
+        pattern_params (dict):  Dictionary with parameters for the two detectors and clustering.
 
     Returns:
-        float: Fraction of area covered by lines.
+        float: A value in ``[0, 1]`` proportional to how much of the page is covered by
+            the union of cluster bounding boxes.
+
+    """
+    hough_circles_params = pattern_params.get("hough_circles", {})
+    lsd_params = pattern_params.get("lsd", {})
+    _, width = im_gray.shape
+
+    bbox_lines = _detect_line(im_gray, lsd_params)
+    bbox_circles = _detect_circle(im_gray, hough_circles_params)
+    bboxes = bbox_lines + bbox_circles
+
+    if not bboxes:
+        return 0.0
+
+    bboxes_centers = [[(x0 + x1) / 2, (y0 + y1) / 2] for x0, y0, x1, y1 in bboxes]
+    cluster_labels = DBSCAN(eps=pattern_params["max_dbscan_ratio"] * width, min_samples=1).fit_predict(bboxes_centers)
+
+    # # Infer clusters areas
+    clusters_area = 0
+    for cluster_id in np.unique(cluster_labels):
+        x0, y0, x1, y1 = np.array(bboxes)[cluster_id == cluster_labels].T
+        clusters_area += (x1.max() - x0.min()) * (y1.max() - y0.min())
+
+    return np.clip(clusters_area / im_gray.size, a_min=0.0, a_max=1.0)
+
+
+def _detect_line(im_gray: np.ndarray, lsd_params: dict) -> list[pymupdf.Rect]:
+    """Detect straight line segments using OpenCV’s Line Segment Detector (LSD).
+
+    Internally crops a uniform margin from the image to avoid boundary artifacts,
+    runs LSD, and returns axis-aligned rectangles spanning each detected segment.
+
+    Args:
+        im_gray (np.ndarray): Single-channel grayscale image (H×W).
+        lsd_params (dict): Parameters for LSD.
+
+    Returns:
+        list[pymupdf.Rect]: One rectangle per kept line.
     """
     # Create default line segment detector
     #  Documentation for the parameters can be found here:
     #  https://docs.opencv.org/4.x/dd/d1a/group__imgproc__feature.html#gae0bba3b867a5f44d1b823aef4f57ee8d
-    lsd = cv2.createLineSegmentDetector(**lsd_params)
+    local_lsd_params = lsd_params.copy()
+    min_line_ratio = local_lsd_params.pop("min_line_ratio")
+    max_line_ratio = local_lsd_params.pop("max_line_ratio")
+    max_margin = local_lsd_params.pop("max_margin")
+    _, width = im_gray.shape
+
+    # Remove small margin around to prvent detecting table lines
+    im_gray_margin = im_gray[max_margin:-max_margin, max_margin:-max_margin]
+
+    # Check if cropped area is still valid
+    if im_gray_margin.size == 0:
+        return []
 
     # Detect lines in the image
-    lines, lines_width, _, _ = lsd.detect(im_gray)
+    lsd = cv2.createLineSegmentDetector(**local_lsd_params)
+    lines, _, _, _ = lsd.detect(im_gray_margin)
 
     if lines is None:
-        return 0.0
+        return []
 
-    # Compute line length
-    lines_length = np.sqrt((lines[:, 0, 0] - lines[:, 0, 2]) ** 2 + (lines[:, 0, 1] - lines[:, 0, 3]) ** 2)
-    lines_area = np.sum(lines_width.flatten() * lines_length)
+    # Return lines that are in rang width * [min_line_length, max_line_ratio].
+    return [
+        pymupdf.Rect(x0, y0, x1, y1)
+        for x0, y0, x1, y1 in lines[:, 0, :]
+        if max_line_ratio * width > np.hypot(x1 - x0, y1 - y0) > min_line_ratio * width
+    ]
 
-    return lines_area / float(im_gray.size)
 
-
-def _score_circle(im_gray: np.ndarray, hough_circles_params: dict) -> float:
-    """Estimate circle area fraction via HoughCircles (0..1).
+def _detect_circle(im_gray: np.ndarray, hough_circles_params: dict) -> list[pymupdf.Rect]:
+    """Detect circular features using Hough Circles and return bounding rectangles.
 
     Ref: https://docs.opencv.org/4.x/d3/de5/tutorial_js_houghcircles.html
 
     Args:
-        im_gray (np.ndarray): Grayscale patch (single channel).
-        hough_circles_params (dict): Dict with keys:
-            - dp: Inverse ratio of the accumulator resolution to the image resolution.
-            - min_dist: Minimum distance between the centers of the detected circles.
-            - param1: Higher threshold for the Canny edge detector (the lower one is twice smaller).
-            - param2: Accumulator threshold for the circle centers at the detection stage.
-            - min_radius: Minimum circle radius.
-            - max_radius: Maximum circle radius.
+        im_gray (np.ndarray): Single-channel grayscale image (H×W).
+        hough_circles_params (dict): Parameters forwarded to ``cv2.HoughCircles``
 
     Returns:
-        float: Fraction of area covered by circles.
+        list[pymupdf.Rect]: One bounding box per detected circle.
     """
     # Detect circles
     circle_arrays = cv2.HoughCircles(
@@ -363,11 +415,9 @@ def _score_circle(im_gray: np.ndarray, hough_circles_params: dict) -> float:
     )
 
     if circle_arrays is None:
-        return 0
+        return []
 
-    # Convert detected circles to Circle objects
-    circle_area = np.sum(np.pi * circle_arrays[0, :, 2] ** 2)
-    return circle_area / im_gray.size
+    return [pymupdf.Rect(x - r, y - r, x + r, y + r) for x, y, r in circle_arrays[0]]
 
 
 def _score_candidates(
@@ -392,8 +442,7 @@ def _score_candidates(
         list[float]: N candidate scores.
     """
     # get parameters
-    hough_circles_params = score_params.get("hough_circles", {})
-    lsd_params = score_params.get("lsd", {})
+    pattern_params = score_params.get("pattern", {})
     crowding_params = score_params.get("crowding", {})
     text_overlap_params = score_params.get("text_overlap", {})
     toggle_params = score_params.get("toggle", {})
@@ -407,15 +456,12 @@ def _score_candidates(
 
         # 2) Compute local stats
         confidence = 1.0
-
         if toggle_params["crowding"]:
             confidence *= _score_crowding(im_binary_bbox, **crowding_params)
         if toggle_params["text_overlap"]:
             confidence *= _score_text_disjoint(bbox, text_lines=text_lines, **text_overlap_params)
         if toggle_params["pattern"]:
-            circle_score = _score_circle(im_gray_bbox, hough_circles_params)
-            line_score = _score_line(im_gray_bbox, lsd_params)
-            confidence *= np.clip(circle_score + 4 * line_score, a_min=0, a_max=1)
+            confidence *= _score_pattern(im_gray_bbox, pattern_params)
 
         # 3) Append to predictions
         confidences.append(confidence)
@@ -442,7 +488,7 @@ def _merge_sections(
 
     ASCII examples
     --------------
-    We denotes as `s` the seed cells and `c` the candidates.
+    We denotes as `s` the seed cells and `c` the candidates. The Adjacency is A + A.T > 0
 
     Result is group {2, 3}          Result is group {1, 2}
     +-------+                       +-------+
@@ -456,6 +502,12 @@ def _merge_sections(
     +-------+                               +-------+
     | 3 (c) |                               | 3 (c) |
     +-------+                               +-------+
+
+    Adjacency {2, 3}                Adjacency {1, 2}
+        1   2   3                        1   2   3
+    1 | 0 | 0 | 0 |                 1  | 0 | 1 | 0 |
+    2 | 0 | 1 | 1 |                 2  | 1 | 1 | 0 |
+    3 | 0 | 1 | 0 |                 3  | 0 | 0 | 0 |
 
     Args:
         sections (list[StripLogSection]): Detected section candidates.
@@ -491,7 +543,7 @@ def _merge_sections(
         return []
 
     # Ensure the matrix is symetric (avoid undirected graph)
-    graph_adjacency = (graph_adjacency + graph_adjacency.T).astype(int)
+    graph_adjacency = ((graph_adjacency + graph_adjacency.T) > 0).astype(int)
     _, labels = connected_components(csgraph=graph_adjacency, directed=False, return_labels=True)
 
     # Build striplogs and prune if too small
@@ -573,7 +625,6 @@ def detect_strip_logs(
             confidence=confidence,
         )
         for bbox, confidence in zip(section_bboxes, confidences, strict=True)
-        if confidence > 0.3
     ]
 
     # Vertical merging, then filter by minimum section count.
