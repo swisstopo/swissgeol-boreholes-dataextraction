@@ -1,9 +1,9 @@
-"""Strip log structure detection utilities.
+"""striplog structure detection utilities.
 
 This module provides:
-- Candidate detection of strip log/table-like vertical sections on a PDF page.
+- Candidate detection of striplog/table-like vertical sections on a PDF page.
 - Scoring (crowding, text overlap, line/circle patterns).
-- Merging vertically aligned sections into full strip logs.
+- Merging vertically aligned sections into full striplogs.
 """
 
 from __future__ import annotations
@@ -27,20 +27,20 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class StripLogSection:
-    """Single strip log section (typically one “cell block” detected)."""
+    """Single striplog section (typically one “cell block” detected)."""
 
     bbox: pymupdf.Rect
     confidence: float = 1.0
 
     def aligns(self, section: StripLogSection, r_tol: float = 1e-1) -> bool:
-        """Check if a section is vertically aligned and contiguous with this strip log.
+        """Check if a section is vertically aligned and contiguous with this striplog.
 
         Args:
             section (StripLogSection): Candidate section.
             r_tol (float): Relative tolerance (0–1) for width and x0 alignment.
 
         Returns:
-            bool: True if the section plausibly continues this strip log.
+            bool: True if the section plausibly continues this striplog.
         """
         width_err = np.abs(self.bbox.width - section.bbox.width) / self.bbox.width
         hori_err = np.abs(self.bbox.x0 - section.bbox.x0) / self.bbox.width
@@ -49,7 +49,7 @@ class StripLogSection:
 
 @dataclass
 class StripLog:
-    """A full strip log composed of vertically aligned sections."""
+    """A full striplog composed of vertically aligned sections."""
 
     bbox: pymupdf.Rect
     sections: list[StripLogSection]
@@ -84,7 +84,7 @@ class StripLog:
         return cls(bbox, sections)
 
 
-def _page_to_grayscale(page: pymupdf.Page, dpi: int = 72, use_blur: bool = True) -> tuple[np.ndarray | None, float]:
+def _page_to_grayscale(page: pymupdf.Page, dpi: int = 72, use_blur: bool = True) -> tuple[np.ndarray, float]:
     """Render a page to a grayscale numpy array.
 
     Args:
@@ -93,7 +93,7 @@ def _page_to_grayscale(page: pymupdf.Page, dpi: int = 72, use_blur: bool = True)
         use_blur (bool): Apply blur to output image with standard kernel.
 
     Returns:
-        np.ndarray | None: An array whose shape is defined by dpi.
+        np.ndarray: An array whose shape is defined by dpi.
         float: Scaling factor to page units per pixel
     """
     # Get area based on clip and dpi
@@ -117,12 +117,12 @@ def _threshold_image(im_gray: np.ndarray, block_size: int, c: int, clean_size: i
         im_gray (np.ndarray): A NxM grayscale image.
         block_size (int): Odd window size for local mean.
         c (int): Constant subtracted from local mean.
-        clean_size (int): Minimal area to be considered in image. Used to remove small dotting from scanner.
+        clean_size (int): Minimal area to be considered in image. Used to remove small dot artifacts.
 
     Returns:
         np.ndarray: Binary NxM image with values {0, 1}.
     """
-    # Thresholding: Use adaptive for areas that ar enot white but filled with a unique color
+    # Thresholding: adaptive to handle uniformly colored backgrounds. clean_size removes tiny speckles.
     thr = cv2.adaptiveThreshold(im_gray, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, block_size, c)
     thr = remove_small_objects(thr.astype(bool), min_size=clean_size).astype(np.uint8)
     return thr
@@ -142,7 +142,7 @@ def _detect_table_from_thresholded(
         im_binary (np.ndarray): Binary image with values {0,1}.
         min_line_length (int): Minimum line length in pixels used to build the rectangular structuring
             elements for the morphological operations.
-        min_line_dilation (int): Square dilation kernel size (in pixels).Increases line thickness to bridge small
+        min_line_dilation (int): Square dilation kernel size (in pixels). Increases line thickness to bridge small
             gaps and ensure grid connectivity.
 
     Returns:
@@ -198,7 +198,7 @@ def _detect_candidates_from_page(
 
     structures_bbox: list[pymupdf.Rect] = []
     for region in regionprops(im_vert_labeled):
-        # Invert coordinate system (x;y) and (y;x) due to packages inconsitency
+        # Invert coordinate system (x;y) and (y;x) due to packages inconsistency
         structures_bbox.append(
             pymupdf.Rect(
                 region.bbox[1] - table_param["margin_vert_line"],
@@ -218,21 +218,21 @@ def _detect_candidates_from_page(
             or (region.area / region.area_bbox < table_param["min_area_ratio"])
         ):
             continue
-        # Invert coordinate system (x;y) and (y;x) due to packages inconsitency
+        # Invert coordinate system (x;y) and (y;x) due to packages inconsistency
         candidates_bbox.append(pymupdf.Rect(region.bbox[1], region.bbox[0], region.bbox[3], region.bbox[2]))
 
     return candidates_bbox, structures_bbox
 
 
 def _rescale_bboxes(bboxes: list[pymupdf.Rect], scale: float) -> list[pymupdf.Rect]:
-    """Adapt detected striplog area to match project rendering at base dpi.
+    """Rescale bounding boxes by a scalar factor to match project rendering at base dpi.
 
     Args:
-        bboxes (list[pymupdf.Rect]): Bounding boxres to rescale.
+        bboxes (list[pymupdf.Rect]): Bounding boxes to rescale.
         scale (float): Scaling factor for bounding boxes.
 
     Returns:
-        list[pymupdf.Rect]: Rescaled bbounding boxes.
+        list[pymupdf.Rect]: Rescaled bounding boxes.
     """
     return [pymupdf.Rect((scale * np.array(bbox)).astype(int).tolist()) for bbox in bboxes]
 
@@ -242,7 +242,7 @@ def _score_crowding(im_binary: np.ndarray, kernel_size: int = 5, margin: int = 2
 
     This function estimates how visually "crowded" a binary image region is by
     measuring the average pixel density after applying a morphological dilation.
-    The dilation expands the foreground regions using a circle kernel, which helps
+    The dilation expands the foreground regions using a disk-like (elliptical) kernel, which helps
     capture nearby pixel clusters and fill small gaps. A higher score indicates
     denser or more cluttered regions, while a lower score suggests sparse content.
 
@@ -484,16 +484,16 @@ def _merge_sections(
     structures_bbox: list[pymupdf.Rect],
     merge_params: dict,
 ) -> list[StripLog]:
-    """Merge vertically aligned and connected section candidates into contiguous strip logs.
+    """Merge vertically aligned and connected section candidates into contiguous striplogs.
 
     Starting from **seed** sections (confidence ≥ `confidence_seed`), the procedure
-    grows a strip log by attaching **connected** neighbor sections whose confidence
+    grows a striplog by attaching **connected** neighbor sections whose confidence
     is ≥ `confidence_graph`. Two sections are considered connected if:
       1) they are vertically aligned with the seed within a horizontal tolerance, and
       2) there exists at least one vertical structure line (from `structures_bbox`)
          that intersects/bridges both sections (i.e., a shared connection line).
 
-    The result is a set of clusters (strip logs), each representing a vertical stack
+    The result is a set of clusters (striplogs), each representing a vertical stack
     of sections belonging to the same column/track.
 
     ASCII examples
@@ -527,7 +527,7 @@ def _merge_sections(
     Returns:
         list[StripLog]: A list of merged `StripLog` objects.
     """
-    # Check if at leat one section detected
+    # Check if at least one section detected
     if not sections:
         return []
 
@@ -542,17 +542,17 @@ def _merge_sections(
             continue
         # Compute connections between seed and structure lines
         edges = [line for line in structures_bbox if line.intersects(node.bbox)]
-        # Compute instersections with other  (add constrain on width)
+        # Compute intersections with other (add constraint on width)
         graph_adjacency[i] = [
             any([edge.intersects(v.bbox) and node.aligns(v, merge_params["r_tol_width"]) for edge in edges])
             for v in graph_sections
         ]
 
-    # Check if at leat one cell reached confidence_seed
+    # Check if at least one cell reached confidence_seed
     if graph_adjacency.sum() == 0:
         return []
 
-    # Ensure the matrix is symetric (avoid undirected graph)
+    # Ensure the matrix is symmetric (avoid undirected graph)
     graph_adjacency = ((graph_adjacency + graph_adjacency.T) > 0).astype(int)
     _, labels = connected_components(csgraph=graph_adjacency, directed=False, return_labels=True)
 
@@ -571,14 +571,14 @@ def _merge_sections(
 def _is_ocr_artifact(text: str) -> bool:
     """Check for OCR text artifacts.
 
-    Chack is the text is a composition of any alphanumerics "o018",
-    special charcters "|/()-.,=_", and space " ".
+    Considers a string an artifact if it consists only of (case-insensitive) letters 'o'/'O',
+    digits {0,1,8}, whitespace, and the punctuation set `|/()-.,=_`.
 
     Args:
         text (str): Raw text to classify.
 
     Returns:
-        bool: True if text is composed artifact characters.
+        bool: True if text is composed of artifacts.
     """
     ocr_numeric_pattern = re.compile(r"^[\so018|/()\-\.,=_]+$", re.IGNORECASE)
     return bool(ocr_numeric_pattern.match(text))

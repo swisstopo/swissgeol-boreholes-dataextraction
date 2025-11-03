@@ -1,4 +1,4 @@
-"""Test moduile for striplog detection and merging."""
+"""Test module for striplog detection and merging."""
 
 import pymupdf
 import pytest
@@ -50,7 +50,7 @@ def test_striplog_section_aligns(
         (pymupdf.Rect([0, 0, 100, 10]), 0.5, pymupdf.Rect([0, 0, 50, 5])),
         (pymupdf.Rect([0, 0, 100, 10]), 2, pymupdf.Rect([0, 0, 200, 20])),
     ],
-    ids=["same", "expand", "shorten"],
+    ids=["same", "shrink", "expand"],
 )
 def test_rescale_bboxes(bbox: pymupdf.Rect, scale: float, bbox_rescaled: pymupdf.Rect) -> None:
     """Ensure bounding boxes are uniformly rescaled by a scalar factor.
