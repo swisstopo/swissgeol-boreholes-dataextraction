@@ -292,23 +292,23 @@ def _is_text(
     # Detect all text overlapping area with region and sums areas
     text_within = [line for line in text_lines if rect.intersects(line.rect)]
     # Remove text that was produce by OCR
-    text_within_ocr = [line for line in text_within if not _is_ocr_numeric_pattern(line.text)]
-    score_area = 1.0
-    score_length = 1.0
+    text_within_ocr = [line for line in text_within if not _is_ocr_artifact(line.text)]
 
     # Text penalty given as area occupied by text
-    if text_within_ocr:
-        # Compute area covered by text wrt section area
-        text_area_within = np.sum([(line.rect & rect).get_area() for line in text_within_ocr])
-        score_area = 1 - text_area_within / rect.get_area()
+    if not text_within_ocr:
+        return False
 
-        # Compute portion of area that is overlapping with section
-        text_area_within_ocr = np.sum([(line.rect & rect).get_area() for line in text_within_ocr])
-        text_area_outside_ocr = np.sum([(line.rect).get_area() for line in text_within_ocr])
-        ocr_area_factor = text_area_within_ocr / text_area_outside_ocr
-        # make the assumption that if a text overlap with section, it has a linear contribution. For eaxmple, if
-        # "this is a text!" overlap with section at 50% (e.i. ocr_area_factor = 0.5) then only "a text!" is kept.
-        score_length = np.min([np.exp(-len(line.text) * ocr_area_factor / tau) for line in text_within_ocr])
+    # Compute area covered by text wrt section area
+    text_area_within = np.sum([(line.rect & rect).get_area() for line in text_within_ocr])
+    text_area_outside = np.sum([(line.rect).get_area() for line in text_within_ocr])
+    ocr_area_factor = text_area_within / text_area_outside
+
+    # Compute portion of area that is overlapping with section
+    score_area = 1 - text_area_within / rect.get_area()
+
+    # make the assumption that if a text overlap with section, it has a linear contribution. For eaxmple, if
+    # "this is a text!" overlap with section at 50% (e.i. ocr_area_factor = 0.5) then only "a text!" is kept.
+    score_length = np.min([np.exp(-len(line.text) * ocr_area_factor / tau) for line in text_within_ocr])
 
     return np.clip((score_area * score_length) ** penalty, a_min=0.0, a_max=1.0) < threshold
 
@@ -434,7 +434,7 @@ def _score_candidates(
     score_params: dict,
     text_lines: list[TextLine] = None,
 ) -> tuple[list[float], list[bool]]:
-    """Score candidate strip-log regions by visual/text features and return sections.
+    """Score candidate strip-log regions by visual/text features.
 
     Args:
         bboxes (list[pymupdf.Rect]): N candidate regions to be scored.
@@ -445,7 +445,8 @@ def _score_candidates(
         text_lines (list[TextLine], optional): Detected text lines in page. Defaults to None.
 
     Returns:
-        list[float]: N candidate scores.
+        list[float]: N candidate pattern / crowding scores.
+        list[bool]: N `is_text` flag. True if text was detected. False otherwise.
     """
     # get parameters
     pattern_params = score_params.get("pattern", {})
@@ -464,7 +465,7 @@ def _score_candidates(
         # 2) Compute local stats
         confidence = 1.0
         is_text = 1.0
-        cv2.imwrite("test.png", im_gray_bbox)
+
         if toggle_params["crowding"]:
             confidence *= _score_crowding(im_binary_bbox, **crowding_params)
         if toggle_params["pattern"]:
@@ -567,13 +568,11 @@ def _merge_sections(
     return striplogs
 
 
-def _is_ocr_numeric_pattern(text: str) -> bool:
-    """Pattern for combinations of zeros and dots (0, 0.0, 00, 0.0.0, 0o, .00, 0-O etc.).
+def _is_ocr_artifact(text: str) -> bool:
+    """Check for OCR text artifacts.
 
-    This function identifies text sequences that likely represent misread numbers or
-    numeric-like tokens commonly produced by OCR engines. These often contain mixtures
-    of digits (`0`, `1`, `8`) and visually similar characters (`O`, `o`), optionally
-    interspersed with punctuation such as `.`, `-`, `_`, or `:`.
+    Chack is the text is a composition of any alphanumerics "o018",
+    special charcters "|/()-.,=_", and space " ".
 
     Args:
         text (str): Raw text to classify.
@@ -581,9 +580,7 @@ def _is_ocr_numeric_pattern(text: str) -> bool:
     Returns:
         bool: True if text is composed artifact characters.
     """
-    # TODO :check with GPT for space and ????
-    # - `(?![\\w\\d])` → negative lookahead prevents continuation into other alphanumerics.
-    ocr_numeric_pattern = re.compile(r"^[o018|/()\-\.,=_]+$", re.IGNORECASE)
+    ocr_numeric_pattern = re.compile(r"^[\so018|/()\-\.,=_]+$", re.IGNORECASE)
     return bool(ocr_numeric_pattern.match(text))
 
 

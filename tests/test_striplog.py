@@ -3,7 +3,7 @@
 import pymupdf
 import pytest
 
-from extraction.features.utils.strip_log_detection import StripLogSection, _is_ocr_numeric_pattern, _rescale_bboxes
+from extraction.features.utils.strip_log_detection import StripLogSection, _is_ocr_artifact, _rescale_bboxes
 
 
 @pytest.mark.parametrize(
@@ -66,33 +66,35 @@ def test_rescale_bboxes(bbox: pymupdf.Rect, scale: float, bbox_rescaled: pymupdf
 @pytest.mark.parametrize(
     "text, expected",
     [
-        ("0", True),
-        ("01800", True),
-        ("-010.---///800", True),
-        ("oO08", True),
-        ("0 1", True),
-        ("0127", False),
-        ("this is a text", False),
-        ("numeric zero 0.1", False),
+        ("018", True),
+        ("2345679", False),
+        ("oO", True),
+        ("ab", False),
+        (" ", True),
         ("", False),
+        ("|/()-.,=_", True),
+        ("%@&", False),
+        ("0.( ) 88 //- 1", True),
+        ("numeric zero 0.1", False),
     ],
     ids=[
-        "numeric-single",
-        "numeric-multiple",
-        "numeric-multiple-spec",
-        "alphanumeric-multiple",
-        "numeric-others",
-        "space",
-        "none",
-        "composed",
+        "digits-artifact",
+        "digits-non-artifact",
+        "letters-artifact",
+        "letters-non-artifact",
+        "whitespace-only",
         "empty",
+        "punctuation-artifact",
+        "punctuation-non-artifact",
+        "text-artifact",
+        "text-non-artifact",
     ],
 )
-def test_is_ocr_numeric_pattern(text: str, expected: bool) -> None:
+def test_is_ocr_artifact(text: str, expected: bool) -> None:
     """Check detection of 'numeric-like filler' patterns.
 
     Args:
         text (str): Input string to classify.
         expected (bool): Expected boolean classification.
     """
-    assert _is_ocr_numeric_pattern(text) == expected
+    assert _is_ocr_artifact(text) == expected
