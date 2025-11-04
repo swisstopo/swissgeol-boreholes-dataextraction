@@ -36,14 +36,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install build
 
-      - name: Update version in package
-        run: |
-          echo "Publishing version: $VERSION"
-          sed -i "s/__version__ = .*/__version__ = \"$VERSION\"/" src/swissgeol_doc_processing/__init__.py
-
-          # Update __init__.py
-          sed -i "s/__version__ = .*/__version__ = \"$VERSION\"/" src/swissgeol_doc_processing/__init__.py
-
       - name: Build package
         run: python -m build
 

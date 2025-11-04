@@ -4,8 +4,6 @@ A Python library for processing geological borehole documents, including
 text extraction, geometric analysis, and document structure detection.
 """
 
-__version__ = "1.0.0"  # Or read from VERSION file
-
 # Public API exports
 from .geometry import (
     circle_detection,
