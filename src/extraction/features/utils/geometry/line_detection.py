@@ -114,7 +114,7 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
         line_detection_params (dict): The parameters for the line detection algorithm.
 
     Returns:
-        list[Line]: The detected lines as a list.
+        tuple(list[Line], list[Line]): The detected lines as a list. First the longest, then all. TODO
     """
     lines = detect_lines_lsd(
         page,
@@ -140,7 +140,46 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
     min_line_length = merging_params["min_line_length"] * scaling_factor
     horizontal_slope_tolerance = merging_params["horizontal_slope_tolerance"]
     merged = merge_parallel_lines_quadtree(lines, tol=tol, angle_threshold=angle_tol)
-    merged = [
+    filtered = [
         line for line in merged if line.length >= min_line_length or line.is_horizontal(horizontal_slope_tolerance)
     ]
-    return merged
+    write_img_debug("debug.png", page, line_detection_params["pdf_scale_factor"], merged)
+    return filtered, merged
+
+
+def find_diags_ending_in_zone(
+    lines: list[Line], line_search_zone: pymupdf.Rect, min_vertical_dist: float, max_horizontal_dist: float
+):
+    """Find diagonal lines ending in a given zone (note: the end of the line is always on the right).
+
+    Args:
+        lines (list[Line]): The lines to search in.
+        line_search_zone (pymupdf.Rect): The zone to search for line endings in.
+        min_vertical_dist (float): The minimum vertical distance a line must have to be considered.
+        max_horizontal_dist (float): The maximum horizontal distance a line can have to be considered.
+
+    Returns:
+        list[Line]: The lines ending in the given zone.
+    """
+    angle_threshold = line_detection_params["line_merging_params"]["angle_threshold"]
+    return [
+        g_line
+        for g_line in lines
+        if line_search_zone.contains(g_line.end.tuple)
+        and not g_line.is_vertical(angle_threshold)
+        and abs(g_line.start.y - g_line.end.y) > min_vertical_dist
+        and 0 < g_line.end.x - g_line.start.x < max_horizontal_dist
+    ]
+
+
+def write_img_debug(path, page, pdf_scale_factor, lines):
+    """Write a debug image with the detected lines drawn on it."""
+    pix = page.get_pixmap(matrix=pymupdf.Matrix(pdf_scale_factor, pdf_scale_factor))
+    img = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, pix.n).copy()
+    img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR) if pix.n == 4 else img
+
+    for line in lines:
+        x1, y1, x2, y2 = (line.asarray() * pdf_scale_factor).astype(int)
+        cv2.line(img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+    cv2.imwrite(path, img)

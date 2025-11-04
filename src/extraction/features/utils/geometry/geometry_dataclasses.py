@@ -158,6 +158,10 @@ class Line:
         """Checks if a line is horizontal."""
         return abs(self.slope) <= horizontal_slope_tolerance
 
+    def is_vertical(self, angle_tolerance) -> bool:
+        """Checks if a line is vertical."""
+        return abs(self.angle) >= 90 - angle_tolerance
+
     @property
     def angle(self) -> float:
         """Angle of the line with the x-axis in degrees, ranging from -90 (exclusive) to +90 (inclusive)."""
@@ -170,6 +174,9 @@ class Line:
     def intercept(self) -> float:
         """Calculate the y-intercept of the line."""
         return self.start.y - self.slope * self.start.x
+
+    def asarray(self) -> list[float]:
+        return np.array([self.start.x, self.start.y, self.end.x, self.end.y])
 
 
 @dataclass

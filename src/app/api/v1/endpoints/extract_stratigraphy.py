@@ -53,7 +53,7 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
 
         # 3. extract layers
         text_lines = extract_text_lines(page)
-        geometric_lines = extract_lines(page, line_detection_params)
+        geometric_lines, all_geometric_lines = extract_lines(page, line_detection_params)
 
         # Detect table structures on the page
         table_structures = detect_table_structures(page_index, document, geometric_lines, text_lines)
@@ -65,6 +65,7 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
             extract_page(
                 text_lines,
                 geometric_lines,
+                all_geometric_lines,
                 table_structures,
                 strip_logs,
                 language,

@@ -317,7 +317,7 @@ def start_pipeline(
                 logger.info("Processing page %s", page_number)
 
                 text_lines = extract_text_lines(page)
-                geometric_lines = extract_lines(page, line_detection_params)
+                geometric_lines, all_geometric_lines = extract_lines(page, line_detection_params)
                 name_entries = extract_borehole_names(text_lines, name_detection_params)
                 all_name_entries.name_feature_list.extend(name_entries)
 
@@ -331,6 +331,7 @@ def start_pipeline(
                 page_layers = extract_page(
                     text_lines,
                     geometric_lines,
+                    all_geometric_lines,
                     table_structures,
                     strip_logs,
                     file_metadata.language,

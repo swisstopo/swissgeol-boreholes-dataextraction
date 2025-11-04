@@ -31,14 +31,20 @@ class Affinity:
     lines_on_the_left_affinity: float
     vertical_spacing_affinity: float
     right_end_affinity: float
+    diagonal_line_affinity: float
 
     @classmethod
     def get_zero_affinity(cls) -> Affinity:
         """Get an affinity with all zero values."""
-        return cls(0.0, 0.0, 0.0, 0.0)
+        return cls(0.0, 0.0, 0.0, 0.0, 0.0)
 
     def weighted_affinity(
-        self, line_weight: float, left_line_weight: float, spacing_weight: float, right_end_weight: float
+        self,
+        line_weight: float,
+        left_line_weight: float,
+        spacing_weight: float,
+        right_end_weight: float,
+        diagonal_weight: float,
     ) -> float:
         """Compute the weighted affinity using the provided weights."""
         return (
@@ -46,22 +52,31 @@ class Affinity:
             + left_line_weight * self.lines_on_the_left_affinity
             + spacing_weight * self.vertical_spacing_affinity
             + right_end_weight * self.right_end_affinity
+            + diagonal_weight * self.diagonal_line_affinity
         )
 
     def total_affinity(self) -> float:
         """Compute the total affinity with equal weights."""
-        return self.weighted_affinity(1.0, 1.0, 1.0, 1.0)
+        return self.weighted_affinity(1.0, 1.0, 1.0, 1.0, 1.0)
 
     def weighted_mean_affinity(
-        self, line_weight: float, left_line_weight: float, spacing_weight: float, right_end_weight: float
+        self,
+        line_weight: float,
+        left_line_weight: float,
+        spacing_weight: float,
+        right_end_weight: float,
+        diagonal_weight: float,
     ) -> float:
         """Compute the weighted affinity using the provided weights."""
-        tot_weight = line_weight + left_line_weight + spacing_weight + right_end_weight
-        return self.weighted_affinity(line_weight, left_line_weight, spacing_weight, right_end_weight) / tot_weight
+        tot_weight = line_weight + left_line_weight + spacing_weight + right_end_weight + diagonal_weight
+        return (
+            self.weighted_affinity(line_weight, left_line_weight, spacing_weight, right_end_weight, diagonal_weight)
+            / tot_weight
+        )
 
     def mean_affinity(self) -> float:
         """Compute the mean affinity."""
-        return self.weighted_mean_affinity(1.0, 1.0, 1.0, 1.0)
+        return self.weighted_mean_affinity(1.0, 1.0, 1.0, 1.0, 1.0)
 
 
 class LineAffinityCalculator:
@@ -74,6 +89,7 @@ class LineAffinityCalculator:
         material_description_rect: pymupdf.Rect,
         geometric_lines: list[Line],
         description_lines: list[TextLine],
+        diagonals: list[TextLine],
     ):
         """Initialize the LineAffinityCalculator.
 
@@ -84,6 +100,7 @@ class LineAffinityCalculator:
             material_description_rect (pymupdf.Rect): The bounding box for all material descriptions.
             geometric_lines (list[Line]): The geometric lines detected in the pdf page.
             description_lines (list[TextLine]): The list of description lines
+            diagonals (list[Line]): The list of diagonal textline-to-interval connections detected on the page.
         """
         self.block_line_ratio = block_line_ratio
         self.left_line_length_threshold = left_line_length_threshold
@@ -110,6 +127,9 @@ class LineAffinityCalculator:
             line.rect.y0 - prev_line.rect.y1 < 0.0
             for prev_line, line in zip(description_lines, description_lines[1:], strict=False)
         )
+
+        # diagonals separator
+        self.diagonals = diagonals
 
     def _is_spanning_description(self, line: Line) -> bool:
         """Check if a line spans the material description rectangle.
@@ -228,6 +248,23 @@ class LineAffinityCalculator:
         """
         return max(-1.0, min(0.0, -(current_line.rect.x1 - previous_line.rect.x1) / current_line.rect.width))
 
+    def compute_diagonal_affinity(self, previous_line: TextLine, current_line: TextLine) -> float:
+        """Check if a block is separated by the end of a diagonal interval-to-textline connection.
+
+        Args:
+            previous_line (TextLine): The previous line.
+            current_line (TextLine): The current line.
+
+        Returns:
+            float: The affinity: -1.0 if lines are separated by a diagonal connection, 0.0 otherwise.
+        """
+        last_line_y_mid = (previous_line.rect.y0 + previous_line.rect.y1) / 2
+        current_line_y_mid = (current_line.rect.y0 + current_line.rect.y1) / 2
+        for g_line in self.diagonals:
+            if last_line_y_mid < g_line.end.y < current_line_y_mid:
+                return -1.0
+        return 0.0
+
     def _indentation_affinity(self, previous_line: TextLine, current_line: TextLine):
         """Split the text block based on indentation.
 
@@ -285,20 +322,30 @@ def get_line_affinity(
     description_lines: list[TextLine],
     material_description_rect: pymupdf.Rect,
     geometric_lines: list[Line],
+    diagonals: list[Line],
     block_line_ratio: float,
     left_line_length_threshold: float,
 ):
     """Compute the affinity of each line with the previous one, base of the presence of horizontal line inbetween.
 
     Args:
-        block_line_ratio (float): Percentage of the block width that needs to be covered by a line.
-        left_line_length_threshold (int): The minimum length of a line segment on the left side of a block to split it.
+        description_lines (list[TextLine]): The list of description lines
         material_description_rect (pymupdf.Rect): The bounding box for all material descriptions.
         geometric_lines (list[Line]): The geometric lines detected in the pdf page.
-        description_lines (list[TextLine]): The list of description lines
+        diagonals (list[Line]): The list of diagonal textline-to-interval connections detected on the page.
+        block_line_ratio (float): Percentage of the block width that needs to be covered by a line.
+        left_line_length_threshold (int): The minimum length of a line segment on the left side of a block to split it.
+
+    Returns:
+        list[Affinity]: The affinities between each line and the previous one.
     """
     calculator = LineAffinityCalculator(
-        block_line_ratio, left_line_length_threshold, material_description_rect, geometric_lines, description_lines
+        block_line_ratio,
+        left_line_length_threshold,
+        material_description_rect,
+        geometric_lines,
+        description_lines,
+        diagonals,
     )
     affinities = [Affinity.get_zero_affinity()]  # first line has no previous
     for previous_line, line in zip(description_lines, description_lines[1:], strict=False):
@@ -308,6 +355,7 @@ def get_line_affinity(
                 calculator.compute_lines_on_the_left_affinity(previous_line, line),
                 calculator.compute_vertical_spacing_affinity(previous_line, line),
                 calculator.compute_right_end_affinity(previous_line, line),
+                calculator.compute_diagonal_affinity(previous_line, line),
             )
         )
 
