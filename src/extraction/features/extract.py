@@ -32,7 +32,7 @@ from extraction.features.stratigraphy.sidebar.extractor.layer_identifier_sidebar
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
 from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.geometry.geometry_dataclasses import Line
-from extraction.features.utils.geometry.line_detection import find_diags_ending_in_zone
+from extraction.features.utils.geometry.line_detection import find_diags_ending_in_zone, write_img_debug  # noqa: F401
 from extraction.features.utils.geometry.util import x_overlap, x_overlap_significant_smallest
 from extraction.features.utils.strip_log_detection import StripLog
 from extraction.features.utils.table_detection import (
@@ -553,6 +553,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
             min_vertical_dist=min_text_height / 2,
             max_horizontal_dist=max_text_height * 3,
         )
+        # SLACK = 2
+        # filtered_g_lines = [
+        #     g_line for g_line in filtered_g_lines if search_zone.contains([g_line.start.x, g_line.start.y + SLACK])
+        # ]
         filtered_g_lines = [
             g_line
             for g_line in filtered_g_lines

@@ -166,7 +166,7 @@ def find_diags_ending_in_zone(
         g_line
         for g_line in lines
         if line_search_zone.contains(g_line.end.tuple)
-        and not g_line.is_vertical(angle_threshold)
+        and not g_line.is_vertical(angle_threshold)  # too many other lines are vertical
         and abs(g_line.start.y - g_line.end.y) > min_vertical_dist
         and 0 < g_line.end.x - g_line.start.x < max_horizontal_dist
     ]
