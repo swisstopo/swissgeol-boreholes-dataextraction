@@ -9,8 +9,8 @@ import numpy as np
 import pymupdf
 from dotenv import load_dotenv
 
-from extraction.features.utils.geometry.geometry_dataclasses import Line
-from extraction.features.utils.text.textblock import TextBlock
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
+from swissgeol_doc_processing.text.textblock import TextBlock
 
 load_dotenv()
 

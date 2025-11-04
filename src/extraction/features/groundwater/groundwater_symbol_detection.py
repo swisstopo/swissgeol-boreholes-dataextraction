@@ -10,8 +10,8 @@ import re
 import pymupdf
 
 from extraction.features.groundwater.utility import extract_date
-from extraction.features.utils.geometry.geometry_dataclasses import Line
-from extraction.features.utils.text.textline import TextLine
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
+from swissgeol_doc_processing.text.textline import TextLine
 
 logger = logging.getLogger(__name__)
 

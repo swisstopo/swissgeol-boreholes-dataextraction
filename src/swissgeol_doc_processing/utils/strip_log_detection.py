@@ -8,11 +8,11 @@ from dataclasses import dataclass
 
 import pymupdf
 
-from extraction.features.utils.geometry.circle_detection import extract_circles
-from extraction.features.utils.geometry.geometry_dataclasses import Circle, Line
-from extraction.features.utils.table_detection import StructureLine, detect_structure_lines
-from extraction.features.utils.text.textline import TextLine
-from utils.file_utils import read_params
+from swissgeol_doc_processing.geometry.circle_detection import extract_circles
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Circle, Line
+from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.utils.file_utils import read_params
+from swissgeol_doc_processing.utils.table_detection import StructureLine, detect_structure_lines
 
 logger = logging.getLogger(__name__)
 

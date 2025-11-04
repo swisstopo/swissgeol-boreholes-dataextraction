@@ -4,7 +4,7 @@ import numpy as np
 
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepths, LayerDepthsEntry
 from extraction.features.stratigraphy.layer.overlap_detection import select_boreholes_with_scan_overlap
-from extraction.features.utils.text.textblock import MaterialDescription
+from swissgeol_doc_processing.text.textblock import MaterialDescription
 
 DEPTHS_QUANTILE_SLACK = 0.1
 

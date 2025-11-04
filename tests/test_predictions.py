@@ -29,9 +29,9 @@ from extraction.features.stratigraphy.layer.layer import (
     LayerDepthsEntry,
     LayersInBorehole,
 )
-from extraction.features.utils.data_extractor import FeatureOnPage
-from extraction.features.utils.text.textblock import MaterialDescription
-from extraction.features.utils.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.text.textblock import MaterialDescription
+from swissgeol_doc_processing.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 
 @pytest.fixture

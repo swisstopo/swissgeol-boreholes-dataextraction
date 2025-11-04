@@ -7,7 +7,7 @@ from collections.abc import MutableMapping
 
 import yaml
 
-from extraction import PROJECT_ROOT
+from extraction import PROJECT_ROOT  # TODO: Fix the import
 
 
 def flatten(dictionary: dict, parent_key: str = "", separator: str = "__") -> dict:

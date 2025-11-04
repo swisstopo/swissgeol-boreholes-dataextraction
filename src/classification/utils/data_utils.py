@@ -13,7 +13,7 @@ from pathlib import Path
 from classification.evaluation.evaluate import AllClassificationMetrics
 from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformation
-from utils.file_utils import read_params
+from swissgeol_doc_processing.utils.file_utils import read_params
 
 classification_params = read_params("classification_params.yml")
 

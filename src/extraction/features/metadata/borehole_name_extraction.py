@@ -7,10 +7,10 @@ from dataclasses import dataclass
 
 import pymupdf
 
-from extraction.features.utils.data_extractor import ExtractedFeature, FeatureOnPage
-from extraction.features.utils.geometry.util import y_overlap_significant_smallest
-from extraction.features.utils.text.textline import TextLine
-from utils.language_filtering import match_any_keyword, normalize_spaces, remove_any_keyword
+from swissgeol_doc_processing.geometry.util import y_overlap_significant_smallest
+from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature, FeatureOnPage
+from swissgeol_doc_processing.utils.language_filtering import match_any_keyword, normalize_spaces, remove_any_keyword
 
 
 @dataclass

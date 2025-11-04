@@ -2,7 +2,7 @@
 
 from pymupdf import Rect
 
-from extraction.features.utils.text.textline import TextLine
+from swissgeol_doc_processing.text.textline import TextLine
 
 
 def get_lines_near_rect(

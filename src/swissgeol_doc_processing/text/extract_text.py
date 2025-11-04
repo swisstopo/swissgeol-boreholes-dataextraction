@@ -2,7 +2,7 @@
 
 import pymupdf
 
-from .textline import TextLine, TextWord
+from swissgeol_doc_processing.text.textline import TextLine, TextWord
 
 
 def extract_text_lines(page: pymupdf.Page) -> list[TextLine]:

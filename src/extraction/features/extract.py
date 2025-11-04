@@ -30,23 +30,22 @@ from extraction.features.stratigraphy.sidebar.extractor.layer_identifier_sidebar
     LayerIdentifierSidebarExtractor,
 )
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
-from extraction.features.utils.data_extractor import FeatureOnPage
-from extraction.features.utils.geometry.geometry_dataclasses import Line
-from extraction.features.utils.geometry.util import x_overlap, x_overlap_significant_smallest
-from extraction.features.utils.strip_log_detection import StripLog
-from extraction.features.utils.table_detection import (
-    TableStructure,
-    _contained_in_table_index,
-)
-from extraction.features.utils.text.find_description import get_description_lines
-from extraction.features.utils.text.matching_params_analytics import MatchingParamsAnalytics
-from extraction.features.utils.text.textblock import (
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
+from swissgeol_doc_processing.geometry.util import x_overlap, x_overlap_significant_smallest
+from swissgeol_doc_processing.text.find_description import get_description_lines
+from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
+from swissgeol_doc_processing.text.textblock import (
     MaterialDescription,
     MaterialDescriptionLine,
     TextBlock,
 )
-from extraction.features.utils.text.textline import TextLine
-from extraction.features.utils.text.textline_affinity import Affinity, get_line_affinity
+from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.text.textline_affinity import Affinity, get_line_affinity
+from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
+from swissgeol_doc_processing.utils.strip_log_detection import StripLog
+from swissgeol_doc_processing.utils.table_detection import (
+    TableStructure,
+)
 from utils.dynamic_matching import IntervalToLinesDP
 
 logger = logging.getLogger(__name__)
@@ -138,7 +137,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         filtered = []
         for pair in pairs:
-            table_index = _contained_in_table_index(pair, self.table_structures, proximity_buffer=50)
+            table_index = self._contained_in_table_index(pair, self.table_structures, proximity_buffer=50)
 
             # If not in table - keep it as is
             if table_index == -1:
@@ -150,6 +149,39 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     filtered.append(pair)
 
         return filtered
+
+    def _contained_in_table_index(
+        self, pair: MaterialDescriptionRectWithSidebar, table_structures: list[TableStructure], proximity_buffer: float
+    ) -> int:
+        """Returns the index of the first table structure that contains this pair, or -1 if none is found.
+
+        Args:
+            pair: MaterialDescriptionRectWithSidebar object
+            table_structures: List of table structures
+            proximity_buffer: Distance threshold for proximity check
+
+        Returns:
+            The index of the first table structure that contains this pair, or -1 if none is found
+        """
+        material_rect = pair.material_description_rect
+        sidebar_rect = pair.sidebar.rect if pair.sidebar else None
+
+        for index, table in enumerate(table_structures):
+            # Check if rectangle is within proximity buffer of table
+            expanded_table_rect = pymupdf.Rect(
+                table.bounding_rect.x0 - proximity_buffer,
+                table.bounding_rect.y0 - proximity_buffer,
+                table.bounding_rect.x1 + proximity_buffer,
+                table.bounding_rect.y1 + proximity_buffer,
+            )
+
+            material_rect_inside = expanded_table_rect.contains(material_rect)
+            sidebar_rect_inside = expanded_table_rect.contains(sidebar_rect) if sidebar_rect else True
+
+            if material_rect_inside and sidebar_rect_inside:
+                return index
+
+        return -1
 
     def _filter_by_intersections(
         self, pairs: list[MaterialDescriptionRectWithSidebar]

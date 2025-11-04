@@ -8,8 +8,8 @@ from math import cos, sin
 import numpy as np
 from numpy.typing import ArrayLike
 
-from .geometry_dataclasses import Line, Point
-from .linesquadtree import LinesQuadTree
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
+from swissgeol_doc_processing.geometry.linesquadtree import LinesQuadTree
 
 logger = logging.getLogger(__name__)
 

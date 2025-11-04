@@ -31,7 +31,7 @@ from extraction.features.predictions.borehole_predictions import (
 )
 from extraction.features.stratigraphy.layer.layer import LayersInBorehole, LayersInDocument
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
-from extraction.features.utils.data_extractor import FeatureOnPage
+from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 logger = logging.getLogger(__name__)
 

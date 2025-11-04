@@ -9,9 +9,9 @@ import pymupdf
 from extraction.features.metadata.borehole_name_extraction import BoreholeName
 from extraction.features.metadata.coordinate_extraction import Coordinate, CoordinateExtractor
 from extraction.features.metadata.elevation_extraction import Elevation, ElevationExtractor
-from extraction.features.utils.data_extractor import FeatureOnPage
-from utils.file_utils import read_params
-from utils.language_detection import detect_language_of_document
+from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
+from swissgeol_doc_processing.utils.file_utils import read_params
+from swissgeol_doc_processing.utils.language_detection import detect_language_of_document
 
 
 class PageDimensions(NamedTuple):

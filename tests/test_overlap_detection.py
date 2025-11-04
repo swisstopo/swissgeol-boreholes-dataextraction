@@ -5,8 +5,8 @@ import pytest
 
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.overlap_detection import find_last_duplicate_layer_index
-from extraction.features.utils.data_extractor import FeatureOnPage
-from extraction.features.utils.text.textblock import MaterialDescription, MaterialDescriptionLine
+from swissgeol_doc_processing.text.textblock import MaterialDescription, MaterialDescriptionLine
+from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 
 @pytest.fixture

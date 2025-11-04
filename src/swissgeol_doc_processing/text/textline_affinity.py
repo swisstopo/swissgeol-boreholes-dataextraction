@@ -7,10 +7,9 @@ from dataclasses import dataclass
 import numpy as np
 import pymupdf
 
-from extraction.features.utils.geometry.geometry_dataclasses import Line
-from utils.file_utils import read_params
-
-from .textline import TextLine
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
+from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.utils.file_utils import read_params
 
 merging_params = read_params("line_detection_params.yml")["line_merging_params"]
 

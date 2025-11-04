@@ -7,9 +7,8 @@ import numpy as np
 import pymupdf
 from dotenv import load_dotenv
 
-from utils.file_utils import read_params
-
-from .geometry_dataclasses import Circle
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Circle
+from swissgeol_doc_processing.utils.file_utils import read_params
 
 load_dotenv()
 

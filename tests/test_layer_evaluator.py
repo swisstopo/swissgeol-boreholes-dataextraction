@@ -10,7 +10,7 @@ from extraction.evaluation.layer_evaluator import (
     score_material_descriptions,
 )
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry
-from extraction.features.utils.text.textblock import MaterialDescription, MaterialDescriptionLine
+from swissgeol_doc_processing.text.textblock import MaterialDescription, MaterialDescriptionLine
 
 
 def create_test_layer(text: str, start: float, end: float) -> Layer:

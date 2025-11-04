@@ -21,10 +21,10 @@ from extraction.features.metadata.coordinate_extraction import (
     LV03Coordinate,
     LV95Coordinate,
 )
-from extraction.features.utils.text.extract_text import extract_text_lines
-from extraction.features.utils.text.textline import TextLine
-from utils.file_utils import read_params
-from utils.language_detection import detect_language_of_text
+from swissgeol_doc_processing.text.extract_text import extract_text_lines
+from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.utils.file_utils import read_params
+from swissgeol_doc_processing.utils.language_detection import detect_language_of_text
 
 matching_params = read_params("matching_params.yml")
 

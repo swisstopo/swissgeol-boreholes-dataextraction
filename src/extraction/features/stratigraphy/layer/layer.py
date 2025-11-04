@@ -4,10 +4,10 @@ from dataclasses import dataclass
 
 import pymupdf
 
-from extraction.features.utils.data_extractor import ExtractedFeature
-from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
-from extraction.features.utils.text.textblock import MaterialDescription
-from utils.file_utils import parse_text
+from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
+from swissgeol_doc_processing.text.textblock import MaterialDescription
+from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature
+from swissgeol_doc_processing.utils.file_utils import parse_text
 
 from ..interval.interval import Interval
 from .page_bounding_boxes import PageBoundingBoxes

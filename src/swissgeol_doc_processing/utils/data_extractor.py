@@ -11,9 +11,9 @@ from typing import Generic, Self, TypeVar
 import pymupdf
 import regex
 
-from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
-from extraction.features.utils.text.textline import TextLine
-from utils.file_utils import read_params
+from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
+from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
 

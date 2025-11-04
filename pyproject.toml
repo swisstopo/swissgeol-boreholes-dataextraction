@@ -67,6 +67,12 @@ deep-learning = [
 
 all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize, devtools, groundwater-illustration-matching, deep-learning]"]
 
+[tool.setuptools.packages.find]
+where = ["src"]
+include = [
+  "swissgeol_doc_processing*"
+]
+
 [project.scripts]
 boreholes-extract-all = "extraction.main:click_pipeline"
 boreholes-extract-metadata = "extraction.main:click_pipeline_metadata"

@@ -2,9 +2,8 @@
 
 import pymupdf
 
-from utils.file_utils import read_params
-
-from .textline import TextLine
+from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.utils.file_utils import read_params
 
 merging_params = read_params("line_detection_params.yml")["line_merging_params"]
 

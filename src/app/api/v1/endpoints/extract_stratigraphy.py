@@ -10,14 +10,14 @@ from app.common.schemas import (
 from extraction.features.extract import extract_page
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
-from extraction.features.utils.geometry.line_detection import extract_lines
-from extraction.features.utils.strip_log_detection import detect_strip_logs
-from extraction.features.utils.table_detection import (
+from swissgeol_doc_processing.geometry.line_detection import extract_lines
+from swissgeol_doc_processing.text.extract_text import extract_text_lines
+from swissgeol_doc_processing.utils.file_utils import read_params
+from swissgeol_doc_processing.utils.language_detection import detect_language_of_document
+from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
+from swissgeol_doc_processing.utils.table_detection import (
     detect_table_structures,
 )
-from extraction.features.utils.text.extract_text import extract_text_lines
-from utils.file_utils import read_params
-from utils.language_detection import detect_language_of_document
 
 matching_params = read_params("matching_params.yml")
 line_detection_params = read_params("line_detection_params.yml")

@@ -1,0 +1,52 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.9, pytest-8.1.1, pluggy-1.5.0
+rootdir: /Users/davis.ozols/Repos/swissgeol-boreholes-dataextraction
+configfile: pyproject.toml
+plugins: cov-5.0.0, anyio-4.8.0
+collected 260 items
+
+tests/api/v1/test_bounding_boxes.py ....                                 [  1%]
+tests/api/v1/test_create_pngs.py ......                                  [  3%]
+tests/api/v1/test_extract_data.py ............                           [  8%]
+tests/api/v1/test_extract_stratigraphy.py ....                           [ 10%]
+tests/classification/test_data_formatter.py ........                     [ 13%]
+tests/classification/test_evaluation.py .....                            [ 15%]
+tests/test_aabovebsidebar.py ......                                      [ 17%]
+tests/test_coordinate_extraction.py ...................                  [ 24%]
+tests/test_dataclasses.py ...                                            [ 25%]
+tests/test_depthcolumnentry.py .                                         [ 26%]
+tests/test_find_sidebar.py ........                                      [ 29%]
+tests/test_geometric_line_utilities.py ................................. [ 41%]
+.................................                                        [ 54%]
+tests/test_groundwater.py ......                                         [ 56%]
+tests/test_groundwater_symbol_detection.py ......                        [ 59%]
+tests/test_interval.py ....................                              [ 66%]
+tests/test_interval_block_pairs.py ..                                    [ 67%]
+tests/test_language_filtering.py ......................                  [ 76%]
+tests/test_layer_evaluator.py ......                                     [ 78%]
+tests/test_layerdepths.py ..                                             [ 79%]
+tests/test_line_affinity.py ...                                          [ 80%]
+tests/test_overlap_detection.py .........                                [ 83%]
+tests/test_predictions.py ................                               [ 90%]
+tests/test_textblock.py ...                                              [ 91%]
+tests/test_textline_matching.py .......................                  [100%]WARNING: Failed to generate report: No data to report.
+
+
+
+=============================== warnings summary ===============================
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: Type google._upb._message.MessageMapContainer uses PyType_Spec with a metaclass that has custom tp_new. This is deprecated and will no longer be allowed in Python 3.14.
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: Type google._upb._message.ScalarMapContainer uses PyType_Spec with a metaclass that has custom tp_new. This is deprecated and will no longer be allowed in Python 3.14.
+
+env/lib/python3.12/site-packages/pydantic/_internal/_config.py:295
+  /Users/davis.ozols/Repos/swissgeol-boreholes-dataextraction/env/lib/python3.12/site-packages/pydantic/_internal/_config.py:295: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.10/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /Users/davis.ozols/Repos/swissgeol-boreholes-dataextraction/pytest.xml -
+
+---------- coverage: platform darwin, python 3.12.9-final-0 ----------
+
+======================= 260 passed, 3 warnings in 12.62s =======================

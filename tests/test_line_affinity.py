@@ -4,9 +4,9 @@ import pymupdf
 import pytest
 
 from extraction.features.extract import get_pairs_based_on_line_affinity
-from extraction.features.utils.geometry.geometry_dataclasses import Line, Point
-from extraction.features.utils.text.textline import TextLine, TextWord
-from extraction.features.utils.text.textline_affinity import get_line_affinity
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
+from swissgeol_doc_processing.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.text.textline_affinity import get_line_affinity
 
 page_number = 1
 textline1 = TextLine([TextWord(pymupdf.Rect([0, 0, 10, 10]), "Hello", page_number)])

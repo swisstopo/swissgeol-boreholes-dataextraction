@@ -6,10 +6,10 @@ import re
 
 import pymupdf
 
-from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
-from extraction.features.utils.geometry.util import x_overlap_significant_largest
-from extraction.features.utils.text.matching_params_analytics import MatchingParamsAnalytics
-from extraction.features.utils.text.stemmer import find_matching_expressions
+from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
+from swissgeol_doc_processing.geometry.util import x_overlap_significant_largest
+from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
+from swissgeol_doc_processing.text.stemmer import find_matching_expressions
 
 
 class TextWord(RectWithPageMixin):

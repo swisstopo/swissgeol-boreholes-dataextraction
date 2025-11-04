@@ -4,7 +4,7 @@ import logging
 
 import Levenshtein
 
-from utils.file_utils import read_params
+from swissgeol_doc_processing.utils.file_utils import read_params
 
 from .layer import ExtractedBorehole, Layer
 

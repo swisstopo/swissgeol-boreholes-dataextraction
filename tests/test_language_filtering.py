@@ -3,7 +3,7 @@
 import pytest
 
 from extraction.features.metadata.borehole_name_extraction import _clean_borehole_name
-from utils.language_filtering import match_any_keyword, normalize_spaces, remove_any_keyword
+from swissgeol_doc_processing.utils.language_filtering import match_any_keyword, normalize_spaces, remove_any_keyword
 
 
 @pytest.mark.parametrize(
