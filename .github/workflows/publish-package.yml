@@ -40,7 +40,6 @@ jobs:
         run: |
           echo "Publishing version: $VERSION"
           sed -i "s/__version__ = .*/__version__ = \"$VERSION\"/" src/swissgeol_doc_processing/__init__.py
-          echo "Updated version to: $VERSION"
 
           # Update __init__.py
           sed -i "s/__version__ = .*/__version__ = \"$VERSION\"/" src/swissgeol_doc_processing/__init__.py
@@ -57,10 +56,10 @@ jobs:
 
       - name: Generate installation instructions
         run: |
-          VERSION=${PACKAGE_VERSION#v}
           WHEEL_FILE=$(ls dist/*.whl | head -n 1 | xargs basename)
-          echo "### Installation Instructions" >> $GITHUB_STEP_SUMMARY
+          echo "###Python Package Published Successfully!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Installation Command" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "pip install https://github.com/${{ github.repository }}/releases/download/$PACKAGE_VERSION/$WHEEL_FILE" >> $GITHUB_STEP_SUMMARY
+          echo "pip install https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/$WHEEL_FILE" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
