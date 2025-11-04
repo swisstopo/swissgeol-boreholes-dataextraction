@@ -32,7 +32,7 @@ from extraction.features.stratigraphy.sidebar.extractor.layer_identifier_sidebar
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
 from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.geometry.geometry_dataclasses import Line
-from extraction.features.utils.geometry.line_detection import find_diags_ending_in_zone, write_img_debug
+from extraction.features.utils.geometry.line_detection import find_diags_ending_in_zone
 from extraction.features.utils.geometry.util import x_overlap, x_overlap_significant_smallest
 from extraction.features.utils.strip_log_detection import StripLog
 from extraction.features.utils.table_detection import (
@@ -518,7 +518,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         return matched_pairs
 
-    def get_textline_shift_indices(self, description_lines) -> tuple[dict[int, float], list[Line]]:
+    def get_textline_shift_indices(self, description_lines: list[TextLine]) -> tuple[dict[int, float], list[Line]]:
         """Retrieves the indices of the textlines that are near a diagonal line.
 
         Those diagonal lines indicates that the textline should be matched to a interval higher or below, and not the
@@ -553,6 +553,14 @@ class MaterialDescriptionRectWithSidebarExtractor:
             min_vertical_dist=min_text_height / 2,
             max_horizontal_dist=max_text_height * 3,
         )
+        filtered_g_lines = [
+            g_line
+            for g_line in filtered_g_lines
+            if not (
+                any(line.rect.contains(g_line.start.tuple) for line in description_lines)
+                and any(line.rect.contains(g_line.end.tuple) for line in description_lines)
+            )
+        ]
 
         # write_img_debug("debug_filtered.png", page, 2.0, filtered_g_lines)
 
@@ -581,7 +589,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 if longest not in selected_diags:
                     selected_diags.append(longest)
 
-        write_img_debug("selected_diags.png", page, 2.0, selected_diags)
+        # write_img_debug("selected_diags.png", page, 2.0, selected_diags)
         return index_to_adjustement, selected_diags
 
     def get_textline_vertical_adjustements(
