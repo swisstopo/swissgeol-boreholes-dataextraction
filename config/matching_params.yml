@@ -8,11 +8,11 @@ affinity_params:
   a_above_b:
     importance: 5.0
     weights:
-      line_weight: 3.0 # 3.
+      line_weight: 3.0
       left_line_weight: 1.0
       spacing_weight: 1.25
       right_end_weight: 1.0
-      diagonal_weight: 1.25 #1.5
+      diagonal_weight: 1.25
   a_to_b:
     importance: 2.0
     weights:

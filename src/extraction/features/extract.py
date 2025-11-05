@@ -530,7 +530,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
     def get_textline_index_near_diagonals(self, description_lines: list[TextLine]) -> dict[int, Line]:
         """Retrieves the indices of the textlines that are near a diagonal line.
 
-        Those diagonal lines indicates that the textline should be matched to a interval higher or below, and not the
+        Those diagonal lines indicate that the textline should be matched to an interval higher or below, and not the
         one directly in front of it.
 
         Args:
@@ -598,7 +598,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
     ) -> dict[TextLine, float]:
         """Get the vertical adjustements for each textline based on the diagonals extracted.
 
-        Even for textlines not direclty next to a diagonal line, we propagate the adjustement to lines below as they
+        Even for textlines not directly next to a diagonal line, we propagate the adjustement to lines below as they
             are likely to be affected as well.
 
         A positive shift of +x indicates that the textline is perceived lower on the page than it should be, and
@@ -666,7 +666,6 @@ def extract_page(
         list[ExtractedBorehole]: Extracted borehole layers from the page.
     """
     # Get page dimensions from the document
-    global page  # to debug only, TODO remove
     page = document[page_index]
     page_width = page.rect.width
     page_height = page.rect.height
@@ -688,7 +687,10 @@ def extract_page(
 
 
 def match_lines_to_interval(
-    sidebar: Sidebar, description_lines: list[TextLine], affinities: list[Affinity], vertical_adjustements: list[float]
+    sidebar: Sidebar,
+    description_lines: list[TextLine],
+    affinities: list[Affinity],
+    vertical_adjustements: dict[TextLine, float],
 ) -> list[IntervalBlockPair]:
     """Match the description lines to the pair intervals.
 
@@ -696,7 +698,7 @@ def match_lines_to_interval(
         sidebar (Sidebar): The sidebar.
         description_lines (list[TextLine]): The description lines.
         affinities (list[Affinity]): the affinity between each line pair, previously computed.
-        vertical_adjustements (dict[TextLine, float]): the ..
+        vertical_adjustements (dict[TextLine, float]): The vertical adjustments for each text line.
 
     Returns:
         list[IntervalBlockPair]: The matched depth intervals and text blocks.

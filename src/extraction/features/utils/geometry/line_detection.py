@@ -106,7 +106,7 @@ def detect_lines_hough(page: pymupdf.Page, hough_params: dict) -> ArrayLike:
     return [line_from_array(line, scale_ratio) for line in lines]
 
 
-def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]:
+def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> tuple[list[Line], list[Line]]:
     """Extract lines from a pdf page.
 
     Args:
@@ -114,7 +114,8 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
         line_detection_params (dict): The parameters for the line detection algorithm.
 
     Returns:
-        tuple(list[Line], list[Line]): The detected lines as a list. First the longest, then all. TODO
+        tuple[list[Line], list[Line]]: A tuple containing the filtered lines meeting length/horizontal criteria
+            and all merged lines.
     """
     lines = detect_lines_lsd(
         page,

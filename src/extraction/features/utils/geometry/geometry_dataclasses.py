@@ -175,7 +175,7 @@ class Line:
         """Calculate the y-intercept of the line."""
         return self.start.y - self.slope * self.start.x
 
-    def asarray(self) -> list[float]:
+    def asarray(self) -> np.ndarray:
         return np.array([self.start.x, self.start.y, self.end.x, self.end.y])
 
 
