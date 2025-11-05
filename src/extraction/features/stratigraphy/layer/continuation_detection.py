@@ -3,14 +3,76 @@
 import numpy as np
 
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepths, LayerDepthsEntry
-from extraction.features.stratigraphy.layer.overlap_detection import select_boreholes_with_scan_overlap
+from extraction.features.stratigraphy.layer.overlap_detection import select_boreholes_with_overlap
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 
 DEPTHS_QUANTILE_SLACK = 0.1
 
 
+def _pick_merge_candidates(
+    previous_page_boreholes: list[ExtractedBorehole],
+    current_page_boreholes: list[ExtractedBorehole],
+    page_number: int,
+) -> tuple[ExtractedBorehole | None, list[ExtractedBorehole], ExtractedBorehole | None, list[ExtractedBorehole]]:
+    """Select the most likely pair of boreholes to merge between consecutive pages.
+
+    The method first attempts an overlap-based matching using scan alignment.
+    If no overlap is detected, it falls back to depth/position-based matching.
+
+    Args:
+        previous_page_boreholes (list[ExtractedBorehole]): List of boreholes from the previous page.
+        current_page_boreholes (list[ExtractedBorehole]): List of boreholes detected on the current page.
+        page_number (int): Index of the current page being processed (1-based).
+
+    Returns:
+        tuple[ExtractedBorehole | None, list[ExtractedBorehole], ExtractedBorehole | None, list[ExtractedBorehole]]:
+            * Extended borehole from the previous page.
+            * Unaffected boreholes from the previous page.
+            * Extended borehole from the current page that continues it.
+            * Unaffected boreholes from the current page.
+    """
+    # 1) Overlap-based (returns a triple)
+    borehole_to_extend, borehole_continuation, last_duplicated_layer_index = select_boreholes_with_overlap(
+        previous_page_boreholes, current_page_boreholes
+    )
+
+    if borehole_to_extend is None or borehole_continuation is None or last_duplicated_layer_index is None:
+        # 2) Depth/position-based (returns a pair) → normalize to triple
+        borehole_to_extend, borehole_continuation = _select_boreholes_for_concatenation(
+            previous_page_boreholes, current_page_boreholes, page_number
+        )
+
+    unaffected_boreholes_previous_page = [
+        borehole for borehole in previous_page_boreholes if borehole is not borehole_to_extend
+    ]
+    unaffected_boreholes_current_page = [
+        borehole for borehole in current_page_boreholes if borehole is not borehole_continuation
+    ]
+
+    if last_duplicated_layer_index:
+        upper_id, lower_id = last_duplicated_layer_index
+        # Keep only the non-duplicated part of the borehole from the previous page
+        borehole_to_extend = ExtractedBorehole(
+            predictions=borehole_to_extend.predictions[:upper_id],
+            bounding_boxes=borehole_to_extend.bounding_boxes,
+        )
+
+        # Keep only the new layers from the continuation borehole on the current
+        borehole_continuation = ExtractedBorehole(
+            predictions=borehole_continuation.predictions[lower_id:],
+            bounding_boxes=borehole_continuation.bounding_boxes,
+        )
+
+    return (
+        borehole_to_extend,
+        unaffected_boreholes_previous_page,
+        borehole_continuation,
+        unaffected_boreholes_current_page,
+    )
+
+
 def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[ExtractedBorehole]:
-    """Merge boreholes that were extracted from different pages.
+    """Merge boreholes that were extracted from different pages into continuous borehole.
 
     This method will attempt to match the predicted boreholes to the boreholes from previous pages based on their
     positions and continuity. If a match is found, the layers are merged; otherwise, new boreholes are added.
@@ -25,39 +87,24 @@ def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[E
         page_number = index + 1
 
         # 1. merge boreholes that are continued from the previous page based on overlaps
-        borehole_to_extend, borehole_continuation, last_duplicate_layer_index = select_boreholes_with_scan_overlap(
-            previous_page_boreholes=previous_page_boreholes,
-            current_page_boreholes=boreholes_on_page,
-        )
+        (
+            borehole_to_extend,
+            unaffected_boreholes_previous_page,
+            borehole_continuation,
+            unaffected_boreholes_current_page,
+        ) = _pick_merge_candidates(previous_page_boreholes, boreholes_on_page, page_number)
 
-        # 2. alternatively, merge boreholes that are continued from the previous page based on depths and position
-        if not (borehole_to_extend and borehole_continuation and last_duplicate_layer_index is not None):
-            borehole_to_extend, borehole_continuation = _select_boreholes_for_merge(
-                previous_page_boreholes, boreholes_on_page, page_number
-            )
-
+        # 2. If borehole merge possible, apply it
         if borehole_to_extend and borehole_continuation:
-            if last_duplicate_layer_index is not None:
-                borehole_continuation_without_duplicates = ExtractedBorehole(
-                    predictions=borehole_continuation.predictions[last_duplicate_layer_index + 1 :],
-                    bounding_boxes=borehole_continuation.bounding_boxes,
-                )
-            else:
-                borehole_continuation_without_duplicates = borehole_continuation
-            merged_borehole = _merge_boreholes(borehole_to_extend, borehole_continuation_without_duplicates)
+            merged_borehole = _merge_boreholes(borehole_to_extend, borehole_continuation)
 
-            # declare all unaffected boreholes from the previous page as finished
-            unaffected_boreholes_previous_page = [
-                borehole for borehole in previous_page_boreholes if borehole is not borehole_to_extend
-            ]
+            # Declare all unaffected boreholes from the previous page as finished
             finished_boreholes.extend(unaffected_boreholes_previous_page)
 
-            # put all boreholes from the current page in the list previous_page_boreholes for the next iteration
-            unaffected_boreholes_current_page = [
-                borehole for borehole in boreholes_on_page if borehole is not borehole_continuation
-            ]
+            # Put all boreholes from the current page in the list previous_page_boreholes for the next iteration
             previous_page_boreholes = unaffected_boreholes_current_page + [merged_borehole]
         else:
+            # No merge possible, previous borehole considered as finished, current goes as previous
             finished_boreholes.extend(previous_page_boreholes)
             previous_page_boreholes = boreholes_on_page
 
@@ -67,7 +114,7 @@ def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[E
     return finished_boreholes
 
 
-def _select_boreholes_for_merge(
+def _select_boreholes_for_concatenation(
     previous_page_boreholes: list[ExtractedBorehole],
     current_page_boreholes: list[ExtractedBorehole],
     current_page_number: int,
