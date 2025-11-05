@@ -7,7 +7,7 @@ name = "swissgeol-boreholes-dataextraction"
 dynamic = ["version"]
 description = "Python project to analyse borehole profiles."
 readme = "README.md"
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "boto3==1.40.12",
     "pandas==2.3.1",
