@@ -53,18 +53,18 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
 
         # 3. extract layers
         text_lines = extract_text_lines(page)
-        geometric_lines, all_geometric_lines = extract_lines(page, line_detection_params)
+        long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
 
         # Detect table structures on the page
-        table_structures = detect_table_structures(page_index, document, geometric_lines, text_lines)
+        table_structures = detect_table_structures(page_index, document, long_or_horizontal_lines, text_lines)
 
         # Detect strip logs on the page
-        strip_logs = detect_strip_logs(page, geometric_lines, line_detection_params, text_lines)
+        strip_logs = detect_strip_logs(page, long_or_horizontal_lines, line_detection_params, text_lines)
 
         boreholes_per_page.append(
             extract_page(
                 text_lines,
-                geometric_lines,
+                long_or_horizontal_lines,
                 all_geometric_lines,
                 table_structures,
                 strip_logs,

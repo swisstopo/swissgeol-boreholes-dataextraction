@@ -317,20 +317,20 @@ def start_pipeline(
                 logger.info("Processing page %s", page_number)
 
                 text_lines = extract_text_lines(page)
-                geometric_lines, all_geometric_lines = extract_lines(page, line_detection_params)
+                long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
                 name_entries = extract_borehole_names(text_lines, name_detection_params)
                 all_name_entries.name_feature_list.extend(name_entries)
 
                 # Detect table structures on the page
-                table_structures = detect_table_structures(page_index, doc, geometric_lines, text_lines)
+                table_structures = detect_table_structures(page_index, doc, long_or_horizontal_lines, text_lines)
 
                 # Detect strip logs on the page
-                strip_logs = detect_strip_logs(page, geometric_lines, line_detection_params, text_lines)
+                strip_logs = detect_strip_logs(page, long_or_horizontal_lines, line_detection_params, text_lines)
 
                 # extract the statigraphy
                 page_layers = extract_page(
                     text_lines,
-                    geometric_lines,
+                    long_or_horizontal_lines,
                     all_geometric_lines,
                     table_structures,
                     strip_logs,
@@ -347,7 +347,7 @@ def start_pipeline(
                 groundwater_entries = groundwater_extractor.extract_groundwater(
                     page_number=page_number,
                     text_lines=text_lines,
-                    geometric_lines=geometric_lines,
+                    geometric_lines=long_or_horizontal_lines,
                     extracted_boreholes=page_layers,
                 )
                 all_groundwater_entries.groundwater_feature_list.extend(groundwater_entries)
@@ -368,7 +368,7 @@ def start_pipeline(
                     else:
                         img = plot_lines(
                             page,
-                            geometric_lines,
+                            long_or_horizontal_lines,
                             scale_factor=line_detection_params["pdf_scale_factor"],
                         )
                         mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")

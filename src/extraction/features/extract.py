@@ -32,7 +32,7 @@ from extraction.features.stratigraphy.sidebar.extractor.layer_identifier_sidebar
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
 from extraction.features.utils.data_extractor import FeatureOnPage
 from extraction.features.utils.geometry.geometry_dataclasses import Line
-from extraction.features.utils.geometry.line_detection import find_diags_ending_in_zone, write_img_debug  # noqa: F401
+from extraction.features.utils.geometry.line_detection import find_diags_ending_in_zone
 from extraction.features.utils.geometry.util import x_overlap, x_overlap_significant_smallest
 from extraction.features.utils.strip_log_detection import StripLog
 from extraction.features.utils.table_detection import (
@@ -49,8 +49,11 @@ from extraction.features.utils.text.textblock import (
 from extraction.features.utils.text.textline import TextLine
 from extraction.features.utils.text.textline_affinity import Affinity, get_line_affinity
 from utils.dynamic_matching import IntervalToLinesDP
+from utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
+
+diagonals_params = read_params("line_detection_params.yml")["diagonals_params"]
 
 
 class MaterialDescriptionRectWithSidebarExtractor:
@@ -59,7 +62,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
     def __init__(
         self,
         lines: list[TextLine],
-        geometric_lines: list[Line],
+        long_or_horizontal_lines: list[Line],
         all_geometric_lines: list[Line],
         table_structures: list[TableStructure],
         strip_logs: list[StripLog],
@@ -74,7 +77,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         Args:
             lines (list[TextLine]): all the text lines on the page.
-            geometric_lines (list[Line]): The geometric lines of the page.
+            long_or_horizontal_lines (list[Line]): Geometric lines (only the significant ones and the horizontals).
             all_geometric_lines (list[Line]): All the geometric lines of the page (small ones included).
             table_structures (list[TableStructure]): The identified table structures of the page.
             strip_logs (list[StripLog]): The identified strip logs of the page.
@@ -86,7 +89,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             **params (dict): Additional parameters for the matching pipeline.
         """
         self.lines = lines
-        self.geometric_lines = geometric_lines
+        self.long_or_horizontal_lines = long_or_horizontal_lines
         self.all_geometric_lines = all_geometric_lines
         self.table_structures = table_structures
         self.strip_logs = strip_logs  # added for future usage
@@ -190,9 +193,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
         return bbox1.intersects(bbox2)
 
     def _create_borehole_from_pair(self, pair: MaterialDescriptionRectWithSidebar) -> ExtractedBorehole:
+        """Create an ExtractedBorehole from a MaterialDescriptionRectWithSidebar."""
         bounding_boxes = PageBoundingBoxes.from_material_description_rect_with_sidebar(pair, self.page_number)
 
-        # this must not be flattened anymore, i.e. we keep the /per borehole separation
         interval_block_pairs = self._get_interval_block_pairs(pair)
 
         borehole_layers = [
@@ -226,12 +229,18 @@ class MaterialDescriptionRectWithSidebarExtractor:
             list[IntervalBlockPair]: The interval block pairs.
         """
         description_lines = get_description_lines(self.lines, pair.material_description_rect)
-        index_to_adjustement, diagonals = self.get_textline_shift_indices(description_lines)
-        vertical_adjustements = self.get_textline_vertical_adjustements(description_lines, index_to_adjustement)
+        index_to_diagonal = self.get_textline_index_near_diagonals(description_lines)
+        vertical_adjustements = self.get_textline_vertical_adjustements(description_lines, index_to_diagonal)
+
+        diagonals = []
+        for diag in index_to_diagonal.values():
+            if diag not in diagonals:
+                diagonals.append(diag)
+
         line_affinities = get_line_affinity(
             description_lines,
             pair.material_description_rect,
-            self.geometric_lines,
+            self.long_or_horizontal_lines,
             diagonals,
             block_line_ratio=self.params["block_line_ratio"],
             left_line_length_threshold=self.params["left_line_length_threshold"],
@@ -518,58 +527,38 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         return matched_pairs
 
-    def get_textline_shift_indices(self, description_lines: list[TextLine]) -> tuple[dict[int, float], list[Line]]:
+    def get_textline_index_near_diagonals(self, description_lines: list[TextLine]) -> dict[int, Line]:
         """Retrieves the indices of the textlines that are near a diagonal line.
 
         Those diagonal lines indicates that the textline should be matched to a interval higher or below, and not the
         one directly in front of it.
 
-        A positive shift of +x indicates that the textline is perceived lower on the page than it should be, and
-        thus should be matched with an interval higher on the page.
-
         Args:
             description_lines (list[TextLine]): The description lines.
 
         Returns:
-            tuple[dict[int, float], list[Line]]: The indices of the textlines to adjust with the corresponding vertical
-                 adjustment and the selected diagonal lines.
+            dict[int, Line]: The indices of the textlines that have a diagonal lines nearby.
         """
         x0s = [line.rect.x0 for line in description_lines]
+        min_x0, max_x0 = min(x0s), max(x0s)
         text_heights = [line.rect.height for line in description_lines]
         min_text_height, max_text_height = min(text_heights), max(text_heights)
-        min_x0, max_x0 = min(x0s), max(x0s)
         min_y0 = min([line.rect.y0 for line in description_lines])
         max_y1 = max([line.rect.y1 for line in description_lines])
 
-        # SLACK = 1
-
+        # Zone where we will look for diagonal line ends, between the strip logs and material descriptions.
         search_zone = pymupdf.Rect(min_x0 - max_text_height, min_y0, max_x0 + max_text_height / 3, max_y1)
         if self.strip_logs:
             # shrink left boundary to right edge of the strip
             search_zone.x0 = max(search_zone.x0, max([sl.bounding_rect.x1 for sl in self.strip_logs]))
-        filtered_g_lines = find_diags_ending_in_zone(
-            self.all_geometric_lines,
-            search_zone,
-            min_vertical_dist=min_text_height / 2,
-            max_horizontal_dist=max_text_height * 3,
+
+        # Detect and filter potential diagonals
+        filtered_g_lines = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
+        filtered_g_lines = self._filter_diagonals(
+            filtered_g_lines, description_lines, min_text_height / 2, max_text_height * 3
         )
-        # SLACK = 2
-        # filtered_g_lines = [
-        #     g_line for g_line in filtered_g_lines if search_zone.contains([g_line.start.x, g_line.start.y + SLACK])
-        # ]
-        filtered_g_lines = [
-            g_line
-            for g_line in filtered_g_lines
-            if not (
-                any(line.rect.contains(g_line.start.tuple) for line in description_lines)
-                and any(line.rect.contains(g_line.end.tuple) for line in description_lines)
-            )
-        ]
 
-        # write_img_debug("debug_filtered.png", page, 2.0, filtered_g_lines)
-
-        index_to_adjustement = {}
-        selected_diags: list[Line] = []
+        index_to_diagonal = {}
         for line_index, text_line in enumerate(description_lines):
             x0, y0, _, y1 = text_line.rect
             text_line_height = text_line.rect.height
@@ -579,64 +568,75 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 x0 + text_line_height / 3,
                 y1 + 0.5 * text_line_height,
             )
-            # The end point of any Line is always on the right
-            candidates = find_diags_ending_in_zone(
-                filtered_g_lines,
-                line_search_zone,
-                min_vertical_dist=text_line_height / 2,
-                max_horizontal_dist=text_line_height * 3,
-            )
-            # can do check that end and start not on the same TextLine -> parasite line in text, maybe in line detec
+            candidates = find_diags_ending_in_zone(filtered_g_lines, line_search_zone)
             longest = max(candidates, key=lambda g_line: g_line.length) if candidates else None
             if longest:
-                index_to_adjustement[line_index] = float(longest.end.y - longest.start.y)
-                if longest not in selected_diags:
-                    selected_diags.append(longest)
+                index_to_diagonal[line_index] = longest
 
-        # write_img_debug("selected_diags.png", page, 2.0, selected_diags)
-        return index_to_adjustement, selected_diags
+        return index_to_diagonal
+
+    @staticmethod
+    def _filter_diagonals(
+        g_lines: list[Line], description_lines: list[TextLine], min_vertical_dist: float, max_horizontal_dist: float
+    ) -> list[Line]:
+        """Filters the diagonal lines identified."""
+        angle_threshold = diagonals_params["angle_threshold"]
+        return [
+            g_line
+            for g_line in g_lines
+            if not (
+                any(line.rect.contains(g_line.start.tuple) for line in description_lines)
+                and any(line.rect.contains(g_line.end.tuple) for line in description_lines)
+            )  # lines on text are letters that have segments identified (like W)
+            and not g_line.is_vertical(angle_threshold)  # too many other lines are vertical
+            and abs(g_line.start.y - g_line.end.y) > min_vertical_dist  # near horizontals are likely noise
+            and 0 < g_line.end.x - g_line.start.x < max_horizontal_dist  # lines too long are likely other parasites
+        ]
 
     def get_textline_vertical_adjustements(
-        self, description_lines: list[TextLine], index_to_adjustement: dict[int, float]
+        self, description_lines: list[TextLine], index_to_diagonal: dict[int, Line]
     ) -> dict[TextLine, float]:
-        """Get the vertical adjustements for each textline based on the indices to adjustement.
+        """Get the vertical adjustements for each textline based on the diagonals extracted.
 
-        Even if only some textlines are near diagonal lines, we propagate the adjustement to lines below as they
+        Even for textlines not direclty next to a diagonal line, we propagate the adjustement to lines below as they
             are likely to be affected as well.
+
+        A positive shift of +x indicates that the textline is perceived lower on the page than it should be, and
+        thus should be matched with an interval higher on the page.
 
         Args:
             description_lines (list[TextLine]): The description lines.
-            index_to_adjustement (dict[int, float]): The indices of the textlines to adjust with the corresponding
-                vertical adjustment.
+            index_to_diagonal (dict[int, Line]): The indices of the textlines that have a diagonal near them.
 
         Returns:
             dict[TextLine, float]: The vertical adjustements for each textline.
         """
-        MIN_SHIFT_REQUIRED = 1  # for now, up to avoid fp
-        if len(index_to_adjustement) < MIN_SHIFT_REQUIRED:
+        if not index_to_diagonal:
             return {line: 0.0 for line in description_lines}
 
-        indices = sorted(index_to_adjustement.keys())
+        MAX_LINE_AFFECTED = diagonals_params["max_line_affected"]
+
+        indices = sorted(index_to_diagonal.keys())
         adjustements = {}
-        NUM_LINE_SLACK = 2
         line_slack_counter = 0
-        prev_value = 0.0
+        prev_v_shift = 0.0
         for line_index, text_line in enumerate(description_lines):
             if line_index in indices:
-                prev_value = index_to_adjustement[line_index]
+                diagonal = index_to_diagonal[line_index]
+                prev_v_shift = float(diagonal.end.y - diagonal.start.y)
                 line_slack_counter = 0
             else:
                 line_slack_counter += 1
-            if line_slack_counter > NUM_LINE_SLACK:
-                prev_value = 0.0
-            adjustements[text_line] = prev_value
+            if line_slack_counter > MAX_LINE_AFFECTED:
+                prev_v_shift = 0.0
+            adjustements[text_line] = prev_v_shift
 
         return adjustements
 
 
 def extract_page(
     text_lines: list[TextLine],
-    geometric_lines: list[Line],
+    long_or_horizontal_lines: list[Line],
     all_geometric_lines: list[Line],
     table_structures: list[TableStructure],
     strip_logs: list[StripLog],
@@ -652,7 +652,7 @@ def extract_page(
 
     Args:
         text_lines (list[TextLine]): All text lines on the page.
-        geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
+        long_or_horizontal_lines (list[Line]): Geometric lines (only the significant ones and the horizontals).
         all_geometric_lines (list[Line]): All geometric lines (including the shorter ones).
         table_structures (list[TableStructure]): The identified table structures.
         strip_logs (list[StripLog]): The identified strip log structures.
@@ -674,7 +674,7 @@ def extract_page(
     # Extract boreholes
     return MaterialDescriptionRectWithSidebarExtractor(
         text_lines,
-        geometric_lines,
+        long_or_horizontal_lines,
         all_geometric_lines,
         table_structures,
         strip_logs,

@@ -36,3 +36,7 @@ line_merging_params:
   angle_threshold: 5  # maximum difference in degrees between two line segments that are merged
   min_line_length: 100
   horizontal_slope_tolerance: 0.1
+
+diagonals_params:
+  angle_threshold: 5
+  max_line_affected: 2
