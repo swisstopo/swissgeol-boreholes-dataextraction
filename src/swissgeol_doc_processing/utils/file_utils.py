@@ -4,7 +4,6 @@ import functools
 import re
 import time
 from collections.abc import MutableMapping
-import os
 from pathlib import Path
 
 import yaml
@@ -18,6 +17,7 @@ def find_project_root():
         if (parent / "pyproject.toml").exists() or (parent / "setup.py").exists():
             return parent
     return current.parents[2]  # Fallback
+
 
 PROJECT_ROOT = find_project_root()
 

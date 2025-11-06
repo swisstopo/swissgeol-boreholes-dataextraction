@@ -49,8 +49,8 @@ from .text import (
     matching_params_analytics,
     stemmer,
     textblock,
-    textline_affinity,
     textline,
+    textline_affinity,
 )
 from .utils import (
     data_extractor,
