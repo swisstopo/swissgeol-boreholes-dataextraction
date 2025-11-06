@@ -222,10 +222,8 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         else:
             mid_zone = (interval_zone.end.y0 + interval_zone.start.y1) / 2
             close_to_mid_zone_bonus = math.exp(-(abs(mid_zone - line_mid) / 30.0))  # 1 -> 0
-            # close_to_mid_zone_bonus = math.exp(-(abs(mid_zone - line_mid) / (end_mid - mid_zone)))  # 1 -> 0
 
         score = (close_to_mid_zone_bonus + falls_inside_bonus) / 2  # mean between the two is a good tradeoff.
-        # score = close_to_mid_zone_bonus * 0.33 + falls_inside_bonus * 0.5  # mean between the two is a good tradeoff.
 
         OPEN_ENDED_PENALTY = float("inf")  # penalize assigning lines to open ended (open-ended has no end)
         return score if end_mid else score - OPEN_ENDED_PENALTY
