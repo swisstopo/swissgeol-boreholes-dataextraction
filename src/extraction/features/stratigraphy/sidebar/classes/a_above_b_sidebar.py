@@ -10,7 +10,8 @@ from typing import ClassVar
 
 import numpy as np
 
-from extraction.features.stratigraphy.interval.interval import AAboveBInterval, IntervalZone
+from extraction.features.stratigraphy.interval.interval import AAboveBInterval, IntervalBlockPair, IntervalZone
+from extraction.features.utils.text.textblock import TextBlock
 from extraction.features.utils.text.textline import TextLine
 
 from ...base.sidebar_entry import DepthColumnEntry
@@ -60,6 +61,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         depth_intervals = [] if self.entries[0].value == 0.0 else [AAboveBInterval(None, self.entries[0])]
         for i in range(len(self.entries) - 1):
             depth_intervals.append(AAboveBInterval(self.entries[i], self.entries[i + 1]))
+        depth_intervals.append(AAboveBInterval(self.entries[-1], None))  # include open-ended
         return depth_intervals
 
     @staticmethod
@@ -216,12 +218,27 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
 
         if not (interval_zone.end and interval_zone.start):
             entry_mid = start_mid if start_mid else end_mid
-            close_to_entry_bonus = math.exp(-(abs(entry_mid - line_mid) / 30.0)) if entry_mid else None
-            return (falls_inside_bonus + close_to_entry_bonus) / 2
+            close_to_mid_zone_bonus = math.exp(-(abs(entry_mid - line_mid) / 30.0)) if entry_mid else 0.0
+        else:
+            mid_zone = (interval_zone.end.y0 + interval_zone.start.y1) / 2
+            close_to_mid_zone_bonus = math.exp(-(abs(mid_zone - line_mid) / 30.0))  # 1 -> 0
+            # close_to_mid_zone_bonus = math.exp(-(abs(mid_zone - line_mid) / (end_mid - mid_zone)))  # 1 -> 0
 
-        mid_zone = (interval_zone.end.y0 + interval_zone.start.y1) / 2
-        close_to_mid_zone_bonus = math.exp(-(abs(mid_zone - line_mid) / 30.0))  # 1 -> 0
-        return (close_to_mid_zone_bonus + falls_inside_bonus) / 2  # mean between the two is a good tradeoff.
+        score = (close_to_mid_zone_bonus + falls_inside_bonus) / 2  # mean between the two is a good tradeoff.
+        # score = close_to_mid_zone_bonus * 0.33 + falls_inside_bonus * 0.5  # mean between the two is a good tradeoff.
+
+        OPEN_ENDED_PENALTY = float("inf")  # penalize assigning lines to open ended (open-ended has no end)
+        return score if end_mid else score - OPEN_ENDED_PENALTY
+
+    def post_processing(
+        self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]
+    ) -> list[IntervalBlockPair]:
+        """Post-process the matched interval zones and description lines into IntervalBlockPairs."""
+        # remove open-ended interval, but keep the lines
+        return [
+            IntervalBlockPair(zone.related_interval if zone.end else None, TextBlock(lines))
+            for zone, lines in interval_lines_mapping
+        ]
 
 
 def generate_alternatives(value: float) -> list[float]:
