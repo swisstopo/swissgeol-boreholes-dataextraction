@@ -14,8 +14,6 @@ from swissgeol_doc_processing.utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
 
-config = read_params("table_detection_params.yml")
-
 
 @dataclass
 class TableStructure:
@@ -28,17 +26,21 @@ class TableStructure:
     line_density: float
 
 
-def detect_structure_lines(geometric_lines: list[Line], filter_lines=True) -> list[StructureLine]:
+def detect_structure_lines(
+    geometric_lines: list[Line], filter_lines=True, config_path: str = None
+) -> list[StructureLine]:
     """Detect significant horizonal and vertical lines in a document.
 
     Args:
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
         filter_lines (bool, optional): Whether to filter lines before classification. Defaults to True.
+        config_path (str, optional): Path to user-provided config file. Defaults to None.
 
     Returns:
         List of detected structure lines
     """
     # Filter and classify lines
+    config = read_params("table_detection_params.yml", user_config_path=config_path)
     final_lines = _filter_significant_lines(geometric_lines, config) if filter_lines else geometric_lines
     return _separate_by_orientation(final_lines, config)
 
@@ -48,6 +50,7 @@ def detect_table_structures(
     document: pymupdf.Document,
     geometric_lines: list[Line],
     text_lines: list[TextLine],
+    config_path: str = None,
 ) -> list[TableStructure]:
     """Detect multiple non-overlapping table structures on a page.
 
@@ -56,6 +59,7 @@ def detect_table_structures(
         document (pymupdf.Document): the document.
         geometric_lines (list[Line]): The geometric lines on the page.
         text_lines (list[TextLine]): All text lines on the page.
+        config_path (str, optional): Path to user-provided config file. Defaults to None.
 
     Returns:
         List of detected table structures
@@ -65,6 +69,7 @@ def detect_table_structures(
     page_width = page.rect.width
     page_height = page.rect.height
 
+    config = read_params("table_detection_params.yml", user_config_path=config_path)
     structure_lines = detect_structure_lines(geometric_lines)
     table_candidates = _find_table_structures(structure_lines, config, page_width, page_height, text_lines)
     table_candidates = [

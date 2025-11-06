@@ -16,8 +16,6 @@ from swissgeol_doc_processing.utils.table_detection import StructureLine, detect
 
 logger = logging.getLogger(__name__)
 
-config = read_params("table_detection_params.yml")
-
 
 @dataclass
 class StripLog:
@@ -31,10 +29,7 @@ class StripLog:
 
 
 def detect_strip_logs(
-    page: pymupdf.Page,
-    geometric_lines: list[Line],
-    line_detection_params: dict,
-    text_lines: list[TextLine],
+    page: pymupdf.Page, geometric_lines: list[Line], text_lines: list[TextLine], config_path: str = None
 ) -> list[StripLog]:
     """Detect strip logs (soil profiles) on a page.
 
@@ -50,11 +45,13 @@ def detect_strip_logs(
         geometric_lines (list[Line]): Detected geometric lines on the page.
         line_detection_params (dict): Parameters for circle detection.
         text_lines (list[TextLine]): All text lines on the page.
+        config_path (str, optional): Path to user-provided config file. Defaults to None.
 
     Returns:
         List of detected strip log structures
     """
-    geometric_circles = extract_circles(page, line_detection_params, text_lines)
+    config = read_params("table_detection_params.yml", user_config_path=config_path)
+    geometric_circles = extract_circles(page, text_lines, config_path)
     structure_lines = detect_structure_lines(geometric_lines, filter_lines=False)
     strip_candidates = _find_strip_log_structures(structure_lines, geometric_circles, config, text_lines)
 

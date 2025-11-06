@@ -114,16 +114,17 @@ class DataExtractor:
 
     preprocess_replacements: dict[str, str] = {}
 
-    def __init__(self, language: str):
+    def __init__(self, language: str, config_path: str = None):
         """Initializes the DataExtractor object.
 
         Args:
             language (str): the language of the document.
+            config_path (str, optional): Path to user-provided config file. Defaults to None.
         """
         if not self.feature_name:
             raise ValueError("Feature name must be specified.")
 
-        params = read_params("matching_params.yml")
+        params = read_params("matching_params.yml", user_config_path=config_path)
         self.feature_keys = params[f"{self.feature_name}_keys"][language]
         self.feature_fp_keys = params.get(f"{self.feature_name}_fp_keys", {}).get(language, [])
 

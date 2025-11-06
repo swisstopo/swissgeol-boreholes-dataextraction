@@ -4,6 +4,7 @@ import functools
 import re
 import time
 from collections.abc import MutableMapping
+from importlib import resources
 from pathlib import Path
 
 import yaml
@@ -19,7 +20,30 @@ def find_project_root():
     return current.parents[2]  # Fallback
 
 
-PROJECT_ROOT = find_project_root()
+def read_params(config_filename: str, user_config_path: Path = None) -> dict:
+    """Read parameters from config file.
+
+    First tries user_config_path, then falls back to package defaults.
+
+    Args:
+        config_filename (str): Name of the config yaml file.
+        user_config_path (Path, optional): Path to user-provided config file. Defaults to None.
+    """
+    # Try user-provided config first
+    if user_config_path:
+        config_path = find_project_root() / user_config_path / config_filename
+
+        if config_path.exists():
+            config_path = find_project_root() / user_config_path / config_filename
+            with open(config_path) as f:
+                return yaml.safe_load(f)
+
+    # Fall back to package defaults
+    try:
+        config_data = resources.files("swissgeol_doc_processing").joinpath(f"config/{config_filename}").read_text()
+        return yaml.safe_load(config_data)
+    except Exception as e:
+        raise FileNotFoundError(f"Config {config_filename} not found") from e
 
 
 def flatten(dictionary: dict, parent_key: str = "", separator: str = "__") -> dict:
@@ -41,29 +65,6 @@ def flatten(dictionary: dict, parent_key: str = "", separator: str = "__") -> di
         else:
             items.append((new_key, value))
     return dict(items)
-
-
-def read_params(config_filename: str) -> dict:
-    """Read parameters from a yaml file.
-
-    Args:
-        config_filename (str): Name of the params yaml file.
-    """
-    config_path = PROJECT_ROOT / "config" / config_filename
-
-    if not config_path.exists():
-        raise FileNotFoundError(f"Provided parameter file not found: {config_path}")
-
-    if not config_path.is_file():
-        raise ValueError(f"Provided path does not point to a file: {config_path}")
-
-    try:
-        with open(config_path) as f:
-            params = yaml.safe_load(f)
-
-        return params
-    except yaml.YAMLError as e:
-        raise yaml.YAMLError(f"Invalid YAML format in {config_path}: {str(e)}") from e
 
 
 def parse_text(text: str) -> str:

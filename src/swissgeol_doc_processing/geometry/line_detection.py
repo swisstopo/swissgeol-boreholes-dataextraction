@@ -20,8 +20,6 @@ logger = logging.getLogger(__name__)
 
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 
-line_detection_params = read_params("line_detection_params.yml")
-
 
 def detect_lines_lsd(page: pymupdf.Page, scale_factor=2, lsd_params=None) -> ArrayLike:
     """Given a file path, detect lines in the pdf using the Line Segment Detector (LSD) algorithm.
@@ -105,16 +103,17 @@ def detect_lines_hough(page: pymupdf.Page, hough_params: dict) -> ArrayLike:
     return [line_from_array(line, scale_ratio) for line in lines]
 
 
-def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]:
+def extract_lines(page: pymupdf.Page, config_path: str = None) -> list[Line]:
     """Extract lines from a pdf page.
 
     Args:
         page (pymupdf.Page): The page to extract lines from.
-        line_detection_params (dict): The parameters for the line detection algorithm.
+        config_path (str, optional): Path to user-provided config file. Defaults to None.
 
     Returns:
         list[Line]: The detected lines as a list.
     """
+    line_detection_params = read_params("line_detection_params.yml", user_config_path=config_path)
     lines = detect_lines_lsd(
         page,
         lsd_params=line_detection_params["lsd"],

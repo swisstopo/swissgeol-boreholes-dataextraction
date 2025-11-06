@@ -1,0 +1,298 @@
+
+block_line_ratio: 0.20
+min_block_clearance: 10
+left_line_length_threshold: 7
+duplicate_layer_threshold: 0.95
+min_num_layers: 2
+affinity_params:
+  a_above_b:
+    importance: 5.0
+    weights:
+      line_weight: 2.0
+      left_line_weight: 1.0
+      spacing_weight: 1.0
+      right_end_weight: 1.0
+  a_to_b:
+    importance: 2.0
+    weights:
+      line_weight: 1.0
+      left_line_weight: 1.0
+      spacing_weight: 1.0
+      right_end_weight: 1.0
+  layer_identifier:
+    importance: 0.66
+    weights:
+      line_weight: 0.2
+      left_line_weight: 0.2
+      spacing_weight: 1.0
+      right_end_weight: 0.6
+  spulprobe:
+    importance: 2.0
+    weights:
+      line_weight: 1.0
+      left_line_weight: 1.0
+      spacing_weight: 1.0
+      right_end_weight: 1.0
+
+
+material_description_column_width: 0.08
+
+depth_column_params:  # these params should be optimized as soon as there is reliable evaluation data
+  noise_count_threshold: 1.25
+  noise_count_offset: 2.5
+
+non_description_lines_ratio: 0.15
+
+default_language: de
+
+compound_split_threshold: 0.4
+
+material_description:
+  de:
+    including_expressions:
+      - sand
+      - sandig
+      - silt
+      - siltig
+      - siltstein
+      - kies
+      - kiesig
+      - ton
+      - tonig
+      - asphalt
+      - asphaltdeckschicht # is not split by the compound splitter
+      - humus
+      - braun
+      - weich
+      - wurzel
+      - belag
+      - stein
+      - beige
+      - beton
+      - kreide
+      - mergel
+      - kern
+      - lehm
+      - dito
+      - dolomit
+      - kristallin
+      - gneis
+      - kalke
+      - mikritisch
+      - laminiert
+      - grob
+      - auffüllung
+      - schlacke
+    excluding_expressions:
+      - herr
+      - ende
+      - profil
+      - beschreibung
+      - materialbeschreibung
+      - kiesprospektion
+      - signaturen
+      - mischprobe # Should be reviewed, currently not used
+      - projekt
+      - ort
+      - adresse
+      - wetter
+      - pumpversuch
+      - kernbohrung
+      - bohrradius # Should be reviewed, currently not used
+      - wasserzutritt
+      - Vollrohr
+      - Filterrohr
+
+  fr:
+    including_expressions:
+      - sol
+      - végétal
+      - dallage
+      - terre
+      - bitume
+      - bitumineux
+      - grave d'infrastructure  # Should be reviewed, currently not used
+      - sable
+      - limon
+      - gravier
+      - asphalte
+      - humus
+      - brun
+      - gris
+      - grise
+      - mou
+      - dur
+      - dure
+      - ferme
+      - racine
+      - revetement
+      - pierre
+      - beige
+      - béton
+      - craie
+      - marne
+      - materiau # Should be reviewed, currently not used
+      - matrice sableuse # Should be reviewed, currently not used
+      - enrobé
+      - phase
+      - limoneuse
+      - argileuse
+      - argileux
+      - mousse # Should be reviewed, currently not used
+    excluding_expressions:
+      - monsieur # Should be reviewed, currently not used
+      - profil
+      - description
+      - signatures # Should be reviewed, currently not used
+      - echantillon mixte # Should be reviewed, currently not used
+      - projet
+      - lieu
+      - adresse
+      - temps
+      - essai de pompage # Should be reviewed, currently not used
+      - carottage
+      - rayon de forage # Should be reviewed, currently not used
+      - remarque
+      - piezometre
+      - profondeur
+      - désignation
+
+  en:
+    including_expressions:
+      - sand
+      - sandy
+      - sandstone
+      - silt
+      - silty
+      - siltstone
+      - clay
+      - claystone
+      - gravel
+      - asphalt
+      - humus
+      - brown
+      - gray
+      - soft
+      - hard
+      - root
+      - surface layer
+      - stone
+      - beige
+      - concrete
+      - chalk
+      - marl
+      - core material
+      - limestone
+      - ditto # Should be reviewed, currently not used
+      - alternation
+      - leucosome
+    excluding_expressions:
+      - Mr.
+      - end
+      - profile
+      - description
+      - signatures
+      - mixed sample
+      - project
+      - location
+      - address
+      - weather
+      - pump test # Should be reviewed, currently not used
+      - core drilling
+      - drilling radius
+
+coordinate_keys:
+  de:
+    - Koordinaten
+    - Koordinate
+    - Koord.
+  en:
+    - coordinates
+    - coordinate
+  fr:
+    - coordonnées
+    - coordonn
+
+groundwater_keys:
+  de:
+    - Wasserspiegel
+    - Wasserstand
+    - Grundwasserspiegel
+    - GW
+    - GWSP
+    - Gwsp
+    - gwsp
+    - G.W.Sp
+    - GW.SP.
+    - W.SP.
+    - W.SP
+    - W SP
+    - Gr.W.spiegel
+    - GrW Sp
+    - Wsp
+    - GW-Spiegel
+    - Grundwasser
+    - Spiegel
+  fr:
+    - nappe phréatique
+    - nappe
+    - nappe d'eau
+    - nappe d'eau souterraine
+    - venue d'eau
+    - niveau d'eau
+  en:
+    - groundwater
+    - ground-water
+    - ground-water level
+
+groundwater_fp_keys:
+  de:
+    - Wasserstau
+    - Grundwasser-
+    - Grundwasserfassung
+    - GW/ # makes it possible to avoid false positives like "GW/" from the USCS Nomenclature columns
+
+groundwater_unit_keys:
+  de:
+    - m ü. M.
+    - müM
+    - M.ü.T.
+    - MüT
+    - M.u.T.
+    - MuT
+    - m.u.T.
+
+  fr:
+    - m/mer
+
+elevation_keys:
+  de:
+    - Kote OK Terrain
+    - Höhenlage
+    - Höhe
+    - Kote
+    - OK Terrain
+    - OKT
+    - Ansatzhöhe
+    - Terrainkote
+    - Terrainhöhe
+
+  fr:
+    - Terrain H
+    - H
+    - Altitude Terrain
+    - Altitude
+    - Alt. Terrain
+
+  en:
+    - Surface level
+
+open_ended_depth_key:
+  - ab
+  - des
+  - dès
+  - a partir de
+  - à partir de
+  - from
+  - starting at
+  - a partire

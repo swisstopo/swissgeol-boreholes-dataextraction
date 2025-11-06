@@ -44,9 +44,11 @@ if mlflow_tracking:
 logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
 
-matching_params = read_params("matching_params.yml")
-line_detection_params = read_params("line_detection_params.yml")
-name_detection_params = read_params("name_detection_params.yml")
+config_path = "config"
+
+matching_params = read_params("matching_params.yml", config_path)
+line_detection_params = read_params("line_detection_params.yml", config_path)
+name_detection_params = read_params("name_detection_params.yml", config_path)
 
 
 def common_options(f):
@@ -259,7 +261,7 @@ def start_pipeline(
         part (str, optional): The part of the pipeline to run. Defaults to "all".
     """  # noqa: D301
     # Initialize analytics if enabled
-    analytics = create_analytics(matching_params["material_description"] if matching_analytics else None)
+    analytics = create_analytics(config_path if matching_analytics else None)
 
     if mlflow_tracking:
         setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
@@ -299,7 +301,7 @@ def start_pipeline(
 
         with pymupdf.Document(in_path) as doc:
             # Extract metadata
-            file_metadata = FileMetadata.from_document(doc)
+            file_metadata = FileMetadata.from_document(doc, config_path)
             metadata = MetadataInDocument.from_document(doc, file_metadata.language)
 
             # Save the predictions to the overall predictions object, initialize common variables
@@ -315,7 +317,7 @@ def start_pipeline(
                 logger.info("Processing page %s", page_number)
 
                 text_lines = extract_text_lines(page)
-                geometric_lines = extract_lines(page, line_detection_params)
+                geometric_lines = extract_lines(page, config_path)
                 name_entries = extract_borehole_names(text_lines, name_detection_params)
                 all_name_entries.name_feature_list.extend(name_entries)
 
@@ -323,7 +325,7 @@ def start_pipeline(
                 table_structures = detect_table_structures(page_index, doc, geometric_lines, text_lines)
 
                 # Detect strip logs on the page
-                strip_logs = detect_strip_logs(page, geometric_lines, line_detection_params, text_lines)
+                strip_logs = detect_strip_logs(page, geometric_lines, text_lines, config_path)
 
                 # extract the statigraphy
                 page_layers = extract_page(
@@ -340,7 +342,7 @@ def start_pipeline(
                 boreholes_per_page.append(page_layers)
 
                 # Extract the groundwater levels
-                groundwater_extractor = GroundwaterLevelExtractor(file_metadata.language)
+                groundwater_extractor = GroundwaterLevelExtractor(file_metadata.language, config_path)
                 groundwater_entries = groundwater_extractor.extract_groundwater(
                     page_number=page_number,
                     text_lines=text_lines,

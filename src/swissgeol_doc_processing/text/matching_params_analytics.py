@@ -4,6 +4,8 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+from swissgeol_doc_processing.utils.file_utils import read_params
+
 
 class MatchingParamsAnalytics:
     """Analytics tracker for matching parameters."""
@@ -64,15 +66,18 @@ class MatchingParamsAnalytics:
             json.dump(analytics_data, f, indent=2, ensure_ascii=False)
 
 
-def create_analytics(material_description_params: dict | None = None) -> MatchingParamsAnalytics | None:
+def create_analytics(config_path: str | None = None) -> MatchingParamsAnalytics | None:
     """Create analytics instance if parameters provided.
 
     Args:
-        material_description_params: Material description parameters, or None to disable analytics
+        config_path: Path to user-provided config file. Defaults to None.
 
     Returns:
         Analytics instance or None if disabled
     """
+    material_description_params = read_params("matching_params.yml", user_config_path=config_path)[
+        "material_description"
+    ]
     return MatchingParamsAnalytics(material_description_params) if material_description_params else None
 
 

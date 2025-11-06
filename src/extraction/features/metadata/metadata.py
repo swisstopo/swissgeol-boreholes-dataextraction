@@ -37,22 +37,23 @@ class MetadataInDocument:
     coordinates: list[FeatureOnPage[Coordinate]]
 
     @classmethod
-    def from_document(cls, document: pymupdf.Document, language: str) -> "MetadataInDocument":
+    def from_document(cls, document: pymupdf.Document, language: str, config_path: str = None) -> "MetadataInDocument":
         """Create a MetadataInDocument object from a document.
 
         Args:
             document (pymupdf.Document): The document.
             language (str): The language of the document.
+            config_path (str, optional): Path to user-provided config file. Defaults to None.
 
         Returns:
             MetadataInDocument: The metadata object.
         """
         # Extract the coordinates of the borehole
-        coordinate_extractor = CoordinateExtractor(language)
+        coordinate_extractor = CoordinateExtractor(language, config_path)
         coordinates = coordinate_extractor.extract_coordinates(document=document)
 
         # Extract the elevation information
-        elevation_extractor = ElevationExtractor(language)
+        elevation_extractor = ElevationExtractor(language, config_path)
         elevations = elevation_extractor.extract_elevation(document=document)
 
         return cls(elevations=elevations, coordinates=coordinates)
@@ -117,16 +118,17 @@ class FileMetadata:
         }
 
     @classmethod
-    def from_document(cls, document: pymupdf.Document) -> "FileMetadata":
+    def from_document(cls, document: pymupdf.Document, config_path: str = None) -> "FileMetadata":
         """Create a FileMetadata object from a document.
 
         Args:
             document (pymupdf.Document): The document.
+            config_path (str, optional): Path to user-provided config file. Defaults to None.
 
         Returns:
             FileMetadata: The file metadata object.
         """
-        matching_params = read_params("matching_params.yml")
+        matching_params = read_params("matching_params.yml", config_path)
 
         # Detect the language of the document
         language = detect_language_of_document(
