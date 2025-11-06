@@ -228,29 +228,7 @@ class LineAffinityCalculator:
         previous_rect = previous_line.rect
         h_reference = current_rect.height if self.at_least_one_overlap else self.spacing_threshold
         score = max(-1.0, 1.0 - (current_rect.y1 - previous_rect.y1) / h_reference)  # not capped at 0
-        # score = 1.0 - (current_rect.y1 - previous_rect.y1) / h_reference  # not capped at -1
         return score
-        # return self.f(current_rect.y1 - previous_rect.y1, h_reference)
-
-    def f(self, x, h, a=None):
-        """Piecewise function.
-
-            f(x) = 1 - x/h           for x <= 2h
-            f(x) = ax^2 - bx + c   for x > 2h
-        Conditions:
-            f(2h) = -1
-            f'(2h) = -1/h
-        Choose a < 0 for downward growth.
-        """
-        if a is None:
-            a = -1 / (4 * h**2)  # default curvature (controls how fast it drops)
-        b = -4 * h * a - 1 / h
-        c = 1 + 4 * a * h**2
-
-        if x <= 2 * h:
-            return 1 - x / h
-        else:
-            return a * x**2 + b * x + c
 
     def compute_right_end_affinity(self, previous_line: TextLine, current_line: TextLine) -> float:
         """Check the alignment of the right end of the lines.
