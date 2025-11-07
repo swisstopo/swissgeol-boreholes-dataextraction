@@ -14,7 +14,8 @@ from extraction.features.predictions.borehole_predictions import FileMetadataWit
 from swissgeol_doc_processing.utils.file_utils import read_params
 from swissgeol_doc_processing.utils.language_filtering import normalize_spaces, remove_any_keyword
 
-name_detection_params = read_params("name_detection_params.yml")
+config_path = "config"
+name_detection_params = read_params("name_detection_params.yml", config_path)
 
 
 class MetadataEvaluator:

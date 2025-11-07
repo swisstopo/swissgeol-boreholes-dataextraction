@@ -26,7 +26,8 @@ from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.utils.file_utils import read_params
 from swissgeol_doc_processing.utils.language_detection import detect_language_of_text
 
-matching_params = read_params("matching_params.yml")
+config_path = "config"
+matching_params = read_params("matching_params.yml", config_path)
 
 
 def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataResponse:
@@ -162,7 +163,7 @@ def extract_coordinates(
             ),
         )
 
-    coord_extractor = CoordinateExtractor(language)
+    coord_extractor = CoordinateExtractor(language, config_path)
     extracted_coord = coord_extractor.extract_coordinates_aggregated(text_lines, extract_data_request.page_number)
 
     if extracted_coord:

@@ -10,7 +10,8 @@ from swissgeol_doc_processing.utils.file_utils import read_params
 from ..base.sidebar_entry import DepthColumnEntry
 from .interval import AToBInterval
 
-matching_params = read_params("matching_params.yml")
+config_path = "config"
+matching_params = read_params("matching_params.yml", config_path)
 
 
 class AToBIntervalExtractor:

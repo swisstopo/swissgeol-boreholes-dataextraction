@@ -19,8 +19,10 @@ from swissgeol_doc_processing.utils.table_detection import (
     detect_table_structures,
 )
 
-matching_params = read_params("matching_params.yml")
-line_detection_params = read_params("line_detection_params.yml")
+config_path = "config"
+
+matching_params = read_params("matching_params.yml", config_path)
+line_detection_params = read_params("line_detection_params.yml", config_path)
 
 
 def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
@@ -53,13 +55,13 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
 
         # 3. extract layers
         text_lines = extract_text_lines(page)
-        geometric_lines = extract_lines(page, line_detection_params)
+        geometric_lines = extract_lines(page, config_path)
 
         # Detect table structures on the page
-        table_structures = detect_table_structures(page_index, document, geometric_lines, text_lines)
+        table_structures = detect_table_structures(page_index, document, geometric_lines, text_lines, config_path)
 
         # Detect strip logs on the page
-        strip_logs = detect_strip_logs(page, geometric_lines, line_detection_params, text_lines)
+        strip_logs = detect_strip_logs(page, geometric_lines, text_lines, config_path)
 
         boreholes_per_page.append(
             extract_page(

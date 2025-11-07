@@ -45,7 +45,6 @@ logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logg
 logger = logging.getLogger(__name__)
 
 config_path = "config"
-
 matching_params = read_params("matching_params.yml", config_path)
 line_detection_params = read_params("line_detection_params.yml", config_path)
 name_detection_params = read_params("name_detection_params.yml", config_path)
@@ -261,7 +260,7 @@ def start_pipeline(
         part (str, optional): The part of the pipeline to run. Defaults to "all".
     """  # noqa: D301
     # Initialize analytics if enabled
-    analytics = create_analytics(config_path if matching_analytics else None)
+    analytics = create_analytics(config_path) if matching_analytics else None
 
     if mlflow_tracking:
         setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
@@ -302,7 +301,7 @@ def start_pipeline(
         with pymupdf.Document(in_path) as doc:
             # Extract metadata
             file_metadata = FileMetadata.from_document(doc, config_path)
-            metadata = MetadataInDocument.from_document(doc, file_metadata.language)
+            metadata = MetadataInDocument.from_document(doc, file_metadata.language, config_path)
 
             # Save the predictions to the overall predictions object, initialize common variables
             all_groundwater_entries = GroundwaterInDocument([], filename)
@@ -322,7 +321,7 @@ def start_pipeline(
                 all_name_entries.name_feature_list.extend(name_entries)
 
                 # Detect table structures on the page
-                table_structures = detect_table_structures(page_index, doc, geometric_lines, text_lines)
+                table_structures = detect_table_structures(page_index, doc, geometric_lines, text_lines, config_path)
 
                 # Detect strip logs on the page
                 strip_logs = detect_strip_logs(page, geometric_lines, text_lines, config_path)

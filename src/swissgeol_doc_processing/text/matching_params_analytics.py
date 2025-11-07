@@ -66,7 +66,7 @@ class MatchingParamsAnalytics:
             json.dump(analytics_data, f, indent=2, ensure_ascii=False)
 
 
-def create_analytics(config_path: str | None = None) -> MatchingParamsAnalytics | None:
+def create_analytics(config_path: str = None) -> MatchingParamsAnalytics | None:
     """Create analytics instance if parameters provided.
 
     Args:

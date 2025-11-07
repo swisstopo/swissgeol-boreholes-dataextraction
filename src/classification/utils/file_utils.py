@@ -1,4 +1,7 @@
+"""File utilities for classification project."""
+
 from pathlib import Path
+
 import yaml
 
 

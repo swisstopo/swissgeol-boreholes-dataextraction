@@ -11,7 +11,8 @@ from .layer import ExtractedBorehole, Layer
 logger = logging.getLogger(__name__)
 
 
-matching_params = read_params("matching_params.yml")
+config_path = "config"
+matching_params = read_params("matching_params.yml", config_path)
 
 
 def select_boreholes_with_overlap(

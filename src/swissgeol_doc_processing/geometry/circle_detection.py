@@ -14,8 +14,6 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-line_detection_params = read_params("line_detection_params.yml")
-
 
 def detect_circles_hough(page: pymupdf.Page, hough_circles_params: dict) -> list[Circle]:
     """Detect circles in a pdf page using HoughCircles algorithm.

@@ -70,7 +70,7 @@ def detect_table_structures(
     page_height = page.rect.height
 
     config = read_params("table_detection_params.yml", user_config_path=config_path)
-    structure_lines = detect_structure_lines(geometric_lines)
+    structure_lines = detect_structure_lines(geometric_lines, config_path=config_path)
     table_candidates = _find_table_structures(structure_lines, config, page_width, page_height, text_lines)
     table_candidates = [
         table

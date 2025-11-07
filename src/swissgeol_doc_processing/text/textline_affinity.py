@@ -11,6 +11,9 @@ from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.utils.file_utils import read_params
 
+config_path = "config"
+line_detection_params = read_params("line_detection_params.yml", user_config_path=config_path)
+
 
 @dataclass
 class Affinity:
@@ -88,9 +91,7 @@ class LineAffinityCalculator:
         self.left_line_length_threshold = left_line_length_threshold
 
         self.material_description_rect = material_description_rect
-        horizontal_slope_tolerance = read_params("line_detection_params.yml", user_config_path=config_path)[
-            "line_merging_params"
-        ]["horizontal_slope_tolerance"]
+        horizontal_slope_tolerance = line_detection_params["line_merging_params"]["horizontal_slope_tolerance"]
         horizontal_lines = [line for line in geometric_lines if line.is_horizontal(horizontal_slope_tolerance)]
 
         # spanning horizontals

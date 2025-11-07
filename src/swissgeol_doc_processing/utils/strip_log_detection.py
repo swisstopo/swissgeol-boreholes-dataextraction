@@ -52,7 +52,7 @@ def detect_strip_logs(
     """
     config = read_params("table_detection_params.yml", user_config_path=config_path)
     geometric_circles = extract_circles(page, text_lines, config_path)
-    structure_lines = detect_structure_lines(geometric_lines, filter_lines=False)
+    structure_lines = detect_structure_lines(geometric_lines, filter_lines=False, config_path=config_path)
     strip_candidates = _find_strip_log_structures(structure_lines, geometric_circles, config, text_lines)
 
     # Filter based on strip log criteria
