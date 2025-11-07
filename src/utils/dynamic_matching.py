@@ -121,7 +121,6 @@ class IntervalToLinesDP(DP):
             for j in range(1, self.nR + 1):
                 # up: trust what was already matched, let current line j with previous intervals
                 # as this leaves interval i empty, we penalize this move
-
                 up = dp[i - 1][j] - EMPTY_INTERVAL_PENALTY
 
                 # left : steal the line to belong to current interval, consider the line affinity bonus (which can
