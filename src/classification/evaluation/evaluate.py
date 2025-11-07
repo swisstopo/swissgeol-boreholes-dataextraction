@@ -7,8 +7,8 @@ from dataclasses import dataclass
 
 from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformation
+from classification.utils.file_utils import read_classification_params
 from extraction.evaluation.evaluation_dataclasses import Metrics
-from swissgeol_doc_processing.utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlo
 if mlflow_tracking:
     import mlflow
 
-classification_params = read_params("classification_params.yml")
+classification_params = read_classification_params("classification_params.yml")
 
 
 @dataclass

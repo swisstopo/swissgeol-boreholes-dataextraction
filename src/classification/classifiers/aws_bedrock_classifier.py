@@ -17,7 +17,7 @@ from classification.classifiers.classifier import Classifier
 from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformation
 from classification.utils.data_utils import write_api_failures, write_predictions
-from swissgeol_doc_processing.utils.file_utils import read_params
+from classification.utils.file_utils import read_classification_params
 
 logger = logging.getLogger(__name__)
 
@@ -55,12 +55,14 @@ class AWSBedrockClassifier(Classifier):
         reasoning_mode = self.config["reasoning_mode"]
 
         self.pattern_version = self.config["pattern_version"]
-        self.class_patterns = read_params(self.config["pattern_file"])[self.pattern_version]
+        self.class_patterns = read_classification_params(self.config["pattern_file"])[self.pattern_version]
 
         self.reasoning_mode = reasoning_mode
         str_mode = "reasoning" if self.reasoning_mode else "classification"
         self.prompt_version = self.config["prompt_version"]
-        self.classification_prompts = read_params(self.config["prompts_file"])[str_mode][self.prompt_version]
+        self.classification_prompts = read_classification_params(self.config["prompts_file"])[str_mode][
+            self.prompt_version
+        ]
 
         self.bedrock_out_directory = bedrock_out_directory
         self.max_concurrent_calls = max_concurrent_calls

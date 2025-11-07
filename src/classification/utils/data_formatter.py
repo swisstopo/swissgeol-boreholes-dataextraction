@@ -7,12 +7,12 @@ from os import listdir
 from os.path import isfile, join
 from pathlib import Path
 
-from swissgeol_doc_processing.utils.file_utils import read_params
+from classification.utils.file_utils import read_classification_params
 from swissgeol_doc_processing.utils.language_detection import detect_language_of_text
 
 logger = logging.getLogger(__name__)
 
-classification_params = read_params("classification_params.yml")
+classification_params = read_classification_params("classification_params.yml")
 
 
 def format_ground_truth_file(ground_truth: dict, file_subset_directory: Path | None) -> dict:

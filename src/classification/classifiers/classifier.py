@@ -5,9 +5,9 @@ from enum import Enum
 
 from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformation
-from swissgeol_doc_processing.utils.file_utils import read_params
+from classification.utils.file_utils import read_classification_params
 
-CONFIG_MAPINGS = read_params("classifier_config_paths.yml")
+CONFIG_MAPINGS = read_classification_params("classifier_config_paths.yml")
 
 
 class Classifier(ABC):
@@ -20,7 +20,7 @@ class Classifier(ABC):
             classification_system (type[ClassificationSystem]): The classification system used.
         """
         config_file = CONFIG_MAPINGS[self.get_name()][classification_system.get_name()]
-        self.config = read_params(config_file) if config_file else None
+        self.config = read_classification_params(config_file) if config_file else None
 
     @abstractmethod
     def get_name(self) -> str:
