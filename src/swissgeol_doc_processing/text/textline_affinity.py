@@ -29,11 +29,12 @@ class Affinity:
     right_end_affinity: float
     diagonal_line_affinity: float
     gap_with_previous_affinity: float
+    indentation_affinity: float
 
     @classmethod
     def get_zero_affinity(cls) -> Affinity:
         """Get an affinity with all zero values."""
-        return cls(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        return cls(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
     def weighted_affinity(
         self,
@@ -43,6 +44,7 @@ class Affinity:
         right_end_weight: float,
         diagonal_weight: float,
         gap_weight: float,
+        indentation_weight: float,
     ) -> float:
         """Compute the weighted affinity using the provided weights."""
         return (
@@ -52,11 +54,12 @@ class Affinity:
             + right_end_weight * self.right_end_affinity
             + diagonal_weight * self.diagonal_line_affinity
             + gap_weight * self.gap_with_previous_affinity
+            + indentation_weight * self.indentation_affinity
         )
 
     def total_affinity(self) -> float:
         """Compute the total affinity with equal weights."""
-        return self.weighted_affinity(1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+        return self.weighted_affinity(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 
     def weighted_mean_affinity(
         self,
@@ -66,19 +69,23 @@ class Affinity:
         right_end_weight: float,
         diagonal_weight: float,
         gap_weight: float,
+        indentation_weight: float,
     ) -> float:
         """Compute the weighted affinity using the provided weights."""
-        tot_weight = line_weight + left_line_weight + spacing_weight + right_end_weight + diagonal_weight + gap_weight
-        return (
-            self.weighted_affinity(
-                line_weight, left_line_weight, spacing_weight, right_end_weight, diagonal_weight, gap_weight
-            )
-            / tot_weight
-        )
+        weights = [
+            line_weight,
+            left_line_weight,
+            spacing_weight,
+            right_end_weight,
+            diagonal_weight,
+            gap_weight,
+            indentation_weight,
+        ]
+        return self.weighted_affinity(*weights) / sum(weights)
 
     def mean_affinity(self) -> float:
         """Compute the mean affinity."""
-        return self.weighted_mean_affinity(1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
+        return self.weighted_mean_affinity(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0)
 
 
 class LineAffinityCalculator:
@@ -302,7 +309,7 @@ class LineAffinityCalculator:
                 return -1.0
         return 0.0
 
-    def _indentation_affinity(self, previous_line: TextLine, current_line: TextLine):
+    def compute_indentation_affinity(self, previous_line: TextLine, current_line: TextLine):
         """Split the text block based on indentation.
 
         note: not currently used. is_indented attribute was removed from TextLine, put back if needed.
@@ -312,7 +319,7 @@ class LineAffinityCalculator:
             current_line (TextLine): The current line.
 
         Returns:
-            float: The affinity: -1.0 if lines are not compatible, 0.0 otherwise.
+            float: The affinity: -1.0 if lines are not compatible, 1.0 otherwise.
         """
         # indentation
         prev_line_start = previous_line.rect.x0
@@ -322,15 +329,16 @@ class LineAffinityCalculator:
         low_margin = 0.03 * max_line_width
         high_margin = 0.2 * max_line_width
 
-        if previous_line.is_indented:  # attribute was removed
-            if current_line_start >= prev_line_start - low_margin:
+        if previous_line.is_indented:
+            if current_line_start >= prev_line_start - low_margin:  # accept small tolerance
                 current_line.is_indented = True
-                return 0.0  # both lines are indented
+                return 1.0  # both lines are indented
             else:
                 return -1.0  # previous line was indented, this one is not
 
         if prev_line_start + low_margin <= current_line_start <= prev_line_start + high_margin:
             current_line.is_indented = True
+            return 1.0  # first indented line detected
         return 0.0
 
     def _unindentation_affinity(self, previous_line: TextLine, current_line: TextLine):
@@ -398,6 +406,7 @@ def get_line_affinity(
                 calculator.compute_right_end_affinity(previous_line, line),
                 calculator.compute_diagonal_affinity(previous_line, line),
                 calculator.compute_gap_affinity(previous_line, prev_line_idx),
+                calculator.compute_indentation_affinity(previous_line, line),
             )
         )
 
