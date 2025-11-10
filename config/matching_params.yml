@@ -12,6 +12,7 @@ affinity_params:
       left_line_weight: 1.0
       spacing_weight: 1.0
       right_end_weight: 1.0
+      gap_weight: 0.0
   a_to_b:
     importance: 2.0
     weights:
@@ -19,6 +20,7 @@ affinity_params:
       left_line_weight: 1.0
       spacing_weight: 1.0
       right_end_weight: 1.0
+      gap_weight: 0.0
   layer_identifier:
     importance: 0.66
     weights:
@@ -26,6 +28,7 @@ affinity_params:
       left_line_weight: 0.2
       spacing_weight: 1.0
       right_end_weight: 0.6
+      gap_weight: 0.0
   spulprobe:
     importance: 2.0
     weights:
@@ -33,6 +36,7 @@ affinity_params:
       left_line_weight: 1.0
       spacing_weight: 1.0
       right_end_weight: 1.0
+      gap_weight: 0.0
 
 
 material_description_column_width: 0.08
