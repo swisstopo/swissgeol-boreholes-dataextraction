@@ -21,8 +21,19 @@ if mlflow_tracking:
 logger = logging.getLogger(__name__)
 
 
-def _draw_lines(open_cv_img, lines, scale_factor=1):
+def _draw_lines(img: np.ndarray, lines: list[Line], scale_factor: int = 1) -> np.ndarray:
+    """Draw lines on image.
+
+    Args:
+        img (np.ndarray): Input image to draw on.
+        lines (list[Line]): Lines to draw
+        scale_factor (int, optional): Scaling factor. Defaults to 1.
+
+    Returns:
+        np.ndarray: Lines plotted on image.
+    """
     grid_lines = [_convert_line_to_grid(line, scale_factor=scale_factor) for line in lines]
+    img = img.copy()
     for line_count, line in enumerate(grid_lines):
         color = (
             (255 - 5 * line_count) % 255,
@@ -30,37 +41,29 @@ def _draw_lines(open_cv_img, lines, scale_factor=1):
             (10 * line_count) % 255,
         )
         try:
-            cv2.line(
-                open_cv_img,
-                line.start.tuple,
-                line.end.tuple,
-                color,
-                3,
-            )
-            cv2.circle(open_cv_img, line.start.tuple, radius=1, color=(0, 0, 255), thickness=-1)
-            cv2.circle(open_cv_img, line.end.tuple, radius=1, color=(0, 0, 255), thickness=-1)
+            cv2.line(img, line.start.tuple, line.end.tuple, color=color, thickness=3, lineType=cv2.LINE_AA)
+            cv2.circle(img, line.start.tuple, radius=1, color=(0, 0, 255), thickness=-1, lineType=cv2.LINE_AA)
+            cv2.circle(img, line.end.tuple, radius=1, color=(0, 0, 255), thickness=-1, lineType=cv2.LINE_AA)
 
         except cv2.error as e:
             logging.warning(f"Error drawing line. Exception: {e}. Skipping to draw the line.")
 
-    return open_cv_img
+    return img
 
 
-def convert_page_to_opencv_img(page: pymupdf.Page, scale_factor: float, color_mode=cv2.COLOR_RGB2BGR) -> np.array:
-    """Converts a pymupdf.Page object to an OpenCV image.
+def convert_page_to_img(page: pymupdf.Page, scale_factor: float) -> np.ndarray:
+    """Converts a pymupdf.Page object to an image.
 
     Args:
-        page (pymupdf.Page): The page to convert to an OpenCV image.
+        page (pymupdf.Page): The page to convert to an image.
         scale_factor (float): Applied scale factor to the image.
-        color_mode (_type_, optional): _description_. Defaults to cv2.COLOR_RGB2BGR.
 
     Returns:
-        np.array: The OpenCV image.
+        np.ndarray: The image.
     """
     pix = page.get_pixmap(matrix=pymupdf.Matrix(scale_factor, scale_factor))
     img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, 3)
-    open_cv_img = cv2.cvtColor(img, color_mode)
-    return open_cv_img
+    return img
 
 
 def _convert_line_to_grid(line: Line, scale_factor: float) -> Line:
@@ -86,7 +89,7 @@ def _convert_line_to_grid(line: Line, scale_factor: float) -> Line:
     return Line(start, end)
 
 
-def plot_lines(page: pymupdf.Page, geometric_lines: list[Line], scale_factor: float = 2) -> cv2.COLOR_RGB2BGR:
+def plot_lines(page: pymupdf.Page, geometric_lines: list[Line], scale_factor: float = 2) -> np.ndarray:
     """Given a page object and the lines detected in the page, plot the page with the detected lines.
 
     Args:
@@ -95,28 +98,27 @@ def plot_lines(page: pymupdf.Page, geometric_lines: list[Line], scale_factor: fl
         scale_factor (float, optional): The scale factor to apply to the pdf. Defaults to 2.
 
     Returns:
-        open_cv_img: The page image with the lines drawn on it.
+        img (np.ndarray): The page image with the lines drawn on it.
     """
-    open_cv_img = convert_page_to_opencv_img(page, scale_factor=scale_factor)
-
-    open_cv_img = _draw_lines(open_cv_img, geometric_lines, scale_factor=scale_factor)
-
-    return open_cv_img
+    img = convert_page_to_img(page, scale_factor=scale_factor)
+    img = _draw_lines(img, geometric_lines, scale_factor=scale_factor)
+    return img
 
 
-def draw_blocks_and_lines(page: pymupdf.Page, blocks: list[TextBlock], lines: list[Line] = None):
+def draw_blocks_and_lines(
+    page: pymupdf.Page, blocks: list[TextBlock], lines: list[Line] = None, scale_factor: int = 2
+):
     """Draw the blocks and lines on the page.
 
     Args:
         page (pymupdf.Page): The page to draw the blocks and lines on.
         blocks (List[TextBlock]): The blocks to draw on the page.
         lines (List[Line] | None): The lines to draw on the page. Defaults to None.
+        scale_factor (int): Scaling factor for image.
 
     Returns:
         Union[cv2.COLOR_RGB2BGR, ArrayLike]: The image with the blocks and lines drawn on it.
     """
-    scale_factor = 2
-
     for block in blocks:  # draw all blocks in the page
         pymupdf.utils.draw_rect(
             page,
@@ -124,7 +126,7 @@ def draw_blocks_and_lines(page: pymupdf.Page, blocks: list[TextBlock], lines: li
             color=pymupdf.utils.getColor("orange"),
         )
 
-    open_cv_img = convert_page_to_opencv_img(page, scale_factor=2)
+    open_cv_img = convert_page_to_img(page, scale_factor=scale_factor)
 
     if lines is not None:
         open_cv_img = _draw_lines(open_cv_img, lines, scale_factor=scale_factor)
