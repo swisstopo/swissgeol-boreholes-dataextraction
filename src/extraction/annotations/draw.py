@@ -4,10 +4,11 @@ import logging
 import os
 from pathlib import Path
 
+import numpy as np
 import pymupdf
 from dotenv import load_dotenv
 
-from extraction.annotations.plot_utils import convert_page_to_opencv_img
+from extraction.annotations.plot_utils import convert_page_to_img
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
@@ -319,13 +320,16 @@ class PageDrawer:
             )
 
 
-def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure], page_index: int):
+def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure], page_index: int) -> np.ndarray:
     """Draw table structures on a pdf page.
 
     Args:
         page:               The PDF page.
         table_structures:   The identified table structures on the page.
         page_index:         The index of the page in the document (0-based).
+
+    Returns:
+        np.ndarray: The plotted table.
     """
     temp_doc = pymupdf.open()
     temp_doc.insert_pdf(page.parent, from_page=page_index, to_page=page_index)
@@ -335,7 +339,7 @@ def plot_tables(page: pymupdf.Page, table_structures: list[TableStructure], page
     draw_table_structures(shape, temp_page.derotation_matrix, table_structures)
     shape.commit()
 
-    result = convert_page_to_opencv_img(temp_page, scale_factor=2)
+    result = convert_page_to_img(temp_page, scale_factor=2)
 
     temp_doc.close()
 
@@ -430,13 +434,16 @@ def draw_strip_logs(shape: pymupdf.Shape, derotation_matrix: pymupdf.Matrix, str
             )
 
 
-def plot_strip_logs(page: pymupdf.Page, strip_logs: list[StripLog], page_index: int):
+def plot_strip_logs(page: pymupdf.Page, strip_logs: list[StripLog], page_index: int) -> np.ndarray:
     """Draw strip log structures on a pdf page.
 
     Args:
         page: The PDF page.
         strip_logs: The identified strip log structures on the page.
         page_index: The index of the page in the document (0-based).
+
+    Returns:
+        np.ndarray: The plotted striplog.
     """
     temp_doc = pymupdf.open()
     temp_doc.insert_pdf(page.parent, from_page=page_index, to_page=page_index)
@@ -446,7 +453,7 @@ def plot_strip_logs(page: pymupdf.Page, strip_logs: list[StripLog], page_index: 
     draw_strip_logs(shape, temp_page.derotation_matrix, strip_logs)
     shape.commit()
 
-    result = convert_page_to_opencv_img(temp_page, scale_factor=2)
+    result = convert_page_to_img(temp_page, scale_factor=2)
 
     temp_doc.close()
 
