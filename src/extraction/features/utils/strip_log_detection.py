@@ -300,15 +300,19 @@ def _is_text(
 
     # Compute area covered by text wrt section area
     text_area_within = np.sum([(line.rect & rect).get_area() for line in text_within_ocr])
-    text_area_outside = np.sum([(line.rect).get_area() for line in text_within_ocr])
-    ocr_area_factor = text_area_within / text_area_outside
 
     # Compute portion of area that is overlapping with section
     score_area = 1 - text_area_within / rect.get_area()
 
-    # make the assumption that if a text overlap with section, it has a linear contribution. For eaxmple, if
-    # "this is a text!" overlap with section at 50% (e.i. ocr_area_factor = 0.5) then only "a text!" is kept.
-    score_length = np.min([np.exp(-len(line.text) * ocr_area_factor / tau) for line in text_within_ocr])
+    # measure effective length of text overlapping with section
+    total_effective_length = 0
+    for line in text_within_ocr:
+        line_area = line.rect.get_area()
+        overlap_area = (line.rect & rect).get_area()
+        line_overlap_factor = overlap_area / line_area if line_area > 0 else 0
+        total_effective_length += len(line.text) * line_overlap_factor
+
+    score_length = np.exp(-total_effective_length / tau)
 
     return np.clip((score_area * score_length) ** penalty, a_min=0.0, a_max=1.0) < threshold
 
