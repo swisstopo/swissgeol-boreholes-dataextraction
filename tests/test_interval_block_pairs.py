@@ -50,25 +50,7 @@ def lines() -> list[TextLine]:
 def test_dp_manual(a_above_b_sidebar, lines, affinity, expected_mapping):
     """Test DP matching with manual affinity scores (standard and negative affinity cases)."""
     zones = a_above_b_sidebar.get_interval_zone()
-    dp = IntervalToLinesDP(zones, lines, affinity)  # first 0.0 default
+    dp = IntervalToLinesDP(zones, lines, affinity)
     _, mapping = dp.solve(a_above_b_sidebar.dp_scoring_fn)
-    pairs = a_above_b_sidebar.post_processing(mapping)
-    pairs = [pair for pair in pairs if pair.block.lines or pair.depth_interval]  # remove empty
 
-    def interval_eq(a, b):
-        return (a is None and b is None) or (a is not None and b is not None and a.start == b.start and a.end == b.end)
-
-    def line_eq(a, b):
-        return a.rect == b.rect and a.text == b.text
-
-    intervals = a_above_b_sidebar.depth_intervals()
-    expected = [
-        (intervals[interval_idx], [lines[i] for i in line_idxs]) for interval_idx, line_idxs in expected_mapping
-    ]
-    actual = [(pair.depth_interval, pair.block.lines) for pair in pairs]
-    assert len(actual) == len(expected)
-    for (act_interval, act_lines), (exp_interval, exp_lines) in zip(actual, expected, strict=True):
-        assert interval_eq(act_interval, exp_interval)
-        assert len(act_lines) == len(exp_lines)
-        for l1, l2 in zip(act_lines, exp_lines, strict=True):
-            assert line_eq(l1, l2)
+    assert mapping == [(zones[zone_idx], [lines[i] for i in line_idxs]) for zone_idx, line_idxs in expected_mapping]

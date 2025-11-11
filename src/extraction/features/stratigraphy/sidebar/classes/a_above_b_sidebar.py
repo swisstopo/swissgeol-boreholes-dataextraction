@@ -61,7 +61,6 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         depth_intervals = [] if self.entries[0].value == 0.0 else [AAboveBInterval(None, self.entries[0])]
         for i in range(len(self.entries) - 1):
             depth_intervals.append(AAboveBInterval(self.entries[i], self.entries[i + 1]))
-        depth_intervals.append(AAboveBInterval(self.entries[-1], None))  # include open-ended
         return depth_intervals
 
     @staticmethod
@@ -225,8 +224,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
 
         score = (close_to_mid_zone_bonus + falls_inside_bonus) / 2  # mean between the two is a good tradeoff.
 
-        OPEN_ENDED_PENALTY = float("inf")  # penalize assigning lines to open ended (open-ended has no end)
-        return score if end_mid else score - OPEN_ENDED_PENALTY
+        return score
 
     def post_processing(
         self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]
