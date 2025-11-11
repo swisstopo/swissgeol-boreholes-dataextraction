@@ -48,7 +48,12 @@ def lines() -> list[TextLine]:
     ],
 )
 def test_dp_manual(a_above_b_sidebar, lines, affinity, expected_mapping):
-    """Test DP matching with manual affinity scores (standard and negative affinity cases)."""
+    """Test DP matching with manual affinity scores.
+
+    Tests two scenarios:
+        1. Standard mapping where first two lines map to first interval
+        2. Modified mapping when middle line has negative affinity with the one above.
+    """
     zones = a_above_b_sidebar.get_interval_zone()
     dp = IntervalToLinesDP(zones, lines, affinity)
     _, mapping = dp.solve(a_above_b_sidebar.dp_scoring_fn)

@@ -10,8 +10,7 @@ from typing import ClassVar
 
 import numpy as np
 
-from extraction.features.stratigraphy.interval.interval import AAboveBInterval, IntervalBlockPair, IntervalZone
-from extraction.features.utils.text.textblock import TextBlock
+from extraction.features.stratigraphy.interval.interval import AAboveBInterval, IntervalZone
 from extraction.features.utils.text.textline import TextLine
 
 from ...base.sidebar_entry import DepthColumnEntry
@@ -222,19 +221,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
             mid_zone = (interval_zone.end.y0 + interval_zone.start.y1) / 2
             close_to_mid_zone_bonus = math.exp(-(abs(mid_zone - line_mid) / 30.0))  # 1 -> 0
 
-        score = (close_to_mid_zone_bonus + falls_inside_bonus) / 2  # mean between the two is a good tradeoff.
-
-        return score
-
-    def post_processing(
-        self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]
-    ) -> list[IntervalBlockPair]:
-        """Post-process the matched interval zones and description lines into IntervalBlockPairs."""
-        # remove open-ended interval, but keep the lines
-        return [
-            IntervalBlockPair(zone.related_interval if zone.end else None, TextBlock(lines))
-            for zone, lines in interval_lines_mapping
-        ]
+        return (close_to_mid_zone_bonus + falls_inside_bonus) / 2  # mean between the two is a good tradeoff.
 
 
 def generate_alternatives(value: float) -> list[float]:
