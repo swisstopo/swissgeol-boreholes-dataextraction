@@ -17,6 +17,7 @@ from extraction.features.stratigraphy.layer.page_bounding_boxes import (
     MaterialDescriptionRectWithSidebar,
     PageBoundingBoxes,
 )
+from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import (
     Sidebar,
     SidebarNoise,
@@ -685,26 +686,8 @@ def match_lines_to_interval(
     """
     # shift the entries of the sidebar using the diagonals, only relevant for AAboveBSidebars
     if sidebar.kind == "a_above_b":
-        avg_entries_height = sum([entry.rect.height for entry in sidebar.entries]) / len(sidebar.entries)
-        seen_diags = []
-        seen_entries = []
-        while len(seen_diags) != len(diagonals) and len(seen_entries) != len(sidebar.entries):
-            unseen_diags = [diag for diag in diagonals if diag not in seen_diags]
-            unseen_entries = [entry for entry in sidebar.entries if entry not in seen_entries]
-            closest_entry, closest_diag = min(
-                [(entry, diag) for entry in unseen_entries for diag in unseen_diags],
-                key=lambda pair: abs((pair[0].rect.y0 + pair[0].rect.y1) / 2 - pair[1].start.y),
-            )
-            if abs((closest_entry.rect.y0 + closest_entry.rect.y1) / 2 - closest_diag.start.y) > avg_entries_height:
-                break  # remaing pairs are likely wrong, due to undeted entry or duplicated diagonal detection
-            vertical_diff = float(closest_diag.end.y - closest_diag.start.y)
-            closest_entry.rect.y0 += vertical_diff
-            closest_entry.rect.y1 += vertical_diff
-            seen_diags.append(closest_diag)
-            seen_entries.append(closest_entry)
-
-    # write_img_debug("debug_diag_taken.png", page, 2, seen_diags)
-    # write_img_debug("debug_diag_left.png", page, 2, [diag for diag in diagonals if diag not in seen_diags])
+        compute_entries_shift(sidebar, diagonals)
+        prevent_shifts_crossing(sidebar)
 
     depth_interval_zones = sidebar.get_interval_zone()
 
@@ -714,7 +697,54 @@ def match_lines_to_interval(
 
     _, mapping = dp.solve(sidebar.dp_scoring_fn)
 
-    return sidebar.post_processing(mapping)  # different post processing is needed depending on sidebar type
+    return sidebar.post_processing(mapping)
+
+
+def compute_entries_shift(sidebar: AAboveBSidebar, diagonals: list[Line]):
+    """Compute the vertical shift for each sidebar entry based on the diagonal lines.
+
+    The shift indicates how much higher or lower the entry should be matched compared to its current position.
+    To avoid mismatches, we only consider the closest diagonal line to each entry, and stop the process
+    when the distance between the entry and the diagonal is too large compared to the average entry height.
+
+    Note: this function modifies the attribute 'relative_shift' of each sidebar entry in place.
+
+    Args:
+        sidebar (AAboveBSidebar): The sidebar.
+        diagonals (list[Line]): The diagonal lines.
+    """
+    avg_entries_height = sum([entry.rect.height for entry in sidebar.entries]) / len(sidebar.entries)
+    seen_diags = []
+    seen_entries = []
+    while len(seen_diags) != len(diagonals) and len(seen_entries) != len(sidebar.entries):
+        unseen_diags = [diag for diag in diagonals if diag not in seen_diags]
+        unseen_entries = [entry for entry in sidebar.entries if entry not in seen_entries]
+        closest_entry, closest_diag = min(
+            [(entry, diag) for entry in unseen_entries for diag in unseen_diags],
+            key=lambda pair: abs((pair[0].rect.y0 + pair[0].rect.y1) / 2 - pair[1].start.y),
+        )
+        if abs((closest_entry.rect.y0 + closest_entry.rect.y1) / 2 - closest_diag.start.y) > avg_entries_height:
+            break  # remaing pairs are likely wrong, due to undeted entry or duplicated diagonal detection
+        closest_entry.relative_shift = float(closest_diag.end.y - closest_diag.start.y)
+        seen_diags.append(closest_diag)
+        seen_entries.append(closest_entry)  # different post processing is needed depending on sidebar type
+
+
+def prevent_shifts_crossing(sidebar: AAboveBSidebar):
+    """Ensure that the vertical shifts of sidebar entries do not cause them to cross each other.
+
+    Note: this function modifies the attribute 'relative_shift' of each sidebar entry in place.
+
+    Args:
+        sidebar (AAboveBSidebar): The sidebar with entries to adjust.
+    """
+    prev_y1 = 0.0
+    for entry in sidebar.entries:
+        entry_y0 = entry.rect.y0
+        entry_height = entry.rect.y1 - entry.rect.y0
+        if prev_y1 - entry_height / 2 > entry_y0 + entry.relative_shift:
+            entry.relative_shift = prev_y1 - entry_y0 - entry_height / 2
+        prev_y1 = entry_y0 + entry.relative_shift + entry_height
 
 
 def get_pairs_based_on_line_affinity(

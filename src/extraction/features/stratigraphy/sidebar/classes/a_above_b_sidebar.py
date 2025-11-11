@@ -49,17 +49,25 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
     def is_strictly_increasing(self) -> bool:
         return all(self.entries[i].value < self.entries[i + 1].value for i in range(len(self.entries) - 1))
 
-    def depth_intervals(self) -> list[AAboveBInterval]:
+    def depth_intervals(self, with_shift: bool = False) -> list[AAboveBInterval]:
         """Creates a list of depth intervals from the depth column entries.
 
         The first depth interval has an open start value (i.e. None).
 
+        Args:
+            with_shift: whether the interval should include the shift created by the diagonals connectors.
+
         Returns:
             list[AAboveBInterval]: A list of depth intervals.
         """
-        depth_intervals = [] if self.entries[0].value == 0.0 else [AAboveBInterval(None, self.entries[0])]
+        depth_intervals = []
+        if self.entries[0].value != 0.0:
+            first_entry = self.entries[0].shifted_copy() if with_shift else self.entries[0]
+            depth_intervals.append(AAboveBInterval(None, first_entry))
         for i in range(len(self.entries) - 1):
-            depth_intervals.append(AAboveBInterval(self.entries[i], self.entries[i + 1]))
+            entry = self.entries[i].shifted_copy() if with_shift else self.entries[i]
+            next_entry = self.entries[i + 1].shifted_copy() if with_shift else self.entries[i + 1]
+            depth_intervals.append(AAboveBInterval(entry, next_entry))
         return depth_intervals
 
     @staticmethod
@@ -180,14 +188,21 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
     def get_interval_zone(self):
         """Get the interval zones defined by the sidebar entries.
 
+        We pass the rectangles of the intervals shifted by the vertical amount infered with the diagonal lines.
+        The related interval is the extracted one, whitout shifting.
+
         Returns:
             list[IntervalZone]: A list of interval zones.
         """
+        depth_intervals = self.depth_intervals(with_shift=False)
+        shifted_intervals = self.depth_intervals(with_shift=True)
         return [
             IntervalZone(
-                interval.start.rect if interval.start else None, interval.end.rect if interval.end else None, interval
+                shifted_interval.start.rect if shifted_interval.start else None,
+                shifted_interval.end.rect if shifted_interval.end else None,
+                real_interval,
             )
-            for interval in self.depth_intervals()
+            for shifted_interval, real_interval in zip(shifted_intervals, depth_intervals, strict=True)
         ]
 
     @staticmethod
