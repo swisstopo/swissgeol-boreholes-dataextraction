@@ -683,25 +683,25 @@ def match_lines_to_interval(
     Returns:
         list[IntervalBlockPair]: The matched depth intervals and text blocks.
     """
-    # shift the entries of the sidebar using the diagonals
-
-    avg_entries_height = sum([entry.rect.height for entry in sidebar.entries]) / len(sidebar.entries)
-    seen_diags = []
-    seen_entries = []
-    while len(seen_diags) != len(diagonals) and len(seen_entries) != len(sidebar.entries):
-        unseen_diags = [diag for diag in diagonals if diag not in seen_diags]
-        unseen_entries = [entry for entry in sidebar.entries if entry not in seen_entries]
-        closest_entry, closest_diag = min(
-            [(entry, diag) for entry in unseen_entries for diag in unseen_diags],
-            key=lambda pair: abs((pair[0].rect.y0 + pair[0].rect.y1) / 2 - pair[1].start.y),
-        )
-        if abs((closest_entry.rect.y0 + closest_entry.rect.y1) / 2 - closest_diag.start.y) > avg_entries_height:
-            break  # remaing pairs are likely wrong, due to undeted entry or duplicated diagonal detection
-        vertical_diff = float(closest_diag.end.y - closest_diag.start.y)
-        closest_entry.rect.y0 += vertical_diff
-        closest_entry.rect.y1 += vertical_diff
-        seen_diags.append(closest_diag)
-        seen_entries.append(closest_entry)
+    # shift the entries of the sidebar using the diagonals, only relevant for AAboveBSidebars
+    if sidebar.kind == "a_above_b":
+        avg_entries_height = sum([entry.rect.height for entry in sidebar.entries]) / len(sidebar.entries)
+        seen_diags = []
+        seen_entries = []
+        while len(seen_diags) != len(diagonals) and len(seen_entries) != len(sidebar.entries):
+            unseen_diags = [diag for diag in diagonals if diag not in seen_diags]
+            unseen_entries = [entry for entry in sidebar.entries if entry not in seen_entries]
+            closest_entry, closest_diag = min(
+                [(entry, diag) for entry in unseen_entries for diag in unseen_diags],
+                key=lambda pair: abs((pair[0].rect.y0 + pair[0].rect.y1) / 2 - pair[1].start.y),
+            )
+            if abs((closest_entry.rect.y0 + closest_entry.rect.y1) / 2 - closest_diag.start.y) > avg_entries_height:
+                break  # remaing pairs are likely wrong, due to undeted entry or duplicated diagonal detection
+            vertical_diff = float(closest_diag.end.y - closest_diag.start.y)
+            closest_entry.rect.y0 += vertical_diff
+            closest_entry.rect.y1 += vertical_diff
+            seen_diags.append(closest_diag)
+            seen_entries.append(closest_entry)
 
     # write_img_debug("debug_diag_taken.png", page, 2, seen_diags)
     # write_img_debug("debug_diag_left.png", page, 2, [diag for diag in diagonals if diag not in seen_diags])
