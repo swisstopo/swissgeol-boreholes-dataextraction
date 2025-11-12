@@ -565,7 +565,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 and any(line.rect.contains(g_line.end.tuple) for line in description_lines)
             )  # lines on text are letters that have segments identified (like W)
             and not g_line.is_vertical(angle_threshold)  # too many other lines are vertical
-            and abs(g_line.start.y - g_line.end.y) > min_vertical_dist  # near horizontals are likely noise
+            and min_vertical_dist < abs(g_line.end.y - g_line.start.y)  # near horizontals are likely noise
             and 0 < g_line.end.x - g_line.start.x < max_horizontal_dist  # lines too long are likely other parasites
         ]
 
