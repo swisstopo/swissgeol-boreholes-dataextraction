@@ -364,7 +364,7 @@ def get_line_affinity(
     diagonals: list[Line],
     block_line_ratio: float,
     left_line_length_threshold: float,
-):
+) -> list[Affinity]:
     """Compute the affinity of each line with the previous one, base of the presence of horizontal line inbetween.
 
     Args:

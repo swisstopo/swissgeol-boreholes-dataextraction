@@ -675,7 +675,7 @@ def match_lines_to_interval(
         sidebar (Sidebar): The sidebar.
         description_lines (list[TextLine]): The description lines.
         affinities (list[Affinity]): the affinity between each line pair, previously computed.
-        diagonals (dict[TextLine, float]): The diagonal lines linking lines to intervals.
+        diagonals (list[Line]): The diagonal lines linking text lines to intervals.
 
     Returns:
         list[IntervalBlockPair]: The matched depth intervals and text blocks.
