@@ -545,7 +545,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         search_zone = pymupdf.Rect(min_x0 - max_text_height, min_y0, max_x0 + max_text_height / 3, max_y1)
         if self.strip_logs:
             # shrink left boundary to right edge of the strip
-            search_zone.x0 = max(search_zone.x0, max([sl.bounding_rect.x1 for sl in self.strip_logs]))
+            search_zone.x0 = max(search_zone.x0, max([sl.bbox.x1 for sl in self.strip_logs]))
 
         # Detect and filter potential diagonals
         diagonals = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
@@ -764,7 +764,7 @@ def get_pairs_based_on_line_affinity(
     threshold = -0.99 if sum(affinity.long_lines_affinity for affinity in affinities) <= -3.0 else 0.0
     for line_idx, affinity in enumerate(affinities):
         # note: the affinity of the first line is always 0.0
-        if affinity.weighted_affinity(1.0, 1.0, 1.0, 1.0, 0.2) < threshold:
+        if affinity.weighted_affinity(1.0, 1.0, 1.0, 1.0, 0.2, 1.0) < threshold:
             pairs.append(IntervalBlockPair(None, TextBlock(description_lines[prev_block_idx:line_idx])))
             prev_block_idx = line_idx
 
