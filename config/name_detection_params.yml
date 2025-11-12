@@ -2,6 +2,9 @@
 
 # Overlap threshold for closest next line detection.
 min_vertical_overlap: 0.9
+# Max allowed distance between keyword and next line
+max_horizontal_distance: 50
+max_title_length: 10
 
 # Keyword for borehole name detection
 matching_keywords: [
@@ -26,4 +29,4 @@ matching_keywords: [
 ]
 
 # Keyword to ignore in borehole name detection
-excluded_keywords: ["nr.", "nr", "n°", "nº", "no", "nummer"]
+excluded_keywords: ["nr.", "nr", "n r", "n°", "nº", "no", "nummer"]

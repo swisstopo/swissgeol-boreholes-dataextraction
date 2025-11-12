@@ -10,7 +10,13 @@ import pymupdf
 from extraction.features.utils.data_extractor import ExtractedFeature, FeatureOnPage
 from extraction.features.utils.geometry.util import y_overlap_significant_smallest
 from extraction.features.utils.text.textline import TextLine
-from utils.language_filtering import match_any_keyword, normalize_spaces, remove_any_keyword
+from utils.language_filtering import (
+    match_any_keyword,
+    normalize_spaces,
+    remove_any_keyword,
+    remove_in_parenthesis,
+    remove_scale,
+)
 
 
 @dataclass
@@ -73,7 +79,7 @@ class NameInDocument:
 
 
 def _find_closest_nearby_line(
-    current_line: TextLine, all_lines: list[TextLine], min_vertical_overlap: float
+    current_line: TextLine, all_lines: list[TextLine], min_vertical_overlap: float, max_horizontal_distance: float
 ) -> TextLine | None:
     """Find the line that is the closest to the current line on the right.
 
@@ -81,6 +87,7 @@ def _find_closest_nearby_line(
         current_line (TextLine): The line containing the keyword.
         all_lines (list[TextLine]): All text lines from the document.
         min_vertical_overlap (float): Overlap threshold for closest line detection.
+        max_horizontal_distance (float): Maximal distance to look for next text.
 
     Returns:
         TextLine | None: List of nearby lines that could contain the title.
@@ -88,7 +95,7 @@ def _find_closest_nearby_line(
     nearby_lines = [
         line
         for line in all_lines
-        if line.rect.x0 > current_line.rect.x1
+        if current_line.rect.x1 < line.rect.x0 < current_line.rect.x1 + max_horizontal_distance
         and y_overlap_significant_smallest(current_line.rect, line.rect, min_vertical_overlap)
     ]
     return min(nearby_lines, key=lambda line: line.rect.x0 - current_line.rect.x1) if nearby_lines else None
@@ -113,8 +120,8 @@ def _clean_borehole_name(text: str, excluded_keywords: list[str]) -> str | None:
         text = remove_any_keyword(text, excluded_keywords)
 
     # Remove scale from text (eg: "1:100")
-    cleaned = re.sub(r"1:\d{1,3}", " ", text)
-    cleaned = re.sub(r"\(.*?\)", " ", cleaned)
+    cleaned = remove_scale(text)
+    cleaned = remove_in_parenthesis(cleaned)
 
     # Replace punctuation, normalize whitespace and remove trailing spaces
     cleaned = re.sub(r"[:._]", " ", cleaned)
@@ -154,6 +161,8 @@ def extract_borehole_names(
     matching_keywords = name_detection_params.get("matching_keywords", [])
     excluded_keywords = name_detection_params.get("excluded_keywords", [])
     min_vertical_overlap = name_detection_params.get("min_vertical_overlap", 1.0)
+    max_horizontal_distance = name_detection_params.get("max_horizontal_distance", 1e16)
+    max_title_length = name_detection_params.get("max_title_length", 1e16)
 
     for line in text_lines:
         # Check line for keyword - Enforce end to avoid plural form
@@ -174,7 +183,7 @@ def extract_borehole_names(
             continue
 
         # Fallback: closest line to the right
-        hit_line = _find_closest_nearby_line(line, text_lines, min_vertical_overlap)
+        hit_line = _find_closest_nearby_line(line, text_lines, min_vertical_overlap, max_horizontal_distance)
         if not hit_line:
             continue
 
@@ -201,9 +210,12 @@ def extract_borehole_names(
     if not candidates:
         return []
 
-    # Sort the candidates by highest confidence and height on the page
+    # Remove entires where text is too long
+    candidates = [candidate for candidate in candidates if len(candidate.feature.name) <= max_title_length]
+
+    # Sort unique candidates by highest confidence and height on the page
     # TODO Use confidence for better matching
-    candidates.sort(key=lambda bh_name: (bh_name.feature.confidence, -bh_name.rect.y0), reverse=True)
     unique_candidates = list(set(candidates))
+    unique_candidates.sort(key=lambda bh_name: (bh_name.feature.confidence, -bh_name.rect.y0), reverse=True)
 
     return unique_candidates

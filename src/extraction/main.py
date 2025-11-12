@@ -48,6 +48,7 @@ logger = logging.getLogger(__name__)
 
 matching_params = read_params("matching_params.yml")
 line_detection_params = read_params("line_detection_params.yml")
+striplog_detection_params = read_params("striplog_detection_params.yml")
 name_detection_params = read_params("name_detection_params.yml")
 
 
@@ -325,7 +326,7 @@ def start_pipeline(
                 table_structures = detect_table_structures(page_index, doc, long_or_horizontal_lines, text_lines)
 
                 # Detect strip logs on the page
-                strip_logs = detect_strip_logs(page, long_or_horizontal_lines, line_detection_params, text_lines)
+                strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
 
                 # extract the statigraphy
                 page_layers = extract_page(

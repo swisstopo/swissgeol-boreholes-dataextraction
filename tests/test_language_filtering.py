@@ -3,7 +3,61 @@
 import pytest
 
 from extraction.features.metadata.borehole_name_extraction import _clean_borehole_name
-from utils.language_filtering import match_any_keyword, normalize_spaces, remove_any_keyword
+from utils.language_filtering import (
+    match_any_keyword,
+    normalize_spaces,
+    remove_any_keyword,
+    remove_in_parenthesis,
+    remove_scale,
+)
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("text", "text"),
+        ("text 1:100", "text "),
+        ("text M1:100", "text "),
+        ("text M.1:100", "text "),
+        ("text M 1:100", "text "),
+    ],
+    ids=[
+        "none",
+        "scale-simple",
+        "scale-masstab",
+        "scale-masstab-punct",
+        "scale-space",
+    ],
+)
+def test_remove_scale(text: str, expected: str) -> None:
+    """Verify that `remove_scale` removes scale notations.
+
+    Args:
+        text (str): Input text possibly containing a scale pattern.
+        expected (str): The expected string after removing the scale pattern.
+    """
+    assert expected == remove_scale(text)
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("text", "text"),
+        ("text (parenthesis)", "text "),
+    ],
+    ids=[
+        "none",
+        "parenthesis",
+    ],
+)
+def test_remove_in_parenthesis(text: str, expected: str) -> None:
+    """Verify that `remove_in_parenthesis` removes content inside parentheses.
+
+    Args:
+        text (str): Input text possibly containing parenthetical content.
+        expected (str): The expected string after removal.
+    """
+    assert expected == remove_in_parenthesis(text)
 
 
 @pytest.mark.parametrize(
@@ -69,12 +123,21 @@ def test_normalize_spaces(text: str, expected: str) -> None:
     [
         ("nr1", ["nr"], "1"),
         ("nr 1", ["nr"], " 1"),
+        ("n r 1", ["n r"], " 1"),
         ("Nr 1", ["nr"], " 1"),
         ("sondage nº1", ["nº"], "sondage 1"),
         ("sondage n°1", ["n°"], "sondage 1"),
         ("sondage Nr nº 1", ["nr", "nº"], "sondage   1"),
     ],
-    ids=["nr-without-space", "nr-with-space", "ignore-case", "n-masc-ordinal", "n-degree", "multiple-keywords"],
+    ids=[
+        "nr-without-space",
+        "nr-with-space",
+        "nr-with-space2",
+        "ignore-case",
+        "n-masc-ordinal",
+        "n-degree",
+        "multiple-keywords",
+    ],
 )
 def test_remove_any_keyword(text: str, keywords: list[str], expected: str) -> None:
     """Test keyword removal in text.
