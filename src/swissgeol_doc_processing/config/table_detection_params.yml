@@ -28,32 +28,3 @@ tables:
   text_scoring:
     text_weights: 0.3
     text_presence_weight: 0.01
-
-# Strip log detection parameters
-strip_logs:
-  # Penalty for text within strip log region
-  text_penalty: 0.15
-
-  # Minimum confidence threshold for strip log detection
-  min_confidence: 0.6
-
-  # Minimum number of horizontal lines required
-  min_horizontal_lines: 3
-
-  # Minimum structure width
-  min_width: 15
-
-  # Minimum aspect ratio (height/width) for strip logs
-  aspect:
-    min_aspect_ratio: 1
-    aspect_weight: 0.2
-
-  # Minimum horizontal line density
-  line_density:
-    min_horizontal_density: 20
-    line_density_weight: 0.2
-
-  # Minimum circle density
-  circle_density:
-    min_circle_density: 40
-    circle_weight: 0.6

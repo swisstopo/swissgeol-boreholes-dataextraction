@@ -23,6 +23,7 @@ config_path = "config"
 matching_params = read_params("matching_params.yml", config_path)
 line_detection_params = read_params("line_detection_params.yml", config_path)
 table_detection_params = read_params("table_detection_params.yml", config_path)
+striplog_detection_params = read_params("striplog_detection_params.yml", config_path)
 
 
 def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
@@ -63,9 +64,7 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
         )
 
         # Detect strip logs on the page
-        strip_logs = detect_strip_logs(
-            page, geometric_lines, text_lines, line_detection_params, table_detection_params
-        )
+        strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
 
         boreholes_per_page.append(
             extract_page(

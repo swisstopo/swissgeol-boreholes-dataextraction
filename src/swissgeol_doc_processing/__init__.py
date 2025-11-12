@@ -10,7 +10,6 @@ Instructions:
 
 List of modules:
 - geometry
-    - circle_detection
     - geometric_line_utilities
     - geometry_dataclasses
     - line_detection

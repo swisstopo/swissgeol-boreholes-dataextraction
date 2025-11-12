@@ -25,6 +25,7 @@ dependencies = [
     "mangum==0.19.0",
     "awslambdaric==3.1.1",
     "scikit-learn==1.7.1",
+    "scikit-image==0.25.2",
     "click==8.2.1",
     "PyYAML==6.0.2",
     "langdetect==1.0.9",
