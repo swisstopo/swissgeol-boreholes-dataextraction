@@ -11,7 +11,6 @@ import pymupdf
 from swissgeol_doc_processing.geometry.circle_detection import extract_circles
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Circle, Line
 from swissgeol_doc_processing.text.textline import TextLine
-from swissgeol_doc_processing.utils.file_utils import read_params
 from swissgeol_doc_processing.utils.table_detection import StructureLine, detect_structure_lines
 
 logger = logging.getLogger(__name__)
@@ -29,7 +28,11 @@ class StripLog:
 
 
 def detect_strip_logs(
-    page: pymupdf.Page, geometric_lines: list[Line], text_lines: list[TextLine], config_path: str = None
+    page: pymupdf.Page,
+    geometric_lines: list[Line],
+    text_lines: list[TextLine],
+    line_detection_params: dict,
+    table_detection_params: dict,
 ) -> list[StripLog]:
     """Detect strip logs (soil profiles) on a page.
 
@@ -43,22 +46,23 @@ def detect_strip_logs(
     Args:
         page (pymupdf.Page): The page to analyze.
         geometric_lines (list[Line]): Detected geometric lines on the page.
-        line_detection_params (dict): Parameters for circle detection.
         text_lines (list[TextLine]): All text lines on the page.
-        config_path (str, optional): Path to user-provided config file. Defaults to None.
+        line_detection_params (dict): Parameters for line and circle detection.
+        table_detection_params (dict): Parameters for table detection.
 
     Returns:
         List of detected strip log structures
     """
-    config = read_params("table_detection_params.yml", user_config_path=config_path)
-    geometric_circles = extract_circles(page, text_lines, config_path)
-    structure_lines = detect_structure_lines(geometric_lines, filter_lines=False, config_path=config_path)
-    strip_candidates = _find_strip_log_structures(structure_lines, geometric_circles, config, text_lines)
+    geometric_circles = extract_circles(page, line_detection_params, text_lines)
+    structure_lines = detect_structure_lines(geometric_lines, table_detection_params, filter_lines=False)
+    strip_candidates = _find_strip_log_structures(
+        structure_lines, geometric_circles, table_detection_params, text_lines
+    )
 
     # Filter based on strip log criteria
     filtered_strips = []
     for strip in strip_candidates:
-        if _is_valid_strip_log(strip, config):
+        if _is_valid_strip_log(strip, table_detection_params):
             filtered_strips.append(strip)
 
     return filtered_strips
@@ -67,7 +71,7 @@ def detect_strip_logs(
 def _find_strip_log_structures(
     structure_lines: list[StructureLine],
     circles: list[Circle],
-    config: dict,
+    table_detection_params: dict,
     text_lines: list[TextLine] = None,
 ) -> list[StripLog]:
     """Find strip log structures on a page.
@@ -75,7 +79,7 @@ def _find_strip_log_structures(
     Args:
         structure_lines: List of structure lines
         circles: List of detected circles
-        config: Strip log specific configuration parameters
+        table_detection_params: Strip log specific configuration parameters
         text_lines: List of text lines for content analysis
 
     Returns:
@@ -112,7 +116,7 @@ def _find_strip_log_structures(
                 [first_line.line, second_line.line],
                 [line.line for line in region_horizontals],
                 region_circles,
-                config,
+                table_detection_params,
                 text_lines,
             )
 
@@ -164,7 +168,7 @@ def _create_strip_log_from_region(
     vertical_lines: list[Line],
     horizontal_lines: list[Line],
     circles: list[Circle],
-    config: dict,
+    table_detection_params: dict,
     text_lines: list[TextLine] = None,
 ) -> StripLog | None:
     """Create a strip log structure from a detected region.
@@ -174,7 +178,7 @@ def _create_strip_log_from_region(
         vertical_lines: Vertical lines defining the strip
         horizontal_lines: Horizontal lines within the strip
         circles: Circles within the strip
-        config: Strip log specific configuration parameters
+        table_detection_params: Strip log specific configuration parameters
         text_lines: List of text lines for content analysis
 
     Returns:
@@ -184,7 +188,9 @@ def _create_strip_log_from_region(
         return None
 
     # Calculate confidence
-    confidence = _calculate_strip_confidence(region_rect, horizontal_lines, circles, config, text_lines)
+    confidence = _calculate_strip_confidence(
+        region_rect, horizontal_lines, circles, table_detection_params, text_lines
+    )
 
     return StripLog(
         bounding_rect=region_rect,
@@ -199,7 +205,7 @@ def _calculate_strip_confidence(
     rect: pymupdf.Rect,
     horizontal_lines: list[Line],
     circles: list[Circle],
-    config: dict,
+    table_detection_params: dict,
     text_lines: list[TextLine] = None,
 ) -> float:
     """Calculate confidence score for a strip log structure.
@@ -208,13 +214,13 @@ def _calculate_strip_confidence(
         rect: Bounding rectangle of the strip log
         horizontal_lines: Horizontal lines within the strip
         circles: Circles within the strip
-        config: Strip log specific configuration parameters
+        table_detection_params: Strip log specific configuration parameters
         text_lines: List of text lines for content analysis
 
     Returns:
         Confidence score between 0 and 1
     """
-    strip_config = config.get("strip_logs", {})
+    strip_config = table_detection_params.get("strip_logs", {})
     area = rect.width * rect.height
 
     # Aspect ratio score (height/width)
@@ -266,9 +272,9 @@ def _is_numeric_pattern(text_content: str) -> bool:
     return bool(numeric_pattern.match(text_content))
 
 
-def _is_valid_strip_log(strip: StripLog, config: dict) -> bool:
+def _is_valid_strip_log(strip: StripLog, table_detection_params: dict) -> bool:
     """Check if a strip log candidate meets the minimum criteria."""
-    strip_config = config.get("strip_logs", {})
+    strip_config = table_detection_params.get("strip_logs", {})
     min_confidence = strip_config.get("min_confidence")
     min_horizontal_lines = strip_config.get("min_horizontal_lines")
 

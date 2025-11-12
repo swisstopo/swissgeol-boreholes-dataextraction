@@ -64,8 +64,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
         page_number: int,
         page_width: float,
         page_height: float,
+        line_detection_params: dict,
         analytics: MatchingParamsAnalytics = None,
-        **params: dict,
+        **matching_params: dict,
     ):
         """Creates a new MaterialDescriptionRectWithSidebarExtractor.
 
@@ -78,8 +79,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
             page_number (int): The page number.
             page_width (float): The width of the page.
             page_height (float): The height of the page.
+            line_detection_params (dict): The parameters for line detection.
             analytics (MatchingParamsAnalytics): The analytics tracker for matching parameters.
-            **params (dict): Additional parameters for the matching pipeline.
+            **matching_params (dict): Additional parameters for the matching pipeline.
         """
         self.lines = lines
         self.geometric_lines = geometric_lines
@@ -89,8 +91,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self.page_number = page_number
         self.page_width = page_width
         self.page_height = page_height
+        self.line_detection_params = line_detection_params
         self.analytics = analytics
-        self.params = params
+        self.matching_params = matching_params
 
     def process_page(self) -> list[ExtractedBorehole]:
         """Process a single page of a pdf.
@@ -126,7 +129,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
         logger.debug(
             f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(self.table_structures)} tables"
         )
-        return [borehole for borehole in boreholes if len(borehole.predictions) >= self.params["min_num_layers"]]
+        return [
+            borehole for borehole in boreholes if len(borehole.predictions) >= self.matching_params["min_num_layers"]
+        ]
 
     def _filter_by_table_criteria(
         self, pairs: list[MaterialDescriptionRectWithSidebar]
@@ -144,7 +149,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 filtered.append(pair)
             # If in table - check width requirement
             else:
-                min_width = self.params["material_description_column_width"] * self.page_width
+                min_width = self.matching_params["material_description_column_width"] * self.page_width
                 if pair.material_description_rect.width > min_width:
                     filtered.append(pair)
 
@@ -258,8 +263,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
             description_lines,
             pair.material_description_rect,
             self.geometric_lines,
-            block_line_ratio=self.params["block_line_ratio"],
-            left_line_length_threshold=self.params["left_line_length_threshold"],
+            self.line_detection_params,
+            block_line_ratio=self.matching_params["block_line_ratio"],
+            left_line_length_threshold=self.matching_params["left_line_length_threshold"],
         )
         return (
             match_lines_to_interval(pair.sidebar, description_lines, line_affinities)
@@ -307,7 +313,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         sidebars_noise.extend(
             AAboveBSidebarExtractor.find_in_words(
-                words, line_rtree, list(used_entry_rects), sidebar_params=self.params["depth_column_params"]
+                words, line_rtree, list(used_entry_rects), sidebar_params=self.matching_params["depth_column_params"]
             )
         )
 
@@ -344,12 +350,12 @@ class MaterialDescriptionRectWithSidebarExtractor:
         is_not_description = [
             line
             for line in candidate_description
-            if line.is_description(self.params, self.language, self.analytics, search_excluding=True)
+            if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=True)
         ]
         is_description = [
             line
             for line in candidate_description
-            if line.is_description(self.params, self.language, self.analytics, search_excluding=False)
+            if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=False)
             and line not in is_not_description
         ]
 
@@ -406,7 +412,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             ]
 
             # the rect is valid only when description lines are clearly more numerous than non-description lines.
-            if len(non_description_in_rect) / len(good_lines) > self.params["non_description_lines_ratio"]:
+            if len(non_description_in_rect) / len(good_lines) > self.matching_params["non_description_lines_ratio"]:
                 continue
 
             # expand to include entire last block
@@ -552,6 +558,7 @@ def extract_page(
     language: str,
     page_index: int,
     document: pymupdf.Document,
+    line_detection_params: dict,
     analytics: MatchingParamsAnalytics,
     **matching_params: dict,
 ) -> list[ExtractedBorehole]:
@@ -567,6 +574,7 @@ def extract_page(
         language (str): Language of the page (used in parsing).
         page_index (int): The page index (0-indexed).
         document (pymupdf.Document): the document.
+        line_detection_params (dict): The parameters for line detection.
         analytics (MatchingParamsAnalytics): The analytics tracker for matching parameters.
         **matching_params (dict): Additional parameters for the matching pipeline.
 
@@ -588,6 +596,7 @@ def extract_page(
         page_index + 1,
         page_width,
         page_height,
+        line_detection_params,
         analytics,
         **matching_params,
     ).process_page()

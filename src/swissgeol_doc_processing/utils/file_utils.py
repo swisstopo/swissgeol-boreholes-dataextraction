@@ -34,7 +34,6 @@ def read_params(config_filename: str, user_config_path: Path = None) -> dict:
         config_path = find_project_root() / user_config_path / config_filename
 
         if config_path.exists():
-            config_path = find_project_root() / user_config_path / config_filename
             with open(config_path) as f:
                 return yaml.safe_load(f)
 

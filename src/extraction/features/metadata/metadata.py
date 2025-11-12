@@ -10,7 +10,6 @@ from extraction.features.metadata.borehole_name_extraction import BoreholeName
 from extraction.features.metadata.coordinate_extraction import Coordinate, CoordinateExtractor
 from extraction.features.metadata.elevation_extraction import Elevation, ElevationExtractor
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
-from swissgeol_doc_processing.utils.file_utils import read_params
 from swissgeol_doc_processing.utils.language_detection import detect_language_of_document
 
 
@@ -37,23 +36,23 @@ class MetadataInDocument:
     coordinates: list[FeatureOnPage[Coordinate]]
 
     @classmethod
-    def from_document(cls, document: pymupdf.Document, language: str, config_path: str = None) -> "MetadataInDocument":
+    def from_document(cls, document: pymupdf.Document, language: str, matching_params: dict) -> "MetadataInDocument":
         """Create a MetadataInDocument object from a document.
 
         Args:
             document (pymupdf.Document): The document.
             language (str): The language of the document.
-            config_path (str, optional): Path to user-provided config file. Defaults to None.
+            matching_params (dict): The matching parameters.
 
         Returns:
             MetadataInDocument: The metadata object.
         """
         # Extract the coordinates of the borehole
-        coordinate_extractor = CoordinateExtractor(language, config_path)
+        coordinate_extractor = CoordinateExtractor(language, matching_params)
         coordinates = coordinate_extractor.extract_coordinates(document=document)
 
         # Extract the elevation information
-        elevation_extractor = ElevationExtractor(language, config_path)
+        elevation_extractor = ElevationExtractor(language, matching_params)
         elevations = elevation_extractor.extract_elevation(document=document)
 
         return cls(elevations=elevations, coordinates=coordinates)
@@ -118,18 +117,16 @@ class FileMetadata:
         }
 
     @classmethod
-    def from_document(cls, document: pymupdf.Document, config_path: str = None) -> "FileMetadata":
+    def from_document(cls, document: pymupdf.Document, matching_params: dict) -> "FileMetadata":
         """Create a FileMetadata object from a document.
 
         Args:
             document (pymupdf.Document): The document.
-            config_path (str, optional): Path to user-provided config file. Defaults to None.
+            matching_params (dict): The matching parameters.
 
         Returns:
             FileMetadata: The file metadata object.
         """
-        matching_params = read_params("matching_params.yml", config_path)
-
         # Detect the language of the document
         language = detect_language_of_document(
             document, matching_params["default_language"], matching_params["material_description"].keys()

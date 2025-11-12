@@ -12,6 +12,7 @@ from extraction.features.metadata.coordinate_extraction import (
     LV95Coordinate,
 )
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.utils.file_utils import read_params
 
 
 def test_strLV95():  # noqa: D103
@@ -57,8 +58,10 @@ def test_to_jsonLV03():  # noqa: D103
 
 doc = pymupdf.open(DATAPATH.parent / "example" / "example_borehole_profile.pdf")
 doc_with_digits_in_coordinates = pymupdf.open(DATAPATH.parent / "example" / "A7367.pdf")
-extractor_de = CoordinateExtractor("de")
-extractor_fr = CoordinateExtractor("fr")
+config_path = "config"
+matching_params = read_params("matching_params.yml", config_path)
+extractor_de = CoordinateExtractor("de", matching_params)
+extractor_fr = CoordinateExtractor("fr", matching_params)
 
 
 def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
@@ -74,7 +77,7 @@ def test_CoordinateExtractor_extract_coordinates():  # noqa: D103
 def test_CoordinateExtractor_extract_coordinates_with_digits_in_coordinates():  # noqa: D103
     """Test the extraction of coordinates from a PDF document with digits in the coordinates."""
     # Assuming there is a method called 'extract' in CoordinateExtractor class
-    coordinates = CoordinateExtractor("de").extract_coordinates(doc_with_digits_in_coordinates)[0]
+    coordinates = CoordinateExtractor("de", matching_params).extract_coordinates(doc_with_digits_in_coordinates)[0]
     # Check if the returned value is a list
     assert isinstance(coordinates.feature, Coordinate)
     assert repr(coordinates.feature.east) == "607'562.0"

@@ -163,7 +163,7 @@ def extract_coordinates(
             ),
         )
 
-    coord_extractor = CoordinateExtractor(language, config_path)
+    coord_extractor = CoordinateExtractor(language, matching_params)
     extracted_coord = coord_extractor.extract_coordinates_aggregated(text_lines, extract_data_request.page_number)
 
     if extracted_coord:

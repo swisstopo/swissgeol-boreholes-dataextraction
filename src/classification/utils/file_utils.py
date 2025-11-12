@@ -23,6 +23,9 @@ def read_classification_params(config_filename: str) -> dict:
 
     Args:
         config_filename (str): Name of the params yaml file.
+
+    Returns:
+        dict: Parameters as a dictionary.
     """
     config_path = find_project_root() / "config" / config_filename
 

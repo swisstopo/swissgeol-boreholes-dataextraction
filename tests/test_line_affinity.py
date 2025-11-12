@@ -7,6 +7,7 @@ from extraction.features.extract import get_pairs_based_on_line_affinity
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
 from swissgeol_doc_processing.text.textline_affinity import get_line_affinity
+from swissgeol_doc_processing.utils.file_utils import read_params
 
 page_number = 1
 textline1 = TextLine([TextWord(pymupdf.Rect([0, 0, 10, 10]), "Hello", page_number)])
@@ -22,6 +23,9 @@ geometric_lines_lefthandside = [Line(Point(-1, 11), Point(3, 11))]  # left-hand 
 material_description_rect = pymupdf.Rect(0, 0, 5, 42)
 block_line_ratio = 0.5
 left_line_length_threshold = 3
+
+config_path = "config"
+line_detection_params = read_params("line_detection_params.yml", config_path)
 
 
 @pytest.mark.parametrize(
@@ -44,6 +48,7 @@ def test_get_description_blocks(geometrical_lines, expected_num_block):
         description_lines,
         material_description_rect,
         geometrical_lines,
+        line_detection_params,
         block_line_ratio,
         left_line_length_threshold,
     )

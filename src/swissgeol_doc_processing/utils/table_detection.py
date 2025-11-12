@@ -10,7 +10,6 @@ import pymupdf
 
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.text.textline import TextLine
-from swissgeol_doc_processing.utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
 
@@ -27,22 +26,23 @@ class TableStructure:
 
 
 def detect_structure_lines(
-    geometric_lines: list[Line], filter_lines=True, config_path: str = None
+    geometric_lines: list[Line], table_detection_params: dict, filter_lines=True
 ) -> list[StructureLine]:
     """Detect significant horizonal and vertical lines in a document.
 
     Args:
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
         filter_lines (bool, optional): Whether to filter lines before classification. Defaults to True.
-        config_path (str, optional): Path to user-provided config file. Defaults to None.
+        table_detection_params (dict): Table detection parameters.
 
     Returns:
         List of detected structure lines
     """
     # Filter and classify lines
-    config = read_params("table_detection_params.yml", user_config_path=config_path)
-    final_lines = _filter_significant_lines(geometric_lines, config) if filter_lines else geometric_lines
-    return _separate_by_orientation(final_lines, config)
+    final_lines = (
+        _filter_significant_lines(geometric_lines, table_detection_params) if filter_lines else geometric_lines
+    )
+    return _separate_by_orientation(final_lines, table_detection_params)
 
 
 def detect_table_structures(
@@ -50,7 +50,7 @@ def detect_table_structures(
     document: pymupdf.Document,
     geometric_lines: list[Line],
     text_lines: list[TextLine],
-    config_path: str = None,
+    table_detection_params: dict,
 ) -> list[TableStructure]:
     """Detect multiple non-overlapping table structures on a page.
 
@@ -59,7 +59,7 @@ def detect_table_structures(
         document (pymupdf.Document): the document.
         geometric_lines (list[Line]): The geometric lines on the page.
         text_lines (list[TextLine]): All text lines on the page.
-        config_path (str, optional): Path to user-provided config file. Defaults to None.
+        table_detection_params (dict): Table detection parameters.
 
     Returns:
         List of detected table structures
@@ -69,31 +69,32 @@ def detect_table_structures(
     page_width = page.rect.width
     page_height = page.rect.height
 
-    config = read_params("table_detection_params.yml", user_config_path=config_path)
-    structure_lines = detect_structure_lines(geometric_lines, config_path=config_path)
-    table_candidates = _find_table_structures(structure_lines, config, page_width, page_height, text_lines)
+    structure_lines = detect_structure_lines(geometric_lines, table_detection_params)
+    table_candidates = _find_table_structures(
+        structure_lines, table_detection_params, page_width, page_height, text_lines
+    )
     table_candidates = [
         table
         for table in table_candidates
         if len(table.horizontal_lines) >= 2
         if len(table.vertical_lines) >= 1
-        if table.confidence >= config["tables"]["min_confidence"]
+        if table.confidence >= table_detection_params["tables"]["min_confidence"]
     ]
     for table in table_candidates:
         logger.debug(f"Detected table structure (confidence: {table.confidence:.3f})")
     return table_candidates
 
 
-def _filter_significant_lines(lines: list[Line], config: dict) -> list[Line]:
+def _filter_significant_lines(lines: list[Line], table_detection_params: dict) -> list[Line]:
     """Filter to keep only significantly long lines that could form table structures."""
-    min_length = config["tables"]["min_line_length"]
+    min_length = table_detection_params["tables"]["min_line_length"]
 
     return [line for line in lines if line.length > min_length]
 
 
-def _separate_by_orientation(lines: list[Line], config: dict) -> list[StructureLine]:
+def _separate_by_orientation(lines: list[Line], table_detection_params: dict) -> list[StructureLine]:
     """Separate lines into horizontal and vertical based on angle and tolerance."""
-    angle_tolerance = config["tables"]["angle_tolerance"]
+    angle_tolerance = table_detection_params["tables"]["angle_tolerance"]
     structure_lines = []
 
     for line in lines:
@@ -138,7 +139,7 @@ class StructureLine:
 
 def _find_table_structures(
     lines: list[StructureLine],
-    config: dict,
+    table_detection_params: dict,
     page_width: float = None,
     page_height: float = None,
     text_lines: list = None,
@@ -147,7 +148,7 @@ def _find_table_structures(
 
     Args:
         lines: List of structure lines
-        config: Configuration parameters
+        table_detection_params: Configuration parameters
         page_width: Page width
         page_height: Page height
         text_lines: List of text lines for content analysis
@@ -156,7 +157,7 @@ def _find_table_structures(
         List of table structures
     """
     # Find line groups using region grouping
-    table_regions = _find_table_regions(lines, config)
+    table_regions = _find_table_regions(lines, table_detection_params)
 
     detected_tables = []
     for region_h_lines, region_v_lines in table_regions:
@@ -165,8 +166,10 @@ def _find_table_structures(
             continue
 
         # Create table structure for this region
-        table = _create_table_from_region(region_h_lines, region_v_lines, config, page_width, page_height, text_lines)
-        if table.confidence >= config["tables"]["min_confidence"]:
+        table = _create_table_from_region(
+            region_h_lines, region_v_lines, table_detection_params, page_width, page_height, text_lines
+        )
+        if table.confidence >= table_detection_params["tables"]["min_confidence"]:
             detected_tables.append(table)
 
     detected_tables = sorted(detected_tables, key=lambda t: t.confidence, reverse=True)
@@ -180,12 +183,14 @@ def _find_table_structures(
     return final_tables
 
 
-def _find_table_regions(lines: list[StructureLine], config: dict) -> list[tuple[list[Line], list[Line]]]:
+def _find_table_regions(
+    lines: list[StructureLine], table_detection_params: dict
+) -> list[tuple[list[Line], list[Line]]]:
     """Find regions of connected lines that could form table structures.
 
     Args:
         lines: List of structure lines
-        config: Configuration parameters
+        table_detection_params: Configuration parameters
 
     Returns:
         List of tuples containing horizontal and vertical lines for each detected region
@@ -197,7 +202,7 @@ def _find_table_regions(lines: list[StructureLine], config: dict) -> list[tuple[
         matching_groups = []
 
         for group_idx, group in enumerate(line_groups):
-            if _line_connects_to_group(line, group, config):
+            if _line_connects_to_group(line, group, table_detection_params):
                 matching_groups.append(group_idx)
 
         if not matching_groups:
@@ -225,17 +230,17 @@ def _find_table_regions(lines: list[StructureLine], config: dict) -> list[tuple[
     return regions
 
 
-def _line_connects_to_group(line: StructureLine, group: list[StructureLine], config: dict) -> bool:
+def _line_connects_to_group(line: StructureLine, group: list[StructureLine], table_detection_params: dict) -> bool:
     """Connection check combining line intersection, endpoint proximity and T-junction check.
 
     Args:
         line: The line to check
         group: The group of lines to check against
-        config: Configuration parameters
+        table_detection_params: Configuration parameters
     Returns:
         True if the line connects to the group, False otherwise
     """
-    connection_threshold = config["tables"]["connection_threshold"]
+    connection_threshold = table_detection_params["tables"]["connection_threshold"]
 
     for group_line in group:
         # 1. Check line intersection
@@ -268,7 +273,7 @@ def _table_overlaps(table: TableStructure, existing_tables: list[TableStructure]
 def _create_table_from_region(
     horizontal_lines: list[Line],
     vertical_lines: list[Line],
-    config: dict,
+    table_detection_params: dict,
     page_width: float = None,
     page_height: float = None,
     text_lines: list = None,
@@ -278,7 +283,7 @@ def _create_table_from_region(
     Args:
         horizontal_lines: Horizontal lines in this region
         vertical_lines: Vertical lines in this region
-        config: Configuration parameters
+        table_detection_params: Configuration parameters
         page_width: Page width
         page_height: Page height
         text_lines: Text lines for content analysis
@@ -305,7 +310,7 @@ def _create_table_from_region(
     line_density = len(horizontal_lines + vertical_lines) / (area / 10000) if area > 0 else 0
 
     confidence = _calculate_structure_confidence(
-        bounding_rect, horizontal_lines, vertical_lines, config, page_width, page_height, text_lines
+        bounding_rect, horizontal_lines, vertical_lines, table_detection_params, page_width, page_height, text_lines
     )
 
     return TableStructure(
@@ -321,7 +326,7 @@ def _calculate_structure_confidence(
     rect: pymupdf.Rect,
     h_lines: list[Line],
     v_lines: list[Line],
-    config: dict,
+    table_detection_params: dict,
     page_width: float = None,
     page_height: float = None,
     text_lines: list = None,
@@ -332,7 +337,7 @@ def _calculate_structure_confidence(
         rect: Bounding rectangle of the table structure
         h_lines: List of horizontal lines in the structure
         v_lines: List of vertical lines in the structure
-        config: Configuration parameters
+        table_detection_params: Configuration parameters
         page_width: Page width
         page_height: Page height
         text_lines: List of text lines for content analysis
@@ -341,7 +346,7 @@ def _calculate_structure_confidence(
         Confidence score between 0 and 1
     """
     area = rect.width * rect.height
-    table_config = config.get("tables", {})
+    table_config = table_detection_params.get("tables", {})
 
     # Size score - larger tables are more likely to be significant
     if page_width and page_height:

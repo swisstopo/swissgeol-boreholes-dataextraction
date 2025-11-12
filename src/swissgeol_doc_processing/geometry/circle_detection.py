@@ -8,7 +8,6 @@ import pymupdf
 from dotenv import load_dotenv
 
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Circle
-from swissgeol_doc_processing.utils.file_utils import read_params
 
 load_dotenv()
 
@@ -95,18 +94,18 @@ def _circle_intersects_with_text(circle: Circle, text_lines: list, text_proximit
     return False
 
 
-def extract_circles(page: pymupdf.Page, text_lines: list = None, config_path: str = None) -> list[Circle]:
+def extract_circles(page: pymupdf.Page, line_detection_params: dict, text_lines: list = None) -> list[Circle]:
     """Extract circles from a pdf page.
 
     Args:
         page (pymupdf.Page): The page to extract circles from.
         text_lines (list): List of TextLine objects for filtering circles on text (optional).
-        config_path (str, optional): Path to user-provided config file. Defaults to None.
+        line_detection_params (dict): The parameters for line detection.
 
     Returns:
         list[Circle]: The detected circles as a list.
     """
-    hough_circle_parameters = read_params("line_detection_params.yml", user_config_path=config_path)["hough_circles"]
+    hough_circle_parameters = line_detection_params["hough_circles"]
 
     circles = detect_circles_hough(page, hough_circles_params=hough_circle_parameters)
 

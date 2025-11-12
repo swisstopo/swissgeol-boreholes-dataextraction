@@ -9,10 +9,6 @@ import pymupdf
 
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.text.textline import TextLine
-from swissgeol_doc_processing.utils.file_utils import read_params
-
-config_path = "config"
-line_detection_params = read_params("line_detection_params.yml", user_config_path=config_path)
 
 
 @dataclass
@@ -73,8 +69,8 @@ class LineAffinityCalculator:
         left_line_length_threshold: float,
         material_description_rect: pymupdf.Rect,
         geometric_lines: list[Line],
+        line_detection_params: dict,
         description_lines: list[TextLine],
-        config_path: str = None,
     ):
         """Initialize the LineAffinityCalculator.
 
@@ -84,8 +80,8 @@ class LineAffinityCalculator:
                 split it.
             material_description_rect (pymupdf.Rect): The bounding box for all material descriptions.
             geometric_lines (list[Line]): The geometric lines detected in the pdf page.
+            line_detection_params (dict): The parameters for line detection.
             description_lines (list[TextLine]): The list of description lines
-            config_path (str, optional): Path to user-provided config file. Defaults to None.
         """
         self.block_line_ratio = block_line_ratio
         self.left_line_length_threshold = left_line_length_threshold
@@ -287,9 +283,9 @@ def get_line_affinity(
     description_lines: list[TextLine],
     material_description_rect: pymupdf.Rect,
     geometric_lines: list[Line],
+    line_detection_params: dict,
     block_line_ratio: float,
     left_line_length_threshold: float,
-    config_path: str = None,
 ):
     """Compute the affinity of each line with the previous one, base of the presence of horizontal line inbetween.
 
@@ -298,16 +294,16 @@ def get_line_affinity(
         left_line_length_threshold (int): The minimum length of a line segment on the left side of a block to split it.
         material_description_rect (pymupdf.Rect): The bounding box for all material descriptions.
         geometric_lines (list[Line]): The geometric lines detected in the pdf page.
+        line_detection_params (dict): The parameters for line detection.
         description_lines (list[TextLine]): The list of description lines.
-        config_path (str, optional): Path to user-provided config file. Defaults to None.
     """
     calculator = LineAffinityCalculator(
         block_line_ratio,
         left_line_length_threshold,
         material_description_rect,
         geometric_lines,
+        line_detection_params,
         description_lines,
-        config_path,
     )
     affinities = [Affinity.get_zero_affinity()]  # first line has no previous
     for previous_line, line in zip(description_lines, description_lines[1:], strict=False):

@@ -7,6 +7,10 @@ from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.overlap_detection import find_last_duplicate_layer_index
 from swissgeol_doc_processing.text.textblock import MaterialDescription, MaterialDescriptionLine
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
+from swissgeol_doc_processing.utils.file_utils import read_params
+
+config_path = "config"
+matching_params = read_params("matching_params.yml", config_path)
 
 
 @pytest.fixture
@@ -26,7 +30,7 @@ def test_find_last_duplicate_no_duplicates(create_layer):
     prev_layers = [create_layer("Layer A"), create_layer("Layer B")]
     current_layers = [create_layer("Layer C"), create_layer("Layer D")]
 
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers)
+    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers, matching_params)
     assert bottom_duplicated_idx is None
 
 
@@ -35,7 +39,7 @@ def test_find_last_duplicate_single_at_top(create_layer):
     prev_layers = [create_layer("Layer A"), create_layer("Layer B")]
     current_layers = [create_layer("Layer B"), create_layer("Layer C"), create_layer("Layer D")]
 
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers)
+    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers, matching_params)
     assert bottom_duplicated_idx == 0
 
 
@@ -44,7 +48,7 @@ def test_find_last_duplicate_multiple_consecutive(create_layer):
     prev_layers = [create_layer("Layer A"), create_layer("Layer B"), create_layer("Layer C")]
     current_layers = [create_layer("Layer B"), create_layer("Layer C"), create_layer("Layer D")]
 
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers)
+    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers, matching_params)
     assert bottom_duplicated_idx == 1
 
 
@@ -58,7 +62,7 @@ def test_find_last_duplicate_wrong_line_grouping(create_layer):
         create_layer("Layer D"),
     ]
 
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers)
+    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers, matching_params)
     assert bottom_duplicated_idx == 2
 
 
@@ -73,7 +77,7 @@ def test_find_last_duplicate_false_positive(create_layer):
         create_layer("Layer D"),  # false positive, same description but not a duplicate
         create_layer("Layer Z"),
     ]
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers_correct)
+    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers_correct, matching_params)
     assert bottom_duplicated_idx == 1
 
     current_layers_correct = [
@@ -82,7 +86,7 @@ def test_find_last_duplicate_false_positive(create_layer):
         create_layer("Layer D"),  # false positive, same description but not a duplicate
         create_layer("Layer Z"),
     ]
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers_correct)
+    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers_correct, matching_params)
     assert bottom_duplicated_idx is None
 
 
@@ -97,7 +101,7 @@ def test_find_last_duplicate_prev_bottom_cropped(create_layer):
         create_layer("Bedrock"),
     ]
 
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers)
+    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers, matching_params)
     assert bottom_duplicated_idx == 0
 
 
@@ -112,7 +116,7 @@ def test_find_last_duplicate_current_top_cropped(create_layer):
         create_layer("Bedrock"),
     ]
 
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers)
+    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers, matching_params)
     assert bottom_duplicated_idx == 0
 
 
@@ -124,7 +128,7 @@ def test_find_last_duplicate_ocr_error(create_layer):
         create_layer("Clay with gravel"),
     ]
 
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers)
+    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers, matching_params)
     assert bottom_duplicated_idx == 0
 
 
@@ -138,5 +142,5 @@ def test_find_last_duplicate_full_duplicates(create_layer):
         create_layer("Layer C"),
         create_layer("Layer D"),
     ]
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers_correct)
+    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers_correct, matching_params)
     assert bottom_duplicated_idx == 3

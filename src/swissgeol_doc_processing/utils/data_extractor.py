@@ -13,7 +13,6 @@ import regex
 
 from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from swissgeol_doc_processing.text.textline import TextLine
-from swissgeol_doc_processing.utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
 
@@ -114,19 +113,18 @@ class DataExtractor:
 
     preprocess_replacements: dict[str, str] = {}
 
-    def __init__(self, language: str, config_path: str = None):
+    def __init__(self, language: str, matching_params: dict):
         """Initializes the DataExtractor object.
 
         Args:
             language (str): the language of the document.
-            config_path (str, optional): Path to user-provided config file. Defaults to None.
+            matching_params (dict): The matching parameters.
         """
         if not self.feature_name:
             raise ValueError("Feature name must be specified.")
 
-        params = read_params("matching_params.yml", user_config_path=config_path)
-        self.feature_keys = params[f"{self.feature_name}_keys"][language]
-        self.feature_fp_keys = params.get(f"{self.feature_name}_fp_keys", {}).get(language, [])
+        self.feature_keys = matching_params[f"{self.feature_name}_keys"][language]
+        self.feature_fp_keys = matching_params.get(f"{self.feature_name}_fp_keys", {}).get(language, [])
 
     def preprocess(self, value: str) -> str:
         """Preprocesses the value before searching for the feature.

@@ -12,7 +12,6 @@ from numpy.typing import ArrayLike
 from swissgeol_doc_processing.geometry.geometric_line_utilities import merge_parallel_lines_quadtree
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.util import line_from_array
-from swissgeol_doc_processing.utils.file_utils import read_params
 
 load_dotenv()
 
@@ -103,17 +102,16 @@ def detect_lines_hough(page: pymupdf.Page, hough_params: dict) -> ArrayLike:
     return [line_from_array(line, scale_ratio) for line in lines]
 
 
-def extract_lines(page: pymupdf.Page, config_path: str = None) -> list[Line]:
+def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]:
     """Extract lines from a pdf page.
 
     Args:
         page (pymupdf.Page): The page to extract lines from.
-        config_path (str, optional): Path to user-provided config file. Defaults to None.
+        line_detection_params (dict): The parameters for line detection.
 
     Returns:
         list[Line]: The detected lines as a list.
     """
-    line_detection_params = read_params("line_detection_params.yml", user_config_path=config_path)
     lines = detect_lines_lsd(
         page,
         lsd_params=line_detection_params["lsd"],
