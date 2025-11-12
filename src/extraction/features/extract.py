@@ -2,8 +2,6 @@
 
 import logging
 
-import cv2
-import numpy as np
 import pymupdf
 import rtree
 
@@ -233,7 +231,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         """
         description_lines = get_description_lines(self.lines, pair.material_description_rect)
         diagonals = self.get_diagonals_near_textlines(description_lines)
-        # write_img_debug("debug.png", page, 2, diagonals)
 
         line_affinities = get_line_affinity(
             description_lines,
@@ -646,7 +643,6 @@ def extract_page(
         list[ExtractedBorehole]: Extracted borehole layers from the page.
     """
     # Get page dimensions from the document
-    global page  # TODO remove (used to draw debug)
     page = document[page_index]
     page_width = page.rect.width
     page_height = page.rect.height
@@ -773,16 +769,3 @@ def get_pairs_based_on_line_affinity(
 
     pairs.append(IntervalBlockPair(None, TextBlock(description_lines[prev_block_idx:])))
     return pairs
-
-
-def write_img_debug(path, page, pdf_scale_factor, lines):
-    """Write a debug image with the detected lines drawn on it."""
-    pix = page.get_pixmap(matrix=pymupdf.Matrix(pdf_scale_factor, pdf_scale_factor))
-    img = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, pix.n).copy()
-    img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR) if pix.n == 4 else img
-
-    for line in lines:
-        x1, y1, x2, y2 = (line.asarray() * pdf_scale_factor).astype(int)
-        cv2.line(img, (x1, y1), (x2, y2), (0, 0, 255), 2)
-
-    cv2.imwrite(path, img)
