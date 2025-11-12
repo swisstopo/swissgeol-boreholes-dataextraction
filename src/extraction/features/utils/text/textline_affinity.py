@@ -312,20 +312,19 @@ class LineAffinityCalculator:
                 return -1.0
         return 0.0
 
-    def compute_indentation_affinity(self, previous_line: TextLine, current_line: TextLine):
+    def compute_indentation_affinity(self, previous_line: TextLine, current_line: TextLine) -> float:
         """Split the text block based on indentation.
-
-        note: not currently used. is_indented attribute was removed from TextLine, put back if needed.
 
         Args:
             previous_line (TextLine): The previous line.
             current_line (TextLine): The current line.
 
         Returns:
-            float: The affinity: -1.0 if lines are not compatible, 1.0 otherwise.
+            float: The affinity: -1.0 the line has an indentation return, 3.0 if the previous already was indented,
+                1.0 otherwise.
         """
         if current_line.rect.y0 > previous_line.rect.y1 + previous_line.rect.height:
-            return 0.0  # only mesure indentation for lines that are close enough
+            return 0.0  # only measure indentation for lines that are close enough
         # indentation
         prev_line_start = previous_line.rect.x0
         current_line_start = current_line.rect.x0
@@ -337,7 +336,7 @@ class LineAffinityCalculator:
         if previous_line.is_indented:
             if current_line_start >= prev_line_start - low_margin:  # accept small tolerance
                 current_line.is_indented = True
-                return 3.0  # both lines are indented
+                return 3.0  # both lines are indented, stronger affinity
             else:
                 return -1.0  # previous line was indented, this one is not
 
@@ -345,27 +344,6 @@ class LineAffinityCalculator:
             current_line.is_indented = True
             return 1.0  # first indented line detected
         return 0.0
-
-    def _unindentation_affinity(self, previous_line: TextLine, current_line: TextLine):
-        """Split the text block based on indentation return (end of indentation block).
-
-        note: not currently used
-
-        Args:
-            previous_line (TextLine): The previous line.
-            current_line (TextLine): The current line.
-
-        Returns:
-            float: The affinity: -1.0 if lines are not compatible, 0.0 otherwise.
-        """
-        # indentation
-        prev_line_start = previous_line.rect.x0
-        current_line_start = current_line.rect.x0
-        max_line_width = max([line.rect.width for line in (previous_line, current_line)])
-
-        low_margin = 0.03 * max_line_width
-
-        return -1.0 if current_line_start < prev_line_start - low_margin else 0.0
 
 
 def get_line_affinity(
