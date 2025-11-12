@@ -5,7 +5,7 @@ import logging
 import pymupdf
 import rtree
 
-from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
+from extraction.features.stratigraphy.interval.interval import IntervalBlockPair
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
     Layer,
@@ -15,6 +15,7 @@ from extraction.features.stratigraphy.layer.page_bounding_boxes import (
     MaterialDescriptionRectWithSidebar,
     PageBoundingBoxes,
 )
+from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import (
     Sidebar,
     SidebarNoise,
@@ -229,13 +230,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             list[IntervalBlockPair]: The interval block pairs.
         """
         description_lines = get_description_lines(self.lines, pair.material_description_rect)
-        index_to_diagonal = self.get_textline_index_near_diagonals(description_lines)
-        vertical_adjustements = self.get_textline_vertical_adjustements(description_lines, index_to_diagonal)
-
-        diagonals = []
-        for diag in index_to_diagonal.values():
-            if diag not in diagonals:
-                diagonals.append(diag)
+        diagonals = self.get_diagonals_near_textlines(description_lines)
 
         line_affinities = get_line_affinity(
             description_lines,
@@ -246,7 +241,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             left_line_length_threshold=self.params["left_line_length_threshold"],
         )
         return (
-            match_lines_to_interval(pair.sidebar, description_lines, line_affinities, vertical_adjustements)
+            match_lines_to_interval(pair.sidebar, description_lines, line_affinities, diagonals)
             if pair.sidebar
             else get_pairs_based_on_line_affinity(description_lines, line_affinities)
         )
@@ -527,8 +522,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         return matched_pairs
 
-    def get_textline_index_near_diagonals(self, description_lines: list[TextLine]) -> dict[int, Line]:
-        """Retrieves the indices of the textlines that are near a diagonal line.
+    def get_diagonals_near_textlines(self, description_lines: list[TextLine]) -> list[Line]:
+        """Retrieves the diagonal lines that are near description lines.
 
         Those diagonal lines indicate that the textline should be matched to an interval higher or below, and not the
         one directly in front of it.
@@ -537,7 +532,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             description_lines (list[TextLine]): The description lines.
 
         Returns:
-            dict[int, Line]: The indices of the textlines that have a diagonal lines nearby.
+            list[Line]: The diagonal connectors.
         """
         x0s = [line.rect.x0 for line in description_lines]
         min_x0, max_x0 = min(x0s), max(x0s)
@@ -553,27 +548,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
             search_zone.x0 = max(search_zone.x0, max([sl.bounding_rect.x1 for sl in self.strip_logs]))
 
         # Detect and filter potential diagonals
-        filtered_g_lines = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
-        filtered_g_lines = self._filter_diagonals(
-            filtered_g_lines, description_lines, min_text_height / 2, max_text_height * 3
-        )
-
-        index_to_diagonal = {}
-        for line_index, text_line in enumerate(description_lines):
-            x0, y0, _, y1 = text_line.rect
-            text_line_height = text_line.rect.height
-            line_search_zone = pymupdf.Rect(
-                x0 - text_line_height,
-                y0 - 0.5 * text_line_height,
-                x0 + text_line_height / 3,
-                y1 + 0.5 * text_line_height,
-            )
-            candidates = find_diags_ending_in_zone(filtered_g_lines, line_search_zone)
-            longest = max(candidates, key=lambda g_line: g_line.length) if candidates else None
-            if longest:
-                index_to_diagonal[line_index] = longest
-
-        return index_to_diagonal
+        diagonals = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
+        diagonals = self._filter_diagonals(diagonals, description_lines, min_text_height / 2, max_text_height * 3)
+        return diagonals
 
     @staticmethod
     def _filter_diagonals(
@@ -690,7 +667,7 @@ def match_lines_to_interval(
     sidebar: Sidebar,
     description_lines: list[TextLine],
     affinities: list[Affinity],
-    vertical_adjustements: dict[TextLine, float],
+    diagonals: list[Line],
 ) -> list[IntervalBlockPair]:
     """Match the description lines to the pair intervals.
 
@@ -698,28 +675,72 @@ def match_lines_to_interval(
         sidebar (Sidebar): The sidebar.
         description_lines (list[TextLine]): The description lines.
         affinities (list[Affinity]): the affinity between each line pair, previously computed.
-        vertical_adjustements (dict[TextLine, float]): The vertical adjustments for each text line.
+        diagonals (dict[TextLine, float]): The diagonal lines linking lines to intervals.
 
     Returns:
         list[IntervalBlockPair]: The matched depth intervals and text blocks.
     """
+    # shift the entries of the sidebar using the diagonals, only relevant for AAboveBSidebars
+    if sidebar.kind == "a_above_b":
+        compute_entries_shift(sidebar, diagonals)
+        prevent_shifts_crossing(sidebar)
+
     depth_interval_zones = sidebar.get_interval_zone()
+
     # affinities can differ depending on sidebar type
     affinity_scores = sidebar.dp_weighted_affinities(affinities)
     dp = IntervalToLinesDP(depth_interval_zones, description_lines, affinity_scores)
 
-    def scoring_fn(zone: IntervalZone, text_line: TextLine) -> float:
-        if sidebar.kind == "a_above_b":
-            v_shift = vertical_adjustements[text_line]
-            adjusted_line = text_line.get_copy_shifted_vertically(-v_shift)  # -v_shift from interval perspective
-        else:
-            adjusted_line = text_line
+    _, mapping = dp.solve(sidebar.dp_scoring_fn)
 
-        return sidebar.dp_scoring_fn(zone, adjusted_line)
+    return sidebar.post_processing(mapping)
 
-    _, mapping = dp.solve(scoring_fn)
 
-    return sidebar.post_processing(mapping)  # different post processing is needed depending on sidebar type
+def compute_entries_shift(sidebar: AAboveBSidebar, diagonals: list[Line]):
+    """Compute the vertical shift for each sidebar entry based on the diagonal lines.
+
+    The shift indicates how much higher or lower the entry should be matched compared to its current position.
+    To avoid mismatches, we only consider the closest diagonal line to each entry, and stop the process
+    when the distance between the entry and the diagonal is too large compared to the average entry height.
+
+    Note: this function modifies the attribute 'relative_shift' of each sidebar entry in place.
+
+    Args:
+        sidebar (AAboveBSidebar): The sidebar.
+        diagonals (list[Line]): The diagonal lines.
+    """
+    avg_entries_height = sum([entry.rect.height for entry in sidebar.entries]) / len(sidebar.entries)
+    seen_diags = []
+    seen_entries = []
+    while len(seen_diags) != len(diagonals) and len(seen_entries) != len(sidebar.entries):
+        unseen_diags = [diag for diag in diagonals if diag not in seen_diags]
+        unseen_entries = [entry for entry in sidebar.entries if entry not in seen_entries]
+        closest_entry, closest_diag = min(
+            [(entry, diag) for entry in unseen_entries for diag in unseen_diags],
+            key=lambda pair: abs((pair[0].rect.y0 + pair[0].rect.y1) / 2 - pair[1].start.y),
+        )
+        if abs((closest_entry.rect.y0 + closest_entry.rect.y1) / 2 - closest_diag.start.y) > avg_entries_height:
+            break  # remaing pairs are likely wrong, due to undeted entry or duplicated diagonal detection
+        closest_entry.relative_shift = float(closest_diag.end.y - closest_diag.start.y)
+        seen_diags.append(closest_diag)
+        seen_entries.append(closest_entry)  # different post processing is needed depending on sidebar type
+
+
+def prevent_shifts_crossing(sidebar: AAboveBSidebar):
+    """Ensure that the vertical shifts of sidebar entries do not cause them to cross each other.
+
+    Note: this function modifies the attribute 'relative_shift' of each sidebar entry in place.
+
+    Args:
+        sidebar (AAboveBSidebar): The sidebar with entries to adjust.
+    """
+    prev_y1 = 0.0
+    for entry in sidebar.entries:
+        entry_y0 = entry.rect.y0
+        entry_height = entry.rect.y1 - entry.rect.y0
+        if prev_y1 - entry_height / 2 > entry_y0 + entry.relative_shift:
+            entry.relative_shift = prev_y1 - entry_y0 - entry_height / 2
+        prev_y1 = entry_y0 + entry.relative_shift + entry_height
 
 
 def get_pairs_based_on_line_affinity(
