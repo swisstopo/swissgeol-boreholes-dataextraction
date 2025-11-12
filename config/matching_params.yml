@@ -14,7 +14,7 @@ affinity_params:
       right_end_weight: 1.0
       diagonal_weight: 1.25
       gap_weight: 0.0
-      indentation_weight: 1
+      indentation_weight: 1.0
   a_to_b:
     importance: 2.0
     weights:
