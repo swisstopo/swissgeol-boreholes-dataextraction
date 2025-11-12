@@ -147,7 +147,7 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> tuple[list
     return filtered, merged
 
 
-def find_diags_ending_in_zone(lines: list[Line], line_search_zone: pymupdf.Rect):
+def find_diags_ending_in_zone(lines: list[Line], line_search_zone: pymupdf.Rect) -> list[Line]:
     """Find diagonal lines ending in a given zone (note: the end of the line is always on the right).
 
     Args:
