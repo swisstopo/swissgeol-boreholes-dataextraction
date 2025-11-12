@@ -190,6 +190,14 @@ class Layer(ExtractedFeature):
     def description_nonempty(self) -> bool:
         return parse_text(self.material_description.text) != ""
 
+    def depth_nonempty(self) -> bool:
+        """Check whether both start and end depths are defined.
+
+        Returns:
+            bool: True if both `depths.start` and `depths.end` are defined, False otherwise.
+        """
+        return bool(self.depths and self.depths.start and self.depths.end)
+
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
 
