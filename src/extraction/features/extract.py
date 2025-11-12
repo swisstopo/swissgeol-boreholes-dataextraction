@@ -551,7 +551,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         search_zone = pymupdf.Rect(min_x0 - max_text_height, min_y0, max_x0 + max_text_height / 3, max_y1)
         if self.strip_logs:
             # shrink left boundary to right edge of the strip
-            search_zone.x0 = max(search_zone.x0, max([sl.bounding_rect.x1 for sl in self.strip_logs]))
+            search_zone.x0 = max(search_zone.x0, max([sl.bbox.x1 for sl in self.strip_logs]))
 
         # Detect and filter potential diagonals
         filtered_g_lines = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
