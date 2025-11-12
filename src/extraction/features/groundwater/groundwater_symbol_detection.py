@@ -12,8 +12,11 @@ import pymupdf
 from extraction.features.groundwater.utility import extract_date
 from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.text.textline import TextLine
+from utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
+
+merging_params = read_params("line_detection_params.yml")["line_merging_params"]
 
 
 def get_text_lines_near_symbol(
@@ -81,7 +84,9 @@ def get_groundwater_symbol_upper_lines(
         horizontals_near_entry = [
             g_line
             for g_line in geometric_lines
-            if g_line.is_horizontal and is_near_entry(g_line, *text_line.rect) and g_line.length < 3 * text_width
+            if g_line.is_horizontal(merging_params["horizontal_slope_tolerance"])
+            and is_near_entry(g_line, *text_line.rect)
+            and g_line.length < 3 * text_width
         ]
         pairs = get_valid_pairs(horizontals_near_entry, text_line, lines)
         if not pairs:

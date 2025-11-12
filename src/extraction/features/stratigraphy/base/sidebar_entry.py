@@ -31,6 +31,7 @@ class DepthColumnEntry(SidebarEntry[float]):
     def __init__(self, value: ValueT, rect: pymupdf.rect, page_number: int, has_decimal_point: bool = False):
         super().__init__(value, rect, page_number)
         self.has_decimal_point = has_decimal_point
+        self.relative_shift = 0.0
 
     def __repr__(self) -> str:
         return str(self.value)
@@ -52,6 +53,17 @@ class DepthColumnEntry(SidebarEntry[float]):
             value=abs(float(string_value.replace(",", "."))),
             page_number=page_number,
             has_decimal_point="." in string_value,
+        )
+
+    @property
+    def shifted_rect(self) -> pymupdf.Rect:
+        """Returns the bounding box, shifted by its vertical relative_shift.
+
+        Returns:
+            pymupdf.Rect: The entry rect, shifted by its relative shift.
+        """
+        return pymupdf.Rect(
+            self.rect.x0, self.rect.y0 + self.relative_shift, self.rect.x1, self.rect.y1 + self.relative_shift
         )
 
 

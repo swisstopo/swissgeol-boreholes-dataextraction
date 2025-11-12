@@ -8,10 +8,11 @@ affinity_params:
   a_above_b:
     importance: 5.0
     weights:
-      line_weight: 2.0
+      line_weight: 3.0
       left_line_weight: 1.0
-      spacing_weight: 1.0
+      spacing_weight: 1.25
       right_end_weight: 1.0
+      diagonal_weight: 1.25
       gap_weight: 0.0
   a_to_b:
     importance: 2.0
@@ -20,6 +21,7 @@ affinity_params:
       left_line_weight: 1.0
       spacing_weight: 1.0
       right_end_weight: 1.0
+      diagonal_weight: 0.0
       gap_weight: 0.0
   layer_identifier:
     importance: 0.66
@@ -28,6 +30,7 @@ affinity_params:
       left_line_weight: 0.2
       spacing_weight: 1.0
       right_end_weight: 0.6
+      diagonal_weight: 0.0
       gap_weight: 0.0
   spulprobe:
     importance: 2.0
@@ -36,6 +39,7 @@ affinity_params:
       left_line_weight: 1.0
       spacing_weight: 1.0
       right_end_weight: 1.0
+      diagonal_weight: 0.0
       gap_weight: 0.0
 
 
