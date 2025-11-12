@@ -8,13 +8,13 @@ affinity_params:
   a_above_b:
     importance: 5.0
     weights:
-      line_weight: 3.0
+      line_weight: 3.5
       left_line_weight: 1.0
       spacing_weight: 1.25
       right_end_weight: 1.0
       diagonal_weight: 1.25
       gap_weight: 0.0
-      indentation_weight: 0.5
+      indentation_weight: 1
   a_to_b:
     importance: 2.0
     weights:
