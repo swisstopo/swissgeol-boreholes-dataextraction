@@ -55,15 +55,15 @@ class DepthColumnEntry(SidebarEntry[float]):
             has_decimal_point="." in string_value,
         )
 
-    def shifted_copy(self):
-        """Returns a copy of self, shifted by its vertical relative_shift."""
-        return DepthColumnEntry(
-            self.value,
-            pymupdf.Rect(
-                self.rect.x0, self.rect.y0 + self.relative_shift, self.rect.x1, self.rect.y1 + self.relative_shift
-            ),
-            self.page_number,
-            self.has_decimal_point,
+    @property
+    def shifted_rect(self) -> pymupdf.Rect:
+        """Returns the bounding box, shifted by its vertical relative_shift.
+
+        Returns:
+            pymupdf.Rect: The entry rect, shifted by its relative shift.
+        """
+        return pymupdf.Rect(
+            self.rect.x0, self.rect.y0 + self.relative_shift, self.rect.x1, self.rect.y1 + self.relative_shift
         )
 
 

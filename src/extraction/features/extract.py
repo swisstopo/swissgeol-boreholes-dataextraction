@@ -15,7 +15,6 @@ from extraction.features.stratigraphy.layer.page_bounding_boxes import (
     MaterialDescriptionRectWithSidebar,
     PageBoundingBoxes,
 )
-from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import (
     Sidebar,
     SidebarNoise,
@@ -570,46 +569,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
             and 0 < g_line.end.x - g_line.start.x < max_horizontal_dist  # lines too long are likely other parasites
         ]
 
-    def get_textline_vertical_adjustements(
-        self, description_lines: list[TextLine], index_to_diagonal: dict[int, Line]
-    ) -> dict[TextLine, float]:
-        """Get the vertical adjustements for each textline based on the diagonals extracted.
-
-        Even for textlines not directly next to a diagonal line, we propagate the adjustement to lines below as they
-            are likely to be affected as well.
-
-        A positive shift of +x indicates that the textline is perceived lower on the page than it should be, and
-        thus should be matched with an interval higher on the page.
-
-        Args:
-            description_lines (list[TextLine]): The description lines.
-            index_to_diagonal (dict[int, Line]): The indices of the textlines that have a diagonal near them.
-
-        Returns:
-            dict[TextLine, float]: The vertical adjustements for each textline.
-        """
-        if not index_to_diagonal:
-            return {line: 0.0 for line in description_lines}
-
-        MAX_LINE_AFFECTED = diagonals_params["max_line_affected"]
-
-        indices = sorted(index_to_diagonal.keys())
-        adjustements = {}
-        line_slack_counter = 0
-        prev_v_shift = 0.0
-        for line_index, text_line in enumerate(description_lines):
-            if line_index in indices:
-                diagonal = index_to_diagonal[line_index]
-                prev_v_shift = float(diagonal.end.y - diagonal.start.y)
-                line_slack_counter = 0
-            else:
-                line_slack_counter += 1
-            if line_slack_counter > MAX_LINE_AFFECTED:
-                prev_v_shift = 0.0
-            adjustements[text_line] = prev_v_shift
-
-        return adjustements
-
 
 def extract_page(
     text_lines: list[TextLine],
@@ -682,8 +641,8 @@ def match_lines_to_interval(
     """
     # shift the entries of the sidebar using the diagonals, only relevant for AAboveBSidebars
     if sidebar.kind == "a_above_b":
-        compute_entries_shift(sidebar, diagonals)
-        prevent_shifts_crossing(sidebar)
+        sidebar.compute_entries_shift(diagonals)
+        sidebar.prevent_shifts_crossing()
 
     depth_interval_zones = sidebar.get_interval_zone()
 
@@ -694,53 +653,6 @@ def match_lines_to_interval(
     _, mapping = dp.solve(sidebar.dp_scoring_fn)
 
     return sidebar.post_processing(mapping)
-
-
-def compute_entries_shift(sidebar: AAboveBSidebar, diagonals: list[Line]):
-    """Compute the vertical shift for each sidebar entry based on the diagonal lines.
-
-    The shift indicates how much higher or lower the entry should be matched compared to its current position.
-    To avoid mismatches, we only consider the closest diagonal line to each entry, and stop the process
-    when the distance between the entry and the diagonal is too large compared to the average entry height.
-
-    Note: this function modifies the attribute 'relative_shift' of each sidebar entry in place.
-
-    Args:
-        sidebar (AAboveBSidebar): The sidebar.
-        diagonals (list[Line]): The diagonal lines.
-    """
-    avg_entries_height = sum([entry.rect.height for entry in sidebar.entries]) / len(sidebar.entries)
-    seen_diags = []
-    seen_entries = []
-    while len(seen_diags) != len(diagonals) and len(seen_entries) != len(sidebar.entries):
-        unseen_diags = [diag for diag in diagonals if diag not in seen_diags]
-        unseen_entries = [entry for entry in sidebar.entries if entry not in seen_entries]
-        closest_entry, closest_diag = min(
-            [(entry, diag) for entry in unseen_entries for diag in unseen_diags],
-            key=lambda pair: abs((pair[0].rect.y0 + pair[0].rect.y1) / 2 - pair[1].start.y),
-        )
-        if abs((closest_entry.rect.y0 + closest_entry.rect.y1) / 2 - closest_diag.start.y) > avg_entries_height:
-            break  # remaing pairs are likely wrong, due to undeted entry or duplicated diagonal detection
-        closest_entry.relative_shift = float(closest_diag.end.y - closest_diag.start.y)
-        seen_diags.append(closest_diag)
-        seen_entries.append(closest_entry)  # different post processing is needed depending on sidebar type
-
-
-def prevent_shifts_crossing(sidebar: AAboveBSidebar):
-    """Ensure that the vertical shifts of sidebar entries do not cause them to cross each other.
-
-    Note: this function modifies the attribute 'relative_shift' of each sidebar entry in place.
-
-    Args:
-        sidebar (AAboveBSidebar): The sidebar with entries to adjust.
-    """
-    prev_y1 = 0.0
-    for entry in sidebar.entries:
-        entry_y0 = entry.rect.y0
-        entry_height = entry.rect.y1 - entry.rect.y0
-        if prev_y1 - entry_height / 2 > entry_y0 + entry.relative_shift:
-            entry.relative_shift = prev_y1 - entry_y0 - entry_height / 2
-        prev_y1 = entry_y0 + entry.relative_shift + entry_height
 
 
 def get_pairs_based_on_line_affinity(

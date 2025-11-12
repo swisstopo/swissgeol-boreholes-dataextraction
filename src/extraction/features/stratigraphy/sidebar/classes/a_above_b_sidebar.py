@@ -11,6 +11,7 @@ from typing import ClassVar
 import numpy as np
 
 from extraction.features.stratigraphy.interval.interval import AAboveBInterval, IntervalZone
+from extraction.features.utils.geometry.geometry_dataclasses import Line
 from extraction.features.utils.text.textline import TextLine
 
 from ...base.sidebar_entry import DepthColumnEntry
@@ -49,25 +50,19 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
     def is_strictly_increasing(self) -> bool:
         return all(self.entries[i].value < self.entries[i + 1].value for i in range(len(self.entries) - 1))
 
-    def depth_intervals(self, with_shift: bool = False) -> list[AAboveBInterval]:
+    def depth_intervals(self) -> list[AAboveBInterval]:
         """Creates a list of depth intervals from the depth column entries.
 
         The first depth interval has an open start value (i.e. None).
-
-        Args:
-            with_shift: whether the interval should include the shift created by the diagonals connectors.
 
         Returns:
             list[AAboveBInterval]: A list of depth intervals.
         """
         depth_intervals = []
         if self.entries[0].value != 0.0:
-            first_entry = self.entries[0].shifted_copy() if with_shift else self.entries[0]
-            depth_intervals.append(AAboveBInterval(None, first_entry))
+            depth_intervals.append(AAboveBInterval(None, self.entries[0]))
         for i in range(len(self.entries) - 1):
-            entry = self.entries[i].shifted_copy() if with_shift else self.entries[i]
-            next_entry = self.entries[i + 1].shifted_copy() if with_shift else self.entries[i + 1]
-            depth_intervals.append(AAboveBInterval(entry, next_entry))
+            depth_intervals.append(AAboveBInterval(self.entries[i], self.entries[i + 1]))
         return depth_intervals
 
     @staticmethod
@@ -185,7 +180,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
 
         return [AAboveBSidebar(segment, self.skipped_entries) for segment in segments]
 
-    def get_interval_zone(self):
+    def get_interval_zone(self) -> list[IntervalZone]:
         """Get the interval zones defined by the sidebar entries.
 
         We pass the rectangles of the intervals shifted by the vertical amount infered with the diagonal lines.
@@ -194,15 +189,13 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         Returns:
             list[IntervalZone]: A list of interval zones.
         """
-        depth_intervals = self.depth_intervals(with_shift=False)
-        shifted_intervals = self.depth_intervals(with_shift=True)
         return [
             IntervalZone(
-                shifted_interval.start.rect if shifted_interval.start else None,
-                shifted_interval.end.rect if shifted_interval.end else None,
-                real_interval,
+                interval.start.shifted_rect if interval.start else None,
+                interval.end.shifted_rect if interval.end else None,
+                interval,
             )
-            for shifted_interval, real_interval in zip(shifted_intervals, depth_intervals, strict=True)
+            for interval in self.depth_intervals()
         ]
 
     @staticmethod
@@ -237,6 +230,47 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         mid_zone = (interval_zone.end.y0 + interval_zone.start.y1) / 2
         close_to_mid_zone_bonus = math.exp(-(abs(mid_zone - line_mid) / 30.0))  # 1 -> 0
         return (close_to_mid_zone_bonus + falls_inside_bonus) / 2  # mean between the two is a good tradeoff.
+
+    def compute_entries_shift(self, diagonals: list[Line]):
+        """Compute the vertical shift for each sidebar entry based on the diagonal lines.
+
+        The shift indicates how much higher or lower the entry should be matched compared to its current position.
+        To avoid mismatches, we only consider the closest diagonal line to each entry, and stop the process
+        when the distance between the entry and the diagonal is too large compared to the average entry height.
+
+        Note: this function modifies the attribute 'relative_shift' of each sidebar entry in place.
+
+        Args:
+            diagonals (list[Line]): The diagonal lines.
+        """
+        avg_entries_height = sum([entry.rect.height for entry in self.entries]) / len(self.entries)
+        seen_diags = []
+        seen_entries = []
+        while len(seen_diags) != len(diagonals) and len(seen_entries) != len(self.entries):
+            unseen_diags = [diag for diag in diagonals if diag not in seen_diags]
+            unseen_entries = [entry for entry in self.entries if entry not in seen_entries]
+            closest_entry, closest_diag = min(
+                [(entry, diag) for entry in unseen_entries for diag in unseen_diags],
+                key=lambda pair: abs((pair[0].rect.y0 + pair[0].rect.y1) / 2 - pair[1].start.y),
+            )
+            if abs((closest_entry.rect.y0 + closest_entry.rect.y1) / 2 - closest_diag.start.y) > avg_entries_height:
+                break  # remaing pairs are likely wrong, due to undeted entry or duplicated diagonal detection
+            closest_entry.relative_shift = float(closest_diag.end.y - closest_diag.start.y)
+            seen_diags.append(closest_diag)
+            seen_entries.append(closest_entry)  # different post processing is needed depending on sidebar type
+
+    def prevent_shifts_crossing(self):
+        """Ensure that the vertical shifts of sidebar entries do not cause them to cross each other.
+
+        Note: this function modifies the attribute 'relative_shift' of each sidebar entry in place.
+        """
+        prev_y1 = 0.0
+        for entry in self.entries:
+            entry_y0 = entry.rect.y0
+            entry_height = entry.rect.y1 - entry.rect.y0
+            if prev_y1 - entry_height / 2 > entry_y0 + entry.relative_shift:
+                entry.relative_shift = prev_y1 - entry_y0 - entry_height / 2
+            prev_y1 = entry_y0 + entry.relative_shift + entry_height
 
 
 def generate_alternatives(value: float) -> list[float]:
