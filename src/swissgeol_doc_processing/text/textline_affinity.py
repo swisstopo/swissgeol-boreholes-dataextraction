@@ -321,6 +321,8 @@ class LineAffinityCalculator:
         Returns:
             float: The affinity: -1.0 if lines are not compatible, 1.0 otherwise.
         """
+        if current_line.rect.y0 > previous_line.rect.y1 + previous_line.rect.height:
+            return 0.0  # only mesure indentation for lines that are close enough
         # indentation
         prev_line_start = previous_line.rect.x0
         current_line_start = current_line.rect.x0
@@ -332,7 +334,7 @@ class LineAffinityCalculator:
         if previous_line.is_indented:
             if current_line_start >= prev_line_start - low_margin:  # accept small tolerance
                 current_line.is_indented = True
-                return 1.0  # both lines are indented
+                return 3.0  # both lines are indented
             else:
                 return -1.0  # previous line was indented, this one is not
 
