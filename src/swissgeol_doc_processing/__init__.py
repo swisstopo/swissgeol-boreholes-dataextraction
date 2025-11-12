@@ -35,7 +35,6 @@ List of modules:
 
 # Public API exports
 from .geometry import (
-    circle_detection,
     geometric_line_utilities,
     geometry_dataclasses,
     line_detection,
