@@ -224,11 +224,11 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
 
         if not (interval_zone.end and interval_zone.start):
             entry_mid = start_mid if start_mid else end_mid
-            close_to_entry_bonus = math.exp(-(abs(entry_mid - line_mid) / 30.0)) if entry_mid else None
-            return (falls_inside_bonus + close_to_entry_bonus) / 2
+            close_to_mid_zone_bonus = math.exp(-(abs(entry_mid - line_mid) / 30.0)) if entry_mid else 0.0
+        else:
+            mid_zone = (interval_zone.end.y0 + interval_zone.start.y1) / 2
+            close_to_mid_zone_bonus = math.exp(-(abs(mid_zone - line_mid) / 30.0))  # 1 -> 0
 
-        mid_zone = (interval_zone.end.y0 + interval_zone.start.y1) / 2
-        close_to_mid_zone_bonus = math.exp(-(abs(mid_zone - line_mid) / 30.0))  # 1 -> 0
         return (close_to_mid_zone_bonus + falls_inside_bonus) / 2  # mean between the two is a good tradeoff.
 
     def compute_entries_shift(self, diagonals: list[Line]):

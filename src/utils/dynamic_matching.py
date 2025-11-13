@@ -5,11 +5,15 @@ from collections import OrderedDict, defaultdict
 from collections.abc import Callable
 from typing import TypeVar
 
+from utils.file_utils import read_params
+
 L = TypeVar("L")
 R = TypeVar("R")
 
 
 Match = tuple[L, R | list[R]]
+
+matching_params = read_params("matching_params.yml")
 
 
 class DP(ABC):
@@ -111,13 +115,17 @@ class IntervalToLinesDP(DP):
                 - ptr (list[list[str]]): The pointer table storing move directions ('diag', 'up', 'left')
                     used for backtracking to recover the optimal matching.
         """
+        EMPTY_INTERVAL_PENALTY = matching_params["empty_interval_penalty"]
         dp = [[-float("inf")] * (self.nR + 1)] + [[0.0] * (self.nR + 1) for _ in range(self.nL)]
+        for i in range(self.nL + 1):
+            dp[i][0] = -EMPTY_INTERVAL_PENALTY * i
         ptr = [[None] * (self.nR + 1) for _ in range(self.nL + 1)]
 
         for i in range(1, self.nL + 1):
             for j in range(1, self.nR + 1):
                 # up: trust what was already matched, let current line j with previous intervals
-                up = dp[i - 1][j]
+                # as this leaves interval i empty, we penalize this move
+                up = dp[i - 1][j] - EMPTY_INTERVAL_PENALTY
 
                 # left : steal the line to belong to current interval, consider the line affinity bonus (which can
                 # be negative) to take into account that lines in the same interval are compatible.
