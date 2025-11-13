@@ -54,6 +54,7 @@ affinity_params:
       diagonal_weight: 1.0
       gap_weight: 0.2
       indentation_weight: 0.0
+empty_interval_penalty: 0.2
 
 
 material_description_column_width: 0.08

@@ -146,22 +146,3 @@ class TextLine(RectWithPageMixin):
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
             "page": self.page_number,
         }
-
-    def get_copy_shifted_vertically(self, v_shift: float) -> TextLine:
-        """Get a copy of the TextLine shifted vertically by the given amount.
-
-        Args:
-            v_shift (float): The amount to shift the line vertically. Positive values shift downwards.
-
-        Returns:
-            TextLine: A new TextLine object shifted vertically.
-        """
-        shifted_words = [
-            TextWord(
-                pymupdf.Rect(word.rect.x0, word.rect.y0 + v_shift, word.rect.x1, word.rect.y1 + v_shift),
-                word.text,
-                word.page_number,
-            )
-            for word in self.words
-        ]
-        return TextLine(shifted_words)

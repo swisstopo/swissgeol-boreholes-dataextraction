@@ -29,4 +29,3 @@ line_merging_params:
 
 diagonals_params:
   angle_threshold: 5
-  max_line_affected: 2

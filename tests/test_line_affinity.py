@@ -41,6 +41,7 @@ def test_get_description_blocks(geometrical_lines, diagonals, expected_num_block
         1. no geometrical lines: expect 2 blocks (first two lines together as they slightly overlap, third separate)
         2. span line cutting through first two lines: expect 3 blocks (all separate)
         3. left-hand side line cutting through first two lines: expect 3 blocks (all separate)
+        4. diagonal line cutting through first two lines: expect 3 blocks (all separate)
     """
     line_affinities = get_line_affinity(
         description_lines,

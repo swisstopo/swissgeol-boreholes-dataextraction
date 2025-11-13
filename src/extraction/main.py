@@ -369,7 +369,7 @@ def start_pipeline(
                     else:
                         img = plot_lines(
                             page,
-                            long_or_horizontal_lines,
+                            all_geometric_lines,
                             scale_factor=line_detection_params["pdf_scale_factor"],
                         )
                         mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
