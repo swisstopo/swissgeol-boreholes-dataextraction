@@ -544,8 +544,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
         # Zone where we will look for diagonal line ends, between the strip logs and material descriptions.
         search_zone = pymupdf.Rect(min_x0 - max_text_height, min_y0, max_x0 + max_text_height / 3, max_y1)
         if self.strip_logs:
-            # shrink left boundary to right edge of the strip
-            search_zone.x0 = max(search_zone.x0, max([sl.bbox.x1 for sl in self.strip_logs]))
+            left_strip_x1s = [sl.bbox.x1 for sl in self.strip_logs if sl.bbox.x0 < search_zone.x0]
+            if left_strip_x1s:
+                # Shrink left boundary to the rightmost edge of intersecting strips
+                search_zone.x0 = max(search_zone.x0, max(left_strip_x1s))
 
         # Detect and filter potential diagonals
         diagonals = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
