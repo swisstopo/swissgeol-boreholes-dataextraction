@@ -59,7 +59,9 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
         long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
 
         # Detect table structures on the page
-        table_structures = detect_table_structures(page_index, document, long_or_horizontal_lines, text_lines, table_detection_params)
+        table_structures = detect_table_structures(
+            page_index, document, long_or_horizontal_lines, text_lines, table_detection_params
+        )
 
         # Detect strip logs on the page
         strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)

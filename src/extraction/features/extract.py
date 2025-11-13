@@ -31,10 +31,10 @@ from extraction.features.stratigraphy.sidebar.extractor.layer_identifier_sidebar
 )
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
+from swissgeol_doc_processing.geometry.line_detection import find_diags_ending_in_zone
 from swissgeol_doc_processing.geometry.util import x_overlap, x_overlap_significant_smallest
 from swissgeol_doc_processing.text.find_description import get_description_lines
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
-from swissgeol_doc_processing.geometry.line_detection import find_diags_ending_in_zone
 from swissgeol_doc_processing.text.textblock import (
     MaterialDescription,
     MaterialDescriptionLine,
@@ -556,7 +556,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         return matched_pairs
 
-    def get_diagonals_near_textlines(self, description_lines: list[TextLine], line_detection_params: dict) -> list[Line]:
+    def get_diagonals_near_textlines(
+        self, description_lines: list[TextLine], line_detection_params: dict
+    ) -> list[Line]:
         """Retrieves the diagonal lines that are near description lines.
 
         Those diagonal lines indicate that the textline should be matched to an interval higher or below, and not the
@@ -564,6 +566,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         Args:
             description_lines (list[TextLine]): The description lines.
+            line_detection_params (dict): The parameters for line detection.
 
         Returns:
             list[Line]: The diagonal connectors.
@@ -583,12 +586,18 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         # Detect and filter potential diagonals
         diagonals = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
-        diagonals = self._filter_diagonals(diagonals, description_lines, min_text_height / 2, max_text_height * 3, line_detection_params)
+        diagonals = self._filter_diagonals(
+            diagonals, description_lines, min_text_height / 2, max_text_height * 3, line_detection_params
+        )
         return diagonals
 
     @staticmethod
     def _filter_diagonals(
-        g_lines: list[Line], description_lines: list[TextLine], min_vertical_dist: float, max_horizontal_dist: float, line_detection_params: dict
+        g_lines: list[Line],
+        description_lines: list[TextLine],
+        min_vertical_dist: float,
+        max_horizontal_dist: float,
+        line_detection_params: dict,
     ) -> list[Line]:
         """Filters the diagonal lines identified."""
         angle_threshold = line_detection_params["diagonals_params"]["angle_threshold"]
