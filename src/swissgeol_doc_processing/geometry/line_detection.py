@@ -102,7 +102,7 @@ def detect_lines_hough(page: pymupdf.Page, hough_params: dict) -> ArrayLike:
     return [line_from_array(line, scale_ratio) for line in lines]
 
 
-def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]:
+def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> tuple[list[Line], list[Line]]:
     """Extract lines from a pdf page.
 
     Args:
@@ -110,7 +110,8 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
         line_detection_params (dict): The parameters for line detection.
 
     Returns:
-        list[Line]: The detected lines as a list.
+        tuple[list[Line], list[Line]]: A tuple containing the filtered lines meeting length/horizontal criteria
+            and all merged lines.
     """
     lines = detect_lines_lsd(
         page,
@@ -136,7 +137,20 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> list[Line]
     min_line_length = merging_params["min_line_length"] * scaling_factor
     horizontal_slope_tolerance = merging_params["horizontal_slope_tolerance"]
     merged = merge_parallel_lines_quadtree(lines, tol=tol, angle_threshold=angle_tol)
-    merged = [
+    filtered = [
         line for line in merged if line.length >= min_line_length or line.is_horizontal(horizontal_slope_tolerance)
     ]
-    return merged
+    return filtered, merged
+
+
+def find_diags_ending_in_zone(lines: list[Line], line_search_zone: pymupdf.Rect) -> list[Line]:
+    """Find diagonal lines ending in a given zone (note: the end of the line is always on the right).
+
+    Args:
+        lines (list[Line]): The lines to search in.
+        line_search_zone (pymupdf.Rect): The zone to search for line endings in.
+
+    Returns:
+        list[Line]: The lines ending in the given zone.
+    """
+    return [g_line for g_line in lines if line_search_zone.contains(g_line.end.tuple)]

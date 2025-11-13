@@ -15,32 +15,22 @@ from utils.dynamic_matching import IntervalToLinesDP
 
 
 @pytest.fixture
-def a_above_b_sidebar():
-    """Create a fixture for testing with three depth column entries.
-
-    Returns:
-        AAboveBSidebar: A sidebar with three depth entries positioned at
-            y-coordinates 0-10, 20-30, and 40-50, all with x-coordinates 0-30.
-    """
+def a_above_b_sidebar() -> AAboveBSidebar:
+    """Fixture: sidebar with three depth entries at y 0-10, 20-30, 40-50 (x 0-30)."""
     x0 = 0.0
     x1 = 30.0
     return AAboveBSidebar(
         [
             DepthColumnEntry(0.0, pymupdf.Rect(x0, 0, x1, 10), 0.0),
-            DepthColumnEntry(0.0, pymupdf.Rect(x0, 20, x1, 30), 0.0),
-            DepthColumnEntry(0.0, pymupdf.Rect(x0, 40, x1, 50), 0.0),
+            DepthColumnEntry(1.0, pymupdf.Rect(x0, 20, x1, 30), 0.0),
+            DepthColumnEntry(2.0, pymupdf.Rect(x0, 40, x1, 50), 0.0),
         ]
     )
 
 
 @pytest.fixture
-def lines():
-    """Create a fixture with three text lines for testing.
-
-    Returns:
-        list[TextLine]: Three text lines positioned at y-coordinates 11-14,
-            15-19, and 31-39, all with x-coordinates 40-60.
-    """
+def lines() -> list[TextLine]:
+    """Fixture: three text lines at y 11-14, 15-19, 31-39 (x 40-60)."""
     x0 = 40
     x1 = 60
     return [
@@ -58,20 +48,14 @@ def lines():
     ],
 )
 def test_dp_manual(a_above_b_sidebar, lines, affinity, expected_mapping):
-    """Test dynamic programming matching with manual affinity scores.
-
-    Args:
-        a_above_b_sidebar: Fixture containing three depth intervals.
-        lines: Fixture containing three text lines.
-        affinity: List of affinity scores between intervals and lines.
-        expected_mapping: Expected grouping of lines to intervals.
+    """Test DP matching with manual affinity scores.
 
     Tests two scenarios:
         1. Standard mapping where first two lines map to first interval
         2. Modified mapping when middle line has negative affinity with the one above.
     """
     zones = a_above_b_sidebar.get_interval_zone()
-    dp = IntervalToLinesDP(zones, lines, affinity)  # first 0.0 default
+    dp = IntervalToLinesDP(zones, lines, affinity)
     _, mapping = dp.solve(a_above_b_sidebar.dp_scoring_fn)
 
     assert mapping == [(zones[zone_idx], [lines[i] for i in line_idxs]) for zone_idx, line_idxs in expected_mapping]

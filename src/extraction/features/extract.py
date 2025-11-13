@@ -34,6 +34,7 @@ from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.util import x_overlap, x_overlap_significant_smallest
 from swissgeol_doc_processing.text.find_description import get_description_lines
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
+from swissgeol_doc_processing.geometry.line_detection import find_diags_ending_in_zone
 from swissgeol_doc_processing.text.textblock import (
     MaterialDescription,
     MaterialDescriptionLine,
@@ -57,7 +58,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
     def __init__(
         self,
         lines: list[TextLine],
-        geometric_lines: list[Line],
+        long_or_horizontal_lines: list[Line],
+        all_geometric_lines: list[Line],
         table_structures: list[TableStructure],
         strip_logs: list[StripLog],
         language: str,
@@ -72,7 +74,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         Args:
             lines (list[TextLine]): all the text lines on the page.
-            geometric_lines (list[Line]): The geometric lines of the page.
+            long_or_horizontal_lines (list[Line]): Geometric lines (only the significant ones and the horizontals).
+            all_geometric_lines (list[Line]): All the geometric lines of the page (small ones included).
             table_structures (list[TableStructure]): The identified table structures of the page.
             strip_logs (list[StripLog]): The identified strip logs of the page.
             language (str): The language of the page.
@@ -84,7 +87,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
             **matching_params (dict): Additional parameters for the matching pipeline.
         """
         self.lines = lines
-        self.geometric_lines = geometric_lines
+        self.long_or_horizontal_lines = long_or_horizontal_lines
+        self.all_geometric_lines = all_geometric_lines
         self.table_structures = table_structures
         self.strip_logs = strip_logs  # added for future usage
         self.language = language
@@ -223,9 +227,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
         return bbox1.intersects(bbox2)
 
     def _create_borehole_from_pair(self, pair: MaterialDescriptionRectWithSidebar) -> ExtractedBorehole:
+        """Create an ExtractedBorehole from a MaterialDescriptionRectWithSidebar."""
         bounding_boxes = PageBoundingBoxes.from_material_description_rect_with_sidebar(pair, self.page_number)
 
-        # this must not be flattened anymore, i.e. we keep the /per borehole separation
         interval_block_pairs = self._get_interval_block_pairs(pair)
 
         borehole_layers = [
@@ -259,16 +263,19 @@ class MaterialDescriptionRectWithSidebarExtractor:
             list[IntervalBlockPair]: The interval block pairs.
         """
         description_lines = get_description_lines(self.lines, pair.material_description_rect)
+        diagonals = self.get_diagonals_near_textlines(description_lines, self.line_detection_params)
+
         line_affinities = get_line_affinity(
             description_lines,
             pair.material_description_rect,
-            self.geometric_lines,
+            self.all_geometric_lines,
             self.line_detection_params,
+            diagonals,
             block_line_ratio=self.matching_params["block_line_ratio"],
             left_line_length_threshold=self.matching_params["left_line_length_threshold"],
         )
         return (
-            match_lines_to_interval(pair.sidebar, description_lines, line_affinities)
+            match_lines_to_interval(pair.sidebar, description_lines, line_affinities, diagonals)
             if pair.sidebar
             else get_pairs_based_on_line_affinity(description_lines, line_affinities)
         )
@@ -549,10 +556,59 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         return matched_pairs
 
+    def get_diagonals_near_textlines(self, description_lines: list[TextLine], line_detection_params: dict) -> list[Line]:
+        """Retrieves the diagonal lines that are near description lines.
+
+        Those diagonal lines indicate that the textline should be matched to an interval higher or below, and not the
+        one directly in front of it.
+
+        Args:
+            description_lines (list[TextLine]): The description lines.
+
+        Returns:
+            list[Line]: The diagonal connectors.
+        """
+        x0s = [line.rect.x0 for line in description_lines]
+        min_x0, max_x0 = min(x0s), max(x0s)
+        text_heights = [line.rect.height for line in description_lines]
+        min_text_height, max_text_height = min(text_heights), max(text_heights)
+        min_y0 = min([line.rect.y0 for line in description_lines])
+        max_y1 = max([line.rect.y1 for line in description_lines])
+
+        # Zone where we will look for diagonal line ends, between the strip logs and material descriptions.
+        search_zone = pymupdf.Rect(min_x0 - max_text_height, min_y0, max_x0 + max_text_height / 3, max_y1)
+        if self.strip_logs:
+            # shrink left boundary to right edge of the strip
+            search_zone.x0 = max(search_zone.x0, max([sl.bbox.x1 for sl in self.strip_logs]))
+
+        # Detect and filter potential diagonals
+        diagonals = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
+        diagonals = self._filter_diagonals(diagonals, description_lines, min_text_height / 2, max_text_height * 3, line_detection_params)
+        return diagonals
+
+    @staticmethod
+    def _filter_diagonals(
+        g_lines: list[Line], description_lines: list[TextLine], min_vertical_dist: float, max_horizontal_dist: float, line_detection_params: dict
+    ) -> list[Line]:
+        """Filters the diagonal lines identified."""
+        angle_threshold = line_detection_params["diagonals_params"]["angle_threshold"]
+        return [
+            g_line
+            for g_line in g_lines
+            if not (
+                any(line.rect.contains(g_line.start.tuple) for line in description_lines)
+                and any(line.rect.contains(g_line.end.tuple) for line in description_lines)
+            )  # lines on text are letters that have segments identified (like W)
+            and not g_line.is_vertical(angle_threshold)  # too many other lines are vertical
+            and min_vertical_dist < abs(g_line.end.y - g_line.start.y)  # near horizontals are likely noise
+            and 0 < g_line.end.x - g_line.start.x < max_horizontal_dist  # lines too long are likely other parasites
+        ]
+
 
 def extract_page(
     text_lines: list[TextLine],
-    geometric_lines: list[Line],
+    long_or_horizontal_lines: list[Line],
+    all_geometric_lines: list[Line],
     table_structures: list[TableStructure],
     strip_logs: list[StripLog],
     language: str,
@@ -568,7 +624,8 @@ def extract_page(
 
     Args:
         text_lines (list[TextLine]): All text lines on the page.
-        geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
+        long_or_horizontal_lines (list[Line]): Geometric lines (only the significant ones and the horizontals).
+        all_geometric_lines (list[Line]): All geometric lines (including the shorter ones).
         table_structures (list[TableStructure]): The identified table structures.
         strip_logs (list[StripLog]): The identified strip log structures.
         language (str): Language of the page (used in parsing).
@@ -589,7 +646,8 @@ def extract_page(
     # Extract boreholes
     return MaterialDescriptionRectWithSidebarExtractor(
         text_lines,
-        geometric_lines,
+        long_or_horizontal_lines,
+        all_geometric_lines,
         table_structures,
         strip_logs,
         language,
@@ -603,7 +661,10 @@ def extract_page(
 
 
 def match_lines_to_interval(
-    sidebar: Sidebar, description_lines: list[TextLine], affinities: list[Affinity]
+    sidebar: Sidebar,
+    description_lines: list[TextLine],
+    affinities: list[Affinity],
+    diagonals: list[Line],
 ) -> list[IntervalBlockPair]:
     """Match the description lines to the pair intervals.
 
@@ -611,17 +672,25 @@ def match_lines_to_interval(
         sidebar (Sidebar): The sidebar.
         description_lines (list[TextLine]): The description lines.
         affinities (list[Affinity]): the affinity between each line pair, previously computed.
+        diagonals (list[Line]): The diagonal lines linking text lines to intervals.
 
     Returns:
         list[IntervalBlockPair]: The matched depth intervals and text blocks.
     """
+    # shift the entries of the sidebar using the diagonals, only relevant for AAboveBSidebars
+    if sidebar.kind == "a_above_b":
+        sidebar.compute_entries_shift(diagonals)
+        sidebar.prevent_shifts_crossing()
+
     depth_interval_zones = sidebar.get_interval_zone()
+
     # affinities can differ depending on sidebar type
     affinity_scores = sidebar.dp_weighted_affinities(affinities)
     dp = IntervalToLinesDP(depth_interval_zones, description_lines, affinity_scores)
+
     _, mapping = dp.solve(sidebar.dp_scoring_fn)
 
-    return sidebar.post_processing(mapping)  # different post processing is needed depending on sidebar type
+    return sidebar.post_processing(mapping)
 
 
 def get_pairs_based_on_line_affinity(
@@ -645,7 +714,7 @@ def get_pairs_based_on_line_affinity(
     threshold = -0.99 if sum(affinity.long_lines_affinity for affinity in affinities) <= -3.0 else 0.0
     for line_idx, affinity in enumerate(affinities):
         # note: the affinity of the first line is always 0.0
-        if affinity.weighted_affinity(1.0, 1.0, 1.0, 1.0, 0.2) < threshold:
+        if affinity.weighted_affinity(1.0, 1.0, 1.0, 1.0, 1.0, 0.2) < threshold:
             pairs.append(IntervalBlockPair(None, TextBlock(description_lines[prev_block_idx:line_idx])))
             prev_block_idx = line_idx
 
