@@ -5,7 +5,7 @@ import logging
 import pymupdf
 import rtree
 
-from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
+from extraction.features.stratigraphy.interval.interval import IntervalBlockPair
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
     Layer,
@@ -229,13 +229,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             list[IntervalBlockPair]: The interval block pairs.
         """
         description_lines = get_description_lines(self.lines, pair.material_description_rect)
-        index_to_diagonal = self.get_textline_index_near_diagonals(description_lines)
-        vertical_adjustements = self.get_textline_vertical_adjustements(description_lines, index_to_diagonal)
-
-        diagonals = []
-        for diag in index_to_diagonal.values():
-            if diag not in diagonals:
-                diagonals.append(diag)
+        diagonals = self.get_diagonals_near_textlines(description_lines)
 
         line_affinities = get_line_affinity(
             description_lines,
@@ -246,7 +240,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             left_line_length_threshold=self.params["left_line_length_threshold"],
         )
         return (
-            match_lines_to_interval(pair.sidebar, description_lines, line_affinities, vertical_adjustements)
+            match_lines_to_interval(pair.sidebar, description_lines, line_affinities, diagonals)
             if pair.sidebar
             else get_pairs_based_on_line_affinity(description_lines, line_affinities)
         )
@@ -527,8 +521,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         return matched_pairs
 
-    def get_textline_index_near_diagonals(self, description_lines: list[TextLine]) -> dict[int, Line]:
-        """Retrieves the indices of the textlines that are near a diagonal line.
+    def get_diagonals_near_textlines(self, description_lines: list[TextLine]) -> list[Line]:
+        """Retrieves the diagonal lines that are near description lines.
 
         Those diagonal lines indicate that the textline should be matched to an interval higher or below, and not the
         one directly in front of it.
@@ -537,7 +531,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             description_lines (list[TextLine]): The description lines.
 
         Returns:
-            dict[int, Line]: The indices of the textlines that have a diagonal lines nearby.
+            list[Line]: The diagonal connectors.
         """
         x0s = [line.rect.x0 for line in description_lines]
         min_x0, max_x0 = min(x0s), max(x0s)
@@ -550,30 +544,12 @@ class MaterialDescriptionRectWithSidebarExtractor:
         search_zone = pymupdf.Rect(min_x0 - max_text_height, min_y0, max_x0 + max_text_height / 3, max_y1)
         if self.strip_logs:
             # shrink left boundary to right edge of the strip
-            search_zone.x0 = max(search_zone.x0, max([sl.bounding_rect.x1 for sl in self.strip_logs]))
+            search_zone.x0 = max(search_zone.x0, max([sl.bbox.x1 for sl in self.strip_logs]))
 
         # Detect and filter potential diagonals
-        filtered_g_lines = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
-        filtered_g_lines = self._filter_diagonals(
-            filtered_g_lines, description_lines, min_text_height / 2, max_text_height * 3
-        )
-
-        index_to_diagonal = {}
-        for line_index, text_line in enumerate(description_lines):
-            x0, y0, _, y1 = text_line.rect
-            text_line_height = text_line.rect.height
-            line_search_zone = pymupdf.Rect(
-                x0 - text_line_height,
-                y0 - 0.5 * text_line_height,
-                x0 + text_line_height / 3,
-                y1 + 0.5 * text_line_height,
-            )
-            candidates = find_diags_ending_in_zone(filtered_g_lines, line_search_zone)
-            longest = max(candidates, key=lambda g_line: g_line.length) if candidates else None
-            if longest:
-                index_to_diagonal[line_index] = longest
-
-        return index_to_diagonal
+        diagonals = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
+        diagonals = self._filter_diagonals(diagonals, description_lines, min_text_height / 2, max_text_height * 3)
+        return diagonals
 
     @staticmethod
     def _filter_diagonals(
@@ -589,49 +565,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 and any(line.rect.contains(g_line.end.tuple) for line in description_lines)
             )  # lines on text are letters that have segments identified (like W)
             and not g_line.is_vertical(angle_threshold)  # too many other lines are vertical
-            and abs(g_line.start.y - g_line.end.y) > min_vertical_dist  # near horizontals are likely noise
+            and min_vertical_dist < abs(g_line.end.y - g_line.start.y)  # near horizontals are likely noise
             and 0 < g_line.end.x - g_line.start.x < max_horizontal_dist  # lines too long are likely other parasites
         ]
-
-    def get_textline_vertical_adjustements(
-        self, description_lines: list[TextLine], index_to_diagonal: dict[int, Line]
-    ) -> dict[TextLine, float]:
-        """Get the vertical adjustements for each textline based on the diagonals extracted.
-
-        Even for textlines not directly next to a diagonal line, we propagate the adjustement to lines below as they
-            are likely to be affected as well.
-
-        A positive shift of +x indicates that the textline is perceived lower on the page than it should be, and
-        thus should be matched with an interval higher on the page.
-
-        Args:
-            description_lines (list[TextLine]): The description lines.
-            index_to_diagonal (dict[int, Line]): The indices of the textlines that have a diagonal near them.
-
-        Returns:
-            dict[TextLine, float]: The vertical adjustements for each textline.
-        """
-        if not index_to_diagonal:
-            return {line: 0.0 for line in description_lines}
-
-        MAX_LINE_AFFECTED = diagonals_params["max_line_affected"]
-
-        indices = sorted(index_to_diagonal.keys())
-        adjustements = {}
-        line_slack_counter = 0
-        prev_v_shift = 0.0
-        for line_index, text_line in enumerate(description_lines):
-            if line_index in indices:
-                diagonal = index_to_diagonal[line_index]
-                prev_v_shift = float(diagonal.end.y - diagonal.start.y)
-                line_slack_counter = 0
-            else:
-                line_slack_counter += 1
-            if line_slack_counter > MAX_LINE_AFFECTED:
-                prev_v_shift = 0.0
-            adjustements[text_line] = prev_v_shift
-
-        return adjustements
 
 
 def extract_page(
@@ -690,7 +626,7 @@ def match_lines_to_interval(
     sidebar: Sidebar,
     description_lines: list[TextLine],
     affinities: list[Affinity],
-    vertical_adjustements: dict[TextLine, float],
+    diagonals: list[Line],
 ) -> list[IntervalBlockPair]:
     """Match the description lines to the pair intervals.
 
@@ -698,28 +634,25 @@ def match_lines_to_interval(
         sidebar (Sidebar): The sidebar.
         description_lines (list[TextLine]): The description lines.
         affinities (list[Affinity]): the affinity between each line pair, previously computed.
-        vertical_adjustements (dict[TextLine, float]): The vertical adjustments for each text line.
+        diagonals (list[Line]): The diagonal lines linking text lines to intervals.
 
     Returns:
         list[IntervalBlockPair]: The matched depth intervals and text blocks.
     """
+    # shift the entries of the sidebar using the diagonals, only relevant for AAboveBSidebars
+    if sidebar.kind == "a_above_b":
+        sidebar.compute_entries_shift(diagonals)
+        sidebar.prevent_shifts_crossing()
+
     depth_interval_zones = sidebar.get_interval_zone()
+
     # affinities can differ depending on sidebar type
     affinity_scores = sidebar.dp_weighted_affinities(affinities)
     dp = IntervalToLinesDP(depth_interval_zones, description_lines, affinity_scores)
 
-    def scoring_fn(zone: IntervalZone, text_line: TextLine) -> float:
-        if sidebar.kind == "a_above_b":
-            v_shift = vertical_adjustements[text_line]
-            adjusted_line = text_line.get_copy_shifted_vertically(-v_shift)  # -v_shift from interval perspective
-        else:
-            adjusted_line = text_line
+    _, mapping = dp.solve(sidebar.dp_scoring_fn)
 
-        return sidebar.dp_scoring_fn(zone, adjusted_line)
-
-    _, mapping = dp.solve(scoring_fn)
-
-    return sidebar.post_processing(mapping)  # different post processing is needed depending on sidebar type
+    return sidebar.post_processing(mapping)
 
 
 def get_pairs_based_on_line_affinity(
@@ -739,10 +672,11 @@ def get_pairs_based_on_line_affinity(
     """
     pairs = []
     prev_block_idx = 0
-    # reintroduce the heuristic that the presence of >=3 horiz. lines should tighten the vertical spacing constrain
+    # The presence of >=3 horiz. lines should tighten the vertical spacing constrain
     threshold = -0.99 if sum(affinity.long_lines_affinity for affinity in affinities) <= -3.0 else 0.0
     for line_idx, affinity in enumerate(affinities):
-        if affinity.total_affinity() < threshold:  # note: the affinity of the first line is always 0.0
+        # note: the affinity of the first line is always 0.0
+        if affinity.weighted_affinity(1.0, 1.0, 1.0, 1.0, 1.0, 0.2) < threshold:
             pairs.append(IntervalBlockPair(None, TextBlock(description_lines[prev_block_idx:line_idx])))
             prev_block_idx = line_idx
 

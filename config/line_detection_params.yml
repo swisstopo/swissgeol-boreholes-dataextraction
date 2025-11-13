@@ -18,16 +18,6 @@ hough:
   theta_deg: 3  # Angular resolution in the accumulator space in  degree
   threshold: 2000  # Minimum number of votes to consider a line
 
-# Parameters for circle detection using HoughCircles
-hough_circles:
-  dp: 2  # Inverse ratio of accumulator resolution to the image resolution
-  min_dist: 3  # Minimum distance between circle centers
-  param1: 30  # Upper threshold for the internal Canny edge detector
-  param2: 25  # Accumulator threshold for center detection
-  min_radius: 1  # Minimum circle radius
-  max_radius: 8  # Maximum circle radius
-  text_proximity_threshold: 2.0  # Minimum distance from text lines to avoid filtering circles (in pixels)
-
 pdf_scale_factor: 2
 
 line_merging_params:
@@ -39,4 +29,3 @@ line_merging_params:
 
 diagonals_params:
   angle_threshold: 5
-  max_line_affected: 2
