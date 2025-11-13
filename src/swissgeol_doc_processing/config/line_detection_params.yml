@@ -1,4 +1,5 @@
-# All parameters used for the line detection pipeline
+# Default parameters used for the line detection pipeline, used as part of the swissgeol_doc_processing package
+# These paramaters should be changed only if we want to impact the functionality of the package globally.
 
 # LSD line detection parameters
 lsd:

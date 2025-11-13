@@ -1,4 +1,5 @@
-# All parameters used for table and striplog detection
+# Default parameters used for table and striplog detection, used as part of the swissgeol_doc_processing package.
+# These paramaters should be changed only if we want to impact the functionality of the package globally.
 
 # Table detection parameters
 tables:
