@@ -1,8 +1,14 @@
 """This module contains functionalities for language detection of a document."""
 
 import pymupdf
+
 from langdetect import DetectorFactory, detect
 from langdetect.lang_detect_exception import LangDetectException
+
+# TODO Uncomment for fast
+# from fast_langdetect import LangDetectConfig, LangDetector
+# config = LangDetectConfig(max_input_length=1000)
+# detector = LangDetector(config)
 
 
 def extract_text_from_document(doc: pymupdf.Document) -> str:
@@ -53,6 +59,9 @@ def detect_language_of_text(text: str, default_language: str, supported_language
     DetectorFactory.seed = seed
     try:
         language = detect(text)
+
+        # TODO Uncomment for fast
+        # language = detector.detect(text, model="lite")[0].get("lang", None)
     except LangDetectException:
         language = default_language
 
