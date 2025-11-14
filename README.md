@@ -152,6 +152,17 @@ The script will source all PDFs from the specified directory and create PNG file
 
 Use `boreholes-extract-all --help` to see all options for the extraction script.
 
+To apply custom settings, generate a local copy of the configuration files using the package helper. Any values you change locally will override the package defaults.
+
+```python
+from swissgeol_doc_processing.utils.file_utils import expose_configs
+
+# Create a local "config/" folder populated with the default settings
+expose_configs()
+```
+
+This will create a `config/` directory at the root of your project containing all configuration files that can be safely edited.
+
 ### 4. Check the results
 
 The script produces output in two different formats:

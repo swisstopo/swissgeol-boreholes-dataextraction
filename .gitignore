@@ -6,6 +6,7 @@ data-legacy/
 /mlruns
 /mlartifacts
 /models/
+config/
 
 # Ignore local VSCode launch config
 .vscode/launch.json

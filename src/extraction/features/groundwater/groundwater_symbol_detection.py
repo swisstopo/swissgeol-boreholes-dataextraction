@@ -16,7 +16,8 @@ from swissgeol_doc_processing.utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
 
-merging_params = read_params("line_detection_params.yml")["line_merging_params"]
+config_path = "config"
+merging_params = read_params("line_detection_params.yml", config_path)["line_merging_params"]
 
 
 def get_text_lines_near_symbol(
