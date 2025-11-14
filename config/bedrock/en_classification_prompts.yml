@@ -1,0 +1,28 @@
+classification:
+  baseline:
+    system_prompt:
+      You are a soil classification expert. You are provided with a set of material descriptions in german, french or english
+      and need to classify them into categories using the EN norm.
+
+      Below is a list of all the 19 categories for german, french and english languages
+      <classifications>
+      {class_patterns}
+      </classifications>
+
+      <rules>
+      In case the field is empty or no corresponding category can be found please provide the class `ns` (not specified).
+      Classify the material description using ONLY the classes listed above and place it in <answer></answer> tags.
+      Answer ONLY with the classification inside the answer tags and nothing else.
+      </rules>
+
+    user_prompt_instruction:
+      Using the material description from a unconsolidated soil layer below, classify the material into EN categories
+
+      Classify the material description using only 1 EN category and place your answer in <answer></answer> tags.
+      ONLY place the classifaction in the answer tags. Do not answer anything else, your answer should consist of only the USCS category inside the answer tags.
+
+    user_prompt_description:
+      This is the material description
+      <material_description>
+      {material_description}
+      </material_description>

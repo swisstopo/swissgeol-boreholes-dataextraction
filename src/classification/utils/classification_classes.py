@@ -47,8 +47,11 @@ class ClassificationSystem(ABC):
 
     @classmethod
     def get_class_from_entry(cls, entry: dict, keys: list[str]) -> str:
-        """Returns the class of the classification system used from a possibily nested entry."""
-        return cls.get_class_from_entry(entry=entry.get(keys[0]), keys=keys[1:]) if keys else entry
+        """Returns the class of the classification system used from a possibily nested entry.
+
+        If the one of the entry is missing from the nested structure, returns None.
+        """
+        return cls.get_class_from_entry(entry=entry.get(keys[0]), keys=keys[1:]) if keys and entry else entry
 
     @classmethod
     @abstractmethod
@@ -413,16 +416,16 @@ class ExistingClassificationSystems(Enum):
 
     uscs = USCSSystem
     lithology = LithologySystem
-    unconsolidated = ENSystem
+    en = ENSystem
 
     @classmethod
     def get_classification_system_type(
-        cls, class_system: Literal["uscs", "lithology", "unconsolidated"]
+        cls, class_system: Literal["uscs", "lithology", "en"]
     ) -> type[ClassificationSystem]:
         """Returns the class of a classification system based on input string.
 
         Args:
-            class_system (Literal["uscs", "lithology", "unconsolidated"]): The name of the classification system.
+            class_system (Literal["uscs", "lithology", "en"]): The name of the classification system.
 
         Returns:
             Type[ClassificationSystem]: The associated ClassificationSystem class.

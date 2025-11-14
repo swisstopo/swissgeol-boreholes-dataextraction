@@ -9,8 +9,8 @@ baseline:
 bert:
   uscs: bert/bert_config_uscs.yml
   lithology: bert/bert_config_lithology.yml
-  EN: bert/bert_config_unconsolidated.yml
+  EN: bert/bert_config_en.yml
 bedrock:
   uscs: bedrock/bedrock_config_uscs.yml
   lithology: bedrock/bedrock_config_lithology.yml
-  EN: null
+  EN: bedrock/bedrock_config_en.yml

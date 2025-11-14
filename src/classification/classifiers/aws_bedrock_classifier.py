@@ -108,7 +108,7 @@ class AWSBedrockClassifier(Classifier):
                 "anthropic_version": anthropic_version,
                 "max_tokens": max_tokens,
                 "temperature": temperature,
-                "system": [{"type": "text", "text": system_message, "cache_control": {"type": "ephemeral"}}],
+                "system": [{"type": "text", "text": system_message}],
                 "messages": [
                     {
                         "role": "user",
@@ -116,7 +116,6 @@ class AWSBedrockClassifier(Classifier):
                             {
                                 "type": "text",
                                 "text": user_message_instructions,
-                                "cache_control": {"type": "ephemeral"},
                             },
                             {"type": "text", "text": user_message_description},
                         ],
