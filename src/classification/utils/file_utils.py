@@ -1,5 +1,6 @@
 """File utilities for classification project."""
 
+from importlib import resources
 from pathlib import Path
 
 import yaml
@@ -18,27 +19,26 @@ def find_project_root() -> Path:
             return parent
 
 
-def read_classification_params(config_filename: str) -> dict:
-    """Read parameters from a yaml file.
+def read_classification_params(config_filename: str, user_config_path: Path = None) -> dict:
+    """Read parameters from config file.
+
+    First tries user_config_path, then falls back to package defaults.
 
     Args:
-        config_filename (str): Name of the params yaml file.
-
-    Returns:
-        dict: Parameters as a dictionary.
+        config_filename (str): Name of the config yaml file.
+        user_config_path (Path, optional): Path to user-provided config file. Defaults to None.
     """
-    config_path = find_project_root() / "config" / config_filename
+    # Try user-provided config first
+    if user_config_path:
+        config_path = find_project_root() / user_config_path / config_filename
 
-    if not config_path.exists():
-        raise FileNotFoundError(f"Provided parameter file not found: {config_path}")
+        if config_path.exists():
+            with open(config_path) as f:
+                return yaml.safe_load(f)
 
-    if not config_path.is_file():
-        raise ValueError(f"Provided path does not point to a file: {config_path}")
-
+    # Fall back to package defaults
     try:
-        with open(config_path) as f:
-            params = yaml.safe_load(f)
-
-        return params
-    except yaml.YAMLError as e:
-        raise yaml.YAMLError(f"Invalid YAML format in {config_path}: {str(e)}") from e
+        config_data = resources.files("swissgeol_doc_processing").joinpath(f"config/{config_filename}").read_text()
+        return yaml.safe_load(config_data)
+    except Exception as e:
+        raise FileNotFoundError(f"Config {config_filename} not found") from e
