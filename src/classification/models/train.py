@@ -209,7 +209,7 @@ def setup_data(bert_model: BertModel, model_config: dict) -> tuple[datasets.Data
     Returns:
         tuple[datasets.Dataset, datasets.Dataset]: the training arguments.
     """
-    if model_config["classification_system"] == "uscs":
+    if model_config["classification_system"] in ["uscs", "unconsolidated"]:
         # the data is not stored the same way for uscs and lithology. Currently the reports names enumerated in the
         # json file only locally exists for uscs.
         # Once all of the files are available, we will be able to use the code without the need for this

@@ -41,9 +41,14 @@ class ClassificationSystem(ABC):
 
     @classmethod
     @abstractmethod
-    def get_layer_ground_truth_key(cls) -> str:
-        """Return the key in the layer dictionary that retrieves the ground truth class string."""
+    def get_layer_ground_truth_keys(cls) -> list[str]:
+        """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
         ...
+
+    @classmethod
+    def get_class_from_entry(cls, entry: dict, keys: list[str]) -> str:
+        """Returns the class of the classification system used from a possibily nested entry."""
+        return cls.get_class_from_entry(entry=entry.get(keys[0]), keys=keys[1:]) if keys else entry
 
     @classmethod
     @abstractmethod
@@ -76,7 +81,9 @@ class ClassificationSystem(ABC):
         for class_ in classes_enum:
             if normalized_str == class_.name.lower():
                 return class_
-        logger.warning(f"{class_str} does not have a matching class, mapping it to {classes_enum.kA.name} instead.")
+        logger.warning(
+            f"{class_str} does not have a matching class, mapping it to {cls.get_default_class_value().name} instead."
+        )
         return cls.get_default_class_value()
 
 
@@ -111,9 +118,9 @@ class USCSSystem(ClassificationSystem):
         return "uscs"
 
     @classmethod
-    def get_layer_ground_truth_key(cls) -> str:
-        """Return the key in the layer dictionary that retrieves the ground truth class string."""
-        return "uscs_1"
+    def get_layer_ground_truth_keys(cls) -> list[str]:
+        """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
+        return ["uscs_1"]
 
     @classmethod
     def get_default_class_value(cls) -> USCSClasses:
@@ -175,6 +182,82 @@ class USCSSystem(ClassificationSystem):
         MH = auto()
 
 
+class ENSystem(ClassificationSystem):
+    """Implementation of a classification type based on the EN norm.
+
+    This class implements the methods defined in `ClassificationType` for the EN classification system,
+    which is commonly used to classify unconsolidated soils.
+    """
+
+    @classmethod
+    def normalize_class_string(cls, class_str: str) -> str:
+        """Normalize a EN class string.
+
+        Args:
+            class_str (str): The class string to be normalized (e.g. "Or").
+
+        Returns:
+            str: The normalized USCS class string (e.g., "or").
+
+        """
+        return class_str.lower()
+
+    @classmethod
+    def get_enum(cls) -> type[ENClasses]:
+        """Return the ENClasses Enum."""
+        return cls.ENClasses
+
+    @classmethod
+    def get_name(cls) -> str:
+        """Return the name of the system used as a string."""
+        return "EN"
+
+    @classmethod
+    def get_layer_ground_truth_keys(cls) -> list[str]:
+        """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
+        return ["unconsolidated", "main"]
+
+    @classmethod
+    def get_default_class_value(cls) -> ENClasses:
+        """Return the default value for the enum class."""
+        return cls.ENClasses.ns  # not specified
+
+    @classmethod
+    def get_dummy_classifier_class_value(cls) -> ENClasses:
+        """Return the default value lbo for the dummy classifier."""
+        return cls.ENClasses.lbo
+
+    class ENClasses(IntEnum):
+        """Classes following the EN norm.
+
+        Note:
+            By default, auto() assigns integer values starting from 1. In Python, especially in machine learning, it is
+            common to start class labels from 0. The Trainer used when training the BERT model expects labels starting
+            at 0, so using 0-based indexing avoids the need to address the issue later and prevents potential bugs.
+        """
+
+        lbo = 0  # coarse blocky / with large blocks
+        bo = auto()  # blocky / with blocks
+        co = auto()  # stony / with stones
+        gr = auto()  # gravelly
+        fgr = auto()  # fine gravelly
+        fmgr = auto()  # fine to medium gravelly
+        mgr = auto()  # medium gravelly
+        mcgr = auto()  # medium to coarse gravelly
+        cgr = auto()  # coarse gravelly
+        sa = auto()  # sandy
+        fsa = auto()  # fine sandy
+        fmsa = auto()  # fine to medium sandy
+        msa = auto()  # medium sandy
+        mcsa = auto()  # medium to coarse sandy
+        csa = auto()  # coarse sandy
+        si = auto()  # silty
+        cl = auto()  # clayey
+        or_ = auto()  # with organic inclusion
+        oth = auto()  # other
+        ns = auto()  # not specified
+
+
 class LithologySystem(ClassificationSystem):
     """Implementation of a classification type based on the Lithology classification system.
 
@@ -206,9 +289,9 @@ class LithologySystem(ClassificationSystem):
         return "lithology"
 
     @classmethod
-    def get_layer_ground_truth_key(cls) -> str:
-        """Return the key in the layer dictionary that retrieves the ground truth class string."""
-        return "lithology"
+    def get_layer_ground_truth_keys(cls) -> list[str]:
+        """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
+        return ["lithology"]
 
     @classmethod
     def get_default_class_value(cls) -> LithologyClasses:
@@ -330,13 +413,16 @@ class ExistingClassificationSystems(Enum):
 
     uscs = USCSSystem
     lithology = LithologySystem
+    unconsolidated = ENSystem
 
     @classmethod
-    def get_classification_system_type(cls, class_system: Literal["uscs", "lithology"]) -> type[ClassificationSystem]:
+    def get_classification_system_type(
+        cls, class_system: Literal["uscs", "lithology", "unconsolidated"]
+    ) -> type[ClassificationSystem]:
         """Returns the class of a classification system based on input string.
 
         Args:
-            class_system (Literal["uscs", "lithology"]): The name of the classification system.
+            class_system (Literal["uscs", "lithology", "unconsolidated"]): The name of the classification system.
 
         Returns:
             Type[ClassificationSystem]: The associated ClassificationSystem class.

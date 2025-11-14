@@ -1,12 +1,16 @@
 dummy:
   uscs: null
   lithology: null
+  EN: null
 baseline:
   uscs: baseline/baseline_config_uscs.yml
   lithology: baseline/baseline_config_lithology.yml
+  EN: null
 bert:
   uscs: bert/bert_config_uscs.yml
   lithology: bert/bert_config_lithology.yml
+  EN: bert/bert_config_unconsolidated.yml
 bedrock:
   uscs: bedrock/bedrock_config_uscs.yml
   lithology: bedrock/bedrock_config_lithology.yml
+  EN: null
