@@ -1,3 +1,5 @@
+# Default parameters used for affinity and description matching, used as part of the swissgeol_doc_processing package.
+# These paramaters should be changed only if we want to impact the functionality of the package globally.
 
 block_line_ratio: 0.20
 min_block_clearance: 10

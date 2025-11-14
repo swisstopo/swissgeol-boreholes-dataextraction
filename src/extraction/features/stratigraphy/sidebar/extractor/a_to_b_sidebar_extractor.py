@@ -2,7 +2,7 @@
 
 import re
 
-from extraction.features.utils.text.textline import TextWord
+from swissgeol_doc_processing.text.textline import TextWord
 
 from ...base.sidebar_entry import DepthColumnEntry
 from ...interval.depth_column_entry_extractor import DepthColumnEntryExtractor

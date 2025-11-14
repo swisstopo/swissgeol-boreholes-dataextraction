@@ -20,7 +20,7 @@ from skimage.measure import label, regionprops
 from skimage.morphology import remove_small_objects
 from sklearn.cluster import DBSCAN
 
-from extraction.features.utils.text.textline import TextLine
+from swissgeol_doc_processing.text.textline import TextLine
 
 logger = logging.getLogger(__name__)
 
@@ -634,6 +634,5 @@ def detect_strip_logs(
         for bbox, confidence, is_text in zip(section_bboxes, confidences, is_texts, strict=True)
         if not is_text
     ]
-
     # Vertical merging, then filter by minimum section count.
     return _merge_sections(section_candidates, structures_bbox, merge_params)

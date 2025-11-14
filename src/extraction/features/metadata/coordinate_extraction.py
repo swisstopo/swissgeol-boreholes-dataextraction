@@ -8,13 +8,13 @@ from dataclasses import dataclass
 import pymupdf
 import regex
 
-from extraction.features.utils.data_extractor import (
+from swissgeol_doc_processing.text.extract_text import extract_text_lines
+from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.utils.data_extractor import (
     DataExtractor,
     ExtractedFeature,
     FeatureOnPage,
 )
-from extraction.features.utils.text.extract_text import extract_text_lines
-from extraction.features.utils.text.textline import TextLine
 
 logger = logging.getLogger(__name__)
 

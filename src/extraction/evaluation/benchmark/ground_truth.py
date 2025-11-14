@@ -5,7 +5,7 @@ import logging
 from collections import defaultdict
 from pathlib import Path
 
-from utils.file_utils import parse_text
+from swissgeol_doc_processing.utils.file_utils import parse_text
 
 logger = logging.getLogger(__name__)
 

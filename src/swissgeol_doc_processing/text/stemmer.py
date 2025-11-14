@@ -3,7 +3,7 @@
 from compound_split import char_split
 from nltk.stem.snowball import SnowballStemmer
 
-from extraction.features.utils.text.matching_params_analytics import MatchingParamsAnalytics, track_match
+from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics, track_match
 
 _LANGUAGE_MAPPING = {
     "de": "german",

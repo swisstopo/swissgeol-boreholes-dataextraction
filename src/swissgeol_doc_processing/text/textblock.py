@@ -7,13 +7,12 @@ from typing import Self
 
 import pymupdf
 
-from extraction.features.utils.data_extractor import (
+from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
+from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.utils.data_extractor import (
     ExtractedFeature,
     FeatureOnPage,
 )
-from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
-
-from .textline import TextLine
 
 
 @dataclass

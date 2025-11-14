@@ -7,12 +7,8 @@ from dataclasses import dataclass
 import numpy as np
 import pymupdf
 
-from extraction.features.utils.geometry.geometry_dataclasses import Line
-from utils.file_utils import read_params
-
-from .textline import TextLine
-
-merging_params = read_params("line_detection_params.yml")["line_merging_params"]
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
+from swissgeol_doc_processing.text.textline import TextLine
 
 
 @dataclass
@@ -94,6 +90,7 @@ class LineAffinityCalculator:
         left_line_length_threshold: float,
         material_description_rect: pymupdf.Rect,
         geometric_lines: list[Line],
+        line_detection_params: dict,
         description_lines: list[TextLine],
         diagonals: list[TextLine],
     ):
@@ -105,6 +102,7 @@ class LineAffinityCalculator:
                 split it.
             material_description_rect (pymupdf.Rect): The bounding box for all material descriptions.
             geometric_lines (list[Line]): The geometric lines detected in the pdf page.
+            line_detection_params (dict): The parameters for line detection.
             description_lines (list[TextLine]): The list of description lines
             diagonals (list[Line]): The list of diagonal textline-to-interval connections detected on the page.
         """
@@ -112,7 +110,7 @@ class LineAffinityCalculator:
         self.left_line_length_threshold = left_line_length_threshold
 
         self.material_description_rect = material_description_rect
-        horizontal_slope_tolerance = merging_params["horizontal_slope_tolerance"]
+        horizontal_slope_tolerance = line_detection_params["line_merging_params"]["horizontal_slope_tolerance"]
         horizontal_lines = [line for line in geometric_lines if line.is_horizontal(horizontal_slope_tolerance)]
 
         # spanning horizontals
@@ -361,6 +359,7 @@ def get_line_affinity(
     description_lines: list[TextLine],
     material_description_rect: pymupdf.Rect,
     geometric_lines: list[Line],
+    line_detection_params: dict,
     diagonals: list[Line],
     block_line_ratio: float,
     left_line_length_threshold: float,
@@ -371,6 +370,8 @@ def get_line_affinity(
         description_lines (list[TextLine]): The list of description lines
         material_description_rect (pymupdf.Rect): The bounding box for all material descriptions.
         geometric_lines (list[Line]): The geometric lines detected in the pdf page.
+        line_detection_params (dict): The parameters for line detection.
+        description_lines (list[TextLine]): The list of description lines.
         diagonals (list[Line]): The list of diagonal textline-to-interval connections detected on the page.
         block_line_ratio (float): Percentage of the block width that needs to be covered by a line.
         left_line_length_threshold (int): The minimum length of a line segment on the left side of a block to split it.
@@ -383,6 +384,7 @@ def get_line_affinity(
         left_line_length_threshold,
         material_description_rect,
         geometric_lines,
+        line_detection_params,
         description_lines,
         diagonals,
     )

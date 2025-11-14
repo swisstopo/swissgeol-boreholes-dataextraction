@@ -1,4 +1,5 @@
-# --- Striplog detection configuration ---------------------------------------
+# Default parameters used for striplog detection, used as part of the swissgeol_doc_processing package.
+# These paramaters should be changed only if we want to impact the functionality of the package globally.
 
 dpi: 144    # DPI for locating striplog/table
 

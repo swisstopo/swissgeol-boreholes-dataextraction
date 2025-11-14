@@ -1,4 +1,5 @@
-# All parameters used for the borehole name detection pipeline
+# Default parameters used for the borehole name detection pipeline, used as part of the swissgeol_doc_processing package.
+# These paramaters should be changed only if we want to impact the functionality of the package globally.
 
 # Overlap threshold for closest next line detection.
 min_vertical_overlap: 0.9

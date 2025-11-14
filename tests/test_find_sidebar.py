@@ -11,7 +11,7 @@ from extraction.features.stratigraphy.sidebar.extractor.a_above_b_sidebar_extrac
 from extraction.features.stratigraphy.sidebar.extractor.a_to_b_sidebar_extractor import (
     AToBSidebarExtractor,
 )
-from extraction.features.utils.text.textline import TextWord
+from swissgeol_doc_processing.text.textline import TextWord
 
 PAGE_NUMBER = 1
 

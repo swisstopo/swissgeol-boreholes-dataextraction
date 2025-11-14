@@ -13,8 +13,8 @@ from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
-from extraction.features.utils.strip_log_detection import StripLog
-from extraction.features.utils.table_detection import TableStructure
+from swissgeol_doc_processing.utils.strip_log_detection import StripLog
+from swissgeol_doc_processing.utils.table_detection import TableStructure
 
 load_dotenv()
 

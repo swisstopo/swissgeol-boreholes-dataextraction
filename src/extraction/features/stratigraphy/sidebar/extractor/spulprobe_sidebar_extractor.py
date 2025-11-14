@@ -7,8 +7,8 @@ import pymupdf
 from extraction.features.stratigraphy.base.sidebar_entry import SpulprobeEntry
 from extraction.features.stratigraphy.sidebar.classes.spulprobe_sidebar import SpulprobeSidebar
 from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
-from extraction.features.utils.geometry.util import compute_outer_rect, y_overlap_significant_smallest
-from extraction.features.utils.text.textline import TextLine
+from swissgeol_doc_processing.geometry.util import compute_outer_rect, y_overlap_significant_smallest
+from swissgeol_doc_processing.text.textline import TextLine
 
 
 class SpulprobeSidebarExtractor:

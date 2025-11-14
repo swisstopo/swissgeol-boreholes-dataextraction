@@ -2,7 +2,7 @@
 
 import pytest
 
-from extraction.features.utils.geometry.geometry_dataclasses import Line, Point
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
 
 
 def test_distance_to():  # noqa: D103

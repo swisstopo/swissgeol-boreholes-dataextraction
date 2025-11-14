@@ -9,18 +9,19 @@ from typing import ClassVar, Generic, TypeVar
 import pymupdf
 import rtree
 
-from extraction.features.utils.geometry.util import x_overlap_significant_smallest
-from extraction.features.utils.text.textblock import TextBlock
-from extraction.features.utils.text.textline import TextLine
-from extraction.features.utils.text.textline_affinity import Affinity
-from utils.file_utils import read_params
+from swissgeol_doc_processing.geometry.util import x_overlap_significant_smallest
+from swissgeol_doc_processing.text.textblock import TextBlock
+from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.text.textline_affinity import Affinity
+from swissgeol_doc_processing.utils.file_utils import read_params
 
 from ...base.sidebar_entry import SidebarEntry
 from ...interval.interval import IntervalBlockPair, IntervalZone
 
 EntryT = TypeVar("EntryT", bound=SidebarEntry)
 
-matching_params = read_params("matching_params.yml")
+config_path = "config"
+matching_params = read_params("matching_params.yml", config_path)
 
 
 @dataclass

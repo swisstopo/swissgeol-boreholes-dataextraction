@@ -9,19 +9,15 @@ import pymupdf
 from dotenv import load_dotenv
 from numpy.typing import ArrayLike
 
-from extraction.features.utils.geometry.geometric_line_utilities import merge_parallel_lines_quadtree
-from utils.file_utils import read_params
-
-from .geometry_dataclasses import Line
-from .util import line_from_array
+from swissgeol_doc_processing.geometry.geometric_line_utilities import merge_parallel_lines_quadtree
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
+from swissgeol_doc_processing.geometry.util import line_from_array
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
-
-line_detection_params = read_params("line_detection_params.yml")
 
 
 def detect_lines_lsd(page: pymupdf.Page, scale_factor=2, lsd_params=None) -> ArrayLike:
@@ -111,7 +107,7 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> tuple[list
 
     Args:
         page (pymupdf.Page): The page to extract lines from.
-        line_detection_params (dict): The parameters for the line detection algorithm.
+        line_detection_params (dict): The parameters for line detection.
 
     Returns:
         tuple[list[Line], list[Line]]: A tuple containing the filtered lines meeting length/horizontal criteria

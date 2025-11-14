@@ -4,7 +4,7 @@ import uuid
 
 import quads
 
-from .geometry_dataclasses import Line, Point
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
 
 
 class LinesQuadTree:

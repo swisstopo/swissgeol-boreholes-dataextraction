@@ -5,7 +5,7 @@ from collections import OrderedDict, defaultdict
 from collections.abc import Callable
 from typing import TypeVar
 
-from utils.file_utils import read_params
+from swissgeol_doc_processing.utils.file_utils import read_params
 
 L = TypeVar("L")
 R = TypeVar("R")

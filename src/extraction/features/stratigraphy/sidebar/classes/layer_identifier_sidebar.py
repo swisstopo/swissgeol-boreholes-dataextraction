@@ -6,9 +6,9 @@ from typing import ClassVar
 
 import numpy as np
 
-from extraction.features.utils.geometry.util import y_overlap_significant_smallest
-from extraction.features.utils.text.textblock import TextBlock
-from extraction.features.utils.text.textline import TextLine
+from swissgeol_doc_processing.geometry.util import y_overlap_significant_smallest
+from swissgeol_doc_processing.text.textblock import TextBlock
+from swissgeol_doc_processing.text.textline import TextLine
 
 from ...base.sidebar_entry import LayerIdentifierEntry
 from ...interval.a_to_b_interval_extractor import AToBIntervalExtractor

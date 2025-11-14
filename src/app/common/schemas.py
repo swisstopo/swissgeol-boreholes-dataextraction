@@ -16,7 +16,7 @@ import pymupdf
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepthsEntry
-from extraction.features.utils.text.textblock import MaterialDescription
+from swissgeol_doc_processing.text.textblock import MaterialDescription
 
 
 def validate_filename(value: str) -> str:

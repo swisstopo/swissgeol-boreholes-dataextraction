@@ -4,8 +4,8 @@ import pymupdf
 import pytest
 
 from extraction.features.groundwater.groundwater_symbol_detection import is_valid_pair
-from extraction.features.utils.geometry.geometry_dataclasses import Line, Point
-from extraction.features.utils.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
+from swissgeol_doc_processing.text.textline import TextLine, TextWord
 
 
 @pytest.mark.parametrize(

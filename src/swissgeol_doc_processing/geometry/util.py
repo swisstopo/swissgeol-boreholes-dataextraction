@@ -5,7 +5,7 @@ from collections.abc import Callable
 import pymupdf
 from numpy.typing import ArrayLike
 
-from .geometry_dataclasses import Line, Point
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
 
 
 def axis_overlap(rect1: pymupdf.Rect, rect2: pymupdf.Rect, axis: str) -> float:

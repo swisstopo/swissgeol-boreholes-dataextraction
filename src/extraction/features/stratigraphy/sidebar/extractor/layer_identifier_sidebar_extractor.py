@@ -2,7 +2,7 @@
 
 import re
 
-from extraction.features.utils.text.textline import TextLine
+from swissgeol_doc_processing.text.textline import TextLine
 
 from ...base.sidebar_entry import LayerIdentifierEntry
 from ..classes.layer_identifier_sidebar import LayerIdentifierSidebar

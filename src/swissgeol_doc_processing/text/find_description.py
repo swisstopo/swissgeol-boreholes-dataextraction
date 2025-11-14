@@ -2,11 +2,7 @@
 
 import pymupdf
 
-from utils.file_utils import read_params
-
-from .textline import TextLine
-
-merging_params = read_params("line_detection_params.yml")["line_merging_params"]
+from swissgeol_doc_processing.text.textline import TextLine
 
 
 def get_description_lines(lines: list[TextLine], material_description_rect: pymupdf.Rect) -> list[TextLine]:
