@@ -7,7 +7,7 @@ from os import listdir
 from os.path import isfile, join
 from pathlib import Path
 
-from classification.utils.file_utils import read_classification_params
+from swissgeol_doc_processing.utils.file_utils import read_classification_params
 from swissgeol_doc_processing.utils.language_detection import detect_language_of_text
 
 logger = logging.getLogger(__name__)
