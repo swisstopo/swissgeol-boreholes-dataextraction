@@ -12,7 +12,7 @@ from extraction.features.stratigraphy.layer.continuation_detection import merge_
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
-from swissgeol_doc_processing.utils.file_utils import read_swissgeol_params
+from swissgeol_doc_processing.utils.file_utils import read_params
 from swissgeol_doc_processing.utils.language_detection import detect_language_of_document
 from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
 from swissgeol_doc_processing.utils.table_detection import (
@@ -20,10 +20,10 @@ from swissgeol_doc_processing.utils.table_detection import (
 )
 
 config_path = "config"
-matching_params = read_swissgeol_params("matching_params.yml", config_path)
-line_detection_params = read_swissgeol_params("line_detection_params.yml", config_path)
-table_detection_params = read_swissgeol_params("table_detection_params.yml", config_path)
-striplog_detection_params = read_swissgeol_params("striplog_detection_params.yml", config_path)
+matching_params = read_params("matching_params.yml", config_path)
+line_detection_params = read_params("line_detection_params.yml", config_path)
+table_detection_params = read_params("table_detection_params.yml", config_path)
+striplog_detection_params = read_params("striplog_detection_params.yml", config_path)
 
 
 def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:

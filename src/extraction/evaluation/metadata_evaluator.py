@@ -11,11 +11,11 @@ from extraction.evaluation.utility import evaluate_single
 from extraction.features.metadata.borehole_name_extraction import BoreholeName
 from extraction.features.metadata.coordinate_extraction import Coordinate
 from extraction.features.predictions.borehole_predictions import FileMetadataWithGroundTruth
-from swissgeol_doc_processing.utils.file_utils import read_swissgeol_params
+from swissgeol_doc_processing.utils.file_utils import read_params
 from swissgeol_doc_processing.utils.language_filtering import normalize_spaces, remove_any_keyword
 
 config_path = "config"
-name_detection_params = read_swissgeol_params("name_detection_params.yml", config_path)
+name_detection_params = read_params("name_detection_params.yml", config_path)
 
 
 class MetadataEvaluator:

@@ -23,11 +23,11 @@ from extraction.features.metadata.coordinate_extraction import (
 )
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.textline import TextLine
-from swissgeol_doc_processing.utils.file_utils import read_swissgeol_params
+from swissgeol_doc_processing.utils.file_utils import read_params
 from swissgeol_doc_processing.utils.language_detection import detect_language_of_text
 
 config_path = "config"
-matching_params = read_swissgeol_params("matching_params.yml", config_path)
+matching_params = read_params("matching_params.yml", config_path)
 
 
 def extract_data(extract_data_request: ExtractDataRequest) -> ExtractDataResponse:

@@ -32,7 +32,7 @@ from extraction.features.stratigraphy.layer.layer import (
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
-from swissgeol_doc_processing.utils.file_utils import read_swissgeol_params
+from swissgeol_doc_processing.utils.file_utils import read_params
 
 
 @pytest.fixture
@@ -295,7 +295,7 @@ def test_evaluate_single(value, ground_truth, expected):
 
 
 config_path = "config"
-matching_params = read_swissgeol_params("matching_params.yml", config_path)
+matching_params = read_params("matching_params.yml", config_path)
 
 
 def test_merge_boreholes():

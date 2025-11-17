@@ -20,7 +20,7 @@ from classification.evaluation.evaluate import AllClassificationMetrics, per_cla
 from classification.models.model import BertModel
 from classification.utils.classification_classes import ExistingClassificationSystems
 from classification.utils.data_loader import prepare_classification_data
-from swissgeol_doc_processing.utils.file_utils import read_classification_params
+from classification.utils.file_utils import read_params
 
 if __name__ == "__main__":
     # Only configure logging if this script is run directly (e.g. training pipeline entrypoint)
@@ -132,7 +132,7 @@ def common_options(f):
 @common_options
 def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: Path):
     """Train a BERT model using the specified datasets and configurations from the YAML config file."""
-    model_config = read_classification_params(config_file_path)
+    model_config = read_params(config_file_path)
     classification_system = ExistingClassificationSystems.get_classification_system_type(
         model_config["classification_system"].lower()
     )

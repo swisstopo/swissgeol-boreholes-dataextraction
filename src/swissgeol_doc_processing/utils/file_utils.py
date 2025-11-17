@@ -11,12 +11,7 @@ from pathlib import Path
 import yaml
 
 
-def expose_swissgeol_params() -> None:
-    """Copy the swissgeol package's default configuration folder into the project's root-level `config` directory."""
-    _expose_params("swissgeol_doc_processing")
-
-
-def _expose_params(package: str) -> None:
+def expose_params() -> None:
     """Copy the package's default configuration folder into the project's root-level `config` directory.
 
     This function is intended for users who want to customize configuration files locally.
@@ -55,7 +50,7 @@ def _expose_params(package: str) -> None:
     destination_folder.mkdir(parents=True, exist_ok=True)
 
     # Resolve the package config folder
-    source_folder = resources.files(package).joinpath("config")
+    source_folder = resources.files("swissgeol_doc_processing").joinpath("config")
 
     # Perform copy
     shutil.copytree(source_folder, destination_folder, dirs_exist_ok=True)
@@ -85,33 +80,8 @@ def find_project_root() -> Path:
     return current.parents[2]  # Fallback
 
 
-def read_swissgeol_params(config_filename: str, user_config_path: Path = None):
-    """Read swissgeol parameters from config file.
-
-    First tries user_config_path, then falls back to package defaults.
-
-    Args:
-        config_filename (str): Name of the config yaml file.
-        user_config_path (Path, optional): Path to user-provided config file. Defaults to None.
-    """
-    return _read_params(config_filename, "swissgeol_doc_processing", user_config_path)
-
-
-def read_classification_params(config_filename: str, user_config_path: Path = None):
-    """Read classification parameters from config file.
-
-    First tries user_config_path, then falls back to package defaults.
-
-    Args:
-        config_filename (str): Name of the config yaml file.
-        user_config_path (Path, optional): Path to user-provided config file. Defaults to None.
-    """
-    return _read_params(config_filename, "classification", user_config_path)
-
-
-def _read_params(
+def read_params(
     config_filename: str,
-    package: str = None,
     user_config_path: Path = None,
 ) -> dict:
     """Read parameters from config file.
@@ -139,7 +109,6 @@ def _read_params(
 
     Args:
         config_filename (str): Name of the config yaml file.
-        package (str): Package name that contains configuration parameters
         user_config_path (Path, optional): Path to user-provided config file. Defaults to None.
     """
     # Try user-provided config first
@@ -152,7 +121,7 @@ def _read_params(
 
     # Fall back to package defaults
     try:
-        config_data = resources.files(package).joinpath(f"config/{config_filename}").read_text()
+        config_data = resources.files("swissgeol_doc_processing").joinpath(f"config/{config_filename}").read_text()
         return yaml.safe_load(config_data)
     except Exception as e:
         raise FileNotFoundError(f"Config {config_filename} not found") from e

@@ -19,11 +19,11 @@ from classification.utils.data_utils import (
     write_per_language_per_class_predictions,
     write_predictions,
 )
-from swissgeol_doc_processing.utils.file_utils import read_classification_params
+from classification.utils.file_utils import read_params
 
 load_dotenv()
 config_path = "config"
-classification_params = read_classification_params("classification_params.yml", config_path)
+classification_params = read_params("classification_params.yml", config_path)
 
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 if mlflow_tracking:

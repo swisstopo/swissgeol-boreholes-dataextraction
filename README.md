@@ -155,10 +155,10 @@ Use `boreholes-extract-all --help` to see all options for the extraction script.
 To apply custom settings, generate a local copy of the configuration files using the package helper. Any values you change locally will override the package defaults.
 
 ```python
-from swissgeol_doc_processing.utils.file_utils import expose_swissgeol_params
+from swissgeol_doc_processing.utils.file_utils import expose_params
 
 # Create a local "config/" folder populated with the default settings
-expose_swissgeol_params()
+expose_params()
 ```
 
 This will create a `config/` directory at the root of your project containing all configuration files that can be safely edited.
