@@ -17,7 +17,7 @@ baseline:
     csa: "grobsandig"
     si: "siltig"
     cl: "tonig"
-    or: "organische Beimengung"
+    or_: "organische Beimengung"
     oth: "anderer"
     ns: "keine Angabe"
 
@@ -39,7 +39,7 @@ baseline:
     csa: "sableux grossier"
     si: "limoneux"
     cl: "argileux"
-    or: "avec inclusion organique"
+    or_: "avec inclusion organique"
     oth: "autre"
     ns: "sans indication"
 
@@ -61,7 +61,7 @@ baseline:
     csa: "sabbioso grosso"
     si: "limoso"
     cl: "argilloso"
-    or: "con inclusione organica"
+    or_: "con inclusione organica"
     oth: "altro"
     ns: "senza indicazioni"
 
@@ -83,6 +83,6 @@ baseline:
     csa: "coarse sandy"
     si: "silty"
     cl: "clayey"
-    or: "with organic inclusion"
+    or_: "with organic inclusion"
     oth: "other"
     ns: "not specified"

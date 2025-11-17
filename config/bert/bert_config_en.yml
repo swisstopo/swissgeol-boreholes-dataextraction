@@ -10,7 +10,7 @@ eval_subset: "geoquat/validation"
 # Training hyperparameters
 batch_size: 32
 num_epochs: 32
-learning_rate: 3e-3
+learning_rate: 1e-4 # 3e-3 for stage 1, 1e-4 for stage 2
 weight_decay: 0.001
 warmup_ratio: 0.1
 lr_scheduler_type: "cosine_with_restarts"
@@ -19,7 +19,7 @@ max_grad_norm: 5.0
 unfreeze_layers:
   - "classifier"
   - "pooler"
-  # - "layer_11"
+  - "layer_11" # uncomment for stage 2
 use_class_balancing: "false"
 
 # Inference parameters
