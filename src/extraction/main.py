@@ -30,7 +30,7 @@ from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.matching_params_analytics import create_analytics
-from swissgeol_doc_processing.utils.file_utils import flatten, read_params
+from swissgeol_doc_processing.utils.file_utils import flatten, read_swissgeol_params
 from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
 from swissgeol_doc_processing.utils.table_detection import detect_table_structures
 
@@ -45,11 +45,11 @@ logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logg
 logger = logging.getLogger(__name__)
 
 config_path = "config"
-matching_params = read_params("matching_params.yml", config_path)
-line_detection_params = read_params("line_detection_params.yml", config_path)
-name_detection_params = read_params("name_detection_params.yml", config_path)
-table_detection_params = read_params("table_detection_params.yml", config_path)
-striplog_detection_params = read_params("striplog_detection_params.yml", config_path)
+matching_params = read_swissgeol_params("matching_params.yml", config_path)
+line_detection_params = read_swissgeol_params("line_detection_params.yml", config_path)
+name_detection_params = read_swissgeol_params("name_detection_params.yml", config_path)
+table_detection_params = read_swissgeol_params("table_detection_params.yml", config_path)
+striplog_detection_params = read_swissgeol_params("striplog_detection_params.yml", config_path)
 
 
 def common_options(f):

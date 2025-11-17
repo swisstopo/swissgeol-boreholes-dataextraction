@@ -7,10 +7,10 @@ from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.overlap_detection import find_last_duplicate_layer_index
 from swissgeol_doc_processing.text.textblock import MaterialDescription, MaterialDescriptionLine
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
-from swissgeol_doc_processing.utils.file_utils import read_params
+from swissgeol_doc_processing.utils.file_utils import read_swissgeol_params
 
 config_path = "config"
-matching_params = read_params("matching_params.yml", config_path)
+matching_params = read_swissgeol_params("matching_params.yml", config_path)
 
 
 @pytest.fixture

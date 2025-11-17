@@ -13,7 +13,7 @@ from swissgeol_doc_processing.geometry.util import x_overlap_significant_smalles
 from swissgeol_doc_processing.text.textblock import TextBlock
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.text.textline_affinity import Affinity
-from swissgeol_doc_processing.utils.file_utils import read_params
+from swissgeol_doc_processing.utils.file_utils import read_swissgeol_params
 
 from ...base.sidebar_entry import SidebarEntry
 from ...interval.interval import IntervalBlockPair, IntervalZone
@@ -21,7 +21,7 @@ from ...interval.interval import IntervalBlockPair, IntervalZone
 EntryT = TypeVar("EntryT", bound=SidebarEntry)
 
 config_path = "config"
-matching_params = read_params("matching_params.yml", config_path)
+matching_params = read_swissgeol_params("matching_params.yml", config_path)
 
 
 @dataclass

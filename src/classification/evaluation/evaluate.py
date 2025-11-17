@@ -7,8 +7,8 @@ from dataclasses import dataclass
 
 from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformation
-from classification.utils.file_utils import read_classification_params
 from extraction.evaluation.evaluation_dataclasses import Metrics
+from swissgeol_doc_processing.utils.file_utils import read_classification_params
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ from collections import OrderedDict, defaultdict
 from collections.abc import Callable
 from typing import TypeVar
 
-from swissgeol_doc_processing.utils.file_utils import read_params
+from swissgeol_doc_processing.utils.file_utils import read_swissgeol_params
 
 L = TypeVar("L")
 R = TypeVar("R")
@@ -13,7 +13,7 @@ R = TypeVar("R")
 
 Match = tuple[L, R | list[R]]
 
-matching_params = read_params("matching_params.yml")
+matching_params = read_swissgeol_params("matching_params.yml")
 
 
 class DP(ABC):

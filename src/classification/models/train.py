@@ -20,7 +20,7 @@ from classification.evaluation.evaluate import AllClassificationMetrics, per_cla
 from classification.models.model import BertModel
 from classification.utils.classification_classes import ExistingClassificationSystems
 from classification.utils.data_loader import prepare_classification_data
-from classification.utils.file_utils import read_classification_params
+from swissgeol_doc_processing.utils.file_utils import read_classification_params
 
 if __name__ == "__main__":
     # Only configure logging if this script is run directly (e.g. training pipeline entrypoint)
