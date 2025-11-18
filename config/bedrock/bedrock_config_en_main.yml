@@ -1,10 +1,10 @@
 # Config file for unconsolidated material classification into EN classes
 # Prompt file and version
-prompts_file: bedrock/en_classification_prompts.yml
-prompt_version: v1
+prompts_file: bedrock/en_main_classification_prompts.yml
+prompt_version: baseline
 
 # Pattern file and parameter version
-pattern_file: bedrock/en_classification_patterns_bedrock.yml
+pattern_file: bedrock/en_main_classification_patterns_bedrock.yml
 pattern_version: baseline
 
 # temperature - answer creativity for the LLM model

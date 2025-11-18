@@ -242,7 +242,15 @@ class BedrockRetryInvoker:
         - Cleanly integrates with existing synchronous or async code
     """
 
-    def __init__(self, client: boto3.client, model_id: str, max_retries: int, base_delay: float, max_delay: float):
+    def __init__(
+        self,
+        client: boto3.client,
+        model_id: str,
+        max_retries: int,
+        base_delay: float,
+        max_delay: float,
+        jitter_range: float = 0.2,
+    ):
         """Instantiates the retry-invoker.
 
         Args:
@@ -251,12 +259,14 @@ class BedrockRetryInvoker:
             max_retries (int): Maximum number of retry attempts when throttling occurs.
             base_delay (float): Initial exponential backoff delay in seconds. Increases by *2 every retry.
             max_delay (float): Maximum delay between two request retry.
+            jitter_range (float): Maximum delay of the random jitter added to each retry.
         """
         self.client = client
         self.model_id = model_id
         self.max_retries = max_retries
         self.base_delay = base_delay
         self.max_delay = max_delay
+        self.jitter_range = jitter_range
 
     def invoke(self, body: dict) -> dict:
         """Calls Bedrock's `invoke_model` with retry logic.
@@ -294,7 +304,7 @@ class BedrockRetryInvoker:
                     "InternalFailure",
                 ]:  # Errors to retry recommended by aws
                     # Add random jitter to avoid synchronized retries (thundering herd retry storms)
-                    sleep_time = min(delay, self.max_delay) + random.uniform(0, 0.2)  # capped
+                    sleep_time = min(delay, self.max_delay) + random.uniform(0, self.jitter_range)  # capped
                     time.sleep(sleep_time)
                     delay *= 2  # Exponential backoff
                     continue
