@@ -28,7 +28,6 @@ dependencies = [
     "scikit-image==0.25.2",
     "click==8.2.1",
     "PyYAML==6.0.2",
-    "langdetect==1.0.9",
     "regex==2025.7.34",
     "backoff==2.2.1",
     "PyMuPDF==1.26.3",
