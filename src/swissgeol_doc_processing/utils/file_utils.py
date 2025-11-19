@@ -11,7 +11,7 @@ from pathlib import Path
 import yaml
 
 
-def expose_params() -> None:
+def expose_configs() -> None:
     """Copy the package's default configuration folder into the project's root-level `config` directory.
 
     This function is intended for users who want to customize configuration files locally.
@@ -82,14 +82,13 @@ def find_project_root() -> Path:
 
 def read_params(
     config_filename: str,
-    user_config_path: Path = None,
 ) -> dict:
     """Read parameters from config file.
 
-    First tries user_config_path.
+    First tries config.
 
     ```
-    user_config_path
+    config
     ├── xxx_params.yml
     ├── yyy_params.yml
     ├── ...
@@ -109,15 +108,13 @@ def read_params(
 
     Args:
         config_filename (str): Name of the config yaml file.
-        user_config_path (Path, optional): Path to user-provided config file. Defaults to None.
     """
     # Try user-provided config first
-    if user_config_path:
-        config_path = find_project_root() / user_config_path / config_filename
+    config_path = find_project_root() / "config" / config_filename
 
-        if config_path.exists():
-            with open(config_path) as f:
-                return yaml.safe_load(f)
+    if config_path.exists():
+        with open(config_path) as f:
+            return yaml.safe_load(f)
 
     # Fall back to package defaults
     try:

@@ -20,8 +20,7 @@ from ...interval.interval import IntervalBlockPair, IntervalZone
 
 EntryT = TypeVar("EntryT", bound=SidebarEntry)
 
-config_path = "config"
-matching_params = read_params("matching_params.yml", config_path)
+matching_params = read_params("matching_params.yml")
 
 
 @dataclass

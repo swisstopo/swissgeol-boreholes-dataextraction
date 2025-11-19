@@ -19,11 +19,10 @@ from swissgeol_doc_processing.utils.table_detection import (
     detect_table_structures,
 )
 
-config_path = "config"
-matching_params = read_params("matching_params.yml", config_path)
-line_detection_params = read_params("line_detection_params.yml", config_path)
-table_detection_params = read_params("table_detection_params.yml", config_path)
-striplog_detection_params = read_params("striplog_detection_params.yml", config_path)
+matching_params = read_params("matching_params.yml")
+line_detection_params = read_params("line_detection_params.yml")
+table_detection_params = read_params("table_detection_params.yml")
+striplog_detection_params = read_params("striplog_detection_params.yml")
 
 
 def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:

@@ -15,8 +15,7 @@ from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformation
 from classification.utils.file_utils import read_params
 
-config_path = "config"
-classification_params = read_params("classification_params.yml", config_path)
+classification_params = read_params("classification_params.yml")
 
 logger = logging.getLogger(__name__)
 

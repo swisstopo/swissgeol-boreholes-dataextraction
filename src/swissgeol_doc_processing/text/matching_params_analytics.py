@@ -66,18 +66,13 @@ class MatchingParamsAnalytics:
             json.dump(analytics_data, f, indent=2, ensure_ascii=False)
 
 
-def create_analytics(config_path: str = None) -> MatchingParamsAnalytics | None:
+def create_analytics() -> MatchingParamsAnalytics | None:
     """Create analytics instance if parameters provided.
-
-    Args:
-        config_path: Path to user-provided config file. Defaults to None.
 
     Returns:
         Analytics instance or None if disabled
     """
-    material_description_params = read_params("matching_params.yml", user_config_path=config_path)[
-        "material_description"
-    ]
+    material_description_params = read_params("matching_params.yml")["material_description"]
     return MatchingParamsAnalytics(material_description_params) if material_description_params else None
 
 

@@ -12,8 +12,7 @@ from swissgeol_doc_processing.utils.language_detection import detect_language_of
 
 logger = logging.getLogger(__name__)
 
-config_path = "config"
-classification_params = read_params("classification_params.yml", config_path)
+classification_params = read_params("classification_params.yml")
 
 
 def format_ground_truth_file(ground_truth: dict, file_subset_directory: Path | None) -> dict:

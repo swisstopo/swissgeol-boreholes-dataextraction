@@ -44,12 +44,11 @@ if mlflow_tracking:
 logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
 
-config_path = "config"
-matching_params = read_params("matching_params.yml", config_path)
-line_detection_params = read_params("line_detection_params.yml", config_path)
-name_detection_params = read_params("name_detection_params.yml", config_path)
-table_detection_params = read_params("table_detection_params.yml", config_path)
-striplog_detection_params = read_params("striplog_detection_params.yml", config_path)
+matching_params = read_params("matching_params.yml")
+line_detection_params = read_params("line_detection_params.yml")
+name_detection_params = read_params("name_detection_params.yml")
+table_detection_params = read_params("table_detection_params.yml")
+striplog_detection_params = read_params("striplog_detection_params.yml")
 
 
 def common_options(f):
@@ -262,7 +261,7 @@ def start_pipeline(
         part (str, optional): The part of the pipeline to run. Defaults to "all".
     """  # noqa: D301
     # Initialize analytics if enabled
-    analytics = create_analytics(config_path) if matching_analytics else None
+    analytics = create_analytics() if matching_analytics else None
 
     if mlflow_tracking:
         setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
