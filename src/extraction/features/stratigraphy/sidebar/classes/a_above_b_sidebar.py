@@ -11,8 +11,8 @@ from typing import ClassVar
 import numpy as np
 
 from extraction.features.stratigraphy.interval.interval import AAboveBInterval, IntervalZone
-from extraction.features.utils.geometry.geometry_dataclasses import Line
-from extraction.features.utils.text.textline import TextLine
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
+from swissgeol_doc_processing.text.textline import TextLine
 
 from ...base.sidebar_entry import DepthColumnEntry
 from .sidebar import Sidebar

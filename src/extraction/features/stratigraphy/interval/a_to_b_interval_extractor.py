@@ -4,8 +4,8 @@ import re
 
 import pymupdf
 
-from extraction.features.utils.text.textline import TextLine
-from utils.file_utils import read_params
+from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.utils.file_utils import read_params
 
 from ..base.sidebar_entry import DepthColumnEntry
 from .interval import AToBInterval

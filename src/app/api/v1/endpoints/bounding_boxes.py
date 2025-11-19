@@ -4,7 +4,7 @@ from pathlib import Path
 
 from app.common.helpers import load_pdf_page, load_png
 from app.common.schemas import BoundingBox, BoundingBoxesResponse
-from extraction.features.utils.text.extract_text import extract_text_lines
+from swissgeol_doc_processing.text.extract_text import extract_text_lines
 
 
 def bounding_boxes(filename: Path, page_number: int) -> BoundingBoxesResponse:

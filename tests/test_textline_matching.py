@@ -2,7 +2,7 @@
 
 import pytest
 
-from extraction.features.utils.text.stemmer import _match_patterns, _split_compounds, find_matching_expressions
+from swissgeol_doc_processing.text.stemmer import _match_patterns, _split_compounds, find_matching_expressions
 
 
 @pytest.mark.parametrize(

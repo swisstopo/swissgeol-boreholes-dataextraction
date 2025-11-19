@@ -1,0 +1,31 @@
+# Default parameters used for table and striplog detection, used as part of the swissgeol_doc_processing package.
+# These paramaters should be changed only if we want to impact the functionality of the package globally.
+
+# Table detection parameters
+tables:
+  # Line length requirements for meaningful table detection
+  min_line_length: 20
+
+  # Angle requirements
+  angle_tolerance: 10
+
+  # Connection threshold for line groups
+  connection_threshold: 8.0
+
+  # Confidence threshold for table detection
+  min_confidence: 0.45
+
+  # Table area score for confidence calculation
+  area_scoring:
+    area_weights: 0.2
+    min_table_area_ratio: 0.4
+
+  # Line score for confidence calculation
+  line_scoring:
+    line_weights: 0.5
+    max_n_lines_bonus: 90
+
+  # Text bonus scoring for confidence calculation
+  text_scoring:
+    text_weights: 0.3
+    text_presence_weight: 0.01

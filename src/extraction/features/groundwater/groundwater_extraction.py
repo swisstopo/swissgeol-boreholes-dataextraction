@@ -14,13 +14,13 @@ from extraction.features.groundwater.groundwater_symbol_detection import (
 )
 from extraction.features.groundwater.utility import extract_date, extract_depth, extract_elevation
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepthsEntry
-from extraction.features.utils.data_extractor import (
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
+from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.utils.data_extractor import (
     DataExtractor,
     ExtractedFeature,
     FeatureOnPage,
 )
-from extraction.features.utils.geometry.geometry_dataclasses import Line
-from extraction.features.utils.text.textline import TextLine
 
 logger = logging.getLogger(__name__)
 

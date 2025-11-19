@@ -10,17 +10,18 @@ from app.common.schemas import (
 from extraction.features.extract import extract_page
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
-from extraction.features.utils.geometry.line_detection import extract_lines
-from extraction.features.utils.strip_log_detection import detect_strip_logs
-from extraction.features.utils.table_detection import (
+from swissgeol_doc_processing.geometry.line_detection import extract_lines
+from swissgeol_doc_processing.text.extract_text import extract_text_lines
+from swissgeol_doc_processing.utils.file_utils import read_params
+from swissgeol_doc_processing.utils.language_detection import detect_language_of_document
+from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
+from swissgeol_doc_processing.utils.table_detection import (
     detect_table_structures,
 )
-from extraction.features.utils.text.extract_text import extract_text_lines
-from utils.file_utils import read_params
-from utils.language_detection import detect_language_of_document
 
 matching_params = read_params("matching_params.yml")
 line_detection_params = read_params("line_detection_params.yml")
+table_detection_params = read_params("table_detection_params.yml")
 striplog_detection_params = read_params("striplog_detection_params.yml")
 
 
@@ -57,7 +58,9 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
         long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
 
         # Detect table structures on the page
-        table_structures = detect_table_structures(page_index, document, long_or_horizontal_lines, text_lines)
+        table_structures = detect_table_structures(
+            page_index, document, long_or_horizontal_lines, text_lines, table_detection_params
+        )
 
         # Detect strip logs on the page
         strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
@@ -72,12 +75,13 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
                 language,
                 page_index,
                 document,
+                line_detection_params,
                 None,
                 **matching_params,
             )
         )
 
-    layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page), filename)
+    layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page, matching_params), filename)
     extracted_stratigraphy = create_response_object(layers_with_bb_in_document, pdf_img_scalings)
 
     return extracted_stratigraphy

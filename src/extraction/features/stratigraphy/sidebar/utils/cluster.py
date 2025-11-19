@@ -7,7 +7,7 @@ from typing import Generic, Self, TypeVar
 
 import pymupdf
 
-from extraction.features.utils.geometry.util import x_overlap_significant_largest
+from swissgeol_doc_processing.geometry.util import x_overlap_significant_largest
 
 EntryT = TypeVar("EntryT")
 
