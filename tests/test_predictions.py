@@ -294,8 +294,7 @@ def test_evaluate_single(value, ground_truth, expected):
     assert (metrics.tp, metrics.fp, metrics.fn) == expected
 
 
-config_path = "config"
-matching_params = read_params("matching_params.yml", config_path)
+matching_params = read_params("matching_params.yml")
 
 
 def test_merge_boreholes():

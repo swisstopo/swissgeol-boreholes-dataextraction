@@ -25,8 +25,7 @@ material_description_rect = pymupdf.Rect(0, 0, 5, 42)
 block_line_ratio = 0.5
 left_line_length_threshold = 3
 
-config_path = "config"
-line_detection_params = read_params("line_detection_params.yml", config_path)
+line_detection_params = read_params("line_detection_params.yml")
 
 
 @pytest.mark.parametrize(
