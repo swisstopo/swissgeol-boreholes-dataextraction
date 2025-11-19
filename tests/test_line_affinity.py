@@ -26,6 +26,7 @@ block_line_ratio = 0.5
 left_line_length_threshold = 3
 
 line_detection_params = read_params("line_detection_params.yml")
+matching_params = read_params("matching_params.yml")
 
 
 @pytest.mark.parametrize(
@@ -55,6 +56,6 @@ def test_get_description_blocks(geometrical_lines, diagonals, expected_num_block
         block_line_ratio,
         left_line_length_threshold,
     )
-    pairs = get_pairs_based_on_line_affinity(description_lines, line_affinities)
+    pairs = get_pairs_based_on_line_affinity(description_lines, line_affinities, matching_params)
 
     assert len(pairs) == expected_num_block

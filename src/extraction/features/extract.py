@@ -277,7 +277,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         return (
             match_lines_to_interval(pair.sidebar, description_lines, line_affinities, diagonals)
             if pair.sidebar
-            else get_pairs_based_on_line_affinity(description_lines, line_affinities)
+            else get_pairs_based_on_line_affinity(description_lines, line_affinities, self.matching_params)
         )
 
     def _find_layer_identifier_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
@@ -581,8 +581,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
         # Zone where we will look for diagonal line ends, between the strip logs and material descriptions.
         search_zone = pymupdf.Rect(min_x0 - max_text_height, min_y0, max_x0 + max_text_height / 3, max_y1)
         if self.strip_logs:
-            # shrink left boundary to right edge of the strip
-            search_zone.x0 = max(search_zone.x0, max([sl.bbox.x1 for sl in self.strip_logs]))
+            left_strip_x1s = [sl.bbox.x1 for sl in self.strip_logs if sl.bbox.x0 < search_zone.x0]
+            if left_strip_x1s:
+                # Shrink left boundary to the rightmost edge of intersecting strips
+                search_zone.x0 = max(search_zone.x0, max(left_strip_x1s))
 
         # Detect and filter potential diagonals
         diagonals = find_diags_ending_in_zone(self.all_geometric_lines, search_zone)
@@ -703,7 +705,7 @@ def match_lines_to_interval(
 
 
 def get_pairs_based_on_line_affinity(
-    description_lines: list[TextLine], affinities: list[Affinity]
+    description_lines: list[TextLine], affinities: list[Affinity], matching_params: dict
 ) -> list[IntervalBlockPair]:
     """Based on the line affinity, group the description lines into blocks.
 
@@ -713,17 +715,19 @@ def get_pairs_based_on_line_affinity(
     Args:
         description_lines (list[TextLine]): The text lines to group into blocks.
         affinities (list[Affinity]): the affinity between each line pair, previously computed.
+        matching_params (dict): the matching parameters.
 
     Returns:
         list[IntervalBlockPair]: A list of objects containing the description lines without any interval.
     """
     pairs = []
     prev_block_idx = 0
+    weights = matching_params["affinity_params"]["no_sidebar"]["weights"]
     # The presence of >=3 horiz. lines should tighten the vertical spacing constrain
     threshold = -0.99 if sum(affinity.long_lines_affinity for affinity in affinities) <= -3.0 else 0.0
     for line_idx, affinity in enumerate(affinities):
         # note: the affinity of the first line is always 0.0
-        if affinity.weighted_affinity(1.0, 1.0, 1.0, 1.0, 1.0, 0.2) < threshold:
+        if affinity.weighted_affinity(**weights) < threshold:
             pairs.append(IntervalBlockPair(None, TextBlock(description_lines[prev_block_idx:line_idx])))
             prev_block_idx = line_idx
 
