@@ -277,7 +277,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         return (
             match_lines_to_interval(pair.sidebar, description_lines, line_affinities, diagonals)
             if pair.sidebar
-            else get_pairs_based_on_line_affinity(description_lines, line_affinities)
+            else get_pairs_based_on_line_affinity(description_lines, line_affinities, self.matching_params)
         )
 
     def _find_layer_identifier_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
@@ -705,7 +705,7 @@ def match_lines_to_interval(
 
 
 def get_pairs_based_on_line_affinity(
-    description_lines: list[TextLine], affinities: list[Affinity]
+    description_lines: list[TextLine], affinities: list[Affinity], matching_params: dict
 ) -> list[IntervalBlockPair]:
     """Based on the line affinity, group the description lines into blocks.
 
@@ -715,13 +715,14 @@ def get_pairs_based_on_line_affinity(
     Args:
         description_lines (list[TextLine]): The text lines to group into blocks.
         affinities (list[Affinity]): the affinity between each line pair, previously computed.
+        matching_params (dict): the matching parameters.
 
     Returns:
         list[IntervalBlockPair]: A list of objects containing the description lines without any interval.
     """
     pairs = []
     prev_block_idx = 0
-    weights = affinity_params["no_sidebar"]["weights"]
+    weights = matching_params["affinity_params"]["no_sidebar"]["weights"]
     # The presence of >=3 horiz. lines should tighten the vertical spacing constrain
     threshold = -0.99 if sum(affinity.long_lines_affinity for affinity in affinities) <= -3.0 else 0.0
     for line_idx, affinity in enumerate(affinities):
