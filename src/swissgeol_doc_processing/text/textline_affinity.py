@@ -142,6 +142,7 @@ class LineAffinityCalculator:
         # diagonals separator
         self.diagonals = diagonals
 
+        # overlap affinity
         self.overlapping_distances = [None] + [
             line.rect.y0 - prev_line.rect.y1
             for prev_line, line in zip(description_lines, description_lines[1:], strict=False)
