@@ -9,8 +9,7 @@ from swissgeol_doc_processing.text.textblock import MaterialDescription, Materia
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 from swissgeol_doc_processing.utils.file_utils import read_params
 
-config_path = "config"
-matching_params = read_params("matching_params.yml", config_path)
+matching_params = read_params("matching_params.yml")
 
 
 @pytest.fixture
