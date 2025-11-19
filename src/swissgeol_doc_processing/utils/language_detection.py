@@ -60,7 +60,6 @@ def detect_language_of_text(text: str, default_language: str, supported_language
         return default_language
 
     # Ensure order and take highest confidence lang
-    languages.sort(key=lambda x: x["score"], reverse=True)
-    language = languages[0].get("lang", None)
+    language = max(languages, key=lambda x: x["score"]).get("lang", None)
 
     return language if language in supported_languages else default_language
