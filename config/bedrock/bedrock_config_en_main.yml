@@ -1,7 +1,7 @@
 # Config file for unconsolidated material classification into EN classes
 # Prompt file and version
 prompts_file: bedrock/en_main_classification_prompts.yml
-prompt_version: baseline
+prompt_version: v5
 
 # Pattern file and parameter version
 pattern_file: bedrock/en_main_classification_patterns_bedrock.yml

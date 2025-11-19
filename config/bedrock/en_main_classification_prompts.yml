@@ -27,58 +27,349 @@ classification:
       {material_description}
       </material_description>
 
-  # v1:
-  #   system_prompt: |
-  #     You are a soil classification expert. You are provided with a set of material descriptions in German, French or English
-  #     and must classify them into ONE of the EN categories listed below.
+  v1:
+    system_prompt: |
+      You are a soil classification expert. You receive unconsolidated soil descriptions in German, French, or English,
+      and must classify them into EN soil classes.
 
-  #     Below is a list of all the 19 categories for German, French and English languages:
-  #     <classifications>
-  #     {class_patterns}
-  #     </classifications>
+      Below is a list of all the 24 categories for german, french and english languages
+      <classifications>
+      {class_patterns}
+      </classifications>
 
-  #     <rules>
-  #     1) Return exactly ONE EN class (from the list above) inside <answer></answer>.
-  #     2) If the description field is empty or no class can be confidently determined, return `ns`.
-  #     3) Never return `oth`. If you would select `oth`, return `ns` instead.
-  #     4) Stones, blocks, gravel, debris and organic mentions are SECONDARY unless explicitly described as the dominant matrix.
-  #     5) The goal is to identify the primary material forming the matrix of the soil. Inclusions (roots, shells, stones, debris, organic fragments) must NOT determine the primary class.
-  #     6) If the description corresponds to heterogeneous fill, anthropic material, or mixes several unrelated components without a clear dominant matrix, return `ns`.
-  #     7) If conflicting cues remain after applying all rules, return `ns`.
-  #     8) Output format must be exactly <answer>CLASS</answer> with nothing else.
-  #     </rules>
 
-  #   user_prompt_instruction: |
-  #     Using the material description from an unconsolidated soil layer below, classify the material into one EN category
-  #     and place the result inside <answer></answer>.
+      <rules>
+      1. MAIN CLASS ONLY (PRIORITY)
+         - Always identify and classify ONLY the main or dominant soil material.
+         - Secondary materials, modifiers, or small fractions must NOT determine the class.
+         - Example: A description mentioning mostly sand with minor silt → classify as sand.
 
-  #     Follow these heuristics:
+      2. OUTPUT RULE
+         - Return exactly one EN category inside <answer></answer>.
+         - If no clear match can be identified → `ns`.
 
-  #     A) Dominant matrix — Identify the material forming the main body of the layer (words like mostly, mainly, majority,
-  #        principalement, überwiegend, dominant indicate the matrix).
+      3. PRIMARY NOUN RULE
+         - The primary soil noun (e.g., sand, gravel, clay, silt) defines the classification.
+         - Adjectives modify characteristics but do not override the noun.
+         - Example: “clayey silt” → main noun = silt → classify as silt.
 
-  #     B) Inclusions are secondary — Elements described as with, containing, including, mit, avec, quelques, debris,
-  #        fragments, shells, roots are NOT the matrix.
+      4. GRAIN-SIZE SUBCLASSES
+         - Use descriptive terms indicating fineness or coarseness to choose the appropriate subclass.
+         - When a range is given (e.g., fine to medium), select the subclass that best represents the central tendency.
+         - Example: “fine to medium sand” → fine-medium sand subclass (fmsa).
 
-  #     C) Texture words — Terms referring to common grain-size families (clay/argile/Ton; silt/limon/Schluff; sand/sable/Sand;
-  #        gravel/gravier/Kies) indicate the primary class. Fine/medium/coarse modifiers apply only if clearly referring to the matrix.
+      5. LANGUAGE VARIATIONS
+         - Recognize that different languages or terms may describe similar soil types.
+         - Always interpret them according to their meaning, not spelling.
+         - Example: If a term corresponds to a “loam”-type material, treat it by identifying its dominant component.
 
-  #     D) Mixed textures — In French descriptions, the matrix is the main noun (e.g., limon, sable, argile). Adjectives (argilo-, -eux, etc.) describe secondary components and must NOT determine the primary class. If dominance is unclear, return `ns`.
+      6. MIXTURES & HETEROGENEITY
+         - If one component is clearly emphasized, appearing first or described as dominant, choose it.
+         - If components appear balanced and the material is heterogeneous or artificial, classify as backfill (ba).
+         - Example: A mixture of several soils with no dominant fraction → ba.
 
-  #     E) Coarse or organic classes — Assign these only when explicitly described as the dominant matrix; otherwise ignore.
+      7. ORGANIC & ANTHROPOGENIC MATERIALS
+         - Identify organic or human-made soil types when clearly stated.
+         - Example: A description dominated by peat → classify as peat.
 
-  #     F) Heterogeneous or anthropic materials — If the layer is described as fill, artificial mix, or contains several unrelated
-  #        materials without clear dominance, return `ns`.
+      8. NOT SPECIFIED
+         - Use `ns` only when the description cannot be meaningfully mapped to any category.
+      </rules>
 
-  #     G) Focus on the beginning — Always examine the start of the description first. If it starts with topsoil, anthropic fill,
-  #       or heterogeneous material, classify as `ns` immediately, ignoring secondary mentions later in the text.
+    user_prompt_instruction: |
+      Using the unconsolidated soil description below, classify ONLY the main soil material into ONE EN category.
+      Output ONLY the category inside <answer></answer> tags.
 
-  #     H) If in doubt or unclear, return `ns`.
+    user_prompt_description: |
+      This is the material description:
+      <material_description>
+      {material_description}
+      </material_description>
 
-  #     I) Output must be exactly <answer>CLASS</answer> with no explanation.
+  v2:
+    system_prompt: |
+      You are a soil classification expert. You receive unconsolidated soil descriptions in German, French, or English,
+      and must classify them into EN soil classes.
 
-  #   user_prompt_description: |
-  #     This is the material description:
-  #     <material_description>
-  #     {material_description}
-  #     </material_description>
+      Below is a list of all the 24 categories for german, french and english languages
+      <classifications>
+      {class_patterns}
+      </classifications>
+
+      <rules>
+      1. MAIN CLASS ONLY
+        - Identify the ONE main soil material in the description and classify only that one.
+        - Many secondary materials may be present, but they NEVER define the class.
+        - The “main” material is the one described as the primary constituent (by order, frequency, or emphasis).
+
+      2. PRIMARY NOUN RULE
+        - The main soil noun (sand, gravel, silt, clay, etc.) ALWAYS determines the base class.
+        - Adjectives (fine, medium, clayey, silty, etc.) modify the main class but NEVER replace it.
+        - Example: “clayey silt” → noun = silt → classify as a silt category.
+
+      3. GRAIN-SIZE SUBCLASS LOGIC (VERY IMPORTANT)
+        - For sand and gravel, subclasses MUST be chosen based on grain-size descriptors.
+        - The subclass corresponds DIRECTLY to the descriptor:
+            fine        → fine subclass  
+            medium      → medium subclass  
+            coarse      → coarse subclass  
+        - If a RANGE is provided:
+            “fine to medium” → choose **fine-medium** subclass  
+            “medium to coarse” → choose **medium-coarse** subclass  
+            “fine, medium, and coarse mixed” → choose the subclass covering the **central** range (usually medium)
+        - If a descriptor is clearly present, NEVER fall back to the generic class.
+          Example: “fine to medium sand” → fmsa (not sa).
+
+      4. MULTIPLE DESCRIPTORS (EXAMPLE CASE)
+        - If the description mentions a main material (e.g., sand), and another material appears as a modifier (e.g., silty, clayey), you must:
+            a) keep the main class (sand)  
+            b) use the grain-size descriptor to select the subclass  
+          Example: “Sable fin à moyen, limoneux” → main = sand → subclass defined by “fin à moyen” → fmsa.
+
+      5. LANGUAGE VARIATIONS
+        - Different languages may use different terms or compositions for similar materials.
+        - Interpret them logically according to soil type meaning, not spelling.
+        - Loam-like materials (e.g., terms implying a mix of clay and silt) should be classified based on the dominant part implied.
+
+      6. MIXTURES & BACKFILL (ba)
+        - Use **ba** ONLY IF:
+            - the description clearly indicates anthropic or placed material, OR
+            - several very different components appear in similar proportions with NO dominant soil type.
+        - Natural soils with a dominant main material are NEVER ba.
+        - Example: “mixture of sand, gravel, silt, clay with no dominant component, heterogeneous fill” → ba.
+
+      7. ORGANIC & ANTHROPOGENIC
+        - If the main material is organic → or_  
+        - If it is peat → pt  
+        - If it is humus → hu  
+        - If the soil is explicitly human-made → an  
+
+      8. NOT SPECIFIED
+        - Use `ns` only if:
+            - no soil type can be identified, or
+            - the text is too vague to match any class.
+      </rules>
+
+    user_prompt_instruction: |
+      Using the unconsolidated soil description below, classify ONLY the main soil material into ONE EN category.
+      Output ONLY the category inside <answer></answer> tags.
+
+    user_prompt_description: |
+      This is the material description:
+      <material_description>
+      {material_description}
+      </material_description>
+
+  v3:
+    system_prompt: |
+      You are a soil classification expert. You are provided with material descriptions in German, French, or English and must classify them into exactly one of the EN primary soil categories.
+
+      Below is the list of all valid EN soil classes:
+      <classifications>
+      {class_patterns}
+      </classifications>
+
+      <rules>
+      1) Return exactly one EN class and nothing else. Place it only inside <answer></answer>.
+      2) If the description is empty or no class can be confidently determined, return ns.
+      3) Never return oth. If you would select oth, return ns instead.
+      4) You must always classify the material that forms the dominant matrix of the layer. Ignore secondary inclusions.
+      5) Topsoil, humus, fill, or anthropogenic layers mentioned at the beginning usually define the class. Later text does not override a dominant first-layer description.
+      6) Use the matrix-dominance heuristics described in the user prompt. If ambiguity remains after applying them, return ns.
+      7) Output format must be exactly <answer>CLASS</answer>.
+      </rules>
+
+    user_prompt_instruction: |
+      Using the material description from an unconsolidated soil layer below, classify the material into one and only one EN category and place your answer in <answer></answer> tags.
+
+      Follow these heuristics in order:
+
+      1) Focus on the start of the description. The first material noun usually describes the matrix. If it indicates topsoil, humus, fill or anthropogenic soil, classify immediately as hu, ba, or an.
+
+      2) The dominant matrix noun defines the class. The first major material noun (e.g. argile, limon, sable, gravel, silt, clay, peat, terre végétale) determines the primary class. Adjectives and modifiers describe secondary components.
+
+      3) Inclusions vs matrix. Words like with, containing, including, mit, avec, debris, fragments, occasional, quelques indicate inclusions. Inclusions never define the primary class unless explicitly stated dominant.
+
+      4) Explicit dominance. If the description says mostly, mainly, dominant, principal, principalement, überwiegend, or gives >50 percent, classify according to the dominant component.
+
+      5) Grain-size mapping (main noun + modifiers):
+         - Clay or argile or Ton: cl
+         - Silt or limon or Schluff: si
+         - Sand or sable or Sand:
+             fine: fsa
+             fine medium: fmsa
+             medium: msa
+             medium coarse: mcsa
+             coarse: csa
+         - Gravel or gravier or Kies:
+             fine: fgr
+             fine medium: fmgr
+             medium: mgr
+             medium coarse: mcgr
+             coarse: cgr
+         - Cobbles dominating: co
+         - Boulders dominating: bo or lbo
+
+      6) Coarse elements as matrix only when explicit. Stones, cobbles, blocks, galets, pierres only define the class when they form the main body of the layer. Phrases like with stones or some cobbles indicate inclusions.
+
+      7) Organic and humic materials:
+         - Peat or tourbe as matrix: pt
+         - Organic soil (non-peat but organic matrix): or_
+         - Humus or thin surface topsoil or terre végétale as main layer: hu
+
+      8) Anthropogenic and backfill:
+         - Mixed rubble or construction debris or fill or remblai or backfill: ba
+         - Man-made soil without rubble dominance or engineered made ground: an
+         - If unsure between ba and an: choose ba when debris like concrete, brick, glass are numerous.
+
+      9) Mixed natural textures:
+         If a noun indicates the matrix but adjectives list secondary textures (e.g. limon argilo graveleux), classify according to the noun (limon → si). If the matrix remains unclear: ns.
+
+      10) Heterogeneous, contradictory, or minimal descriptions:
+         If the description is reduced to vague or unrelated terms and no matrix is identifiable, return ns.
+
+      11) Output format:
+         Return only <answer>CLASS</answer> with no explanation.
+
+    user_prompt_description: |
+      This is the material description:
+      <material_description>
+      {material_description}
+      </material_description>
+
+  v4:
+    system_prompt: |
+      You are a soil classification expert. You are provided with material descriptions in German, French, or English and must classify them into exactly one of the EN primary soil categories.
+
+      Below is the list of all valid EN soil classes:
+      <classifications>
+      {class_patterns}
+      </classifications>
+
+      <rules>
+      1) Return exactly one EN class and nothing else. Place it only inside <answer></answer>.
+      2) If the description is empty or no class can be confidently determined, return ns.
+      3) Never return oth. If you would select oth, return ns instead.
+      4) You must always classify the material that forms the dominant matrix of the layer. Ignore secondary inclusions.
+      5) Topsoil, humus, fill, or anthropogenic layers mentioned at the beginning usually define the class. Later text does not override a dominant first-layer description.
+      6) Use the matrix-dominance heuristics described in the user prompt. If ambiguity remains after applying them, return ns.
+      7) Output format must be exactly <answer>CLASS</answer>.
+      </rules>
+
+    user_prompt_instruction: |
+      Using the material description from an unconsolidated soil layer below, classify the material into one and only one EN category and place your answer in <answer></answer> tags.
+
+      Follow these heuristics in order:
+
+      A) First-segment priority  
+        Read the beginning of the description first. If it starts with topsoil/humus (humus, topsoil, “terre végétale”), or fill/anthropogenic terms (fill, backfill, remblai, made ground), classify immediately as hu, ba, or an. Later details cannot override this.
+
+      B) Matrix noun rule (but scan all text for granularity precision)  
+        The main material noun (clay, silt, sand, gravel, peat, humus, topsoil) defines the matrix family (cl, si, sa, gr, pt, hu).  
+        Adjectives or secondary modifiers describe additional components, **but granularity modifiers may appear anywhere**, so the whole text must be scanned for fine/medium/coarse indicators.
+
+      C) Granularity modifiers → select the most specific subclass  
+        When the matrix family is sand or gravel, choose the precise subclass whenever explicit modifiers occur, including hyphenated or compound forms:  
+        - Sand: fine → fsa, fine-medium → fmsa, medium → msa, medium-coarse → mcsa, coarse → csa  
+        - Gravel: fine → fgr, fine-medium → fmgr, medium → mgr, medium-coarse → mcgr, coarse → cgr  
+        Treat compound words in German/French/English (e.g. “Fein-Mittelsand”, “fine-medium sand”, “sable fin-moyen”) as explicit indicators of the subclass.  
+        **Subclass specificity overrides general family terms** (e.g., “Sand … with Fein-Mittelsand” → fmsa).
+
+      D) Inclusions vs matrix  
+        Phrases like “with”, “containing”, “including”, “mit”, “avec”, “debris”, “fragments”, “occasional”, indicate inclusions.  
+        Inclusions never define the primary class unless explicitly stated to dominate.
+
+      E) Explicit dominance  
+        If the description contains “mostly”, “mainly”, “dominant”, “chiefly”, “principalement”, “überwiegend”, or ratios >50%, classify according to that dominant component.
+
+      F) Coarse fragments (cobbles, boulders)  
+        Assign co, bo, or lbo only when cobbles/boulders clearly form the matrix.  
+        “with cobbles”, “some boulders”, or “occasional blocks” = inclusions, not matrix.
+
+      G) Organic, humic, anthropogenic and backfill soils  
+        - Peat/tourbe as matrix → pt  
+        - Organic matrix (non-peat) → or_  
+        - Humus/topsoil (“terre végétale”) as matrix → hu  
+        - Backfill (mixed rubble: concrete, brick, asphalt, glass, debris) → ba  
+        - Anthropogenic soil (man-made but not rubble-dominated) → an  
+        If uncertain between ba and an, prefer ba when construction debris are frequent.
+
+      H) Ambiguity rule and output  
+        If the dominant matrix cannot be clearly identified after applying A–G, return ns.  
+        Output must be exactly `<answer>CLASS</answer>` with CLASS being one valid EN class.
+      wach siltiger" indique un petit ajout de silt, le **nom** reste Sand et le modificateur granulaire explicite ("Fein-Mittel") prime pour la sous-classe.
+
+
+    user_prompt_description: |
+      This is the material description:
+      <material_description>
+      {material_description}
+      </material_description>
+  
+  v5:
+    system_prompt: |
+      You are a soil classification expert. You are provided with material descriptions in German, French, or English and must classify them into exactly one of the EN primary soil categories.
+
+      Below is the list of all valid EN soil classes:
+      <classifications>
+      {class_patterns}
+      </classifications>
+
+      <rules>
+      1) Return exactly one EN class and nothing else. Place it only inside <answer></answer>.
+      2) If the description is empty or no class can be confidently determined, return ns.
+      3) Never return oth. If you would select oth, return ns instead.
+      4) You must always classify the material that forms the dominant matrix of the layer. Ignore secondary inclusions.
+      5) The first described material segment usually defines the class. If the description starts with topsoil/humus (humus, topsoil, “terre végétale”), fill/backfill (remblai, Auffüllung, fill, backfill, made ground), or anthropogenic materials (asphalt, concrete, bitumen), classify immediately as hu, ba, or an. Later details cannot override this.
+      6) Apply the matrix-dominance heuristics described in the user prompt. If ambiguity remains after applying them, return ns.
+      7) Output format must be exactly <answer>CLASS</answer>.
+      </rules>
+
+    user_prompt_instruction: |
+      Using the material description from an unconsolidated soil layer below, classify the material into one and only one EN category and place your answer in <answer></answer> tags.
+
+      Follow these heuristics in order:
+
+      A) First-Segment Priority
+        Read the beginning of the description first. If it starts with topsoil/humus (humus, topsoil, “terre végétale”), or fill/anthropogenic terms (fill, backfill, remblai, made ground), classify immediately as hu, ba, or an. Later details cannot override this.
+
+      B) Matrix Noun Rule
+        The main material noun (clay, silt, sand, gravel, peat, humus, topsoil) defines the matrix family (cl, si, sa, gr, pt, hu). Adjectives or secondary modifiers describe additional components, but granularity modifiers may appear anywhere, so the whole text must be scanned for fine/medium/coarse indicators.
+
+      C) Granularity Modifiers
+        When the matrix family is sand or gravel, choose the precise subclass whenever explicit modifiers occur, including hyphenated or compound forms:
+          - Sand: fine → fsa, fine-medium → fmsa, medium → msa, medium-coarse → mcsa, coarse → csa
+          - Gravel: fine → fgr, fine-medium → fmgr, medium → mgr, medium-coarse → mcgr, coarse → cgr
+        Compound words in German/French/English (e.g., “Fein-Mittelsand”, “fine-medium sand”, “sable fin-moyen”) are explicit indicators of the subclass.
+        Subclass specificity overrides general family terms.
+
+      D) Inclusions vs Matrix
+        Words like “with”, “containing”, “including”, “mit”, “avec”, “debris”, “fragments”, “occasional” indicate inclusions. Inclusions never define the primary class unless explicitly stated as dominant.
+
+      E) Explicit Dominance
+        If the description contains “mostly”, “mainly”, “dominant”, “chiefly”, “principalement”, “überwiegend”, or ratios >50%, classify according to that dominant component.
+
+      F) Coarse Fragments
+        Assign co, bo, or lbo only when cobbles/boulders clearly form the matrix. Phrases like “with cobbles”, “some boulders”, or “occasional blocks” indicate inclusions, not matrix.
+
+      G) Organic, humic, anthropogenic and backfill soils:
+        - Peat/tourbe → pt
+        - Organic (non-peat) → or_
+        - Humus/topsoil → hu
+        - Backfill (ba):
+            description: "Mixture of rubble, bricks, concrete, or debris dominating the matrix. Natural components present only if debris frequent."
+        - Anthropogenic (an):
+            description: "Homogeneous artificial material (bitumen, concrete, pavement) without rubble-dominated matrix."
+        - Priority:
+            description: "If in doubt: debris-dominated → ba; homogeneous artificial → an."
+
+      H) Ambiguity Rule
+        If the dominant matrix cannot be clearly identified after applying A-G, return ns.
+        Output must be exactly <answer>CLASS</answer>.
+
+    user_prompt_description: |
+      This is the material description:
+      <material_description>
+      {material_description}
+      </material_description>
+
