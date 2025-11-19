@@ -58,7 +58,6 @@ def test_to_jsonLV03():  # noqa: D103
 
 doc = pymupdf.open(DATAPATH.parent / "example" / "example_borehole_profile.pdf")
 doc_with_digits_in_coordinates = pymupdf.open(DATAPATH.parent / "example" / "A7367.pdf")
-config_path = "config"
 matching_params = read_params("matching_params.yml")
 extractor_de = CoordinateExtractor("de", matching_params)
 extractor_fr = CoordinateExtractor("fr", matching_params)
