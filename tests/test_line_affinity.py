@@ -26,7 +26,7 @@ block_line_ratio = 0.5
 left_line_length_threshold = 3
 
 line_detection_params = read_params("line_detection_params.yml")
-matching_params = read_params("matching_parms.yml")
+matching_params = read_params("matching_params.yml")
 
 
 @pytest.mark.parametrize(
