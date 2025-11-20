@@ -44,11 +44,6 @@ class ClassifierFactory:
         elif classifier_type == ClassifierTypes.BERT:
             return BertClassifier(model_path, classification_system)
         elif classifier_type == ClassifierTypes.BEDROCK:
-            return AWSBedrockClassifier(
-                out_directory_bedrock,
-                classification_system,
-                max_concurrent_calls=10,
-                api_call_delay=0.0,
-            )
+            return AWSBedrockClassifier(out_directory_bedrock, classification_system)
         else:
             raise ValueError(f"Unsupported classifier type: {classifier_type}")
