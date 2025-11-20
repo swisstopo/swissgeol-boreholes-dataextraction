@@ -28,7 +28,6 @@ RUN apt-get update && \
 
 # Copy the rest of the application source code into the container
 COPY ./src /app/src
-COPY ./config /app/config
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
