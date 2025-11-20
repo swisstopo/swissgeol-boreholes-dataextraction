@@ -5,9 +5,9 @@ from dataclasses import dataclass
 
 import pymupdf
 
-from extraction.features.utils.geometry.geometry_dataclasses import BoundingBox
-from extraction.features.utils.text.find_description import get_description_lines
-from extraction.features.utils.text.textline import TextLine
+from swissgeol_doc_processing.geometry.geometry_dataclasses import BoundingBox
+from swissgeol_doc_processing.text.find_description import get_description_lines
+from swissgeol_doc_processing.text.textline import TextLine
 
 from ..sidebar.classes.sidebar import Sidebar
 

@@ -4,7 +4,7 @@ import numpy as np
 
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepths, LayerDepthsEntry
 from extraction.features.stratigraphy.layer.overlap_detection import select_boreholes_with_overlap
-from extraction.features.utils.text.textblock import MaterialDescription
+from swissgeol_doc_processing.text.textblock import MaterialDescription
 
 DEPTHS_QUANTILE_SLACK = 0.1
 
@@ -13,6 +13,7 @@ def _pick_merge_candidates(
     previous_page_boreholes: list[ExtractedBorehole],
     current_page_boreholes: list[ExtractedBorehole],
     page_number: int,
+    matching_params: dict,
 ) -> tuple[ExtractedBorehole | None, list[ExtractedBorehole], ExtractedBorehole | None, list[ExtractedBorehole]]:
     """Select the most likely pair of boreholes to merge between consecutive pages.
 
@@ -23,6 +24,7 @@ def _pick_merge_candidates(
         previous_page_boreholes (list[ExtractedBorehole]): List of boreholes from the previous page.
         current_page_boreholes (list[ExtractedBorehole]): List of boreholes detected on the current page.
         page_number (int): Index of the current page being processed (1-based).
+        matching_params (dict): The parameters for matching boreholes.
 
     Returns:
         tuple[ExtractedBorehole | None, list[ExtractedBorehole], ExtractedBorehole | None, list[ExtractedBorehole]]:
@@ -33,7 +35,7 @@ def _pick_merge_candidates(
     """
     # 1) Overlap-based (returns a triple)
     borehole_to_extend, borehole_continuation, last_duplicated_layer_index = select_boreholes_with_overlap(
-        previous_page_boreholes, current_page_boreholes
+        previous_page_boreholes, current_page_boreholes, matching_params
     )
 
     if borehole_to_extend is None or borehole_continuation is None or last_duplicated_layer_index is None:
@@ -71,7 +73,9 @@ def _pick_merge_candidates(
     )
 
 
-def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[ExtractedBorehole]:
+def merge_boreholes(
+    boreholes_per_page: list[list[ExtractedBorehole]], matching_params: dict
+) -> list[ExtractedBorehole]:
     """Merge boreholes that were extracted from different pages into continuous borehole.
 
     This method will attempt to match the predicted boreholes to the boreholes from previous pages based on their
@@ -79,6 +83,7 @@ def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[E
 
     Args:
         boreholes_per_page (list[list[ExtractedBorehole]]): List containing all boreholes with all layers per page.
+        matching_params (dict): The parameters for matching boreholes.
     """
     finished_boreholes = []
     previous_page_boreholes = []
@@ -92,7 +97,7 @@ def merge_boreholes(boreholes_per_page: list[list[ExtractedBorehole]]) -> list[E
             unaffected_boreholes_previous_page,
             borehole_continuation,
             unaffected_boreholes_current_page,
-        ) = _pick_merge_candidates(previous_page_boreholes, boreholes_on_page, page_number)
+        ) = _pick_merge_candidates(previous_page_boreholes, boreholes_on_page, page_number, matching_params)
 
         # 2. If borehole merge possible, apply it
         if borehole_to_extend and borehole_continuation:

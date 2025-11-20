@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from extraction.features.utils.geometry.geometric_line_utilities import (
+from swissgeol_doc_processing.geometry.geometric_line_utilities import (
     _are_close,
     _are_mergeable,
     _are_parallel,
@@ -13,7 +13,7 @@ from extraction.features.utils.geometry.geometric_line_utilities import (
     is_point_near_line,
     merge_parallel_lines_quadtree,
 )
-from extraction.features.utils.geometry.geometry_dataclasses import Line, Point
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
 
 
 # Remember, phi is orthogonal to the line we are to parameterize

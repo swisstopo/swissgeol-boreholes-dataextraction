@@ -152,6 +152,17 @@ The script will source all PDFs from the specified directory and create PNG file
 
 Use `boreholes-extract-all --help` to see all options for the extraction script.
 
+To apply custom settings, generate a local copy of the configuration files using the package helper. Any values you change locally will override the package defaults.
+
+```python
+from swissgeol_doc_processing.utils.file_utils import expose_configs
+
+# Create a local "config/" folder populated with the default settings
+expose_configs()
+```
+
+This will create a `config/` directory at the root of your project containing all configuration files that can be safely edited.
+
 ### 4. Check the results
 
 The script produces output in two different formats:
@@ -506,3 +517,45 @@ The specific linting and formatting settings applied are defined in `pyproject.t
 If you want to skip the hooks, you can use `git commit -m "..." --no-verify`.
 
 More information about pre-commit can be found [here](https://pre-commit.com).
+
+## swissgeol_doc_processing package
+
+The `swissgeol_doc_processing` package is a standalone Python library that provides core document processing functionality for geological documents. It is automatically included when installing the main `swissgeol-boreholes-dataextraction` package.
+
+### Package Contents
+
+The package contains three main modules:
+
+- **`geometry`**: Geometric analysis tools including circle detection, line detection, and spatial data structures
+- **`text`**: Text extraction and processing utilities for handling PDF text blocks, text lines, and linguistic analysis (stemming, language detection)
+- **`utils`**: General utilities for data extraction, file handling, language filtering, and document structure detection (tables, strip logs)
+
+### Installation
+
+The package is part of the `swissgeol-boreholes-dataextraction` repository and can be installed for other projects directly from GitHub. It is built using setuptools and setuptools-scm for version management. Published [versions](https://github.com/swisstopo/swissgeol-boreholes-dataextraction/releases) can be installed independently via:
+
+```python
+pip install https://github.com/swisstopo/swissgeol-boreholes-dataextraction/releases/download/v{VERSION}/swissgeol-boreholes-dataextraction-{VERSION}-py3-none-any.whl
+```
+
+The package configuration is defined in pyproject.toml under `[tool.setuptools.packages.find]`, which specifies swissgeol_doc_processing as the package source.
+
+### Usage
+
+Import modules directly from the package:
+
+```python
+from swissgeol_doc_processing.geometry import line_detection
+from swissgeol_doc_processing.text import extract_text
+from swissgeol_doc_processing.utils import language_detection
+```
+
+Use the package like any other python dependency:
+
+```Python
+language_detection.detect_language_of_text(
+    "This is a sample text.", 
+    "english", 
+    ["english", "french", "german"]
+)
+```

@@ -1,0 +1,41 @@
+# Default parameters used for the line detection pipeline, used as part of the swissgeol_doc_processing package
+# These paramaters should be changed only if we want to impact the functionality of the package globally.
+
+# LSD line detection parameters
+lsd:
+  scale: 1
+  sigma_scale: 0.6
+  quant: 2.0
+  ang_th: 22.5
+  log_eps: 0.0
+  density_th: 0.7
+  n_bins: 1024
+
+# Hough line detection parameters
+hough:
+  target_width: 2000
+  blur_dist: 5
+  morph_kernel_size: 6
+  # Minimum length of line (adjust based on your image)
+  min_line_length: 100
+  # Maximum allowed gap between line segments
+  max_line_gap: 5
+  # Distance resolution in the accumulartor space in pixels
+  rho: 5
+  # Angular resolution in the accumulator space in  degree
+  theta_deg: 3
+  # Minimum number of votes to consider a line
+  threshold: 2000
+
+pdf_scale_factor: 2
+
+line_merging_params:
+  reference_size: 1000
+  # maximum distance between two lines that are merged for a reference image of width=1000
+  merging_tolerance: 8.
+  angle_threshold: 5
+  min_line_length: 100
+  horizontal_slope_tolerance: 0.1
+
+diagonals_params:
+  angle_threshold: 5

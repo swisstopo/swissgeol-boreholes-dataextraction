@@ -7,7 +7,7 @@ from typing import Generic, TypeVar
 
 import pymupdf
 
-from extraction.features.utils.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
+from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 
 ValueT = TypeVar("ValueT")
 

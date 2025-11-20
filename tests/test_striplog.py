@@ -3,7 +3,7 @@
 import pymupdf
 import pytest
 
-from extraction.features.utils.strip_log_detection import StripLogSection, _is_ocr_artifact, _rescale_bboxes
+from swissgeol_doc_processing.utils.strip_log_detection import StripLogSection, _is_ocr_artifact, _rescale_bboxes
 
 
 @pytest.mark.parametrize(

@@ -6,6 +6,7 @@ data-legacy/
 /mlruns
 /mlartifacts
 /models/
+/config/
 
 # Ignore local VSCode launch config
 .vscode/launch.json
@@ -175,3 +176,6 @@ cython_debug/
 
 # Copilot instructions
 copilot-instructions.md
+
+# setuptools-scm version file
+_version.py

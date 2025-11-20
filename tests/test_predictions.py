@@ -29,9 +29,10 @@ from extraction.features.stratigraphy.layer.layer import (
     LayerDepthsEntry,
     LayersInBorehole,
 )
-from extraction.features.utils.data_extractor import FeatureOnPage
-from extraction.features.utils.text.textblock import MaterialDescription
-from extraction.features.utils.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.text.textblock import MaterialDescription
+from swissgeol_doc_processing.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
+from swissgeol_doc_processing.utils.file_utils import read_params
 
 
 @pytest.fixture
@@ -293,6 +294,9 @@ def test_evaluate_single(value, ground_truth, expected):
     assert (metrics.tp, metrics.fp, metrics.fn) == expected
 
 
+matching_params = read_params("matching_params.yml")
+
+
 def test_merge_boreholes():
     """Tests the merging of layer across two pages when both are open-ended."""
 
@@ -329,7 +333,7 @@ def test_merge_boreholes():
         [get_mock_bb(2)],
     )
 
-    merged_boreholes = merge_boreholes([[first_page_borehole], [next_page_borehole]])
+    merged_boreholes = merge_boreholes([[first_page_borehole], [next_page_borehole]], matching_params)
 
     assert len(merged_boreholes[0].predictions) == 2
     assert merged_boreholes[0].predictions[1].material_description.text == "second layer"

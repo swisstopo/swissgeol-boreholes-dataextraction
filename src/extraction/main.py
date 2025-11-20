@@ -27,14 +27,12 @@ from extraction.features.predictions.overall_file_predictions import OverallFile
 from extraction.features.predictions.predictions import BoreholeListBuilder
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
-from extraction.features.utils.geometry.line_detection import extract_lines
-from extraction.features.utils.strip_log_detection import detect_strip_logs
-from extraction.features.utils.table_detection import (
-    detect_table_structures,
-)
-from extraction.features.utils.text.extract_text import extract_text_lines
-from extraction.features.utils.text.matching_params_analytics import create_analytics
-from utils.file_utils import flatten, read_params
+from swissgeol_doc_processing.geometry.line_detection import extract_lines
+from swissgeol_doc_processing.text.extract_text import extract_text_lines
+from swissgeol_doc_processing.text.matching_params_analytics import create_analytics
+from swissgeol_doc_processing.utils.file_utils import flatten, read_params
+from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
+from swissgeol_doc_processing.utils.table_detection import detect_table_structures
 
 load_dotenv()
 
@@ -48,8 +46,9 @@ logger = logging.getLogger(__name__)
 
 matching_params = read_params("matching_params.yml")
 line_detection_params = read_params("line_detection_params.yml")
-striplog_detection_params = read_params("striplog_detection_params.yml")
 name_detection_params = read_params("name_detection_params.yml")
+table_detection_params = read_params("table_detection_params.yml")
+striplog_detection_params = read_params("striplog_detection_params.yml")
 
 
 def common_options(f):
@@ -262,7 +261,7 @@ def start_pipeline(
         part (str, optional): The part of the pipeline to run. Defaults to "all".
     """  # noqa: D301
     # Initialize analytics if enabled
-    analytics = create_analytics(matching_params["material_description"] if matching_analytics else None)
+    analytics = create_analytics() if matching_analytics else None
 
     if mlflow_tracking:
         setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
@@ -302,8 +301,8 @@ def start_pipeline(
 
         with pymupdf.Document(in_path) as doc:
             # Extract metadata
-            file_metadata = FileMetadata.from_document(doc)
-            metadata = MetadataInDocument.from_document(doc, file_metadata.language)
+            file_metadata = FileMetadata.from_document(doc, matching_params)
+            metadata = MetadataInDocument.from_document(doc, file_metadata.language, matching_params)
 
             # Save the predictions to the overall predictions object, initialize common variables
             all_groundwater_entries = GroundwaterInDocument([], filename)
@@ -323,7 +322,9 @@ def start_pipeline(
                 all_name_entries.name_feature_list.extend(name_entries)
 
                 # Detect table structures on the page
-                table_structures = detect_table_structures(page_index, doc, long_or_horizontal_lines, text_lines)
+                table_structures = detect_table_structures(
+                    page_index, doc, long_or_horizontal_lines, text_lines, table_detection_params
+                )
 
                 # Detect strip logs on the page
                 strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
@@ -338,13 +339,14 @@ def start_pipeline(
                     file_metadata.language,
                     page_index,
                     doc,
+                    line_detection_params,
                     analytics,
                     **matching_params,
                 )
                 boreholes_per_page.append(page_layers)
 
                 # Extract the groundwater levels
-                groundwater_extractor = GroundwaterLevelExtractor(file_metadata.language)
+                groundwater_extractor = GroundwaterLevelExtractor(file_metadata.language, matching_params)
                 groundwater_entries = groundwater_extractor.extract_groundwater(
                     page_number=page_number,
                     text_lines=text_lines,
@@ -374,7 +376,9 @@ def start_pipeline(
                         )
                         mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
 
-            layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page), filename)
+            layers_with_bb_in_document = LayersInDocument(
+                merge_boreholes(boreholes_per_page, matching_params), filename
+            )
 
             # create list of BoreholePrediction objects with all the separate lists
             borehole_predictions_list: list[BoreholePredictions] = BoreholeListBuilder(

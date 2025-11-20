@@ -4,7 +4,7 @@ import pymupdf
 import pytest
 
 from extraction.features.stratigraphy.interval.a_to_b_interval_extractor import AToBIntervalExtractor
-from extraction.features.utils.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.text.textline import TextLine, TextWord
 
 # TODO: add tests for AAboveBInterval.matching_blocks
 

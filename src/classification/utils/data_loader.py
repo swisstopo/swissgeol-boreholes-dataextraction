@@ -8,7 +8,7 @@ import Levenshtein
 
 from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_formatter import format_data, format_data_one_file
-from utils.file_utils import parse_text
+from swissgeol_doc_processing.utils.file_utils import parse_text
 
 logger = logging.getLogger(__name__)
 

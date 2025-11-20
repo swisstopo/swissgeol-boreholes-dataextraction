@@ -4,19 +4,15 @@ import logging
 
 import Levenshtein
 
-from utils.file_utils import read_params
-
 from .layer import ExtractedBorehole, Layer
 
 logger = logging.getLogger(__name__)
 
 
-matching_params = read_params("matching_params.yml")
-
-
 def select_boreholes_with_overlap(
     previous_page_boreholes: list[ExtractedBorehole],
     current_page_boreholes: list[ExtractedBorehole],
+    matching_params: dict,
 ) -> tuple[ExtractedBorehole | None, ExtractedBorehole | None, tuple[int, int] | None]:
     """Remove duplicate layers caused by overlapping scanned pages.
 
@@ -26,6 +22,7 @@ def select_boreholes_with_overlap(
     Args:
         previous_page_boreholes (list[ExtractedBorehole]): Layers from previous page
         current_page_boreholes (list[ExtractedBorehole]): Layers from current page
+        matching_params (dict): The parameters for matching boreholes.
 
     Returns:
         (ExtractedBorehole | None, ExtractedBorehole | None, tuple[int, int] | None):
@@ -35,7 +32,7 @@ def select_boreholes_with_overlap(
     for current_borehole in current_page_boreholes:
         for previous_page_borehole in previous_page_boreholes:
             bottom_duplicate_idx = find_last_duplicate_layer_index(
-                previous_page_borehole.predictions, current_borehole.predictions
+                previous_page_borehole.predictions, current_borehole.predictions, matching_params
             )
 
             # Potential overlap detected
@@ -89,7 +86,9 @@ def find_optimal_split(
     return id_upper_end, id_lower_start
 
 
-def find_last_duplicate_layer_index(previous_page_layers: list[Layer], sorted_layers: list[Layer]) -> int | None:
+def find_last_duplicate_layer_index(
+    previous_page_layers: list[Layer], sorted_layers: list[Layer], matching_params: dict
+) -> int | None:
     """Find the index of the last duplicate layer in the current page compared to the previous page.
 
     The last duplicated layer is the deepest one that is duplicated, starting from the top.
@@ -97,6 +96,7 @@ def find_last_duplicate_layer_index(previous_page_layers: list[Layer], sorted_la
     Args:
         previous_page_layers (list[Layer]): Layers from a borehole on the previous page sorted from top to bottom
         sorted_layers (list[Layer]): Layers from a borehole on the current page sorted from top to bottom
+        matching_params (dict): The parameters for matching boreholes.
 
     Returns:
         int | None: Index of the last duplicate layer or None if not found

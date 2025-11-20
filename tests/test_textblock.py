@@ -2,8 +2,8 @@
 
 import pymupdf
 
-from extraction.features.utils.text.textblock import TextBlock
-from extraction.features.utils.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.text.textblock import TextBlock
+from swissgeol_doc_processing.text.textline import TextLine, TextWord
 
 
 def test_concatenate():  # noqa: D103

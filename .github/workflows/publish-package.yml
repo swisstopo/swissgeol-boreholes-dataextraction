@@ -1,0 +1,57 @@
+name: Publish Python Package
+
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+    inputs:
+      TAG_NAME:
+        description: "Tag name"
+        required: true
+
+env:
+  TAG_NAME: ${{ github.event.inputs.TAG_NAME || github.event.release.tag_name }}
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    name: Build and publish Python package
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set environment variables
+        run: |
+          echo VERSION=${TAG_NAME#v} >> $GITHUB_ENV
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Build package
+        run: python -m build
+
+      - name: List built packages
+        run: ls -lh dist/
+
+      - name: Upload to GitHub Release
+        run: |
+          gh release upload $TAG_NAME dist/*.whl dist/*.tar.gz --clobber
+
+      - name: Generate installation instructions
+        run: |
+          WHEEL_FILE=$(ls dist/*.whl | head -n 1 | xargs basename)
+          echo "###Python Package Published Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Installation Command" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "pip install https://github.com/${{ github.repository }}/releases/download/$TAG_NAME/$WHEEL_FILE" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

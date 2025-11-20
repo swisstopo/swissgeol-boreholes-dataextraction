@@ -1,0 +1,78 @@
+name: Publish Python Package Pre-release
+
+on:
+  workflow_run:
+    workflows: ["Pre-release"]
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      VERSION:
+        description: "Version number (e.g., 1.0.123)"
+        required: true
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    name: Build and publish Python package
+    # Only run if the pre-release workflow succeeded, or if manually triggered
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get latest pre-release version
+        id: get-version
+        run: |
+          LATEST_VERSION=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            /repos/${GITHUB_REPOSITORY}/releases \
+            --jq '.[0].tag_name' | sed 's/v//')
+          echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set environment variables
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo VERSION=${{ github.event.inputs.VERSION }} >> $GITHUB_ENV
+          else
+            echo VERSION=${{ steps.get-version.outputs.version }} >> $GITHUB_ENV
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build wheel
+
+      - name: Build package
+        run: |
+          # Set version explicitly for setuptools
+          export SETUPTOOLS_SCM_PRETEND_VERSION=${{ env.VERSION }}
+          python -m build
+
+      - name: List built packages
+        run: ls -lh dist/
+
+      - name: Upload to GitHub Release
+        run: |
+          gh release upload v${{ env.VERSION }} dist/*.whl dist/*.tar.gz --clobber
+
+      - name: Generate installation instructions
+        run: |
+          WHEEL_FILE=$(ls dist/*.whl | head -n 1 | xargs basename)
+          echo "Python Package Published Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Installation Command" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "pip install https://github.com/${{ github.repository }}/releases/download/v${{ env.VERSION }}/$WHEEL_FILE" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
