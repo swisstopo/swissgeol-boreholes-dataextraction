@@ -1,7 +1,7 @@
 # Config file for unconsolidated material classification into EN classes
 # Prompt file and version
 prompts_file: bedrock/en_main_classification_prompts.yml
-prompt_version: v5
+prompt_version: baseline
 
 # Pattern file and parameter version
 pattern_file: bedrock/en_main_classification_patterns_bedrock.yml
@@ -15,10 +15,3 @@ max_tokens: 2048
 
 # Parameter indicating if Reasoning (Chain of Thought) mode should be used. Warning this significantly increases latency
 reasoning_mode: False
-
-# Async params
-max_concurrent_calls: 3
-api_call_delay: 0.0
-max_retries: 10
-base_retry_delay: 0.3
-max_delay: 30.0

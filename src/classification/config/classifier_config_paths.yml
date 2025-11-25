@@ -11,6 +11,7 @@ bert:
   lithology: bert/bert_config_lithology.yml
   EN_main: bert/bert_config_en_main.yml
 bedrock:
+  default: bedrock/bedrock_config_default.yml
   uscs: bedrock/bedrock_config_uscs.yml
   lithology: bedrock/bedrock_config_lithology.yml
   EN_main: bedrock/bedrock_config_en_main.yml

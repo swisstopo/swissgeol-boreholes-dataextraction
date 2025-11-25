@@ -292,7 +292,8 @@ class ENSecondarySystem(ClassificationSystem):
     @classmethod
     def get_layer_ground_truth_keys(cls) -> list[str]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
-        return ["unconsolidated", "other"]
+        # TODO for secondary class, get_class_from_entry needs to be adapted to ba able to return list of strings
+        raise NotImplementedError
 
     @classmethod
     def get_default_class_value(cls) -> ENSecondaryClasses:
