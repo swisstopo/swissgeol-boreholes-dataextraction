@@ -1,0 +1,6 @@
+# Config file for classification using Bedrock, independently of the classification system
+max_concurrent_calls: 3
+api_call_delay: 0.0
+max_retries: 10
+base_retry_delay: 0.3
+max_delay: 30.0

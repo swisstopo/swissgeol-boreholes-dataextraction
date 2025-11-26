@@ -189,7 +189,7 @@ boreholes-classify-descriptions -f data/geoquat_ground_truth.json -s data/geoqua
 - You can optionally provide a folder containing a subset of files by using the `-s` or `--file-subset-directory` flag. Only the filenames in this folder will be loaded from the JSON file for classification.
 - Use the `-c` or `--classifier` option to choose the classifier type from `dummy`, `baseline` or `bert`.
 - If you are using the classifier `bert` with a trained local [model](#train-bert-model), specify its folder path using the `-p` or `--model-path` flag. The folder has to contain all files generated when saving a model checkpoint with the transformers library.
-- Use `--classification-system` or `-cs` to specify the system you want to classify the description into. Currently supports `uscs` and `lithology`.
+- Use `--classification-system` or `-cs` to specify the system you want to classify the description into. Currently supports `uscs`, `lithology` and `en_main`.
 
 The script will classify all given descriptions and write the predictions to the `data/output_description_classification` directory.  
 

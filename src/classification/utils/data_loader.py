@@ -114,7 +114,7 @@ def prepare_classification_data(
     else:
         descriptions, ground_truth = format_data(descriptions_path, ground_truth_path)
 
-    layer_class_key = classification_system.get_layer_ground_truth_key()
+    layer_class_keys = classification_system.get_layer_ground_truth_keys()
 
     layer_descriptions: list[LayerInformation] = []
     total_layers = 0
@@ -141,10 +141,10 @@ def prepare_classification_data(
                 else:
                     ground_truth_match = layer
 
-                class_str = ground_truth_match.get(layer_class_key, None)
+                class_str = classification_system.get_class_from_entry(ground_truth_match, layer_class_keys)
                 if not class_str:
                     logger.debug(
-                        f"Skipping layer: no {layer_class_key} in ground truth for {filename},"
+                        f"Skipping layer: no {layer_class_keys} in ground truth for {filename},"
                         f" layer: {layer['material_description']}."
                     )
                     continue

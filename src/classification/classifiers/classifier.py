@@ -19,8 +19,14 @@ class Classifier(ABC):
         Args:
             classification_system (type[ClassificationSystem]): The classification system used.
         """
-        config_file = CONFIG_MAPINGS[self.get_name()][classification_system.get_name()]
-        self.config = read_params(config_file) if config_file else None
+        # load the config specific to the classifier type (e.g. Bedrock, Bert...)
+        classifier_config = CONFIG_MAPINGS[self.get_name()]
+        default_config_file = classifier_config.get("default", None)
+        self.config = read_params(default_config_file) if default_config_file else {}
+
+        # load the system-specific config (e.g. Lithology, En...)
+        config_file = classifier_config[classification_system.get_name()]
+        self.config.update(read_params(config_file))
 
     @abstractmethod
     def get_name(self) -> str:

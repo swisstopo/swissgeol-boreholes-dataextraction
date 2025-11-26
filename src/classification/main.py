@@ -146,7 +146,7 @@ def common_options(f):
     f = click.option(
         "-cs",
         "--classification-system",
-        type=click.Choice(["uscs", "lithology"], case_sensitive=False),
+        type=click.Choice(["uscs", "lithology", "en_main"], case_sensitive=False),
         default="uscs",
         help="The classification system used to classify the data.",
     )(f)
