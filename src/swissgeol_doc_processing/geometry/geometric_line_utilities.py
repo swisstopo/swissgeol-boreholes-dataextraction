@@ -250,20 +250,24 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
         lines_quad_tree.add(line)
         lines_queue.put(line)
 
+    stale_lines = set()
+
     while not lines_queue.empty():
         line = lines_queue.get()
+        if line in stale_lines:
+            continue
         neighbours = sorted(
             lines_quad_tree.neighbouring_lines(line, tol), key=lambda line: -line.length
         )  # merging the biggest lines first is more robust
         for neighbour in neighbours:
-            if not _are_mergeable(line, neighbour, tol, angle_threshold):
-                continue
-            new_line = _merge_lines(line, neighbour)
-            if new_line is None:
-                continue
-            lines_quad_tree.remove(neighbour)
-            lines_quad_tree.remove(line)
-            lines_queue.put(new_line)
-            break
+            if _are_mergeable(line, neighbour, tol, angle_threshold):
+                new_line = _merge_lines(line, neighbour)
+                if new_line is not None:
+                    lines_quad_tree.remove(neighbour)
+                    lines_quad_tree.remove(line)
+                    lines_quad_tree.add(new_line)
+                    stale_lines.add(neighbour)
+                    lines_queue.put(new_line)
+                    break
 
-    return list(lines_quad_tree.qtree.get_all_objects())
+    return list(set(lines_quad_tree.qtree.get_all_objects()))
