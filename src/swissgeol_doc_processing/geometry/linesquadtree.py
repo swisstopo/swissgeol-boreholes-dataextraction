@@ -2,30 +2,28 @@
 
 import uuid
 
-import quads
+import fastquadtree
 
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
 
 
 class LinesQuadTree:
-    """Wrapper around the quad tree implementation of the quads library.
+    """Wrapper around the quad tree implementation of the fastquadtree library.
 
     Enables efficiently finding lines that start or end within a given bounding box.
     """
 
-    def __init__(self, width: float, height: float):
+    def __init__(self, bounds: tuple[float, float, float, float]):
         """Create a LinesQuadTree instance.
 
         The LinesQuadTree will contain an actual quad tree with the end points of all lines, as well as a hashmap to
         keep track of the lines themselves.
 
         Args:
-            width (float): width of the area that should contain all (endpoints of) all lines.
-            height (float): height of the area that should contain all (endpoints of) all lines.
+            bounds: world bounds for the quad tree sturcture as (min_x, min_y, max_x, max_y).
         """
-        self.qtree = quads.QuadTree(
-            (width / 2, height / 2), width + 1000, height + 1000
-        )  # Add some margin to the width and height to allow for slightly negative values
+        self.qtree = fastquadtree.QuadTreeObjects(bounds=bounds, capacity=8)
+        self.min_x, self.min_y, self.max_x, self.max_y = bounds
         self.hashmap = {}
 
     def remove(self, line_key: str):
@@ -55,8 +53,6 @@ class LinesQuadTree:
         line_key = uuid.uuid4().hex
         self.hashmap[line_key] = line
 
-        # We round the coordinates, as we don't require infinite precision anyway, and like this we avoid excessive
-        # recursion within the quad tree in the case of floating point values that are very close to each other.
         self._qtree_insert(line.start, line_key)
         self._qtree_insert(line.end, line_key)
         return line_key
@@ -73,36 +69,39 @@ class LinesQuadTree:
             dict[str, Line]: The lines that are close to the given line, returned as a dict of (line_key, line) pairs.
         """
         if line_key not in self.hashmap:
-            return []
+            return dict()
 
         line = self.hashmap[line_key]
         min_x = min(line.start.x, line.end.x)
         max_x = max(line.start.x, line.end.x)
         min_y = min(line.start.y, line.end.y)
         max_y = max(line.start.y, line.end.y)
-        bb = quads.BoundingBox(min_x - tol, min_y - tol, max_x + tol, max_y + tol)
-        points = self.qtree.within_bb(bb)
+        bb = (min_x - tol, min_y - tol, max_x + tol, max_y + tol)
+        points = self.qtree.query(bb)
 
         neighbouring_lines = {}
         for point in points:
-            for neighbour_key in point.data:
-                if neighbour_key != line_key and neighbour_key in self.hashmap:
-                    neighbouring_lines[neighbour_key] = self.hashmap[neighbour_key]
+            neighbour_key = point.obj
+            if neighbour_key != line_key and neighbour_key in self.hashmap:
+                neighbouring_lines[neighbour_key] = self.hashmap[neighbour_key]
         return neighbouring_lines
 
     def _qtree_insert(self, point: Point, line_key: str):
-        coordinates = (round(point.x), round(point.y))
-        qtree_point = self.qtree.find(coordinates)
-        if qtree_point:
-            qtree_point.data.add(line_key)
-        else:
-            self.qtree.insert(coordinates, data={line_key})
+        # Coordinates of merged lines might lie outside the bounds that were initially computed. For the purposes of
+        # spacial indexing, we just put these points on the edge of the bounding box.
+        x = point.x
+        if x > self.max_x - 1:
+            x = self.max_x - 1
+        if x < self.min_x:
+            x = self.min_x
+
+        y = point.y
+        if y >= self.max_y - 1:
+            y = self.max_y - 1
+        if y < self.min_y:
+            y = self.min_y
+
+        self.qtree.insert((x, y), obj=line_key)
 
     def _qtree_delete(self, point: Point, line_key: str):
-        coordinates = (round(point.x), round(point.y))
-        qtree_point = self.qtree.find(coordinates)
-        if qtree_point and line_key in qtree_point.data:
-            qtree_point.data.remove(line_key)
-            # If the data is now empty, then we could theoretically completely remove the point from the quad tree.
-            # However, the current implementation from the quads library does not support removing points. Therefore,
-            # a point with empty data might be left in the quad tree.
+        self.qtree.delete_by_object(line_key)

@@ -234,11 +234,11 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
         list[Line]: The merged lines.
     """
     # Create a quadtree
-    width = max([line.end.x for line in lines])
-    max_end_y = max([line.end.y for line in lines])
-    max_start_y = max([line.start.y for line in lines])
-    height = max(max_end_y, max_start_y)
-    lines_quad_tree = LinesQuadTree(width, height)
+    min_x = min(*[line.start.x for line in lines], *[line.end.x for line in lines])
+    max_x = max(*[line.start.x for line in lines], *[line.end.x for line in lines])
+    min_y = min(*[line.start.y for line in lines], *[line.end.y for line in lines])
+    max_y = max(*[line.start.y for line in lines], *[line.end.y for line in lines])
+    lines_quad_tree = LinesQuadTree((float(min_x), float(min_y), float(max_x) + 1, float(max_y) + 1))
 
     # sorting ensures consistency by merging the biggest lines first
     lines = sorted(lines, key=lambda line: -line.length)

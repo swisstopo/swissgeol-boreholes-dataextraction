@@ -32,7 +32,7 @@ dependencies = [
     "backoff==2.2.1",
     "PyMuPDF==1.26.3",
     "opencv-python-headless==4.12.0.88",
-    "quads==1.1.0",
+    "fastquadtree==2.0.2",
     "numpy==2.2.6",
     "rtree==1.4.1",
     "nltk==3.9.1",
