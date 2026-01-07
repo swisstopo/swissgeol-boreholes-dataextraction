@@ -14,7 +14,9 @@ from swissgeol_doc_processing.geometry.linesquadtree import LinesQuadTree
 logger = logging.getLogger(__name__)
 
 
-def is_point_near_line(line: Line, point: Point, segment_extension_tol: int = 10, perpendicular_tol: int = 3) -> bool:
+def is_point_near_line(
+    line: Line, point: Point, segment_extension_tol: float = 10, perpendicular_tol: float = 3
+) -> bool:
     """Check if a point is near a line segment.
 
     This is done by computing the slope and y-intercept of the line, and checking whether the point satisfies
@@ -29,8 +31,8 @@ def is_point_near_line(line: Line, point: Point, segment_extension_tol: int = 10
     Args:
         line (Line): A line segment.
         point (Point): The point to check.
-        segment_extension_tol (int, optional): Tolerance for point's position (along x and y).
-        perpendicular_tol (int, optional): Max perpendicular distance from line to consider alignment.
+        segment_extension_tol (float, optional): Tolerance for point's position (along x and y).
+        perpendicular_tol (float, optional): Max perpendicular distance from line to consider alignment.
 
     Returns:
         bool: True if the point is near the line within the specified tolerances, False otherwise.
@@ -167,7 +169,7 @@ def _get_orthogonal_projection_to_line(point: Point, phi: float, r: float) -> Po
     return Point(x, y)
 
 
-def _are_close(line1: Line, line2: Line, tol: int) -> bool:
+def _are_close(line1: Line, line2: Line, tol: float) -> bool:
     """Check if two lines are close to each other, using an adaptive tolerance.
 
     This function determines whether two line segments are spatially close enough to be considered for merging.
@@ -183,13 +185,13 @@ def _are_close(line1: Line, line2: Line, tol: int) -> bool:
     Args:
         line1 (Line): The first line.
         line2 (Line): The second line.
-        tol (int): The tolerance to check if the lines are close.
+        tol (float): The tolerance to check if the lines are close.
 
     Returns:
         bool: True if the lines are close, False otherwise.
     """
     adaptive_tol = min(max(tol / 10, max(line1.length, line2.length)), tol)
-    line_tol = adaptive_tol / 3  # we are 3 times more strict in the direction perpendicular to the line
+    line_tol = adaptive_tol / 3  # we are 3 times stricter in the direction perpendicular to the line
     return (
         is_point_near_line(line1, line2.start, segment_extension_tol=adaptive_tol, perpendicular_tol=line_tol)
         or is_point_near_line(line1, line2.end, segment_extension_tol=adaptive_tol, perpendicular_tol=line_tol)
@@ -243,32 +245,25 @@ def merge_parallel_lines_quadtree(lines: list[Line], tol: int, angle_threshold: 
     # sorting ensures consistency by merging the biggest lines first
     lines = sorted(lines, key=lambda line: -line.length)
 
-    keys_queue = queue.Queue()
+    lines_queue = queue.Queue()
     for line in lines:
-        line_key = lines_quad_tree.add(line)
-        keys_queue.put(line_key)
+        lines_quad_tree.add(line)
+        lines_queue.put(line)
 
-    while not keys_queue.empty():
-        line_key = keys_queue.get()
-
-        if line_key not in lines_quad_tree.hashmap:
-            # Line was already merged and removed from quadtree
-            continue
-        line = lines_quad_tree.hashmap[line_key]
-
+    while not lines_queue.empty():
+        line = lines_queue.get()
         neighbours = sorted(
-            lines_quad_tree.neighbouring_lines(line_key, tol).items(), key=lambda pair: -pair[1].length
+            lines_quad_tree.neighbouring_lines(line, tol), key=lambda line: -line.length
         )  # merging the biggest lines first is more robust
-        for neighbour_key, neighbour_line in neighbours:
-            if not _are_mergeable(line, neighbour_line, tol, angle_threshold):
+        for neighbour in neighbours:
+            if not _are_mergeable(line, neighbour, tol, angle_threshold):
                 continue
-            new_line = _merge_lines(line, neighbour_line)
+            new_line = _merge_lines(line, neighbour)
             if new_line is None:
                 continue
-            lines_quad_tree.remove(neighbour_key)
-            lines_quad_tree.remove(line_key)
-            new_key = lines_quad_tree.add(new_line)
-            keys_queue.put(new_key)
+            lines_quad_tree.remove(neighbour)
+            lines_quad_tree.remove(line)
+            lines_queue.put(new_line)
             break
 
-    return list(lines_quad_tree.hashmap.values())
+    return list(lines_quad_tree.qtree.get_all_objects())
