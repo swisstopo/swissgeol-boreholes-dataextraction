@@ -79,7 +79,9 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
             return False
 
         first = values[0]
-        last = values[-1]
+        # consider at most 1000 steps, to avoid a nearly-infinite loop when the document accidentally contains a very
+        # large number (e.g. Thurgau 246_EWS_Aadorf_3387.pdf)
+        last = min(values[-1], first + step * 1000)
         arithmetic_progression = {
             # ensure we have nicely rounded numbers, without inaccuracies from floating point arithmetic
             round(value * step, 2)
