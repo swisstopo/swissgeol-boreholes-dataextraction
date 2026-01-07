@@ -74,10 +74,6 @@ compound_split_threshold: 0.4
 material_description:
   de:
     including_expressions:
-      - jord
-      - metavulkanit
-      - metabasitgång
-      - fältspatmandlar
       - sand
       - sandig
       - silt
