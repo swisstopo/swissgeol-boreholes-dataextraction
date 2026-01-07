@@ -81,3 +81,76 @@ def test_extract_stratigraphy_invalid_filename(test_client: TestClient):
     response = test_client.post("/api/V1/extract_stratigraphy", content=request.model_dump_json())
     assert response.status_code == 400
     assert response.json() == {"detail": "Invalid request. The filename must end with '.pdf'."}
+
+
+def test_extract_stratigraphy_default_no_groundwater(test_client: TestClient, upload_test_pdf, upload_test_png):
+    """Test that default behavior does NOT include groundwater."""
+    request = ExtractStratigraphyRequest(filename=TEST_PDF_KEY)
+    response = test_client.post("/api/V1/extract_stratigraphy", content=request.model_dump_json())
+    assert response.status_code == 200
+    json_response = response.json()
+
+    # Verify stratigraphy is present
+    assert "boreholes" in json_response
+    assert isinstance(json_response["boreholes"], list)
+
+    # Verify groundwater is NOT present (or is None) for each borehole
+    for borehole in json_response["boreholes"]:
+        assert borehole.get("groundwater") is None
+
+
+def test_extract_stratigraphy_explicit_false(test_client: TestClient, upload_test_pdf, upload_test_png):
+    """Test that include_groundwater=False does not include groundwater."""
+    request = ExtractStratigraphyRequest(filename=TEST_PDF_KEY, include_groundwater=False)
+    response = test_client.post("/api/V1/extract_stratigraphy", content=request.model_dump_json())
+    assert response.status_code == 200
+    json_response = response.json()
+
+    assert "boreholes" in json_response
+    # Verify groundwater is NOT present (or is None) for each borehole
+    for borehole in json_response["boreholes"]:
+        assert borehole.get("groundwater") is None
+
+
+def test_extract_stratigraphy_with_groundwater(test_client: TestClient, upload_test_pdf, upload_test_png):
+    """Test that include_groundwater=True includes groundwater data per borehole."""
+    request = ExtractStratigraphyRequest(filename=TEST_PDF_KEY, include_groundwater=True)
+    response = test_client.post("/api/V1/extract_stratigraphy", content=request.model_dump_json())
+    assert response.status_code == 200
+    json_response = response.json()
+
+    # Verify stratigraphy is present
+    assert "boreholes" in json_response
+    assert isinstance(json_response["boreholes"], list)
+
+    # Verify each borehole has a groundwater field (may be empty or populated)
+    for borehole in json_response["boreholes"]:
+        assert "groundwater" in borehole
+        assert isinstance(borehole["groundwater"], list)
+
+        # Verify new metadata fields are present (may be null)
+        assert "name" in borehole
+        assert "elevation" in borehole
+        assert "coordinates" in borehole
+
+        # If groundwater found in this borehole, verify structure
+        if len(borehole["groundwater"]) > 0:
+            gw = borehole["groundwater"][0]
+            assert "depth" in gw
+            assert "date" in gw  # May be null
+            assert "elevation" in gw  # May be null
+            assert "bounding_box" in gw
+            assert "page_number" in gw["bounding_box"]
+            assert isinstance(gw["depth"], int | float)
+
+            # Verify bounding box structure
+            bbox = gw["bounding_box"]
+            assert "x0" in bbox and "y0" in bbox and "x1" in bbox and "y1" in bbox
+
+
+def test_extract_stratigraphy_with_groundwater_missing_png(test_client: TestClient, upload_test_pdf):
+    """Test that include_groundwater=True fails gracefully when PNG missing."""
+    request = ExtractStratigraphyRequest(filename=TEST_PDF_KEY, include_groundwater=True)
+    response = test_client.post("/api/V1/extract_stratigraphy", content=request.model_dump_json())
+    assert response.status_code == 404
+    assert "PNG file" in response.json()["detail"]
