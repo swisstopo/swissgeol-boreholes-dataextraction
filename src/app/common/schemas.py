@@ -594,15 +594,24 @@ class BoreholeLayerSchema(BaseModel):
 
 
 class BoreholeExtractionSchema(BaseModel):
-    """Schema for representing an extracted borehole and its associated layers.
+    """Schema for representing an extracted borehole and its associated data.
 
-    Each borehole includes the list of pages it spans (`page_numbers`) and a list of
-    extracted stratigraphic layers (`layers`). This allows downstream consumers to
-    map layers to visual representations in the PDF and construct full profiles.
+    Each borehole includes the list of pages it spans (`page_numbers`), a list of
+    extracted stratigraphic layers (`layers`), and optionally groundwater measurements
+    and metadata. This allows downstream consumers to map layers to visual
+    representations in the PDF and construct full profiles.
     """
 
     page_numbers: list[int]
     layers: list[BoreholeLayerSchema]
+    groundwater: list["GroundwaterSchema"] | None = Field(
+        default=None,
+        description="Groundwater measurements associated with this borehole (when include_groundwater=True).",
+    )
+    # Future metadata fields (empty for now, prepared for future use)
+    name: str | None = Field(default=None, description="Borehole name if detected.")
+    elevation: float | None = Field(default=None, description="Terrain elevation at borehole location in meters.")
+    coordinates: Coordinates | None = Field(default=None, description="Geographic coordinates of the borehole.")
 
 
 class ExtractStratigraphyRequest(ABC, BaseModel):
@@ -648,20 +657,13 @@ class ExtractStratigraphyResponse(BaseModel):
     Returns structured borehole information extracted from the full PDF document.
 
     ### Fields
-    - **boreholes** (`List[BoreholeExtraction]`): List of extracted borehole entries.
-    - **groundwater** (`List[GroundwaterSchema] | None`): Optional groundwater measurements (when requested).
+    - **boreholes** (`List[BoreholeExtractionSchema]`): List of extracted borehole entries, each containing
+      stratigraphy layers and optionally groundwater measurements (when include_groundwater=True).
     """
 
     boreholes: list[BoreholeExtractionSchema] = Field(
         ...,
         description="List of all boreholes extracted from the document, including stratigraphy layers and metadata.",
-    )
-
-    groundwater: list["GroundwaterSchema"] | None = Field(
-        default=None,
-        description="""Optional list of groundwater measurements.
-        Only populated when include_groundwater=True in the request.
-        If no groundwater is found, this will be an empty list (not null).""",
     )
 
     model_config = ConfigDict(
@@ -712,20 +714,23 @@ class ExtractStratigraphyResponse(BaseModel):
                                 },
                             },
                         ],
-                    }
-                ],
-                "groundwater": [
-                    {
-                        "depth": 2.22,
-                        "date": "2016-04-18",
-                        "elevation": 448.07,
-                        "bounding_box": {
-                            "page_number": 1,
-                            "x0": 100.0,
-                            "y0": 200.0,
-                            "x1": 300.0,
-                            "y1": 220.0,
-                        },
+                        "groundwater": [
+                            {
+                                "depth": 2.22,
+                                "date": "2016-04-18",
+                                "elevation": 448.07,
+                                "bounding_box": {
+                                    "page_number": 2,
+                                    "x0": 100.0,
+                                    "y0": 200.0,
+                                    "x1": 300.0,
+                                    "y1": 220.0,
+                                },
+                            }
+                        ],
+                        "name": None,
+                        "elevation": None,
+                        "coordinates": None,
                     }
                 ],
             }
