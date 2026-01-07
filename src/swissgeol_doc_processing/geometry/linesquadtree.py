@@ -70,16 +70,7 @@ class LinesQuadTree:
     def _qtree_insert(self, point: Point, line: Line):
         # Coordinates of merged lines might lie outside the bounds that were initially computed. For the purposes of
         # spacial indexing, we just put these points on the edge of the bounding box.
-        x = point.x
-        if x > self.max_x - 1:
-            x = self.max_x - 1
-        if x < self.min_x:
-            x = self.min_x
-
-        y = point.y
-        if y >= self.max_y - 1:
-            y = self.max_y - 1
-        if y < self.min_y:
-            y = self.min_y
+        x = min(max(self.min_x, point.x), self.max_x - 1)
+        y = min(max(self.min_y, point.y), self.max_y - 1)
 
         self.qtree.insert((x, y), obj=line)
