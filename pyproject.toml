@@ -34,7 +34,6 @@ dependencies = [
     "opencv-python-headless==4.12.0.88",
     "fastquadtree==2.0.2",
     "numpy==2.2.6",
-    "rtree==1.4.1",
     "nltk==3.9.1",
     "rdflib==7.1.4",
     "pyinstrument==5.1.1",

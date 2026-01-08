@@ -2,8 +2,8 @@
 
 import logging
 
+import fastquadtree
 import pymupdf
-import rtree
 
 from extraction.features.stratigraphy.interval.interval import IntervalBlockPair
 from extraction.features.stratigraphy.layer.layer import (
@@ -292,9 +292,16 @@ class MaterialDescriptionRectWithSidebarExtractor:
         return material_descriptions_sidebar_pairs
 
     def _find_depth_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
-        line_rtree = rtree.index.Index()
+        if not self.lines:
+            return []
+
+        min_x = min([line.rect.x0 for line in self.lines])
+        max_x = max([line.rect.x1 for line in self.lines])
+        min_y = min([line.rect.y0 for line in self.lines])
+        max_y = max([line.rect.y1 for line in self.lines])
+        line_rtree = fastquadtree.RectQuadTreeObjects((min_x, min_y, max_x, max_y), capacity=8)
         for line in self.lines:
-            line_rtree.insert(id(line), (line.rect.x0, line.rect.y0, line.rect.x1, line.rect.y1), obj=line)
+            line_rtree.insert((line.rect.x0, line.rect.y0, line.rect.x1, line.rect.y1), obj=line)
 
         words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
 

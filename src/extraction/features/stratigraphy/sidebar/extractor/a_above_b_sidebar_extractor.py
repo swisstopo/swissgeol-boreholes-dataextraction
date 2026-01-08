@@ -1,7 +1,7 @@
 """Module for finding AAboveBSidebar instances in a borehole profile."""
 
+import fastquadtree
 import pymupdf
-import rtree
 
 from swissgeol_doc_processing.text.textline import TextWord
 
@@ -19,7 +19,7 @@ class AAboveBSidebarExtractor:
     @staticmethod
     def find_in_words(
         all_words: list[TextWord],
-        line_rtree: rtree.index.Index,
+        line_rtree: fastquadtree.RectQuadTreeObjects,
         used_entry_rects: list[pymupdf.Rect],
         sidebar_params: dict,
     ) -> list[SidebarNoise]:
