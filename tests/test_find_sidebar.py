@@ -1,8 +1,8 @@
 """Test suite for the find_depth_columns module."""
 
+import fastquadtree
 import pymupdf
 import pytest
-import rtree
 
 from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
 from extraction.features.stratigraphy.sidebar.extractor.a_above_b_sidebar_extractor import (
@@ -90,9 +90,9 @@ def test_aabovebsidebarextractor_arithmetic_progression():  # noqa: D103
         TextWord(pymupdf.Rect(0, 6, 5, 7), "40.0", PAGE_NUMBER),
         TextWord(pymupdf.Rect(0, 8, 5, 9), "50.0", PAGE_NUMBER),
     ]
-    word_rtree = rtree.index.Index()
-    for i, word in enumerate(all_words):
-        word_rtree.insert(i, (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1))
+    word_rtree = fastquadtree.RectQuadTreeObjects((0, 0, 10, 10), capacity=8)
+    for word in all_words:
+        word_rtree.insert((word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1))
     """Test the AAboveBSidebarExtractor with an arithmetic progression."""
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
@@ -113,9 +113,9 @@ def test_aabovebsidebarextractor():  # noqa: D103
         TextWord(pymupdf.Rect(0, 6, 5, 7), "40.0", PAGE_NUMBER),
         TextWord(pymupdf.Rect(0, 8, 5, 9), "50.0", PAGE_NUMBER),
     ]
-    word_rtree = rtree.index.Index()
+    word_rtree = fastquadtree.RectQuadTreeObjects((0, 0, 10, 10), capacity=8)
     for word in all_words:
-        word_rtree.insert(id(word), (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
+        word_rtree.insert((word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,
@@ -147,9 +147,9 @@ def test_aabovebsidebarextractor_two_column():  # noqa: D103
         TextWord(pymupdf.Rect(20, 8, 25, 9), "50.0", PAGE_NUMBER),
         TextWord(pymupdf.Rect(20, 10, 25, 11), "61.0", PAGE_NUMBER),
     ]
-    word_rtree = rtree.index.Index()
+    word_rtree = fastquadtree.RectQuadTreeObjects((0, 0, 30, 30), capacity=8)
     for word in all_words:
-        word_rtree.insert(id(word), (word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
+        word_rtree.insert((word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,

@@ -7,7 +7,6 @@ import cv2
 import numpy as np
 import pymupdf
 from dotenv import load_dotenv
-from numpy.typing import ArrayLike
 
 from swissgeol_doc_processing.geometry.geometric_line_utilities import merge_parallel_lines_quadtree
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 
 
-def detect_lines_lsd(page: pymupdf.Page, scale_factor=2, lsd_params=None) -> ArrayLike:
+def detect_lines_lsd(page: pymupdf.Page, scale_factor=2, lsd_params=None) -> list[Line]:
     """Given a file path, detect lines in the pdf using the Line Segment Detector (LSD) algorithm.
 
     Publication of the algorithm can be found here: http://www.ipol.im/pub/art/2012/gjmr-lsd/article.pdf
@@ -54,7 +53,7 @@ def detect_lines_lsd(page: pymupdf.Page, scale_factor=2, lsd_params=None) -> Arr
     return [line_from_array(line, scale_factor) for line in lines]
 
 
-def detect_lines_hough(page: pymupdf.Page, hough_params: dict) -> ArrayLike:
+def detect_lines_hough(page: pymupdf.Page, hough_params: dict) -> list[Line]:
     """Given document, detect lines in the pdf using the hough transform algorithm.
 
     Args:
@@ -124,7 +123,7 @@ def extract_lines(page: pymupdf.Page, line_detection_params: dict) -> tuple[list
     # lines = detect_lines_hough(page, hough_params=line_detection_params["hough"])
 
     if not lines:
-        return []
+        return [], []
 
     merging_params = line_detection_params["line_merging_params"]
 
