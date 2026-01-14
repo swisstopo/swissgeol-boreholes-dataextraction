@@ -5,10 +5,6 @@ on:
   push:
     branches: [main]
 
-permissions:
-  contents: read
-  pull-requests: write
-
 jobs:
   pytest:
     runs-on: ubuntu-latest
