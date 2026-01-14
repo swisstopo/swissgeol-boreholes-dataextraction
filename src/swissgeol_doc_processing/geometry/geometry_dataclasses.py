@@ -21,6 +21,9 @@ class Point:
     x: float
     y: float
 
+    def __hash__(self):
+        return hash((self.x, self.y))
+
     @property
     def tuple(self) -> tuple[float, float]:
         return self.x, self.y
@@ -47,6 +50,9 @@ class Line:
             self.end = end
 
         self.length = self.start.distance_to(self.end)
+
+    def __hash__(self):
+        return hash((self.start, self.end))
 
     def distance_to(self, point: Point) -> float:
         """Calculate the distance of a point to the (unbounded extension of the) line.
