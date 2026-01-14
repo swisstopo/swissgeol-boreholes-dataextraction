@@ -15,8 +15,10 @@ from pathlib import Path
 import pymupdf
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from extraction.features.groundwater.groundwater_extraction import Groundwater
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepthsEntry
 from swissgeol_doc_processing.text.textblock import MaterialDescription
+from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 
 def validate_filename(value: str) -> str:
@@ -592,15 +594,24 @@ class BoreholeLayerSchema(BaseModel):
 
 
 class BoreholeExtractionSchema(BaseModel):
-    """Schema for representing an extracted borehole and its associated layers.
+    """Schema for representing an extracted borehole and its associated data.
 
-    Each borehole includes the list of pages it spans (`page_numbers`) and a list of
-    extracted stratigraphic layers (`layers`). This allows downstream consumers to
-    map layers to visual representations in the PDF and construct full profiles.
+    Each borehole includes the list of pages it spans (`page_numbers`), a list of
+    extracted stratigraphic layers (`layers`), and optionally groundwater measurements
+    and metadata. This allows downstream consumers to map layers to visual
+    representations in the PDF and construct full profiles.
     """
 
     page_numbers: list[int]
     layers: list[BoreholeLayerSchema]
+    groundwater: list["GroundwaterSchema"] | None = Field(
+        default=None,
+        description="Groundwater measurements associated with this borehole (when include_groundwater=True).",
+    )
+    # Future metadata fields (empty for now, prepared for future use)
+    name: str | None = Field(default=None, description="Borehole name if detected.")
+    elevation: float | None = Field(default=None, description="Terrain elevation at borehole location in meters.")
+    coordinates: Coordinates | None = Field(default=None, description="Geographic coordinates of the borehole.")
 
 
 class ExtractStratigraphyRequest(ABC, BaseModel):
@@ -613,6 +624,7 @@ class ExtractStratigraphyRequest(ABC, BaseModel):
 
     **Attributes:**
     - **filename** (`Path`): Path to the PDF file. _Example_: `"1007.pdf"`
+    - **include_groundwater** (`bool`): If True, include groundwater measurements. Default is False.
 
     ### Validation
     - **Filename Validator:** Ensures filename is not empty.
@@ -620,11 +632,17 @@ class ExtractStratigraphyRequest(ABC, BaseModel):
 
     filename: Path = Field(
         ...,
-        description="""Path to the input PDF document that contains borehole stratigraphy. 
+        description="""Path to the input PDF document that contains borehole stratigraphy.
         This must be a valid file path, and the file should be accessible by the API.""",
     )
 
-    model_config = ConfigDict(json_schema_extra={"example": {"filename": "1007.pdf"}})
+    include_groundwater: bool = Field(
+        default=False,
+        description="""If True, include groundwater measurements alongside stratigraphy data.
+        This allows retrieving both types of data in a single API call.""",
+    )
+
+    model_config = ConfigDict(json_schema_extra={"example": {"filename": "1007.pdf", "include_groundwater": False}})
 
     @field_validator("filename", mode="before")
     @classmethod
@@ -639,7 +657,8 @@ class ExtractStratigraphyResponse(BaseModel):
     Returns structured borehole information extracted from the full PDF document.
 
     ### Fields
-    - **boreholes** (`List[BoreholeExtraction]`): List of extracted borehole entries.
+    - **boreholes** (`List[BoreholeExtractionSchema]`): List of extracted borehole entries, each containing
+      stratigraphy layers and optionally groundwater measurements (when include_groundwater=True).
     """
 
     boreholes: list[BoreholeExtractionSchema] = Field(
@@ -695,8 +714,84 @@ class ExtractStratigraphyResponse(BaseModel):
                                 },
                             },
                         ],
+                        "groundwater": [
+                            {
+                                "depth": 2.22,
+                                "date": "2016-04-18",
+                                "elevation": 448.07,
+                                "bounding_box": {
+                                    "page_number": 2,
+                                    "x0": 100.0,
+                                    "y0": 200.0,
+                                    "x1": 300.0,
+                                    "y1": 220.0,
+                                },
+                            }
+                        ],
+                        "name": None,
+                        "elevation": None,
+                        "coordinates": None,
                     }
-                ]
+                ],
+            }
+        }
+    )
+
+
+########################################################################################################################
+### Extract groundwater schema
+########################################################################################################################
+
+
+class GroundwaterSchema(BaseModel):
+    """Schema for a groundwater measurement with location metadata."""
+
+    depth: float = Field(..., description="Depth of groundwater below surface in meters")
+    date: str | None = Field(None, description="Measurement date in YYYY-MM-DD format")
+    elevation: float | None = Field(None, description="Groundwater elevation above sea level in meters")
+    bounding_box: BoundingBoxWithPage = Field(..., description="Location in document (PNG coordinates)")
+
+    @classmethod
+    def from_prediction(
+        cls, prediction: FeatureOnPage[Groundwater], pdf_img_scalings: list[tuple[float]]
+    ) -> "GroundwaterSchema":
+        """Convert from FeatureOnPage[Groundwater] to schema.
+
+        Args:
+            prediction (FeatureOnPage[Groundwater]): Groundwater feature with page and bounding box info.
+            pdf_img_scalings (list[tuple[float]]): List of (width_factor, height_factor) per page for
+                coordinate scaling.
+
+        Returns:
+            GroundwaterSchema: The schema object with rescaled bounding boxes.
+        """
+        page_scalings = pdf_img_scalings[prediction.page_number - 1]
+        return cls(
+            depth=prediction.feature.depth,
+            date=prediction.feature.format_date(),
+            elevation=prediction.feature.elevation,
+            bounding_box=BoundingBoxWithPage(
+                page_number=prediction.page_number,
+                x0=prediction.rect.x0,
+                y0=prediction.rect.y0,
+                x1=prediction.rect.x1,
+                y1=prediction.rect.y1,
+            ).rescale_factor(*page_scalings),
+        )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "depth": 2.22,
+                "date": "2016-04-18",
+                "elevation": 448.07,
+                "bounding_box": {
+                    "page_number": 1,
+                    "x0": 100.0,
+                    "y0": 200.0,
+                    "x1": 300.0,
+                    "y1": 220.0,
+                },
             }
         }
     )
