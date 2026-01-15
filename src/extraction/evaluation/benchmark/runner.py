@@ -201,10 +201,52 @@ def start_multi_benchmark(
 
     df = pd.DataFrame(rows)
 
-    # Optional: sort benchmarks alphabetically (or by a key metric)
+    # sort benchmarks alphabetically (or by a key metric)
     df = df.sort_values(by="benchmark")
 
-    # Optional: keep 3 decimals for readability
+    # Add aggregate rows (means across benchmarks) ---
+    metric_cols = [c for c in df.columns if c.startswith("geology__") or c.startswith("metadata__")]
+
+    df_metrics = df.copy()
+    df_metrics[metric_cols] = df_metrics[metric_cols].apply(pd.to_numeric, errors="coerce")
+    df_metrics["n_documents"] = pd.to_numeric(df_metrics["n_documents"], errors="coerce")
+
+    # Unweighted mean (simple average across benchmarks)
+    unweighted_means = {}
+    for c in metric_cols:
+        col = df_metrics[c]
+        unweighted_means[c] = float(col.mean()) if col.notna().any() else None
+
+    mean_unweighted_row = {
+        "benchmark": "MEAN_unweighted",
+        "ground_truth_path": "",
+        "n_documents": int(df_metrics["n_documents"].sum()) if df_metrics["n_documents"].notna().any() else "",
+        **unweighted_means,
+    }
+
+    # Weighted mean by n_documents
+    weighted_means = {}
+    weights = df_metrics["n_documents"].fillna(0)
+
+    for c in metric_cols:
+        vals = df_metrics[c]
+        mask = vals.notna() & (weights > 0)
+        if mask.any():
+            weighted_means[c] = float((vals[mask] * weights[mask]).sum() / weights[mask].sum())
+        else:
+            weighted_means[c] = None
+
+    mean_weighted_row = {
+        "benchmark": "MEAN_weighted_by_n_documents",
+        "ground_truth_path": "",
+        "n_documents": int(weights.sum()),
+        **weighted_means,
+    }
+
+    # Append both rows
+    df = pd.concat([df, pd.DataFrame([mean_unweighted_row, mean_weighted_row])], ignore_index=True)
+
+    # keep 3 decimals for readability
     numeric_cols = [c for c in df.columns if c.startswith(
         "geology__") or c.startswith("metadata__")]
     df[numeric_cols] = df[numeric_cols].apply(
