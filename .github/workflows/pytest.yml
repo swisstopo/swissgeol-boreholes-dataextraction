@@ -24,7 +24,15 @@ jobs:
           python -m venv env
           source env/bin/activate
           pip install -e .[test]
-          pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=extraction --cov=app tests/ | tee pytest-coverage.txt
+          pytest \
+            --junitxml=pytest.xml \
+            --cov-report=term-missing:skip-covered \
+            --cov=app \
+            --cov=classification \
+            --cov=extraction \
+            --cov=swissgeol_doc_processing \
+            --cov=utils \
+            tests/ | tee pytest-coverage.txt
       - name: Pytest coverage comment # For more information see: https://github.com/MishaKav/pytest-coverage-comment/
         uses: MishaKav/pytest-coverage-comment@main
         with:
