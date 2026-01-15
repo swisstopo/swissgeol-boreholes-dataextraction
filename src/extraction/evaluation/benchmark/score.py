@@ -1,6 +1,8 @@
 """Evaluate the predictions against the ground truth."""
 
+from __future__ import annotations
 import argparse
+from typing import Any
 import json
 import logging
 import os
@@ -30,13 +32,13 @@ def evaluate_all_predictions(
         ground_truth_path (Path | None): The path to the ground truth file.
         temp_directory (Path): The path to the temporary directory.
 
-    Returns:
-        None | pd.DataFrame: the document level metadata metrics
+    Returns a JSON-serializable dict summary that can be used by multi-benchmark runners.
     """
     if not (ground_truth_path and ground_truth_path.exists()):  # for inference no ground truth is available
         logger.warning("Ground truth file not found. Skipping evaluation.")
         return None
 
+    temp_directory.mkdir(parents=True, exist_ok=True)
     ground_truth = GroundTruth(ground_truth_path)
 
     #############################
@@ -50,6 +52,10 @@ def evaluate_all_predictions(
     )  # mlflow.log_artifact expects a file
     metrics_dict = metrics.metrics_dict()
 
+    doc_metrics_path = temp_directory / "document_level_metrics.csv"
+    doc_level_metrics_df = metrics.document_level_metrics_df()
+    doc_level_metrics_df.to_csv(doc_metrics_path, index_label="document_name")
+
     # Format the metrics dictionary to limit to three digits
     formatted_metrics = {k: f"{v:.3f}" for k, v in metrics_dict.items()}
     logger.info("Performance metrics: %s", formatted_metrics)
@@ -59,26 +65,53 @@ def evaluate_all_predictions(
 
         mlflow.log_metrics(metrics_dict)
         mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
+        doc_metrics_path = temp_directory / "document_level_metrics.csv"
 
     #############################
     # Evaluate the borehole extraction metadata
     #############################
     metadata_metrics_list = matched_with_ground_truth.evaluate_metadata_extraction()
     metadata_metrics = metadata_metrics_list.get_cumulated_metrics()
+    metadata_metrics_dict = metadata_metrics.to_json()
+
+    doc_meta_metrics_path = temp_directory / "document_level_metadata_metrics.csv"
     document_level_metadata_metrics: pd.DataFrame = metadata_metrics_list.get_document_level_metrics()
     document_level_metadata_metrics.to_csv(
         temp_directory / "document_level_metadata_metrics.csv", index_label="document_name"
     )  # mlflow.log_artifact expects a file
 
-    # print the metrics
     logger.info("Metadata Performance metrics:")
-    logger.info(metadata_metrics.to_json())
+    logger.info(metadata_metrics)
 
+    # -----------------------------
+    # MLflow logging
+    # -----------------------------
     if mlflow_tracking:
-        mlflow.log_metrics(metadata_metrics.to_json())
-        mlflow.log_artifact(temp_directory / "document_level_metadata_metrics.csv")
+        import mlflow
 
-    return document_level_metadata_metrics
+        mlflow.log_metrics(metrics_dict)
+        mlflow.log_metrics(metadata_metrics_dict)
+
+        mlflow.log_artifact(str(doc_metrics_path))
+        mlflow.log_artifact(str(doc_meta_metrics_path))
+
+    # -----------------------------
+    # Return a meaningful summary dict
+    # -----------------------------
+    n_docs = int(
+        doc_level_metrics_df.shape[0]) if doc_level_metrics_df is not None else 0
+
+    summary = {
+        "ground_truth_path": str(ground_truth_path),
+        "n_documents": n_docs,
+        "geology": metrics_dict,
+        "metadata": metadata_metrics_dict,
+        "artifacts": {
+            "document_level_metrics_csv": str(doc_metrics_path),
+            "document_level_metadata_metrics_csv": str(doc_meta_metrics_path),
+        },
+    }
+    return summary
 
 
 def main():
