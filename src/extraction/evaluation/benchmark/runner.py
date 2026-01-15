@@ -1,15 +1,20 @@
-from pathlib import Path
-from typing import Sequence, Any
+"""Orchestrate running multiple benchmarks and aggregate results."""
+
 import json
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Any
+
 import pandas as pd
 
-from .spec import BenchmarkSpec
 from swissgeol_doc_processing.utils.file_utils import flatten
+
+from .spec import BenchmarkSpec
 
 
 def _flatten_metrics(d: dict[str, Any], prefix: str = "") -> dict[str, float]:
-    """
-    Flatten a nested metrics dict into {"geology/layer_f1": 0.63, ...} format.
+    """Flatten a nested metrics dict into {"geology/layer_f1": 0.63, ...} format.
+
     Keeps only numeric values (int/float or strings convertible to float).
     """
     out: dict[str, float] = {}
@@ -20,7 +25,7 @@ def _flatten_metrics(d: dict[str, Any], prefix: str = "") -> dict[str, float]:
         else:
             if v is None:
                 continue
-            if isinstance(v, (int, float)):
+            if isinstance(v, (int | float)):
                 out[key] = float(v)
             elif isinstance(v, str):
                 try:
@@ -31,9 +36,9 @@ def _flatten_metrics(d: dict[str, Any], prefix: str = "") -> dict[str, float]:
 
 
 def _collect_metric_keys(overall_results: list[dict]) -> tuple[list[str], list[str]]:
-    """
-    Determine the union of geology and metadata metric keys across all benchmarks,
-    so the CSV has stable columns even when some benchmarks have language-specific keys.
+    """Determine the union of geology and metadata metric keys across all benchmarks.
+
+    This way, the CSV has stable columns even when some benchmarks have language-specific keys.
     """
     geo_keys: set[str] = set()
     meta_keys: set[str] = set()
@@ -48,22 +53,36 @@ def _collect_metric_keys(overall_results: list[dict]) -> tuple[list[str], list[s
 
     # Put the "core" ones first, then the rest sorted
     core_geo = [
-        "layer_f1", "layer_precision", "layer_recall",
-        "depth_interval_f1", "depth_interval_precision", "depth_interval_recall",
-        "material_description_f1", "material_description_precision", "material_description_recall",
-        "groundwater_f1", "groundwater_precision", "groundwater_recall",
-        "groundwater_depth_f1", "groundwater_depth_precision", "groundwater_depth_recall",
+        "layer_f1",
+        "layer_precision",
+        "layer_recall",
+        "depth_interval_f1",
+        "depth_interval_precision",
+        "depth_interval_recall",
+        "material_description_f1",
+        "material_description_precision",
+        "material_description_recall",
+        "groundwater_f1",
+        "groundwater_precision",
+        "groundwater_recall",
+        "groundwater_depth_f1",
+        "groundwater_depth_precision",
+        "groundwater_depth_recall",
     ]
     core_meta = [
-        "elevation_f1", "elevation_precision", "elevation_recall",
-        "coordinate_f1", "coordinate_precision", "coordinate_recall",
-        "borehole_name_f1", "borehole_name_precision", "borehole_name_recall",
+        "elevation_f1",
+        "elevation_precision",
+        "elevation_recall",
+        "coordinate_f1",
+        "coordinate_precision",
+        "coordinate_recall",
+        "borehole_name_f1",
+        "borehole_name_precision",
+        "borehole_name_recall",
     ]
 
-    ordered_geo = [k for k in core_geo if k in geo_keys] + \
-        sorted([k for k in geo_keys if k not in core_geo])
-    ordered_meta = [k for k in core_meta if k in meta_keys] + \
-        sorted([k for k in meta_keys if k not in core_meta])
+    ordered_geo = [k for k in core_geo if k in geo_keys] + sorted([k for k in geo_keys if k not in core_geo])
+    ordered_meta = [k for k in core_meta if k in meta_keys] + sorted([k for k in meta_keys if k not in core_meta])
 
     return ordered_geo, ordered_meta
 
@@ -110,21 +129,22 @@ def start_multi_benchmark(
     line_detection_params: dict | None = None,
     matching_params: dict | None = None,
 ):
-    """
-    Run multiple benchmarks in one execution.
+    """Run multiple benchmarks in one execution.
 
     Output is namespaced per benchmark under:
       <out_directory>/multi/<benchmark_name>/
     """
     from extraction.main import start_pipeline
+
     multi_root = out_directory / "multi"
     multi_root.mkdir(parents=True, exist_ok=True)
     line_detection_params = line_detection_params or {}
     matching_params = matching_params or {}
     # Parent MLflow run (optional) + nested runs per benchmark
     parent_active = False
-    if mlflow_tracking == True:
+    if mlflow_tracking:
         import mlflow
+
         mlflow.set_experiment("Boreholes data extraction")
         mlflow.start_run(run_name="multi-benchmark")
         parent_active = True
@@ -145,6 +165,7 @@ def start_multi_benchmark(
 
         if mlflow_tracking:
             import mlflow
+
             mlflow.start_run(run_name=spec.name, nested=True)
             mlflow.set_tag("benchmark_name", spec.name)
             mlflow.set_tag("input_directory", str(spec.input_path))
@@ -170,11 +191,11 @@ def start_multi_benchmark(
             temp_directory=bench_temp,
         )
 
-        overall_results.append(
-            {"benchmark": spec.name, "summary": eval_result})
+        overall_results.append({"benchmark": spec.name, "summary": eval_result})
 
         if mlflow_tracking:
             import mlflow
+
             # If eval_result is a dict of metrics, log them
             if isinstance(eval_result, dict):
                 flat_metrics = _flatten_metrics(eval_result)
@@ -185,8 +206,7 @@ def start_multi_benchmark(
                 bench_summary_path = bench_out / "benchmark_summary.json"
                 with open(bench_summary_path, "w", encoding="utf8") as f:
                     json.dump(eval_result, f, ensure_ascii=False, indent=2)
-                mlflow.log_artifact(str(bench_summary_path),
-                                    artifact_path="summary")
+                mlflow.log_artifact(str(bench_summary_path), artifact_path="summary")
 
             mlflow.end_run()
 
@@ -247,15 +267,14 @@ def start_multi_benchmark(
     df = pd.concat([df, pd.DataFrame([mean_unweighted_row, mean_weighted_row])], ignore_index=True)
 
     # keep 3 decimals for readability
-    numeric_cols = [c for c in df.columns if c.startswith(
-        "geology__") or c.startswith("metadata__")]
-    df[numeric_cols] = df[numeric_cols].apply(
-        pd.to_numeric, errors="coerce").round(3)
+    numeric_cols = [c for c in df.columns if c.startswith("geology__") or c.startswith("metadata__")]
+    df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors="coerce").round(3)
 
     df.to_csv(summary_csv_path, index=False)
 
     if mlflow_tracking and parent_active:
         import mlflow
+
         mlflow.log_artifact(str(summary_path), artifact_path="summary")
         mlflow.log_artifact(str(summary_csv_path), artifact_path="summary")
         mlflow.end_run()

@@ -13,9 +13,9 @@ from tqdm import tqdm
 from extraction import DATAPATH
 from extraction.annotations.draw import draw_predictions, plot_strip_logs, plot_tables
 from extraction.annotations.plot_utils import plot_lines, save_visualization
+from extraction.evaluation.benchmark.runner import start_multi_benchmark
 from extraction.evaluation.benchmark.score import evaluate_all_predictions
 from extraction.evaluation.benchmark.spec import parse_benchmark_spec
-from extraction.evaluation.benchmark.runner import start_multi_benchmark
 from extraction.features.extract import extract_page
 from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
@@ -43,8 +43,7 @@ if mlflow_tracking:
     import mlflow
     import pygit2
 
-logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s",
-                    level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
+logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
 
 matching_params = read_params("matching_params.yml")
@@ -140,7 +139,7 @@ def common_options(f):
     "benchmarks",
     multiple=True,
     help="Repeatable benchmark spec: '<name>:<input_path>:<ground_truth_path>'. "
-         "If provided, runs multiple benchmarks in one execution.",
+    "If provided, runs multiple benchmarks in one execution.",
 )
 @click.command()
 @common_options
@@ -162,6 +161,7 @@ def click_pipeline(
     part: str = "all",
     benchmarks: tuple[str, ...] = (),
 ):
+    """Run the boreholes data extraction pipeline."""
     # --- Multi-benchmark mode ---
     if benchmarks:
         specs = [parse_benchmark_spec(b) for b in benchmarks]
@@ -184,9 +184,7 @@ def click_pipeline(
 
     # --- Single-benchmark mode ---
     if input_directory is None:
-        raise click.BadParameter(
-            "Missing -i/--input-directory. Provide it, or use one or more --benchmark specs."
-        )
+        raise click.BadParameter("Missing -i/--input-directory. Provide it, or use one or more --benchmark specs.")
     """Run the boreholes data extraction pipeline."""
     start_pipeline(
         input_directory=input_directory,
@@ -297,6 +295,8 @@ def start_pipeline(
         csv (bool): Whether to generate a CSV output. Defaults to False.
         matching_analytics (bool): Whether to enable matching parameters analytics. Defaults to False.
         part (str, optional): The part of the pipeline to run. Defaults to "all".
+        mlflow_setup (bool, optional): Whether to set up MLFlow tracking. Defaults to True.
+        temp_directory (Path | None, optional): Temporary directory for intermediate files. Defaults to None.
     """  # noqa: D301
     # Initialize analytics if enabled
     analytics = create_analytics() if matching_analytics else None
@@ -458,7 +458,8 @@ def start_pipeline(
             json.dump(predictions.to_json(), file, ensure_ascii=False)
 
     eval_summary = evaluate_all_predictions(
-        predictions=predictions, ground_truth_path=ground_truth_path, temp_directory=temp_directory)
+        predictions=predictions, ground_truth_path=ground_truth_path, temp_directory=temp_directory
+    )
 
     if input_directory and draw_directory:
         draw_predictions(predictions, input_directory, draw_directory)

@@ -1,8 +1,8 @@
 """Evaluate the predictions against the ground truth."""
 
 from __future__ import annotations
+
 import argparse
-from typing import Any
 import json
 import logging
 import os
@@ -98,8 +98,7 @@ def evaluate_all_predictions(
     # -----------------------------
     # Return a meaningful summary dict
     # -----------------------------
-    n_docs = int(
-        doc_level_metrics_df.shape[0]) if doc_level_metrics_df is not None else 0
+    n_docs = int(doc_level_metrics_df.shape[0]) if doc_level_metrics_df is not None else 0
 
     summary = {
         "ground_truth_path": str(ground_truth_path),
