@@ -124,3 +124,7 @@ filterwarnings = [
     "ignore:.*Swig.*has no __module__ attribute:DeprecationWarning",
     "ignore:datetime.datetime.utcnow:DeprecationWarning:botocore"
 ]
+
+[tool.autopep8]
+max_line_length = 119
+ignore = ["E203", "W503"]
