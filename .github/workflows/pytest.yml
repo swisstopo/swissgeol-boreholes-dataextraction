@@ -13,21 +13,29 @@ jobs:
   pytest:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-    - name: Create Environment and run tests
-      shell: bash
-      run: |
-        python -m pip install --upgrade pip
-        python -m venv env
-        source env/bin/activate
-        pip install -e .[test]
-        pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=stratigraphy tests/ | tee pytest-coverage.txt
-    - name: Pytest coverage comment  # For more information see: https://github.com/MishaKav/pytest-coverage-comment/
-      uses: MishaKav/pytest-coverage-comment@main
-      with:
-        pytest-coverage-path: ./pytest-coverage.txt
-        junitxml-path: ./pytest.xml
-
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Create Environment and run tests
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m venv env
+          source env/bin/activate
+          pip install -e .[test]
+          pytest \
+            --junitxml=pytest.xml \
+            --cov-report=term-missing:skip-covered \
+            --cov=app \
+            --cov=classification \
+            --cov=extraction \
+            --cov=swissgeol_doc_processing \
+            --cov=utils \
+            tests/ | tee pytest-coverage.txt
+      - name: Pytest coverage comment # For more information see: https://github.com/MishaKav/pytest-coverage-comment/
+        uses: MishaKav/pytest-coverage-comment@main
+        with:
+          pytest-coverage-path: ./pytest-coverage.txt
+          junitxml-path: ./pytest.xml
+          report-only-changed-files: true
