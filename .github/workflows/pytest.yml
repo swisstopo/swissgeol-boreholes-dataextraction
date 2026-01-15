@@ -5,6 +5,10 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   pytest:
     runs-on: ubuntu-latest
@@ -20,7 +24,7 @@ jobs:
           python -m venv env
           source env/bin/activate
           pip install -e .[test]
-          pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=stratigraphy tests/ | tee pytest-coverage.txt
+          pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=extraction tests/ | tee pytest-coverage.txt
       - name: Pytest coverage comment # For more information see: https://github.com/MishaKav/pytest-coverage-comment/
         uses: MishaKav/pytest-coverage-comment@main
         with:
