@@ -72,7 +72,7 @@ def extract_stratigraphy(filename: str) -> ExtractStratigraphyResponse:
                 strip_logs,
                 language,
                 page_index,
-                document,
+                page,
                 line_detection_params,
                 None,
                 **matching_params,
