@@ -13,7 +13,9 @@ from tqdm import tqdm
 from extraction import DATAPATH
 from extraction.annotations.draw import draw_predictions, plot_strip_logs, plot_tables
 from extraction.annotations.plot_utils import plot_lines, save_visualization
+from extraction.evaluation.benchmark.runner import start_multi_benchmark
 from extraction.evaluation.benchmark.score import evaluate_all_predictions
+from extraction.evaluation.benchmark.spec import parse_benchmark_spec
 from extraction.features.extract import extract_page
 from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
@@ -56,7 +58,7 @@ def common_options(f):
     f = click.option(
         "-i",
         "--input-directory",
-        required=True,
+        required=False,  # make it optional to allow multi-benchmarks
         type=click.Path(exists=True, path_type=Path),
         help="Path to the input directory, or path to a single pdf file.",
     )(f)
@@ -132,13 +134,20 @@ def common_options(f):
     return f
 
 
+@click.option(
+    "--benchmark",
+    "benchmarks",
+    multiple=True,
+    help="Repeatable benchmark spec: '<name>:<input_path>:<ground_truth_path>'. "
+    "If provided, runs multiple benchmarks in one execution.",
+)
 @click.command()
 @common_options
 @click.option(
     "-pa", "--part", type=click.Choice(["all", "metadata"]), default="all", help="The part of the pipeline to run."
 )
 def click_pipeline(
-    input_directory: Path,
+    input_directory: Path | None,
     ground_truth_path: Path | None,
     out_directory: Path,
     predictions_path: Path,
@@ -150,7 +159,32 @@ def click_pipeline(
     csv: bool = False,
     matching_analytics: bool = False,
     part: str = "all",
+    benchmarks: tuple[str, ...] = (),
 ):
+    """Run the boreholes data extraction pipeline."""
+    # --- Multi-benchmark mode ---
+    if benchmarks:
+        specs = [parse_benchmark_spec(b) for b in benchmarks]
+
+        start_multi_benchmark(
+            benchmarks=specs,
+            out_directory=out_directory,
+            skip_draw_predictions=skip_draw_predictions,
+            draw_lines=draw_lines,
+            draw_tables=draw_tables,
+            draw_strip_logs=draw_strip_logs,
+            csv=csv,
+            matching_analytics=matching_analytics,
+            part=part,
+            mlflow_tracking=mlflow_tracking,
+            line_detection_params=line_detection_params,
+            matching_params=matching_params,
+        )
+        return
+
+    # --- Single-benchmark mode ---
+    if input_directory is None:
+        raise click.BadParameter("Missing -i/--input-directory. Provide it, or use one or more --benchmark specs.")
     """Run the boreholes data extraction pipeline."""
     start_pipeline(
         input_directory=input_directory,
@@ -236,6 +270,8 @@ def start_pipeline(
     csv: bool = False,
     matching_analytics: bool = False,
     part: str = "all",
+    mlflow_setup: bool = True,
+    temp_directory: Path | None = None,
 ):
     """Run the boreholes data extraction pipeline.
 
@@ -259,14 +295,17 @@ def start_pipeline(
         csv (bool): Whether to generate a CSV output. Defaults to False.
         matching_analytics (bool): Whether to enable matching parameters analytics. Defaults to False.
         part (str, optional): The part of the pipeline to run. Defaults to "all".
+        mlflow_setup (bool, optional): Whether to set up MLFlow tracking. Defaults to True.
+        temp_directory (Path | None, optional): Temporary directory for intermediate files. Defaults to None.
     """  # noqa: D301
     # Initialize analytics if enabled
     analytics = create_analytics() if matching_analytics else None
 
-    if mlflow_tracking:
+    if mlflow_tracking and mlflow_setup:
         setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
-
-    temp_directory = DATAPATH / "_temp"  # temporary directory to dump files for mlflow artifact logging
+    # temporary directory to dump files for mlflow artifact logging / evaluation artifacts
+    if temp_directory is None:
+        temp_directory = DATAPATH / "_temp"
     temp_directory.mkdir(parents=True, exist_ok=True)
 
     if skip_draw_predictions:
@@ -418,7 +457,7 @@ def start_pipeline(
         with open(predictions_path, "w", encoding="utf8") as file:
             json.dump(predictions.to_json(), file, ensure_ascii=False)
 
-    evaluate_all_predictions(
+    eval_summary = evaluate_all_predictions(
         predictions=predictions, ground_truth_path=ground_truth_path, temp_directory=temp_directory
     )
 
@@ -430,6 +469,8 @@ def start_pipeline(
         analytics_output_path = out_directory / "matching_params_analytics.json"
         analytics.save_analytics(analytics_output_path)
         logger.info(f"Matching parameters analytics saved to {analytics_output_path}")
+
+    return eval_summary
 
 
 if __name__ == "__main__":
