@@ -9,14 +9,13 @@ from typing import ClassVar, Generic, TypeVar
 import pymupdf
 import rtree
 
+from extraction.features.stratigraphy.base.sidebar_entry import SidebarEntry
+from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_smallest
 from swissgeol_doc_processing.text.textblock import TextBlock
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.text.textline_affinity import Affinity
 from swissgeol_doc_processing.utils.file_utils import read_params
-
-from ...base.sidebar_entry import SidebarEntry
-from ...interval.interval import IntervalBlockPair, IntervalZone
 
 EntryT = TypeVar("EntryT", bound=SidebarEntry)
 

@@ -3,14 +3,13 @@
 import pymupdf
 import rtree
 
+from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
+from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
+from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
+from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarNoise, noise_count
+from extraction.features.stratigraphy.sidebar.utils.a_above_b_sidebar_validator import AAboveBSidebarValidator
+from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
 from swissgeol_doc_processing.text.textline import TextWord
-
-from ...base.sidebar_entry import DepthColumnEntry
-from ...interval.depth_column_entry_extractor import DepthColumnEntryExtractor
-from ..classes.a_above_b_sidebar import AAboveBSidebar
-from ..classes.sidebar import SidebarNoise, noise_count
-from ..utils.a_above_b_sidebar_validator import AAboveBSidebarValidator
-from ..utils.cluster import Cluster
 
 
 class AAboveBSidebarExtractor:

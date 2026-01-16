@@ -72,7 +72,8 @@ all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visu
 [tool.setuptools.packages.find]
 where = ["src"]
 include = [
-  "swissgeol_doc_processing*"
+  "swissgeol_doc_processing*",
+  "extraction*"
 ]
 
 [tool.setuptools_scm]
@@ -85,6 +86,7 @@ boreholes-download-profiles = "scripts.get_files:download_directory_froms3"
 boreholes-score = "extraction.evaluation.benchmark.score:main"
 boreholes-classify-descriptions = "classification.main:click_pipeline"
 fine-tune-bert = "classification.models.train:train_model"
+boreholes-identify = "extraction.minimal_pipeline:click_identify"
 
 [tool.ruff.lint]
 select = [
