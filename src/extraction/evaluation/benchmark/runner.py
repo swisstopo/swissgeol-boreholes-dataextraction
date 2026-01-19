@@ -146,7 +146,7 @@ def start_multi_benchmark(
         import mlflow
 
         mlflow.set_experiment("Boreholes data extraction")
-        mlflow.start_run(run_name="multi-benchmark")
+        mlflow.start_run()
         parent_active = True
         mlflow.set_tag("run_type", "multi_benchmark")
         mlflow.set_tag("benchmarks", ",".join([b.name for b in benchmarks]))
