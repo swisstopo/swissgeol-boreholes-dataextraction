@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 from classification import DATAPATH
 from classification.classifiers.classifier import Classifier, ClassifierTypes
 from classification.classifiers.classifier_factory import ClassifierFactory
+from classification.evaluation.benchmark.runner import start_multi_benchmark
+from classification.evaluation.benchmark.spec import parse_benchmark_spec
 from classification.evaluation.evaluate import evaluate
 from classification.utils.classification_classes import ExistingClassificationSystems
 from classification.utils.data_loader import LayerInformation, prepare_classification_data
@@ -96,7 +98,7 @@ def common_options(f):
     f = click.option(
         "-f",
         "--file-path",
-        required=True,
+        required=False,  # allow multi-benchmark mode
         type=click.Path(exists=True, path_type=Path),
         help="Path to the json file containing the material descriptions to classify.",
     )(f)
@@ -153,10 +155,18 @@ def common_options(f):
     return f
 
 
+@click.option(
+    "--benchmark",
+    "benchmarks",
+    multiple=True,
+    help="Repeatable benchmark spec: '<name>:<file_path>:<file_subset_directory>' "
+    "or '<name>:<file_path>:<file_subset_directory>:<ground_truth_path>'. "
+    "If provided, runs multiple benchmarks in one execution.",
+)
 @click.command()
 @common_options
 def click_pipeline(
-    file_path: Path,
+    file_path: Path | None,
     ground_truth_path: Path,
     out_directory: Path,
     out_directory_bedrock: Path,
@@ -164,7 +174,29 @@ def click_pipeline(
     classifier_type: str,
     model_path: Path,
     classification_system: str,
+    benchmarks: tuple[str, ...] = (),
 ):
+    """Command line interface for the multi benchmark classification pipeline."""
+    # --- Multi-benchmark mode ---
+    if benchmarks:
+        specs = [parse_benchmark_spec(b) for b in benchmarks]
+
+        start_multi_benchmark(
+            benchmarks=specs,
+            out_directory=out_directory,
+            out_directory_bedrock=out_directory_bedrock,
+            classifier_type=classifier_type,
+            model_path=model_path,
+            classification_system=classification_system,
+            mlflow_tracking=mlflow_tracking,
+            classification_params=classification_params,
+        )
+        return
+
+    # --- Single-benchmark mode ---
+    if file_path is None:
+        raise click.BadParameter("Missing -f/--file-path. Provide it, or use one or more --benchmark specs.")
+
     """Run the description classification pipeline."""
     main(
         file_path,
@@ -187,6 +219,7 @@ def main(
     classifier_type: str,
     model_path: Path,
     classification_system: str,
+    mlflow_setup: bool = True,
 ):
     """Main pipeline to classify the layer's soil descriptions.
 
@@ -199,6 +232,7 @@ def main(
         classifier_type (str): The classifier type to use.
         model_path (Path): Path to the trained model.
         classification_system (str): The classification system used to classify the data.
+        mlflow_setup (bool): Whether to setup mlflow tracking.
     """
     if ground_truth_path and file_subset_directory:
         logger.warning(
@@ -211,7 +245,7 @@ def main(
         classification_system.lower()
     )
 
-    if mlflow_tracking:
+    if mlflow_tracking and mlflow_setup:
         setup_mlflow_tracking(file_path, out_directory, file_subset_directory)
 
     logger.info(
@@ -246,8 +280,23 @@ def main(
     if mlflow_tracking:
         log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier, classification_system_cls)
 
-    if mlflow_tracking:
+    if mlflow_tracking and mlflow_setup:
         mlflow.end_run()
+
+    summary = {
+        "file_path": str(file_path),
+        "ground_truth_path": str(ground_truth_path) if ground_truth_path else None,
+        "file_subset_directory": str(file_subset_directory) if file_subset_directory else None,
+        "n_layers": len(layer_descriptions),
+        "classifier_type": classifier_type,
+        "model_path": str(model_path) if model_path else None,
+        "classification_system": classification_system,
+        "metrics": classification_metrics.to_json(),
+        # optional but very useful in debugging:
+        # "metrics_per_class": classification_metrics.to_json_per_class(),
+    }
+
+    return summary
 
 
 if __name__ == "__main__":
