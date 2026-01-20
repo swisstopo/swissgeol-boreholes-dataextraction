@@ -27,8 +27,8 @@ def deterministic_hash_ratio(text: str) -> float:
 @click.command()
 @click.option("-i", "--input-directory", type=click.Path(exists=True, path_type=Path))
 @click.option("-o", "--output-directory", type=click.Path(path_type=Path))
-@click.option("-t", "--rtest", default=0.15, type=float)
-@click.option("-v", "--rvalid", default=0.15, type=float)
+@click.option("-rt", "--rtest", default=0.15, type=float)
+@click.option("-rv", "--rvalid", default=0.15, type=float)
 def split_data(input_directory: Path, output_directory: Path, rtest: float, rvalid: float) -> None:
     """Split input files and gt to train, valid and test.
 
