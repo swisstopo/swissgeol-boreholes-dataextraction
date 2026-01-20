@@ -32,7 +32,8 @@ def evaluate_all_predictions(
         ground_truth_path (Path | None): The path to the ground truth file.
         temp_directory (Path): The path to the temporary directory.
 
-    Returns a JSON-serializable dict summary that can be used by multi-benchmark runners.
+    Returns:
+        dict | None: A JSON-serializable dict summary that can be used by multi-benchmark runners.
     """
     if not (ground_truth_path and ground_truth_path.exists()):  # for inference no ground truth is available
         logger.warning("Ground truth file not found. Skipping evaluation.")
