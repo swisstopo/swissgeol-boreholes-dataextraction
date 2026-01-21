@@ -2,7 +2,7 @@
 
 import pytest
 
-from extraction.evaluation.benchmark.runner import _flatten_metrics
+from extraction.runner import _flatten_metrics
 
 
 @pytest.mark.parametrize(
