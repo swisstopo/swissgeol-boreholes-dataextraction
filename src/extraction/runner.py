@@ -5,6 +5,7 @@ import logging
 import os
 from collections.abc import Sequence
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
 import pandas as pd
@@ -583,8 +584,8 @@ def start_pipeline_benchmark(
                 mlflow.set_tag("input_directory", str(spec.input_path))
                 mlflow.set_tag("ground_truth_path", str(spec.ground_truth_path))
 
-            bench_temp = bench_out / "_temp"
-            bench_temp.mkdir(parents=True, exist_ok=True)
+            with TemporaryDirectory(prefix=f"{spec.name}_", dir=str(bench_out)) as td:
+                bench_temp = Path(td)
 
             eval_result = start_pipeline(
                 input_directory=spec.input_path,
