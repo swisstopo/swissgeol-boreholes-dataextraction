@@ -121,18 +121,6 @@ def main():
     """Main function to evaluate the predictions against the ground truth."""
     args = parse_cli()
 
-    # setup mlflow tracking; should be started before any other code
-    # such that tracking is enabled in other parts of the code.
-    # This does not create any scores, but will log all the created images to mlflow.
-    if args.mlflow_tracking:
-        import mlflow
-
-        mlflow.set_experiment("Boreholes Stratigraphy")
-        with mlflow.start_run():
-            evaluate_all_predictions(..., mlflow_tracking=True)
-    else:
-        evaluate_all_predictions(..., mlflow_tracking=False)
-
     # Load the predictions
     try:
         with open(args.predictions_path, encoding="utf8") as file:
@@ -145,8 +133,14 @@ def main():
         return
 
     predictions = OverallFilePredictions.from_json(predictions)
+    if args.mlflow_tracking:
+        import mlflow
 
-    evaluate_all_predictions(predictions, args.ground_truth_path, args.temp_directory, args.mlflow_tracking)
+        mlflow.set_experiment("Boreholes Stratigraphy")
+        with mlflow.start_run():
+            evaluate_all_predictions(predictions, args.ground_truth_path, args.temp_directory, mlflow_tracking=True)
+    else:
+        evaluate_all_predictions(predictions, args.ground_truth_path, args.temp_directory, mlflow_tracking=False)
 
 
 def parse_cli() -> argparse.Namespace:
