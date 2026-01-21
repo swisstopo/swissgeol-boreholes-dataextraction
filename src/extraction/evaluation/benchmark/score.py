@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 from pathlib import Path
 
 import pandas as pd
@@ -17,20 +16,24 @@ from extraction.features.predictions.overall_file_predictions import OverallFile
 
 load_dotenv()
 
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
+# mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
 
 
 def evaluate_all_predictions(
-    predictions: OverallFilePredictions, ground_truth_path: Path, temp_directory: Path
-) -> None | pd.DataFrame:
+    predictions: OverallFilePredictions,
+    ground_truth_path: Path,
+    temp_directory: Path,
+    mlflow_tracking: bool,
+) -> None | dict:
     """Computes all the metrics, logs them, and creates corresponding MLFlow artifacts (when enabled).
 
     Args:
         predictions (OverallFilePredictions): The predictions objects.
         ground_truth_path (Path | None): The path to the ground truth file.
         temp_directory (Path): The path to the temporary directory.
+        mlflow_tracking (bool): Whether MLFlow tracking is enabled.
 
     Returns:
         dict | None: A JSON-serializable dict summary that can be used by multi-benchmark runners.
@@ -64,7 +67,7 @@ def evaluate_all_predictions(
     if mlflow_tracking:
         import mlflow
 
-        mlflow.log_metrics(metrics_dict)
+        # mlflow.log_metrics(metrics_dict)
         mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
         doc_metrics_path = temp_directory / "document_level_metrics.csv"
 
@@ -90,8 +93,8 @@ def evaluate_all_predictions(
     if mlflow_tracking:
         import mlflow
 
-        mlflow.log_metrics(metrics_dict)
-        mlflow.log_metrics(metadata_metrics_dict)
+        # mlflow.log_metrics(metrics_dict)
+        # mlflow.log_metrics(metadata_metrics_dict)
 
         mlflow.log_artifact(str(doc_metrics_path))
         mlflow.log_artifact(str(doc_meta_metrics_path))
@@ -125,7 +128,10 @@ def main():
         import mlflow
 
         mlflow.set_experiment("Boreholes Stratigraphy")
-        mlflow.start_run()
+        with mlflow.start_run():
+            evaluate_all_predictions(..., mlflow_tracking=True)
+    else:
+        evaluate_all_predictions(..., mlflow_tracking=False)
 
     # Load the predictions
     try:
@@ -140,7 +146,7 @@ def main():
 
     predictions = OverallFilePredictions.from_json(predictions)
 
-    evaluate_all_predictions(predictions, args.ground_truth_path, args.temp_directory)
+    evaluate_all_predictions(predictions, args.ground_truth_path, args.temp_directory, args.mlflow_tracking)
 
 
 def parse_cli() -> argparse.Namespace:

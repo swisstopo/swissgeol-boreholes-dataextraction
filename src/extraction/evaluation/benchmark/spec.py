@@ -16,7 +16,17 @@ class BenchmarkSpec:
 
 
 def parse_benchmark_spec(spec: str) -> BenchmarkSpec:
-    """Parse a benchmark spec of the form "<name>:<input_path>:<ground_truth_path>"."""
+    """Parse and validate a benchmark specification string.
+
+    The expected format is:
+        "<name>:<input_path>:<ground_truth_path>"
+
+    Args:
+        spec (str): Benchmark specification string passed via the CLI.
+
+    Returns:
+        BenchmarkSpec: Validated benchmark instance.
+    """
     parts = spec.split(":")
     if len(parts) != 3:
         raise click.BadParameter(f"Invalid --benchmark '{spec}'. Expected '<name>:<input_path>:<ground_truth_path>'.")
