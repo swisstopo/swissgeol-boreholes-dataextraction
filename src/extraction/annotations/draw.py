@@ -180,6 +180,7 @@ class PageDrawer:
         is_after: bool = False,
         shift: int = 10,
         scale: int = 6,
+        color: str = "red",
     ):
         """Draw a vertical span marker for a borehole range.
 
@@ -194,28 +195,30 @@ class PageDrawer:
             is_after (bool): True if the span continues to the next page.
             shift (int): Horizontal offset from the bbox edge where the marker is drawn.
             scale (int): Size of ticks / arrowheads.
+            color (str): Color to draw. Defaults to "red".
         """
         bbox_material = bounding_boxes.material_description_bbox.rect * self.page.derotation_matrix
         p_start = pymupdf.Point(bbox_material.x1 + shift, bbox_material.y0)
         p_end = pymupdf.Point(bbox_material.x1 + shift, bbox_material.y1)
+        color_ = pymupdf.utils.getColor(color)
 
         # Draw line start / end
         self.shape.draw_line(p_start, p_end)
-        self.shape.finish(color=pymupdf.utils.getColor("red"))
+        self.shape.finish(color=pymupdf.utils.getColor(color))
 
         if not is_before:
             self.shape.draw_line(*_get_centered_hline(center=p_start, scale=scale))
-            self.shape.finish(color=pymupdf.utils.getColor("red"), fill=pymupdf.utils.getColor("red"))
+            self.shape.finish(color=color_, fill=color_)
         else:
             self.shape.draw_polyline(points=_get_polyline_triangle(center=p_start, is_up=True, height=scale))
-            self.shape.finish(color=pymupdf.utils.getColor("red"), fill=pymupdf.utils.getColor("red"))
+            self.shape.finish(color=color_, fill=color_)
 
         if not is_after:
             self.shape.draw_line(*_get_centered_hline(center=p_end, scale=scale))
-            self.shape.finish(color=pymupdf.utils.getColor("red"), fill=pymupdf.utils.getColor("red"))
+            self.shape.finish(color=color_, fill=color_)
         else:
             self.shape.draw_polyline(points=_get_polyline_triangle(center=p_end, is_up=False, height=scale))
-            self.shape.finish(color=pymupdf.utils.getColor("red"), fill=pymupdf.utils.getColor("red"))
+            self.shape.finish(color=color_, fill=color_)
 
     def draw_bounding_boxes(self, bounding_boxes: PageBoundingBoxes):
         """Draw depth columns as well as the material rects on a pdf page.
