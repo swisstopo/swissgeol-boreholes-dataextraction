@@ -8,7 +8,7 @@ import numpy as np
 import pymupdf
 from dotenv import load_dotenv
 
-from extraction.annotations.plot_utils import convert_page_to_img
+from extraction.annotations.plot_utils import _get_centered_hline, _get_polyline_triangle, convert_page_to_img
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
@@ -94,6 +94,19 @@ class PageDrawer:
         self.page_number = page.number + 1
         self.shape = page.new_shape()  # Create a shape object for drawing
 
+    @staticmethod
+    def _get_page_bbox(bboxes: list[PageBoundingBoxes], page: int) -> list[PageBoundingBoxes]:
+        """Filter bounding boxes for a given page.
+
+        Args:
+            bboxes (BoreholePredictions): All bounding boxes.
+            page (int): Page number to keep.
+
+        Returns:
+            list[PageBoundingBoxes]: Bounding boxes whose `bbox.page == page`.
+        """
+        return [bbox for bbox in bboxes if bbox.page == page]
+
     def draw(self, file_predictions: FilePredictions):
         """Draws extracted borehole data on the page.
 
@@ -126,15 +139,21 @@ class PageDrawer:
                         groundwater_entry.feature.is_correct,
                         "pink",
                     )
-            page_bounding_boxes = [bboxes for bboxes in bounding_boxes if bboxes.page == self.page_number]
-            for bboxes in page_bounding_boxes:
+
+            # Get bbox that lays on current page and check for continuity
+            page_bboxes = PageDrawer._get_page_bbox(bounding_boxes, page=self.page_number)
+            is_page_bboxes_before = any(PageDrawer._get_page_bbox(bounding_boxes, page=self.page_number - 1))
+            is_page_bboxes_after = any(PageDrawer._get_page_bbox(bounding_boxes, page=self.page_number + 1))
+
+            for bboxes in page_bboxes:
                 self.draw_bounding_boxes(bboxes)
+                self.draw_bounding_boxes_span(bboxes, is_before=is_page_bboxes_before, is_after=is_page_bboxes_after)
 
             layers = [layer for layer in bh_layers.layers if self.page_number in layer.material_description.pages]
             for index, layer in enumerate(layers):
                 self.draw_layer(
                     layer=layer,
-                    sidebar_rects=[bboxes.sidebar_bbox.rect for bboxes in page_bounding_boxes if bboxes.sidebar_bbox],
+                    sidebar_rects=[bboxes.sidebar_bbox.rect for bboxes in page_bboxes if bboxes.sidebar_bbox],
                     index=index,
                     page_number=self.page_number,
                 )
@@ -153,6 +172,50 @@ class PageDrawer:
         self.shape.finish(color=pymupdf.utils.getColor(color))
 
         self._draw_correctness_line(start=rect.top_left, end=rect.bottom_left, is_correct=is_correct, width=6)
+
+    def draw_bounding_boxes_span(
+        self,
+        bounding_boxes: PageBoundingBoxes,
+        is_before: bool = False,
+        is_after: bool = False,
+        shift: int = 10,
+        scale: int = 6,
+    ):
+        """Draw a vertical span marker for a borehole range.
+
+        Draws a red vertical line next to the material-description bbox, plus a marker
+        at the start/end:
+        - If the span starts/ends on this page: draw a short horizontal tick.
+        - If it continues from/to another page: draw a triangle arrow pointing direction.
+
+        Args:
+            bounding_boxes (BoundingBoxes): Bounding boxes for the object (used to locate the span).
+            is_before (bool): True if the span continues from the previous page.
+            is_after (bool): True if the span continues to the next page.
+            shift (int): Horizontal offset from the bbox edge where the marker is drawn.
+            scale (int): Size of ticks / arrowheads.
+        """
+        bbox_material = bounding_boxes.material_description_bbox.rect * self.page.derotation_matrix
+        p_start = pymupdf.Point(bbox_material.x1 + shift, bbox_material.y0)
+        p_end = pymupdf.Point(bbox_material.x1 + shift, bbox_material.y1)
+
+        # Draw line start / end
+        self.shape.draw_line(p_start, p_end)
+        self.shape.finish(color=pymupdf.utils.getColor("red"))
+
+        if not is_before:
+            self.shape.draw_line(*_get_centered_hline(center=p_start, scale=scale))
+            self.shape.finish(color=pymupdf.utils.getColor("red"), fill=pymupdf.utils.getColor("red"))
+        else:
+            self.shape.draw_polyline(points=_get_polyline_triangle(center=p_start, is_up=True, height=scale))
+            self.shape.finish(color=pymupdf.utils.getColor("red"), fill=pymupdf.utils.getColor("red"))
+
+        if not is_after:
+            self.shape.draw_line(*_get_centered_hline(center=p_end, scale=scale))
+            self.shape.finish(color=pymupdf.utils.getColor("red"), fill=pymupdf.utils.getColor("red"))
+        else:
+            self.shape.draw_polyline(points=_get_polyline_triangle(center=p_end, is_up=False, height=scale))
+            self.shape.finish(color=pymupdf.utils.getColor("red"), fill=pymupdf.utils.getColor("red"))
 
     def draw_bounding_boxes(self, bounding_boxes: PageBoundingBoxes):
         """Draw depth columns as well as the material rects on a pdf page.
