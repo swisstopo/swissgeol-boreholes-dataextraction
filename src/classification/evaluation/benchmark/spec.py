@@ -30,8 +30,11 @@ def parse_benchmark_spec(spec: str) -> BenchmarkSpec:
       - "<name>:<file_path>:<file_subset_directory>"
       - "<name>:<file_path>:<file_subset_directory>:<ground_truth_path>"
 
-    Note: Use an empty subset directory (or omit it by passing "none") if you truly want
-    the whole JSON file (but in practice you usually want subset for benchmarks).
+    Args:
+        spec: Benchmark specification string.
+
+    Returns:
+        Parsed BenchmarkSpec object.
     """
     parts = [p.strip() for p in spec.split(":")]
 
