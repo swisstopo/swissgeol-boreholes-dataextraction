@@ -47,7 +47,7 @@ from swissgeol_doc_processing.utils.strip_log_detection import StripLog
 from swissgeol_doc_processing.utils.table_detection import (
     TableStructure,
 )
-from utils.dynamic_matching import IntervalToLinesDP
+from extraction.utils.dynamic_matching import IntervalToLinesDP
 
 logger = logging.getLogger(__name__)
 

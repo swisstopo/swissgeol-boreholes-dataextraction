@@ -16,7 +16,7 @@ from extraction.features.predictions.borehole_predictions import (
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
 from swissgeol_doc_processing.utils.file_utils import parse_text
-from utils.dynamic_matching import PredToGroundTruthLayerDP
+from extraction.utils.dynamic_matching import PredToGroundTruthLayerDP
 
 logger = logging.getLogger(__name__)
 
