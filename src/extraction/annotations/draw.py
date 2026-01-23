@@ -132,12 +132,14 @@ class PageDrawer:
 
             # Get borehole range in pages
             pages_borehole_span = [bbox.page for bbox in bounding_boxes]
-            is_page_bboxes_before = self.page_number > min(pages_borehole_span)
-            is_page_bboxes_after = self.page_number < max(pages_borehole_span)
+            start_is_continuation = self.page_number > min(pages_borehole_span)
+            end_has_continuation = self.page_number < max(pages_borehole_span)
 
             for bboxes in page_bboxes:
                 self.draw_bounding_boxes(bboxes)
-                self.draw_bounding_boxes_span(bboxes, is_before=is_page_bboxes_before, is_after=is_page_bboxes_after)
+                self.draw_bounding_boxes_span(
+                    bboxes, start_is_continuation=start_is_continuation, end_has_continuation=end_has_continuation
+                )
 
             layers = [layer for layer in bh_layers.layers if self.page_number in layer.material_description.pages]
             for index, layer in enumerate(layers):
