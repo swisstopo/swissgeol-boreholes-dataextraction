@@ -50,12 +50,10 @@ def _get_polyline_triangle(
     Returns:
         list[pymupdf.Point]: List of points describing the triangle as a polyline.
     """
-    return [
-        pymupdf.Point(center.x - width // 2, center.y - ((-1) ** is_up) * height),
-        pymupdf.Point(center.x + width // 2, center.y - ((-1) ** is_up) * height),
-        pymupdf.Point(center.x, center.y),
-        pymupdf.Point(center.x - width // 2, center.y - ((-1) ** is_up) * height),
-    ]
+    point1 = pymupdf.Point(center.x - width // 2, center.y - ((-1) ** is_up) * height)
+    point2 = pymupdf.Point(center.x + width // 2, center.y - ((-1) ** is_up) * height)
+    point3 = pymupdf.Point(center.x, center.y)
+    return [point1, point2, point3, point1]
 
 
 def _draw_lines(img: np.ndarray, lines: list[Line], scale_factor: int = 1) -> np.ndarray:

@@ -94,19 +94,6 @@ class PageDrawer:
         self.page_number = page.number + 1
         self.shape = page.new_shape()  # Create a shape object for drawing
 
-    @staticmethod
-    def _get_page_bbox(bboxes: list[PageBoundingBoxes], page: int) -> list[PageBoundingBoxes]:
-        """Filter bounding boxes for a given page.
-
-        Args:
-            bboxes (BoreholePredictions): All bounding boxes.
-            page (int): Page number to keep.
-
-        Returns:
-            list[PageBoundingBoxes]: Bounding boxes whose `bbox.page == page`.
-        """
-        return [bbox for bbox in bboxes if bbox.page == page]
-
     def draw(self, file_predictions: FilePredictions):
         """Draws extracted borehole data on the page.
 
@@ -141,9 +128,12 @@ class PageDrawer:
                     )
 
             # Get bbox that lays on current page and check for continuity
-            page_bboxes = PageDrawer._get_page_bbox(bounding_boxes, page=self.page_number)
-            is_page_bboxes_before = any(PageDrawer._get_page_bbox(bounding_boxes, page=self.page_number - 1))
-            is_page_bboxes_after = any(PageDrawer._get_page_bbox(bounding_boxes, page=self.page_number + 1))
+            page_bboxes = [bbox for bbox in bounding_boxes if bbox.page == self.page_number]
+
+            # Get borehole range in pages
+            pages_borehole_span = [bbox.page for bbox in bounding_boxes]
+            is_page_bboxes_before = self.page_number > min(pages_borehole_span)
+            is_page_bboxes_after = self.page_number < max(pages_borehole_span)
 
             for bboxes in page_bboxes:
                 self.draw_bounding_boxes(bboxes)
@@ -176,8 +166,8 @@ class PageDrawer:
     def draw_bounding_boxes_span(
         self,
         bounding_boxes: PageBoundingBoxes,
-        is_before: bool = False,
-        is_after: bool = False,
+        start_is_continuation: bool = False,
+        end_has_continuation: bool = False,
         shift: int = 10,
         scale: int = 6,
         color: str = "red",
@@ -191,8 +181,8 @@ class PageDrawer:
 
         Args:
             bounding_boxes (BoundingBoxes): Bounding boxes for the object (used to locate the span).
-            is_before (bool): True if the span continues from the previous page.
-            is_after (bool): True if the span continues to the next page.
+            start_is_continuation (bool): True if the span continues from the previous page.
+            end_has_continuation (bool): True if the span continues to the next page.
             shift (int): Horizontal offset from the bbox edge where the marker is drawn.
             scale (int): Size of ticks / arrowheads.
             color (str): Color to draw. Defaults to "red".
@@ -200,25 +190,21 @@ class PageDrawer:
         bbox_material = bounding_boxes.material_description_bbox.rect * self.page.derotation_matrix
         p_start = pymupdf.Point(bbox_material.x1 + shift, bbox_material.y0)
         p_end = pymupdf.Point(bbox_material.x1 + shift, bbox_material.y1)
-        color_ = pymupdf.utils.getColor(color)
 
         # Draw line start / end
         self.shape.draw_line(p_start, p_end)
-        self.shape.finish(color=pymupdf.utils.getColor(color))
 
-        if not is_before:
+        if not start_is_continuation:
             self.shape.draw_line(*_get_centered_hline(center=p_start, scale=scale))
-            self.shape.finish(color=color_, fill=color_)
         else:
             self.shape.draw_polyline(points=_get_polyline_triangle(center=p_start, is_up=True, height=scale))
-            self.shape.finish(color=color_, fill=color_)
 
-        if not is_after:
+        if not end_has_continuation:
             self.shape.draw_line(*_get_centered_hline(center=p_end, scale=scale))
-            self.shape.finish(color=color_, fill=color_)
         else:
             self.shape.draw_polyline(points=_get_polyline_triangle(center=p_end, is_up=False, height=scale))
-            self.shape.finish(color=color_, fill=color_)
+
+        self.shape.finish(color=pymupdf.utils.getColor(color), fill=pymupdf.utils.getColor(color))
 
     def draw_bounding_boxes(self, bounding_boxes: PageBoundingBoxes):
         """Draw depth columns as well as the material rects on a pdf page.
