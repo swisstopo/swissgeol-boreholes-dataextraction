@@ -29,13 +29,13 @@ from extraction.features.predictions.overall_file_predictions import OverallFile
 from extraction.features.predictions.predictions import BoreholeListBuilder
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
-from src.utils.benchmark_utils import _short_metric_key, _shorten_metric_dict
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.matching_params_analytics import create_analytics
 from swissgeol_doc_processing.utils.file_utils import flatten, read_params
 from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
 from swissgeol_doc_processing.utils.table_detection import detect_table_structures
+from utils.benchmark_utils import _short_metric_key, _shorten_metric_dict
 
 from .evaluation.benchmark.spec import BenchmarkSpec
 
