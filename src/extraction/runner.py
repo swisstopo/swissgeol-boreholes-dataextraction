@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
@@ -54,33 +54,26 @@ logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logg
 logger = logging.getLogger(__name__)
 
 
-def _flatten_metrics(d: dict[str, Any], prefix: str = "") -> dict[str, float]:
-    """Flatten a nested metrics dict into {"geology/layer_f1": 0.63, ...} format.
-
-    Keeps only numeric values (int/float or strings convertible to float).
-
-    Args:
-        d (dict[str, Any]): Nested dict of metrics.
-        prefix (str, optional): Prefix for keys (used in recursion). Defaults to "".
-
-    Returns:
-        dict[str, float]: Flattened dict of metrics.
-    """
+def _flatten_eval_summary_metrics(summary: Mapping[str, Any]) -> dict[str, float]:
     out: dict[str, float] = {}
-    for k, v in d.items():
-        key = f"{prefix}{k}" if not prefix else f"{prefix}/{k}"
 
-        if v is None:
-            continue
-        elif isinstance(v, dict):
-            out.update(_flatten_metrics(v, key))
-        elif isinstance(v, (int | float)):
-            out[key] = float(v)
-        elif isinstance(v, str):
-            try:
-                out[key] = float(v)
-            except ValueError:
-                continue
+    def add(prefix: str, obj: Any) -> None:
+        if not isinstance(obj, Mapping):
+            return
+        for k, v in obj.items():
+            key = f"{prefix}/{k}"
+            if isinstance(v, Mapping):
+                add(key, v)
+            else:
+                if v is None or isinstance(v, bool):
+                    continue
+                try:
+                    out[key] = float(v)
+                except (TypeError, ValueError):
+                    continue
+
+    add("geology", summary.get("geology"))
+    add("metadata", summary.get("metadata"))
     return out
 
 
@@ -97,7 +90,7 @@ def _collect_metric_keys(overall_results: list[dict[str, Any]]) -> list[str]:
         if not isinstance(summary, dict):
             continue
 
-        flat = _flatten_metrics(summary)
+        flat = _flatten_eval_summary_metrics(summary)
 
         keys.update(flat.keys())
 
@@ -119,7 +112,7 @@ def _make_overall_summary_rows(overall_results: list[dict[str, Any]]) -> list[di
             "n_documents": summary.get("n_documents") if isinstance(summary, dict) else None,
         }
 
-        flat = _flatten_metrics(summary) if isinstance(summary, dict) else {}
+        flat = _flatten_eval_summary_metrics(summary) if isinstance(summary, dict) else {}
 
         # Put metrics as columns; use __ instead of / for CSV friendliness
         for k in metric_keys:
@@ -575,7 +568,7 @@ def start_pipeline_benchmark(
                 import mlflow
 
                 if isinstance(eval_result, dict):
-                    flat_metrics = _flatten_metrics(eval_result)
+                    flat_metrics = _flatten_eval_summary_metrics(eval_result)
                     short_metrics = _shorten_metric_dict(flat_metrics)
 
                     if short_metrics:
