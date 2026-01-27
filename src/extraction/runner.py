@@ -3,10 +3,9 @@
 import json
 import logging
 import os
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
 
 import pandas as pd
 import pymupdf
@@ -15,7 +14,7 @@ from tqdm import tqdm
 from extraction import DATAPATH
 from extraction.annotations.draw import draw_predictions, plot_strip_logs, plot_tables
 from extraction.annotations.plot_utils import plot_lines, save_visualization
-from extraction.evaluation.benchmark.score import evaluate_all_predictions
+from extraction.evaluation.benchmark.score import BenchmarkSummary, evaluate_all_predictions
 from extraction.features.extract import extract_page
 from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
@@ -35,7 +34,7 @@ from swissgeol_doc_processing.text.matching_params_analytics import create_analy
 from swissgeol_doc_processing.utils.file_utils import flatten, read_params
 from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
 from swissgeol_doc_processing.utils.table_detection import detect_table_structures
-from utils.benchmark_utils import _short_metric_key, _shorten_metric_dict
+from utils.benchmark_utils import _short_metric_key
 
 from .evaluation.benchmark.spec import BenchmarkSpec
 
@@ -51,75 +50,6 @@ table_detection_params = read_params("table_detection_params.yml")
 striplog_detection_params = read_params("striplog_detection_params.yml")
 
 logger = logging.getLogger(__name__)
-
-
-def _flatten_eval_summary_metrics(summary: Mapping[str, Any]) -> dict[str, float]:
-    out: dict[str, float] = {}
-
-    def add(prefix: str, obj: Any) -> None:
-        if not isinstance(obj, Mapping):
-            return
-        for k, v in obj.items():
-            key = f"{prefix}/{k}"
-            if isinstance(v, Mapping):
-                add(key, v)
-            else:
-                if v is None or isinstance(v, bool):
-                    continue
-                try:
-                    out[key] = float(v)
-                except (TypeError, ValueError):
-                    continue
-
-    add("geology", summary.get("geology"))
-    add("metadata", summary.get("metadata"))
-    return out
-
-
-def _collect_metric_keys(overall_results: list[dict[str, Any]]) -> list[str]:
-    """Union of flattened metric keys across all benchmarks.
-
-    We treat any numeric leaf in the summary dict as a metric.
-    Non-dict summaries are skipped defensively.
-    """
-    keys: set[str] = set()
-
-    for result in overall_results:
-        summary = result.get("summary")
-        if not isinstance(summary, dict):
-            continue
-
-        flat = _flatten_eval_summary_metrics(summary)
-
-        keys.update(flat.keys())
-
-    return sorted(keys)
-
-
-def _make_overall_summary_rows(overall_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Create rows for the overall summary CSV from benchmark results (generic metrics)."""
-    metric_keys = _collect_metric_keys(overall_results)
-    rows: list[dict[str, Any]] = []
-
-    for result in overall_results:
-        benchmark = result.get("benchmark")
-        summary = result.get("summary")
-
-        base: dict[str, Any] = {
-            "benchmark": benchmark,
-            "ground_truth_path": summary.get("ground_truth_path") if isinstance(summary, dict) else None,
-            "n_documents": summary.get("n_documents") if isinstance(summary, dict) else None,
-        }
-
-        flat = _flatten_eval_summary_metrics(summary) if isinstance(summary, dict) else {}
-
-        # Put metrics as columns; use __ instead of / for CSV friendliness
-        for k in metric_keys:
-            base[k.replace("/", "__")] = flat.get(k)
-
-        rows.append(base)
-
-    return rows
 
 
 def _setup_mlflow_parent_run(
@@ -161,11 +91,11 @@ def _setup_mlflow_parent_run(
 
 def _finalize_overall_summary(
     *,
-    overall_results: list[dict[str, Any]],
+    overall_results: list[tuple[str, None | BenchmarkSummary]],
     multi_root: Path,
     mlflow_tracking: bool,
     parent_active: bool,
-) -> tuple[Path, Path]:
+):
     """Write overall_summary.json and overall_summary.csv (+ mean row).
 
     Also logs overall aggregate metrics + artifacts to MLflow on the parent run (if enabled).
@@ -173,11 +103,24 @@ def _finalize_overall_summary(
     # --- JSON ---
     summary_path = multi_root / "overall_summary.json"
     with open(summary_path, "w", encoding="utf8") as f:
-        json.dump(overall_results, f, ensure_ascii=False, indent=2)
+        summary = [
+            {"benchmark": benchmark, "summary": summary.model_dump() if summary else None}
+            for benchmark, summary in overall_results
+        ]
+        json.dump(summary, f, ensure_ascii=False, indent=2)
 
     # --- CSV ---
     summary_csv_path = multi_root / "overall_summary.csv"
-    rows = _make_overall_summary_rows(overall_results)
+
+    rows = []
+    for benchmark, summary in overall_results:
+        row: dict[str, any] = {"benchmark": benchmark}
+        if summary is not None:
+            row["ground_truth_path"] = summary.ground_truth_path
+            row["n_documents"] = summary.n_documents
+            row.update(summary.metrics())
+        rows.append(row)
+
     df = pd.DataFrame(rows).sort_values(by="benchmark")
 
     # Everything except these base columns is a metric column
@@ -210,16 +153,15 @@ def _finalize_overall_summary(
         import mlflow
 
         overall_mean_metrics: dict[str, float] = {}
-        for k, v in means.items():
-            if v is None:
+        for full_key, value in means.items():
+            if value is None:
                 continue
 
-            full_key = k.replace("__", "/")  # only needed if your CSV columns use "__"
             short_key = _short_metric_key(full_key)
 
             # collision-safe:
             key_to_log = short_key if short_key not in overall_mean_metrics else full_key
-            overall_mean_metrics[key_to_log] = float(v)
+            overall_mean_metrics[key_to_log] = float(value)
 
         mlflow.log_metrics(overall_mean_metrics)
 
@@ -275,7 +217,7 @@ def start_pipeline(
     part: str = "all",
     mlflow_setup: bool = True,
     temp_directory: Path | None = None,
-):
+) -> None | BenchmarkSummary:
     """Run the boreholes data extraction pipeline.
 
     The pipeline will extract material description of all found layers and assign them to the corresponding
@@ -560,22 +502,17 @@ def start_pipeline_benchmark(
                 mlflow_setup=False,
                 temp_directory=bench_temp,
             )
-
-            overall_results.append({"benchmark": spec.name, "summary": eval_result})
+            overall_results.append((spec.name, eval_result))
 
             if mlflow_tracking:
                 import mlflow
 
-                if isinstance(eval_result, dict):
-                    flat_metrics = _flatten_eval_summary_metrics(eval_result)
-                    short_metrics = _shorten_metric_dict(flat_metrics)
-
-                    if short_metrics:
-                        mlflow.log_metrics(short_metrics)
+                if eval_result is not None:
+                    mlflow.log_metrics(eval_result.metrics(short=True))
 
                     bench_summary_path = bench_out / "benchmark_summary.json"
                     with open(bench_summary_path, "w", encoding="utf8") as f:
-                        json.dump(eval_result, f, ensure_ascii=False, indent=2)
+                        json.dump(eval_result.model_dump(), f, ensure_ascii=False, indent=2)
                     mlflow.log_artifact(str(bench_summary_path), artifact_path="summary")
 
                 mlflow.end_run()
