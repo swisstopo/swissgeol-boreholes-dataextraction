@@ -6,8 +6,4 @@ This module contains all feature extraction functionality including:
 - groundwater: Groundwater level extraction
 - predictions: Data structures for prediction results
 - extract: Main extraction logic
-
-Example usage:
-    from extraction.features import extract
-    from extraction.features.metadata import borehole_name_extraction
 """

@@ -86,7 +86,6 @@ boreholes-download-profiles = "scripts.get_files:download_directory_froms3"
 boreholes-score = "extraction.evaluation.benchmark.score:main"
 boreholes-classify-descriptions = "classification.main:click_pipeline"
 fine-tune-bert = "classification.models.train:train_model"
-boreholes-identify = "extraction.minimal_pipeline:click_identify"
 
 [tool.ruff.lint]
 select = [

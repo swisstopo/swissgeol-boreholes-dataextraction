@@ -11,7 +11,7 @@ from extraction.features.metadata.coordinate_extraction import (
     LV95Coordinate,
 )
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
-from swissgeol_doc_processing.utils.file_utils import read_params, get_data_path
+from swissgeol_doc_processing.utils.file_utils import get_data_path, read_params
 
 
 def test_strLV95():  # noqa: D103

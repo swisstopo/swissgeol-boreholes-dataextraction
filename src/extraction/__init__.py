@@ -21,10 +21,6 @@ List of modules:
 """
 
 # Import submodules
-from extraction import annotations, evaluation, features
+from extraction import annotations, evaluation, features, minimal_pipeline, utils
 
-__all__ = [
-    "annotations",
-    "evaluation",
-    "features",
-]
+__all__ = ["annotations", "evaluation", "features", "utils", "minimal_pipeline"]

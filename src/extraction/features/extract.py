@@ -30,6 +30,7 @@ from extraction.features.stratigraphy.sidebar.extractor.layer_identifier_sidebar
     LayerIdentifierSidebarExtractor,
 )
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
+from extraction.utils.dynamic_matching import IntervalToLinesDP
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.line_detection import find_diags_ending_in_zone
 from swissgeol_doc_processing.geometry.util import x_overlap, x_overlap_significant_smallest
@@ -47,7 +48,6 @@ from swissgeol_doc_processing.utils.strip_log_detection import StripLog
 from swissgeol_doc_processing.utils.table_detection import (
     TableStructure,
 )
-from extraction.utils.dynamic_matching import IntervalToLinesDP
 
 logger = logging.getLogger(__name__)
 
@@ -733,6 +733,19 @@ def extract_sidebar_information(
 
     This function serves as a simple interface to extract sidebar information
     and quality metrics without requiring direct class usage.
+
+    Args:
+        text_lines (list[TextLine]): All text lines on the page.
+        long_or_horizontal_lines (list[Line]): Geometric lines (only the significant ones and the horizontals).
+        all_geometric_lines (list[Line]): All geometric lines (including the shorter ones).
+        table_structures (list[TableStructure]): The identified table structures.
+        strip_logs (list[StripLog]): The identified strip log structures.
+        language (str): Language of the page (used in parsing).
+        page_index (int): The page index (0-indexed).
+        page (pymupdf.Page): The page object from the document.
+        line_detection_params (dict): The parameters for line detection.
+        analytics (MatchingParamsAnalytics): The analytics tracker for matching parameters.
+        **matching_params (dict): Additional parameters for the matching pipeline.
 
     Returns:
         dict: Quality metrics for all sidebars found on the page.

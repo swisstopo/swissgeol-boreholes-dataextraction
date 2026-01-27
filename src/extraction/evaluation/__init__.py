@@ -7,8 +7,4 @@ This module contains functionality for evaluating extraction results:
 - evaluation_dataclasses: Data structures for evaluation
 - utility: Evaluation utilities
 - benchmark: Benchmark scoring
-
-Example usage:
-    from extraction.evaluation.layer_evaluator import LayerEvaluator
-    from extraction.evaluation.benchmark.score import score_predictions
 """
