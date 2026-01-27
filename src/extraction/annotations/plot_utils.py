@@ -21,6 +21,41 @@ if mlflow_tracking:
 logger = logging.getLogger(__name__)
 
 
+def _get_centered_hline(center: pymupdf.Point, scale: int) -> tuple[pymupdf.Point, pymupdf.Point]:
+    """Return a horizontal line centered on `center`.
+
+    The line goes from (center.x - scale) to (center.x + scale) at the same y.
+
+    Args:
+        center (pymupdf.Point): Center point of the line.
+        scale (int): Half-length of the line (distance from center to each end).
+
+    Returns:
+        tuple[pymupdf.Point, pymupdf.Point]: Points of the line.
+    """
+    return pymupdf.Point(center.x - scale, center.y), pymupdf.Point(center.x + scale, center.y)
+
+
+def _get_polyline_triangle(
+    center: pymupdf.Point, is_up: bool = False, width: int = 6, height: int = 6
+) -> list[pymupdf.Point]:
+    """Return a polyline (list of points) for a triangle.
+
+    Args:
+        center (pymupdf.Point): Center of the base of the triangle.
+        is_up (bool, optional): If True, the tip is above the base; otherwise below.
+        width (int, optional): Base width of the triangle. Defaults to 6.
+        height (int, optional): Height of the triangle. Defaults to 6.
+
+    Returns:
+        list[pymupdf.Point]: List of points describing the triangle as a polyline.
+    """
+    point1 = pymupdf.Point(center.x - width // 2, center.y - ((-1) ** is_up) * height)
+    point2 = pymupdf.Point(center.x + width // 2, center.y - ((-1) ** is_up) * height)
+    point3 = pymupdf.Point(center.x, center.y)
+    return [point1, point2, point3, point1]
+
+
 def _draw_lines(img: np.ndarray, lines: list[Line], scale_factor: int = 1) -> np.ndarray:
     """Draw lines on image.
 

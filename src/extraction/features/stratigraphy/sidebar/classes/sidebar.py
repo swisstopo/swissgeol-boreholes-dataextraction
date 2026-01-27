@@ -6,8 +6,8 @@ import abc
 from dataclasses import dataclass, field
 from typing import ClassVar, Generic, TypeVar
 
+import fastquadtree
 import pymupdf
-import rtree
 
 from extraction.features.stratigraphy.base.sidebar_entry import SidebarEntry
 from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
@@ -143,12 +143,12 @@ class SidebarNoise(Generic[EntryT]):
         return f"SidebarNoise(sidebar={repr(self.sidebar)}, noise_count={self.noise_count})"
 
 
-def noise_count(sidebar: Sidebar, line_rtree: rtree.index.Index) -> int:
+def noise_count(sidebar: Sidebar, line_rtree: fastquadtree.RectQuadTreeObjects) -> int:
     """Counts the number of text lines that intersect with the Sidebar entries.
 
     Args:
         sidebar (Sidebar): Sidebar object for which the noise count is calculated.
-        line_rtree (rtree.index.Index): Pre-built R-tree of all text lines on page for spatial queries.
+        line_rtree (fastquadtree.RectQuadTreeObjects): Pre-built R-tree of all text lines on page for spatial queries.
 
     Returns:
         int: The number of text lines that intersect with the Sidebar entries but are not part of it.
@@ -169,7 +169,7 @@ def noise_count(sidebar: Sidebar, line_rtree: rtree.index.Index) -> int:
     return sum(1 for line in intersecting_lines if significant_intersection(line) and not_in_entries(line))
 
 
-def _get_intersecting_lines(line_rtree: rtree.index.Index, rect: pymupdf.Rect) -> list[TextLine]:
+def _get_intersecting_lines(line_rtree: fastquadtree.RectQuadTreeObjects, rect: pymupdf.Rect) -> list[TextLine]:
     """Retrieve all words from the page intersecting with Sidebar bounding box."""
-    intersecting_lines = list(line_rtree.intersection((rect.x0, rect.y0, rect.x1, rect.y1), objects="raw"))
+    intersecting_lines = [item.obj for item in line_rtree.query((rect.x0, rect.y0, rect.x1, rect.y1))]
     return [line for line in intersecting_lines if any(char.isalnum() for char in line.text)]

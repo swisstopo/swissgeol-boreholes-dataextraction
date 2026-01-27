@@ -2,7 +2,7 @@
 
 import dataclasses
 
-import rtree
+import fastquadtree
 
 from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarNoise, noise_count
@@ -62,7 +62,7 @@ class AAboveBSidebarValidator:
         return corr_coef and corr_coef > corr_coef_threshold
 
     def reduce_until_valid(
-        self, sidebar_noise: SidebarNoise[AAboveBSidebar], line_rtree: rtree.index.Index
+        self, sidebar_noise: SidebarNoise[AAboveBSidebar], line_rtree: fastquadtree.RectQuadTreeObjects
     ) -> SidebarNoise | None:
         """Removes entries from the depth column until it fulfills the is_valid condition.
 

@@ -188,20 +188,30 @@ def post_extract_data(
 def post_extract_stratigraphy(request: ExtractStratigraphyRequest) -> ExtractStratigraphyResponse:
     """Extract all boreholes with stratigraphy (depths and material descriptions) from the entire PDF file.
 
+    Optionally includes groundwater measurements when requested via the `include_groundwater` parameter.
+
     Scans all pages of the PDF and returns all boreholes found,
     each containing page numbers and stratigraphy layers with bounding boxes.
+    When include_groundwater is True, also returns groundwater measurements (depth, date, elevation).
 
     ### Request Body
     - **filename**: The PDF filename to process.
+    - **include_groundwater** (optional): If True, include groundwater data in response. Default is False.
 
     ### Returns
     - List of boreholes with layers and bounding boxes.
+    - Optional list of groundwater measurements (if include_groundwater=True).
 
     ### Status Codes
     - 200: Successful extraction
     - 400: Invalid request or unable to open PDF
     - 401: Unauthorized: Wrong or incomplete credentials.
-    - 404: No boreholes found
+    - 404: No boreholes found or PNG files not generated
     - 500: Internal error
+
+    ### Notes
+    - Groundwater depth values are limited to MAX_DEPTH (200m) to avoid confusion with elevation values
+    - Date and elevation fields may be null if not detected in the document
+    - Bounding boxes are in PNG pixel coordinates (scaled 3x from PDF coordinates)
     """
-    return extract_stratigraphy(request.filename)
+    return extract_stratigraphy(request.filename, request.include_groundwater)
