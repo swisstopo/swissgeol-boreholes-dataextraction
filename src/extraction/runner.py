@@ -35,7 +35,7 @@ from swissgeol_doc_processing.text.matching_params_analytics import create_analy
 from swissgeol_doc_processing.utils.file_utils import flatten, read_params
 from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
 from swissgeol_doc_processing.utils.table_detection import detect_table_structures
-from utils.benchmark_utils import _short_metric_key, _shorten_metric_dict
+from utils.benchmark_utils import _parent_input_directory_key, _short_metric_key, _shorten_metric_dict
 
 from .evaluation.benchmark.spec import BenchmarkSpec
 
@@ -153,6 +153,9 @@ def _setup_mlflow_parent_run(
     mlflow.start_run()
     mlflow.set_tag("run_type", "multi_benchmark")
     mlflow.set_tag("benchmarks", ",".join([b.name for b in benchmarks]))
+    parent_key = _parent_input_directory_key(benchmarks)
+
+    mlflow.set_tag("input_directory", parent_key)
 
     mlflow.log_params(flatten(line_detection_params))
     mlflow.log_params(flatten(matching_params))
