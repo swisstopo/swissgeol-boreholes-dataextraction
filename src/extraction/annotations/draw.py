@@ -8,7 +8,12 @@ import numpy as np
 import pymupdf
 from dotenv import load_dotenv
 
-from extraction.annotations.plot_utils import _get_centered_hline, _get_polyline_triangle, convert_page_to_img
+from extraction.annotations.plot_utils import (
+    _get_centered_hline,
+    _get_polyline_triangle,
+    convert_page_to_img,
+    save_visualization,
+)
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
@@ -24,7 +29,7 @@ colors = ["purple", "blue"]
 logger = logging.getLogger(__name__)
 
 
-def draw_prediction(
+def plot_prediction(
     prediction: FilePredictions,
     in_path: Path,
     out_directory: Path,
@@ -59,16 +64,21 @@ def draw_prediction(
                 drawer = PageDrawer(page)
                 drawer.draw(prediction)
 
-                tmp_file_path = out_directory / f"{filename}_page{drawer.page_number}.png"
-                pymupdf.utils.get_pixmap(page, matrix=pymupdf.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
+                img = convert_page_to_img(page, scale_factor=2)
 
-                if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
-                    try:
-                        import mlflow
+                # tmp_file_path = out_directory / f"{filename}_page{drawer.page_number}.png"
+                # pymupdf.utils.get_pixmap(page, matrix=pymupdf.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
 
-                        mlflow.log_artifact(tmp_file_path, artifact_path="pages")
-                    except NameError:
-                        logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
+                # if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
+                #     try:
+                #         import mlflow
+
+                #         mlflow.log_artifact(tmp_file_path, artifact_path="pages")
+                #     except NameError:
+                #         logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
+
+                # img = plot_lines(page, all_geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"])
+                save_visualization(img, filename, page.number + 1, "outputs", out_directory, mlflow_tracking)
 
     except (FileNotFoundError, pymupdf.FileDataError) as e:
         logger.error("Error opening file %s: %s", filename, e)

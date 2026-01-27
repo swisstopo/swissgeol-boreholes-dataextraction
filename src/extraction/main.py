@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from tqdm import tqdm
 
 from extraction import DATAPATH
-from extraction.annotations.draw import draw_predictions, plot_strip_logs, plot_tables
+from extraction.annotations.draw import plot_prediction, plot_strip_logs, plot_tables
 from extraction.annotations.plot_utils import plot_lines, save_visualization
 from extraction.evaluation.benchmark.score import evaluate_all_predictions
 from extraction.features.extract import extract_page
@@ -29,7 +29,7 @@ from extraction.features.stratigraphy.layer.continuation_detection import merge_
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
-from swissgeol_doc_processing.text.matching_params_analytics import create_analytics
+from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics, create_analytics
 from swissgeol_doc_processing.utils.file_utils import flatten, read_params
 from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
 from swissgeol_doc_processing.utils.table_detection import detect_table_structures
@@ -223,6 +223,158 @@ def setup_mlflow_tracking(
     mlflow.set_tag("git_commit_sha", commit.id)
 
 
+def extract(
+    in_path: Path,
+    out_directory: Path,
+    skip_draw_predictions: bool = False,
+    draw_lines: bool = False,
+    draw_tables: bool = False,
+    draw_strip_logs: bool = False,
+    csv: bool = False,
+    part: str = "all",
+    analytics: MatchingParamsAnalytics | None = None,
+) -> FilePredictions:
+    """Extract pipeline for input file `in_path`.
+
+    Args:
+        in_path (Path): Path to file to process.
+        out_directory (Path): The directory to store the evaluation results.
+        skip_draw_predictions (bool): Whether to skip drawing predictions on pdf pages. Defaults to False.
+        draw_lines (bool): Whether to draw lines on pdf pages. Defaults to False.
+        draw_tables (bool): Whether to draw detected table structures on pdf pages. Defaults to False.
+        draw_strip_logs (bool): Whether to draw detected strip log structures on pages. Defaults to False.
+        csv (bool): Whether to generate a CSV output. Defaults to False.
+        part (str): The part of the pipeline to run. Defaults to "all".
+        analytics (MatchingParamsAnalytics): _description_. Defaults to None.
+
+    Returns:
+        FilePredictions: Prediction for input file
+    """
+    filename = in_path.name
+    draw_directory = None
+
+    if not skip_draw_predictions:
+        # check if directories exist and create them when necessary
+        draw_directory = out_directory / "draw"
+        draw_directory.mkdir(parents=True, exist_ok=True)
+
+    with pymupdf.Document(in_path) as doc:
+        # Extract metadata
+        file_metadata = FileMetadata.from_document(doc, matching_params)
+        metadata = MetadataInDocument.from_document(doc, file_metadata.language, matching_params)
+
+        # Save the predictions to the overall predictions object, initialize common variables
+        all_groundwater_entries = GroundwaterInDocument([], filename)
+        all_name_entries = NameInDocument([], filename)
+        boreholes_per_page = []
+
+        if part != "all":
+            return FilePredictions([], file_metadata, filename)
+
+        # Extract the layers
+        for page_index, page in enumerate(doc):
+            page_number = page_index + 1
+            logger.info("Processing page %s", page_number)
+
+            text_lines = extract_text_lines(page)
+            long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
+            name_entries = extract_borehole_names(text_lines, name_detection_params)
+            all_name_entries.name_feature_list.extend(name_entries)
+
+            # Detect table structures on the page
+            table_structures = detect_table_structures(
+                page_index, doc, long_or_horizontal_lines, text_lines, table_detection_params
+            )
+
+            # Detect strip logs on the page
+            strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
+
+            # extract the statigraphy
+            page_layers = extract_page(
+                text_lines,
+                long_or_horizontal_lines,
+                all_geometric_lines,
+                table_structures,
+                strip_logs,
+                file_metadata.language,
+                page_index,
+                doc,
+                line_detection_params,
+                analytics,
+                **matching_params,
+            )
+            boreholes_per_page.append(page_layers)
+
+            # Extract the groundwater levels
+            groundwater_extractor = GroundwaterLevelExtractor(file_metadata.language, matching_params)
+            groundwater_entries = groundwater_extractor.extract_groundwater(
+                page_number=page_number,
+                text_lines=text_lines,
+                geometric_lines=long_or_horizontal_lines,
+                extracted_boreholes=page_layers,
+            )
+            all_groundwater_entries.groundwater_feature_list.extend(groundwater_entries)
+
+            # Check if need to skip srawing
+            if skip_draw_predictions:
+                continue
+
+            # Draw table structures if requested
+            if draw_tables:
+                img = plot_tables(page, table_structures, page_index)
+                save_visualization(img, filename, page.number + 1, "tables", draw_directory, mlflow_tracking)
+
+            # Draw strip logs if requested
+            if draw_strip_logs:
+                img = plot_strip_logs(page, strip_logs, page_index)
+                save_visualization(img, filename, page.number + 1, "strip_logs", draw_directory, mlflow_tracking)
+
+            if draw_lines:  # could be changed to if draw_lines and mlflow_tracking:
+                img = plot_lines(page, all_geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"])
+                save_visualization(img, filename, page.number + 1, "lines", draw_directory, mlflow_tracking)
+
+    # Merge detections if possible
+    layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page, matching_params), filename)
+
+    # create list of BoreholePrediction objects with all the separate lists
+    borehole_predictions_list: list[BoreholePredictions] = BoreholeListBuilder(
+        layers_with_bb_in_document=layers_with_bb_in_document,
+        file_name=filename,
+        groundwater_in_doc=all_groundwater_entries,
+        names_in_doc=all_name_entries,
+        elevations_list=metadata.elevations,
+        coordinates_list=metadata.coordinates,
+    ).build()
+
+    # now that the matching is done, duplicated groundwater can be removed and depths info can be set
+    for borehole in borehole_predictions_list:
+        borehole.filter_groundwater_entries()
+
+    # Get prediction file
+    prediction = FilePredictions(borehole_predictions_list, file_metadata, filename)
+
+    if not skip_draw_predictions:
+        # Draw current file prediction
+        plot_prediction(prediction, in_path, draw_directory)
+
+    # Add layers to a csv file
+    if csv:
+        csv_directory = out_directory / "csv"
+        csv_directory.mkdir(parents=True, exist_ok=True)
+        base_path = csv_directory / Path(filename).stem
+
+        for index, borehole in enumerate(borehole_predictions_list):
+            csv_path = f"{base_path}_{index}.csv" if len(borehole_predictions_list) > 1 else f"{base_path}.csv"
+            logger.info("Writing CSV predictions to %s", csv_path)
+            with open(csv_path, "w", encoding="utf8", newline="") as file:
+                file.write(borehole.to_csv())
+
+            if mlflow_tracking:
+                mlflow.log_artifact(csv_path, "csv")
+
+    return prediction
+
+
 def start_pipeline(
     input_directory: Path,
     ground_truth_path: Path,
@@ -260,25 +412,16 @@ def start_pipeline(
         matching_analytics (bool): Whether to enable matching parameters analytics. Defaults to False.
         part (str, optional): The part of the pipeline to run. Defaults to "all".
     """  # noqa: D301
+    # Check that all given outputs exists
+    out_directory.mkdir(exist_ok=True)
+    predictions_path.parent.mkdir(exist_ok=True)
+    metadata_path.parent.mkdir(exist_ok=True)
+
     # Initialize analytics if enabled
     analytics = create_analytics() if matching_analytics else None
 
     if mlflow_tracking:
         setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
-
-    temp_directory = DATAPATH / "_temp"  # temporary directory to dump files for mlflow artifact logging
-    temp_directory.mkdir(parents=True, exist_ok=True)
-
-    if skip_draw_predictions:
-        draw_directory = None
-    else:
-        # check if directories exist and create them when necessary
-        draw_directory = out_directory / "draw"
-        draw_directory.mkdir(parents=True, exist_ok=True)
-
-    if csv:
-        csv_dir = out_directory / "csv"
-        csv_dir.mkdir(parents=True, exist_ok=True)
 
     # if a file is specified instead of an input directory, copy the file to a temporary directory and work with that.
     if input_directory.is_file():
@@ -296,118 +439,25 @@ def start_pipeline(
             logger.warning(f"{filename} does not end with .pdf and is not treated.")
             continue
 
-        in_path = os.path.join(root, filename)
-        logger.info("Processing file: %s", in_path)
+        in_path = root / filename
+        logger.info(f"Processing file: {in_path}")
 
-        with pymupdf.Document(in_path) as doc:
-            # Extract metadata
-            file_metadata = FileMetadata.from_document(doc, matching_params)
-            metadata = MetadataInDocument.from_document(doc, file_metadata.language, matching_params)
-
-            # Save the predictions to the overall predictions object, initialize common variables
-            all_groundwater_entries = GroundwaterInDocument([], filename)
-            all_name_entries = NameInDocument([], filename)
-            boreholes_per_page = []
-
-            if part != "all":
-                continue
-            # Extract the layers
-            for page_index, page in enumerate(doc):
-                page_number = page_index + 1
-                logger.info("Processing page %s", page_number)
-
-                text_lines = extract_text_lines(page)
-                long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
-                name_entries = extract_borehole_names(text_lines, name_detection_params)
-                all_name_entries.name_feature_list.extend(name_entries)
-
-                # Detect table structures on the page
-                table_structures = detect_table_structures(
-                    page_index, doc, long_or_horizontal_lines, text_lines, table_detection_params
-                )
-
-                # Detect strip logs on the page
-                strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
-
-                # extract the statigraphy
-                page_layers = extract_page(
-                    text_lines,
-                    long_or_horizontal_lines,
-                    all_geometric_lines,
-                    table_structures,
-                    strip_logs,
-                    file_metadata.language,
-                    page_index,
-                    doc,
-                    line_detection_params,
-                    analytics,
-                    **matching_params,
-                )
-                boreholes_per_page.append(page_layers)
-
-                # Extract the groundwater levels
-                groundwater_extractor = GroundwaterLevelExtractor(file_metadata.language, matching_params)
-                groundwater_entries = groundwater_extractor.extract_groundwater(
-                    page_number=page_number,
-                    text_lines=text_lines,
-                    geometric_lines=long_or_horizontal_lines,
-                    extracted_boreholes=page_layers,
-                )
-                all_groundwater_entries.groundwater_feature_list.extend(groundwater_entries)
-
-                # Draw table structures if requested
-                if draw_tables:
-                    img = plot_tables(page, table_structures, page_index)
-                    save_visualization(img, filename, page.number + 1, "tables", draw_directory, mlflow_tracking)
-
-                # Draw strip logs if requested
-                if draw_strip_logs:
-                    img = plot_strip_logs(page, strip_logs, page_index)
-                    save_visualization(img, filename, page.number + 1, "strip_logs", draw_directory, mlflow_tracking)
-
-                if draw_lines:  # could be changed to if draw_lines and mlflow_tracking:
-                    if not mlflow_tracking:
-                        logger.warning("MLFlow tracking is not enabled. MLFLow is required to store the images.")
-                    else:
-                        img = plot_lines(
-                            page,
-                            all_geometric_lines,
-                            scale_factor=line_detection_params["pdf_scale_factor"],
-                        )
-                        mlflow.log_image(img, f"pages/{filename}_page_{page.number + 1}_lines.png")
-
-            layers_with_bb_in_document = LayersInDocument(
-                merge_boreholes(boreholes_per_page, matching_params), filename
-            )
-
-            # create list of BoreholePrediction objects with all the separate lists
-            borehole_predictions_list: list[BoreholePredictions] = BoreholeListBuilder(
-                layers_with_bb_in_document=layers_with_bb_in_document,
-                file_name=filename,
-                groundwater_in_doc=all_groundwater_entries,
-                names_in_doc=all_name_entries,
-                elevations_list=metadata.elevations,
-                coordinates_list=metadata.coordinates,
-            ).build()
-            # now that the matching is done, duplicated groundwater can be removed and depths info can be set
-            for borehole in borehole_predictions_list:
-                borehole.filter_groundwater_entries()
-
+        try:
             # Add file predictions
-            predictions.add_file_predictions(FilePredictions(borehole_predictions_list, file_metadata, filename))
-
-            # Add layers to a csv file
-            if csv:
-                base_path = csv_dir / Path(filename).stem
-
-                for index, borehole in enumerate(borehole_predictions_list):
-                    csv_path = f"{base_path}_{index}.csv" if len(borehole_predictions_list) > 1 else f"{base_path}.csv"
-                    logger.info("Writing CSV predictions to %s", csv_path)
-                    with open(csv_path, "w", encoding="utf8", newline="") as file:
-                        file.write(borehole.to_csv())
-
-                    if mlflow_tracking:
-                        mlflow.log_artifact(csv_path, "csv")
+            prediction = extract(
+                in_path=in_path,
+                out_directory=out_directory,
+                skip_draw_predictions=skip_draw_predictions,
+                draw_lines=draw_lines,
+                draw_tables=draw_tables,
+                draw_strip_logs=draw_strip_logs,
+                csv=csv,
+                part=part,
+                analytics=analytics,
+            )
+            predictions.add_file_predictions(prediction)
+        except Exception as e:
+            logger.error(f"Unexpected error in file {filename}. Trace: {e}")
 
     logger.info("Metadata written to %s", metadata_path)
     with open(metadata_path, "w", encoding="utf8") as file:
@@ -418,12 +468,7 @@ def start_pipeline(
         with open(predictions_path, "w", encoding="utf8") as file:
             json.dump(predictions.to_json(), file, ensure_ascii=False)
 
-    evaluate_all_predictions(
-        predictions=predictions, ground_truth_path=ground_truth_path, temp_directory=temp_directory
-    )
-
-    if input_directory and draw_directory:
-        draw_predictions(predictions, input_directory, draw_directory)
+    evaluate_all_predictions(predictions=predictions, ground_truth_path=ground_truth_path)
 
     # Finalize analytics if enabled
     if matching_analytics:
