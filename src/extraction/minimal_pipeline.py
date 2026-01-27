@@ -5,7 +5,6 @@ for machine learning classification. Instead of full borehole data extraction,
 it extracts key features that correlate with borehole presence.
 """
 
-import logging
 from dataclasses import dataclass
 
 import pymupdf
@@ -23,9 +22,6 @@ from swissgeol_doc_processing.utils.strip_log_detection import StripLog, detect_
 from swissgeol_doc_processing.utils.table_detection import TableStructure, detect_table_structures
 
 load_dotenv()
-
-logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
-logger = logging.getLogger(__name__)
 
 
 def load_default_params() -> dict:

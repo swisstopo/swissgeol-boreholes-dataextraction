@@ -623,8 +623,13 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         Returns:
             dict: Quality metrics for all sidebars found on the page.
+                - number_of_sidebar_candidates: Total number of sidebar candidates found.
+                - number_of_good_sidebars: Number of sidebars that passed quality filters.
+                - best_sidebar_score: The highest matching score among all sidebars.
+                - sidebar_types_found: Number of unique sidebar types identified.
+                - average_sidebar_noise: Average noise count across all sidebars.
         """
-        # Reuse existing methods - these already extract, match, and score sidebars
+        # Reuse existing methods
         layer_identifier_pairs = self._find_layer_identifier_sidebar_pairs()
         depth_sidebar_pairs = self._find_depth_sidebar_pairs()
 
@@ -646,7 +651,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         good_sidebar_pairs = self._filter_by_intersections(good_sidebar_pairs)
         number_of_good_sidebars = len(good_sidebar_pairs)
 
-        # Best score from all pairs (score_match already calculated)
+        # Best score from all pairs
         best_sidebar_score = max((pair.score_match for pair in all_pairs if pair.sidebar is not None), default=0.0)
 
         # Average noise across all pairs with sidebars

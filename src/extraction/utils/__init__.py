@@ -1,1 +1,1 @@
-"""Module for specific extraction utils containing dynamic matchign approach."""
+"""Module for specific extraction utils containing dynamic matching approach."""

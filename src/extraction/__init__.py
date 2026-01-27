@@ -6,7 +6,7 @@ including metadata, stratigraphy, and features for machine learning classificati
 Instructions:
 - usage: from extraction.features import extract
 - usage: from extraction.features.metadata import borehole_name_extraction
-- usage: from extraction.minimal_pipeline import identify_boreholes
+- usage: from extraction.minimal_pipeline import extract_page_features
 
 List of modules:
 - features
