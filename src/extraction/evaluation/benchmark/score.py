@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import os
+import tempfile
 from pathlib import Path
 
 import pandas as pd
@@ -20,15 +21,12 @@ logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logg
 logger = logging.getLogger(__name__)
 
 
-def evaluate_all_predictions(
-    predictions: OverallFilePredictions, ground_truth_path: Path, temp_directory: Path
-) -> None | pd.DataFrame:
+def evaluate_all_predictions(predictions: OverallFilePredictions, ground_truth_path: Path) -> None | pd.DataFrame:
     """Computes all the metrics, logs them, and creates corresponding MLFlow artifacts (when enabled).
 
     Args:
         predictions (OverallFilePredictions): The predictions objects.
         ground_truth_path (Path | None): The path to the ground truth file.
-        temp_directory (Path): The path to the temporary directory.
 
     Returns:
         None | pd.DataFrame: the document level metadata metrics
@@ -44,21 +42,11 @@ def evaluate_all_predictions(
     #############################
     matched_with_ground_truth = predictions.match_with_ground_truth(ground_truth)
     metrics = matched_with_ground_truth.evaluate_geology()
-
-    metrics.document_level_metrics_df().to_csv(
-        temp_directory / "document_level_metrics.csv", index_label="document_name"
-    )  # mlflow.log_artifact expects a file
     metrics_dict = metrics.metrics_dict()
 
     # Format the metrics dictionary to limit to three digits
     formatted_metrics = {k: f"{v:.3f}" for k, v in metrics_dict.items()}
     logger.info("Performance metrics: %s", formatted_metrics)
-
-    if mlflow_tracking:
-        import mlflow
-
-        mlflow.log_metrics(metrics_dict)
-        mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
 
     #############################
     # Evaluate the borehole extraction metadata
@@ -66,17 +54,27 @@ def evaluate_all_predictions(
     metadata_metrics_list = matched_with_ground_truth.evaluate_metadata_extraction()
     metadata_metrics = metadata_metrics_list.get_cumulated_metrics()
     document_level_metadata_metrics: pd.DataFrame = metadata_metrics_list.get_document_level_metrics()
-    document_level_metadata_metrics.to_csv(
-        temp_directory / "document_level_metadata_metrics.csv", index_label="document_name"
-    )  # mlflow.log_artifact expects a file
 
     # print the metrics
     logger.info("Metadata Performance metrics:")
     logger.info(metadata_metrics.to_json())
 
     if mlflow_tracking:
+        import mlflow
+
+        mlflow.log_metrics(metrics_dict)
         mlflow.log_metrics(metadata_metrics.to_json())
-        mlflow.log_artifact(temp_directory / "document_level_metadata_metrics.csv")
+
+        # Create temporary folder to dump csv file and track them using MLFLow
+        with tempfile.TemporaryDirectory() as temp_directory:
+            document_level_metadata_metrics.to_csv(
+                Path(temp_directory) / "document_level_metadata_metrics.csv", index_label="document_name"
+            )  # mlflow.log_artifact expects a file
+            metrics.document_level_metrics_df().to_csv(
+                Path(temp_directory) / "document_level_metrics.csv", index_label="document_name"
+            )  # mlflow.log_artifact expects a file
+            mlflow.log_artifact(Path(temp_directory) / "document_level_metrics.csv")
+            mlflow.log_artifact(Path(temp_directory) / "document_level_metadata_metrics.csv")
 
     return document_level_metadata_metrics
 
@@ -107,7 +105,7 @@ def main():
 
     predictions = OverallFilePredictions.from_json(predictions)
 
-    evaluate_all_predictions(predictions, args.ground_truth_path, args.temp_directory)
+    evaluate_all_predictions(predictions, args.ground_truth_path)
 
 
 def parse_cli() -> argparse.Namespace:
