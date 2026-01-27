@@ -177,25 +177,6 @@ def extract_page_features(
 
     number_of_valid_borehole_descriptions = len(valid_descriptions)
 
-    if extract_boreholes:
-        borehole_count = extract_page(
-            text_lines,
-            long_or_horizontal_lines,
-            all_geometric_lines,
-            table_structures,
-            strip_logs,
-            language,
-            page_index,
-            page,
-            line_detection_params,
-            None,
-            **matching_params,
-        )
-    else:
-        borehole_count = []
-
-    number_of_boreholes = len(borehole_count)
-
     # Extract borehole names
     name_entries = extract_borehole_names(text_lines, name_detection_params)
     borehole_name_entries = [
@@ -220,6 +201,25 @@ def extract_page_features(
         **matching_params,
     )
 
+    if extract_boreholes:
+        borehole_count = extract_page(
+            text_lines,
+            long_or_horizontal_lines,
+            all_geometric_lines,
+            table_structures,
+            strip_logs,
+            language,
+            page_index,
+            page,
+            line_detection_params,
+            None, # analytics parameter
+            **matching_params,
+        )
+    else:
+        borehole_count = []
+
+    number_of_boreholes = len(borehole_count)
+
     return {
         "page_number": page_index,
         "number_of_valid_borehole_descriptions": number_of_valid_borehole_descriptions,
@@ -231,116 +231,4 @@ def extract_page_features(
         "number_all_geometric_lines": len(all_geometric_lines),
         "text_line_count": len(text_lines),
         "borehole_name_entries": borehole_name_entries,
-    }
-
-
-def extract_borehole_features(
-    doc: pymupdf.Document,
-    extract_boreholes: bool = False,
-    use_parallel: bool = False,
-    max_workers: Optional[int] = None,
-) -> dict:
-    """Extract borehole features from an entire PDF document.
-
-    Args:
-        doc (pymupdf.Document): The PDF document to process.
-        extract_boreholes (bool): Whether to extract actual borehole data or just features.
-        use_parallel (bool): Whether to use parallel processing (ThreadPoolExecutor).
-        max_workers (Optional[int]): Max parallel workers (None = CPU count). Only used if use_parallel=True.
-
-    Returns:
-        dict: Dictionary containing:
-            - language: Detected document language
-            - page_features: List of feature dictionaries per page
-            - file_features: Aggregated file-level statistics
-            - execution_time_seconds: Total processing time
-    """
-    start_time = time.time()
-
-    # Detect document language
-    language = detect_language_of_document(
-        doc, matching_params["default_language"], list(matching_params["material_description"].keys())
-    )
-
-    logger.info(f"Processing {len(doc)} pages in {'parallel' if use_parallel else 'sequential'} mode")
-
-    page_features = []
-
-    if use_parallel:
-        # Use ThreadPoolExecutor for parallel processing (works with pymupdf.Page objects)
-        def extract_single_page(page_idx):
-            page = doc[page_idx]
-            return extract_page_features(
-                page, page_idx, language,
-                matching_params, line_detection_params, name_detection_params,
-                extract_boreholes=extract_boreholes
-            )
-
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(extract_single_page, i): i for i in range(len(doc))}
-            results = []
-
-            for future in as_completed(futures):
-                page_idx = futures[future]
-                results.append((page_idx, future.result()))
-
-            # Sort by page index to maintain order
-            results.sort(key=lambda x: x[0])
-            page_features = [r[1] for r in results]
-    else:
-        # Sequential processing
-        for page_index, page in enumerate(doc):
-            features = extract_page_features(
-                page, page_index, language,
-                matching_params, line_detection_params, name_detection_params,
-                extract_boreholes=extract_boreholes
-            )
-            page_features.append(features)
-
-    # Calculate file-level aggregated statistics
-    total_boreholes = sum(f["number_of_boreholes"] for f in page_features)
-    total_descriptions = sum(f["number_of_valid_borehole_descriptions"] for f in page_features)
-    total_strip_logs = sum(f["number_of_strip_logs"] for f in page_features)
-    total_tables = sum(f["number_of_tables"] for f in page_features)
-    pages_with_boreholes = sum(1 for f in page_features if f["number_of_boreholes"] > 0)
-
-    # Calculate confidence metrics
-    pages_with_names = sum(1 for f in page_features if len(f["borehole_name_entries"]) > 0)
-    pages_with_sidebar = sum(1 for f in page_features if f["sidebar_information"] is not None)
-
-    # Simple confidence heuristic: pages with multiple indicators
-    max_confidence = 0.0
-    for features in page_features:
-        page_confidence = 0.0
-        if features["number_of_boreholes"] > 0:
-            page_confidence += 0.3
-        if len(features["borehole_name_entries"]) > 0:
-            page_confidence += 0.2
-        if features["sidebar_information"] is not None:
-            page_confidence += 0.2
-        if features["number_of_valid_borehole_descriptions"] > 0:
-            page_confidence += 0.2
-        if features["number_of_strip_logs"] > 0:
-            page_confidence += 0.1
-
-        max_confidence = max(max_confidence, min(page_confidence, 1.0))
-
-    execution_time = time.time() - start_time
-
-    return {
-        "language": language,
-        "page_features": page_features,
-        "file_features": {
-            "total_pages": len(doc),
-            "total_boreholes": total_boreholes,
-            "total_descriptions": total_descriptions,
-            "total_strip_logs": total_strip_logs,
-            "total_tables": total_tables,
-            "pages_with_boreholes": pages_with_boreholes,
-            "pages_with_names": pages_with_names,
-            "pages_with_sidebar": pages_with_sidebar,
-            "max_borehole_confidence": max_confidence,
-            "has_borehole_page": max_confidence > 0.5,
-            "execution_time_seconds": execution_time,
-        },
     }
