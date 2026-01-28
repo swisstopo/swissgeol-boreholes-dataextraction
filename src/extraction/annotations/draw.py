@@ -63,21 +63,7 @@ def plot_prediction(
             for _, page in enumerate(doc):
                 drawer = PageDrawer(page)
                 drawer.draw(prediction)
-
                 img = convert_page_to_img(page, scale_factor=2)
-
-                # tmp_file_path = out_directory / f"{filename}_page{drawer.page_number}.png"
-                # pymupdf.utils.get_pixmap(page, matrix=pymupdf.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
-
-                # if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
-                #     try:
-                #         import mlflow
-
-                #         mlflow.log_artifact(tmp_file_path, artifact_path="pages")
-                #     except NameError:
-                #         logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
-
-                # img = plot_lines(page, all_geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"])
                 save_visualization(img, filename, page.number + 1, "outputs", out_directory, mlflow_tracking)
 
     except (FileNotFoundError, pymupdf.FileDataError) as e:

@@ -89,7 +89,7 @@ def test_start_pipeline_csv(tmp_path: Path, borehole_pdf: Path) -> None:
 
 
 def test_start_pipeline_drawing(tmp_path: Path, borehole_pdf: Path) -> None:
-    """Test that CSV are generated.
+    """Test that visualizations are generated.
 
     Args:
         tmp_path (Path): Path to temporary folder (pytest handled).

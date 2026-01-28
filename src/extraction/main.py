@@ -245,7 +245,7 @@ def extract(
         draw_strip_logs (bool): Whether to draw detected strip log structures on pages. Defaults to False.
         csv (bool): Whether to generate a CSV output. Defaults to False.
         part (str): The part of the pipeline to run. Defaults to "all".
-        analytics (MatchingParamsAnalytics): _description_. Defaults to None.
+        analytics (MatchingParamsAnalytics): Analytics object for tracking matching parameters. Defaults to None.
 
     Returns:
         FilePredictions: Prediction for input file
@@ -315,7 +315,7 @@ def extract(
             )
             all_groundwater_entries.groundwater_feature_list.extend(groundwater_entries)
 
-            # Check if need to skip srawing
+            # Check if need to skip drawing
             if skip_draw_predictions:
                 continue
 

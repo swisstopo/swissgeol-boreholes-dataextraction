@@ -65,7 +65,7 @@ def evaluate_all_predictions(predictions: OverallFilePredictions, ground_truth_p
         mlflow.log_metrics(metrics_dict)
         mlflow.log_metrics(metadata_metrics.to_json())
 
-        # Create temporary folder to dump csv file and track them using MLFLow
+        # Create temporary folder to dump csv file and track them using MLFlow
         with tempfile.TemporaryDirectory() as temp_directory:
             document_level_metadata_metrics.to_csv(
                 Path(temp_directory) / "document_level_metadata_metrics.csv", index_label="document_name"
@@ -124,12 +124,6 @@ def parse_cli() -> argparse.Namespace:
         type=Path,
         default=DATAPATH / "output" / "predictions.json",
         help="Path to the predictions JSON file (default: './output/predictions.json').",
-    )
-    parser.add_argument(
-        "--temp-directory",
-        type=Path,
-        default=DATAPATH / "_temp",
-        help="Directory for storing temporary data (default: './_temp').",
     )
     parser.add_argument(
         "--no-mlflow-tracking",
