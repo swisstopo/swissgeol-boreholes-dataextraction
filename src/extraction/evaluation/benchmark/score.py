@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 from extraction import DATAPATH
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
@@ -19,12 +20,33 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
+class BenchmarkSummary(BaseModel):
+    """Helper class containing a summary of all the results of a single benchmark."""
+
+    ground_truth_path: str
+    n_documents: int
+    geology: dict[str, float]
+    metadata: dict[str, float]
+    artifacts: dict[str, str]
+
+    def metrics(self, short: bool = False) -> dict[str, float]:
+        def key(category: str, metric: str) -> str:
+            if short:
+                return metric
+            else:
+                return f"{category}/{metric}"
+
+        geology_dict = {key("geology", metric): value for metric, value in self.geology.items()}
+        metadata_dict = {key("metadata", metric): value for metric, value in self.metadata.items()}
+        return geology_dict | metadata_dict
+
+
 def evaluate_all_predictions(
     predictions: OverallFilePredictions,
     ground_truth_path: Path,
     temp_directory: Path,
     mlflow_tracking: bool,
-) -> None | dict:
+) -> None | BenchmarkSummary:
     """Computes all the metrics, logs them, and creates corresponding MLFlow artifacts (when enabled).
 
     Args:
@@ -34,7 +56,7 @@ def evaluate_all_predictions(
         mlflow_tracking (bool): Whether MLFlow tracking is enabled.
 
     Returns:
-        dict | None: A JSON-serializable dict summary that can be used by multi-benchmark runners.
+        BenchmarkSummary | None: A JSON-serializable BenchmarkSummary that can be used by multi-benchmark runners.
     """
     if not (ground_truth_path and ground_truth_path.exists()):  # for inference no ground truth is available
         logger.warning("Ground truth file not found. Skipping evaluation.")
@@ -65,9 +87,8 @@ def evaluate_all_predictions(
     if mlflow_tracking:
         import mlflow
 
-        # mlflow.log_metrics(metrics_dict)
-        mlflow.log_artifact(temp_directory / "document_level_metrics.csv")
         doc_metrics_path = temp_directory / "document_level_metrics.csv"
+        mlflow.log_artifact(doc_metrics_path)
 
     #############################
     # Evaluate the borehole extraction metadata
@@ -79,7 +100,7 @@ def evaluate_all_predictions(
     doc_meta_metrics_path = temp_directory / "document_level_metadata_metrics.csv"
     document_level_metadata_metrics: pd.DataFrame = metadata_metrics_list.get_document_level_metrics()
     document_level_metadata_metrics.to_csv(
-        temp_directory / "document_level_metadata_metrics.csv", index_label="document_name"
+        doc_meta_metrics_path, index_label="document_name"
     )  # mlflow.log_artifact expects a file
 
     logger.info("Metadata Performance metrics:")
@@ -91,9 +112,6 @@ def evaluate_all_predictions(
     if mlflow_tracking:
         import mlflow
 
-        # mlflow.log_metrics(metrics_dict)
-        # mlflow.log_metrics(metadata_metrics_dict)
-
         mlflow.log_artifact(str(doc_metrics_path))
         mlflow.log_artifact(str(doc_meta_metrics_path))
 
@@ -102,17 +120,16 @@ def evaluate_all_predictions(
     # -----------------------------
     n_docs = int(doc_level_metrics_df.shape[0]) if doc_level_metrics_df is not None else 0
 
-    summary = {
-        "ground_truth_path": str(ground_truth_path),
-        "n_documents": n_docs,
-        "geology": metrics_dict,
-        "metadata": metadata_metrics_dict,
-        "artifacts": {
+    return BenchmarkSummary(
+        ground_truth_path=str(ground_truth_path),
+        n_documents=n_docs,
+        geology=metrics_dict,
+        metadata=metadata_metrics_dict,
+        artifacts={
             "document_level_metrics_csv": str(doc_metrics_path),
             "document_level_metadata_metrics_csv": str(doc_meta_metrics_path),
         },
-    }
-    return summary
+    )
 
 
 def main():
