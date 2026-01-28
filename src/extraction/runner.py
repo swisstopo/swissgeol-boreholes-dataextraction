@@ -52,46 +52,6 @@ striplog_detection_params = read_params("striplog_detection_params.yml")
 logger = logging.getLogger(__name__)
 
 
-def _setup_mlflow_parent_run(
-    *,
-    mlflow_tracking: bool,
-    benchmarks: Sequence[BenchmarkSpec],
-    line_detection_params: dict,
-    matching_params: dict,
-) -> bool:
-    """Start the parent MLflow run (multi-benchmark) and log global params once.
-
-    Args:
-        mlflow_tracking (bool): Whether MLflow tracking is enabled.
-        benchmarks (Sequence[BenchmarkSpec]): List of benchmark specs.
-        line_detection_params (dict): Line detection parameters to log.
-        matching_params (dict): Matching parameters to log.
-
-    Returns:
-        bool: True if a parent run was started and must be closed by the caller.
-    """
-    if not mlflow_tracking:
-        return False
-
-    import mlflow
-
-    mlflow.set_experiment("Boreholes data extraction")
-
-    if mlflow.active_run() is not None:
-        mlflow.end_run()
-
-    mlflow.start_run()
-    mlflow.set_tag("run_type", "multi_benchmark")
-    mlflow.set_tag("benchmarks", ",".join([b.name for b in benchmarks]))
-    parent_key = _parent_input_directory_key(benchmarks)
-
-    mlflow.set_tag("input_directory", parent_key)
-
-    mlflow.log_params(flatten(line_detection_params))
-    mlflow.log_params(flatten(matching_params))
-    return True
-
-
 def _finalize_overall_summary(
     *,
     overall_results: list[tuple[str, None | BenchmarkSummary]],
@@ -161,7 +121,11 @@ def setup_mlflow_tracking(
 ):
     """Set up MLFlow tracking."""
     mlflow.set_experiment(experiment_name)
-    mlflow.start_run()
+
+    # only start a run if none is active
+    if mlflow.active_run() is None:
+        mlflow.start_run()
+
     mlflow.set_tag("input_directory", str(input_directory))
     mlflow.set_tag("ground_truth_path", str(ground_truth_path))
     if out_directory:
@@ -178,6 +142,39 @@ def setup_mlflow_tracking(
     mlflow.set_tag("git_branch", repo.head.shorthand)
     mlflow.set_tag("git_commit_message", commit.message)
     mlflow.set_tag("git_commit_sha", commit.id)
+
+
+def _setup_mlflow_parent_run(*, mlflow_tracking: bool, benchmarks: Sequence[BenchmarkSpec]) -> bool:
+    """Start the parent MLflow run (multi-benchmark) and log global params once.
+
+    Args:
+        mlflow_tracking (bool): Whether MLflow tracking is enabled.
+        benchmarks (Sequence[BenchmarkSpec]): List of benchmark specs.
+
+    Returns:
+        bool: True if a parent run was started and must be closed by the caller.
+    """
+    if not mlflow_tracking:
+        return False
+
+    import mlflow
+
+    mlflow.set_experiment("Boreholes data extraction")
+
+    if mlflow.active_run() is not None:
+        mlflow.end_run()
+
+    mlflow.start_run()
+    mlflow.set_tag("run_type", "multi_benchmark")
+    mlflow.set_tag("benchmarks", ",".join(b.name for b in benchmarks))
+    mlflow.set_tag("input_directory", _parent_input_directory_key(benchmarks))
+
+    setup_mlflow_tracking(
+        input_directory=_parent_input_directory_key(benchmarks),
+        ground_truth_path=None,  # parent has no single GT
+    )
+
+    return True
 
 
 def start_pipeline(
@@ -437,12 +434,7 @@ def start_pipeline_benchmark(
     line_detection_params = line_detection_params or {}
     matching_params = matching_params or {}
 
-    parent_active = _setup_mlflow_parent_run(
-        mlflow_tracking=mlflow_tracking,
-        benchmarks=benchmarks,
-        line_detection_params=line_detection_params,
-        matching_params=matching_params,
-    )
+    parent_active = _setup_mlflow_parent_run(mlflow_tracking=mlflow_tracking, benchmarks=benchmarks)
 
     overall_results = []
     try:
@@ -457,6 +449,14 @@ def start_pipeline_benchmark(
                 import mlflow
 
                 mlflow.start_run(run_name=spec.name, nested=True)
+                setup_mlflow_tracking(
+                    input_directory=spec.input_path,
+                    ground_truth_path=spec.ground_truth_path,
+                    out_directory=bench_out,
+                    predictions_path=bench_predictions_path,
+                    metadata_path=bench_metadata_path,
+                )
+
                 mlflow.set_tag("benchmark_name", spec.name)
                 mlflow.set_tag("input_directory", str(spec.input_path))
                 mlflow.set_tag("ground_truth_path", str(spec.ground_truth_path))
