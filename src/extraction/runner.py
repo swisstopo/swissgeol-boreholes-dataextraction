@@ -123,49 +123,24 @@ def _finalize_overall_summary(
 
     df = pd.DataFrame(rows).sort_values(by="benchmark")
 
-    # Everything except these base columns is a metric column
-    base_cols = {"benchmark", "ground_truth_path", "n_documents"}
-    metric_cols = [c for c in df.columns if c not in base_cols]
+    total_docs = df["n_documents"].sum()
+    means = df.mean(numeric_only=True)
+    agg_row = means.round(3)
+    agg_row.at["benchmark"] = "total/mean"
+    agg_row.at["n_documents"] = total_docs
+    df = pd.concat([df, pd.DataFrame([agg_row])], ignore_index=True)
 
-    df_metrics = df.copy()
-    df_metrics[metric_cols] = df_metrics[metric_cols].apply(pd.to_numeric, errors="coerce")
-    df_metrics["n_documents"] = pd.to_numeric(df_metrics["n_documents"], errors="coerce")
-
-    means: dict[str, float | None] = {}
-    for c in metric_cols:
-        col = df_metrics[c]
-        means[c] = float(col.mean()) if col.notna().any() else None
-
-    mean_row = {
-        "benchmark": "mean",
-        "ground_truth_path": "",
-        "n_documents": int(df_metrics["n_documents"].sum()) if df_metrics["n_documents"].notna().any() else "",
-        **means,
-    }
-
-    df = pd.concat([df, pd.DataFrame([mean_row])], ignore_index=True)
-
-    df[metric_cols] = df[metric_cols].apply(pd.to_numeric, errors="coerce").round(3)
     df.to_csv(summary_csv_path, index=False)
 
     # --- MLflow: overall mean metrics + artifacts on parent run ---
     if mlflow_tracking and parent_active:
         import mlflow
 
-        overall_mean_metrics: dict[str, float] = {}
         for full_key, value in means.items():
-            if value is None:
-                continue
+            if pd.notna(value):
+                short_key = _short_metric_key(full_key)
+                mlflow.log_metric(short_key, value)
 
-            short_key = _short_metric_key(full_key)
-
-            # collision-safe:
-            key_to_log = short_key if short_key not in overall_mean_metrics else full_key
-            overall_mean_metrics[key_to_log] = float(value)
-
-        mlflow.log_metrics(overall_mean_metrics)
-
-        total_docs = df_metrics["n_documents"].sum(skipna=True)
         if pd.notna(total_docs):
             mlflow.log_metric("total_n_documents", float(total_docs))
 
