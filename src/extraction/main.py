@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import shutil
 from pathlib import Path
 
 import click
@@ -375,6 +376,33 @@ def extract(
     return prediction
 
 
+def read_json_predictions(filename: str) -> OverallFilePredictions:
+    """Read predictions from input file.
+
+    Args:
+        filename (str): File to read and parse.
+
+    Returns:
+        OverallFilePredictions: Parsed predictions.
+    """
+    if not Path(filename).exists():
+        return OverallFilePredictions()
+
+    with open(filename, encoding="utf8") as f:
+        return OverallFilePredictions.from_json(json.load(f))
+
+
+def write_json_predictions(filename: str, predictions: OverallFilePredictions) -> None:
+    """Write prediction to json output.
+
+    Args:
+        filename (str): Destination file.
+        predictions (OverallFilePredictions): Prediction to dump in JSON file.
+    """
+    with open(filename, "w", encoding="utf8") as file:
+        json.dump(predictions.to_json(), file, ensure_ascii=False)
+
+
 def start_pipeline(
     input_directory: Path,
     ground_truth_path: Path,
@@ -415,6 +443,7 @@ def start_pipeline(
     # Check that all given outputs exists
     out_directory.mkdir(exist_ok=True)
     predictions_path.parent.mkdir(exist_ok=True)
+    predictions_path_tmp = predictions_path.parent / (predictions_path.name + ".tmp")
     metadata_path.parent.mkdir(exist_ok=True)
 
     # Initialize analytics if enabled
@@ -431,12 +460,19 @@ def start_pipeline(
         root = input_directory
         _, _, files = next(os.walk(input_directory))
 
-    # process the individual pdf files
-    predictions = OverallFilePredictions()
+    # Check if tmp file exists with unfinished experience
+    predictions = read_json_predictions(predictions_path_tmp)
 
+    # Iterate over all files
     for filename in tqdm(files, desc="Processing files", unit="file"):
+        # Check if file extension is supported
         if not filename.endswith(".pdf"):
             logger.warning(f"{filename} does not end with .pdf and is not treated.")
+            continue
+
+        # Check if file already predicted
+        if predictions.is_in(filename):
+            logger.info(f"{filename} already predicted.")
             continue
 
         in_path = root / filename
@@ -456,25 +492,32 @@ def start_pipeline(
                 analytics=analytics,
             )
             predictions.add_file_predictions(prediction)
+
+            # Track progress in tmp file
+            logger.info("Writing predictions to tmp JSON file %s", predictions_path_tmp)
+            write_json_predictions(filename=predictions_path_tmp, predictions=predictions)
+
         except Exception as e:
             logger.error(f"Unexpected error in file {filename}. Trace: {e}")
 
+    # Evaluate final predictions
+    evaluate_all_predictions(predictions=predictions, ground_truth_path=ground_truth_path)
+
+    # Save all metadata, analytics and predictions (if needed)
     logger.info("Metadata written to %s", metadata_path)
     with open(metadata_path, "w", encoding="utf8") as file:
         json.dump(predictions.get_metadata_as_dict(), file, ensure_ascii=False)
-
-    if part == "all":
-        logger.info("Writing predictions to JSON file %s", predictions_path)
-        with open(predictions_path, "w", encoding="utf8") as file:
-            json.dump(predictions.to_json(), file, ensure_ascii=False)
-
-    evaluate_all_predictions(predictions=predictions, ground_truth_path=ground_truth_path)
 
     # Finalize analytics if enabled
     if matching_analytics:
         analytics_output_path = out_directory / "matching_params_analytics.json"
         analytics.save_analytics(analytics_output_path)
         logger.info(f"Matching parameters analytics saved to {analytics_output_path}")
+
+    # Track progress to finale file and remove tmp
+    if part == "all":
+        logger.info("Writing predictions to final JSON file %s", predictions_path)
+        shutil.move(src=predictions_path_tmp, dst=predictions_path)
 
 
 if __name__ == "__main__":
