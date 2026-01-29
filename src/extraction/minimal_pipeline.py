@@ -141,9 +141,7 @@ def extract_page_features(
     matching_params: dict,
     line_detection_params: dict,
     name_detection_params: dict,
-    table_detection_params: dict,
-    striplog_detection_params: dict,
-    extraction_context: ExtractionContext | None = None,
+    extraction_context: ExtractionContext,
     extract_boreholes: bool = False,
 ) -> ExtractedPageFeatures:
     """Extract features from a single page for borehole identification.
@@ -155,29 +153,12 @@ def extract_page_features(
         matching_params (dict): Parameters for material description matching.
         line_detection_params (dict): Parameters for line detection.
         name_detection_params (dict): Parameters for borehole name detection.
-        table_detection_params (dict): Parameters for table detection.
-        striplog_detection_params (dict): Parameters for strip log detection.
-        extraction_context (Optional[ExtractionContext]): Pre-extracted page data to avoid re-extraction.
+        extraction_context (ExtractionContext): Pre-extracted page data to avoid re-extraction.
         extract_boreholes (bool): Whether to extract actual borehole data or just features.
 
     Returns:
         ExtractedPageFeatures: Features extracted from the page for borehole identification.
     """
-    if extraction_context is not None:
-        text_lines = extraction_context.text_lines
-        long_or_horizontal_lines = extraction_context.long_or_horizontal_lines
-        all_geometric_lines = extraction_context.all_geometric_lines
-        strip_logs = extraction_context.strip_logs
-        table_structures = extraction_context.table_structures
-    else:
-        text_lines = extract_text_lines(page)
-        long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
-        strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
-        table_structures = detect_table_structures(page, long_or_horizontal_lines, text_lines, table_detection_params)
-
-    number_of_strip_logs = len(strip_logs)
-    number_of_tables = len(table_structures)
-
     # Extract material descriptions by counting lines with geological material keywords
     # Get the material keywords (including_expressions) for the detected language
     material_description_config = matching_params.get("material_description", {})
@@ -187,7 +168,7 @@ def extract_page_features(
 
     valid_descriptions = []
     if material_keywords:
-        for text_line in text_lines:
+        for text_line in extraction_context.text_lines:
             # Check if line contains material keywords
             # find_matching_expressions signature: (patterns, split_threshold, targets, language, ...)
             # patterns = material keywords to find
@@ -198,11 +179,11 @@ def extract_page_features(
     number_of_valid_borehole_descriptions = len(valid_descriptions)
 
     sidebar_information = extract_sidebar_information(
-        text_lines,
-        long_or_horizontal_lines,
-        all_geometric_lines,
-        table_structures,
-        strip_logs,
+        extraction_context.text_lines,
+        extraction_context.long_or_horizontal_lines,
+        extraction_context.all_geometric_lines,
+        extraction_context.table_structures,
+        extraction_context.strip_logs,
         language,
         page_index,
         page,
@@ -212,12 +193,12 @@ def extract_page_features(
     )
 
     if extract_boreholes:
-        borehole_count = extract_page(
-            text_lines,
-            long_or_horizontal_lines,
-            all_geometric_lines,
-            table_structures,
-            strip_logs,
+        extracted_boreholes = extract_page(
+            extraction_context.text_lines,
+            extraction_context.long_or_horizontal_lines,
+            extraction_context.all_geometric_lines,
+            extraction_context.table_structures,
+            extraction_context.strip_logs,
             language,
             page_index,
             page,
@@ -226,12 +207,12 @@ def extract_page_features(
             **matching_params,
         )
     else:
-        borehole_count = 0
+        extracted_boreholes = []
 
-    number_of_boreholes = len(borehole_count)
+    number_of_boreholes = len(extracted_boreholes)
 
     # Extract borehole names
-    name_entries = extract_borehole_names(text_lines, name_detection_params)
+    name_entries = extract_borehole_names(extraction_context.text_lines, name_detection_params)
     borehole_name_entries = [
         {
             "name": entry.feature.name,
@@ -243,12 +224,12 @@ def extract_page_features(
     return ExtractedPageFeatures(
         page_number=page_index,
         number_of_valid_borehole_descriptions=number_of_valid_borehole_descriptions,
-        number_of_strip_logs=number_of_strip_logs,
-        number_of_tables=number_of_tables,
+        number_of_strip_logs=len(extraction_context.strip_logs),
+        number_of_tables=len(extraction_context.table_structures),
         number_of_boreholes=number_of_boreholes,
         sidebar_information=sidebar_information,
-        number_long_or_horizontal_lines=len(long_or_horizontal_lines),
-        number_all_geometric_lines=len(all_geometric_lines),
-        text_line_count=len(text_lines),
+        number_long_or_horizontal_lines=len(extraction_context.long_or_horizontal_lines),
+        number_all_geometric_lines=len(extraction_context.all_geometric_lines),
+        text_line_count=len(extraction_context.text_lines),
         borehole_name_entries=borehole_name_entries,
     )

@@ -148,18 +148,12 @@ class SidebarQualityMetrics:
     """Quality metrics for sidebar extraction on a page.
 
     Attributes:
-        number_of_sidebar_candidates: Total number of sidebar candidates found.
         number_of_good_sidebars: Number of sidebars that passed quality filters.
         best_sidebar_score: The highest matching score among all sidebars.
-        sidebar_types_found: Number of unique sidebar types identified.
-        average_sidebar_noise: Average noise count across all sidebars.
     """
 
-    number_of_sidebar_candidates: int
     number_of_good_sidebars: int
     best_sidebar_score: float
-    sidebar_types_found: int
-    average_sidebar_noise: float
 
 
 def noise_count(sidebar: Sidebar, line_rtree: fastquadtree.RectQuadTreeObjects) -> int:

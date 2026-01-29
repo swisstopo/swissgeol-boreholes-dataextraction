@@ -627,7 +627,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         """Extract all sidebars with quality metrics for classification purposes.
 
         This method reuses the existing sidebar extraction and matching logic to compute sidebar
-        specific metrics, e.g., amount of total sidebars, sidebar noise, etc.
+        specific metrics
 
         Returns:
             SidebarQualityMetrics: Quality metrics for all sidebars found on the page.
@@ -637,13 +637,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         depth_sidebar_pairs = self._find_depth_sidebar_pairs()
 
         all_pairs = depth_sidebar_pairs + layer_identifier_pairs
-
-        # Determine unique sidebar types using the 'kind' property
-        sidebar_types_present = {pair.sidebar.kind for pair in all_pairs if pair.sidebar is not None}
-
-        # Calculate metrics
-        number_of_sidebar_candidates = len([pair for pair in all_pairs if pair.sidebar is not None])
-        sidebar_types_found = len(sidebar_types_present)
 
         # Sort once by score (highest first)
         all_pairs.sort(key=lambda pair: pair.score_match, reverse=True)
@@ -657,16 +650,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
         # Best score from all pairs
         best_sidebar_score = max((pair.score_match for pair in all_pairs if pair.sidebar is not None), default=0.0)
 
-        # Average noise across all pairs with sidebars
-        noise_counts = [pair.noise_count for pair in all_pairs if pair.sidebar is not None]
-        average_sidebar_noise = sum(noise_counts) / len(noise_counts) if noise_counts else 0.0
-
         return SidebarQualityMetrics(
-            number_of_sidebar_candidates=number_of_sidebar_candidates,
             number_of_good_sidebars=number_of_good_sidebars,
             best_sidebar_score=best_sidebar_score,
-            sidebar_types_found=sidebar_types_found,
-            average_sidebar_noise=average_sidebar_noise,
         )
 
 
