@@ -10,8 +10,8 @@ import pytest
 
 from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
 from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
+from extraction.utils.dynamic_matching import IntervalToLinesDP
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
-from utils.dynamic_matching import IntervalToLinesDP
 
 
 @pytest.fixture

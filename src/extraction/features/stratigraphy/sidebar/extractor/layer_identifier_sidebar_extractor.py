@@ -2,11 +2,10 @@
 
 import re
 
+from extraction.features.stratigraphy.base.sidebar_entry import LayerIdentifierEntry
+from extraction.features.stratigraphy.sidebar.classes.layer_identifier_sidebar import LayerIdentifierSidebar
+from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
 from swissgeol_doc_processing.text.textline import TextLine
-
-from ...base.sidebar_entry import LayerIdentifierEntry
-from ..classes.layer_identifier_sidebar import LayerIdentifierSidebar
-from ..utils.cluster import Cluster
 
 
 class LayerIdentifierSidebarExtractor:

@@ -46,8 +46,7 @@ def detect_structure_lines(
 
 
 def detect_table_structures(
-    page_index: int,
-    document: pymupdf.Document,
+    page: pymupdf.Page,
     geometric_lines: list[Line],
     text_lines: list[TextLine],
     table_detection_params: dict,
@@ -55,8 +54,7 @@ def detect_table_structures(
     """Detect multiple non-overlapping table structures on a page.
 
     Args:
-        page_index (int): The page index (0-indexed).
-        document (pymupdf.Document): the document.
+        page (pymupdf.Page): The page to analyze.
         geometric_lines (list[Line]): The geometric lines on the page.
         text_lines (list[TextLine]): All text lines on the page.
         table_detection_params (dict): Table detection parameters.
@@ -64,8 +62,6 @@ def detect_table_structures(
     Returns:
         List of detected table structures
     """
-    # Get page dimensions from the document
-    page = document[page_index]
     page_width = page.rect.width
     page_height = page.rect.height
 

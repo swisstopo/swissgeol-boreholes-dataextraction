@@ -6,9 +6,8 @@ from dataclasses import dataclass
 
 import pymupdf
 
+from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
 from swissgeol_doc_processing.text.textblock import TextBlock
-
-from ..base.sidebar_entry import DepthColumnEntry
 
 
 class Interval:

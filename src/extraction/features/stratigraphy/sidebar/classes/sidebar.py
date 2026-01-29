@@ -9,14 +9,13 @@ from typing import ClassVar, Generic, TypeVar
 import fastquadtree
 import pymupdf
 
+from extraction.features.stratigraphy.base.sidebar_entry import SidebarEntry
+from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_smallest
 from swissgeol_doc_processing.text.textblock import TextBlock
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.text.textline_affinity import Affinity
 from swissgeol_doc_processing.utils.file_utils import read_params
-
-from ...base.sidebar_entry import SidebarEntry
-from ...interval.interval import IntervalBlockPair, IntervalZone
 
 EntryT = TypeVar("EntryT", bound=SidebarEntry)
 
@@ -142,6 +141,25 @@ class SidebarNoise(Generic[EntryT]):
 
     def __repr__(self):
         return f"SidebarNoise(sidebar={repr(self.sidebar)}, noise_count={self.noise_count})"
+
+
+@dataclass
+class SidebarQualityMetrics:
+    """Quality metrics for sidebar extraction on a page.
+
+    Attributes:
+        number_of_sidebar_candidates: Total number of sidebar candidates found.
+        number_of_good_sidebars: Number of sidebars that passed quality filters.
+        best_sidebar_score: The highest matching score among all sidebars.
+        sidebar_types_found: Number of unique sidebar types identified.
+        average_sidebar_noise: Average noise count across all sidebars.
+    """
+
+    number_of_sidebar_candidates: int
+    number_of_good_sidebars: int
+    best_sidebar_score: float
+    sidebar_types_found: int
+    average_sidebar_noise: float
 
 
 def noise_count(sidebar: Sidebar, line_rtree: fastquadtree.RectQuadTreeObjects) -> int:

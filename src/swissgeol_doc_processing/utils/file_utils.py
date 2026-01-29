@@ -80,6 +80,30 @@ def find_project_root() -> Path:
     return current.parents[2]  # Fallback
 
 
+def get_data_path() -> Path:
+    """Get the data directory path.
+
+    First checks for the BOREHOLES_DATA_PATH environment variable.
+    If not set, falls back to project_root/data.
+
+    ```
+    project-root
+    └── data
+        ├── output
+        ├── _temp
+        └── ...
+    ```
+
+    Returns:
+        Path: The data directory path.
+    """
+    import os
+
+    if os.getenv("BOREHOLES_DATA_PATH") is not None:
+        return Path(os.getenv("BOREHOLES_DATA_PATH"))
+    return find_project_root() / "data"
+
+
 def read_params(
     config_filename: str,
 ) -> dict:

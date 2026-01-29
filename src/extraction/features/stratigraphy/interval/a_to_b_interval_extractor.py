@@ -4,11 +4,10 @@ import re
 
 import pymupdf
 
+from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
+from extraction.features.stratigraphy.interval.interval import AToBInterval
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.utils.file_utils import read_params
-
-from ..base.sidebar_entry import DepthColumnEntry
-from .interval import AToBInterval
 
 matching_params = read_params("matching_params.yml")
 

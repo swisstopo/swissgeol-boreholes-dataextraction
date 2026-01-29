@@ -4,13 +4,12 @@ from dataclasses import dataclass
 
 import pymupdf
 
+from extraction.features.stratigraphy.interval.interval import Interval
+from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature
 from swissgeol_doc_processing.utils.file_utils import parse_text
-
-from ..interval.interval import Interval
-from .page_bounding_boxes import PageBoundingBoxes
 
 
 class LayerDepthsEntry(RectWithPageMixin):

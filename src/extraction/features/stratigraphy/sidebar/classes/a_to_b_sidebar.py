@@ -10,10 +10,9 @@ from extraction.features.stratigraphy.interval.partitions_and_sublayers import (
     number_of_subintervals,
     set_interval_hierarchy_flags,
 )
+from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
 from swissgeol_doc_processing.text.textblock import TextBlock
 from swissgeol_doc_processing.text.textline import TextLine
-
-from .sidebar import Sidebar
 
 
 @dataclass

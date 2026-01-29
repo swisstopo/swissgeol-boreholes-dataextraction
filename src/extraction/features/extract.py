@@ -18,6 +18,7 @@ from extraction.features.stratigraphy.layer.page_bounding_boxes import (
 from extraction.features.stratigraphy.sidebar.classes.sidebar import (
     Sidebar,
     SidebarNoise,
+    SidebarQualityMetrics,
     noise_count,
 )
 from extraction.features.stratigraphy.sidebar.extractor.a_above_b_sidebar_extractor import (
@@ -30,6 +31,7 @@ from extraction.features.stratigraphy.sidebar.extractor.layer_identifier_sidebar
     LayerIdentifierSidebarExtractor,
 )
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
+from extraction.utils.dynamic_matching import IntervalToLinesDP
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.line_detection import find_diags_ending_in_zone
 from swissgeol_doc_processing.geometry.util import x_overlap, x_overlap_significant_smallest
@@ -47,7 +49,6 @@ from swissgeol_doc_processing.utils.strip_log_detection import StripLog
 from swissgeol_doc_processing.utils.table_detection import (
     TableStructure,
 )
-from utils.dynamic_matching import IntervalToLinesDP
 
 logger = logging.getLogger(__name__)
 
@@ -622,6 +623,52 @@ class MaterialDescriptionRectWithSidebarExtractor:
             and 0 < g_line.end.x - g_line.start.x < max_horizontal_dist  # lines too long are likely other parasites
         ]
 
+    def extract_sidebars_with_quality_metrics(self) -> SidebarQualityMetrics:
+        """Extract all sidebars with quality metrics for classification purposes.
+
+        This method reuses the existing sidebar extraction and matching logic to compute sidebar
+        specific metrics, e.g., amount of total sidebars, sidebar noise, etc.
+
+        Returns:
+            SidebarQualityMetrics: Quality metrics for all sidebars found on the page.
+        """
+        # Reuse existing methods
+        layer_identifier_pairs = self._find_layer_identifier_sidebar_pairs()
+        depth_sidebar_pairs = self._find_depth_sidebar_pairs()
+
+        all_pairs = depth_sidebar_pairs + layer_identifier_pairs
+
+        # Determine unique sidebar types using the 'kind' property
+        sidebar_types_present = {pair.sidebar.kind for pair in all_pairs if pair.sidebar is not None}
+
+        # Calculate metrics
+        number_of_sidebar_candidates = len([pair for pair in all_pairs if pair.sidebar is not None])
+        sidebar_types_found = len(sidebar_types_present)
+
+        # Sort once by score (highest first)
+        all_pairs.sort(key=lambda pair: pair.score_match, reverse=True)
+
+        # Count good sidebars: filtered by table_criteria and intersections
+        good_sidebar_pairs = [pair for pair in all_pairs if pair.score_match >= 0]
+        good_sidebar_pairs = self._filter_by_table_criteria(good_sidebar_pairs)
+        good_sidebar_pairs = self._filter_by_intersections(good_sidebar_pairs)
+        number_of_good_sidebars = len(good_sidebar_pairs)
+
+        # Best score from all pairs
+        best_sidebar_score = max((pair.score_match for pair in all_pairs if pair.sidebar is not None), default=0.0)
+
+        # Average noise across all pairs with sidebars
+        noise_counts = [pair.noise_count for pair in all_pairs if pair.sidebar is not None]
+        average_sidebar_noise = sum(noise_counts) / len(noise_counts) if noise_counts else 0.0
+
+        return SidebarQualityMetrics(
+            number_of_sidebar_candidates=number_of_sidebar_candidates,
+            number_of_good_sidebars=number_of_good_sidebars,
+            best_sidebar_score=best_sidebar_score,
+            sidebar_types_found=sidebar_types_found,
+            average_sidebar_noise=average_sidebar_noise,
+        )
+
 
 def extract_page(
     text_lines: list[TextLine],
@@ -631,7 +678,7 @@ def extract_page(
     strip_logs: list[StripLog],
     language: str,
     page_index: int,
-    document: pymupdf.Document,
+    page: pymupdf.Page,
     line_detection_params: dict,
     analytics: MatchingParamsAnalytics,
     **matching_params: dict,
@@ -648,7 +695,7 @@ def extract_page(
         strip_logs (list[StripLog]): The identified strip log structures.
         language (str): Language of the page (used in parsing).
         page_index (int): The page index (0-indexed).
-        document (pymupdf.Document): the document.
+        page (pymupdf.Page): The page object from the document.
         line_detection_params (dict): The parameters for line detection.
         analytics (MatchingParamsAnalytics): The analytics tracker for matching parameters.
         **matching_params (dict): Additional parameters for the matching pipeline.
@@ -657,7 +704,6 @@ def extract_page(
         list[ExtractedBorehole]: Extracted borehole layers from the page.
     """
     # Get page dimensions from the document
-    page = document[page_index]
     page_width = page.rect.width
     page_height = page.rect.height
 
@@ -676,6 +722,61 @@ def extract_page(
         analytics,
         **matching_params,
     ).process_page()
+
+
+def extract_sidebar_information(
+    text_lines: list[TextLine],
+    long_or_horizontal_lines: list[Line],
+    all_geometric_lines: list[Line],
+    table_structures: list[TableStructure],
+    strip_logs: list[StripLog],
+    language: str,
+    page_index: int,
+    page: pymupdf.Page,
+    line_detection_params: dict,
+    analytics: MatchingParamsAnalytics,
+    **matching_params: dict,
+) -> SidebarQualityMetrics:
+    """Extract sidebar information with quality metrics.
+
+    This function serves as a simple interface to extract sidebar information
+    and quality metrics without requiring direct class usage.
+
+    Args:
+        text_lines (list[TextLine]): All text lines on the page.
+        long_or_horizontal_lines (list[Line]): Geometric lines (only the significant ones and the horizontals).
+        all_geometric_lines (list[Line]): All geometric lines (including the shorter ones).
+        table_structures (list[TableStructure]): The identified table structures.
+        strip_logs (list[StripLog]): The identified strip log structures.
+        language (str): Language of the page (used in parsing).
+        page_index (int): The page index (0-indexed).
+        page (pymupdf.Page): The page object from the document.
+        line_detection_params (dict): The parameters for line detection.
+        analytics (MatchingParamsAnalytics): The analytics tracker for matching parameters.
+        **matching_params (dict): Additional parameters for the matching pipeline.
+
+    Returns:
+        SidebarQualityMetrics: Quality metrics for all sidebars found on the page.
+    """
+    # Get page dimensions from the document
+    page_width = page.rect.width
+    page_height = page.rect.height
+
+    # Extract sidebar information
+    return MaterialDescriptionRectWithSidebarExtractor(
+        text_lines,
+        long_or_horizontal_lines,
+        all_geometric_lines,
+        table_structures,
+        strip_logs,
+        language,
+        page_index + 1,
+        page_width,
+        page_height,
+        line_detection_params,
+        analytics,
+        **matching_params,
+    ).extract_sidebars_with_quality_metrics()
 
 
 def match_lines_to_interval(

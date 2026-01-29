@@ -6,17 +6,16 @@ from typing import ClassVar
 
 import numpy as np
 
+from extraction.features.stratigraphy.base.sidebar_entry import LayerIdentifierEntry
+from extraction.features.stratigraphy.interval.a_to_b_interval_extractor import AToBIntervalExtractor
+from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
+from extraction.features.stratigraphy.interval.partitions_and_sublayers import (
+    get_optimal_intervals_with_text,
+)
+from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
 from swissgeol_doc_processing.geometry.util import y_overlap_significant_smallest
 from swissgeol_doc_processing.text.textblock import TextBlock
 from swissgeol_doc_processing.text.textline import TextLine
-
-from ...base.sidebar_entry import LayerIdentifierEntry
-from ...interval.a_to_b_interval_extractor import AToBIntervalExtractor
-from ...interval.interval import IntervalBlockPair, IntervalZone
-from ...interval.partitions_and_sublayers import (
-    get_optimal_intervals_with_text,
-)
-from .sidebar import Sidebar
 
 logger = logging.getLogger(__name__)
 

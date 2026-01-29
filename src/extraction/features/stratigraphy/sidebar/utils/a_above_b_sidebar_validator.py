@@ -4,8 +4,8 @@ import dataclasses
 
 import fastquadtree
 
-from ..classes.a_above_b_sidebar import AAboveBSidebar
-from ..classes.sidebar import SidebarNoise, noise_count
+from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
+from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarNoise, noise_count
 
 
 @dataclasses.dataclass

@@ -518,44 +518,84 @@ If you want to skip the hooks, you can use `git commit -m "..." --no-verify`.
 
 More information about pre-commit can be found [here](https://pre-commit.com).
 
-## swissgeol_doc_processing package
+## Packages
 
-The `swissgeol_doc_processing` package is a standalone Python library that provides core document processing functionality for geological documents. It is automatically included when installing the main `swissgeol-boreholes-dataextraction` package.
+This repository contains two installable Python packages that can be used independently or together:
 
-### Package Contents
+- **`swissgeol_doc_processing`**: Core document processing utilities (geometry, text extraction, language detection)
+- **`extraction`**: Borehole-specific extraction pipeline
 
-The package contains three main modules:
+Both packages are automatically included when installing the main `swissgeol-boreholes-dataextraction` package.
+
+### Installation
+
+Both packages are part of the `swissgeol-boreholes-dataextraction` repository and can be installed directly from GitHub. They are built using setuptools and setuptools-scm for version management. Published [versions](https://github.com/swisstopo/swissgeol-boreholes-dataextraction/releases) can be installed via:
+
+```bash
+pip install https://github.com/swisstopo/swissgeol-boreholes-dataextraction/releases/download/v{VERSION}/swissgeol-boreholes-dataextraction-{VERSION}-py3-none-any.whl
+```
+
+The package configuration is defined in `pyproject.toml` under `[tool.setuptools.packages.find]`, which specifies both `swissgeol_doc_processing` and `extraction` as package sources.
+
+---
+
+### swissgeol_doc_processing
+
+A standalone Python library that provides core document processing functionality for geological documents.
+
+#### Modules
 
 - **`geometry`**: Geometric analysis tools including circle detection, line detection, and spatial data structures
 - **`text`**: Text extraction and processing utilities for handling PDF text blocks, text lines, and linguistic analysis (stemming, language detection)
 - **`utils`**: General utilities for data extraction, file handling, language filtering, and document structure detection (tables, strip logs)
 
-### Installation
-
-The package is part of the `swissgeol-boreholes-dataextraction` repository and can be installed for other projects directly from GitHub. It is built using setuptools and setuptools-scm for version management. Published [versions](https://github.com/swisstopo/swissgeol-boreholes-dataextraction/releases) can be installed independently via:
-
-```python
-pip install https://github.com/swisstopo/swissgeol-boreholes-dataextraction/releases/download/v{VERSION}/swissgeol-boreholes-dataextraction-{VERSION}-py3-none-any.whl
-```
-
-The package configuration is defined in pyproject.toml under `[tool.setuptools.packages.find]`, which specifies swissgeol_doc_processing as the package source.
-
-### Usage
-
-Import modules directly from the package:
+#### Usage
 
 ```python
 from swissgeol_doc_processing.geometry import line_detection
 from swissgeol_doc_processing.text import extract_text
 from swissgeol_doc_processing.utils import language_detection
-```
 
-Use the package like any other python dependency:
-
-```Python
 language_detection.detect_language_of_text(
-    "This is a sample text.", 
-    "english", 
+    "This is a sample text.",
+    "english",
     ["english", "french", "german"]
 )
+```
+
+---
+
+### extraction
+
+A Python library for extracting structured data from borehole PDF documents. It provides both CLI commands for running the full extraction pipeline and programmatic APIs for feature extraction suitable for machine learning classification.
+
+#### Modules
+
+- **`features`**: Core extraction logic
+  - `metadata`: Borehole metadata extraction (coordinates, elevation, names)
+  - `stratigraphy`: Layer and depth extraction
+  - `groundwater`: Groundwater level extraction
+  - `predictions`: Data structures for extraction results
+  - `extract`: Main extraction functions
+- **`evaluation`**: Evaluation and benchmarking tools
+- **`annotations`**: Visualization and drawing utilities
+- **`minimal_pipeline`**: Simplified extraction for ML feature generation
+- **`utils`**: Extraction-specific utilities (dynamic matching)
+
+#### Usage
+
+```python
+import pymupdf
+from extraction.minimal_pipeline import extract_page_features, load_default_params
+from extraction.features.metadata.metadata import FileMetadata
+
+params = load_default_params()
+
+with pymupdf.Document("borehole.pdf") as doc:
+    file_metadata = FileMetadata.from_document(doc, params["matching_params"])
+
+    for page_index, page in enumerate(doc):
+        features = extract_page_features(
+            page, page_index, file_metadata.language, **params
+        )
 ```
