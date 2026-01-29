@@ -162,7 +162,6 @@ def _setup_mlflow_parent_run(*, mlflow_tracking: bool, benchmarks: Sequence[Benc
     mlflow.set_experiment("Boreholes data extraction")
     mlflow.set_tag("run_type", "multi_benchmark")
     mlflow.set_tag("benchmarks", ",".join(b.name for b in benchmarks))
-    # mlflow.set_experiment("Boreholes data extraction")
     setup_mlflow_tracking(
         input_directory=_parent_input_directory_key(benchmarks),
         ground_truth_path=None,  # parent has no single GT
