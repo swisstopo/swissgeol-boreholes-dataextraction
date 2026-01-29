@@ -164,10 +164,8 @@ def _setup_mlflow_parent_run(*, mlflow_tracking: bool, benchmarks: Sequence[Benc
     if mlflow.active_run() is not None:
         mlflow.end_run()
 
-    mlflow.start_run()
     mlflow.set_tag("run_type", "multi_benchmark")
     mlflow.set_tag("benchmarks", ",".join(b.name for b in benchmarks))
-    mlflow.set_tag("input_directory", _parent_input_directory_key(benchmarks))
 
     setup_mlflow_tracking(
         input_directory=_parent_input_directory_key(benchmarks),
