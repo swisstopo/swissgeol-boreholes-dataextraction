@@ -211,7 +211,7 @@ def setup_mlflow_tracking(
         input_directory (Path): Input directory tracking.
         ground_truth_path (Path): Ground truth path tracking.
         out_directory (Path, optional): Output directory tracking. Defaults to None.
-        predictions_path (Path, optional): Predction path tracking. Defaults to None.
+        predictions_path (Path, optional): Prediction path tracking. Defaults to None.
         metadata_path (Path, optional): Metadata path tracking. Defaults to None.
         experiment_name (str, optional): Experiment name tracking. Defaults to "Boreholes data extraction".
 
@@ -305,7 +305,7 @@ def extract(
             # Detect strip logs on the page
             strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
 
-            # extract the statigraphy
+            # Extract the stratigraphy
             page_layers = extract_page(
                 text_lines,
                 long_or_horizontal_lines,
@@ -392,7 +392,7 @@ def extract(
 
 
 def read_mlflow_runid(filename: str) -> str | None:
-    """Read locally stored rmlflow run id.
+    """Read locally stored mlflow run id.
 
     Args:
         filename (str): Name of the file that contains runid.
@@ -408,7 +408,7 @@ def read_mlflow_runid(filename: str) -> str | None:
 
 
 def write_mlflow_runid(filename: str, runid: str) -> None:
-    """Locally stores rmlflow run id.
+    """Locally stores mlflow run id.
 
     Args:
         filename (str): Name of the file to store runid.
@@ -445,7 +445,7 @@ def write_json_predictions(filename: str, predictions: OverallFilePredictions) -
         json.dump(predictions.to_json(), file, ensure_ascii=False)
 
 
-def delete_temporary(filename: str):
+def delete_temporary(filename: str) -> None:
     """Deletes a temporary file (ending with .tmp).
 
     Args:
@@ -504,7 +504,7 @@ def start_pipeline(
     analytics = create_analytics() if matching_analytics else None
 
     if mlflow_tracking:
-        # Load run id is existing, otherwise None
+        # Load run id if existing, otherwise None
         runid = read_mlflow_runid(filename=mlflow_runid_tmp)
         runid = setup_mlflow_tracking(
             runid, input_directory, ground_truth_path, out_directory, predictions_path, metadata_path
@@ -520,7 +520,7 @@ def start_pipeline(
         root = input_directory
         _, _, files = next(os.walk(input_directory))
 
-    # Check if tmp file exists with unfinished experience
+    # Check if tmp file exists with unfinished experiment
     predictions = read_json_predictions(predictions_path_tmp)
 
     # Iterate over all files
