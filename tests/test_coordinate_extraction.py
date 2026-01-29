@@ -11,7 +11,7 @@ from extraction.features.metadata.coordinate_extraction import (
     LV95Coordinate,
 )
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
-from swissgeol_doc_processing.utils.file_utils import get_data_path, read_params
+from swissgeol_doc_processing.utils.file_utils import find_project_root, read_params
 
 
 def test_strLV95():  # noqa: D103
@@ -55,8 +55,8 @@ def test_to_jsonLV03():  # noqa: D103
     assert coord.to_json() == {"E": 789456, "N": 123012}
 
 
-doc = pymupdf.open(get_data_path().parent / "example" / "example_borehole_profile.pdf")
-doc_with_digits_in_coordinates = pymupdf.open(get_data_path().parent / "example" / "A7367.pdf")
+doc = pymupdf.open(find_project_root() / "example" / "example_borehole_profile.pdf")
+doc_with_digits_in_coordinates = pymupdf.open(find_project_root() / "example" / "A7367.pdf")
 matching_params = read_params("matching_params.yml")
 extractor_de = CoordinateExtractor("de", matching_params)
 extractor_fr = CoordinateExtractor("fr", matching_params)

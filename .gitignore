@@ -7,7 +7,6 @@ data-legacy/
 /mlartifacts
 /models/
 /config/
-run_minimal_pipeline.py
 
 # Ignore local VSCode launch config
 .vscode/launch.json

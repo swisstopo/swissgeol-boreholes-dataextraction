@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 
 from extraction.features.extract import extract_page, extract_sidebar_information
 from extraction.features.metadata.borehole_name_extraction import extract_borehole_names
+from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarQualityMetrics
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
@@ -104,6 +105,35 @@ class ExtractionContext:
         )
 
 
+@dataclass
+class ExtractedPageFeatures:
+    """Features extracted from a single page for borehole identification.
+
+    Attributes:
+        page_number: Page index.
+        number_of_valid_borehole_descriptions: Count of valid material descriptions.
+        number_of_strip_logs: Count of detected strip logs.
+        number_of_tables: Count of detected tables.
+        number_of_boreholes: Count of detected boreholes.
+        sidebar_information: Sidebar extraction quality metrics.
+        number_long_or_horizontal_lines: Count of long/horizontal lines.
+        number_all_geometric_lines: Count of all geometric lines.
+        text_line_count: Number of text lines on page.
+        borehole_name_entries: List of detected borehole names with confidence scores.
+    """
+
+    page_number: int
+    number_of_valid_borehole_descriptions: int
+    number_of_strip_logs: int
+    number_of_tables: int
+    number_of_boreholes: int
+    sidebar_information: SidebarQualityMetrics
+    number_long_or_horizontal_lines: int
+    number_all_geometric_lines: int
+    text_line_count: int
+    borehole_name_entries: list[dict]
+
+
 def extract_page_features(
     page: pymupdf.Page,
     page_index: int,
@@ -115,7 +145,7 @@ def extract_page_features(
     striplog_detection_params: dict,
     extraction_context: ExtractionContext | None = None,
     extract_boreholes: bool = False,
-) -> dict:
+) -> ExtractedPageFeatures:
     """Extract features from a single page for borehole identification.
 
     Args:
@@ -131,17 +161,7 @@ def extract_page_features(
         extract_boreholes (bool): Whether to extract actual borehole data or just features.
 
     Returns:
-        dict: Dictionary containing extracted features:
-            - page_number: Page index
-            - number_of_valid_borehole_descriptions: Count of valid material descriptions
-            - number_of_strip_logs: Count of detected strip logs
-            - number_of_tables: Count of detected tables
-            - number_of_boreholes: Count of detected boreholes
-            - sidebar_information: Sidebar extraction results
-            - number_long_or_horizontal_lines: Count of long/horizontal lines
-            - number_all_geometric_lines: Count of all geometric lines
-            - text_line_count: Number of text lines on page
-            - borehole_name_entries: List of detected borehole names with confidence scores
+        ExtractedPageFeatures: Features extracted from the page for borehole identification.
     """
     if extraction_context is not None and extraction_context.text_lines is not None:
         text_lines = extraction_context.text_lines
@@ -222,7 +242,7 @@ def extract_page_features(
             **matching_params,
         )
     else:
-        borehole_count = []
+        borehole_count = 0
 
     number_of_boreholes = len(borehole_count)
 
@@ -236,15 +256,15 @@ def extract_page_features(
         for entry in name_entries
     ]
 
-    return {
-        "page_number": page_index,
-        "number_of_valid_borehole_descriptions": number_of_valid_borehole_descriptions,
-        "number_of_strip_logs": number_of_strip_logs,
-        "number_of_tables": number_of_tables,
-        "number_of_boreholes": number_of_boreholes,
-        "sidebar_information": sidebar_information,
-        "number_long_or_horizontal_lines": len(long_or_horizontal_lines),
-        "number_all_geometric_lines": len(all_geometric_lines),
-        "text_line_count": len(text_lines),
-        "borehole_name_entries": borehole_name_entries,
-    }
+    return ExtractedPageFeatures(
+        page_number=page_index,
+        number_of_valid_borehole_descriptions=number_of_valid_borehole_descriptions,
+        number_of_strip_logs=number_of_strip_logs,
+        number_of_tables=number_of_tables,
+        number_of_boreholes=number_of_boreholes,
+        sidebar_information=sidebar_information,
+        number_long_or_horizontal_lines=len(long_or_horizontal_lines),
+        number_all_geometric_lines=len(all_geometric_lines),
+        text_line_count=len(text_lines),
+        borehole_name_entries=borehole_name_entries,
+    )

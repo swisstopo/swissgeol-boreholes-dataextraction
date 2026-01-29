@@ -18,6 +18,7 @@ from extraction.features.stratigraphy.layer.page_bounding_boxes import (
 from extraction.features.stratigraphy.sidebar.classes.sidebar import (
     Sidebar,
     SidebarNoise,
+    SidebarQualityMetrics,
     noise_count,
 )
 from extraction.features.stratigraphy.sidebar.extractor.a_above_b_sidebar_extractor import (
@@ -622,19 +623,14 @@ class MaterialDescriptionRectWithSidebarExtractor:
             and 0 < g_line.end.x - g_line.start.x < max_horizontal_dist  # lines too long are likely other parasites
         ]
 
-    def extract_sidebars_with_quality_metrics(self) -> dict:
+    def extract_sidebars_with_quality_metrics(self) -> SidebarQualityMetrics:
         """Extract all sidebars with quality metrics for classification purposes.
 
         This method reuses the existing sidebar extraction and matching logic to compute sidebar
         specific metrics, e.g., amount of total sidebars, sidebar noise, etc.
 
         Returns:
-            dict: Quality metrics for all sidebars found on the page.
-                - number_of_sidebar_candidates: Total number of sidebar candidates found.
-                - number_of_good_sidebars: Number of sidebars that passed quality filters.
-                - best_sidebar_score: The highest matching score among all sidebars.
-                - sidebar_types_found: Number of unique sidebar types identified.
-                - average_sidebar_noise: Average noise count across all sidebars.
+            SidebarQualityMetrics: Quality metrics for all sidebars found on the page.
         """
         # Reuse existing methods
         layer_identifier_pairs = self._find_layer_identifier_sidebar_pairs()
@@ -665,13 +661,13 @@ class MaterialDescriptionRectWithSidebarExtractor:
         noise_counts = [pair.noise_count for pair in all_pairs if pair.sidebar is not None]
         average_sidebar_noise = sum(noise_counts) / len(noise_counts) if noise_counts else 0.0
 
-        return {
-            "number_of_sidebar_candidates": number_of_sidebar_candidates,
-            "number_of_good_sidebars": number_of_good_sidebars,
-            "best_sidebar_score": best_sidebar_score,
-            "sidebar_types_found": sidebar_types_found,
-            "average_sidebar_noise": average_sidebar_noise,
-        }
+        return SidebarQualityMetrics(
+            number_of_sidebar_candidates=number_of_sidebar_candidates,
+            number_of_good_sidebars=number_of_good_sidebars,
+            best_sidebar_score=best_sidebar_score,
+            sidebar_types_found=sidebar_types_found,
+            average_sidebar_noise=average_sidebar_noise,
+        )
 
 
 def extract_page(
@@ -740,7 +736,7 @@ def extract_sidebar_information(
     line_detection_params: dict,
     analytics: MatchingParamsAnalytics,
     **matching_params: dict,
-) -> dict:
+) -> SidebarQualityMetrics:
     """Extract sidebar information with quality metrics.
 
     This function serves as a simple interface to extract sidebar information
@@ -760,7 +756,7 @@ def extract_sidebar_information(
         **matching_params (dict): Additional parameters for the matching pipeline.
 
     Returns:
-        dict: Quality metrics for all sidebars found on the page.
+        SidebarQualityMetrics: Quality metrics for all sidebars found on the page.
     """
     # Get page dimensions from the document
     page_width = page.rect.width
