@@ -196,16 +196,30 @@ def click_pipeline_metadata(
 
 
 def setup_mlflow_tracking(
+    runid: str | None,
     input_directory: Path,
     ground_truth_path: Path,
     out_directory: Path = None,
     predictions_path: Path = None,
     metadata_path: Path = None,
     experiment_name: str = "Boreholes data extraction",
-):
-    """Set up MLFlow tracking."""
+) -> str:
+    """Set up MLFlow tracking.
+
+    Args:
+        runid (str): Run id to resume if any.
+        input_directory (Path): Input directory tracking.
+        ground_truth_path (Path): Ground truth path tracking.
+        out_directory (Path, optional): Output directory tracking. Defaults to None.
+        predictions_path (Path, optional): Predction path tracking. Defaults to None.
+        metadata_path (Path, optional): Metadata path tracking. Defaults to None.
+        experiment_name (str, optional): Experiment name tracking. Defaults to "Boreholes data extraction".
+
+    Returns:
+        str: Run id
+    """
     mlflow.set_experiment(experiment_name)
-    mlflow.start_run()
+    mlflow.start_run(runid)
     mlflow.set_tag("input_directory", str(input_directory))
     mlflow.set_tag("ground_truth_path", str(ground_truth_path))
     if out_directory:
@@ -222,6 +236,7 @@ def setup_mlflow_tracking(
     mlflow.set_tag("git_branch", repo.head.shorthand)
     mlflow.set_tag("git_commit_message", commit.message)
     mlflow.set_tag("git_commit_sha", commit.id)
+    return mlflow.active_run().info.run_id
 
 
 def extract(
@@ -376,6 +391,33 @@ def extract(
     return prediction
 
 
+def read_mlflow_runid(filename: str) -> str | None:
+    """Read locally stored rmlflow run id.
+
+    Args:
+        filename (str): Name of the file that contains runid.
+
+    Returns:
+        str | None: Loaded runid if any, otherwise None.
+    """
+    if not Path(filename).exists():
+        return None
+
+    with open(filename, encoding="utf8") as f:
+        return json.load(f)
+
+
+def write_mlflow_runid(filename: str, runid: str) -> None:
+    """Locally stores rmlflow run id.
+
+    Args:
+        filename (str): Name of the file to store runid.
+        runid (str): Runid to store.
+    """
+    with open(filename, "w", encoding="utf8") as file:
+        json.dump(runid, file, ensure_ascii=False)
+
+
 def read_json_predictions(filename: str) -> OverallFilePredictions:
     """Read predictions from input file.
 
@@ -401,6 +443,16 @@ def write_json_predictions(filename: str, predictions: OverallFilePredictions) -
     """
     with open(filename, "w", encoding="utf8") as file:
         json.dump(predictions.to_json(), file, ensure_ascii=False)
+
+
+def delete_temporary(filename: str):
+    """Deletes a temporary file (ending with .tmp).
+
+    Args:
+        filename (str): File to delete
+    """
+    if Path(filename).exists() and Path(filename).suffix == ".tmp":
+        os.remove(filename)
 
 
 def start_pipeline(
@@ -444,13 +496,21 @@ def start_pipeline(
     out_directory.mkdir(exist_ok=True)
     predictions_path.parent.mkdir(exist_ok=True)
     predictions_path_tmp = predictions_path.parent / (predictions_path.name + ".tmp")
+    mlflow_runid_tmp = predictions_path.parent / ("mlflow_runid.json.tmp")
+
     metadata_path.parent.mkdir(exist_ok=True)
 
     # Initialize analytics if enabled
     analytics = create_analytics() if matching_analytics else None
 
     if mlflow_tracking:
-        setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
+        # Load run id is existing, otherwise None
+        runid = read_mlflow_runid(filename=mlflow_runid_tmp)
+        runid = setup_mlflow_tracking(
+            runid, input_directory, ground_truth_path, out_directory, predictions_path, metadata_path
+        )
+        # Save current run id
+        write_mlflow_runid(filename=mlflow_runid_tmp, runid=runid)
 
     # if a file is specified instead of an input directory, copy the file to a temporary directory and work with that.
     if input_directory.is_file():
@@ -510,6 +570,7 @@ def start_pipeline(
 
     # Finalize analytics if enabled
     if matching_analytics:
+        # TODO Check resume analytics
         analytics_output_path = out_directory / "matching_params_analytics.json"
         analytics.save_analytics(analytics_output_path)
         logger.info(f"Matching parameters analytics saved to {analytics_output_path}")
@@ -517,7 +578,11 @@ def start_pipeline(
     # Track progress to finale file and remove tmp
     if part == "all":
         logger.info("Writing predictions to final JSON file %s", predictions_path)
-        shutil.move(src=predictions_path_tmp, dst=predictions_path)
+        shutil.copy(src=predictions_path_tmp, dst=predictions_path)
+
+    # Clean temporary files
+    delete_temporary(predictions_path_tmp)
+    delete_temporary(mlflow_runid_tmp)
 
 
 if __name__ == "__main__":
