@@ -46,7 +46,7 @@ class ExtractionContext:
     """Context object containing pre-extracted page data to avoid re-extraction.
 
     This pattern allows passing cached extraction results to feature extraction
-    functions, improving performance by ~40-50% when data is already available.
+    functions.
 
     Usage:
         params = load_default_params()
@@ -65,11 +65,11 @@ class ExtractionContext:
         )
     """
 
-    text_lines: list[TextLine] | None = None
-    long_or_horizontal_lines: list[Line] | None = None
-    all_geometric_lines: list[Line] | None = None
-    strip_logs: list[StripLog] | None = None
-    table_structures: list[TableStructure] | None = None
+    text_lines: list[TextLine]
+    long_or_horizontal_lines: list[Line]
+    all_geometric_lines: list[Line]
+    strip_logs: list[StripLog]
+    table_structures: list[TableStructure]
     language: str | None = None
 
     @classmethod
@@ -163,35 +163,19 @@ def extract_page_features(
     Returns:
         ExtractedPageFeatures: Features extracted from the page for borehole identification.
     """
-    if extraction_context is not None and extraction_context.text_lines is not None:
+    if extraction_context is not None:
         text_lines = extraction_context.text_lines
-    else:
-        text_lines = extract_text_lines(page)
-
-    if (
-        extraction_context is not None
-        and extraction_context.long_or_horizontal_lines is not None
-        and extraction_context.all_geometric_lines is not None
-    ):
         long_or_horizontal_lines = extraction_context.long_or_horizontal_lines
         all_geometric_lines = extraction_context.all_geometric_lines
-    else:
-        long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
-
-    # If strip_logs already extracted in context, reuse them
-    if extraction_context is not None and extraction_context.strip_logs is not None:
         strip_logs = extraction_context.strip_logs
-    else:
-        strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
-
-    number_of_strip_logs = len(strip_logs)
-
-    # If tables already extracted in context, reuse them
-    if extraction_context is not None and extraction_context.table_structures is not None:
         table_structures = extraction_context.table_structures
     else:
+        text_lines = extract_text_lines(page)
+        long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
+        strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
         table_structures = detect_table_structures(page, long_or_horizontal_lines, text_lines, table_detection_params)
 
+    number_of_strip_logs = len(strip_logs)
     number_of_tables = len(table_structures)
 
     # Extract material descriptions by counting lines with geological material keywords
