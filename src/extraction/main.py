@@ -570,7 +570,7 @@ def start_pipeline(
 
     # Finalize analytics if enabled
     if matching_analytics:
-        # TODO Check resume analytics
+        # Warning: Resuming analytics is not supported
         analytics_output_path = out_directory / "matching_params_analytics.json"
         analytics.save_analytics(analytics_output_path)
         logger.info(f"Matching parameters analytics saved to {analytics_output_path}")
