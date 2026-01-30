@@ -8,8 +8,6 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
-from git import Optional
-
 from extraction.evaluation.benchmark.score import BenchmarkSummary
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 
@@ -80,7 +78,7 @@ def _short_metric_key(k: str) -> str:
 
 
 def log_metric_mlflow(
-    summary: Optional[BenchmarkSummary],
+    summary: BenchmarkSummary | None,
     out_dir: Path,
     artifact_name: str = "benchmark_summary.json",
 ) -> None:
