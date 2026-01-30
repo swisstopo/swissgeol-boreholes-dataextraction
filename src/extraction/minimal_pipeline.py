@@ -222,7 +222,7 @@ def extract_page_features(
     ]
 
     return ExtractedPageFeatures(
-        page_number=page_index,
+        page_index=page_index,
         number_of_valid_borehole_descriptions=number_of_valid_borehole_descriptions,
         number_of_strip_logs=len(extraction_context.strip_logs),
         number_of_tables=len(extraction_context.table_structures),

@@ -108,25 +108,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Returns:
             list[ExtractedBorehole]: The extracted boreholes from the page.
         """
-        # Step 1: Find all potential pairs
-        material_descriptions_sidebar_pairs = self._find_layer_identifier_sidebar_pairs()
-        material_descriptions_sidebar_pairs.extend(self._find_depth_sidebar_pairs())
-
-        material_description_rect_without_sidebar = self._find_material_description_column(sidebar=None)
-        if material_description_rect_without_sidebar:
-            material_descriptions_sidebar_pairs.append(
-                MaterialDescriptionRectWithSidebar(
-                    sidebar=None, material_description_rect=material_description_rect_without_sidebar, lines=self.lines
-                )
-            )
-
-        # Step 2: Sort once by score (highest first)
-        material_descriptions_sidebar_pairs.sort(key=lambda pair: pair.score_match, reverse=True)
-
-        # Step 3: Apply filter chain
-        filtered_pairs = [pair for pair in material_descriptions_sidebar_pairs if pair.score_match >= 0]
-        filtered_pairs = self._filter_by_table_criteria(filtered_pairs)
-        filtered_pairs = self._filter_by_intersections(filtered_pairs)
+        filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=True)
 
         # Step 4: Create boreholes
         boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
@@ -601,6 +583,46 @@ class MaterialDescriptionRectWithSidebarExtractor:
         )
         return diagonals
 
+    def _extract_filtered_sidebar_pairs(
+        self, include_descriptions_without_sidebar: bool = True
+    ) -> list[MaterialDescriptionRectWithSidebar]:
+        """Extract and filter sidebar pairs using the common pipeline.
+
+        Args:
+            include_descriptions_without_sidebar: If True, search for and include
+                material descriptions that don't have an associated sidebar.
+
+        Returns:
+            List of filtered MaterialDescriptionRectWithSidebar pairs, sorted by
+            score (highest first) and filtered by score, table criteria, and
+            intersections.
+        """
+        # Step 1: Find all potential pairs
+        pairs = self._find_layer_identifier_sidebar_pairs()
+        pairs.extend(self._find_depth_sidebar_pairs())
+
+        # Step 2: Optionally add descriptions without sidebar
+        if include_descriptions_without_sidebar:
+            material_description_rect_without_sidebar = self._find_material_description_column(sidebar=None)
+            if material_description_rect_without_sidebar:
+                pairs.append(
+                    MaterialDescriptionRectWithSidebar(
+                        sidebar=None,
+                        material_description_rect=material_description_rect_without_sidebar,
+                        lines=self.lines,
+                    )
+                )
+
+        # Step 3: Sort once by score (highest first)
+        pairs.sort(key=lambda pair: pair.score_match, reverse=True)
+
+        # Step 4: Apply filter chain
+        filtered_pairs = [pair for pair in pairs if pair.score_match >= 0]
+        filtered_pairs = self._filter_by_table_criteria(filtered_pairs)
+        filtered_pairs = self._filter_by_intersections(filtered_pairs)
+
+        return filtered_pairs
+
     @staticmethod
     def _filter_diagonals(
         g_lines: list[Line],
@@ -632,26 +654,18 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Returns:
             SidebarQualityMetrics: Quality metrics for all sidebars found on the page.
         """
-        # Reuse existing methods
-        layer_identifier_pairs = self._find_layer_identifier_sidebar_pairs()
-        depth_sidebar_pairs = self._find_depth_sidebar_pairs()
-
-        all_pairs = depth_sidebar_pairs + layer_identifier_pairs
-
-        # Sort once by score (highest first)
-        all_pairs.sort(key=lambda pair: pair.score_match, reverse=True)
-
-        # Count good sidebars: filtered by table_criteria and intersections
-        good_sidebar_pairs = [pair for pair in all_pairs if pair.score_match >= 0]
-        good_sidebar_pairs = self._filter_by_table_criteria(good_sidebar_pairs)
-        good_sidebar_pairs = self._filter_by_intersections(good_sidebar_pairs)
-        number_of_good_sidebars = len(good_sidebar_pairs)
-
+        # all_pairs = self._find_depth_sidebar_pairs() + self._find_layer_identifier_sidebar_pairs()
         # Best score from all pairs
-        best_sidebar_score = max((pair.score_match for pair in all_pairs if pair.sidebar is not None), default=0.0)
+        # best_sidebar_score = max((pair.score_match for pair in all_pairs if pair.sidebar is not None), default=0.0)
+
+        # Get filtered pairs (without descriptions without sidebar)
+        good_sidebar_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=False)
+        best_sidebar_score = max(
+            (pair.score_match for pair in good_sidebar_pairs if pair.sidebar is not None), default=0.0
+        )
 
         return SidebarQualityMetrics(
-            number_of_good_sidebars=number_of_good_sidebars,
+            number_of_good_sidebars=len(good_sidebar_pairs),
             best_sidebar_score=best_sidebar_score,
         )
 
