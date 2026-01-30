@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from collections.abc import Sequence
 from pathlib import Path
 
+from git import Optional
+
+from extraction.evaluation.benchmark.score import BenchmarkSummary
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 
 DEFAULT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
@@ -73,3 +77,25 @@ def _short_metric_key(k: str) -> str:
         str: The shortened metric key.
     """
     return k.split("/", 1)[1] if "/" in k else k
+
+
+def log_metric_mlflow(
+    summary: Optional[BenchmarkSummary],
+    out_dir: Path,
+    artifact_name: str = "benchmark_summary.json",
+) -> None:
+    """Log benchmark metrics + a JSON summary artifact to the *currently active* MLflow run.
+
+    - Does NOT start/end MLflow runs.
+    """
+    import mlflow
+
+    metrics = summary.metrics(short=True)
+    mlflow.log_metrics(metrics)
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    summary_path = out_dir / artifact_name
+    with open(summary_path, "w", encoding="utf8") as f:
+        json.dump(summary.model_dump(), f, ensure_ascii=False, indent=2)
+
+    mlflow.log_artifact(str(summary_path), artifact_path="summary")

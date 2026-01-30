@@ -34,7 +34,7 @@ from swissgeol_doc_processing.text.matching_params_analytics import create_analy
 from swissgeol_doc_processing.utils.file_utils import flatten, read_params
 from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
 from swissgeol_doc_processing.utils.table_detection import detect_table_structures
-from utils.benchmark_utils import _parent_input_directory_key, _short_metric_key
+from utils.benchmark_utils import _parent_input_directory_key, _short_metric_key, log_metric_mlflow
 
 from .evaluation.benchmark.spec import BenchmarkSpec
 
@@ -375,6 +375,9 @@ def start_pipeline(
         temp_directory=temp_directory,
         mlflow_tracking=mlflow_tracking,
     )
+    # Log metrics to MLflow if enabled
+    if mlflow_tracking and eval_summary is not None:
+        log_metric_mlflow(eval_summary, out_dir=out_directory)
 
     if input_directory and draw_directory:
         draw_predictions(predictions, input_directory, draw_directory)
@@ -475,16 +478,7 @@ def start_pipeline_benchmark(
             overall_results.append((spec.name, eval_result))
 
             if mlflow_tracking:
-                import mlflow
-
-                if eval_result is not None:
-                    mlflow.log_metrics(eval_result.metrics(short=True))
-
-                    bench_summary_path = bench_out / "benchmark_summary.json"
-                    with open(bench_summary_path, "w", encoding="utf8") as f:
-                        json.dump(eval_result.model_dump(), f, ensure_ascii=False, indent=2)
-                    mlflow.log_artifact(str(bench_summary_path), artifact_path="summary")
-
+                log_metric_mlflow(eval_result, out_dir=bench_out)
                 mlflow.end_run()
 
         _finalize_overall_summary(
