@@ -17,7 +17,11 @@ classification_params = read_params("classification_params.yml")
 
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 
-logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
+# logging.basicConfig(
+#     format="%(asctime)s %(levelname)-8s %(message)s",
+#     level=logging.INFO,
+#     datefmt="%Y-%m-%d %H:%M:%S",
+# )
 logger = logging.getLogger(__name__)
 
 
@@ -56,8 +60,8 @@ def common_options(f):
         "--file-subset-directory",
         type=click.Path(path_type=Path),
         default=None,
-        help="Path to the directory containing subset files (e.g. data/geoquat/validation)."
-        " If not provided, the full JSON file is used.",
+        help="Path to the directory containing subset files (e.g. data/geoquat/validation). "
+        "If not provided, the full JSON file is used.",
     )(f)
     f = click.option(
         "-c",
@@ -83,6 +87,7 @@ def common_options(f):
     return f
 
 
+@click.command()
 @click.option(
     "--benchmark",
     "benchmarks",
@@ -91,24 +96,22 @@ def common_options(f):
     "or '<name>:<file_path>:<file_subset_directory>:<ground_truth_path>'. "
     "If provided, runs multiple benchmarks in one execution.",
 )
-@click.command()
 @common_options
 def click_pipeline(
     file_path: Path | None,
-    ground_truth_path: Path,
+    ground_truth_path: Path | None,
     out_directory: Path,
     out_directory_bedrock: Path,
-    file_subset_directory: Path,
+    file_subset_directory: Path | None,
     classifier_type: str,
-    model_path: Path,
+    model_path: Path | None,
     classification_system: str,
     benchmarks: tuple[str, ...] = (),
 ):
-    """Command line interface for the multi benchmark classification pipeline."""
+    """Command line interface for the classification pipeline (single or multi-benchmark)."""
     # --- Multi-benchmark mode ---
     if benchmarks:
         specs = [parse_benchmark_spec(b) for b in benchmarks]
-
         start_multi_benchmark(
             benchmarks=specs,
             out_directory=out_directory,
@@ -125,21 +128,17 @@ def click_pipeline(
     if file_path is None:
         raise click.BadParameter("Missing -f/--file-path. Provide it, or use one or more --benchmark specs.")
 
-    """Run the description classification pipeline."""
     start_pipeline(
-        file_path,
-        ground_truth_path,
-        out_directory,
-        out_directory_bedrock,
-        file_subset_directory,
-        classifier_type,
-        model_path,
-        classification_system,
+        file_path=file_path,
+        ground_truth_path=ground_truth_path,
+        out_directory=out_directory,
+        out_directory_bedrock=out_directory_bedrock,
+        file_subset_directory=file_subset_directory,
+        classifier_type=classifier_type,
+        model_path=model_path,
+        classification_system=classification_system,
     )
 
 
 if __name__ == "__main__":
-    # launch with: python -m src.description_classification.main -f data/geoquat_ground_truth.json
-    # or with: boreholes-classify-descriptions  -f data/geoquat_ground_truth.json -s data/geoquat/validation\
-    # -c bert -p models/your_best_model_checkpoint_folder
     click_pipeline()
