@@ -78,7 +78,7 @@ def _short_metric_key(k: str) -> str:
 
 
 def log_metric_mlflow(
-    summary: BenchmarkSummary | None,
+    summary: BenchmarkSummary,
     out_dir: Path,
     artifact_name: str = "benchmark_summary.json",
 ) -> None:
