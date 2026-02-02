@@ -43,11 +43,11 @@ class Metrics(metaclass=abc.ABCMeta):
         recall = self.recall
         return 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
 
-    def to_json(self, feature_name) -> dict:
+    def to_json(self, feature_name) -> dict[str, float]:
         """Converts the object to a dictionary.
 
         Returns:
-            dict: The object as a dictionary.
+            dict[str, float]: The object as a dictionary.
         """
         return {
             f"{feature_name}_precision": self.precision,
@@ -82,11 +82,11 @@ class BoreholeMetadataMetrics(metaclass=abc.ABCMeta):
     coordinates_metrics: Metrics
     name_metrics: Metrics
 
-    def to_json(self) -> dict:
+    def to_json(self) -> dict[str, float]:
         """Converts the object to a dictionary.
 
         Returns:
-            dict: The object as a dictionary.
+            dict[str, float]: The object as a dictionary.
         """
         return {
             **self.elevation_metrics.to_json("elevation"),

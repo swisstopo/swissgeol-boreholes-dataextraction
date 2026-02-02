@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import TypeVar
 
+from extraction.evaluation.benchmark.score import BenchmarkSummary
+from extraction.evaluation.benchmark.spec import BenchmarkSpec
 from swissgeol_doc_processing.utils.file_utils import read_params
 
 DEFAULT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
@@ -70,6 +73,24 @@ def parent_group_key(
     return f"{prefix}:{inputs}"
 
 
+def _parent_input_directory_key(benchmarks: Sequence[BenchmarkSpec]) -> str:
+    """Generate a parent input directory based on the input directories of the child runs.
+
+    Group_key is stable for the same set of child inputs and ground truths.
+
+    Args:
+        benchmarks (Sequence[BenchmarkSpec]): The list of benchmark specifications.
+
+    Return: str: group_key
+    """
+    # Sort to make it order-invariant
+    paths = [Path(b.input_path) for b in benchmarks]
+    inputs = " | ".join(sorted(_relative_after_common_root(paths)))
+
+    group_key = f"multi:{inputs}"
+    return group_key
+
+
 def configure_logging(level: int = logging.INFO) -> None:
     """Configure root logging once for the application."""
     logging.basicConfig(format=DEFAULT_FORMAT, level=level, datefmt=DEFAULT_DATEFMT)
@@ -90,3 +111,25 @@ def _short_metric_key(k: str) -> str:
         str: The shortened metric key.
     """
     return k.split("/", 1)[1] if "/" in k else k
+
+
+def log_metric_mlflow(
+    summary: BenchmarkSummary,
+    out_dir: Path,
+    artifact_name: str = "benchmark_summary.json",
+) -> None:
+    """Log benchmark metrics + a JSON summary artifact to the *currently active* MLflow run.
+
+    - Does NOT start/end MLflow runs.
+    """
+    import mlflow
+
+    metrics = summary.metrics(short=True)
+    mlflow.log_metrics(metrics)
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    summary_path = out_dir / artifact_name
+    with open(summary_path, "w", encoding="utf8") as f:
+        json.dump(summary.model_dump(), f, ensure_ascii=False, indent=2)
+
+    mlflow.log_artifact(str(summary_path), artifact_path="summary")
