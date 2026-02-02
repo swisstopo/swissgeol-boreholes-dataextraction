@@ -24,13 +24,8 @@ from classification.utils.data_utils import (
     write_per_language_per_class_predictions,
     write_predictions,
 )
-from swissgeol_doc_processing.utils.file_utils import flatten, read_params
+from swissgeol_doc_processing.utils.file_utils import read_params
 
-# logging.basicConfig(
-#     format="%(asctime)s %(levelname)-8s %(message)s",
-#     level=logging.INFO,
-#     datefmt="%Y-%m-%d %H:%M:%S",
-# )
 logger = logging.getLogger(__name__)
 
 classification_params = read_params("classification_params.yml")
@@ -38,44 +33,6 @@ classification_params = read_params("classification_params.yml")
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 if mlflow_tracking:
     import mlflow
-
-
-def _setup_mlflow_parent_run(
-    *,
-    mlflow_tracking: bool,
-    benchmarks: Sequence[BenchmarkSpec],
-    classifier_type: str,
-    classification_system: str,
-    model_path: Path | None,
-    classification_params: dict[str, Any],
-) -> bool:
-    """Start the parent MLflow run (multi-benchmark) and log global params once.
-
-    Returns True if a parent run was started and must be closed by the caller.
-    """
-    if not mlflow_tracking:
-        return False
-
-    import mlflow
-
-    mlflow.set_experiment("Layer descriptions classification")
-
-    # Make sure we don't accidentally nest inside an unrelated active run
-    if mlflow.active_run() is not None:
-        mlflow.end_run()
-
-    mlflow.start_run(run_name="multi-benchmark")
-    mlflow.set_tag("run_type", "multi_benchmark")
-    mlflow.set_tag("benchmarks", ",".join([b.name for b in benchmarks]))
-    mlflow.set_tag("classifier_type", classifier_type)
-    mlflow.set_tag("classification_system", classification_system)
-    if model_path:
-        mlflow.set_tag("model_path", str(model_path))
-
-    if classification_params:
-        mlflow.log_params(flatten(classification_params))
-
-    return True
 
 
 def _finalize_overall_summary(
@@ -111,8 +68,13 @@ def _finalize_overall_summary(
                     "ground_truth_path": summary.ground_truth_path,
                 }
             )
-            # stable-ish metric prefix: "metrics__<key>" for csv friendliness
-            for k, v in (summary.metrics or {}).items():
+
+            # use the same metric key-space as the child runs
+            metrics_dict = (
+                summary.metrics_flat(short=True) if hasattr(summary, "metrics_flat") else (summary.metrics or {})
+            )
+
+            for k, v in (metrics_dict or {}).items():
                 row[f"metrics__{k}"] = v
         else:
             row.update(
@@ -158,11 +120,13 @@ def _finalize_overall_summary(
         import mlflow
 
         overall_mean_metrics: dict[str, float] = {}
-        for k, v in means.items():
+        for col_name, v in means.items():
             if v is None:
                 continue
-            # turn "metrics__global_macro_f1" into "overall_mean/metrics/global_macro_f1"
-            overall_key = "overall_mean/" + k.replace("__", "/")
+
+            # col_name: "metrics__<child_key>"
+            child_key = col_name[len("metrics__") :]  # keep exactly the child metric key
+            overall_key = f"overall_mean/{child_key}"
             overall_mean_metrics[overall_key] = float(v)
 
         if overall_mean_metrics:
@@ -179,19 +143,63 @@ def _finalize_overall_summary(
 
 
 def setup_mlflow_tracking(
-    file_path: Path,
+    file_path: Path | None,
     out_directory: Path,
-    file_subset_directory: Path,
+    file_subset_directory: Path | None,
     experiment_name: str = "Layer descriptions classification",
+    run_name: str | None = None,
 ):
-    """Set up MLFlow tracking."""
+    """Set up MLFlow tracking.
+
+    Args:
+        file_path: The path to the input file.
+        out_directory: The output directory.
+        file_subset_directory: The path to the subset directory.
+        experiment_name: The MLflow experiment name.
+        run_name: The MLflow run name.
+    """
     if mlflow.active_run():
         mlflow.end_run()  # Ensure the previous run is closed
     mlflow.set_experiment(experiment_name)
-    mlflow.start_run()
+    mlflow.start_run(run_name=run_name)
     mlflow.set_tag("json file_path", str(file_path))
     mlflow.set_tag("out_directory", str(out_directory))
     mlflow.set_tag("file_subset_directory", str(file_subset_directory))
+
+
+def _setup_mlflow_parent_run(
+    *,
+    out_directory: Path,
+    mlflow_tracking: bool,
+    benchmarks: Sequence[BenchmarkSpec],
+    experiment_name: str = "Layer descriptions classification",
+) -> bool:
+    """Start the parent MLflow run (multi-benchmark) and log global params once.
+
+    Args:
+        out_directory: The output directory.
+        mlflow_tracking: Whether MLflow tracking is enabled.
+        benchmarks: The list of benchmark specifications.
+        experiment_name: The MLflow experiment name.
+
+    Returns: True if a parent run was started and must be closed by the caller.
+    """
+    if not mlflow_tracking:
+        return False
+
+    import mlflow
+
+    setup_mlflow_tracking(
+        file_path=None,
+        out_directory=out_directory,
+        file_subset_directory=None,
+        experiment_name=experiment_name,
+        run_name="multi-benchmark",
+    )
+    mlflow.set_tag("run_type", "multi_benchmark")
+    mlflow.set_tag("benchmarks", ",".join([b.name for b in benchmarks]))
+
+    return True
 
 
 def log_ml_flow_infos(
@@ -305,7 +313,11 @@ def start_pipeline(
         classifier_type=classifier_type,
         model_path=str(model_path) if model_path else None,
         classification_system=classification_system,
-        metrics=classification_metrics.to_json(),
+        # metrics=all_metrics,
+        metrics={
+            "global": classification_metrics.to_json(),
+            "per_class": classification_metrics.to_json_per_class(),  # if available
+        },
     )
 
 
@@ -329,12 +341,10 @@ def start_multi_benchmark(
     classification_params = classification_params or {}
 
     parent_active = _setup_mlflow_parent_run(
+        out_directory=out_directory,
         mlflow_tracking=mlflow_tracking,
         benchmarks=benchmarks,
-        classifier_type=classifier_type,
-        classification_system=classification_system,
-        model_path=model_path,
-        classification_params=classification_params,
+        experiment_name="Layer descriptions classification",
     )
 
     overall_results: list[tuple[str, ClassificationBenchmarkSummary | None]] = []
@@ -391,6 +401,7 @@ def start_multi_benchmark(
                 if summary is not None:
                     if hasattr(summary, "metrics_flat"):
                         mlflow.log_metrics(summary.metrics_flat(short=True))
+
                     else:
                         # fallback: log raw metrics dict
                         mlflow.log_metrics({str(k): float(v) for k, v in (summary.metrics or {}).items()})
@@ -403,7 +414,6 @@ def start_multi_benchmark(
             mlflow_tracking=mlflow_tracking,
             parent_active=parent_active,
         )
-
     finally:
         if mlflow_tracking and parent_active:
             import mlflow
