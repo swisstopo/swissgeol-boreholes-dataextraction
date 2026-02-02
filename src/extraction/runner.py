@@ -477,7 +477,7 @@ def start_pipeline_benchmark(
             )
             overall_results.append((spec.name, eval_result))
 
-            if mlflow_tracking:
+            if mlflow_tracking and eval_result is not None:
                 log_metric_mlflow(eval_result, out_dir=bench_out)
                 mlflow.end_run()
 
