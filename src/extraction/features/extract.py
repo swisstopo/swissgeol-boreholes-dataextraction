@@ -654,10 +654,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Returns:
             SidebarQualityMetrics: Quality metrics for all sidebars found on the page.
         """
-        # all_pairs = self._find_depth_sidebar_pairs() + self._find_layer_identifier_sidebar_pairs()
-        # Best score from all pairs
-        # best_sidebar_score = max((pair.score_match for pair in all_pairs if pair.sidebar is not None), default=0.0)
-
         # Get filtered pairs (without descriptions without sidebar)
         good_sidebar_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=False)
         best_sidebar_score = max(

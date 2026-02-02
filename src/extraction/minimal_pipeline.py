@@ -110,7 +110,7 @@ class ExtractedPageFeatures:
     """Features extracted from a single page for borehole identification.
 
     Attributes:
-        page_number: Page index.
+        page_index: Page index.
         number_of_valid_borehole_descriptions: Count of valid material descriptions.
         number_of_strip_logs: Count of detected strip logs.
         number_of_tables: Count of detected tables.
@@ -122,7 +122,7 @@ class ExtractedPageFeatures:
         borehole_name_entries: List of detected borehole names with confidence scores.
     """
 
-    page_number: int
+    page_index: int
     number_of_valid_borehole_descriptions: int
     number_of_strip_logs: int
     number_of_tables: int
