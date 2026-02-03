@@ -11,7 +11,6 @@ import pandas as pd
 import pymupdf
 from tqdm import tqdm
 
-from swissgeol_doc_processing.utils.file_utils import get_data_path
 from extraction.annotations.draw import draw_predictions, plot_strip_logs, plot_tables
 from extraction.annotations.plot_utils import plot_lines, save_visualization
 from extraction.evaluation.benchmark.score import BenchmarkSummary, evaluate_all_predictions
@@ -28,13 +27,13 @@ from extraction.features.predictions.overall_file_predictions import OverallFile
 from extraction.features.predictions.predictions import BoreholeListBuilder
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
+from extraction.utils.benchmark_utils import _parent_input_directory_key, _short_metric_key, log_metric_mlflow
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.matching_params_analytics import create_analytics
-from swissgeol_doc_processing.utils.file_utils import flatten, read_params
+from swissgeol_doc_processing.utils.file_utils import flatten, get_data_path, read_params
 from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
 from swissgeol_doc_processing.utils.table_detection import detect_table_structures
-from extraction.utils.benchmark_utils import _parent_input_directory_key, _short_metric_key, log_metric_mlflow
 
 from .evaluation.benchmark.spec import BenchmarkSpec
 
