@@ -25,6 +25,7 @@ from classification.utils.data_utils import (
     write_predictions,
 )
 from swissgeol_doc_processing.utils.file_utils import read_params
+from utils.benchmark_utils import _parent_input_directory_key
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +147,6 @@ def setup_mlflow_tracking(
     out_directory: Path,
     file_subset_directory: Path | None,
     experiment_name: str = "Layer descriptions classification",
-    run_name: str | None = None,
 ):
     """Set up MLFlow tracking.
 
@@ -155,15 +155,16 @@ def setup_mlflow_tracking(
         out_directory: The output directory.
         file_subset_directory: The path to the subset directory.
         experiment_name: The MLflow experiment name.
-        run_name: The MLflow run name.
     """
-    if mlflow.active_run():
-        mlflow.end_run()  # Ensure the previous run is closed
     mlflow.set_experiment(experiment_name)
-    mlflow.start_run(run_name=run_name)
-    mlflow.set_tag("json file_path", str(file_path))
+    if mlflow.active_run() is None:
+        mlflow.start_run()
+
+    if file_path:
+        mlflow.set_tag("json file_path", str(file_path))
+    if file_subset_directory:
+        mlflow.set_tag("file_subset_directory", str(file_subset_directory))
     mlflow.set_tag("out_directory", str(out_directory))
-    mlflow.set_tag("file_subset_directory", str(file_subset_directory))
 
 
 def _setup_mlflow_parent_run(
@@ -189,11 +190,10 @@ def _setup_mlflow_parent_run(
     import mlflow
 
     setup_mlflow_tracking(
-        file_path=None,
+        file_path=_parent_input_directory_key(benchmarks),
         out_directory=out_directory,
         file_subset_directory=None,
         experiment_name=experiment_name,
-        run_name="multi-benchmark",
     )
     mlflow.set_tag("run_type", "multi_benchmark")
     mlflow.set_tag("benchmarks", ",".join([b.name for b in benchmarks]))
@@ -361,15 +361,10 @@ def start_multi_benchmark(
                 import mlflow
 
                 mlflow.start_run(run_name=spec.name, nested=True)
-                mlflow.set_tag("benchmark_name", spec.name)
-                mlflow.set_tag("file_path", str(spec.file_path))
-                mlflow.set_tag(
-                    "file_subset_directory",
-                    str(spec.file_subset_directory) if spec.file_subset_directory else "",
-                )
-                mlflow.set_tag(
-                    "ground_truth_path",
-                    str(spec.ground_truth_path) if spec.ground_truth_path else "",
+                setup_mlflow_tracking(
+                    file_path=spec.file_path,
+                    out_directory=out_directory,
+                    file_subset_directory=None,
                 )
 
             summary = start_pipeline(

@@ -22,41 +22,38 @@ line_detection_params = read_params("line_detection_params.yml")
 def _relative_after_common_root(paths: Sequence[Path]) -> list[str]:
     """Return relative paths after the longest common path prefix.
 
-    Args:
-        paths (Sequence[Path]): The list of paths.
+    Guard: if a path equals the common root (relative path == "."),
+    return a meaningful tail (e.g. filename) instead of ".".
 
-    Returns: list[str]: The list of relative paths.
+    Args:
+        paths (Sequence[Path]): The list of paths to process.
+
+    Returns:
+        list[str]: The list of relative paths after the common root.
     """
-    resolved = [p.resolve() for p in paths]
-    common_root = Path(os.path.commonpath(resolved))
+    if not paths:
+        return []
+
+    resolved = [p.expanduser().resolve() for p in paths]
+
+    # If paths are on different roots/drives
+    try:
+        common_root = Path(os.path.commonpath([str(p) for p in resolved]))
+    except Exception:
+        # Fallback: just use names
+        return [p.name for p in resolved]
 
     rels: list[str] = []
     for p in resolved:
-        try:
-            rels.append(str(p.relative_to(common_root)))
-        except ValueError:
-            # Defensive fallback (should not happen)
-            rels.append(p.name)
+        rel = p.relative_to(common_root)
+        # avoid "." which makes the parent key useless
+        if rel == Path("."):
+            rels.append(str(Path(*p.parts[-2:])))  # last 2 parts
+        else:
+            rels.append(str(rel))
 
     return rels
 
-
-# def _parent_input_directory_key(benchmarks: Sequence[BenchmarkSpec]) -> str:
-#     """Generate a parent input directory based on the input directories of the child runs.
-
-#     Group_key is stable for the same set of child inputs and ground truths.
-
-#     Args:
-#         benchmarks (Sequence[BenchmarkSpec]): The list of benchmark specifications.
-
-#     Return: str: group_key
-#     """
-#     # Sort to make it order-invariant
-#     paths = [Path(b.input_path) for b in benchmarks]
-#     inputs = " | ".join(sorted(_relative_after_common_root(paths)))
-
-#     group_key = f"multi:{inputs}"
-#     return group_key
 
 T = TypeVar("T")
 
@@ -76,15 +73,25 @@ def parent_group_key(
 def _parent_input_directory_key(benchmarks: Sequence[BenchmarkSpec]) -> str:
     """Generate a parent input directory based on the input directories of the child runs.
 
-    Group_key is stable for the same set of child inputs and ground truths.
-
     Args:
         benchmarks (Sequence[BenchmarkSpec]): The list of benchmark specifications.
 
     Return: str: group_key
     """
-    # Sort to make it order-invariant
-    paths = [Path(b.input_path) for b in benchmarks]
+    paths: list[Path] = []
+
+    for b in benchmarks:
+        # extraction style
+        if hasattr(b, "input_path") and b.input_path is not None:
+            paths.append(Path(b.input_path))
+            continue
+
+        # classification style
+        if hasattr(b, "file_path") and b.file_path is not None:
+            paths.append(Path(b.file_path))
+            continue
+
+        raise AttributeError(f"BenchmarkSpec-like object {type(b)!r} has neither 'input_path' nor 'file_path'.")
     inputs = " | ".join(sorted(_relative_after_common_root(paths)))
 
     group_key = f"multi:{inputs}"
