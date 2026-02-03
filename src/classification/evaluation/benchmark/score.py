@@ -18,13 +18,6 @@ class ClassificationBenchmarkSummary(BaseModel):
     classification_system: str
     metrics: dict[str, Any]
 
-    # def metrics_flat(self, prefix: str = "metrics", short: bool = False) -> dict[str, float]:
-    #     out = {}
-    #     for k, v in self.metrics.items():
-    #         key = k if short else f"{prefix}/{k}"
-    #         out[key] = float(v)
-    #     return out
-
     def metrics_flat(self, prefix: str = "metrics", short: bool = False) -> dict[str, float]:
         out: dict[str, float] = {}
 

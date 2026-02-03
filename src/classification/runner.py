@@ -125,9 +125,8 @@ def _finalize_overall_summary(
                 continue
 
             # col_name: "metrics__<child_key>"
-            child_key = col_name[len("metrics__") :]  # keep exactly the child metric key
-            overall_key = f"overall_mean/{child_key}"
-            overall_mean_metrics[overall_key] = float(v)
+            child_key = col_name[len("metrics__") :]
+            overall_mean_metrics[child_key] = float(v)
 
         if overall_mean_metrics:
             mlflow.log_metrics(overall_mean_metrics)
@@ -313,10 +312,9 @@ def start_pipeline(
         classifier_type=classifier_type,
         model_path=str(model_path) if model_path else None,
         classification_system=classification_system,
-        # metrics=all_metrics,
         metrics={
-            "global": classification_metrics.to_json(),
-            "per_class": classification_metrics.to_json_per_class(),  # if available
+            **(classification_metrics).to_json(),
+            **(classification_metrics).to_json_per_class(),
         },
     )
 
