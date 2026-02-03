@@ -24,7 +24,7 @@ from classification.utils.data_utils import (
     write_per_language_per_class_predictions,
     write_predictions,
 )
-from swissgeol_doc_processing.utils.file_utils import read_params
+from classification.utils.file_utils import read_params
 from utils.benchmark_utils import _parent_input_directory_key
 
 logger = logging.getLogger(__name__)
