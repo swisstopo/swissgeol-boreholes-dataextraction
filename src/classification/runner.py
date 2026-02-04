@@ -45,6 +45,13 @@ def _finalize_overall_summary(
     """Write overall_summary.json and overall_summary.csv (+ mean row).
 
     Also logs artifacts + overall mean metrics to MLflow on the parent run (if enabled).
+
+    Args:
+    overall_results: List of tuples (benchmark_name, benchmark_summary).
+    multi_root: The root output directory for the multi-benchmark run.
+    parent_active: Whether the parent MLflow run is active (i.e. was started by this code and not an outer caller).
+
+    Returns: Paths to the overall summary JSON and CSV files.
     """
     # --- JSON ---
     summary_json_path = multi_root / "overall_summary.json"
@@ -183,7 +190,15 @@ def log_ml_flow_infos(
     classifier: Classifier,
     classification_system: str,
 ):
-    """Logs informations to mlflow, such as the number of sample, language distribution, classifier type and data."""
+    """Logs informations to mlflow, such as the number of sample, language distribution, classifier type and data.
+
+    Args:
+    file_path: The path to the input file.
+    out_directory: The output directory where predictions are stored.
+    layer_descriptions: The list of layer descriptions that were classified.
+    classifier: The classifier used for classification.
+    classification_system: The classification system used for classification.
+    """
     # Log dataset statistics
     mlflow.log_param("dataset_size", len(layer_descriptions))
 
@@ -230,7 +245,19 @@ def start_pipeline(
     classification_system: str,
     mlflow_setup: bool = True,
 ) -> ClassificationBenchmarkSummary | None:
-    """Main pipeline to classify the layer's soil descriptions."""
+    """Main pipeline to classify the layer's soil descriptions.
+
+    Args:
+    file_path (Path): Path to the json file we want to predict from.
+    ground_truth_path (Path): Path the the ground truth file, if file_path is the predictions.
+    out_directory (Path): Path to output directory.
+    out_directory_bedrock (Path): Path to output directory for bedrock API files.
+    file_subset_directory (Path): Path to the directory containing the file whose names are used.
+    classifier_type (str): The classifier type to use.
+    model_path (Path): Path to the trained model.
+    classification_system (str): The classification system used to classify the data.
+    mlflow_setup (bool): Whether to set up MLflow tracking in this function.
+    """
     if ground_truth_path and file_subset_directory:
         logger.warning(
             "The provided subset directory will be ignored because descriptions are being loaded from the prediction "
@@ -303,7 +330,17 @@ def start_multi_benchmark(
     out_directory_bedrock: Path,
     classification_params: dict | None = None,
 ):
-    """Run multiple classification benchmarks in one execution."""
+    """Run multiple classification benchmarks in one execution.
+
+    Args:
+    benchmarks: A sequence of BenchmarkSpec, each specifying a benchmark to run.
+    out_directory: The root output directory where subdirectories for each benchmark will be created.
+    classifier_type: The classifier type to use for all benchmarks.
+    model_path: Path to the trained model to use for all benchmarks.
+    classification_system: The classification system to use for all benchmarks.
+    out_directory_bedrock: The root output directory for bedrock API files.
+    classification_params: Optional dict of additional parameters for classification, passed to the pipeline.
+    """
     multi_root = out_directory / "multi"
     multi_root.mkdir(parents=True, exist_ok=True)
 
