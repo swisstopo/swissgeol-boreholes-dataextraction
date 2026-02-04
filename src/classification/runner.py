@@ -38,7 +38,7 @@ if mlflow_tracking:
 
 def _finalize_overall_summary(
     *,
-    overall_results: list[tuple[str, ClassificationBenchmarkSummary | None]],
+    overall_results: list[tuple[str, None | ClassificationBenchmarkSummary]],
     multi_root: Path,
     mlflow_tracking: bool,
     parent_active: bool,
@@ -49,11 +49,12 @@ def _finalize_overall_summary(
     """
     # --- JSON ---
     summary_json_path = multi_root / "overall_summary.json"
-    payload = [
-        {"benchmark": name, "summary": summary.model_dump() if summary else None} for name, summary in overall_results
-    ]
     with open(summary_json_path, "w", encoding="utf8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
+        summary = [
+            {"benchmark": name, "summary": summary.model_dump() if summary else None}
+            for name, summary in overall_results
+        ]
+        json.dump(summary, f, ensure_ascii=False, indent=2)
 
     # --- CSV ---
     rows: list[dict[str, Any]] = []
@@ -69,23 +70,11 @@ def _finalize_overall_summary(
                     "ground_truth_path": summary.ground_truth_path,
                 }
             )
-
-            # use the same metric key-space as the child runs
             metrics_dict = (
                 summary.metrics_flat(short=True) if hasattr(summary, "metrics_flat") else (summary.metrics or {})
             )
-
             for k, v in (metrics_dict or {}).items():
                 row[f"metrics__{k}"] = v
-        else:
-            row.update(
-                {
-                    "n_layers": None,
-                    "file_path": None,
-                    "subset_dir": None,
-                    "ground_truth_path": None,
-                }
-            )
 
         rows.append(row)
 
@@ -94,45 +83,35 @@ def _finalize_overall_summary(
 
     metric_cols = [c for c in df.columns if c.startswith("metrics__")]
 
-    df_metrics = df.copy()
-    df_metrics[metric_cols] = df_metrics[metric_cols].apply(pd.to_numeric, errors="coerce")
-    df_metrics["n_layers"] = pd.to_numeric(df_metrics["n_layers"], errors="coerce")
+    if metric_cols:
+        df[metric_cols] = df[metric_cols].apply(pd.to_numeric, errors="coerce")
+    if "n_layers" in df.columns:
+        df["n_layers"] = pd.to_numeric(df["n_layers"], errors="coerce")
 
-    means: dict[str, float | None] = {}
-    for c in metric_cols:
-        col = df_metrics[c]
-        means[c] = float(col.mean()) if col.notna().any() else None
+    means_series = df[metric_cols].mean(skipna=True) if metric_cols else pd.Series(dtype=float)
 
     mean_row: dict[str, Any] = {
         "benchmark": "mean",
-        "n_layers": int(df_metrics["n_layers"].sum()) if df_metrics["n_layers"].notna().any() else "",
+        "n_layers": int(df["n_layers"].sum(skipna=True)) if df["n_layers"].notna().any() else "",
         "file_path": "",
         "subset_dir": "",
         "ground_truth_path": "",
-        **means,
+        **means_series.to_dict(),
     }
 
-    df = pd.concat([df, pd.DataFrame([mean_row])], ignore_index=True)
-    df[metric_cols] = df[metric_cols].apply(pd.to_numeric, errors="coerce").round(4)
-    df.to_csv(summary_csv_path, index=False)
+    df_out = pd.concat([df, pd.DataFrame([mean_row])], ignore_index=True)
+    if metric_cols:
+        df_out[metric_cols] = df_out[metric_cols].round(4)
+    df_out.to_csv(summary_csv_path, index=False)
 
     # --- MLflow parent logging ---
     if mlflow_tracking and parent_active:
-        import mlflow
-
-        overall_mean_metrics: dict[str, float] = {}
-        for col_name, v in means.items():
-            if v is None:
-                continue
-
-            # col_name: "metrics__<child_key>"
-            child_key = col_name[len("metrics__") :]
-            overall_mean_metrics[child_key] = float(v)
+        overall_mean_metrics = {col[len("metrics__") :]: float(v) for col, v in means_series.items() if not pd.isna(v)}
 
         if overall_mean_metrics:
             mlflow.log_metrics(overall_mean_metrics)
 
-        total_layers = df_metrics["n_layers"].sum(skipna=True)
+        total_layers = df["n_layers"].sum(skipna=True)
         if pd.notna(total_layers):
             mlflow.log_metric("overall/total_n_layers", float(total_layers))
 
@@ -186,8 +165,6 @@ def _setup_mlflow_parent_run(
     """
     if not mlflow_tracking:
         return False
-
-    import mlflow
 
     setup_mlflow_tracking(
         file_path=_parent_input_directory_key(benchmarks),
@@ -381,14 +358,12 @@ def start_multi_benchmark(
 
             overall_results.append((spec.name, summary))
 
-            # Per-benchmark summary artifact (always written)
+            # Per-benchmark summary artifact
             bench_summary_path = bench_out / "benchmark_summary.json"
             with open(bench_summary_path, "w", encoding="utf8") as f:
                 json.dump(summary.model_dump() if summary else None, f, ensure_ascii=False, indent=2)
 
             if mlflow_tracking:
-                import mlflow
-
                 mlflow.log_artifact(str(bench_summary_path), artifact_path="summary")
 
                 if summary is not None:
