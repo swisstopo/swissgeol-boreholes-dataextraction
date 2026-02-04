@@ -40,7 +40,6 @@ def _finalize_overall_summary(
     *,
     overall_results: list[tuple[str, None | ClassificationBenchmarkSummary]],
     multi_root: Path,
-    mlflow_tracking: bool,
     parent_active: bool,
 ) -> tuple[Path, Path]:
     """Write overall_summary.json and overall_summary.csv (+ mean row).
@@ -149,7 +148,6 @@ def setup_mlflow_tracking(
 def _setup_mlflow_parent_run(
     *,
     out_directory: Path,
-    mlflow_tracking: bool,
     benchmarks: Sequence[BenchmarkSpec],
     experiment_name: str = "Layer descriptions classification",
 ) -> bool:
@@ -303,7 +301,6 @@ def start_multi_benchmark(
     model_path: Path | None,
     classification_system: str,
     out_directory_bedrock: Path,
-    mlflow_tracking: bool = False,
     classification_params: dict | None = None,
 ):
     """Run multiple classification benchmarks in one execution."""
@@ -317,7 +314,6 @@ def start_multi_benchmark(
 
     parent_active = _setup_mlflow_parent_run(
         out_directory=out_directory,
-        mlflow_tracking=mlflow_tracking,
         benchmarks=benchmarks,
         experiment_name="Layer descriptions classification",
     )
@@ -379,7 +375,6 @@ def start_multi_benchmark(
         _finalize_overall_summary(
             overall_results=overall_results,
             multi_root=multi_root,
-            mlflow_tracking=mlflow_tracking,
             parent_active=parent_active,
         )
     finally:
