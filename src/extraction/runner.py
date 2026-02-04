@@ -11,7 +11,6 @@ import pandas as pd
 import pymupdf
 from tqdm import tqdm
 
-from extraction import DATAPATH
 from extraction.annotations.draw import draw_predictions, plot_strip_logs, plot_tables
 from extraction.annotations.plot_utils import plot_lines, save_visualization
 from extraction.evaluation.benchmark.score import BenchmarkSummary, evaluate_all_predictions
@@ -28,13 +27,13 @@ from extraction.features.predictions.overall_file_predictions import OverallFile
 from extraction.features.predictions.predictions import BoreholeListBuilder
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
+from extraction.utils.benchmark_utils import _parent_input_directory_key, _short_metric_key, log_metric_mlflow
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.matching_params_analytics import create_analytics
-from swissgeol_doc_processing.utils.file_utils import flatten, read_params
+from swissgeol_doc_processing.utils.file_utils import flatten, get_data_path, read_params
 from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
 from swissgeol_doc_processing.utils.table_detection import detect_table_structures
-from utils.benchmark_utils import _parent_input_directory_key, _short_metric_key, log_metric_mlflow
 
 from .evaluation.benchmark.spec import BenchmarkSpec
 
@@ -217,7 +216,7 @@ def start_pipeline(
         setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
     # temporary directory to dump files for mlflow artifact logging / evaluation artifacts
     if temp_directory is None:
-        temp_directory = DATAPATH / "_temp"
+        temp_directory = get_data_path() / "_temp"
     temp_directory.mkdir(parents=True, exist_ok=True)
 
     if skip_draw_predictions:
@@ -274,7 +273,7 @@ def start_pipeline(
 
                 # Detect table structures on the page
                 table_structures = detect_table_structures(
-                    page_index, doc, long_or_horizontal_lines, text_lines, table_detection_params
+                    page, long_or_horizontal_lines, text_lines, table_detection_params
                 )
 
                 # Detect strip logs on the page
@@ -289,7 +288,7 @@ def start_pipeline(
                     strip_logs,
                     file_metadata.language,
                     page_index,
-                    doc,
+                    page,
                     line_detection_params,
                     analytics,
                     **matching_params,

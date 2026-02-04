@@ -1,15 +1,26 @@
-"""Contains package wide constants such as paths."""
+"""Borehole data extraction package.
 
-import os
-from pathlib import Path
+A Python library for extracting structured data from borehole PDF documents,
+including metadata, stratigraphy, and features for machine learning classification.
 
-from dotenv import load_dotenv
+Instructions:
+- usage: from extraction.features import extract
+- usage: from extraction.features.metadata import borehole_name_extraction
+- usage: from extraction.minimal_pipeline import extract_page_features
 
-load_dotenv()
+List of modules:
+- features
+    - metadata: Borehole metadata extraction (coordinates, elevation, names)
+    - stratigraphy: Layer and depth extraction
+    - predictions: Data structures for results
+    - extract: Main extraction logic
+- evaluation: Evaluation and benchmarking
+- annotations: Visualization and drawing
+- main: Full extraction pipeline
+- minimal_pipeline: Minimal identification pipeline for classification
+"""
 
-if os.getenv("BOREHOLES_DATA_PATH") is not None:
-    DATAPATH = Path(os.getenv("BOREHOLES_DATA_PATH"))
-else:
-    DATAPATH = Path(__file__).parent.parent.parent / "data"
+# Import submodules
+from extraction import annotations, evaluation, features, minimal_pipeline, utils
 
-PROJECT_ROOT = Path(os.path.abspath(__file__)).parent.parent.parent
+__all__ = ["annotations", "evaluation", "features", "utils", "minimal_pipeline"]
