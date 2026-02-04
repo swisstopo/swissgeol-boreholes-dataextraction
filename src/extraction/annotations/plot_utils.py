@@ -169,7 +169,7 @@ def draw_blocks_and_lines(
     return open_cv_img
 
 
-def save_visualization(img, filename, page_number, visualization_type, draw_directory, mlflow_tracking):
+def save_visualization(img, filename, page_number, visualization_type, draw_directory):
     """Save visualization image to file and/or MLflow."""
     if draw_directory:
         img_path = draw_directory / f"{Path(filename).stem}_page{page_number}_{visualization_type}.png"

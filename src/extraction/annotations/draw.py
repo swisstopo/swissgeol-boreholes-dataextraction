@@ -1,7 +1,6 @@
 """This module contains functionalities to draw on pdf pages."""
 
 import logging
-import os
 from pathlib import Path
 
 import numpy as np
@@ -21,8 +20,6 @@ from swissgeol_doc_processing.utils.strip_log_detection import StripLog
 from swissgeol_doc_processing.utils.table_detection import TableStructure
 
 load_dotenv()
-
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 
 colors = ["purple", "blue"]
 
@@ -64,7 +61,7 @@ def plot_prediction(
                 drawer = PageDrawer(page)
                 drawer.draw(prediction)
                 img = convert_page_to_img(page, scale_factor=2)
-                save_visualization(img, filename, page.number + 1, "outputs", out_directory, mlflow_tracking)
+                save_visualization(img, filename, page.number + 1, "outputs", out_directory)
 
     except (FileNotFoundError, pymupdf.FileDataError) as e:
         logger.error("Error opening file %s: %s", filename, e)

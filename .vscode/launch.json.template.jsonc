@@ -23,6 +23,27 @@
             "python": "${workspaceFolder}/env/bin/python3"
         },
         {
+        "name": "Python: Run boreholes-extract-multi-benchmark",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "src.extraction.main",
+        "args": [
+            // Repeatable benchmark specs: "<name>:<input_path>:<ground_truth_path>"
+            "--benchmark",
+            "zurich:data/zurich:data/zurich_ground_truth.json",
+            "--benchmark",
+            "geoquat:data/geoquat/validation:data/geoquat_ground_truth.json",
+            "--benchmark",
+            "thurgau:data/thurgau/validation:data/thurgau_ground_truth.json"
+
+            // Optional flags:
+            // "-t", "-sl", "-c", "-ma"
+        ],
+        "cwd": "${workspaceFolder}",
+        "justMyCode": true,
+        "python": "${workspaceFolder}/env/bin/python3"
+        },
+        {
             "name": "Python: Run scoring",
             "type": "debugpy",
             "request": "launch",

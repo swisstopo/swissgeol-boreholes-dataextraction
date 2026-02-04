@@ -1,5 +1,7 @@
 """Evaluate the predictions against the ground truth."""
 
+from __future__ import annotations
+
 import argparse
 import json
 import logging
@@ -9,19 +11,46 @@ from pathlib import Path
 
 import pandas as pd
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
-from extraction import DATAPATH
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
+from swissgeol_doc_processing.utils.file_utils import get_data_path
 
 load_dotenv()
 
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
-logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
 
+mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
 
-def evaluate_all_predictions(predictions: OverallFilePredictions, ground_truth_path: Path) -> None | pd.DataFrame:
+if mlflow_tracking:
+    import mlflow
+
+
+class BenchmarkSummary(BaseModel):
+    """Helper class containing a summary of all the results of a single benchmark."""
+
+    ground_truth_path: str
+    n_documents: int
+    geology: dict[str, float]
+    metadata: dict[str, float]
+
+    def metrics(self, short: bool = False) -> dict[str, float]:
+        def key(category: str, metric: str) -> str:
+            if short:
+                return metric
+            else:
+                return f"{category}/{metric}"
+
+        geology_dict = {key("geology", metric): value for metric, value in self.geology.items()}
+        metadata_dict = {key("metadata", metric): value for metric, value in self.metadata.items()}
+        return geology_dict | metadata_dict
+
+
+def evaluate_all_predictions(
+    predictions: OverallFilePredictions,
+    ground_truth_path: Path,
+) -> None | BenchmarkSummary:
     """Computes all the metrics, logs them, and creates corresponding MLFlow artifacts (when enabled).
 
     Args:
@@ -29,7 +58,7 @@ def evaluate_all_predictions(predictions: OverallFilePredictions, ground_truth_p
         ground_truth_path (Path | None): The path to the ground truth file.
 
     Returns:
-        None | pd.DataFrame: the document level metadata metrics
+        BenchmarkSummary | None: A JSON-serializable BenchmarkSummary that can be used by multi-benchmark runners.
     """
     if not (ground_truth_path and ground_truth_path.exists()):  # for inference no ground truth is available
         logger.warning("Ground truth file not found. Skipping evaluation.")
@@ -51,6 +80,7 @@ def evaluate_all_predictions(predictions: OverallFilePredictions, ground_truth_p
     #############################
     # Evaluate the borehole extraction metadata
     #############################
+
     metadata_metrics_list = matched_with_ground_truth.evaluate_metadata_extraction()
     metadata_metrics = metadata_metrics_list.get_cumulated_metrics()
     document_level_metadata_metrics: pd.DataFrame = metadata_metrics_list.get_document_level_metrics()
@@ -60,12 +90,10 @@ def evaluate_all_predictions(predictions: OverallFilePredictions, ground_truth_p
     logger.info(metadata_metrics.to_json())
 
     if mlflow_tracking:
-        import mlflow
-
         mlflow.log_metrics(metrics_dict)
         mlflow.log_metrics(metadata_metrics.to_json())
 
-        # Create temporary folder to dump csv file and track them using MLFlow
+        # # Create temporary folder to dump csv file and track them using MLFlow
         with tempfile.TemporaryDirectory() as temp_directory:
             document_level_metadata_metrics.to_csv(
                 Path(temp_directory) / "document_level_metadata_metrics.csv", index_label="document_name"
@@ -76,21 +104,17 @@ def evaluate_all_predictions(predictions: OverallFilePredictions, ground_truth_p
             mlflow.log_artifact(Path(temp_directory) / "document_level_metrics.csv")
             mlflow.log_artifact(Path(temp_directory) / "document_level_metadata_metrics.csv")
 
-    return document_level_metadata_metrics
+    return BenchmarkSummary(
+        ground_truth_path=str(ground_truth_path),
+        n_documents=len(predictions.file_predictions_list),
+        geology=metrics_dict,
+        metadata=metadata_metrics.to_json(),
+    )
 
 
 def main():
     """Main function to evaluate the predictions against the ground truth."""
     args = parse_cli()
-
-    # setup mlflow tracking; should be started before any other code
-    # such that tracking is enabled in other parts of the code.
-    # This does not create any scores, but will log all the created images to mlflow.
-    if args.mlflow_tracking:
-        import mlflow
-
-        mlflow.set_experiment("Boreholes Stratigraphy")
-        mlflow.start_run()
 
     # Load the predictions
     try:
@@ -104,8 +128,12 @@ def main():
         return
 
     predictions = OverallFilePredictions.from_json(predictions)
-
-    evaluate_all_predictions(predictions, args.ground_truth_path)
+    if mlflow_tracking:
+        mlflow.set_experiment("Boreholes Stratigraphy")
+        with mlflow.start_run():
+            evaluate_all_predictions(predictions, args.ground_truth_path)
+    else:
+        evaluate_all_predictions(predictions, args.ground_truth_path)
 
 
 def parse_cli() -> argparse.Namespace:
@@ -116,20 +144,14 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument(
         "--ground-truth-path",
         type=Path,
-        default=DATAPATH.parent / "data" / "zurich_ground_truth.json",
+        default=get_data_path().parent / "data" / "zurich_ground_truth.json",
         help="Path to the ground truth JSON file (default: '../data/zurich_ground_truth.json').",
     )
     parser.add_argument(
         "--predictions-path",
         type=Path,
-        default=DATAPATH / "output" / "predictions.json",
+        default=get_data_path() / "output" / "predictions.json",
         help="Path to the predictions JSON file (default: './output/predictions.json').",
-    )
-    parser.add_argument(
-        "--no-mlflow-tracking",
-        action="store_false",
-        dest="mlflow_tracking",
-        help="Disable MLflow tracking (enabled by default).",
     )
 
     # Parse arguments and pass to main

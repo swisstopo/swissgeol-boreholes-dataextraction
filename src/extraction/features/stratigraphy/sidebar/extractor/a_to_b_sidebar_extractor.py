@@ -2,13 +2,12 @@
 
 import re
 
+from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
+from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
+from extraction.features.stratigraphy.interval.interval import AToBInterval
+from extraction.features.stratigraphy.sidebar.classes.a_to_b_sidebar import AToBSidebar
+from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
 from swissgeol_doc_processing.text.textline import TextWord
-
-from ...base.sidebar_entry import DepthColumnEntry
-from ...interval.depth_column_entry_extractor import DepthColumnEntryExtractor
-from ...interval.interval import AToBInterval
-from ..classes.a_to_b_sidebar import AToBSidebar
-from ..utils.cluster import Cluster
 
 
 class AToBSidebarExtractor:

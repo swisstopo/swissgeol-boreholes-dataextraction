@@ -2,10 +2,9 @@
 
 import re
 
+from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
+from extraction.features.stratigraphy.interval.a_to_b_interval_extractor import AToBIntervalExtractor
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
-
-from ..base.sidebar_entry import DepthColumnEntry
-from .a_to_b_interval_extractor import AToBIntervalExtractor
 
 
 class DepthColumnEntryExtractor:

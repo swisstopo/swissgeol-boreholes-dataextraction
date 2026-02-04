@@ -5,11 +5,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from extraction.evaluation.benchmark.spec import BenchmarkSpec
 from extraction.main import start_pipeline
+from extraction.runner import start_pipeline_benchmark
 
 PREDICTION_FILE_ = "predictions.json"
 METADATA_FILE_ = "metadata.json"
 ANALYTICS_FILE_ = "matching_params_analytics.json"
+OVERALL_SUMMARY = "overall_summary.csv"
 
 
 @pytest.fixture
@@ -20,6 +23,18 @@ def borehole_pdf() -> Path:
         Path: Path to example file.
     """
     path_ = Path("example/example_borehole_profile.pdf")
+    assert path_.exists()
+    return path_
+
+
+@pytest.fixture
+def borehole_gt() -> Path:
+    """Provide borehole file for pipeline testing.
+
+    Returns:
+        Path: Path to example file.
+    """
+    path_ = Path("example/example_groundtruth.json")
     assert path_.exists()
     return path_
 
@@ -150,3 +165,36 @@ def test_start_pipeline_part(tmp_path: Path, borehole_pdf: Path) -> None:
 
     infer_part(part="all")
     assert predictions_path.exists()
+
+
+def test_start_pipeline_benchmark(tmp_path: Path, borehole_gt: Path, borehole_pdf: Path) -> None:
+    """Test that pipeline benchmark generation create files.
+
+    Args:
+        tmp_path (Path): Path to temporary folder (pytest handled).
+        borehole_gt (Path): Path to ground truth file.
+        borehole_pdf (Path): Path to borehole PDF file.
+    """
+    # Parse specs
+    specs = [
+        BenchmarkSpec(name="bench_1", input_path=borehole_pdf, ground_truth_path=borehole_gt),
+        BenchmarkSpec(name="bench_2", input_path=borehole_pdf, ground_truth_path=borehole_gt),
+    ]
+
+    # Run main pipeline
+    start_pipeline_benchmark(
+        benchmarks=specs,
+        out_directory=tmp_path,
+        skip_draw_predictions=True,
+    )
+
+    # Checkout outputs for all benchmarks
+    for spec in specs:
+        # Check main folder
+        assert (tmp_path / spec.name).exists()
+        # Check predictions and meta data
+        assert (tmp_path / spec.name / PREDICTION_FILE_).exists()
+        assert (tmp_path / spec.name / METADATA_FILE_).exists()
+
+    # Check aggregation
+    assert (tmp_path / OVERALL_SUMMARY).exists()

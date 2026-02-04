@@ -6,7 +6,7 @@ import boto3
 import click
 from tqdm import tqdm
 
-from extraction import DATAPATH
+from swissgeol_doc_processing.utils.file_utils import get_data_path
 
 
 @click.command()
@@ -17,12 +17,15 @@ from extraction import DATAPATH
     help="The name of the directory in the bucket to be downloaded.",
 )
 @click.option(
-    "--output-path", default=DATAPATH, type=click.Path(path_type=Path), help="The path to save the downloaded files."
+    "--output-path",
+    default=None,
+    type=click.Path(path_type=Path),
+    help="The path to save the downloaded files.",
 )
 def download_directory_froms3(
     bucket_name: str,
     remote_directory_name: str,
-    output_path: Path = DATAPATH,
+    output_path: Path | None = None,
 ):
     """Download a directory from S3 bucket.
 
@@ -34,6 +37,9 @@ def download_directory_froms3(
         remote_directory_name (str): The name of the directory in the bucket to be downloaded.
         output_path (Path): Where to store the files locally
     """  # noqa: D301
+    if output_path is None:
+        output_path = get_data_path()
+
     s3_resource = boto3.resource("s3")
     bucket = s3_resource.Bucket(bucket_name)
     total_files = sum(1 for _ in bucket.objects.filter(Prefix=remote_directory_name))  # this is fast
