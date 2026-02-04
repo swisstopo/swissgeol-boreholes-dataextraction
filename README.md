@@ -176,6 +176,10 @@ To execute the layer description classification, follow these steps:
 ### 1. Setup  
 
 Repeat steps 1 and 2 of the [data extraction pipeline](#run-data-extraction) to set up the environment and download the data.  
+Pre-trained models can be downloaded with 
+```bash 
+aws s3 sync s3://stijnvermeeren-boreholes-models ./data/models 
+```
 
 ### 2. Run the Classification Pipeline  
 
