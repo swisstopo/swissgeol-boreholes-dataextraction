@@ -71,7 +71,8 @@ all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visu
 [tool.setuptools.packages.find]
 where = ["src"]
 include = [
-  "swissgeol_doc_processing*"
+  "swissgeol_doc_processing*",
+  "extraction*"
 ]
 
 [tool.setuptools_scm]
@@ -123,4 +124,3 @@ filterwarnings = [
     "ignore:.*Swig.*has no __module__ attribute:DeprecationWarning",
     "ignore:datetime.datetime.utcnow:DeprecationWarning:botocore"
 ]
-

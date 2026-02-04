@@ -11,9 +11,9 @@ import pandas as pd
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
-from extraction import DATAPATH
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
+from swissgeol_doc_processing.utils.file_utils import get_data_path
 
 load_dotenv()
 
@@ -166,19 +166,19 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument(
         "--ground-truth-path",
         type=Path,
-        default=DATAPATH.parent / "data" / "zurich_ground_truth.json",
+        default=get_data_path().parent / "data" / "zurich_ground_truth.json",
         help="Path to the ground truth JSON file (default: '../data/zurich_ground_truth.json').",
     )
     parser.add_argument(
         "--predictions-path",
         type=Path,
-        default=DATAPATH / "output" / "predictions.json",
+        default=get_data_path() / "output" / "predictions.json",
         help="Path to the predictions JSON file (default: './output/predictions.json').",
     )
     parser.add_argument(
         "--temp-directory",
         type=Path,
-        default=DATAPATH / "_temp",
+        default=get_data_path() / "_temp",
         help="Directory for storing temporary data (default: './_temp').",
     )
     parser.add_argument(

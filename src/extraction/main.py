@@ -6,11 +6,10 @@ from pathlib import Path
 import click
 from dotenv import load_dotenv
 
-from extraction import DATAPATH
 from extraction.evaluation.benchmark.spec import parse_benchmark_spec
 from extraction.runner import start_pipeline, start_pipeline_benchmark
-from swissgeol_doc_processing.utils.file_utils import read_params
-from utils.benchmark_utils import configure_logging
+from extraction.utils.benchmark_utils import configure_logging
+from swissgeol_doc_processing.utils.file_utils import get_data_path, read_params
 
 load_dotenv()
 
@@ -43,21 +42,21 @@ def common_options(f):
         "-o",
         "--out-directory",
         type=click.Path(path_type=Path),
-        default=DATAPATH / "output",
+        default=get_data_path() / "output",
         help="Path to the output directory.",
     )(f)
     f = click.option(
         "-p",
         "--predictions-path",
         type=click.Path(path_type=Path),
-        default=DATAPATH / "output" / "predictions.json",
+        default=get_data_path() / "output" / "predictions.json",
         help="Path to the predictions file.",
     )(f)
     f = click.option(
         "-m",
         "--metadata-path",
         type=click.Path(path_type=Path),
-        default=DATAPATH / "output" / "metadata.json",
+        default=get_data_path() / "output" / "metadata.json",
         help="Path to the metadata file.",
     )(f)
     f = click.option(

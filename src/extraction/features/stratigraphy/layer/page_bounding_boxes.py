@@ -5,11 +5,10 @@ from dataclasses import dataclass
 
 import pymupdf
 
+from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
 from swissgeol_doc_processing.geometry.geometry_dataclasses import BoundingBox
 from swissgeol_doc_processing.text.find_description import get_description_lines
 from swissgeol_doc_processing.text.textline import TextLine
-
-from ..sidebar.classes.sidebar import Sidebar
 
 
 @dataclass

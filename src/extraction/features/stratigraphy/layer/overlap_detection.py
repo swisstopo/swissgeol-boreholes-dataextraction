@@ -4,7 +4,7 @@ import logging
 
 import Levenshtein
 
-from .layer import ExtractedBorehole, Layer
+from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer
 
 logger = logging.getLogger(__name__)
 
