@@ -79,15 +79,15 @@ def _finalize_overall_summary(
             metrics_dict = (
                 summary.metrics_flat(short=True) if hasattr(summary, "metrics_flat") else (summary.metrics or {})
             )
-            for k, v in (metrics_dict or {}).items():
-                row[f"metrics__{k}"] = v
+            for key, value in (metrics_dict or {}).items():
+                row[f"metrics__{key}"] = value
 
         rows.append(row)
 
     summary_csv_path = multi_root / "overall_summary.csv"
     df = pd.DataFrame(rows).sort_values(by="benchmark")
 
-    metric_cols = [c for c in df.columns if c.startswith("metrics__")]
+    metric_cols = [column for column in df.columns if column.startswith("metrics__")]
 
     if metric_cols:
         df[metric_cols] = df[metric_cols].apply(pd.to_numeric, errors="coerce")
@@ -112,7 +112,9 @@ def _finalize_overall_summary(
 
     # --- MLflow parent logging ---
     if mlflow_tracking and parent_active:
-        overall_mean_metrics = {col[len("metrics__") :]: float(v) for col, v in means_series.items() if not pd.isna(v)}
+        overall_mean_metrics = {
+            col[len("metrics__") :]: float(value) for col, value in means_series.items() if not pd.isna(value)
+        }
 
         if overall_mean_metrics:
             mlflow.log_metrics(overall_mean_metrics)
@@ -405,7 +407,7 @@ def start_multi_benchmark(
 
                     else:
                         # fallback: log raw metrics dict
-                        mlflow.log_metrics({str(k): float(v) for k, v in (summary.metrics or {}).items()})
+                        mlflow.log_metrics({str(key): float(value) for key, value in (summary.metrics or {}).items()})
 
                 mlflow.end_run()
 
