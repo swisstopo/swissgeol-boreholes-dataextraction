@@ -23,17 +23,21 @@ class BenchmarkSpec:
 
 def parse_benchmark_spec(value: str) -> BenchmarkSpec:
     """Parse a benchmark spec."""
+    # Split on ':' and trim whitespace to be tolerant of CLI input
     parts = [p.strip() for p in value.split(":")]
 
+    # Case 1: Three-part specification
     if len(parts) == 3:
         name, a, b = parts
         a_path = Path(a)
         b_path = Path(b)
 
+        # If both paths end in '.json', interpret this as
         #  "<name>:<predictions_path>:<ground_truth_path>"
         if a_path.suffix.lower() == ".json" and b_path.suffix.lower() == ".json":
             predictions_path = a_path
             ground_truth_path = b_path
+            # In this mode, the subset directory is implicitly derived from the predictions file location
             subset_dir = predictions_path.parent
             return BenchmarkSpec(
                 name=name,
@@ -41,8 +45,9 @@ def parse_benchmark_spec(value: str) -> BenchmarkSpec:
                 file_subset_directory=subset_dir,
                 ground_truth_path=ground_truth_path,
             )
-
+        # Otherwise interpret as:
         # "<name>:<file_path>:<subset_dir>"
+        # (no explicit ground truth provided)
         return BenchmarkSpec(
             name=name,
             file_path=a_path,
@@ -50,6 +55,7 @@ def parse_benchmark_spec(value: str) -> BenchmarkSpec:
             ground_truth_path=None,
         )
 
+    # Case 2: Fully explicit four-part specification
     if len(parts) == 4:
         name, file_path, subset_dir, ground_truth = parts
         return BenchmarkSpec(
@@ -58,7 +64,7 @@ def parse_benchmark_spec(value: str) -> BenchmarkSpec:
             file_subset_directory=Path(subset_dir),
             ground_truth_path=Path(ground_truth),
         )
-
+    # Any other number of parts is considered invalid input
     raise ValueError(
         f"Invalid --benchmark '{value}'. Expected "
         "'<name>:<file_path>:<file_subset_directory>' or "
