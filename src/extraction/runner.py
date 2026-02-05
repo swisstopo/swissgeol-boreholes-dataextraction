@@ -5,6 +5,7 @@ import logging
 import os
 import shutil
 from collections.abc import Sequence
+from glob import glob
 from pathlib import Path
 
 import pandas as pd
@@ -110,14 +111,16 @@ def write_json_predictions(filename: str, predictions: OverallFilePredictions) -
         json.dump(predictions.to_json(), file, ensure_ascii=False)
 
 
-def delete_temporary(filename: str) -> None:
+def delete_temporary(pattern: Path) -> None:
     """Deletes a temporary file (ending with .tmp).
 
     Args:
-        filename (str): File to delete
+        pattern (Path): File to delete
     """
-    if Path(filename).exists() and Path(filename).suffix == ".tmp":
-        os.remove(filename)
+    # Get files
+    for file in glob(str(pattern)):
+        if Path(file).suffix == ".tmp":
+            os.remove(file)
 
 
 def read_mlflow_runid(filename: str) -> str | None:
@@ -437,7 +440,7 @@ def start_pipeline(
         csv (bool): Whether to generate a CSV output. Defaults to False.
         matching_analytics (bool): Whether to enable matching parameters analytics. Defaults to False.
         part (str, optional): The part of the pipeline to run. Defaults to "all".
-        is_nested (str, otpional): Indicate that current pipeline is a nested MLFlow run.
+        is_nested (str, otpional): Indicate that current pipeline is a nested run.
     """  # noqa: D301
     # Check that all given outputs exists
     out_directory.mkdir(exist_ok=True)
@@ -540,9 +543,10 @@ def start_pipeline(
         logger.info("Writing predictions to final JSON file %s", predictions_path)
         shutil.copy(src=predictions_path_tmp, dst=predictions_path)
 
-    # Clean temporary files
-    delete_temporary(predictions_path_tmp)
-    delete_temporary(mlflow_runid_tmp)
+    # Clean temporary files only if not nested
+    if not is_nested:
+        delete_temporary(predictions_path_tmp)
+        delete_temporary(mlflow_runid_tmp)
 
     # Terminate runid
     if mlflow_tracking:
@@ -623,4 +627,5 @@ def start_pipeline_benchmark(
     )
 
     # Clean temporary files
-    delete_temporary(mlflow_runid_tmp)
+    delete_temporary(mlflow_runid_tmp)  # Main run
+    delete_temporary(out_directory / "*" / "*.tmp")  # Nested runs

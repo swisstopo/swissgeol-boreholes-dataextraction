@@ -62,6 +62,9 @@ def test_start_pipeline_json(tmp_path: Path, borehole_pdf: Path) -> None:
     assert predictions_path.exists()
     assert metadata_path.exists()
 
+    # Check that temporary files are cleaned
+    assert len([f for f in predictions_path.parent.rglob("*.tmp")]) == 0
+
 
 def test_start_pipeline_analytics(tmp_path: Path, borehole_pdf: Path) -> None:
     """Test that analytics are generated.
@@ -98,9 +101,8 @@ def test_start_pipeline_csv(tmp_path: Path, borehole_pdf: Path) -> None:
         skip_draw_predictions=True,
         csv=True,
     )
-    # Generated files
-    files = [f for f in tmp_path.rglob("*.csv")]
-    assert len(files) != 0
+    # Check generated csv files
+    assert len([f for f in tmp_path.rglob("*.csv")]) != 0
 
 
 def test_start_pipeline_drawing(tmp_path: Path, borehole_pdf: Path) -> None:
@@ -167,6 +169,30 @@ def test_start_pipeline_part(tmp_path: Path, borehole_pdf: Path) -> None:
     assert predictions_path.exists()
 
 
+def test_start_pipeline_nested(tmp_path: Path, borehole_pdf: Path) -> None:
+    """Test that start_pipeline with nested argument keeps temporary files.
+
+    Args:
+        tmp_path (Path): Path to temporary folder (pytest handled).
+        borehole_pdf (Path): Path to borehole PDF file.
+    """
+    predictions_path = tmp_path / PREDICTION_FILE_
+    metadata_path = tmp_path / METADATA_FILE_
+
+    start_pipeline(
+        input_directory=borehole_pdf,
+        ground_truth_path=None,
+        out_directory=tmp_path,
+        predictions_path=predictions_path,
+        metadata_path=metadata_path,
+        skip_draw_predictions=True,
+        is_nested=True,
+    )
+
+    # Check that temporary files are kept
+    assert len([f for f in predictions_path.parent.rglob("*.tmp")]) != 0
+
+
 def test_start_pipeline_benchmark(tmp_path: Path, borehole_gt: Path, borehole_pdf: Path) -> None:
     """Test that pipeline benchmark generation create files.
 
@@ -198,3 +224,6 @@ def test_start_pipeline_benchmark(tmp_path: Path, borehole_gt: Path, borehole_pd
 
     # Check aggregation
     assert (tmp_path / OVERALL_SUMMARY).exists()
+
+    # Check that temporary files are kept
+    assert len([f for f in tmp_path.rglob("*.tmp")]) == 0
