@@ -25,9 +25,7 @@ from classification.utils.data_utils import (
     write_predictions,
 )
 from classification.utils.file_utils import read_params
-
-# from utils.benchmark_utils import _parent_input_directory_key
-from extraction.utils.benchmark_utils import _parent_input_directory_key
+from utils.benchmark_utils import _parent_input_directory_key
 
 logger = logging.getLogger(__name__)
 
