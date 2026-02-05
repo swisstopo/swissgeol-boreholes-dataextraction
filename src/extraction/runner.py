@@ -357,7 +357,7 @@ def setup_mlflow_tracking(
     try:
         mlflow.start_run(run_name=runname, run_id=runid, nested=nested)
     except mlflow.MlflowException:
-        mlflow.start_run(nested=nested)
+        mlflow.start_run(run_name=runname, nested=nested)
         logger.warning("Unable to resume run with ID: {}, start new one.")
 
     mlflow.set_tag("input_directory", str(input_directory))
@@ -380,12 +380,15 @@ def setup_mlflow_tracking(
     return mlflow.active_run().info.run_id
 
 
-def _setup_mlflow_parent_run(*, benchmarks: Sequence[BenchmarkSpec], runid: str | None) -> bool:
+def _setup_mlflow_parent_run(
+    *, benchmarks: Sequence[BenchmarkSpec], runname: str | None = None, runid: str | None = None
+) -> bool:
     """Start the parent MLflow run (multi-benchmark) and log global params once.
 
     Args:
         benchmarks (Sequence[BenchmarkSpec]): List of benchmark specs.
-        runid (str): Run id to resume if any.
+        runname (str, optional): Run name to resume if any. Defaults to None.
+        runid (str, optional): Run id to resume if any. Defaults to None.
 
     Returns:
         str: Current run id to parent run.
@@ -394,6 +397,7 @@ def _setup_mlflow_parent_run(*, benchmarks: Sequence[BenchmarkSpec], runid: str 
         return False
 
     runid = setup_mlflow_tracking(
+        runname=runname,
         runid=runid,
         input_directory=_parent_input_directory_key(benchmarks),
         ground_truth_path=None,  # parent has no single GT
@@ -454,7 +458,6 @@ def start_pipeline(
 
     # Initialize analytics if enabled
     analytics = create_analytics() if matching_analytics else None
-
     if mlflow_tracking:
         # Load run id if existing, otherwise None
         runid = read_mlflow_runid(filename=mlflow_runid_tmp)
@@ -462,7 +465,7 @@ def start_pipeline(
             runid=runid,
             input_directory=input_directory,
             ground_truth_path=ground_truth_path,
-            runname=str(input_directory.name),
+            runname=f"{input_directory.parent.name}/{input_directory.name}",
             out_directory=out_directory,
             predictions_path=predictions_path,
             metadata_path=metadata_path,
@@ -594,7 +597,7 @@ def start_pipeline_benchmark(
     if mlflow_tracking:
         # Load run id if existing, otherwise None
         parent_runid = read_mlflow_runid(filename=mlflow_runid_tmp)
-        parent_runid = _setup_mlflow_parent_run(benchmarks=benchmarks, runid=parent_runid)
+        parent_runid = _setup_mlflow_parent_run(benchmarks=benchmarks, runname="benchmark", runid=parent_runid)
         # Save current run id
         write_mlflow_runid(filename=mlflow_runid_tmp, runid=parent_runid)
 
