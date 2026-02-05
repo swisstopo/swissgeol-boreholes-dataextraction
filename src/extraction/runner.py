@@ -1,4 +1,4 @@
-"""Orchestrate running multiple benchmarks and aggregate results."""
+"""Pipeline runner for borehole data extraction with single and multi-benchmark support."""
 
 import json
 import logging
@@ -7,6 +7,7 @@ import shutil
 from collections.abc import Sequence
 from glob import glob
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import pymupdf
@@ -62,14 +63,15 @@ def _finalize_overall_summary(
     Also logs overall aggregate metrics + artifacts to MLflow on the parent run (if enabled).
 
     Args:
-        overall_results (list[tuple[str, BenchmarkSummary]]): List of predictions to save.
+        overall_results (list[tuple[str, BenchmarkSummary]]): List of tuples
+            containing (benchmark_name, BenchmarkSummary)
         multi_root (Path): Output path.
     """
     summary_path = multi_root / "overall_summary.csv"
     # Write data as new dataframe entires
     rows = []
     for benchmark, summary in overall_results:
-        row: dict[str, any] = {"benchmark": benchmark}
+        row: dict[str, Any] = {"benchmark": benchmark}
         if summary is not None:
             row["ground_truth_path"] = summary.ground_truth_path
             row["n_documents"] = summary.n_documents
@@ -112,12 +114,13 @@ def write_json_predictions(filename: str, predictions: OverallFilePredictions) -
 
 
 def delete_temporary(pattern: Path) -> None:
-    """Deletes a temporary file (ending with .tmp).
+    """Delete temporary files matching a glob pattern.
+
+    Only files ending with '.tmp' are deleted.
 
     Args:
-        pattern (Path): File to delete
+        pattern (Path): Glob pattern to match files (e.g., '/path/*.tmp' or '/path/**/*.tmp').
     """
-    # Get files
     for file in glob(str(pattern)):
         if Path(file).suffix == ".tmp":
             os.remove(file)
@@ -152,6 +155,8 @@ def write_mlflow_runid(filename: str, runid: str) -> None:
 
 def read_json_predictions(filename: str) -> OverallFilePredictions:
     """Read predictions from input file.
+
+    Returns an empty OverallFilePredictions if the file doesn't exist or contains invalid JSON.
 
     Args:
         filename (str): File to read and parse.
@@ -190,7 +195,7 @@ def extract(
         draw_tables (bool): Whether to draw detected table structures on pdf pages. Defaults to False.
         draw_strip_logs (bool): Whether to draw detected strip log structures on pages. Defaults to False.
         csv (bool): Whether to generate a CSV output. Defaults to False.
-        part (str): The part of the pipeline to run. Defaults to "all".
+        part (str): Pipeline mode, "all" for full extraction, "metadata" for metadata only. Defaults to "all".
         analytics (MatchingParamsAnalytics): Analytics object for tracking matching parameters. Defaults to None.
 
     Returns:
@@ -220,7 +225,7 @@ def extract(
         # Extract the layers
         for page_index, page in enumerate(doc):
             page_number = page_index + 1
-            logger.info("Processing page %s", page_number)
+            logger.info(f"Processing page {page_number}")
 
             text_lines = extract_text_lines(page)
             long_or_horizontal_lines, all_geometric_lines = extract_lines(page, line_detection_params)
@@ -311,7 +316,7 @@ def extract(
 
         for index, borehole in enumerate(borehole_predictions_list):
             csv_path = f"{base_path}_{index}.csv" if len(borehole_predictions_list) > 1 else f"{base_path}.csv"
-            logger.info("Writing CSV predictions to %s", csv_path)
+            logger.info(f"Writing CSV predictions to {csv_path}")
             with open(csv_path, "w", encoding="utf8", newline="") as file:
                 file.write(borehole.to_csv())
 
@@ -331,22 +336,25 @@ def setup_mlflow_tracking(
     metadata_path: Path = None,
     experiment_name: str = "Boreholes data extraction",
     nested: bool = False,
-):
-    """Set up MLFlow tracking.
+) -> str:
+    """Initialize and configure an MLflow run with experiment tags and parameters.
 
     Args:
-        runid (str): Run id to resume if any.
-        input_directory (Path): Input directory tracking.
-        ground_truth_path (Path): Ground truth path tracking.
+        runid (str): Existing run ID to resume, or None to start a new run.
+        input_directory (Path): Input directory path to log as MLflow tag.
+        ground_truth_path (Path): Ground truth file path to log as MLflow tag.
         runname (str, optional): Run name for MLflow. Defaults to None.
         out_directory (Path, optional): Output directory tracking. Defaults to None.
         predictions_path (Path, optional): Prediction path tracking. Defaults to None.
         metadata_path (Path, optional): Metadata path tracking. Defaults to None.
         experiment_name (str, optional): Experiment name tracking. Defaults to "Boreholes data extraction".
-        nested (bool, optional): Indicate is the current run is nested.
+        nested (bool, optional): Indicate if the current run is nested.
+
+    Raises:
+        ValueError: If MLFLOW_TRACKING environment variable is not set to "True".
 
     Returns:
-        str: Run id
+        str: The active MLflow run ID.
     """
     if not mlflow_tracking:
         raise ValueError("Tracking is not activated")
@@ -358,7 +366,7 @@ def setup_mlflow_tracking(
         mlflow.start_run(run_name=runname, run_id=runid, nested=nested)
     except mlflow.MlflowException:
         mlflow.start_run(run_name=runname, nested=nested)
-        logger.warning("Unable to resume run with ID: {}, start new one.")
+        logger.warning(f"Unable to resume run with ID: {runid} ({runname}), start new one.")
 
     mlflow.set_tag("input_directory", str(input_directory))
     mlflow.set_tag("ground_truth_path", str(ground_truth_path))
@@ -382,7 +390,7 @@ def setup_mlflow_tracking(
 
 def _setup_mlflow_parent_run(
     *, benchmarks: Sequence[BenchmarkSpec], runname: str | None = None, runid: str | None = None
-) -> bool:
+) -> str:
     """Start the parent MLflow run (multi-benchmark) and log global params once.
 
     Args:
@@ -390,11 +398,14 @@ def _setup_mlflow_parent_run(
         runname (str, optional): Run name to resume if any. Defaults to None.
         runid (str, optional): Run id to resume if any. Defaults to None.
 
+    Raises:
+        ValueError: If MLFLOW_TRACKING environment variable is not set to "True".
+
     Returns:
         str: Current run id to parent run.
     """
     if not mlflow_tracking:
-        return False
+        raise ValueError("Tracking is not activated")
 
     runid = setup_mlflow_tracking(
         runname=runname,
@@ -430,7 +441,7 @@ def start_pipeline(
     depth intervals. The input directory should contain pdf files with boreholes data. The algorithm can deal
     with borehole profiles of multiple pages.
 
-    Note: This function is used to be called from the label-studio backend, whereas the click_pipeline function
+    Note: This function is designed to be called from the label-studio backend, whereas the click_pipeline function
     is called from the CLI.
 
     Args:
@@ -438,15 +449,18 @@ def start_pipeline(
         ground_truth_path (Path | None): The path to the ground truth file json file.
         out_directory (Path): The directory to store the evaluation results.
         predictions_path (Path): The path to the predictions file.
+        metadata_path (Path): The path to the metadata file.
         skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
         draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.
         draw_tables (bool, optional): Whether to draw detected table structures on pdf pages. Defaults to False.
         draw_strip_logs (bool, optional): Whether to draw detected strip log structures on pages. Defaults to False.
-        metadata_path (Path): The path to the metadata file.
         csv (bool): Whether to generate a CSV output. Defaults to False.
         matching_analytics (bool): Whether to enable matching parameters analytics. Defaults to False.
-        part (str, optional): The part of the pipeline to run. Defaults to "all".
-        is_nested (str, otpional): Indicate that current pipeline is a nested run.
+        part (str): Pipeline mode, "all" for full extraction, "metadata" for metadata only. Defaults to "all".
+        is_nested (bool, optional): If True, indicates this is a nested run (called from benchmark pipeline).
+
+    Returns:
+        BenchmarkSummary | None: Evaluation summary if ground truth is provided, otherwise None.
     """  # noqa: D301
     # Check that all given outputs exists
     out_directory.mkdir(exist_ok=True)
@@ -516,7 +530,7 @@ def start_pipeline(
             predictions.add_file_predictions(prediction)
 
             # Track progress in tmp file
-            logger.info("Writing predictions to tmp JSON file %s", predictions_path_tmp)
+            logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
             write_json_predictions(filename=predictions_path_tmp, predictions=predictions)
 
         except Exception as e:
@@ -533,7 +547,7 @@ def start_pipeline(
         log_metric_mlflow(eval_summary, out_dir=out_directory)
 
     # Save all metadata, analytics and predictions (if needed)
-    logger.info("Metadata written to %s", metadata_path)
+    logger.info(f"Metadata written to {metadata_path}")
     with open(metadata_path, "w", encoding="utf8") as file:
         json.dump(predictions.get_metadata_as_dict(), file, ensure_ascii=False)
 
@@ -546,7 +560,7 @@ def start_pipeline(
 
     # Track progress to finale file and remove tmp
     if part == "all":
-        logger.info("Writing predictions to final JSON file %s", predictions_path)
+        logger.info(f"Writing predictions to final JSON file {predictions_path}")
         shutil.copy(src=predictions_path_tmp, dst=predictions_path)
 
     # Clean temporary files only if not nested
@@ -571,8 +585,11 @@ def start_pipeline_benchmark(
     csv: bool = False,
     matching_analytics: bool = False,
     part: str = "all",
-):
+) -> None:
     """Run multiple benchmarks in one execution.
+
+    Output is namespaced per benchmark under:
+      <out_directory>/<benchmark_name>/
 
     Args:
         benchmarks (Sequence[BenchmarkSpec]): List of benchmark specifications.
@@ -583,10 +600,7 @@ def start_pipeline_benchmark(
         draw_strip_logs (bool, optional): Whether to draw strip logs. Defaults to False.
         csv (bool, optional): Whether to output CSV summaries. Defaults to False.
         matching_analytics (bool, optional): Whether to compute matching analytics. Defaults to False.
-        part (str, optional): Part of the pipeline to run. Defaults to "all".
-
-    Output is namespaced per benchmark under:
-      <out_directory>/<benchmark_name>/
+        part (str): Pipeline mode, "all" for full extraction, "metadata" for metadata only. Defaults to "all".
     """
     # Create root directory for multi-benchmarking
     out_directory.mkdir(parents=True, exist_ok=True)

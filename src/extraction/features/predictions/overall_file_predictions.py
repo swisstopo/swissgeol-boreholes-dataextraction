@@ -27,7 +27,7 @@ class OverallFilePredictions:
         Returns:
             bool: True if `filename` is in `file_predictions_list`, else False.
         """
-        return any([file.file_name == filename for file in self.file_predictions_list])
+        return any(file.file_name == filename for file in self.file_predictions_list)
 
     def add_file_predictions(self, file_predictions: FilePredictions) -> None:
         """Add file predictions to the list of file predictions.

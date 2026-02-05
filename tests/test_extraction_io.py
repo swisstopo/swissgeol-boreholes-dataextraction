@@ -149,7 +149,7 @@ def test_start_pipeline_part(tmp_path: Path, borehole_pdf: Path) -> None:
         """Inference of pipeline with part as parameter.
 
         Args:
-            part (str, optional): Part of pipeline to run. Defaults to "all".
+            part (str): Pipeline mode, "all" for full extraction, "metadata" for metadata only. Defaults to "all".
         """
         start_pipeline(
             input_directory=borehole_pdf,
@@ -162,7 +162,7 @@ def test_start_pipeline_part(tmp_path: Path, borehole_pdf: Path) -> None:
         )
 
     # Check inference of all vs not all
-    infer_part(part="notall")
+    infer_part(part="metadata")
     assert not predictions_path.exists()
 
     infer_part(part="all")
@@ -170,15 +170,12 @@ def test_start_pipeline_part(tmp_path: Path, borehole_pdf: Path) -> None:
 
 
 def test_start_pipeline_nested(tmp_path: Path, borehole_pdf: Path) -> None:
-    """Test that start_pipeline with nested argument keeps temporary files.
-
-    Args:
-        tmp_path (Path): Path to temporary folder (pytest handled).
-        borehole_pdf (Path): Path to borehole PDF file.
-    """
+    """Test that pipeline resumes from temporary file and skips already processed files."""
     predictions_path = tmp_path / PREDICTION_FILE_
     metadata_path = tmp_path / METADATA_FILE_
+    predictions_path_tmp = tmp_path / (PREDICTION_FILE_ + ".tmp")
 
+    # Run first time
     start_pipeline(
         input_directory=borehole_pdf,
         ground_truth_path=None,
@@ -189,8 +186,22 @@ def test_start_pipeline_nested(tmp_path: Path, borehole_pdf: Path) -> None:
         is_nested=True,
     )
 
-    # Check that temporary files are kept
-    assert len([f for f in predictions_path.parent.rglob("*.tmp")]) != 0
+    # Verify tmp exists
+    assert predictions_path_tmp.exists()
+
+    # Run again - should skip already processed
+    start_pipeline(
+        input_directory=borehole_pdf,
+        ground_truth_path=None,
+        out_directory=tmp_path,
+        predictions_path=predictions_path,
+        metadata_path=metadata_path,
+        skip_draw_predictions=True,
+        is_nested=False,
+    )
+
+    # Verify tmp was removed
+    assert not predictions_path_tmp.exists()
 
 
 def test_start_pipeline_benchmark(tmp_path: Path, borehole_gt: Path, borehole_pdf: Path) -> None:

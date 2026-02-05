@@ -12,7 +12,6 @@ from extraction.utils.benchmark_utils import configure_logging
 from swissgeol_doc_processing.utils.file_utils import get_data_path, read_params
 
 load_dotenv()
-logging.basicConfig(format="%(asctime)s %(levelname)-8s %(message)s", level=logging.INFO, datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
 
 matching_params = read_params("matching_params.yml")
@@ -180,6 +179,9 @@ def click_pipeline_metadata(
     metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
+    draw_tables: bool = False,
+    draw_strip_logs: bool = False,
+    csv: bool = False,
     matching_analytics: bool = False,
 ):
     """Run only the metadata part of the pipeline."""
@@ -191,6 +193,9 @@ def click_pipeline_metadata(
         metadata_path=metadata_path,
         skip_draw_predictions=skip_draw_predictions,
         draw_lines=draw_lines,
+        draw_tables=draw_tables,
+        draw_strip_logs=draw_strip_logs,
+        csv=csv,
         matching_analytics=matching_analytics,
         part="metadata",
     )
