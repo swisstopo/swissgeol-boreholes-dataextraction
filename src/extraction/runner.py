@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pandas as pd
 import pymupdf
-from mlflow import MlflowException
 from tqdm import tqdm
 
 from extraction.annotations.draw import plot_prediction, plot_strip_logs, plot_tables
@@ -159,9 +158,12 @@ def read_json_predictions(filename: str) -> OverallFilePredictions:
     """
     if not Path(filename).exists():
         return OverallFilePredictions()
-
-    with open(filename, encoding="utf8") as f:
-        return OverallFilePredictions.from_json(json.load(f))
+    try:
+        with open(filename, encoding="utf8") as f:
+            return OverallFilePredictions.from_json(json.load(f))
+    except json.JSONDecodeError:
+        logger.warning(f"Unable to load prediction from file {filename}")
+        return OverallFilePredictions()
 
 
 def extract(
@@ -349,7 +351,7 @@ def setup_mlflow_tracking(
     # only start a run if none is active
     try:
         mlflow.start_run(runid, nested=nested)
-    except MlflowException:
+    except mlflow.MlflowException:
         mlflow.start_run(nested=nested)
         logger.warning("Unable to resume run with ID: {}, start new one.")
 

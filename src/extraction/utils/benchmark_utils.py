@@ -14,6 +14,11 @@ from extraction.evaluation.benchmark.spec import BenchmarkSpec
 DEFAULT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
+mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
+
+if mlflow_tracking:
+    import mlflow
+
 
 def _relative_after_common_root(paths: Sequence[Path]) -> list[str]:
     """Return relative paths after the longest common path prefix.
@@ -86,8 +91,6 @@ def log_metric_mlflow(
 
     - Does NOT start/end MLflow runs.
     """
-    import mlflow
-
     metrics = summary.metrics(short=True)
     mlflow.log_metrics(metrics)
 
