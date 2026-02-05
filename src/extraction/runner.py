@@ -325,6 +325,7 @@ def setup_mlflow_tracking(
     runid: str | None,
     input_directory: Path,
     ground_truth_path: Path,
+    runname: str | None = None,
     out_directory: Path = None,
     predictions_path: Path = None,
     metadata_path: Path = None,
@@ -337,6 +338,7 @@ def setup_mlflow_tracking(
         runid (str): Run id to resume if any.
         input_directory (Path): Input directory tracking.
         ground_truth_path (Path): Ground truth path tracking.
+        runname (str, optional): Run name for MLflow. Defaults to None.
         out_directory (Path, optional): Output directory tracking. Defaults to None.
         predictions_path (Path, optional): Prediction path tracking. Defaults to None.
         metadata_path (Path, optional): Metadata path tracking. Defaults to None.
@@ -353,7 +355,7 @@ def setup_mlflow_tracking(
 
     # only start a run if none is active
     try:
-        mlflow.start_run(runid, nested=nested)
+        mlflow.start_run(run_name=runname, run_id=runid, nested=nested)
     except mlflow.MlflowException:
         mlflow.start_run(nested=nested)
         logger.warning("Unable to resume run with ID: {}, start new one.")
@@ -460,6 +462,7 @@ def start_pipeline(
             runid=runid,
             input_directory=input_directory,
             ground_truth_path=ground_truth_path,
+            runname=str(input_directory.name),
             out_directory=out_directory,
             predictions_path=predictions_path,
             metadata_path=metadata_path,
