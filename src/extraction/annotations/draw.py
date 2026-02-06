@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 def plot_prediction(
     prediction: FilePredictions,
-    in_path: Path,
+    doc: pymupdf.Document,
     out_directory: Path,
 ) -> None:
     """Draw predictions on pdf pages.
@@ -46,22 +46,17 @@ def plot_prediction(
 
     Args:
         prediction (FilePredictions): Prediction for file.
-        in_path (Path): Path to the processed PDF file.
+        doc (pymupdf.Document): Path to the processed PDF file.
         out_directory (Path): Path to the output directory where the images are saved.
     """
     filename = prediction.file_name
     logger.info("Drawing predictions for file %s", filename)
     try:
-        # Clear cache to avoid cache contamination across different files, which can cause incorrect
-        # visualizations; see also https://github.com/swisstopo/swissgeol-boreholes-suite/issues/1935
-        pymupdf.TOOLS.store_shrink(100)
-
-        with pymupdf.Document(in_path) as doc:
-            for _, page in enumerate(doc):
-                drawer = PageDrawer(page)
-                drawer.draw(prediction)
-                img = convert_page_to_img(page, scale_factor=2)
-                save_visualization(img, filename, page.number + 1, "outputs", out_directory)
+        for _, page in enumerate(doc):
+            drawer = PageDrawer(page)
+            drawer.draw(prediction)
+            img = convert_page_to_img(page, scale_factor=2)
+            save_visualization(img, filename, page.number + 1, "outputs", out_directory)
 
     except (FileNotFoundError, pymupdf.FileDataError) as e:
         logger.error("Error opening file %s: %s", filename, e)

@@ -1,9 +1,11 @@
 """Tests for the main extraction pipeline."""
 
 import os
+from io import BytesIO
 from pathlib import Path
 
 import numpy as np
+import pymupdf
 import pytest
 
 # Enforce MLFlow tracking to False before importing modules
@@ -11,7 +13,7 @@ os.environ["MLFLOW_TRACKING"] = "False"
 
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 from extraction.main import start_pipeline
-from extraction.runner import start_pipeline_benchmark
+from extraction.runner import extract, start_pipeline_benchmark
 
 PREDICTION_FILE_ = "predictions.json"
 METADATA_FILE_ = "metadata.json"
@@ -41,6 +43,28 @@ def borehole_gt() -> Path:
     path_ = Path("example/example_groundtruth.json")
     assert path_.exists()
     return path_
+
+
+def test_file_stream_extract(borehole_pdf: Path) -> None:
+    """Test that core borehole function work with stream.
+
+    Args:
+        borehole_pdf (Path): Path to borehole PDF file.
+    """
+    # Test extract from stream
+    prediction_stream = extract(
+        file=BytesIO(pymupdf.Document(borehole_pdf).tobytes()),
+        filename=borehole_pdf.name,
+    )
+
+    # Test extract from path
+    prediction_path = extract(
+        file=borehole_pdf,
+        filename=borehole_pdf.name,
+    )
+
+    assert prediction_stream is not None
+    assert prediction_path is not None
 
 
 def test_start_pipeline_json(tmp_path: Path, borehole_pdf: Path) -> None:

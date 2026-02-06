@@ -4,8 +4,10 @@ import json
 import logging
 import os
 import shutil
-from collections.abc import Sequence
+from collections.abc import Generator, Sequence
+from contextlib import contextmanager
 from glob import glob
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
@@ -174,10 +176,37 @@ def read_json_predictions(filename: str) -> OverallFilePredictions:
         return OverallFilePredictions()
 
 
+@contextmanager
+def open_pdf(
+    file: Path | BytesIO,
+    filename: str = None,
+) -> Generator[pymupdf.Document, None, None]:
+    """Open a PDF document from either a file path or a binary stream.
+
+    This context manager handles opening and closing a PyMuPDF document,
+    accepting either a file path or an already-open binary stream.
+
+    Args:
+        file (Path | BytesIO): Either a Path to a PDF file or an open binary stream (BytesIO).
+        filename (str): Filename to associate with the document. Only used when 'file' is a stream.
+
+    Yields:
+        pymupdf.Document: The opened PDF document.
+    """
+    doc = (
+        pymupdf.Document(filename=filename, stream=file)
+        if isinstance(file, BytesIO)
+        else pymupdf.Document(filename=file)
+    )
+    yield doc
+    doc.close()
+
+
 def extract(
-    in_path: Path,
-    out_directory: Path,
-    skip_draw_predictions: bool = False,
+    file: Path | BytesIO,
+    filename: str,
+    skip_draw_predictions: bool = True,
+    out_directory: Path | None = None,
     draw_lines: bool = False,
     draw_tables: bool = False,
     draw_strip_logs: bool = False,
@@ -188,9 +217,10 @@ def extract(
     """Extract pipeline for input file `in_path`.
 
     Args:
-        in_path (Path): Path to file to process.
-        out_directory (Path): The directory to store the evaluation results.
-        skip_draw_predictions (bool): Whether to skip drawing predictions on pdf pages. Defaults to False.
+        file (Path | BytesIO): Path or stream of file to process.
+        filename (str): Name of the file used as identifier.
+        out_directory (Path): The directory to store results if any. Defaults to None.
+        skip_draw_predictions (bool): Whether to skip drawing predictions on pdf pages. Defaults to True.
         draw_lines (bool): Whether to draw lines on pdf pages. Defaults to False.
         draw_tables (bool): Whether to draw detected table structures on pdf pages. Defaults to False.
         draw_strip_logs (bool): Whether to draw detected strip log structures on pages. Defaults to False.
@@ -201,15 +231,22 @@ def extract(
     Returns:
         FilePredictions: Prediction for input file
     """
-    filename = in_path.name
     draw_directory = None
+
+    if (not skip_draw_predictions or csv) and out_directory is None:
+        logger.error("Please provide out directory to save results")
+        raise FileNotFoundError()
 
     if not skip_draw_predictions:
         # check if directories exist and create them when necessary
         draw_directory = out_directory / "draw"
         draw_directory.mkdir(parents=True, exist_ok=True)
 
-    with pymupdf.Document(in_path) as doc:
+    # Clear cache to avoid cache contamination across different files, which can cause incorrect
+    # visualizations; see also https://github.com/swisstopo/swissgeol-boreholes-suite/issues/1935
+    pymupdf.TOOLS.store_shrink(100)
+
+    with open_pdf(file=file, filename=filename) as doc:
         # Extract metadata
         file_metadata = FileMetadata.from_document(doc, matching_params)
         metadata = MetadataInDocument.from_document(doc, file_metadata.language, matching_params)
@@ -284,29 +321,29 @@ def extract(
                 img = plot_lines(page, all_geometric_lines, scale_factor=line_detection_params["pdf_scale_factor"])
                 save_visualization(img, filename, page.number + 1, "lines", draw_directory)
 
-    # Merge detections if possible
-    layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page, matching_params), filename)
+        # Merge detections if possible
+        layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page, matching_params), filename)
 
-    # create list of BoreholePrediction objects with all the separate lists
-    borehole_predictions_list: list[BoreholePredictions] = BoreholeListBuilder(
-        layers_with_bb_in_document=layers_with_bb_in_document,
-        file_name=filename,
-        groundwater_in_doc=all_groundwater_entries,
-        names_in_doc=all_name_entries,
-        elevations_list=metadata.elevations,
-        coordinates_list=metadata.coordinates,
-    ).build()
+        # create list of BoreholePrediction objects with all the separate lists
+        borehole_predictions_list: list[BoreholePredictions] = BoreholeListBuilder(
+            layers_with_bb_in_document=layers_with_bb_in_document,
+            file_name=filename,
+            groundwater_in_doc=all_groundwater_entries,
+            names_in_doc=all_name_entries,
+            elevations_list=metadata.elevations,
+            coordinates_list=metadata.coordinates,
+        ).build()
 
-    # now that the matching is done, duplicated groundwater can be removed and depths info can be set
-    for borehole in borehole_predictions_list:
-        borehole.filter_groundwater_entries()
+        # now that the matching is done, duplicated groundwater can be removed and depths info can be set
+        for borehole in borehole_predictions_list:
+            borehole.filter_groundwater_entries()
 
-    # Get prediction file
-    prediction = FilePredictions(borehole_predictions_list, file_metadata, filename)
+        # Get prediction file
+        prediction = FilePredictions(borehole_predictions_list, file_metadata, filename)
 
-    if not skip_draw_predictions:
-        # Draw current file prediction
-        plot_prediction(prediction, in_path, draw_directory)
+        if not skip_draw_predictions:
+            # Draw current file prediction
+            plot_prediction(prediction, doc, draw_directory)
 
     # Add layers to a csv file
     if csv:
@@ -317,8 +354,8 @@ def extract(
         for index, borehole in enumerate(borehole_predictions_list):
             csv_path = f"{base_path}_{index}.csv" if len(borehole_predictions_list) > 1 else f"{base_path}.csv"
             logger.info(f"Writing CSV predictions to {csv_path}")
-            with open(csv_path, "w", encoding="utf8", newline="") as file:
-                file.write(borehole.to_csv())
+            with open(csv_path, "w", encoding="utf8", newline="") as csvfile:
+                csvfile.write(borehole.to_csv())
 
             if mlflow_tracking:
                 mlflow.log_artifact(csv_path, "csv")
@@ -519,7 +556,8 @@ def start_pipeline(
         try:
             # Add file predictions
             prediction = extract(
-                in_path=in_path,
+                file=in_path,
+                filename=in_path.name,
                 out_directory=out_directory,
                 skip_draw_predictions=skip_draw_predictions,
                 draw_lines=draw_lines,
