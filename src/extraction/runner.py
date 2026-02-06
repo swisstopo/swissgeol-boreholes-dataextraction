@@ -433,6 +433,7 @@ def start_pipeline(
     csv: bool = False,
     matching_analytics: bool = False,
     part: str = "all",
+    runname: str | None = None,
     is_nested: bool = False,
 ) -> None | BenchmarkSummary:
     """Run the boreholes data extraction pipeline.
@@ -457,6 +458,7 @@ def start_pipeline(
         csv (bool): Whether to generate a CSV output. Defaults to False.
         matching_analytics (bool): Whether to enable matching parameters analytics. Defaults to False.
         part (str): Pipeline mode, "all" for full extraction, "metadata" for metadata only. Defaults to "all".
+        runname (str, optional): Run name for MLflow. Defaults to None.
         is_nested (bool, optional): If True, indicates this is a nested run (called from benchmark pipeline).
 
     Returns:
@@ -479,7 +481,7 @@ def start_pipeline(
             runid=runid,
             input_directory=input_directory,
             ground_truth_path=ground_truth_path,
-            runname=f"{input_directory.parent.name}/{input_directory.name}",
+            runname=runname or input_directory.name,
             out_directory=out_directory,
             predictions_path=predictions_path,
             metadata_path=metadata_path,
@@ -636,6 +638,7 @@ def start_pipeline_benchmark(
             csv=csv,
             matching_analytics=matching_analytics,
             part=part,
+            runname=spec.name,
             is_nested=True,
         )
         overall_results.append((spec.name, eval_result))

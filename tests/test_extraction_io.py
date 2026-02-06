@@ -1,9 +1,13 @@
 """Tests for the main extraction pipeline."""
 
+import os
 from pathlib import Path
 
 import numpy as np
 import pytest
+
+# Enforce MLFlow tracking to False before importing modules
+os.environ["MLFLOW_TRACKING"] = "False"
 
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 from extraction.main import start_pipeline
@@ -170,7 +174,12 @@ def test_start_pipeline_part(tmp_path: Path, borehole_pdf: Path) -> None:
 
 
 def test_start_pipeline_nested(tmp_path: Path, borehole_pdf: Path) -> None:
-    """Test that pipeline resumes from temporary file and skips already processed files."""
+    """Test that pipeline resumes from temporary file and skips already processed files.
+
+    Args:
+        tmp_path (Path): Path to temporary folder (pytest handled).
+        borehole_pdf (Path): Path to borehole PDF file.
+    """
     predictions_path = tmp_path / PREDICTION_FILE_
     metadata_path = tmp_path / METADATA_FILE_
     predictions_path_tmp = tmp_path / (PREDICTION_FILE_ + ".tmp")
