@@ -114,7 +114,6 @@ def click_pipeline(
             classifier_type=classifier_type,
             model_path=model_path,
             classification_system=classification_system,
-            classification_params=classification_params,
         )
         return
 

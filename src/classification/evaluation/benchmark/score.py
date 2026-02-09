@@ -1,4 +1,4 @@
-"""Score.py."""
+"""Evaluate the predictions against the ground truth."""
 
 from collections.abc import Mapping
 from typing import Any
@@ -18,10 +18,25 @@ class ClassificationBenchmarkSummary(BaseModel):
     classification_system: str
     metrics: dict[str, Any]
 
-    def metrics_flat(self, prefix: str = "metrics", short: bool = False) -> dict[str, float]:
+    def metrics_flat(self, prefix: str = "metrics", short: bool = False) -> dict[str, float] | None:
+        """Flatten the metrics dictionary to a single level.
+
+        Args:
+            prefix (str): The prefix to use for the flattened keys.
+            short (bool): Whether to use short keys (i.e. without the prefix).
+
+        Returns:
+            dict[str, float]: The flattened metrics dictionary.
+        """
         out: dict[str, float] = {}
 
         def add(path: str, obj: Any) -> None:
+            """Recursively add flattened metrics to the output dictionary.
+
+            Args:
+                path (str): The current path in the metrics hierarchy.
+                obj (Any): The current metrics object to process.
+            """
             if isinstance(obj, Mapping):
                 for k, v in obj.items():
                     add(f"{path}/{k}" if path else str(k), v)

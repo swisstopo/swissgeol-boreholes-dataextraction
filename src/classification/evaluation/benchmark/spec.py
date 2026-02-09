@@ -29,7 +29,8 @@ def parse_benchmark_spec(value: str) -> BenchmarkSpec:
             1) '<name>:<file_path>:<file_subset_directory>'
             2) '<name>:<file_path>:<file_subset_directory>:<ground_truth_path>'
             3) '<name>:<predictions_path>:<ground_truth_path>'
-     Returns:
+
+    Returns:
         A BenchmarkSpec instance with the parsed values.
 
     """
