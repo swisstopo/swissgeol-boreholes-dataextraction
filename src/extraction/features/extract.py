@@ -31,6 +31,7 @@ from extraction.features.stratigraphy.sidebar.extractor.layer_identifier_sidebar
     LayerIdentifierSidebarExtractor,
 )
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
+from extraction.utils.dynamic_matching import IntervalToLinesDP
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.line_detection import find_diags_ending_in_zone
 from swissgeol_doc_processing.geometry.util import x_overlap, x_overlap_significant_smallest
@@ -48,7 +49,6 @@ from swissgeol_doc_processing.utils.strip_log_detection import StripLog
 from swissgeol_doc_processing.utils.table_detection import (
     TableStructure,
 )
-from utils.dynamic_matching import IntervalToLinesDP
 
 logger = logging.getLogger(__name__)
 
