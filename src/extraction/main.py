@@ -1,5 +1,6 @@
 """This module contains the main pipeline for the boreholes data extraction."""
 
+import logging
 import os
 from pathlib import Path
 
@@ -9,9 +10,10 @@ from dotenv import load_dotenv
 from extraction.evaluation.benchmark.spec import parse_benchmark_spec
 from extraction.runner import start_pipeline, start_pipeline_benchmark
 from swissgeol_doc_processing.utils.file_utils import get_data_path, read_params
-from utils.benchmark_utils import configure_logging
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
@@ -132,7 +134,6 @@ def click_pipeline(
     benchmarks: tuple[str, ...] = (),
 ):
     """Run the boreholes data extraction pipeline."""
-    configure_logging()
     # --- Multi-benchmark mode ---
     if benchmarks:
         specs = [parse_benchmark_spec(b) for b in benchmarks]

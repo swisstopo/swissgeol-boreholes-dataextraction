@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import os
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -96,11 +95,6 @@ def _parent_input_directory_key(benchmarks: Sequence[BenchmarkSpec]) -> str:
 
     group_key = f"multi:{inputs}"
     return group_key
-
-
-def configure_logging(level: int = logging.INFO) -> None:
-    """Configure root logging once for the application."""
-    logging.basicConfig(format=DEFAULT_FORMAT, level=level, datefmt=DEFAULT_DATEFMT)
 
 
 def _short_metric_key(k: str) -> str:
