@@ -6,7 +6,7 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
-from extraction.evaluation.benchmark.spec import BenchmarkSpec
+# from extraction.evaluation.benchmark.spec import BenchmarkSpec
 
 DEFAULT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
@@ -48,29 +48,14 @@ def _relative_after_common_root(paths: Sequence[Path]) -> list[str]:
     return rels
 
 
-def _parent_input_directory_key(benchmarks: Sequence[BenchmarkSpec]) -> str:
+def _parent_input_directory_key(benchmarks: list[str]) -> str:
     """Generate a parent input directory based on the input directories of the child runs.
 
     Args:
-        benchmarks (Sequence[BenchmarkSpec]): The list of benchmark specifications.
+        benchmarks (list): The list of benchmark specifications.
 
     Return: str: group_key
     """
-    paths: list[Path] = []
-
-    for b in benchmarks:
-        # extraction style
-        if hasattr(b, "input_path") and b.input_path is not None:
-            paths.append(Path(b.input_path))
-            continue
-
-        # classification style
-        if hasattr(b, "file_path") and b.file_path is not None:
-            paths.append(Path(b.file_path))
-            continue
-
-        raise AttributeError(f"BenchmarkSpec-like object {type(b)!r} has neither 'input_path' nor 'file_path'.")
-    inputs = " | ".join(sorted(_relative_after_common_root(paths)))
-
+    inputs = " | ".join(sorted(_relative_after_common_root(benchmarks)))
     group_key = f"multi:{inputs}"
     return group_key

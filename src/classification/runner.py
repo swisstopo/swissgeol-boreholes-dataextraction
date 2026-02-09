@@ -170,7 +170,7 @@ def _setup_mlflow_parent_run(
         return False
 
     setup_mlflow_tracking(
-        file_path=_parent_input_directory_key(benchmarks),
+        file_path=_parent_input_directory_key([Path(b.file_path) for b in benchmarks]),
         out_directory=out_directory,
         file_subset_directory=None,
         experiment_name=experiment_name,

@@ -160,7 +160,7 @@ def _setup_mlflow_parent_run(*, mlflow_tracking: bool, benchmarks: Sequence[Benc
     import mlflow
 
     setup_mlflow_tracking(
-        input_directory=_parent_input_directory_key(benchmarks),
+        input_directory=_parent_input_directory_key([Path(b.input_path) for b in benchmarks]),
         ground_truth_path=None,  # parent has no single GT
     )
     mlflow.set_tag("run_type", "multi_benchmark")
