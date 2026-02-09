@@ -112,7 +112,7 @@ def _finalize_overall_summary(
 
 
 def setup_mlflow_tracking(
-    input_directory: Path,
+    input_directory: str,
     ground_truth_path: Path,
     out_directory: Path = None,
     predictions_path: Path = None,
@@ -126,7 +126,7 @@ def setup_mlflow_tracking(
     if mlflow.active_run() is None:
         mlflow.start_run()
 
-    mlflow.set_tag("input_directory", str(input_directory))
+    mlflow.set_tag("input_directory", input_directory)
     mlflow.set_tag("ground_truth_path", str(ground_truth_path))
     if out_directory:
         mlflow.set_tag("out_directory", str(out_directory))
@@ -214,7 +214,7 @@ def start_pipeline(
     analytics = create_analytics() if matching_analytics else None
 
     if mlflow_tracking and mlflow_setup:
-        setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
+        setup_mlflow_tracking(str(input_directory), ground_truth_path, out_directory, predictions_path, metadata_path)
     # temporary directory to dump files for mlflow artifact logging / evaluation artifacts
     if temp_directory is None:
         temp_directory = get_data_path() / "_temp"
@@ -445,7 +445,7 @@ def start_pipeline_benchmark(
 
                 mlflow.start_run(run_name=spec.name, nested=True)
                 setup_mlflow_tracking(
-                    input_directory=spec.input_path,
+                    input_directory=str(spec.input_path),
                     ground_truth_path=spec.ground_truth_path,
                     out_directory=bench_out,
                     predictions_path=bench_predictions_path,
