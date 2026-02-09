@@ -162,13 +162,13 @@
         "module": "src.classification.main",
         "args": [
             // Repeatable benchmark specs: "<name>:<file_path>:<subset_dir>"
-            "--benchmark", "val: data/geoquat_ground_truth.json: data/geoquat/validation",
-            "--benchmark", "test: data/geoquat_ground_truth.json: data/geoquat/test",
+            "--benchmark", "val:data/geoquat_ground_truth.json:data/geoquat/validation",
+            "--benchmark", "test:data/geoquat_ground_truth.json:data/geoquat/test",
             "-c", "bert",
             "-p", "models/uscs/your_model_folder",
             "-cs", "uscs",
-            "-o", "data/out/classification_multi",
-            "-ob", "data/out/classification_multi_bedrock"
+            "-o", "data/output_classification/classification_multi",
+            "-ob", "data/output_classification/classification_multi_bedrock"
         ],
         "cwd": "${workspaceFolder}",
         "justMyCode": true,
@@ -186,8 +186,8 @@
             "-c", "bert",
             "-p", "models/uscs/your_model_folder",
             "-cs", "uscs",
-            "-o", "data/out/classification_multi_preds",
-            "-ob", "data/out/classification_multi_preds_bedrock"
+            "-o", "data/output_classification/classification_multi_preds",
+            "-ob", "data/output_classification/classification_multi_preds_bedrock"
         ],
         "cwd": "${workspaceFolder}",
         "justMyCode": true,
