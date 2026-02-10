@@ -205,8 +205,8 @@ def open_pdf(
 def extract(
     file: Path | BytesIO,
     filename: str,
-    skip_draw_predictions: bool = True,
     out_directory: Path | None = None,
+    skip_draw_predictions: bool = True,
     draw_lines: bool = False,
     draw_tables: bool = False,
     draw_strip_logs: bool = False,
