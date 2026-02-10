@@ -108,7 +108,13 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Returns:
             list[ExtractedBorehole]: The extracted boreholes from the page.
         """
-        filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=True)
+        require_depth = self.matching_params.get("require_depth_indicator", False)
+
+        filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=not require_depth)
+
+        # optionally: if require_depth, also drop any pair that still has no sidebar
+        if require_depth:
+            filtered_pairs = [p for p in filtered_pairs if p.sidebar is not None]
 
         # Step 4: Create boreholes
         boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
@@ -119,6 +125,58 @@ class MaterialDescriptionRectWithSidebarExtractor:
         return [
             borehole for borehole in boreholes if len(borehole.predictions) >= self.matching_params["min_num_layers"]
         ]
+
+    # ##### require table #####
+    # def process_page(self) -> list[ExtractedBorehole]:
+    #     """Process a single page of a pdf.
+
+    #     Finds all descriptions and depth intervals on the page and matches them.
+
+    #     Returns:
+    #         list[ExtractedBorehole]: The extracted boreholes from the page.
+    #     """
+    #     require_table = self.matching_params.get("require_table_structure", False)
+
+    #     include_no_sidebar = True
+    #     if require_table and not self.table_structures:
+    #         include_no_sidebar = False
+
+    #     filtered_pairs = self._extract_filtered_sidebar_pairs(
+    #         include_descriptions_without_sidebar=include_no_sidebar
+    #     )
+
+    #     # Step 4: Create boreholes
+    #     boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
+
+    #     logger.debug(
+    #         f"Page {self.page_number}: Extracted {len(filtered_pairs)} filtered pairs from {
+    #           len(self.table_structures)} tables"
+    #     )
+
+    #     return [
+    #         borehole for borehole in boreholes if len(borehole.predictions) >= self.matching_params["min_num_layers"]
+    #     ]
+
+    ##### original ######
+    # def process_page(self) -> list[ExtractedBorehole]:
+    #     """Process a single page of a pdf.
+
+    #     Finds all descriptions and depth intervals on the page and matches them.
+
+    #     Returns:
+    #         list[ExtractedBorehole]: The extracted boreholes from the page.
+    #     """
+    #     filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=True)
+
+    #     # Step 4: Create boreholes
+    #     boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
+
+    #     logger.debug(
+    #         f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(self.table_structures)} tables"
+    #     )
+    #     return [
+    #         borehole for borehole in boreholes if len(borehole.predictions) >= self.matching_params["min_num_layers"]
+    #     ]
 
     def _filter_by_table_criteria(
         self, pairs: list[MaterialDescriptionRectWithSidebar]

@@ -43,6 +43,8 @@ if mlflow_tracking:
     import pygit2
 
 matching_params = read_params("matching_params.yml")
+# matching_params["require_table_structure"] = True
+matching_params["require_depth_indicator"] = True
 line_detection_params = read_params("line_detection_params.yml")
 name_detection_params = read_params("name_detection_params.yml")
 table_detection_params = read_params("table_detection_params.yml")
@@ -123,7 +125,7 @@ def setup_mlflow_tracking(
 
     # only start a run if none is active
     if mlflow.active_run() is None:
-        mlflow.start_run()
+        mlflow.start_run(run_name="RequireDepth_FPFN")
 
     mlflow.set_tag("input_directory", str(input_directory))
     mlflow.set_tag("ground_truth_path", str(ground_truth_path))
