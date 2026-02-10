@@ -269,5 +269,5 @@ def test_start_pipeline_benchmark(tmp_path: Path, borehole_gt: Path, borehole_pd
     # Check aggregation
     assert (tmp_path / OVERALL_SUMMARY).exists()
 
-    # Check that temporary files are kept
+    # Check that temporary files are cleaned
     assert len([f for f in tmp_path.rglob("*.tmp")]) == 0

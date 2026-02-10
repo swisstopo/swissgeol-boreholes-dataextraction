@@ -468,6 +468,7 @@ def start_pipeline(
     draw_tables: bool = False,
     draw_strip_logs: bool = False,
     csv: bool = False,
+    resume: bool | None = False,
     matching_analytics: bool = False,
     part: str = "all",
     runname: str | None = None,
@@ -493,6 +494,7 @@ def start_pipeline(
         draw_tables (bool, optional): Whether to draw detected table structures on pdf pages. Defaults to False.
         draw_strip_logs (bool, optional): Whether to draw detected strip log structures on pages. Defaults to False.
         csv (bool): Whether to generate a CSV output. Defaults to False.
+        resume (bool, optional): Resume previous run if available. Defaults to false.
         matching_analytics (bool): Whether to enable matching parameters analytics. Defaults to False.
         part (str): Pipeline mode, "all" for full extraction, "metadata" for metadata only. Defaults to "all".
         runname (str, optional): Run name for MLflow. Defaults to None.
@@ -506,6 +508,11 @@ def start_pipeline(
     predictions_path.parent.mkdir(exist_ok=True)
     predictions_path_tmp = predictions_path.parent / (predictions_path.name + ".tmp")
     mlflow_runid_tmp = predictions_path.parent / ("mlflow_runid.json.tmp")
+
+    # Clean old run if no resume
+    if not resume:
+        delete_temporary(predictions_path_tmp)
+        delete_temporary(mlflow_runid_tmp)
 
     metadata_path.parent.mkdir(exist_ok=True)
 
@@ -623,6 +630,7 @@ def start_pipeline_benchmark(
     draw_tables: bool = False,
     draw_strip_logs: bool = False,
     csv: bool = False,
+    resume: bool = False,
     matching_analytics: bool = False,
     part: str = "all",
 ) -> None:
@@ -639,6 +647,7 @@ def start_pipeline_benchmark(
         draw_tables (bool, optional): Whether to draw detected tables. Defaults to False.
         draw_strip_logs (bool, optional): Whether to draw strip logs. Defaults to False.
         csv (bool, optional): Whether to output CSV summaries. Defaults to False.
+        resume (bool, optional): Resume previous run if available. Defaults to false.
         matching_analytics (bool, optional): Whether to compute matching analytics. Defaults to False.
         part (str): Pipeline mode, "all" for full extraction, "metadata" for metadata only. Defaults to "all".
     """
@@ -650,7 +659,7 @@ def start_pipeline_benchmark(
 
     if mlflow_tracking:
         # Load run id if existing, otherwise None
-        parent_runid = read_mlflow_runid(filename=mlflow_runid_tmp)
+        parent_runid = read_mlflow_runid(filename=mlflow_runid_tmp) if resume else None
         parent_runid = _setup_mlflow_parent_run(benchmarks=benchmarks, runname="benchmark", runid=parent_runid)
         # Save current run id
         write_mlflow_runid(filename=mlflow_runid_tmp, runid=parent_runid)
@@ -674,6 +683,7 @@ def start_pipeline_benchmark(
             draw_tables=draw_tables,
             draw_strip_logs=draw_strip_logs,
             csv=csv,
+            resume=resume,
             matching_analytics=matching_analytics,
             part=part,
             runname=spec.name,

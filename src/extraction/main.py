@@ -99,6 +99,13 @@ def common_options(f):
         default=False,
         help="Whether to enable matching parameters analytics. Defaults to False.",
     )(f)
+    f = click.option(
+        "-r",
+        "--resume",
+        is_flag=True,
+        default=False,
+        help="Whether to resume extraction. Deaults to False.",
+    )(f)
     return f
 
 
@@ -127,6 +134,7 @@ def click_pipeline(
     csv: bool = False,
     matching_analytics: bool = False,
     part: str = "all",
+    resume: bool = False,
     benchmarks: tuple[str, ...] = (),
 ):
     """Run the boreholes data extraction pipeline."""
@@ -145,6 +153,7 @@ def click_pipeline(
             draw_tables=draw_tables,
             draw_strip_logs=draw_strip_logs,
             csv=csv,
+            resume=resume,
             matching_analytics=matching_analytics,
             part=part,
         )
@@ -164,6 +173,7 @@ def click_pipeline(
             draw_tables=draw_tables,
             draw_strip_logs=draw_strip_logs,
             csv=csv,
+            resume=resume,
             matching_analytics=matching_analytics,
             part=part,
         )
@@ -182,6 +192,7 @@ def click_pipeline_metadata(
     draw_tables: bool = False,
     draw_strip_logs: bool = False,
     csv: bool = False,
+    resume: bool = False,
     matching_analytics: bool = False,
 ):
     """Run only the metadata part of the pipeline."""
@@ -196,6 +207,7 @@ def click_pipeline_metadata(
         draw_tables=draw_tables,
         draw_strip_logs=draw_strip_logs,
         csv=csv,
+        resume=resume,
         matching_analytics=matching_analytics,
         part="metadata",
     )
