@@ -11,6 +11,7 @@ from classification import DATAPATH
 from classification.evaluation.benchmark.spec import parse_benchmark_spec
 from classification.runner import start_multi_benchmark, start_pipeline
 from classification.utils.file_utils import read_params
+from utils.benchmark_utils import configure_logging
 
 load_dotenv()
 classification_params = read_params("classification_params.yml")
@@ -104,6 +105,7 @@ def click_pipeline(
     benchmarks: tuple[str, ...] = (),
 ):
     """Command line interface for the classification pipeline (single or multi-benchmark)."""
+    configure_logging()
     # --- Multi-benchmark mode ---
     if benchmarks:
         specs = [parse_benchmark_spec(b) for b in benchmarks]

@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from collections.abc import Sequence
 from pathlib import Path
+
+DEFAULT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
+DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 
 def _relative_after_common_root(paths: Sequence[Path]) -> list[str]:
@@ -54,3 +58,8 @@ def _parent_input_directory_key(benchmarks: list[str]) -> str:
     inputs = " | ".join(sorted(_relative_after_common_root(benchmarks)))
     group_key = f"multi:{inputs}"
     return group_key
+
+
+def configure_logging(level: int = logging.INFO) -> None:
+    """Configure root logging once for the application."""
+    logging.basicConfig(format=DEFAULT_FORMAT, level=level, datefmt=DEFAULT_DATEFMT)
