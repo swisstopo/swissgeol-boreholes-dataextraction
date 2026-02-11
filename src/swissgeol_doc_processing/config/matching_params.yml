@@ -58,10 +58,9 @@ affinity_params:
       indentation_weight: 0.0
 empty_interval_penalty: 0.2
 
-
 material_description_column_width: 0.08
 
-depth_column_params:  # these params should be optimized as soon as there is reliable evaluation data
+depth_column_params: # these params should be optimized as soon as there is reliable evaluation data
   noise_count_threshold: 1.25
   noise_count_offset: 2.5
 
@@ -135,7 +134,7 @@ material_description:
       - terre
       - bitume
       - bitumineux
-      - grave d'infrastructure  # Should be reviewed, currently not used
+      - grave d'infrastructure # Should be reviewed, currently not used
       - sable
       - limon
       - gravier
@@ -180,6 +179,41 @@ material_description:
       - piezometre
       - profondeur
       - désignation
+
+  it:
+    including_expressions:
+      - sabbia
+      - limo
+      - ghiaia
+      - asfalto
+      - humus
+      - marrone
+      - grigio
+      - morbido
+      - duro
+      - radice
+      - rivestimento
+      - pietra
+      - beige
+      - cemento
+      - gesso
+      - marna
+      - materiale di carota
+      - idem
+    excluding_expressions:
+      - signore
+      - fine
+      - profilo
+      - descrizione
+      - legende
+      - campione misto
+      - progetto
+      - luogo
+      - indirizzo
+      - meteo
+      - prova di pompaggio
+      - carotaggio
+      - raggio di perforazione
 
   en:
     including_expressions:
