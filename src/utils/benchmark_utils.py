@@ -6,11 +6,6 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
-# from extraction.evaluation.benchmark.spec import BenchmarkSpec
-
-DEFAULT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
-DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
-
 
 def _relative_after_common_root(paths: Sequence[Path]) -> list[str]:
     """Return relative paths after the longest common path prefix.

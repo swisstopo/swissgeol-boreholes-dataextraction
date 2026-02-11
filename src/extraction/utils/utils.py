@@ -1,9 +1,14 @@
 """Utils for extraction pipeline and benchmarks."""
 
 import json
+import os
 from pathlib import Path
 
 from extraction.evaluation.benchmark.score import BenchmarkSummary
+
+mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
+if mlflow_tracking:
+    import mlflow
 
 
 def _short_metric_key(k: str) -> str:
@@ -32,8 +37,6 @@ def log_metric_mlflow(
 
     - Does NOT start/end MLflow runs.
     """
-    import mlflow
-
     metrics = summary.metrics(short=True)
     mlflow.log_metrics(metrics)
 
