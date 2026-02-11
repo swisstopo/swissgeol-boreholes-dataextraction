@@ -364,7 +364,7 @@ def start_multi_benchmark(
             if mlflow_tracking:
                 mlflow.start_run(run_name=spec.name, nested=True)
                 setup_mlflow_tracking(
-                    file_path=spec.file_path,
+                    file_path=spec.file_subset_directory,
                     out_directory=out_directory,
                     file_subset_directory=None,
                 )

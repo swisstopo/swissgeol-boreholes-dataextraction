@@ -47,7 +47,7 @@ def _relative_after_common_root(paths: Sequence[Path]) -> list[str]:
     return rels
 
 
-def _parent_input_directory_key(benchmarks: list[str]) -> str:
+def _parent_input_directory_key(benchmarks: list[Path]) -> str:
     """Generate a parent input directory based on the input directories of the child runs.
 
     Args:
