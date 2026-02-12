@@ -18,14 +18,14 @@ class OverallFilePredictions:
         """Initializes the OverallFilePredictions object."""
         self.file_predictions_list: list[FilePredictions] = []
 
-    def is_in(self, filename: str) -> bool:
-        """Check if filename is in `file_predictions_list`.
+    def contains(self, filename: str) -> bool:
+        """Check if filename is contained `file_predictions_list`.
 
         Args:
             filename (str): Filename to check.
 
         Returns:
-            bool: True if `filename` is in `file_predictions_list`, else False.
+            bool: True if `filename` is contained `file_predictions_list`, else False.
         """
         return any(file.file_name == filename for file in self.file_predictions_list)
 

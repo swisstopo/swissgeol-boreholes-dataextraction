@@ -551,7 +551,7 @@ def start_pipeline(
             continue
 
         # Check if file already predicted
-        if predictions.is_in(filename):
+        if predictions.contains(filename):
             logger.info(f"{filename} already predicted.")
             continue
 

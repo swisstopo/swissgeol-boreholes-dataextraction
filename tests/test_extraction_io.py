@@ -4,7 +4,6 @@ import os
 from io import BytesIO
 from pathlib import Path
 
-import numpy as np
 import pymupdf
 import pytest
 
@@ -153,15 +152,12 @@ def test_start_pipeline_drawing(tmp_path: Path, borehole_pdf: Path) -> None:
     )
 
     # Generated files
-    n_outputs = len([f for f in tmp_path.rglob("*outputs.png")])
-    n_lines = len([f for f in tmp_path.rglob("*lines.png")])
-    n_tables = len([f for f in tmp_path.rglob("*tables.png")])
-    n_striplogs = len([f for f in tmp_path.rglob("*strip_logs.png")])
-    files_lengths = np.array([n_outputs, n_lines, n_tables, n_striplogs])
+    file_types = ["outputs", "lines", "tables", "strip_logs"]
+    file_counts = [len([f for f in tmp_path.rglob(f"*{file_type}.png")]) for file_type in file_types]
 
     # At least one prediction per type and all equals in length
-    assert np.all(files_lengths > 0)
-    assert len(set(files_lengths)) == 1
+    assert all(count > 0 for count in file_counts)
+    assert len(set(file_counts)) == 1
 
 
 def test_start_pipeline_part(tmp_path: Path, borehole_pdf: Path) -> None:
