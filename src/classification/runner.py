@@ -8,7 +8,6 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
-# from typing import Any
 import pandas as pd
 
 from classification.classifiers.classifier import Classifier, ClassifierTypes
@@ -24,21 +23,17 @@ from classification.utils.data_utils import (
 )
 from classification.utils.file_utils import read_params
 from utils.benchmark_utils import _parent_input_directory_key, _short_metric_key
+from utils.mlflow_tracking import mlflow
 
 logger = logging.getLogger(__name__)
 
 classification_params = read_params("classification_params.yml")
-
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
-if mlflow_tracking:
-    import mlflow
 
 
 def _finalize_overall_summary(
     *,
     overall_results: list[tuple[str, None | ClassificationBenchmarkSummary]],
     multi_root: Path,
-    mlflow_tracking: bool,
 ):
     """Write overall_summary.json and overall_summary.csv (+ mean row).
 
@@ -77,9 +72,7 @@ def _finalize_overall_summary(
     df.to_csv(summary_csv_path, index=False)
 
     # --- MLflow: overall mean metrics + artifacts on parent run ---
-    if mlflow_tracking:
-        import mlflow
-
+    if mlflow:
         for full_key, value in means.items():
             if pd.notna(value):
                 short_key = _short_metric_key(full_key)
@@ -132,7 +125,7 @@ def _setup_mlflow_parent_run(
     Returns:
         bool: True if a parent run was started and must be closed by the caller.
     """
-    if not mlflow_tracking:
+    if not mlflow:
         return False
 
     setup_mlflow_tracking(
@@ -233,7 +226,7 @@ def start_pipeline(
         classification_system.lower()
     )
 
-    if mlflow_tracking and mlflow_setup:
+    if mlflow and mlflow_setup:
         setup_mlflow_tracking(file_path, out_directory, file_subset_directory)
 
     logger.info(
@@ -265,12 +258,11 @@ def start_pipeline(
         file_path=file_path,
         ground_truth_path=ground_truth_path,
         out_directory=out_directory,
-        mlflow_tracking=False,
     )
 
     # If evaluate_all_predictions returned None, stop here
     if summary is None:
-        if mlflow_tracking and mlflow_setup:
+        if mlflow and mlflow_setup:
             mlflow.end_run()
         return None
 
@@ -284,10 +276,10 @@ def start_pipeline(
         }
     )
 
-    if mlflow_tracking:
+    if mlflow:
         log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier, str(classification_system_cls))
 
-    if mlflow_tracking and mlflow_setup:
+    if mlflow and mlflow_setup:
         mlflow.end_run()
 
     return summary
@@ -335,7 +327,7 @@ def start_multi_benchmark(
             bench_out_bedrock = multi_bedrock_root / spec.name
             bench_out_bedrock.mkdir(parents=True, exist_ok=True)
 
-            if mlflow_tracking:
+            if mlflow:
                 mlflow.start_run(run_name=spec.name, nested=True)
                 setup_mlflow_tracking(
                     file_path=spec.file_subset_directory,
@@ -362,7 +354,7 @@ def start_multi_benchmark(
             with open(bench_summary_path, "w", encoding="utf8") as f:
                 json.dump(summary.model_dump() if summary else None, f, ensure_ascii=False, indent=2)
 
-            if mlflow_tracking:
+            if mlflow:
                 mlflow.log_artifact(str(bench_summary_path), artifact_path="summary")
 
                 if summary is not None:
@@ -375,9 +367,7 @@ def start_multi_benchmark(
 
                 mlflow.end_run()
 
-        _finalize_overall_summary(
-            overall_results=overall_results, multi_root=multi_root, mlflow_tracking=mlflow_tracking
-        )
+        _finalize_overall_summary(overall_results=overall_results, multi_root=multi_root, mlflow_tracking=mlflow)
     finally:
         if mlflow.active_run() is not None:
             mlflow.end_run()

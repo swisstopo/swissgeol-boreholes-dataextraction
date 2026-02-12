@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from classification.evaluation.evaluate import evaluate
 from classification.utils.data_utils import write_per_language_per_class_predictions
+from utils.mlflow_tracking import mlflow
 
 logger = logging.getLogger(__name__)
 
@@ -74,21 +75,17 @@ def evaluate_all_predictions(
     file_path: Path,
     ground_truth_path: Path | None,
     out_directory: Path,
-    mlflow_tracking: bool,
 ) -> ClassificationBenchmarkSummary | None:
     """Classification equivalent of extraction.score.evaluate_all_predictions().
 
     - Computes metrics (via `evaluate`)
     - Writes evaluation artifacts
-    - Optionally logs them to MLflow
-
 
     Args:
         layer_descriptions (list[LayerInformation]): The list of layer descriptions that were classified.
         file_path (Path): The path to the input file.
         ground_truth_path (Path | None): The path to the ground truth file.
         out_directory (Path): The output directory where evaluation artifacts are written.
-        mlflow_tracking (bool): Whether MLFlow tracking is enabled.
 
     Returns:
         ClassificationBenchmarkSummary | None: A JSON-serializable ClassificationBenchmarkSummary
@@ -119,9 +116,7 @@ def evaluate_all_predictions(
     write_per_language_per_class_predictions(layer_descriptions, classification_metrics, out_directory)
 
     # --- MLflow logging ---
-    if mlflow_tracking:
-        import mlflow
-
+    if mlflow:
         mlflow.log_artifact(str(metrics_path), artifact_path="summary")
         pred_dir = out_directory / "predictions_per_class"
         if pred_dir.exists():
