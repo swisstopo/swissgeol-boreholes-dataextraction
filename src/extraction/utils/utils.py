@@ -11,23 +11,6 @@ if mlflow_tracking:
     import mlflow
 
 
-def _short_metric_key(k: str) -> str:
-    """Drop the first namespace segment.
-
-    Examples:
-      geology/layer_f1 -> layer_f1
-      metadata/name_f1 -> name_f1
-      layer_f1 -> layer_f1
-
-    Args:
-        k (str): The original metric key.
-
-    Returns:
-        str: The shortened metric key.
-    """
-    return k.split("/", 1)[1] if "/" in k else k
-
-
 def log_metric_mlflow(
     summary: BenchmarkSummary,
     out_dir: Path,

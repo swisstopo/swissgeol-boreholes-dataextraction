@@ -7,25 +7,23 @@ import logging
 import os
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
 
+# from typing import Any
 import pandas as pd
 
 from classification.classifiers.classifier import Classifier, ClassifierTypes
 from classification.classifiers.classifier_factory import ClassifierFactory
-from classification.evaluation.benchmark.score import ClassificationBenchmarkSummary
+from classification.evaluation.benchmark.score import ClassificationBenchmarkSummary, evaluate_all_predictions
 from classification.evaluation.benchmark.spec import BenchmarkSpec
-from classification.evaluation.evaluate import evaluate
 from classification.utils.classification_classes import ExistingClassificationSystems
 from classification.utils.data_loader import LayerInformation, prepare_classification_data
 from classification.utils.data_utils import (
     get_data_class_count,
     get_data_language_count,
-    write_per_language_per_class_predictions,
     write_predictions,
 )
 from classification.utils.file_utils import read_params
-from utils.benchmark_utils import _parent_input_directory_key
+from utils.benchmark_utils import _parent_input_directory_key, _short_metric_key
 
 logger = logging.getLogger(__name__)
 
@@ -40,90 +38,58 @@ def _finalize_overall_summary(
     *,
     overall_results: list[tuple[str, None | ClassificationBenchmarkSummary]],
     multi_root: Path,
-) -> tuple[Path, Path]:
+    mlflow_tracking: bool,
+):
     """Write overall_summary.json and overall_summary.csv (+ mean row).
 
-    Also logs artifacts + overall mean metrics to MLflow on the parent run (if enabled).
-
-    Args:
-        overall_results (list): List of tuples (benchmark_name, benchmark_summary).
-        multi_root (Path): The root output directory for the multi-benchmark run.
-
-    Returns:
-        tuple[Path, Path]: Paths to the overall summary JSON and CSV files.
+    Also logs overall aggregate metrics + artifacts to MLflow on the parent run (if enabled).
     """
     # --- JSON ---
-    summary_json_path = multi_root / "overall_summary.json"
-    with open(summary_json_path, "w", encoding="utf8") as f:
+    summary_path = multi_root / "overall_summary.json"
+    with open(summary_path, "w", encoding="utf8") as f:
         summary = [
-            {"benchmark": name, "summary": summary.model_dump() if summary else None}
-            for name, summary in overall_results
+            {"benchmark": benchmark, "summary": summary.model_dump() if summary else None}
+            for benchmark, summary in overall_results
         ]
         json.dump(summary, f, ensure_ascii=False, indent=2)
 
     # --- CSV ---
-    rows: list[dict[str, Any]] = []
-    for name, summary in overall_results:
-        row: dict[str, Any] = {"benchmark": name}
+    summary_csv_path = multi_root / "overall_summary.csv"
 
+    rows = []
+    for benchmark, summary in overall_results:
+        row: dict[str, any] = {"benchmark": benchmark}
         if summary is not None:
-            row.update(
-                {
-                    "n_layers": summary.n_layers,
-                    "file_path": summary.file_path,
-                    "subset_dir": summary.file_subset_directory,
-                    "ground_truth_path": summary.ground_truth_path,
-                }
-            )
-            metrics_dict = summary.metrics_flat(short=True) or {}
-            for key, value in (metrics_dict or {}).items():
-                row[f"metrics__{key}"] = value
-
+            row["ground_truth_path"] = summary.ground_truth_path
+            row["n_documents"] = summary.n_documents
+            row.update(summary.metrics_flat())
         rows.append(row)
 
-    summary_csv_path = multi_root / "overall_summary.csv"
     df = pd.DataFrame(rows).sort_values(by="benchmark")
 
-    metric_cols = [column for column in df.columns if column.startswith("metrics__")]
+    total_docs = df["n_documents"].sum()
+    means = df.mean(numeric_only=True)
+    agg_row = means.round(3)
+    agg_row.at["benchmark"] = "total/mean"
+    agg_row.at["n_documents"] = total_docs
+    df = pd.concat([df, pd.DataFrame([agg_row])], ignore_index=True)
 
-    if metric_cols:
-        df[metric_cols] = df[metric_cols].apply(pd.to_numeric, errors="coerce")
-    if "n_layers" in df.columns:
-        df["n_layers"] = pd.to_numeric(df["n_layers"], errors="coerce")
+    df.to_csv(summary_csv_path, index=False)
 
-    means_series = df[metric_cols].mean(skipna=True) if metric_cols else pd.Series(dtype=float)
-
-    mean_row: dict[str, Any] = {
-        "benchmark": "mean",
-        "n_layers": int(df["n_layers"].sum(skipna=True)) if df["n_layers"].notna().any() else "",
-        "file_path": "",
-        "subset_dir": "",
-        "ground_truth_path": "",
-        **means_series.to_dict(),
-    }
-
-    df_out = pd.concat([df, pd.DataFrame([mean_row])], ignore_index=True)
-    if metric_cols:
-        df_out[metric_cols] = df_out[metric_cols].round(4)
-    df_out.to_csv(summary_csv_path, index=False)
-
-    # --- MLflow parent logging ---
+    # --- MLflow: overall mean metrics + artifacts on parent run ---
     if mlflow_tracking:
-        overall_mean_metrics = {
-            col[len("metrics__") :]: float(value) for col, value in means_series.items() if not pd.isna(value)
-        }
+        import mlflow
 
-        if overall_mean_metrics:
-            mlflow.log_metrics(overall_mean_metrics)
+        for full_key, value in means.items():
+            if pd.notna(value):
+                short_key = _short_metric_key(full_key)
+                mlflow.log_metric(short_key, value)
 
-        total_layers = df["n_layers"].sum(skipna=True)
-        if pd.notna(total_layers):
-            mlflow.log_metric("overall/total_n_layers", float(total_layers))
+        if pd.notna(total_docs):
+            mlflow.log_metric("total_n_documents", float(total_docs))
 
-        mlflow.log_artifact(str(summary_json_path), artifact_path="summary")
+        mlflow.log_artifact(str(summary_path), artifact_path="summary")
         mlflow.log_artifact(str(summary_csv_path), artifact_path="summary")
-
-    return summary_json_path, summary_csv_path
 
 
 def setup_mlflow_tracking(
@@ -290,13 +256,33 @@ def start_pipeline(
     )
     classifier.classify(layer_descriptions)
 
-    logger.info("Evaluating predictions")
-    classification_metrics = evaluate(layer_descriptions)
-    logger.info("classification metrics: %s", classification_metrics.to_json())
-    logger.debug("classification metrics per class: %s", classification_metrics.to_json_per_class())
-
+    # write predictions
     write_predictions(layer_descriptions, out_directory)
-    write_per_language_per_class_predictions(layer_descriptions, classification_metrics, out_directory)
+
+    # centralize evaluation + per-class artifacts in score module
+    summary = evaluate_all_predictions(
+        layer_descriptions=layer_descriptions,
+        file_path=file_path,
+        ground_truth_path=ground_truth_path,
+        out_directory=out_directory,
+        mlflow_tracking=False,
+    )
+
+    # If evaluate_all_predictions returned None, stop here
+    if summary is None:
+        if mlflow_tracking and mlflow_setup:
+            mlflow.end_run()
+        return None
+
+    # Fill the fields that your current evaluate_all_predictions() left as placeholders
+    summary = summary.model_copy(
+        update={
+            "file_subset_directory": str(file_subset_directory) if file_subset_directory else None,
+            "classifier_type": classifier_type,
+            "model_path": str(model_path) if model_path else None,
+            "classification_system": classification_system,
+        }
+    )
 
     if mlflow_tracking:
         log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier, str(classification_system_cls))
@@ -304,19 +290,7 @@ def start_pipeline(
     if mlflow_tracking and mlflow_setup:
         mlflow.end_run()
 
-    return ClassificationBenchmarkSummary(
-        file_path=str(file_path),
-        ground_truth_path=str(ground_truth_path) if ground_truth_path else None,
-        file_subset_directory=str(file_subset_directory) if file_subset_directory else None,
-        n_layers=len(layer_descriptions),
-        classifier_type=classifier_type,
-        model_path=str(model_path) if model_path else None,
-        classification_system=classification_system,
-        metrics={
-            **(classification_metrics).to_json(),
-            **(classification_metrics).to_json_per_class(),
-        },
-    )
+    return summary
 
 
 def start_multi_benchmark(
@@ -401,7 +375,9 @@ def start_multi_benchmark(
 
                 mlflow.end_run()
 
-        _finalize_overall_summary(overall_results=overall_results, multi_root=multi_root)
+        _finalize_overall_summary(
+            overall_results=overall_results, multi_root=multi_root, mlflow_tracking=mlflow_tracking
+        )
     finally:
         if mlflow.active_run() is not None:
             mlflow.end_run()
