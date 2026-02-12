@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import tempfile
 from pathlib import Path
 
@@ -16,15 +15,11 @@ from pydantic import BaseModel
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from swissgeol_doc_processing.utils.file_utils import get_data_path
+from utils.mlflow_tracking import mlflow
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
-
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
-
-if mlflow_tracking:
-    import mlflow
 
 
 class BenchmarkSummary(BaseModel):
@@ -89,7 +84,7 @@ def evaluate_all_predictions(
     logger.info("Metadata Performance metrics:")
     logger.info(metadata_metrics.to_json())
 
-    if mlflow_tracking:
+    if mlflow:
         mlflow.log_metrics(metrics_dict)
         mlflow.log_metrics(metadata_metrics.to_json())
 
@@ -128,7 +123,7 @@ def main():
         return
 
     predictions = OverallFilePredictions.from_json(predictions)
-    if mlflow_tracking:
+    if mlflow:
         mlflow.set_experiment("Boreholes Stratigraphy")
         with mlflow.start_run():
             evaluate_all_predictions(predictions, args.ground_truth_path)

@@ -1,7 +1,6 @@
 """Contains utility functions for plotting stratigraphic data."""
 
 import logging
-import os
 from pathlib import Path
 
 import cv2
@@ -11,12 +10,10 @@ from dotenv import load_dotenv
 
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.text.textblock import TextBlock
+from utils.mlflow_tracking import mlflow
 
 load_dotenv()
 
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
-if mlflow_tracking:
-    import mlflow
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +172,7 @@ def save_visualization(img, filename, page_number, visualization_type, draw_dire
         img_path = draw_directory / f"{Path(filename).stem}_page{page_number}_{visualization_type}.png"
         cv2.imwrite(str(img_path), img)
 
-    if mlflow_tracking:
+    if mlflow:
         mlflow.log_image(img, f"pages/{filename}_page{page_number}_{visualization_type}.png")
 
     elif not draw_directory:

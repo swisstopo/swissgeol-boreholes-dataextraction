@@ -10,14 +10,10 @@ from pathlib import Path
 
 from extraction.evaluation.benchmark.score import BenchmarkSummary
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
+from utils.mlflow_tracking import mlflow
 
 DEFAULT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
-
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
-
-if mlflow_tracking:
-    import mlflow
 
 
 def _relative_after_common_root(paths: Sequence[Path]) -> list[str]:

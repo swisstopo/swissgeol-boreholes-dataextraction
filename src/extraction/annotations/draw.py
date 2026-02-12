@@ -51,15 +51,11 @@ def plot_prediction(
     """
     filename = prediction.file_name
     logger.info("Drawing predictions for file %s", filename)
-    try:
-        for _, page in enumerate(doc):
-            drawer = PageDrawer(page)
-            drawer.draw(prediction)
-            img = convert_page_to_img(page, scale_factor=2)
-            save_visualization(img, filename, page.number + 1, "outputs", out_directory)
-
-    except (FileNotFoundError, pymupdf.FileDataError) as e:
-        logger.error("Error opening file %s: %s", filename, e)
+    for _, page in enumerate(doc):
+        drawer = PageDrawer(page)
+        drawer.draw(prediction)
+        img = convert_page_to_img(page, scale_factor=2)
+        save_visualization(img, filename, page.number + 1, "outputs", out_directory)
 
     logger.info("Finished drawing predictions for file %s", filename)
 

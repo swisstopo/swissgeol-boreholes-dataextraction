@@ -39,6 +39,7 @@ from swissgeol_doc_processing.text.matching_params_analytics import MatchingPara
 from swissgeol_doc_processing.utils.file_utils import flatten, read_params
 from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
 from swissgeol_doc_processing.utils.table_detection import detect_table_structures
+from utils.mlflow_tracking import mlflow
 
 matching_params = read_params("matching_params.yml")
 line_detection_params = read_params("line_detection_params.yml")
@@ -48,10 +49,7 @@ striplog_detection_params = read_params("striplog_detection_params.yml")
 
 logger = logging.getLogger(__name__)
 
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
-
-if mlflow_tracking:
-    import mlflow
+if mlflow:
     import pygit2
 
 
@@ -92,7 +90,7 @@ def _finalize_overall_summary(
     df.to_csv(summary_path, index=False)
 
     # --- MLflow: overall mean metrics + artifacts on parent run ---
-    if mlflow_tracking:
+    if mlflow:
         for full_key, value in means.items():
             if pd.notna(value):
                 short_key = _short_metric_key(full_key)
@@ -357,7 +355,7 @@ def extract(
             with open(csv_path, "w", encoding="utf8", newline="") as csvfile:
                 csvfile.write(borehole.to_csv())
 
-            if mlflow_tracking:
+            if mlflow:
                 mlflow.log_artifact(csv_path, "csv")
 
     return prediction
@@ -393,7 +391,7 @@ def setup_mlflow_tracking(
     Returns:
         str: The active MLflow run ID.
     """
-    if not mlflow_tracking:
+    if not mlflow:
         raise ValueError("Tracking is not activated")
 
     mlflow.set_experiment(experiment_name)
@@ -441,7 +439,7 @@ def _setup_mlflow_parent_run(
     Returns:
         str: Current run id to parent run.
     """
-    if not mlflow_tracking:
+    if not mlflow:
         raise ValueError("Tracking is not activated")
 
     runid = setup_mlflow_tracking(
@@ -518,7 +516,7 @@ def start_pipeline(
 
     # Initialize analytics if enabled
     analytics = create_analytics() if matching_analytics else None
-    if mlflow_tracking:
+    if mlflow:
         # Load run id if existing, otherwise None
         runid = read_mlflow_runid(filename=mlflow_runid_tmp)
         runid = setup_mlflow_tracking(
@@ -590,7 +588,7 @@ def start_pipeline(
     )
 
     # Log metrics to MLflow if enabled
-    if mlflow_tracking and eval_summary is not None:
+    if mlflow and eval_summary is not None:
         log_metric_mlflow(eval_summary, out_dir=out_directory)
 
     # Save all metadata, analytics and predictions (if needed)
@@ -616,7 +614,7 @@ def start_pipeline(
         delete_temporary(mlflow_runid_tmp)
 
     # Terminate runid
-    if mlflow_tracking:
+    if mlflow:
         mlflow.end_run()
 
     return eval_summary
@@ -657,7 +655,7 @@ def start_pipeline_benchmark(
     # Create temp file for parent run
     mlflow_runid_tmp = out_directory / "mlflow_parent_runid.json.tmp"
 
-    if mlflow_tracking:
+    if mlflow:
         # Load run id if existing, otherwise None
         parent_runid = read_mlflow_runid(filename=mlflow_runid_tmp) if resume else None
         parent_runid = _setup_mlflow_parent_run(benchmarks=benchmarks, runname="benchmark", runid=parent_runid)
