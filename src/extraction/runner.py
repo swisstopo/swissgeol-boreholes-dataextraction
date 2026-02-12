@@ -27,13 +27,14 @@ from extraction.features.predictions.overall_file_predictions import OverallFile
 from extraction.features.predictions.predictions import BoreholeListBuilder
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
-from extraction.utils.benchmark_utils import _parent_input_directory_key, _short_metric_key, log_metric_mlflow
+from extraction.utils.utils import log_metric_mlflow
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.matching_params_analytics import create_analytics
 from swissgeol_doc_processing.utils.file_utils import flatten, get_data_path, read_params
 from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
 from swissgeol_doc_processing.utils.table_detection import detect_table_structures
+from utils.benchmark_utils import _parent_input_directory_key, _short_metric_key
 
 from .evaluation.benchmark.spec import BenchmarkSpec
 
@@ -111,7 +112,7 @@ def _finalize_overall_summary(
 
 
 def setup_mlflow_tracking(
-    input_directory: Path,
+    input_directory: str,
     ground_truth_path: Path,
     out_directory: Path = None,
     predictions_path: Path = None,
@@ -125,7 +126,7 @@ def setup_mlflow_tracking(
     if mlflow.active_run() is None:
         mlflow.start_run()
 
-    mlflow.set_tag("input_directory", str(input_directory))
+    mlflow.set_tag("input_directory", input_directory)
     mlflow.set_tag("ground_truth_path", str(ground_truth_path))
     if out_directory:
         mlflow.set_tag("out_directory", str(out_directory))
@@ -159,7 +160,7 @@ def _setup_mlflow_parent_run(*, mlflow_tracking: bool, benchmarks: Sequence[Benc
     import mlflow
 
     setup_mlflow_tracking(
-        input_directory=_parent_input_directory_key(benchmarks),
+        input_directory=_parent_input_directory_key([Path(b.input_path) for b in benchmarks]),
         ground_truth_path=None,  # parent has no single GT
     )
     mlflow.set_tag("run_type", "multi_benchmark")
@@ -213,7 +214,7 @@ def start_pipeline(
     analytics = create_analytics() if matching_analytics else None
 
     if mlflow_tracking and mlflow_setup:
-        setup_mlflow_tracking(input_directory, ground_truth_path, out_directory, predictions_path, metadata_path)
+        setup_mlflow_tracking(str(input_directory), ground_truth_path, out_directory, predictions_path, metadata_path)
     # temporary directory to dump files for mlflow artifact logging / evaluation artifacts
     if temp_directory is None:
         temp_directory = get_data_path() / "_temp"
@@ -444,7 +445,7 @@ def start_pipeline_benchmark(
 
                 mlflow.start_run(run_name=spec.name, nested=True)
                 setup_mlflow_tracking(
-                    input_directory=spec.input_path,
+                    input_directory=str(spec.input_path),
                     ground_truth_path=spec.ground_truth_path,
                     out_directory=bench_out,
                     predictions_path=bench_predictions_path,
