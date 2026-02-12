@@ -8,9 +8,9 @@ import numpy as np
 import pymupdf
 from dotenv import load_dotenv
 
+from core.mlflow_tracking import mlflow
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.text.textblock import TextBlock
-from utils.mlflow_tracking import mlflow
 
 load_dotenv()
 

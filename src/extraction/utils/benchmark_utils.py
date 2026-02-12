@@ -8,9 +8,9 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
+from core.mlflow_tracking import mlflow
 from extraction.evaluation.benchmark.score import BenchmarkSummary
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
-from utils.mlflow_tracking import mlflow
 
 DEFAULT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"

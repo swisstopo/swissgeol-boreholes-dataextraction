@@ -12,10 +12,10 @@ import pandas as pd
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
+from core.mlflow_tracking import mlflow
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from swissgeol_doc_processing.utils.file_utils import get_data_path
-from utils.mlflow_tracking import mlflow
 
 load_dotenv()
 

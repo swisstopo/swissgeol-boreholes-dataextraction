@@ -15,6 +15,7 @@ import pandas as pd
 import pymupdf
 from tqdm import tqdm
 
+from core.mlflow_tracking import mlflow
 from extraction.annotations.draw import plot_prediction, plot_strip_logs, plot_tables
 from extraction.annotations.plot_utils import plot_lines, save_visualization
 from extraction.evaluation.benchmark.score import BenchmarkSummary, evaluate_all_predictions
@@ -39,7 +40,6 @@ from swissgeol_doc_processing.text.matching_params_analytics import MatchingPara
 from swissgeol_doc_processing.utils.file_utils import flatten, read_params
 from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
 from swissgeol_doc_processing.utils.table_detection import detect_table_structures
-from utils.mlflow_tracking import mlflow
 
 matching_params = read_params("matching_params.yml")
 line_detection_params = read_params("line_detection_params.yml")
