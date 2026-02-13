@@ -3,9 +3,6 @@
 import pymupdf
 from fast_langdetect import LangDetectConfig, LangDetector
 
-config = LangDetectConfig(max_input_length=1000)
-detector = LangDetector(config)
-
 
 def extract_text_from_document(doc: pymupdf.Document) -> str:
     """Extracts and processes text from a document.
@@ -40,26 +37,42 @@ def detect_language_of_document(doc: pymupdf.Document, default_language: str, su
     return detect_language_of_text(text, default_language, supported_languages)
 
 
-def detect_language_of_text(text: str, default_language: str, supported_languages: list, seed: int = 0) -> str:
+def detect_language_of_text(
+    text: str,
+    default_language: str,
+    supported_languages: list,
+    context_window: int = 80,
+    n_windows: int = 5,
+) -> str:
     """Detects the language of a text.
 
     Args:
         text (str): The text to detect the language of.
         default_language (str): The default language to use if the language detection fails.
         supported_languages (list): A list of supported languages.
-        seed (int): Define seed for language detection.
+        context_window (int): Size of context window for text detection.
+        n_windows (int): Number of context windows for language detection. Defaults to 5.
 
     Returns:
         str: The detected language of the document. One of supported_languages.
     """
-    # Detect language using lite detection model
-    languages = detector.detect(text, model="lite")
+    # Define set of segements for context window
+    config = LangDetectConfig(max_input_length=context_window)
+    detector = LangDetector(config)
+    bins_size = len(text) // n_windows
 
-    # No language detected, use default
-    if len(languages) == 0:
-        return default_language
+    # Perform language detection on windows and extract top-1 languages
+    languages = [
+        detector.detect(
+            text=text[i * bins_size : min(i * bins_size + context_window, len(text))],
+            k=1,  # Return only top 1 lang
+            model="lite",  # Lite model to speed up
+        )[0].get("lang", "")
+        for i in range(n_windows)
+    ]
 
-    # Ensure order and take highest confidence lang
-    language = max(languages, key=lambda x: x["score"]).get("lang", None)
+    # Perofrm majority voting across windows
+    language = max(set(languages), key=languages.count)
 
+    # Return language if part of supported otherwise default
     return language if language in supported_languages else default_language
