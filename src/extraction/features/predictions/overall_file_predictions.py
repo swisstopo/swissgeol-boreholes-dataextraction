@@ -25,7 +25,7 @@ class OverallFilePredictions:
             filename (str): Filename to check.
 
         Returns:
-            bool: True if `filename` is contained `file_predictions_list`, else False.
+            bool: True if `file_predictions_list` contains `filename`, else False.
         """
         return any(file.file_name == filename for file in self.file_predictions_list)
 
