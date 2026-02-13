@@ -8,6 +8,7 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
+from core.mlflow_tracking import mlflow
 from extraction.evaluation.benchmark.score import BenchmarkSummary
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 
@@ -86,8 +87,6 @@ def log_metric_mlflow(
 
     - Does NOT start/end MLflow runs.
     """
-    import mlflow
-
     metrics = summary.metrics(short=True)
     mlflow.log_metrics(metrics)
 

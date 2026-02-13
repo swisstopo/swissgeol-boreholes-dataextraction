@@ -1,16 +1,19 @@
 """This module contains functionalities to draw on pdf pages."""
 
 import logging
-import os
 from pathlib import Path
 
 import numpy as np
 import pymupdf
 from dotenv import load_dotenv
 
-from extraction.annotations.plot_utils import _get_centered_hline, _get_polyline_triangle, convert_page_to_img
+from extraction.annotations.plot_utils import (
+    _get_centered_hline,
+    _get_polyline_triangle,
+    convert_page_to_img,
+    save_visualization,
+)
 from extraction.features.predictions.file_predictions import FilePredictions
-from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from swissgeol_doc_processing.utils.strip_log_detection import StripLog
@@ -18,16 +21,14 @@ from swissgeol_doc_processing.utils.table_detection import TableStructure
 
 load_dotenv()
 
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
-
 colors = ["purple", "blue"]
 
 logger = logging.getLogger(__name__)
 
 
-def draw_predictions(
-    predictions: OverallFilePredictions,
-    directory: Path,
+def plot_prediction(
+    prediction: FilePredictions,
+    doc: pymupdf.Document,
     out_directory: Path,
 ) -> None:
     """Draw predictions on pdf pages.
@@ -44,41 +45,19 @@ def draw_predictions(
         - Assignments of material description text blocks to depth intervals (if available)
 
     Args:
-        predictions (dict): Content of the predictions.json file.
-        directory (Path): Path to the directory containing the pdf files.
+        prediction (FilePredictions): Prediction for file.
+        doc (pymupdf.Document): Path to the processed PDF file.
         out_directory (Path): Path to the output directory where the images are saved.
     """
-    if directory.is_file():  # deal with the case when we pass a file instead of a directory
-        directory = directory.parent
-    for file_prediction in predictions.file_predictions_list:
-        filename = file_prediction.file_name
-        logger.info("Drawing predictions for file %s", filename)
-        try:
-            # Clear cache to avoid cache contamination across different files, which can cause incorrect
-            # visualizations; see also https://github.com/swisstopo/swissgeol-boreholes-suite/issues/1935
-            pymupdf.TOOLS.store_shrink(100)
+    filename = prediction.file_name
+    logger.info("Drawing predictions for file %s", filename)
+    for _, page in enumerate(doc):
+        drawer = PageDrawer(page)
+        drawer.draw(prediction)
+        img = convert_page_to_img(page, scale_factor=2)
+        save_visualization(img, filename, page.number + 1, "outputs", out_directory)
 
-            with pymupdf.Document(directory / filename) as doc:
-                for _, page in enumerate(doc):
-                    drawer = PageDrawer(page)
-                    drawer.draw(file_prediction)
-
-                    tmp_file_path = out_directory / f"{filename}_page{drawer.page_number}.png"
-                    pymupdf.utils.get_pixmap(page, matrix=pymupdf.Matrix(2, 2), clip=page.rect).save(tmp_file_path)
-
-                    if mlflow_tracking:  # This is only executed if MLFlow tracking is enabled
-                        try:
-                            import mlflow
-
-                            mlflow.log_artifact(tmp_file_path, artifact_path="pages")
-                        except NameError:
-                            logger.warning("MLFlow could not be imported. Skipping logging of artifact.")
-
-        except (FileNotFoundError, pymupdf.FileDataError) as e:
-            logger.error("Error opening file %s: %s", filename, e)
-            continue
-
-        logger.info("Finished drawing predictions for file %s", filename)
+    logger.info("Finished drawing predictions for file %s", filename)
 
 
 class PageDrawer:
