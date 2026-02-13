@@ -100,45 +100,45 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self.analytics = analytics
         self.matching_params = matching_params
 
-    def process_page(self) -> list[ExtractedBorehole]:
-        """Process a single page and extract boreholes using a strict AND rule.
+    # def process_page(self) -> list[ExtractedBorehole]:
+    #     """Process a single page and extract boreholes using a strict AND rule.
 
-        Strict AND behavior (when enabled):
-        - A page must have at least one detected table_structure.
-        - A candidate pair must have a sidebar (depth indicator).
-        - Only sidebar-based pairs are used (no description-only fallback).
+    #     Strict AND behavior (when enabled):
+    #     - A page must have at least one detected table_structure.
+    #     - A candidate pair must have a sidebar (depth indicator).
+    #     - Only sidebar-based pairs are used (no description-only fallback).
 
-        Controlled by:
-        - matching_params["require_table_and_depth"] (bool): enable this behavior.
-        """
-        require_table_and_depth = self.matching_params.get("require_table_and_depth", False)
+    #     Controlled by:
+    #     - matching_params["require_table_and_depth"] (bool): enable this behavior.
+    #     """
+    #     require_table_and_depth = self.matching_params.get("require_table_and_depth", False)
 
-        if not require_table_and_depth:
-            # Default / legacy behavior
-            filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=True)
-            boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
-            return [b for b in boreholes if len(b.predictions) >= self.matching_params["min_num_layers"]]
+    #     if not require_table_and_depth:
+    #         # Default / legacy behavior
+    #         filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=True)
+    #         boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
+    #         return [b for b in boreholes if len(b.predictions) >= self.matching_params["min_num_layers"]]
 
-        # AND gate at page level: must have a table
-        if not self.table_structures:
-            logger.debug("Page %s: AND gate active -> no tables found, returning 0 boreholes", self.page_number)
-            return []
+    #     # AND gate at page level: must have a table
+    #     if not self.table_structures:
+    #         logger.debug("Page %s: AND gate active -> no tables found, returning 0 boreholes", self.page_number)
+    #         return []
 
-        # AND gate at pair level: must have a sidebar (depth)
-        filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=False)
-        filtered_pairs = [p for p in filtered_pairs if p.sidebar is not None]
+    #     # AND gate at pair level: must have a sidebar (depth)
+    #     filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=False)
+    #     filtered_pairs = [p for p in filtered_pairs if p.sidebar is not None]
 
-        boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
+    #     boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
 
-        logger.debug(
-            "Page %s: AND gate active | tables=%d | pairs=%d | boreholes=%d",
-            self.page_number,
-            len(self.table_structures),
-            len(filtered_pairs),
-            len(boreholes),
-        )
+    #     logger.debug(
+    #         "Page %s: AND gate active | tables=%d | pairs=%d | boreholes=%d",
+    #         self.page_number,
+    #         len(self.table_structures),
+    #         len(filtered_pairs),
+    #         len(boreholes),
+    #     )
 
-        return [b for b in boreholes if len(b.predictions) >= self.matching_params["min_num_layers"]]
+    #     return [b for b in boreholes if len(b.predictions) >= self.matching_params["min_num_layers"]]
 
     # union of both criteria
     # def process_page(self) -> list[ExtractedBorehole]:
@@ -306,26 +306,26 @@ class MaterialDescriptionRectWithSidebarExtractor:
     #         borehole for borehole in boreholes if len(borehole.predictions) >= self.matching_params["min_num_layers"]
     #     ]
 
-    ##### original ######
-    # def process_page(self) -> list[ExtractedBorehole]:
-    #     """Process a single page of a pdf.
+    #### original ######
+    def process_page(self) -> list[ExtractedBorehole]:
+        """Process a single page of a pdf.
 
-    #     Finds all descriptions and depth intervals on the page and matches them.
+        Finds all descriptions and depth intervals on the page and matches them.
 
-    #     Returns:
-    #         list[ExtractedBorehole]: The extracted boreholes from the page.
-    #     """
-    #     filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=True)
+        Returns:
+            list[ExtractedBorehole]: The extracted boreholes from the page.
+        """
+        filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=True)
 
-    #     # Step 4: Create boreholes
-    #     boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
+        # Step 4: Create boreholes
+        boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
 
-    #     logger.debug(
-    #         f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(self.table_structures)} tables"
-    #     )
-    #     return [
-    #         borehole for borehole in boreholes if len(borehole.predictions) >= self.matching_params["min_num_layers"]
-    #     ]
+        logger.debug(
+            f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(self.table_structures)} tables"
+        )
+        return [
+            borehole for borehole in boreholes if len(borehole.predictions) >= self.matching_params["min_num_layers"]
+        ]
 
     def _filter_by_table_criteria(
         self, pairs: list[MaterialDescriptionRectWithSidebar]
@@ -810,14 +810,21 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         # Step 2: Optionally add descriptions without sidebar
         if include_descriptions_without_sidebar:
-            material_description_rect_without_sidebar = self._find_material_description_column(sidebar=None)
-            if material_description_rect_without_sidebar:
-                pairs.append(
-                    MaterialDescriptionRectWithSidebar(
-                        sidebar=None,
-                        material_description_rect=material_description_rect_without_sidebar,
-                        lines=self.lines,
+            # only allow sidebar=None fallback if strong evidence exists
+            if self._allow_description_only_fallback():
+                material_description_rect_without_sidebar = self._find_material_description_column(sidebar=None)
+                if material_description_rect_without_sidebar:
+                    pairs.append(
+                        MaterialDescriptionRectWithSidebar(
+                            sidebar=None,
+                            material_description_rect=material_description_rect_without_sidebar,
+                            lines=self.lines,
+                        )
                     )
+            else:
+                logger.debug(
+                    "Page %s: skipping description-only fallback (insufficient evidence)",
+                    self.page_number,
                 )
 
         # Step 3: Sort once by score (highest first)
@@ -871,6 +878,37 @@ class MaterialDescriptionRectWithSidebarExtractor:
             number_of_good_sidebars=len(good_sidebar_pairs),
             best_sidebar_score=best_sidebar_score,
         )
+
+    def _allow_description_only_fallback(self) -> bool:
+        """Return True if we have strong evidence that a description-only borehole is plausible.
+
+        This is meant to reduce false-positive boreholes created from random paragraphs.
+        """
+        require_table = self.matching_params.get("fallback_require_table", True)
+        allow_if_striplog = self.matching_params.get("fallback_allow_if_striplog", True)
+
+        # Table evidence thresholds
+        min_table_height_ratio = self.matching_params.get("fallback_min_table_height_ratio", 0.25)
+
+        has_table = bool(self.table_structures)
+        has_striplog = bool(self.strip_logs)
+
+        # 1) If strip-log exists, that's a borehole
+        if allow_if_striplog and has_striplog:
+            return True
+
+        # 2) Otherwise: require some table evidence
+        if require_table and not has_table:
+            return False
+        if not has_table:
+            # no table, no striplog -> don't allow description-only fallback
+            return False
+
+        # 3) Table must be "substantial" (avoid tiny tables)
+        # If multiple tables: take the largest by height
+        largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
+        if (largest_table.bounding_rect.height / self.page_height) < min_table_height_ratio:
+            return False
 
 
 def extract_page(
