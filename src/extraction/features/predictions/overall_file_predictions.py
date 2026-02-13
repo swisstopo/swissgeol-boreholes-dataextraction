@@ -19,7 +19,7 @@ class OverallFilePredictions:
         self.file_predictions_list: list[FilePredictions] = []
 
     def contains(self, filename: str) -> bool:
-        """Check if filename is contained `file_predictions_list`.
+        """Check if `file_predictions_list` contains `filename`.
 
         Args:
             filename (str): Filename to check.
