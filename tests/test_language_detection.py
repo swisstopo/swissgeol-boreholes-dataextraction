@@ -6,8 +6,8 @@ import pytest
 from swissgeol_doc_processing.utils.language_detection import detect_language_of_document, detect_language_of_text
 
 ENGLISH_GERMAN_TEXT = (
-    "Dies ist ein Test zur Überprüfung der Textsprache. This is a test to check text language. "
-    "However, most of this text is written in english and not in german"
+    "Dies ist ein Test zur Überprüfung der Textsprache. This is a test to check text language detection. "
+    "While part of this text is written in german, most of it is written in english."
 )
 GERMAN_TEXT = "Dies ist ein einfaches deutsches Dokument."
 ENGLISH_TEXT = "This is a simple English document."
@@ -78,6 +78,6 @@ def test_detect_language_of_document(
     """
     doc = pymupdf.open()
     page = doc.new_page()
-    page.insert_text((50, 50), text)
+    page.insert_textbox((50, 50, 500, 1000), text)
 
     assert detect_language_of_document(doc, default_language, supported_languages) == expected

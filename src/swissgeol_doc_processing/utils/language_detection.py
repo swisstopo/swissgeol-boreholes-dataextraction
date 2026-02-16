@@ -5,7 +5,7 @@ import re
 import pymupdf
 from fast_langdetect import LangDetectConfig, LangDetector
 
-# Define set of segments for context window
+# Define the language detection mpdule (build it once)
 config = LangDetectConfig(max_input_length=None)
 detector = LangDetector(config)
 
@@ -47,7 +47,7 @@ def detect_language_of_text(
     text: str,
     default_language: str,
     supported_languages: list[str],
-    context_window: int = 12,
+    context_window: int = 10,
     n_windows: int = 5,
 ) -> str:
     """Detects the language of a text.
@@ -59,7 +59,7 @@ def detect_language_of_text(
         text (str): The text to detect the language of.
         default_language (str): The default language to use if the language detection fails.
         supported_languages (list[str]): A list of supported languages.
-        context_window (int): Size of context window for text detection. Default to 12 (80 characters on average).
+        context_window (int): Size of context window for text detection. Default to 10 (80 characters on average).
         n_windows (int): Number of context windows for language detection. Defaults to 5.
 
     Returns:
