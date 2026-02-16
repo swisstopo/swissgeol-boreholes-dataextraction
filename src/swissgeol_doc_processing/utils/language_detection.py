@@ -1,5 +1,7 @@
 """This module contains functionalities for language detection of a document."""
 
+import re
+
 import pymupdf
 from fast_langdetect import LangDetectConfig, LangDetector
 
@@ -41,32 +43,45 @@ def detect_language_of_text(
     text: str,
     default_language: str,
     supported_languages: list,
-    context_window: int = 80,
+    context_window: int = 12,
     n_windows: int = 5,
 ) -> str:
     """Detects the language of a text.
+
+    The context window is based on the number of words to sample. If the number of context window is larger
+    than the number of possible non overlapping interval, the number of windows is reduced.
 
     Args:
         text (str): The text to detect the language of.
         default_language (str): The default language to use if the language detection fails.
         supported_languages (list): A list of supported languages.
-        context_window (int): Size of context window for text detection.
+        context_window (int): Size of context window for text detection. Default to 12 (80 charcters on average).
         n_windows (int): Number of context windows for language detection. Defaults to 5.
 
     Returns:
         str: The detected language of the document. One of supported_languages.
     """
     # Define set of segements for context window
-    config = LangDetectConfig(max_input_length=context_window)
+    config = LangDetectConfig(max_input_length=None)
     detector = LangDetector(config)
-    bins_size = len(text) // n_windows
 
-    # Perform language detection on windows and extract top-1 languages
+    # Normalize spaces and split words
+    text_words = re.sub(" +", " ", text.strip()).split(" ")
+
+    # Ensure windows do not overlap
+    n_windows = min(n_windows, len(text_words) // context_window)
+    bins_size = len(text_words) // n_windows
+
+    # Perform language detection on windows and extract top-1 languages.
+    # detector.detect Always returns a list of candidates ordered by score.
     languages = [
         detector.detect(
-            text=text[i * bins_size : min(i * bins_size + context_window, len(text))],
-            k=1,  # Return only top 1 lang
-            model="lite",  # Lite model to speed up
+            # Merge words from the i-th window to form text
+            " ".join(text_words[i * bins_size : min(i * bins_size + context_window, len(text_words))]),
+            # Return only top 1 lang
+            k=1,
+            # Lite model to speed up
+            model="lite",
         )[0].get("lang", "")
         for i in range(n_windows)
     ]
