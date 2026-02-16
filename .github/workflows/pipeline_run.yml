@@ -9,19 +9,19 @@ jobs:
   pipeline_run:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-    - name: Create Environment and run pipeline
-      shell: bash
-      run: |
-        python -m pip install --upgrade pip
-        python -m venv env
-        source env/bin/activate
-        pip install -e .
-        echo "Running pipeline"
-        boreholes-extract-all -l -i example/example_borehole_profile.pdf -o example/ -p example/predictions.json -m example/metadata.json -g example/example_groundtruth.json -pa all
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Create Environment and run pipeline
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m venv env
+          source env/bin/activate
+          pip install -e .
+          echo "Running pipeline"
+          boreholes-extract-all -l -i example/example_borehole_profile.pdf -o example/ -p example/predictions.json -m example/metadata.json -g example/example_groundtruth.json -pa all
 
-        echo "Running scoring script"
-        boreholes-score --ground-truth-path example/example_groundtruth.json --predictions-path example/predictions.json --no-mlflow-tracking
+          echo "Running scoring script"
+          boreholes-score --ground-truth-path example/example_groundtruth.json --predictions-path example/predictions.json
