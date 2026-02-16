@@ -16,8 +16,6 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
-
 
 def detect_lines_lsd(page: pymupdf.Page, scale_factor=2, lsd_params=None) -> list[Line]:
     """Given a file path, detect lines in the pdf using the Line Segment Detector (LSD) algorithm.

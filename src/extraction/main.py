@@ -1,6 +1,6 @@
 """This module contains the main pipeline for the boreholes data extraction."""
 
-import os
+import logging
 from pathlib import Path
 
 import click
@@ -12,9 +12,7 @@ from extraction.utils.benchmark_utils import configure_logging
 from swissgeol_doc_processing.utils.file_utils import get_data_path, read_params
 
 load_dotenv()
-
-
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
+logger = logging.getLogger(__name__)
 
 matching_params = read_params("matching_params.yml")
 line_detection_params = read_params("line_detection_params.yml")
@@ -101,6 +99,13 @@ def common_options(f):
         default=False,
         help="Whether to enable matching parameters analytics. Defaults to False.",
     )(f)
+    f = click.option(
+        "-r",
+        "--resume",
+        is_flag=True,
+        default=False,
+        help="Whether to resume extraction. Deaults to False.",
+    )(f)
     return f
 
 
@@ -129,10 +134,13 @@ def click_pipeline(
     csv: bool = False,
     matching_analytics: bool = False,
     part: str = "all",
+    resume: bool = False,
     benchmarks: tuple[str, ...] = (),
 ):
     """Run the boreholes data extraction pipeline."""
+    # Setup logging (same for all)
     configure_logging()
+
     # --- Multi-benchmark mode ---
     if benchmarks:
         specs = [parse_benchmark_spec(b) for b in benchmarks]
@@ -145,32 +153,30 @@ def click_pipeline(
             draw_tables=draw_tables,
             draw_strip_logs=draw_strip_logs,
             csv=csv,
+            resume=resume,
             matching_analytics=matching_analytics,
             part=part,
-            mlflow_tracking=mlflow_tracking,
-            line_detection_params=line_detection_params,
-            matching_params=matching_params,
         )
-        return
-
     # --- Single-benchmark mode ---
-    if input_directory is None:
-        raise click.BadParameter("Missing -i/--input-directory. Provide it, or use one or more --benchmark specs.")
-    """Run the boreholes data extraction pipeline."""
-    start_pipeline(
-        input_directory=input_directory,
-        ground_truth_path=ground_truth_path,
-        out_directory=out_directory,
-        predictions_path=predictions_path,
-        metadata_path=metadata_path,
-        skip_draw_predictions=skip_draw_predictions,
-        draw_lines=draw_lines,
-        draw_tables=draw_tables,
-        draw_strip_logs=draw_strip_logs,
-        csv=csv,
-        matching_analytics=matching_analytics,
-        part=part,
-    )
+    else:
+        # If no multi-benchmarking, enforce -i argument
+        if input_directory is None:
+            raise click.BadParameter("Missing -i/--input-directory. Provide it, or use one or more --benchmark specs.")
+        start_pipeline(
+            input_directory=input_directory,
+            ground_truth_path=ground_truth_path,
+            out_directory=out_directory,
+            predictions_path=predictions_path,
+            metadata_path=metadata_path,
+            skip_draw_predictions=skip_draw_predictions,
+            draw_lines=draw_lines,
+            draw_tables=draw_tables,
+            draw_strip_logs=draw_strip_logs,
+            csv=csv,
+            resume=resume,
+            matching_analytics=matching_analytics,
+            part=part,
+        )
 
 
 @click.command()
@@ -183,6 +189,10 @@ def click_pipeline_metadata(
     metadata_path: Path,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
+    draw_tables: bool = False,
+    draw_strip_logs: bool = False,
+    csv: bool = False,
+    resume: bool = False,
     matching_analytics: bool = False,
 ):
     """Run only the metadata part of the pipeline."""
@@ -194,6 +204,10 @@ def click_pipeline_metadata(
         metadata_path=metadata_path,
         skip_draw_predictions=skip_draw_predictions,
         draw_lines=draw_lines,
+        draw_tables=draw_tables,
+        draw_strip_logs=draw_strip_logs,
+        csv=csv,
+        resume=resume,
         matching_analytics=matching_analytics,
         part="metadata",
     )

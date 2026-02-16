@@ -48,9 +48,6 @@
             "type": "debugpy",
             "request": "launch",
             "module": "src.extraction.evaluation.benchmark.score",
-            "args": [
-                "--no-mlflow-tracking"
-            ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
             "python": "${workspaceFolder}/env/bin/python3"
