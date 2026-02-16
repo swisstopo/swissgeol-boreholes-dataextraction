@@ -80,6 +80,14 @@ def common_options(f):
         default="uscs",
         help="The classification system used to classify the data.",
     )(f)
+    f = click.option(
+        "-r",
+        "--resume",
+        is_flag=True,
+        default=False,
+        help="Whether to resume previous run. Defaults to False.",
+    )(f)
+
     return f
 
 
@@ -102,6 +110,7 @@ def click_pipeline(
     classifier_type: str,
     model_path: Path | None,
     classification_system: str,
+    resume: bool,
     benchmarks: tuple[str, ...] = (),
 ):
     """Command line interface for the classification pipeline (single or multi-benchmark)."""
@@ -116,6 +125,7 @@ def click_pipeline(
             classifier_type=classifier_type,
             model_path=model_path,
             classification_system=classification_system,
+            resume=resume,
         )
         return
 
@@ -128,6 +138,7 @@ def click_pipeline(
         ground_truth_path=ground_truth_path,
         out_directory=out_directory,
         out_directory_bedrock=out_directory_bedrock,
+        predictions_path=out_directory / "class_predictions.json",
         file_subset_directory=file_subset_directory,
         classifier_type=classifier_type,
         model_path=model_path,

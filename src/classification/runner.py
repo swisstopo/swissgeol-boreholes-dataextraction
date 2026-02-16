@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -22,7 +23,13 @@ from classification.utils.data_utils import (
     write_predictions,
 )
 from classification.utils.file_utils import read_params
-from utils.benchmark_utils import _parent_input_directory_key, _short_metric_key
+from utils.benchmark_utils import (
+    _parent_input_directory_key,
+    _short_metric_key,
+    delete_temporary,
+    read_mlflow_runid,
+    write_mlflow_runid,
+)
 from utils.mlflow_tracking import mlflow
 
 logger = logging.getLogger(__name__)
@@ -86,27 +93,44 @@ def _finalize_overall_summary(
 
 
 def setup_mlflow_tracking(
+    *,
+    run_id: str | None,
     file_path: Path | None,
     out_directory: Path,
     file_subset_directory: Path | None,
     experiment_name: str = "Layer descriptions classification",
-) -> None:
+    runname: str | None = None,
+    nested: bool = False,
+) -> str:
     """Set up MLFlow tracking.
 
     Args:
+        run_id (str): Existing run ID to resume, or None to start a new run.
         file_path (Path): The path to the input file.
         out_directory (Path): The output directory.
         file_subset_directory (Path | None): The path to the subset directory.
         experiment_name (str): The MLflow experiment name.
+        runname (str | None): The MLflow run name. If None, MLflow will auto-generate a name.
+        nested (bool, optional): Indicate if the current run is nested.
     """
+    if not mlflow:
+        raise ValueError("Tracking is not activated")
     mlflow.set_experiment(experiment_name)
-    if mlflow.active_run() is None:
-        mlflow.start_run()
+    # only start a run if none is active
+    try:
+        mlflow.start_run(run_name=runname, run_id=run_id, nested=nested)
+    except mlflow.MlflowException:
+        mlflow.start_run(run_name=runname, nested=nested)
+        logger.warning(f"Unable to resume run with ID: {mlflow.active_run().info.run_id}, start new one.")
+    # if mlflow.active_run() is None:
+    # mlflow.start_run(run_name=run_name, nested=nested)
     if file_path:
         mlflow.set_tag("json file_path", str(file_path))
     if file_subset_directory:
         mlflow.set_tag("file_subset_directory", str(file_subset_directory))
     mlflow.set_tag("out_directory", str(out_directory))
+
+    return mlflow.active_run().info.run_id
 
 
 def _setup_mlflow_parent_run(
@@ -114,30 +138,36 @@ def _setup_mlflow_parent_run(
     out_directory: Path,
     benchmarks: Sequence[BenchmarkSpec],
     experiment_name: str = "Layer descriptions classification",
-) -> bool:
+    runid: str | None = None,
+    runname: str | None = None,
+) -> str:
     """Start the parent MLflow run (multi-benchmark) and log global params once.
 
     Args:
         out_directory (Path): The output directory.
         benchmarks (Sequence[BenchmarkSpec]): The list of benchmark specifications.
         experiment_name: (str) The MLflow experiment name.
+        runid (str, optional): Run id to resume if any. Defaults to None.
+        runname (str, optional): Run name for MLflow. Defaults to None.
 
     Returns:
-        bool: True if a parent run was started and must be closed by the caller.
+        str: The run ID of the parent MLflow run.
     """
     if not mlflow:
-        return False
+        raise ValueError("Tracking is not activated")
 
-    setup_mlflow_tracking(
+    runid = setup_mlflow_tracking(
         file_path=_parent_input_directory_key([Path(b.file_path) for b in benchmarks]),
         out_directory=out_directory,
         file_subset_directory=None,
         experiment_name=experiment_name,
+        run_id=runid,
+        runname=runname,
     )
     mlflow.set_tag("run_type", "multi_benchmark")
     mlflow.set_tag("benchmarks", ",".join([b.name for b in benchmarks]))
 
-    return True
+    return runid
 
 
 def log_ml_flow_infos(
@@ -196,11 +226,14 @@ def start_pipeline(
     ground_truth_path: Path,
     out_directory: Path,
     out_directory_bedrock: Path,
+    predictions_path: Path,
     file_subset_directory: Path,
     classifier_type: str,
     model_path: Path,
     classification_system: str,
-    mlflow_setup: bool = True,
+    resume: bool = False,
+    runname: str | None = None,
+    is_nested: bool = False,
 ) -> ClassificationBenchmarkSummary | None:
     """Main pipeline to classify the layer's soil descriptions.
 
@@ -209,12 +242,23 @@ def start_pipeline(
         ground_truth_path (Path): Path to the ground truth file, if file_path is the predictions.
         out_directory (Path): Path to output directory.
         out_directory_bedrock (Path): Path to output directory for bedrock API files.
+        predictions_path (Path): Path to the file where predictions will be stored.
         file_subset_directory (Path): Path to the directory containing the file whose names are used.
         classifier_type (str): The classifier type to use.
         model_path (Path): Path to the trained model.
         classification_system (str): The classification system used to classify the data.
-        mlflow_setup (bool): Whether to set up MLflow tracking in this function.
+        resume (bool, optional): Resume previous run if available. Defaults to false.
+        runname (str, optional): Run name for MLflow. Defaults to None.
+        is_nested (bool, optional): If True, indicates this is a nested run (called from multi benchmark pipeline).
     """
+    predictions_path.parent.mkdir(parents=True, exist_ok=True)
+    predictions_path_tmp = predictions_path.parent / (predictions_path.name + ".tmp")
+    mlflow_runid_tmp = predictions_path.parent / "mlflow_runid.json.tmp"
+
+    # Clean old run if no resume
+    if not resume:
+        delete_temporary(predictions_path_tmp)
+
     if ground_truth_path and file_subset_directory:
         logger.warning(
             "The provided subset directory will be ignored because descriptions are being loaded from the prediction "
@@ -226,8 +270,18 @@ def start_pipeline(
         classification_system.lower()
     )
 
-    if mlflow and mlflow_setup:
-        setup_mlflow_tracking(file_path, out_directory, file_subset_directory)
+    if mlflow:
+        runid = read_mlflow_runid(str(mlflow_runid_tmp)) if resume else None
+        runid = setup_mlflow_tracking(
+            run_id=runid,
+            file_path=file_path,
+            out_directory=out_directory,
+            file_subset_directory=file_subset_directory,
+            nested=is_nested,
+            runname=runname,
+        )
+        # Save current run id
+        write_mlflow_runid(filename=mlflow_runid_tmp, runid=runid)
 
     logger.info(
         f"Loading data from {file_path}" + (f" and ground truth from {ground_truth_path}" if ground_truth_path else "")
@@ -237,6 +291,8 @@ def start_pipeline(
     )
     if not layer_descriptions:
         logger.warning("No data to classify.")
+        if mlflow:
+            mlflow.end_run()
         return None
 
     classifier = ClassifierFactory.create_classifier(
@@ -251,6 +307,9 @@ def start_pipeline(
 
     # write predictions
     write_predictions(layer_descriptions, out_directory)
+    final_pred = out_directory / "class_predictions.json"
+    if final_pred.exists():
+        shutil.copy(final_pred, predictions_path_tmp)
 
     # centralize evaluation + per-class artifacts in score module
     summary = evaluate_all_predictions(
@@ -262,11 +321,11 @@ def start_pipeline(
 
     # If evaluate_all_predictions returned None, stop here
     if summary is None:
-        if mlflow and mlflow_setup:
+        if mlflow:
             mlflow.end_run()
         return None
 
-    # Fill the fields that your current evaluate_all_predictions() left as placeholders
+    # Fill the fields that are not set by evaluate_all_predictions but are relevant for the classification summary
     summary = summary.model_copy(
         update={
             "file_subset_directory": str(file_subset_directory) if file_subset_directory else None,
@@ -276,10 +335,19 @@ def start_pipeline(
         }
     )
 
-    if mlflow:
+    if mlflow and summary is not None:
         log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier, str(classification_system_cls))
 
-    if mlflow and mlflow_setup:
+    # finalize: move tmp -> final, cleanup if not nested
+    if predictions_path_tmp.exists():
+        shutil.copy(predictions_path_tmp, final_pred)
+
+    # Clean temporary files only if not nested
+    if not is_nested:
+        delete_temporary(predictions_path_tmp)
+        delete_temporary(mlflow_runid_tmp)
+
+    if mlflow:
         mlflow.end_run()
 
     return summary
@@ -292,6 +360,7 @@ def start_multi_benchmark(
     model_path: Path | None,
     classification_system: str,
     out_directory_bedrock: Path,
+    resume: bool = False,
 ):
     """Run multiple classification benchmarks in one execution.
 
@@ -302,6 +371,7 @@ def start_multi_benchmark(
         model_path (Path | None): Path to the trained model to use for all benchmarks.
         classification_system (str): The classification system to use for all benchmarks.
         out_directory_bedrock (Path): The root output directory for bedrock API files.
+        resume (bool, optional): Resume previous run if available. Defaults to false.
     """
     multi_root = out_directory / "multi"
     multi_root.mkdir(parents=True, exist_ok=True)
@@ -309,11 +379,20 @@ def start_multi_benchmark(
     multi_bedrock_root = out_directory_bedrock / "multi"
     multi_bedrock_root.mkdir(parents=True, exist_ok=True)
 
-    _setup_mlflow_parent_run(
-        out_directory=out_directory,
-        benchmarks=benchmarks,
-        experiment_name="Layer descriptions classification",
-    )
+    parent_runid_tmp = multi_root / "mlflow_parent_runid.json.tmp"
+
+    if mlflow:
+        # Load run id if existing, otherwise None
+        parent_runid = read_mlflow_runid(str(parent_runid_tmp)) if resume else None
+        parent_runid = _setup_mlflow_parent_run(
+            runid=parent_runid,
+            out_directory=multi_root,
+            benchmarks=benchmarks,
+            experiment_name="Layer descriptions classification",
+            # nested = False
+        )
+        # Save current run id
+        write_mlflow_runid(str(parent_runid_tmp), parent_runid)
 
     overall_results: list[tuple[str, ClassificationBenchmarkSummary | None]] = []
 
@@ -327,47 +406,59 @@ def start_multi_benchmark(
             bench_out_bedrock = multi_bedrock_root / spec.name
             bench_out_bedrock.mkdir(parents=True, exist_ok=True)
 
-            if mlflow:
-                mlflow.start_run(run_name=spec.name, nested=True)
-                setup_mlflow_tracking(
-                    file_path=spec.file_subset_directory,
-                    out_directory=out_directory,
-                    file_subset_directory=None,
-                )
+            # if mlflow:
+            #     mlflow.start_run(run_name=spec.name, nested=True)
+            #     setup_mlflow_tracking(
+            #         file_path=spec.file_subset_directory,
+            #         out_directory=out_directory,
+            #         file_subset_directory=None,
+            #     )
+            bench_predictions_path = bench_out / "class_predictions.json"
 
             summary = start_pipeline(
                 file_path=spec.file_path,
                 ground_truth_path=spec.ground_truth_path,
                 out_directory=bench_out,
                 out_directory_bedrock=bench_out_bedrock,
+                predictions_path=bench_predictions_path,
                 file_subset_directory=spec.file_subset_directory,
                 classifier_type=classifier_type,
                 model_path=model_path,
                 classification_system=classification_system,
-                mlflow_setup=False,  # multi-benchmark owns the run lifecycle
+                resume=resume,
+                runname=spec.name,
+                is_nested=True,
             )
 
             overall_results.append((spec.name, summary))
 
-            # Per-benchmark summary artifact
-            bench_summary_path = bench_out / "benchmark_summary.json"
-            with open(bench_summary_path, "w", encoding="utf8") as f:
-                json.dump(summary.model_dump() if summary else None, f, ensure_ascii=False, indent=2)
+            # # Per-benchmark summary artifact
+            # bench_summary_path = bench_out / "benchmark_summary.json"
+            # with open(bench_summary_path, "w", encoding="utf8") as f:
+            #     json.dump(summary.model_dump() if summary else None, f, ensure_ascii=False, indent=2)
 
-            if mlflow:
-                mlflow.log_artifact(str(bench_summary_path), artifact_path="summary")
+            # if mlflow:
+            #     mlflow.log_artifact(str(bench_summary_path), artifact_path="summary")
 
-                if summary is not None:
-                    if hasattr(summary, "metrics_flat"):
-                        mlflow.log_metrics(summary.metrics_flat(short=True))
+            #     if summary is not None:
+            #         if hasattr(summary, "metrics_flat"):
+            #             mlflow.log_metrics(summary.metrics_flat(short=True))
 
-                    else:
-                        # fallback: log raw metrics dict
-                        mlflow.log_metrics({str(key): float(value) for key, value in (summary.metrics or {}).items()})
+            #         else:
+            #             # fallback: log raw metrics dict
+            #             mlflow.log_metrics({str(key): float(value) for key,
+            #               value in (summary.metrics or {}).items()})
 
-                mlflow.end_run()
+            #     mlflow.end_run()
 
-        _finalize_overall_summary(overall_results=overall_results, multi_root=multi_root, mlflow_tracking=mlflow)
+        _finalize_overall_summary(overall_results=overall_results, multi_root=multi_root)
+
     finally:
-        if mlflow.active_run() is not None:
-            mlflow.end_run()
+        delete_temporary(parent_runid_tmp)
+        delete_temporary(multi_root / "*" / "*.tmp")  # cleanup child tmp files
+
+        if mlflow and mlflow.active_run() is not None:
+            mlflow.end_run()  # ends parent run
+    # finally:
+    #     if mlflow.active_run() is not None:
+    #         mlflow.end_run()
