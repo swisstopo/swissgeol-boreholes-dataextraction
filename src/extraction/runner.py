@@ -123,7 +123,7 @@ def setup_mlflow_tracking(
 
     # only start a run if none is active
     if mlflow.active_run() is None:
-        mlflow.start_run(run_name="V3sidebar_focus")
+        mlflow.start_run()
 
     mlflow.set_tag("input_directory", str(input_directory))
     mlflow.set_tag("ground_truth_path", str(ground_truth_path))
