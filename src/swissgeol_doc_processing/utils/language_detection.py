@@ -68,8 +68,9 @@ def detect_language_of_text(
     # Normalize spaces and split words
     text_words = re.sub(" +", " ", text.strip()).split(" ")
 
-    # Ensure windows do not overlap
-    n_windows = min(n_windows, len(text_words) // context_window)
+    # Ensure at least a single window exists and do not overlap with others
+    n_window_min = max(len(text_words) // context_window, 1)
+    n_windows = min(n_windows, n_window_min)
     bins_size = len(text_words) // n_windows
 
     # Perform language detection on windows and extract top-1 languages.
