@@ -11,7 +11,7 @@ from classification import DATAPATH
 from classification.evaluation.benchmark.spec import parse_benchmark_spec
 from classification.runner import start_multi_benchmark, start_pipeline
 from classification.utils.file_utils import read_params
-from utils.benchmark_utils import configure_logging
+from core.benchmark_utils import configure_logging
 
 load_dotenv()
 classification_params = read_params("classification_params.yml")

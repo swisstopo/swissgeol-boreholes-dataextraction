@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from classification.evaluation.evaluate import evaluate
 from classification.utils.data_utils import write_per_language_per_class_predictions
-from utils.mlflow_tracking import mlflow
+from core.mlflow_tracking import mlflow
 
 logger = logging.getLogger(__name__)
 

@@ -7,10 +7,10 @@ from pathlib import Path
 import click
 from dotenv import load_dotenv
 
+from core.benchmark_utils import configure_logging
 from extraction.evaluation.benchmark.spec import parse_benchmark_spec
 from extraction.runner import start_pipeline, start_pipeline_benchmark
 from swissgeol_doc_processing.utils.file_utils import get_data_path, read_params
-from utils.benchmark_utils import configure_logging
 
 load_dotenv()
 

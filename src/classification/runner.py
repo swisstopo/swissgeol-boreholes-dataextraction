@@ -23,14 +23,14 @@ from classification.utils.data_utils import (
     write_predictions,
 )
 from classification.utils.file_utils import read_params
-from utils.benchmark_utils import (
+from core.benchmark_utils import (
     _parent_input_directory_key,
     _short_metric_key,
     delete_temporary,
     read_mlflow_runid,
     write_mlflow_runid,
 )
-from utils.mlflow_tracking import mlflow
+from core.mlflow_tracking import mlflow
 
 logger = logging.getLogger(__name__)
 
