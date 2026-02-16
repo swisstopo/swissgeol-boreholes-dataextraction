@@ -122,8 +122,6 @@ def setup_mlflow_tracking(
     except mlflow.MlflowException:
         mlflow.start_run(run_name=runname, nested=nested)
         logger.warning(f"Unable to resume run with ID: {mlflow.active_run().info.run_id}, start new one.")
-    # if mlflow.active_run() is None:
-    # mlflow.start_run(run_name=run_name, nested=nested)
     if file_path:
         mlflow.set_tag("json file_path", str(file_path))
     if file_subset_directory:
@@ -389,76 +387,41 @@ def start_multi_benchmark(
             out_directory=multi_root,
             benchmarks=benchmarks,
             experiment_name="Layer descriptions classification",
-            # nested = False
         )
         # Save current run id
         write_mlflow_runid(str(parent_runid_tmp), parent_runid)
 
     overall_results: list[tuple[str, ClassificationBenchmarkSummary | None]] = []
 
-    try:
-        for spec in benchmarks:
-            logger.info("Running benchmark: %s", spec.name)
+    # try:
+    for spec in benchmarks:
+        logger.info("Running benchmark: %s", spec.name)
 
-            bench_out = multi_root / spec.name
-            bench_out.mkdir(parents=True, exist_ok=True)
+        bench_out = multi_root / spec.name
+        bench_out.mkdir(parents=True, exist_ok=True)
 
-            bench_out_bedrock = multi_bedrock_root / spec.name
-            bench_out_bedrock.mkdir(parents=True, exist_ok=True)
+        bench_out_bedrock = multi_bedrock_root / spec.name
+        bench_out_bedrock.mkdir(parents=True, exist_ok=True)
+        bench_predictions_path = bench_out / "class_predictions.json"
 
-            # if mlflow:
-            #     mlflow.start_run(run_name=spec.name, nested=True)
-            #     setup_mlflow_tracking(
-            #         file_path=spec.file_subset_directory,
-            #         out_directory=out_directory,
-            #         file_subset_directory=None,
-            #     )
-            bench_predictions_path = bench_out / "class_predictions.json"
+        summary = start_pipeline(
+            file_path=spec.file_path,
+            ground_truth_path=spec.ground_truth_path,
+            out_directory=bench_out,
+            out_directory_bedrock=bench_out_bedrock,
+            predictions_path=bench_predictions_path,
+            file_subset_directory=spec.file_subset_directory,
+            classifier_type=classifier_type,
+            model_path=model_path,
+            classification_system=classification_system,
+            resume=resume,
+            runname=spec.name,
+            is_nested=True,
+        )
 
-            summary = start_pipeline(
-                file_path=spec.file_path,
-                ground_truth_path=spec.ground_truth_path,
-                out_directory=bench_out,
-                out_directory_bedrock=bench_out_bedrock,
-                predictions_path=bench_predictions_path,
-                file_subset_directory=spec.file_subset_directory,
-                classifier_type=classifier_type,
-                model_path=model_path,
-                classification_system=classification_system,
-                resume=resume,
-                runname=spec.name,
-                is_nested=True,
-            )
+        overall_results.append((spec.name, summary))
 
-            overall_results.append((spec.name, summary))
+    _finalize_overall_summary(overall_results=overall_results, multi_root=multi_root)
 
-            # # Per-benchmark summary artifact
-            # bench_summary_path = bench_out / "benchmark_summary.json"
-            # with open(bench_summary_path, "w", encoding="utf8") as f:
-            #     json.dump(summary.model_dump() if summary else None, f, ensure_ascii=False, indent=2)
-
-            # if mlflow:
-            #     mlflow.log_artifact(str(bench_summary_path), artifact_path="summary")
-
-            #     if summary is not None:
-            #         if hasattr(summary, "metrics_flat"):
-            #             mlflow.log_metrics(summary.metrics_flat(short=True))
-
-            #         else:
-            #             # fallback: log raw metrics dict
-            #             mlflow.log_metrics({str(key): float(value) for key,
-            #               value in (summary.metrics or {}).items()})
-
-            #     mlflow.end_run()
-
-        _finalize_overall_summary(overall_results=overall_results, multi_root=multi_root)
-
-    finally:
-        delete_temporary(parent_runid_tmp)
-        delete_temporary(multi_root / "*" / "*.tmp")  # cleanup child tmp files
-
-        if mlflow and mlflow.active_run() is not None:
-            mlflow.end_run()  # ends parent run
-    # finally:
-    #     if mlflow.active_run() is not None:
-    #         mlflow.end_run()
+    delete_temporary(parent_runid_tmp)
+    delete_temporary(multi_root / "*" / "*.tmp")  # cleanup child tmp files
