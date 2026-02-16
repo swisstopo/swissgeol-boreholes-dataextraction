@@ -22,7 +22,7 @@ ITALIAN_TEXT = "Questo è un semplice documento italiano."
         pytest.param(ITALIAN_TEXT, "de", ["de", "en"], 5, 1, "de", id="text-it-default-de"),
         pytest.param(ITALIAN_TEXT, "de", ["de", "en", "it"], 5, 1, "it", id="text-it"),
         pytest.param(ENGLISH_GERMAN_TEXT, "de", ["de", "en"], 5, 1, "de", id="text-multi-de-single"),
-        pytest.param(ENGLISH_GERMAN_TEXT, "de", ["de", "en"], 5, 5, "en", id="text-multi-en-mutli"),
+        pytest.param(ENGLISH_GERMAN_TEXT, "de", ["de", "en"], 5, 5, "en", id="text-multi-en-multi"),
     ],
 )
 def test_predict_language(

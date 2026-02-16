@@ -5,6 +5,10 @@ import re
 import pymupdf
 from fast_langdetect import LangDetectConfig, LangDetector
 
+# Define set of segments for context window
+config = LangDetectConfig(max_input_length=None)
+detector = LangDetector(config)
+
 
 def extract_text_from_document(doc: pymupdf.Document) -> str:
     """Extracts and processes text from a document.
@@ -24,13 +28,13 @@ def extract_text_from_document(doc: pymupdf.Document) -> str:
     return "".join(e for e in text if (e.isalnum() or e.isspace()) and not e.isdigit())
 
 
-def detect_language_of_document(doc: pymupdf.Document, default_language: str, supported_languages: list) -> str:
+def detect_language_of_document(doc: pymupdf.Document, default_language: str, supported_languages: list[str]) -> str:
     """Detects the language of a document.
 
     Args:
         doc (pymupdf.Document): The document to detect the language of.
         default_language (str): The default language to use if the language detection fails.
-        supported_languages (list): A list of supported languages.
+        supported_languages (list[str]): A list of supported languages.
 
     Returns:
         str: The detected language of the document. One of supported_languages.
@@ -42,7 +46,7 @@ def detect_language_of_document(doc: pymupdf.Document, default_language: str, su
 def detect_language_of_text(
     text: str,
     default_language: str,
-    supported_languages: list,
+    supported_languages: list[str],
     context_window: int = 12,
     n_windows: int = 5,
 ) -> str:
@@ -54,17 +58,13 @@ def detect_language_of_text(
     Args:
         text (str): The text to detect the language of.
         default_language (str): The default language to use if the language detection fails.
-        supported_languages (list): A list of supported languages.
-        context_window (int): Size of context window for text detection. Default to 12 (80 charcters on average).
+        supported_languages (list[str]): A list of supported languages.
+        context_window (int): Size of context window for text detection. Default to 12 (80 characters on average).
         n_windows (int): Number of context windows for language detection. Defaults to 5.
 
     Returns:
         str: The detected language of the document. One of supported_languages.
     """
-    # Define set of segements for context window
-    config = LangDetectConfig(max_input_length=None)
-    detector = LangDetector(config)
-
     # Normalize spaces and split words
     text_words = re.sub(" +", " ", text.strip()).split(" ")
 
@@ -74,7 +74,7 @@ def detect_language_of_text(
     bins_size = len(text_words) // n_windows
 
     # Perform language detection on windows and extract top-1 languages.
-    # detector.detect Always returns a list of candidates ordered by score.
+    # detector.detect always returns a list of candidates ordered by score.
     languages = [
         detector.detect(
             # Merge words from the i-th window to form text
