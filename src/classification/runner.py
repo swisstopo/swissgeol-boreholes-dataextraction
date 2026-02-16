@@ -13,7 +13,11 @@ import pandas as pd
 
 from classification.classifiers.classifier import Classifier, ClassifierTypes
 from classification.classifiers.classifier_factory import ClassifierFactory
-from classification.evaluation.benchmark.score import ClassificationBenchmarkSummary, evaluate_all_predictions
+from classification.evaluation.benchmark.score import (
+    BenchmarkParams,
+    ClassificationBenchmarkSummary,
+    evaluate_all_predictions,
+)
 from classification.evaluation.benchmark.spec import BenchmarkSpec
 from classification.utils.classification_classes import ExistingClassificationSystems
 from classification.utils.data_loader import LayerInformation, prepare_classification_data
@@ -312,8 +316,14 @@ def start_pipeline(
     # centralize evaluation + per-class artifacts in score module
     summary = evaluate_all_predictions(
         layer_descriptions=layer_descriptions,
-        file_path=file_path,
-        ground_truth_path=ground_truth_path,
+        params=BenchmarkParams(
+            file_path=file_path,
+            ground_truth_path=ground_truth_path,
+            file_subset_directory=file_subset_directory,
+            classifier_type=classifier_type,
+            model_path=model_path,
+            classification_system=classification_system,
+        ),
         out_directory=out_directory,
     )
 
@@ -322,16 +332,6 @@ def start_pipeline(
         if mlflow:
             mlflow.end_run()
         return None
-
-    # Fill the fields that are not set by evaluate_all_predictions but are relevant for the classification summary
-    summary = summary.model_copy(
-        update={
-            "file_subset_directory": str(file_subset_directory) if file_subset_directory else None,
-            "classifier_type": classifier_type,
-            "model_path": str(model_path) if model_path else None,
-            "classification_system": classification_system,
-        }
-    )
 
     if mlflow and summary is not None:
         log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier, str(classification_system_cls))

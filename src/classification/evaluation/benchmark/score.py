@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -69,11 +70,22 @@ class ClassificationBenchmarkSummary(BaseModel):
         return out
 
 
+@dataclass(frozen=True)
+class BenchmarkParams:
+    """This class summarizes benchmark parameters which are needed for ClassificationBenchmarkSummary."""
+
+    file_path: Path
+    ground_truth_path: Path | None
+    file_subset_directory: Path | None
+    classifier_type: str
+    model_path: Path | None
+    classification_system: str
+
+
 def evaluate_all_predictions(
     *,
     layer_descriptions,
-    file_path: Path,
-    ground_truth_path: Path | None,
+    params: BenchmarkParams,
     out_directory: Path,
 ) -> ClassificationBenchmarkSummary | None:
     """Classification equivalent of extraction.score.evaluate_all_predictions().
@@ -83,8 +95,7 @@ def evaluate_all_predictions(
 
     Args:
         layer_descriptions (list[LayerInformation]): The list of layer descriptions that were classified.
-        file_path (Path): The path to the input file.
-        ground_truth_path (Path | None): The path to the ground truth file.
+        params (BenchmarkParams): The benchmark parameters.
         out_directory (Path): The output directory where evaluation artifacts are written.
 
     Returns:
@@ -124,13 +135,13 @@ def evaluate_all_predictions(
 
     # --- Return summary object ---
     return ClassificationBenchmarkSummary(
-        file_path=str(file_path),
-        ground_truth_path=str(ground_truth_path) if ground_truth_path else None,
-        file_subset_directory=None,  # set if you want
+        file_path=str(params.file_path),
+        ground_truth_path=str(params.ground_truth_path) if params.ground_truth_path else None,
+        file_subset_directory=str(params.file_subset_directory) if params.file_subset_directory else None,
         n_documents=len(layer_descriptions),
-        classifier_type="...",  # fill from caller
-        model_path=None,  # fill from caller
-        classification_system="...",  # fill from caller
+        classifier_type=params.classifier_type,
+        model_path=str(params.model_path) if params.model_path else None,
+        classification_system=params.classification_system,
         metrics={
             **classification_metrics.to_json(),
             **classification_metrics.to_json_per_class(),
