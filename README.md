@@ -245,7 +245,7 @@ fine-tune-bert -cf bert_config_uscs.yml
 The pipeline stores a checkpoint of the model after each epoch and logs training details in the `models` directory. The model name corresponds to the timestamp when training was launched.  
 
 
-# Further information 
+## Further information 
 [README.API_and_Docker.md](README.API_and_Docker.md) documents how to start the API server and how to build the API as a Docker Image. 
 [README.For_Developers.md](README.For_Developers.md) documents project structure and practical tools and best practices like pre-commit which may be usefull for developers. 
 [README.groundtruth-json.md](README.groundtruth-json.md) documents the expexted structure of the ground truth file needed for evaluation. 
