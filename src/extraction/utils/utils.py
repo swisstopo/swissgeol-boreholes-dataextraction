@@ -1,18 +1,14 @@
 """Utils for extraction pipeline and benchmarks."""
 
 import json
-import os
 from pathlib import Path
 
-from extraction.evaluation.benchmark.score import BenchmarkSummary
-
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
-if mlflow_tracking:
-    import mlflow
+from core.mlflow_tracking import mlflow
+from extraction.evaluation.benchmark.score import ExtractionBenchmarkSummary
 
 
 def log_metric_mlflow(
-    summary: BenchmarkSummary,
+    summary: ExtractionBenchmarkSummary,
     out_dir: Path,
     artifact_name: str = "benchmark_summary.json",
 ) -> None:

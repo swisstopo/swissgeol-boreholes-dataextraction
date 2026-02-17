@@ -1,24 +1,14 @@
 """This module contains the main pipeline for the classification of the layer's soil descriptions."""
 
-import logging
-import os
+# import logging
 from pathlib import Path
 
 import click
-from dotenv import load_dotenv
 
 from classification import DATAPATH
 from classification.evaluation.benchmark.spec import parse_benchmark_spec
 from classification.runner import start_multi_benchmark, start_pipeline
-from classification.utils.file_utils import read_params
 from core.benchmark_utils import configure_logging
-
-load_dotenv()
-classification_params = read_params("classification_params.yml")
-
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
-
-logger = logging.getLogger(__name__)
 
 
 def common_options(f):

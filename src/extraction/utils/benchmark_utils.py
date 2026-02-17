@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from core.mlflow_tracking import mlflow
-from extraction.evaluation.benchmark.score import BenchmarkSummary
+from extraction.evaluation.benchmark.score import ExtractionBenchmarkSummary
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 
 DEFAULT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
@@ -79,7 +79,7 @@ def _short_metric_key(k: str) -> str:
 
 
 def log_metric_mlflow(
-    summary: BenchmarkSummary,
+    summary: ExtractionBenchmarkSummary,
     out_dir: Path,
     artifact_name: str = "benchmark_summary.json",
 ) -> None:

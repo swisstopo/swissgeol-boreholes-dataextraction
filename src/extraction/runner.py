@@ -18,7 +18,7 @@ from tqdm import tqdm
 from core.mlflow_tracking import mlflow
 from extraction.annotations.draw import plot_prediction, plot_strip_logs, plot_tables
 from extraction.annotations.plot_utils import plot_lines, save_visualization
-from extraction.evaluation.benchmark.score import BenchmarkSummary, evaluate_all_predictions
+from extraction.evaluation.benchmark.score import ExtractionBenchmarkSummary, evaluate_all_predictions
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 from extraction.features.extract import extract_page
 from extraction.features.groundwater.groundwater_extraction import (
@@ -55,7 +55,7 @@ if mlflow:
 
 def _finalize_overall_summary(
     *,
-    overall_results: list[tuple[str, BenchmarkSummary | None]],
+    overall_results: list[tuple[str, ExtractionBenchmarkSummary | None]],
     multi_root: Path,
 ):
     """Write overall benchmark summary.
@@ -63,8 +63,8 @@ def _finalize_overall_summary(
     Also logs overall aggregate metrics + artifacts to MLflow on the parent run (if enabled).
 
     Args:
-        overall_results (list[tuple[str, BenchmarkSummary]]): List of tuples
-            containing (benchmark_name, BenchmarkSummary)
+        overall_results (list[tuple[str, ExtractionBenchmarkSummary]]): List of tuples
+            containing (benchmark_name, ExtractionBenchmarkSummary)
         multi_root (Path): Output path.
     """
     summary_path = multi_root / "overall_summary.csv"
@@ -471,7 +471,7 @@ def start_pipeline(
     part: str = "all",
     runname: str | None = None,
     is_nested: bool = False,
-) -> None | BenchmarkSummary:
+) -> None | ExtractionBenchmarkSummary:
     """Run the boreholes data extraction pipeline.
 
     The pipeline will extract material description of all found layers and assign them to the corresponding
@@ -499,7 +499,7 @@ def start_pipeline(
         is_nested (bool, optional): If True, indicates this is a nested run (called from benchmark pipeline).
 
     Returns:
-        BenchmarkSummary | None: Evaluation summary if ground truth is provided, otherwise None.
+        ExtractionBenchmarkSummary | None: Evaluation summary if ground truth is provided, otherwise None.
     """  # noqa: D301
     # Check that all given outputs exists
     out_directory.mkdir(exist_ok=True)

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import shutil
@@ -50,15 +49,6 @@ def _finalize_overall_summary(
 
     Also logs overall aggregate metrics + artifacts to MLflow on the parent run (if enabled).
     """
-    # --- JSON ---
-    summary_path = multi_root / "overall_summary.json"
-    with open(summary_path, "w", encoding="utf8") as f:
-        summary = [
-            {"benchmark": benchmark, "summary": summary.model_dump() if summary else None}
-            for benchmark, summary in overall_results
-        ]
-        json.dump(summary, f, ensure_ascii=False, indent=2)
-
     # --- CSV ---
     summary_csv_path = multi_root / "overall_summary.csv"
 
@@ -92,7 +82,6 @@ def _finalize_overall_summary(
         if pd.notna(total_docs):
             mlflow.log_metric("total_n_documents", float(total_docs))
 
-        mlflow.log_artifact(str(summary_path), artifact_path="summary")
         mlflow.log_artifact(str(summary_csv_path), artifact_path="summary")
 
 
