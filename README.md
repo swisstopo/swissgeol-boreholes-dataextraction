@@ -152,7 +152,7 @@ The script will source all PDFs from the specified directory and create PNG file
 
 Use `boreholes-extract-all --help` to see all options for the extraction script.
 
-To run the extraction pipeline on multiple datasets in one command and to receive an overview of all chilf runs on parent level,  you can run boreholes-extract-multi-benchmark`. 
+To run the extraction pipeline on multiple datasets in one command and to receive an overview of all chilf runs on parent level,  you can run `boreholes-extract-multi-benchmark`. 
 Use repeatable benchmark specs with syntax `"<name>:<input_path>:<ground_truth_path>"` , e.g. 
 ```python 
 "--benchmark",
@@ -202,12 +202,20 @@ The script will classify all given descriptions and write the predictions to the
 
 Run `boreholes-classify-descriptions --help` to see all available options.  
 
-To run the classificaton pipeline on multiple datasets in one command and to receive an overview of all chilf runs on parent level,  you can run boreholes-extract-multi-benchmark`. 
-Use repeatable benchmark specs with syntax `"<name>:<input_path>:<ground_truth_path>"` , e.g. 
+To run the classificaton pipeline on multiple datasets in one command and to receive an overview of all chilf runs on parent level, you can run `boreholes-classify-descriptions (multi, single-file).`or `Run boreholes-classify-predictions (multi, predictions+GT)`
+Use repeatable benchmark specs with syntax `"<name>:<file_path>:<subset_dir>"` or `"<name>:<predictions_path>:<ground_truth_path>"`respectively. 
+E.g. 
 ```python 
-"--benchmark",
-"zurich:data/zurich:data/zurich_ground_truth.json",
+"--benchmark", "val:data/geoquat_ground_truth.json:data/geoquat/validation",
+"--benchmark", "test:data/geoquat_ground_truth.json:data/geoquat/test",
 ```
+or 
+```python
+"--benchmark", "pred_geoquat:path_to_prediction/predictions.json:data/geoquat_ground_truth.json",
+"--benchmark", "pred_zurich:path_to_prediction/predictions.json:data/zurich_ground_truth.json",
+```
+The arguments `-c`, `-p`, and `-cs` are applicable as well. 
+Additionally, `-o`and `-ob`can be used to specify the ouput and bedrock output directories. 
 
 ---  
 
