@@ -5,7 +5,7 @@ import re
 import pymupdf
 from fast_langdetect import LangDetectConfig, LangDetector
 
-# Define the language detection mpdule (build it once)
+# Define the language detection module (build it once)
 config = LangDetectConfig(max_input_length=None)
 detector = LangDetector(config)
 
