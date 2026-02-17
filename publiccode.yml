@@ -1,0 +1,41 @@
+publiccodeYmlVersion: 0.5.0
+name: swissgeol-boreholes-dataextraction
+applicationSuite: swissgeol.ch
+url: https://github.com/swisstopo/swissgeol-boreholes-dataextraction/
+developmentStatus: development
+softwareType: standalone/backend
+organisation:
+  uri: https://ld.admin.ch/office/IV.1.5a
+  name: Bundesamt für Landestopografie (swisstopo)
+description:
+  en:
+    shortDescription: >-
+      Pipeline to extract structured data from borehole profiles in PDF files and
+      return extracted coordinates, depths, and material descriptions as JSON.
+    longDescription: >-
+      Boreholes Data Extraction is a pipeline to extract structured data from
+      borehole profiles in PDF files. Extracted properties (currently
+      coordinates, depths and associated material descriptions) are returned in
+      JSON format, and (optionally) visualized as PNG images.
+
+      The goal of the project is to automate the extraction of structured data
+      from borehole profiles as much as possible and to integrate it with the
+      boreholes.swissgeol.ch application (internal use at swisstopo).
+    features:
+      - Extract borehole coordinates from PDF profiles
+      - Extract depth intervals for lithological layers
+      - Extract material descriptions as plain text
+      - Export results as JSON (predictions.json) and optional PNG visualizations
+      - Provide a layer description classification pipeline based on BERT
+
+legal:
+  license: MIT
+maintenance:
+  type: community
+  contacts:
+    - name: Stijn Vermeeren
+      email: stijn.vermeeren@swisstopo.ch
+localisation:
+  localisationReady: false
+  availableLanguages:
+    - en
