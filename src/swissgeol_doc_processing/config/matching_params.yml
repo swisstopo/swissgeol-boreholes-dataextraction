@@ -6,6 +6,9 @@ min_block_clearance: 10
 left_line_length_threshold: 7
 duplicate_layer_threshold: 0.95
 min_num_layers: 2
+fallback_require_table: true
+fallback_allow_if_striplog: true
+fallback_min_table_height_ratio: 0.25
 affinity_params:
   a_above_b:
     importance: 5.0
