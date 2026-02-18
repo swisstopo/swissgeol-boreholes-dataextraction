@@ -100,7 +100,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self.analytics = analytics
         self.matching_params = matching_params
 
-    #### original ######
     def process_page(self) -> list[ExtractedBorehole]:
         """Process a single page of a pdf.
 
