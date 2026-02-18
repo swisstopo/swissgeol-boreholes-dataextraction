@@ -53,7 +53,7 @@ def write_mlflow_runid(filename: str, runid: str) -> None:
         json.dump(runid, file, ensure_ascii=False)
 
 
-def _relative_after_common_root(paths: Sequence[Path]) -> list[str]:
+def _relative_after_common_root_classification(paths: Sequence[Path]) -> list[str]:
     """Return relative paths after the longest common path prefix.
 
     Guard: if a path equals the common root (relative path == "."),
@@ -97,7 +97,7 @@ def _parent_input_directory_key(benchmarks: list[Path]) -> str:
 
     Return: str: group_key
     """
-    inputs = " | ".join(sorted(_relative_after_common_root(benchmarks)))
+    inputs = " | ".join(sorted(_relative_after_common_root_classification(benchmarks)))
     group_key = f"multi:{inputs}"
     return group_key
 

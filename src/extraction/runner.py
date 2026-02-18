@@ -6,7 +6,6 @@ import os
 import shutil
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager
-from glob import glob
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -15,6 +14,12 @@ import pandas as pd
 import pymupdf
 from tqdm import tqdm
 
+from core.benchmark_utils import (
+    _short_metric_key,
+    delete_temporary,
+    read_mlflow_runid,
+    write_mlflow_runid,
+)
 from core.mlflow_tracking import mlflow
 from extraction.annotations.draw import plot_prediction, plot_strip_logs, plot_tables
 from extraction.annotations.plot_utils import plot_lines, save_visualization
@@ -33,7 +38,7 @@ from extraction.features.predictions.overall_file_predictions import OverallFile
 from extraction.features.predictions.predictions import BoreholeListBuilder
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
-from extraction.utils.benchmark_utils import _parent_input_directory_key, _short_metric_key, log_metric_mlflow
+from extraction.utils.benchmark_utils import _parent_input_directory_key_extraction, log_metric_mlflow
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics, create_analytics
@@ -111,46 +116,6 @@ def write_json_predictions(filename: str, predictions: OverallFilePredictions) -
     """
     with open(filename, "w", encoding="utf8") as file:
         json.dump(predictions.to_json(), file, ensure_ascii=False)
-
-
-def delete_temporary(pattern: Path) -> None:
-    """Delete temporary files matching a glob pattern.
-
-    Only files ending with '.tmp' are deleted.
-
-    Args:
-        pattern (Path): Glob pattern to match files (e.g., '/path/*.tmp' or '/path/**/*.tmp').
-    """
-    for file in glob(str(pattern)):
-        if Path(file).suffix == ".tmp":
-            os.remove(file)
-
-
-def read_mlflow_runid(filename: str) -> str | None:
-    """Read locally stored mlflow run id.
-
-    Args:
-        filename (str): Name of the file that contains runid.
-
-    Returns:
-        str | None: Loaded runid if any, otherwise None.
-    """
-    if not Path(filename).exists():
-        return None
-
-    with open(filename, encoding="utf8") as f:
-        return json.load(f)
-
-
-def write_mlflow_runid(filename: str, runid: str) -> None:
-    """Locally stores mlflow run id.
-
-    Args:
-        filename (str): Name of the file to store runid.
-        runid (str): Runid to store.
-    """
-    with open(filename, "w", encoding="utf8") as file:
-        json.dump(runid, file, ensure_ascii=False)
 
 
 def read_json_predictions(filename: str) -> OverallFilePredictions:
@@ -445,7 +410,7 @@ def _setup_mlflow_parent_run(
     runid = setup_mlflow_tracking(
         runname=runname,
         runid=runid,
-        input_directory=_parent_input_directory_key(benchmarks),
+        input_directory=_parent_input_directory_key_extraction(benchmarks),
         ground_truth_path=None,  # parent has no single GT
     )
 
