@@ -29,9 +29,9 @@ The project structure and the most important files are as follows:
       - `evaluation/`: Contains scripts for evaluating classification results.
       - `utils/`: Contains modules used for processing data for classification and all the existing classes.
       - `models/`: Contains modules used by the Bert-base classifier, like the model and the training pipeline.
-      - `main.py` : The main script to run the descritption classification pipeline.
+      - `main.py` : The main script to run the description classification pipeline.
     - `utils/` : Utility modules that are used by all pipelines.
-    - `scripts/`: Various utility scipts used to download the files or generate the ground truth.
+    - `scripts/`: Various utility scripts used to download the files or generate the ground truth.
   - `data/` : The data used by the project.
     - `output/` : output of the extraction pipeline
       - `draw/` : The directory where the PNG files are saved.
@@ -80,7 +80,7 @@ Pre-commit comes in the boreholes-dev conda environment. After activating the co
 
 After installing pre-commit, it will trigger 'hooks' upon each `git commit -m ...` command. The hooks will be applied on all the files in the commit. A hook is nothing but a script specified in `.pre-commit-config.yaml`.
 
-We use [ruffs](https://github.com/astral-sh/ruff) [pre-commit package](https://github.com/astral-sh/ruff-pre-commit) for linting and formatting.
+We use [ruff](https://github.com/astral-sh/ruff) [pre-commit package](https://github.com/astral-sh/ruff-pre-commit) for linting and formatting.
 The specific linting and formatting settings applied are defined in `pyproject.toml`.
 
 If you want to skip the hooks, you can use `git commit -m "..." --no-verify`.
