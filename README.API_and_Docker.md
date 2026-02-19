@@ -202,7 +202,7 @@ Open the Docker Desktop app and navigate to `Images`, you should be able to see 
 Then open the `Optional Settings` menu and specify the port and the AWS credentials
 
 
-<img src="assets/img/dokcer-2.png" width = "800">
+<img src="assets/img/docker-2.png" width = "800">
 
 
 2.  **Verify the Container is Running**
