@@ -72,7 +72,8 @@ all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visu
 where = ["src"]
 include = [
   "swissgeol_doc_processing*",
-  "extraction*"
+  "extraction*",
+  "core*",
 ]
 
 [tool.setuptools_scm]
