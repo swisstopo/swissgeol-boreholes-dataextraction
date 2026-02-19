@@ -80,8 +80,7 @@ We welcome feedback, bug reports and code contributions (provided they are compa
 ### Main contributors
 
 * Stijn Vermeeren [@stijnvermeeren-swisstopo](https://www.github.com/stijnvermeeren-swisstopo) (swisstopo) - Project Lead
-* David Cleres [@dcleres](https://www.github.com/dcleres) (Visium)
-* Renato Durrer [@redur](https://www.github.com/redur) (Visium)
+* Visium
 
 ### License
 
