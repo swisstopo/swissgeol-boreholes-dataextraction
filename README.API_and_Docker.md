@@ -1,3 +1,6 @@
+# API and Docker instructions
+This README describes how to run the borehole data extraction API locally using FastAPI or Docker, including required AWS S3 configuration, environment variables, and instructions for building or pulling the Docker image.
+
 ## API
 
 The API for this project is built using FastAPI, a modern, fast (high-performance), web framework for building APIs with Python.

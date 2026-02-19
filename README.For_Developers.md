@@ -1,4 +1,6 @@
 # Developer Guidance
+This README provides an overview of the project structure, main scripts, experiment tracking, development tooling, and the two installable Python packages (`swissgeol_doc_processing` and `extraction`) that power the borehole data extraction and classification pipelines.
+
 ## Project Structure
 
 The project structure and the most important files are as follows:
