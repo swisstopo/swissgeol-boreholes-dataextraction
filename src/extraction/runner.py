@@ -86,7 +86,7 @@ def _finalize_overall_summary(
     df = pd.DataFrame(rows).sort_values(by="benchmark")
 
     total_docs = df["n_documents"].sum()
-    means = df.mean(numeric_only=True)
+    means = df.drop(columns=["n_documents"], errors="ignore").mean(numeric_only=True)
     agg_row = means.round(3)
     agg_row.at["benchmark"] = "overall"
     agg_row.at["n_documents"] = total_docs
@@ -102,7 +102,7 @@ def _finalize_overall_summary(
                 mlflow.log_metric(short_key, value)
 
         if pd.notna(total_docs):
-            mlflow.log_metric("total_n_documents", float(total_docs))
+            mlflow.log_metric("n_documents", float(total_docs))
 
         mlflow.log_artifact(str(summary_path), artifact_path="summary")
 
@@ -497,24 +497,23 @@ def start_pipeline(
         # Save current run id
         write_mlflow_runid(filename=mlflow_runid_tmp, runid=runid)
 
-    # if a file is specified instead of an input directory, copy the file to a temporary directory and work with that.
     if input_directory.is_file():
         root = input_directory.parent
-        files = [input_directory.name]
+        pdf_files = [input_directory.name] if input_directory.suffix.lower() == ".pdf" else []
     else:
         root = input_directory
         _, _, files = next(os.walk(input_directory))
+        pdf_files = [f for f in files if f.lower().endswith(".pdf")]
+
+    n_documents = len(pdf_files)
+    if mlflow:
+        mlflow.log_metric("n_documents", float(n_documents))
 
     # Check if tmp file exists with unfinished experiment
     predictions = read_json_predictions(predictions_path_tmp)
 
-    # Iterate over all files
-    for filename in tqdm(files, desc="Processing files", unit="file"):
-        # Check if file extension is supported
-        if not filename.endswith(".pdf"):
-            logger.warning(f"{filename} does not end with .pdf and is not treated.")
-            continue
-
+    # # Iterate over all files
+    for filename in tqdm(pdf_files, desc="Processing files", unit="file"):
         # Check if file already predicted
         if predictions.contains(filename):
             logger.info(f"{filename} already predicted.")
@@ -551,6 +550,8 @@ def start_pipeline(
         predictions=predictions,
         ground_truth_path=ground_truth_path,
     )
+    if eval_summary is not None:
+        eval_summary.n_documents = n_documents
 
     # Log metrics to MLflow if enabled
     if mlflow and eval_summary is not None:

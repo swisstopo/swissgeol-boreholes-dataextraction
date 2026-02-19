@@ -18,7 +18,7 @@ from classification.evaluation.benchmark.score import (
     evaluate_all_predictions,
 )
 from classification.evaluation.benchmark.spec import BenchmarkSpec
-from classification.utils.benchmark_utils import _parent_input_directory_key_classification
+from classification.utils.benchmark_utils import _parent_input_directory_key_classification, count_documents
 from classification.utils.classification_classes import ExistingClassificationSystems
 from classification.utils.data_loader import LayerInformation, prepare_classification_data
 from classification.utils.data_utils import (
@@ -64,7 +64,8 @@ def _finalize_overall_summary(
     df = pd.DataFrame(rows).sort_values(by="benchmark")
 
     total_docs = df["n_documents"].sum()
-    means = df.mean(numeric_only=True)
+    means = df.drop(columns=["n_documents"], errors="ignore").mean(numeric_only=True)
+
     agg_row = means.round(3)
     agg_row.at["benchmark"] = "total/mean"
     agg_row.at["n_documents"] = total_docs
@@ -80,7 +81,7 @@ def _finalize_overall_summary(
                 mlflow.log_metric(short_key, value)
 
         if pd.notna(total_docs):
-            mlflow.log_metric("total_n_documents", float(total_docs))
+            mlflow.log_metric("n_documents", float(total_docs))
 
         mlflow.log_artifact(str(summary_csv_path), artifact_path="summary")
 
@@ -280,11 +281,29 @@ def start_pipeline(
     layer_descriptions = prepare_classification_data(
         file_path, ground_truth_path, file_subset_directory, classification_system_cls
     )
+
+    n_documents = count_documents(file_path, file_subset_directory)
+
+    if mlflow:
+        mlflow.log_metric("n_documents", float(n_documents))
+
     if not layer_descriptions:
-        logger.warning("No data to classify.")
+        logger.warning("No data to classify. Returning empty summary so parent can still aggregate n_documents.")
+
+        empty_summary = ClassificationBenchmarkSummary(
+            file_path=str(file_path),
+            ground_truth_path=str(ground_truth_path) if ground_truth_path else None,
+            file_subset_directory=str(file_subset_directory) if file_subset_directory else None,
+            n_documents=n_documents,
+            classifier_type=classifier_type,
+            model_path=str(model_path) if model_path else None,
+            classification_system=classification_system,
+            metrics={},
+        )
+
         if mlflow:
             mlflow.end_run()
-        return None
+        return empty_summary
 
     classifier = ClassifierFactory.create_classifier(
         classifier_type_instance, classification_system_cls, model_path, out_directory_bedrock
@@ -312,6 +331,7 @@ def start_pipeline(
             classifier_type=classifier_type,
             model_path=model_path,
             classification_system=classification_system,
+            n_documents=n_documents,
         ),
         out_directory=out_directory,
     )

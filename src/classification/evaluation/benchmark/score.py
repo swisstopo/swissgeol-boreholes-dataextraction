@@ -54,6 +54,7 @@ class BenchmarkParams:
     classifier_type: str
     model_path: Path | None
     classification_system: str
+    n_documents: int
 
 
 def evaluate_all_predictions(
@@ -112,7 +113,7 @@ def evaluate_all_predictions(
         file_path=str(params.file_path),
         ground_truth_path=str(params.ground_truth_path) if params.ground_truth_path else None,
         file_subset_directory=str(params.file_subset_directory) if params.file_subset_directory else None,
-        n_documents=len(layer_descriptions),
+        n_documents=params.n_documents,
         classifier_type=params.classifier_type,
         model_path=str(params.model_path) if params.model_path else None,
         classification_system=params.classification_system,
