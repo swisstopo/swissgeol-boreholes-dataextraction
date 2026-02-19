@@ -93,7 +93,7 @@ You should see the `borehole-api` image listed in the output.
 
 4. **Run the Docker container**
 
-4.1. **Run the Docker Container without concerning about AWS Credentials**
+4.1. **Run the Docker Container without worrying about AWS Credentials**
 
 To run the Docker container, use the following command:
 
@@ -107,7 +107,7 @@ This command will start the container and map port 8000 of the container to port
 
 You should pass AWS credentials and S3 configuration as [environment variables](#env) when starting the Docker container.
 
-4.2.1. **Using a `.env` file**
+**Using a `.env` file**
 
 Adapt the `.env.template` file to your needs, by renaming the file to `.env` and adding your AWS credentials to the file.
 
@@ -119,7 +119,7 @@ To ensure that the values from the `.env` file are also passed along when starti
 docker run --env-file .env -d -p 8000:8000 borehole-api
 ```
 
-4.2.2. **Defining the environment variables in your shell**
+**Defining the environment variables in your shell**
 
 For example, on Unix-based systems (Linux/macOS), add the following lines to your `~/.bashrc`, `~/.bash_profile`, or `~/.zshrc` (depending on your shell):
 
@@ -137,7 +137,7 @@ source ~/.bashrc  # Or ~/.bash_profile, ~/.zshrc based on your configuration
 ```
 
 
-1. **Access the API**
+5. **Access the API**
 
 Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
 
@@ -181,7 +181,7 @@ This repository provides a Docker image hosted in the GitHub Container Registry 
 docker pull ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:edge
 ```
 
-1. a. **Run the docker image from the Terminal**
+**Run the docker image from the Terminal**
    
 ```bash
 docker run -d --name swissgeol-boreholes-dataextraction-api -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e AWS_ENDPOINT=ZZZ -e AWS_S3_BUCKET=AAA -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
@@ -193,7 +193,7 @@ Adjust the port mapping (8000:8000) based on the app's requirements.
 
 NOTE: Do not forget to specify your AWS Credentials.
 
-1. b. **Run the docker image from the Docker Desktop App**
+**Run the docker image from the Docker Desktop App**
 
 Open the Docker Desktop app and navigate to `Images`, you should be able to see the image you just pulled from GHCR. Click on the image and click on the `Run` button on the top right of the screen. 
 
