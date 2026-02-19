@@ -1,6 +1,5 @@
 """This module contains the main pipeline for the classification of the layer's soil descriptions."""
 
-# import logging
 from pathlib import Path
 
 import click

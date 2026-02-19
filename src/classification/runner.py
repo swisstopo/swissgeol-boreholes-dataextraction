@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import shutil
 from collections.abc import Sequence
 from pathlib import Path
@@ -18,7 +17,7 @@ from classification.evaluation.benchmark.score import (
     evaluate_all_predictions,
 )
 from classification.evaluation.benchmark.spec import BenchmarkSpec
-from classification.utils.benchmark_utils import _parent_input_directory_key_classification, count_documents
+from classification.utils.benchmark_utils import _parent_input_directory_key_classification
 from classification.utils.classification_classes import ExistingClassificationSystems
 from classification.utils.data_loader import LayerInformation, prepare_classification_data
 from classification.utils.data_utils import (
@@ -26,7 +25,6 @@ from classification.utils.data_utils import (
     get_data_language_count,
     write_predictions,
 )
-from classification.utils.file_utils import read_params
 from core.benchmark_utils import (
     _short_metric_key,
     delete_temporary,
@@ -36,8 +34,6 @@ from core.benchmark_utils import (
 from core.mlflow_tracking import mlflow
 
 logger = logging.getLogger(__name__)
-
-classification_params = read_params("classification_params.yml")
 
 
 def _finalize_overall_summary(
@@ -200,18 +196,6 @@ def log_ml_flow_infos(
     mlflow.log_artifact(str(file_path), "input_data")
     mlflow.log_artifact(f"{out_directory}/class_predictions.json", "predictions_json")
 
-    # log output prediction artifacts detailed for each class
-    pred_dir = os.path.join(out_directory, "predictions_per_class")
-    for language in ["global", *classification_params["supported_language"]]:
-        overview_path = os.path.join(pred_dir, language, "overview.csv")
-        mlflow.log_artifact(overview_path, f"predictions_per_class_json/{language}")
-        for first_key in ["ground_truth", "prediction"]:
-            language_first_key_dir = os.path.join(pred_dir, language, f"group_by_{first_key}")
-            artifact_directory = f"predictions_per_class_json/{language}/group_by_{first_key}"
-            for file in os.listdir(language_first_key_dir):
-                file_path = os.path.join(language_first_key_dir, file)
-                mlflow.log_artifact(file_path, artifact_directory)
-
 
 def start_pipeline(
     file_path: Path,
@@ -282,8 +266,8 @@ def start_pipeline(
         file_path, ground_truth_path, file_subset_directory, classification_system_cls
     )
 
-    n_documents = count_documents(file_path, file_subset_directory)
-
+    # n_documents = count_documents(file_path, file_subset_directory)
+    n_documents = len({layer.filename for layer in layer_descriptions})
     if mlflow:
         mlflow.log_metric("n_documents", float(n_documents))
 
