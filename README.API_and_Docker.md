@@ -72,7 +72,7 @@ Build the Docker image using the following command:
 ```bash
 docker build -t borehole-api . -f Dockerfile
 ```
-
+And for a linux/amd64 build:
 ```bash
 docker build --platform linux/amd64 -t borehole-api:test .
 ```
@@ -197,11 +197,12 @@ NOTE: Do not forget to specify your AWS Credentials.
 
 Open the Docker Desktop app and navigate to `Images`, you should be able to see the image you just pulled from GHCR. Click on the image and click on the `Run` button on the top right of the screen. 
 
-![](assets/img/docker-1.png){ width=400px }
+<img src="assets/img/docker-1.png" width="400">
 
 Then open the `Optional Settings` menu and specify the port and the AWS credentials
 
-![](assets/img/docker-2.png){ width=800px }
+
+<img src="assets/img/dokcer-2.png" width = "800">
 
 
 2.  **Verify the Container is Running**
