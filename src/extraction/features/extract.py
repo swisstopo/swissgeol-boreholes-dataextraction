@@ -583,6 +583,53 @@ class MaterialDescriptionRectWithSidebarExtractor:
         )
         return diagonals
 
+    # def _extract_filtered_sidebar_pairs(
+    #     self, include_descriptions_without_sidebar: bool = True
+    # ) -> list[MaterialDescriptionRectWithSidebar]:
+    #     """Extract and filter sidebar pairs using the common pipeline.
+
+    #     Args:
+    #         include_descriptions_without_sidebar: If True, search for and include
+    #             material descriptions that don't have an associated sidebar.
+
+    #     Returns:
+    #         List of filtered MaterialDescriptionRectWithSidebar pairs, sorted by
+    #         score (highest first) and filtered by score, table criteria, and
+    #         intersections.
+    #     """
+    #     # Step 1: Find all potential pairs
+    #     pairs = self._find_layer_identifier_sidebar_pairs()
+    #     pairs.extend(self._find_depth_sidebar_pairs())
+
+    #     # Step 2: Optionally add descriptions without sidebar
+    #     if include_descriptions_without_sidebar:
+    #         # only allow sidebar=None fallback if strong evidence exists
+    #         if self._allow_description_only_fallback():
+    #             material_description_rect_without_sidebar = self._find_material_description_column(sidebar=None)
+    #             if material_description_rect_without_sidebar:
+    #                 pairs.append(
+    #                     MaterialDescriptionRectWithSidebar(
+    #                         sidebar=None,
+    #                         material_description_rect=material_description_rect_without_sidebar,
+    #                         lines=self.lines,
+    #                     )
+    #                 )
+    #         else:
+    #             logger.debug(
+    #                 "Page %s: skipping description-only fallback (insufficient evidence)",
+    #                 self.page_number,
+    #             )
+
+    #     # Step 3: Sort once by score (highest first)
+    #     pairs.sort(key=lambda pair: pair.score_match, reverse=True)
+
+    #     # Step 4: Apply filter chain
+    #     filtered_pairs = [pair for pair in pairs if pair.score_match >= 0]
+    #     filtered_pairs = self._filter_by_table_criteria(filtered_pairs)
+    #     filtered_pairs = self._filter_by_intersections(filtered_pairs)
+
+    #     return filtered_pairs
+
     def _extract_filtered_sidebar_pairs(
         self, include_descriptions_without_sidebar: bool = True
     ) -> list[MaterialDescriptionRectWithSidebar]:
@@ -603,21 +650,14 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         # Step 2: Optionally add descriptions without sidebar
         if include_descriptions_without_sidebar:
-            # only allow sidebar=None fallback if strong evidence exists
-            if self._allow_description_only_fallback():
-                material_description_rect_without_sidebar = self._find_material_description_column(sidebar=None)
-                if material_description_rect_without_sidebar:
-                    pairs.append(
-                        MaterialDescriptionRectWithSidebar(
-                            sidebar=None,
-                            material_description_rect=material_description_rect_without_sidebar,
-                            lines=self.lines,
-                        )
+            material_description_rect_without_sidebar = self._find_material_description_column(sidebar=None)
+            if material_description_rect_without_sidebar:
+                pairs.append(
+                    MaterialDescriptionRectWithSidebar(
+                        sidebar=None,
+                        material_description_rect=material_description_rect_without_sidebar,
+                        lines=self.lines,
                     )
-            else:
-                logger.debug(
-                    "Page %s: skipping description-only fallback (insufficient evidence)",
-                    self.page_number,
                 )
 
         # Step 3: Sort once by score (highest first)
@@ -704,37 +744,99 @@ class MaterialDescriptionRectWithSidebarExtractor:
     #     # allowed only when require_table = False
     #     return True
 
+    # ##### Davis #####
     def _allow_description_only_fallback(self) -> bool:
         """Return True if we have strong evidence that a description-only borehole is plausible.
 
         This is meant to reduce false-positive boreholes created from random paragraphs.
         """
-        # require_table = self.matching_params.get("fallback_require_table", True)
+        require_table = self.matching_params.get("fallback_require_table", True)
         allow_if_striplog = self.matching_params.get("fallback_allow_if_striplog", True)
 
-        # # Table evidence thresholds
-        # min_table_height_ratio = self.matching_params.get("fallback_min_table_height_ratio", 0.25)
+        # Table evidence thresholds
+        min_table_height_ratio = self.matching_params.get("fallback_min_table_height_ratio", 0.75)
 
-        # has_table = bool(self.table_structures)
+        has_table = bool(self.table_structures)
         has_striplog = bool(self.strip_logs)
 
         # 1) If strip-log exists, that's a borehole
-        return bool(allow_if_striplog and has_striplog)
+        if allow_if_striplog and has_striplog:
+            return True
 
-        # # 2) Otherwise: require some table evidence
-        # if require_table and not has_table:
-        #     return False
-        # if not has_table:
-        #     # no table, no striplog -> don't allow description-only fallback
-        #     return False
+        if not require_table:
+            return True
 
-        # # 3) Table must be "substantial" (avoid tiny tables)
-        # # If multiple tables: take the largest by height
-        # largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
-        # if (largest_table.bounding_rect.height / self.page_height) < min_table_height_ratio:
-        #     return False
+        if not has_table:
+            return False
 
-        # return True
+        largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
+        return (largest_table.bounding_rect.height / self.page_height) >= min_table_height_ratio
+
+    # def _allow_description_only_fallback(self) -> bool:
+    #     """Return True if we have strong evidence that a description-only borehole is plausible.
+
+    #     This is meant to reduce false-positive boreholes created from random paragraphs.
+    #     """
+    #     # require_table = self.matching_params.get("fallback_require_table", True)
+    #     allow_if_striplog = self.matching_params.get("fallback_allow_if_striplog", True)
+
+    #     # # Table evidence thresholds
+    #     # min_table_height_ratio = self.matching_params.get("fallback_min_table_height_ratio", 0.25)
+
+    #     # has_table = bool(self.table_structures)
+    #     has_striplog = bool(self.strip_logs)
+
+    #     # 1) If strip-log exists, that's a borehole
+    #     return bool(allow_if_striplog and has_striplog)
+
+    # # 2) Otherwise: require some table evidence
+    # if require_table and not has_table:
+    #     return False
+    # if not has_table:
+    #     # no table, no striplog -> don't allow description-only fallback
+    #     return False
+
+    # # 3) Table must be "substantial" (avoid tiny tables)
+    # # If multiple tables: take the largest by height
+    # largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
+    # if (largest_table.bounding_rect.height / self.page_height) < min_table_height_ratio:
+    #     return False
+
+    # return True
+
+
+# #### original #####
+
+#     def _allow_description_only_fallback(self) -> bool:
+#         """Return True if we have strong evidence that a description-only borehole is plausible.
+
+#         This is meant to reduce false-positive boreholes created from random paragraphs.
+#         """
+#         require_table = self.matching_params.get("fallback_require_table", True)
+#         allow_if_striplog = self.matching_params.get("fallback_allow_if_striplog", True)
+
+#         # Table evidence thresholds
+#         min_table_height_ratio = self.matching_params.get("fallback_min_table_height_ratio", 0.25)
+
+#         has_table = bool(self.table_structures)
+#         has_striplog = bool(self.strip_logs)
+
+#         # 1) If strip-log exists, that's a borehole
+#         if allow_if_striplog and has_striplog:
+#             return True
+
+#         # 2) Otherwise: require some table evidence
+#         if require_table and not has_table:
+#             return False
+#         if not has_table:
+#             # no table, no striplog -> don't allow description-only fallback
+#             return False
+
+#         # 3) Table must be "substantial" (avoid tiny tables)
+#         # If multiple tables: take the largest by height
+#         largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
+#         if (largest_table.bounding_rect.height / self.page_height) < min_table_height_ratio:
+#             return False
 
 
 def extract_page(
