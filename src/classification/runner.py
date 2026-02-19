@@ -18,6 +18,7 @@ from classification.evaluation.benchmark.score import (
     evaluate_all_predictions,
 )
 from classification.evaluation.benchmark.spec import BenchmarkSpec
+from classification.utils.benchmark_utils import _parent_input_directory_key_classification
 from classification.utils.classification_classes import ExistingClassificationSystems
 from classification.utils.data_loader import LayerInformation, prepare_classification_data
 from classification.utils.data_utils import (
@@ -27,7 +28,6 @@ from classification.utils.data_utils import (
 )
 from classification.utils.file_utils import read_params
 from core.benchmark_utils import (
-    _parent_input_directory_key,
     _short_metric_key,
     delete_temporary,
     read_mlflow_runid,
@@ -148,7 +148,7 @@ def _setup_mlflow_parent_run(
         raise ValueError("Tracking is not activated")
 
     runid = setup_mlflow_tracking(
-        file_path=_parent_input_directory_key([Path(b.file_path) for b in benchmarks]),
+        file_path=_parent_input_directory_key_classification([Path(b.file_path) for b in benchmarks]),
         out_directory=out_directory,
         file_subset_directory=None,
         experiment_name=experiment_name,

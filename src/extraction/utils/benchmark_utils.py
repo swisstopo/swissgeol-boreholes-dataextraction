@@ -1,4 +1,4 @@
-"""Utility functions for benchmarking."""
+"""Utility functions for benchmarking in the extraction pipeline."""
 
 from __future__ import annotations
 
