@@ -176,6 +176,10 @@ To execute the layer description classification, follow these steps:
 ### 1. Setup  
 
 Repeat steps 1 and 2 of the [data extraction pipeline](#run-data-extraction) to set up the environment and download the data.  
+Pre-trained models can be downloaded with 
+```bash 
+aws s3 sync s3://stijnvermeeren-boreholes-models models/uscs/your_model_folder
+```
 
 ### 2. Run the Classification Pipeline  
 
@@ -191,7 +195,7 @@ boreholes-classify-descriptions -f data/geoquat_ground_truth.json -s data/geoqua
 - If you are using the classifier `bert` with a trained local [model](#train-bert-model), specify its folder path using the `-p` or `--model-path` flag. The folder has to contain all files generated when saving a model checkpoint with the transformers library.
 - Use `--classification-system` or `-cs` to specify the system you want to classify the description into. Currently supports `uscs`, `lithology` and `en_main`.
 
-The script will classify all given descriptions and write the predictions to the `data/output_description_classification` directory.  
+The script will classify all given descriptions and write the predictions to the `data/output_classification` directory.  
 
 Run `boreholes-classify-descriptions --help` to see all available options.  
 
