@@ -106,7 +106,7 @@ def evaluate_all_predictions(
         mlflow.log_artifact(str(metrics_path), artifact_path="summary")
         pred_dir = out_directory / "predictions_per_class"
         if pred_dir.exists():
-            mlflow.log_artifact(str(pred_dir), artifact_path="predictions_per_class")
+            mlflow.log_artifacts(str(pred_dir), artifact_path="predictions_per_class")
 
     # --- Return summary object ---
     return ClassificationBenchmarkSummary(
