@@ -197,12 +197,12 @@ NOTE: Do not forget to specify your AWS Credentials.
 
 Open the Docker Desktop app and navigate to `Images`, you should be able to see the image you just pulled from GHCR. Click on the image and click on the `Run` button on the top right of the screen. 
 
-<img src="assets/img/docker-1.png" width="400">
+<img src="./assets/img/docker-1.png" width="400">
 
 Then open the `Optional Settings` menu and specify the port and the AWS credentials
 
 
-<img src="assets/img/docker-2.png" width = "800">
+<img src="./assets/img/docker-2.png" width = "800">
 
 
 2.  **Verify the Container is Running**
