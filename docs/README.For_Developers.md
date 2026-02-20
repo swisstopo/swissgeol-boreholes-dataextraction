@@ -22,7 +22,7 @@ The project structure and the most important files are as follows:
         - `predictions/`: Mainly contains data structures and prediction matching logic.
         - `stratigraphy/`: Contains the stratigraphy extraction logic.
         - `utils/` : Utility package related to extraction.
-        - `extract.py`: Contains the main logic for data extraction
+        - `extract.py`: Contains the main logic for data extraction.
       - `runner.py`: Pipeline runner that executes the classification (single file/directory or multi-benchmark) pipeline. 
       - `main.py` : The CLI entry point that parses command-line options and delegates execution to the classification pipeline runner.
     - `classification/`: The main package for the classification of layer descriptions.
@@ -35,19 +35,20 @@ The project structure and the most important files are as follows:
     - `core/` : Utility modules that are used by all pipelines.
     - `scripts/`: Various utility scripts used to download the files or generate the ground truth.
   - `data/` : The data used by the project.
-    - `output/` : output of the extraction pipeline
+    - `output/` : Output of the extraction pipeline
       - `draw/` : The directory where the PNG files are saved.
       - `predictions.json` : The output file of the project, containing the results of the data extraction process.
-    - `output_description_classification/`: output of the classification pipeline
+    - `output_description_classification/`: Output of the classification pipeline.
   - `config/`: Contains configuration files for the classification pipeline.
-    - `baseline/`: folder containing config files for using the baseline classifier.
-    - `bert/` : folder containing config files for fine-tuning and infering using the BERT model.
-    - `bedrock/`: folder containing config files for using the aws bedrock classifier.
+    - `baseline/`: Folder containing config files for using the baseline classifier.
+    - `bert/` : Folder containing config files for fine-tuning and infering using the BERT model.
+    - `bedrock/`: Folder containing config files for using the aws bedrock classifier.
     - `classification_params.yml`: Configuration file containing general variables used for the classification pipeline.
-    - `classifier_config_paths.yml`: file containing the paths to all config files, for each classifier and classification system.
+    - `classifier_config_paths.yml`: File containing the paths to all config files, for each classifier and classification system.
     - `line_detection_params.yml`: Configuration file for the line detection.
     - `matching_params.yml`: Configuration file containing variables used for the data extraction pipeline.
   - `tests/` : The tests for the project.
+  - `docs/`: Folder containing additional README's.
   - `README.md` : The README file for the project.
   - `pyproject.toml`: Contains the Python requirements and configurations specific to the Python environment.
   - `Dockerfile`: Dockerfile to launch the Borehole App as API.
