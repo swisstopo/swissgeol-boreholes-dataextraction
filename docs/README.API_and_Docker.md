@@ -42,7 +42,7 @@ This will start the server on port 8002 of the localhost and enable automatic re
 
 Once the server is running, you can access the API endpoints using a web browser or an API testing tool like Postman.
 
-The main endpoint for the data extraction pipeline is `http://localhost:8000/extract-data`. You can send a POST request to this endpoint with the PDF file you want to extract data from.
+The main endpoint for the data extraction pipeline is `http://localhost:8080/extract-data`. You can send a POST request to this endpoint with the PDF file you want to extract data from.
 
 Additional endpoints and their functionalities can be found in the project's source code.
 
@@ -139,7 +139,7 @@ source ~/.bashrc  # Or ~/.bash_profile, ~/.zshrc based on your configuration
 
 5. **Access the API**
 
-Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
+Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8002`.
 
 You can also use an API testing tool like Postman to send requests to the API endpoints.
 
@@ -150,7 +150,7 @@ You can also use an API testing tool like Postman to send requests to the API en
 
 ```bash
 curl -X 'POST' \
-'http://localhost:8000/api/V1/create_pngs' \
+'http://localhost:8002/api/V1/create_pngs' \
 -H 'accept: application/json' \
 -H 'Content-Type: application/json' \
 -d '{

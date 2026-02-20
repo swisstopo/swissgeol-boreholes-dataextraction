@@ -64,7 +64,7 @@ The pipeline has been optimized for and tested on boreholes profiles from Switze
 With regard to the extraction of coordinates, the [Swiss coordinate systems](https://de.wikipedia.org/wiki/Schweizer_Landeskoordinaten) LV95 as well as the older LV03 are supported ([visualization of the differences](https://opendata.swiss/de/dataset/bezugsrahmenwechsel-lv03-lv95-koordinatenanderung-lv03-lv95)).
 
 #### Groundwater
-With the current version of the code, groundwater can only be found at depth smaller than 200 meters. This threshold is defined in `src/stratigraphy/groundwater/groundwater_extraction.py` by the constant `MAX_DEPTH`. 
+With the current version of the code, groundwater can only be found at depth smaller than 200 meters. This threshold is defined in `src/extraction/features/groundwater/groundwater_extraction.py` by the constant `MAX_DEPTH`. 
 
 The groundwater is extracted in two main ways from the borehole documents. The first one aims to match a groundwater-related keyword in the text extracted from the document (e.g., groundwater, groundwater-level). The second technique focuses on extracting the groundwater-related symbol from the document. It aims at finding 2 horizontal lines, on top of each other, satisfying some visual requirement that the groundwater symbol has.
 
@@ -144,18 +144,25 @@ If you choose to use the ~/.aws files, then they should look like this:
 
 ## 3. Run the extraction script
 
-The main script for the extraction pipeline is located at `src/stratigraphy/main.py`. A cli command is created to run this script.
+The main script for the extraction pipeline is located at `src/extraction/main.py`. A cli command is created to run this script.
 
 Run `boreholes-extract-all` to run the main extraction script. You need to specify the input directory or a single PDF file using the `-i` or `--input-directory` flag. 
 The script will source all PDFs from the specified directory and create PNG files in the `data/output/draw` directory.
 
+Run`boreholes-extract-metadata` to run only the metadata part of the pipeline (coordinates, elevation, borehole names), skipping stratigraphy extraction. 
+Accepts the same options as `boreholes-extract-all`.
+
+```bash
+boreholes-extract-metadata -i data/pdfs/
+
 Use `boreholes-extract-all --help` to see all options for the extraction script.
 
-To run the extraction pipeline on multiple datasets in one command and to receive an overview of all child runs on parent level,  you can run `boreholes-extract-multi-benchmark`. 
-Use repeatable benchmark specs with syntax `"<name>:<input_path>:<ground_truth_path>"` , e.g. 
-```python 
-"--benchmark",
-"zurich:data/zurich:data/zurich_ground_truth.json",
+To run the extraction pipeline on multiple datasets in one command and to receive an overview of all child runs on parent level, use the `--benchmark` flag on `boreholes-extract-all`.
+Use repeatable benchmark specs with syntax `"<name>:<input_path>:<ground_truth_path>"`, e.g.
+```bash
+boreholes-extract-all \
+  --benchmark "zurich:data/zurich:data/zurich_ground_truth.json" \
+  --benchmark "bern:data/bern:data/bern_ground_truth.json"
 ```
 
 To apply custom settings, generate a local copy of the configuration files using the package helper. Any values you change locally will override the package defaults.
@@ -172,7 +179,7 @@ This will create a `config/` directory at the root of your project containing al
 ### 4. Check the results
 
 The script produces output in two different formats:
-- A file `data/output/predictions.json` that contains all extracted data in a machine-readable format. The structure of this file is documented in [README.predictions-json.md](README.predictions-json.md).
+- A file `data/output/predictions.json` that contains all extracted data in a machine-readable format. The structure of this file is documented in [README.predictions-json.md](docs/README.predictions-json.md).
 - A PNG image of each processed PDF page in the `data/output/draw` directory, where the extracted data is highlighted.
 
 ## Run Layer Description Classification  
@@ -185,7 +192,7 @@ Repeat steps 1 and 2 of the [data extraction pipeline](#run-data-extraction) to 
 
 ### 2. Run the Classification Pipeline  
 
-The main script for the classification pipeline is located at `src/description_classification/main.py`. A CLI command is available to run this script:  
+The main script for the classification pipeline is located at `src/classification/main.py`. A CLI command is available to run this script:  
 
 ```bash
 boreholes-classify-descriptions -f data/geoquat_ground_truth.json -s data/geoquat/validation -c baseline
@@ -245,8 +252,8 @@ The pipeline stores a checkpoint of the model after each epoch and logs training
 
 
 ## Further information 
-- [README.API_and_Docker.md](README.API_and_Docker.md) documents how to start the API server and how to build the API as a Docker Image. 
+- [README.API_and_Docker.md](docs/README.API_and_Docker.md) documents how to start the API server and how to build the API as a Docker Image. 
 
-- [README.For_Developers.md](README.For_Developers.md) documents project structure and practical tools and best practices like pre-commit which may be useful for developers. 
+- [README.For_Developers.md](docs/README.For_Developers.md) documents project structure and practical tools and best practices like pre-commit which may be useful for developers. 
 
-- [README.groundtruth-json.md](README.groundtruth-json.md) documents the expected structure of the ground truth file needed for evaluation. 
+- [README.groundtruth-json.md](docs/README.groundtruth-json.md) documents the expected structure of the ground truth file needed for evaluation. 

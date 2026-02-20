@@ -23,14 +23,16 @@ The project structure and the most important files are as follows:
         - `stratigraphy/`: Contains the stratigraphy extraction logic.
         - `utils/` : Utility package related to extraction.
         - `extract.py`: Contains the main logic for data extraction
-      - `main.py` : The main script to run the data extraction pipeline.
+      - `runner.py`: Pipeline runner that executes the classification (single file/directory or multi-benchmark) pipeline. 
+      - `main.py` : The CLI entry point that parses command-line options and delegates execution to the classification pipeline runner.
     - `classification/`: The main package for the classification of layer descriptions.
       - `classifiers/`: Contains implementations of various classifiers.
       - `evaluation/`: Contains scripts for evaluating classification results.
       - `utils/`: Contains modules used for processing data for classification and all the existing classes.
       - `models/`: Contains modules used by the Bert-base classifier, like the model and the training pipeline.
-      - `main.py` : The main script to run the description classification pipeline.
-    - `utils/` : Utility modules that are used by all pipelines.
+      - `runner.py`: Pipeline runner that executes borehole PDF extraction (single file/directory or multi-benchmark) pipeline. 
+      - `main.py` : The CLI entry point that parses command-line options and delegates execution to the extraction pipeline runner.
+    - `core/` : Utility modules that are used by all pipelines.
     - `scripts/`: Various utility scripts used to download the files or generate the ground truth.
   - `data/` : The data used by the project.
     - `output/` : output of the extraction pipeline
