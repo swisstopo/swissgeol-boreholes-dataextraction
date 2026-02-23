@@ -677,9 +677,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         This is meant to reduce false-positive boreholes created from random paragraphs.
         """
-        require_table = True
-        require_striplog = True
-
         # Table evidence thresholds
         min_table_height_ratio = self.matching_params.get("fallback_min_table_height_ratio", 0.85)
 
@@ -687,10 +684,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         has_striplog = bool(self.strip_logs)
 
         # If strip-log exists, that's a borehole
-        if require_striplog and has_striplog:
-            return True
-
-        if not require_table:
+        if has_striplog:
             return True
 
         if not has_table:
