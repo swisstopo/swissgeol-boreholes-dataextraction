@@ -266,7 +266,6 @@ def start_pipeline(
         file_path, ground_truth_path, file_subset_directory, classification_system_cls
     )
 
-    # n_documents = count_documents(file_path, file_subset_directory)
     n_documents = len({layer.filename for layer in layer_descriptions})
     if mlflow:
         mlflow.log_metric("n_documents", float(n_documents))
