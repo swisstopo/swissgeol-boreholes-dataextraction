@@ -149,11 +149,14 @@ The main script for the extraction pipeline is located at `src/extraction/main.p
 Run `boreholes-extract-all` to run the main extraction script. You need to specify the input directory or a single PDF file using the `-i` or `--input-directory` flag. 
 The script will source all PDFs from the specified directory and create PNG files in the `data/output/draw` directory.
 
+```bash
+boreholes-extract-metadata -i data/pdfs/
+```
+
 Run`boreholes-extract-metadata` to run only the metadata part of the pipeline (coordinates, elevation, borehole names), skipping stratigraphy extraction. 
 Accepts the same options as `boreholes-extract-all`.
 
-```bash
-boreholes-extract-metadata -i data/pdfs/
+
 
 Use `boreholes-extract-all --help` to see all options for the extraction script.
 
@@ -211,12 +214,12 @@ Run `boreholes-classify-descriptions --help` to see all available options.
 To run the classification pipeline on multiple datasets in one command and to receive an overview of all child runs on parent level, you can run `boreholes-classify-descriptions (multi, single-file).`or `boreholes-classify-predictions (multi, predictions+GT)`
 Use repeatable benchmark specs with syntax `"<name>:<file_path>:<subset_dir>"` or `"<name>:<predictions_path>:<ground_truth_path>"`respectively. 
 E.g. 
-```python 
+```bash 
 "--benchmark", "val:data/geoquat_ground_truth.json:data/geoquat/validation",
 "--benchmark", "test:data/geoquat_ground_truth.json:data/geoquat/test",
 ```
 or 
-```python
+```bash
 "--benchmark", "pred_geoquat:path_to_prediction/predictions.json:data/geoquat_ground_truth.json",
 "--benchmark", "pred_zurich:path_to_prediction/predictions.json:data/zurich_ground_truth.json",
 ```
