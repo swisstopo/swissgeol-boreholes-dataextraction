@@ -696,6 +696,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
         if not has_table:
             return False
 
+        # For now, we require the table height to exceed a specific threshold in order to reduce false positives from
+        # small tables which might include keywords in their description, misleadingly classifying them as boreholes.
+        # BUT: TODO keep in mind that this might exclude some boreholes (e.g scanned image has large margin above and
+        # below the actual scanned page) --> this mechanism could/should be optimized in the future!
         largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
         return (largest_table.bounding_rect.height / max(self.page_height, 1e-16)) >= min_table_height_ratio
 
