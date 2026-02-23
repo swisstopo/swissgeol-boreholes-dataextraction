@@ -35,7 +35,7 @@ class AAboveBSidebarExtractor:
         """
         entries = [
             entry
-            for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=False)
+            for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=True)
             if all((entry.rect & used_rect).is_empty for used_rect in used_entry_rects)
         ]
         clusters = Cluster[DepthColumnEntry].create_clusters(entries, lambda entry: entry.rect)
