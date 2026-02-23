@@ -29,7 +29,7 @@ description:
       - Provide a layer description classification pipeline based on BERT
 
 legal:
-  license: MIT
+  license: AGPL-3.0-only
 maintenance:
   type: community
   contacts:

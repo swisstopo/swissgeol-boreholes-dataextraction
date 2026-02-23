@@ -1,6 +1,6 @@
 # Boreholes Data Extraction
 
-Boreholes Data Extraction is a pipeline to extract structured data from borehole profiles in PDF files. Extracted properties (currently coordinates, depths and associated material descriptions) are returned in JSON format, and (optionally) visualized as PNG images. This project was initiated by the Swiss Federal Office of Topography [swisstopo](https://www.swisstopo.admin.ch/), and is developed with support from [Visium](https://www.visium.ch/).
+Boreholes Data Extraction is a pipeline to extract structured data from borehole profiles in PDF files. Extracted properties (currently coordinates, depths and associated material descriptions) are returned in JSON format, and (optionally) visualized as PNG images. This project was initiated by the Swiss Federal Office of Topography [swisstopo](https://www.swisstopo.admin.ch/), and is developed with support from [Visium](https://www.visium.com/).
 
 ## Motivation
 
@@ -71,7 +71,7 @@ The groundwater is extracted in two main ways from the borehole documents. The f
 
 ## Project management
 
-This project is managed and financed by the Swiss Federal Office of Topography [swisstopo](https://www.swisstopo.admin.ch/). Many contributions come from [Visium](https://www.visium.ch/), in their role as contractor for swisstopo for this project.
+This project is managed and financed by the Swiss Federal Office of Topography [swisstopo](https://www.swisstopo.admin.ch/). Many contributions come from [Visium](https://www.visium.com/), in their role as contractor for swisstopo for this project.
 
 This project is released as open source software, under the principle of "_public money, public code_", in accordance with the 2023 federal law "[_EMBAG_](https://www.fedlex.admin.ch/eli/fga/2023/787/de)", and following the guidance of the [tools for OSS published by the Federal Chancellery](https://www.bk.admin.ch/bk/en/home/digitale-transformation-ikt-lenkung/bundesarchitektur/open_source_software/hilfsmittel_oss.html).
 
@@ -80,7 +80,9 @@ We welcome feedback, bug reports and code contributions (provided they are compa
 ### Main contributors
 
 * Stijn Vermeeren [@stijnvermeeren-swisstopo](https://www.github.com/stijnvermeeren-swisstopo) (swisstopo) - Project Lead
-* Visium
+* [Visium](https://www.visium.com/)
+
+See [contributers](https://github.com/swisstopo/swissgeol-boreholes-dataextraction/graphs/contributors) for all individual contributors.
 
 ### License
 
@@ -255,8 +257,8 @@ The pipeline stores a checkpoint of the model after each epoch and logs training
 
 
 ## Further information 
-- [README.API_and_Docker.md](docs/README.API_and_Docker.md) documents how to start the API server and how to build the API as a Docker Image. 
+- [API_and_Docker.md](docs/API_and_Docker.md) documents how to start the API server and how to build the API as a Docker Image. 
 
-- [README.For_Developers.md](docs/README.For_Developers.md) documents project structure and practical tools and best practices like pre-commit which may be useful for developers. 
+- [For_Developers.md](docs/For_Developers.md) documents project structure and practical tools and best practices like pre-commit which may be useful for developers. 
 
-- [README.groundtruth-json.md](docs/README.groundtruth-json.md) documents the expected structure of the ground truth file needed for evaluation. 
+- [groundtruth-json.md](docs/groundtruth-json.md) documents the expected structure of the ground truth file needed for evaluation. 
