@@ -686,7 +686,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         has_table = bool(self.table_structures)
         has_striplog = bool(self.strip_logs)
 
-        # 1) If strip-log exists, that's a borehole
+        # If strip-log exists, that's a borehole
         if allow_if_striplog and has_striplog:
             return True
 
@@ -697,7 +697,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             return False
 
         largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
-        return (largest_table.bounding_rect.height / self.page_height) >= min_table_height_ratio
+        return (largest_table.bounding_rect.height / max(self.page_height, 1e-16)) >= min_table_height_ratio
 
 
 def extract_page(
