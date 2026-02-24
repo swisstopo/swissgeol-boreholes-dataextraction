@@ -14,13 +14,15 @@ description:
       return extracted coordinates, depths, and material descriptions as JSON.
     longDescription: >-
       Boreholes Data Extraction is a pipeline to extract structured data from
-      borehole profiles in PDF files. Extracted properties (currently
+      borehole profiles in PDF files. Extracted properties (currently borehole name, groundwater data, elevation,
       coordinates, depths and associated material descriptions) are returned in
-      JSON format, and (optionally) visualized as PNG images.
+      JSON format, and (optionally) visualized as PNG images. Further, an API provides access to 
+      the borehole data extraction pipeline, allowing to process PDF files, generate visualizations, 
+      and retrieve structured geological data in JSON format.
 
       The goal of the project is to automate the extraction of structured data
       from borehole profiles as much as possible and to integrate it with the
-      boreholes.swissgeol.ch application (internal use at swisstopo).
+      boreholes.swissgeol.ch application which is publically accessible.
     features:
       - Extract borehole coordinates from PDF profiles
       - Extract depth intervals for lithological layers
