@@ -86,7 +86,7 @@ See [contributers](https://github.com/swisstopo/swissgeol-boreholes-dataextracti
 
 ### License
 
-The source code of this project is licensed under the [MIT License](LICENSE). Certain libraries in the project dependencies might be distributed under more restrictive open source licenses. Most notably, [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright) is available under either the AGPL license or a commercial license. These more restrictive licenses would apply when distributing this project in a single package together with its dependencies.
+The source code is licensed under the [AGPL-3.0-only License](LICENSE). This is due to the licensing of certain dependencies, most notably [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright), which is only available under either the AGPL license or a commercial license. If this dependency is removed in the future, we will switch to a more permissive license for this project.
 
 ## Installation
 We use pip to manage the packages dependencies. We recommend using a virtual environment within which to install all dependencies.
