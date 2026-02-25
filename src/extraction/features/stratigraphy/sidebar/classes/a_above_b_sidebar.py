@@ -88,7 +88,8 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         }
         score = [value in arithmetic_progression for value in values].count(True)
         # 80% of the values must be contained in the closest arithmetic progression (allowing for 20% OCR errors)
-        return score > 0.8 * len(values)
+        # and the values must contain 80% of the closest arithmetic progression
+        return score > 0.8 * len(values) and score > 0.8 * len(arithmetic_progression)
 
     def close_to_arithmetic_progression(self) -> bool:
         """Check if the depth values of the entries of this sidebar are very close to an arithmetic progression."""

@@ -59,12 +59,16 @@ def test_aabovebsidebar_removeintegerscale():  # noqa: D103
         result = [entry.value for entry in sidebar.remove_integer_scale().entries]
         assert result == out_values, f"Expected {out_values}, but got {result}"
 
-    run_test(["1.05", "2", "3", "4", "5.78", "6"], [1.05, 5.78])
+    run_test(["1", "1.05", "2", "3", "4", "5.78", "6"], [1.05, 5.78])
     run_test(["10", "20", "30", "40", "50"], [])
     run_test(["5", "10", "15", "20", "25", "30.5", "40.7"], [30.5, 40.7])
     run_test(["3", "7", "12", "20"], [3, 7, 12, 20])
     run_test(["10"], [10])
     run_test(["1.1", "2.2", "3.3", "4.4"], [1.1, 2.2, 3.3, 4.4])
+    run_test(
+        ["8", "16", "20", "24", "28", "52", "56", "60", "72", "88", "92", "100"],
+        [8, 16, 20, 24, 28, 52, 56, 60, 72, 88, 92, 100],
+    )
 
 
 def test_aabovebsidebar_makeascending():  # noqa: D103
