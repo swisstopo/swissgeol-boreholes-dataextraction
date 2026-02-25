@@ -22,7 +22,7 @@ description:
 
       The goal of the project is to automate the extraction of structured data
       from borehole profiles as much as possible and to integrate it with the
-      boreholes.swissgeol.ch application which is publically accessible.
+      boreholes.swissgeol.ch application.
     features:
       - Extract borehole coordinates from PDF profiles
       - Extract depth intervals for lithological layers
