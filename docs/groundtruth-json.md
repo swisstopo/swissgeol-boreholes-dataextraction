@@ -2,7 +2,7 @@
 
 This repository expects **ground-truth training/evaluation data** to be provided as a single JSON file.
 
-This document describes the expected format based on the example Zurich ground-truth file.
+This document describes the expected format of the ground-truth file.
 
 ---
 
@@ -50,26 +50,26 @@ Each item in the per-PDF list is a **borehole object** with the following keys:
 
 The `metadata` object stores borehole-level information. In the Zurich example, it contains:
 
-- `coordinates` *(object)*  
-  - `E` *(number)* — Easting  
-  - `N` *(number)* — Northing 
+- `coordinates` *(object, required)*  
+  - `E` *(number, required)* — Easting  
+  - `N` *(number, required)* — Northing 
 
-- `drilling_date` *(string)*  
+- `drilling_date` *(string, optional)*  
   Date in **`YYYY-MM-DD`** format.
 
-- `drilling_methods` *(any / null)*  
+- `drilling_methods` *(any / null, optional)*  
   May be `null` if unknown. 
 
-- `original_name` *(string)*  
+- `original_name` *(string, optional)*  
   Original borehole identifier/name in the source document. 
 
-- `project_name` *(string)*  
+- `project_name` *(string, optional)*  
   Project/report name.
 
-- `reference_elevation` *(number)*  
+- `reference_elevation` *(number, optional)*  
   Reference elevation in meters above sea level. 
 
-- `total_depth` *(number)*  
+- `total_depth` *(number, optional)*  
   Total borehole depth in meters. 
 
 ---
@@ -78,11 +78,11 @@ The `metadata` object stores borehole-level information. In the Zurich example, 
 
 `layers` is a list of layer objects. Each layer object contains:
 
-- `depth_interval` *(object)*  
-  - `start` *(number | null)* — start depth in meters  
-  - `end` *(number | null)* — end depth in meters 
+- `depth_interval` *(object, required)*  
+  - `start` *(number | null, required)* — start depth in meters  
+  - `end` *(number | null, required)* — end depth in meters 
 
-- `material_description` *(string)*  
+- `material_description` *(string, required)*  
   Free-text lithology/material description for the interval. 
 
 ### Depth interval conventions
@@ -90,6 +90,22 @@ The `metadata` object stores borehole-level information. In the Zurich example, 
 - Depths are in **meters**.
 - `start` should be **<=** `end` when both are present
 - Provide layers in **increasing depth order**.
+
+### `classification`attributes
+For classififcation of the material descriptions from the ground truth or from the predictions, 
+following optional attributes can be added to the `layers`array. 
+- `lithology` *(string, optional)* 
+  Describes the rock or sediment type.
+- `uscs_1` *(string, optional)* 
+  Key used to retrieve the ground truth USCS (Unified Soil Classification System) class from a layer dictionary.
+- `uscs_2`*(string, optional)* 
+  Optional secondary classification.
+- `unconsolidated` *(object, optional)* 
+  Contains the EN two-level geological classification of loose sediments.
+  - `main` *(string, optional)* 
+    The dominant grain type. 
+  - `other` *(array, optional)* 
+    Lists secondary grain types present in smaller proportions.
 
 ---
 
@@ -105,7 +121,6 @@ The `metadata` object stores borehole-level information. In the Zurich example, 
 ## Example
 
 Below is a condensed example showing all main fields (one PDF with one borehole).
-Values are illustrative but follow the structure used in the Zurich ground-truth file. 
 
 ```json
 {
@@ -139,3 +154,46 @@ Values are illustrative but follow the structure used in the Zurich ground-truth
 }
 ```
 
+Below is a condensed example showing the structure of a ground truth file with classification attributes. 
+```json 
+    {"680.pdf": [
+        {
+            "borehole_index": 0,
+            "groundwater": null,
+            "layers": [
+                {
+                    "depth_interval": {
+                        "end": 0.3,
+                        "start": 0.05
+                    },
+                    "lithology": "unconsolidated deposits",
+                    "material_description": "Gravier sableux, légèrement limoneux, galets toutes formes, dm. 10 cm, avec débris de construction, compact, sec.",
+                    "unconsolidated": {
+                        "main": "Ba",
+                        "other": [
+                            "gr",
+                            "si",
+                            "sa",
+                            "co"
+                        ]
+                    },
+                    "uscs_1": null,
+                    "uscs_2": null
+                
+                }
+            ]            
+                "metadata": {
+                "coordinates": {
+                    "E": 499936.0,
+                    "N": 116004.0
+                },
+                "drilling_date": "1961-06-08",
+                "drilling_methods": null,
+                "original_name": "Forage Nº 5",
+                "project_name": "Pont de Carouge - Genève",
+                "reference_elevation": 380.0,
+                "total_depth": 40.32
+            }
+        }
+    ]
+}
