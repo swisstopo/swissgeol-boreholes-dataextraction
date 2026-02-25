@@ -1,8 +1,11 @@
 # `ground_truth.json` input structure
 
-This repository expects **ground-truth training/evaluation data** to be provided as a single JSON file.
+**Ground-truth training/evaluation data** needs to be provided in the form of a JSON file in order to do the following:
 
-This document describes the expected format of the ground-truth file.
+- compute accuracy metrics for the extracted data on a certain datasets
+- train classification models (see train_BERT.md for more details on that use case)
+
+This document describes the format of the ground-truth file.
 
 ---
 
@@ -50,9 +53,9 @@ Each item in the per-PDF list is a **borehole object** with the following keys:
 
 The `metadata` object stores borehole-level information. In the Zurich example, it contains:
 
-- `coordinates` *(object, required)*  
-  - `E` *(number, required)* — Easting  
-  - `N` *(number, required)* — Northing 
+- `coordinates` *(object, optional)*  
+  - `E` *(number, optional)* — Easting  
+  - `N` *(number, optional)* — Northing 
 
 - `drilling_date` *(string, optional)*  
   Date in **`YYYY-MM-DD`** format.
