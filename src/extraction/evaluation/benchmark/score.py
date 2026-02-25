@@ -22,7 +22,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-class BenchmarkSummary(BaseModel):
+class ExtractionBenchmarkSummary(BaseModel):
     """Helper class containing a summary of all the results of a single benchmark."""
 
     ground_truth_path: str
@@ -45,7 +45,7 @@ class BenchmarkSummary(BaseModel):
 def evaluate_all_predictions(
     predictions: OverallFilePredictions,
     ground_truth_path: Path,
-) -> None | BenchmarkSummary:
+) -> None | ExtractionBenchmarkSummary:
     """Computes all the metrics, logs them, and creates corresponding MLFlow artifacts (when enabled).
 
     Args:
@@ -53,7 +53,8 @@ def evaluate_all_predictions(
         ground_truth_path (Path | None): The path to the ground truth file.
 
     Returns:
-        BenchmarkSummary | None: A JSON-serializable BenchmarkSummary that can be used by multi-benchmark runners.
+        ExtractionBenchmarkSummary | None: A JSON-serializable ExtractionBenchmarkSummary
+        that can be used by multi-benchmark runners.
     """
     if not (ground_truth_path and ground_truth_path.exists()):  # for inference no ground truth is available
         logger.warning("Ground truth file not found. Skipping evaluation.")
@@ -99,7 +100,7 @@ def evaluate_all_predictions(
             mlflow.log_artifact(Path(temp_directory) / "document_level_metrics.csv")
             mlflow.log_artifact(Path(temp_directory) / "document_level_metadata_metrics.csv")
 
-    return BenchmarkSummary(
+    return ExtractionBenchmarkSummary(
         ground_truth_path=str(ground_truth_path),
         n_documents=len(predictions.file_predictions_list),
         geology=metrics_dict,

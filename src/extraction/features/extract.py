@@ -711,9 +711,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         This is meant to reduce false-positive boreholes created from random paragraphs.
         """
-        require_table = self.matching_params.get("fallback_require_table", True)
-        allow_if_striplog = self.matching_params.get("fallback_allow_if_striplog", True)
-
         # Table evidence thresholds
         min_table_height_ratio = self.matching_params.get("fallback_min_table_height_ratio", 0.85)
 
@@ -721,15 +718,16 @@ class MaterialDescriptionRectWithSidebarExtractor:
         has_striplog = bool(self.strip_logs)
 
         # If strip-log exists, that's a borehole
-        if allow_if_striplog and has_striplog:
-            return True
-
-        if not require_table:
+        if has_striplog:
             return True
 
         if not has_table:
             return False
 
+        # For now, we require the table height to exceed a specific threshold in order to reduce false positives from
+        # small tables which might include keywords in their description, misleadingly classifying them as boreholes.
+        # BUT: TODO keep in mind that this might exclude some boreholes (e.g scanned image has large margin above and
+        # below the actual scanned page) --> this mechanism could/should be optimized in the future!
         largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
         return (largest_table.bounding_rect.height / max(self.page_height, 1e-16)) >= min_table_height_ratio
 
