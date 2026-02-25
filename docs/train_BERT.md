@@ -15,6 +15,7 @@ For each layer:
     - `uscs_1` for USCS
     - `unconsolidated`(main/other) for EN
     - `lithology`
+    
 For each system, you should create an own config file, e.g. `bert_config_uscs.yml` which defines training data as well as model parameters. 
 It could look like this: 
 ```yml
