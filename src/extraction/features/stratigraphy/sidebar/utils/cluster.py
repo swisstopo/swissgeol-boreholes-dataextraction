@@ -62,13 +62,13 @@ class Cluster(abc.ABC, Generic[EntryT]):
             create_new_cluster = True
             for cluster in clusters:
                 if cluster.good_fit(entry, entry_to_rect, 0.1):
-                    cluster.entries.append(entry)
                     if cluster.good_fit(entry, entry_to_rect, 0.75):
                         # If the fit is good (>0.1) but not very good (<0.75), then we both add the element to this
                         # cluster, as well as potentially creating a new cluster starting with this entry. Only if we
                         # have an excellent fit (>0.75) with some cluster, then we completely skip creating a new
                         # cluster.
                         create_new_cluster = False
+                    cluster.entries.append(entry)
 
             if create_new_cluster:
                 clusters.append(Cluster([entry]))
