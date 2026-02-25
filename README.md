@@ -103,7 +103,7 @@ Alternatively you can replace the `pip install -e '.[all]'` command with `pip in
 Adding pip packages can be done by editing the `pyproject.toml` of the project and adding the required package.
 
 If you are using a version of Python newer than 3.12 (e.g. 3.13), you may need to use the command ` python3.12 -m venv env `instead.
-It might also be usefull to use `python3.12 -m pip install -e '.[all]'` if some error appear.
+It might also be useful to use `python3.12 -m pip install -e '.[all]'` if some error appear.
 
 ## Run data extraction
 To execute the data extraction pipeline, follow these steps:
@@ -120,7 +120,7 @@ source env/bin/activate
 
 Use `boreholes-download-profiles` to download the files to be processed from an AWS S3 storage. In order to do so, you need to authenticate with aws first. We recommend using the aws CLI for that purpose, or storing your credentials in the ~/.aws configuration files This step is optional, you can continue with step 3 on your own set of borehole profiles.
 
-Alternativelly, you can download the data directly using the AWS CLI:
+Alternatively, you can download the data directly using the AWS CLI:
 ```bash 
 brew install awscli
 aws s3 sync s3://stijnvermeeren-boreholes-data ./data
@@ -230,35 +230,11 @@ Additionally, `-o`and `-ob`can be used to specify the output and bedrock output 
 
 ---  
 
-## Train BERT Model  
-
-To fine-tune BERT on your data, follow these steps:  
-
-### 1. Setup  
-
-Repeat steps 1 and 2 of the [data extraction pipeline](#run-data-extraction) to set up the environment and download the data.  
-
-### 2. Choose Hyperparameters  
-
-Modify the file `config/bert_config_uscs.yml` to set the hyperparameters for training and data processing. Data sources used for training and validation are specified in this file.
-
-### 3. Train the Model  
-
-To fine-tune BERT from the base model on Hugging Face, run:  
-
-```bash
-fine-tune-bert -cf bert_config_uscs.yml
-```  
-
-- Use `-cf` or `--config-file-path` to specify the config file containing the training parameters.
-- By default, the initial model is the one specified in the config file (loaded from hugging face). However, you can continue training from a specific checkpoint by providing a local model path with `-c` or `--model-checkpoint`.  
-
-The pipeline stores a checkpoint of the model after each epoch and logs training details in the `models` directory. The model name corresponds to the timestamp when training was launched.  
-
-
 ## Further information 
 - [API_and_Docker.md](docs/API_and_Docker.md) documents how to start the API server and how to build the API as a Docker Image. 
 
 - [For_Developers.md](docs/For_Developers.md) documents project structure and practical tools and best practices like pre-commit which may be useful for developers. 
 
 - [groundtruth-json.md](docs/groundtruth-json.md) documents the expected structure of the ground truth file needed for evaluation. 
+
+- [train_BERT.md](docs/train_BERT.md) documents how to fine-tune a BERT model on your own data. 
