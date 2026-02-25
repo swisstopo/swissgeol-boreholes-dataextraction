@@ -170,10 +170,12 @@ def save_visualization(
     img: np.ndarray, filename: str, page_number: int, visualization_type: str, draw_directory: Path
 ):
     """Save visualization image to file and/or MLflow."""
+    filename_visualization = f"{Path(filename).stem}_page{page_number}_{visualization_type}.png"
+
     if draw_directory:
-        img_path = draw_directory / f"{Path(filename).stem}_page{page_number}_{visualization_type}.png"
+        img_path = draw_directory / filename_visualization
         # CV2 expects the image to be in BGR colorspace
         cv2.imwrite(str(img_path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_PNG_COMPRESSION, 9])
 
     if mlflow:
-        mlflow.log_image(img, f"pages/{filename}_page{page_number}_{visualization_type}.png")
+        mlflow.log_image(img, f"pages/{filename_visualization}")
