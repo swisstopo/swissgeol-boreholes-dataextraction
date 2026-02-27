@@ -9,6 +9,7 @@ from typing import Generic, Self, TypeVar
 import pymupdf
 
 from swissgeol_doc_processing.geometry.geometric_line_utilities import _odr_regression
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_largest
 
 EntryT = TypeVar("EntryT")
@@ -57,25 +58,42 @@ class Cluster(abc.ABC, Generic[EntryT]):
 
     @classmethod
     def create_clusters(cls, entries: list[EntryT], entry_to_rect: Callable[[EntryT], pymupdf.Rect]) -> list[Self]:
-        clusters: list[Cluster[EntryT]] = []
-        for entry in entries:
-            create_new_cluster = True
-            new_clusters = []
-            for cluster in clusters:
-                if cluster.good_fit(entry, entry_to_rect, 0.1):
-                    if cluster.good_fit(entry, entry_to_rect, 0.75):
-                        # If the fit is good (>0.1) but not very good (<0.75), then we both add the element to this
-                        # cluster, as well as potentially creating a new cluster starting with this entry. Only if we
-                        # have an excellent fit (>0.75) with some cluster, then we completely skip creating a new
-                        # cluster.
-                        create_new_cluster = False
-                    else:
-                        # Also keep the cluster without the additional element if the fit is not very good.
-                        new_clusters.append(Cluster([entry for entry in cluster.entries]))
-                    cluster.entries.append(entry)
+        def midpoint(entry: EntryT) -> Point:
+            rect = entry_to_rect(entry)
+            return Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
 
-            clusters.extend(new_clusters)
-            if create_new_cluster:
-                clusters.append(Cluster([entry]))
+        max_skew_degrees = 5
+
+        clusters: list[Cluster[EntryT]] = []
+        # maps every entry to the set of indices of the clusters that contain this entry
+        assignments: dict[EntryT, set[int]] = {entry: set() for entry in entries}
+
+        # iterate over all possibilities for the topmost entry of a cluster
+        for index1, entry1 in enumerate(entries):
+            midpoint1 = midpoint(entry1)
+
+            # iterate over all possibilities for the bottom entry of a cluster
+            for index2, entry2 in enumerate(entries[:index1:-1]):
+                index2 = len(entries) - 1 - index2  # use index relative to the full list of entries
+                if not assignments[entry1].isdisjoint(assignments[entry2]):
+                    # skip if the entries already belong to the same cluster
+                    continue
+
+                midpoint2 = midpoint(entry2)
+                angle = Line(midpoint1, midpoint2).angle
+
+                if abs(abs(angle) - 90) <= max_skew_degrees:
+                    cluster = Cluster([entry1, entry2])
+
+                    intermediate_entries = []
+                    for entry3 in entries[index1 + 1 : index2]:
+                        if cluster.good_fit(entry3, entry_to_rect, 0.7):
+                            intermediate_entries.append(entry3)
+
+                    if intermediate_entries:
+                        cluster = Cluster([entry1, *intermediate_entries, entry2])
+                        for entry in cluster.entries:
+                            assignments[entry].add(len(clusters))
+                        clusters.append(cluster)
 
         return clusters
