@@ -22,6 +22,46 @@ class AAboveBSidebarValidator:
     noise_count_threshold: float
     noise_count_offset: int
 
+    # def failure_reason(self, sidebar_noise: SidebarNoise[AAboveBSidebar], corr_coef_threshold: float = 0.92)
+    # -> str | None:
+    #     sidebar = sidebar_noise.sidebar
+    #     noise = sidebar_noise.noise_count
+
+    #     if len(sidebar.entries) < 1:
+    #         return "no_entries"
+
+    #     if noise > self.noise_count_threshold * (len(sidebar.entries) - self.noise_count_offset) ** 2:
+    #         return "too_noisy"
+
+    #     if not sidebar.is_strictly_increasing():
+    #         return "not_strictly_increasing"
+
+    #     if sidebar.close_to_arithmetic_progression():
+    #         return "arithmetic_progression"
+
+    #     corr = sidebar.pearson_correlation_coef()
+    #     if not corr or corr <= corr_coef_threshold:
+    #         return "corr_below_threshold"
+
+    #     return None
+
+    def _trim_trailing_duplicate_depths(self, sidebar: AAboveBSidebar) -> AAboveBSidebar:
+        """If the last depth value is repeated (common for Endtiefe), drop trailing duplicates."""
+        entries = list(sidebar.entries)
+        if len(entries) < 2:
+            return sidebar
+
+        last_val = entries[-1].value
+        # drop trailing duplicates of the final value, keeping the first occurrence
+        while len(entries) > 1 and entries[-2].value == last_val:
+            entries.pop()
+
+        # If nothing changed, return original instance
+        if len(entries) == len(sidebar.entries):
+            return sidebar
+
+        return AAboveBSidebar(entries)
+
     def is_valid(self, sidebar_noise: SidebarNoise[AAboveBSidebar], corr_coef_threshold: float = 0.92) -> bool:
         """Checks whether the sidebar is valid.
 
@@ -57,35 +97,32 @@ class AAboveBSidebarValidator:
         if sidebar.close_to_arithmetic_progression():
             return False
 
+        n = len(sidebar.entries)
+        if n <= 5:
+            # With very few entries, Pearson is too brittle and leads to dropping endpoints.
+            return True
         corr_coef = sidebar.pearson_correlation_coef()
-
-        return corr_coef and corr_coef > corr_coef_threshold
+        return bool(corr_coef) and corr_coef > corr_coef_threshold
 
     def reduce_until_valid(
         self, sidebar_noise: SidebarNoise[AAboveBSidebar], line_rtree: fastquadtree.RectQuadTreeObjects
     ) -> SidebarNoise | None:
-        """Removes entries from the depth column until it fulfills the is_valid condition.
-
-        is_valid checks whether there is too much noise (i.e. other text) in the column and whether the entries are
-        linearly correlated with their vertical position.
-
-        Args:
-            sidebar_noise (SidebarNoise): The SidebarNoise wrapping the AAboveBSidebar to validate.
-            line_rtree (rtree.index.Index): Pre-built R-tree of all text lines on page for spatial queries.
-
-        Returns:
-            sidebar_noise | None : The current SidebarNoise with entries removed from Sidebar until it is valid
-            and the recalculated noise_count or None.
-        """
         while sidebar_noise.sidebar.entries:
+            # Trim trailing duplicates and recompute noise count
+            trimmed = self._trim_trailing_duplicate_depths(sidebar_noise.sidebar)
+            if len(trimmed.entries) != len(sidebar_noise.sidebar.entries):
+                sidebar_noise = SidebarNoise(sidebar=trimmed, noise_count=noise_count(trimmed, line_rtree))
+
             if self.is_valid(sidebar_noise):
                 return sidebar_noise
+            reason = self.failure_reason(sidebar_noise, corr_coef_threshold=0.92)
+            vals = [e.value for e in sidebar_noise.sidebar.entries]
+            print(f"[AAboveB][reduce] reason={reason} vals={vals} noise={sidebar_noise.noise_count}")
 
             new_sidebar = sidebar_noise.sidebar.remove_entry_by_correlation_gradient()
             if not new_sidebar:
                 return None
 
-            new_noise_count = noise_count(new_sidebar, line_rtree)
-            sidebar_noise = SidebarNoise(sidebar=new_sidebar, noise_count=new_noise_count)
+            sidebar_noise = SidebarNoise(sidebar=new_sidebar, noise_count=noise_count(new_sidebar, line_rtree))
 
         return None
