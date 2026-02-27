@@ -60,6 +60,7 @@ class Cluster(abc.ABC, Generic[EntryT]):
         clusters: list[Cluster[EntryT]] = []
         for entry in entries:
             create_new_cluster = True
+            new_clusters = []
             for cluster in clusters:
                 if cluster.good_fit(entry, entry_to_rect, 0.1):
                     if cluster.good_fit(entry, entry_to_rect, 0.75):
@@ -68,8 +69,12 @@ class Cluster(abc.ABC, Generic[EntryT]):
                         # have an excellent fit (>0.75) with some cluster, then we completely skip creating a new
                         # cluster.
                         create_new_cluster = False
+                    else:
+                        # Also keep the cluster without the additional element if the fit is not very good.
+                        new_clusters.append(Cluster([entry for entry in cluster.entries]))
                     cluster.entries.append(entry)
 
+            clusters.extend(new_clusters)
             if create_new_cluster:
                 clusters.append(Cluster([entry]))
 

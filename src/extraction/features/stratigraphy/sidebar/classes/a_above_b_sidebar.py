@@ -66,7 +66,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
 
     @staticmethod
     def is_close_to_arithmetic_progression(entries: list[DepthColumnEntry]) -> bool:
-        """Check if entries are very close to an arithmetic progression."""
+        """Check if entries are very similar to an arithmetic progression."""
         if len(entries) <= 2:
             return False
 
@@ -77,19 +77,11 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         if step <= 0:
             return False
 
-        first = values[0]
-        # consider at most 1000 steps, to avoid a nearly-infinite loop when the document accidentally contains a very
-        # large number (e.g. Thurgau 246_EWS_Aadorf_3387.pdf)
-        last = min(values[-1], first + step * 1000)
-        arithmetic_progression = {
-            # ensure we have nicely rounded numbers, without inaccuracies from floating point arithmetic
-            round(value * step, 2)
-            for value in range(int(first / step), int(last / step) + 1)
-        }
-        score = [value in arithmetic_progression for value in values].count(True)
-        # 80% of the values must be contained in the closest arithmetic progression (allowing for 20% OCR errors)
-        # and the values must contain 70% of the closest arithmetic progression
-        return score > 0.8 * len(values) and score > 0.7 * len(arithmetic_progression)
+        values_set = {round(value, 2) for value in values}
+        matching_steps = [round(value + step, 2) in values_set for value in values_set].count(True)
+        # For at least 70% of all values (except the highest one), the adding the step should give another present
+        # value.
+        return matching_steps > 0.7 * (len(values) - 1)
 
     def close_to_arithmetic_progression(self) -> bool:
         """Check if the depth values of the entries of this sidebar are very close to an arithmetic progression."""
