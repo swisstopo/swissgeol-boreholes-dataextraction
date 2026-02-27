@@ -32,7 +32,7 @@ class MaterialDescriptionRectWithSidebar:
         - negatively influenced by vertical distance between the top of the sidebar and the top of the material
           descriptions, and the vertical distance between the bottom of the sidebar and the bottom of the material
           descriptions
-        - positively influenced by the number of text lines contained in the material decription rectangle
+        - positively influenced by the number of text lines contained in the material description rectangle
         The resulting score is also reduced if the sidebar has a high noise count (many unrelated tokens in between
         the extracted depths values).
 
