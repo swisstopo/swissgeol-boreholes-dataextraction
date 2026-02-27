@@ -46,7 +46,7 @@ class AAboveBSidebarExtractor:
             column
             for numeric_column in numeric_columns
             for column in numeric_column.remove_integer_scale().make_ascending().break_on_double_descending()
-            if not column.close_to_arithmetic_progression()
+            if not column.close_to_arithmetic_progression() and len(column.entries) >= 3
         ]
 
         sidebar_validator = AAboveBSidebarValidator(**sidebar_params)

@@ -8,6 +8,7 @@ from typing import Generic, Self, TypeVar
 import pymupdf
 
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
+from swissgeol_doc_processing.geometry.util import x_overlap_significant_largest
 
 EntryT = TypeVar("EntryT")
 
@@ -83,6 +84,14 @@ class ClusterSpan:
     def good_fit(self, rect: pymupdf.Rect) -> bool:
         avg_y = (rect.y0 + rect.y1) / 2
 
-        x0_min = self.left_line.x_from_y(avg_y) - self.margin
-        x1_max = self.right_line.x_from_y(avg_y) + self.margin
-        return x0_min < rect.x0 < rect.x1 < x1_max
+        x0_expected = self.left_line.x_from_y(avg_y) - self.margin
+        x1_expected = self.right_line.x_from_y(avg_y) + self.margin
+
+        # Accept rects that are fully within the margins
+        if x0_expected - self.margin < rect.x0 < rect.x1 < x1_expected + self.margin:
+            return True
+
+        # Also accept rects that have a significant intersection with the expected location, even if they extend beyond
+        # the margins:
+        reference_rect = pymupdf.Rect(x0_expected, rect.y0, x1_expected, rect.y1)
+        return x_overlap_significant_largest(reference_rect, rect, level=0.4)

@@ -76,6 +76,8 @@ class AAboveBSidebarValidator:
         Returns:
             sidebar_noise | None : The current SidebarNoise with entries removed from Sidebar until it is valid
             and the recalculated noise_count or None.
+
+        TODO: add unit tests for the values from 267125223-bp.pdf
         """
         while sidebar_noise.sidebar.entries:
             if self.is_valid(sidebar_noise):
