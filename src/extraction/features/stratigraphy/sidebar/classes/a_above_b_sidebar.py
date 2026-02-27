@@ -142,8 +142,15 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
             # Assign the first valid correction
             for new_value in new_values:
                 if self._valid_value(i, new_value):
+                    old_correlation_coef = self.pearson_correlation_coef()
                     self.entries[i] = DepthColumnEntry(rect=entry.rect, value=new_value, page_number=entry.page_number)
-                    break
+                    new_correlation_coef = self.pearson_correlation_coef()
+                    if new_correlation_coef > old_correlation_coef:
+                        # only accept a change if the correlation improves
+                        break
+                    else:
+                        # otherwise: revert
+                        self.entries[i] = entry
         return self
 
     def _valid_value(self, index: int, new_value: float) -> bool:

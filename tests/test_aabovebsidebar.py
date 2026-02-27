@@ -77,7 +77,11 @@ def test_aabovebsidebar_makeascending():  # noqa: D103
 
     def run_test(in_values, out_values):
         sidebar = AAboveBSidebar(
-            [DepthColumnEntry(rect=pymupdf.Rect(), value=value, page_number=0) for value in in_values]
+            [
+                # TODO: actually specify the y-coordinate instead of using the index as a proxy
+                DepthColumnEntry(rect=pymupdf.Rect(0, index, 0, index), value=value, page_number=0)
+                for index, value in enumerate(in_values)
+            ]
         )
         result = [entry.value for entry in sidebar.make_ascending().entries]
         assert result == out_values, f"Expected {out_values}, but got {result}"
@@ -98,6 +102,9 @@ def test_aabovebsidebar_makeascending():  # noqa: D103
 
     # ensure a "noise" value "0.0" does not influence the result
     run_test([1.0, 2.0, 3.0, 0.0, 4.0], [1.0, 2.0, 3.0, 0.0, 4.0])
+
+    # always preserve the inputs if they are already look good
+    run_test([0.0, 0.1, 0.5, 6.0, 8.5, 10.0], [0.0, 0.1, 0.5, 6.0, 8.5, 10.0])
 
     # edge case
     run_test([], [])
