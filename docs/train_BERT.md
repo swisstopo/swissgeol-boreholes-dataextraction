@@ -12,7 +12,7 @@ For each layer:
     - `unconsolidated`(main/other) for EN, e.g. "Cl", "Si" for main or "fsa", "co", for other
     - `lithology` e.g. "unconsolidated deposits", "sandstone" or "limestone"
 
-An example json can be found in [docs/groundtruth-json.md](docs/groundtruth-json.md).
+An example json can be found in [groundtruth-json.md](groundtruth-json.md).
     
 ## 2. Choose Hyperparameters  
 
