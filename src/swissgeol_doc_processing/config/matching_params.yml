@@ -109,6 +109,9 @@ material_description:
       - grob
       - auffüllung
       - schlacke
+      - überlagerung 
+      - moräne    
+      - aufschüttung
     excluding_expressions:
       - herr
       - ende
