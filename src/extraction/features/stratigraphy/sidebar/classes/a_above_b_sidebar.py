@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 import statistics
 from dataclasses import dataclass, field
 from itertools import product
@@ -118,13 +119,18 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         return min(new_columns, key=lambda column: column.linear_fit_loss())
 
     def linear_fit_loss(self) -> float:
-        # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with
-        # the line of the corresponding layer boundary.
         if len(self.entries) == 0:
             return 0
+
+        # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with
+        # the line of the corresponding layer boundary.
         positions = np.array([entry.rect.y1 for entry in self.entries])
         values = np.array([entry.value for entry in self.entries])
-        b, a = np.polynomial.polynomial.polyfit(positions, values, 1)  # linear regression
+
+        if len(set(positions)) >= 2:
+            b, a = np.polynomial.polynomial.polyfit(positions, values, 1)  # linear regression
+        else:
+            b, a = np.median(positions), 0
         squared_errors = [(entry.value - (a * entry.rect.y1 + b)) ** 2 for entry in self.entries]
         mean_squared_error = sum(squared_errors) / len(self.entries)
         return mean_squared_error
@@ -138,43 +144,56 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
             self.entries = [entry for entry in self.entries if entry not in integer_entries]
         return self
 
-    def make_ascending(self):
-        """Adjust entries in this sidebar for an ascending order."""
+    def fix_ocr_mistakes(self):
+        """Correct common OCR mistakes (e.g. missing decimal points) if it makes the values more plausible."""
         if not self.entries:
             return self
 
         median_value = np.median(np.array([entry.value for entry in self.entries]))
 
+        def significant_digits(value: float) -> str:
+            return re.sub(r"0+$", "", re.sub(r"[^0-9]+", "", str(value)))
+
         for i, entry in enumerate(self.entries):
-            new_values = []
+            candidate_values = [entry.value]
 
             if entry.value.is_integer() and entry.value > median_value:
-                new_values.extend([entry.value / 100, entry.value / 10])
+                candidate_values.extend([entry.value / 100, entry.value / 10])
 
             # Correct common OCR mistakes where "4" is recognized instead of "1"
             # We don't control for OCR mistakes recognizing "9" as "3" (example zurich/680244005-bp.pdf)
-            if "4" in str(entry.value) and not self._valid_value(i, entry.value):
-                new_values.extend(generate_alternatives(entry.value))
+            if "4" in str(entry.value):
+                candidate_values.extend(generate_alternatives(entry.value))
 
-            # Assign the first valid correction
-            for new_value in new_values:
-                if self._valid_value(i, new_value):
-                    old_correlation_coef = self.pearson_correlation_coef()
-                    self.entries[i] = DepthColumnEntry(rect=entry.rect, value=new_value, page_number=entry.page_number)
-                    new_correlation_coef = self.pearson_correlation_coef()
-                    if new_correlation_coef > old_correlation_coef:
-                        # only accept a change if the correlation improves
-                        break
-                    else:
-                        # otherwise: revert
-                        self.entries[i] = entry
+            def score(new_value: float) -> tuple[int, float]:
+                # ruff: noqa B023
+                # See https://github.com/astral-sh/ruff/issues/7847
+                penalty = 0
+                if significant_digits(entry.value) != significant_digits(new_value):
+                    # if the digits have changed, then the ascending count must strictly improve
+                    penalty = 1
+                new_entry = DepthColumnEntry(rect=entry.rect, value=new_value, page_number=entry.page_number)
+                entries = [*self.entries[:i], new_entry, *self.entries[i + 1 :]]
+                new_sidebar = AAboveBSidebar(entries)
+                return (new_sidebar.ascending_count() - penalty, -new_sidebar.linear_fit_loss())
+
+            # Find the best correction
+            best_new_value = max(candidate_values, key=score)
+            if best_new_value != entry.value:
+                self.entries[i] = DepthColumnEntry(
+                    rect=entry.rect, value=best_new_value, page_number=entry.page_number
+                )
         return self
 
-    def _valid_value(self, index: int, new_value: float) -> bool:
-        """Check if new value at given index is maintaining ascending order."""
-        previous_ok = index == 0 or all(other_entry.value < new_value for other_entry in self.entries[:index])
-        next_ok = index + 1 == len(self.entries) or new_value < self.entries[index + 1].value
-        return previous_ok and next_ok
+    def ascending_count(self) -> int:
+        """Count how many pairs of values are in ascending order."""
+        # TODO add unit tests
+        count = 0
+        for index, entry1 in enumerate(self.entries):
+            for entry2 in self.entries[index + 1 :]:
+                if entry1.value < entry2.value:
+                    count += 1
+        return count
 
     def break_on_double_descending(self) -> list[AAboveBSidebar]:
         segments = []

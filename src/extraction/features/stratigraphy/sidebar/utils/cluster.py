@@ -29,6 +29,7 @@ class Cluster(abc.ABC, Generic[EntryT]):
 
         clusters: list[Cluster[EntryT]] = []
         # maps every entry to the set of indices of the clusters that contain this entry
+        perfect_assignments: dict[EntryT, set[int]] = {entry: set() for entry in entries}
         assignments: dict[EntryT, set[int]] = {entry: set() for entry in entries}
 
         # iterate over all possibilities for the topmost entry of a cluster
@@ -38,7 +39,7 @@ class Cluster(abc.ABC, Generic[EntryT]):
             # iterate over all possibilities for the bottom entry of a cluster
             for index2, entry2 in enumerate(entries[:index1:-1]):
                 index2 = len(entries) - 1 - index2  # use index relative to the full list of entries
-                if not assignments[entry1].isdisjoint(assignments[entry2]):
+                if not perfect_assignments[entry1].isdisjoint(perfect_assignments[entry2]):
                     # skip if the entries already belong to the same cluster
                     continue
 
@@ -49,14 +50,26 @@ class Cluster(abc.ABC, Generic[EntryT]):
                     cluster_span = ClusterSpan(entry1.rect, entry2.rect)
 
                     intermediate_entries = []
+                    perfect_fits = []
                     for entry3 in entries[index1 + 1 : index2]:
-                        if cluster_span.good_fit(entry3.rect):
+                        if cluster_span.perfect_fit(entry3.rect):
+                            intermediate_entries.append(entry3)
+                            perfect_fits.append(entry3)
+                        elif cluster_span.good_fit(entry3.rect):
                             intermediate_entries.append(entry3)
 
                     if intermediate_entries:
                         cluster = Cluster([entry1, *intermediate_entries, entry2])
+
+                        if len(set.intersection(*[assignments[entry] for entry in cluster.entries])):
+                            # cluster is already fully contained in an existing cluster -> skip
+                            continue
+
+                        cluster_index = len(clusters)
+                        for entry in [entry1, *perfect_fits, entry2]:
+                            perfect_assignments[entry].add(cluster_index)
                         for entry in cluster.entries:
-                            assignments[entry].add(len(clusters))
+                            assignments[entry].add(cluster_index)
                         clusters.append(cluster)
 
         return clusters
@@ -81,17 +94,30 @@ class ClusterSpan:
         # The taller the font, the more flexible we are. We use half the average height of start and end rect.
         self.margin = (self.start_rect.height + self.end_rect.height) / 4
 
+    def perfect_fit(self, rect: pymupdf.Rect) -> bool:
+        avg_y = (rect.y0 + rect.y1) / 2
+
+        x0_expected = self.left_line.x_from_y(avg_y) - self.margin
+        x1_expected = self.right_line.x_from_y(avg_y) + self.margin
+
+        return x0_expected <= rect.x0 and rect.x1 <= x1_expected
+
     def good_fit(self, rect: pymupdf.Rect) -> bool:
         avg_y = (rect.y0 + rect.y1) / 2
 
         x0_expected = self.left_line.x_from_y(avg_y) - self.margin
         x1_expected = self.right_line.x_from_y(avg_y) + self.margin
 
+        reference_rect = pymupdf.Rect(x0_expected, rect.y0, x1_expected, rect.y1)
+
         # Accept rects that are fully within the margins
-        if x0_expected - self.margin < rect.x0 < rect.x1 < x1_expected + self.margin:
+        if (
+            x0_expected - self.margin < rect.x0
+            and rect.x1 < x1_expected + self.margin
+            and x_overlap_significant_largest(reference_rect, rect, level=0.1)
+        ):
             return True
 
         # Also accept rects that have a significant intersection with the expected location, even if they extend beyond
         # the margins:
-        reference_rect = pymupdf.Rect(x0_expected, rect.y0, x1_expected, rect.y1)
         return x_overlap_significant_largest(reference_rect, rect, level=0.4)

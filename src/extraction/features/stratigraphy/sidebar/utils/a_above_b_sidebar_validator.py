@@ -22,7 +22,7 @@ class AAboveBSidebarValidator:
     noise_count_threshold: float
     noise_count_offset: int
 
-    def is_valid(self, sidebar_noise: SidebarNoise[AAboveBSidebar], corr_coef_threshold: float = 0.99) -> bool:
+    def is_valid(self, sidebar_noise: SidebarNoise[AAboveBSidebar], corr_coef_threshold: float = 0.95) -> bool:
         """Checks whether the sidebar is valid.
 
         The sidebar is considered valid if:
@@ -77,7 +77,7 @@ class AAboveBSidebarValidator:
             sidebar_noise | None : The current SidebarNoise with entries removed from Sidebar until it is valid
             and the recalculated noise_count or None.
 
-        TODO: add unit tests for the values from 267125223-bp.pdf
+        TODO: add unit tests for the values from 267125223-bp.pdf and A11163.pdf
         """
         while sidebar_noise.sidebar.entries:
             if self.is_valid(sidebar_noise):

@@ -82,8 +82,8 @@ def test_aabovebsidebar_removeintegerscale():  # noqa: D103
     run_test(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "20"], [])
 
 
-def test_aabovebsidebar_makeascending():  # noqa: D103
-    """Test the make_ascending method of the AAboveBSidebar class."""
+def test_aabovebsidebar_fixocrmistakes():  # noqa: D103
+    """Test the fix_ocr_mistakes method of the AAboveBSidebar class."""
 
     def run_test(in_values, out_values):
         sidebar = AAboveBSidebar(
@@ -93,7 +93,7 @@ def test_aabovebsidebar_makeascending():  # noqa: D103
                 for index, value in enumerate(in_values)
             ]
         )
-        result = [entry.value for entry in sidebar.make_ascending().entries]
+        result = [entry.value for entry in sidebar.fix_ocr_mistakes().entries]
         assert result == out_values, f"Expected {out_values}, but got {result}"
 
     # Basic transformation for values greater than the median, correct by factor 100
@@ -108,13 +108,16 @@ def test_aabovebsidebar_makeascending():  # noqa: D103
 
     ## Transforming OCR mistakes
     run_test([0.5, 4.0, 2.0, 5.0], [0.5, 1.0, 2.0, 5.0])
-    run_test([4.0, 4.4, 4.4, 5.0], [4.0, 4.1, 4.4, 5.0])
+    run_test([4.0, 4.4, 4.4, 4.7, 5.0], [4.0, 4.1, 4.4, 4.7, 5.0])
 
     # ensure a "noise" value "0.0" does not influence the result
     run_test([1.0, 2.0, 3.0, 0.0, 4.0], [1.0, 2.0, 3.0, 0.0, 4.0])
 
     # always preserve the inputs if they are already look good
     run_test([0.0, 0.1, 0.5, 6.0, 8.5, 10.0], [0.0, 0.1, 0.5, 6.0, 8.5, 10.0])
+
+    # Test case for A11429
+    run_test([558.4, 0.25, 230.0, 4.3, 12.04, 18268.0], [558.4, 0.25, 2.30, 4.3, 12.04, 1826.8])
 
     # edge case
     run_test([], [])
@@ -127,22 +130,6 @@ def test_generate_alternatives():
     assert generate_alternatives(441) == [441, 411, 141, 111]
     assert generate_alternatives(123) == [123]
     assert generate_alternatives(4.4) == [4.4, 4.1, 1.4, 1.1]
-
-
-def test_valid_value():
-    """Test _valid_value helper function for make_ascending method of the AAboveBSidebar class."""
-    entries = [
-        DepthColumnEntry(rect=None, value=1, page_number=0),
-        DepthColumnEntry(rect=None, value=2, page_number=0),
-        DepthColumnEntry(rect=None, value=3, page_number=0),
-    ]
-    sidebar = AAboveBSidebar(entries)
-
-    assert sidebar._valid_value(1, 2) is True
-    assert sidebar._valid_value(1, 3) is False
-    assert sidebar._valid_value(1, 1.5) is True
-    assert sidebar._valid_value(0, 2) is False
-    assert sidebar._valid_value(2, 3.5) is True
 
 
 def test_aabovebsidebar_isstrictlyincreasing():  # noqa: D103
