@@ -175,7 +175,6 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
                 new_entry = DepthColumnEntry(rect=entry.rect, value=new_value, page_number=entry.page_number)
                 entries = [*self.entries[:i], new_entry, *self.entries[i + 1 :]]
                 new_sidebar = AAboveBSidebar(entries)
-                print(entry.value, new_value, new_sidebar.ascending_count(i, window_size=3) - penalty)
                 return (new_sidebar.ascending_count(i, window_size=3) - penalty, -new_sidebar.linear_fit_loss())
 
             # Find the best correction
