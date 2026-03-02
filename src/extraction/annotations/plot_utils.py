@@ -175,7 +175,7 @@ def save_visualization(
     if draw_directory:
         img_path = draw_directory / filename_visualization
         # CV2 expects the image to be in BGR colorspace
-        cv2.imwrite(str(img_path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_PNG_COMPRESSION, 9])
+        cv2.imwrite(str(img_path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_PNG_COMPRESSION, 3])
 
     if mlflow:
         mlflow.log_image(img, f"pages/{filename_visualization}")
