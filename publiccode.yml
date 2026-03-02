@@ -2,7 +2,9 @@ publiccodeYmlVersion: 0.5.0
 name: swissgeol-boreholes-dataextraction
 applicationSuite: swissgeol.ch
 url: https://github.com/swisstopo/swissgeol-boreholes-dataextraction/
-developmentStatus: development
+platforms:
+  - web
+developmentStatus: beta
 softwareType: standalone/backend
 organisation:
   uri: https://ld.admin.ch/office/IV.1.5a
