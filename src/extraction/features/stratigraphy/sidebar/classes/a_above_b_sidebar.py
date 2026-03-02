@@ -175,7 +175,8 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
                 new_entry = DepthColumnEntry(rect=entry.rect, value=new_value, page_number=entry.page_number)
                 entries = [*self.entries[:i], new_entry, *self.entries[i + 1 :]]
                 new_sidebar = AAboveBSidebar(entries)
-                return (new_sidebar.ascending_count() - penalty, -new_sidebar.linear_fit_loss())
+                print(entry.value, new_value, new_sidebar.ascending_count(i, window_size=3) - penalty)
+                return (new_sidebar.ascending_count(i, window_size=3) - penalty, -new_sidebar.linear_fit_loss())
 
             # Find the best correction
             best_new_value = max(candidate_values, key=score)
@@ -185,12 +186,13 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
                 )
         return self
 
-    def ascending_count(self) -> int:
+    def ascending_count(self, index: int, window_size: int) -> int:
         """Count how many pairs of values are in ascending order."""
         # TODO add unit tests
+        slice = self.entries[max(0, index - window_size) : index + window_size + 1]
         count = 0
-        for index, entry1 in enumerate(self.entries):
-            for entry2 in self.entries[index + 1 :]:
+        for index1, entry1 in enumerate(slice):
+            for entry2 in slice[index1 + 1 :]:
                 if entry1.value < entry2.value:
                     count += 1
         return count

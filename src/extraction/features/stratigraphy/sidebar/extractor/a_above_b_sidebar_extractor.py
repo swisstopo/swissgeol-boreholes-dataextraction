@@ -42,12 +42,19 @@ class AAboveBSidebarExtractor:
 
         numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 3]
 
+        for col in numeric_columns:
+            print(col)
+
         filtered_columns = [
             column
             for numeric_column in numeric_columns
             for column in numeric_column.remove_integer_scale().fix_ocr_mistakes().break_on_double_descending()
             if not column.close_to_arithmetic_progression() and len(column.entries) >= 3
         ]
+
+        print()
+        for col in filtered_columns:
+            print(col)
 
         sidebar_validator = AAboveBSidebarValidator(**sidebar_params)
 
