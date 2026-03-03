@@ -7,7 +7,6 @@ from typing import Generic, Self, TypeVar
 
 import pymupdf
 
-from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_largest
 
 EntryT = TypeVar("EntryT")
@@ -17,153 +16,29 @@ EntryT = TypeVar("EntryT")
 class Cluster(abc.ABC, Generic[EntryT]):
     """Class that groups together values that potentially belong to the same sidebar."""
 
+    reference_rect: pymupdf.Rect
     entries: list[EntryT]
+    entry_to_rect: Callable[[EntryT], pymupdf.Rect]
+
+    def good_fit(self, entry: EntryT, threshold: float) -> bool:
+        return x_overlap_significant_largest(self.reference_rect, self.entry_to_rect(entry), threshold)
 
     @classmethod
     def create_clusters(cls, entries: list[EntryT], entry_to_rect: Callable[[EntryT], pymupdf.Rect]) -> list[Self]:
-        def midpoint(entry: EntryT) -> Point:
-            rect = entry_to_rect(entry)
-            return Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
-
-        max_skew_degrees = 5
-
         clusters: list[Cluster[EntryT]] = []
-        # maps every entry to the set of indices of the clusters that contain this entry
-        perfect_assignments: dict[EntryT, set[int]] = {entry: set() for entry in entries}
-        assignments: dict[EntryT, set[int]] = {entry: set() for entry in entries}
+        for entry in entries:
+            create_new_cluster = True
+            for cluster in clusters:
+                if cluster.good_fit(entry, 0.1):
+                    cluster.entries.append(entry)
+                    if cluster.good_fit(entry, 0.75):
+                        # If the fit is good (>0.1) but not very good (<0.75), then we both add the element to this
+                        # cluster, as well as potentially creating a new cluster starting with this entry. Only if we
+                        # have an excellent fit (>0.75) with some cluster, then we completely skip creating a new
+                        # cluster.
+                        create_new_cluster = False
 
-        # iterate over all possibilities for the topmost entry of a cluster
-        for index1, entry1 in enumerate(entries):
-            midpoint1 = midpoint(entry1)
-
-            # iterate over all possibilities for the bottom entry of a cluster
-            for index2, entry2 in enumerate(entries[:index1:-1]):
-                index2 = len(entries) - 1 - index2  # use index relative to the full list of entries
-                if not perfect_assignments[entry1].isdisjoint(perfect_assignments[entry2]):
-                    # skip if the entries already belong to the same cluster
-                    continue
-
-                midpoint2 = midpoint(entry2)
-                angle = Line(midpoint1, midpoint2).angle
-
-                if abs(abs(angle) - 90) <= max_skew_degrees:
-                    cluster_span = ClusterSpan(entry1.rect, entry2.rect)
-
-                    intermediate_entries = []
-                    perfect_fits = []
-                    for entry3 in entries[index1 + 1 : index2]:
-                        if cluster_span.perfect_fit(entry3.rect):
-                            intermediate_entries.append(entry3)
-                            perfect_fits.append(entry3)
-                        elif cluster_span.good_fit(entry3.rect):
-                            intermediate_entries.append(entry3)
-
-                    if intermediate_entries:
-                        cluster = Cluster([entry1, *intermediate_entries, entry2])
-
-                        if len(set.intersection(*[assignments[entry] for entry in cluster.entries])):
-                            # cluster is already fully contained in an existing cluster -> skip
-                            continue
-
-                        cluster_index = len(clusters)
-                        for entry in [entry1, *perfect_fits, entry2]:
-                            perfect_assignments[entry].add(cluster_index)
-                        for entry in cluster.entries:
-                            assignments[entry].add(cluster_index)
-                        clusters.append(cluster)
+            if create_new_cluster:
+                clusters.append(Cluster(entry_to_rect(entry), [entry], entry_to_rect))
 
         return clusters
-
-
-@dataclasses.dataclass
-class ClusterSpan:
-    """Class for the first and final entries that can generate a cluster."""
-
-    start_rect: pymupdf.Rect
-    end_rect: pymupdf.Rect
-
-    def __post_init__(self):
-        self.left_line = Line(
-            Point(self.start_rect.x0, (self.start_rect.y0 + self.start_rect.y1) / 2),
-            Point(self.end_rect.x0, (self.end_rect.y0 + self.end_rect.y1) / 2),
-        )
-        self.right_line = Line(
-            Point(self.start_rect.x1, (self.start_rect.y0 + self.start_rect.y1) / 2),
-            Point(self.end_rect.x1, (self.end_rect.y0 + self.end_rect.y1) / 2),
-        )
-        # The taller the font, the more flexible we are. We use half the average height of start and end rect.
-        self.margin = (self.start_rect.height + self.end_rect.height) / 4
-
-    def perfect_fit(self, rect: pymupdf.Rect) -> bool:
-        avg_y = (rect.y0 + rect.y1) / 2
-
-        x0_expected = self.left_line.x_from_y(avg_y) - self.margin
-        x1_expected = self.right_line.x_from_y(avg_y) + self.margin
-
-        return x0_expected <= rect.x0 and rect.x1 <= x1_expected
-
-    def good_fit(self, rect: pymupdf.Rect) -> bool:
-        avg_y = (rect.y0 + rect.y1) / 2
-
-        x0_expected = self.left_line.x_from_y(avg_y) - self.margin
-        x1_expected = self.right_line.x_from_y(avg_y) + self.margin
-
-        reference_rect = pymupdf.Rect(x0_expected, rect.y0, x1_expected, rect.y1)
-
-        # Accept rects that are fully within the margins
-        if (
-            x0_expected - self.margin < rect.x0
-            and rect.x1 < x1_expected + self.margin
-            and x_overlap_significant_largest(reference_rect, rect, level=0.1)
-        ):
-            return True
-
-        # Also accept rects that have a significant intersection with the expected location, even if they extend beyond
-        # the margins:
-        return x_overlap_significant_largest(reference_rect, rect, level=0.4)
-
-
-# """Module for clustering DepthColumnEntries when extracting sidebars."""
-
-# import abc
-# import dataclasses
-# from collections.abc import Callable
-# from typing import Generic, Self, TypeVar
-
-# import pymupdf
-
-# from swissgeol_doc_processing.geometry.util import x_overlap_significant_largest
-
-# EntryT = TypeVar("EntryT")
-
-
-# @dataclasses.dataclass
-# class Cluster(abc.ABC, Generic[EntryT]):
-#     """Class that groups together values that potentially belong to the same sidebar."""
-
-#     reference_rect: pymupdf.Rect
-#     entries: list[EntryT]
-#     entry_to_rect: Callable[[EntryT], pymupdf.Rect]
-
-#     def good_fit(self, entry: EntryT, threshold: float) -> bool:
-#         return x_overlap_significant_largest(self.reference_rect, self.entry_to_rect(entry), threshold)
-
-#     @classmethod
-#     def create_clusters(cls, entries: list[EntryT], entry_to_rect: Callable[[EntryT], pymupdf.Rect]) -> list[Self]:
-#         clusters: list[Cluster[EntryT]] = []
-#         for entry in entries:
-#             create_new_cluster = True
-#             for cluster in clusters:
-#                 if cluster.good_fit(entry, 0.1):
-#                     cluster.entries.append(entry)
-#                     if cluster.good_fit(entry, 0.75):
-#                         # If the fit is good (>0.1) but not very good (<0.75), then we both add the element to this
-#                         # cluster, as well as potentially creating a new cluster starting with this entry. Only if we
-#                         # have an excellent fit (>0.75) with some cluster, then we completely skip creating a new
-#                         # cluster.
-#                         create_new_cluster = False
-
-#             if create_new_cluster:
-#                 clusters.append(Cluster(entry_to_rect(entry), [entry], entry_to_rect))
-
-#         return clusters
