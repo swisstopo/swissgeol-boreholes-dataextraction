@@ -51,15 +51,25 @@ class Cluster(abc.ABC, Generic[EntryT]):
 
                     intermediate_entries = []
                     perfect_fits = []
+                    not_so_good_fit_count = 0
                     for entry3 in entries[index1 + 1 : index2]:
-                        if cluster_span.perfect_fit(entry3.rect):
+                        cluster_span_fit = ClusterSpanFit(cluster_span, entry3.rect)
+                        if cluster_span_fit.perfect_fit():
                             intermediate_entries.append(entry3)
                             perfect_fits.append(entry3)
-                        elif cluster_span.good_fit(entry3.rect):
+                        elif cluster_span_fit.good_fit():
                             intermediate_entries.append(entry3)
+
+                        if cluster_span_fit.not_so_good_fit():
+                            not_so_good_fit_count += 1
 
                     if intermediate_entries:
                         cluster = Cluster([entry1, *intermediate_entries, entry2])
+
+                        if not_so_good_fit_count >= 0.5 * len(intermediate_entries):
+                            # if the number of entries with a not-so-good fit is more than half of the number of
+                            # intermediate entries -> skip
+                            continue
 
                         if len(set.intersection(*[assignments[entry] for entry in cluster.entries])):
                             # cluster is already fully contained in an existing cluster -> skip
@@ -94,30 +104,40 @@ class ClusterSpan:
         # The taller the font, the more flexible we are. We use half the average height of start and end rect.
         self.margin = (self.start_rect.height + self.end_rect.height) / 4
 
-    def perfect_fit(self, rect: pymupdf.Rect) -> bool:
-        avg_y = (rect.y0 + rect.y1) / 2
 
-        x0_expected = self.left_line.x_from_y(avg_y) - self.margin
-        x1_expected = self.right_line.x_from_y(avg_y) + self.margin
+@dataclasses.dataclass
+class ClusterSpanFit:
+    """Class that captures data on how well a rect fits a given cluster span."""
 
-        return x0_expected <= rect.x0 and rect.x1 <= x1_expected
+    cluster_span: ClusterSpan
+    rect: pymupdf.Rect
 
-    def good_fit(self, rect: pymupdf.Rect) -> bool:
-        avg_y = (rect.y0 + rect.y1) / 2
+    def __post_init__(self):
+        avg_y = (self.rect.y0 + self.rect.y1) / 2
 
-        x0_expected = self.left_line.x_from_y(avg_y) - self.margin
-        x1_expected = self.right_line.x_from_y(avg_y) + self.margin
+        self.x0_expected = self.cluster_span.left_line.x_from_y(avg_y)
+        self.x1_expected = self.cluster_span.right_line.x_from_y(avg_y)
 
-        reference_rect = pymupdf.Rect(x0_expected, rect.y0, x1_expected, rect.y1)
+    def perfect_fit(self) -> bool:
+        return self.x0_expected <= self.rect.x0 and self.rect.x1 <= self.x1_expected
 
-        # Accept rects that are fully within the margins
+    def good_fit(self) -> bool:
+        reference_rect = pymupdf.Rect(self.x0_expected, self.rect.y0, self.x1_expected, self.rect.y1)
+
+        # Accept rects that are fully within the margins and have some minimal overlap
         if (
-            x0_expected - self.margin < rect.x0
-            and rect.x1 < x1_expected + self.margin
-            and x_overlap_significant_largest(reference_rect, rect, level=0.1)
+            self.x0_expected - self.cluster_span.margin < self.rect.x0
+            and self.rect.x1 < self.x1_expected + self.cluster_span.margin
+            and x_overlap_significant_largest(reference_rect, self.rect, level=0.1)
         ):
             return True
 
         # Also accept rects that have a significant intersection with the expected location, even if they extend beyond
         # the margins:
-        return x_overlap_significant_largest(reference_rect, rect, level=0.4)
+        return x_overlap_significant_largest(reference_rect, self.rect, level=0.4)
+
+    def not_so_good_fit(self) -> bool:
+        reference_rect = pymupdf.Rect(self.x0_expected, self.rect.y0, self.x1_expected, self.rect.y1)
+        minimal_fit = x_overlap_significant_largest(reference_rect, self.rect, level=0.01)
+        not_good_fit = not x_overlap_significant_largest(reference_rect, self.rect, level=0.4)
+        return minimal_fit and not_good_fit
