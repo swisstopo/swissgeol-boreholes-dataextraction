@@ -35,18 +35,23 @@ class AAboveBSidebarExtractor:
         """
         entries = [
             entry
-            for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=True)
+            for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=True)  # FN
+            # for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=False)
             if all((entry.rect & used_rect).is_empty for used_rect in used_entry_rects)
         ]
         clusters = Cluster[DepthColumnEntry].create_clusters(entries, lambda entry: entry.rect)
 
-        numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 1]
+        numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 1]  # FN
+        # numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if
+        # len(cluster.entries) >= 3] # original
 
         filtered_columns = [
             column
             for numeric_column in numeric_columns
-            for column in numeric_column.remove_integer_scale().make_ascending().break_on_double_descending()
-            if not column.close_to_arithmetic_progression()
+            # for column in numeric_column.remove_integer_scale().make_ascending().break_on_double_descending()
+            # if not column.close_to_arithmetic_progression()
+            for column in numeric_column.remove_integer_scale().fix_ocr_mistakes().break_on_double_descending()
+            if not column.close_to_arithmetic_progression() and len(column.entries) >= 3
         ]
 
         sidebar_validator = AAboveBSidebarValidator(**sidebar_params)
@@ -77,7 +82,15 @@ class AAboveBSidebarExtractor:
         result = []
         # Remove sidebar_noise that are fully contained in a longer sidebar
         for sidebar_noise in sidebars_by_length:
-            if not any(result_sidebar.sidebar.rect.contains(sidebar_noise.sidebar.rect) for result_sidebar in result):
+            # if not any(result_sidebar.sidebar.rect.contains(sidebar_noise.sidebar.rect)
+            # for result_sidebar in result):
+            if not any(
+                (
+                    result_sidebar.sidebar.rect.contains(sidebar_noise.sidebar.rect)
+                    and len(result_sidebar.sidebar.entries) > len(sidebar_noise.sidebar.entries)
+                )
+                for result_sidebar in result
+            ):
                 result.append(sidebar_noise)
 
         return result

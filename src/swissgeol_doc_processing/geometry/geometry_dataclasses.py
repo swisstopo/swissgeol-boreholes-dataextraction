@@ -111,6 +111,20 @@ class Line:
         # Calculate Euclidean distance
         return ((point.x - proj_x) ** 2 + (point.y - proj_y) ** 2) ** 0.5
 
+    def x_from_y(self, y: float) -> float | None:
+        """Compute the x-value for the given y-value along the line.
+
+        TODO unit test
+        Args:
+            y (float): The given y-value
+        Returns:
+            bool: the corresponding x-value along the line, or None if the line is horizontal.
+        """
+        if self.start.y == self.end.y:
+            return None
+
+        return (y - self.start.y) * (self.end.x - self.start.x) / (self.end.y - self.start.y) + self.start.x
+
     def point_near_segment(self, point: Point, threshold: float) -> bool:
         """Check if a point is within a threshold distance of the line segment.
 
