@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import re
 import statistics
 from dataclasses import dataclass, field
 from itertools import product
@@ -66,51 +65,34 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         return depth_intervals
 
     @staticmethod
-    # def is_close_to_arithmetic_progression(entries: list[DepthColumnEntry]) -> bool:
-    #     """Check if entries are very close to an arithmetic progression."""
-    #     if len(entries) <= 2:
-    #         return False
-
-    def is_close_to_arithmetic_progression(values: list[float]) -> bool:
-        """Check if values are very similar to an arithmetic progression."""
-        if len(values) <= 2:
+    def is_close_to_arithmetic_progression(entries: list[DepthColumnEntry]) -> bool:
+        """Check if entries are very close to an arithmetic progression."""
+        if len(entries) <= 2:
             return False
 
-        # values = [entry.value for entry in entries]
+        values = [entry.value for entry in entries]
 
         differences = [values[i + 1] - values[i] for i in range(len(values) - 1)]
         step = round(statistics.median(differences), 2)
         if step <= 0:
             return False
 
-        # first = values[0]
-        # # consider at most 1000 steps, to avoid a nearly-infinite loop when the document accidentally contains a very
-        # # large number (e.g. Thurgau 246_EWS_Aadorf_3387.pdf)
-        # last = min(values[-1], first + step * 1000)
-        # arithmetic_progression = {
-        #     # ensure we have nicely rounded numbers, without inaccuracies from floating point arithmetic
-        #     round(value * step, 2)
-        #     for value in range(int(first / step), int(last / step) + 1)
-        # }
-        # score = [value in arithmetic_progression for value in values].count(True)
-        # # 80% of the values must be contained in the closest arithmetic progression (allowing for 20% OCR errors)
-        # return score > 0.8 * len(values)
-        # only consider arithmetic progressions that include 0 (when extended if necessary)
-        division = values[0] / step  # should be an integer value
-        if round(division - int(division), 2) != 0.0:
-            return False
-
-        values_set = {round(value, 2) for value in values}
-        matching_steps = [round(value + step, 2) in values_set for value in values_set].count(True)
-        # For at least 70% of all values (except the highest one), the adding the step should give another present
-        # value.
-        return matching_steps > 0.7 * (len(values) - 1)
+        first = values[0]
+        # consider at most 1000 steps, to avoid a nearly-infinite loop when the document accidentally contains a very
+        # large number (e.g. Thurgau 246_EWS_Aadorf_3387.pdf)
+        last = min(values[-1], first + step * 1000)
+        arithmetic_progression = {
+            # ensure we have nicely rounded numbers, without inaccuracies from floating point arithmetic
+            round(value * step, 2)
+            for value in range(int(first / step), int(last / step) + 1)
+        }
+        score = [value in arithmetic_progression for value in values].count(True)
+        # 80% of the values must be contained in the closest arithmetic progression (allowing for 20% OCR errors)
+        return score > 0.8 * len(values)
 
     def close_to_arithmetic_progression(self) -> bool:
         """Check if the depth values of the entries of this sidebar are very close to an arithmetic progression."""
-        # return AAboveBSidebar.is_close_to_arithmetic_progression(self.entries)
-        values = [entry.value for entry in self.entries]
-        return AAboveBSidebar.is_close_to_arithmetic_progression(values)
+        return AAboveBSidebar.is_close_to_arithmetic_progression(self.entries)
 
     def pearson_correlation_coef(self) -> float:
         # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with
@@ -136,32 +118,12 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
             AAboveBSidebar([entry for index, entry in enumerate(self.entries) if index != remove_index])
             for remove_index in range(len(self.entries))
         ]
-        # return max(new_columns, key=lambda column: column.pearson_correlation_coef())
-        return min(new_columns, key=lambda column: column.linear_fit_loss())
-
-    def linear_fit_loss(self) -> float:
-        if len(self.entries) == 0:
-            return 0
-
-        # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with
-        # the line of the corresponding layer boundary.
-        positions = np.array([entry.rect.y1 for entry in self.entries])
-        values = np.array([entry.value for entry in self.entries])
-
-        if len(set(positions)) >= 2:
-            b, a = np.polynomial.polynomial.polyfit(positions, values, 1)  # linear regression
-        else:
-            b, a = np.median(positions), 0
-        squared_errors = [(entry.value - (a * entry.rect.y1 + b)) ** 2 for entry in self.entries]
-        mean_squared_error = sum(squared_errors) / len(self.entries)
-        return mean_squared_error
+        return max(new_columns, key=lambda column: column.pearson_correlation_coef())
 
     def remove_integer_scale(self):
         """Removes arithmetically progressing integers from this sidebar, as they are likely a scale."""
         integer_entries = [entry for entry in self.entries if not entry.has_decimal_point]
-        # if integer_entries and AAboveBSidebar.is_close_to_arithmetic_progression(integer_entries):
-        integer_values = [entry.value for entry in integer_entries]
-        if integer_entries and AAboveBSidebar.is_close_to_arithmetic_progression(integer_values):
+        if integer_entries and AAboveBSidebar.is_close_to_arithmetic_progression(integer_entries):
             self.skipped_entries = integer_entries
             self.entries = [entry for entry in self.entries if entry not in integer_entries]
         return self
@@ -173,66 +135,30 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
 
         median_value = np.median(np.array([entry.value for entry in self.entries]))
 
-        def significant_digits(value: float) -> str:
-            return re.sub(r"0+$", "", re.sub(r"[^0-9]+", "", str(value)))
-
         for i, entry in enumerate(self.entries):
-            # new_values = []
-            candidate_values = [entry.value]
+            new_values = []
 
             if entry.value.is_integer() and entry.value > median_value:
-                # new_values.extend([entry.value / 100, entry.value / 10])
-                candidate_values.extend([entry.value / 100, entry.value / 10])
+                new_values.extend([entry.value / 100, entry.value / 10])
 
-            # # Correct common OCR mistakes where "4" is recognized instead of "1"
-            # # We don't control for OCR mistakes recognizing "9" as "3" (example zurich/680244005-bp.pdf)
-            # if "4" in str(entry.value) and not self._valid_value(i, entry.value):
-            #     new_values.extend(generate_alternatives(entry.value))
+            # Correct common OCR mistakes where "4" is recognized instead of "1"
+            # We don't control for OCR mistakes recognizing "9" as "3" (example zurich/680244005-bp.pdf)
+            if "4" in str(entry.value) and not self._valid_value(i, entry.value):
+                new_values.extend(generate_alternatives(entry.value))
 
-            # # Assign the first valid correction
-            # for new_value in new_values:
-            #     if self._valid_value(i, new_value):
-            #         self.entries[i] = DepthColumnEntry(rect=entry.rect, value=new_value, page_number=entry.page_number)
-            #         break
-            if "4" in str(entry.value):
-                candidate_values.extend(generate_alternatives(entry.value))
+            # Assign the first valid correction
+            for new_value in new_values:
+                if self._valid_value(i, new_value):
+                    self.entries[i] = DepthColumnEntry(rect=entry.rect, value=new_value, page_number=entry.page_number)
+                    break
 
-            def score(new_value: float) -> tuple[int, float]:
-                # ruff: noqa B023
-                # See https://github.com/astral-sh/ruff/issues/7847
-                penalty = 0
-                if significant_digits(entry.value) != significant_digits(new_value):
-                    # if the digits have changed, then the ascending count must strictly improve
-                    penalty = 1
-                new_entry = DepthColumnEntry(rect=entry.rect, value=new_value, page_number=entry.page_number)
-                entries = [*self.entries[:i], new_entry, *self.entries[i + 1 :]]
-                new_sidebar = AAboveBSidebar(entries)
-                return (new_sidebar.ascending_count(i, window_size=3) - penalty, -new_sidebar.linear_fit_loss())
-
-            # Find the best correction
-            best_new_value = max(candidate_values, key=score)
-            if best_new_value != entry.value:
-                self.entries[i] = DepthColumnEntry(
-                    rect=entry.rect, value=best_new_value, page_number=entry.page_number
-                )
         return self
 
-    # def _valid_value(self, index: int, new_value: float) -> bool:
-    #     """Check if new value at given index is maintaining ascending order."""
-    #     previous_ok = index == 0 or all(other_entry.value < new_value for other_entry in self.entries[:index])
-    #     next_ok = index + 1 == len(self.entries) or new_value < self.entries[index + 1].value
-    #     return previous_ok and next_ok
-
-    def ascending_count(self, index: int, window_size: int) -> int:
-        """Count how many pairs of values are in ascending order."""
-        # TODO add unit tests
-        slice = self.entries[max(0, index - window_size) : index + window_size + 1]
-        count = 0
-        for index1, entry1 in enumerate(slice):
-            for entry2 in slice[index1 + 1 :]:
-                if entry1.value < entry2.value:
-                    count += 1
-        return count
+    def _valid_value(self, index: int, new_value: float) -> bool:
+        """Check if new value at given index is maintaining ascending order."""
+        previous_ok = index == 0 or all(other_entry.value < new_value for other_entry in self.entries[:index])
+        next_ok = index + 1 == len(self.entries) or new_value < self.entries[index + 1].value
+        return previous_ok and next_ok
 
     def break_on_double_descending(self) -> list[AAboveBSidebar]:
         segments = []
