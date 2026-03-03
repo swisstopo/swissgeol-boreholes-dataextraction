@@ -522,28 +522,24 @@ def start_pipeline(
         in_path = root / filename
         logger.info(f"Processing file: {in_path}")
 
-        try:
-            # Add file predictions
-            prediction = extract(
-                file=in_path,
-                filename=in_path.name,
-                out_directory=out_directory,
-                skip_draw_predictions=skip_draw_predictions,
-                draw_lines=draw_lines,
-                draw_tables=draw_tables,
-                draw_strip_logs=draw_strip_logs,
-                csv=csv,
-                part=part,
-                analytics=analytics,
-            )
-            predictions.add_file_predictions(prediction)
+        # Add file predictions
+        prediction = extract(
+            file=in_path,
+            filename=in_path.name,
+            out_directory=out_directory,
+            skip_draw_predictions=skip_draw_predictions,
+            draw_lines=draw_lines,
+            draw_tables=draw_tables,
+            draw_strip_logs=draw_strip_logs,
+            csv=csv,
+            part=part,
+            analytics=analytics,
+        )
+        predictions.add_file_predictions(prediction)
 
-            # Track progress in tmp file
-            logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
-            write_json_predictions(filename=predictions_path_tmp, predictions=predictions)
-
-        except Exception as e:
-            logger.error(f"Unexpected error in file {filename}. Trace: {e}")
+        # Track progress in tmp file
+        logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
+        write_json_predictions(filename=predictions_path_tmp, predictions=predictions)
 
     # Evaluate final predictions
     eval_summary = evaluate_all_predictions(

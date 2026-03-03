@@ -8,78 +8,60 @@ from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import (
     AAboveBSidebar,
     generate_alternatives,
 )
-
-
-def test_aabovebsidebar_closetoarithmeticprogression():  # noqa: D103
-    """Test the close_to_arithmetic_progression method of the AAboveBSidebar class."""
-    sidebar = AAboveBSidebar(
-        [
-            DepthColumnEntry(rect=pymupdf.Rect(), value=1, page_number=0),
-            DepthColumnEntry(rect=pymupdf.Rect(), value=2, page_number=0),
-            DepthColumnEntry(rect=pymupdf.Rect(), value=3, page_number=0),
-            DepthColumnEntry(rect=pymupdf.Rect(), value=4, page_number=0),
-            DepthColumnEntry(rect=pymupdf.Rect(), value=5, page_number=0),
-        ]
-    )
-    assert sidebar.close_to_arithmetic_progression(), "The sidebar should be recognized as arithmetic progression"
-
-    sidebar = AAboveBSidebar(
-        [
-            DepthColumnEntry(rect=pymupdf.Rect(), value=0.2, page_number=0),
-            DepthColumnEntry(rect=pymupdf.Rect(), value=0.3, page_number=0),
-            DepthColumnEntry(rect=pymupdf.Rect(), value=0.4, page_number=0),
-        ]
-    )
-    assert sidebar.close_to_arithmetic_progression(), "The sidebar should be recognized as arithmetic progression"
-
-    sidebar = AAboveBSidebar(
-        [
-            DepthColumnEntry(rect=pymupdf.Rect(), value=17.6, page_number=0),
-            DepthColumnEntry(rect=pymupdf.Rect(), value=18.15, page_number=0),
-            DepthColumnEntry(rect=pymupdf.Rect(), value=18.65, page_number=0),
-            DepthColumnEntry(rect=pymupdf.Rect(), value=19.3, page_number=0),
-            DepthColumnEntry(rect=pymupdf.Rect(), value=19.9, page_number=0),
-            DepthColumnEntry(rect=pymupdf.Rect(), value=20.5, page_number=0),
-        ]
-    )
-    assert not sidebar.close_to_arithmetic_progression(), (
-        "The sidebar should not be recognized as arithmetic progression"
-    )
+from extraction.features.stratigraphy.sidebar.extractor.a_above_b_sidebar_extractor import AAboveBSidebarExtractor
 
 
 @pytest.mark.parametrize(
     "input,expected",
-    [([0.8, 2.4, 4.0], False), ([2, 4, 6, 8, 12], True)],
-)
-def test_aabovebsidebar_isclosetoartihmeticprogression(input, expected):  # noqa: D103
-    """Test the is_close_to_arithmetic_progression method of the AAboveBSidebar class."""
-    assert AAboveBSidebar.is_close_to_arithmetic_progression(input) == expected
-
-
-def test_aabovebsidebar_removeintegerscale():  # noqa: D103
-    """Test the remove_integer_scale method of the AAboveBSidebar class."""
-
-    def run_test(in_values, out_values):
-        sidebar = AAboveBSidebar(
+    [
+        (["1", "1.05", "2", "3", "4", "5.78", "6"], [1, 2, 3, 4]),
+        (["10", "20", "30", "40", "50"], [10, 20, 30, 40, 50]),
+        (["5", "10", "15", "20", "25", "30.5", "40.7"], [5, 10, 15, 20, 25]),
+        (["3", "7", "12", "20"], []),
+        (["10"], []),
+        (["1.1", "2.2", "3.3", "4.4"], [1.1, 2.2, 3.3, 4.4]),
+        (
+            ["8", "16", "20", "24", "28", "52", "56", "60", "72", "88", "92", "100"],
+            [],
+        ),
+        (["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "20"], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+        (["0.8", "2.4", "4.0"], []),
+        (["0.2", "0.3", "0.4"], [0.2, 0.3, 0.4]),
+        (["2", "4", "6", "8", "12"], [2, 4, 6, 8]),
+        (
             [
-                DepthColumnEntry.from_string_value(pymupdf.Rect(), string_value=value, page_number=0)
-                for value in in_values
-            ]
-        )
-        result = [entry.value for entry in sidebar.remove_integer_scale().entries]
-        assert result == out_values, f"Expected {out_values}, but got {result}"
-
-    run_test(["1", "1.05", "2", "3", "4", "5.78", "6"], [1.05, 5.78])
-    run_test(["10", "20", "30", "40", "50"], [])
-    run_test(["5", "10", "15", "20", "25", "30.5", "40.7"], [30.5, 40.7])
-    run_test(["3", "7", "12", "20"], [3, 7, 12, 20])
-    run_test(["10"], [10])
-    run_test(["1.1", "2.2", "3.3", "4.4"], [1.1, 2.2, 3.3, 4.4])
-    run_test(
-        ["8", "16", "20", "24", "28", "52", "56", "60", "72", "88", "92", "100"],
-        [8, 16, 20, 24, 28, 52, 56, 60, 72, 88, 92, 100],
-    )
-    run_test(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "20"], [])
+                "0",
+                "0.8",
+                "1",
+                "1.7",
+                "2",
+                "2.7",
+                "3",
+                "3.1",
+                "3.5",
+                "3.9",
+                "4",
+                "5",
+                "6",
+                "7",
+                "7.4",
+                "8",
+                "8.5",
+                "8.8",
+                "9",
+                "10",
+            ],
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        ),  # inspired by 268124125-bp.pdf
+    ],
+)
+def test_aabovebsidebar_arithmeticprogressionentries(input, expected):  # noqa: D103
+    """Test the _arithmetic_progression_entries method of the AAboveBSidebarExtractor class."""
+    entries = [
+        DepthColumnEntry.from_string_value(pymupdf.Rect(), string_value=value, page_number=0) for value in input
+    ]
+    result = [entry.value for entry in AAboveBSidebarExtractor._arithmetic_progression_entries(entries)]
+    assert result == expected, f"Expected {expected}, but got {result}"
 
 
 def test_aabovebsidebar_fixocrmistakes():  # noqa: D103

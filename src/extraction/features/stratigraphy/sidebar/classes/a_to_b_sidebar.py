@@ -112,13 +112,13 @@ class AToBSidebar(Sidebar[AToBInterval]):
         if len(filtered_entries) <= 2:
             return False
 
-        # At least half of the "end" values must match the subsequent "start" value (e.g. 2-5m, 5-9m).
+        # At least 70% of the "end" values must match the subsequent "start" value (e.g. 2-5m, 5-9m).
         sequence_matches_count = 0
         for index, entry in enumerate(filtered_entries):
             if index >= 1 and filtered_entries[index - 1].end.value == entry.start.value:
                 sequence_matches_count += 1
 
-        return sequence_matches_count / (len(filtered_entries) - 1) >= 0.5
+        return sequence_matches_count / (len(filtered_entries) - 1) >= 0.7
 
     @staticmethod
     def dp_scoring_fn(interval_zone: IntervalZone, line: TextLine) -> float:

@@ -65,33 +65,6 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
             depth_intervals.append(AAboveBInterval(self.entries[i], self.entries[i + 1]))
         return depth_intervals
 
-    @staticmethod
-    def is_close_to_arithmetic_progression(values: list[float]) -> bool:
-        """Check if values are very similar to an arithmetic progression."""
-        if len(values) <= 2:
-            return False
-
-        differences = [values[i + 1] - values[i] for i in range(len(values) - 1)]
-        step = round(statistics.median(differences), 2)
-        if step <= 0:
-            return False
-
-        # only consider arithmetic progressions that include 0 (when extended if necessary)
-        division = values[0] / step  # should be an integer value
-        if round(division - int(division), 2) != 0.0:
-            return False
-
-        values_set = {round(value, 2) for value in values}
-        matching_steps = [round(value + step, 2) in values_set for value in values_set].count(True)
-        # For at least 70% of all values (except the highest one), the adding the step should give another present
-        # value.
-        return matching_steps > 0.7 * (len(values) - 1)
-
-    def close_to_arithmetic_progression(self) -> bool:
-        """Check if the depth values of the entries of this sidebar are very close to an arithmetic progression."""
-        values = [entry.value for entry in self.entries]
-        return AAboveBSidebar.is_close_to_arithmetic_progression(values)
-
     def pearson_correlation_coef(self) -> float:
         # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with
         # the line of the corresponding layer boundary.
@@ -134,15 +107,6 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         squared_errors = [(entry.value - (a * entry.rect.y1 + b)) ** 2 for entry in self.entries]
         mean_squared_error = sum(squared_errors) / len(self.entries)
         return mean_squared_error
-
-    def remove_integer_scale(self):
-        """Removes arithmetically progressing integers from this sidebar, as they are likely a scale."""
-        integer_entries = [entry for entry in self.entries if not entry.has_decimal_point]
-        integer_values = [entry.value for entry in integer_entries]
-        if integer_entries and AAboveBSidebar.is_close_to_arithmetic_progression(integer_values):
-            self.skipped_entries = integer_entries
-            self.entries = [entry for entry in self.entries if entry not in integer_entries]
-        return self
 
     def fix_ocr_mistakes(self):
         """Correct common OCR mistakes (e.g. missing decimal points) if it makes the values more plausible."""
