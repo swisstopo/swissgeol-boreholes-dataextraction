@@ -47,32 +47,26 @@ class Cluster(abc.ABC, Generic[EntryT]):
                 angle = Line(midpoint1, midpoint2).angle
 
                 if abs(abs(angle) - 90) <= max_skew_degrees:
-                    cluster_span = ClusterSpan(entry1.rect, entry2.rect)
+                    cluster_span = ClusterSpan(entry_to_rect(entry1), entry_to_rect(entry2))
 
                     intermediate_entries = []
                     perfect_fits = []
-                    not_so_good_fit_count = 0
                     for entry3 in entries[index1 + 1 : index2]:
-                        cluster_span_fit = ClusterSpanFit(cluster_span, entry3.rect)
+                        cluster_span_fit = ClusterSpanFit(cluster_span, entry_to_rect(entry3))
                         if cluster_span_fit.perfect_fit():
                             intermediate_entries.append(entry3)
                             perfect_fits.append(entry3)
                         elif cluster_span_fit.good_fit():
                             intermediate_entries.append(entry3)
 
-                        if cluster_span_fit.not_so_good_fit():
-                            not_so_good_fit_count += 1
-
                     if intermediate_entries:
                         cluster = Cluster([entry1, *intermediate_entries, entry2])
 
-                        if not_so_good_fit_count >= 0.5 * len(intermediate_entries):
-                            # if the number of entries with a not-so-good fit is more than half of the number of
-                            # intermediate entries -> skip
-                            continue
-
                         if len(set.intersection(*[assignments[entry] for entry in cluster.entries])):
                             # cluster is already fully contained in an existing cluster -> skip
+                            continue
+
+                        if ClusterSpanFit.detect_misalignment([entry_to_rect(entry) for entry in cluster.entries]):
                             continue
 
                         cluster_index = len(clusters)
@@ -114,30 +108,67 @@ class ClusterSpanFit:
 
     def __post_init__(self):
         avg_y = (self.rect.y0 + self.rect.y1) / 2
-
         self.x0_expected = self.cluster_span.left_line.x_from_y(avg_y)
         self.x1_expected = self.cluster_span.right_line.x_from_y(avg_y)
 
     def perfect_fit(self) -> bool:
+        if self.x0_expected is None or self.x1_expected is None:
+            return False
+
         return self.x0_expected <= self.rect.x0 and self.rect.x1 <= self.x1_expected
 
     def good_fit(self) -> bool:
+        if self.x0_expected is None or self.x1_expected is None:
+            return False
+
         reference_rect = pymupdf.Rect(self.x0_expected, self.rect.y0, self.x1_expected, self.rect.y1)
 
         # Accept rects that are fully within the margins and have some minimal overlap
         if (
             self.x0_expected - self.cluster_span.margin < self.rect.x0
             and self.rect.x1 < self.x1_expected + self.cluster_span.margin
-            and x_overlap_significant_largest(reference_rect, self.rect, level=0.1)
+            and x_overlap_significant_largest(reference_rect, self.rect, level=0.01)
         ):
             return True
 
         # Also accept rects that have a significant intersection with the expected location, even if they extend beyond
         # the margins:
-        return x_overlap_significant_largest(reference_rect, self.rect, level=0.4)
+        return x_overlap_significant_largest(reference_rect, self.rect, level=0.2)
 
-    def not_so_good_fit(self) -> bool:
-        reference_rect = pymupdf.Rect(self.x0_expected, self.rect.y0, self.x1_expected, self.rect.y1)
-        minimal_fit = x_overlap_significant_largest(reference_rect, self.rect, level=0.01)
-        not_good_fit = not x_overlap_significant_largest(reference_rect, self.rect, level=0.4)
-        return minimal_fit and not_good_fit
+    @staticmethod
+    def detect_misalignment(rects: list[pymupdf.Rect]) -> bool:
+        """Detect when certain entries are not nicely aligned and they should not form valid cluster."""
+        half_length = int(len(rects) / 2)
+
+        misaligned_count = 0
+        total_count = 0
+
+        for index1, rect1 in enumerate(rects[:half_length]):
+            index2 = index1 + half_length
+            rect2 = rects[index2]
+
+            # To make the cluster-span of constant width, we make the narrower rect equally wide as the
+            # wider rect. We keep the x-coordinates of boths rects as close together as possible.
+            if rect2.width > rect1.width:
+                wider_rect, narrower_rect = pymupdf.Rect(rect2), pymupdf.Rect(rect1)
+            else:
+                wider_rect, narrower_rect = pymupdf.Rect(rect2), pymupdf.Rect(rect1)
+
+            if narrower_rect.x0 < wider_rect.x0:
+                # narrower rect is more to the left -> extend narrower rect to the right
+                narrower_rect.x1 = narrower_rect.x0 + wider_rect.width
+            elif narrower_rect.x1 > wider_rect.x1:
+                # narrower rect is more to the right -> extend narrower rect to the left
+                narrower_rect.x0 = narrower_rect.x1 - wider_rect.width
+            else:
+                # narrower rect is in between wider rect -> copy x-coordinates of wider rect
+                narrower_rect.x0 = wider_rect.x0
+                narrower_rect.x1 = wider_rect.x1
+
+            cluster_span = ClusterSpan(wider_rect, narrower_rect)
+            for index, rect in enumerate(rects):
+                if index != index1 and index != index2:
+                    if not ClusterSpanFit(cluster_span, rect).good_fit():
+                        misaligned_count += 1
+                    total_count += 1
+        return misaligned_count / total_count > 1 / len(rects)

@@ -88,10 +88,6 @@ def test_aabovebsidebar_fixocrmistakes():  # noqa: D103
     run_test([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 100.0], [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 10.0])
     run_test([100.0, 200.0, 300.0], [100.0, 200.0, 300.0])
 
-    ## Transforming OCR mistakes
-    run_test([0.5, 4.0, 2.0, 5.0], [0.5, 1.0, 2.0, 5.0])
-    run_test([4.0, 4.4, 4.4, 4.7, 5.0], [4.0, 4.1, 4.4, 4.7, 5.0])
-
     # ensure a "noise" value "0.0" does not influence the result
     run_test([1.0, 2.0, 3.0, 0.0, 4.0], [1.0, 2.0, 3.0, 0.0, 4.0])
 

@@ -124,11 +124,6 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
             if entry.value.is_integer() and entry.value > median_value:
                 candidate_values.extend([entry.value / 100, entry.value / 10])
 
-            # Correct common OCR mistakes where "4" is recognized instead of "1"
-            # We don't control for OCR mistakes recognizing "9" as "3" (example zurich/680244005-bp.pdf)
-            if "4" in str(entry.value):
-                candidate_values.extend(generate_alternatives(entry.value))
-
             def score(new_value: float) -> tuple[int, float]:
                 # ruff: noqa B023
                 # See https://github.com/astral-sh/ruff/issues/7847
