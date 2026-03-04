@@ -8,7 +8,7 @@ from typing import Generic, Self, TypeVar
 import pymupdf
 
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
-from swissgeol_doc_processing.geometry.util import x_overlap_significant_largest
+from swissgeol_doc_processing.geometry.util import x_overlap_significant_largest, x_overlap_significant_smallest
 
 EntryT = TypeVar("EntryT")
 
@@ -135,6 +135,13 @@ class ClusterSpanFit:
         # the margins:
         return x_overlap_significant_largest(reference_rect, self.rect, level=0.2)
 
+    def significantly_outside(self) -> bool:
+        if self.x0_expected is None or self.x1_expected is None:
+            return False
+
+        reference_rect = pymupdf.Rect(self.x0_expected, self.rect.y0, self.x1_expected, self.rect.y1)
+        return not x_overlap_significant_smallest(reference_rect, self.rect, level=0.4)
+
     @staticmethod
     def detect_misalignment(rects: list[pymupdf.Rect]) -> bool:
         """Detect when certain entries are not nicely aligned and they should not form valid cluster."""
@@ -168,7 +175,8 @@ class ClusterSpanFit:
             cluster_span = ClusterSpan(wider_rect, narrower_rect)
             for index, rect in enumerate(rects):
                 if index != index1 and index != index2:
-                    if not ClusterSpanFit(cluster_span, rect).good_fit():
+                    if ClusterSpanFit(cluster_span, rect).significantly_outside():
                         misaligned_count += 1
                     total_count += 1
+        # This threshold has been tuned by manual experimentation. Some tests to verify the behaviour would be useful.
         return misaligned_count / total_count > 1 / len(rects)

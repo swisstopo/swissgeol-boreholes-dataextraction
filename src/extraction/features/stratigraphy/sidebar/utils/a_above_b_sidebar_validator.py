@@ -46,6 +46,7 @@ class AAboveBSidebarValidator:
 
         sidebar = sidebar_noise.sidebar
         noise = sidebar_noise.noise_count
+
         if len(sidebar.entries) < 3:
             return False
 
