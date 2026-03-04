@@ -265,6 +265,9 @@ material_description:
       - pump test # Should be reviewed, currently not used
       - core drilling
       - drilling radius
+  typo_tolerance:
+    confusion_enabled: true
+    confusion_min_token_length: 6
 
 coordinate_keys:
   de:

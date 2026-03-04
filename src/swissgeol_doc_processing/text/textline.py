@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 
 import pymupdf
 
@@ -10,6 +11,78 @@ from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage,
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_largest
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
 from swissgeol_doc_processing.text.stemmer import find_matching_expressions
+
+_WORD_RE = re.compile(r"\b\w+\b", re.UNICODE)
+
+# Collapse common OCR confusions to a canonical representation.
+_CONFUSION_MAP = str.maketrans(
+    {
+        "m": "n",
+        "n": "n",
+        "o": "o",
+        "a": "o",
+        "i": "i",
+        "l": "i",
+        "e": "e",
+        "c": "e",
+    }
+)
+
+
+def _norm(s: str) -> str:
+    """Normalize a string for matching.
+
+    Args:
+        s (str): Input string.
+
+    Returns:
+        str: Normalized string (lowercased, diacritics removed).
+    """
+    s = s.lower()
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))  # strip accents
+    return s
+
+
+def _confusion_norm(s: str) -> str:
+    """Normalize a string and collapse common OCR confusions.
+
+    This is a conservative OCR-specific normalization step. It intentionally loses
+    information (e.g. 'm'/'n') so that OCR variants can match the same target.
+
+    Args:
+        s (str): Input string.
+
+    Returns:
+        str: Normalized string with confusion groups collapsed.
+    """
+    return _norm(s).translate(_CONFUSION_MAP)
+
+
+def contains_expression(
+    text: str,
+    expr: str,
+    *,
+    min_token_length: int = 6,
+) -> bool:
+    """Check whether `expr` occurs in `text`, optionally allowing OCR/typo tolerance.
+
+    Args:
+        text (str): Text to search in.
+        expr (str): Expression/pattern to search for.
+        min_token_length (int): Minimum token length for tolerance-based matching.
+            Tokens shorter than this will not be matched fuzzily (to reduce false positives).
+
+    Returns:
+        bool: True if the expression is considered present in the text, False otherwise.
+    """
+    t = _confusion_norm(text)
+    e = _confusion_norm(expr)
+
+    # exact substring on normalized text
+    if len(e) < min_token_length:
+        return False
+    return e in t
 
 
 class TextWord(RectWithPageMixin):
@@ -66,8 +139,10 @@ class TextLine(RectWithPageMixin):
     ) -> bool:
         """Check if the line is a material description.
 
-        Uses stemming to handle word variations across german, french, english and italian and
-        additionally compound split in case of german.
+        Strategy:
+        1) Use stemming/compound-split matching.
+        2) Optionally apply a conservative OCR-confusion fallback (m/n, o/a, i/l, e/c).
+
 
         Args:
             parameters (dict): The parameter dictionary containing the used expressions and thresholds.
@@ -78,13 +153,32 @@ class TextLine(RectWithPageMixin):
         Returns:
             bool: True if the line contains any of the material description expressions, False otherwise.
         """
-        # Tokenize and stem words in the text
-        text_tokens = re.findall(r"\b\w+\b", self.text)
-        exp_type = "including_expressions" if not search_excluding else "excluding_expressions"
+        text = self.text
+        text_tokens = re.findall(r"\b\w+\b", text)
+
+        exp_type = "excluding_expressions" if search_excluding else "including_expressions"
         patterns = parameters["material_description"][language][exp_type]
         split_threshold = parameters.get("compound_split_threshold", 0.4)
 
-        return find_matching_expressions(patterns, split_threshold, text_tokens, language, analytics, search_excluding)
+        # 1) stemming matching
+        if find_matching_expressions(patterns, split_threshold, text_tokens, language, analytics, search_excluding):
+            return True
+
+        # 2) # OCR confusion fallback
+        typo_cfg = parameters.get("material_description", {}).get("typo_tolerance", {})
+        if not typo_cfg.get("enabled", False):
+            return False
+
+        # only apply to tokens >= 6 to avoid matching short tokens too easily.
+        confusion_enabled = typo_cfg.get("confusion_enabled", True)
+        confusion_min_len = int(typo_cfg.get("confusion_min_token_length", 6))
+
+        if confusion_enabled:
+            for expr in patterns:
+                if contains_expression(text, expr, min_token_length=confusion_min_len):
+                    if analytics:
+                        analytics.track_expression_match(expr, language, is_excluding=search_excluding)
+                    return True
 
     def is_line_start(self, raw_lines_before: list[TextLine], raw_lines_after: list[TextLine]) -> bool:
         """Determine whether this line can be considered the start of a properly aligned text block.
