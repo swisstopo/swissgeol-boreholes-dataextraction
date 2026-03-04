@@ -78,6 +78,7 @@ material_description:
     including_expressions:
       - sand
       - sandig
+      - sandstein
       - silt
       - siltig
       - siltstein
