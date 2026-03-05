@@ -23,7 +23,7 @@ class AAboveBSidebarValidator:
     noise_count_offset: int
 
     def failure_reason(
-        self, sidebar_noise: SidebarNoise[AAboveBSidebar], corr_coef_threshold: float = 0.92
+        self, sidebar_noise: SidebarNoise[AAboveBSidebar], corr_coef_threshold: float = 0.95
     ) -> str | None:
         sidebar = sidebar_noise.sidebar
         noise = sidebar_noise.noise_count
@@ -63,7 +63,7 @@ class AAboveBSidebarValidator:
 
         return AAboveBSidebar(entries)
 
-    def is_valid(self, sidebar_noise: SidebarNoise[AAboveBSidebar], corr_coef_threshold: float = 0.92) -> bool:
+    def is_valid(self, sidebar_noise: SidebarNoise[AAboveBSidebar], corr_coef_threshold: float = 0.95) -> bool:
         """Checks whether the sidebar is valid.
 
         The sidebar is considered valid if:
@@ -116,7 +116,7 @@ class AAboveBSidebarValidator:
 
             if self.is_valid(sidebar_noise):
                 return sidebar_noise
-            reason = self.failure_reason(sidebar_noise, corr_coef_threshold=0.92)
+            reason = self.failure_reason(sidebar_noise, corr_coef_threshold=0.95)
             vals = [e.value for e in sidebar_noise.sidebar.entries]
             print(f"[AAboveB][reduce] reason={reason} vals={vals} noise={sidebar_noise.noise_count}")
 
