@@ -108,18 +108,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Returns:
             list[ExtractedBorehole]: The extracted boreholes from the page.
         """
-        # filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=True)
-
-        # # Step 4: Create boreholes
-        # boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
-
-        # logger.debug(
-        #     f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(self.table_structures)} tables"
-        # )
-        # return [
-        #     borehole for borehole in boreholes if len(borehole.predictions) >= self.matching_params["min_num_layers"]
-        # ]
-
         filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=True)
 
         # Step 4: Create boreholes
@@ -153,13 +141,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
         if not self.table_structures:
             return pairs
 
-        # Pick width ratio based on page orientation
-        is_landscape = self.page_width > self.page_height
-        width_ratio = (
-            self.matching_params.get("material_description_column_width_landscape", 0.02)
-            if is_landscape
-            else self.matching_params["material_description_column_width"]
-        )
+        # If in table - check requirement
+        width_ratio = self.matching_params["material_description_column_width"]
+        min_lines_in_table_for_narrow = self.matching_params.get("min_lines_in_table_for_narrow_description", 3)
 
         filtered = []
         for pair in pairs:
@@ -170,6 +154,17 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 filtered.append(pair)
             # If in table - check width requirement
             else:
+                if pair.sidebar is not None:
+                    filtered.append(pair)
+                    continue
+
+                # If many short rows in a narrow column (typical table cells)
+                n_lines = len(get_description_lines(self.lines, pair.material_description_rect))
+                if n_lines >= min_lines_in_table_for_narrow:
+                    filtered.append(pair)
+                    continue
+
+                # Otherwise keep the minimum width criterion
                 min_width = width_ratio * self.page_width
                 if pair.material_description_rect.width > min_width:
                     filtered.append(pair)
