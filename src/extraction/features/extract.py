@@ -111,28 +111,14 @@ class MaterialDescriptionRectWithSidebarExtractor:
         filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=True)
 
         # Step 4: Create boreholes
-        pair_boreholes = [(pair, self._create_borehole_from_pair(pair)) for pair in filtered_pairs]
-
-        is_landscape = self.page_width > self.page_height
-        default_min_layers = self.matching_params["min_num_layers"]
-        min_layers_no_sidebar_landscape = self.matching_params.get(
-            "min_num_layers_no_sidebar_landscape",
-            default_min_layers,  # fallback to existing behavior if not configured
-        )
-
-        kept = []
-        for pair, borehole in pair_boreholes:
-            min_layers = default_min_layers
-            if is_landscape and pair.sidebar is None:
-                min_layers = min_layers_no_sidebar_landscape
-
-            if len(borehole.predictions) >= min_layers:
-                kept.append(borehole)
+        boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
 
         logger.debug(
-            f"Page {self.page_number}: Extracted {len(kept)} boreholes (kept) from {len(self.table_structures)} tables"
+            f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(self.table_structures)} tables"
         )
-        return kept
+        return [
+            borehole for borehole in boreholes if len(borehole.predictions) >= self.matching_params["min_num_layers"]
+        ]
 
     def _filter_by_table_criteria(
         self, pairs: list[MaterialDescriptionRectWithSidebar]
