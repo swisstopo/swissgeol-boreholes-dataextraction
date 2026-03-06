@@ -1,5 +1,5 @@
 ## Build stage
-# Use the specifidied Pyhon-slim version as the base image
+# Use the specifidied Python-slim version as the base image
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
 ARG VERSION=0.0.0

@@ -92,7 +92,7 @@ The source code is licensed under the [AGPL-3.0-only License](LICENSE). This is 
 We use [uv](https://docs.astral.sh/uv/) to manage package dependencies. Install uv first if you haven't already:
 
 ```bash
-pip install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 The below commands will install the package for you (assuming you have successfully cloned the repository):
