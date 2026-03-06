@@ -151,7 +151,6 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
                 if self._valid_value(i, new_value):
                     self.entries[i] = DepthColumnEntry(rect=entry.rect, value=new_value, page_number=entry.page_number)
                     break
-
         return self
 
     def _valid_value(self, index: int, new_value: float) -> bool:

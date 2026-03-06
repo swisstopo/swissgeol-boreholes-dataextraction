@@ -35,15 +35,12 @@ class AAboveBSidebarExtractor:
         """
         entries = [
             entry
-            for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=True)  # FN
-            # for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=False)
+            for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=True)
             if all((entry.rect & used_rect).is_empty for used_rect in used_entry_rects)
         ]
         clusters = Cluster[DepthColumnEntry].create_clusters(entries, lambda entry: entry.rect)
 
-        numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 1]  # FN
-        # numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if
-        # len(cluster.entries) >= 3] # original
+        numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 1]
 
         filtered_columns = [
             column
@@ -58,16 +55,6 @@ class AAboveBSidebarExtractor:
             noise = noise_count(column, line_rtree)
             sidebar_noise = SidebarNoise(sidebar=column, noise_count=noise)
             return sidebar_validator.reduce_until_valid(sidebar_noise, line_rtree)
-
-        print(f"[AAboveB] raw numeric columns: {len(numeric_columns)}")
-        print("Numeric columns: ", numeric_columns)
-
-        print(f"[AAboveB] after remove_integer_scale/make_ascending/break/filter: {len(filtered_columns)}")
-        print("Filtered columns:", filtered_columns)
-
-        validated_sidebars = list(filter(None, map(process_column, filtered_columns)))
-        print("Validated columns:", validated_sidebars)
-        print(f"[AAboveB] after validation: {len([s for s in validated_sidebars if s and s.sidebar])}")
 
         validated_sidebars = list(filter(None, map(process_column, filtered_columns)))
 

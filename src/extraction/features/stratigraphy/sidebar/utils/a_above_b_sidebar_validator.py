@@ -22,30 +22,6 @@ class AAboveBSidebarValidator:
     noise_count_threshold: float
     noise_count_offset: int
 
-    def failure_reason(
-        self, sidebar_noise: SidebarNoise[AAboveBSidebar], corr_coef_threshold: float = 0.95
-    ) -> str | None:
-        sidebar = sidebar_noise.sidebar
-        noise = sidebar_noise.noise_count
-
-        if len(sidebar.entries) < 1:
-            return "no_entries"
-
-        if noise > self.noise_count_threshold * (len(sidebar.entries) - self.noise_count_offset) ** 2:
-            return "too_noisy"
-
-        if not sidebar.is_strictly_increasing():
-            return "not_strictly_increasing"
-
-        if sidebar.close_to_arithmetic_progression():
-            return "arithmetic_progression"
-
-        corr = sidebar.pearson_correlation_coef()
-        if not corr or corr <= corr_coef_threshold:
-            return "corr_below_threshold"
-
-        return None
-
     def _trim_trailing_duplicate_depths(self, sidebar: AAboveBSidebar) -> AAboveBSidebar:
         """If the last depth value is repeated (common for Endtiefe), drop trailing duplicates."""
         entries = list(sidebar.entries)
@@ -116,9 +92,6 @@ class AAboveBSidebarValidator:
 
             if self.is_valid(sidebar_noise):
                 return sidebar_noise
-            reason = self.failure_reason(sidebar_noise, corr_coef_threshold=0.95)
-            vals = [e.value for e in sidebar_noise.sidebar.entries]
-            print(f"[AAboveB][reduce] reason={reason} vals={vals} noise={sidebar_noise.noise_count}")
 
             new_sidebar = sidebar_noise.sidebar.remove_entry_by_correlation_gradient()
             if not new_sidebar:
