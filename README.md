@@ -89,32 +89,36 @@ See [contributers](https://github.com/swisstopo/swissgeol-boreholes-dataextracti
 The source code is licensed under the [AGPL-3.0-only License](LICENSE). This is due to the licensing of certain dependencies, most notably [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/about.html#license-and-copyright), which is only available under either the AGPL license or a commercial license. If this dependency is removed in the future, we will switch to a more permissive license for this project.
 
 ## Installation
-We use pip to manage the packages dependencies. We recommend using a virtual environment within which to install all dependencies.
+We use [uv](https://docs.astral.sh/uv/) to manage package dependencies. Install uv first if you haven't already:
+
+```bash
+pip install uv
+```
 
 The below commands will install the package for you (assuming you have successfully cloned the repository):
 ```bash
-python -m venv env
-source env/bin/activate
-pip install -e '.[all]'
+uv sync --all-extras
 ```
 
-Alternatively you can replace the `pip install -e '.[all]'` command with `pip install git+https://github.com/swisstopo/swissgeol-boreholes-dataextraction.git` in production scenarios.
+Alternatively, you can install directly from GitHub in production scenarios:
+```bash
+uv pip install git+https://github.com/swisstopo/swissgeol-boreholes-dataextraction.git
+```
 
-Adding pip packages can be done by editing the `pyproject.toml` of the project and adding the required package.
-
-If you are using a version of Python newer than 3.12 (e.g. 3.13), you may need to use the command ` python3.12 -m venv env `instead.
-It might also be useful to use `python3.12 -m pip install -e '.[all]'` if some error appear.
+Adding packages can be done by editing the `pyproject.toml` of the project and adding the required package, then running `uv lock` to update the lock file.
 
 ## Run data extraction
 To execute the data extraction pipeline, follow these steps:
 
-### 1. Activate the virtual environment
+### 1. Set up the environment
 
-Activate your virtual environment. On unix systems this is
+Install dependencies using uv:
 
-``` bash
-source env/bin/activate
+```bash
+uv sync
 ```
+
+Commands are then run with `uv run <command>`, which automatically uses the managed virtual environment.
 
 ### 2. Download the borehole profiles, optional
 
