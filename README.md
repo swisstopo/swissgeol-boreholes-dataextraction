@@ -100,6 +100,11 @@ The below commands will install the package for you (assuming you have successfu
 uv sync --all-extras
 ```
 
+Then activate your environment:
+```bash
+source .venv/bin/activate
+```
+
 Alternatively, you can install directly from GitHub in production scenarios:
 ```bash
 uv pip install git+https://github.com/swisstopo/swissgeol-boreholes-dataextraction.git
