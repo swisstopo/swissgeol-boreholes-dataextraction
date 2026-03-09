@@ -23,7 +23,14 @@ class AAboveBSidebarValidator:
     noise_count_offset: int
 
     def _trim_trailing_duplicate_depths(self, sidebar: AAboveBSidebar) -> AAboveBSidebar:
-        """If the last depth value is repeated (common for Endtiefe), drop trailing duplicates."""
+        """If the last depth value is repeated (common for Endtiefe), drop trailing duplicates.
+
+        Args:
+            sidebar (AAboveBSidebar): The sidebar to trim.
+
+        Returns:
+            AAboveBSidebar: The trimmed sidebar, or the original if no trimming was necessary.
+        """
         entries = list(sidebar.entries)
         if len(entries) < 2:
             return sidebar
