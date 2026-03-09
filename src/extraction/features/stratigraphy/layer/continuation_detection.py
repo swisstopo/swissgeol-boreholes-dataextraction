@@ -21,6 +21,15 @@ def _reconcile_duplicated_boundary_layer(
     This is used when duplicate layers are detected across overlapping pages. If the last kept upper layer and the
     first removed lower layer have exactly the same material description, the upper layer likely continues across the
     page break and should inherit the deeper end depth from the lower layer.
+
+    Args:
+        borehole_to_extend (ExtractedBorehole): The borehole from the previous page that is being extended.
+        borehole_continuation (ExtractedBorehole): The borehole from the current page that is the continuation.
+        upper_id (int): The index of the last layer in the upper borehole that is kept after removing duplicates.
+        lower_id (int): The index of the first layer in the lower borehole that is removed as duplicate.
+
+    Returns:
+        ExtractedBorehole: The updated borehole.
     """
     if upper_id <= 0 or lower_id <= 0:
         return borehole_to_extend
@@ -337,7 +346,15 @@ def _merge_boreholes(
 
 
 def _material_descriptions_match(previous_layer: Layer, current_layer: Layer) -> bool:
-    """Check if two layers have exactly matching material descriptions after normalization."""
+    """Check if two layers have exactly matching material descriptions after normalization.
+
+    Args:
+        previous_layer (Layer): The layer from the previous page.
+        current_layer (Layer): The layer from the current page.
+
+    Returns:
+        bool: True if the material descriptions match, False otherwise.
+    """
     previous_description = parse_text(previous_layer.material_description.text)
     current_description = parse_text(current_layer.material_description.text)
     return previous_description != "" and previous_description == current_description
