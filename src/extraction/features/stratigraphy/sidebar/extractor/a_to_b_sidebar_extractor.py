@@ -58,7 +58,6 @@ class AToBSidebarExtractor:
         pairs = [(entry, find_pair(entry)) for entry in entries]
         intervals = [AToBInterval(first, second) for first, second in pairs if second]
         clusters = Cluster[AToBInterval].create_clusters(intervals, lambda interval: interval.rect)
-
         return [
             sidebar_segment
             for cluster in clusters
