@@ -209,7 +209,7 @@ def run_predictions(
 ) -> tuple[list[LayerInformation], Classifier | None, int]:
     """Load data, run classification, and write predictions.
 
-    This is the core prediction logic, decoupled from tracking and evaluation it can be called 
+    This is the core prediction logic, decoupled from tracking and evaluation it can be called
     from any context (CLI, API, tests).
 
     Args:

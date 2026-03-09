@@ -152,7 +152,7 @@ class PageExtractionData:
 class ExtractionResult:
     """Full output of extract(): predictions and per-page data needed for visualization."""
 
-    predictions: "FilePredictions"
+    predictions: FilePredictions
     pages_data: list[PageExtractionData]
 
 
@@ -310,8 +310,8 @@ def draw_file_predictions(
     """Draw extraction visualizations for a single file. Separate from extraction logic.
 
     Re-opens the PDF to render annotated prediction overlays. Per-page intermediate detection
-    data (lines, tables, strip logs) is read from `result.pages_data`. MLflow image logging is 
-    handled inside save_visualization() when MLFLOW_TRACKING is set — callers that don't want 
+    data (lines, tables, strip logs) is read from `result.pages_data`. MLflow image logging is
+    handled inside save_visualization() when MLFLOW_TRACKING is set — callers that don't want
     MLflow should ensure it is not enabled.
 
     Args:
@@ -351,7 +351,7 @@ def draw_file_predictions(
             plot_prediction(result.predictions, doc, draw_directory)
 
 
-def write_csv_for_file(predictions: "FilePredictions", out_directory: Path) -> list[Path]:
+def write_csv_for_file(predictions: FilePredictions, out_directory: Path) -> list[Path]:
     """Write per-borehole CSV files for a single file's predictions.
 
     Args:
