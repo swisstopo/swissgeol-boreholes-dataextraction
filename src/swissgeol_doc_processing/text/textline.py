@@ -84,8 +84,6 @@ class TextLine(RectWithPageMixin):
         patterns = parameters["material_description"][language][exp_type]
         split_threshold = parameters.get("compound_split_threshold", 0.4)
 
-        # Return find_matching_expressions(patterns, split_threshold, text_tokens, language, analytics,
-        # search_excluding)
         # Allow very short (1-token) descriptions if they match a dedicated keyword list.
         # This is useful for table-like boreholes where cells are often single lithology words.
         if not search_excluding and len(text_tokens) == 1:
