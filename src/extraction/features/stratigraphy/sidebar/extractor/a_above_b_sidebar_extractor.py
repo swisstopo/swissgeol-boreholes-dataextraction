@@ -35,12 +35,12 @@ class AAboveBSidebarExtractor:
         """
         entries = [
             entry
-            for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=True)
+            for entry in DepthColumnEntryExtractor.find_in_words(all_words, include_splits=False)
             if all((entry.rect & used_rect).is_empty for used_rect in used_entry_rects)
         ]
         clusters = Cluster[DepthColumnEntry].create_clusters(entries, lambda entry: entry.rect)
 
-        numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 1]
+        numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 3]
 
         filtered_columns = [
             column

@@ -120,43 +120,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
             borehole for borehole in boreholes if len(borehole.predictions) >= self.matching_params["min_num_layers"]
         ]
 
-    def _filter_by_table_criteria(
-        self, pairs: list[MaterialDescriptionRectWithSidebar]
-    ) -> list[MaterialDescriptionRectWithSidebar]:
-        """Filter pairs based on table containment and width requirements."""
-        if not self.table_structures:
-            return pairs
-
-        # If in table - check requirement
-        width_ratio = self.matching_params["material_description_column_width"]
-        min_lines_in_table_for_narrow = self.matching_params.get("min_lines_in_table_for_narrow_description", 3)
-
-        filtered = []
-        for pair in pairs:
-            table_index = self._contained_in_table_index(pair, self.table_structures, proximity_buffer=50)
-
-            # If not in table - keep it as is
-            if table_index == -1:
-                filtered.append(pair)
-            # If in table - check width requirement
-            else:
-                if pair.sidebar is not None:
-                    filtered.append(pair)
-                    continue
-
-                # If many short rows in a narrow column (typical table cells)
-                n_lines = len(get_description_lines(self.lines, pair.material_description_rect))
-                if n_lines >= min_lines_in_table_for_narrow:
-                    filtered.append(pair)
-                    continue
-
-                # Otherwise keep the minimum width criterion
-                min_width = width_ratio * self.page_width
-                if pair.material_description_rect.width > min_width:
-                    filtered.append(pair)
-
-        return filtered
-
     def _contained_in_table_index(
         self, pair: MaterialDescriptionRectWithSidebar, table_structures: list[TableStructure], proximity_buffer: float
     ) -> int:
@@ -640,7 +603,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         # Step 4: Apply filter chain
         filtered_pairs = [pair for pair in pairs if pair.score_match >= 0]
-        filtered_pairs = self._filter_by_table_criteria(filtered_pairs)
         filtered_pairs = self._filter_by_intersections(filtered_pairs)
 
         return filtered_pairs

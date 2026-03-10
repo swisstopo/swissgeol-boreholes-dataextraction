@@ -1,0 +1,17 @@
+default_language: "de"
+supported_language: ["de", "fr", "en", "it"]
+
+reference_key_words: ["wie", "do", "dito", "idem", "same as"]
+
+fallback_require_table: true
+fallback_allow_if_striplog: true
+
+fallback_min_table_height_ratio: 0.25
+fallback_table_proximity_buffer: 50
+
+fallback_min_vertical_grid_lines: 2
+fallback_min_horizontal_grid_lines: 3
+fallback_min_grid_total: 6
+
+fallback_min_description_height_ratio: 0.20
+fallback_min_description_height_abs: 120
