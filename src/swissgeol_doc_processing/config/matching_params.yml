@@ -60,7 +60,6 @@ affinity_params:
 empty_interval_penalty: 0.2
 
 material_description_column_width: 0.08
-min_lines_in_table_for_narrow_description: 3
 
 depth_column_params: # these params should be optimized as soon as there is reliable evaluation data
   noise_count_threshold: 1.25
