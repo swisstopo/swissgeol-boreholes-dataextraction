@@ -302,6 +302,8 @@ def _merge_boreholes(
     if last_prev_layer and first_next_layer:
         last_prev_depths = last_prev_layer.depths
         first_depths = first_next_layer.depths
+        spanning_layer = None
+
         if (
             (last_prev_depths and last_prev_depths.start and last_prev_depths.end is None)
             and (first_depths and first_depths.start is None and first_depths.end)
@@ -309,11 +311,8 @@ def _merge_boreholes(
         ):
             # if the last interval of the previous page is open-ended, and the first of this page has no start
             # value, it probably means that they refer to the same layer.
-
             spanning_layer = _build_spanning_layer(last_prev_layer, first_next_layer)
-            new_predictions = (
-                borehole_to_extend.predictions[:-1] + [spanning_layer] + borehole_continuation.predictions[1:]
-            )
+
         elif (
             last_prev_depths
             and last_prev_depths.start
@@ -327,7 +326,6 @@ def _merge_boreholes(
             # if the material description is repeated exactly across the page break, it likely indicates that
             # the layer continues on the next page and the end depth of the previous page corresponds only to
             # the page boundary, not the true end of the geological layer.
-
             spanning_layer = Layer(
                 material_description=MaterialDescription(
                     text=last_prev_layer.material_description.text,
@@ -335,6 +333,8 @@ def _merge_boreholes(
                 ),
                 depths=LayerDepths(start=last_prev_depths.start, end=first_depths.end),
             )
+
+        if spanning_layer is not None:
             new_predictions = (
                 borehole_to_extend.predictions[:-1] + [spanning_layer] + borehole_continuation.predictions[1:]
             )
