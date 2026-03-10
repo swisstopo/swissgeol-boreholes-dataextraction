@@ -271,6 +271,8 @@ coordinate_keys:
   fr:
     - coordonnées
     - coordonn
+  it:
+    - coordinate
 
 groundwater_keys:
   de:
@@ -303,6 +305,9 @@ groundwater_keys:
     - groundwater
     - ground-water
     - ground-water level
+  it:
+    - Livello falda
+    - Pelo libero falda
 
 groundwater_fp_keys:
   de:
@@ -345,6 +350,10 @@ elevation_keys:
 
   en:
     - Surface level
+
+  it:
+    - Quota
+    - Altezza
 
 open_ended_depth_key:
   - ab
