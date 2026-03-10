@@ -108,8 +108,8 @@ material_description:
       - grob
       - auffüllung
       - schlacke
-      - überlagerung 
-      - moräne    
+      - überlagerung
+      - moräne
       - aufschüttung
     excluding_expressions:
       - herr
