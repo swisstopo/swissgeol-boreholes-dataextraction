@@ -38,11 +38,21 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull base image
-        run: docker pull ${{ env.IMAGE }}:${{ env.BASE }}
+      - name: Pull, retag and push release-candidate
+        run: |
+          docker pull ${{ env.IMAGE }}:${{ env.BASE }}
+          docker tag ${{ env.IMAGE }}:${{ env.BASE }} ${{ env.IMAGE }}:release-candidate
+          docker push ${{ env.IMAGE }}:release-candidate
 
-      - name: Tag as release-candidate
-        run: docker tag ${{ env.IMAGE }}:${{ env.BASE }} ${{ env.IMAGE }}:release-candidate
+      - name: Extract and save version from image labels
+        id: version
+        run: |
+          VERSION=$(docker inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' ${{ env.IMAGE }}:${{ env.BASE }} | sed 's/^v//')
+          echo "$VERSION" > version.txt
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Push release-candidate
-        run: docker push ${{ env.IMAGE }}:release-candidate
+      - name: Upload version artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: version
+          path: version.txt

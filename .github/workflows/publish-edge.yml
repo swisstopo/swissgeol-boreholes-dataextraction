@@ -5,7 +5,8 @@ on:
     branches:
       - develop
   workflow_dispatch:
-    VERSION:
+    inputs:
+      VERSION:
         description: 'Override version (e.g. 1.0.42-dev99). Defaults to <VERSION file>-dev<run_number>.'
         required: false
         default: ''
@@ -65,13 +66,4 @@ jobs:
           cache-to: type=inline
 
       - name: Create GitHub pre-release
-        run: |
-          gh api \
-            --method POST \
-            --header "Accept: application/vnd.github+json" \
-            /repos/${GITHUB_REPOSITORY}/releases \
-            -f tag_name='v${{ env.VERSION }}' \
-            -f target_commitish='${{ github.ref_name }}' \
-            -f name='${{ env.VERSION }}' \
-            -F prerelease=true \
-            -F draft=false
+        run: gh release create "v${{ env.VERSION }}" --prerelease --title "${{ env.VERSION }}" --target "${{ github.ref_name }}"
