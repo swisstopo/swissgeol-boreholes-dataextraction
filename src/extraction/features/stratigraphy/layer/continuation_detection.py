@@ -5,67 +5,41 @@ import numpy as np
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepths, LayerDepthsEntry
 from extraction.features.stratigraphy.layer.overlap_detection import select_boreholes_with_overlap
 from swissgeol_doc_processing.text.textblock import MaterialDescription
-from swissgeol_doc_processing.utils.file_utils import parse_text
 
 DEPTHS_QUANTILE_SLACK = 0.1
 
 
-def _reconcile_duplicated_boundary_layer(
-    borehole_to_extend: ExtractedBorehole,
-    borehole_continuation: ExtractedBorehole,
-    upper_id: int,
-    lower_id: int,
-) -> ExtractedBorehole:
-    """Extend the last kept layer of the upper borehole with the end depth of the first removed lower layer.
-
-    This is used when duplicate layers are detected across overlapping pages. If the last kept upper layer and the
-    first removed lower layer have exactly the same material description, the upper layer likely continues across the
-    page break and should inherit the deeper end depth from the lower layer.
+def _reconcile_duplicated_boundary_layer(previous_layer: Layer, current_layer: Layer) -> Layer | None:
+    """Merge two duplicated boundary layers into one spanning layer.
 
     Args:
-        borehole_to_extend (ExtractedBorehole): The borehole from the previous page that is being extended.
-        borehole_continuation (ExtractedBorehole): The borehole from the current page that is the continuation.
-        upper_id (int): The index of the last layer in the upper borehole that is kept after removing duplicates.
-        lower_id (int): The index of the first layer in the lower borehole that is removed as duplicate.
+        previous_layer (Layer): The last kept layer from the previous-page borehole.
+        current_layer (Layer): The last removed duplicated layer from the current-page borehole.
 
     Returns:
-        ExtractedBorehole: The updated borehole.
+        Layer | None: A reconciled spanning layer, or None if reconciliation is not possible.
     """
-    if upper_id <= 0 or lower_id <= 0:
-        return borehole_to_extend
+    previous_depths = previous_layer.depths
+    current_depths = current_layer.depths
 
-    upper_layer = borehole_to_extend.predictions[upper_id - 1]
-    lower_layer = borehole_continuation.predictions[lower_id - 1]
-
-    if not _material_descriptions_match(upper_layer, lower_layer):
-        return borehole_to_extend
-
-    upper_depths = upper_layer.depths
-    lower_depths = lower_layer.depths
+    # make sure we have all depth information available
     if not (
-        upper_depths
-        and upper_depths.start
-        and upper_depths.end
-        and lower_depths
-        and lower_depths.end
-        and upper_depths.start.value < lower_depths.end.value
+        previous_depths
+        and previous_depths.start
+        and previous_depths.end
+        and current_depths
+        and current_depths.end
+        and previous_depths.start.value < current_depths.end.value
     ):
-        return borehole_to_extend
+        return None
 
-    reconciled_layer = Layer(
+    # return merged layer with combined material description and spanning depths
+    return Layer(
         material_description=MaterialDescription(
-            text=upper_layer.material_description.text,
-            lines=upper_layer.material_description.lines + lower_layer.material_description.lines,
+            text=previous_layer.material_description.text,
+            lines=previous_layer.material_description.lines + current_layer.material_description.lines,
         ),
-        depths=LayerDepths(start=upper_depths.start, end=lower_depths.end),
-    )
-
-    updated_predictions = borehole_to_extend.predictions.copy()
-    updated_predictions[upper_id - 1] = reconciled_layer
-
-    return ExtractedBorehole(
-        predictions=updated_predictions,
-        bounding_boxes=borehole_to_extend.bounding_boxes,
+        depths=LayerDepths(start=previous_depths.start, end=current_depths.end),
     )
 
 
@@ -114,9 +88,22 @@ def _pick_merge_candidates(
     if last_duplicated_layer_index:
         upper_id, lower_id = last_duplicated_layer_index
 
-        borehole_to_extend = _reconcile_duplicated_boundary_layer(
-            borehole_to_extend, borehole_continuation, upper_id, lower_id
-        )
+        # make sure the boundary layers are reconciled
+        if upper_id > 0 and lower_id > 0:
+            upper_layer = borehole_to_extend.predictions[upper_id - 1]
+            lower_layer = borehole_continuation.predictions[lower_id - 1]
+
+            reconciled_layer = _reconcile_duplicated_boundary_layer(upper_layer, lower_layer)
+
+            # add the reconciled layer to the borehole to extend, which will be kept, and remove the duplicated layer
+            # from the continuation borehole
+            if reconciled_layer is not None:
+                updated_predictions = borehole_to_extend.predictions.copy()
+                updated_predictions[upper_id - 1] = reconciled_layer
+                borehole_to_extend = ExtractedBorehole(
+                    predictions=updated_predictions,
+                    bounding_boxes=borehole_to_extend.bounding_boxes,
+                )
 
         # Keep only the non-duplicated part of the borehole from the previous page
         borehole_to_extend = ExtractedBorehole(
@@ -124,7 +111,7 @@ def _pick_merge_candidates(
             bounding_boxes=borehole_to_extend.bounding_boxes,
         )
 
-        # Keep only the new layers from the continuation borehole on the current
+        # Keep only the new layers from the continuation borehole on the current page
         borehole_continuation = ExtractedBorehole(
             predictions=borehole_continuation.predictions[lower_id:],
             bounding_boxes=borehole_continuation.bounding_boxes,
@@ -313,27 +300,6 @@ def _merge_boreholes(
             # value, it probably means that they refer to the same layer.
             spanning_layer = _build_spanning_layer(last_prev_layer, first_next_layer)
 
-        elif (
-            last_prev_depths
-            and last_prev_depths.start
-            and last_prev_depths.end
-            and first_depths
-            and first_depths.start
-            and first_depths.end
-            and _material_descriptions_match(last_prev_layer, first_next_layer)
-            and last_prev_depths.start.value < first_depths.end.value
-        ):
-            # if the material description is repeated exactly across the page break, it likely indicates that
-            # the layer continues on the next page and the end depth of the previous page corresponds only to
-            # the page boundary, not the true end of the geological layer.
-            spanning_layer = Layer(
-                material_description=MaterialDescription(
-                    text=last_prev_layer.material_description.text,
-                    lines=last_prev_layer.material_description.lines + first_next_layer.material_description.lines,
-                ),
-                depths=LayerDepths(start=last_prev_depths.start, end=first_depths.end),
-            )
-
         if spanning_layer is not None:
             new_predictions = (
                 borehole_to_extend.predictions[:-1] + [spanning_layer] + borehole_continuation.predictions[1:]
@@ -343,21 +309,6 @@ def _merge_boreholes(
         predictions=new_predictions,
         bounding_boxes=borehole_to_extend.bounding_boxes + borehole_continuation.bounding_boxes,
     )
-
-
-def _material_descriptions_match(previous_layer: Layer, current_layer: Layer) -> bool:
-    """Check if two layers have exactly matching material descriptions after normalization.
-
-    Args:
-        previous_layer (Layer): The layer from the previous page.
-        current_layer (Layer): The layer from the current page.
-
-    Returns:
-        bool: True if the material descriptions match, False otherwise.
-    """
-    previous_description = parse_text(previous_layer.material_description.text)
-    current_description = parse_text(current_layer.material_description.text)
-    return previous_description != "" and previous_description == current_description
 
 
 def _build_spanning_layer(last_prev_layer: Layer, first_next_layer: Layer) -> Layer:
