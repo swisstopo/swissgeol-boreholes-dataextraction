@@ -41,13 +41,10 @@ class AToBSidebarExtractor:
         entries = DepthColumnEntryExtractor.find_in_words(all_words)
 
         def find_pair(entry: DepthColumnEntry) -> DepthColumnEntry | None:  # noqa: D103
-            print()
-            print(entry, entry.rect)
             min_y0 = entry.rect.y0 - entry.rect.height / 2
             max_y0 = entry.rect.y0 + entry.rect.height / 2
             min_x0 = max(entry.rect.x0, entry.rect.x1 - entry.rect.height)
             for other in entries:
-                print(other, other.rect)
                 if entry == other:
                     continue
                 if other.value <= entry.value:
@@ -57,7 +54,6 @@ class AToBSidebarExtractor:
                     continue
                 if not min_y0 <= other.rect.y0 <= max_y0:
                     continue
-                print("ok")
                 in_between_text = " ".join(
                     [
                         word.text
