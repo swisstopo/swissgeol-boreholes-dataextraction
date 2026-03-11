@@ -165,22 +165,25 @@ def extract_borehole_names(
     max_horizontal_distance = name_detection_params.get("max_horizontal_distance", 1e16)
     max_title_length = name_detection_params.get("max_title_length", 1e16)
 
+    # Iterate over all lines
     for line in text_lines:
-        # Check line for keyword - Enforce end to avoid plural form
-        match = match_any_keyword(line.text, matching_keywords, end=True)
+        # Step 1: Check line for keyword
+        # Step 1.1: Enforce end matching with matching_keywords
+        match_soft = match_any_keyword(line.text, matching_keywords, end=True)
+        # Step 1.2: Enforce start and end matching with strict_matching_keywords
         match_strict = match_any_keyword(line.text, strict_matching_keywords, start=True, end=True)
-        # Aggregate results
-        match_all = match_strict if match_strict else match
 
-        if not match_all:
+        # Extarct matched text
+        if not match_soft and not match_strict:
             continue
 
-        # Try same-line first
-        same_line_name = line.text[match_all.start() :]
-        if cleaned := _clean_borehole_name(same_line_name, excluded_keywords):
+        # Step 2: Clean detection
+        # Take match as starting point of borehole name
+        starting_cursor = match_soft.end() if match_soft else match_strict.start()
+        if following_text_cleaned := _clean_borehole_name(line.text[starting_cursor:], excluded_keywords):
             candidates.append(
                 FeatureOnPage(
-                    feature=BoreholeName(name=cleaned, confidence=1.0),
+                    feature=BoreholeName(name=following_text_cleaned, confidence=1.0),
                     rect=line.rect,
                     page=line.page_number,
                 )
