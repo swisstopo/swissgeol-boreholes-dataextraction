@@ -84,31 +84,7 @@ class TextLine(RectWithPageMixin):
         patterns = parameters["material_description"][language][exp_type]
         split_threshold = parameters.get("compound_split_threshold", 0.4)
 
-        # Allow very short (1-token) descriptions if they match a dedicated keyword list.
-        # This is useful for table-like boreholes where cells are often single lithology words.
-        if not search_excluding and len(text_tokens) == 1:
-            single_word_patterns = parameters["material_description"][language].get(
-                "including_expressions",
-                [],
-            )
-            if single_word_patterns and find_matching_expressions(
-                single_word_patterns,
-                split_threshold,
-                text_tokens,
-                language,
-                analytics,
-                search_excluding=False,
-            ):
-                return True
-
-        return find_matching_expressions(
-            patterns,
-            split_threshold,
-            text_tokens,
-            language,
-            analytics,
-            search_excluding,
-        )
+        return find_matching_expressions(patterns, split_threshold, text_tokens, language, analytics, search_excluding)
 
     def is_line_start(self, raw_lines_before: list[TextLine], raw_lines_after: list[TextLine]) -> bool:
         """Determine whether this line can be considered the start of a properly aligned text block.
