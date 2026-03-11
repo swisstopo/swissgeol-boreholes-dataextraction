@@ -3,11 +3,12 @@
 import re
 
 from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
+from extraction.features.stratigraphy.interval.a_to_b_interval_extractor import AToBIntervalExtractor
 from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
 from extraction.features.stratigraphy.interval.interval import AToBInterval
 from extraction.features.stratigraphy.sidebar.classes.a_to_b_sidebar import AToBSidebar
 from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
-from swissgeol_doc_processing.text.textline import TextWord
+from swissgeol_doc_processing.text.textline import TextLine, TextWord
 
 
 class AToBSidebarExtractor:
@@ -30,21 +31,33 @@ class AToBSidebarExtractor:
         Returns:
             list[AToBSidebar]: List of all AToBSidebars identified.
         """
-        entries = DepthColumnEntryExtractor.find_in_words(all_words, include_splits=True)
+        intervals = []
+        for word in all_words:
+            a_to_b_interval, _ = AToBIntervalExtractor.from_text(TextLine([word]))
+            if a_to_b_interval and a_to_b_interval.start and a_to_b_interval.end:
+                intervals.append(a_to_b_interval)
+
+        # Find additional pairs that do not come from a single TextWord
+        entries = DepthColumnEntryExtractor.find_in_words(all_words)
 
         def find_pair(entry: DepthColumnEntry) -> DepthColumnEntry | None:  # noqa: D103
+            print()
+            print(entry, entry.rect)
             min_y0 = entry.rect.y0 - entry.rect.height / 2
             max_y0 = entry.rect.y0 + entry.rect.height / 2
+            min_x0 = max(entry.rect.x0, entry.rect.x1 - entry.rect.height)
             for other in entries:
+                print(other, other.rect)
                 if entry == other:
                     continue
                 if other.value <= entry.value:
                     continue
                 combined_width = entry.rect.width + other.rect.width
-                if not entry.rect.x0 <= other.rect.x0 <= entry.rect.x0 + combined_width:
+                if not min_x0 <= other.rect.x0 <= entry.rect.x0 + combined_width:
                     continue
                 if not min_y0 <= other.rect.y0 <= max_y0:
                     continue
+                print("ok")
                 in_between_text = " ".join(
                     [
                         word.text
@@ -55,9 +68,14 @@ class AToBSidebarExtractor:
                 if re.fullmatch(r"\W*m?\W*", in_between_text):
                     return other
 
-        pairs = [(entry, find_pair(entry)) for entry in entries]
-        intervals = [AToBInterval(first, second) for first, second in pairs if second]
-        clusters = Cluster[AToBInterval].create_clusters(intervals, lambda interval: interval.rect)
+        for entry in entries:
+            other = find_pair(entry)
+            if other:
+                intervals.append(AToBInterval(entry, other))
+
+        clusters = Cluster[AToBInterval].create_clusters(
+            sorted(intervals, key=lambda interval: interval.rect.y0), lambda interval: interval.rect
+        )
         return [
             sidebar_segment
             for cluster in clusters
