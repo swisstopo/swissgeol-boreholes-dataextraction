@@ -6,7 +6,7 @@ on:
     types:
       - completed
     branches:
-      - main
+      - develop
   workflow_dispatch:
     inputs:
       VERSION:
@@ -33,7 +33,10 @@ jobs:
           LATEST_VERSION=$(gh api \
             -H "Accept: application/vnd.github+json" \
             /repos/${GITHUB_REPOSITORY}/releases \
-            --jq '.[0].tag_name' | sed 's/v//')
+            --jq '[.[] | select(.prerelease == true)][0].tag_name' | sed 's/v//')
+          if [ -z "$LATEST_VERSION" ]; then
+            echo "ERROR: No pre-release found. Ensure Publish Edge completed successfully." && exit 1
+          fi
           echo "version=$LATEST_VERSION" >> $GITHUB_OUTPUT
 
       - name: Set environment variables
