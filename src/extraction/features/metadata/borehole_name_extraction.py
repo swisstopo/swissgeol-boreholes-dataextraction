@@ -159,6 +159,7 @@ def extract_borehole_names(
     """
     candidates: list[FeatureOnPage[BoreholeName]] = []
     matching_keywords = name_detection_params.get("matching_keywords", [])
+    strict_matching_keywords = name_detection_params.get("strict_matching_keywords", [])
     excluded_keywords = name_detection_params.get("excluded_keywords", [])
     min_vertical_overlap = name_detection_params.get("min_vertical_overlap", 1.0)
     max_horizontal_distance = name_detection_params.get("max_horizontal_distance", 1e16)
@@ -167,11 +168,15 @@ def extract_borehole_names(
     for line in text_lines:
         # Check line for keyword - Enforce end to avoid plural form
         match = match_any_keyword(line.text, matching_keywords, end=True)
-        if not match:
+        match_strict = match_any_keyword(line.text, strict_matching_keywords, start=True, end=True)
+        # Aggregate results
+        match_all = match_strict if match_strict else match
+
+        if not match_all:
             continue
 
         # Try same-line first
-        same_line_name = line.text[match.end() :]
+        same_line_name = line.text[match_all.start() :]
         if cleaned := _clean_borehole_name(same_line_name, excluded_keywords):
             candidates.append(
                 FeatureOnPage(
