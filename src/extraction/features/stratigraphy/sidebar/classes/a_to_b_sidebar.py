@@ -109,7 +109,7 @@ class AToBSidebar(Sidebar[AToBInterval]):
             bool: True if the depth column is valid, False otherwise.
         """
         filtered_entries = [entry for entry in self.entries if not entry.skip_interval]
-        if len(filtered_entries) <= 2:
+        if len(filtered_entries) <= 1:
             return False
 
         # At least half of the "end" values must match the subsequent "start" value (e.g. 2-5m, 5-9m).
