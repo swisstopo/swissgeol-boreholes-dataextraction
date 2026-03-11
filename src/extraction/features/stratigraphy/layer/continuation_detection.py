@@ -43,15 +43,17 @@ def _reconcile_duplicated_boundary_layer(previous_layer: Layer, current_layer: L
     )
 
 
-def _pick_merge_candidates(
+def _prepare_merge_candidates(
     previous_page_boreholes: list[ExtractedBorehole],
     current_page_boreholes: list[ExtractedBorehole],
     page_number: int,
     matching_params: dict,
 ) -> tuple[ExtractedBorehole | None, list[ExtractedBorehole], ExtractedBorehole | None, list[ExtractedBorehole]]:
-    """Select the most likely pair of boreholes to merge between consecutive pages.
+    """Select the most likely pair of boreholes to merge between consecutive pages and prepare them for merging.
 
     The method first attempts an overlap-based matching using scan alignment.
+    If it finds overlapping boreholes, it identifies the duplicated layers and prepares the boreholes for
+    merging by reconciling the boundary layers if necessary.
     If no overlap is detected, it falls back to depth/position-based matching.
 
     Args:
@@ -149,7 +151,7 @@ def merge_boreholes(
             unaffected_boreholes_previous_page,
             borehole_continuation,
             unaffected_boreholes_current_page,
-        ) = _pick_merge_candidates(previous_page_boreholes, boreholes_on_page, page_number, matching_params)
+        ) = _prepare_merge_candidates(previous_page_boreholes, boreholes_on_page, page_number, matching_params)
 
         # 2. If borehole merge possible, apply it
         if borehole_to_extend and borehole_continuation:
