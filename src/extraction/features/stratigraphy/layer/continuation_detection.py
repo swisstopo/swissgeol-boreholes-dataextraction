@@ -22,7 +22,7 @@ def _reconcile_duplicated_boundary_layer(previous_layer: Layer, current_layer: L
     previous_depths = previous_layer.depths
     current_depths = current_layer.depths
 
-    # make sure we have all depth information available
+    # Make sure we have all necessary depth information available
     if not (
         previous_depths
         and previous_depths.start
@@ -33,7 +33,7 @@ def _reconcile_duplicated_boundary_layer(previous_layer: Layer, current_layer: L
     ):
         return None
 
-    # return merged layer with combined material description and spanning depths
+    # Return merged layer with combined material description and spanning depths
     return Layer(
         material_description=MaterialDescription(
             text=previous_layer.material_description.text,
@@ -90,15 +90,15 @@ def _prepare_merge_candidates(
     if last_duplicated_layer_index:
         upper_id, lower_id = last_duplicated_layer_index
 
-        # make sure the boundary layers are reconciled
+        # Reconcile the duplicated boundary layers into a single spanning layer
         if upper_id > 0 and lower_id > 0:
             upper_layer = borehole_to_extend.predictions[upper_id - 1]
             lower_layer = borehole_continuation.predictions[lower_id - 1]
 
             reconciled_layer = _reconcile_duplicated_boundary_layer(upper_layer, lower_layer)
 
-            # add the reconciled layer to the borehole to extend, which will be kept, and remove the duplicated layer
-            # from the continuation borehole
+            # Replace the kept boundary layer on the previous-page borehole with the reconciled layer.
+            # The duplicated prefix on the continuation borehole is removed in the slicing step below.
             if reconciled_layer is not None:
                 updated_predictions = borehole_to_extend.predictions.copy()
                 updated_predictions[upper_id - 1] = reconciled_layer
