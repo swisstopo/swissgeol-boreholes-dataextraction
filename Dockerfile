@@ -1,14 +1,15 @@
 ## Build stage
-# Use the specifidied Pyhon-slim version as the base image
-FROM python:3.12-slim AS builder
+# Use the specifidied Python-slim version as the base image
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
+
+ARG VERSION=0.0.0
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION
 
 WORKDIR /app
-COPY pyproject.toml /app/
+COPY pyproject.toml README.md /app/
 
-# Install pip-tools and use it to resolve dependencies
-RUN pip install --no-cache-dir pip-tools \
-    && pip-compile --generate-hashes /app/pyproject.toml \
-    && pip-sync
+# Install dependencies using uv
+RUN uv pip install --system --no-cache .
 
 ## Runtime stage
 FROM python:3.12-slim

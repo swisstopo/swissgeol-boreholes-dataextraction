@@ -104,7 +104,7 @@ Both packages are automatically included when installing the main `swissgeol-bor
 Both packages are part of the `swissgeol-boreholes-dataextraction` repository and can be installed directly from GitHub. They are built using setuptools and setuptools-scm for version management. Published [versions](https://github.com/swisstopo/swissgeol-boreholes-dataextraction/releases) can be installed via:
 
 ```bash
-pip install https://github.com/swisstopo/swissgeol-boreholes-dataextraction/releases/download/v{VERSION}/swissgeol-boreholes-dataextraction-{VERSION}-py3-none-any.whl
+uv pip install https://github.com/swisstopo/swissgeol-boreholes-dataextraction/releases/download/v{VERSION}/swissgeol-boreholes-dataextraction-{VERSION}-py3-none-any.whl
 ```
 
 The package configuration is defined in `pyproject.toml` under `[tool.setuptools.packages.find]`, which specifies both `swissgeol_doc_processing` and `extraction` as package sources.

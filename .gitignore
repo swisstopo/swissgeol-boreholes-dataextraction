@@ -9,6 +9,7 @@ data-legacy/
 /config/
 
 # Ignore local VSCode launch config
+.claude
 .vscode/launch.json
 
 # Templated gitignores for python projects. Sourced from https://github.com/github/gitignore/blob/main/Python.gitignore
