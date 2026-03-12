@@ -19,7 +19,7 @@ class AAboveBSidebarExtractor:
 
     @staticmethod
     def _arithmetic_progression_entries(entries: list[DepthColumnEntry]) -> list[DepthColumnEntry]:
-        # First, try to find an artihmetic progression in the entries without decimal point
+        # First, try to find an arithmetic progression in the entries without decimal point
         no_decimal_point_entries = [entry for entry in entries if not entry.has_decimal_point]
         no_decimal_point_values = [entry.value for entry in no_decimal_point_entries]
         selected_values = AAboveBSidebarExtractor._arithmetic_progression_values(no_decimal_point_values)
