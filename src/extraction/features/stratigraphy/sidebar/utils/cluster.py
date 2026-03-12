@@ -1,6 +1,5 @@
 """Module for clustering DepthColumnEntries when extracting sidebars."""
 
-import abc
 import dataclasses
 from collections.abc import Callable
 from typing import Generic, Self, TypeVar
@@ -14,7 +13,7 @@ EntryT = TypeVar("EntryT")
 
 
 @dataclasses.dataclass
-class Cluster(abc.ABC, Generic[EntryT]):
+class Cluster(Generic[EntryT]):
     """Class that groups together values that potentially belong to the same sidebar."""
 
     entries: list[EntryT]
@@ -159,7 +158,7 @@ class ClusterSpanFit:
             if rect2.width > rect1.width:
                 wider_rect, narrower_rect = pymupdf.Rect(rect2), pymupdf.Rect(rect1)
             else:
-                wider_rect, narrower_rect = pymupdf.Rect(rect2), pymupdf.Rect(rect1)
+                wider_rect, narrower_rect = pymupdf.Rect(rect1), pymupdf.Rect(rect2)
 
             if narrower_rect.x0 < wider_rect.x0:
                 # narrower rect is more to the left -> extend narrower rect to the right
