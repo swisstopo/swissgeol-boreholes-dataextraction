@@ -30,6 +30,9 @@ from extraction.features.stratigraphy.sidebar.extractor.a_to_b_sidebar_extractor
 from extraction.features.stratigraphy.sidebar.extractor.layer_identifier_sidebar_extractor import (
     LayerIdentifierSidebarExtractor,
 )
+from extraction.features.stratigraphy.sidebar.extractor.protocol_sidebar_extractor import (
+    ProtocolSidebarExtractor,
+)
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
 from extraction.utils.dynamic_matching import IntervalToLinesDP
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
@@ -286,9 +289,34 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 used_entry_rects.add(entry.start.rect)
                 used_entry_rects.add(entry.end.rect)
 
+        a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_words(
+            words,
+            line_rtree,
+            list(used_entry_rects),
+            sidebar_params=self.matching_params["depth_column_params"],
+        )
+        sidebars_noise.extend(a_above_b_sidebars_noise)
+
+        for sidebar_noise in a_above_b_sidebars_noise:
+            for entry in sidebar_noise.sidebar.entries:
+                used_entry_rects.add(entry.rect)
+
         sidebars_noise.extend(
             AAboveBSidebarExtractor.find_in_words(
-                words, line_rtree, list(used_entry_rects), sidebar_params=self.matching_params["depth_column_params"]
+                words,
+                line_rtree,
+                list(used_entry_rects),
+                sidebar_params=self.matching_params["depth_column_params"],
+            )
+        )
+
+        sidebars_noise.extend(
+            ProtocolSidebarExtractor.find_in_words(
+                words,
+                self.lines,
+                line_rtree,
+                list(used_entry_rects),
+                sidebar_params=self.matching_params["affinity_params"]["protocol"],
             )
         )
 
