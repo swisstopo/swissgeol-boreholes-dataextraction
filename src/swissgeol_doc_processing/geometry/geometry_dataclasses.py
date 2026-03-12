@@ -114,8 +114,6 @@ class Line:
     def x_from_y(self, y: float) -> float | None:
         """Compute the x-value for the given y-value along the line.
 
-        TODO unit test
-
         Args:
             y (float): The given y-value
 
