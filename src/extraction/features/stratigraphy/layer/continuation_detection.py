@@ -1,5 +1,7 @@
 """This module contains functionality for detecting when a single borehole continues across pdf pages."""
 
+import dataclasses
+
 import numpy as np
 
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepths, LayerDepthsEntry
@@ -33,8 +35,8 @@ def _reconcile_duplicated_boundary_layer(previous_layer: Layer, current_layer: L
     ):
         return None
 
-    # Return merged layer with combined material description and spanning depths
-    return Layer(
+    return dataclasses.replace(
+        previous_layer,
         material_description=MaterialDescription(
             text=previous_layer.material_description.text,
             lines=previous_layer.material_description.lines + current_layer.material_description.lines,
@@ -90,33 +92,27 @@ def _prepare_merge_candidates(
     if last_duplicated_layer_index:
         upper_id, lower_id = last_duplicated_layer_index
 
-        # Reconcile the duplicated boundary layers into a single spanning layer
         if upper_id > 0 and lower_id > 0:
             upper_layer = borehole_to_extend.predictions[upper_id - 1]
             lower_layer = borehole_continuation.predictions[lower_id - 1]
 
             reconciled_layer = _reconcile_duplicated_boundary_layer(upper_layer, lower_layer)
 
-            # Replace the kept boundary layer on the previous-page borehole with the reconciled layer.
-            # The duplicated prefix on the continuation borehole is removed in the slicing step below.
             if reconciled_layer is not None:
                 updated_predictions = borehole_to_extend.predictions.copy()
                 updated_predictions[upper_id - 1] = reconciled_layer
-                borehole_to_extend = ExtractedBorehole(
+                borehole_to_extend = dataclasses.replace(
+                    borehole_to_extend,
                     predictions=updated_predictions,
-                    bounding_boxes=borehole_to_extend.bounding_boxes,
                 )
 
-        # Keep only the non-duplicated part of the borehole from the previous page
-        borehole_to_extend = ExtractedBorehole(
+        borehole_to_extend = dataclasses.replace(
+            borehole_to_extend,
             predictions=borehole_to_extend.predictions[:upper_id],
-            bounding_boxes=borehole_to_extend.bounding_boxes,
         )
-
-        # Keep only the new layers from the continuation borehole on the current page
-        borehole_continuation = ExtractedBorehole(
+        borehole_continuation = dataclasses.replace(
+            borehole_continuation,
             predictions=borehole_continuation.predictions[lower_id:],
-            bounding_boxes=borehole_continuation.bounding_boxes,
         )
 
     return (
@@ -307,7 +303,8 @@ def _merge_boreholes(
                 borehole_to_extend.predictions[:-1] + [spanning_layer] + borehole_continuation.predictions[1:]
             )
 
-    return ExtractedBorehole(
+    return dataclasses.replace(
+        borehole_to_extend,
         predictions=new_predictions,
         bounding_boxes=borehole_to_extend.bounding_boxes + borehole_continuation.bounding_boxes,
     )
