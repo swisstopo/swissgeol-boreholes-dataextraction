@@ -6,7 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       TAG_NAME:
-        description: "Tag name"
+        description: |
+          Tag name. IMPORTANT: Must match the version embedded in
+          the release-candidate image. Check the pre-release tag for the correct value.
         required: true
 
 env:
