@@ -6,7 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       TAG_NAME:
-        description: "Tag name"
+        description: |
+          Tag name. IMPORTANT: Must match the version embedded in
+          the release-candidate image. Check the pre-release tag for the correct value.
         required: true
 
 env:
@@ -20,49 +22,88 @@ jobs:
     name: Push updated Docker image
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       - name: Set environment variables
         run: |
           echo VERSION=${TAG_NAME#v} >> $GITHUB_ENV
           echo BASE_IMAGE_NAME=$REGISTRY/$(echo ${GITHUB_REPOSITORY,,}) >> $GITHUB_ENV
-          echo COMMITED_AT=$(git show -s --format=%cI `git rev-parse HEAD`) >> $GITHUB_ENV
+
+      - name: Log in to the GitHub container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull release-candidate
+        run: docker pull ${{ env.BASE_IMAGE_NAME }}-api:release-candidate
 
       - name: Collect Docker image metadata (api)
         id: meta-api
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.BASE_IMAGE_NAME }}-api
-          labels: |
-            org.opencontainers.image.created=${{ env.COMMITED_AT }}
-            org.opencontainers.image.version=v${{ env.VERSION }}
-            org.opencontainers.image.authors=Stijn Vermeeren <stijn.vermeeren@swisstopo.ch>
+          flavor: |
+            latest=false
           tags: |
-            type=semver,pattern=v{{version}}
+            type=semver,pattern=v{{version}},value=${{ env.TAG_NAME }}
+            type=semver,pattern=v{{major}}.{{minor}},value=${{ env.TAG_NAME }}
+            type=semver,pattern=v{{major}},value=${{ env.TAG_NAME }}
+            type=raw,value=latest
 
-      - name: Log in to the GitHub container registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.repository_owner  }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tag and push stable tags
+        run: |
+          for TAG in $(echo "${{ steps.meta-api.outputs.tags }}" | tr '\n' ' '); do
+            docker tag ${{ env.BASE_IMAGE_NAME }}-api:release-candidate $TAG
+            docker push $TAG
+          done
 
-      - name: Build and push Docker image (api)
-        uses: docker/build-push-action@v5
+  publish-package:
+    runs-on: ubuntu-latest
+    name: Build and publish Python package
+    needs: retag-docker-image
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set environment variables
+        run: |
+          echo VERSION=${TAG_NAME#v} >> $GITHUB_ENV
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          context: ./
-          push: true
-          build-args: |
-            VERSION=${{ env.VERSION }}
-          tags: ${{ steps.meta-api.outputs.tags }}
-          labels: ${{ steps.meta-api.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.BASE_IMAGE_NAME }}-api:edge
-          cache-to: type=inline
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        run: pip install build
+
+      - name: Build package
+        run: |
+          export SETUPTOOLS_SCM_PRETEND_VERSION=${{ env.VERSION }}
+          python -m build
+
+      - name: List built packages
+        run: ls -lh dist/
+
+      - name: Upload to GitHub Release
+        run: |
+          gh release upload ${{ env.TAG_NAME }} dist/*.whl dist/*.tar.gz --clobber
+
+      - name: Generate installation instructions
+        run: |
+          WHEEL_FILE=$(ls dist/*.whl | head -n 1 | xargs basename)
+          echo "### Python Package Published Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Installation Command" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "pip install https://github.com/${{ github.repository }}/releases/download/${{ env.TAG_NAME }}/$WHEEL_FILE" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
   patch-changelog:
     runs-on: ubuntu-latest
     name: Patch CHANGELOG.md and update GitHub release notes
+    needs: retag-docker-image
 
     steps:
       - name: Checkout repository
