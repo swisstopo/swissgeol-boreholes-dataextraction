@@ -64,6 +64,21 @@ def test_aabovebsidebar_arithmeticprogressionentries(input, expected):  # noqa: 
     assert result == expected, f"Expected {expected}, but got {result}"
 
 
+@pytest.mark.parametrize(
+    "input,expected",
+    [
+        ([1, 2, 3, 4], 6),
+        ([4, 3, 2, 1], 0),
+        ([1, 4, 3, 2], 3),
+        ([1, 3, 2, 4], 5),
+    ],
+)
+def test_aabovebsidebar_ascendingcount(input, expected):
+    """Test the ascending_count method of the AAboveBSidebar class."""
+    entries = [DepthColumnEntry(value=value, rect=pymupdf.Rect(), page_number=0) for value in input]
+    assert AAboveBSidebar(entries).ascending_count() == expected
+
+
 def test_aabovebsidebar_fixocrmistakes():  # noqa: D103
     """Test the fix_ocr_mistakes method of the AAboveBSidebar class."""
 

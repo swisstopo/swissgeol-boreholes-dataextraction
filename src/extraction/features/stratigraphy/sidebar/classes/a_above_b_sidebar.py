@@ -152,7 +152,6 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
 
     def ascending_count(self) -> int:
         """Count how many pairs of values are in ascending order."""
-        # TODO add unit tests
         count = 0
         for index1, entry1 in enumerate(self.entries):
             for entry2 in self.entries[index1 + 1 :]:
