@@ -339,8 +339,7 @@ def run_predictions(
         pdf_files = [input_directory.name] if input_directory.suffix.lower() == ".pdf" else []
     else:
         root = input_directory
-        _, _, files = next(os.walk(input_directory))
-        pdf_files = [f for f in files if f.lower().endswith(".pdf")]
+        pdf_files = [f.name for f in input_directory.glob("*.pdf") if f.is_file()]
 
     n_documents = len(pdf_files)
 
