@@ -8,11 +8,10 @@ from extraction.evaluation.evaluation_dataclasses import (
     OverallBoreholeMetadataMetrics,
 )
 from extraction.evaluation.utility import evaluate_single
-from extraction.features.metadata.borehole_name_extraction import BoreholeName
+from extraction.features.metadata.borehole_name_extraction import BoreholeName, _clean_borehole_name
 from extraction.features.metadata.coordinate_extraction import Coordinate
 from extraction.features.predictions.borehole_predictions import FileMetadataWithGroundTruth
 from swissgeol_doc_processing.utils.file_utils import read_params
-from swissgeol_doc_processing.utils.language_filtering import normalize_spaces, remove_any_keyword
 
 name_detection_params = read_params("name_detection_params.yml")
 
@@ -164,11 +163,12 @@ class MetadataEvaluator:
         keywords_set_b = name_detection_params.get("excluded_keywords", [])
         keywords = keywords_set_a + keywords_set_b
         # Noramlize strings
-        extracted_name = normalize_spaces(remove_any_keyword(extracted_name.name, keywords))
-        ground_truth_name = normalize_spaces(remove_any_keyword(ground_truth_name, keywords))
+        extracted_name_ = _clean_borehole_name(extracted_name.name, keywords)
+        ground_truth_name_ = _clean_borehole_name(ground_truth_name, keywords)
+
         # Check if space should be ignored
         if ignore_spaces:
-            extracted_name = extracted_name.replace(" ", "")
-            ground_truth_name = ground_truth_name.replace(" ", "")
+            extracted_name_ = extracted_name_.replace(" ", "") if extracted_name_ else None
+            ground_truth_name_ = ground_truth_name_.replace(" ", "") if ground_truth_name_ else None
         # Return comparison
-        return extracted_name == ground_truth_name
+        return extracted_name_ == ground_truth_name_

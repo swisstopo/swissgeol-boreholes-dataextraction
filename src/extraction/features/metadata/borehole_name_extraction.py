@@ -174,16 +174,17 @@ def extract_borehole_names(
         match_strict = match_any_keyword(line.text, strict_matching_keywords, start=True, end=True)
 
         # Extarct matched text
-        if not match_soft and not match_strict:
+        if not (match := match_soft or match_strict):
             continue
 
         # Step 2: Clean detection
         # Take match as starting point of borehole name
-        starting_cursor = match_soft.end() if match_soft else match_strict.end()
-        if following_text_cleaned := _clean_borehole_name(line.text[starting_cursor:], excluded_keywords):
+        if following_text_cleaned := _clean_borehole_name(line.text[match.end() :], excluded_keywords):
+            # We assume that keyword from strict are part of borehole name
+            prefix = "" if match_soft else match_strict.group()
             candidates.append(
                 FeatureOnPage(
-                    feature=BoreholeName(name=following_text_cleaned, confidence=1.0),
+                    feature=BoreholeName(name=f"{prefix}{following_text_cleaned}", confidence=1.0),
                     rect=line.rect,
                     page=line.page_number,
                 )

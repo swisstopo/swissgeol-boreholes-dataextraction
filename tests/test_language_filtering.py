@@ -170,7 +170,7 @@ def test_remove_any_keyword(text: str, keywords: list[str], expected: str) -> No
         "none-keywords",
         "exclude-keywords",
         "exclude-scale",
-        "exclude-comment",
+        "exclude-parenthesis",
         "exclude-punc",
         "exclude-empty",
     ],
