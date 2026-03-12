@@ -19,7 +19,9 @@ class Cluster(Generic[EntryT]):
     entries: list[EntryT]
 
     @classmethod
-    def create_clusters(cls, entries: list[EntryT], entry_to_rect: Callable[[EntryT], pymupdf.Rect]) -> list[Self]:
+    def create_clusters(
+        cls, entries: list[EntryT], entry_to_rect: Callable[[EntryT], pymupdf.Rect], allow_size_two: bool = False
+    ) -> list[Self]:
         def midpoint(entry: EntryT) -> Point:
             rect = entry_to_rect(entry)
             return Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
@@ -58,7 +60,7 @@ class Cluster(Generic[EntryT]):
                         elif cluster_span_fit.good_fit():
                             intermediate_entries.append(entry3)
 
-                    if intermediate_entries:
+                    if allow_size_two or intermediate_entries:
                         cluster = Cluster([entry1, *intermediate_entries, entry2])
 
                         if len(set.intersection(*[assignments[entry] for entry in cluster.entries])):
@@ -144,6 +146,9 @@ class ClusterSpanFit:
     @staticmethod
     def detect_misalignment(rects: list[pymupdf.Rect]) -> bool:
         """Detect when certain entries are not nicely aligned and they should not form valid cluster."""
+        if len(rects) <= 2:
+            return False
+
         half_length = int(len(rects) / 2)
 
         misaligned_count = 0
