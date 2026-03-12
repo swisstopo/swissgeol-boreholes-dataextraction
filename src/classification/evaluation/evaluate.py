@@ -208,8 +208,8 @@ def evaluate(layer_descriptions: list[LayerInformation]) -> AllClassificationMet
     all_classification_metrics = AllClassificationMetrics(global_metrics, language_metrics)
 
     if mlflow:
-        log_metrics_to_mlflow(all_classification_metrics)
         logger.info("Logging metrics to MLFlow")
+        log_metrics_to_mlflow(all_classification_metrics)
 
     return all_classification_metrics
 

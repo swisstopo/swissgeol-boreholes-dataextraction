@@ -38,12 +38,13 @@ from extraction.features.predictions.predictions import BoreholeListBuilder
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.utils.benchmark_utils import _parent_input_directory_key_extraction, log_metric_mlflow
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics, create_analytics
 from swissgeol_doc_processing.utils.file_utils import flatten, read_params
-from swissgeol_doc_processing.utils.strip_log_detection import detect_strip_logs
-from swissgeol_doc_processing.utils.table_detection import detect_table_structures
+from swissgeol_doc_processing.utils.strip_log_detection import StripLog, detect_strip_logs
+from swissgeol_doc_processing.utils.table_detection import TableStructure, detect_table_structures
 
 matching_params = read_params("matching_params.yml")
 line_detection_params = read_params("line_detection_params.yml")
@@ -143,9 +144,9 @@ class PageExtractionData:
     """Intermediate per-page detection data, needed for optional visualization."""
 
     page_index: int
-    lines: list
-    table_structures: list
-    strip_logs: list
+    lines: list[Line]
+    table_structures: list[TableStructure]
+    strip_logs: list[StripLog]
 
 
 @dataclasses.dataclass
@@ -220,7 +221,7 @@ def extract(
         if part != "all":
             return ExtractionResult(predictions=FilePredictions([], file_metadata, filename), pages_data=[])
 
-        # Extract the layers
+        # Extract the Flayers
         for page_index, page in enumerate(doc):
             page_number = page_index + 1
             logger.info(f"Processing page {page_number}")
@@ -311,8 +312,7 @@ def draw_file_predictions(
 
     Re-opens the PDF to render annotated prediction overlays. Per-page intermediate detection
     data (lines, tables, strip logs) is read from `result.pages_data`. MLflow image logging is
-    handled inside save_visualization() when MLFLOW_TRACKING is set — callers that don't want
-    MLflow should ensure it is not enabled.
+    handled inside save_visualization() when MLFLOW_TRACKING is set.
 
     Args:
         result (ExtractionResult): Output of extract() for this file.
@@ -484,10 +484,9 @@ def run_predictions(
     part: str = "all",
     analytics: MatchingParamsAnalytics | None = None,
 ) -> tuple[OverallFilePredictions, int, list[Path]]:
-    """Discover PDF files, run extract() on each, and write incremental predictions. No MLflow, no evaluation.
+    """Discover PDF files, run extract() on each, and write incremental predictions.
 
-    This is the core prediction logic, decoupled from tracking and evaluation concerns,
-    so it can be called from any context (CLI, API, tests) without side effects.
+    This is the core prediction logic, decoupled from tracking and evaluation.
 
     Resume is supported: if `predictions_path_tmp` already contains partial results from a previous
     run, those files are skipped and only new files are processed.

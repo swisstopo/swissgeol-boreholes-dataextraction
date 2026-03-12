@@ -209,8 +209,7 @@ def run_predictions(
 ) -> tuple[list[LayerInformation], Classifier | None, int]:
     """Load data, run classification, and write predictions.
 
-    This is the core prediction logic, decoupled from tracking and evaluation it can be called
-    from any context (CLI, API, tests).
+    This is the core prediction logic, decoupled from tracking and evaluation.
 
     Args:
         file_path (Path): Path to the JSON file containing material descriptions to classify.
