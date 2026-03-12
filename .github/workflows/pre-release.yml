@@ -25,6 +25,8 @@ jobs:
   tag-release-candidate:
     runs-on: ubuntu-latest
     name: Retag edge image as release-candidate
+    outputs:
+      version: ${{ steps.version.outputs.version }}
 
     steps:
       - name: Set environment variables
@@ -48,11 +50,56 @@ jobs:
         id: version
         run: |
           VERSION=$(docker inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' ${{ env.IMAGE }}:${{ env.BASE }} | sed 's/^v//')
-          echo "$VERSION" > version.txt
+          if [ -z "$VERSION" ]; then echo "ERROR: Could not extract version from image labels" && exit 1; fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Upload version artifact
-        uses: actions/upload-artifact@v4
+  publish-package:
+    runs-on: ubuntu-latest
+    name: Build and publish Python package pre-release
+    needs: tag-release-candidate
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create GitHub pre-release
+        run: |
+          gh api \
+            --method POST \
+            --header "Accept: application/vnd.github+json" \
+            /repos/${GITHUB_REPOSITORY}/releases \
+            -f tag_name='v${{ needs.tag-release-candidate.outputs.version }}' \
+            -f target_commitish='main' \
+            -f name='${{ needs.tag-release-candidate.outputs.version }}' \
+            -F prerelease=true \
+            -F draft=false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          name: version
-          path: version.txt
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        run: pip install build
+
+      - name: Build package
+        run: |
+          export SETUPTOOLS_SCM_PRETEND_VERSION=${{ needs.tag-release-candidate.outputs.version }}
+          python -m build
+
+      - name: List built packages
+        run: ls -lh dist/
+
+      - name: Upload to GitHub Release
+        run: |
+          gh release upload v${{ needs.tag-release-candidate.outputs.version }} dist/*.whl dist/*.tar.gz --clobber
+
+      - name: Generate installation instructions
+        run: |
+          WHEEL_FILE=$(ls dist/*.whl | head -n 1 | xargs basename)
+          echo "### Python Package Published Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Installation Command" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "pip install https://github.com/${{ github.repository }}/releases/download/v${{ needs.tag-release-candidate.outputs.version }}/$WHEEL_FILE" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY

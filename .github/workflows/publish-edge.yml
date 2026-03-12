@@ -18,7 +18,7 @@ env:
 jobs:
   publish-edge:
     runs-on: ubuntu-latest
-    name: Build and push Docker image and create a new GitHub pre-release
+    name: Build and push Docker image
 
     steps:
       - name: Checkout repository
@@ -26,12 +26,12 @@ jobs:
       - name: Set environment variables
         run: |
           if [ -n "${{ github.event.inputs.VERSION }}" ]; then
-              echo VERSION=${{ github.event.inputs.VERSION }} >> $GITHUB_ENV
-            else
-              echo VERSION=$(cat VERSION)-dev$GITHUB_RUN_NUMBER >> $GITHUB_ENV
-            fi
-            echo BASE_IMAGE_NAME=$REGISTRY/$(echo ${GITHUB_REPOSITORY,,}) >> $GITHUB_ENV
-            echo COMMITED_AT=$(git show -s --format=%cI `git rev-parse HEAD`) >> $GITHUB_ENV
+            echo VERSION=${{ github.event.inputs.VERSION }} >> $GITHUB_ENV
+          else
+            echo VERSION=$(cat VERSION)-dev$GITHUB_RUN_NUMBER >> $GITHUB_ENV
+          fi
+          echo BASE_IMAGE_NAME=$REGISTRY/$(echo ${GITHUB_REPOSITORY,,}) >> $GITHUB_ENV
+          echo COMMITED_AT=$(git show -s --format=%cI `git rev-parse HEAD`) >> $GITHUB_ENV
       - name: Collect Docker image metadata (api)
         id: meta-api
         uses: docker/metadata-action@v5
@@ -64,6 +64,3 @@ jobs:
           labels: ${{ steps.meta-api.outputs.labels }}
           cache-from: type=registry,ref=${{ env.BASE_IMAGE_NAME }}-api:edge
           cache-to: type=inline
-
-      - name: Create GitHub pre-release
-        run: gh release create "v${{ env.VERSION }}" --prerelease --title "${{ env.VERSION }}" --target "${{ github.ref_name }}"
