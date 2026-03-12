@@ -68,7 +68,7 @@ def _odr_regression(x: ArrayLike, y: ArrayLike, weights: ArrayLike = None) -> tu
         weights (ArrayLike, optional): The weight for each data point. Defaults to None.
 
     Returns:
-        tuple: (phi, r), the best fit values for the line equation in normal form, i.e. the linear euqation is
+        tuple: (phi, r), the best fit values for the line equation in normal form, i.e. the linear equation is
                 `x cos(phi) + y sin(phi) - r = 0`.
     """
     if weights is None:
