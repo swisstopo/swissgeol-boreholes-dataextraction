@@ -166,14 +166,16 @@ def draw_blocks_and_lines(
     return open_cv_img
 
 
-def save_visualization(img, filename, page_number, visualization_type, draw_directory):
+def save_visualization(
+    img: np.ndarray, filename: str, page_number: int, visualization_type: str, draw_directory: Path
+):
     """Save visualization image to file and/or MLflow."""
+    filename_visualization = f"{Path(filename).stem}_page{page_number}_{visualization_type}.png"
+
     if draw_directory:
-        img_path = draw_directory / f"{Path(filename).stem}_page{page_number}_{visualization_type}.png"
-        cv2.imwrite(str(img_path), img)
+        img_path = draw_directory / filename_visualization
+        # CV2 expects the image to be in BGR colorspace
+        cv2.imwrite(str(img_path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_PNG_COMPRESSION, 3])
 
     if mlflow:
-        mlflow.log_image(img, f"pages/{filename}_page{page_number}_{visualization_type}.png")
-
-    elif not draw_directory:
-        logger.warning(f"draw_directory is not defined. Skipping saving {visualization_type} image.")
+        mlflow.log_image(img, f"pages/{filename_visualization}")

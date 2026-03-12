@@ -120,28 +120,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
             borehole for borehole in boreholes if len(borehole.predictions) >= self.matching_params["min_num_layers"]
         ]
 
-    def _filter_by_table_criteria(
-        self, pairs: list[MaterialDescriptionRectWithSidebar]
-    ) -> list[MaterialDescriptionRectWithSidebar]:
-        """Filter pairs based on table containment and width requirements."""
-        if not self.table_structures:
-            return pairs
-
-        filtered = []
-        for pair in pairs:
-            table_index = self._contained_in_table_index(pair, self.table_structures, proximity_buffer=50)
-
-            # If not in table - keep it as is
-            if table_index == -1:
-                filtered.append(pair)
-            # If in table - check width requirement
-            else:
-                min_width = self.matching_params["material_description_column_width"] * self.page_width
-                if pair.material_description_rect.width > min_width:
-                    filtered.append(pair)
-
-        return filtered
-
     def _contained_in_table_index(
         self, pair: MaterialDescriptionRectWithSidebar, table_structures: list[TableStructure], proximity_buffer: float
     ) -> int:
@@ -625,7 +603,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         # Step 4: Apply filter chain
         filtered_pairs = [pair for pair in pairs if pair.score_match >= 0]
-        filtered_pairs = self._filter_by_table_criteria(filtered_pairs)
         filtered_pairs = self._filter_by_intersections(filtered_pairs)
 
         return filtered_pairs
