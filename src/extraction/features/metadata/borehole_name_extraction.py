@@ -179,7 +179,7 @@ def extract_borehole_names(
 
         # Step 2: Clean detection
         # Take match as starting point of borehole name
-        starting_cursor = match_soft.end() if match_soft else match_strict.start()
+        starting_cursor = match_soft.end() if match_soft else match_strict.end()
         if following_text_cleaned := _clean_borehole_name(line.text[starting_cursor:], excluded_keywords):
             candidates.append(
                 FeatureOnPage(

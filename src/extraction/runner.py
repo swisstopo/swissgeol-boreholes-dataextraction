@@ -115,7 +115,7 @@ def write_json_predictions(filename: str, predictions: OverallFilePredictions) -
         predictions (OverallFilePredictions): Prediction to dump in JSON file.
     """
     with open(filename, "w", encoding="utf8") as file:
-        json.dump(predictions.to_json(), file, ensure_ascii=False)
+        json.dump(predictions.to_json(), file, ensure_ascii=False, indent=2)
 
 
 def read_json_predictions(filename: str) -> OverallFilePredictions:
