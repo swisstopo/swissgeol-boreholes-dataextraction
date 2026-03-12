@@ -1,7 +1,7 @@
 """Pipeline runner for borehole data extraction with single and multi-benchmark support."""
+
 import json
 import logging
-import os
 import shutil
 from collections.abc import Sequence
 from io import BytesIO
@@ -18,15 +18,14 @@ from core.benchmark_utils import (
     write_mlflow_runid,
 )
 from core.mlflow_tracking import mlflow
+from extraction.core.extract import ExtractionResult, extract, open_pdf
 from extraction.evaluation.benchmark.score import ExtractionBenchmarkSummary, evaluate_all_predictions
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
-
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.utils.benchmark_utils import _parent_input_directory_key_extraction, log_metric_mlflow
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics, create_analytics
 from swissgeol_doc_processing.utils.file_utils import flatten, read_params
-from extraction.core.extract import extract, open_pdf, ExtractionResult
 
 matching_params = read_params("matching_params.yml")
 line_detection_params = read_params("line_detection_params.yml")

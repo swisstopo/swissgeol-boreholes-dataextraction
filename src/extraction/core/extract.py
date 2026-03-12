@@ -1,3 +1,5 @@
+"""Core extraction pipeline for borehole data from PDF documents."""
+
 import dataclasses
 import logging
 from collections.abc import Generator
@@ -6,7 +8,6 @@ from io import BytesIO
 from pathlib import Path
 
 import pymupdf
-
 
 from extraction.features.extract import extract_page
 from extraction.features.groundwater.groundwater_extraction import (
@@ -35,6 +36,7 @@ table_detection_params = read_params("table_detection_params.yml")
 striplog_detection_params = read_params("striplog_detection_params.yml")
 
 logger = logging.getLogger(__name__)
+
 
 @dataclasses.dataclass
 class PageExtractionData:
