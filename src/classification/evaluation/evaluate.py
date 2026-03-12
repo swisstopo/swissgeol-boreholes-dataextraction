@@ -1,20 +1,16 @@
 """Evaluation module."""
 
 import logging
-import os
 from collections.abc import Iterable
 from dataclasses import dataclass
 
 from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformation
 from classification.utils.file_utils import read_params
+from core.mlflow_tracking import mlflow
 from extraction.evaluation.evaluation_dataclasses import Metrics
 
 logger = logging.getLogger(__name__)
-
-mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"  # Checks whether MLFlow tracking is enabled
-if mlflow_tracking:
-    import mlflow
 
 classification_params = read_params("classification_params.yml")
 
@@ -211,9 +207,9 @@ def evaluate(layer_descriptions: list[LayerInformation]) -> AllClassificationMet
 
     all_classification_metrics = AllClassificationMetrics(global_metrics, language_metrics)
 
-    if mlflow_tracking:
-        log_metrics_to_mlflow(all_classification_metrics)
+    if mlflow:
         logger.info("Logging metrics to MLFlow")
+        log_metrics_to_mlflow(all_classification_metrics)
 
     return all_classification_metrics
 
