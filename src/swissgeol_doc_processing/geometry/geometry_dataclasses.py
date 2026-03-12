@@ -120,7 +120,7 @@ class Line:
             y (float): The given y-value
 
         Returns:
-            bool: the corresponding x-value along the line, or None if the line is horizontal
+            float | None: the corresponding x-value along the line, or None if the line is horizontal
         """
         if self.start.y == self.end.y:
             return None
