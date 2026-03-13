@@ -127,16 +127,35 @@ class MaterialDescriptionRectWithSidebarExtractor:
             list[ExtractedBorehole]: The extracted boreholes from the page.
         """
         filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=True)
-
-        # Step 4: Create boreholes
-        boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
+        boreholes_with_pairs = [(pair, self._create_borehole_from_pair(pair)) for pair in filtered_pairs]
 
         logger.debug(
-            f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(self.table_structures)} tables"
+            f"Page {self.page_number}: Extracted {len(boreholes_with_pairs)} boreholes from {
+                len(self.table_structures)
+            } tables"
         )
+
+        default_min_num_layers = self.matching_params["min_num_layers"]
+        protocol_min_num_layers = self.matching_params.get("protocol_min_num_layers", default_min_num_layers)
+
         return [
-            borehole for borehole in boreholes if len(borehole.predictions) >= self.matching_params["min_num_layers"]
+            borehole
+            for pair, borehole in boreholes_with_pairs
+            if len(borehole.predictions)
+            >= (
+                protocol_min_num_layers if pair.sidebar and pair.sidebar.kind == "protocol" else default_min_num_layers
+            )
         ]
+
+        # # Step 4: Create boreholes
+        # boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
+
+        # logger.debug(
+        #     f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(self.table_structures)} tables"
+        # )
+        # return [
+        #     borehole for borehole in boreholes if len(borehole.predictions) >= self.matching_params["min_num_layers"]
+        # ]
 
     def _contained_in_table_index(
         self, pair: MaterialDescriptionRectWithSidebar, table_structures: list[TableStructure], proximity_buffer: float
@@ -270,6 +289,22 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 )
         return material_descriptions_sidebar_pairs
 
+    def _debug_protocol_a_above_b_overlap(
+        self,
+        a_above_b_sidebars_noise: list[SidebarNoise],
+        protocol_sidebars_noise: list[SidebarNoise],
+    ):
+        """Debug overlap between AAboveB and Protocol sidebars."""
+        for a_sidebar_noise in a_above_b_sidebars_noise:
+            for p_sidebar_noise in protocol_sidebars_noise:
+                if a_sidebar_noise.sidebar.rect.intersects(p_sidebar_noise.sidebar.rect):
+                    logger.debug(
+                        "Page %s: AAboveB %s overlaps Protocol %s",
+                        self.page_number,
+                        [entry.value for entry in a_sidebar_noise.sidebar.entries],
+                        [entry.value for entry in p_sidebar_noise.sidebar.entries],
+                    )
+
     def _find_depth_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
         if not self.lines:
             return []
@@ -327,7 +362,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         )
         self._debug_sidebar("Protocol", [sn.sidebar for sn in protocol_sidebars_noise])
         sidebars_noise.extend(protocol_sidebars_noise)
-
+        self._debug_protocol_a_above_b_overlap(a_above_b_sidebars_noise, protocol_sidebars_noise)
         material_descriptions_sidebar_pairs = self._match_sidebars_to_description_rects(sidebars_noise)
 
         return material_descriptions_sidebar_pairs
