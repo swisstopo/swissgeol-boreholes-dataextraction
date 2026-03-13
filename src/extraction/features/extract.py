@@ -103,6 +103,21 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self.analytics = analytics
         self.matching_params = matching_params
 
+    def _debug_sidebar(self, name: str, sidebars: list):
+        """Debug helper printing sidebar type and entries."""
+        for sidebar in sidebars:
+            try:
+                values = [getattr(entry, "value", None) for entry in sidebar.entries]
+            except Exception:
+                values = "?"
+            logger.debug(
+                "Page %s: %s sidebar detected with %s entries: %s",
+                self.page_number,
+                name,
+                len(sidebar.entries),
+                values,
+            )
+
     def process_page(self) -> list[ExtractedBorehole]:
         """Process a single page of a pdf.
 
@@ -269,8 +284,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
 
-        # create sidebars with noise count
         spulprobe_sidebars = SpulprobeSidebarExtractor.find_in_lines(self.lines)
+        self._debug_sidebar("Spulprobe", spulprobe_sidebars)
         sidebars_noise: list[SidebarNoise] = [
             SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
             for sidebar in spulprobe_sidebars
@@ -278,6 +293,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         used_entry_rects = {entry.rect for sidebar in spulprobe_sidebars for entry in sidebar.entries}
 
         a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words)
+        self._debug_sidebar("AToB", a_to_b_sidebars)
         sidebars_noise.extend(
             [
                 SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
@@ -295,32 +311,23 @@ class MaterialDescriptionRectWithSidebarExtractor:
             list(used_entry_rects),
             sidebar_params=self.matching_params["depth_column_params"],
         )
+        self._debug_sidebar("AAboveB", [sn.sidebar for sn in a_above_b_sidebars_noise])
         sidebars_noise.extend(a_above_b_sidebars_noise)
 
         for sidebar_noise in a_above_b_sidebars_noise:
             for entry in sidebar_noise.sidebar.entries:
                 used_entry_rects.add(entry.rect)
 
-        sidebars_noise.extend(
-            AAboveBSidebarExtractor.find_in_words(
-                words,
-                line_rtree,
-                list(used_entry_rects),
-                sidebar_params=self.matching_params["depth_column_params"],
-            )
+        protocol_sidebars_noise = ProtocolSidebarExtractor.find_in_words(
+            words,
+            self.lines,
+            line_rtree,
+            list(used_entry_rects),
+            sidebar_params=self.matching_params["affinity_params"]["protocol"],
         )
+        self._debug_sidebar("Protocol", [sn.sidebar for sn in protocol_sidebars_noise])
+        sidebars_noise.extend(protocol_sidebars_noise)
 
-        sidebars_noise.extend(
-            ProtocolSidebarExtractor.find_in_words(
-                words,
-                self.lines,
-                line_rtree,
-                list(used_entry_rects),
-                sidebar_params=self.matching_params["affinity_params"]["protocol"],
-            )
-        )
-
-        # assign all sidebar to their best match
         material_descriptions_sidebar_pairs = self._match_sidebars_to_description_rects(sidebars_noise)
 
         return material_descriptions_sidebar_pairs
