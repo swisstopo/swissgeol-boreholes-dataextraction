@@ -159,23 +159,32 @@ def extract_borehole_names(
     """
     candidates: list[FeatureOnPage[BoreholeName]] = []
     matching_keywords = name_detection_params.get("matching_keywords", [])
+    strict_matching_keywords = name_detection_params.get("strict_matching_keywords", [])
     excluded_keywords = name_detection_params.get("excluded_keywords", [])
     min_vertical_overlap = name_detection_params.get("min_vertical_overlap", 1.0)
     max_horizontal_distance = name_detection_params.get("max_horizontal_distance", 1e16)
     max_title_length = name_detection_params.get("max_title_length", 1e16)
 
+    # Iterate over all lines
     for line in text_lines:
-        # Check line for keyword - Enforce end to avoid plural form
-        match = match_any_keyword(line.text, matching_keywords, end=True)
-        if not match:
+        # Step 1: Check line for keyword
+        # Step 1.1: Enforce end matching with matching_keywords
+        match_soft = match_any_keyword(line.text, matching_keywords, end=True)
+        # Step 1.2: Enforce start and end matching with strict_matching_keywords
+        match_strict = match_any_keyword(line.text, strict_matching_keywords, start=True, end=True)
+
+        # Extarct matched text
+        if not (match := match_soft or match_strict):
             continue
 
-        # Try same-line first
-        same_line_name = line.text[match.end() :]
-        if cleaned := _clean_borehole_name(same_line_name, excluded_keywords):
+        # Step 2: Clean detection
+        # Take match as starting point of borehole name
+        if following_text_cleaned := _clean_borehole_name(line.text[match.end() :], excluded_keywords):
+            # We assume that keyword from strict are part of borehole name
+            prefix = "" if match_soft else match_strict.group()
             candidates.append(
                 FeatureOnPage(
-                    feature=BoreholeName(name=cleaned, confidence=1.0),
+                    feature=BoreholeName(name=f"{prefix}{following_text_cleaned}", confidence=1.0),
                     rect=line.rect,
                     page=line.page_number,
                 )

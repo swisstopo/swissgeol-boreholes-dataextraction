@@ -102,9 +102,9 @@ class BoreholeListBuilder:
                 LayersInBorehole(layers_in_borehole_with_bb.predictions),
                 self._file_name,
                 BoreholeMetadata(
-                    borehole_idx_to_elevation[borehole_index],
-                    borehole_idx_to_coordinate[borehole_index],
-                    borehole_idx_to_name[borehole_index],
+                    borehole_idx_to_elevation.get(borehole_index),
+                    borehole_idx_to_coordinate.get(borehole_index),
+                    borehole_idx_to_name.get(borehole_index),
                 ),
                 GroundwatersInBorehole(borehole_idx_to_list_groundwater[borehole_index]),
                 layers_in_borehole_with_bb.bounding_boxes,
@@ -216,21 +216,48 @@ class BoreholeListBuilder:
             return {idx: elem for idx, elem in enumerate(element_list)}
 
         borehole_index_to_matched_elem_index = {}
-
         # continue until all boreholes are matched
         while len(borehole_index_to_matched_elem_index) != self._num_boreholes:
             # map all elements to their closest borehole.
             borehole_idx_to_many_element_mapping = self._many_to_one_match_element_to_borehole(
                 element_list, set(borehole_index_to_matched_elem_index.keys())
             )
+
             for borehole_index, available_elements in borehole_idx_to_many_element_mapping.items():
                 assert borehole_index not in borehole_index_to_matched_elem_index
                 assert available_elements
+
+                # Get current borehole span
+                borehole = self._layers_with_bb_in_document.boreholes_layers_with_bb[borehole_index]
+                borehole_span_pages = [bbox.page for bbox in borehole.bounding_boxes]
+
                 # if multiple element are bound to the same borehole, always pick the highest on the page
-                best_element = min(available_elements, key=lambda elem: (elem.page_number, elem.rect.y0))
-                # fill the mapping borehole_index -> element and remove the element from the element list
-                borehole_index_to_matched_elem_index[borehole_index] = best_element
-                element_list.remove(best_element)
+                valid_available_elements = [
+                    elem
+                    for elem in available_elements
+                    if min(borehole_span_pages) <= elem.page_number <= max(borehole_span_pages)
+                ]
+
+                # No valid match found
+                if not valid_available_elements:
+                    borehole_index_to_matched_elem_index[borehole_index] = None
+                    continue
+                # Match found, check best candidate
+                else:
+                    best_element = max(
+                        valid_available_elements,
+                        key=lambda elem: (
+                            # Name should be in borehole span
+                            min(borehole_span_pages) <= elem.page_number <= max(borehole_span_pages),
+                            # On the first pages
+                            -elem.page_number,
+                            # As high as possible
+                            -elem.rect.y0,
+                        ),
+                    )
+                    # fill the mapping borehole_index -> element and remove the element from the element list
+                    borehole_index_to_matched_elem_index[borehole_index] = best_element
+                    element_list.remove(best_element)
 
         return borehole_index_to_matched_elem_index
 

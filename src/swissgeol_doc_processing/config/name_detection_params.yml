@@ -8,7 +8,10 @@ max_horizontal_distance: 50
 max_title_length: 10
 
 # Keyword for borehole name detection
-matching_keywords: [
+# Keyword match end of word (bohrung -> KERNbohrung, RAMMKERNbohrung)
+
+matching_keywords:
+  [
     "baggerschacht",
     "baggerschlitz",
     "bohrstelle",
@@ -27,7 +30,11 @@ matching_keywords: [
     "bohrung",
     "schacht",
     "sondierung",
-]
+    "ews-anzahl",
+  ]
+
+# Keyword match end and start (KB -> KB)
+strict_matching_keywords: ["KB", "BS"]
 
 # Keyword to ignore in borehole name detection
 excluded_keywords: ["nr.", "nr", "n r", "n°", "nº", "no", "nummer"]
