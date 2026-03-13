@@ -6,6 +6,8 @@ from collections import defaultdict
 from copy import deepcopy
 from typing import TypeVar
 
+from scipy.optimize import linear_sum_assignment
+
 from extraction.evaluation.benchmark.metrics import OverallMetricsCatalog
 from extraction.evaluation.evaluation_dataclasses import OverallBoreholeMetadataMetrics
 from extraction.evaluation.groundwater_evaluator import GroundwaterEvaluator
@@ -29,7 +31,7 @@ from extraction.features.predictions.borehole_predictions import (
     FileMetadataWithGroundTruth,
     FilePredictionsWithGroundTruth,
 )
-from extraction.features.stratigraphy.layer.layer import LayersInBorehole, LayersInDocument
+from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, LayersInBorehole, LayersInDocument
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
@@ -188,6 +190,32 @@ class BoreholeListBuilder:
 
         return borehole_index_to_matched_elem
 
+    @staticmethod
+    def _element_to_borhole_cost(element: FeatureOnPage, borehole: ExtractedBorehole) -> float:
+        """Element to borehole matching cost.
+
+        The higher the cost the less likely the matching is. The cost is given in the range [- inf, 0]
+        where -inf means no cost and 0 means no matching possible.
+
+        Args:
+            element (FeatureOnPage): Element to match.
+            borehole (ExtractedBorehole): Borehole to match.
+
+        Returns:
+            float: Estimated cost in the interval [-inf, 0]
+        """
+        borehole_span_pages = [bbox.page for bbox in borehole.bounding_boxes]
+
+        # Name should be in borehole range
+        f1 = 1 - float(min(borehole_span_pages) <= element.page_number <= max(borehole_span_pages))
+        # As early as possible in the pages
+        f2 = element.page_number
+        # As high as possible on the page
+        f3 = element.rect.y0
+
+        # Estimated cost of the matching
+        return 1_000_000 * f1 + 1_000 * f2 + f3
+
     def _one_to_one_match_element_to_borehole(
         self, element_list: list[FeatureOnPage]
     ) -> dict[int, FeatureOnPage | None]:
@@ -210,42 +238,24 @@ class BoreholeListBuilder:
         # Ensure there is at least one element for each borehole. This is done by duplicating elements if fewer
         # values were extracted than the number of boreholes, or by filling the list with None values.
         element_list = self._extend_list(element_list, None, self._num_boreholes)
-
+        borehole_list = self._layers_with_bb_in_document.boreholes_layers_with_bb
         # solve trivial case and case where the elements are None
         if len(element_list) == 1 or not element_list[0]:
             return {idx: elem for idx, elem in enumerate(element_list)}
 
-        borehole_index_to_matched_elem_index = {}
+        # Compute cost matrix
+        cost_matrix = [
+            [self._element_to_borhole_cost(elem, borehole) for elem in element_list] for borehole in borehole_list
+        ]
 
-        # continue until all boreholes are matched
-        while len(borehole_index_to_matched_elem_index) != self._num_boreholes:
-            # map all elements to their closest borehole.
-            borehole_idx_to_many_element_mapping = self._many_to_one_match_element_to_borehole(
-                element_list, set(borehole_index_to_matched_elem_index.keys())
-            )
-            for borehole_index, available_elements in borehole_idx_to_many_element_mapping.items():
-                assert borehole_index not in borehole_index_to_matched_elem_index
-                assert available_elements
-                # Get current borehole span
-                borehole = self._layers_with_bb_in_document.boreholes_layers_with_bb[borehole_index]
-                borehole_span_pages = [bbox.page for bbox in borehole.bounding_boxes]
-                # if multiple element are bound to the same borehole, always pick the highest on the page
-                best_element = max(
-                    available_elements,
-                    key=lambda elem: (
-                        # Name should be in borehole span
-                        min(borehole_span_pages) <= elem.page_number <= max(borehole_span_pages),
-                        # On the first pages
-                        -elem.page_number,
-                        # As high as possible
-                        -elem.rect.y0,
-                    ),
-                )
-                # fill the mapping borehole_index -> element and remove the element from the element list
-                borehole_index_to_matched_elem_index[borehole_index] = best_element
-                element_list.remove(best_element)
+        # Estimate best bipartite match based on cost minimisation
+        boreholes_index, elements_index = linear_sum_assignment(cost_matrix, maximize=False)
+        assert len(boreholes_index) == len(elements_index)
 
-        return borehole_index_to_matched_elem_index
+        return {
+            borehole_index: element_list[element_index]
+            for borehole_index, element_index in zip(boreholes_index, elements_index, strict=True)
+        }
 
     def _compute_distance(self, feat: FeatureOnPage, bounding_boxes: list[PageBoundingBoxes]) -> float:
         """Computes the distance between a FeatureOnPage objects and the bounding boxes of one borehole."""
