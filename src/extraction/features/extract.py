@@ -303,6 +303,36 @@ class MaterialDescriptionRectWithSidebarExtractor:
                         [entry.value for entry in p_sidebar_noise.sidebar.entries],
                     )
 
+    def _has_valid_description_match(self, sidebar_noise: SidebarNoise) -> bool:
+        """Return True if the sidebar can form at least one plausible sidebar/description pair.
+
+        Args:
+            sidebar_noise (SidebarNoise): The sidebar noise object containing the sidebar and its noise count.
+
+        Returns:
+            bool: True if a valid description match is found, False otherwise.
+        """
+        candidate_rects = self._find_all_material_description_candidates(sidebar_noise.sidebar)
+
+        for rect in candidate_rects:
+            pair = MaterialDescriptionRectWithSidebar(
+                sidebar=sidebar_noise.sidebar,
+                material_description_rect=rect,
+                lines=self.lines,
+                noise_count=sidebar_noise.noise_count,
+            )
+            if pair.score_match >= 0:
+                return True
+
+        return False
+
+    def _should_block_protocol_with_a_above_b(
+        self,
+        a_above_b_sidebars_noise: list[SidebarNoise],
+    ) -> bool:
+        """Return True if protocol extraction should be skipped because a usable AAboveB exists."""
+        return any(self._has_valid_description_match(sidebar_noise) for sidebar_noise in a_above_b_sidebars_noise)
+
     def _find_depth_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
         if not self.lines:
             return []
@@ -352,7 +382,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 used_entry_rects.add(entry.rect)
 
         protocol_sidebars_noise = []
-        if not a_above_b_sidebars_noise:
+        block_protocol = self._should_block_protocol_with_a_above_b(a_above_b_sidebars_noise)
+
+        if not block_protocol:
             protocol_sidebars_noise = ProtocolSidebarExtractor.find_in_words(
                 words,
                 self.lines,
@@ -364,7 +396,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             sidebars_noise.extend(protocol_sidebars_noise)
         else:
             logger.debug(
-                "Page %s: skipping Protocol extraction because AAboveB sidebar(s) were found",
+                "Page %s: skipping Protocol extraction because a matchable AAboveB sidebar was found",
                 self.page_number,
             )
 
