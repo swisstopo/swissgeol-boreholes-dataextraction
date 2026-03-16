@@ -6,6 +6,7 @@ min_block_clearance: 10
 left_line_length_threshold: 7
 duplicate_layer_threshold: 0.95
 min_num_layers: 2
+protocol_min_num_layers: 1
 fallback_min_table_height_ratio: 0.85
 affinity_params:
   a_above_b:
@@ -57,7 +58,8 @@ affinity_params:
       diagonal_weight: 1.0
       gap_weight: 0.2
       indentation_weight: 0.0
-    #TODO those are completely random for now. Need to be optimized as soon as possible!
+    
+  #TODO those are completely random for now. Need to be optimized as soon as possible!
   protocol:
       importance: 1.0
       min_entries: 2

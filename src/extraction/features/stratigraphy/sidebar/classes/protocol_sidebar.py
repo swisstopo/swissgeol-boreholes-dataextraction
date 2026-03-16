@@ -86,6 +86,27 @@ class ProtocolSidebar(Sidebar[DepthColumnEntry]):
             for interval in self.depth_intervals()
         ]
 
+    def trim_trailing_duplicate_depths(self) -> ProtocolSidebar:
+        """Drop trailing duplicates of the final depth value.
+
+        This handles common protocol-table cases where the final depth (e.g. Endtiefe)
+        is repeated at the bottom. Only trailing duplicates of the last value are removed.
+        """
+        entries = list(self.entries)
+
+        if len(entries) < 2:
+            return self
+
+        last_val = entries[-1].value
+
+        while len(entries) > 1 and entries[-2].value == last_val:
+            entries.pop()
+
+        if len(entries) == len(self.entries):
+            return self
+
+        return ProtocolSidebar(entries, self.skipped_entries)
+
     @staticmethod
     def dp_scoring_fn(interval_zone: IntervalZone, line: TextLine) -> float:
         """Scoring function for dynamic programming matching of description lines.
@@ -149,7 +170,12 @@ class ProtocolSidebar(Sidebar[DepthColumnEntry]):
         Returns:
             list[ProtocolSidebar]: A list of processed sidebars.
         """
-        return [sidebar for sidebar in self.break_on_double_descending() if sidebar.is_valid()]
+        processed_sidebars = []
+        for sidebar in self.break_on_double_descending():
+            trimmed_sidebar = sidebar.trim_trailing_duplicate_depths()
+            if trimmed_sidebar.is_valid():
+                processed_sidebars.append(trimmed_sidebar)
+        return processed_sidebars
 
     def post_processing(
         self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]
