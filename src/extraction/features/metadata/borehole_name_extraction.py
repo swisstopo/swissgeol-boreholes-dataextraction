@@ -169,11 +169,11 @@ def extract_borehole_names(
     for line in text_lines:
         # Step 1: Check line for keyword
         # Step 1.1: Enforce end matching with matching_keywords
-        match_soft = match_any_keyword(line.text, matching_keywords, end=True)
+        match_soft = match_any_keyword(line.text, matching_keywords, start=False, end=True)
         # Step 1.2: Enforce start and end matching with strict_matching_keywords
         match_strict = match_any_keyword(line.text, strict_matching_keywords, start=True, end=True)
 
-        # Extarct matched text
+        # Extract matched text
         if not (match := match_soft or match_strict):
             continue
 

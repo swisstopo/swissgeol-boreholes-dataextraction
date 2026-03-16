@@ -162,7 +162,7 @@ class MetadataEvaluator:
         keywords_set_a = name_detection_params.get("matching_keywords", [])
         keywords_set_b = name_detection_params.get("excluded_keywords", [])
         keywords = keywords_set_a + keywords_set_b
-        # Noramlize strings
+        # Normalize strings
         extracted_name_ = _clean_borehole_name(extracted_name.name, keywords)
         ground_truth_name_ = _clean_borehole_name(ground_truth_name, keywords)
 

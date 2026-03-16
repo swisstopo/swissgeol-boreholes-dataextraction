@@ -70,6 +70,8 @@ def test_remove_in_parenthesis(text: str, expected: str) -> None:
         ("test schachtprofil 12", ["profil"], False, True, "schachtprofil"),
         ("test schachtprofil 12", ["profil"], True, False, None),
         ("test forage schachtprofil 12", ["forage", "profil"], False, True, "forage"),
+        ("test forage ews-anzahl 12", ["ews\\-anzahl"], False, True, "ews-anzahl"),
+        ("test forage KB12", ["KB[^a-zA-Z]+"], True, True, "KB12"),
     ],
     ids=[
         "full-word",
@@ -79,6 +81,8 @@ def test_remove_in_parenthesis(text: str, expected: str) -> None:
         "anchored-end",
         "neg-anchored-end",
         "first-match",
+        "escaped-match",
+        "regex-match",
     ],
 )
 def test_match_any_keyword(text: str, keywords: list[str], start: bool, end: bool, expected: str) -> None:
@@ -123,7 +127,8 @@ def test_normalize_spaces(text: str, expected: str) -> None:
     [
         ("nr1", ["nr"], "1"),
         ("nr 1", ["nr"], " 1"),
-        ("n r 1", ["n r"], " 1"),
+        ("n r 1", ["n\\ r"], " 1"),
+        ("n.r 1", ["n\\.r"], " 1"),
         ("Nr 1", ["nr"], " 1"),
         ("sondage nº1", ["nº"], "sondage 1"),
         ("sondage n°1", ["n°"], "sondage 1"),
@@ -133,6 +138,7 @@ def test_normalize_spaces(text: str, expected: str) -> None:
         "nr-without-space",
         "nr-with-space",
         "nr-with-space2",
+        "nr-point",
         "ignore-case",
         "n-masc-ordinal",
         "n-degree",
