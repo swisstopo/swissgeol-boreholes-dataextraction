@@ -128,11 +128,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
         """
         filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=True)
         boreholes_with_pairs = [(pair, self._create_borehole_from_pair(pair)) for pair in filtered_pairs]
-
         logger.debug(
-            f"Page {self.page_number}: Extracted {len(boreholes_with_pairs)} boreholes from {
-                len(self.table_structures)
-            } tables"
+            f"Page {self.page_number}: Extracted {len(boreholes_with_pairs)} boreholes "
+            f"from {len(self.table_structures)} tables"
         )
 
         default_min_num_layers = self.matching_params["min_num_layers"]
