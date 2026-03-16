@@ -35,7 +35,7 @@ matching_keywords:
   ]
 
 # Keyword match start with
-strict_matching_keywords: ["KB[^a-zA-Z]+", "BS[^a-zA-Z]+"]
+strict_matching_keywords: ["KB", "BS", "KB[^a-zA-Z]+", "BS[^a-zA-Z]+"]
 
 # Keyword to ignore in borehole name detection
 excluded_keywords: ["nr\\.", "nr", "n\\ r", "n°", "nº", "no", "nummer"]
