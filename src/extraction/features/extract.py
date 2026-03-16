@@ -353,15 +353,23 @@ class MaterialDescriptionRectWithSidebarExtractor:
             for entry in sidebar_noise.sidebar.entries:
                 used_entry_rects.add(entry.rect)
 
-        protocol_sidebars_noise = ProtocolSidebarExtractor.find_in_words(
-            words,
-            self.lines,
-            line_rtree,
-            list(used_entry_rects),
-            sidebar_params=self.matching_params["affinity_params"]["protocol"],
-        )
-        self._debug_sidebar("Protocol", [sn.sidebar for sn in protocol_sidebars_noise])
-        sidebars_noise.extend(protocol_sidebars_noise)
+        protocol_sidebars_noise = []
+        if not a_above_b_sidebars_noise:
+            protocol_sidebars_noise = ProtocolSidebarExtractor.find_in_words(
+                words,
+                self.lines,
+                line_rtree,
+                list(used_entry_rects),
+                sidebar_params=self.matching_params["affinity_params"]["protocol"],
+            )
+            self._debug_sidebar("Protocol", [sn.sidebar for sn in protocol_sidebars_noise])
+            sidebars_noise.extend(protocol_sidebars_noise)
+        else:
+            logger.debug(
+                "Page %s: skipping Protocol extraction because AAboveB sidebar(s) were found",
+                self.page_number,
+            )
+
         self._debug_protocol_a_above_b_overlap(a_above_b_sidebars_noise, protocol_sidebars_noise)
         material_descriptions_sidebar_pairs = self._match_sidebars_to_description_rects(sidebars_noise)
 
