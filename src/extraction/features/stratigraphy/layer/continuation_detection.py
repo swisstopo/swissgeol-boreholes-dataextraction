@@ -1,5 +1,7 @@
 """This module contains functionality for detecting when a single borehole continues across pdf pages."""
 
+import dataclasses
+
 import numpy as np
 
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepths, LayerDepthsEntry
@@ -9,15 +11,51 @@ from swissgeol_doc_processing.text.textblock import MaterialDescription
 DEPTHS_QUANTILE_SLACK = 0.1
 
 
-def _pick_merge_candidates(
+def _reconcile_duplicated_boundary_layer(previous_layer: Layer, current_layer: Layer) -> Layer | None:
+    """Merge two duplicated boundary layers into one spanning layer.
+
+    Args:
+        previous_layer (Layer): The last kept layer from the previous-page borehole.
+        current_layer (Layer): The last removed duplicated layer from the current-page borehole.
+
+    Returns:
+        Layer | None: A reconciled spanning layer, or None if reconciliation is not possible.
+    """
+    previous_depths = previous_layer.depths
+    current_depths = current_layer.depths
+
+    # Make sure we have all necessary depth information available
+    if not (
+        previous_depths
+        and previous_depths.start
+        and previous_depths.end
+        and current_depths
+        and current_depths.end
+        and previous_depths.start.value < current_depths.end.value
+    ):
+        return None
+
+    return dataclasses.replace(
+        previous_layer,
+        material_description=MaterialDescription(
+            text=previous_layer.material_description.text,
+            lines=previous_layer.material_description.lines + current_layer.material_description.lines,
+        ),
+        depths=LayerDepths(start=previous_depths.start, end=current_depths.end),
+    )
+
+
+def _prepare_merge_candidates(
     previous_page_boreholes: list[ExtractedBorehole],
     current_page_boreholes: list[ExtractedBorehole],
     page_number: int,
     matching_params: dict,
 ) -> tuple[ExtractedBorehole | None, list[ExtractedBorehole], ExtractedBorehole | None, list[ExtractedBorehole]]:
-    """Select the most likely pair of boreholes to merge between consecutive pages.
+    """Select the most likely pair of boreholes to merge between consecutive pages and prepare them for merging.
 
     The method first attempts an overlap-based matching using scan alignment.
+    If it finds overlapping boreholes, it identifies the duplicated layers and prepares the boreholes for
+    merging by reconciling the boundary layers if necessary.
     If no overlap is detected, it falls back to depth/position-based matching.
 
     Args:
@@ -53,16 +91,28 @@ def _pick_merge_candidates(
 
     if last_duplicated_layer_index:
         upper_id, lower_id = last_duplicated_layer_index
-        # Keep only the non-duplicated part of the borehole from the previous page
-        borehole_to_extend = ExtractedBorehole(
-            predictions=borehole_to_extend.predictions[:upper_id],
-            bounding_boxes=borehole_to_extend.bounding_boxes,
-        )
 
-        # Keep only the new layers from the continuation borehole on the current
-        borehole_continuation = ExtractedBorehole(
+        if upper_id > 0 and lower_id > 0:
+            upper_layer = borehole_to_extend.predictions[upper_id - 1]
+            lower_layer = borehole_continuation.predictions[lower_id - 1]
+
+            reconciled_layer = _reconcile_duplicated_boundary_layer(upper_layer, lower_layer)
+
+            if reconciled_layer is not None:
+                updated_predictions = borehole_to_extend.predictions.copy()
+                updated_predictions[upper_id - 1] = reconciled_layer
+                borehole_to_extend = dataclasses.replace(
+                    borehole_to_extend,
+                    predictions=updated_predictions,
+                )
+
+        borehole_to_extend = dataclasses.replace(
+            borehole_to_extend,
+            predictions=borehole_to_extend.predictions[:upper_id],
+        )
+        borehole_continuation = dataclasses.replace(
+            borehole_continuation,
             predictions=borehole_continuation.predictions[lower_id:],
-            bounding_boxes=borehole_continuation.bounding_boxes,
         )
 
     return (
@@ -97,7 +147,7 @@ def merge_boreholes(
             unaffected_boreholes_previous_page,
             borehole_continuation,
             unaffected_boreholes_current_page,
-        ) = _pick_merge_candidates(previous_page_boreholes, boreholes_on_page, page_number, matching_params)
+        ) = _prepare_merge_candidates(previous_page_boreholes, boreholes_on_page, page_number, matching_params)
 
         # 2. If borehole merge possible, apply it
         if borehole_to_extend and borehole_continuation:
@@ -237,6 +287,8 @@ def _merge_boreholes(
     if last_prev_layer and first_next_layer:
         last_prev_depths = last_prev_layer.depths
         first_depths = first_next_layer.depths
+        spanning_layer = None
+
         if (
             (last_prev_depths and last_prev_depths.start and last_prev_depths.end is None)
             and (first_depths and first_depths.start is None and first_depths.end)
@@ -244,13 +296,15 @@ def _merge_boreholes(
         ):
             # if the last interval of the previous page is open-ended, and the first of this page has no start
             # value, it probably means that they refer to the same layer.
-
             spanning_layer = _build_spanning_layer(last_prev_layer, first_next_layer)
+
+        if spanning_layer is not None:
             new_predictions = (
                 borehole_to_extend.predictions[:-1] + [spanning_layer] + borehole_continuation.predictions[1:]
             )
 
-    return ExtractedBorehole(
+    return dataclasses.replace(
+        borehole_to_extend,
         predictions=new_predictions,
         bounding_boxes=borehole_to_extend.bounding_boxes + borehole_continuation.bounding_boxes,
     )
