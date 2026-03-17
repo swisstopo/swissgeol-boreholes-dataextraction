@@ -77,7 +77,7 @@ def detect_language_of_text(
     # detector.detect always returns a list of candidates ordered by score.
     languages = [
         detector.detect(
-            # Merge words from the i-th window to form text (remove spaces as detection works on n-grams)
+            # Merge words from the i-th window to form text
             " ".join(text_words[i * bins_size : min(i * bins_size + context_window, len(text_words))]),
             # Return only top 1 lang
             k=1,

@@ -139,13 +139,21 @@ def extract_borehole_names(
 ) -> list[FeatureOnPage[BoreholeName]]:
     """Extract borehole names from text lines using keyword anchors and a right-side fallback.
 
-    The algorithm scans each line for any `matching_keywords` at the end of a word
-    (to avoid plural/inflected forms). If a keyword is found:
-    - **Same-line extraction:** take the substring **after** the match on the same line; clean it
-        by removing any `excluded_keywords`. If a non-empty name remains, emit a candidate with
-        confidence = 1.0 and the line’s bounding box.
-    - **Right-side fallback:** if same-line fails, find the closest line to the **right** that
-        vertically overlaps by at least `min_vertical_overlap`. Compute confidence as
+    The algorithm scans each line using two keyword lists:
+
+    - **matching_keywords** (soft): matched at the end of a word (e.g. "bohrung" matches
+        "kernbohrung"). The name is the substring after the match. The keyword itself is **not**
+        included in the output.
+    - **strict_matching_keywords** (strict): matched at both the **start** and **end** of a word.
+        The matched keyword is included as a prefix in the output name (e.g. "KB 12").
+
+    If either keyword type is found on a line:
+
+    - **Same-line extraction:** clean the substring after the match by removing `excluded_keywords`.
+        If a non-empty name remains, emit a candidate with confidence = 1.0 and the line’s bounding
+        box.
+    - **Right-side fallback:** if same-line extraction fails, find the closest line to the right
+        that vertically overlaps by at least `min_vertical_overlap`. Compute confidence as
         `dy / (1 + dy + dx)` where `dy` is the right-line height and `dx` is the horizontal gap.
         If a cleaned name is found there, emit a candidate whose bounding box is the union of the
         anchor line and the right-side line.

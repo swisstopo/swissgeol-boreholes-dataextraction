@@ -231,7 +231,6 @@ class BoreholeListBuilder:
                 borehole = self._layers_with_bb_in_document.boreholes_layers_with_bb[borehole_index]
                 borehole_span_pages = [bbox.page for bbox in borehole.bounding_boxes]
 
-                # if multiple element are bound to the same borehole, always pick the highest on the page
                 valid_available_elements = [
                     elem
                     for elem in available_elements

@@ -48,12 +48,13 @@ def normalize_spaces(text: str) -> str:
 def match_any_keyword(text: str, keywords: list[str], start: bool = False, end: bool = False) -> re.Match | None:
     """Search for the first occurrence of any keyword from a predefined list in a text.
 
-    The search is case-insensitive and treats keywords as literals. You can control whether
-    the keyword must appear at the `start` or `end` of a word.
+    The search is case-insensitive. Keywords are treated as **raw regex patterns** — callers are
+    responsible for escaping metacharacters.
 
     Args:
         text (str): The text to search within.
-        keywords (list[str]): A list of keywords to look for.
+        keywords (list[str]): A list of regex patterns to look for. Metacharacters must be
+            escaped by the caller.
         start (bool, optional): If True, the word must start with the keyword. Defaults to False.
         end (bool, optional): If True, the word must end with the keyword. Defaults to False.
 
@@ -73,20 +74,18 @@ def match_any_keyword(text: str, keywords: list[str], start: bool = False, end: 
 def remove_any_keyword(text: str, keywords: list[str]) -> str:
     """Remove all occurrences of specified keywords from the text.
 
-    The removal is case-insensitive and literal — special characters in keywords
-    (such as °, ., or º) are safely escaped. Each keyword is removed if it appears
-    as a standalone term or directly attached to punctuation, without requiring
-    strict word boundaries. This allows matching cases like “N°”, “Nr”, “No.”, etc.
+    The removal is case-insensitive. Keywords are treated as **raw regex patterns** and callers must
+    escape metacharacters themselves.
 
     Args:
         text (str): The input text to clean.
-        keywords (list[str]): List of keywords to remove. Each keyword is treated
-            as a literal string.
+        keywords (list[str]): List of regex patterns to remove. Metacharacters must be
+            escaped by the caller.
 
     Returns:
         str: The cleaned text with all matching keywords removed.
     """
-    # Build regex pattern for keywords (escaped and followed by a word boundary)
+    # Build regex pattern for keywords (raw patterns, not escaped)
     pattern = "(" + "|".join(r"(?<!\w)" + kw + r"(?=\W|\d|$)" for kw in keywords) + ")"
     # Remove matched keywords (case-insensitive)
     cleaned = re.sub(pattern, "", text, flags=re.IGNORECASE)
