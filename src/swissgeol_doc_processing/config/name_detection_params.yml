@@ -11,7 +11,7 @@ max_title_length: 10
 # !! Add escape in front of Regex metacharacters: . ^ $ * + ? { } [ ] \ | ( ) -
 
 # Keyword match end of word (bohrung -> KERNbohrung, RAMMKERNbohrung)
-matching_keywords:
+matching_keywords_prefix:
   [
     "baggerschacht",
     "baggerschlitz",
@@ -35,7 +35,7 @@ matching_keywords:
   ]
 
 # Keyword match start with
-strict_matching_keywords: ["KB", "BS", "KB[^a-zA-Z]+", "BS[^a-zA-Z]+"]
+matching_keywords_inner: ["KB ??\\d+", "BS ??\\d+", "B ??\\d+"]
 
 # Keyword to ignore in borehole name detection
 excluded_keywords: ["nr\\.", "nr", "n\\ r", "n°", "nº", "no", "nummer"]

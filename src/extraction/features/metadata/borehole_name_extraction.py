@@ -141,10 +141,10 @@ def extract_borehole_names(
 
     The algorithm scans each line using two keyword lists:
 
-    - **matching_keywords** (soft): matched at the end of a word (e.g. "bohrung" matches
+    - **matching_keywords_prefix** (soft): matched at the end of a word (e.g. "bohrung" matches
         "kernbohrung"). The name is the substring after the match. The keyword itself is **not**
         included in the output.
-    - **strict_matching_keywords** (strict): matched at both the **start** and **end** of a word.
+    - **matching_keywords_inner** (strict): matched at both the **start** and **end** of a word.
         The matched keyword is included as a prefix in the output name (e.g. "KB 12").
 
     If either keyword type is found on a line:
@@ -166,8 +166,8 @@ def extract_borehole_names(
         list[FeatureOnPage[BoreholeName]]: A list of extracted borehole names, if found
     """
     candidates: list[FeatureOnPage[BoreholeName]] = []
-    matching_keywords = name_detection_params.get("matching_keywords", [])
-    strict_matching_keywords = name_detection_params.get("strict_matching_keywords", [])
+    matching_keywords_prefix = name_detection_params.get("matching_keywords_prefix", [])
+    matching_keywords_inner = name_detection_params.get("matching_keywords_inner", [])
     excluded_keywords = name_detection_params.get("excluded_keywords", [])
     min_vertical_overlap = name_detection_params.get("min_vertical_overlap", 1.0)
     max_horizontal_distance = name_detection_params.get("max_horizontal_distance", 1e16)
@@ -176,23 +176,24 @@ def extract_borehole_names(
     # Iterate over all lines
     for line in text_lines:
         # Step 1: Check line for keyword
-        # Step 1.1: Enforce end matching with matching_keywords
-        match_soft = match_any_keyword(line.text, matching_keywords, start=False, end=True)
-        # Step 1.2: Enforce start and end matching with strict_matching_keywords
-        match_strict = match_any_keyword(line.text, strict_matching_keywords, start=True, end=True)
+        # Step 1.1: Enforce end matching with matching_keywords_prefix
+        match_prefix = match_any_keyword(line.text, matching_keywords_prefix, start=False, end=True)
+        # Step 1.2: Enforce start and end matching with matching_keywords_inner
+        match_inner = match_any_keyword(line.text, matching_keywords_inner, start=True, end=True)
 
         # Extract matched text
-        if not (match := match_soft or match_strict):
+        if not (match := match_prefix or match_inner):
             continue
 
         # Step 2: Clean detection
+        # If prefix, ignore keywords, otherwise (inner) keep it
+        detection = line.text[match.end() :] if match_prefix else line.text[match.start() :]
         # Take match as starting point of borehole name
-        if following_text_cleaned := _clean_borehole_name(line.text[match.end() :], excluded_keywords):
+        if following_text_cleaned := _clean_borehole_name(detection, excluded_keywords):
             # We assume that keyword from strict are part of borehole name
-            prefix = "" if match_soft else match_strict.group()
             candidates.append(
                 FeatureOnPage(
-                    feature=BoreholeName(name=f"{prefix}{following_text_cleaned}", confidence=1.0),
+                    feature=BoreholeName(name=following_text_cleaned, confidence=1.0),
                     rect=line.rect,
                     page=line.page_number,
                 )

@@ -1,4 +1,4 @@
-"""This module contains functionalities for text processing and normalzation."""
+"""This module contains functionalities for text processing and normalization."""
 
 import re
 
@@ -66,7 +66,7 @@ def match_any_keyword(text: str, keywords: list[str], start: bool = False, end: 
         return None
     reg_start = "" if start else r"\w*"
     reg_end = "" if end else r"\w*"
-    pattern = r"\b" + reg_start + "(?:" + "|".join(kw for kw in keywords) + r")" + reg_end + r"\b"
+    pattern = r"\b" + reg_start + "(?:" + "|".join(keywords) + r")" + reg_end + r"\b"
 
     return re.search(pattern, text, re.IGNORECASE)
 

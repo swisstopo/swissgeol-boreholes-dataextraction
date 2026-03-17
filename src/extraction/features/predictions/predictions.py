@@ -246,8 +246,6 @@ class BoreholeListBuilder:
                     best_element = max(
                         valid_available_elements,
                         key=lambda elem: (
-                            # Name should be in borehole span
-                            min(borehole_span_pages) <= elem.page_number <= max(borehole_span_pages),
                             # On the first pages
                             -elem.page_number,
                             # As high as possible

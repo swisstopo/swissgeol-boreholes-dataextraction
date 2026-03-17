@@ -159,7 +159,7 @@ class MetadataEvaluator:
             bool: True if texts match, False otherwise.
         """
         # Define keywords are matching names and excluded ones
-        keywords_set_a = name_detection_params.get("matching_keywords", [])
+        keywords_set_a = name_detection_params.get("matching_keywords_prefix", [])
         keywords_set_b = name_detection_params.get("excluded_keywords", [])
         keywords = keywords_set_a + keywords_set_b
         # Normalize strings
