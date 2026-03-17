@@ -77,7 +77,7 @@ class AAboveBSidebarExtractor:
         Args:
             all_words (list[TextWord]): All words in the page.
             line_rtree (rtree.index.Index): Pre-built R-tree for spatial queries.
-            table_structures (list[TableStructure]): List of identified table-like sturctures on the page.
+            table_structures (list[TableStructure]): List of identified table-like structures on the page.
             used_entry_rects (list[pymupdf.Rect]): Part of the document to ignore.
             sidebar_params (dict): Parameters for the AAboveBSidebar objects.
 
