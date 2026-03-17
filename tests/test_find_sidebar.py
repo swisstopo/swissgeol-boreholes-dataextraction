@@ -97,6 +97,7 @@ def test_aabovebsidebarextractor_arithmetic_progression():  # noqa: D103
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,
+        table_structures=[],
         used_entry_rects=[],
         sidebar_params={"noise_count_threshold": 1.25, "noise_count_offset": 0},
     )
@@ -119,6 +120,7 @@ def test_aabovebsidebarextractor():  # noqa: D103
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,
+        table_structures=[],
         used_entry_rects=[],
         sidebar_params={"noise_count_threshold": 1.25, "noise_count_offset": 0},
     )
@@ -153,6 +155,7 @@ def test_aabovebsidebarextractor_two_column():  # noqa: D103
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,
+        table_structures=[],
         used_entry_rects=[],
         sidebar_params={"noise_count_threshold": 1.25, "noise_count_offset": 0},
     )

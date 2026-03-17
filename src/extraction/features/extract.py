@@ -288,7 +288,11 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         sidebars_noise.extend(
             AAboveBSidebarExtractor.find_in_words(
-                words, line_rtree, list(used_entry_rects), sidebar_params=self.matching_params["depth_column_params"]
+                words,
+                line_rtree,
+                self.table_structures,
+                list(used_entry_rects),
+                sidebar_params=self.matching_params["depth_column_params"],
             )
         )
 
