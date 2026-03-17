@@ -11,15 +11,30 @@ from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
 from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
 from extraction.features.stratigraphy.sidebar.classes.protocol_sidebar import ProtocolSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarNoise, noise_count
-from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
+from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster_protocol
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_smallest
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
 
 logger = logging.getLogger(__name__)
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)s %(message)s",
+)
+
 
 class ProtocolSidebarExtractor:
     """Class that finds ProtocolSidebar instances in a borehole profile."""
+
+    @staticmethod
+    def _debug_sidebar(prefix: str, sidebar: ProtocolSidebar) -> None:
+        """Log a compact representation of a protocol sidebar candidate."""
+        logger.debug(
+            "%s | entries=%s | rect=%s",
+            prefix,
+            [entry.value for entry in sidebar.entries],
+            sidebar.rect,
+        )
 
     @staticmethod
     def find_in_words(
@@ -46,11 +61,19 @@ class ProtocolSidebarExtractor:
             for entry in DepthColumnEntryExtractor.find_in_words(all_words)
             if all((entry.rect & used_rect).is_empty for used_rect in used_entry_rects)
         ]
+        logger.debug("Protocol: raw depth entries after used-entry filtering = %s", len(entries))
+        if entries:
+            logger.debug("Protocol: raw depth entry values = %s", [entry.value for entry in entries])
 
         if not entries:
             return []
 
-        clusters = Cluster[DepthColumnEntry].create_clusters(entries, lambda entry: entry.rect)
+        clusters = Cluster_protocol[DepthColumnEntry].create_clusters_protocol(entries, lambda entry: entry.rect)
+        logger.debug("Protocol: total clusters = %s", len(clusters))
+        logger.debug(
+            "Protocol: cluster sizes = %s",
+            [len(cluster.entries) for cluster in clusters],
+        )
 
         min_entries = sidebar_params.get("min_entries", 2)
         header_keywords = tuple(sidebar_params.get("header_keywords", ("Tiefe",)))
@@ -59,6 +82,13 @@ class ProtocolSidebarExtractor:
         candidate_sidebars = [
             ProtocolSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= min_entries
         ]
+        logger.debug(
+            "Protocol: candidate sidebars with at least %s entries = %s",
+            min_entries,
+            len(candidate_sidebars),
+        )
+        for sidebar in candidate_sidebars:
+            ProtocolSidebarExtractor._debug_sidebar("Protocol candidate", sidebar)
 
         processed_sidebars = []
         for sidebar in candidate_sidebars:
@@ -66,18 +96,28 @@ class ProtocolSidebarExtractor:
             is_table_like = ProtocolSidebarExtractor._is_table_like(sidebar, lines)
 
             if not has_header:
+                ProtocolSidebarExtractor._debug_sidebar("Protocol rejected: no header", sidebar)
                 continue
 
             if not is_table_like:
+                ProtocolSidebarExtractor._debug_sidebar("Protocol rejected: not table-like", sidebar)
                 continue
 
             processed = sidebar.process()
             if not processed:
+                ProtocolSidebarExtractor._debug_sidebar("Protocol rejected: empty after process()", sidebar)
                 continue
 
-            processed_sidebars.extend(
-                processed_sidebar for processed_sidebar in processed if processed_sidebar.is_valid()
-            )
+            valid_processed = [processed_sidebar for processed_sidebar in processed if processed_sidebar.is_valid()]
+            if not valid_processed:
+                ProtocolSidebarExtractor._debug_sidebar("Protocol rejected: invalid after process()", sidebar)
+                continue
+
+            for processed_sidebar in valid_processed:
+                ProtocolSidebarExtractor._debug_sidebar("Protocol accepted", processed_sidebar)
+                processed_sidebars.append(processed_sidebar)
+
+        logger.debug("Protocol: accepted sidebars = %s", len(processed_sidebars))
 
         sidebars_with_noise = [
             SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
@@ -94,6 +134,10 @@ class ProtocolSidebarExtractor:
         for sidebar_noise in sidebars_by_length:
             if not any(result_sidebar.sidebar.strictly_contains(sidebar_noise.sidebar) for result_sidebar in result):
                 result.append(sidebar_noise)
+
+        logger.debug("Protocol: final sidebars after containment filtering = %s", len(result))
+        for sidebar_noise in result:
+            ProtocolSidebarExtractor._debug_sidebar("Protocol final", sidebar_noise.sidebar)
 
         return result
 
@@ -113,10 +157,26 @@ class ProtocolSidebarExtractor:
             if not any(keyword in line_text for keyword in normalized_keywords):
                 continue
             if line.rect.y1 > first_entry_rect.y0:
+                logger.debug(
+                    "Protocol header candidate rejected: below first entry | header=%r | entries=%s",
+                    line.text,
+                    [entry.value for entry in sidebar.entries],
+                )
                 continue
             if first_entry_rect.y0 - line.rect.y1 > max_header_gap:
+                logger.debug(
+                    "Protocol header candidate rejected: too far away | header=%r | gap=%s | entries=%s",
+                    line.text,
+                    first_entry_rect.y0 - line.rect.y1,
+                    [entry.value for entry in sidebar.entries],
+                )
                 continue
             if x_overlap_significant_smallest(line.rect, sidebar.rect, 0.2) or line.rect.x0 <= sidebar.rect.x1:
+                logger.debug(
+                    "Protocol header match | header=%r | entries=%s",
+                    line.text,
+                    [entry.value for entry in sidebar.entries],
+                )
                 return True
 
         return False
@@ -125,6 +185,7 @@ class ProtocolSidebarExtractor:
     def _is_table_like(sidebar: ProtocolSidebar, lines: list[TextLine]) -> bool:
         """Check whether the sidebar sits inside a simple table-like structure."""
         matching_rows = 0
+        matched_values = []
 
         for entry in sidebar.entries:
             for line in lines:
@@ -135,7 +196,15 @@ class ProtocolSidebarExtractor:
                 if not any(char.isalnum() for char in line.text):
                     continue
                 matching_rows += 1
+                matched_values.append(entry.value)
                 break
 
         threshold = max(1, len(sidebar.entries) // 2)
+        logger.debug(
+            "Protocol table-like check | entries=%s | matching_rows=%s | threshold=%s | matched_values=%s",
+            [entry.value for entry in sidebar.entries],
+            matching_rows,
+            threshold,
+            matched_values,
+        )
         return matching_rows >= threshold

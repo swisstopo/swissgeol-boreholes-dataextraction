@@ -112,7 +112,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
             list[ExtractedBorehole]: The extracted boreholes from the page.
         """
         filtered_pairs = self._extract_filtered_sidebar_pairs(include_descriptions_without_sidebar=True)
+
         boreholes_with_pairs = [(pair, self._create_borehole_from_pair(pair)) for pair in filtered_pairs]
+
         logger.debug(
             f"Page {self.page_number}: Extracted {len(boreholes_with_pairs)} boreholes "
             f"from {len(self.table_structures)} tables"
@@ -306,6 +308,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
 
+        # create sidebars with noise count
         spulprobe_sidebars = SpulprobeSidebarExtractor.find_in_lines(self.lines)
         sidebars_noise: list[SidebarNoise] = [
             SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
@@ -325,14 +328,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 used_entry_rects.add(entry.start.rect)
                 used_entry_rects.add(entry.end.rect)
 
-        # a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_words(
-        #     words,
-        #     line_rtree,
-        #     list(used_entry_rects),
-        #     sidebar_params=self.matching_params["depth_column_params"],
-        # )
-        # sidebars_noise.extend(a_above_b_sidebars_noise)
-
         a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_words(
             words,
             line_rtree,
@@ -340,6 +335,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             list(used_entry_rects),
             sidebar_params=self.matching_params["depth_column_params"],
         )
+
         sidebars_noise.extend(a_above_b_sidebars_noise)
 
         for sidebar_noise in a_above_b_sidebars_noise:
@@ -364,6 +360,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 self.page_number,
             )
 
+        # assign all sidebar to their best match
         material_descriptions_sidebar_pairs = self._match_sidebars_to_description_rects(sidebars_noise)
 
         return material_descriptions_sidebar_pairs
