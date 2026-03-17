@@ -71,7 +71,9 @@ def test_remove_in_parenthesis(text: str, expected: str) -> None:
         ("test schachtprofil 12", ["profil"], True, False, None),
         ("test forage schachtprofil 12", ["forage", "profil"], False, True, "forage"),
         ("test forage ews-anzahl 12", ["ews\\-anzahl"], False, True, "ews-anzahl"),
-        ("test forage KB12", ["KB[^a-zA-Z]+"], True, True, "KB12"),
+        ("test forage KB12/12", ["KB[^a-zA-Z]+"], True, True, "KB12/12"),
+        ("test forage KBaBcd12", ["KB[^a-zA-Z]+"], True, True, None),
+        ("test forage aBcdKB12", ["KB[^a-zA-Z]+"], True, True, None),
     ],
     ids=[
         "full-word",
@@ -82,7 +84,9 @@ def test_remove_in_parenthesis(text: str, expected: str) -> None:
         "neg-anchored-end",
         "first-match",
         "escaped-match",
-        "regex-match",
+        "regex-kb-match",
+        "regex-no-kb-match-1",
+        "regex-no-kb-match-2",
     ],
 )
 def test_match_any_keyword(text: str, keywords: list[str], start: bool, end: bool, expected: str) -> None:
