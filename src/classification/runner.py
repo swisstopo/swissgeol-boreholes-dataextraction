@@ -197,6 +197,72 @@ def log_ml_flow_infos(
     mlflow.log_artifact(f"{out_directory}/class_predictions.json", "predictions_json")
 
 
+def run_predictions(
+    file_path: Path,
+    ground_truth_path: Path | None,
+    out_directory: Path,
+    out_directory_bedrock: Path,
+    file_subset_directory: Path | None,
+    classifier_type: str,
+    model_path: Path | None,
+    classification_system: str,
+) -> tuple[list[LayerInformation], Classifier | None, int]:
+    """Load data, run classification, and write predictions.
+
+    This is the core prediction logic, decoupled from tracking and evaluation.
+
+    Args:
+        file_path (Path): Path to the JSON file containing material descriptions to classify.
+        ground_truth_path (Path | None): Path to the ground truth file, or None for single-file mode.
+        out_directory (Path): Path to output directory where predictions are written.
+        out_directory_bedrock (Path): Path to output directory for Bedrock API files.
+        file_subset_directory (Path | None): Path to the directory containing subset filenames.
+        classifier_type (str): The classifier type to use (e.g. 'dummy', 'bert', 'baseline', 'bedrock').
+        model_path (Path | None): Path to the trained model, if applicable.
+        classification_system (str): The classification system to use (e.g. 'uscs', 'lithology').
+
+    Returns:
+        tuple[list[LayerInformation], Classifier | None, int]: The classified layer descriptions,
+            the classifier instance used (or None if no data was found), and the number of
+            unique documents processed.
+    """
+    if ground_truth_path and file_subset_directory:
+        logger.warning(
+            "The provided subset directory will be ignored because descriptions are being loaded from the prediction "
+            "file. All layers in the prediction file will be classified."
+        )
+
+    classifier_type_instance = ClassifierTypes.infer_type(classifier_type.lower())
+    classification_system_cls = ExistingClassificationSystems.get_classification_system_type(
+        classification_system.lower()
+    )
+
+    logger.info(
+        f"Loading data from {file_path}" + (f" and ground truth from {ground_truth_path}" if ground_truth_path else "")
+    )
+    layer_descriptions = prepare_classification_data(
+        file_path, ground_truth_path, file_subset_directory, classification_system_cls
+    )
+
+    n_documents = len({layer.filename for layer in layer_descriptions})
+
+    if not layer_descriptions:
+        logger.warning("No data to classify.")
+        return layer_descriptions, None, n_documents
+
+    classifier = ClassifierFactory.create_classifier(
+        classifier_type_instance, classification_system_cls, model_path, out_directory_bedrock
+    )
+    logger.info(
+        f"Classifying layer description into {classification_system_cls.get_name()} classes "
+        f"with {classifier.__class__.__name__}"
+    )
+    classifier.classify(layer_descriptions)
+    write_predictions(layer_descriptions, out_directory)
+
+    return layer_descriptions, classifier, n_documents
+
+
 def start_pipeline(
     file_path: Path,
     ground_truth_path: Path,
@@ -212,6 +278,8 @@ def start_pipeline(
     is_nested: bool = False,
 ) -> ClassificationBenchmarkSummary | None:
     """Main pipeline to classify the layer's soil descriptions.
+
+    Wraps `run_predictions()` with MLflow tracking, evaluation, and analytics.
 
     Args:
         file_path (Path): Path to the json file we want to predict from.
@@ -235,17 +303,6 @@ def start_pipeline(
     if not resume:
         delete_temporary(predictions_path_tmp)
 
-    if ground_truth_path and file_subset_directory:
-        logger.warning(
-            "The provided subset directory will be ignored because descriptions are being loaded from the prediction "
-            "file. All layers in the prediction file will be classified."
-        )
-
-    classifier_type_instance = ClassifierTypes.infer_type(classifier_type.lower())
-    classification_system_cls = ExistingClassificationSystems.get_classification_system_type(
-        classification_system.lower()
-    )
-
     if mlflow:
         runid = read_mlflow_runid(str(mlflow_runid_tmp)) if resume else None
         runid = setup_mlflow_tracking(
@@ -259,14 +316,17 @@ def start_pipeline(
         # Save current run id
         write_mlflow_runid(filename=mlflow_runid_tmp, runid=runid)
 
-    logger.info(
-        f"Loading data from {file_path}" + (f" and ground truth from {ground_truth_path}" if ground_truth_path else "")
-    )
-    layer_descriptions = prepare_classification_data(
-        file_path, ground_truth_path, file_subset_directory, classification_system_cls
+    layer_descriptions, classifier, n_documents = run_predictions(
+        file_path=file_path,
+        ground_truth_path=ground_truth_path,
+        out_directory=out_directory,
+        out_directory_bedrock=out_directory_bedrock,
+        file_subset_directory=file_subset_directory,
+        classifier_type=classifier_type,
+        model_path=model_path,
+        classification_system=classification_system,
     )
 
-    n_documents = len({layer.filename for layer in layer_descriptions})
     if mlflow:
         mlflow.log_metric("n_documents", float(n_documents))
 
@@ -288,18 +348,6 @@ def start_pipeline(
             mlflow.end_run()
         return empty_summary
 
-    classifier = ClassifierFactory.create_classifier(
-        classifier_type_instance, classification_system_cls, model_path, out_directory_bedrock
-    )
-
-    logger.info(
-        f"Classifying layer description into {classification_system_cls.get_name()} classes "
-        f"with {classifier.__class__.__name__}"
-    )
-    classifier.classify(layer_descriptions)
-
-    # write predictions
-    write_predictions(layer_descriptions, out_directory)
     final_pred = out_directory / "class_predictions.json"
     if final_pred.exists():
         shutil.copy(final_pred, predictions_path_tmp)
@@ -326,7 +374,7 @@ def start_pipeline(
         return None
 
     if mlflow and summary is not None:
-        log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier, str(classification_system_cls))
+        log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier, classification_system)
 
     # finalize: move tmp -> final, cleanup if not nested
     if predictions_path_tmp.exists():
