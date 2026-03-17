@@ -70,7 +70,9 @@ class AToBSidebarExtractor:
                 intervals.append(AToBInterval(entry, other))
 
         clusters = Cluster[AToBInterval].create_clusters(
-            sorted(intervals, key=lambda interval: interval.rect.y0), lambda interval: interval.rect
+            sorted(intervals, key=lambda interval: interval.rect.y0),
+            lambda interval: interval.rect,
+            allow_size_two=True,
         )
         return [
             sidebar_segment

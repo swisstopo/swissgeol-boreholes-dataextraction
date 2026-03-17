@@ -368,11 +368,22 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 used_entry_rects.add(entry.start.rect)
                 used_entry_rects.add(entry.end.rect)
 
+<<<<<<< feat/issue-417-create-new-protocolsidebar
         a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_words(
             words,
             line_rtree,
             list(used_entry_rects),
             sidebar_params=self.matching_params["depth_column_params"],
+=======
+        sidebars_noise.extend(
+            AAboveBSidebarExtractor.find_in_words(
+                words,
+                line_rtree,
+                self.table_structures,
+                list(used_entry_rects),
+                sidebar_params=self.matching_params["depth_column_params"],
+            )
+>>>>>>> main
         )
         self._debug_sidebar("AAboveB", [sn.sidebar for sn in a_above_b_sidebars_noise])
         sidebars_noise.extend(a_above_b_sidebars_noise)

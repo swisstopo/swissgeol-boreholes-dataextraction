@@ -46,6 +46,7 @@ class AAboveBSidebarValidator:
 
         sidebar = sidebar_noise.sidebar
         noise = sidebar_noise.noise_count
+
         if len(sidebar.entries) < 3:
             return False
 
@@ -53,8 +54,6 @@ class AAboveBSidebarValidator:
             return False
         # Check if the entries are strictly increasing.
         if not sidebar.is_strictly_increasing():
-            return False
-        if sidebar.close_to_arithmetic_progression():
             return False
 
         corr_coef = sidebar.pearson_correlation_coef()
@@ -76,6 +75,8 @@ class AAboveBSidebarValidator:
         Returns:
             sidebar_noise | None : The current SidebarNoise with entries removed from Sidebar until it is valid
             and the recalculated noise_count or None.
+
+        TODO: add unit tests for the values from 267125223-bp.pdf and A11163.pdf
         """
         while sidebar_noise.sidebar.entries:
             if self.is_valid(sidebar_noise):
