@@ -103,21 +103,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self.analytics = analytics
         self.matching_params = matching_params
 
-    def _debug_sidebar(self, name: str, sidebars: list):
-        """Debug helper printing sidebar type and entries."""
-        for sidebar in sidebars:
-            try:
-                values = [getattr(entry, "value", None) for entry in sidebar.entries]
-            except Exception:
-                values = "?"
-            logger.debug(
-                "Page %s: %s sidebar detected with %s entries: %s",
-                self.page_number,
-                name,
-                len(sidebar.entries),
-                values,
-            )
-
     def process_page(self) -> list[ExtractedBorehole]:
         """Process a single page of a pdf.
 
@@ -144,16 +129,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 protocol_min_num_layers if pair.sidebar and pair.sidebar.kind == "protocol" else default_min_num_layers
             )
         ]
-
-        # # Step 4: Create boreholes
-        # boreholes = [self._create_borehole_from_pair(pair) for pair in filtered_pairs]
-
-        # logger.debug(
-        #     f"Page {self.page_number}: Extracted {len(boreholes)} boreholes from {len(self.table_structures)} tables"
-        # )
-        # return [
-        #     borehole for borehole in boreholes if len(borehole.predictions) >= self.matching_params["min_num_layers"]
-        # ]
 
     def _contained_in_table_index(
         self, pair: MaterialDescriptionRectWithSidebar, table_structures: list[TableStructure], proximity_buffer: float
@@ -287,22 +262,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 )
         return material_descriptions_sidebar_pairs
 
-    def _debug_protocol_a_above_b_overlap(
-        self,
-        a_above_b_sidebars_noise: list[SidebarNoise],
-        protocol_sidebars_noise: list[SidebarNoise],
-    ):
-        """Debug overlap between AAboveB and Protocol sidebars."""
-        for a_sidebar_noise in a_above_b_sidebars_noise:
-            for p_sidebar_noise in protocol_sidebars_noise:
-                if a_sidebar_noise.sidebar.rect.intersects(p_sidebar_noise.sidebar.rect):
-                    logger.debug(
-                        "Page %s: AAboveB %s overlaps Protocol %s",
-                        self.page_number,
-                        [entry.value for entry in a_sidebar_noise.sidebar.entries],
-                        [entry.value for entry in p_sidebar_noise.sidebar.entries],
-                    )
-
     def _has_valid_description_match(self, sidebar_noise: SidebarNoise) -> bool:
         """Return True if the sidebar can form at least one plausible sidebar/description pair.
 
@@ -348,7 +307,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
 
         spulprobe_sidebars = SpulprobeSidebarExtractor.find_in_lines(self.lines)
-        self._debug_sidebar("Spulprobe", spulprobe_sidebars)
         sidebars_noise: list[SidebarNoise] = [
             SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
             for sidebar in spulprobe_sidebars
@@ -356,7 +314,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
         used_entry_rects = {entry.rect for sidebar in spulprobe_sidebars for entry in sidebar.entries}
 
         a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words)
-        self._debug_sidebar("AToB", a_to_b_sidebars)
         sidebars_noise.extend(
             [
                 SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
@@ -368,13 +325,21 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 used_entry_rects.add(entry.start.rect)
                 used_entry_rects.add(entry.end.rect)
 
+        # a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_words(
+        #     words,
+        #     line_rtree,
+        #     list(used_entry_rects),
+        #     sidebar_params=self.matching_params["depth_column_params"],
+        # )
+        # sidebars_noise.extend(a_above_b_sidebars_noise)
+
         a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_words(
             words,
             line_rtree,
+            self.table_structures,
             list(used_entry_rects),
             sidebar_params=self.matching_params["depth_column_params"],
         )
-        self._debug_sidebar("AAboveB", [sn.sidebar for sn in a_above_b_sidebars_noise])
         sidebars_noise.extend(a_above_b_sidebars_noise)
 
         for sidebar_noise in a_above_b_sidebars_noise:
@@ -392,7 +357,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 list(used_entry_rects),
                 sidebar_params=self.matching_params["affinity_params"]["protocol"],
             )
-            self._debug_sidebar("Protocol", [sn.sidebar for sn in protocol_sidebars_noise])
             sidebars_noise.extend(protocol_sidebars_noise)
         else:
             logger.debug(
@@ -400,7 +364,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 self.page_number,
             )
 
-        self._debug_protocol_a_above_b_overlap(a_above_b_sidebars_noise, protocol_sidebars_noise)
         material_descriptions_sidebar_pairs = self._match_sidebars_to_description_rects(sidebars_noise)
 
         return material_descriptions_sidebar_pairs
