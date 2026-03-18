@@ -188,7 +188,7 @@ class ClusterSpanFit:
 
 
 @dataclasses.dataclass
-class Cluster_protocol(abc.ABC, Generic[EntryT]):
+class ProtocolCluster(abc.ABC, Generic[EntryT]):
     """Class that groups together values that potentially belong to the same sidebar."""
 
     reference_rect: pymupdf.Rect
@@ -202,7 +202,7 @@ class Cluster_protocol(abc.ABC, Generic[EntryT]):
     def create_clusters_protocol(
         cls, entries: list[EntryT], entry_to_rect: Callable[[EntryT], pymupdf.Rect]
     ) -> list[Self]:
-        clusters: list[Cluster_protocol[EntryT]] = []
+        clusters: list[ProtocolCluster[EntryT]] = []
         for entry in entries:
             create_new_cluster = True
             for cluster in clusters:
@@ -216,6 +216,6 @@ class Cluster_protocol(abc.ABC, Generic[EntryT]):
                         create_new_cluster = False
 
             if create_new_cluster:
-                clusters.append(Cluster_protocol(entry_to_rect(entry), [entry], entry_to_rect))
+                clusters.append(ProtocolCluster(entry_to_rect(entry), [entry], entry_to_rect))
 
         return clusters

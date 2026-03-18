@@ -11,7 +11,7 @@ from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
 from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
 from extraction.features.stratigraphy.sidebar.classes.protocol_sidebar import ProtocolSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarNoise, noise_count
-from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster_protocol
+from extraction.features.stratigraphy.sidebar.utils.cluster import ProtocolCluster
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_smallest
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
 
@@ -68,7 +68,7 @@ class ProtocolSidebarExtractor:
         if not entries:
             return []
 
-        clusters = Cluster_protocol[DepthColumnEntry].create_clusters_protocol(entries, lambda entry: entry.rect)
+        clusters = ProtocolCluster[DepthColumnEntry].create_clusters_protocol(entries, lambda entry: entry.rect)
         logger.debug("Protocol: total clusters = %s", len(clusters))
         logger.debug(
             "Protocol: cluster sizes = %s",
