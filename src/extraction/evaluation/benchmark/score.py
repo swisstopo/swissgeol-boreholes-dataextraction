@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from core.mlflow_tracking import mlflow
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
+from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from swissgeol_doc_processing.utils.file_utils import get_data_path
 
@@ -40,6 +41,33 @@ class ExtractionBenchmarkSummary(BaseModel):
         geology_dict = {key("geology", metric): value for metric, value in self.geology.items()}
         metadata_dict = {key("metadata", metric): value for metric, value in self.metadata.items()}
         return geology_dict | metadata_dict
+
+
+def evaluate_single_prediction(
+    prediction: FilePredictions,
+    ground_truth: GroundTruth,
+) -> FilePredictions:
+    """Computes metrics for a given file.
+
+    Args:
+        prediction (FilePredictions): The predictions object.
+        ground_truth (GroundTruth): The ground truth object.
+
+    Returns:
+        FilePredictions: Evaluated prediction.
+    """
+    # Create dummy overall file prediction and append prediction
+    predictions = OverallFilePredictions()
+    predictions.file_predictions_list.append(prediction)
+
+    # Match file with ground truth
+    matched_with_ground_truth = predictions.match_with_ground_truth(ground_truth)
+
+    # Run evaluation for file
+    matched_with_ground_truth.evaluate_geology()
+    matched_with_ground_truth.evaluate_metadata_extraction()
+
+    return prediction
 
 
 def evaluate_all_predictions(
