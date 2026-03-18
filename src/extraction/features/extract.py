@@ -115,11 +115,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         boreholes_with_pairs = [(pair, self._create_borehole_from_pair(pair)) for pair in filtered_pairs]
 
-        logger.debug(
-            f"Page {self.page_number}: Extracted {len(boreholes_with_pairs)} boreholes "
-            f"from {len(self.table_structures)} tables"
-        )
-
         default_min_num_layers = self.matching_params["min_num_layers"]
         protocol_min_num_layers = self.matching_params.get("protocol_min_num_layers", default_min_num_layers)
 
@@ -354,11 +349,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 sidebar_params=self.matching_params["affinity_params"]["protocol"],
             )
             sidebars_noise.extend(protocol_sidebars_noise)
-        else:
-            logger.debug(
-                "Page %s: skipping Protocol extraction because a matchable AAboveB sidebar was found",
-                self.page_number,
-            )
 
         # assign all sidebar to their best match
         material_descriptions_sidebar_pairs = self._match_sidebars_to_description_rects(sidebars_noise)

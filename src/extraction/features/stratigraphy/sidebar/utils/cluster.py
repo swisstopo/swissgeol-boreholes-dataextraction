@@ -1,6 +1,5 @@
 """Module for clustering DepthColumnEntries when extracting sidebars."""
 
-import abc
 import dataclasses
 from collections.abc import Callable
 from typing import Generic, Self, TypeVar
@@ -21,13 +20,15 @@ class Cluster(Generic[EntryT]):
 
     @classmethod
     def create_clusters(
-        cls, entries: list[EntryT], entry_to_rect: Callable[[EntryT], pymupdf.Rect], allow_size_two: bool = False
+        cls,
+        entries: list[EntryT],
+        entry_to_rect: Callable[[EntryT], pymupdf.Rect],
+        allow_size_two: bool = False,
+        max_skew_degrees: float = 5,
     ) -> list[Self]:
         def midpoint(entry: EntryT) -> Point:
             rect = entry_to_rect(entry)
             return Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
-
-        max_skew_degrees = 5
 
         clusters: list[Cluster[EntryT]] = []
         # maps every entry to the set of indices of the clusters that contain this entry
@@ -185,37 +186,3 @@ class ClusterSpanFit:
                     total_count += 1
         # This threshold has been tuned by manual experimentation. Some tests to verify the behaviour would be useful.
         return misaligned_count / total_count > 1 / len(rects)
-
-
-@dataclasses.dataclass
-class ProtocolCluster(abc.ABC, Generic[EntryT]):
-    """Class that groups together values that potentially belong to the same sidebar."""
-
-    reference_rect: pymupdf.Rect
-    entries: list[EntryT]
-    entry_to_rect: Callable[[EntryT], pymupdf.Rect]
-
-    def good_fit(self, entry: EntryT, threshold: float) -> bool:
-        return x_overlap_significant_largest(self.reference_rect, self.entry_to_rect(entry), threshold)
-
-    @classmethod
-    def create_clusters_protocol(
-        cls, entries: list[EntryT], entry_to_rect: Callable[[EntryT], pymupdf.Rect]
-    ) -> list[Self]:
-        clusters: list[ProtocolCluster[EntryT]] = []
-        for entry in entries:
-            create_new_cluster = True
-            for cluster in clusters:
-                if cluster.good_fit(entry, 0.1):
-                    cluster.entries.append(entry)
-                    if cluster.good_fit(entry, 0.75):
-                        # If the fit is good (>0.1) but not very good (<0.75), then we both add the element to this
-                        # cluster, as well as potentially creating a new cluster starting with this entry. Only if we
-                        # have an excellent fit (>0.75) with some cluster, then we completely skip creating a new
-                        # cluster.
-                        create_new_cluster = False
-
-            if create_new_cluster:
-                clusters.append(ProtocolCluster(entry_to_rect(entry), [entry], entry_to_rect))
-
-        return clusters
