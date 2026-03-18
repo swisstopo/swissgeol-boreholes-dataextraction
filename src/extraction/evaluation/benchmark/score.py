@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 class ExtractionBenchmarkSummary(BaseModel):
     """Helper class containing a summary of all the results of a single benchmark."""
 
+    ground_truth_path: str
     n_documents: int
     geology: dict[str, float]
     metadata: dict[str, float]
