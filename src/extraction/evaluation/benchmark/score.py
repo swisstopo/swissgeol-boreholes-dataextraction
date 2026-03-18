@@ -55,7 +55,7 @@ def evaluate_single_prediction(
     Returns:
         FilePredictions: Evaluated prediction.
     """
-    if not ground_truth:
+    if ground_truth is None:
         return prediction
 
     # Create dummy overall file prediction and append prediction
@@ -86,7 +86,7 @@ def evaluate_all_predictions(
         ExtractionBenchmarkSummary | None: A JSON-serializable ExtractionBenchmarkSummary
         that can be used by multi-benchmark runners.
     """
-    if not ground_truth:
+    if ground_truth is None:
         return None
 
     #############################
@@ -128,6 +128,7 @@ def evaluate_all_predictions(
             mlflow.log_artifact(Path(temp_directory) / "document_level_metadata_metrics.csv")
 
     return ExtractionBenchmarkSummary(
+        ground_truth_path=str(ground_truth.path),
         n_documents=len(predictions.file_predictions_list),
         geology=metrics_dict,
         metadata=metadata_metrics.to_json(),
@@ -142,6 +143,7 @@ def main():
     try:
         with open(args.predictions_path, encoding="utf8") as file:
             predictions = json.load(file)
+        predictions = OverallFilePredictions.from_json(predictions)
     except FileNotFoundError:
         logger.error("Predictions file not found: %s", args.predictions_path)
         return
@@ -149,13 +151,19 @@ def main():
         logger.error("Error decoding JSON from predictions file: %s", e)
         return
 
-    predictions = OverallFilePredictions.from_json(predictions)
+    # Load ground truth
+    try:
+        ground_truth = GroundTruth(args.ground_truth_path)
+    except FileNotFoundError:
+        logger.error("Ground truth file not found: %s", args.ground_truth_path)
+        return
+
     if mlflow:
         mlflow.set_experiment("Boreholes Stratigraphy")
         with mlflow.start_run():
-            evaluate_all_predictions(predictions, args.ground_truth_path)
+            evaluate_all_predictions(predictions, ground_truth)
     else:
-        evaluate_all_predictions(predictions, args.ground_truth_path)
+        evaluate_all_predictions(predictions, ground_truth)
 
 
 def parse_cli() -> argparse.Namespace:

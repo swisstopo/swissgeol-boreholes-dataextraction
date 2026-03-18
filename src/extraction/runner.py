@@ -341,7 +341,7 @@ def run_predictions(
             resumed run), and all CSV file paths written during this run.
     """
     # Look for files to process
-    pdf_files = [input_directory] if input_directory.is_file() else list(input_directory.rglob("*.pdf"))
+    pdf_files = [input_directory] if input_directory.is_file() else list(input_directory.glob("*.pdf"))
     n_documents = len(pdf_files)
 
     # Load any partially-completed predictions for resume support
@@ -444,7 +444,7 @@ def start_pipeline(
         delete_temporary(mlflow_runid_tmp)
 
     # Build ground truth
-    ground_truth: GroundTruth = None
+    ground_truth: GroundTruth | None = None
     if ground_truth_path and ground_truth_path.exists():  # for inference no ground truth is available
         ground_truth = GroundTruth(ground_truth_path)
 
