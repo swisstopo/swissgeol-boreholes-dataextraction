@@ -303,7 +303,7 @@ def run_predictions(
     input_directory: Path,
     out_directory: Path,
     predictions_path_tmp: Path,
-    ground_truth_path: Path,
+    ground_truth: GroundTruth | None = None,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
     draw_tables: bool = False,
@@ -324,7 +324,7 @@ def run_predictions(
         out_directory (Path): Directory where per-file output (visualizations, CSV) is written.
         predictions_path_tmp (Path): Path to the incremental tmp predictions file. Existing content
             is used to resume; the file is updated after each successfully processed file.
-        ground_truth_path (Path): Path to ground truth file for evaluation.
+        ground_truth (GroundTruth | None): Ground truth for evaluation.
         skip_draw_predictions (bool, optional): Skip drawing predictions on PDF pages. Defaults to False.
         draw_lines (bool, optional): Draw detected lines on PDF pages. Defaults to False.
         draw_tables (bool, optional): Draw detected table structures on PDF pages. Defaults to False.
@@ -344,11 +344,6 @@ def run_predictions(
     pdf_files = [input_directory] if input_directory.is_file() else list(input_directory.rglob("*.pdf"))
     n_documents = len(pdf_files)
 
-    # Build ground truth
-    ground_truth: GroundTruth = None
-    if ground_truth_path and ground_truth_path.exists():  # for inference no ground truth is available
-        ground_truth = GroundTruth(ground_truth_path)
-
     # Load any partially-completed predictions for resume support
     predictions = read_json_predictions(predictions_path_tmp)
 
@@ -365,9 +360,7 @@ def run_predictions(
 
         # Run prediction on file and evaluate it
         result = extract(file=pdf_file, filename=pdf_file.name, part=part, analytics=analytics)
-        if ground_truth:
-            result.predictions = evaluate_single_prediction(result.predictions, ground_truth)
-
+        result.predictions = evaluate_single_prediction(result.predictions, ground_truth)
         predictions.add_file_predictions(result.predictions)
 
         if csv:
@@ -450,6 +443,11 @@ def start_pipeline(
         delete_temporary(predictions_path_tmp)
         delete_temporary(mlflow_runid_tmp)
 
+    # Build ground truth
+    ground_truth: GroundTruth = None
+    if ground_truth_path and ground_truth_path.exists():  # for inference no ground truth is available
+        ground_truth = GroundTruth(ground_truth_path)
+
     metadata_path.parent.mkdir(exist_ok=True)
 
     # Initialize analytics if enabled
@@ -475,7 +473,7 @@ def start_pipeline(
         input_directory=input_directory,
         out_directory=out_directory,
         predictions_path_tmp=predictions_path_tmp,
-        ground_truth_path=ground_truth_path,
+        ground_truth=ground_truth,
         skip_draw_predictions=skip_draw_predictions,
         draw_lines=draw_lines,
         draw_tables=draw_tables,
@@ -490,10 +488,10 @@ def start_pipeline(
         for csv_path in csv_paths:
             mlflow.log_artifact(str(csv_path), "csv")
 
-    # Evaluate final predictions
+    # Evaluate final predictions with all data
     eval_summary = evaluate_all_predictions(
         predictions=predictions,
-        ground_truth_path=ground_truth_path,
+        ground_truth=ground_truth,
     )
     if eval_summary is not None:
         eval_summary.n_documents = n_documents

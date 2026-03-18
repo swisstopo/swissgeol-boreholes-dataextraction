@@ -26,7 +26,6 @@ logger = logging.getLogger(__name__)
 class ExtractionBenchmarkSummary(BaseModel):
     """Helper class containing a summary of all the results of a single benchmark."""
 
-    ground_truth_path: str
     n_documents: int
     geology: dict[str, float]
     metadata: dict[str, float]
@@ -45,17 +44,20 @@ class ExtractionBenchmarkSummary(BaseModel):
 
 def evaluate_single_prediction(
     prediction: FilePredictions,
-    ground_truth: GroundTruth,
+    ground_truth: GroundTruth | None = None,
 ) -> FilePredictions:
     """Computes metrics for a given file.
 
     Args:
         prediction (FilePredictions): The predictions object.
-        ground_truth (GroundTruth): The ground truth object.
+        ground_truth (GroundTruth | None): The ground truth object.
 
     Returns:
         FilePredictions: Evaluated prediction.
     """
+    if not ground_truth:
+        return prediction
+
     # Create dummy overall file prediction and append prediction
     predictions = OverallFilePredictions()
     predictions.file_predictions_list.append(prediction)
@@ -72,23 +74,20 @@ def evaluate_single_prediction(
 
 def evaluate_all_predictions(
     predictions: OverallFilePredictions,
-    ground_truth_path: Path,
+    ground_truth: GroundTruth | None = None,
 ) -> None | ExtractionBenchmarkSummary:
     """Computes all the metrics, logs them, and creates corresponding MLFlow artifacts (when enabled).
 
     Args:
         predictions (OverallFilePredictions): The predictions objects.
-        ground_truth_path (Path | None): The path to the ground truth file.
+        ground_truth (GroundTruth | None): The ground truth object.
 
     Returns:
         ExtractionBenchmarkSummary | None: A JSON-serializable ExtractionBenchmarkSummary
         that can be used by multi-benchmark runners.
     """
-    if not (ground_truth_path and ground_truth_path.exists()):  # for inference no ground truth is available
-        logger.warning("Ground truth file not found. Skipping evaluation.")
+    if not ground_truth:
         return None
-
-    ground_truth = GroundTruth(ground_truth_path)
 
     #############################
     # Evaluate the borehole extraction
@@ -129,7 +128,6 @@ def evaluate_all_predictions(
             mlflow.log_artifact(Path(temp_directory) / "document_level_metadata_metrics.csv")
 
     return ExtractionBenchmarkSummary(
-        ground_truth_path=str(ground_truth_path),
         n_documents=len(predictions.file_predictions_list),
         geology=metrics_dict,
         metadata=metadata_metrics.to_json(),
