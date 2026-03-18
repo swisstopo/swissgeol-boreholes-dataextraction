@@ -345,7 +345,7 @@ def run_predictions(
     n_documents = len(pdf_files)
 
     # Load any partially-completed predictions for resume support
-    predictions = read_json_predictions(predictions_path_tmp)
+    predictions = read_json_predictions(str(predictions_path_tmp))
 
     any_draw = not skip_draw_predictions or draw_lines or draw_tables or draw_strip_logs
 
@@ -358,7 +358,7 @@ def run_predictions(
 
         logger.info(f"Processing file: {pdf_file.name}")
 
-        # Run extraction and happend to predictions
+        # Run extraction and append to predictions
         result = extract(file=pdf_file, filename=pdf_file.name, part=part, analytics=analytics)
         predictions.add_file_predictions(result.predictions)
 
@@ -381,7 +381,7 @@ def run_predictions(
             )
 
         logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
-        write_json_predictions(filename=predictions_path_tmp, predictions=predictions)
+        write_json_predictions(filename=str(predictions_path_tmp), predictions=predictions)
 
     return predictions, n_documents, all_csv_paths
 

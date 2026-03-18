@@ -49,6 +49,9 @@ def evaluate_single_prediction(
 ) -> FilePredictions:
     """Computes metrics for a given file.
 
+    Note that the impolementation of `evaluate_geology` and `evaluate_metadata_extraction` mutates
+    the attributes of `prediction`.
+
     Args:
         prediction (FilePredictions): The predictions object.
         ground_truth (GroundTruth | None): The ground truth object.
@@ -66,7 +69,7 @@ def evaluate_single_prediction(
     # Match file with ground truth
     matched_with_ground_truth = predictions.match_with_ground_truth(ground_truth)
 
-    # Run evaluation for file
+    # Run evaluation for file (! mutates prediction !)
     matched_with_ground_truth.evaluate_geology()
     matched_with_ground_truth.evaluate_metadata_extraction()
 
