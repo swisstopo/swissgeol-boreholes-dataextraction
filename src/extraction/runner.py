@@ -101,7 +101,7 @@ def write_json_predictions(filename: str, predictions: OverallFilePredictions) -
         predictions (OverallFilePredictions): Prediction to dump in JSON file.
     """
     with open(filename, "w", encoding="utf8") as file:
-        json.dump(predictions.to_json(), file, ensure_ascii=False)
+        json.dump(predictions.to_json(), file, ensure_ascii=False, indent=2)
 
 
 def read_json_predictions(filename: str) -> OverallFilePredictions:
@@ -358,15 +358,17 @@ def run_predictions(
 
         logger.info(f"Processing file: {pdf_file.name}")
 
-        # Run prediction on file and evaluate it
+        # Run extraction and happend to predictions
         result = extract(file=pdf_file, filename=pdf_file.name, part=part, analytics=analytics)
-        result.predictions = evaluate_single_prediction(result.predictions, ground_truth)
         predictions.add_file_predictions(result.predictions)
 
         if csv:
             all_csv_paths.extend(write_csv_for_file(result.predictions, out_directory))
 
         if any_draw:
+            # Run evaluation for current file drawing
+            result.predictions = evaluate_single_prediction(result.predictions, ground_truth)
+            # Draw predictions for file
             draw_file_predictions(
                 result=result,
                 file=pdf_file,
