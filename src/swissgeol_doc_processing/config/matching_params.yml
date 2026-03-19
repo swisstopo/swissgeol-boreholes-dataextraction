@@ -59,7 +59,7 @@ affinity_params:
       gap_weight: 0.2
       indentation_weight: 0.0
     
-  #TODO those are completely random for now. Need to be optimized as soon as possible!
+  
   protocol:
       importance: 1.0
       min_entries: 2
@@ -70,7 +70,7 @@ affinity_params:
         - bis
         - Depth
       max_header_gap: 40
-
+      # TODO those parameters were chosen randomly but they behave well so far. 
       weights:
         line_weight: 1.0
         left_line_weight: 1.0
