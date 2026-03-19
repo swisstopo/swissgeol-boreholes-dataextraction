@@ -37,11 +37,12 @@ class Cluster(Generic[EntryT]):
             rect = entry_to_rect(entry)
             return Point(rect.x1, (rect.y0 + rect.y1) / 2)
 
+        max_skew_degrees = 5
+
         clusters: list[Cluster[EntryT]] = []
         # maps every entry to the set of indices of the clusters that contain this entry
         perfect_assignments: dict[EntryT, set[int]] = {entry: set() for entry in entries}
         assignments: dict[EntryT, set[int]] = {entry: set() for entry in entries}
-        max_skew_degrees: float = 5
 
         # iterate over all possibilities for the topmost entry of a cluster
         for index1, entry1 in enumerate(entries):
