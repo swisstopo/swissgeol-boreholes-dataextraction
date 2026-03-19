@@ -58,34 +58,26 @@ class ProtocolSidebarExtractor:
             ProtocolSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= min_entries
         ]
 
-        for sidebar in candidate_sidebars:
-            ProtocolSidebarExtractor._debug_sidebar("Protocol candidate", sidebar)
-
         processed_sidebars = []
         for sidebar in candidate_sidebars:
             has_header = ProtocolSidebarExtractor._is_below_header(sidebar, lines, header_keywords, max_header_gap)
             is_table_like = ProtocolSidebarExtractor._is_table_like(sidebar, lines)
 
             if not has_header:
-                ProtocolSidebarExtractor._debug_sidebar("Protocol rejected: no header", sidebar)
                 continue
 
             if not is_table_like:
-                ProtocolSidebarExtractor._debug_sidebar("Protocol rejected: not table-like", sidebar)
                 continue
 
             processed = sidebar.process()
             if not processed:
-                ProtocolSidebarExtractor._debug_sidebar("Protocol rejected: empty after process()", sidebar)
                 continue
 
             valid_processed = [processed_sidebar for processed_sidebar in processed if processed_sidebar.is_valid()]
             if not valid_processed:
-                ProtocolSidebarExtractor._debug_sidebar("Protocol rejected: invalid after process()", sidebar)
                 continue
 
             for processed_sidebar in valid_processed:
-                ProtocolSidebarExtractor._debug_sidebar("Protocol accepted", processed_sidebar)
                 processed_sidebars.append(processed_sidebar)
 
         sidebars_with_noise = [
@@ -103,9 +95,6 @@ class ProtocolSidebarExtractor:
         for sidebar_noise in sidebars_by_length:
             if not any(result_sidebar.sidebar.strictly_contains(sidebar_noise.sidebar) for result_sidebar in result):
                 result.append(sidebar_noise)
-
-        for sidebar_noise in result:
-            ProtocolSidebarExtractor._debug_sidebar("Protocol final", sidebar_noise.sidebar)
 
         return result
 
