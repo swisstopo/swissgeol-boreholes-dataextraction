@@ -17,7 +17,6 @@ from classification.evaluation.benchmark.score import (
     evaluate_all_predictions,
 )
 from classification.evaluation.benchmark.spec import BenchmarkSpec
-from classification.utils.benchmark_utils import _parent_input_directory_key_classification
 from classification.utils.classification_classes import ExistingClassificationSystems
 from classification.utils.data_loader import LayerInformation, prepare_classification_data
 from classification.utils.data_utils import (
@@ -28,6 +27,7 @@ from classification.utils.data_utils import (
 from core.benchmark_utils import (
     _short_metric_key,
     delete_temporary,
+    parent_input_key,
     read_mlflow_runid,
     write_mlflow_runid,
 )
@@ -122,7 +122,7 @@ def _setup_mlflow_parent_run(
         run_id=runid,
         experiment_name=experiment_name,
         runname=runname,
-        parent_input_key=_parent_input_directory_key_classification([Path(b.file_path) for b in benchmarks]),
+        parent_input_key=parent_input_key([Path(b.file_path) for b in benchmarks]),
         benchmarks=benchmarks,
         input_tag_name="json_file_path",
         ground_truth_path=None,

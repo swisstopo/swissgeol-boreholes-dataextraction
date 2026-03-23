@@ -7,6 +7,7 @@ import json
 import logging
 import os
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from dataclasses import dataclass
 from glob import glob
 from pathlib import Path
@@ -157,3 +158,52 @@ class Metrics(metaclass=abc.ABCMeta):
         fp = sum([metric.fp for metric in metric_list])
         fn = sum([metric.fn for metric in metric_list])
         return Metrics(tp=tp, fp=fp, fn=fn)
+
+
+def relative_after_common_root(paths: Sequence[Path]) -> list[str]:
+    """Return relative paths after the longest common path prefix.
+
+    If a path equals the common root (relative path == "."),
+    return a meaningful tail instead of ".".
+
+    Args:
+        paths: Paths to process.
+
+    Returns:
+        Relative path strings after the common root.
+    """
+    if not paths:
+        return []
+
+    resolved = [p.expanduser().resolve() for p in paths]
+
+    try:
+        common_root = Path(os.path.commonpath([str(p) for p in resolved]))
+    except Exception:
+        return [p.name for p in resolved]
+
+    rels: list[str] = []
+    for p in resolved:
+        try:
+            rel = p.relative_to(common_root)
+            if rel == Path("."):
+                rels.append(str(Path(*p.parts[-2:])))  # last 2 parts
+            else:
+                rels.append(str(rel))
+        except ValueError:
+            rels.append(p.name)
+
+    return rels
+
+
+def parent_input_key(paths: Sequence[Path]) -> str:
+    """Generate a stable parent input key for a group of child inputs.
+
+    Args:
+        paths: Child input paths.
+
+    Returns:
+        Group key string.
+    """
+    inputs = " | ".join(sorted(relative_after_common_root(paths)))
+    return f"multi:{inputs}"

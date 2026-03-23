@@ -14,6 +14,7 @@ from tqdm import tqdm
 from core.benchmark_utils import (
     _short_metric_key,
     delete_temporary,
+    parent_input_key,
     read_mlflow_runid,
     write_mlflow_runid,
 )
@@ -24,7 +25,7 @@ from extraction.evaluation.benchmark.score import ExtractionBenchmarkSummary, ev
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
-from extraction.utils.benchmark_utils import _parent_input_directory_key_extraction, log_metric_mlflow
+from extraction.utils.benchmark_utils import log_metric_mlflow
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics, create_analytics
 from swissgeol_doc_processing.utils.file_utils import flatten, read_params
 
@@ -238,7 +239,7 @@ def _setup_mlflow_parent_run(
         run_id=runid,
         experiment_name="Boreholes data extraction",
         runname=runname,
-        parent_input_key=_parent_input_directory_key_extraction(benchmarks),
+        parent_input_key=parent_input_key([Path(b.input_path) for b in benchmarks]),
         benchmarks=benchmarks,
         input_tag_name="input_directory",
         ground_truth_path=None,
