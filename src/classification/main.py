@@ -12,13 +12,17 @@ from core.benchmark_utils import configure_logging
 
 def common_options(f):
     """Decorator to add common options to commands."""
+    # input path: can be either a file or dictionary and can ce either be the ground truth descriptions
+    # or the predictions
     f = click.option(
         "-f",
         "--file-path",
         required=False,  # allow multi-benchmark mode
         type=click.Path(exists=True, path_type=Path),
-        help="Path to the json file containing the material descriptions to classify.",
+        help="Input path to classify. Can be a ground truth JSON, a subset ground truth JSON, "
+        "a predictions/descriptions JSON, or a directory containing subset files.",
     )(f)
+    # ground truth path
     f = click.option(
         "-g",
         "--ground-truth-path",
@@ -39,14 +43,6 @@ def common_options(f):
         type=click.Path(path_type=Path),
         default=DATAPATH / "output_description_classification_bedrock",
         help="Path to the output directory for bedrock files.",
-    )(f)
-    f = click.option(
-        "-s",
-        "--file-subset-directory",
-        type=click.Path(path_type=Path),
-        default=None,
-        help="Path to the directory containing subset files (e.g. data/geoquat/validation). "
-        "If not provided, the full JSON file is used.",
     )(f)
     f = click.option(
         "-c",
@@ -85,8 +81,7 @@ def common_options(f):
     "--benchmark",
     "benchmarks",
     multiple=True,
-    help="Repeatable benchmark spec: '<name>:<file_path>:<file_subset_directory>' "
-    "or '<name>:<file_path>:<file_subset_directory>:<ground_truth_path>'. "
+    help="Repeatable benchmark spec: '<name>:<input_path>:<ground_truth_path>'. "
     "If provided, runs multiple benchmarks in one execution.",
 )
 @common_options
@@ -95,7 +90,6 @@ def click_pipeline(
     ground_truth_path: Path | None,
     out_directory: Path,
     out_directory_bedrock: Path,
-    file_subset_directory: Path | None,
     classifier_type: str,
     model_path: Path | None,
     classification_system: str,
@@ -128,7 +122,6 @@ def click_pipeline(
         out_directory=out_directory,
         out_directory_bedrock=out_directory_bedrock,
         predictions_path=out_directory / "class_predictions.json",
-        file_subset_directory=file_subset_directory,
         classifier_type=classifier_type,
         model_path=model_path,
         classification_system=classification_system,

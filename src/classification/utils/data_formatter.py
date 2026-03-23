@@ -6,6 +6,7 @@ import re
 from os import listdir
 from os.path import isfile, join
 from pathlib import Path
+from typing import Any
 
 from classification.utils.file_utils import read_params
 from swissgeol_doc_processing.utils.language_detection import detect_language_of_text
@@ -15,12 +16,12 @@ logger = logging.getLogger(__name__)
 classification_params = read_params("classification_params.yml")
 
 
-def format_ground_truth_file(ground_truth: dict, file_subset_directory: Path | None) -> dict:
-    """Format the ground truth data by identifiying the language and restricting the files to the subset.
+def format_ground_truth_file(ground_truth: dict, file_subset_directory: Path | None = None) -> dict:
+    """Format ground truth data by identifying the language and optionally restricting files to a subset.
 
     Args:
         ground_truth (dict): The ground truth data to format.
-        file_subset_directory (Path | None): Path to the directory containing the file whose names are used.
+        file_subset_directory (Path | None): Optional directory whose filenames are used as a filter.
 
     Returns:
         dict: A dictionary containing the formatted ground truth data.
@@ -30,6 +31,7 @@ def format_ground_truth_file(ground_truth: dict, file_subset_directory: Path | N
     if file_subset_directory is not None:
         logger.info(f"Using files from subset directory: {file_subset_directory}")
         filename_subset = {f for f in listdir(file_subset_directory) if isfile(join(file_subset_directory, f))}
+
     return {
         filename: [
             {
@@ -198,11 +200,11 @@ def resolve_reference(
     depth_query = r"(\d+(?:[.,]\d+)?)"
     unit_query = r"(?:\s*(?:[müMN][.\s]*)+)?\b"
     total_query = (
-        rf"{key_word_query}"  # match the keyword
-        rf"(?:(?:[\s.]|Sp)*-?"  # open optional non-capturing group and allow for various separators (./Sp./-)
-        rf"{depth_query}{unit_query}"  # match the first depth with its optional unit
-        rf"(?:[\s-]*"  # open second optional non-capturing group and allow for various separators
-        rf"{depth_query}{unit_query})?)?"  # match the second depth with its optional unit
+        rf"{key_word_query}"
+        rf"(?:(?:[\s.]|Sp)*-?"
+        rf"{depth_query}{unit_query}"
+        rf"(?:[\s-]*"
+        rf"{depth_query}{unit_query})?)?"
     )
 
     match = re.match(total_query, material_description, re.IGNORECASE)
@@ -227,44 +229,91 @@ def resolve_reference(
     return referenced_layer["material_description"] + material_description[match.end() :]
 
 
-def format_data(descriptions_path: Path, ground_truth_path: Path | None) -> tuple:
-    """Load and format description and ground truth data for classification.
+def load_json_file(path: Path) -> dict[str, Any]:
+    """Load a JSON file."""
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
 
-    Args:
-        descriptions_path (Path): Path to the JSON file containing the text descriptions.
-        ground_truth_path (Path | None): Path to the ground truth JSON file (or None if using a combined file).
 
-    Returns:
-        tuple:
-            - descriptions (dict): Parsed and formatted descriptions data.
-            - ground_truth (dict): Parsed and formatted ground truth data.
+def is_ground_truth_json(data: dict[str, Any]) -> bool:
+    """Return True if the JSON looks like a ground truth file."""
+    if not isinstance(data, dict) or not data:
+        return False
+
+    first_value = next(iter(data.values()))
+    if not isinstance(first_value, list) or not first_value:
+        return False
+
+    first_borehole = first_value[0]
+    return isinstance(first_borehole, dict) and "layers" in first_borehole and "borehole_index" in first_borehole
+
+
+def is_description_json(data: dict[str, Any]) -> bool:
+    """Return True if the JSON looks like an extraction predictions/descriptions file."""
+    if not isinstance(data, dict) or not data:
+        return False
+
+    first_value = next(iter(data.values()))
+    return isinstance(first_value, dict) and "boreholes" in first_value and "language" in first_value
+
+
+def load_and_format_input_data(
+    input_path: Path,
+    ground_truth_path: Path | None,
+) -> tuple[dict, dict]:
+    """Load and format input/ground-truth data based on the new unified input structure.
+
+    Supported modes:
+        1. input_path is a directory:
+            - interpreted as subset directory
+            - ground_truth_path must be provided and must be a ground truth JSON
+        2. input_path is a JSON and ground_truth_path is None:
+            - input_path must be a full ground truth JSON
+            - same file is used as descriptions and ground truth
+        3. input_path is a JSON and ground_truth_path is provided:
+            - if input JSON is ground-truth-like: use it directly as descriptions input and compare to full GT
+            - if input JSON is descriptions/predictions-like: format it and compare to GT
     """
-    with open(descriptions_path, encoding="utf-8") as f:
-        descriptions = json.load(f)
-    descriptions = format_descriptions_file(descriptions)
-    descriptions = resolve_reference_all_files(descriptions)
+    if input_path.is_dir():
+        if ground_truth_path is None:
+            raise ValueError(
+                "When input_path is a directory, ground_truth_path must be provided "
+                "and point to the full ground truth JSON."
+            )
 
-    with open(ground_truth_path, encoding="utf-8") as f:
-        ground_truth = json.load(f)
+        logger.info("Input path is a directory. Interpreting it as subset directory.")
+        ground_truth = load_json_file(ground_truth_path)
+        descriptions = format_ground_truth_file(ground_truth, input_path)
+        descriptions = resolve_reference_all_files(descriptions)
+
+        ground_truth = resolve_reference_all_files(ground_truth)
+        return descriptions, ground_truth
+
+    input_data = load_json_file(input_path)
+
+    if ground_truth_path is None:
+        if not is_ground_truth_json(input_data):
+            raise ValueError("ground_truth_path may only be omitted when input_path is a full ground truth JSON.")
+
+        logger.info("Using single-file ground truth mode.")
+        descriptions = format_ground_truth_file(input_data)
+        descriptions = resolve_reference_all_files(descriptions)
+        return descriptions, descriptions
+
+    ground_truth = load_json_file(ground_truth_path)
     ground_truth = resolve_reference_all_files(ground_truth)
-    return descriptions, ground_truth
 
+    if is_ground_truth_json(input_data):
+        logger.info("Input JSON detected as ground truth-like JSON.")
+        descriptions = format_ground_truth_file(input_data)
+    elif is_description_json(input_data):
+        logger.info("Input JSON detected as predictions/descriptions JSON.")
+        descriptions = format_descriptions_file(input_data)
+    else:
+        raise ValueError(
+            f"Could not determine input JSON type for '{input_path}'. "
+            "Expected either ground truth JSON or predictions/descriptions JSON."
+        )
 
-def format_data_one_file(descriptions_path: Path, file_subset_directory: Path | None) -> tuple:
-    """Load and format description and ground truth data for classification.
-
-    Args:
-        descriptions_path (Path): Path to the JSON file containing the text descriptions.
-        file_subset_directory (Path | None): Optional directory to subset files when using single-file mode.
-
-    Returns: data.Parsed and formatted
-        tuple:
-            - descriptions (dict): Parsed and formatted descriptions data.
-            - ground_truth (dict): The same file, as it also contains the ground truth
-    """
-    logger.info("Using single-file mode: extracting texts and labels from the same file.")
-    with open(descriptions_path, encoding="utf-8") as f:
-        descriptions = json.load(f)
-    descriptions = format_ground_truth_file(descriptions, file_subset_directory)
     descriptions = resolve_reference_all_files(descriptions)
-    return descriptions, descriptions
+    return descriptions, ground_truth

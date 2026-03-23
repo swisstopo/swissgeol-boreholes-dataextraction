@@ -7,7 +7,7 @@ from pathlib import Path
 import Levenshtein
 
 from classification.utils.classification_classes import ClassificationSystem
-from classification.utils.data_formatter import format_data, format_data_one_file
+from classification.utils.data_formatter import load_and_format_input_data
 from swissgeol_doc_processing.utils.file_utils import parse_text
 
 logger = logging.getLogger(__name__)
@@ -27,10 +27,10 @@ class LayerInformation:
     layer_index: int
     language: str
     material_description: str
-    class_system: type[ClassificationSystem]  # note: class_system is the class, and not an instance of the class
+    class_system: type[ClassificationSystem]
     ground_truth_class: None | ClassificationSystem.EnumMember
-    prediction_class: None | ClassificationSystem.EnumMember  # dynamically set
-    llm_reasoning: None | str  # dynamically set,
+    prediction_class: None | ClassificationSystem.EnumMember
+    llm_reasoning: None | str
 
 
 def is_valid_depth_interval(layer_depths, start: float, end: float) -> bool:
@@ -88,31 +88,26 @@ def find_matching_layer(layer, unmatched_ground_truth_layers) -> None | dict:
 
 
 def prepare_classification_data(
-    descriptions_path: Path,
+    input_path: Path,
     ground_truth_path: Path | None,
-    file_subset_directory: Path | None,
     classification_system: type[ClassificationSystem],
 ) -> list[LayerInformation]:
     """Load and combine material descriptions and ground truth data into a structured list.
 
     Args:
-        descriptions_path (Path): Path to the JSON file containing the descriptions (or the file that contains
-            descriptions and ground truth in single-file mode).
-        ground_truth_path (Path | None): Path to the ground truth JSON file (or None if using single-file mode).
-        file_subset_directory (Path | None): Directory containing a subset of filenames to use (only used if
-            ground_truth_path is not provided).
+        input_path (Path): Unified input path. Can be:
+            - a full ground truth JSON
+            - a subset ground truth JSON
+            - a predictions/descriptions JSON
+            - a directory containing subset files
+        ground_truth_path (Path | None): Path to the full ground truth JSON if needed for matching/evaluation.
         classification_system (type[ClassificationSystem]): The classification system class.
 
     Returns:
         list[LayerInformation]: List of structured layer information entries.
     """
-    # determine if two or one files are passed, if only one it must contain both descriptions and ground truths
+    descriptions, ground_truth = load_and_format_input_data(input_path, ground_truth_path)
     single_file_mode = ground_truth_path is None
-
-    if single_file_mode:
-        descriptions, ground_truth = format_data_one_file(descriptions_path, file_subset_directory)
-    else:
-        descriptions, ground_truth = format_data(descriptions_path, ground_truth_path)
 
     layer_class_keys = classification_system.get_layer_ground_truth_keys()
 
@@ -145,7 +140,7 @@ def prepare_classification_data(
                 if not class_str:
                     logger.debug(
                         f"Skipping layer: no {layer_class_keys} in ground truth for {filename},"
-                        f" layer: {layer['material_description']}."
+                        f"layer: {layer['material_description']}."
                     )
                     continue
 
@@ -166,7 +161,7 @@ def prepare_classification_data(
                 )
     skipped_count = total_layers - len(layer_descriptions)
     logger.info(
-        f"Skipped {skipped_count} layers without groundtruh out of {total_layers}, "
+        f"Skipped {skipped_count} layers without ground truth out of {total_layers}, "
         f"which is {skipped_count / total_layers * 100:2f}%"
     )
     return layer_descriptions

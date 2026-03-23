@@ -86,8 +86,8 @@ def setup_mlflow_tracking(
     *,
     run_id: str | None,
     file_path: Path | None,
+    ground_truth_path: Path | None,
     out_directory: Path,
-    file_subset_directory: Path | None,
     experiment_name: str = "Layer descriptions classification",
     runname: str | None = None,
     nested: bool = False,
@@ -97,6 +97,7 @@ def setup_mlflow_tracking(
     Args:
         run_id (str): Existing run ID to resume, or None to start a new run.
         file_path (Path): The path to the input file.
+        ground_truth_path (Path): The path to the ground truth file.
         out_directory (Path): The output directory.
         file_subset_directory (Path | None): The path to the subset directory.
         experiment_name (str): The MLflow experiment name.
@@ -114,8 +115,8 @@ def setup_mlflow_tracking(
         logger.warning(f"Unable to resume run with ID: {mlflow.active_run().info.run_id}, start new one.")
     if file_path:
         mlflow.set_tag("json file_path", str(file_path))
-    if file_subset_directory:
-        mlflow.set_tag("file_subset_directory", str(file_subset_directory))
+    if ground_truth_path:
+        mlflow.set_tag("ground_truth_path", str(ground_truth_path))
     mlflow.set_tag("out_directory", str(out_directory))
 
     return mlflow.active_run().info.run_id
@@ -146,8 +147,8 @@ def _setup_mlflow_parent_run(
 
     runid = setup_mlflow_tracking(
         file_path=_parent_input_directory_key_classification([Path(b.file_path) for b in benchmarks]),
+        ground_truth_path=None,
         out_directory=out_directory,
-        file_subset_directory=None,
         experiment_name=experiment_name,
         run_id=runid,
         runname=runname,
@@ -165,7 +166,7 @@ def log_ml_flow_infos(
     classifier: Classifier,
     classification_system: str,
 ):
-    """Logs informations to mlflow, such as the number of sample, language distribution, classifier type and data.
+    """Logs information to mlflow, such as the number of sample, language distribution, classifier type and data.
 
     Args:
         file_path (Path): The path to the input file.
@@ -202,7 +203,6 @@ def run_predictions(
     ground_truth_path: Path | None,
     out_directory: Path,
     out_directory_bedrock: Path,
-    file_subset_directory: Path | None,
     classifier_type: str,
     model_path: Path | None,
     classification_system: str,
@@ -226,12 +226,6 @@ def run_predictions(
             the classifier instance used (or None if no data was found), and the number of
             unique documents processed.
     """
-    if ground_truth_path and file_subset_directory:
-        logger.warning(
-            "The provided subset directory will be ignored because descriptions are being loaded from the prediction "
-            "file. All layers in the prediction file will be classified."
-        )
-
     classifier_type_instance = ClassifierTypes.infer_type(classifier_type.lower())
     classification_system_cls = ExistingClassificationSystems.get_classification_system_type(
         classification_system.lower()
@@ -240,9 +234,7 @@ def run_predictions(
     logger.info(
         f"Loading data from {file_path}" + (f" and ground truth from {ground_truth_path}" if ground_truth_path else "")
     )
-    layer_descriptions = prepare_classification_data(
-        file_path, ground_truth_path, file_subset_directory, classification_system_cls
-    )
+    layer_descriptions = prepare_classification_data(file_path, ground_truth_path, classification_system_cls)
 
     n_documents = len({layer.filename for layer in layer_descriptions})
 
@@ -265,13 +257,12 @@ def run_predictions(
 
 def start_pipeline(
     file_path: Path,
-    ground_truth_path: Path,
+    ground_truth_path: Path | None,
     out_directory: Path,
     out_directory_bedrock: Path,
     predictions_path: Path,
-    file_subset_directory: Path,
     classifier_type: str,
-    model_path: Path,
+    model_path: Path | None,
     classification_system: str,
     resume: bool = False,
     runname: str | None = None,
@@ -308,8 +299,8 @@ def start_pipeline(
         runid = setup_mlflow_tracking(
             run_id=runid,
             file_path=file_path,
+            ground_truth_path=ground_truth_path,
             out_directory=out_directory,
-            file_subset_directory=file_subset_directory,
             nested=is_nested,
             runname=runname,
         )
@@ -321,7 +312,6 @@ def start_pipeline(
         ground_truth_path=ground_truth_path,
         out_directory=out_directory,
         out_directory_bedrock=out_directory_bedrock,
-        file_subset_directory=file_subset_directory,
         classifier_type=classifier_type,
         model_path=model_path,
         classification_system=classification_system,
@@ -336,7 +326,6 @@ def start_pipeline(
         empty_summary = ClassificationBenchmarkSummary(
             file_path=str(file_path),
             ground_truth_path=str(ground_truth_path) if ground_truth_path else None,
-            file_subset_directory=str(file_subset_directory) if file_subset_directory else None,
             n_documents=n_documents,
             classifier_type=classifier_type,
             model_path=str(model_path) if model_path else None,
@@ -358,7 +347,6 @@ def start_pipeline(
         params=BenchmarkParams(
             file_path=file_path,
             ground_truth_path=ground_truth_path,
-            file_subset_directory=file_subset_directory,
             classifier_type=classifier_type,
             model_path=model_path,
             classification_system=classification_system,
@@ -450,7 +438,6 @@ def start_multi_benchmark(
             out_directory=bench_out,
             out_directory_bedrock=bench_out_bedrock,
             predictions_path=bench_predictions_path,
-            file_subset_directory=spec.file_subset_directory,
             classifier_type=classifier_type,
             model_path=model_path,
             classification_system=classification_system,
