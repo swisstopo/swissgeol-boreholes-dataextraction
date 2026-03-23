@@ -2,8 +2,8 @@
 
 from dataclasses import dataclass
 
+from core.benchmark_utils import Metrics
 from extraction.evaluation.benchmark.metrics import OverallMetrics
-from extraction.evaluation.evaluation_dataclasses import Metrics
 from extraction.evaluation.utility import evaluate
 from extraction.features.groundwater.groundwater_extraction import Groundwater
 from extraction.features.predictions.borehole_predictions import FileGroundwaterWithGroundTruth

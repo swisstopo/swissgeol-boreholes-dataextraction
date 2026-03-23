@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import abc
 import json
 import logging
 import os
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from glob import glob
 from pathlib import Path
 
@@ -87,3 +89,71 @@ class BenchmarkSummary(BaseModel, ABC):
     def metrics_flat(self, prefix: str = "metrics", short: bool = False) -> dict[str, float]:
         """Return metrics in a flattened form for summaries/CSV output."""
         raise NotImplementedError
+
+
+@dataclass
+class Metrics(metaclass=abc.ABCMeta):
+    """Metrics for the evaluation of extracted features (e.g., Groundwater, Elevation, Coordinates)."""
+
+    tp: int
+    fp: int
+    fn: int
+
+    @property
+    def precision(self) -> float:
+        """Calculates the precision.
+
+        Returns:
+            float: The precision.
+        """
+        return self.tp / (self.tp + self.fp) if self.tp + self.fp > 0 else 0
+
+    @property
+    def recall(self) -> float:
+        """Calculates the recall.
+
+        Returns:
+            float: The recall.
+        """
+        return self.tp / (self.tp + self.fn) if self.tp + self.fn > 0 else 0
+
+    @property
+    def f1(self) -> float:
+        """Calculates the F1 score.
+
+        Returns:
+            float: The F1 score.
+        """
+        precision = self.precision
+        recall = self.recall
+        return 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
+
+    def to_json(self, feature_name) -> dict[str, float]:
+        """Converts the object to a dictionary.
+
+        Returns:
+            dict[str, float]: The object as a dictionary.
+        """
+        return {
+            f"{feature_name}_precision": self.precision,
+            f"{feature_name}_recall": self.recall,
+            f"{feature_name}_f1": self.f1,
+        }
+
+    # TODO: Currently, some other methods for averaging metrics are in the OverallMetrics class.
+    # On the long run, we should refactor this to have a single place where these averaging computations are
+    # implemented.
+    @staticmethod
+    def micro_average(metric_list: list[Metrics]) -> Metrics:
+        """Converts a list of metrics to a metric.
+
+        Args:
+            metric_list (list): The list of metrics.
+
+        Returns:
+            Metrics: Combined metrics.
+        """
+        tp = sum([metric.tp for metric in metric_list])
+        fp = sum([metric.fp for metric in metric_list])
+        fn = sum([metric.fn for metric in metric_list])
+        return Metrics(tp=tp, fp=fp, fn=fn)
