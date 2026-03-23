@@ -326,7 +326,7 @@ def start_pipeline(
         )
 
         return PipelineRunResult(
-            prediction_payload=(predictions, csv_paths),
+            predictions=(predictions, csv_paths),
             n_documents=n_documents,
             copy_source=predictions_path_tmp if part == "all" and predictions_path_tmp.exists() else None,
         )
@@ -334,7 +334,7 @@ def start_pipeline(
     def _evaluate(
         run_result: PipelineRunResult[tuple[OverallFilePredictions, list[Path]]],
     ) -> ExtractionBenchmarkSummary | None:
-        predictions, _csv_paths = run_result.prediction_payload
+        predictions, _csv_paths = run_result.predictions
 
         eval_summary = evaluate_all_predictions(
             predictions=predictions,
@@ -350,7 +350,7 @@ def start_pipeline(
         summary: ExtractionBenchmarkSummary | None,
         _predictions_path_tmp: Path,
     ) -> None:
-        predictions, csv_paths = run_result.prediction_payload
+        predictions, csv_paths = run_result.predictions
 
         if mlflow:
             for csv_path in csv_paths:
