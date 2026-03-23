@@ -7,21 +7,18 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from pydantic import BaseModel
-
 from classification.evaluation.evaluate import evaluate
 from classification.utils.data_utils import write_per_language_per_class_predictions
+from core.benchmark_utils import BenchmarkSummary
 from core.mlflow_tracking import mlflow
 
 logger = logging.getLogger(__name__)
 
 
-class ClassificationBenchmarkSummary(BaseModel):
+class ClassificationBenchmarkSummary(BenchmarkSummary):
     """Helper class containing a summary of all the results of a single classification benchmark."""
 
     file_path: str
-    ground_truth_path: str | None
-    n_documents: int
     classifier_type: str
     model_path: str | None
     classification_system: str
@@ -39,7 +36,6 @@ class ClassificationBenchmarkSummary(BaseModel):
         """
         if short:
             return dict(self.metrics)
-
         return {f"{prefix}/{k}": v for k, v in self.metrics.items()}
 
 

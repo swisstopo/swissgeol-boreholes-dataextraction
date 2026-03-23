@@ -5,8 +5,11 @@ from __future__ import annotations
 import json
 import logging
 import os
+from abc import ABC, abstractmethod
 from glob import glob
 from pathlib import Path
+
+from pydantic import BaseModel
 
 DEFAULT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
@@ -72,3 +75,15 @@ def _short_metric_key(k: str) -> str:
         str: The shortened metric key.
     """
     return k.split("/", 1)[1] if "/" in k else k
+
+
+class BenchmarkSummary(BaseModel, ABC):
+    """Shared base class for benchmark summaries."""
+
+    ground_truth_path: str | None
+    n_documents: int
+
+    @abstractmethod
+    def metrics_flat(self, prefix: str = "metrics", short: bool = False) -> dict[str, float]:
+        """Return metrics in a flattened form for summaries/CSV output."""
+        raise NotImplementedError
