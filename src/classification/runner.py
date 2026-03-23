@@ -24,12 +24,12 @@ from classification.utils.data_utils import (
 )
 from core.benchmark_utils import (
     _short_metric_key,
-    delete_temporary,
     finalize_overall_summary,
+    finalize_pipeline_run,
     parent_input_key,
-    read_mlflow_runid,
+    prepare_pipeline_temp_paths,
     run_multi_benchmark,
-    write_mlflow_runid,
+    start_or_resume_mlflow_run,
 )
 from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_parent_run, setup_mlflow_tracking
@@ -212,26 +212,27 @@ def start_pipeline(
         runname (str, optional): Run name for MLflow. Defaults to None.
         is_nested (bool, optional): If True, indicates this is a nested run (called from multi benchmark pipeline).
     """
-    predictions_path.parent.mkdir(parents=True, exist_ok=True)
-    predictions_path_tmp = predictions_path.parent / (predictions_path.name + ".tmp")
-    mlflow_runid_tmp = predictions_path.parent / "mlflow_runid.json.tmp"
+    temp_paths = prepare_pipeline_temp_paths(
+        predictions_path,
+        resume=resume,
+        cleanup_mlflow_tmp=False,
+    )
+    predictions_path_tmp = temp_paths.predictions_path_tmp
+    mlflow_runid_tmp = temp_paths.mlflow_runid_tmp
 
-    # Clean old run if no resume
-    if not resume:
-        delete_temporary(predictions_path_tmp)
-
-    if mlflow:
-        runid = read_mlflow_runid(str(mlflow_runid_tmp)) if resume else None
-        runid = setup_classification_mlflow_tracking(
+    start_or_resume_mlflow_run(
+        resume=resume,
+        mlflow_runid_tmp=mlflow_runid_tmp,
+        setup_run=lambda runid: setup_classification_mlflow_tracking(
             run_id=runid,
             file_path=file_path,
             ground_truth_path=ground_truth_path,
             out_directory=out_directory,
+            experiment_name="Layer descriptions classification",
+            runname=runname or file_path.name,
             nested=is_nested,
-            runname=runname,
-        )
-        # Save current run id
-        write_mlflow_runid(filename=mlflow_runid_tmp, runid=runid)
+        ),
+    )
 
     layer_descriptions, classifier, n_documents = run_predictions(
         file_path=file_path,
@@ -259,8 +260,13 @@ def start_pipeline(
             metrics={},
         )
 
-        if mlflow:
-            mlflow.end_run()
+        finalize_pipeline_run(
+            is_nested=is_nested,
+            predictions_path_tmp=None,
+            final_predictions_path=None,
+            copy_predictions=False,
+            mlflow_runid_tmp=mlflow_runid_tmp,
+        )
         return empty_summary
 
     final_pred = out_directory / "class_predictions.json"
@@ -283,24 +289,25 @@ def start_pipeline(
 
     # If evaluate_all_predictions returned None, stop here
     if summary is None:
-        if mlflow:
-            mlflow.end_run()
+        finalize_pipeline_run(
+            is_nested=is_nested,
+            predictions_path_tmp=None,
+            final_predictions_path=None,
+            copy_predictions=False,
+            mlflow_runid_tmp=mlflow_runid_tmp,
+        )
         return None
 
     if mlflow and summary is not None:
         log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier, classification_system)
 
-    # finalize: move tmp -> final, cleanup if not nested
-    if predictions_path_tmp.exists():
-        shutil.copy(predictions_path_tmp, final_pred)
-
-    # Clean temporary files only if not nested
-    if not is_nested:
-        delete_temporary(predictions_path_tmp)
-        delete_temporary(mlflow_runid_tmp)
-
-    if mlflow:
-        mlflow.end_run()
+    finalize_pipeline_run(
+        is_nested=is_nested,
+        predictions_path_tmp=predictions_path_tmp,
+        final_predictions_path=final_pred,
+        copy_predictions=predictions_path_tmp.exists(),
+        mlflow_runid_tmp=mlflow_runid_tmp,
+    )
 
     return summary
 

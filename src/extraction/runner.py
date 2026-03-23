@@ -2,7 +2,6 @@
 
 import json
 import logging
-import shutil
 from collections.abc import Sequence
 from io import BytesIO
 from pathlib import Path
@@ -11,12 +10,12 @@ from tqdm import tqdm
 
 from core.benchmark_utils import (
     _short_metric_key,
-    delete_temporary,
     finalize_overall_summary,
+    finalize_pipeline_run,
     parent_input_key,
-    read_mlflow_runid,
+    prepare_pipeline_temp_paths,
     run_multi_benchmark,
-    write_mlflow_runid,
+    start_or_resume_mlflow_run,
 )
 from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_parent_run, setup_mlflow_tracking
@@ -339,24 +338,23 @@ def start_pipeline(
     """  # noqa: D301
     # Check that all given outputs exists
     out_directory.mkdir(exist_ok=True)
-    predictions_path.parent.mkdir(exist_ok=True)
-    predictions_path_tmp = predictions_path.parent / (predictions_path.name + ".tmp")
-    mlflow_runid_tmp = predictions_path.parent / ("mlflow_runid.json.tmp")
-
-    # Clean old run if no resume
-    if not resume:
-        delete_temporary(predictions_path_tmp)
-        delete_temporary(mlflow_runid_tmp)
+    temp_paths = prepare_pipeline_temp_paths(
+        predictions_path,
+        resume=bool(resume),
+        cleanup_mlflow_tmp=True,
+    )
+    predictions_path_tmp = temp_paths.predictions_path_tmp
+    mlflow_runid_tmp = temp_paths.mlflow_runid_tmp
 
     metadata_path.parent.mkdir(exist_ok=True)
 
     # Initialize analytics if enabled
     analytics = create_analytics() if matching_analytics else None
 
-    if mlflow:
-        # Load run id if existing, otherwise None
-        runid = read_mlflow_runid(filename=mlflow_runid_tmp)
-        runid = setup_extraction_mlflow_tracking(
+    start_or_resume_mlflow_run(
+        resume=bool(resume),
+        mlflow_runid_tmp=mlflow_runid_tmp,
+        setup_run=lambda runid: setup_extraction_mlflow_tracking(
             runid=runid,
             input_directory=input_directory,
             ground_truth_path=ground_truth_path,
@@ -365,9 +363,8 @@ def start_pipeline(
             predictions_path=predictions_path,
             metadata_path=metadata_path,
             nested=is_nested,
-        )
-        # Save current run id
-        write_mlflow_runid(filename=mlflow_runid_tmp, runid=runid)
+        ),
+    )
 
     predictions, n_documents, csv_paths = run_predictions(
         input_directory=input_directory,
@@ -411,19 +408,16 @@ def start_pipeline(
         analytics.save_analytics(analytics_output_path)
         logger.info(f"Matching parameters analytics saved to {analytics_output_path}")
 
-    # Track progress to finale file and remove tmp
     if part == "all":
         logger.info(f"Writing predictions to final JSON file {predictions_path}")
-        shutil.copy(src=predictions_path_tmp, dst=predictions_path)
 
-    # Clean temporary files only if not nested
-    if not is_nested:
-        delete_temporary(predictions_path_tmp)
-        delete_temporary(mlflow_runid_tmp)
-
-    # Terminate runid
-    if mlflow:
-        mlflow.end_run()
+    finalize_pipeline_run(
+        is_nested=is_nested,
+        predictions_path_tmp=predictions_path_tmp,
+        final_predictions_path=predictions_path,
+        copy_predictions=(part == "all"),
+        mlflow_runid_tmp=mlflow_runid_tmp,
+    )
 
     return eval_summary
 

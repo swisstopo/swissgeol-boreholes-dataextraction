@@ -6,6 +6,7 @@ import abc
 import json
 import logging
 import os
+import shutil
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -67,20 +68,35 @@ def configure_logging(level: int = logging.INFO) -> None:
     logging.basicConfig(format=DEFAULT_FORMAT, level=level, datefmt=DEFAULT_DATEFMT)
 
 
+# def _short_metric_key(k: str) -> str:
+#     """Drop the first namespace segment.
+
+#     Examples:
+#       geology/layer_f1 -> layer_f1
+#       metadata/name_f1 -> name_f1
+#       layer_f1 -> layer_f1
+
+#     Args:
+#         k (str): The original metric key.
+
+#     Returns:
+#         str: The shortened metric key.
+#     """
+#     return k.split("/", 1)[1] if "/" in k else k
+
+
 def _short_metric_key(k: str) -> str:
-    """Drop the first namespace segment.
+    """Convert nested metric keys to the short metric key used in child runs.
 
     Examples:
+      metrics/geology/layer_f1 -> layer_f1
+      metrics/metadata/name_f1 -> name_f1
       geology/layer_f1 -> layer_f1
       metadata/name_f1 -> name_f1
       layer_f1 -> layer_f1
-
-    Args:
-        k (str): The original metric key.
-
-    Returns:
-        str: The shortened metric key.
     """
+    if k.startswith("metrics/"):
+        k = k[len("metrics/") :]
     return k.split("/", 1)[1] if "/" in k else k
 
 
@@ -304,5 +320,118 @@ def run_multi_benchmark(
 
     finalize_summary(overall_results, multi_root)
 
+    if mlflow:
+        mlflow.end_run()
+
     delete_temporary(parent_runid_tmp)
     delete_temporary(multi_root / "*" / "*.tmp")
+
+
+@dataclass(frozen=True)
+class PipelineTempPaths:
+    """Temporary file paths used during a single pipeline run."""
+
+    predictions_path_tmp: Path
+    mlflow_runid_tmp: Path
+
+
+def prepare_pipeline_temp_paths(
+    predictions_path: Path,
+    *,
+    resume: bool,
+    cleanup_mlflow_tmp: bool = True,
+) -> PipelineTempPaths:
+    """Prepare temporary file paths for a pipeline run.
+
+    Creates the parent directory for predictions_path and derives:
+    - <predictions_path>.tmp
+    - mlflow_runid.json.tmp in the same directory
+
+    If resume is False, stale temporary files are removed first.
+
+    Args:
+        predictions_path (Path): Final predictions path for the run.
+        resume (bool): Whether the run should resume from previous temp files.
+        cleanup_mlflow_tmp (bool): Whether to remove the mlflow temp file when not resuming.
+
+    Returns:
+        PipelineTempPaths: The derived temporary paths.
+    """
+    predictions_path.parent.mkdir(parents=True, exist_ok=True)
+
+    predictions_path_tmp = predictions_path.parent / f"{predictions_path.name}.tmp"
+    mlflow_runid_tmp = predictions_path.parent / "mlflow_runid.json.tmp"
+
+    if not resume:
+        delete_temporary(predictions_path_tmp)
+        if cleanup_mlflow_tmp:
+            delete_temporary(mlflow_runid_tmp)
+
+    return PipelineTempPaths(
+        predictions_path_tmp=predictions_path_tmp,
+        mlflow_runid_tmp=mlflow_runid_tmp,
+    )
+
+
+def start_or_resume_mlflow_run(
+    *,
+    resume: bool,
+    mlflow_runid_tmp: Path,
+    setup_run: Callable[[str | None], str],
+) -> str | None:
+    """Start or resume an MLflow run via a pipeline-specific setup callback.
+
+    Args:
+        resume (bool): Whether to try resuming an existing run.
+        mlflow_runid_tmp (Path): Temp file storing the run id.
+        setup_run (Callable[[str | None], str]): Callback that receives the previous
+            run id (or None) and returns the active run id.
+
+    Returns:
+        str | None: The active run id, or None if mlflow is disabled.
+    """
+    if not mlflow:
+        return None
+
+    runid = read_mlflow_runid(str(mlflow_runid_tmp)) if resume else None
+    runid = setup_run(runid)
+    write_mlflow_runid(filename=mlflow_runid_tmp, runid=runid)
+    return runid
+
+
+def finalize_pipeline_run(
+    *,
+    is_nested: bool,
+    predictions_path_tmp: Path | None = None,
+    final_predictions_path: Path | None = None,
+    copy_predictions: bool = False,
+    mlflow_runid_tmp: Path | None = None,
+) -> None:
+    """Finalize a pipeline run.
+
+    Optionally copies temp predictions to the final path, removes temporary files
+    for non-nested runs, and ends the MLflow run if tracking is enabled.
+
+    Args:
+        is_nested (bool): Whether this run is nested under a parent benchmark run.
+        predictions_path_tmp (Path | None): Temp predictions path.
+        final_predictions_path (Path | None): Final predictions path.
+        copy_predictions (bool): Whether to copy temp predictions to final path.
+        mlflow_runid_tmp (Path | None): Temp MLflow run id path.
+    """
+    if (
+        copy_predictions
+        and predictions_path_tmp is not None
+        and final_predictions_path is not None
+        and predictions_path_tmp.exists()
+    ):
+        shutil.copy(src=predictions_path_tmp, dst=final_predictions_path)
+
+    if not is_nested:
+        if predictions_path_tmp is not None:
+            delete_temporary(predictions_path_tmp)
+        if mlflow_runid_tmp is not None:
+            delete_temporary(mlflow_runid_tmp)
+
+    if mlflow:
+        mlflow.end_run()
