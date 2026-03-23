@@ -59,7 +59,7 @@ def _finalize_overall_summary(
         if summary is not None:
             row["ground_truth_path"] = summary.ground_truth_path
             row["n_documents"] = summary.n_documents
-            row.update(summary.metrics())
+            row.update(summary.metrics_flat())
         rows.append(row)
 
     df = pd.DataFrame(rows).sort_values(by="benchmark")

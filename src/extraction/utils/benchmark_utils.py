@@ -64,7 +64,7 @@ def log_metric_mlflow(
 
     - Does NOT start/end MLflow runs.
     """
-    metrics = summary.metrics(short=True)
+    metrics = summary.metrics_flat(short=True)
     mlflow.log_metrics(metrics)
 
     out_dir.mkdir(parents=True, exist_ok=True)
