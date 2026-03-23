@@ -18,6 +18,7 @@ from core.benchmark_utils import (
     write_mlflow_runid,
 )
 from core.mlflow_tracking import mlflow
+from core.mlflow_utils import setup_mlflow_parent_run, setup_mlflow_tracking
 from extraction.core.extract import ExtractionResult, extract, open_pdf
 from extraction.evaluation.benchmark.score import ExtractionBenchmarkSummary, evaluate_all_predictions
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
@@ -34,9 +35,6 @@ table_detection_params = read_params("table_detection_params.yml")
 striplog_detection_params = read_params("striplog_detection_params.yml")
 
 logger = logging.getLogger(__name__)
-
-if mlflow:
-    import pygit2
 
 
 def _finalize_overall_summary(
@@ -200,98 +198,52 @@ def write_csv_for_file(predictions: FilePredictions, out_directory: Path) -> lis
     return csv_paths
 
 
-def setup_mlflow_tracking(
+def setup_extraction_mlflow_tracking(
     runid: str | None,
     input_directory: Path,
-    ground_truth_path: Path,
+    ground_truth_path: Path | None,
     runname: str | None = None,
-    out_directory: Path = None,
-    predictions_path: Path = None,
-    metadata_path: Path = None,
+    out_directory: Path | None = None,
+    predictions_path: Path | None = None,
+    metadata_path: Path | None = None,
     experiment_name: str = "Boreholes data extraction",
     nested: bool = False,
 ) -> str:
-    """Initialize and configure an MLflow run with experiment tags and parameters.
-
-    Args:
-        runid (str): Existing run ID to resume, or None to start a new run.
-        input_directory (Path): Input directory path to log as MLflow tag.
-        ground_truth_path (Path): Ground truth file path to log as MLflow tag.
-        runname (str, optional): Run name for MLflow. Defaults to None.
-        out_directory (Path, optional): Output directory tracking. Defaults to None.
-        predictions_path (Path, optional): Prediction path tracking. Defaults to None.
-        metadata_path (Path, optional): Metadata path tracking. Defaults to None.
-        experiment_name (str, optional): Experiment name tracking. Defaults to "Boreholes data extraction".
-        nested (bool, optional): Indicate if the current run is nested.
-
-    Raises:
-        ValueError: If MLFLOW_TRACKING environment variable is not set to "True".
-
-    Returns:
-        str: The active MLflow run ID.
-    """
-    if not mlflow:
-        raise ValueError("Tracking is not activated")
-
-    mlflow.set_experiment(experiment_name)
-
-    # only start a run if none is active
-    try:
-        mlflow.start_run(run_name=runname, run_id=runid, nested=nested)
-    except mlflow.MlflowException:
-        mlflow.start_run(run_name=runname, nested=nested)
-        logger.warning(f"Unable to resume run with ID: {runid} ({runname}), start new one.")
-
-    mlflow.set_tag("input_directory", str(input_directory))
-    mlflow.set_tag("ground_truth_path", str(ground_truth_path))
-    if out_directory:
-        mlflow.set_tag("out_directory", str(out_directory))
-    if predictions_path:
-        mlflow.set_tag("predictions_path", str(predictions_path))
-    if metadata_path:
-        mlflow.set_tag("metadata_path", str(metadata_path))
-    mlflow.log_params(flatten(line_detection_params))
-    mlflow.log_params(flatten(matching_params))
-
-    repo = pygit2.Repository(".")
-    commit = repo[repo.head.target]
-    mlflow.set_tag("git_branch", repo.head.shorthand)
-    mlflow.set_tag("git_commit_message", commit.message)
-    mlflow.set_tag("git_commit_sha", commit.id)
-
-    return mlflow.active_run().info.run_id
+    """Wraps setup_mlflow_tracking() with extraction-specific tags and params."""
+    return setup_mlflow_tracking(
+        run_id=runid,
+        experiment_name=experiment_name,
+        runname=runname,
+        nested=nested,
+        tags={
+            "input_directory": input_directory,
+            "ground_truth_path": ground_truth_path,
+            "out_directory": out_directory,
+            "predictions_path": predictions_path,
+            "metadata_path": metadata_path,
+        },
+        params={
+            **flatten(line_detection_params),
+            **flatten(matching_params),
+        },
+        include_git_info=True,
+    )
 
 
 def _setup_mlflow_parent_run(
     *, benchmarks: Sequence[BenchmarkSpec], runname: str | None = None, runid: str | None = None
 ) -> str:
-    """Start the parent MLflow run (multi-benchmark) and log global params once.
-
-    Args:
-        benchmarks (Sequence[BenchmarkSpec]): List of benchmark specs.
-        runname (str, optional): Run name to resume if any. Defaults to None.
-        runid (str, optional): Run id to resume if any. Defaults to None.
-
-    Raises:
-        ValueError: If MLFLOW_TRACKING environment variable is not set to "True".
-
-    Returns:
-        str: Current run id to parent run.
-    """
-    if not mlflow:
-        raise ValueError("Tracking is not activated")
-
-    runid = setup_mlflow_tracking(
+    """Wraps setup_mlflow_parent_run() with extraction specific input key and tags."""
+    return setup_mlflow_parent_run(
+        run_id=runid,
+        experiment_name="Boreholes data extraction",
         runname=runname,
-        runid=runid,
-        input_directory=_parent_input_directory_key_extraction(benchmarks),
-        ground_truth_path=None,  # parent has no single GT
+        parent_input_key=_parent_input_directory_key_extraction(benchmarks),
+        benchmarks=benchmarks,
+        input_tag_name="input_directory",
+        ground_truth_path=None,
+        include_git_info=True,
     )
-
-    mlflow.set_tag("run_type", "multi_benchmark")
-    mlflow.set_tag("benchmarks", ",".join(b.name for b in benchmarks))
-
-    return runid
 
 
 def run_predictions(
@@ -452,7 +404,7 @@ def start_pipeline(
     if mlflow:
         # Load run id if existing, otherwise None
         runid = read_mlflow_runid(filename=mlflow_runid_tmp)
-        runid = setup_mlflow_tracking(
+        runid = setup_extraction_mlflow_tracking(
             runid=runid,
             input_directory=input_directory,
             ground_truth_path=ground_truth_path,

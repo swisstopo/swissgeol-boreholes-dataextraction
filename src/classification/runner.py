@@ -32,6 +32,7 @@ from core.benchmark_utils import (
     write_mlflow_runid,
 )
 from core.mlflow_tracking import mlflow
+from core.mlflow_utils import setup_mlflow_parent_run, setup_mlflow_tracking
 
 logger = logging.getLogger(__name__)
 
@@ -82,44 +83,30 @@ def _finalize_overall_summary(
         mlflow.log_artifact(str(summary_csv_path), artifact_path="summary")
 
 
-def setup_mlflow_tracking(
+def setup_classification_mlflow_tracking(
     *,
     run_id: str | None,
     file_path: Path | None,
     ground_truth_path: Path | None,
-    out_directory: Path,
+    out_directory: Path | None,
     experiment_name: str = "Layer descriptions classification",
     runname: str | None = None,
     nested: bool = False,
 ) -> str:
-    """Set up MLFlow tracking.
-
-    Args:
-        run_id (str): Existing run ID to resume, or None to start a new run.
-        file_path (Path): The path to the input file.
-        ground_truth_path (Path): The path to the ground truth file.
-        out_directory (Path): The output directory.
-        file_subset_directory (Path | None): The path to the subset directory.
-        experiment_name (str): The MLflow experiment name.
-        runname (str | None): The MLflow run name. If None, MLflow will auto-generate a name.
-        nested (bool, optional): Indicate if the current run is nested.
-    """
-    if not mlflow:
-        raise ValueError("Tracking is not activated")
-    mlflow.set_experiment(experiment_name)
-    # only start a run if none is active
-    try:
-        mlflow.start_run(run_name=runname, run_id=run_id, nested=nested)
-    except mlflow.MlflowException:
-        mlflow.start_run(run_name=runname, nested=nested)
-        logger.warning(f"Unable to resume run with ID: {mlflow.active_run().info.run_id}, start new one.")
-    if file_path:
-        mlflow.set_tag("json file_path", str(file_path))
-    if ground_truth_path:
-        mlflow.set_tag("ground_truth_path", str(ground_truth_path))
-    mlflow.set_tag("out_directory", str(out_directory))
-
-    return mlflow.active_run().info.run_id
+    """Wraps setup_mlflow_tracking() with classification-specific tags and params."""
+    return setup_mlflow_tracking(
+        run_id=run_id,
+        experiment_name=experiment_name,
+        runname=runname,
+        nested=nested,
+        tags={
+            "json_file_path": file_path,
+            "ground_truth_path": ground_truth_path,
+            "out_directory": out_directory,
+        },
+        params=None,
+        include_git_info=False,
+    )
 
 
 def _setup_mlflow_parent_run(
@@ -130,33 +117,18 @@ def _setup_mlflow_parent_run(
     runid: str | None = None,
     runname: str | None = None,
 ) -> str:
-    """Start the parent MLflow run (multi-benchmark) and log global params once.
-
-    Args:
-        out_directory (Path): The output directory.
-        benchmarks (Sequence[BenchmarkSpec]): The list of benchmark specifications.
-        experiment_name: (str) The MLflow experiment name.
-        runid (str, optional): Run id to resume if any. Defaults to None.
-        runname (str, optional): Run name for MLflow. Defaults to None.
-
-    Returns:
-        str: The run ID of the parent MLflow run.
-    """
-    if not mlflow:
-        raise ValueError("Tracking is not activated")
-
-    runid = setup_mlflow_tracking(
-        file_path=_parent_input_directory_key_classification([Path(b.file_path) for b in benchmarks]),
+    """Wraps setup_mlflow_parent_run() with classification specific input key and tags."""
+    return setup_mlflow_parent_run(
+        run_id=runid,
+        experiment_name=experiment_name,
+        runname=runname,
+        parent_input_key=_parent_input_directory_key_classification([Path(b.file_path) for b in benchmarks]),
+        benchmarks=benchmarks,
+        input_tag_name="json_file_path",
         ground_truth_path=None,
         out_directory=out_directory,
-        experiment_name=experiment_name,
-        run_id=runid,
-        runname=runname,
+        include_git_info=False,
     )
-    mlflow.set_tag("run_type", "multi_benchmark")
-    mlflow.set_tag("benchmarks", ",".join([b.name for b in benchmarks]))
-
-    return runid
 
 
 def log_ml_flow_infos(
@@ -296,7 +268,7 @@ def start_pipeline(
 
     if mlflow:
         runid = read_mlflow_runid(str(mlflow_runid_tmp)) if resume else None
-        runid = setup_mlflow_tracking(
+        runid = setup_classification_mlflow_tracking(
             run_id=runid,
             file_path=file_path,
             ground_truth_path=ground_truth_path,
