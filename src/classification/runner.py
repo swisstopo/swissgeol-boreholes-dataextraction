@@ -23,16 +23,14 @@ from classification.utils.data_utils import (
     write_predictions,
 )
 from core.benchmark_utils import (
-    _short_metric_key,
     finalize_overall_summary,
-    finalize_pipeline_run,
     parent_input_key,
-    prepare_pipeline_temp_paths,
     run_multi_benchmark,
-    start_or_resume_mlflow_run,
+    short_metric_key,
 )
 from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_parent_run, setup_mlflow_tracking
+from core.pipeline_runner import PipelineRunResult, execute_pipeline_run
 
 logger = logging.getLogger(__name__)
 
@@ -194,122 +192,104 @@ def start_pipeline(
     runname: str | None = None,
     is_nested: bool = False,
 ) -> ClassificationBenchmarkSummary | None:
-    """Main pipeline to classify the layer's soil descriptions.
+    """Main pipeline to classify the layer's soil descriptions."""
+    out_directory.mkdir(parents=True, exist_ok=True)
+    out_directory_bedrock.mkdir(parents=True, exist_ok=True)
 
-    Wraps `run_predictions()` with MLflow tracking, evaluation, and analytics.
-
-    Args:
-        file_path (Path): Path to the json file we want to predict from.
-        ground_truth_path (Path): Path to the ground truth file, if file_path is the predictions.
-        out_directory (Path): Path to output directory.
-        out_directory_bedrock (Path): Path to output directory for bedrock API files.
-        predictions_path (Path): Path to the file where predictions will be stored.
-        file_subset_directory (Path): Path to the directory containing the file whose names are used.
-        classifier_type (str): The classifier type to use.
-        model_path (Path): Path to the trained model.
-        classification_system (str): The classification system used to classify the data.
-        resume (bool, optional): Resume previous run if available. Defaults to false.
-        runname (str, optional): Run name for MLflow. Defaults to None.
-        is_nested (bool, optional): If True, indicates this is a nested run (called from multi benchmark pipeline).
-    """
-    temp_paths = prepare_pipeline_temp_paths(
-        predictions_path,
-        resume=resume,
-        cleanup_mlflow_tmp=False,
-    )
-    predictions_path_tmp = temp_paths.predictions_path_tmp
-    mlflow_runid_tmp = temp_paths.mlflow_runid_tmp
-
-    start_or_resume_mlflow_run(
-        resume=resume,
-        mlflow_runid_tmp=mlflow_runid_tmp,
-        setup_run=lambda runid: setup_classification_mlflow_tracking(
-            run_id=runid,
+    def _run_predictions(
+        predictions_path_tmp: Path,
+    ) -> PipelineRunResult[tuple[list[LayerInformation], Classifier | None]]:
+        layer_descriptions, classifier, n_documents = run_predictions(
             file_path=file_path,
             ground_truth_path=ground_truth_path,
             out_directory=out_directory,
-            experiment_name="Layer descriptions classification",
-            runname=runname or file_path.name,
-            nested=is_nested,
-        ),
-    )
-
-    layer_descriptions, classifier, n_documents = run_predictions(
-        file_path=file_path,
-        ground_truth_path=ground_truth_path,
-        out_directory=out_directory,
-        out_directory_bedrock=out_directory_bedrock,
-        classifier_type=classifier_type,
-        model_path=model_path,
-        classification_system=classification_system,
-    )
-
-    if mlflow:
-        mlflow.log_metric("n_documents", float(n_documents))
-
-    if not layer_descriptions:
-        logger.warning("No data to classify. Returning empty summary so parent can still aggregate n_documents.")
-
-        empty_summary = ClassificationBenchmarkSummary(
-            file_path=str(file_path),
-            ground_truth_path=str(ground_truth_path) if ground_truth_path else None,
-            n_documents=n_documents,
-            classifier_type=classifier_type,
-            model_path=str(model_path) if model_path else None,
-            classification_system=classification_system,
-            metrics={},
-        )
-
-        finalize_pipeline_run(
-            is_nested=is_nested,
-            predictions_path_tmp=None,
-            final_predictions_path=None,
-            copy_predictions=False,
-            mlflow_runid_tmp=mlflow_runid_tmp,
-        )
-        return empty_summary
-
-    final_pred = out_directory / "class_predictions.json"
-    if final_pred.exists():
-        shutil.copy(final_pred, predictions_path_tmp)
-
-    # centralize evaluation + per-class artifacts in score module
-    summary = evaluate_all_predictions(
-        layer_descriptions=layer_descriptions,
-        params=BenchmarkParams(
-            file_path=file_path,
-            ground_truth_path=ground_truth_path,
+            out_directory_bedrock=out_directory_bedrock,
             classifier_type=classifier_type,
             model_path=model_path,
             classification_system=classification_system,
-            n_documents=n_documents,
-        ),
-        out_directory=out_directory,
-    )
-
-    # If evaluate_all_predictions returned None, stop here
-    if summary is None:
-        finalize_pipeline_run(
-            is_nested=is_nested,
-            predictions_path_tmp=None,
-            final_predictions_path=None,
-            copy_predictions=False,
-            mlflow_runid_tmp=mlflow_runid_tmp,
         )
-        return None
 
-    if mlflow and summary is not None:
-        log_ml_flow_infos(file_path, out_directory, layer_descriptions, classifier, classification_system)
+        final_pred = out_directory / "class_predictions.json"
+        copied_tmp: Path | None = None
+        if final_pred.exists():
+            shutil.copy(final_pred, predictions_path_tmp)
+            copied_tmp = predictions_path_tmp
 
-    finalize_pipeline_run(
+        return PipelineRunResult(
+            prediction_payload=(layer_descriptions, classifier),
+            n_documents=n_documents,
+            copy_source=copied_tmp,
+        )
+
+    def _evaluate(
+        run_result: PipelineRunResult[tuple[list[LayerInformation], Classifier | None]],
+    ) -> ClassificationBenchmarkSummary | None:
+        layer_descriptions, _classifier = run_result.prediction_payload
+
+        if not layer_descriptions:
+            logger.warning("No data to classify. Returning empty summary so parent can still aggregate n_documents.")
+            return ClassificationBenchmarkSummary(
+                file_path=str(file_path),
+                ground_truth_path=str(ground_truth_path) if ground_truth_path else None,
+                n_documents=run_result.n_documents,
+                classifier_type=classifier_type,
+                model_path=str(model_path) if model_path else None,
+                classification_system=classification_system,
+                metrics={},
+            )
+
+        return evaluate_all_predictions(
+            layer_descriptions=layer_descriptions,
+            params=BenchmarkParams(
+                file_path=file_path,
+                ground_truth_path=ground_truth_path,
+                classifier_type=classifier_type,
+                model_path=model_path,
+                classification_system=classification_system,
+                n_documents=run_result.n_documents,
+            ),
+            out_directory=out_directory,
+        )
+
+    def _after_evaluation(
+        run_result: PipelineRunResult[tuple[list[LayerInformation], Classifier | None]],
+        summary: ClassificationBenchmarkSummary | None,
+        _predictions_path_tmp: Path,
+    ) -> None:
+        layer_descriptions, classifier = run_result.prediction_payload
+
+        if mlflow and summary is not None and classifier is not None and layer_descriptions:
+            log_ml_flow_infos(
+                file_path=file_path,
+                out_directory=out_directory,
+                layer_descriptions=layer_descriptions,
+                classifier=classifier,
+                classification_system=classification_system,
+            )
+
+    return execute_pipeline_run(
+        predictions_path=predictions_path,
+        resume=resume,
         is_nested=is_nested,
-        predictions_path_tmp=predictions_path_tmp,
-        final_predictions_path=final_pred,
-        copy_predictions=predictions_path_tmp.exists(),
-        mlflow_runid_tmp=mlflow_runid_tmp,
+        cleanup_mlflow_tmp=False,
+        setup_mlflow_run=(
+            lambda runid: setup_classification_mlflow_tracking(
+                run_id=runid,
+                file_path=file_path,
+                ground_truth_path=ground_truth_path,
+                out_directory=out_directory,
+                experiment_name="Layer descriptions classification",
+                runname=runname or file_path.name,
+                nested=is_nested,
+            )
+            if mlflow
+            else None
+        ),
+        run_predictions=_run_predictions,
+        evaluate_predictions=_evaluate,
+        after_evaluation=_after_evaluation,
+        copy_predictions_to_final=True,
     )
-
-    return summary
 
 
 def start_multi_benchmark(
@@ -320,7 +300,7 @@ def start_multi_benchmark(
     classification_system: str,
     out_directory_bedrock: Path,
     resume: bool = False,
-):
+) -> None:
     """Run multiple classification benchmarks in one execution."""
     multi_root = out_directory / "multi"
     multi_bedrock_root = out_directory_bedrock / "multi"
@@ -366,7 +346,7 @@ def start_multi_benchmark(
             overall_results=overall_results,
             multi_root=root,
             aggregate_label="total/mean",
-            metric_key_shortener=_short_metric_key,
+            metric_key_shortener=short_metric_key,
         )
 
     run_multi_benchmark(

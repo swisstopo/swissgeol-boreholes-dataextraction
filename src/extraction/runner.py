@@ -1,5 +1,7 @@
 """Pipeline runner for borehole data extraction with single and multi-benchmark support."""
 
+from __future__ import annotations
+
 import json
 import logging
 from collections.abc import Sequence
@@ -9,16 +11,14 @@ from pathlib import Path
 from tqdm import tqdm
 
 from core.benchmark_utils import (
-    _short_metric_key,
     finalize_overall_summary,
-    finalize_pipeline_run,
     parent_input_key,
-    prepare_pipeline_temp_paths,
     run_multi_benchmark,
-    start_or_resume_mlflow_run,
+    short_metric_key,
 )
 from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_parent_run, setup_mlflow_tracking
+from core.pipeline_runner import PipelineRunResult, execute_pipeline_run
 from extraction.core.extract import ExtractionResult, extract, open_pdf
 from extraction.evaluation.benchmark.score import ExtractionBenchmarkSummary, evaluate_all_predictions
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
@@ -305,121 +305,96 @@ def start_pipeline(
     runname: str | None = None,
     is_nested: bool = False,
 ) -> None | ExtractionBenchmarkSummary:
-    """Run the boreholes data extraction pipeline.
+    """Run the boreholes data extraction pipeline."""
+    out_directory.mkdir(parents=True, exist_ok=True)
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
 
-    The pipeline will extract material description of all found layers and assign them to the corresponding
-    depth intervals. The input directory should contain pdf files with boreholes data. The algorithm can deal
-    with borehole profiles of multiple pages.
-
-    Wraps `run_predictions()` with MLflow tracking, evaluation, and analytics.
-
-    Note: This function is designed to be called from the label-studio backend, whereas the click_pipeline function
-    is called from the CLI.
-
-    Args:
-        input_directory (Path): The directory containing the pdf files. Can also be the path to a single pdf file.
-        ground_truth_path (Path | None): The path to the ground truth file json file.
-        out_directory (Path): The directory to store the evaluation results.
-        predictions_path (Path): The path to the predictions file.
-        metadata_path (Path): The path to the metadata file.
-        skip_draw_predictions (bool, optional): Whether to skip drawing predictions on pdf pages. Defaults to False.
-        draw_lines (bool, optional): Whether to draw lines on pdf pages. Defaults to False.
-        draw_tables (bool, optional): Whether to draw detected table structures on pdf pages. Defaults to False.
-        draw_strip_logs (bool, optional): Whether to draw detected strip log structures on pages. Defaults to False.
-        csv (bool): Whether to generate a CSV output. Defaults to False.
-        resume (bool, optional): Resume previous run if available. Defaults to false.
-        matching_analytics (bool): Whether to enable matching parameters analytics. Defaults to False.
-        part (str): Pipeline mode, "all" for full extraction, "metadata" for metadata only. Defaults to "all".
-        runname (str, optional): Run name for MLflow. Defaults to None.
-        is_nested (bool, optional): If True, indicates this is a nested run (called from benchmark pipeline).
-
-    Returns:
-        ExtractionBenchmarkSummary | None: Evaluation summary if ground truth is provided, otherwise None.
-    """  # noqa: D301
-    # Check that all given outputs exists
-    out_directory.mkdir(exist_ok=True)
-    temp_paths = prepare_pipeline_temp_paths(
-        predictions_path,
-        resume=bool(resume),
-        cleanup_mlflow_tmp=True,
-    )
-    predictions_path_tmp = temp_paths.predictions_path_tmp
-    mlflow_runid_tmp = temp_paths.mlflow_runid_tmp
-
-    metadata_path.parent.mkdir(exist_ok=True)
-
-    # Initialize analytics if enabled
     analytics = create_analytics() if matching_analytics else None
 
-    start_or_resume_mlflow_run(
-        resume=bool(resume),
-        mlflow_runid_tmp=mlflow_runid_tmp,
-        setup_run=lambda runid: setup_extraction_mlflow_tracking(
-            runid=runid,
+    def _run_predictions(predictions_path_tmp: Path) -> PipelineRunResult[tuple[OverallFilePredictions, list[Path]]]:
+        predictions, n_documents, csv_paths = run_predictions(
             input_directory=input_directory,
-            ground_truth_path=ground_truth_path,
-            runname=runname or input_directory.name,
             out_directory=out_directory,
-            predictions_path=predictions_path,
-            metadata_path=metadata_path,
-            nested=is_nested,
-        ),
-    )
+            predictions_path_tmp=predictions_path_tmp,
+            skip_draw_predictions=skip_draw_predictions,
+            draw_lines=draw_lines,
+            draw_tables=draw_tables,
+            draw_strip_logs=draw_strip_logs,
+            csv=csv,
+            part=part,
+            analytics=analytics,
+        )
 
-    predictions, n_documents, csv_paths = run_predictions(
-        input_directory=input_directory,
-        out_directory=out_directory,
-        predictions_path_tmp=predictions_path_tmp,
-        skip_draw_predictions=skip_draw_predictions,
-        draw_lines=draw_lines,
-        draw_tables=draw_tables,
-        draw_strip_logs=draw_strip_logs,
-        csv=csv,
-        part=part,
-        analytics=analytics,
-    )
+        return PipelineRunResult(
+            prediction_payload=(predictions, csv_paths),
+            n_documents=n_documents,
+            copy_source=predictions_path_tmp if part == "all" and predictions_path_tmp.exists() else None,
+        )
 
-    if mlflow:
-        mlflow.log_metric("n_documents", float(n_documents))
-        for csv_path in csv_paths:
-            mlflow.log_artifact(str(csv_path), "csv")
+    def _evaluate(
+        run_result: PipelineRunResult[tuple[OverallFilePredictions, list[Path]]],
+    ) -> ExtractionBenchmarkSummary | None:
+        predictions, _csv_paths = run_result.prediction_payload
 
-    # Evaluate final predictions
-    eval_summary = evaluate_all_predictions(
-        predictions=predictions,
-        ground_truth_path=ground_truth_path,
-    )
-    if eval_summary is not None:
-        eval_summary.n_documents = n_documents
+        eval_summary = evaluate_all_predictions(
+            predictions=predictions,
+            ground_truth_path=ground_truth_path,
+        )
+        if eval_summary is not None:
+            eval_summary.n_documents = run_result.n_documents
 
-    # Log metrics to MLflow if enabled
-    if mlflow and eval_summary is not None:
-        log_metric_mlflow(eval_summary, out_dir=out_directory)
+        return eval_summary
 
-    # Save all metadata, analytics and predictions (if needed)
-    logger.info(f"Metadata written to {metadata_path}")
-    with open(metadata_path, "w", encoding="utf8") as file:
-        json.dump(predictions.get_metadata_as_dict(), file, ensure_ascii=False)
+    def _after_evaluation(
+        run_result: PipelineRunResult[tuple[OverallFilePredictions, list[Path]]],
+        summary: ExtractionBenchmarkSummary | None,
+        _predictions_path_tmp: Path,
+    ) -> None:
+        predictions, csv_paths = run_result.prediction_payload
 
-    # Finalize analytics if enabled
-    if matching_analytics:
-        # Warning: Resuming analytics is not supported
-        analytics_output_path = out_directory / "matching_params_analytics.json"
-        analytics.save_analytics(analytics_output_path)
-        logger.info(f"Matching parameters analytics saved to {analytics_output_path}")
+        if mlflow:
+            for csv_path in csv_paths:
+                mlflow.log_artifact(str(csv_path), "csv")
 
-    if part == "all":
-        logger.info(f"Writing predictions to final JSON file {predictions_path}")
+            if summary is not None:
+                log_metric_mlflow(summary, out_dir=out_directory)
 
-    finalize_pipeline_run(
+        logger.info(f"Metadata written to {metadata_path}")
+        with open(metadata_path, "w", encoding="utf8") as file:
+            json.dump(predictions.get_metadata_as_dict(), file, ensure_ascii=False)
+
+        if matching_analytics and analytics is not None:
+            analytics_output_path = out_directory / "matching_params_analytics.json"
+            analytics.save_analytics(analytics_output_path)
+            logger.info(f"Matching parameters analytics saved to {analytics_output_path}")
+
+        if part == "all":
+            logger.info(f"Writing predictions to final JSON file {predictions_path}")
+
+    return execute_pipeline_run(
+        predictions_path=predictions_path,
+        resume=bool(resume),
         is_nested=is_nested,
-        predictions_path_tmp=predictions_path_tmp,
-        final_predictions_path=predictions_path,
-        copy_predictions=(part == "all"),
-        mlflow_runid_tmp=mlflow_runid_tmp,
+        cleanup_mlflow_tmp=True,
+        setup_mlflow_run=(
+            lambda runid: setup_extraction_mlflow_tracking(
+                runid=runid,
+                input_directory=input_directory,
+                ground_truth_path=ground_truth_path,
+                runname=runname or input_directory.name,
+                out_directory=out_directory,
+                predictions_path=predictions_path,
+                metadata_path=metadata_path,
+                nested=is_nested,
+            )
+            if mlflow
+            else None
+        ),
+        run_predictions=_run_predictions,
+        evaluate_predictions=_evaluate,
+        after_evaluation=_after_evaluation,
+        copy_predictions_to_final=(part == "all"),
     )
-
-    return eval_summary
 
 
 def start_pipeline_benchmark(
@@ -478,7 +453,7 @@ def start_pipeline_benchmark(
             overall_results=overall_results,
             multi_root=root,
             aggregate_label="overall",
-            metric_key_shortener=_short_metric_key,
+            metric_key_shortener=short_metric_key,
         )
 
     run_multi_benchmark(
