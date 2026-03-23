@@ -7,7 +7,7 @@ import json
 import logging
 import os
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from glob import glob
 from pathlib import Path
@@ -265,3 +265,44 @@ def finalize_overall_summary(
             mlflow.log_metric("n_documents", float(total_docs))
 
         mlflow.log_artifact(str(summary_csv_path), artifact_path="summary")
+
+
+def run_multi_benchmark(
+    *,
+    benchmarks: Sequence[Any],
+    multi_root: Path,
+    resume: bool,
+    parent_runid_tmp: Path,
+    setup_parent_run: Callable[[str | None], str] | None,
+    run_single_benchmark: Callable[[Any], Any | None],
+    finalize_summary: Callable[[list[tuple[str, Any | None]], Path], None],
+) -> None:
+    """Run multiple benchmarks with shared orchestration.
+
+    Args:
+        benchmarks: Sequence of benchmark specs. Each benchmark must expose a `.name`.
+        multi_root: Root output directory for the multi-benchmark run.
+        resume: Whether to resume a previous parent MLflow run.
+        parent_runid_tmp: Temporary file storing the parent MLflow run id.
+        setup_parent_run: Callable that takes an optional existing run id and returns
+            the active/new parent run id. May be None if MLflow is not used.
+        run_single_benchmark: Callable that executes one benchmark spec and returns a summary.
+        finalize_summary: Callable that writes/logs the overall summary from collected results.
+    """
+    multi_root.mkdir(parents=True, exist_ok=True)
+
+    if mlflow and setup_parent_run is not None:
+        parent_runid = read_mlflow_runid(str(parent_runid_tmp)) if resume else None
+        parent_runid = setup_parent_run(parent_runid)
+        write_mlflow_runid(str(parent_runid_tmp), parent_runid)
+
+    overall_results: list[tuple[str, Any | None]] = []
+
+    for spec in benchmarks:
+        summary = run_single_benchmark(spec)
+        overall_results.append((spec.name, summary))
+
+    finalize_summary(overall_results, multi_root)
+
+    delete_temporary(parent_runid_tmp)
+    delete_temporary(multi_root / "*" / "*.tmp")

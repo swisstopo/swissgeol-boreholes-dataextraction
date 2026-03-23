@@ -28,6 +28,7 @@ from core.benchmark_utils import (
     finalize_overall_summary,
     parent_input_key,
     read_mlflow_runid,
+    run_multi_benchmark,
     write_mlflow_runid,
 )
 from core.mlflow_tracking import mlflow
@@ -313,41 +314,20 @@ def start_multi_benchmark(
     out_directory_bedrock: Path,
     resume: bool = False,
 ):
-    """Run multiple classification benchmarks in one execution.
-
-    Args:
-        benchmarks (Sequence[BenchmarkSpec]): A sequence of BenchmarkSpec, each specifying a benchmark to run.
-        out_directory (Path): The root output directory where subdirectories for each benchmark will be created.
-        classifier_type (str): The classifier type to use for all benchmarks.
-        model_path (Path | None): Path to the trained model to use for all benchmarks.
-        classification_system (str): The classification system to use for all benchmarks.
-        out_directory_bedrock (Path): The root output directory for bedrock API files.
-        resume (bool, optional): Resume previous run if available. Defaults to false.
-    """
+    """Run multiple classification benchmarks in one execution."""
     multi_root = out_directory / "multi"
-    multi_root.mkdir(parents=True, exist_ok=True)
-
     multi_bedrock_root = out_directory_bedrock / "multi"
-    multi_bedrock_root.mkdir(parents=True, exist_ok=True)
-
     parent_runid_tmp = multi_root / "mlflow_parent_runid.json.tmp"
 
-    if mlflow:
-        # Load run id if existing, otherwise None
-        parent_runid = read_mlflow_runid(str(parent_runid_tmp)) if resume else None
-        parent_runid = _setup_mlflow_parent_run(
+    def setup_parent_run(parent_runid: str | None) -> str:
+        return _setup_mlflow_parent_run(
             runid=parent_runid,
             out_directory=multi_root,
             benchmarks=benchmarks,
             experiment_name="Layer descriptions classification",
         )
-        # Save current run id
-        write_mlflow_runid(str(parent_runid_tmp), parent_runid)
 
-    overall_results: list[tuple[str, ClassificationBenchmarkSummary | None]] = []
-
-    # try:
-    for spec in benchmarks:
+    def run_single(spec: BenchmarkSpec) -> ClassificationBenchmarkSummary | None:
         logger.info("Running benchmark: %s", spec.name)
 
         bench_out = multi_root / spec.name
@@ -357,7 +337,7 @@ def start_multi_benchmark(
         bench_out_bedrock.mkdir(parents=True, exist_ok=True)
         bench_predictions_path = bench_out / "class_predictions.json"
 
-        summary = start_pipeline(
+        return start_pipeline(
             file_path=spec.file_path,
             ground_truth_path=spec.ground_truth_path,
             out_directory=bench_out,
@@ -371,14 +351,23 @@ def start_multi_benchmark(
             is_nested=True,
         )
 
-        overall_results.append((spec.name, summary))
+    def finalize(
+        overall_results: list[tuple[str, ClassificationBenchmarkSummary | None]],
+        root: Path,
+    ) -> None:
+        finalize_overall_summary(
+            overall_results=overall_results,
+            multi_root=root,
+            aggregate_label="total/mean",
+            metric_key_shortener=_short_metric_key,
+        )
 
-    finalize_overall_summary(
-        overall_results=overall_results,
+    run_multi_benchmark(
+        benchmarks=benchmarks,
         multi_root=multi_root,
-        aggregate_label="total/mean",
-        metric_key_shortener=_short_metric_key,
+        resume=resume,
+        parent_runid_tmp=parent_runid_tmp,
+        setup_parent_run=setup_parent_run if mlflow else None,
+        run_single_benchmark=run_single,
+        finalize_summary=finalize,
     )
-
-    delete_temporary(parent_runid_tmp)
-    delete_temporary(multi_root / "*" / "*.tmp")  # cleanup child tmp files

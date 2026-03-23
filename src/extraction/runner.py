@@ -15,6 +15,7 @@ from core.benchmark_utils import (
     finalize_overall_summary,
     parent_input_key,
     read_mlflow_runid,
+    run_multi_benchmark,
     write_mlflow_runid,
 )
 from core.mlflow_tracking import mlflow
@@ -439,45 +440,25 @@ def start_pipeline_benchmark(
     matching_analytics: bool = False,
     part: str = "all",
 ) -> None:
-    """Run multiple benchmarks in one execution.
+    """Run multiple benchmarks in one execution."""
+    parent_runid_tmp = out_directory / "mlflow_parent_runid.json.tmp"
 
-    Output is namespaced per benchmark under:
-      <out_directory>/<benchmark_name>/
+    def setup_parent_run(parent_runid: str | None) -> str:
+        return _setup_mlflow_parent_run(
+            benchmarks=benchmarks,
+            runname="benchmark",
+            runid=parent_runid,
+        )
 
-    Args:
-        benchmarks (Sequence[BenchmarkSpec]): List of benchmark specifications.
-        out_directory (Path): Output directory for multi-benchmark results.
-        skip_draw_predictions (bool, optional): Whether to skip drawing predictions. Defaults to False.
-        draw_lines (bool, optional): Whether to draw detected lines. Defaults to False.
-        draw_tables (bool, optional): Whether to draw detected tables. Defaults to False.
-        draw_strip_logs (bool, optional): Whether to draw strip logs. Defaults to False.
-        csv (bool, optional): Whether to output CSV summaries. Defaults to False.
-        resume (bool, optional): Resume previous run if available. Defaults to false.
-        matching_analytics (bool, optional): Whether to compute matching analytics. Defaults to False.
-        part (str): Pipeline mode, "all" for full extraction, "metadata" for metadata only. Defaults to "all".
-    """
-    # Create root directory for multi-benchmarking
-    out_directory.mkdir(parents=True, exist_ok=True)
+    def run_single(spec: BenchmarkSpec) -> ExtractionBenchmarkSummary | None:
+        logger.info("Running benchmark: %s", spec.name)
 
-    # Create temp file for parent run
-    mlflow_runid_tmp = out_directory / "mlflow_parent_runid.json.tmp"
-
-    if mlflow:
-        # Load run id if existing, otherwise None
-        parent_runid = read_mlflow_runid(filename=mlflow_runid_tmp) if resume else None
-        parent_runid = _setup_mlflow_parent_run(benchmarks=benchmarks, runname="benchmark", runid=parent_runid)
-        # Save current run id
-        write_mlflow_runid(filename=mlflow_runid_tmp, runid=parent_runid)
-
-    overall_results = []
-    for spec in benchmarks:
-        # Create bench folder to outputs
         bench_out = out_directory / spec.name
         bench_out.mkdir(parents=True, exist_ok=True)
         bench_predictions_path = bench_out / "predictions.json"
         bench_metadata_path = bench_out / "metadata.json"
 
-        eval_result = start_pipeline(
+        return start_pipeline(
             input_directory=spec.input_path,
             ground_truth_path=spec.ground_truth_path,
             out_directory=bench_out,
@@ -494,14 +475,24 @@ def start_pipeline_benchmark(
             runname=spec.name,
             is_nested=True,
         )
-        overall_results.append((spec.name, eval_result))
 
-    finalize_overall_summary(
-        overall_results=overall_results,
+    def finalize(
+        overall_results: list[tuple[str, ExtractionBenchmarkSummary | None]],
+        root: Path,
+    ) -> None:
+        finalize_overall_summary(
+            overall_results=overall_results,
+            multi_root=root,
+            aggregate_label="overall",
+            metric_key_shortener=_short_metric_key,
+        )
+
+    run_multi_benchmark(
+        benchmarks=benchmarks,
         multi_root=out_directory,
-        aggregate_label="overall",
-        metric_key_shortener=_short_metric_key,
+        resume=resume,
+        parent_runid_tmp=parent_runid_tmp,
+        setup_parent_run=setup_parent_run if mlflow else None,
+        run_single_benchmark=run_single,
+        finalize_summary=finalize,
     )
-    # Clean temporary files
-    delete_temporary(mlflow_runid_tmp)  # Main run
-    delete_temporary(out_directory / "*" / "*.tmp")  # Nested runs
