@@ -7,8 +7,6 @@ import shutil
 from collections.abc import Sequence
 from pathlib import Path
 
-import pandas as pd
-
 from classification.classifiers.classifier import Classifier, ClassifierTypes
 from classification.classifiers.classifier_factory import ClassifierFactory
 from classification.evaluation.benchmark.score import (
@@ -27,6 +25,7 @@ from classification.utils.data_utils import (
 from core.benchmark_utils import (
     _short_metric_key,
     delete_temporary,
+    finalize_overall_summary,
     parent_input_key,
     read_mlflow_runid,
     write_mlflow_runid,
@@ -35,52 +34,6 @@ from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_parent_run, setup_mlflow_tracking
 
 logger = logging.getLogger(__name__)
-
-
-def _finalize_overall_summary(
-    *,
-    overall_results: list[tuple[str, None | ClassificationBenchmarkSummary]],
-    multi_root: Path,
-):
-    """Write overall_summary.json and overall_summary.csv (+ mean row).
-
-    Also logs overall aggregate metrics + artifacts to MLflow on the parent run (if enabled).
-    """
-    # --- CSV ---
-    summary_csv_path = multi_root / "overall_summary.csv"
-
-    rows = []
-    for benchmark, summary in overall_results:
-        row: dict[str, any] = {"benchmark": benchmark}
-        if summary is not None:
-            row["ground_truth_path"] = summary.ground_truth_path
-            row["n_documents"] = summary.n_documents
-            row.update(summary.metrics_flat())
-        rows.append(row)
-
-    df = pd.DataFrame(rows).sort_values(by="benchmark")
-
-    total_docs = df["n_documents"].sum()
-    means = df.drop(columns=["n_documents"], errors="ignore").mean(numeric_only=True)
-
-    agg_row = means.round(3)
-    agg_row.at["benchmark"] = "total/mean"
-    agg_row.at["n_documents"] = total_docs
-    df = pd.concat([df, pd.DataFrame([agg_row])], ignore_index=True)
-
-    df.to_csv(summary_csv_path, index=False)
-
-    # --- MLflow: overall mean metrics + artifacts on parent run ---
-    if mlflow:
-        for full_key, value in means.items():
-            if pd.notna(value):
-                short_key = _short_metric_key(full_key)
-                mlflow.log_metric(short_key, value)
-
-        if pd.notna(total_docs):
-            mlflow.log_metric("n_documents", float(total_docs))
-
-        mlflow.log_artifact(str(summary_csv_path), artifact_path="summary")
 
 
 def setup_classification_mlflow_tracking(
@@ -420,7 +373,12 @@ def start_multi_benchmark(
 
         overall_results.append((spec.name, summary))
 
-    _finalize_overall_summary(overall_results=overall_results, multi_root=multi_root)
+    finalize_overall_summary(
+        overall_results=overall_results,
+        multi_root=multi_root,
+        aggregate_label="total/mean",
+        metric_key_shortener=_short_metric_key,
+    )
 
     delete_temporary(parent_runid_tmp)
     delete_temporary(multi_root / "*" / "*.tmp")  # cleanup child tmp files

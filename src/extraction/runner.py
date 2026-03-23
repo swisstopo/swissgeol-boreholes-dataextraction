@@ -6,14 +6,13 @@ import shutil
 from collections.abc import Sequence
 from io import BytesIO
 from pathlib import Path
-from typing import Any
 
-import pandas as pd
 from tqdm import tqdm
 
 from core.benchmark_utils import (
     _short_metric_key,
     delete_temporary,
+    finalize_overall_summary,
     parent_input_key,
     read_mlflow_runid,
     write_mlflow_runid,
@@ -36,55 +35,6 @@ table_detection_params = read_params("table_detection_params.yml")
 striplog_detection_params = read_params("striplog_detection_params.yml")
 
 logger = logging.getLogger(__name__)
-
-
-def _finalize_overall_summary(
-    *,
-    overall_results: list[tuple[str, ExtractionBenchmarkSummary | None]],
-    multi_root: Path,
-):
-    """Write overall benchmark summary.
-
-    Also logs overall aggregate metrics + artifacts to MLflow on the parent run (if enabled).
-
-    Args:
-        overall_results (list[tuple[str, ExtractionBenchmarkSummary]]): List of tuples
-            containing (benchmark_name, ExtractionBenchmarkSummary)
-        multi_root (Path): Output path.
-    """
-    summary_path = multi_root / "overall_summary.csv"
-    # Write data as new dataframe entires
-    rows = []
-    for benchmark, summary in overall_results:
-        row: dict[str, Any] = {"benchmark": benchmark}
-        if summary is not None:
-            row["ground_truth_path"] = summary.ground_truth_path
-            row["n_documents"] = summary.n_documents
-            row.update(summary.metrics_flat())
-        rows.append(row)
-
-    df = pd.DataFrame(rows).sort_values(by="benchmark")
-
-    total_docs = df["n_documents"].sum()
-    means = df.drop(columns=["n_documents"], errors="ignore").mean(numeric_only=True)
-    agg_row = means.round(3)
-    agg_row.at["benchmark"] = "overall"
-    agg_row.at["n_documents"] = total_docs
-    df = pd.concat([df, pd.DataFrame([agg_row])], ignore_index=True)
-
-    df.to_csv(summary_path, index=False)
-
-    # --- MLflow: overall mean metrics + artifacts on parent run ---
-    if mlflow:
-        for full_key, value in means.items():
-            if pd.notna(value):
-                short_key = _short_metric_key(full_key)
-                mlflow.log_metric(short_key, value)
-
-        if pd.notna(total_docs):
-            mlflow.log_metric("n_documents", float(total_docs))
-
-        mlflow.log_artifact(str(summary_path), artifact_path="summary")
 
 
 def write_json_predictions(filename: str, predictions: OverallFilePredictions) -> None:
@@ -546,12 +496,12 @@ def start_pipeline_benchmark(
         )
         overall_results.append((spec.name, eval_result))
 
-    # Write aggregation
-    _finalize_overall_summary(
+    finalize_overall_summary(
         overall_results=overall_results,
         multi_root=out_directory,
+        aggregate_label="overall",
+        metric_key_shortener=_short_metric_key,
     )
-
     # Clean temporary files
     delete_temporary(mlflow_runid_tmp)  # Main run
     delete_temporary(out_directory / "*" / "*.tmp")  # Nested runs

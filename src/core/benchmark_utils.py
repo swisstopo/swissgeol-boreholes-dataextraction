@@ -11,8 +11,12 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from glob import glob
 from pathlib import Path
+from typing import Any
 
+import pandas as pd
 from pydantic import BaseModel
+
+from core.mlflow_tracking import mlflow
 
 DEFAULT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
@@ -207,3 +211,57 @@ def parent_input_key(paths: Sequence[Path]) -> str:
     """
     inputs = " | ".join(sorted(relative_after_common_root(paths)))
     return f"multi:{inputs}"
+
+
+def finalize_overall_summary(
+    *,
+    overall_results: list[tuple[str, Any | None]],
+    multi_root: Path,
+    aggregate_label: str,
+    metric_key_shortener,
+) -> None:
+    """Write overall_summary.csv and optionally log aggregate metrics to MLflow.
+
+    Args:
+        overall_results: List of tuples (benchmark_name, summary). Each summary is expected
+            to expose:
+              - ground_truth_path
+              - n_documents
+              - metrics_flat()
+        multi_root: Root output directory where overall_summary.csv is written.
+        aggregate_label: Label for the aggregate row, e.g. "overall" or "total/mean".
+        metric_key_shortener: Function that converts full metric keys to shorter MLflow keys.
+    """
+    summary_csv_path = multi_root / "overall_summary.csv"
+
+    rows = []
+    for benchmark, summary in overall_results:
+        row: dict[str, Any] = {"benchmark": benchmark}
+        if summary is not None:
+            row["ground_truth_path"] = summary.ground_truth_path
+            row["n_documents"] = summary.n_documents
+            row.update(summary.metrics_flat())
+        rows.append(row)
+
+    df = pd.DataFrame(rows).sort_values(by="benchmark")
+
+    total_docs = df["n_documents"].sum()
+    means = df.drop(columns=["n_documents"], errors="ignore").mean(numeric_only=True)
+
+    agg_row = means.round(3)
+    agg_row.at["benchmark"] = aggregate_label
+    agg_row.at["n_documents"] = total_docs
+    df = pd.concat([df, pd.DataFrame([agg_row])], ignore_index=True)
+
+    df.to_csv(summary_csv_path, index=False)
+
+    if mlflow:
+        for full_key, value in means.items():
+            if pd.notna(value):
+                short_key = metric_key_shortener(full_key)
+                mlflow.log_metric(short_key, value)
+
+        if pd.notna(total_docs):
+            mlflow.log_metric("n_documents", float(total_docs))
+
+        mlflow.log_artifact(str(summary_csv_path), artifact_path="summary")
