@@ -7,8 +7,6 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-import pygit2
-
 from core.mlflow_tracking import mlflow
 
 logger = logging.getLogger(__name__)
@@ -59,6 +57,8 @@ def setup_mlflow_tracking(
 
     if include_git_info:
         try:
+            import pygit2
+
             repo = pygit2.Repository(".")
             commit = repo[repo.head.target]
             mlflow.set_tag("git_branch", repo.head.shorthand)
