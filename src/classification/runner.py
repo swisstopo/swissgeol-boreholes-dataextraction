@@ -216,7 +216,7 @@ def start_pipeline(
             copied_tmp = predictions_path_tmp
 
         return PipelineRunResult(
-            prediction_payload=(layer_descriptions, classifier),
+            predictions=(layer_descriptions, classifier),
             n_documents=n_documents,
             copy_source=copied_tmp,
         )
@@ -224,7 +224,7 @@ def start_pipeline(
     def _evaluate(
         run_result: PipelineRunResult[tuple[list[LayerInformation], Classifier | None]],
     ) -> ClassificationBenchmarkSummary | None:
-        layer_descriptions, _classifier = run_result.prediction_payload
+        layer_descriptions, _classifier = run_result.predictions
 
         if not layer_descriptions:
             logger.warning("No data to classify. Returning empty summary so parent can still aggregate n_documents.")
@@ -256,7 +256,7 @@ def start_pipeline(
         summary: ClassificationBenchmarkSummary | None,
         _predictions_path_tmp: Path,
     ) -> None:
-        layer_descriptions, classifier = run_result.prediction_payload
+        layer_descriptions, classifier = run_result.predictions
 
         if mlflow and summary is not None and classifier is not None and layer_descriptions:
             log_ml_flow_infos(
