@@ -2,7 +2,7 @@
 
 import pytest
 
-from extraction.features.metadata.borehole_name_extraction import _clean_borehole_name
+from extraction.features.metadata.borehole_name_extraction import _is_name_length_valid, clean_borehole_name
 from swissgeol_doc_processing.utils.language_filtering import (
     match_any_keyword,
     normalize_spaces,
@@ -194,5 +194,38 @@ def test_clean_borehole_name(text: str, excluded_keywords: list[str], expected: 
         excluded_keywords (list[str]): Keywords to strip from the name.
         expected (str | None): The cleaned substring that should be matched.
     """
-    text = _clean_borehole_name(text, excluded_keywords)
+    text = clean_borehole_name(text, excluded_keywords)
     assert text == expected
+
+
+@pytest.mark.parametrize(
+    "name, max_name_length, max_word_length, expected",
+    [
+        ("BS 10", None, None, True),
+        ("BS 10 Spiez", 15, None, True),
+        ("BS 10 Spiez", 5, None, False),
+        ("BS 10 Spiez", None, 5, True),
+        ("BS 10 Spiez (123/SP3)", None, 5, True),
+        ("BS 10 Spiez", None, 4, False),
+    ],
+    ids=[
+        "no-constrains",
+        "valid-name-length",
+        "non-valid-name-length",
+        "valid-word-length",
+        "valid-word-length-complex",
+        "non-valid-word-length",
+    ],
+)
+def test_is_name_length_valid(
+    name: str, max_name_length: int | None, max_word_length: int | None, expected: bool
+) -> None:
+    """Check if the he name / words (alphabetical) length are valid.
+
+    Args:
+        name (str): Name to check
+        max_name_length (int | None): Maximum length of name.
+        max_word_length (int | None): Maximum length of any word (alphabetical).
+        expected (bool): Indicate if the name should be valid.
+    """
+    assert expected == _is_name_length_valid(name, max_name_length, max_word_length)

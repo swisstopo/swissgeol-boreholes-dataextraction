@@ -5,7 +5,9 @@
 min_vertical_overlap: 0.9
 # Max allowed distance between keyword and next line
 max_horizontal_distance: 50
-max_title_length: 10
+# Max name and words overall length
+max_name_length: 20
+max_word_length: 3
 
 # For matching_keywords_suffix, respect the following rules
 # * Keyword should match the end of word (e.g.: bohrung -> kernbohrung, rammkernbohrung)
@@ -40,4 +42,4 @@ excluded_keywords: ["nr.", "nr", "n r", "n°", "nº", "no", "nummer"]
 # * Add escape in front of Regex metacharacters: . ^ $ * + ? { } [ ] \ | ( ) -
 # * Keyword is case sensitive
 # * Keywords are kept for borehole name matching.
-matching_keywords_inner: ["KB ??\\d+", "BS ??\\d+", "B ??\\d+"]
+matching_keywords_inner: ["KB ??\\d+", "RB ??\\d+", "BS ??\\d+", "B ??\\d+"]

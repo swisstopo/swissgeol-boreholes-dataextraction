@@ -8,7 +8,7 @@ from extraction.evaluation.evaluation_dataclasses import (
     OverallBoreholeMetadataMetrics,
 )
 from extraction.evaluation.utility import evaluate_single
-from extraction.features.metadata.borehole_name_extraction import BoreholeName, _clean_borehole_name
+from extraction.features.metadata.borehole_name_extraction import BoreholeName, clean_borehole_name
 from extraction.features.metadata.coordinate_extraction import Coordinate
 from extraction.features.predictions.borehole_predictions import FileMetadataWithGroundTruth
 from swissgeol_doc_processing.utils.file_utils import read_params
@@ -158,13 +158,14 @@ class MetadataEvaluator:
         Returns:
             bool: True if texts match, False otherwise.
         """
-        # Define keywords are matching names and excluded ones
+        # Define keywords to exclude during matching
         keywords_set_a = name_detection_params.get("matching_keywords_suffix", [])
         keywords_set_b = name_detection_params.get("excluded_keywords", [])
         keywords = keywords_set_a + keywords_set_b
+
         # Normalize strings
-        extracted_name = _clean_borehole_name(extracted_name.name, keywords)
-        ground_truth_name = _clean_borehole_name(ground_truth_name, keywords)
+        extracted_name = clean_borehole_name(extracted_name.name, keywords)
+        ground_truth_name = clean_borehole_name(ground_truth_name, keywords)
 
         # Check if space should be ignored
         if ignore_spaces:

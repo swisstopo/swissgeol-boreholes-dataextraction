@@ -35,7 +35,7 @@ def normalize_spaces(text: str) -> str:
     """Normalize whitespace and remove leading/trailing spaces.
 
     Args:
-        text (str): Text to be normlized.
+        text (str): Text to be normalized.
 
     Returns:
         str: Normalized text (single spaces, no leading/trailing spaces).
@@ -54,8 +54,8 @@ def match_any_keyword(
 ) -> re.Match | None:
     """Search for the first occurrence of any keyword from a predefined list in a text.
 
-    The search is case-insensitive. Keywords are treated as **raw regex patterns** — callers are
-    responsible for escaping metacharacters.
+    Keywords are treated as **raw regex patterns**. Callers are responsible for escaping
+    metacharacters.
 
     Args:
         text (str): The text to search within.
@@ -88,7 +88,7 @@ def remove_any_keyword(text: str, keywords: list[str]) -> str:
     Returns:
         str: The cleaned text with all matching keywords removed.
     """
-    # Build regex pattern for keywords (raw patterns, not escaped)
+    # Build regex pattern for keywords
     pattern = "(" + "|".join(r"(?<!\w)" + re.escape(kw) + r"(?=\W|\d|$)" for kw in keywords) + ")"
     # Remove matched keywords (case-insensitive)
     cleaned = re.sub(pattern, "", text, flags=re.IGNORECASE)
