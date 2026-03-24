@@ -181,7 +181,7 @@ def extract_borehole_names(
         # Step 1.2: Enforce start and end matching with matching_keywords_inner
         match_inner = match_any_keyword(line.text, matching_keywords_inner, start=True, end=True, ignore_case=False)
 
-        # Extract matched text
+        # Extract matched text (prioritize prefix over inner)
         if not (match := match_prefix or match_inner):
             continue
 

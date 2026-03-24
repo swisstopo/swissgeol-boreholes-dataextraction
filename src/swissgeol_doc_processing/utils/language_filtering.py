@@ -81,13 +81,9 @@ def match_any_keyword(
 def remove_any_keyword(text: str, keywords: list[str]) -> str:
     """Remove all occurrences of specified keywords from the text.
 
-    The removal is case-insensitive. Keywords are treated as **raw regex patterns** and callers must
-    escape metacharacters themselves.
-
     Args:
         text (str): The input text to clean.
-        keywords (list[str]): List of regex patterns to remove. Metacharacters must be
-            escaped by the caller.
+        keywords (list[str]): List of keywords to remove.
 
     Returns:
         str: The cleaned text with all matching keywords removed.

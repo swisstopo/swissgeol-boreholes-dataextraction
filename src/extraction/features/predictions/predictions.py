@@ -241,20 +241,20 @@ class BoreholeListBuilder:
                 if not valid_available_elements:
                     borehole_index_to_matched_elem_index[borehole_index] = None
                     continue
+
                 # Match found, check best candidate
-                else:
-                    best_element = min(
-                        valid_available_elements,
-                        key=lambda elem: (
-                            # On the first pages
-                            elem.page_number,
-                            # As high as possible
-                            elem.rect.y0,
-                        ),
-                    )
-                    # fill the mapping borehole_index -> element and remove the element from the element list
-                    borehole_index_to_matched_elem_index[borehole_index] = best_element
-                    element_list.remove(best_element)
+                best_element = min(
+                    valid_available_elements,
+                    key=lambda elem: (
+                        # On the first pages
+                        elem.page_number,
+                        # As high as possible
+                        elem.rect.y0,
+                    ),
+                )
+                # fill the mapping borehole_index -> element and remove the element from the element list
+                borehole_index_to_matched_elem_index[borehole_index] = best_element
+                element_list.remove(best_element)
 
         return borehole_index_to_matched_elem_index
 

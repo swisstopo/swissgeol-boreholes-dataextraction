@@ -71,8 +71,8 @@ def test_remove_in_parenthesis(text: str, expected: str) -> None:
         ("test schachtprofil 12", ["profil"], False, True, True, "schachtprofil"),
         ("test schachtprofil 12", ["profil"], True, False, True, None),
         ("test forage schachtprofil 12", ["forage", "profil"], False, True, True, "forage"),
-        ("test forage KB12", ["KB ??\d+"], True, True, False, "KB12"),
-        ("KB Guatelli KBaBcd12", ["KB ??\d+"], True, True, False, None),
+        ("test forage KB12", [r"KB ??\d+"], True, True, False, "KB12"),
+        ("KB Guatelli KBaBcd12", [r"KB ??\d+"], True, True, False, None),
     ],
     ids=[
         "full-word",
@@ -94,7 +94,7 @@ def test_match_any_keyword(
 
     Args:
         text (str): Text to search within.
-        keywords (list[str]): Keywords to look for (treated as literals).
+        keywords (list[str]): Keywords to look for (treated as raw regex patterns).
         start (bool): If True, the matched word must start with the keyword.
         end (bool): If True, the matched word must end with the keyword.
         ignore_case (bool): If True, keyword matching is case insensitive.
