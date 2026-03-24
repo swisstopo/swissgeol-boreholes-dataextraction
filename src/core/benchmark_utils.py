@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import abc
 import json
 import logging
 import os
 import shutil
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from glob import glob
@@ -83,7 +82,7 @@ def short_metric_key(k: str) -> str:
     return k.split("/", 1)[1] if "/" in k else k
 
 
-class BenchmarkSummary(BaseModel, ABC):
+class BenchmarkSummary(BaseModel):
     """Shared base class for benchmark summaries."""
 
     ground_truth_path: str | None
@@ -95,8 +94,8 @@ class BenchmarkSummary(BaseModel, ABC):
         raise NotImplementedError
 
 
-@dataclass
-class Metrics(metaclass=abc.ABCMeta):
+@dataclass(frozen=True)
+class Metrics:
     """Metrics for the evaluation of extracted features (e.g., Groundwater, Elevation, Coordinates)."""
 
     tp: int
@@ -147,20 +146,20 @@ class Metrics(metaclass=abc.ABCMeta):
     # TODO: Currently, some other methods for averaging metrics are in the OverallMetrics class.
     # On the long run, we should refactor this to have a single place where these averaging computations are
     # implemented.
-    @staticmethod
-    def micro_average(metric_list: list[Metrics]) -> Metrics:
+    @classmethod
+    def micro_average(cls, metric_list: list[Metrics]) -> Metrics:
         """Converts a list of metrics to a metric.
 
         Args:
             metric_list (list): The list of metrics.
 
         Returns:
-            Metrics: Combined metrics.
+            Metrics: Combined metrics with the same type as the caller.
         """
-        tp = sum([metric.tp for metric in metric_list])
-        fp = sum([metric.fp for metric in metric_list])
-        fn = sum([metric.fn for metric in metric_list])
-        return Metrics(tp=tp, fp=fp, fn=fn)
+        tp = sum(metric.tp for metric in metric_list)
+        fp = sum(metric.fp for metric in metric_list)
+        fn = sum(metric.fn for metric in metric_list)
+        return cls(tp=tp, fp=fp, fn=fn)
 
 
 def relative_after_common_root(paths: Sequence[Path]) -> list[str]:
