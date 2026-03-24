@@ -141,7 +141,7 @@ def extract_borehole_names(
 
     The algorithm scans each line using two keyword lists:
 
-    - **matching_keywords_prefix** (soft): matched at the end of a word (e.g. "bohrung" matches
+    - **matching_keywords_suffix** (soft): matched at the end of a word (e.g. "bohrung" matches
         "kernbohrung"). The name is the substring after the match. The keyword itself is **not**
         included in the output.
     - **matching_keywords_inner** (strict): matched at both the **start** and **end** of a word.
@@ -166,7 +166,7 @@ def extract_borehole_names(
         list[FeatureOnPage[BoreholeName]]: A list of extracted borehole names, if found
     """
     candidates: list[FeatureOnPage[BoreholeName]] = []
-    matching_keywords_prefix = name_detection_params.get("matching_keywords_prefix", [])
+    matching_keywords_suffix = name_detection_params.get("matching_keywords_suffix", [])
     matching_keywords_inner = name_detection_params.get("matching_keywords_inner", [])
     excluded_keywords = name_detection_params.get("excluded_keywords", [])
     min_vertical_overlap = name_detection_params.get("min_vertical_overlap", 1.0)
@@ -176,10 +176,10 @@ def extract_borehole_names(
     # Iterate over all lines
     for line in text_lines:
         # Step 1: Check line for keyword
-        # Step 1.1: Enforce end matching with matching_keywords_prefix
-        match_prefix = match_any_keyword(line.text, matching_keywords_prefix, start=False, end=True)
+        # Step 1.1: Enforce end matching with matching_keywords_suffix
+        match_prefix = match_any_keyword(line.text, matching_keywords_suffix, start=False, end=True, ignore_case=True)
         # Step 1.2: Enforce start and end matching with matching_keywords_inner
-        match_inner = match_any_keyword(line.text, matching_keywords_inner, start=True, end=True)
+        match_inner = match_any_keyword(line.text, matching_keywords_inner, start=True, end=True, ignore_case=False)
 
         # Extract matched text
         if not (match := match_prefix or match_inner):

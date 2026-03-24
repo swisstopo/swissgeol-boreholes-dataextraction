@@ -7,11 +7,10 @@ min_vertical_overlap: 0.9
 max_horizontal_distance: 50
 max_title_length: 10
 
-# Keyword for borehole name detection
-# !! Add escape in front of Regex metacharacters: . ^ $ * + ? { } [ ] \ | ( ) -
+# Keyword for borehole name  (case insensitive)
 
-# Keyword match end of word (bohrung -> KERNbohrung, RAMMKERNbohrung)
-matching_keywords_prefix:
+# Match end of word (bohrung -> KERNbohrung, RAMMKERNbohrung)
+matching_keywords_suffix:
   [
     "baggerschacht",
     "baggerschlitz",
@@ -33,8 +32,10 @@ matching_keywords_prefix:
     "sondierung",
   ]
 
-# Keyword match start with
-matching_keywords_inner: ["KB ??\\d+", "BS ??\\d+", "B ??\\d+"]
-
 # Keyword to ignore in borehole name detection
 excluded_keywords: ["nr.", "nr", "n r", "n°", "nº", "no", "nummer"]
+
+# Match start. Be carefull with inner keywords
+# * !!! Add escape in front of Regex metacharacters: . ^ $ * + ? { } [ ] \ | ( ) -
+# * !!! Matching is case sensitive
+matching_keywords_inner: ["KB ??\\d+", "BS ??\\d+", "B ??\\d+"]

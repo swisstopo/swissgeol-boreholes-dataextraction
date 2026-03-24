@@ -45,7 +45,13 @@ def normalize_spaces(text: str) -> str:
     return cleaned
 
 
-def match_any_keyword(text: str, keywords: list[str], start: bool = False, end: bool = False) -> re.Match | None:
+def match_any_keyword(
+    text: str,
+    keywords: list[str],
+    start: bool = False,
+    end: bool = False,
+    ignore_case: bool = True,
+) -> re.Match | None:
     """Search for the first occurrence of any keyword from a predefined list in a text.
 
     The search is case-insensitive. Keywords are treated as **raw regex patterns** — callers are
@@ -57,6 +63,7 @@ def match_any_keyword(text: str, keywords: list[str], start: bool = False, end: 
             escaped by the caller.
         start (bool, optional): If True, the word must start with the keyword. Defaults to False.
         end (bool, optional): If True, the word must end with the keyword. Defaults to False.
+        ignore_case (bool, optional): If True, keyword matching is case insensitive. Default to True.
 
     Returns:
         re.Match | None: The first match object found in the text, or None if no keyword is present.
@@ -68,7 +75,7 @@ def match_any_keyword(text: str, keywords: list[str], start: bool = False, end: 
     reg_end = "" if end else r"\w*"
     pattern = r"\b" + reg_start + "(?:" + "|".join(keywords) + r")" + reg_end + r"\b"
 
-    return re.search(pattern, text, re.IGNORECASE)
+    return re.search(pattern, text, flags=re.IGNORECASE if ignore_case else re.NOFLAG)
 
 
 def remove_any_keyword(text: str, keywords: list[str]) -> str:
