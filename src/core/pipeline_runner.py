@@ -23,13 +23,13 @@ class PipelineRunResult(Generic[PredictionT]):
     """Container for the shared pipeline executor.
 
     Attributes:
-        predictions: Pipeline-specific prediction result.
+        result: Pipeline-specific prediction result.
         n_documents: Number of processed documents.
         copy_source: Optional path to copy to final predictions during finalization.
             If None, the shared executor falls back to the temporary predictions path.
     """
 
-    predictions: PredictionT
+    result: PredictionT
     n_documents: int
     copy_source: Path | None = None
 

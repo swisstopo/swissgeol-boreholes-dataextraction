@@ -197,7 +197,7 @@ def _setup_mlflow_parent_run(
     )
 
 
-def run_predictions(
+def run_extraction_predictions(
     input_directory: Path,
     out_directory: Path,
     predictions_path_tmp: Path,
@@ -311,8 +311,10 @@ def start_pipeline(
 
     analytics = create_analytics() if matching_analytics else None
 
-    def _run_predictions(predictions_path_tmp: Path) -> PipelineRunResult[tuple[OverallFilePredictions, list[Path]]]:
-        predictions, n_documents, csv_paths = run_predictions(
+    def _execute_predictions(
+        predictions_path_tmp: Path,
+    ) -> PipelineRunResult[tuple[OverallFilePredictions, list[Path]]]:
+        predictions, n_documents, csv_paths = run_extraction_predictions(
             input_directory=input_directory,
             out_directory=out_directory,
             predictions_path_tmp=predictions_path_tmp,
@@ -326,7 +328,7 @@ def start_pipeline(
         )
 
         return PipelineRunResult(
-            predictions=(predictions, csv_paths),
+            result=(predictions, csv_paths),
             n_documents=n_documents,
             copy_source=predictions_path_tmp if part == "all" and predictions_path_tmp.exists() else None,
         )
@@ -334,7 +336,7 @@ def start_pipeline(
     def _evaluate(
         run_result: PipelineRunResult[tuple[OverallFilePredictions, list[Path]]],
     ) -> ExtractionBenchmarkSummary | None:
-        predictions, _csv_paths = run_result.predictions
+        predictions, _csv_paths = run_result.result
 
         eval_summary = evaluate_all_predictions(
             predictions=predictions,
@@ -350,7 +352,7 @@ def start_pipeline(
         summary: ExtractionBenchmarkSummary | None,
         _predictions_path_tmp: Path,
     ) -> None:
-        predictions, csv_paths = run_result.predictions
+        predictions, csv_paths = run_result.result
 
         if mlflow:
             for csv_path in csv_paths:
@@ -390,7 +392,7 @@ def start_pipeline(
             if mlflow
             else None
         ),
-        run_predictions=_run_predictions,
+        run_predictions=_execute_predictions,
         evaluate_predictions=_evaluate,
         after_evaluation=_after_evaluation,
         copy_predictions_to_final=(part == "all"),

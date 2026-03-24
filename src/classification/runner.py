@@ -122,7 +122,7 @@ def log_ml_flow_infos(
     mlflow.log_artifact(f"{out_directory}/class_predictions.json", "predictions_json")
 
 
-def run_predictions(
+def run_classification_predictions(
     file_path: Path,
     ground_truth_path: Path | None,
     out_directory: Path,
@@ -196,10 +196,10 @@ def start_pipeline(
     out_directory.mkdir(parents=True, exist_ok=True)
     out_directory_bedrock.mkdir(parents=True, exist_ok=True)
 
-    def _run_predictions(
+    def _execute_predictions(
         predictions_path_tmp: Path,
     ) -> PipelineRunResult[tuple[list[LayerInformation], Classifier | None]]:
-        layer_descriptions, classifier, n_documents = run_predictions(
+        layer_descriptions, classifier, n_documents = run_classification_predictions(
             file_path=file_path,
             ground_truth_path=ground_truth_path,
             out_directory=out_directory,
@@ -216,7 +216,7 @@ def start_pipeline(
             copied_tmp = predictions_path_tmp
 
         return PipelineRunResult(
-            predictions=(layer_descriptions, classifier),
+            result=(layer_descriptions, classifier),
             n_documents=n_documents,
             copy_source=copied_tmp,
         )
@@ -224,7 +224,7 @@ def start_pipeline(
     def _evaluate(
         run_result: PipelineRunResult[tuple[list[LayerInformation], Classifier | None]],
     ) -> ClassificationBenchmarkSummary | None:
-        layer_descriptions, _classifier = run_result.predictions
+        layer_descriptions, _classifier = run_result.result
 
         if not layer_descriptions:
             logger.warning("No data to classify. Returning empty summary so parent can still aggregate n_documents.")
@@ -256,7 +256,7 @@ def start_pipeline(
         summary: ClassificationBenchmarkSummary | None,
         _predictions_path_tmp: Path,
     ) -> None:
-        layer_descriptions, classifier = run_result.predictions
+        layer_descriptions, classifier = run_result.result
 
         if mlflow and summary is not None and classifier is not None and layer_descriptions:
             log_ml_flow_infos(
@@ -285,7 +285,7 @@ def start_pipeline(
             if mlflow
             else None
         ),
-        run_predictions=_run_predictions,
+        run_predictions=_execute_predictions,
         evaluate_predictions=_evaluate,
         after_evaluation=_after_evaluation,
         copy_predictions_to_final=True,

@@ -23,7 +23,7 @@ DEFAULT_FORMAT = "%(asctime)s %(levelname)-8s %(name)s: %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 
-def delete_temporary(pattern: Path) -> None:
+def delete_temporary(pattern: Path | str) -> None:
     """Delete temporary files matching a glob pattern.
 
     Only files ending with '.tmp' are deleted.
@@ -36,7 +36,7 @@ def delete_temporary(pattern: Path) -> None:
             os.remove(file)
 
 
-def read_mlflow_runid(filename: str) -> str | None:
+def read_mlflow_runid(filename: Path | str) -> str | None:
     """Read locally stored mlflow run id.
 
     Args:
@@ -52,7 +52,7 @@ def read_mlflow_runid(filename: str) -> str | None:
         return json.load(f)
 
 
-def write_mlflow_runid(filename: str, runid: str) -> None:
+def write_mlflow_runid(filename: Path | str, runid: str) -> None:
     """Locally stores mlflow run id.
 
     Args:
