@@ -231,10 +231,9 @@ class BoreholeListBuilder:
                 borehole = self._layers_with_bb_in_document.boreholes_layers_with_bb[borehole_index]
                 borehole_span_pages = [bbox.page for bbox in borehole.bounding_boxes]
 
+                # Ensure that the element is not matched to a borehole if outside of page span
                 valid_available_elements = [
-                    elem
-                    for elem in available_elements
-                    if min(borehole_span_pages) <= elem.page_number <= max(borehole_span_pages)
+                    elem for elem in available_elements if elem.page_number in borehole_span_pages
                 ]
 
                 # No valid match found
