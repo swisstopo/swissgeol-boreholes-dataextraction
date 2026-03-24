@@ -163,12 +163,12 @@ class MetadataEvaluator:
         keywords_set_b = name_detection_params.get("excluded_keywords", [])
         keywords = keywords_set_a + keywords_set_b
         # Normalize strings
-        extracted_name_ = _clean_borehole_name(extracted_name.name, keywords)
-        ground_truth_name_ = _clean_borehole_name(ground_truth_name, keywords)
+        extracted_name = _clean_borehole_name(extracted_name.name, keywords)
+        ground_truth_name = _clean_borehole_name(ground_truth_name, keywords)
 
         # Check if space should be ignored
         if ignore_spaces:
-            extracted_name_ = extracted_name_.replace(" ", "") if extracted_name_ else None
-            ground_truth_name_ = ground_truth_name_.replace(" ", "") if ground_truth_name_ else None
+            extracted_name = extracted_name.replace(" ", "") if extracted_name else None
+            ground_truth_name = ground_truth_name.replace(" ", "") if ground_truth_name else None
         # Return comparison
-        return extracted_name_ == ground_truth_name_
+        return extracted_name == ground_truth_name

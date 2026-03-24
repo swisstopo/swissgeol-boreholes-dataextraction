@@ -243,13 +243,13 @@ class BoreholeListBuilder:
                     continue
                 # Match found, check best candidate
                 else:
-                    best_element = max(
+                    best_element = min(
                         valid_available_elements,
                         key=lambda elem: (
                             # On the first pages
-                            -elem.page_number,
+                            elem.page_number,
                             # As high as possible
-                            -elem.rect.y0,
+                            elem.rect.y0,
                         ),
                     )
                     # fill the mapping borehole_index -> element and remove the element from the element list

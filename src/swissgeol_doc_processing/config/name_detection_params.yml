@@ -31,11 +31,10 @@ matching_keywords_prefix:
     "bohrung",
     "schacht",
     "sondierung",
-    "ews\\-anzahl",
   ]
 
 # Keyword match start with
 matching_keywords_inner: ["KB ??\\d+", "BS ??\\d+", "B ??\\d+"]
 
 # Keyword to ignore in borehole name detection
-excluded_keywords: ["nr\\.", "nr", "n\\ r", "n°", "nº", "no", "nummer"]
+excluded_keywords: ["nr.", "nr", "n r", "n°", "nº", "no", "nummer"]
