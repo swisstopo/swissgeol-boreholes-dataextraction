@@ -152,7 +152,7 @@ class MetadataEvaluator:
 
         Args:
             extracted_name (BoreholeName): BoreholeName object that include detected name.
-            ground_truth_name (dict): Groud truth name.
+            ground_truth_name (dict): Ground truth name.
             ignore_spaces (bool, optional): Indicate if spaces are ignored during matching. Defaults to True.
 
         Returns:

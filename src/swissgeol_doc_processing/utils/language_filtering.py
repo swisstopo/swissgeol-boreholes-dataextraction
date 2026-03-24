@@ -63,7 +63,7 @@ def match_any_keyword(
             escaped by the caller.
         start (bool, optional): If True, the word must start with the keyword. Defaults to False.
         end (bool, optional): If True, the word must end with the keyword. Defaults to False.
-        ignore_case (bool, optional): If True, keyword matching is case insensitive. Default to True.
+        ignore_case (bool, optional): If True, keyword matching is case insensitive. Defaults to True.
 
     Returns:
         re.Match | None: The first match object found in the text, or None if no keyword is present.
@@ -79,7 +79,7 @@ def match_any_keyword(
 
 
 def remove_any_keyword(text: str, keywords: list[str]) -> str:
-    """Remove all occurrences of specified keywords from the text.
+    """Remove all occurrences of specified keywords as literal strings from the text.
 
     Args:
         text (str): The input text to clean.

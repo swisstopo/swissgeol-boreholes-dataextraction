@@ -177,17 +177,17 @@ def extract_borehole_names(
     for line in text_lines:
         # Step 1: Check line for keyword
         # Step 1.1: Enforce end matching with matching_keywords_suffix
-        match_prefix = match_any_keyword(line.text, matching_keywords_suffix, start=False, end=True, ignore_case=True)
+        match_suffix = match_any_keyword(line.text, matching_keywords_suffix, start=False, end=True, ignore_case=True)
         # Step 1.2: Enforce start and end matching with matching_keywords_inner
-        match_inner = match_any_keyword(line.text, matching_keywords_inner, start=True, end=True, ignore_case=False)
+        match_inner = match_any_keyword(line.text, matching_keywords_inner, start=True, end=True, ignore_case=True)
 
-        # Extract matched text (prioritize prefix over inner)
-        if not (match := match_prefix or match_inner):
+        # Extract matched text (prioritize suffix over inner)
+        if not (match := match_suffix or match_inner):
             continue
 
         # Step 2: Clean detection
-        # If prefix, ignore keywords, otherwise (inner) keep it
-        detection = line.text[match.end() :] if match_prefix else line.text[match.start() :]
+        # If suffix, ignore keywords, otherwise (inner) keep it
+        detection = line.text[match.end() :] if match_suffix else line.text[match.start() :]
         # Take match as starting point of borehole name
         if following_text_cleaned := _clean_borehole_name(detection, excluded_keywords):
             # We assume that keyword from strict are part of borehole name

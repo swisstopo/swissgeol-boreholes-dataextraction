@@ -7,8 +7,8 @@ min_vertical_overlap: 0.9
 max_horizontal_distance: 50
 max_title_length: 10
 
-# For matching_keywords_suffix, repect the folowwing rules
-# * Keyword should match the of word (e.g.: bohrung -> kernbohrung, rammkernbohrung)
+# For matching_keywords_suffix, respect the following rules
+# * Keyword should match the end of word (e.g.: bohrung -> kernbohrung, rammkernbohrung)
 # * Keyword is case insensitive
 # * Keywords are ignored for borehole name matching : "12" == "bohrung 12"
 matching_keywords_suffix:
@@ -36,7 +36,7 @@ matching_keywords_suffix:
 # Keyword to ignore in borehole name detection
 excluded_keywords: ["nr.", "nr", "n r", "n°", "nº", "no", "nummer"]
 
-# For matching_keywords_inner, repect the following rules
+# For matching_keywords_inner, respect the following rules
 # * Add escape in front of Regex metacharacters: . ^ $ * + ? { } [ ] \ | ( ) -
 # * Keyword is case sensitive
 # * Keywords are kept for borehole name matching.
