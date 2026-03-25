@@ -17,10 +17,11 @@ def test_trim_trailing_duplicate_depths():
             DepthColumnEntry(rect=pymupdf.Rect(), value=155, page_number=0),
         ]
     )
-    sidebar = sidebar.trim_trailing_duplicate_depths()
-    assert ProtocolSidebar(
+    sidebar_trimmed = ProtocolSidebar(
         [
             DepthColumnEntry(rect=pymupdf.Rect(), value=5, page_number=0),
             DepthColumnEntry(rect=pymupdf.Rect(), value=155, page_number=0),
         ]
     )
+    sidebar = sidebar.trim_trailing_duplicate_depths()
+    assert [e.value for e in sidebar.entries] == [e.value for e in sidebar_trimmed.entries]
