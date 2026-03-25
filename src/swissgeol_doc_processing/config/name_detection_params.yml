@@ -39,7 +39,7 @@ matching_keywords_suffix:
 excluded_keywords: ["nr.", "nr", "n r", "n°", "nº", "no", "nummer"]
 
 # For matching_keywords_inner, respect the following rules
-# * Add escape in front of Regex metacharacters: . ^ $ * + ? { } [ ] \ | ( ) -
 # * Keyword is case sensitive
 # * Keywords are kept for borehole name matching.
-matching_keywords_inner: ["KB ??\\d+", "RB ??\\d+", "BS ??\\d+", "B ??\\d+"]
+# * In text, keywords should be followed by at least one digit eg: KB1 or B 4
+matching_keywords_inner: ["KB", "RB", "BS", "B"]
