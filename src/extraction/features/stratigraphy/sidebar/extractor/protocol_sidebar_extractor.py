@@ -119,7 +119,6 @@ class ProtocolSidebarExtractor:
     def _is_table_like(sidebar: ProtocolSidebar, lines: list[TextLine]) -> bool:
         """Check whether the sidebar sits inside a simple table-like structure."""
         matching_rows = 0
-        matched_values = []
 
         for entry in sidebar.entries:
             for line in lines:
@@ -130,7 +129,6 @@ class ProtocolSidebarExtractor:
                 if not any(char.isalnum() for char in line.text):
                     continue
                 matching_rows += 1
-                matched_values.append(entry.value)
                 break
 
         threshold = max(1, len(sidebar.entries) // 2)
