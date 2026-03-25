@@ -1,4 +1,4 @@
-"""Test suite for the  Protocol sidebar."""
+"""Test suite for the Protocol sidebar."""
 
 import pymupdf
 

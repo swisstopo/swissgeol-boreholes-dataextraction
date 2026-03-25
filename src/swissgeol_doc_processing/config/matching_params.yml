@@ -58,19 +58,17 @@ affinity_params:
       diagonal_weight: 1.0
       gap_weight: 0.2
       indentation_weight: 0.0
-    
-  
   protocol:
       importance: 1.0
       min_entries: 2
       header_keywords:
         - Tiefe
         - Tiefe bis
-        - Tiefe bis m 
+        - Tiefe bis m
         - bis
         - Depth
       max_header_gap: 40
-      # TODO those parameters were chosen randomly but they behave well so far. 
+      # those parameters were chosen randomly but they behave well so far.
       weights:
         line_weight: 1.0
         left_line_weight: 1.0
