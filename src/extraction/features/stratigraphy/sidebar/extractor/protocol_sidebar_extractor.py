@@ -71,12 +71,7 @@ class ProtocolSidebarExtractor:
             if not processed:
                 continue
 
-            valid_processed = [processed_sidebar for processed_sidebar in processed if processed_sidebar.is_valid()]
-            if not valid_processed:
-                continue
-
-            for processed_sidebar in valid_processed:
-                processed_sidebars.append(processed_sidebar)
+            processed_sidebars.extend(processed)
 
         sidebars_with_noise = [
             SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
