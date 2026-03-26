@@ -68,48 +68,47 @@
             "python": "${workspaceFolder}/.venv/bin/python3"
         },
         {
-            "name": "Python: Run boreholes-classify-descriptions",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "src.classification.main",
-            "args": [
-                "-f",
-                "data/geoquat_ground_truth.json",
-                "-s",
-                "data/geoquat/validation",
-                "-c",
-                "bert",
-                "-p",
-                "models/uscs/your_model_folder",
-                "-cs",
-                "uscs"
-            ],
-            "cwd": "${workspaceFolder}",
-            "justMyCode": true,
-            "python": "${workspaceFolder}/.venv/bin/python3"
+        "name": "Python: Run boreholes-classify",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "src.classification.main",
+        "args": [
+            // classify ground truth descriptions
+            "-f", "data/geoquat_ground_truth.json",
+            // classify ONE ground truth description
+            // "-f", "data/geoquat/onefile",
+            // classify predictions
+            // "-f", "data/output/multi/geoquat_subset/predictions.json",
+
+            "-g", "data/geoquat_ground_truth.json",
+            "-c", "bert",
+            "-p", "models/uscs/fromaws_balancing/",
+            "-cs", "uscs"
+        ],
+        "cwd": "${workspaceFolder}",
+        "justMyCode": true,
+        "python": "${workspaceFolder}/env/bin/python3"
         },
         {
-            "name": "Python: Run boreholes-classify-descriptions from predictions",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "src.classification.main",
-            "args": [
-                "-f",
-                "data/predictions_geoquat.json",
-                "-g",
-                "data/geoquat_ground_truth.json",
-                "-c",
-                "bert",
-                "-p",
-                // "models/lithology/20250526-172024_new_data_s2/checkpoint-1331_best",
-                "models/uscs/balance_best/20250416-192401_best_stage2_balance/checkpoint-8340_very_best",
-                "-cs",
-                // "lithology"
-                "uscs"
-            ],
-            "cwd": "${workspaceFolder}",
-            "justMyCode": true,
-            "python": "${workspaceFolder}/.venv/bin/python3"
+        "name": "Python: Run boreholes-classify (multi)",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "src.classification.main",
+        "args": [
+            // Repeatable benchmark specs: "<name>:<input_path>:<ground_truth_path>"
+            // input path can be full ground truth file or a subset of ground truth
+            // input can also be the prediction files
+            "--benchmark", "geoquat GT: data/geoquat_ground_truth.json: data/geoquat_ground_truth.json",
+            "--benchmark", "geoquat pred : data/output/multi/geoquat_subset/predictions.json: data/geoquat_ground_truth.json",
+            "-c", "bert",
+            "-p", "models/uscs/fromaws_balancing/",
+            "-cs", "uscs",
+            "-o", "data/output_classification/classification_multi",
+            "-ob", "data/output_classification/classification_multi_bedrock"
+        ],
+        "cwd": "${workspaceFolder}",
+        "justMyCode": true,
+        "python": "${workspaceFolder}/env/bin/python3"
         },
         {
             "name": "API",
@@ -147,44 +146,6 @@
             "args": [
                 "-cf",
                 "bert/bert_config_lithology.yml"
-            ],
-            "cwd": "${workspaceFolder}",
-            "justMyCode": true,
-            "python": "${workspaceFolder}/.venv/bin/python3"
-        },
-        {
-            "name": "Python: Run boreholes-classify-descriptions (multi, single-file)",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "src.classification.main",
-            "args": [
-                // Repeatable benchmark specs: "<name>:<file_path>:<subset_dir>"
-                "--benchmark", "val:data/geoquat_ground_truth.json:data/geoquat/validation",
-                "--benchmark", "test:data/geoquat_ground_truth.json:data/geoquat/test",
-                "-c", "bert",
-                "-p", "models/uscs/your_model_folder",
-                "-cs", "uscs",
-                "-o", "data/output_classification/classification_multi",
-                "-ob", "data/output_classification/classification_multi_bedrock"
-            ],
-            "cwd": "${workspaceFolder}",
-            "justMyCode": true,
-            "python": "${workspaceFolder}/.venv/bin/python3"
-            },
-        {
-            "name": "Python: Run boreholes-classify-predictions (multi, predictions+GT)",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "src.classification.main",
-            "args": [
-                // Repeatable benchmark specs: "<name>:<predictions_path>:<ground_truth_path>"
-                "--benchmark", "pred_geoquat:path_to_prediction/predictions.json:data/geoquat_ground_truth.json",
-                "--benchmark", "pred_zurich:path_to_prediction/predictions.json:data/zurich_ground_truth.json",
-                "-c", "bert",
-                "-p", "models/uscs/your_model_folder",
-                "-cs", "uscs",
-                "-o", "data/output_classification/classification_multi_preds",
-                "-ob", "data/output_classification/classification_multi_preds_bedrock"
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
