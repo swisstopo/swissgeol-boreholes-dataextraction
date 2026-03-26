@@ -197,16 +197,17 @@ def extract_borehole_names(
     max_name_length = name_detection_params.get("max_name_length", 1e16)
     max_word_length = name_detection_params.get("max_word_length", 1e16)
 
-    # Enforce the inner keywords to be followed by a digit
-    matching_keywords_inner = [f"{kw} ??\\d+" for kw in matching_keywords_inner]
-
     # Iterate over all lines
     for line in text_lines:
         # Step 1: Check line for keyword
         # Step 1.1: Enforce end matching with matching_keywords_suffix
-        match_suffix = match_any_keyword(line.text, matching_keywords_suffix, start=False, end=True, ignore_case=True)
+        match_suffix = match_any_keyword(
+            line.text, matching_keywords_suffix, start=False, end=True, ignore_case=True, enforce_digit=False
+        )
         # Step 1.2: Enforce start and end matching with matching_keywords_inner
-        match_inner = match_any_keyword(line.text, matching_keywords_inner, start=True, end=True, ignore_case=False)
+        match_inner = match_any_keyword(
+            line.text, matching_keywords_inner, start=True, end=True, ignore_case=False, enforce_digit=True
+        )
 
         # Extract matched text (prioritize suffix over inner)
         if not (match := match_suffix or match_inner):

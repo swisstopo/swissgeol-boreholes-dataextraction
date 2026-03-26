@@ -61,18 +61,18 @@ def test_remove_in_parenthesis(text: str, expected: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "text, keywords, start, end, ignore_case, expected",
+    "text, keywords, start, end, ignore_case, enforce_digit, expected",
     [
-        ("test schachtprofil 12", ["schachtprofil"], False, False, True, "schachtprofil"),
-        ("test Schachtprofil 12", ["schachtprofil"], False, False, True, "Schachtprofil"),
-        ("test Schachtprofil 12", ["schachtprofil"], False, False, False, None),
-        ("test schachtprofil 12", ["schacht"], True, False, True, "schachtprofil"),
-        ("test schachtprofil 12", ["schacht"], False, True, True, None),
-        ("test schachtprofil 12", ["profil"], False, True, True, "schachtprofil"),
-        ("test schachtprofil 12", ["profil"], True, False, True, None),
-        ("test forage schachtprofil 12", ["forage", "profil"], False, True, True, "forage"),
-        ("test forage KB12", [r"KB ??\d+"], True, True, False, "KB12"),
-        ("KB Guatelli KBaBcd12", [r"KB ??\d+"], True, True, False, None),
+        ("test schachtprofil 12", ["schachtprofil"], False, False, True, False, "schachtprofil"),
+        ("test Schachtprofil 12", ["schachtprofil"], False, False, True, False, "Schachtprofil"),
+        ("test Schachtprofil 12", ["schachtprofil"], False, False, False, False, None),
+        ("test schachtprofil 12", ["schacht"], True, False, True, False, "schachtprofil"),
+        ("test schachtprofil 12", ["schacht"], False, True, True, False, None),
+        ("test schachtprofil 12", ["profil"], False, True, True, False, "schachtprofil"),
+        ("test schachtprofil 12", ["profil"], True, False, True, False, None),
+        ("test forage schachtprofil 12", ["forage", "profil"], False, True, True, False, "forage"),
+        ("KB Guatelli KB12", ["KB"], True, True, False, True, "KB12"),
+        ("KB Guatelli KBaBcd12", ["KB"], True, True, False, True, None),
     ],
     ids=[
         "full-word",
@@ -84,11 +84,11 @@ def test_remove_in_parenthesis(text: str, expected: str) -> None:
         "neg-anchored-end",
         "first-match",
         "regex-kb-match",
-        "regex-no-kb-match-1",
+        "regex-no-kb-match",
     ],
 )
 def test_match_any_keyword(
-    text: str, keywords: list[str], start: bool, end: bool, ignore_case: bool, expected: str
+    text: str, keywords: list[str], start: bool, end: bool, ignore_case: bool, enforce_digit: bool, expected: str
 ) -> None:
     """Test keyword search from a predefined list in a text.
 
@@ -98,9 +98,10 @@ def test_match_any_keyword(
         start (bool): If True, the matched word must start with the keyword.
         end (bool): If True, the matched word must end with the keyword.
         ignore_case (bool): If True, keyword matching is case insensitive.
+        enforce_digit (bool): If True, keyword must be followed by at least one digit.
         expected (str): The substring expected to be matched in `text`.
     """
-    match = match_any_keyword(text, keywords, start, end, ignore_case)
+    match = match_any_keyword(text, keywords, start, end, ignore_case, enforce_digit)
 
     if expected:
         assert text[match.start() : match.end()] == expected

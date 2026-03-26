@@ -50,7 +50,8 @@ def match_any_keyword(
     keywords: list[str],
     start: bool = False,
     end: bool = False,
-    ignore_case: bool = True,
+    ignore_case: bool = False,
+    enforce_digit: bool = False,
 ) -> re.Match | None:
     """Search for the first occurrence of any keyword from a predefined list in a text.
 
@@ -63,7 +64,8 @@ def match_any_keyword(
             escaped by the caller.
         start (bool, optional): If True, the word must start with the keyword. Defaults to False.
         end (bool, optional): If True, the word must end with the keyword. Defaults to False.
-        ignore_case (bool, optional): If True, keyword matching is case insensitive. Defaults to True.
+        ignore_case (bool, optional): If True, keyword matching is case insensitive. Defaults to False.
+        enforce_digit (bool, optional): If True, keyword must be followed by at least one digit. Defaults to False.
 
     Returns:
         re.Match | None: The first match object found in the text, or None if no keyword is present.
@@ -71,9 +73,20 @@ def match_any_keyword(
     # Build a regex pattern that matches keywords
     if keywords is None or len(keywords) == 0:
         return None
+
     reg_start = "" if start else r"\w*"
     reg_end = "" if end else r"\w*"
-    pattern = r"\b" + reg_start + "(?:" + "|".join(keywords) + r")" + reg_end + r"\b"
+    reg_enforce_digit = " ??\\d+" if enforce_digit else ""
+
+    pattern = (
+        r"\b"
+        + reg_start
+        + "(?:"
+        + "|".join(re.escape(kw) + reg_enforce_digit for kw in keywords)
+        + r")"
+        + reg_end
+        + r"\b"
+    )
 
     return re.search(pattern, text, flags=re.IGNORECASE if ignore_case else re.NOFLAG)
 
