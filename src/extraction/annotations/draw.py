@@ -125,6 +125,9 @@ class PageDrawer:
                 self.draw_layer(
                     layer=layer,
                     sidebar_rects=[bboxes.sidebar_bbox.rect for bboxes in page_bboxes if bboxes.sidebar_bbox],
+                    depth_entry_rects=[
+                        depth_entry.rect for bboxes in page_bboxes for depth_entry in bboxes.depth_column_entry_bboxes
+                    ],
                     index=index,
                     page_number=self.page_number,
                 )
@@ -220,6 +223,7 @@ class PageDrawer:
         self,
         layer: Layer,
         sidebar_rects: list[pymupdf.Rect],
+        depth_entry_rects: list[pymupdf.Rect],
         index: int,
         page_number: int,
     ):
@@ -232,8 +236,9 @@ class PageDrawer:
         Args:
             layer (Layer): The layer (depth interval and material description).
             sidebar_rects (list[pymupdf.Rect]): The sidebar bounding boxes on the page.
+            depth_entry_rects (list[pymupdf.Rect]): Bounding boxes of all detected depth entries on the current page.
             index (int): Index of the layer.
-            page_number(int): the curent page number.
+            page_number(int): the current page number.
         """
         material_description = layer.material_description
         mat_descr_lines = [line for line in material_description.lines if line.page_number == page_number]
@@ -265,29 +270,54 @@ class PageDrawer:
 
             if layer.depths:
                 depths_rect = pymupdf.Rect()
+                # Collect depth rects on this page
                 if layer.depths.start and layer.depths.start.rect and layer.depths.start.page_number == page_number:
                     depths_rect.include_rect(layer.depths.start.rect)
                 if layer.depths.end and layer.depths.end.page_number == page_number:
                     depths_rect.include_rect(layer.depths.end.rect)
+                # For multi-page borehole layers, the borehole continuation is already shown
+                # separately, so drawing the usual connector line would be visually redundant.
+                # Check if layer spans multiple pages
+                is_cross_page_layer = (
+                    layer.depths.start is not None
+                    and layer.depths.end is not None
+                    and layer.depths.start.page_number != layer.depths.end.page_number
+                )
 
                 if any(sidebar_rect.contains(depths_rect) for sidebar_rect in sidebar_rects):
-                    # Depths are separate from the material description: draw a line connecting them
                     line_anchor = layer.depths.get_line_anchor(page_number)
-                    if line_anchor:
-                        rect = mat_descr_rect
+
+                    # Draw connector only for single-page layers
+                    if line_anchor and not is_cross_page_layer:
                         self.shape.draw_line(
                             line_anchor * self.page.derotation_matrix,
-                            pymupdf.Point(rect.x0, (rect.y0 + rect.y1) / 2) * self.page.derotation_matrix,
+                            pymupdf.Point(mat_descr_rect.x0, (mat_descr_rect.y0 + mat_descr_rect.y1) / 2)
+                            * self.page.derotation_matrix,
                         )
-                        self.shape.finish(
-                            color=pymupdf.utils.getColor(color),
-                        )
+                    self.shape.finish(color=pymupdf.utils.getColor(color))
 
-                    # background color for depth interval
-                    background_rect = layer.depths.get_background_rect(page_number, self.shape.page.rect.height)
-                    if background_rect is not None:
+                # Get depth highlight rectangle
+                background_rect = layer.depths.get_background_rect(page_number, self.shape.page.rect.height)
+
+                # Clip to visible depth entries to avoid full-page pillar
+                if background_rect is not None:
+                    clipped_background_rect = pymupdf.Rect(background_rect)
+
+                    # Avoid full-page "pillars" for spanning layers:
+                    # clip the vertical interval to the actual depth-entry extent visible on this page.
+                    if depth_entry_rects:
+                        # Build one combined rectangle covering all detected depth entries on this page.
+                        page_depth_entries_rect = pymupdf.Rect(depth_entry_rects[0])
+                        for rect in depth_entry_rects[1:]:
+                            page_depth_entries_rect.include_rect(rect)
+
+                        clipped_background_rect.y0 = max(clipped_background_rect.y0, page_depth_entries_rect.y0)
+                        clipped_background_rect.y1 = min(clipped_background_rect.y1, page_depth_entries_rect.y1)
+
+                    # Draw clipped depth highlight
+                    if clipped_background_rect.y0 < clipped_background_rect.y1:
                         self.shape.draw_rect(
-                            background_rect * self.page.derotation_matrix,
+                            clipped_background_rect * self.page.derotation_matrix,
                         )
                         self.shape.finish(
                             color=pymupdf.utils.getColor(color),
@@ -297,8 +327,8 @@ class PageDrawer:
                         )
 
                         self._draw_correctness_line(
-                            start=background_rect.top_left,
-                            end=background_rect.bottom_left,
+                            start=clipped_background_rect.top_left,
+                            end=clipped_background_rect.bottom_left,
                             is_correct=layer.depths.is_correct,
                             width=4,
                         )
