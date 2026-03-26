@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Generic, TypeVar
 
 from core.benchmark_utils import (
+    BenchmarkSummary,
     finalize_pipeline_run,
     prepare_pipeline_temp_paths,
     start_or_resume_mlflow_run,
@@ -15,7 +16,7 @@ from core.benchmark_utils import (
 from core.mlflow_tracking import mlflow
 
 PredictionT = TypeVar("PredictionT")
-SummaryT = TypeVar("SummaryT")
+SummaryT = TypeVar("SummaryT", bound=BenchmarkSummary)
 
 
 @dataclass
