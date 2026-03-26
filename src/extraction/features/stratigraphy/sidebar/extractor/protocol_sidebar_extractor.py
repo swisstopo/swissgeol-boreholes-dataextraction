@@ -49,8 +49,12 @@ class ProtocolSidebarExtractor:
         clusters = Cluster[DepthColumnEntry].create_clusters(entries, lambda entry: entry.rect, allow_size_two=True)
 
         min_entries = sidebar_params.get("min_entries")
-        header_keywords = tuple(sidebar_params.get("header_keywords"))
+        header_keywords = sidebar_params.get("header_keywords")
         max_header_gap = sidebar_params.get("max_header_gap")
+        normalized_keywords = {keyword.casefold() for keyword in header_keywords}
+        header_lines = [
+            line for line in lines if any(keyword in line.text.casefold() for keyword in normalized_keywords)
+        ]
 
         candidate_sidebars = [
             ProtocolSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= min_entries
@@ -58,7 +62,7 @@ class ProtocolSidebarExtractor:
 
         processed_sidebars = []
         for sidebar in candidate_sidebars:
-            has_header = ProtocolSidebarExtractor._is_below_header(sidebar, lines, header_keywords, max_header_gap)
+            has_header = ProtocolSidebarExtractor._is_below_header(sidebar, header_lines, max_header_gap)
             is_table_like = ProtocolSidebarExtractor._is_table_like(sidebar, lines)
 
             if not has_header:
@@ -82,12 +86,6 @@ class ProtocolSidebarExtractor:
 
             processed_sidebars.extend(valid_processed)
 
-            # processed = sidebar.process()
-            # if not processed:
-            #     continue
-
-            # processed_sidebars.extend(processed)
-
         sidebars_with_noise = [
             SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
             for sidebar in processed_sidebars
@@ -109,25 +107,18 @@ class ProtocolSidebarExtractor:
     @staticmethod
     def _is_below_header(
         sidebar: ProtocolSidebar,
-        lines: list[TextLine],
-        header_keywords: tuple[str, ...],
+        header_lines: list[TextLine],
         max_header_gap: float,
     ) -> bool:
         """Check whether the sidebar is located below a matching protocol header."""
         first_entry_rect = sidebar.entries[0].rect
-        normalized_keywords = {keyword.casefold() for keyword in header_keywords}
-
-        for line in lines:
-            line_text = line.text.casefold()
-            if not any(keyword in line_text for keyword in normalized_keywords):
-                continue
+        for line in header_lines:
             if line.rect.y1 > first_entry_rect.y0:
                 continue
-            if first_entry_rect.y0 - line.rect.y1 > max_header_gap:
-                continue
-            if x_overlap_significant_smallest(line.rect, sidebar.rect, 0.2) or line.rect.x0 <= sidebar.rect.x1:
+            if 0 <= first_entry_rect.y0 - line.rect.y1 <= max_header_gap and x_overlap_significant_smallest(
+                line.rect, sidebar.rect, 0.2
+            ):
                 return True
-
         return False
 
     @staticmethod

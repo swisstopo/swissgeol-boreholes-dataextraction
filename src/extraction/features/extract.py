@@ -337,7 +337,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
             for entry in sidebar_noise.sidebar.entries:
                 used_entry_rects.add(entry.rect)
 
-        protocol_sidebars_noise = []
         block_protocol = self._should_block_protocol_with_a_above_b(a_above_b_sidebars_noise)
 
         if not block_protocol:
