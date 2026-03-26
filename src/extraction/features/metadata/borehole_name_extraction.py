@@ -152,7 +152,7 @@ def _is_name_length_valid(name: str, max_name_length: int | None, max_word_lengt
     is_word_length = True
     if max_word_length:
         matches = re.findall(r"[a-z]+", name, flags=re.IGNORECASE)
-        is_word_length = all([len(match) <= max_word_length for match in matches])
+        is_word_length = all(len(match) <= max_word_length for match in matches)
 
     return is_name_length and is_word_length
 
@@ -218,7 +218,6 @@ def extract_borehole_names(
         detection = line.text[match.end() :] if match_suffix else line.text[match.start() :]
         # Take match as starting point of borehole name
         if following_text_cleaned := clean_borehole_name(detection, excluded_keywords):
-            # We assume that keyword from strict are part of borehole name
             candidates.append(
                 FeatureOnPage(
                     feature=BoreholeName(name=following_text_cleaned, confidence=1.0),

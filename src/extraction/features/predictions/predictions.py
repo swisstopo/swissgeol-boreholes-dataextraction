@@ -184,7 +184,7 @@ class BoreholeListBuilder:
             distances = {j: self._compute_distance(feat, borehole_bounding_boxes[j]) for j in available_boreholes}
             # Filter candidates based on valid distance
             candidates_idx = [j for j, d in distances.items() if d is not None]
-            # CHeck if at least one valid candidate
+            # Check if at least one valid candidate
             if not candidates_idx:
                 continue
             # Find best candidate
