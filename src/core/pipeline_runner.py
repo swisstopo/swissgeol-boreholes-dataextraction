@@ -76,20 +76,12 @@ def execute_pipeline_run(
     Returns:
         SummaryT | None: Pipeline-specific summary.
     """
-    temp_paths = prepare_pipeline_temp_paths(
-        predictions_path,
-        resume=resume,
-        cleanup_mlflow_tmp=cleanup_mlflow_tmp,
-    )
+    temp_paths = prepare_pipeline_temp_paths(predictions_path, resume, cleanup_mlflow_tmp)
     predictions_path_tmp = temp_paths.predictions_path_tmp
     mlflow_runid_tmp = temp_paths.mlflow_runid_tmp
 
     if setup_mlflow_run is not None:
-        start_or_resume_mlflow_run(
-            resume=resume,
-            mlflow_runid_tmp=mlflow_runid_tmp,
-            setup_run=setup_mlflow_run,
-        )
+        start_or_resume_mlflow_run(resume, mlflow_runid_tmp, setup_mlflow_run)
 
     run_result = run_predictions(predictions_path_tmp)
 

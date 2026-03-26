@@ -325,7 +325,6 @@ class PipelineTempPaths:
 
 def prepare_pipeline_temp_paths(
     predictions_path: Path,
-    *,
     resume: bool,
     cleanup_mlflow_tmp: bool = True,
 ) -> PipelineTempPaths:
@@ -362,7 +361,6 @@ def prepare_pipeline_temp_paths(
 
 
 def start_or_resume_mlflow_run(
-    *,
     resume: bool,
     mlflow_runid_tmp: Path,
     setup_run: Callable[[str | None], str],
@@ -388,7 +386,6 @@ def start_or_resume_mlflow_run(
 
 
 def finalize_pipeline_run(
-    *,
     is_nested: bool,
     predictions_path_tmp: Path | None = None,
     final_predictions_path: Path | None = None,
