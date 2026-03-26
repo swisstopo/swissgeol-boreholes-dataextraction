@@ -58,17 +58,20 @@ def execute_pipeline_run(
       7. Finalize temp files / predictions / MLflow
 
     Args:
-        predictions_path: Final predictions path for the pipeline run.
-        resume: Whether to resume temp files / MLflow run.
-        is_nested: Whether this run is nested under a parent multi-benchmark run.
-        cleanup_mlflow_tmp: Whether stale mlflow tmp files should be removed when not resuming.
-        setup_mlflow_run: Callback to start/resume the pipeline-specific MLflow run.
-        run_predictions: Callback that performs pipeline-specific prediction work.
-            Receives the temp predictions path.
-        evaluate_predictions: Callback that evaluates the pipeline-specific prediction result.
-        after_evaluation: Optional callback for pipeline-specific logging/artifacts/final side effects.
+        predictions_path (Path): Final predictions path for the pipeline run.
+        resume (bool): Whether to resume temp files / MLflow run.
+        is_nested (bool): Whether this run is nested under a parent multi-benchmark run.
+        cleanup_mlflow_tmp (bool): Whether stale mlflow tmp files should be removed when not resuming.
+        setup_mlflow_run (Callable[[str | None], str] | None): Callback to start/resume the pipeline-specific MLflow
+            run.
+        run_predictions (Callable[[Path], PipelineRunResult[PredictionT]]): Callback that performs pipeline-specific
+            prediction work. Receives the temp predictions path.
+        evaluate_predictions (Callable[[PipelineRunResult[PredictionT]], SummaryT | None]): Callback that evaluates the
+            pipeline-specific prediction result.
+        after_evaluation (Callable[[PipelineRunResult[PredictionT], SummaryT | None, Path], None] | None = None=):
+            Optional callback for pipeline-specific logging/artifacts/final side effects.
             Receives the run result, summary, and temp predictions path.
-        copy_predictions_to_final: Whether to copy predictions to final_predictions_path on finalize.
+        copy_predictions_to_final (bool): Whether to copy predictions to final_predictions_path on finalize.
 
     Returns:
         SummaryT | None: Pipeline-specific summary.

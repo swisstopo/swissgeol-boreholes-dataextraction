@@ -314,6 +314,7 @@ def start_pipeline(
     def _execute_predictions(
         predictions_path_tmp: Path,
     ) -> PipelineRunResult[tuple[OverallFilePredictions, list[Path]]]:
+        """Wrap run_extraction_predictions to produce the standardized PipelineRunResult."""
         predictions, n_documents, csv_paths = run_extraction_predictions(
             input_directory=input_directory,
             out_directory=out_directory,
@@ -336,6 +337,7 @@ def start_pipeline(
     def _evaluate(
         run_result: PipelineRunResult[tuple[OverallFilePredictions, list[Path]]],
     ) -> ExtractionBenchmarkSummary | None:
+        """Wrap evaluation logic to transform pipeline outputs into an ExtractionBenchmarkSummary."""
         predictions, _csv_paths = run_result.result
 
         eval_summary = evaluate_all_predictions(
@@ -352,6 +354,7 @@ def start_pipeline(
         summary: ExtractionBenchmarkSummary | None,
         _predictions_path_tmp: Path,
     ) -> None:
+        """Wrap post-processing steps such as logging, metadata writing, and analytics export after evaluation."""
         predictions, csv_paths = run_result.result
 
         if mlflow:
@@ -451,6 +454,7 @@ def start_pipeline_benchmark(
         overall_results: list[tuple[str, ExtractionBenchmarkSummary | None]],
         root: Path,
     ) -> None:
+        """Wrap finalize_overall_summary to aggregate and store the overall benchmark results."""
         finalize_overall_summary(
             overall_results=overall_results,
             multi_root=root,

@@ -6,7 +6,7 @@ import json
 import logging
 import os
 import shutil
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from glob import glob
@@ -82,7 +82,7 @@ def short_metric_key(k: str) -> str:
     return k.split("/", 1)[1] if "/" in k else k
 
 
-class BenchmarkSummary(BaseModel):
+class BenchmarkSummary(BaseModel, ABC):
     """Shared base class for benchmark summaries."""
 
     ground_truth_path: str | None
@@ -134,6 +134,9 @@ class Metrics:
     def to_json(self, feature_name) -> dict[str, float]:
         """Converts the object to a dictionary.
 
+        Args:
+            feature_name (str): Name of the feature to append.
+
         Returns:
             dict[str, float]: The object as a dictionary.
         """
@@ -172,7 +175,7 @@ def relative_after_common_root(paths: Sequence[Path]) -> list[str]:
         paths: Paths to process.
 
     Returns:
-        Relative path strings after the common root.
+        list[str]: Relative path strings after the common root.
     """
     if not paths:
         return []
@@ -278,14 +281,17 @@ def run_multi_benchmark(
     """Run multiple benchmarks with shared orchestration.
 
     Args:
-        benchmarks: Sequence of benchmark specs. Each benchmark must expose a `.name`.
-        multi_root: Root output directory for the multi-benchmark run.
-        resume: Whether to resume a previous parent MLflow run.
-        parent_runid_tmp: Temporary file storing the parent MLflow run id.
-        setup_parent_run: Callable that takes an optional existing run id and returns
+        benchmarks(Sequence[Any]): Sequence of benchmark specs. Each benchmark must expose a `.name`.
+        multi_root (Path): Root output directory for the multi-benchmark run.
+        resume (bool): Whether to resume a previous parent MLflow run.
+        parent_runid_tmp (Path): Temporary file storing the parent MLflow run id.
+        setup_parent_run (Callable[[str | None], str] | None): Callable that takes an optional existing run id and
+        returns
             the active/new parent run id. May be None if MLflow is not used.
-        run_single_benchmark: Callable that executes one benchmark spec and returns a summary.
-        finalize_summary: Callable that writes/logs the overall summary from collected results.
+        run_single_benchmark (Callable[[Any], Any | None]): Callable that executes one benchmark spec and returns a
+        summary.
+        finalize_summary (Callable[[list[tuple[str, Any | None]], Path], None]): Callable that writes/logs the overall
+        summary from collected results.
     """
     multi_root.mkdir(parents=True, exist_ok=True)
 
