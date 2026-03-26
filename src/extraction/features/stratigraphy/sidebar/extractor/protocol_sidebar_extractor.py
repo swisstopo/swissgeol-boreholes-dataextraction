@@ -71,7 +71,22 @@ class ProtocolSidebarExtractor:
             if not processed:
                 continue
 
-            processed_sidebars.extend(processed)
+            valid_processed = [
+                processed_sidebar
+                for processed_sidebar in processed
+                if ProtocolSidebarExtractor._has_material_match_for_each_entry(
+                    processed_sidebar,
+                    lines,
+                )
+            ]
+
+            processed_sidebars.extend(valid_processed)
+
+            # processed = sidebar.process()
+            # if not processed:
+            #     continue
+
+            # processed_sidebars.extend(processed)
 
         sidebars_with_noise = [
             SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
@@ -114,6 +129,50 @@ class ProtocolSidebarExtractor:
                 return True
 
         return False
+
+    @staticmethod
+    def _has_material_match_for_each_entry(
+        sidebar: ProtocolSidebar,
+        lines: list[TextLine],
+    ) -> bool:
+        """Check whether each depth entry has a corresponding material-description line.
+
+        A valid match is defined as:
+        - a text line containing at least one alphanumeric character
+        - the line is located to the right of the depth entry
+        - the line is roughly aligned vertically with the entry (same row)
+        - each line can only be matched to one entry
+        """
+        # Filter lines to those that contain actual text
+        candidate_lines = [line for line in lines if any(char.isalnum() for char in line.text)]
+
+        used_line_indices: set[int] = set()
+
+        # Find a matching description line for each depth entry
+        for entry in sidebar.entries:
+            match_found = False
+
+            for index, line in enumerate(candidate_lines):
+                # Skip lines that are already matched to another entry
+                if index in used_line_indices:
+                    continue
+
+                # The description must be to the right of the depth column
+                if line.rect.x0 <= entry.rect.x1:
+                    continue
+
+                # Check vertical alignment (approximate "same row")
+                if abs(line.rect.y0 - entry.rect.y0) > max(entry.rect.height, line.rect.height):
+                    continue
+
+                used_line_indices.add(index)
+                match_found = True
+                break
+
+            if not match_found:
+                return False
+
+        return True
 
     @staticmethod
     def _is_table_like(sidebar: ProtocolSidebar, lines: list[TextLine]) -> bool:
