@@ -48,9 +48,9 @@ class ProtocolSidebarExtractor:
 
         clusters = Cluster[DepthColumnEntry].create_clusters(entries, lambda entry: entry.rect, allow_size_two=True)
 
-        min_entries = sidebar_params.get("min_entries", 2)
-        header_keywords = tuple(sidebar_params.get("header_keywords", ("Tiefe",)))
-        max_header_gap = sidebar_params.get("max_header_gap", 40)
+        min_entries = sidebar_params.get("min_entries")
+        header_keywords = tuple(sidebar_params.get("header_keywords"))
+        max_header_gap = sidebar_params.get("max_header_gap")
 
         candidate_sidebars = [
             ProtocolSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= min_entries
