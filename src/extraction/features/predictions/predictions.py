@@ -232,10 +232,8 @@ class BoreholeListBuilder:
         for borehole_index, available_elements in borehole_idx_to_many_element_mapping.items():
             assert borehole_index not in borehole_index_to_matched_elem_index
             assert available_elements
-
-            # If multiple element are bound to the same borehole, always pick the highest on the page
+            # if multiple element are bound to the same borehole, always pick the highest on the page
             best_element = min(available_elements, key=lambda elem: (elem.page_number, elem.rect.y0))
-
             # fill the mapping borehole_index -> element and remove the element from the element list
             borehole_index_to_matched_elem_index[borehole_index] = best_element
             element_list.remove(best_element)
