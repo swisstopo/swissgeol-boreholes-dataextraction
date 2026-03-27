@@ -63,14 +63,10 @@ def evaluate_single_prediction(
         return prediction
 
     # Create dummy overall file prediction and append prediction
-    predictions = OverallFilePredictions()
-    predictions.file_predictions_list.append(prediction)
-
-    # Match file with ground truth
-    matched_with_ground_truth = predictions.match_with_ground_truth(ground_truth)
+    matched_with_ground_truth = OverallFilePredictions([prediction]).match_with_ground_truth(ground_truth)
 
     # Run evaluation for file (! mutates prediction !)
-    matched_with_ground_truth.evaluate_geology()
+    matched_with_ground_truth.evaluate_geology(verbose=False)
     matched_with_ground_truth.evaluate_metadata_extraction()
 
     return prediction

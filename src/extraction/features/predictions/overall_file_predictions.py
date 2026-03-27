@@ -1,5 +1,7 @@
 """Classes for predictions per PDF file."""
 
+import dataclasses
+
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.evaluation.layer_evaluator import LayerEvaluator
 from extraction.features.metadata.metadata import FileMetadata
@@ -11,12 +13,11 @@ from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.predictions import AllBoreholePredictionsWithGroundTruth
 
 
+@dataclasses.dataclass
 class OverallFilePredictions:
     """A class to represent predictions for all files."""
 
-    def __init__(self) -> None:
-        """Initializes the OverallFilePredictions object."""
-        self.file_predictions_list: list[FilePredictions] = []
+    file_predictions_list: list[FilePredictions] = dataclasses.field(default_factory=list)
 
     def contains(self, filename: str) -> bool:
         """Check if `file_predictions_list` contains `filename`.
