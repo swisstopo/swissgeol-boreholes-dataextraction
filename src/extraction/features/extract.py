@@ -199,6 +199,13 @@ class MaterialDescriptionRectWithSidebarExtractor:
         bounding_boxes = PageBoundingBoxes.from_material_description_rect_with_sidebar(pair, self.page_number)
 
         interval_block_pairs = self._get_interval_block_pairs(pair)
+        # For protocol sidebars, every depth entry must have a matched description.
+        if (
+            pair.sidebar
+            and pair.sidebar.kind == "protocol"
+            and not all(ibp.block.lines for ibp in interval_block_pairs)
+        ):
+            return ExtractedBorehole([], [bounding_boxes])
 
         borehole_layers = [
             Layer(
