@@ -3,21 +3,21 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from itertools import product
 from typing import ClassVar
 
 import numpy as np
 
 from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
-from extraction.features.stratigraphy.interval.interval import AAboveBInterval, IntervalZone
-from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
+from extraction.features.stratigraphy.interval.interval import IntervalZone
+from extraction.features.stratigraphy.sidebar.classes.parent_sidebar import ParentSidebar
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.text.textline import TextLine
 
 
 @dataclass
-class AAboveBSidebar(Sidebar[DepthColumnEntry]):
+class AAboveBSidebar(ParentSidebar):
     """Represents a sidebar where the depths of the layer boundaries are displayed in a column, above each other.
 
     Usually, the vertical position of a depth label on the page is proportional to the depth value.
@@ -32,36 +32,7 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
         ...
     """
 
-    entries: list[DepthColumnEntry]
-    skipped_entries: list[DepthColumnEntry] = field(default_factory=list)
-
     kind: ClassVar[str] = "a_above_b"
-
-    def __repr__(self):
-        return "AAboveBSidebar({})".format(", ".join([str(entry) for entry in self.entries]))
-
-    def strictly_contains(self, other: AAboveBSidebar) -> bool:
-        return len(other.entries) < len(self.entries) and all(
-            other_entry in self.entries for other_entry in other.entries
-        )
-
-    def is_strictly_increasing(self) -> bool:
-        return all(self.entries[i].value < self.entries[i + 1].value for i in range(len(self.entries) - 1))
-
-    def depth_intervals(self) -> list[AAboveBInterval]:
-        """Creates a list of depth intervals from the depth column entries.
-
-        The first depth interval has an open start value (i.e. None).
-
-        Returns:
-            list[AAboveBInterval]: A list of depth intervals.
-        """
-        depth_intervals = []
-        if self.entries[0].value != 0.0:
-            depth_intervals.append(AAboveBInterval(None, self.entries[0]))
-        for i in range(len(self.entries) - 1):
-            depth_intervals.append(AAboveBInterval(self.entries[i], self.entries[i + 1]))
-        return depth_intervals
 
     def pearson_correlation_coef(self) -> float:
         # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with
@@ -159,33 +130,11 @@ class AAboveBSidebar(Sidebar[DepthColumnEntry]):
                     count += 1
         return count
 
-    def break_on_double_descending(self) -> list[AAboveBSidebar]:
-        segments = []
-        segment_start = 0
-        for index, current_entry in enumerate(self.entries):
-            if (
-                index >= 2
-                and index + 1 < len(self.entries)
-                and current_entry.value < self.entries[index - 2].value
-                and current_entry.value < self.entries[index - 1].value
-                and self.entries[index + 1].value < self.entries[index - 2].value
-                and self.entries[index + 1].value < self.entries[index - 1].value
-            ):
-                # big big || small small
-                segments.append(self.entries[segment_start:index])
-                segment_start = index
-
-        final_segment = self.entries[segment_start:]
-        if final_segment:
-            segments.append(final_segment)
-
-        return [AAboveBSidebar(segment, self.skipped_entries) for segment in segments]
-
     def get_interval_zone(self) -> list[IntervalZone]:
         """Get the interval zones defined by the sidebar entries.
 
-        We pass the rectangles of the intervals shifted by the vertical amount infered with the diagonal lines.
-        The related interval is the extracted one, whitout shifting.
+        We pass the rectangles of the intervals shifted by the vertical amount inferred with the diagonal lines.
+        The related interval is the extracted one, without shifting.
 
         Returns:
             list[IntervalZone]: A list of interval zones.
