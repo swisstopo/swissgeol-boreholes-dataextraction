@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
-from extraction.features.stratigraphy.sidebar.classes.parent_sidebar import DepthColumEntrySidebar
+from extraction.features.stratigraphy.sidebar.classes.depth_column_entry_sidebar import DepthColumEntrySidebar
 from swissgeol_doc_processing.text.textblock import TextBlock
 from swissgeol_doc_processing.text.textline import TextLine
 
@@ -28,6 +28,13 @@ class ProtocolSidebar(DepthColumEntrySidebar):
         Returns:
             list[IntervalZone]: A list of interval zones.
         """
+        # intervalzone = [IntervalZone(
+        #                 interval.start.rect if interval.start else None,
+        #                 interval.end.rect if interval.end else None,
+        #                 interval,
+        #             )
+        #             for interval in self.depth_intervals()]
+        # print("IntervalZone:", intervalzone)
         return [
             IntervalZone(
                 interval.start.rect if interval.start else None,

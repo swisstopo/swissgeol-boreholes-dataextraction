@@ -11,7 +11,7 @@ import numpy as np
 
 from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
 from extraction.features.stratigraphy.interval.interval import IntervalZone
-from extraction.features.stratigraphy.sidebar.classes.parent_sidebar import DepthColumEntrySidebar
+from extraction.features.stratigraphy.sidebar.classes.depth_column_entry_sidebar import DepthColumEntrySidebar
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.text.textline import TextLine
 
@@ -204,7 +204,7 @@ class AAboveBSidebar(DepthColumEntrySidebar):
                 key=lambda pair: abs((pair[0].rect.y0 + pair[0].rect.y1) / 2 - pair[1].start.y),
             )
             if abs((closest_entry.rect.y0 + closest_entry.rect.y1) / 2 - closest_diag.start.y) > avg_entries_height:
-                break  # remaing pairs are likely wrong, due to undeted entry or duplicated diagonal detection
+                break  # remaining pairs are likely wrong, due to undetected entry or duplicated diagonal detection
             closest_entry.relative_shift = float(closest_diag.end.y - closest_diag.start.y)
             seen_diags.append(closest_diag)
             seen_entries.append(closest_entry)  # different post processing is needed depending on sidebar type
