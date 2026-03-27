@@ -11,7 +11,7 @@ from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
 
 
 @dataclass
-class ParentSidebar(Sidebar[DepthColumnEntry]):
+class DepthColumEntrySidebar(Sidebar[DepthColumnEntry]):
     """Abstract base for sidebars whose entries are individual depth values (DepthColumnEntry).
 
     Shared by AAboveBSidebar and ProtocolSidebar.
@@ -20,7 +20,7 @@ class ParentSidebar(Sidebar[DepthColumnEntry]):
     entries: list[DepthColumnEntry]
     skipped_entries: list[DepthColumnEntry] = field(default_factory=list)
 
-    def strictly_contains(self, other: ParentSidebar) -> bool:
+    def strictly_contains(self, other: DepthColumEntrySidebar) -> bool:
         return len(other.entries) < len(self.entries) and all(
             other_entry in self.entries for other_entry in other.entries
         )

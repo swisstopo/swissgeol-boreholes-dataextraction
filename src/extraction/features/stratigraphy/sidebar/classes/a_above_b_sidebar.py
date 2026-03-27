@@ -11,13 +11,13 @@ import numpy as np
 
 from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
 from extraction.features.stratigraphy.interval.interval import IntervalZone
-from extraction.features.stratigraphy.sidebar.classes.parent_sidebar import ParentSidebar
+from extraction.features.stratigraphy.sidebar.classes.parent_sidebar import DepthColumEntrySidebar
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.text.textline import TextLine
 
 
 @dataclass
-class AAboveBSidebar(ParentSidebar):
+class AAboveBSidebar(DepthColumEntrySidebar):
     """Represents a sidebar where the depths of the layer boundaries are displayed in a column, above each other.
 
     Usually, the vertical position of a depth label on the page is proportional to the depth value.

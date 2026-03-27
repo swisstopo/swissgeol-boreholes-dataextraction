@@ -6,13 +6,13 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
-from extraction.features.stratigraphy.sidebar.classes.parent_sidebar import ParentSidebar
+from extraction.features.stratigraphy.sidebar.classes.parent_sidebar import DepthColumEntrySidebar
 from swissgeol_doc_processing.text.textblock import TextBlock
 from swissgeol_doc_processing.text.textline import TextLine
 
 
 @dataclass
-class ProtocolSidebar(ParentSidebar):
+class ProtocolSidebar(DepthColumEntrySidebar):
     """Represents a sidebar for boreholes of the "Bohrprotokoll" type.
 
     In contrast to ``AAboveBSidebar``, the vertical position of the depth labels is not
@@ -73,7 +73,7 @@ class ProtocolSidebar(ParentSidebar):
         Returns:
             float: The score for the given interval zone and text line.
         """
-        return ParentSidebar.default_score(interval_zone, line)
+        return DepthColumEntrySidebar.default_score(interval_zone, line)
 
     def is_valid(self) -> bool:
         """Checks if the sidebar is valid.
