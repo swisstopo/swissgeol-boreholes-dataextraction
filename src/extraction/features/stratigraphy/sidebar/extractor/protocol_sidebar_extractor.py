@@ -12,6 +12,7 @@ from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarNois
 from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_smallest
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.utils.table_detection import TableStructure
 
 
 class ProtocolSidebarExtractor:
@@ -23,6 +24,7 @@ class ProtocolSidebarExtractor:
         lines: list[TextLine],
         line_rtree: fastquadtree.RectQuadTreeObjects,
         used_entry_rects: list[pymupdf.Rect],
+        table_structures: list[TableStructure],
         sidebar_params: dict,
     ) -> list[SidebarNoise]:
         """Construct all possible ProtocolSidebar objects from the given words.
@@ -32,6 +34,7 @@ class ProtocolSidebarExtractor:
             lines (list[TextLine]): All text lines in the page.
             line_rtree (fastquadtree.RectQuadTreeObjects): Pre-built R-tree for spatial queries.
             used_entry_rects (list[pymupdf.Rect]): Part of the document to ignore.
+            table_structures: list[TableStructure]:  List of table structures.
             sidebar_params (dict): Parameters for the ProtocolSidebar objects.
 
         Returns:
@@ -63,12 +66,12 @@ class ProtocolSidebarExtractor:
         processed_sidebars = []
         for sidebar in candidate_sidebars:
             has_header = ProtocolSidebarExtractor._is_below_header(sidebar, header_lines, max_header_gap)
-            is_table_like = ProtocolSidebarExtractor._is_table_like(sidebar, lines)
-
-            if not has_header:
+            is_in_table = any(
+                table_structure.bounding_rect.contains(sidebar.rect) for table_structure in table_structures
+            )
+            if not is_in_table:
                 continue
-
-            if not is_table_like:
+            if not has_header:
                 continue
 
             processed = sidebar.process()
@@ -164,23 +167,3 @@ class ProtocolSidebarExtractor:
                 return False
 
         return True
-
-    @staticmethod
-    def _is_table_like(sidebar: ProtocolSidebar, lines: list[TextLine]) -> bool:
-        """Check whether the sidebar sits inside a simple table-like structure."""
-        matching_rows = 0
-
-        for entry in sidebar.entries:
-            for line in lines:
-                if line.rect.x0 <= entry.rect.x1:
-                    continue
-                if abs(line.rect.y0 - entry.rect.y0) > max(entry.rect.height, line.rect.height):
-                    continue
-                if not any(char.isalnum() for char in line.text):
-                    continue
-                matching_rows += 1
-                break
-
-        threshold = max(1, len(sidebar.entries) // 2)
-
-        return matching_rows >= threshold

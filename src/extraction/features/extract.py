@@ -345,6 +345,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 self.lines,
                 line_rtree,
                 list(used_entry_rects),
+                self.table_structures,
                 sidebar_params=self.matching_params["affinity_params"]["protocol"],
             )
             sidebars_noise.extend(protocol_sidebars_noise)
