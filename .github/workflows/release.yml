@@ -70,18 +70,15 @@ jobs:
         run: |
           echo VERSION=${TAG_NAME#v} >> $GITHUB_ENV
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
         with:
           python-version: '3.11'
-
-      - name: Install build dependencies
-        run: pip install build
 
       - name: Build package
         run: |
           export SETUPTOOLS_SCM_PRETEND_VERSION=${{ env.VERSION }}
-          python -m build
+          uv build
 
       - name: List built packages
         run: ls -lh dist/
@@ -103,7 +100,7 @@ jobs:
   patch-changelog:
     runs-on: ubuntu-latest
     name: Patch CHANGELOG.md and update GitHub release notes
-    needs: retag-docker-image
+    needs: [retag-docker-image, publish-package]
 
     steps:
       - name: Checkout repository
