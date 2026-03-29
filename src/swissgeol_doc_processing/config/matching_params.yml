@@ -1,5 +1,5 @@
 # Default parameters used for affinity and description matching, used as part of the swissgeol_doc_processing package.
-# These paramaters should be changed only if we want to impact the functionality of the package globally.
+# These parameters should be changed only if we want to impact the functionality of the package globally.
 
 block_line_ratio: 0.20
 min_block_clearance: 10
@@ -76,6 +76,7 @@ material_description:
     including_expressions:
       - sand
       - sandig
+      - sandstein
       - silt
       - siltig
       - siltstein
@@ -107,6 +108,9 @@ material_description:
       - grob
       - auffüllung
       - schlacke
+      - überlagerung
+      - moräne
+      - aufschüttung
     excluding_expressions:
       - herr
       - ende
@@ -271,6 +275,8 @@ coordinate_keys:
   fr:
     - coordonnées
     - coordonn
+  it:
+    - coordinate
 
 groundwater_keys:
   de:
@@ -303,6 +309,9 @@ groundwater_keys:
     - groundwater
     - ground-water
     - ground-water level
+  it:
+    - Livello falda
+    - Pelo libero falda
 
 groundwater_fp_keys:
   de:
@@ -345,6 +354,10 @@ elevation_keys:
 
   en:
     - Surface level
+
+  it:
+    - Quota
+    - Altezza
 
 open_ended_depth_key:
   - ab

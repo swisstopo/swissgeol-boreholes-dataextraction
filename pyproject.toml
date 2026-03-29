@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=80", "setuptools-scm>=8", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
 [project]
 name = "swissgeol-boreholes-dataextraction"
@@ -13,8 +13,6 @@ dependencies = [
     "pandas==2.3.1",
     "levenshtein==0.27.1",
     "python-dotenv==1.1.1",
-    "setuptools==80.9.0",
-    "setuptools-scm==8.3.1",
     "fastapi==0.116.1",
     "uvicorn==0.35.0",
     "pydantic_settings==2.10.1",
@@ -66,18 +64,18 @@ deep-learning = [
     "accelerate==1.10.0",
 ]
 
-all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize, devtools, groundwater-illustration-matching, deep-learning]"]
+all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize, devtools, deep-learning]"]
 
-[tool.setuptools.packages.find]
-where = ["src"]
-include = [
-  "swissgeol_doc_processing*",
-  "extraction*",
-  "core*",
+# ---- Configuration for package building
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/swissgeol_doc_processing",
+    "src/extraction",
+    "src/core"
 ]
-
-[tool.setuptools_scm]
-version_file = "src/swissgeol_doc_processing/_version.py"
 
 [project.scripts]
 boreholes-extract-all = "extraction.main:click_pipeline"
@@ -87,6 +85,7 @@ boreholes-score = "extraction.evaluation.benchmark.score:main"
 boreholes-classify-descriptions = "classification.main:click_pipeline"
 fine-tune-bert = "classification.models.train:train_model"
 
+# ---- Configuration for Ruff
 [tool.ruff.lint]
 select = [
     # pydocstyle
@@ -108,7 +107,7 @@ ignore = [
     "D102",  # Missing docstring in a public method
     "D105",  # Missing docstring in magic method
     "D107",  # Missing docstring in `__init__`
-    ]
+]
 
 [tool.ruff]
 line-length = 119
@@ -116,6 +115,7 @@ line-length = 119
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+# ---- Configuration for pytest
 [tool.pytest.ini_options]
 # Some deprecation warnings come from external libraries (botocore and SWIG). Since we can’t fix these in our code,
 # they are now ignored during test runs to keep the output clean. Link to the existing issues:

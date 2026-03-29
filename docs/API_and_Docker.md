@@ -12,7 +12,7 @@ To launch the API and access its endpoints, follow these steps:
 Activate your virtual environment. On Unix systems, this can be done with the following command:
 
 ```bash
-source env/bin/activate
+source .venv/bin/activate
 ```
 
 <a name="env"></a>

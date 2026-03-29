@@ -4,6 +4,7 @@ import fastquadtree
 import pymupdf
 import pytest
 
+from extraction.features.stratigraphy.interval.a_to_b_interval_extractor import AToBIntervalExtractor
 from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
 from extraction.features.stratigraphy.sidebar.extractor.a_above_b_sidebar_extractor import (
     AAboveBSidebarExtractor,
@@ -11,7 +12,7 @@ from extraction.features.stratigraphy.sidebar.extractor.a_above_b_sidebar_extrac
 from extraction.features.stratigraphy.sidebar.extractor.a_to_b_sidebar_extractor import (
     AToBSidebarExtractor,
 )
-from swissgeol_doc_processing.text.textline import TextWord
+from swissgeol_doc_processing.text.textline import TextLine, TextWord
 
 PAGE_NUMBER = 1
 
@@ -28,7 +29,7 @@ def test_depth_column_entries():  # noqa: D103
         TextWord(pymupdf.Rect(0, 10, 5, 11), "-70m", PAGE_NUMBER),
         TextWord(pymupdf.Rect(0, 12, 5, 13), "word.", PAGE_NUMBER),
     ]
-    entries = DepthColumnEntryExtractor.find_in_words(all_words, include_splits=False)
+    entries = DepthColumnEntryExtractor.find_in_words(all_words)
     assert len(entries) == 7, "There should be 7 entries"
     assert pytest.approx(entries[0].value) == 10.0, "The first entry should have a value of 10.0"
     assert entries[0].has_decimal_point, "The first entry has a decimal point"
@@ -52,18 +53,17 @@ def test_depth_column_entries():  # noqa: D103
     assert not entries[6].has_decimal_point, "The seventh entry doesn't have a decimal point"
 
 
-def test_depth_column_entries_with_splits():  # noqa: D103
-    """Test the DepthColumnEntry.find_in_words function with include_splits=True."""
-    all_words = [
-        TextWord(pymupdf.Rect(0, 0, 10, 1), "10.00-20.0m", PAGE_NUMBER),
-        TextWord(pymupdf.Rect(0, 2, 10, 3), "30.0-40.0m", PAGE_NUMBER),
-    ]
-    entries = DepthColumnEntryExtractor.find_in_words(all_words, include_splits=True)
-    assert len(entries) == 4, "There should be 4 entries"
-    assert entries[0].value == 10.0, "The first entry should have a value of 10.0"
-    assert entries[1].value == 20.0, "The second entry should have a value of 20.0"
-    assert entries[2].value == 30.0, "The third entry should have a value of 30.0"
-    assert entries[3].value == 40.0, "The fourth entry should have a value of 40.0"
+def test_atobintervalextractor_fromtext():  # noqa: D103
+    """Test the AToBIntervalExtractor.from_text."""
+    line = TextLine([TextWord(pymupdf.Rect(0, 0, 10, 1), "10.00-20.0m", PAGE_NUMBER)])
+    interval, _ = AToBIntervalExtractor.from_text(line)
+    assert interval.start.value == 10.0, "The start value of the interval should be 10.0"
+    assert interval.end.value == 20.0, "The end value of the interval should be 20.0"
+
+    line = TextLine([TextWord(pymupdf.Rect(0, 2, 10, 3), "30.0-40.0m", PAGE_NUMBER)])
+    interval, _ = AToBIntervalExtractor.from_text(line)
+    assert interval.start.value == 30.0, "The start value of the interval should be 30.0"
+    assert interval.end.value == 40.0, "The end value of the interval should be 40.0"
 
 
 def test_depth_column_entries_with_leading_character():  # noqa: D103
@@ -74,7 +74,7 @@ def test_depth_column_entries_with_leading_character():  # noqa: D103
         TextWord(pymupdf.Rect(0, 4, 5, 5), "-3.0m", PAGE_NUMBER),
         TextWord(pymupdf.Rect(0, 6, 5, 7), ".4.2m", PAGE_NUMBER),
     ]
-    entries = DepthColumnEntryExtractor.find_in_words(all_words, include_splits=True)
+    entries = DepthColumnEntryExtractor.find_in_words(all_words)
     assert len(entries) == 4, "There should be 4 entries"
     assert entries[0].value == 0.0, "The first entry should have a value of 0"
     assert entries[1].value == 2.0, "The second entry should have a value of 2.0"
@@ -97,6 +97,7 @@ def test_aabovebsidebarextractor_arithmetic_progression():  # noqa: D103
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,
+        table_structures=[],
         used_entry_rects=[],
         sidebar_params={"noise_count_threshold": 1.25, "noise_count_offset": 0},
     )
@@ -119,6 +120,7 @@ def test_aabovebsidebarextractor():  # noqa: D103
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,
+        table_structures=[],
         used_entry_rects=[],
         sidebar_params={"noise_count_threshold": 1.25, "noise_count_offset": 0},
     )
@@ -153,6 +155,7 @@ def test_aabovebsidebarextractor_two_column():  # noqa: D103
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,
+        table_structures=[],
         used_entry_rects=[],
         sidebar_params={"noise_count_threshold": 1.25, "noise_count_offset": 0},
     )
@@ -165,16 +168,16 @@ def test_aabovebsidebarextractor_two_column():  # noqa: D103
 def test_atobsidebarextractor():  # noqa: D103
     """Test the AToBSidebarExtractor."""
     all_words = [
-        TextWord(pymupdf.Rect(0, 0, 5, 1), "12.0", PAGE_NUMBER),  # layer 12.0-20.0m
-        TextWord(pymupdf.Rect(0, 0, 5, 1), "20.0", PAGE_NUMBER),
-        TextWord(pymupdf.Rect(0, 2, 5, 3), "20.0", PAGE_NUMBER),  # layer 20.0-34.0m
-        TextWord(pymupdf.Rect(0, 2, 5, 3), "34.0", PAGE_NUMBER),
-        TextWord(pymupdf.Rect(0, 4, 5, 5), "34.0", PAGE_NUMBER),  # layer 34.0-40.0m
-        TextWord(pymupdf.Rect(0, 4, 5, 5), "40.0", PAGE_NUMBER),
-        TextWord(pymupdf.Rect(0, 6, 5, 7), "40.0", PAGE_NUMBER),  # layer 40.0-50.0m
-        TextWord(pymupdf.Rect(0, 6, 5, 7), "50.0", PAGE_NUMBER),
-        TextWord(pymupdf.Rect(0, 8, 5, 9), "50.0", PAGE_NUMBER),  # layer 50.0-60.0m
-        TextWord(pymupdf.Rect(0, 8, 5, 9), "60.0", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(0, 0, 2, 1), "12.0", PAGE_NUMBER),  # layer 12.0-20.0m
+        TextWord(pymupdf.Rect(3, 0, 5, 1), "20.0", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(0, 2, 2, 3), "20.0", PAGE_NUMBER),  # layer 20.0-34.0m
+        TextWord(pymupdf.Rect(3, 2, 5, 3), "34.0", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(0, 4, 2, 5), "34.0", PAGE_NUMBER),  # layer 34.0-40.0m
+        TextWord(pymupdf.Rect(3, 4, 5, 5), "40.0", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(0, 6, 2, 7), "40.0", PAGE_NUMBER),  # layer 40.0-50.0m
+        TextWord(pymupdf.Rect(3, 6, 5, 7), "50.0", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(0, 8, 2, 9), "50.0", PAGE_NUMBER),  # layer 50.0-60.0m
+        TextWord(pymupdf.Rect(3, 8, 5, 9), "60.0", PAGE_NUMBER),
     ]
     columns = AToBSidebarExtractor.find_in_words(all_words)
     assert len(columns) == 1, "There should be 1 column"
@@ -194,27 +197,27 @@ def test_atobsidebarextractor():  # noqa: D103
 def test_atobsidebarextractor_two_columns():  # noqa: D103
     """Test the AToBSidebarExtractor with two columns."""
     all_words = [  # first depth column
-        TextWord(pymupdf.Rect(0, 0, 5, 1), "12.0", PAGE_NUMBER),  # layer 12.0-20.0m
-        TextWord(pymupdf.Rect(0, 0, 5, 1), "20.0", PAGE_NUMBER),
-        TextWord(pymupdf.Rect(0, 2, 5, 3), "20.0", PAGE_NUMBER),  # layer 20.0-34.0m
-        TextWord(pymupdf.Rect(0, 2, 5, 3), "34.0", PAGE_NUMBER),
-        TextWord(pymupdf.Rect(0, 4, 5, 5), "34.0", PAGE_NUMBER),  # layer 34.0-40.0m
-        TextWord(pymupdf.Rect(0, 4, 5, 5), "40.0", PAGE_NUMBER),
-        TextWord(pymupdf.Rect(0, 6, 5, 7), "40.0", PAGE_NUMBER),  # layer 40.0-50.0m
-        TextWord(pymupdf.Rect(0, 6, 5, 7), "50.0", PAGE_NUMBER),
-        TextWord(pymupdf.Rect(0, 8, 5, 9), "50.0", PAGE_NUMBER),  # layer 50.0-60.0m
-        TextWord(pymupdf.Rect(0, 8, 5, 9), "60.0", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(0, 0, 2, 1), "12.0", PAGE_NUMBER),  # layer 12.0-20.0m
+        TextWord(pymupdf.Rect(3, 0, 5, 1), "20.0", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(0, 2, 2, 3), "20.0", PAGE_NUMBER),  # layer 20.0-34.0m
+        TextWord(pymupdf.Rect(3, 2, 5, 3), "34.0", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(0, 4, 2, 5), "34.0", PAGE_NUMBER),  # layer 34.0-40.0m
+        TextWord(pymupdf.Rect(3, 4, 5, 5), "40.0", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(0, 6, 2, 7), "40.0", PAGE_NUMBER),  # layer 40.0-50.0m
+        TextWord(pymupdf.Rect(3, 6, 5, 7), "50.0", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(0, 8, 2, 9), "50.0", PAGE_NUMBER),  # layer 50.0-60.0m
+        TextWord(pymupdf.Rect(3, 8, 5, 9), "60.0", PAGE_NUMBER),
         # second depth column
-        TextWord(pymupdf.Rect(20, 0, 25, 1), "12.0", PAGE_NUMBER),  # layer 12.0-20.0m
-        TextWord(pymupdf.Rect(20, 0, 25, 1), "20.0", PAGE_NUMBER),
-        TextWord(pymupdf.Rect(20, 2, 25, 3), "20.0", PAGE_NUMBER),  # layer 20.0-34.0m
-        TextWord(pymupdf.Rect(20, 2, 25, 3), "34.0", PAGE_NUMBER),
-        TextWord(pymupdf.Rect(20, 4, 25, 5), "34.0", PAGE_NUMBER),  # layer 34.0-40.0m
-        TextWord(pymupdf.Rect(20, 4, 25, 5), "40.0", PAGE_NUMBER),
-        TextWord(pymupdf.Rect(20, 6, 25, 7), "40.0", PAGE_NUMBER),  # layer 40.0-50.0m
-        TextWord(pymupdf.Rect(20, 6, 25, 7), "50.0", PAGE_NUMBER),
-        TextWord(pymupdf.Rect(20, 8, 25, 9), "50.0", PAGE_NUMBER),  # layer 50.0-60.0m
-        TextWord(pymupdf.Rect(20, 8, 25, 9), "60.0", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(20, 0, 22, 1), "12.0", PAGE_NUMBER),  # layer 12.0-20.0m
+        TextWord(pymupdf.Rect(23, 0, 25, 1), "20.0", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(20, 2, 22, 3), "20.0", PAGE_NUMBER),  # layer 20.0-34.0m
+        TextWord(pymupdf.Rect(23, 2, 25, 3), "34.0", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(20, 4, 22, 5), "34.0", PAGE_NUMBER),  # layer 34.0-40.0m
+        TextWord(pymupdf.Rect(23, 4, 25, 5), "40.0", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(20, 6, 22, 7), "40.0", PAGE_NUMBER),  # layer 40.0-50.0m
+        TextWord(pymupdf.Rect(23, 6, 25, 7), "50.0", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(20, 8, 22, 9), "50.0", PAGE_NUMBER),  # layer 50.0-60.0m
+        TextWord(pymupdf.Rect(23, 8, 25, 9), "60.0", PAGE_NUMBER),
     ]
     columns = AToBSidebarExtractor.find_in_words(all_words)
     assert len(columns) == 2, "There should be 2 columns"

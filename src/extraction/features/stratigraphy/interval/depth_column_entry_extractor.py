@@ -3,15 +3,14 @@
 import re
 
 from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
-from extraction.features.stratigraphy.interval.a_to_b_interval_extractor import AToBIntervalExtractor
-from swissgeol_doc_processing.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.text.textline import TextWord
 
 
 class DepthColumnEntryExtractor:
     """Methods for finding depth column entries in a text."""
 
     @classmethod
-    def find_in_words(cls, all_words: list[TextWord], include_splits: bool) -> list[DepthColumnEntry]:
+    def find_in_words(cls, all_words: list[TextWord]) -> list[DepthColumnEntry]:
         """Find all depth column entries given a list of TextWord objects.
 
         Note: Only depths up to two digits before the decimal point are supported.
@@ -34,14 +33,6 @@ class DepthColumnEntryExtractor:
                 match = regex.match(input_string)
                 if match:
                     entries.append(DepthColumnEntry.from_string_value(word.rect, match.group(1), word.page_number))
-
-                elif include_splits:
-                    # support for e.g. "1.10-1.60m" extracted as a single word
-                    a_to_b_interval, _ = AToBIntervalExtractor.from_text(TextLine([word]))
-                    if a_to_b_interval:
-                        entries.append(a_to_b_interval.start)
-                        if a_to_b_interval.end is not None:
-                            entries.append(a_to_b_interval.end)
             except ValueError:
                 pass
         return entries
