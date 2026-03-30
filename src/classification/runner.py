@@ -35,54 +35,6 @@ from core.pipeline_runner import PipelineRunResult, execute_pipeline_run
 logger = logging.getLogger(__name__)
 
 
-def setup_classification_mlflow_tracking(
-    *,
-    run_id: str | None,
-    file_path: Path | None,
-    ground_truth_path: Path | None,
-    out_directory: Path | None,
-    experiment_name: str = "Layer descriptions classification",
-    runname: str | None = None,
-    nested: bool = False,
-) -> str:
-    """Wraps setup_mlflow_tracking() with classification-specific tags and params."""
-    return setup_mlflow_tracking(
-        run_id=run_id,
-        experiment_name=experiment_name,
-        runname=runname,
-        nested=nested,
-        tags={
-            "json_file_path": file_path,
-            "ground_truth_path": ground_truth_path,
-            "out_directory": out_directory,
-        },
-        params=None,
-        include_git_info=False,
-    )
-
-
-def _setup_mlflow_parent_run(
-    *,
-    out_directory: Path,
-    benchmarks: Sequence[BenchmarkSpec],
-    experiment_name: str = "Layer descriptions classification",
-    runid: str | None = None,
-    runname: str | None = None,
-) -> str:
-    """Wraps setup_mlflow_parent_run() with classification specific input key and tags."""
-    return setup_mlflow_parent_run(
-        run_id=runid,
-        experiment_name=experiment_name,
-        runname=runname,
-        parent_input_key=parent_input_key([Path(b.file_path) for b in benchmarks]),
-        benchmarks=benchmarks,
-        input_tag_name="json_file_path",
-        ground_truth_path=None,
-        out_directory=out_directory,
-        include_git_info=False,
-    )
-
-
 def log_ml_flow_infos(
     file_path: Path,
     out_directory: Path,
@@ -273,14 +225,18 @@ def start_pipeline(
         is_nested=is_nested,
         cleanup_mlflow_tmp=False,
         setup_mlflow_run=(
-            lambda runid: setup_classification_mlflow_tracking(
+            lambda runid: setup_mlflow_tracking(
                 run_id=runid,
-                file_path=file_path,
-                ground_truth_path=ground_truth_path,
-                out_directory=out_directory,
                 experiment_name="Layer descriptions classification",
-                runname=runname or file_path.name,
+                runname=runname,
                 nested=is_nested,
+                tags={
+                    "json_file_path": file_path,
+                    "ground_truth_path": ground_truth_path,
+                    "out_directory": out_directory,
+                },
+                params=None,
+                include_git_info=False,
             )
             if mlflow
             else None
@@ -307,11 +263,15 @@ def start_multi_benchmark(
     parent_runid_tmp = multi_root / "mlflow_parent_runid.json.tmp"
 
     def setup_parent_run(parent_runid: str | None) -> str:
-        return _setup_mlflow_parent_run(
-            runid=parent_runid,
-            out_directory=multi_root,
-            benchmarks=benchmarks,
+        return setup_mlflow_parent_run(
+            run_id=parent_runid,
             experiment_name="Layer descriptions classification",
+            parent_input_key=parent_input_key([Path(b.file_path) for b in benchmarks]),
+            benchmarks=benchmarks,
+            input_tag_name="json_file_path",
+            ground_truth_path=None,
+            out_directory=out_directory,
+            include_git_info=False,
         )
 
     def run_single(spec: BenchmarkSpec) -> ClassificationBenchmarkSummary | None:

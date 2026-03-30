@@ -149,54 +149,6 @@ def write_csv_for_file(predictions: FilePredictions, out_directory: Path) -> lis
     return csv_paths
 
 
-def setup_extraction_mlflow_tracking(
-    runid: str | None,
-    input_directory: Path,
-    ground_truth_path: Path | None,
-    runname: str | None = None,
-    out_directory: Path | None = None,
-    predictions_path: Path | None = None,
-    metadata_path: Path | None = None,
-    experiment_name: str = "Boreholes data extraction",
-    nested: bool = False,
-) -> str:
-    """Wraps setup_mlflow_tracking() with extraction-specific tags and params."""
-    return setup_mlflow_tracking(
-        run_id=runid,
-        experiment_name=experiment_name,
-        runname=runname,
-        nested=nested,
-        tags={
-            "input_directory": input_directory,
-            "ground_truth_path": ground_truth_path,
-            "out_directory": out_directory,
-            "predictions_path": predictions_path,
-            "metadata_path": metadata_path,
-        },
-        params={
-            **flatten(line_detection_params),
-            **flatten(matching_params),
-        },
-        include_git_info=True,
-    )
-
-
-def _setup_mlflow_parent_run(
-    *, benchmarks: Sequence[BenchmarkSpec], runname: str | None = None, runid: str | None = None
-) -> str:
-    """Wraps setup_mlflow_parent_run() with extraction specific input key and tags."""
-    return setup_mlflow_parent_run(
-        run_id=runid,
-        experiment_name="Boreholes data extraction",
-        runname=runname,
-        parent_input_key=parent_input_key([Path(b.input_path) for b in benchmarks]),
-        benchmarks=benchmarks,
-        input_tag_name="input_directory",
-        ground_truth_path=None,
-        include_git_info=True,
-    )
-
-
 def run_extraction_predictions(
     input_directory: Path,
     out_directory: Path,
@@ -382,15 +334,23 @@ def start_pipeline(
         is_nested=is_nested,
         cleanup_mlflow_tmp=True,
         setup_mlflow_run=(
-            lambda runid: setup_extraction_mlflow_tracking(
-                runid=runid,
-                input_directory=input_directory,
-                ground_truth_path=ground_truth_path,
-                runname=runname or input_directory.name,
-                out_directory=out_directory,
-                predictions_path=predictions_path,
-                metadata_path=metadata_path,
+            lambda runid: setup_mlflow_tracking(
+                run_id=runid,
+                experiment_name="Boreholes data extraction",
+                runname=runname,
                 nested=is_nested,
+                tags={
+                    "input_directory": input_directory,
+                    "ground_truth_path": ground_truth_path,
+                    "out_directory": out_directory,
+                    "predictions_path": predictions_path,
+                    "metadata_path": metadata_path,
+                },
+                params={
+                    **flatten(line_detection_params),
+                    **flatten(matching_params),
+                },
+                include_git_info=True,
             )
             if mlflow
             else None
@@ -418,10 +378,15 @@ def start_pipeline_benchmark(
     parent_runid_tmp = out_directory / "mlflow_parent_runid.json.tmp"
 
     def setup_parent_run(parent_runid: str | None) -> str:
-        return _setup_mlflow_parent_run(
-            benchmarks=benchmarks,
+        return setup_mlflow_parent_run(
+            run_id=parent_runid,
+            experiment_name="Boreholes data extraction",
             runname="benchmark",
-            runid=parent_runid,
+            parent_input_key=parent_input_key([Path(b.input_path) for b in benchmarks]),
+            benchmarks=benchmarks,
+            input_tag_name="input_directory",
+            ground_truth_path=None,
+            include_git_info=True,
         )
 
     def run_single(spec: BenchmarkSpec) -> ExtractionBenchmarkSummary | None:
