@@ -294,7 +294,7 @@ class PageDrawer:
                             pymupdf.Point(mat_descr_rect.x0, (mat_descr_rect.y0 + mat_descr_rect.y1) / 2)
                             * self.page.derotation_matrix,
                         )
-                    self.shape.finish(color=pymupdf.utils.getColor(color))
+                        self.shape.finish(color=pymupdf.utils.getColor(color))
 
                 # Get depth highlight rectangle
                 background_rect = layer.depths.get_background_rect(page_number, self.shape.page.rect.height)
@@ -306,13 +306,13 @@ class PageDrawer:
                     # Avoid full-page "pillars" for spanning layers:
                     # clip the vertical interval to the actual depth-entry extent visible on this page.
                     if depth_entry_rects:
-                        # Build one combined rectangle covering all detected depth entries on this page.
-                        page_depth_entries_rect = pymupdf.Rect(depth_entry_rects[0])
-                        for rect in depth_entry_rects[1:]:
-                            page_depth_entries_rect.include_rect(rect)
+                        clipped_background_rect.y0 = max(
+                            clipped_background_rect.y0, min(depth_entry_rects, key=lambda x: x.y0).y0
+                        )
 
-                        clipped_background_rect.y0 = max(clipped_background_rect.y0, page_depth_entries_rect.y0)
-                        clipped_background_rect.y1 = min(clipped_background_rect.y1, page_depth_entries_rect.y1)
+                        clipped_background_rect.y1 = min(
+                            clipped_background_rect.y1, max(depth_entry_rects, key=lambda x: x.y1).y1
+                        )
 
                     # Draw clipped depth highlight
                     if clipped_background_rect.y0 < clipped_background_rect.y1:
