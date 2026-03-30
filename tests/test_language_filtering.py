@@ -2,7 +2,7 @@
 
 import pytest
 
-from extraction.features.metadata.borehole_name_extraction import _clean_borehole_name
+from extraction.features.metadata.borehole_name_extraction import _is_name_length_valid, clean_borehole_name
 from swissgeol_doc_processing.utils.language_filtering import (
     match_any_keyword,
     normalize_spaces,
@@ -61,37 +61,47 @@ def test_remove_in_parenthesis(text: str, expected: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "text, keywords, start, end, expected",
+    "text, keywords, start, end, ignore_case, enforce_digit, expected",
     [
-        ("test schachtprofil 12", ["schachtprofil"], False, False, "schachtprofil"),
-        ("test Schachtprofil 12", ["schachtprofil"], False, False, "Schachtprofil"),
-        ("test schachtprofil 12", ["schacht"], True, False, "schachtprofil"),
-        ("test schachtprofil 12", ["schacht"], False, True, None),
-        ("test schachtprofil 12", ["profil"], False, True, "schachtprofil"),
-        ("test schachtprofil 12", ["profil"], True, False, None),
-        ("test forage schachtprofil 12", ["forage", "profil"], False, True, "forage"),
+        ("test schachtprofil 12", ["schachtprofil"], False, False, True, False, "schachtprofil"),
+        ("test Schachtprofil 12", ["schachtprofil"], False, False, True, False, "Schachtprofil"),
+        ("test Schachtprofil 12", ["schachtprofil"], False, False, False, False, None),
+        ("test schachtprofil 12", ["schacht"], True, False, True, False, "schachtprofil"),
+        ("test schachtprofil 12", ["schacht"], False, True, True, False, None),
+        ("test schachtprofil 12", ["profil"], False, True, True, False, "schachtprofil"),
+        ("test schachtprofil 12", ["profil"], True, False, True, False, None),
+        ("test forage schachtprofil 12", ["forage", "profil"], False, True, True, False, "forage"),
+        ("KB Guatelli KB12", ["KB"], True, True, False, True, "KB12"),
+        ("KB Guatelli KBaBcd12", ["KB"], True, True, False, True, None),
     ],
     ids=[
         "full-word",
         "ignore-case",
+        "case-sensitive",
         "anchored-start",
         "neg-anchored-start",
         "anchored-end",
         "neg-anchored-end",
         "first-match",
+        "regex-kb-match",
+        "regex-no-kb-match",
     ],
 )
-def test_match_any_keyword(text: str, keywords: list[str], start: bool, end: bool, expected: str) -> None:
+def test_match_any_keyword(
+    text: str, keywords: list[str], start: bool, end: bool, ignore_case: bool, enforce_digit: bool, expected: str
+) -> None:
     """Test keyword search from a predefined list in a text.
 
     Args:
         text (str): Text to search within.
-        keywords (list[str]): Keywords to look for (treated as literals).
+        keywords (list[str]): Keywords to look for (treated as raw regex patterns).
         start (bool): If True, the matched word must start with the keyword.
         end (bool): If True, the matched word must end with the keyword.
+        ignore_case (bool): If True, keyword matching is case insensitive.
+        enforce_digit (bool): If True, keyword must be followed by at least one digit.
         expected (str): The substring expected to be matched in `text`.
     """
-    match = match_any_keyword(text, keywords, start, end)
+    match = match_any_keyword(text, keywords, start, end, ignore_case, enforce_digit)
 
     if expected:
         assert text[match.start() : match.end()] == expected
@@ -124,6 +134,7 @@ def test_normalize_spaces(text: str, expected: str) -> None:
         ("nr1", ["nr"], "1"),
         ("nr 1", ["nr"], " 1"),
         ("n r 1", ["n r"], " 1"),
+        ("n.r 1", ["n.r"], " 1"),
         ("Nr 1", ["nr"], " 1"),
         ("sondage nº1", ["nº"], "sondage 1"),
         ("sondage n°1", ["n°"], "sondage 1"),
@@ -133,6 +144,7 @@ def test_normalize_spaces(text: str, expected: str) -> None:
         "nr-without-space",
         "nr-with-space",
         "nr-with-space2",
+        "nr-point",
         "ignore-case",
         "n-masc-ordinal",
         "n-degree",
@@ -159,7 +171,7 @@ def test_remove_any_keyword(text: str, keywords: list[str], expected: str) -> No
     [
         ("schachtprofil 12", [], "schachtprofil 12"),
         ("schachtprofil 12", None, "schachtprofil 12"),
-        ("schachtprofil 12", ["schachtprofil"], "12"),
+        ("n r nr. schachtprofil nr-12", ["schachtprofil", "nr.", "n r"], "nr-12"),
         ("SP1 1:20", [], "SP1"),
         ("SP1 (comment)", [], "SP1"),
         ("schachtprofil.:_ 12", [], "schachtprofil 12"),
@@ -170,7 +182,7 @@ def test_remove_any_keyword(text: str, keywords: list[str], expected: str) -> No
         "none-keywords",
         "exclude-keywords",
         "exclude-scale",
-        "exclude-comment",
+        "exclude-parenthesis",
         "exclude-punc",
         "exclude-empty",
     ],
@@ -183,5 +195,38 @@ def test_clean_borehole_name(text: str, excluded_keywords: list[str], expected: 
         excluded_keywords (list[str]): Keywords to strip from the name.
         expected (str | None): The cleaned substring that should be matched.
     """
-    text = _clean_borehole_name(text, excluded_keywords)
+    text = clean_borehole_name(text, excluded_keywords)
     assert text == expected
+
+
+@pytest.mark.parametrize(
+    "name, max_name_length, max_word_length, expected",
+    [
+        ("BS 10", None, None, True),
+        ("BS 10 Spiez", 15, None, True),
+        ("BS 10 Spiez", 5, None, False),
+        ("BS 10 Spiez", None, 5, True),
+        ("BS 10 Spiez (123/SP3)", None, 5, True),
+        ("BS 10 Spiez", None, 4, False),
+    ],
+    ids=[
+        "no-constrains",
+        "valid-name-length",
+        "non-valid-name-length",
+        "valid-word-length",
+        "valid-word-length-complex",
+        "non-valid-word-length",
+    ],
+)
+def test_is_name_length_valid(
+    name: str, max_name_length: int | None, max_word_length: int | None, expected: bool
+) -> None:
+    """Check if the he name / words (alphabetical) length are valid.
+
+    Args:
+        name (str): Name to check
+        max_name_length (int | None): Maximum length of name.
+        max_word_length (int | None): Maximum length of any word (alphabetical).
+        expected (bool): Indicate if the name should be valid.
+    """
+    assert expected == _is_name_length_valid(name, max_name_length, max_word_length)

@@ -5,10 +5,16 @@
 min_vertical_overlap: 0.9
 # Max allowed distance between keyword and next line
 max_horizontal_distance: 50
-max_title_length: 10
+# Max name and words overall length
+max_name_length: 20
+max_word_length: 3
 
-# Keyword for borehole name detection
-matching_keywords: [
+# For matching_keywords_suffix, respect the following rules
+# * Keyword should match the end of word (e.g.: bohrung -> kernbohrung, rammkernbohrung)
+# * Keyword is case insensitive
+# * Keywords are ignored for borehole name matching : "12" == "bohrung 12"
+matching_keywords_suffix:
+  [
     "baggerschacht",
     "baggerschlitz",
     "bohrstelle",
@@ -27,7 +33,13 @@ matching_keywords: [
     "bohrung",
     "schacht",
     "sondierung",
-]
+  ]
 
 # Keyword to ignore in borehole name detection
 excluded_keywords: ["nr.", "nr", "n r", "n°", "nº", "no", "nummer"]
+
+# For matching_keywords_inner, respect the following rules
+# * Keyword is case sensitive
+# * Keywords are kept for borehole name matching.
+# * In text, keywords should be followed by at least one digit eg: KB1 or B 4
+matching_keywords_inner: ["KB", "RB", "BS", "B"]

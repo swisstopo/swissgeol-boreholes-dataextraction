@@ -102,9 +102,9 @@ class BoreholeListBuilder:
                 LayersInBorehole(layers_in_borehole_with_bb.predictions),
                 self._file_name,
                 BoreholeMetadata(
-                    borehole_idx_to_elevation[borehole_index],
-                    borehole_idx_to_coordinate[borehole_index],
-                    borehole_idx_to_name[borehole_index],
+                    borehole_idx_to_elevation.get(borehole_index),
+                    borehole_idx_to_coordinate.get(borehole_index),
+                    borehole_idx_to_name.get(borehole_index),
                 ),
                 GroundwatersInBorehole(borehole_idx_to_list_groundwater[borehole_index]),
                 layers_in_borehole_with_bb.bounding_boxes,
@@ -180,10 +180,17 @@ class BoreholeListBuilder:
 
         borehole_index_to_matched_elem = defaultdict(list)
         for feat in element_list:
-            best_bbox_idx = min(
-                available_boreholes,
-                key=lambda j: self._compute_distance(feat, borehole_bounding_boxes[j]),
-            )
+            # Compute distance between feature and borehole
+            distances = {j: self._compute_distance(feat, borehole_bounding_boxes[j]) for j in available_boreholes}
+            # Filter candidates based on valid distance
+            candidates_idx = [j for j, d in distances.items() if d is not None]
+            # Check if at least one valid candidate
+            if not candidates_idx:
+                continue
+            # Find best candidate
+            best_bbox_idx = min(candidates_idx, key=lambda j: distances[j])
+
+            # Distance should not be infinite
             borehole_index_to_matched_elem[best_bbox_idx].append(feat)
 
         return borehole_index_to_matched_elem
@@ -216,13 +223,19 @@ class BoreholeListBuilder:
             return {idx: elem for idx, elem in enumerate(element_list)}
 
         borehole_index_to_matched_elem_index = {}
-
         # continue until all boreholes are matched
+
         while len(borehole_index_to_matched_elem_index) != self._num_boreholes:
             # map all elements to their closest borehole.
             borehole_idx_to_many_element_mapping = self._many_to_one_match_element_to_borehole(
                 element_list, set(borehole_index_to_matched_elem_index.keys())
             )
+
+            # No more potential matching found, break rule
+            if not borehole_idx_to_many_element_mapping:
+                break
+
+            # Iterate over mapping to find best candidates in list
             for borehole_index, available_elements in borehole_idx_to_many_element_mapping.items():
                 assert borehole_index not in borehole_index_to_matched_elem_index
                 assert available_elements
@@ -234,12 +247,12 @@ class BoreholeListBuilder:
 
         return borehole_index_to_matched_elem_index
 
-    def _compute_distance(self, feat: FeatureOnPage, bounding_boxes: list[PageBoundingBoxes]) -> float:
+    def _compute_distance(self, feat: FeatureOnPage, bounding_boxes: list[PageBoundingBoxes]) -> float | None:
         """Computes the distance between a FeatureOnPage objects and the bounding boxes of one borehole."""
         bbox = next((bbox for bbox in bounding_boxes if bbox.page == feat.page_number), None)
         if bbox is None:
             # the current boreholes layers don't appear on the page where the element is
-            return float("inf")
+            return None
         outer_rect = bbox.get_outer_rect()
         element_center = (feat.rect.top_left + feat.rect.bottom_right) / 2
         dist = element_center.distance_to(outer_rect)
