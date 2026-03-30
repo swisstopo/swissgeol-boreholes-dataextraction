@@ -60,8 +60,7 @@ def match_any_keyword(
 
     Args:
         text (str): The text to search within.
-        keywords (list[str]): A list of regex patterns to look for. Metacharacters must be
-            escaped by the caller.
+        keywords (list[str]): A list of regex patterns to look for.
         start (bool, optional): If True, the word must start with the keyword. Defaults to False.
         end (bool, optional): If True, the word must end with the keyword. Defaults to False.
         ignore_case (bool, optional): If True, keyword matching is case insensitive. Defaults to False.
