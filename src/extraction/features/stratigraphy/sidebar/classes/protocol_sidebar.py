@@ -25,24 +25,27 @@ class ProtocolSidebar(DepthColumEntrySidebar):
     def get_interval_zone(self) -> list[IntervalZone]:
         """Get the interval zones defined by the sidebar entries.
 
+        When the sidebar starts at a non-zero depth (i.e. the first interval is None-X), all zone boundaries are
+        shifted by one entry so that each material description at entries[i] maps exclusively to the interval
+        that ends at entries[i], rather than being pulled into the following interval.
+
         Returns:
             list[IntervalZone]: A list of interval zones.
         """
-        # intervalzone = [IntervalZone(
-        #                 interval.start.rect if interval.start else None,
-        #                 interval.end.rect if interval.end else None,
-        #                 interval,
-        #             )
-        #             for interval in self.depth_intervals()]
-        # print("IntervalZone:", intervalzone)
-        return [
-            IntervalZone(
-                interval.start.rect if interval.start else None,
-                interval.end.rect if interval.end else None,
-                interval,
-            )
-            for interval in self.depth_intervals()
-        ]
+        intervals = self.depth_intervals()
+        has_open_start = bool(intervals) and intervals[0].start is None
+
+        zones = []
+        for i, interval in enumerate(intervals):
+            if has_open_start:
+                # Shift zone boundaries by one entry
+                start_rect = self.entries[i].rect if i > 0 else None
+                end_rect = self.entries[i + 1].rect if i + 1 < len(self.entries) else None
+            else:
+                start_rect = interval.start.rect if interval.start else None
+                end_rect = interval.end.rect if interval.end else None
+            zones.append(IntervalZone(start_rect, end_rect, interval))
+        return zones
 
     def trim_trailing_duplicate_depths(self) -> ProtocolSidebar:
         """Drop trailing duplicates of the final depth value.
