@@ -55,8 +55,7 @@ def match_any_keyword(
 ) -> re.Match | None:
     """Search for the first occurrence of any keyword from a predefined list in a text.
 
-    Keywords are treated as **raw regex patterns**. Callers are responsible for escaping
-    metacharacters.
+    Keywords are treated as **raw regex patterns**.
 
     Args:
         text (str): The text to search within.
