@@ -19,7 +19,12 @@ from core.benchmark_utils import (
 )
 from core.mlflow_tracking import mlflow
 from extraction.core.extract import ExtractionResult, extract, open_pdf
-from extraction.evaluation.benchmark.score import ExtractionBenchmarkSummary, evaluate_all_predictions
+from extraction.evaluation.benchmark.ground_truth import GroundTruth
+from extraction.evaluation.benchmark.score import (
+    ExtractionBenchmarkSummary,
+    evaluate_all_predictions,
+    evaluate_single_prediction,
+)
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
@@ -298,6 +303,7 @@ def run_predictions(
     input_directory: Path,
     out_directory: Path,
     predictions_path_tmp: Path,
+    ground_truth: GroundTruth | None = None,
     skip_draw_predictions: bool = False,
     draw_lines: bool = False,
     draw_tables: bool = False,
@@ -318,6 +324,7 @@ def run_predictions(
         out_directory (Path): Directory where per-file output (visualizations, CSV) is written.
         predictions_path_tmp (Path): Path to the incremental tmp predictions file. Existing content
             is used to resume; the file is updated after each successfully processed file.
+        ground_truth (GroundTruth | None): Ground truth for evaluation.
         skip_draw_predictions (bool, optional): Skip drawing predictions on PDF pages. Defaults to False.
         draw_lines (bool, optional): Draw detected lines on PDF pages. Defaults to False.
         draw_tables (bool, optional): Draw detected table structures on PDF pages. Defaults to False.
@@ -333,54 +340,48 @@ def run_predictions(
             the total number of PDF files discovered (including any already-predicted files from a
             resumed run), and all CSV file paths written during this run.
     """
-    if input_directory.is_file():
-        root = input_directory.parent
-        pdf_files = [input_directory.name] if input_directory.suffix.lower() == ".pdf" else []
-    else:
-        root = input_directory
-        pdf_files = [f.name for f in input_directory.glob("*.pdf") if f.is_file()]
-
+    # Look for files to process
+    pdf_files = [input_directory] if input_directory.is_file() else list(input_directory.glob("*.pdf"))
     n_documents = len(pdf_files)
 
     # Load any partially-completed predictions for resume support
-    predictions = read_json_predictions(predictions_path_tmp)
+    predictions = read_json_predictions(str(predictions_path_tmp))
 
     any_draw = not skip_draw_predictions or draw_lines or draw_tables or draw_strip_logs
 
     all_csv_paths: list[Path] = []
-
-    for filename in tqdm(pdf_files, desc="Processing files", unit="file"):
-        if predictions.contains(filename):
-            logger.info(f"{filename} already predicted.")
+    for pdf_file in tqdm(pdf_files, desc="Processing files", unit="file"):
+        # Check if file is already computed in previous run
+        if predictions.contains(pdf_file.name):
+            logger.info(f"{pdf_file.name} already predicted.")
             continue
 
-        in_path = root / filename
-        logger.info(f"Processing file: {in_path}")
+        logger.info(f"Processing file: {pdf_file.name}")
 
-        try:
-            result = extract(file=in_path, filename=in_path.name, part=part, analytics=analytics)
-            predictions.add_file_predictions(result.predictions)
+        # Run extraction and append to predictions
+        result = extract(file=pdf_file, filename=pdf_file.name, part=part, analytics=analytics)
+        predictions.add_file_predictions(result.predictions)
 
-            if csv:
-                all_csv_paths.extend(write_csv_for_file(result.predictions, out_directory))
+        if csv:
+            all_csv_paths.extend(write_csv_for_file(result.predictions, out_directory))
 
-            if any_draw:
-                draw_file_predictions(
-                    result=result,
-                    file=in_path,
-                    filename=in_path.name,
-                    out_directory=out_directory,
-                    skip_draw_predictions=skip_draw_predictions,
-                    draw_lines=draw_lines,
-                    draw_tables=draw_tables,
-                    draw_strip_logs=draw_strip_logs,
-                )
+        if any_draw:
+            # Run evaluation for current file drawing
+            result.predictions = evaluate_single_prediction(result.predictions, ground_truth)
+            # Draw predictions for file
+            draw_file_predictions(
+                result=result,
+                file=pdf_file,
+                filename=pdf_file.name,
+                out_directory=out_directory,
+                skip_draw_predictions=skip_draw_predictions,
+                draw_lines=draw_lines,
+                draw_tables=draw_tables,
+                draw_strip_logs=draw_strip_logs,
+            )
 
-            logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
-            write_json_predictions(filename=predictions_path_tmp, predictions=predictions)
-
-        except Exception as e:
-            logger.error(f"Unexpected error in file {filename}. Trace: {e}")
+        logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
+        write_json_predictions(filename=str(predictions_path_tmp), predictions=predictions)
 
     return predictions, n_documents, all_csv_paths
 
@@ -444,6 +445,11 @@ def start_pipeline(
         delete_temporary(predictions_path_tmp)
         delete_temporary(mlflow_runid_tmp)
 
+    # Build ground truth
+    ground_truth: GroundTruth | None = None
+    if ground_truth_path and ground_truth_path.exists():  # for inference no ground truth is available
+        ground_truth = GroundTruth(ground_truth_path)
+
     metadata_path.parent.mkdir(exist_ok=True)
 
     # Initialize analytics if enabled
@@ -469,6 +475,7 @@ def start_pipeline(
         input_directory=input_directory,
         out_directory=out_directory,
         predictions_path_tmp=predictions_path_tmp,
+        ground_truth=ground_truth,
         skip_draw_predictions=skip_draw_predictions,
         draw_lines=draw_lines,
         draw_tables=draw_tables,
@@ -483,10 +490,10 @@ def start_pipeline(
         for csv_path in csv_paths:
             mlflow.log_artifact(str(csv_path), "csv")
 
-    # Evaluate final predictions
+    # Evaluate final predictions with all data
     eval_summary = evaluate_all_predictions(
         predictions=predictions,
-        ground_truth_path=ground_truth_path,
+        ground_truth=ground_truth,
     )
     if eval_summary is not None:
         eval_summary.n_documents = n_documents

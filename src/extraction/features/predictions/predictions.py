@@ -287,8 +287,11 @@ class AllBoreholePredictionsWithGroundTruth:
 
         return MetadataEvaluator(metadata_list).evaluate()
 
-    def evaluate_geology(self) -> OverallMetricsCatalog:
+    def evaluate_geology(self, verbose: bool = True) -> OverallMetricsCatalog:
         """Evaluate the borehole extraction predictions.
+
+        Args:
+            verbose (bool): If True, log all metrics for the current evaluation.
 
         Returns:
             OverallMetricsCatalog: A OverallMetricsCatalog that maps a metrics name to the corresponding
@@ -329,13 +332,14 @@ class AllBoreholePredictionsWithGroundTruth:
                 all_metrics, f"{language}_material_description_metrics", evaluator.get_material_description_metrics()
             )
 
-        logger.info("Macro avg:")
-        logger.info(
-            "layer f1: %.1f%%, depth interval f1: %.1f%%, material description f1: %.1f%%",
-            all_metrics.layer_metrics.macro_f1() * 100,
-            all_metrics.depth_interval_metrics.macro_f1() * 100,
-            all_metrics.material_description_metrics.macro_f1() * 100,
-        )
+        if verbose:
+            logger.info("Macro avg:")
+            logger.info(
+                "layer f1: %.1f%%, depth interval f1: %.1f%%, material description f1: %.1f%%",
+                all_metrics.layer_metrics.macro_f1() * 100,
+                all_metrics.depth_interval_metrics.macro_f1() * 100,
+                all_metrics.material_description_metrics.macro_f1() * 100,
+            )
 
         # TODO groundwater should not be in evaluate_geology(), it should be handle by a higher-level function call
         groundwater_list = [

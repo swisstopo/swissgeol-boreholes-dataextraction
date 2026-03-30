@@ -19,6 +19,7 @@ class GroundTruth:
         Args:
             path (Path): the path to the Ground truth file
         """
+        self.path = path
         self.ground_truth = defaultdict(lambda: defaultdict(dict))
 
         # Load the ground truth data
