@@ -7,7 +7,7 @@ import logging
 import os
 import shutil
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from glob import glob
 from pathlib import Path
@@ -268,53 +268,6 @@ def finalize_overall_summary(
         mlflow.log_artifact(str(summary_csv_path), artifact_path="summary")
 
 
-def run_multi_benchmark(
-    *,
-    benchmarks: Sequence[Any],
-    multi_root: Path,
-    resume: bool,
-    parent_runid_tmp: Path,
-    setup_parent_run: Callable[[str | None], str] | None,
-    run_single_benchmark: Callable[[Any], Any | None],
-    finalize_summary: Callable[[list[tuple[str, Any | None]], Path], None],
-) -> None:
-    """Run multiple benchmarks with shared orchestration.
-
-    Args:
-        benchmarks(Sequence[Any]): Sequence of benchmark specs. Each benchmark must expose a `.name`.
-        multi_root (Path): Root output directory for the multi-benchmark run.
-        resume (bool): Whether to resume a previous parent MLflow run.
-        parent_runid_tmp (Path): Temporary file storing the parent MLflow run id.
-        setup_parent_run (Callable[[str | None], str] | None): Callable that takes an optional existing run id and
-        returns
-            the active/new parent run id. May be None if MLflow is not used.
-        run_single_benchmark (Callable[[Any], Any | None]): Callable that executes one benchmark spec and returns a
-        summary.
-        finalize_summary (Callable[[list[tuple[str, Any | None]], Path], None]): Callable that writes/logs the overall
-        summary from collected results.
-    """
-    multi_root.mkdir(parents=True, exist_ok=True)
-
-    if mlflow and setup_parent_run is not None:
-        parent_runid = read_mlflow_runid(str(parent_runid_tmp)) if resume else None
-        parent_runid = setup_parent_run(parent_runid)
-        write_mlflow_runid(str(parent_runid_tmp), parent_runid)
-
-    overall_results: list[tuple[str, Any | None]] = []
-
-    for spec in benchmarks:
-        summary = run_single_benchmark(spec)
-        overall_results.append((spec.name, summary))
-
-    finalize_summary(overall_results, multi_root)
-
-    if mlflow:
-        mlflow.end_run()
-
-    delete_temporary(parent_runid_tmp)
-    delete_temporary(multi_root / "*" / "*.tmp")
-
-
 @dataclass(frozen=True)
 class PipelineTempPaths:
     """Temporary file paths used during a single pipeline run."""
@@ -358,31 +311,6 @@ def prepare_pipeline_temp_paths(
         predictions_path_tmp=predictions_path_tmp,
         mlflow_runid_tmp=mlflow_runid_tmp,
     )
-
-
-def start_or_resume_mlflow_run(
-    resume: bool,
-    mlflow_runid_tmp: Path,
-    setup_run: Callable[[str | None], str],
-) -> str | None:
-    """Start or resume an MLflow run via a pipeline-specific setup callback.
-
-    Args:
-        resume (bool): Whether to try resuming an existing run.
-        mlflow_runid_tmp (Path): Temp file storing the run id.
-        setup_run (Callable[[str | None], str]): Callback that receives the previous
-            run id (or None) and returns the active run id.
-
-    Returns:
-        str | None: The active run id, or None if mlflow is disabled.
-    """
-    if not mlflow:
-        return None
-
-    runid = read_mlflow_runid(str(mlflow_runid_tmp)) if resume else None
-    runid = setup_run(runid)
-    write_mlflow_runid(filename=mlflow_runid_tmp, runid=runid)
-    return runid
 
 
 def finalize_pipeline_run(

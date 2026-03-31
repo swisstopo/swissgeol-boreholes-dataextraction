@@ -6,7 +6,7 @@ import click
 
 from classification import DATAPATH
 from classification.evaluation.benchmark.spec import parse_benchmark_spec
-from classification.runner import start_multi_benchmark, start_pipeline
+from classification.runner import ClassificationBenchmarkRunner, ClassificationOptions, ClassificationPipelineRunner
 from core.benchmark_utils import configure_logging
 
 
@@ -99,33 +99,37 @@ def click_pipeline(
     """Command line interface for the classification pipeline (single or multi-benchmark)."""
     configure_logging()
     # --- Multi-benchmark mode ---
+    opts = ClassificationOptions(
+        classifier_type=classifier_type,
+        model_path=model_path,
+        classification_system=classification_system,
+    )
+
     if benchmarks:
         specs = [parse_benchmark_spec(b) for b in benchmarks]
-        start_multi_benchmark(
+        multi_root = out_directory / "multi"
+        multi_bedrock_root = out_directory_bedrock / "multi"
+        ClassificationBenchmarkRunner(
             benchmarks=specs,
-            out_directory=out_directory,
-            out_directory_bedrock=out_directory_bedrock,
-            classifier_type=classifier_type,
-            model_path=model_path,
-            classification_system=classification_system,
+            multi_root=multi_root,
             resume=resume,
-        )
+            options=opts,
+            out_directory_bedrock=multi_bedrock_root,
+        ).run()
         return
 
     # --- Single-benchmark mode ---
     if file_path is None:
         raise click.BadParameter("Missing -f/--file-path. Provide it, or use one or more --benchmark specs.")
 
-    start_pipeline(
+    ClassificationPipelineRunner(
+        predictions_path=out_directory / "class_predictions.json",
         file_path=file_path,
         ground_truth_path=ground_truth_path,
         out_directory=out_directory,
         out_directory_bedrock=out_directory_bedrock,
-        predictions_path=out_directory / "class_predictions.json",
-        classifier_type=classifier_type,
-        model_path=model_path,
-        classification_system=classification_system,
-    )
+        options=opts,
+    ).execute()
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Sequence
+from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
 
@@ -13,12 +13,11 @@ from tqdm import tqdm
 from core.benchmark_utils import (
     finalize_overall_summary,
     parent_input_key,
-    run_multi_benchmark,
     short_metric_key,
 )
 from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_parent_run, setup_mlflow_tracking
-from core.pipeline_runner import PipelineRunResult, execute_pipeline_run
+from core.pipeline_runner import MultiBenchmarkRunner, PipelineRunner, PipelineRunResult
 from extraction.core.extract import ExtractionResult, extract, open_pdf
 from extraction.evaluation.benchmark.score import ExtractionBenchmarkSummary, evaluate_all_predictions
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
@@ -30,42 +29,39 @@ from swissgeol_doc_processing.utils.file_utils import flatten, read_params
 
 matching_params = read_params("matching_params.yml")
 line_detection_params = read_params("line_detection_params.yml")
-name_detection_params = read_params("name_detection_params.yml")
-table_detection_params = read_params("table_detection_params.yml")
-striplog_detection_params = read_params("striplog_detection_params.yml")
 
 logger = logging.getLogger(__name__)
 
 
-def write_json_predictions(filename: str, predictions: OverallFilePredictions) -> None:
+def write_json_predictions(path: Path, predictions: OverallFilePredictions) -> None:
     """Write prediction to json output.
 
     Args:
-        filename (str): Destination file.
+        path (Path): Destination file.
         predictions (OverallFilePredictions): Prediction to dump in JSON file.
     """
-    with open(filename, "w", encoding="utf8") as file:
+    with open(path, "w", encoding="utf8") as file:
         json.dump(predictions.to_json(), file, ensure_ascii=False)
 
 
-def read_json_predictions(filename: str) -> OverallFilePredictions:
+def read_json_predictions(path: Path) -> OverallFilePredictions:
     """Read predictions from input file.
 
     Returns an empty OverallFilePredictions if the file doesn't exist or contains invalid JSON.
 
     Args:
-        filename (str): File to read and parse.
+        path (Path): File to read and parse.
 
     Returns:
         OverallFilePredictions: Parsed predictions.
     """
-    if not Path(filename).exists():
+    if not path.exists():
         return OverallFilePredictions()
     try:
-        with open(filename, encoding="utf8") as f:
+        with open(path, encoding="utf8") as f:
             return OverallFilePredictions.from_json(json.load(f))
     except json.JSONDecodeError:
-        logger.warning(f"Unable to load prediction from file {filename}")
+        logger.warning(f"Unable to load prediction from file {path}")
         return OverallFilePredictions()
 
 
@@ -149,16 +145,24 @@ def write_csv_for_file(predictions: FilePredictions, out_directory: Path) -> lis
     return csv_paths
 
 
+@dataclass
+class ExtractionOptions:
+    """Options shared between single and multi-benchmark extraction runners."""
+
+    skip_draw_predictions: bool = False
+    draw_lines: bool = False
+    draw_tables: bool = False
+    draw_strip_logs: bool = False
+    csv: bool = False
+    matching_analytics: bool = False
+    part: str = "all"
+
+
 def run_extraction_predictions(
     input_directory: Path,
     out_directory: Path,
     predictions_path_tmp: Path,
-    skip_draw_predictions: bool = False,
-    draw_lines: bool = False,
-    draw_tables: bool = False,
-    draw_strip_logs: bool = False,
-    csv: bool = False,
-    part: str = "all",
+    options: ExtractionOptions,
     analytics: MatchingParamsAnalytics | None = None,
 ) -> tuple[OverallFilePredictions, int, list[Path]]:
     """Discover PDF files, run extract() on each, and write incremental predictions.
@@ -173,13 +177,7 @@ def run_extraction_predictions(
         out_directory (Path): Directory where per-file output (visualizations, CSV) is written.
         predictions_path_tmp (Path): Path to the incremental tmp predictions file. Existing content
             is used to resume; the file is updated after each successfully processed file.
-        skip_draw_predictions (bool, optional): Skip drawing predictions on PDF pages. Defaults to False.
-        draw_lines (bool, optional): Draw detected lines on PDF pages. Defaults to False.
-        draw_tables (bool, optional): Draw detected table structures on PDF pages. Defaults to False.
-        draw_strip_logs (bool, optional): Draw detected strip log structures on pages. Defaults to False.
-        csv (bool, optional): Generate CSV output for each file. Defaults to False.
-        part (str, optional): Pipeline mode: "all" for full extraction, "metadata" for metadata only.
-            Defaults to "all".
+        options (ExtractionOptions): Extraction run options.
         analytics (MatchingParamsAnalytics | None, optional): Analytics object for tracking matching
             parameters. Defaults to None.
 
@@ -200,7 +198,9 @@ def run_extraction_predictions(
     # Load any partially-completed predictions for resume support
     predictions = read_json_predictions(predictions_path_tmp)
 
-    any_draw = not skip_draw_predictions or draw_lines or draw_tables or draw_strip_logs
+    any_draw = (
+        not options.skip_draw_predictions or options.draw_lines or options.draw_tables or options.draw_strip_logs
+    )
 
     all_csv_paths: list[Path] = []
 
@@ -213,10 +213,10 @@ def run_extraction_predictions(
         logger.info(f"Processing file: {in_path}")
 
         try:
-            result = extract(file=in_path, filename=in_path.name, part=part, analytics=analytics)
+            result = extract(file=in_path, filename=in_path.name, part=options.part, analytics=analytics)
             predictions.add_file_predictions(result.predictions)
 
-            if csv:
+            if options.csv:
                 all_csv_paths.extend(write_csv_for_file(result.predictions, out_directory))
 
             if any_draw:
@@ -225,14 +225,14 @@ def run_extraction_predictions(
                     file=in_path,
                     filename=in_path.name,
                     out_directory=out_directory,
-                    skip_draw_predictions=skip_draw_predictions,
-                    draw_lines=draw_lines,
-                    draw_tables=draw_tables,
-                    draw_strip_logs=draw_strip_logs,
+                    skip_draw_predictions=options.skip_draw_predictions,
+                    draw_lines=options.draw_lines,
+                    draw_tables=options.draw_tables,
+                    draw_strip_logs=options.draw_strip_logs,
                 )
 
             logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
-            write_json_predictions(filename=predictions_path_tmp, predictions=predictions)
+            write_json_predictions(path=predictions_path_tmp, predictions=predictions)
 
         except Exception as e:
             logger.error(f"Unexpected error in file {filename}. Trace: {e}")
@@ -240,73 +240,77 @@ def run_extraction_predictions(
     return predictions, n_documents, all_csv_paths
 
 
-def start_pipeline(
-    input_directory: Path,
-    ground_truth_path: Path,
-    out_directory: Path,
-    predictions_path: Path,
-    metadata_path: Path,
-    skip_draw_predictions: bool = False,
-    draw_lines: bool = False,
-    draw_tables: bool = False,
-    draw_strip_logs: bool = False,
-    csv: bool = False,
-    resume: bool | None = False,
-    matching_analytics: bool = False,
-    part: str = "all",
-    runname: str | None = None,
-    is_nested: bool = False,
-) -> None | ExtractionBenchmarkSummary:
-    """Run the boreholes data extraction pipeline."""
-    out_directory.mkdir(parents=True, exist_ok=True)
-    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+_ExtractionResult = tuple[OverallFilePredictions, list[Path]]
 
-    analytics = create_analytics() if matching_analytics else None
 
-    def _execute_predictions(
-        predictions_path_tmp: Path,
-    ) -> PipelineRunResult[tuple[OverallFilePredictions, list[Path]]]:
-        """Wrap run_extraction_predictions to produce the standardized PipelineRunResult."""
-        predictions, n_documents, csv_paths = run_extraction_predictions(
-            input_directory=input_directory,
-            out_directory=out_directory,
-            predictions_path_tmp=predictions_path_tmp,
-            skip_draw_predictions=skip_draw_predictions,
-            draw_lines=draw_lines,
-            draw_tables=draw_tables,
-            draw_strip_logs=draw_strip_logs,
-            csv=csv,
-            part=part,
-            analytics=analytics,
+@dataclass(kw_only=True)
+class ExtractionPipelineRunner(PipelineRunner[_ExtractionResult, ExtractionBenchmarkSummary]):
+    """Runs the boreholes data extraction pipeline."""
+
+    input_directory: Path
+    ground_truth_path: Path | None
+    out_directory: Path
+    metadata_path: Path
+    options: ExtractionOptions = field(default_factory=ExtractionOptions)
+    runname: str | None = None
+    analytics: MatchingParamsAnalytics | None = field(init=False, default=None)
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.analytics = create_analytics() if self.options.matching_analytics else None
+        self.copy_predictions_to_final = self.options.part == "all"
+        self.out_directory.mkdir(parents=True, exist_ok=True)
+        self.metadata_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def setup_mlflow_run(self, runid: str | None) -> str:
+        return setup_mlflow_tracking(
+            run_id=runid,
+            experiment_name="Boreholes data extraction",
+            runname=self.runname,
+            nested=self.is_nested,
+            tags={
+                "input_directory": self.input_directory,
+                "ground_truth_path": self.ground_truth_path,
+                "out_directory": self.out_directory,
+                "predictions_path": self.predictions_path,
+                "metadata_path": self.metadata_path,
+            },
+            params={
+                **flatten(line_detection_params),
+                **flatten(matching_params),
+            },
+            include_git_info=True,
         )
 
+    def run_predictions(self, predictions_path_tmp: Path) -> PipelineRunResult[_ExtractionResult]:
+        predictions, n_documents, csv_paths = run_extraction_predictions(
+            input_directory=self.input_directory,
+            out_directory=self.out_directory,
+            predictions_path_tmp=predictions_path_tmp,
+            options=self.options,
+            analytics=self.analytics,
+        )
         return PipelineRunResult(
             result=(predictions, csv_paths),
             n_documents=n_documents,
-            copy_source=predictions_path_tmp if part == "all" and predictions_path_tmp.exists() else None,
         )
 
-    def _evaluate(
-        run_result: PipelineRunResult[tuple[OverallFilePredictions, list[Path]]],
-    ) -> ExtractionBenchmarkSummary | None:
-        """Wrap evaluation logic to transform pipeline outputs into an ExtractionBenchmarkSummary."""
-        predictions, _csv_paths = run_result.result
-
+    def evaluate(self, run_result: PipelineRunResult[_ExtractionResult]) -> ExtractionBenchmarkSummary | None:
+        predictions, _ = run_result.result
         eval_summary = evaluate_all_predictions(
             predictions=predictions,
-            ground_truth_path=ground_truth_path,
+            ground_truth_path=self.ground_truth_path,
         )
         if eval_summary is not None:
             eval_summary.n_documents = run_result.n_documents
-
         return eval_summary
 
-    def _after_evaluation(
-        run_result: PipelineRunResult[tuple[OverallFilePredictions, list[Path]]],
+    def after_evaluation(
+        self,
+        run_result: PipelineRunResult[_ExtractionResult],
         summary: ExtractionBenchmarkSummary | None,
         _predictions_path_tmp: Path,
     ) -> None:
-        """Wrap post-processing steps such as logging, metadata writing, and analytics export after evaluation."""
         predictions, csv_paths = run_result.result
 
         if mlflow:
@@ -314,125 +318,64 @@ def start_pipeline(
                 mlflow.log_artifact(str(csv_path), "csv")
 
             if summary is not None:
-                log_metric_mlflow(summary, out_dir=out_directory)
+                log_metric_mlflow(summary, out_dir=self.out_directory)
 
-        logger.info(f"Metadata written to {metadata_path}")
-        with open(metadata_path, "w", encoding="utf8") as file:
+        logger.info(f"Metadata written to {self.metadata_path}")
+        with open(self.metadata_path, "w", encoding="utf8") as file:
             json.dump(predictions.get_metadata_as_dict(), file, ensure_ascii=False)
 
-        if matching_analytics and analytics is not None:
-            analytics_output_path = out_directory / "matching_params_analytics.json"
-            analytics.save_analytics(analytics_output_path)
+        if self.options.matching_analytics and self.analytics is not None:
+            analytics_output_path = self.out_directory / "matching_params_analytics.json"
+            self.analytics.save_analytics(analytics_output_path)
             logger.info(f"Matching parameters analytics saved to {analytics_output_path}")
 
-        if part == "all":
-            logger.info(f"Writing predictions to final JSON file {predictions_path}")
-
-    return execute_pipeline_run(
-        predictions_path=predictions_path,
-        resume=bool(resume),
-        is_nested=is_nested,
-        cleanup_mlflow_tmp=True,
-        setup_mlflow_run=(
-            lambda runid: setup_mlflow_tracking(
-                run_id=runid,
-                experiment_name="Boreholes data extraction",
-                runname=runname,
-                nested=is_nested,
-                tags={
-                    "input_directory": input_directory,
-                    "ground_truth_path": ground_truth_path,
-                    "out_directory": out_directory,
-                    "predictions_path": predictions_path,
-                    "metadata_path": metadata_path,
-                },
-                params={
-                    **flatten(line_detection_params),
-                    **flatten(matching_params),
-                },
-                include_git_info=True,
-            )
-            if mlflow
-            else None
-        ),
-        run_predictions=_execute_predictions,
-        evaluate_predictions=_evaluate,
-        after_evaluation=_after_evaluation,
-        copy_predictions_to_final=(part == "all"),
-    )
+        if self.options.part == "all":
+            logger.info(f"Writing predictions to final JSON file {self.predictions_path}")
 
 
-def start_pipeline_benchmark(
-    benchmarks: Sequence[BenchmarkSpec],
-    out_directory: Path,
-    skip_draw_predictions: bool = False,
-    draw_lines: bool = False,
-    draw_tables: bool = False,
-    draw_strip_logs: bool = False,
-    csv: bool = False,
-    resume: bool = False,
-    matching_analytics: bool = False,
-    part: str = "all",
-) -> None:
-    """Run multiple benchmarks in one execution."""
-    parent_runid_tmp = out_directory / "mlflow_parent_runid.json.tmp"
+@dataclass(kw_only=True)
+class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBenchmarkSummary]):
+    """Orchestrates multiple extraction benchmarks with shared MLflow parent tracking."""
 
-    def setup_parent_run(parent_runid: str | None) -> str:
+    options: ExtractionOptions = field(default_factory=ExtractionOptions)
+
+    def setup_parent_run(self, runid: str | None) -> str:
         return setup_mlflow_parent_run(
-            run_id=parent_runid,
+            run_id=runid,
             experiment_name="Boreholes data extraction",
             runname="benchmark",
-            parent_input_key=parent_input_key([Path(b.input_path) for b in benchmarks]),
-            benchmarks=benchmarks,
+            parent_input_key=parent_input_key([Path(b.input_path) for b in self.benchmarks]),
+            benchmarks=self.benchmarks,
             input_tag_name="input_directory",
             ground_truth_path=None,
             include_git_info=True,
         )
 
-    def run_single(spec: BenchmarkSpec) -> ExtractionBenchmarkSummary | None:
+    def run_single(self, spec: BenchmarkSpec) -> ExtractionBenchmarkSummary | None:
         logger.info("Running benchmark: %s", spec.name)
-
-        bench_out = out_directory / spec.name
+        bench_out = self.multi_root / spec.name
         bench_out.mkdir(parents=True, exist_ok=True)
-        bench_predictions_path = bench_out / "predictions.json"
-        bench_metadata_path = bench_out / "metadata.json"
 
-        return start_pipeline(
+        return ExtractionPipelineRunner(
+            predictions_path=bench_out / "predictions.json",
+            resume=self.resume,
+            is_nested=True,
             input_directory=spec.input_path,
             ground_truth_path=spec.ground_truth_path,
             out_directory=bench_out,
-            predictions_path=bench_predictions_path,
-            metadata_path=bench_metadata_path,
-            skip_draw_predictions=skip_draw_predictions,
-            draw_lines=draw_lines,
-            draw_tables=draw_tables,
-            draw_strip_logs=draw_strip_logs,
-            csv=csv,
-            resume=resume,
-            matching_analytics=matching_analytics,
-            part=part,
+            metadata_path=bench_out / "metadata.json",
+            options=self.options,
             runname=spec.name,
-            is_nested=True,
-        )
+        ).execute()
 
-    def finalize(
+    def finalize_summary(
+        self,
         overall_results: list[tuple[str, ExtractionBenchmarkSummary | None]],
         root: Path,
     ) -> None:
-        """Wrap finalize_overall_summary to aggregate and store the overall benchmark results."""
         finalize_overall_summary(
             overall_results=overall_results,
             multi_root=root,
             aggregate_label="overall",
             metric_key_shortener=short_metric_key,
         )
-
-    run_multi_benchmark(
-        benchmarks=benchmarks,
-        multi_root=out_directory,
-        resume=resume,
-        parent_runid_tmp=parent_runid_tmp,
-        setup_parent_run=setup_parent_run if mlflow else None,
-        run_single_benchmark=run_single,
-        finalize_summary=finalize,
-    )

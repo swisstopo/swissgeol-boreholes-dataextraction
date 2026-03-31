@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from core.benchmark_utils import configure_logging
 from extraction.evaluation.benchmark.spec import parse_benchmark_spec
-from extraction.runner import start_pipeline, start_pipeline_benchmark
+from extraction.runner import ExtractionBenchmarkRunner, ExtractionOptions, ExtractionPipelineRunner
 from swissgeol_doc_processing.utils.file_utils import get_data_path, read_params
 
 load_dotenv()
@@ -145,38 +145,42 @@ def click_pipeline(
     if benchmarks:
         specs = [parse_benchmark_spec(b) for b in benchmarks]
 
-        start_pipeline_benchmark(
+        ExtractionBenchmarkRunner(
             benchmarks=specs,
-            out_directory=out_directory,
-            skip_draw_predictions=skip_draw_predictions,
-            draw_lines=draw_lines,
-            draw_tables=draw_tables,
-            draw_strip_logs=draw_strip_logs,
-            csv=csv,
+            multi_root=out_directory,
             resume=resume,
-            matching_analytics=matching_analytics,
-            part=part,
-        )
+            options=ExtractionOptions(
+                skip_draw_predictions=skip_draw_predictions,
+                draw_lines=draw_lines,
+                draw_tables=draw_tables,
+                draw_strip_logs=draw_strip_logs,
+                csv=csv,
+                matching_analytics=matching_analytics,
+                part=part,
+            ),
+        ).run()
     # --- Single-benchmark mode ---
     else:
         # If no multi-benchmarking, enforce -i argument
         if input_directory is None:
             raise click.BadParameter("Missing -i/--input-directory. Provide it, or use one or more --benchmark specs.")
-        start_pipeline(
+        ExtractionPipelineRunner(
+            predictions_path=predictions_path,
+            resume=bool(resume),
             input_directory=input_directory,
             ground_truth_path=ground_truth_path,
             out_directory=out_directory,
-            predictions_path=predictions_path,
             metadata_path=metadata_path,
-            skip_draw_predictions=skip_draw_predictions,
-            draw_lines=draw_lines,
-            draw_tables=draw_tables,
-            draw_strip_logs=draw_strip_logs,
-            csv=csv,
-            resume=resume,
-            matching_analytics=matching_analytics,
-            part=part,
-        )
+            options=ExtractionOptions(
+                skip_draw_predictions=skip_draw_predictions,
+                draw_lines=draw_lines,
+                draw_tables=draw_tables,
+                draw_strip_logs=draw_strip_logs,
+                csv=csv,
+                matching_analytics=matching_analytics,
+                part=part,
+            ),
+        ).execute()
 
 
 @click.command()
@@ -196,21 +200,23 @@ def click_pipeline_metadata(
     matching_analytics: bool = False,
 ):
     """Run only the metadata part of the pipeline."""
-    start_pipeline(
+    ExtractionPipelineRunner(
+        predictions_path=predictions_path,
+        resume=bool(resume),
         input_directory=input_directory,
         ground_truth_path=ground_truth_path,
         out_directory=out_directory,
-        predictions_path=predictions_path,
         metadata_path=metadata_path,
-        skip_draw_predictions=skip_draw_predictions,
-        draw_lines=draw_lines,
-        draw_tables=draw_tables,
-        draw_strip_logs=draw_strip_logs,
-        csv=csv,
-        resume=resume,
-        matching_analytics=matching_analytics,
-        part="metadata",
-    )
+        options=ExtractionOptions(
+            skip_draw_predictions=skip_draw_predictions,
+            draw_lines=draw_lines,
+            draw_tables=draw_tables,
+            draw_strip_logs=draw_strip_logs,
+            csv=csv,
+            matching_analytics=matching_analytics,
+            part="metadata",
+        ),
+    ).execute()
 
 
 if __name__ == "__main__":
