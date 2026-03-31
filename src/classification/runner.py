@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -108,7 +107,6 @@ class ClassificationPipelineRunner(PipelineRunner[_ClassificationResult, Classif
     options: ClassificationOptions
     runname: str | None = None
     cleanup_mlflow_tmp: bool = False
-    copy_predictions_to_final: bool = True
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -138,10 +136,6 @@ class ClassificationPipelineRunner(PipelineRunner[_ClassificationResult, Classif
             out_directory_bedrock=self.out_directory_bedrock,
             options=self.options,
         )
-
-        final_pred = self.out_directory / "class_predictions.json"
-        if final_pred.exists():
-            shutil.copy(final_pred, predictions_path_tmp)
 
         return PipelineRunResult(
             result=(layer_descriptions, classifier),
