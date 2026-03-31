@@ -1,0 +1,23 @@
+name: Python Package Step Summary
+description: Generates a step summary with pip install instructions for a published package.
+
+inputs:
+  version:
+    description: Package version without v prefix (e.g. 1.0.42 or 1.0.dev42)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Generate installation instructions
+      shell: bash
+      run: |
+        WHEEL_FILE=$(ls dist/*.whl | head -n 1 | xargs basename)
+        echo "### Python Package Published!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Version:** \`${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "#### Installation" >> $GITHUB_STEP_SUMMARY
+        echo '```bash' >> $GITHUB_STEP_SUMMARY
+        echo "pip install https://github.com/${{ github.repository }}/releases/download/v${{ inputs.version }}/$WHEEL_FILE" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY

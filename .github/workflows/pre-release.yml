@@ -91,12 +91,7 @@ jobs:
         run: |
           gh release upload v${{ needs.tag-release-candidate.outputs.version }} dist/*.whl dist/*.tar.gz --clobber
 
-      - name: Generate installation instructions
-        run: |
-          WHEEL_FILE=$(ls dist/*.whl | head -n 1 | xargs basename)
-          echo "### Python Package Published Successfully!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### Installation Command" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "pip install https://github.com/${{ github.repository }}/releases/download/v${{ needs.tag-release-candidate.outputs.version }}/$WHEEL_FILE" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+      - name: Generate step summary
+        uses: ./.github/actions/python-package-summary
+        with:
+          version: ${{ needs.tag-release-candidate.outputs.version }}
