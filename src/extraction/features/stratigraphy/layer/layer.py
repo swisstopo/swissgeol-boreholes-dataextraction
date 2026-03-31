@@ -84,20 +84,11 @@ class LayerDepths(ExtractedFeature):
         elif self.end:
             return pymupdf.Point(self.end.rect.x1, self.end.rect.y0)
 
-    def get_background_rect(
-        self,
-        page_number: int,
-        page_height: float,
-        depth_entry_rects: list[pymupdf.Rect] | None = None,
-    ) -> pymupdf.Rect | None:
+    def get_background_rect(self, page_number: int) -> pymupdf.Rect | None:
         """Get the background rectangle for the layer depths.
 
         Args:
             page_number (int): The page number for which to get the background rectangle.
-            page_height (float): The height of the page.
-            depth_entry_rects (list[pymupdf.Rect] | None): Bounding boxes of all detected depth entries on
-                the current page. When provided, the returned rect is clipped vertically to the extent of
-                these entries so that spanning layers do not produce full-page pillars.
 
         Returns:
             pymupdf.Rect | None: The background rectangle for the layer depths, or None if not applicable.
@@ -105,24 +96,13 @@ class LayerDepths(ExtractedFeature):
         if not (self.start and self.start.rect and self.end):
             return None
         if self.start.page_number != self.end.page_number:
-            if page_number == self.start.page_number:
-                rect = pymupdf.Rect(self.start.rect.x0, self.start.rect.y1, self.start.rect.x1, page_height)
-            elif page_number == self.end.page_number:
-                rect = pymupdf.Rect(self.end.rect.x0, 0, self.end.rect.x1, self.end.rect.y0)
-            else:
-                return None
+            return None
         elif self.start.rect.y1 < self.end.rect.y0:
             rect = pymupdf.Rect(
                 self.start.rect.x0, self.start.rect.y1, max(self.start.rect.x1, self.end.rect.x1), self.end.rect.y0
             )
         else:
             return None
-
-        if depth_entry_rects:
-            rect.y0 = max(rect.y0, min(depth_entry_rects, key=lambda r: r.y0).y0)
-            rect.y1 = min(rect.y1, max(depth_entry_rects, key=lambda r: r.y1).y1)
-            if rect.y0 >= rect.y1:
-                return None
 
         return rect
 

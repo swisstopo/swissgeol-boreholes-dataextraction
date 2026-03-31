@@ -120,9 +120,6 @@ class PageDrawer:
                     bboxes, start_is_continuation=start_is_continuation, end_has_continuation=end_has_continuation
                 )
 
-            self._depth_entry_rects = [
-                depth_entry.rect for bboxes in page_bboxes for depth_entry in bboxes.depth_column_entry_bboxes
-            ]
             layers = [layer for layer in bh_layers.layers if self.page_number in layer.material_description.pages]
             for index, layer in enumerate(layers):
                 self.draw_layer(
@@ -284,9 +281,7 @@ class PageDrawer:
                         self.shape.finish(color=pymupdf.utils.getColor(color))
 
                     # background color for depth interval
-                    background_rect = layer.depths.get_background_rect(
-                        page_number, self.shape.page.rect.height, self._depth_entry_rects
-                    )
+                    background_rect = layer.depths.get_background_rect(page_number)
                     if background_rect is not None:
                         self.shape.draw_rect(
                             background_rect * self.page.derotation_matrix,
