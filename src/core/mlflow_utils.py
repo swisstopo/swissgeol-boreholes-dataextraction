@@ -74,15 +74,12 @@ def setup_mlflow_parent_run(
     *,
     run_id: str | None,
     experiment_name: str,
-    parent_input_key: Path | str | None,
+    parent_input_key: str,
     benchmarks: Sequence[Any],
     runname: str | None = None,
-    extra_tags: Mapping[str, Any] | None = None,
     include_git_info: bool = False,
     input_tag_name: str = "input_path",
-    ground_truth_path: Path | str | None = None,
     out_directory: Path | str | None = None,
-    params: Mapping[str, Any] | None = None,
 ) -> str:
     """Start a shared parent MLflow run for multi-benchmark execution.
 
@@ -92,26 +89,19 @@ def setup_mlflow_parent_run(
         parent_input_key: Aggregate input identifier for the parent run.
         benchmarks: Benchmark specs with a `.name` attribute.
         runname: Optional run name.
-        extra_tags: Additional tags to set.
         include_git_info: Whether to include git metadata.
         input_tag_name: Tag name used for the input identifier.
-        ground_truth_path: Optional GT path for parent run.
         out_directory: Optional output directory tag.
-        params: Optional params to log.
 
     Returns:
         str: Active parent run ID.
     """
     tags = {
         input_tag_name: parent_input_key,
-        "ground_truth_path": ground_truth_path,
         "out_directory": out_directory,
         "run_type": "multi_benchmark",
         "benchmarks": ",".join(b.name for b in benchmarks),
     }
-
-    if extra_tags:
-        tags.update(extra_tags)
 
     return setup_mlflow_tracking(
         run_id=run_id,
@@ -119,6 +109,5 @@ def setup_mlflow_parent_run(
         runname=runname,
         nested=False,
         tags=tags,
-        params=params,
         include_git_info=include_git_info,
     )

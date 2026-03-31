@@ -35,27 +35,27 @@ def delete_temporary(pattern: Path | str) -> None:
             os.remove(file)
 
 
-def read_mlflow_runid(filename: Path | str) -> str | None:
+def read_mlflow_runid(filename: Path) -> str | None:
     """Read locally stored mlflow run id.
 
     Args:
-        filename (str): Name of the file that contains runid.
+        filename (Path): Path to the file that contains runid.
 
     Returns:
         str | None: Loaded runid if any, otherwise None.
     """
-    if not Path(filename).exists():
+    if not filename.exists():
         return None
 
     with open(filename, encoding="utf8") as f:
         return json.load(f)
 
 
-def write_mlflow_runid(filename: Path | str, runid: str) -> None:
+def write_mlflow_runid(filename: Path, runid: str) -> None:
     """Locally stores mlflow run id.
 
     Args:
-        filename (str): Name of the file to store runid.
+        filename (Path): Path to the file to store runid.
         runid (str): Runid to store.
     """
     with open(filename, "w", encoding="utf8") as file:
@@ -91,7 +91,6 @@ class BenchmarkSummary(BaseModel, ABC):
     @abstractmethod
     def metrics_flat(self, prefix: str = "metrics", short: bool = False) -> dict[str, float]:
         """Return metrics in a flattened form for summaries/CSV output."""
-        raise NotImplementedError
 
 
 @dataclass(frozen=True)
@@ -131,7 +130,7 @@ class Metrics:
         recall = self.recall
         return 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
 
-    def to_json(self, feature_name) -> dict[str, float]:
+    def to_json(self, feature_name: str) -> dict[str, float]:
         """Converts the object to a dictionary.
 
         Args:
@@ -315,8 +314,8 @@ def prepare_pipeline_temp_paths(
 
 def finalize_pipeline_run(
     is_nested: bool,
-    predictions_path_tmp: Path | None = None,
-    final_predictions_path: Path | None = None,
+    predictions_path_tmp: Path,
+    final_predictions_path: Path,
     copy_predictions: bool = False,
     mlflow_runid_tmp: Path | None = None,
 ) -> None:
@@ -327,22 +326,16 @@ def finalize_pipeline_run(
 
     Args:
         is_nested (bool): Whether this run is nested under a parent benchmark run.
-        predictions_path_tmp (Path | None): Temp predictions path.
-        final_predictions_path (Path | None): Final predictions path.
+        predictions_path_tmp (Path): Temp predictions path.
+        final_predictions_path (Path): Final predictions path.
         copy_predictions (bool): Whether to copy temp predictions to final path.
         mlflow_runid_tmp (Path | None): Temp MLflow run id path.
     """
-    if (
-        copy_predictions
-        and predictions_path_tmp is not None
-        and final_predictions_path is not None
-        and predictions_path_tmp.exists()
-    ):
+    if copy_predictions and predictions_path_tmp.exists():
         shutil.copy(src=predictions_path_tmp, dst=final_predictions_path)
 
     if not is_nested:
-        if predictions_path_tmp is not None:
-            delete_temporary(predictions_path_tmp)
+        delete_temporary(predictions_path_tmp)
         if mlflow_runid_tmp is not None:
             delete_temporary(mlflow_runid_tmp)
 

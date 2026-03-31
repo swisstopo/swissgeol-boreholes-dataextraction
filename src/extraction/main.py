@@ -9,16 +9,10 @@ from dotenv import load_dotenv
 from core.benchmark_utils import configure_logging
 from extraction.evaluation.benchmark.spec import parse_benchmark_spec
 from extraction.runner import ExtractionBenchmarkRunner, ExtractionOptions, ExtractionPipelineRunner
-from swissgeol_doc_processing.utils.file_utils import get_data_path, read_params
+from swissgeol_doc_processing.utils.file_utils import get_data_path
 
 load_dotenv()
 logger = logging.getLogger(__name__)
-
-matching_params = read_params("matching_params.yml")
-line_detection_params = read_params("line_detection_params.yml")
-name_detection_params = read_params("name_detection_params.yml")
-table_detection_params = read_params("table_detection_params.yml")
-striplog_detection_params = read_params("striplog_detection_params.yml")
 
 
 def common_options(f):

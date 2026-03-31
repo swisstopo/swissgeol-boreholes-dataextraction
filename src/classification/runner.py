@@ -211,7 +211,6 @@ class ClassificationBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, Classifi
             parent_input_key=parent_input_key([Path(b.file_path) for b in self.benchmarks]),
             benchmarks=self.benchmarks,
             input_tag_name="json_file_path",
-            ground_truth_path=None,
             out_directory=self.multi_root.parent,
             include_git_info=False,
         )

@@ -347,7 +347,6 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
             parent_input_key=parent_input_key([Path(b.input_path) for b in self.benchmarks]),
             benchmarks=self.benchmarks,
             input_tag_name="input_directory",
-            ground_truth_path=None,
             include_git_info=True,
         )
 
