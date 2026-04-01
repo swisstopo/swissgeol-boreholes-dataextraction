@@ -24,14 +24,14 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set environment variables
         run: |
           echo IMAGE=$REGISTRY/$(echo ${GITHUB_REPOSITORY,,})-api >> $GITHUB_ENV
 
       - name: Log in to the GitHub container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.repository_owner }}
@@ -48,7 +48,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v8.0.0
         with:
           python-version: '3.11'
 
