@@ -2,10 +2,6 @@ name: pytest
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
-      - develop
 
 permissions:
   contents: write
@@ -15,10 +11,10 @@ jobs:
   pytest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v8
         with:
           python-version: "3.11"
 
