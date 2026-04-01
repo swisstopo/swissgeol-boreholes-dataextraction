@@ -251,3 +251,5 @@ Additionally, `-o`and `-ob`can be used to specify the output and bedrock output 
 - [groundtruth-json.md](docs/groundtruth-json.md) documents the expected structure of the ground truth file needed for evaluation. 
 
 - [train_BERT.md](docs/train_BERT.md) documents how to fine-tune a BERT model on your own data. 
+
+- [CICD.md](docs/CICD.md) overview of the deployment process and CICD pipeline

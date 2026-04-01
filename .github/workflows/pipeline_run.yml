@@ -3,7 +3,9 @@ name: pipeline_run
 on:
   pull_request:
   push:
-    branches: [main]
+    branches:
+      - main
+      - develop
 
 jobs:
   pipeline_run:
