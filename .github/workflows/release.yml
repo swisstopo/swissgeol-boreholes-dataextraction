@@ -90,7 +90,7 @@ jobs:
       - name: Generate step summary
         uses: ./.github/actions/python-package-summary
         with:
-          version: ${{ steps.version.outputs.version }}
+          version: ${{ env.VERSION }}
 
   patch-changelog:
     runs-on: ubuntu-latest
