@@ -71,7 +71,7 @@ jobs:
           echo VERSION=${TAG_NAME#v} >> $GITHUB_ENV
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v8
+        uses: astral-sh/setup-uv@v8.0.0
         with:
           python-version: '3.11'
 
