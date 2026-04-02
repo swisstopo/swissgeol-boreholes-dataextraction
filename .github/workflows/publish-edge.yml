@@ -122,7 +122,7 @@ jobs:
     name: Tag commit
     needs:
       - determine_version
-      - build_and_push_api
+      - publish_edge
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
