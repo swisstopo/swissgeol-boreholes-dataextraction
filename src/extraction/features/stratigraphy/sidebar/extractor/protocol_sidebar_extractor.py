@@ -1,0 +1,116 @@
+"""Module for finding ProtocolSidebar instances in a borehole profile."""
+
+from __future__ import annotations
+
+import fastquadtree
+import pymupdf
+
+from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
+from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
+from extraction.features.stratigraphy.sidebar.classes.protocol_sidebar import ProtocolSidebar
+from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarNoise, noise_count
+from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
+from swissgeol_doc_processing.geometry.util import x_overlap_significant_smallest
+from swissgeol_doc_processing.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.utils.table_detection import TableStructure
+
+
+class ProtocolSidebarExtractor:
+    """Class that finds ProtocolSidebar instances in a borehole profile."""
+
+    @staticmethod
+    def find_in_words(
+        all_words: list[TextWord],
+        lines: list[TextLine],
+        line_rtree: fastquadtree.RectQuadTreeObjects,
+        used_entry_rects: list[pymupdf.Rect],
+        table_structures: list[TableStructure],
+        sidebar_params: dict,
+    ) -> list[SidebarNoise]:
+        """Construct all possible ProtocolSidebar objects from the given words.
+
+        Args:
+            all_words (list[TextWord]): All words in the page.
+            lines (list[TextLine]): All text lines in the page.
+            line_rtree (fastquadtree.RectQuadTreeObjects): Pre-built R-tree for spatial queries.
+            used_entry_rects (list[pymupdf.Rect]): Part of the document to ignore.
+            table_structures: list[TableStructure]:  List of table structures.
+            sidebar_params (dict): Parameters for the ProtocolSidebar objects.
+
+        Returns:
+            list[SidebarNoise]: Valid ProtocolSidebar objects wrapped with noise count.
+        """
+        entries = [
+            entry
+            for entry in DepthColumnEntryExtractor.find_in_words(all_words)
+            if all((entry.rect & used_rect).is_empty for used_rect in used_entry_rects)
+        ]
+
+        if not entries:
+            return []
+
+        clusters = Cluster[DepthColumnEntry].create_clusters(entries, lambda entry: entry.rect, allow_size_two=True)
+
+        min_entries = sidebar_params.get("min_entries")
+        header_keywords = sidebar_params.get("header_keywords")
+        max_header_gap = sidebar_params.get("max_header_gap")
+        normalized_keywords = {keyword.casefold() for keyword in header_keywords}
+        header_lines = [
+            line for line in lines if any(keyword in line.text.casefold() for keyword in normalized_keywords)
+        ]
+
+        candidate_sidebars = [
+            ProtocolSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= min_entries
+        ]
+
+        processed_sidebars = []
+        for sidebar in candidate_sidebars:
+            has_header = ProtocolSidebarExtractor._is_below_header(sidebar, header_lines, max_header_gap)
+            is_in_table = any(
+                table_structure.bounding_rect.contains(sidebar.rect) for table_structure in table_structures
+            )
+            if not is_in_table:
+                continue
+            if not has_header:
+                continue
+
+            processed = sidebar.process()
+            if not processed:
+                continue
+
+            processed_sidebars.extend(processed)
+
+        sidebars_with_noise = [
+            SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
+            for sidebar in processed_sidebars
+        ]
+
+        sidebars_by_length = sorted(
+            sidebars_with_noise,
+            key=lambda sidebar_noise: len(sidebar_noise.sidebar.entries),
+            reverse=True,
+        )
+
+        result = []
+        for sidebar_noise in sidebars_by_length:
+            if not any(result_sidebar.sidebar.strictly_contains(sidebar_noise.sidebar) for result_sidebar in result):
+                result.append(sidebar_noise)
+
+        return result
+
+    @staticmethod
+    def _is_below_header(
+        sidebar: ProtocolSidebar,
+        header_lines: list[TextLine],
+        max_header_gap: float,
+    ) -> bool:
+        """Check whether the sidebar is located below a matching protocol header."""
+        first_entry_rect = sidebar.entries[0].rect
+        for line in header_lines:
+            if line.rect.y1 > first_entry_rect.y0:
+                continue
+            if 0 <= first_entry_rect.y0 - line.rect.y1 <= max_header_gap and x_overlap_significant_smallest(
+                line.rect, sidebar.rect, 0.2
+            ):
+                return True
+        return False

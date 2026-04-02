@@ -14,7 +14,11 @@ from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_tracking
 from core.pipeline_runner import MultiBenchmarkRunner, PipelineRunner, PipelineRunResult
 from extraction.core.extract import ExtractionResult, extract, open_pdf
-from extraction.evaluation.benchmark.score import ExtractionBenchmarkSummary, evaluate_all_predictions
+from extraction.evaluation.benchmark.ground_truth import GroundTruth
+from extraction.evaluation.benchmark.score import (
+    ExtractionBenchmarkSummary,
+    evaluate_all_predictions,
+)
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
@@ -36,7 +40,7 @@ def write_json_predictions(path: Path, predictions: OverallFilePredictions) -> N
         predictions (OverallFilePredictions): Prediction to dump in JSON file.
     """
     with open(path, "w", encoding="utf8") as file:
-        json.dump(predictions.to_json(), file, ensure_ascii=False)
+        json.dump(predictions.to_json(), file, ensure_ascii=False, indent=2)
 
 
 def read_json_predictions(path: Path) -> OverallFilePredictions:
@@ -181,13 +185,8 @@ def run_extraction_predictions(
             the total number of PDF files discovered (including any already-predicted files from a
             resumed run), and all CSV file paths written during this run.
     """
-    if input_directory.is_file():
-        root = input_directory.parent
-        pdf_files = [input_directory.name] if input_directory.suffix.lower() == ".pdf" else []
-    else:
-        root = input_directory
-        pdf_files = [f.name for f in input_directory.glob("*.pdf") if f.is_file()]
-
+    # Look for files to process
+    pdf_files = [input_directory] if input_directory.is_file() else list(input_directory.glob("*.pdf"))
     n_documents = len(pdf_files)
 
     # Load any partially-completed predictions for resume support
@@ -198,17 +197,15 @@ def run_extraction_predictions(
     )
 
     all_csv_paths: list[Path] = []
-
-    for filename in tqdm(pdf_files, desc="Processing files", unit="file"):
-        if predictions.contains(filename):
-            logger.info(f"{filename} already predicted.")
+    for pdf_file in tqdm(pdf_files, desc="Processing files", unit="file"):
+        # Check if file is already computed in previous run
+        if predictions.contains(pdf_file.name):
+            logger.info(f"{pdf_file.name} already predicted.")
             continue
 
-        in_path = root / filename
-        logger.info(f"Processing file: {in_path}")
-
+        logger.info(f"Processing file: {pdf_file.name}")
         try:
-            result = extract(file=in_path, filename=in_path.name, part=options.part, analytics=analytics)
+            result = extract(file=pdf_file, filename=pdf_file.name, part=options.part, analytics=analytics)
             predictions.add_file_predictions(result.predictions)
 
             if options.csv:
@@ -217,8 +214,8 @@ def run_extraction_predictions(
             if any_draw:
                 draw_file_predictions(
                     result=result,
-                    file=in_path,
-                    filename=in_path.name,
+                    file=pdf_file,
+                    filename=pdf_file.name,
                     out_directory=out_directory,
                     skip_draw_predictions=options.skip_draw_predictions,
                     draw_lines=options.draw_lines,
@@ -230,7 +227,7 @@ def run_extraction_predictions(
             write_json_predictions(path=predictions_path_tmp, predictions=predictions)
 
         except Exception as e:
-            logger.error(f"Unexpected error in file {filename}. Trace: {e}")
+            logger.error(f"Unexpected error in file {pdf_file.name}. Trace: {e}")
 
     return predictions, n_documents, all_csv_paths
 
@@ -291,9 +288,10 @@ class ExtractionPipelineRunner(PipelineRunner[_ExtractionResult, ExtractionBench
 
     def evaluate(self, run_result: PipelineRunResult[_ExtractionResult]) -> ExtractionBenchmarkSummary | None:
         predictions, _ = run_result.result
+        ground_truth = GroundTruth(self.ground_truth_path) if self.ground_truth_path else None
         eval_summary = evaluate_all_predictions(
             predictions=predictions,
-            ground_truth_path=self.ground_truth_path,
+            ground_truth=ground_truth,
         )
         if eval_summary is not None:
             eval_summary.n_documents = run_result.n_documents

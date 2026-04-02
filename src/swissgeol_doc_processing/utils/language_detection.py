@@ -87,8 +87,8 @@ def detect_language_of_text(
         for i in range(n_windows)
     ]
 
-    # Perform majority voting across windows
-    language = max(set(languages), key=languages.count)
+    # Sort and perform majority voting across windows
+    language = max(sorted(set(languages)), key=languages.count)
 
     # Return language if part of supported otherwise default
     return language if language in supported_languages else default_language

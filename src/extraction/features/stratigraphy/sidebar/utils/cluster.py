@@ -20,11 +20,22 @@ class Cluster(Generic[EntryT]):
 
     @classmethod
     def create_clusters(
-        cls, entries: list[EntryT], entry_to_rect: Callable[[EntryT], pymupdf.Rect], allow_size_two: bool = False
+        cls,
+        entries: list[EntryT],
+        entry_to_rect: Callable[[EntryT], pymupdf.Rect],
+        allow_size_two: bool = False,
     ) -> list[Self]:
         def midpoint(entry: EntryT) -> Point:
             rect = entry_to_rect(entry)
             return Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
+
+        def left_edge(entry: EntryT) -> Point:
+            rect = entry_to_rect(entry)
+            return Point(rect.x0, (rect.y0 + rect.y1) / 2)
+
+        def right_edge(entry: EntryT) -> Point:
+            rect = entry_to_rect(entry)
+            return Point(rect.x1, (rect.y0 + rect.y1) / 2)
 
         max_skew_degrees = 5
 
@@ -35,8 +46,6 @@ class Cluster(Generic[EntryT]):
 
         # iterate over all possibilities for the topmost entry of a cluster
         for index1, entry1 in enumerate(entries):
-            midpoint1 = midpoint(entry1)
-
             # iterate over all possibilities for the bottom entry of a cluster
             for index2, entry2 in enumerate(entries[:index1:-1]):
                 index2 = len(entries) - 1 - index2  # use index relative to the full list of entries
@@ -44,10 +53,18 @@ class Cluster(Generic[EntryT]):
                     # skip if the entries already belong to the same cluster
                     continue
 
-                midpoint2 = midpoint(entry2)
-                angle = Line(midpoint1, midpoint2).angle
+                # check if rects align (left edge, right edge or midpoint)
+                accepted = False
+                for point_getter in (midpoint, left_edge, right_edge):
+                    point1 = point_getter(entry1)
+                    point2 = point_getter(entry2)
+                    angle = Line(point1, point2).angle
 
-                if abs(abs(angle) - 90) <= max_skew_degrees:
+                    if abs(abs(angle) - 90) <= max_skew_degrees:
+                        accepted = True
+                        break
+
+                if accepted:
                     cluster_span = ClusterSpan(entry_to_rect(entry1), entry_to_rect(entry2))
 
                     intermediate_entries = []

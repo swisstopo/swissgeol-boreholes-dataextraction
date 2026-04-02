@@ -8,11 +8,10 @@ from extraction.evaluation.evaluation_dataclasses import (
     OverallBoreholeMetadataMetrics,
 )
 from extraction.evaluation.utility import evaluate_single
-from extraction.features.metadata.borehole_name_extraction import BoreholeName
+from extraction.features.metadata.borehole_name_extraction import BoreholeName, clean_borehole_name
 from extraction.features.metadata.coordinate_extraction import Coordinate
 from extraction.features.predictions.borehole_predictions import FileMetadataWithGroundTruth
 from swissgeol_doc_processing.utils.file_utils import read_params
-from swissgeol_doc_processing.utils.language_filtering import normalize_spaces, remove_any_keyword
 
 name_detection_params = read_params("name_detection_params.yml")
 
@@ -153,22 +152,24 @@ class MetadataEvaluator:
 
         Args:
             extracted_name (BoreholeName): BoreholeName object that include detected name.
-            ground_truth_name (dict): Groud truth name.
+            ground_truth_name (dict): Ground truth name.
             ignore_spaces (bool, optional): Indicate if spaces are ignored during matching. Defaults to True.
 
         Returns:
             bool: True if texts match, False otherwise.
         """
-        # Define keywords are matching names and excluded ones
-        keywords_set_a = name_detection_params.get("matching_keywords", [])
+        # Define keywords to exclude during matching
+        keywords_set_a = name_detection_params.get("matching_keywords_suffix", [])
         keywords_set_b = name_detection_params.get("excluded_keywords", [])
         keywords = keywords_set_a + keywords_set_b
-        # Noramlize strings
-        extracted_name = normalize_spaces(remove_any_keyword(extracted_name.name, keywords))
-        ground_truth_name = normalize_spaces(remove_any_keyword(ground_truth_name, keywords))
+
+        # Normalize strings
+        extracted_name = clean_borehole_name(extracted_name.name, keywords)
+        ground_truth_name = clean_borehole_name(ground_truth_name, keywords)
+
         # Check if space should be ignored
         if ignore_spaces:
-            extracted_name = extracted_name.replace(" ", "")
-            ground_truth_name = ground_truth_name.replace(" ", "")
+            extracted_name = extracted_name.replace(" ", "") if extracted_name else None
+            ground_truth_name = ground_truth_name.replace(" ", "") if ground_truth_name else None
         # Return comparison
         return extracted_name == ground_truth_name

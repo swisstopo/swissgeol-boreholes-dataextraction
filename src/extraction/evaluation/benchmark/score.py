@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from core.benchmark_utils import BenchmarkSummary
 from core.mlflow_tracking import mlflow
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
+from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from swissgeol_doc_processing.utils.file_utils import get_data_path
 
@@ -39,25 +40,51 @@ class ExtractionBenchmarkSummary(BenchmarkSummary):
         return geology_dict | metadata_dict
 
 
+def evaluate_single_prediction(
+    prediction: FilePredictions,
+    ground_truth: GroundTruth | None = None,
+) -> FilePredictions:
+    """Computes metrics for a given file.
+
+    Note that the implementation of `evaluate_geology` and `evaluate_metadata_extraction` mutates
+    the attributes of `prediction`.
+
+    Args:
+        prediction (FilePredictions): The predictions object.
+        ground_truth (GroundTruth | None): The ground truth object.
+
+    Returns:
+        FilePredictions: Evaluated prediction.
+    """
+    if ground_truth is None:
+        return prediction
+
+    # Create dummy overall file prediction and append prediction
+    matched_with_ground_truth = OverallFilePredictions([prediction]).match_with_ground_truth(ground_truth)
+
+    # Run evaluation for file (! mutates prediction !)
+    matched_with_ground_truth.evaluate_geology(verbose=False)
+    matched_with_ground_truth.evaluate_metadata_extraction()
+
+    return prediction
+
+
 def evaluate_all_predictions(
     predictions: OverallFilePredictions,
-    ground_truth_path: Path,
+    ground_truth: GroundTruth | None = None,
 ) -> None | ExtractionBenchmarkSummary:
     """Computes all the metrics, logs them, and creates corresponding MLFlow artifacts (when enabled).
 
     Args:
         predictions (OverallFilePredictions): The predictions objects.
-        ground_truth_path (Path | None): The path to the ground truth file.
+        ground_truth (GroundTruth | None): The ground truth object.
 
     Returns:
         ExtractionBenchmarkSummary | None: A JSON-serializable ExtractionBenchmarkSummary
         that can be used by multi-benchmark runners.
     """
-    if not (ground_truth_path and ground_truth_path.exists()):  # for inference no ground truth is available
-        logger.warning("Ground truth file not found. Skipping evaluation.")
+    if ground_truth is None:
         return None
-
-    ground_truth = GroundTruth(ground_truth_path)
 
     #############################
     # Evaluate the borehole extraction
@@ -98,7 +125,7 @@ def evaluate_all_predictions(
             mlflow.log_artifact(Path(temp_directory) / "document_level_metadata_metrics.csv")
 
     return ExtractionBenchmarkSummary(
-        ground_truth_path=str(ground_truth_path),
+        ground_truth_path=str(ground_truth.path),
         n_documents=len(predictions.file_predictions_list),
         geology=metrics_dict,
         metadata=metadata_metrics.to_json(),
@@ -113,6 +140,7 @@ def main():
     try:
         with open(args.predictions_path, encoding="utf8") as file:
             predictions = json.load(file)
+        predictions = OverallFilePredictions.from_json(predictions)
     except FileNotFoundError:
         logger.error("Predictions file not found: %s", args.predictions_path)
         return
@@ -120,13 +148,19 @@ def main():
         logger.error("Error decoding JSON from predictions file: %s", e)
         return
 
-    predictions = OverallFilePredictions.from_json(predictions)
+    # Load ground truth
+    try:
+        ground_truth = GroundTruth(args.ground_truth_path)
+    except FileNotFoundError:
+        logger.error("Ground truth file not found: %s", args.ground_truth_path)
+        return
+
     if mlflow:
         mlflow.set_experiment("Boreholes Stratigraphy")
         with mlflow.start_run():
-            evaluate_all_predictions(predictions, args.ground_truth_path)
+            evaluate_all_predictions(predictions, ground_truth)
     else:
-        evaluate_all_predictions(predictions, args.ground_truth_path)
+        evaluate_all_predictions(predictions, ground_truth)
 
 
 def parse_cli() -> argparse.Namespace:
