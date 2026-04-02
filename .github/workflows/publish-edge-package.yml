@@ -54,7 +54,8 @@ jobs:
 
       - name: Build package
         run: |
-          export SETUPTOOLS_SCM_PRETEND_VERSION=${{ steps.version.outputs.version }}
+          PEP440_VERSION=$(echo "${{ steps.version.outputs.version }}" | sed 's/-dev/.dev/')
+          export SETUPTOOLS_SCM_PRETEND_VERSION=$PEP440_VERSION
           uv build
 
       - name: List built packages
