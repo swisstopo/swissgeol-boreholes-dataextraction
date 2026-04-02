@@ -10,13 +10,8 @@ from pathlib import Path
 
 from tqdm import tqdm
 
-from core.benchmark_utils import (
-    finalize_overall_summary,
-    parent_input_key,
-    short_metric_key,
-)
 from core.mlflow_tracking import mlflow
-from core.mlflow_utils import setup_mlflow_parent_run, setup_mlflow_tracking
+from core.mlflow_utils import setup_mlflow_tracking
 from core.pipeline_runner import MultiBenchmarkRunner, PipelineRunner, PipelineRunResult
 from extraction.core.extract import ExtractionResult, extract, open_pdf
 from extraction.evaluation.benchmark.score import ExtractionBenchmarkSummary, evaluate_all_predictions
@@ -279,7 +274,6 @@ class ExtractionPipelineRunner(PipelineRunner[_ExtractionResult, ExtractionBench
                 **flatten(line_detection_params),
                 **flatten(matching_params),
             },
-            include_git_info=True,
         )
 
     def run_predictions(self, predictions_path_tmp: Path) -> PipelineRunResult[_ExtractionResult]:
@@ -337,18 +331,13 @@ class ExtractionPipelineRunner(PipelineRunner[_ExtractionResult, ExtractionBench
 class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBenchmarkSummary]):
     """Orchestrates multiple extraction benchmarks with shared MLflow parent tracking."""
 
-    options: ExtractionOptions = field(default_factory=ExtractionOptions)
+    experiment_name = "Boreholes data extraction"
+    input_tag_name = "input_directory"
+    input_path_attr = "input_path"
+    aggregate_label = "overall"
+    runname = "benchmark"
 
-    def setup_parent_run(self, runid: str | None) -> str:
-        return setup_mlflow_parent_run(
-            run_id=runid,
-            experiment_name="Boreholes data extraction",
-            runname="benchmark",
-            parent_input_key=parent_input_key([Path(b.input_path) for b in self.benchmarks]),
-            benchmarks=self.benchmarks,
-            input_tag_name="input_directory",
-            include_git_info=True,
-        )
+    options: ExtractionOptions = field(default_factory=ExtractionOptions)
 
     def run_single(self, spec: BenchmarkSpec) -> ExtractionBenchmarkSummary | None:
         logger.info("Running benchmark: %s", spec.name)
@@ -366,15 +355,3 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
             options=self.options,
             runname=spec.name,
         ).execute()
-
-    def finalize_summary(
-        self,
-        overall_results: list[tuple[str, ExtractionBenchmarkSummary | None]],
-        root: Path,
-    ) -> None:
-        finalize_overall_summary(
-            overall_results=overall_results,
-            multi_root=root,
-            aggregate_label="overall",
-            metric_key_shortener=short_metric_key,
-        )

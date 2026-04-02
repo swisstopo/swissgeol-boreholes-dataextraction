@@ -19,8 +19,8 @@ def common_options(f):
         "--file-path",
         required=False,  # allow multi-benchmark mode
         type=click.Path(exists=True, path_type=Path),
-        help="Input path to classify. Can be a ground truth JSON, a subset ground truth JSON, "
-        "a predictions/descriptions JSON, or a directory containing subset files.",
+        help="Input path to classify. Can be a ground truth JSON, "
+        "a predictions JSON, or a directory containing subset files.",
     )(f)
     # ground truth path
     f = click.option(

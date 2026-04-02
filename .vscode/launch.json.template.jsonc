@@ -73,11 +73,11 @@
         "request": "launch",
         "module": "src.classification.main",
         "args": [
-            // classify ground truth descriptions
+            // classify ground truth descriptions --> gt.json
             "-f", "data/geoquat_ground_truth.json",
-            // classify ONE ground truth description
+            // classify ONE ground truth description --> subset
             // "-f", "data/geoquat/onefile",
-            // classify predictions
+            // classify predictions --> predictions.json
             // "-f", "data/output/multi/geoquat_subset/predictions.json",
 
             "-g", "data/geoquat_ground_truth.json",

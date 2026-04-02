@@ -21,13 +21,8 @@ from classification.utils.data_utils import (
     get_data_language_count,
     write_predictions,
 )
-from core.benchmark_utils import (
-    finalize_overall_summary,
-    parent_input_key,
-    short_metric_key,
-)
 from core.mlflow_tracking import mlflow
-from core.mlflow_utils import setup_mlflow_parent_run, setup_mlflow_tracking
+from core.mlflow_utils import setup_mlflow_tracking
 from core.pipeline_runner import MultiBenchmarkRunner, PipelineRunner, PipelineRunResult
 
 logger = logging.getLogger(__name__)
@@ -125,7 +120,6 @@ class ClassificationPipelineRunner(PipelineRunner[_ClassificationResult, Classif
                 "out_directory": self.out_directory,
             },
             params=None,
-            include_git_info=False,
         )
 
     def run_predictions(self, predictions_path_tmp: Path) -> PipelineRunResult[_ClassificationResult]:
@@ -195,19 +189,15 @@ class ClassificationPipelineRunner(PipelineRunner[_ClassificationResult, Classif
 class ClassificationBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ClassificationBenchmarkSummary]):
     """Orchestrates multiple classification benchmarks with shared MLflow parent tracking."""
 
+    experiment_name = "Layer descriptions classification"
+    input_tag_name = "json_file_path"
+    input_path_attr = "file_path"
+    aggregate_label = "total/mean"
+    _mlflow_use_parent_out_dir = True
+    runname = "benchmark"
+
     options: ClassificationOptions
     out_directory_bedrock: Path
-
-    def setup_parent_run(self, runid: str | None) -> str:
-        return setup_mlflow_parent_run(
-            run_id=runid,
-            experiment_name="Layer descriptions classification",
-            parent_input_key=parent_input_key([Path(b.file_path) for b in self.benchmarks]),
-            benchmarks=self.benchmarks,
-            input_tag_name="json_file_path",
-            out_directory=self.multi_root.parent,
-            include_git_info=False,
-        )
 
     def run_single(self, spec: BenchmarkSpec) -> ClassificationBenchmarkSummary | None:
         logger.info("Running benchmark: %s", spec.name)
@@ -229,15 +219,3 @@ class ClassificationBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, Classifi
             options=self.options,
             runname=spec.name,
         ).execute()
-
-    def finalize_summary(
-        self,
-        overall_results: list[tuple[str, ClassificationBenchmarkSummary | None]],
-        root: Path,
-    ) -> None:
-        finalize_overall_summary(
-            overall_results=overall_results,
-            multi_root=root,
-            aggregate_label="total/mean",
-            metric_key_shortener=short_metric_key,
-        )

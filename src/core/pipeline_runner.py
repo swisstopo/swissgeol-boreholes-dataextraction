@@ -6,17 +6,21 @@ import abc
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generic, Protocol, TypeVar
+from typing import ClassVar, Generic, Protocol, TypeVar
 
 from core.benchmark_utils import (
     BenchmarkSummary,
     delete_temporary,
+    finalize_overall_summary,
     finalize_pipeline_run,
+    parent_input_key,
     prepare_pipeline_temp_paths,
     read_mlflow_runid,
+    short_metric_key,
     write_mlflow_runid,
 )
 from core.mlflow_tracking import mlflow
+from core.mlflow_utils import setup_mlflow_parent_run
 
 PredictionT = TypeVar("PredictionT")
 SummaryT = TypeVar("SummaryT", bound=BenchmarkSummary)
@@ -144,11 +148,12 @@ class MultiBenchmarkRunner(abc.ABC, Generic[SpecT, SummaryT]):
     multi_root: Path
     resume: bool
 
-    def __post_init__(self) -> None:
-        if mlflow and type(self).setup_parent_run is MultiBenchmarkRunner.setup_parent_run:
-            raise NotImplementedError(
-                f"{type(self).__name__} must implement setup_parent_run when MLflow tracking is active"
-            )
+    experiment_name: ClassVar[str]
+    input_tag_name: ClassVar[str]
+    input_path_attr: ClassVar[str]
+    aggregate_label: ClassVar[str]
+    runname: ClassVar[str | None] = None
+    _mlflow_use_parent_out_dir: ClassVar[bool] = False
 
     @property
     def _parent_runid_tmp(self) -> Path:
@@ -158,20 +163,14 @@ class MultiBenchmarkRunner(abc.ABC, Generic[SpecT, SummaryT]):
     def run_single(self, spec: SpecT) -> SummaryT | None:
         """Execute a single benchmark and return its summary."""
 
-    @abc.abstractmethod
     def finalize_summary(self, overall_results: list[tuple[str, SummaryT | None]], root: Path) -> None:
         """Write and log the aggregated summary across all benchmarks."""
-
-    def setup_parent_run(self, runid: str | None) -> str:
-        """Start or resume the MLflow parent run. Must be overridden when MLflow tracking is active.
-
-        Args:
-            runid: Previous parent run id to resume, or None to start a new run.
-
-        Returns:
-            The active MLflow parent run id.
-        """
-        raise NotImplementedError(f"{type(self).__name__} does not implement setup_parent_run")
+        finalize_overall_summary(
+            overall_results=overall_results,
+            multi_root=root,
+            aggregate_label=self.aggregate_label,
+            metric_key_shortener=short_metric_key,
+        )
 
     def run(self) -> None:
         """Execute all benchmarks and finalize the aggregate summary.
@@ -201,3 +200,14 @@ class MultiBenchmarkRunner(abc.ABC, Generic[SpecT, SummaryT]):
 
         delete_temporary(self._parent_runid_tmp)
         delete_temporary(self.multi_root / "*" / "*.tmp")
+
+    def setup_parent_run(self, runid: str | None) -> str:
+        return setup_mlflow_parent_run(
+            run_id=runid,
+            experiment_name=self.experiment_name,
+            runname=self.runname,
+            parent_input_key=parent_input_key([Path(getattr(b, self.input_path_attr)) for b in self.benchmarks]),
+            benchmarks=self.benchmarks,
+            input_tag_name=self.input_tag_name,
+            out_directory=self.multi_root.parent if self._mlflow_use_parent_out_dir else None,
+        )

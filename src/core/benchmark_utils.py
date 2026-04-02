@@ -215,7 +215,7 @@ def parent_input_key(paths: Sequence[Path]) -> str:
 
 def finalize_overall_summary(
     *,
-    overall_results: list[tuple[str, Any | None]],
+    overall_results: list[tuple[str, BenchmarkSummary | None]],
     multi_root: Path,
     aggregate_label: str,
     metric_key_shortener,

@@ -97,8 +97,7 @@ def prepare_classification_data(
     Args:
         input_path (Path): Unified input path. Can be:
             - a full ground truth JSON
-            - a subset ground truth JSON
-            - a predictions/descriptions JSON
+            - a predictions JSON
             - a directory containing subset files
         ground_truth_path (Path | None): Path to the full ground truth JSON if needed for matching/evaluation.
         classification_system (type[ClassificationSystem]): The classification system class.

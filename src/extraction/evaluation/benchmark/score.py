@@ -28,11 +28,11 @@ class ExtractionBenchmarkSummary(BenchmarkSummary):
     geology: dict[str, float]
     metadata: dict[str, float]
 
-    def metrics_flat(self, prefix: str = "metrics", short: bool = False) -> dict[str, float]:
+    def metrics_flat(self, short: bool = False) -> dict[str, float]:
         def key(category: str, metric: str) -> str:
             if short:
                 return metric
-            return f"{prefix}/{category}/{metric}"
+            return f"{category}/{metric}"
 
         geology_dict = {key("geology", metric): value for metric, value in self.geology.items()}
         metadata_dict = {key("metadata", metric): value for metric, value in self.metadata.items()}

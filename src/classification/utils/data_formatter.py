@@ -272,7 +272,7 @@ def load_and_format_input_data(
             - same file is used as descriptions and ground truth
         3. input_path is a JSON and ground_truth_path is provided:
             - if input JSON is ground-truth-like: use it directly as descriptions input and compare to full GT
-            - if input JSON is descriptions/predictions-like: format it and compare to GT
+            - if input JSON is predictions-like: format it and compare to GT
     """
     if input_path.is_dir():
         if ground_truth_path is None:

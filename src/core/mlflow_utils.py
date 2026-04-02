@@ -20,7 +20,6 @@ def setup_mlflow_tracking(
     nested: bool = False,
     tags: Mapping[str, Any] | None = None,
     params: Mapping[str, Any] | None = None,
-    include_git_info: bool = False,
 ) -> str:
     """Initialize and configure an MLflow run.
 
@@ -31,7 +30,6 @@ def setup_mlflow_tracking(
         nested: Whether the run is nested.
         tags: Tags to set on the run. Values of None are ignored.
         params: Params to log. Values of None are ignored.
-        include_git_info: Whether to attach git branch / commit metadata.
 
     Returns:
         str: The active MLflow run ID.
@@ -55,17 +53,13 @@ def setup_mlflow_tracking(
     if clean_params:
         mlflow.log_params(clean_params)
 
-    if include_git_info:
-        try:
-            import pygit2
+    import pygit2
 
-            repo = pygit2.Repository(".")
-            commit = repo[repo.head.target]
-            mlflow.set_tag("git_branch", repo.head.shorthand)
-            mlflow.set_tag("git_commit_message", commit.message)
-            mlflow.set_tag("git_commit_sha", str(commit.id))
-        except Exception as exc:
-            logger.warning(f"Unable to log git metadata: {exc}")
+    repo = pygit2.Repository(".")
+    commit = repo[repo.head.target]
+    mlflow.set_tag("git_branch", repo.head.shorthand)
+    mlflow.set_tag("git_commit_message", commit.message)
+    mlflow.set_tag("git_commit_sha", str(commit.id))
 
     return mlflow.active_run().info.run_id
 
@@ -77,7 +71,6 @@ def setup_mlflow_parent_run(
     parent_input_key: str,
     benchmarks: Sequence[Any],
     runname: str | None = None,
-    include_git_info: bool = False,
     input_tag_name: str = "input_path",
     out_directory: Path | str | None = None,
 ) -> str:
@@ -89,7 +82,6 @@ def setup_mlflow_parent_run(
         parent_input_key: Aggregate input identifier for the parent run.
         benchmarks: Benchmark specs with a `.name` attribute.
         runname: Optional run name.
-        include_git_info: Whether to include git metadata.
         input_tag_name: Tag name used for the input identifier.
         out_directory: Optional output directory tag.
 
@@ -109,5 +101,4 @@ def setup_mlflow_parent_run(
         runname=runname,
         nested=False,
         tags=tags,
-        include_git_info=include_git_info,
     )

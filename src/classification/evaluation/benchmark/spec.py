@@ -10,11 +10,8 @@ class BenchmarkSpec:
 
     Attributes:
         name: Human-readable benchmark name (used for folder/run naming).
-        file_path: Input path to classify. Can be:
-            - a full ground truth JSON
-            - a subset ground truth JSON
-            - a predictions/descriptions JSON
-            - a directory containing subset files
+        file_path: Input path to classify. Check out the supported modes as defined in load_and_format_input_data in
+            src/classification/utils/data_formatter.py.
         ground_truth_path: Ground truth JSON path used for evaluation/reference.
             May be equal to file_path.
     """
