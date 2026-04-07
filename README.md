@@ -219,13 +219,13 @@ boreholes-classify-descriptions -f data/geoquat_ground_truth.json -s data/geoqua
 - Use the `-f` or `--file-path` flag to specify the path to the JSON file containing the layer description and USCS ground truth.
 
     **Supported modes:**
-    1. <u>input_path is a directory:</u>
+    1. input_path is a directory:
         - interpreted as subset directory
         - ground_truth_path must be provided and must be a ground truth JSON
-    2. <u>input_path is a JSON and ground_truth_path is None:</u>
+    2. input_path is a JSON and ground_truth_path is None:
         - input_path must be a full ground truth JSON
         - same file is used as descriptions and ground truth
-    3. <u>input_path is a JSON and ground_truth_path is provided:</u>
+    3. input_path is a JSON and ground_truth_path is provided:
         - if input JSON is ground-truth-like: use it directly as descriptions input and compare to full GT
         - if input JSON is predictions-like: format it and compare to GT
 
