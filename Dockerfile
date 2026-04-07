@@ -1,25 +1,34 @@
-## Build stage
+## ------ Build stage
 # Use the specifidied Python-slim version as the base image
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
+# Add temporary SCM version for hatchling.build
 ARG VERSION=0.0.0
 ENV SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION
 
+# Setup working directory and copy pyproject files
 WORKDIR /app
 COPY pyproject.toml README.md /app/
 
-# Install dependencies using uv
-RUN uv pip install --system --no-cache .
+# --frozen: Do not update uv.lock
+# --no-install-project: Skip building and installing the project package itself
+RUN uv sync --no-dev --no-install-project
+# Export requirements for pip
+RUN uv export --no-hashes --no-emit-project --format requirements-txt > requirements.txt
 
-## Runtime stage
-FROM python:3.12-slim
+
+## ------ Runtime stage
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS runtime
 
 # Set arguments to be passed from build-args
 ARG VERSION
 
+# Main working directory
 WORKDIR /app
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /app/requirements.txt /app/requirements.txt
+
+# Install python packages
+RUN pip install -r requirements.txt
 
 # Curl installation step for health check
 RUN apt-get update && \
@@ -27,7 +36,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy the rest of the application source code into the container
+# Source files
 COPY ./src /app/src
 
 # Set environment variables
