@@ -227,7 +227,7 @@ boreholes-classify-descriptions -f data/geoquat/validation -g data/geoquat_groun
 All combinations that are not described in the table above, are not supported.
 
 - Use the `-f` or `--file-path` flag to specify the path to the JSON file containing the layer description and USCS ground truth.
-- Use the `-g` or `"--ground-truth-path"`flag to specify the path to the ground truth json. This flag is not necessary in every case, as described above. If the goal is to classify the material descriptions provided in the ground truth path via `-f`, the `-g`flag is not needed.
+- Use the `-g` or `--ground-truth-path` flag to specify the path to the ground truth json. This flag is not necessary in every case, as described above. If the goal is to classify the material descriptions provided in the ground truth path via `-f`, the `-g`flag is not needed.
 - Use the `-c` or `--classifier` option to choose the classifier type from `dummy`, `baseline` or `bert`.
 - If you are using the classifier `bert` with a trained local [model](#train-bert-model), specify its folder path using the `-p` or `--model-path` flag. The folder has to contain all files generated when saving a model checkpoint with the transformers library.
 - Use `--classification-system` or `-cs` to specify the system you want to classify the description into. Currently supports `uscs`, `lithology` and `en_main`.
