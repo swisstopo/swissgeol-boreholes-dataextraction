@@ -90,7 +90,7 @@ def _find_closest_nearby_line(
         max_horizontal_distance (float): Maximal distance to look for next text.
 
     Returns:
-        TextLine | None: List of nearby lines that could contain the title.
+        TextLine | None: List of nearby lines that could contain the name.
     """
     nearby_lines = [
         line
@@ -101,7 +101,7 @@ def _find_closest_nearby_line(
     return min(nearby_lines, key=lambda line: line.rect.x0 - current_line.rect.x1) if nearby_lines else None
 
 
-def _clean_borehole_name(text: str, excluded_keywords: list[str]) -> str | None:
+def clean_borehole_name(text: str, excluded_keywords: list[str]) -> str | None:
     """Clean borehole name and normalize the given text.
 
     This function scans the input text for any of the provided keywords (case-insensitive),
@@ -134,18 +134,49 @@ def _clean_borehole_name(text: str, excluded_keywords: list[str]) -> str | None:
     return cleaned
 
 
+def _is_name_length_valid(name: str, max_name_length: int | None, max_word_length: int | None) -> bool:
+    """Check if the name is too long or containing too long words.
+
+    Args:
+        name (str): Name to validate
+        max_name_length (int | None): Maximal length of name.
+        max_word_length (int | None): Maximal length for words (alphabetical) in name
+
+    Returns:
+        bool: True if the name is valid, False otherwise.
+    """
+    # Check that overall length is at most max_name_length
+    is_name_length = len(name) <= max_name_length if max_name_length else True
+
+    # Check if all words (alpha only) are at most max_word_length
+    is_word_length = True
+    if max_word_length:
+        matches = re.findall(r"[a-z]+", name, flags=re.IGNORECASE)
+        is_word_length = all(len(match) <= max_word_length for match in matches)
+
+    return is_name_length and is_word_length
+
+
 def extract_borehole_names(
     text_lines: list[TextLine], name_detection_params: dict
 ) -> list[FeatureOnPage[BoreholeName]]:
     """Extract borehole names from text lines using keyword anchors and a right-side fallback.
 
-    The algorithm scans each line for any `matching_keywords` at the end of a word
-    (to avoid plural/inflected forms). If a keyword is found:
-    - **Same-line extraction:** take the substring **after** the match on the same line; clean it
-        by removing any `excluded_keywords`. If a non-empty name remains, emit a candidate with
-        confidence = 1.0 and the line’s bounding box.
-    - **Right-side fallback:** if same-line fails, find the closest line to the **right** that
-        vertically overlaps by at least `min_vertical_overlap`. Compute confidence as
+    The algorithm scans each line using two keyword lists:
+
+    - **matching_keywords_suffix** (soft): matched at the end of a word (e.g. "bohrung" matches
+        "kernbohrung"). The name is the substring after the match. The keyword itself is **not**
+        included in the output.
+    - **matching_keywords_inner** (strict): matched at both the **start** and **end** of a word.
+        The matched keyword is included as a prefix in the output name (e.g. "KB 12").
+
+    If either keyword type is found on a line:
+
+    - **Same-line extraction:** clean the substring after the match by removing `excluded_keywords`.
+        If a non-empty name remains, emit a candidate with confidence = 1.0 and the line’s bounding
+        box.
+    - **Right-side fallback:** if same-line extraction fails, find the closest line to the right
+        that vertically overlaps by at least `min_vertical_overlap`. Compute confidence as
         `dy / (1 + dy + dx)` where `dy` is the right-line height and `dx` is the horizontal gap.
         If a cleaned name is found there, emit a candidate whose bounding box is the union of the
         anchor line and the right-side line.
@@ -158,24 +189,38 @@ def extract_borehole_names(
         list[FeatureOnPage[BoreholeName]]: A list of extracted borehole names, if found
     """
     candidates: list[FeatureOnPage[BoreholeName]] = []
-    matching_keywords = name_detection_params.get("matching_keywords", [])
+    matching_keywords_suffix = name_detection_params.get("matching_keywords_suffix", [])
+    matching_keywords_inner = name_detection_params.get("matching_keywords_inner", [])
     excluded_keywords = name_detection_params.get("excluded_keywords", [])
     min_vertical_overlap = name_detection_params.get("min_vertical_overlap", 1.0)
     max_horizontal_distance = name_detection_params.get("max_horizontal_distance", 1e16)
-    max_title_length = name_detection_params.get("max_title_length", 1e16)
+    max_name_length = name_detection_params.get("max_name_length", 1e16)
+    max_word_length = name_detection_params.get("max_word_length", 1e16)
 
+    # Iterate over all lines
     for line in text_lines:
-        # Check line for keyword - Enforce end to avoid plural form
-        match = match_any_keyword(line.text, matching_keywords, end=True)
-        if not match:
+        # Step 1: Check line for keyword
+        # Step 1.1: Enforce end matching with matching_keywords_suffix
+        match_suffix = match_any_keyword(
+            line.text, matching_keywords_suffix, start=False, end=True, ignore_case=True, enforce_digit=False
+        )
+        # Step 1.2: Enforce start and end matching with matching_keywords_inner
+        match_inner = match_any_keyword(
+            line.text, matching_keywords_inner, start=True, end=True, ignore_case=False, enforce_digit=True
+        )
+
+        # Extract matched text (prioritize suffix over inner)
+        if not (match := match_suffix or match_inner):
             continue
 
-        # Try same-line first
-        same_line_name = line.text[match.end() :]
-        if cleaned := _clean_borehole_name(same_line_name, excluded_keywords):
+        # Step 2: Clean detection
+        # If suffix, ignore keywords, otherwise (inner) keep it
+        detection = line.text[match.end() :] if match_suffix else line.text[match.start() :]
+        # Take match as starting point of borehole name
+        if following_text_cleaned := clean_borehole_name(detection, excluded_keywords):
             candidates.append(
                 FeatureOnPage(
-                    feature=BoreholeName(name=cleaned, confidence=1.0),
+                    feature=BoreholeName(name=following_text_cleaned, confidence=1.0),
                     rect=line.rect,
                     page=line.page_number,
                 )
@@ -192,7 +237,7 @@ def extract_borehole_names(
         dx = max(0.0, hit_line.rect.x0 - line.rect.x1)
         confidence = dy / (1 + dy + dx)
 
-        if cleaned := _clean_borehole_name(hit_line.text, excluded_keywords):
+        if cleaned := clean_borehole_name(hit_line.text, excluded_keywords):
             # Define new bounding box as merge of both
             candidates.append(
                 FeatureOnPage(
@@ -211,7 +256,11 @@ def extract_borehole_names(
         return []
 
     # Remove entires where text is too long
-    candidates = [candidate for candidate in candidates if len(candidate.feature.name) <= max_title_length]
+    candidates = [
+        candidate
+        for candidate in candidates
+        if _is_name_length_valid(candidate.feature.name, max_name_length, max_word_length)
+    ]
 
     # Sort unique candidates by highest confidence and height on the page
     # TODO Use confidence for better matching

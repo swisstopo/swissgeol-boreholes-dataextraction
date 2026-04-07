@@ -233,7 +233,7 @@ class PageDrawer:
             layer (Layer): The layer (depth interval and material description).
             sidebar_rects (list[pymupdf.Rect]): The sidebar bounding boxes on the page.
             index (int): Index of the layer.
-            page_number(int): the curent page number.
+            page_number(int): the current page number.
         """
         material_description = layer.material_description
         mat_descr_lines = [line for line in material_description.lines if line.page_number == page_number]
@@ -269,7 +269,6 @@ class PageDrawer:
                     depths_rect.include_rect(layer.depths.start.rect)
                 if layer.depths.end and layer.depths.end.page_number == page_number:
                     depths_rect.include_rect(layer.depths.end.rect)
-
                 if any(sidebar_rect.contains(depths_rect) for sidebar_rect in sidebar_rects):
                     # Depths are separate from the material description: draw a line connecting them
                     line_anchor = layer.depths.get_line_anchor(page_number)
@@ -279,12 +278,10 @@ class PageDrawer:
                             line_anchor * self.page.derotation_matrix,
                             pymupdf.Point(rect.x0, (rect.y0 + rect.y1) / 2) * self.page.derotation_matrix,
                         )
-                        self.shape.finish(
-                            color=pymupdf.utils.getColor(color),
-                        )
+                        self.shape.finish(color=pymupdf.utils.getColor(color))
 
                     # background color for depth interval
-                    background_rect = layer.depths.get_background_rect(page_number, self.shape.page.rect.height)
+                    background_rect = layer.depths.get_background_rect(page_number)
                     if background_rect is not None:
                         self.shape.draw_rect(
                             background_rect * self.page.derotation_matrix,

@@ -115,6 +115,9 @@ line-length = 119
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.uv]
+exclude-newer = "7 days"
+
 # ---- Configuration for pytest
 [tool.pytest.ini_options]
 # Some deprecation warnings come from external libraries (botocore and SWIG). Since we can’t fix these in our code,

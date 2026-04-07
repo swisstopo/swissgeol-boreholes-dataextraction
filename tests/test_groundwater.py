@@ -4,8 +4,8 @@ from datetime import date
 
 import pytest
 
+from core.benchmark_utils import Metrics
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
-from extraction.evaluation.evaluation_dataclasses import Metrics
 from extraction.evaluation.groundwater_evaluator import (
     GroundwaterEvaluator,
     GroundwaterMetrics,
