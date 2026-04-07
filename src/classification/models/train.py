@@ -215,14 +215,10 @@ def setup_data(bert_model: BertModel, model_config: dict) -> tuple[datasets.Data
         # Once all of the files are available, we will be able to use the code without the need for this
         # if-else block.
         train_file_path = DATAPATH / model_config["json_file_name"]
-        train_subset = DATAPATH / model_config["train_subset"]
         eval_file_path = DATAPATH / model_config["json_file_name"]
-        eval_subset = DATAPATH / model_config["eval_subset"]
     elif model_config["classification_system"] == "lithology":
         train_file_path = DATAPATH / model_config["train_subset"]
-        train_subset = None
         eval_file_path = DATAPATH / model_config["eval_subset"]
-        eval_subset = None
 
     classification_system = ExistingClassificationSystems.get_classification_system_type(
         model_config["classification_system"].lower()
@@ -230,14 +226,12 @@ def setup_data(bert_model: BertModel, model_config: dict) -> tuple[datasets.Data
     train_data = prepare_classification_data(
         train_file_path,
         ground_truth_path=None,
-        file_subset_directory=train_subset,
         classification_system=classification_system,
     )
     train_dataset = bert_model.get_tokenized_dataset(train_data)
     eval_data = prepare_classification_data(
         eval_file_path,
         ground_truth_path=None,
-        file_subset_directory=eval_subset,
         classification_system=classification_system,
     )
     eval_dataset = bert_model.get_tokenized_dataset(eval_data)
@@ -290,13 +284,13 @@ def setup_trainer(bert_model: BertModel, model_config: dict, out_directory: Path
         out_directory (Path): The directory for storing the model.
 
     Returns:
-        Trainer: The trainer obect.
+        Trainer: The trainer object.
     """
     # load the training arguments from the config file
     training_args = setup_training_args(model_config, out_directory)
 
     # Load datasets
-    logger.info("Loading datasets (transformers librairy).")
+    logger.info("Loading datasets (transformers library).")
     train_dataset, eval_dataset = setup_data(bert_model, model_config)
 
     # Define a custom compute_metrics function
@@ -307,10 +301,10 @@ def setup_trainer(bert_model: BertModel, model_config: dict, out_directory: Path
             The model is trained by trying to lower the cross-entropy loss.
 
         Args:
-            eval_pred (EvalPrediction): Object of type EvalPrediction that will be passt to this function.
+            eval_pred (EvalPrediction): Object of type EvalPrediction that will be passed to this function.
 
         Returns:
-            dict[str, float]: Dictionary containing all the metrics procduced to evaluate the predictions.
+            dict[str, float]: Dictionary containing all the metrics produced to evaluate the predictions.
         """
         logits, labels = eval_pred
         predictions = logits.argmax(axis=-1)

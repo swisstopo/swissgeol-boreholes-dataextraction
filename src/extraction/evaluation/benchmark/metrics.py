@@ -5,7 +5,7 @@ from collections.abc import Callable
 
 import pandas as pd
 
-from extraction.evaluation.evaluation_dataclasses import Metrics
+from core.benchmark_utils import Metrics
 
 
 class OverallMetrics:

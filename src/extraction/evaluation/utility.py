@@ -4,7 +4,7 @@ import dataclasses
 from collections.abc import Callable
 from typing import TypeVar
 
-from extraction.evaluation.evaluation_dataclasses import Metrics
+from core.benchmark_utils import Metrics
 
 
 @dataclasses.dataclass
