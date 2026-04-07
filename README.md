@@ -213,22 +213,20 @@ aws s3 sync s3://stijnvermeeren-boreholes-models models/uscs/your_model_folder
 The main script for the classification pipeline is located at `src/classification/main.py`. A CLI command is available to run this script:
 
 ```bash
-boreholes-classify-descriptions -f data/geoquat_ground_truth.json -s data/geoquat/validation -c baseline
+boreholes-classify-descriptions -f data/geoquat/validation -g data/geoquat_ground_truth.json -c baseline
 ```
 
+**Supported modes:**
+
+| `-f` flag / `input_path`                       | `-g` flag / `ground_truth_path` | Behaviour                                                                                                             |
+|------------------------------------------------|---------------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| Directory                                      | Ground truth JSON               | The `input_path` is interpreted as a subset directory (only filenames that exist in this directory will be included). |
+| JSON file (ground truth format)                | Not provided                    | The `input_path` must be a full ground truth JSON. The same file is used as descriptions and ground truth.            |
+| JSON file (predictions or ground truth format) | Provided                        | Use the descriptions from the input file and compare the predicted classes to the ones from the ground truth file. |
+
+All combinations that are not described in the table above, are not supported.
+
 - Use the `-f` or `--file-path` flag to specify the path to the JSON file containing the layer description and USCS ground truth.
-
-    **Supported modes:**
-    1. input_path is a directory:
-        - interpreted as subset directory
-        - ground_truth_path must be provided and must be a ground truth JSON
-    2. input_path is a JSON and ground_truth_path is None:
-        - input_path must be a full ground truth JSON
-        - same file is used as descriptions and ground truth
-    3. input_path is a JSON and ground_truth_path is provided:
-        - if input JSON is ground-truth-like: use it directly as descriptions input and compare to full GT
-        - if input JSON is predictions-like: format it and compare to GT
-
 - Use the `-g` or `"--ground-truth-path"`flag to specify the path to the ground truth json. This flag is not necessary in every case, as described above. If the goal is to classify the material descriptions provided in the ground truth path via `-f`, the `-g`flag is not needed.
 - Use the `-c` or `--classifier` option to choose the classifier type from `dummy`, `baseline` or `bert`.
 - If you are using the classifier `bert` with a trained local [model](#train-bert-model), specify its folder path using the `-p` or `--model-path` flag. The folder has to contain all files generated when saving a model checkpoint with the transformers library.
