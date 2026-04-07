@@ -130,7 +130,7 @@ Commands are then run with `uv run <command>`, which automatically uses the mana
 Use `boreholes-download-profiles` to download the files to be processed from an AWS S3 storage. In order to do so, you need to authenticate with aws first. We recommend using the aws CLI for that purpose, or storing your credentials in the ~/.aws configuration files This step is optional, you can continue with step 3 on your own set of borehole profiles.
 
 Alternatively, you can download the data directly using the AWS CLI:
-```bash 
+```bash
 brew install awscli
 aws s3 sync s3://stijnvermeeren-boreholes-data ./data
 ```
@@ -157,14 +157,14 @@ If you choose to use the ~/.aws files, then they should look like this:
 
 The main script for the extraction pipeline is located at `src/extraction/main.py`. A cli command is created to run this script.
 
-Run `boreholes-extract-all` to run the main extraction script. You need to specify the input directory or a single PDF file using the `-i` or `--input-directory` flag. 
+Run `boreholes-extract-all` to run the main extraction script. You need to specify the input directory or a single PDF file using the `-i` or `--input-directory` flag.
 The script will source all PDFs from the specified directory and create PNG files in the `data/output/draw` directory.
 
 ```bash
 boreholes-extract-metadata -i data/pdfs/
 ```
 
-Run`boreholes-extract-metadata` to run only the metadata part of the pipeline (coordinates, elevation, borehole names), skipping stratigraphy extraction. 
+Run`boreholes-extract-metadata` to run only the metadata part of the pipeline (coordinates, elevation, borehole names), skipping stratigraphy extraction.
 Accepts the same options as `boreholes-extract-all`.
 
 
@@ -217,16 +217,18 @@ boreholes-classify-descriptions -f data/geoquat_ground_truth.json -s data/geoqua
 ```
 
 - Use the `-f` or `--file-path` flag to specify the path to the JSON file containing the layer description and USCS ground truth.
-    Supported modes:
-        1. input_path is a directory:
-            - interpreted as subset directory
-            - ground_truth_path must be provided and must be a ground truth JSON
-        2. input_path is a JSON and ground_truth_path is None:
-            - input_path must be a full ground truth JSON
-            - same file is used as descriptions and ground truth
-        3. input_path is a JSON and ground_truth_path is provided:
-            - if input JSON is ground-truth-like: use it directly as descriptions input and compare to full GT
-            - if input JSON is predictions-like: format it and compare to GT
+
+    **Supported modes:**
+    1. <u>input_path is a directory:</u>
+        - interpreted as subset directory
+        - ground_truth_path must be provided and must be a ground truth JSON
+    2. <u>input_path is a JSON and ground_truth_path is None:</u>
+        - input_path must be a full ground truth JSON
+        - same file is used as descriptions and ground truth
+    3. <u>input_path is a JSON and ground_truth_path is provided:</u>
+        - if input JSON is ground-truth-like: use it directly as descriptions input and compare to full GT
+        - if input JSON is predictions-like: format it and compare to GT
+
 - Use the `-g` or `"--ground-truth-path"`flag to specify the path to the ground truth json. This flag is not necessary in every case, as described above. If the goal is to classify the material descriptions provided in the ground truth path via `-f`, the `-g`flag is not needed.
 - Use the `-c` or `--classifier` option to choose the classifier type from `dummy`, `baseline` or `bert`.
 - If you are using the classifier `bert` with a trained local [model](#train-bert-model), specify its folder path using the `-p` or `--model-path` flag. The folder has to contain all files generated when saving a model checkpoint with the transformers library.
