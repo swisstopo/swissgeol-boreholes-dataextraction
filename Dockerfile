@@ -10,7 +10,7 @@ ENV SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION
 WORKDIR /app
 COPY pyproject.toml README.md /app/
 
-# --frozen: Do not update uv.lock
+# --no-dev: Exclude development dependencies from the environment
 # --no-install-project: Skip building and installing the project package itself
 RUN uv sync --no-dev --no-install-project
 # Export requirements for pip
