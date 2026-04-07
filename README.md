@@ -218,11 +218,11 @@ boreholes-classify-descriptions -f data/geoquat/validation -g data/geoquat_groun
 
 **Supported modes:**
 
-| `-f` flag / `input_path`                       | `-g` flag / `ground_truth_path` | Behaviour                                                                                                             |
-|------------------------------------------------|---------------------------------|-----------------------------------------------------------------------------------------------------------------------|
-| Directory                                      | Ground truth JSON               | The `input_path` is interpreted as a subset directory (only filenames that exist in this directory will be included). |
-| JSON file (ground truth format)                | Not provided                    | The `input_path` must be a full ground truth JSON. The same file is used as descriptions and ground truth.            |
-| JSON file (predictions or ground truth format) | Provided                        | Use the descriptions from the input file and compare the predicted classes to the ones from the ground truth file. |
+| `-f` flag / `input_path`                      | `-g` flag / `ground_truth_path` | Behaviour                                                                                                                                                                                                                                  |
+|-----------------------------------------------|---------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Directory                                     | JSON file (ground truth)        | Classify the descriptions from the ground truth file and compare the predicted classes to the ones in the same file. The `input_path` is interpreted as a subset directory (only filenames that exist in this directory will be included). |
+| JSON file (ground truth)                | _Not provided_                  | Classify the descriptions from the input file and compare the predicted classes to the ones in the same file.                                                                                                                              |
+| JSON file (predictions or ground truth) | JSON file (ground truth)               | Classify the descriptions from the input file and compare the predicted classes to the ones from the ground truth file.                                                                                                                    |
 
 All combinations that are not described in the table above, are not supported.
 
