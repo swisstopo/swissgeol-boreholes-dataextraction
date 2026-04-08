@@ -13,8 +13,6 @@ COPY pyproject.toml README.md /app/
 # --no-dev: Exclude development dependencies from the environment
 # --no-install-project: Skip building and installing the project package itself
 RUN uv sync --no-dev --no-install-project
-# Export requirements for pip
-RUN uv export --no-hashes --no-emit-project --format requirements-txt > requirements.txt
 
 
 ## ------ Runtime stage
@@ -25,10 +23,7 @@ ARG VERSION
 
 # Main working directory
 WORKDIR /app
-COPY --from=builder /app/requirements.txt /app/requirements.txt
-
-# Install python packages
-RUN pip install -r requirements.txt
+COPY --from=builder /app/.venv /app/.venv
 
 # Curl installation step for health check
 RUN apt-get update && \
@@ -43,12 +38,14 @@ COPY ./src /app/src
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
 ENV APP_VERSION=$VERSION
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Expose port 8000 for the FastAPI Borehole app
 EXPOSE 8000
 
 # Run a health check to ensure the container is healthy
-HEALTHCHECK CMD curl --silent --fail http://localhost:8000/health || exit 1
+# HEALTHCHECK CMD curl --silent --fail http://localhost:8000/health || exit 1
 
 # Command to run the FastAPI Borehole app with Uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "python", "-m", "memory_profiler", "/app/src/app/test.py"]
