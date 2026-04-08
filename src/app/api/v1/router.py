@@ -7,9 +7,12 @@ from app.api.v1.endpoints.bounding_boxes import bounding_boxes
 from app.api.v1.endpoints.create_pngs import create_pngs
 from app.api.v1.endpoints.extract_data import extract_data
 from app.api.v1.endpoints.extract_stratigraphy import extract_stratigraphy
+from app.api.v1.endpoints.lithology_classification import classify_lithology
 from app.common.schemas import (
     BoundingBoxesRequest,
     BoundingBoxesResponse,
+    ClassifyLithologyRequest,
+    ClassifyLithologyResponse,
     ExtractCoordinatesResponse,
     ExtractDataRequest,
     ExtractNumberResponse,
@@ -215,3 +218,40 @@ def post_extract_stratigraphy(request: ExtractStratigraphyRequest) -> ExtractStr
     - Bounding boxes are in PNG pixel coordinates (scaled 3x from PDF coordinates)
     """
     return extract_stratigraphy(request.filename, request.include_groundwater)
+
+
+####################################################################################################
+### Classify Lithology
+####################################################################################################
+@router.post(
+    "/classify_lithology",
+    tags=["classify_lithology"],
+    response_model=ClassifyLithologyResponse,
+    responses={
+        400: {"model": BadRequestResponse, "description": "Bad request"},
+        500: {"model": BadRequestResponse, "description": "Internal server error"},
+    },
+)
+def post_classify_lithology(request: ClassifyLithologyRequest) -> ClassifyLithologyResponse:
+    """Classify a plain-text material description using the trained BERT model.
+
+    ### Request Body
+    - **description**: Plain-text material description to classify (e.g. `"Mergel, grau, laminiert"`).
+    - **classification_system**: Target system — one of `'uscs'`, `'lithology'`, `'en_main'`. Defaults to
+    `'lithology'`.
+
+    The model path is configured server-side via environment variables (`BERT_MODEL_PATH_USCS`,
+    `BERT_MODEL_PATH_LITHOLOGY`, `BERT_MODEL_PATH_EN_MAIN`).
+
+    ### Returns
+    - **class_name**: Predicted class name from the selected classification system (e.g. `"Marlstone"`).
+
+    ### Status Codes
+    - **200 OK**: Classification completed successfully.
+    - **400 Bad Request**: Invalid request parameters.
+    - **500 Internal Server Error**: Model loading or inference failure.
+    """
+    try:
+        return classify_lithology(request)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
