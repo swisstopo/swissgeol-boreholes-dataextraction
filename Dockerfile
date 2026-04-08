@@ -47,5 +47,4 @@ EXPOSE 8000
 # HEALTHCHECK CMD curl --silent --fail http://localhost:8000/health || exit 1
 
 # Command to run the FastAPI Borehole app with Uvicorn
-# CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-CMD ["uv", "run", "python", "-m", "memory_profiler", "/app/src/app/test.py"]
+CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
