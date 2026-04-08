@@ -11,8 +11,7 @@ import pytest
 os.environ["MLFLOW_TRACKING"] = "False"
 
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
-from extraction.main import start_pipeline
-from extraction.runner import extract, start_pipeline_benchmark
+from extraction.runner import ExtractionBenchmarkRunner, ExtractionOptions, ExtractionPipelineRunner, extract
 
 PREDICTION_FILE_ = "predictions.json"
 METADATA_FILE_ = "metadata.json"
@@ -76,14 +75,14 @@ def test_start_pipeline_json(tmp_path: Path, borehole_pdf: Path) -> None:
     predictions_path = tmp_path / PREDICTION_FILE_
     metadata_path = tmp_path / METADATA_FILE_
 
-    start_pipeline(
+    ExtractionPipelineRunner(
+        predictions_path=predictions_path,
         input_directory=borehole_pdf,
         ground_truth_path=None,
         out_directory=tmp_path,
-        predictions_path=predictions_path,
         metadata_path=metadata_path,
-        skip_draw_predictions=True,
-    )
+        options=ExtractionOptions(skip_draw_predictions=True),
+    ).execute()
 
     # Check both output files exist
     assert predictions_path.exists()
@@ -100,15 +99,14 @@ def test_start_pipeline_analytics(tmp_path: Path, borehole_pdf: Path) -> None:
         tmp_path (Path): Path to temporary folder (pytest handled).
         borehole_pdf (Path): Path to borehole PDF file.
     """
-    start_pipeline(
+    ExtractionPipelineRunner(
+        predictions_path=tmp_path / PREDICTION_FILE_,
         input_directory=borehole_pdf,
         ground_truth_path=None,
         out_directory=tmp_path,
-        predictions_path=tmp_path / PREDICTION_FILE_,
         metadata_path=tmp_path / METADATA_FILE_,
-        skip_draw_predictions=True,
-        matching_analytics=True,
-    )
+        options=ExtractionOptions(skip_draw_predictions=True, matching_analytics=True),
+    ).execute()
     assert (tmp_path / ANALYTICS_FILE_).exists()
 
 
@@ -119,15 +117,14 @@ def test_start_pipeline_csv(tmp_path: Path, borehole_pdf: Path) -> None:
         tmp_path (Path): Path to temporary folder (pytest handled).
         borehole_pdf (Path): Path to borehole PDF file.
     """
-    start_pipeline(
+    ExtractionPipelineRunner(
+        predictions_path=tmp_path / PREDICTION_FILE_,
         input_directory=borehole_pdf,
         ground_truth_path=None,
         out_directory=tmp_path,
-        predictions_path=tmp_path / PREDICTION_FILE_,
         metadata_path=tmp_path / METADATA_FILE_,
-        skip_draw_predictions=True,
-        csv=True,
-    )
+        options=ExtractionOptions(skip_draw_predictions=True, csv=True),
+    ).execute()
     # Check generated csv files
     assert len([f for f in tmp_path.rglob("*.csv")]) != 0
 
@@ -139,17 +136,14 @@ def test_start_pipeline_drawing(tmp_path: Path, borehole_pdf: Path) -> None:
         tmp_path (Path): Path to temporary folder (pytest handled).
         borehole_pdf (Path): Path to borehole PDF file.
     """
-    start_pipeline(
+    ExtractionPipelineRunner(
+        predictions_path=tmp_path / PREDICTION_FILE_,
         input_directory=borehole_pdf,
         ground_truth_path=None,
         out_directory=tmp_path,
-        predictions_path=tmp_path / PREDICTION_FILE_,
         metadata_path=tmp_path / METADATA_FILE_,
-        skip_draw_predictions=False,
-        draw_lines=True,
-        draw_tables=True,
-        draw_strip_logs=True,
-    )
+        options=ExtractionOptions(draw_lines=True, draw_tables=True, draw_strip_logs=True),
+    ).execute()
 
     # Generated files
     file_types = ["outputs", "lines", "tables", "strip_logs"]
@@ -175,15 +169,14 @@ def test_start_pipeline_part(tmp_path: Path, borehole_pdf: Path) -> None:
         Args:
             part (str): Pipeline mode, "all" for full extraction, "metadata" for metadata only. Defaults to "all".
         """
-        start_pipeline(
+        ExtractionPipelineRunner(
+            predictions_path=predictions_path,
             input_directory=borehole_pdf,
             ground_truth_path=None,
             out_directory=tmp_path,
-            predictions_path=predictions_path,
             metadata_path=tmp_path / METADATA_FILE_,
-            skip_draw_predictions=True,
-            part=part,
-        )
+            options=ExtractionOptions(skip_draw_predictions=True, part=part),
+        ).execute()
 
     # Check inference of all vs not all
     infer_part(part="metadata")
@@ -205,29 +198,29 @@ def test_start_pipeline_nested(tmp_path: Path, borehole_pdf: Path) -> None:
     predictions_path_tmp = tmp_path / (PREDICTION_FILE_ + ".tmp")
 
     # Run first time
-    start_pipeline(
+    ExtractionPipelineRunner(
+        predictions_path=predictions_path,
+        is_nested=True,
         input_directory=borehole_pdf,
         ground_truth_path=None,
         out_directory=tmp_path,
-        predictions_path=predictions_path,
         metadata_path=metadata_path,
-        skip_draw_predictions=True,
-        is_nested=True,
-    )
+        options=ExtractionOptions(skip_draw_predictions=True),
+    ).execute()
 
     # Verify tmp exists
     assert predictions_path_tmp.exists()
 
     # Run again - should skip already processed
-    start_pipeline(
+    ExtractionPipelineRunner(
+        predictions_path=predictions_path,
+        is_nested=False,
         input_directory=borehole_pdf,
         ground_truth_path=None,
         out_directory=tmp_path,
-        predictions_path=predictions_path,
         metadata_path=metadata_path,
-        skip_draw_predictions=True,
-        is_nested=False,
-    )
+        options=ExtractionOptions(skip_draw_predictions=True),
+    ).execute()
 
     # Verify tmp was removed
     assert not predictions_path_tmp.exists()
@@ -248,11 +241,12 @@ def test_start_pipeline_benchmark(tmp_path: Path, borehole_gt: Path, borehole_pd
     ]
 
     # Run main pipeline
-    start_pipeline_benchmark(
+    ExtractionBenchmarkRunner(
         benchmarks=specs,
-        out_directory=tmp_path,
-        skip_draw_predictions=True,
-    )
+        multi_root=tmp_path,
+        resume=False,
+        options=ExtractionOptions(skip_draw_predictions=True),
+    ).run()
 
     # Checkout outputs for all benchmarks
     for spec in specs:

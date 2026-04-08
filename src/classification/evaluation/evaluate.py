@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformation
 from classification.utils.file_utils import read_params
+from core.benchmark_utils import Metrics
 from core.mlflow_tracking import mlflow
-from extraction.evaluation.evaluation_dataclasses import Metrics
 
 logger = logging.getLogger(__name__)
 
