@@ -76,6 +76,12 @@ jobs:
           TAG_NAME: release-candidate
           SHA: ${{ steps.get_base_commit.outputs.sha }}
 
+      - name: Tag clean version
+        uses: ./.github/actions/tag-commit
+        with:
+          TAG_NAME: ${{ needs.tag-release-candidate.outputs.version }}
+          SHA: ${{ steps.get_base_commit.outputs.sha }}
+
   publish-package:
     runs-on: ubuntu-latest
     name: Build and publish Python package pre-release
