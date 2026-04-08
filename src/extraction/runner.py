@@ -6,6 +6,7 @@ import json
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from functools import partial
 from io import BytesIO
 from pathlib import Path
 
@@ -31,8 +32,6 @@ matching_params = read_params("matching_params.yml")
 line_detection_params = read_params("line_detection_params.yml")
 
 logger = logging.getLogger(__name__)
-
-PostProcess = Callable[[ExtractionResult], None]
 
 
 def write_json_predictions(path: Path, predictions: OverallFilePredictions) -> None:
@@ -160,12 +159,58 @@ class ExtractionOptions:
     part: str = "all"
 
 
+def on_file_done(
+    result: ExtractionResult,
+    out_directory: Path,
+    input_directory: Path,
+    csv_paths: list[Path],
+    write_csv: bool,
+    any_draw: bool,
+    input_is_file: bool,
+    skip_draw_predictions: bool,
+    draw_lines: bool,
+    draw_tables: bool,
+    draw_strip_logs: bool,
+) -> None:
+    """Write CSV and/or draw visualizations for a single extracted file.
+
+    Intended to be used via functools.partial with all args pre-bound except result.
+
+    Args:
+        result (ExtractionResult): Output of extract() for this file.
+        out_directory (Path): Directory for output artifacts.
+        input_directory (Path): Directory (or file path) of input PDFs.
+        csv_paths (list[Path]): Accumulator list; written CSV paths are appended here.
+        write_csv (bool): Whether to write CSV output.
+        any_draw (bool): Whether any drawing option is enabled.
+        input_is_file (bool): True if input_directory points to a single file.
+        skip_draw_predictions (bool): Skip drawing final prediction overlays.
+        draw_lines (bool): Draw detected lines.
+        draw_tables (bool): Draw detected table structures.
+        draw_strip_logs (bool): Draw detected strip log structures.
+    """
+    if write_csv:
+        csv_paths.extend(write_csv_for_file(result.predictions, out_directory))
+    if any_draw:
+        pdf_path = input_directory if input_is_file else input_directory / result.predictions.file_name
+        draw_file_predictions(
+            result=result,
+            file=pdf_path,
+            filename=result.predictions.file_name,
+            out_directory=out_directory,
+            skip_draw_predictions=skip_draw_predictions,
+            draw_lines=draw_lines,
+            draw_tables=draw_tables,
+            draw_strip_logs=draw_strip_logs,
+        )
+
+
 def run_extraction_predictions(
     input_directory: Path,
     predictions_path_tmp: Path,
     options: ExtractionOptions,
+    on_file_done: Callable[[ExtractionResult], None] | None = None,
     analytics: MatchingParamsAnalytics | None = None,
-    on_file_done: PostProcess | None = None,
 ) -> tuple[OverallFilePredictions, int]:
     """Discover PDF files, run extract() on each, and write incremental predictions.
 
@@ -179,11 +224,11 @@ def run_extraction_predictions(
         predictions_path_tmp (Path): Path to the incremental tmp predictions file. Existing content
             is used to resume; the file is updated after each successfully processed file.
         options (ExtractionOptions): Extraction run options.
+        on_file_done (Callable | None, optional): Optional callback invoked after each file is
+            successfully processed. Use this to perform side effects (CSV writing, visualizations)
+            per file. Defaults to None.
         analytics (MatchingParamsAnalytics | None, optional): Analytics object for tracking matching
             parameters. Defaults to None.
-        on_file_done (PostProcess | None, optional): Optional callback invoked after each file is
-            successfully processed. Use this to perform side effects (CSV writing, visualizations)
-            per file.
 
     Returns:
         tuple[OverallFilePredictions, int]: All predictions accumulated across files and the total
@@ -270,30 +315,26 @@ class ExtractionPipelineRunner(PipelineRunner[_ExtractionResult, ExtractionBench
         )
         input_is_file = self.input_directory.is_file()
 
-        def on_file_done(result: ExtractionResult) -> None:
-            if self.options.csv:
-                csv_paths.extend(write_csv_for_file(result.predictions, self.out_directory))
-            if any_draw:
-                pdf_path = (
-                    self.input_directory if input_is_file else self.input_directory / result.predictions.file_name
-                )
-                draw_file_predictions(
-                    result=result,
-                    file=pdf_path,
-                    filename=result.predictions.file_name,
-                    out_directory=self.out_directory,
-                    skip_draw_predictions=self.options.skip_draw_predictions,
-                    draw_lines=self.options.draw_lines,
-                    draw_tables=self.options.draw_tables,
-                    draw_strip_logs=self.options.draw_strip_logs,
-                )
+        callback_fn = partial(
+            on_file_done,
+            out_directory=self.out_directory,
+            input_directory=self.input_directory,
+            csv_paths=csv_paths,
+            write_csv=self.options.csv,
+            any_draw=any_draw,
+            input_is_file=input_is_file,
+            skip_draw_predictions=self.options.skip_draw_predictions,
+            draw_lines=self.options.draw_lines,
+            draw_tables=self.options.draw_tables,
+            draw_strip_logs=self.options.draw_strip_logs,
+        )
 
         predictions, n_documents = run_extraction_predictions(
             input_directory=self.input_directory,
             predictions_path_tmp=predictions_path_tmp,
             options=self.options,
             analytics=self.analytics,
-            on_file_done=on_file_done,
+            on_file_done=callback_fn,
         )
         return PipelineRunResult(
             result=(predictions, csv_paths),
