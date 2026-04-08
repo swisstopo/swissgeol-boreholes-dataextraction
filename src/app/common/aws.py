@@ -176,3 +176,66 @@ def upload_file_to_s3(file_path: str, key: str):
         key (str): The key (name) of the file in the bucket.
     """
     get_s3_client().upload_file(file_path, config.bucket_name, key)
+
+
+# Files required for BERT inference. Training artifacts (optimizer.pt, scheduler.pt, etc.) are excluded.
+_BERT_INFERENCE_FILES = [
+    "config.json",
+    "model.safetensors",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "special_tokens_map.json",
+    "vocab.txt",
+]
+
+
+def _get_model_bucket() -> str:
+    """Return the S3 bucket name for BERT models.
+
+    Uses BERT_MODEL_S3_BUCKET if set, otherwise falls back to the main data bucket.
+    """
+    return os.environ.get("BERT_MODEL_S3_BUCKET") or config.bucket_name
+
+
+def download_model_from_s3(s3_key_prefix: str, local_dir: Path) -> Path:
+    """Download BERT model inference files from S3 to a local directory.
+
+    Already-present files are skipped, so warm container restarts reuse previously
+    downloaded weights without hitting S3 again.
+
+    Args:
+        s3_key_prefix (str): S3 folder prefix within the model bucket,
+            e.g. "lithology_models/best_model_lithology".
+        local_dir (Path): Local directory to download files into (created if absent).
+
+    Returns:
+        Path: local_dir, ready to pass to AutoModelForSequenceClassification.from_pretrained.
+
+    Raises:
+        HTTPException: If a required file is missing in S3 or the download fails.
+    """
+    local_dir.mkdir(parents=True, exist_ok=True)
+    s3_client = get_s3_client()
+    bucket = _get_model_bucket()
+
+    for filename in _BERT_INFERENCE_FILES:
+        local_path = local_dir / filename
+        if local_path.exists():
+            continue
+        s3_key = f"{s3_key_prefix}/{filename}"
+        try:
+            s3_client.download_file(bucket, s3_key, str(local_path))
+            logger.info(f"Downloaded s3://{bucket}/{s3_key} → {local_path}")
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            if error_code in ("404", "NoSuchKey"):
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Model file '{s3_key}' not found in bucket '{bucket}'.",
+                ) from None
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to download model file '{s3_key}': {e}",
+            ) from None
+
+    return local_dir
