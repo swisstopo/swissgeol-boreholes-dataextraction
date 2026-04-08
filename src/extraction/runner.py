@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
@@ -30,6 +31,8 @@ matching_params = read_params("matching_params.yml")
 line_detection_params = read_params("line_detection_params.yml")
 
 logger = logging.getLogger(__name__)
+
+PostProcess = Callable[[ExtractionResult], None]
 
 
 def write_json_predictions(path: Path, predictions: OverallFilePredictions) -> None:
@@ -159,11 +162,11 @@ class ExtractionOptions:
 
 def run_extraction_predictions(
     input_directory: Path,
-    out_directory: Path,
     predictions_path_tmp: Path,
     options: ExtractionOptions,
     analytics: MatchingParamsAnalytics | None = None,
-) -> tuple[OverallFilePredictions, int, list[Path]]:
+    on_file_done: PostProcess | None = None,
+) -> tuple[OverallFilePredictions, int]:
     """Discover PDF files, run extract() on each, and write incremental predictions.
 
     This is the core prediction logic, decoupled from tracking and evaluation.
@@ -173,17 +176,18 @@ def run_extraction_predictions(
 
     Args:
         input_directory (Path): Directory of PDF files to process, or path to a single PDF file.
-        out_directory (Path): Directory where per-file output (visualizations, CSV) is written.
         predictions_path_tmp (Path): Path to the incremental tmp predictions file. Existing content
             is used to resume; the file is updated after each successfully processed file.
         options (ExtractionOptions): Extraction run options.
         analytics (MatchingParamsAnalytics | None, optional): Analytics object for tracking matching
             parameters. Defaults to None.
+        on_file_done (PostProcess | None, optional): Optional callback invoked after each file is
+            successfully processed. Use this to perform side effects (CSV writing, visualizations)
+            per file.
 
     Returns:
-        tuple[OverallFilePredictions, int, list[Path]]: All predictions accumulated across files,
-            the total number of PDF files discovered (including any already-predicted files from a
-            resumed run), and all CSV file paths written during this run.
+        tuple[OverallFilePredictions, int]: All predictions accumulated across files and the total
+            number of PDF files discovered (including any already-predicted files from a resumed run).
     """
     # Look for files to process
     pdf_files = [input_directory] if input_directory.is_file() else list(input_directory.glob("*.pdf"))
@@ -192,11 +196,6 @@ def run_extraction_predictions(
     # Load any partially-completed predictions for resume support
     predictions = read_json_predictions(predictions_path_tmp)
 
-    any_draw = (
-        not options.skip_draw_predictions or options.draw_lines or options.draw_tables or options.draw_strip_logs
-    )
-
-    all_csv_paths: list[Path] = []
     for pdf_file in tqdm(pdf_files, desc="Processing files", unit="file"):
         # Check if file is already computed in previous run
         if predictions.contains(pdf_file.name):
@@ -208,20 +207,8 @@ def run_extraction_predictions(
             result = extract(file=pdf_file, filename=pdf_file.name, part=options.part, analytics=analytics)
             predictions.add_file_predictions(result.predictions)
 
-            if options.csv:
-                all_csv_paths.extend(write_csv_for_file(result.predictions, out_directory))
-
-            if any_draw:
-                draw_file_predictions(
-                    result=result,
-                    file=pdf_file,
-                    filename=pdf_file.name,
-                    out_directory=out_directory,
-                    skip_draw_predictions=options.skip_draw_predictions,
-                    draw_lines=options.draw_lines,
-                    draw_tables=options.draw_tables,
-                    draw_strip_logs=options.draw_strip_logs,
-                )
+            if on_file_done is not None:
+                on_file_done(result)
 
             logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
             write_json_predictions(path=predictions_path_tmp, predictions=predictions)
@@ -229,7 +216,7 @@ def run_extraction_predictions(
         except Exception as e:
             logger.error(f"Unexpected error in file {pdf_file.name}. Trace: {e}")
 
-    return predictions, n_documents, all_csv_paths
+    return predictions, n_documents
 
 
 _ExtractionResult = tuple[OverallFilePredictions, list[Path]]
@@ -274,12 +261,39 @@ class ExtractionPipelineRunner(PipelineRunner[_ExtractionResult, ExtractionBench
         )
 
     def run_predictions(self, predictions_path_tmp: Path) -> PipelineRunResult[_ExtractionResult]:
-        predictions, n_documents, csv_paths = run_extraction_predictions(
+        csv_paths: list[Path] = []
+        any_draw = (
+            not self.options.skip_draw_predictions
+            or self.options.draw_lines
+            or self.options.draw_tables
+            or self.options.draw_strip_logs
+        )
+        input_is_file = self.input_directory.is_file()
+
+        def on_file_done(result: ExtractionResult) -> None:
+            if self.options.csv:
+                csv_paths.extend(write_csv_for_file(result.predictions, self.out_directory))
+            if any_draw:
+                pdf_path = (
+                    self.input_directory if input_is_file else self.input_directory / result.predictions.file_name
+                )
+                draw_file_predictions(
+                    result=result,
+                    file=pdf_path,
+                    filename=result.predictions.file_name,
+                    out_directory=self.out_directory,
+                    skip_draw_predictions=self.options.skip_draw_predictions,
+                    draw_lines=self.options.draw_lines,
+                    draw_tables=self.options.draw_tables,
+                    draw_strip_logs=self.options.draw_strip_logs,
+                )
+
+        predictions, n_documents = run_extraction_predictions(
             input_directory=self.input_directory,
-            out_directory=self.out_directory,
             predictions_path_tmp=predictions_path_tmp,
             options=self.options,
             analytics=self.analytics,
+            on_file_done=on_file_done,
         )
         return PipelineRunResult(
             result=(predictions, csv_paths),
