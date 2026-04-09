@@ -1,5 +1,6 @@
 """This module provides stemmer implementation for text processing."""
 
+from compound_split import char_split
 from nltk.stem.snowball import SnowballStemmer
 
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics, track_match
@@ -41,8 +42,6 @@ def _split_compounds(tokens: list[str], split_threshold: float) -> list[str]:
     Returns:
         List[str]: Processed list of tokens with compounds split.
     """
-    from compound_split import char_split
-
     processed_tokens = []
     for token in tokens:
         comp_split = char_split.split_compound(token)[0]

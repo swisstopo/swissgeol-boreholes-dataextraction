@@ -12,7 +12,8 @@ COPY pyproject.toml README.md /app/
 
 # --no-dev: Exclude development dependencies from the environment
 # --no-install-project: Skip building and installing the project package itself
-RUN uv sync --no-dev --no-install-project
+# --compile: Force generation of compiled files *.pyc (lowers memory load)
+RUN uv sync --no-dev --no-install-project --compile
 
 
 ## ------ Runtime stage
@@ -44,7 +45,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 EXPOSE 8000
 
 # Run a health check to ensure the container is healthy
-# HEALTHCHECK CMD curl --silent --fail http://localhost:8000/health || exit 1
+HEALTHCHECK CMD curl --silent --fail http://localhost:8000/health || exit 1
 
 # Command to run the FastAPI Borehole app with Uvicorn
 CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
