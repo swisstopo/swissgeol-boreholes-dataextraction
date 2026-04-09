@@ -6,8 +6,6 @@ import json
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from functools import partial
-from io import BytesIO
 from pathlib import Path
 
 from tqdm import tqdm
@@ -15,14 +13,13 @@ from tqdm import tqdm
 from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_tracking
 from core.pipeline_runner import MultiBenchmarkRunner, PipelineRunner, PipelineRunResult
-from extraction.core.extract import ExtractionResult, extract, open_pdf
+from extraction.core.extract import ExtractionResult, extract
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.evaluation.benchmark.score import (
     ExtractionBenchmarkSummary,
     evaluate_all_predictions,
 )
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
-from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.utils.benchmark_utils import log_metric_mlflow
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics, create_analytics
@@ -66,143 +63,12 @@ def read_json_predictions(path: Path) -> OverallFilePredictions:
         return OverallFilePredictions()
 
 
-def draw_file_predictions(
-    result: ExtractionResult,
-    file: Path | BytesIO,
-    filename: str,
-    out_directory: Path,
-    skip_draw_predictions: bool = False,
-    draw_lines: bool = False,
-    draw_tables: bool = False,
-    draw_strip_logs: bool = False,
-) -> None:
-    """Draw extraction visualizations for a single file. Separate from extraction logic.
-
-    Re-opens the PDF to render annotated prediction overlays. Per-page intermediate detection
-    data (lines, tables, strip logs) is read from `result.pages_data`. MLflow image logging is
-    handled inside save_visualization() when MLFLOW_TRACKING is set.
-
-    Args:
-        result (ExtractionResult): Output of extract() for this file.
-        file (Path | BytesIO): Original PDF path or stream (re-opened for annotation rendering).
-        filename (str): Name of the file used as identifier.
-        out_directory (Path): Directory under which a "draw/" sub-folder is created.
-        skip_draw_predictions (bool): Skip drawing final prediction overlays. Defaults to False.
-        draw_lines (bool): Draw detected lines. Defaults to False.
-        draw_tables (bool): Draw detected table structures. Defaults to False.
-        draw_strip_logs (bool): Draw detected strip log structures. Defaults to False.
-    """
-    from extraction.annotations.draw import plot_prediction, plot_strip_logs, plot_tables
-    from extraction.annotations.plot_utils import plot_lines, save_visualization
-
-    draw_directory = out_directory / "draw"
-    draw_directory.mkdir(parents=True, exist_ok=True)
-
-    with open_pdf(file=file, filename=filename) as doc:
-        for page_data in result.pages_data:
-            page = doc[page_data.page_index]
-            page_number = page_data.page_index + 1
-
-            if draw_tables:
-                img = plot_tables(page, page_data.table_structures, page_data.page_index)
-                save_visualization(img, filename, page_number, "tables", draw_directory)
-
-            if draw_strip_logs:
-                img = plot_strip_logs(page, page_data.strip_logs, page_data.page_index)
-                save_visualization(img, filename, page_number, "strip_logs", draw_directory)
-
-            if draw_lines:
-                img = plot_lines(page, page_data.lines, scale_factor=line_detection_params["pdf_scale_factor"])
-                save_visualization(img, filename, page_number, "lines", draw_directory)
-
-        if not skip_draw_predictions:
-            plot_prediction(result.predictions, doc, draw_directory)
-
-
-def write_csv_for_file(predictions: FilePredictions, out_directory: Path) -> list[Path]:
-    """Write per-borehole CSV files for a single file's predictions.
-
-    Args:
-        predictions (FilePredictions): Predictions for a single file.
-        out_directory (Path): Directory under which a "csv/" sub-folder is created.
-
-    Returns:
-        list[Path]: Paths of the written CSV files.
-    """
-    csv_directory = out_directory / "csv"
-    csv_directory.mkdir(parents=True, exist_ok=True)
-    base_path = csv_directory / Path(predictions.file_name).stem
-    csv_paths = []
-    for index, borehole in enumerate(predictions.borehole_predictions_list):
-        csv_path = (
-            Path(f"{base_path}_{index}.csv")
-            if len(predictions.borehole_predictions_list) > 1
-            else Path(f"{base_path}.csv")
-        )
-        logger.info(f"Writing CSV predictions to {csv_path}")
-        with open(csv_path, "w", encoding="utf8", newline="") as csvfile:
-            csvfile.write(borehole.to_csv())
-        csv_paths.append(csv_path)
-    return csv_paths
-
-
 @dataclass
 class ExtractionOptions:
-    """Options shared between single and multi-benchmark extraction runners."""
+    """Options for the extraction runner."""
 
-    skip_draw_predictions: bool = False
-    draw_lines: bool = False
-    draw_tables: bool = False
-    draw_strip_logs: bool = False
-    csv: bool = False
     matching_analytics: bool = False
     part: str = "all"
-
-
-def on_file_done(
-    result: ExtractionResult,
-    out_directory: Path,
-    input_directory: Path,
-    csv_paths: list[Path],
-    write_csv: bool,
-    any_draw: bool,
-    input_is_file: bool,
-    skip_draw_predictions: bool,
-    draw_lines: bool,
-    draw_tables: bool,
-    draw_strip_logs: bool,
-) -> None:
-    """Write CSV and/or draw visualizations for a single extracted file.
-
-    Intended to be used via functools.partial with all args pre-bound except result.
-
-    Args:
-        result (ExtractionResult): Output of extract() for this file.
-        out_directory (Path): Directory for output artifacts.
-        input_directory (Path): Directory (or file path) of input PDFs.
-        csv_paths (list[Path]): Accumulator list; written CSV paths are appended here.
-        write_csv (bool): Whether to write CSV output.
-        any_draw (bool): Whether any drawing option is enabled.
-        input_is_file (bool): True if input_directory points to a single file.
-        skip_draw_predictions (bool): Skip drawing final prediction overlays.
-        draw_lines (bool): Draw detected lines.
-        draw_tables (bool): Draw detected table structures.
-        draw_strip_logs (bool): Draw detected strip log structures.
-    """
-    if write_csv:
-        csv_paths.extend(write_csv_for_file(result.predictions, out_directory))
-    if any_draw:
-        pdf_path = input_directory if input_is_file else input_directory / result.predictions.file_name
-        draw_file_predictions(
-            result=result,
-            file=pdf_path,
-            filename=result.predictions.file_name,
-            out_directory=out_directory,
-            skip_draw_predictions=skip_draw_predictions,
-            draw_lines=draw_lines,
-            draw_tables=draw_tables,
-            draw_strip_logs=draw_strip_logs,
-        )
 
 
 def run_extraction_predictions(
@@ -264,11 +130,8 @@ def run_extraction_predictions(
     return predictions, n_documents
 
 
-_ExtractionResult = tuple[OverallFilePredictions, list[Path]]
-
-
 @dataclass(kw_only=True)
-class ExtractionPipelineRunner(PipelineRunner[_ExtractionResult, ExtractionBenchmarkSummary]):
+class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, ExtractionBenchmarkSummary]):
     """Runs the boreholes data extraction pipeline."""
 
     input_directory: Path
@@ -276,6 +139,7 @@ class ExtractionPipelineRunner(PipelineRunner[_ExtractionResult, ExtractionBench
     out_directory: Path
     metadata_path: Path
     options: ExtractionOptions = field(default_factory=ExtractionOptions)
+    on_file_done: Callable[[ExtractionResult], None] | None = None
     runname: str | None = None
     analytics: MatchingParamsAnalytics | None = field(init=False, default=None)
 
@@ -305,47 +169,20 @@ class ExtractionPipelineRunner(PipelineRunner[_ExtractionResult, ExtractionBench
             },
         )
 
-    def run_predictions(self, predictions_path_tmp: Path) -> PipelineRunResult[_ExtractionResult]:
-        csv_paths: list[Path] = []
-        any_draw = (
-            not self.options.skip_draw_predictions
-            or self.options.draw_lines
-            or self.options.draw_tables
-            or self.options.draw_strip_logs
-        )
-        input_is_file = self.input_directory.is_file()
-
-        callback_fn = partial(
-            on_file_done,
-            out_directory=self.out_directory,
-            input_directory=self.input_directory,
-            csv_paths=csv_paths,
-            write_csv=self.options.csv,
-            any_draw=any_draw,
-            input_is_file=input_is_file,
-            skip_draw_predictions=self.options.skip_draw_predictions,
-            draw_lines=self.options.draw_lines,
-            draw_tables=self.options.draw_tables,
-            draw_strip_logs=self.options.draw_strip_logs,
-        )
-
+    def run_predictions(self, predictions_path_tmp: Path) -> PipelineRunResult[OverallFilePredictions]:
         predictions, n_documents = run_extraction_predictions(
             input_directory=self.input_directory,
             predictions_path_tmp=predictions_path_tmp,
             options=self.options,
             analytics=self.analytics,
-            on_file_done=callback_fn,
+            on_file_done=self.on_file_done,
         )
-        return PipelineRunResult(
-            result=(predictions, csv_paths),
-            n_documents=n_documents,
-        )
+        return PipelineRunResult(result=predictions, n_documents=n_documents)
 
-    def evaluate(self, run_result: PipelineRunResult[_ExtractionResult]) -> ExtractionBenchmarkSummary | None:
-        predictions, _ = run_result.result
+    def evaluate(self, run_result: PipelineRunResult[OverallFilePredictions]) -> ExtractionBenchmarkSummary | None:
         ground_truth = GroundTruth(self.ground_truth_path) if self.ground_truth_path else None
         eval_summary = evaluate_all_predictions(
-            predictions=predictions,
+            predictions=run_result.result,
             ground_truth=ground_truth,
         )
         if eval_summary is not None:
@@ -354,22 +191,16 @@ class ExtractionPipelineRunner(PipelineRunner[_ExtractionResult, ExtractionBench
 
     def after_evaluation(
         self,
-        run_result: PipelineRunResult[_ExtractionResult],
+        run_result: PipelineRunResult[OverallFilePredictions],
         summary: ExtractionBenchmarkSummary | None,
         _predictions_path_tmp: Path,
     ) -> None:
-        predictions, csv_paths = run_result.result
-
-        if mlflow:
-            for csv_path in csv_paths:
-                mlflow.log_artifact(str(csv_path), "csv")
-
-            if summary is not None:
-                log_metric_mlflow(summary, out_dir=self.out_directory)
+        if mlflow and summary is not None:
+            log_metric_mlflow(summary, out_dir=self.out_directory)
 
         logger.info(f"Metadata written to {self.metadata_path}")
         with open(self.metadata_path, "w", encoding="utf8") as file:
-            json.dump(predictions.get_metadata_as_dict(), file, ensure_ascii=False)
+            json.dump(run_result.result.get_metadata_as_dict(), file, ensure_ascii=False)
 
         if self.options.matching_analytics and self.analytics is not None:
             analytics_output_path = self.out_directory / "matching_params_analytics.json"
@@ -391,12 +222,14 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
     runname = "benchmark"
 
     options: ExtractionOptions = field(default_factory=ExtractionOptions)
+    on_file_done_factory: Callable[[Path, Path], Callable[[ExtractionResult], None]] | None = None
 
     def run_single(self, spec: BenchmarkSpec) -> ExtractionBenchmarkSummary | None:
         logger.info("Running benchmark: %s", spec.name)
         bench_out = self.multi_root / spec.name
         bench_out.mkdir(parents=True, exist_ok=True)
 
+        callback = self.on_file_done_factory(bench_out, spec.input_path) if self.on_file_done_factory else None
         return ExtractionPipelineRunner(
             predictions_path=bench_out / "predictions.json",
             resume=self.resume,
@@ -406,5 +239,6 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
             out_directory=bench_out,
             metadata_path=bench_out / "metadata.json",
             options=self.options,
+            on_file_done=callback,
             runname=spec.name,
         ).execute()
