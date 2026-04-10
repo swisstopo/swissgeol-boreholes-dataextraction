@@ -1,16 +1,13 @@
 """Model module."""
 
+import gc
 import logging
 import os
-
-# from collections.abc import Callable
 from pathlib import Path
 
 import datasets
 import torch
-
-# from torch.utils.data import Dataset
-from safetensors.torch import load_file
+from safetensors import safe_open
 from tqdm import tqdm
 from transformers import AutoConfig, AutoModelForSequenceClassification, AutoTokenizer
 from transformers.models.bert.modeling_bert import BertForSequenceClassification
@@ -20,6 +17,16 @@ from classification.utils.classification_classes import ClassificationSystem
 from classification.utils.data_loader import LayerInformation
 
 logger = logging.getLogger(__name__)
+
+# Head parameter prefixes — must match the split performed in model_decoupling.py.
+# All other parameters belong to the shared backbone.
+_HEAD_PARAM_PREFIXES = ("classifier.", "bert.pooler.", "bert.encoder.layer.11.")
+
+# Module-level model file cache: file_path → {"handle": safe_open handle, "tensors": {name: tensor}}.
+# Handles keep memory-mapped files open so tensors remain valid.
+# Backbone is shared across all split models; heads are cached per head directory.
+_backbone_cache: dict[str, dict] = {}
+_head_cache: dict[str, dict] = {}
 
 
 class BertModel:
@@ -31,7 +38,7 @@ class BertModel:
         classification_system: type[ClassificationSystem],
         backbone_path: str | Path | None = None,
     ):
-        """Initialize a pretrained BERT model from the transformers librairy.
+        """Initialize a pretrained BERT model from the transformers library.
 
         Args:
             model_path (str | Path): Path to the model directory (full model) or head directory (split model).
@@ -60,7 +67,7 @@ class BertModel:
         self.id2classEnum = {class_.value: class_ for class_ in classes}
 
     def _load_model(self) -> None:
-        """Load the model and tokennizer with the correct number of labels and mappings."""
+        """Load the model and tokenizer with the correct number of labels and mappings."""
         if os.path.isdir(self.model_path):
             logger.info(f"Model and tokenizer loaded from local path: {self.model_path}")
         else:
@@ -98,10 +105,17 @@ class BertModel:
         """Load a model from a separate backbone.safetensors and head directory.
 
         The head directory must contain config.json and model.safetensors (head weights only).
-        The backbone file contains the frozen encoder layers shared across models.
-        Both state dicts are merged before being applied to the model.
+
+        Uses memory-mapped I/O for the backbone (via safe_open) so backbone tensors are
+        file-backed rather than heap-allocated — matching how from_pretrained loads full models.
+        The safe_open handle is kept alive in _backbone_cache so the mmap remains valid.
+
+        On first call: opens the backbone file, caches the handle + tensor references.
+        On subsequent calls: reuses the same mmap'd tensors — no second file read or allocation.
         """
+        backbone_key = str(self.backbone_path)
         logger.info(f"Loading split model: head from {self.model_path}, backbone from {self.backbone_path}")
+
         config = AutoConfig.from_pretrained(
             self.model_path,
             num_labels=self.num_class,
@@ -109,9 +123,35 @@ class BertModel:
             label2id=self.label2id,
         )
         self.model: BertForSequenceClassification = AutoModelForSequenceClassification.from_config(config)
-        backbone = load_file(self.backbone_path)
-        head = load_file(Path(self.model_path) / "model.safetensors")
-        self.model.load_state_dict({**backbone, **head})
+
+        if backbone_key not in _backbone_cache:
+            logger.info("Backbone not cached — opening mmap and caching tensor references.")
+            handle = safe_open(str(self.backbone_path), framework="pt", device="cpu")
+            _backbone_cache[backbone_key] = {
+                "handle": handle,  # keep alive so mmap stays valid
+                "tensors": {key: handle.get_tensor(key) for key in handle.keys()},  # noqa: SIM118
+            }
+        else:
+            logger.info("Reusing cached mmap'd backbone tensors.")
+
+        cached_tensors = _backbone_cache[backbone_key]["tensors"]
+        for name, param in self.model.named_parameters():
+            if name in cached_tensors:
+                param.data = cached_tensors[name]
+
+        # Load head weights via mmap — keeps them file-backed like the backbone
+        head_key = str(Path(self.model_path) / "model.safetensors")
+        if head_key not in _head_cache:
+            head_handle = safe_open(head_key, framework="pt", device="cpu")
+            _head_cache[head_key] = {
+                "handle": head_handle,
+                "tensors": {key: head_handle.get_tensor(key) for key in head_handle.keys()},  # noqa: SIM118
+            }
+        head_tensors = _head_cache[head_key]["tensors"]
+        for name, param in self.model.named_parameters():
+            if name.startswith(_HEAD_PARAM_PREFIXES) and name in head_tensors:
+                param.data = head_tensors[name]
+        gc.collect()
 
     def freeze_all_layers(self):
         """Freeze all layers (base bert model + classifier)."""
@@ -152,7 +192,7 @@ class BertModel:
             elif layer == "layer_10":
                 self.unfreeze_layer_10()
             else:
-                raise ValueError(f"Uknown layer to unfreeze: {layer}.")
+                raise ValueError(f"Unknown layer to unfreeze: {layer}.")
 
     def unfreeze_classifier(self):
         """Unfreeze all the classifier layers.
@@ -179,52 +219,14 @@ class BertModel:
                 param.requires_grad = True
 
     def unfreeze_layer_11(self):
-        """Unfreeze the last layer of the transformer encoder, the 11th layer.
-
-        The 11th layer is a basic self-attention bloc and it has all the following parameters:
-            - bert.encoder.layer.11.attention.self.query.weight
-            - bert.encoder.layer.11.attention.self.query.bias
-            - bert.encoder.layer.11.attention.self.key.weight
-            - bert.encoder.layer.11.attention.self.key.bias
-            - bert.encoder.layer.11.attention.self.value.weight
-            - bert.encoder.layer.11.attention.self.value.bias
-            - bert.encoder.layer.11.attention.output.dense.weight
-            - bert.encoder.layer.11.attention.output.dense.bias
-            - bert.encoder.layer.11.attention.output.LayerNorm.weight
-            - bert.encoder.layer.11.attention.output.LayerNorm.bias
-            - bert.encoder.layer.11.intermediate.dense.weight
-            - bert.encoder.layer.11.intermediate.dense.bias
-            - bert.encoder.layer.11.output.dense.weight
-            - bert.encoder.layer.11.output.dense.bias
-            - bert.encoder.layer.11.output.LayerNorm.weight
-            - bert.encoder.layer.11.output.LayerNorm.bias
-        """
+        """Unfreeze the last layer of the transformer encoder, the 11th layer."""
         for name, param in self.model.named_parameters():
             if name.startswith("bert.encoder.layer.11."):
                 logger.debug(f"Unfreezing Param: {name}")
                 param.requires_grad = True
 
     def unfreeze_layer_10(self):
-        """Unfreeze the second-to-last layer of the transformer encoder, the 10th layer.
-
-        The 10th layer is a basic self-attention bloc and it has all the following parameters:
-            - bert.encoder.layer.10.attention.self.query.weight
-            - bert.encoder.layer.10.attention.self.query.bias
-            - bert.encoder.layer.10.attention.self.key.weight
-            - bert.encoder.layer.10.attention.self.key.bias
-            - bert.encoder.layer.10.attention.self.value.weight
-            - bert.encoder.layer.10.attention.self.value.bias
-            - bert.encoder.layer.10.attention.output.dense.weight
-            - bert.encoder.layer.10.attention.output.dense.bias
-            - bert.encoder.layer.10.attention.output.LayerNorm.weight
-            - bert.encoder.layer.10.attention.output.LayerNorm.bias
-            - bert.encoder.layer.10.intermediate.dense.weight
-            - bert.encoder.layer.10.intermediate.dense.bias
-            - bert.encoder.layer.10.output.dense.weight
-            - bert.encoder.layer.10.output.dense.bias
-            - bert.encoder.layer.10.output.LayerNorm.weight
-            - bert.encoder.layer.10.output.LayerNorm.bias
-        """
+        """Unfreeze the second-to-last layer of the transformer encoder, the 10th layer."""
         for name, param in self.model.named_parameters():
             if name.startswith("bert.encoder.layer.10."):
                 logger.debug(f"Unfreezing Param: {name}")
@@ -243,12 +245,11 @@ class BertModel:
             layers (list[LayerInformation]): A list of layers.
 
         Returns:
-            datasets.Dataset: the dataset, with tokenized informations.
+            datasets.Dataset: the dataset, with tokenized information.
         """
-        shorten = len(layers)  # used for debugging to load only a subset of data (e.g. to test overfitting the model)
         data: dict[str, list] = {
-            "layer": [layer.material_description for layer in layers[:shorten]],
-            "label": [layer.ground_truth_class.value for layer in layers[:shorten]],
+            "layer": [layer.material_description for layer in layers],
+            "label": [layer.ground_truth_class.value for layer in layers],
         }
         dataset = datasets.Dataset.from_dict(data)
         return self.tokenize_dataset(dataset)
@@ -257,11 +258,11 @@ class BertModel:
         """Tokenizes the whole dataset.
 
         Args:
-            dataset (datasets.Dataset): A dataset from the datasets librairy (transformers). Must have a column
+            dataset (datasets.Dataset): A dataset from the datasets library (transformers). Must have a column
                 named "layer".
 
         Returns:
-            datasets.Dataset: the dataset, with tokenized informations.
+            datasets.Dataset: the dataset, with tokenized information.
         """
 
         def tokenize(entry):
@@ -276,7 +277,7 @@ class BertModel:
             text (str): The text to tokenize.
 
         Returns:
-            dict[str, torch.Tensor]: A dictionary with the tokenized informations. The dictionary has keys
+            dict[str, torch.Tensor]: A dictionary with the tokenized information. The dictionary has keys
                 "input_ids", "token_type_ids" and "attention_mask"
         """
         tokenized_text = self.tokenizer(
