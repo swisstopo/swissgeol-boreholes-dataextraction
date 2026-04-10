@@ -17,7 +17,7 @@ RUN uv sync --no-dev --no-install-project --compile
 
 
 ## ------ Runtime stage
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS runtime
+FROM python:3.12-slim
 
 # Set arguments to be passed from build-args
 ARG VERSION
@@ -48,4 +48,4 @@ EXPOSE 8000
 HEALTHCHECK CMD curl --silent --fail http://localhost:8000/health || exit 1
 
 # Command to run the FastAPI Borehole app with Uvicorn
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
