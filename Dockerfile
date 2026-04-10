@@ -1,25 +1,30 @@
-## Build stage
+## ------ Build stage
 # Use the specifidied Python-slim version as the base image
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
+# Add temporary SCM version for hatchling.build
 ARG VERSION=0.0.0
 ENV SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION
 
+# Setup working directory and copy pyproject files
 WORKDIR /app
 COPY pyproject.toml README.md /app/
 
-# Install dependencies using uv
-RUN uv pip install --system --no-cache .
+# --no-dev: Exclude development dependencies from the environment
+# --no-install-project: Skip building and installing the project package itself
+# --compile: Force generation of compiled files *.pyc (lowers memory load)
+RUN uv sync --no-dev --no-install-project --compile
 
-## Runtime stage
+
+## ------ Runtime stage
 FROM python:3.12-slim
 
 # Set arguments to be passed from build-args
 ARG VERSION
 
+# Main working directory
 WORKDIR /app
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /app/.venv /app/.venv
 
 # Curl installation step for health check
 RUN apt-get update && \
@@ -27,13 +32,14 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy the rest of the application source code into the container
+# Source files
 COPY ./src /app/src
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
 ENV APP_VERSION=$VERSION
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Expose port 8000 for the FastAPI Borehole app
 EXPOSE 8000

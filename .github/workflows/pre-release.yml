@@ -1,5 +1,7 @@
 name: Pre-release
 
+permissions: write-all
+
 on:
   push:
     branches:
@@ -49,9 +51,36 @@ jobs:
       - name: Extract and save version from image labels
         id: version
         run: |
-          VERSION=$(docker inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' ${{ env.IMAGE }}:${{ env.BASE }} | sed 's/^v//')
+          VERSION=$(docker inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' ${{ env.IMAGE }}:${{ env.BASE }} | sed 's/^v//' | sed 's/-dev[0-9]*//')
           if [ -z "$VERSION" ]; then echo "ERROR: Could not extract version from image labels" && exit 1; fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  tag_rc_commit:
+    name: Tag release-candidate commit
+    needs: tag-release-candidate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Get base commit
+        id: get_base_commit
+        run: |
+          git fetch --tags
+          BASE_COMMIT=$(git rev-list -n 1 ${{ env.BASE }})
+          echo "sha=$BASE_COMMIT" >> "$GITHUB_OUTPUT"
+
+      - name: Tag release-candidate
+        uses: ./.github/actions/tag-commit
+        with:
+          TAG_NAME: release-candidate
+          SHA: ${{ steps.get_base_commit.outputs.sha }}
+
+      - name: Tag clean version
+        uses: ./.github/actions/tag-commit
+        with:
+          TAG_NAME: ${{ needs.tag-release-candidate.outputs.version }}
+          SHA: ${{ steps.get_base_commit.outputs.sha }}
 
   publish-package:
     runs-on: ubuntu-latest
@@ -77,15 +106,13 @@ jobs:
 
       - name: Create GitHub pre-release
         run: |
-          gh api \
-            --method POST \
-            --header "Accept: application/vnd.github+json" \
-            /repos/${GITHUB_REPOSITORY}/releases \
-            -f tag_name='v${{ needs.tag-release-candidate.outputs.version }}' \
-            -f target_commitish='main' \
-            -f name='${{ needs.tag-release-candidate.outputs.version }}' \
-            -F prerelease=true \
-            -F draft=false
+          gh release create v${{ needs.tag-release-candidate.outputs.version }} \
+            --prerelease \
+            --draft=false \
+            --target main \
+            --title "${{ needs.tag-release-candidate.outputs.version }}" \
+            --notes "Pre-release from main branch." \
+            2>/dev/null || true
 
       - name: Upload to GitHub Release
         run: |

@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pandas as pd
 from dotenv import load_dotenv
-from pydantic import BaseModel
 
+from core.benchmark_utils import BenchmarkSummary
 from core.mlflow_tracking import mlflow
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.features.predictions.file_predictions import FilePredictions
@@ -23,20 +23,17 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-class ExtractionBenchmarkSummary(BaseModel):
-    """Helper class containing a summary of all the results of a single benchmark."""
+class ExtractionBenchmarkSummary(BenchmarkSummary):
+    """Summary of a single extraction benchmark."""
 
-    ground_truth_path: str
-    n_documents: int
     geology: dict[str, float]
     metadata: dict[str, float]
 
-    def metrics(self, short: bool = False) -> dict[str, float]:
+    def metrics_flat(self, short: bool = False) -> dict[str, float]:
         def key(category: str, metric: str) -> str:
             if short:
                 return metric
-            else:
-                return f"{category}/{metric}"
+            return f"{category}/{metric}"
 
         geology_dict = {key("geology", metric): value for metric, value in self.geology.items()}
         metadata_dict = {key("metadata", metric): value for metric, value in self.metadata.items()}
