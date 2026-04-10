@@ -237,11 +237,8 @@ def post_classify_lithology(request: ClassifyLithologyRequest) -> ClassifyLithol
 
     ### Request Body
     - **description**: Plain-text material description to classify (e.g. `"Mergel, grau, laminiert"`).
-    - **classification_system**: Target system — one of `'uscs'`, `'lithology'`, `'en_main'`. Defaults to
+    - **classification_system**: Target system — one of`'lithology'` or `'en_main'`. Defaults to
     `'lithology'`.
-
-    The model path is configured server-side via environment variables (`BERT_MODEL_PATH_USCS`,
-    `BERT_MODEL_PATH_LITHOLOGY`, `BERT_MODEL_PATH_EN_MAIN`).
 
     ### Returns
     - **class_name**: Predicted class name from the selected classification system (e.g. `"Marlstone"`).

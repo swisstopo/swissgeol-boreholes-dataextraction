@@ -810,9 +810,9 @@ class ClassifyLithologyRequest(BaseModel):
         ...,
         description="Plain-text material description to classify.",
     )
-    classification_system: Literal["uscs", "lithology", "en_main"] = Field(
+    classification_system: Literal["lithology", "en_main"] = Field(
         default="lithology",
-        description="Classification system to apply. One of: 'uscs', 'lithology', 'en_main'.",
+        description="Classification system to apply. One of: 'lithology', 'en_main'.",
     )
     model_config = ConfigDict(
         json_schema_extra={

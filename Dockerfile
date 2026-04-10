@@ -11,6 +11,29 @@ COPY pyproject.toml README.md /app/
 # Install dependencies using uv
 RUN uv pip install --system --no-cache .
 
+## Model download stage
+# Downloads only the inference files needed at runtime (training artifacts are excluded).
+# AWS credentials are only used during build and are not present in the final image.
+FROM amazon/aws-cli AS model-downloader
+
+ARG AWS_ACCESS_KEY_ID
+ARG AWS_SECRET_ACCESS_KEY
+ARG AWS_DEFAULT_REGION=eu-central-1
+ARG BERT_MODEL_S3_BUCKET
+ARG BERT_MODEL_S3_KEY_BACKBONE
+ARG BERT_MODEL_S3_KEY_LITHOLOGY_HEAD
+ARG BERT_MODEL_S3_KEY_EN_MAIN_HEAD
+
+ENV AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+ENV AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+ENV AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION
+
+# Download the shared backbone once, then the small task-specific heads.
+# Head directories follow the standard HuggingFace layout (config.json + model.safetensors + tokenizer files).
+RUN aws s3 cp s3://${BERT_MODEL_S3_BUCKET}/${BERT_MODEL_S3_KEY_BACKBONE}/backbone.safetensors /models/backbone/backbone.safetensors \
+ && aws s3 cp s3://${BERT_MODEL_S3_BUCKET}/${BERT_MODEL_S3_KEY_LITHOLOGY_HEAD}/ /models/lithology_head/ --recursive --exclude "*" --include "config.json" --include "model.safetensors" --include "tokenizer.json" --include "tokenizer_config.json" --include "special_tokens_map.json" --include "vocab.txt" \
+ && aws s3 cp s3://${BERT_MODEL_S3_BUCKET}/${BERT_MODEL_S3_KEY_EN_MAIN_HEAD}/ /models/en_main_head/ --recursive --exclude "*" --include "config.json" --include "model.safetensors" --include "tokenizer.json" --include "tokenizer_config.json" --include "special_tokens_map.json" --include "vocab.txt"
+
 ## Runtime stage
 FROM python:3.12-slim
 
@@ -30,10 +53,18 @@ RUN apt-get update && \
 # Copy the rest of the application source code into the container
 COPY ./src /app/src
 
+# Copy baked-in models from the download stage
+ COPY --from=model-downloader /models /app/models
+
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app/src
 ENV APP_VERSION=$VERSION
+
+# Point the API at the baked-in backbone and heads. These take priority over S3 download.
+ENV BERT_MODEL_PATH_BACKBONE=/app/models/backbone/backbone.safetensors
+ENV BERT_MODEL_PATH_LITHOLOGY_HEAD=/app/models/lithology_head
+ENV BERT_MODEL_PATH_EN_MAIN_HEAD=/app/models/en_main_head
 
 # Expose port 8000 for the FastAPI Borehole app
 EXPOSE 8000

@@ -14,18 +14,16 @@ from classification.utils.classification_classes import ExistingClassificationSy
 logger = logging.getLogger(__name__)
 
 # Environment variable names for model paths (local directory, takes priority over S3).
+# For split models, use BERT_MODEL_PATH_<SYSTEM>_HEAD together with BERT_MODEL_PATH_BACKBONE.
 _MODEL_PATH_ENV_VARS = {
-    "uscs": "BERT_MODEL_PATH_USCS",
-    "lithology": "BERT_MODEL_PATH_LITHOLOGY",
-    "en_main": "BERT_MODEL_PATH_EN_MAIN",
+    "lithology": "BERT_MODEL_PATH_LITHOLOGY_HEAD",
+    "en_main": "BERT_MODEL_PATH_EN_MAIN_HEAD",
 }
 
 # Environment variable names for S3 key prefixes within the configured bucket.
-# Example values: "lithology_models/best_model_lithology"
 _MODEL_S3_KEY_ENV_VARS = {
-    "uscs": "BERT_MODEL_S3_KEY_USCS",
-    "lithology": "BERT_MODEL_S3_KEY_LITHOLOGY",
-    "en_main": "BERT_MODEL_S3_KEY_EN_MAIN",
+    "lithology": "BERT_MODEL_S3_KEY_LITHOLOGY_HEAD",
+    "en_main": "BERT_MODEL_S3_KEY_EN_MAIN_HEAD",
 }
 
 # Where downloaded models are cached on disk between warm Lambda invocations.
@@ -46,7 +44,7 @@ def _resolve_model_path(classification_system_name: str) -> str:
     3. Raise a clear error — no silent fallback to the untrained base model.
 
     Args:
-        classification_system_name (str): One of 'uscs', 'lithology', 'en_main'.
+        classification_system_name (str): One of 'lithology', 'en_main'.
 
     Returns:
         str: Absolute path to a local directory containing the model files.
@@ -78,20 +76,42 @@ def _resolve_model_path(classification_system_name: str) -> str:
     )
 
 
+def _resolve_backbone_path() -> str | None:
+    """Return the local path to the shared backbone weights, or None if not configured.
+
+    Resolution order:
+    1. BERT_MODEL_PATH_BACKBONE env var — explicit local path to backbone.safetensors.
+    2. BERT_MODEL_S3_KEY_BACKBONE env var — downloads backbone.safetensors from S3 on first use.
+    3. None — fall back to full-model loading (no split).
+    """
+    local_path = os.environ.get("BERT_MODEL_PATH_BACKBONE")
+    if local_path:
+        return local_path
+
+    s3_key = os.environ.get("BERT_MODEL_S3_KEY_BACKBONE")
+    if s3_key:
+        local_dir = _LOCAL_MODEL_CACHE_DIR / "backbone"
+        download_model_from_s3(s3_key, local_dir)
+        return str(local_dir / "backbone.safetensors")
+
+    return None
+
+
 def _get_bert_model(classification_system_name: str) -> BertModel:
     """Return a cached BertModel, loading it from disk on the first call.
 
     Args:
-        classification_system_name (str): One of 'uscs', 'lithology', 'en_main'.
+        classification_system_name (str): One of 'lithology', 'en_main'.
 
     Returns:
         BertModel: Ready-to-use model and tokenizer pair.
     """
     classification_system = ExistingClassificationSystems.get_classification_system_type(classification_system_name)
     model_path = _resolve_model_path(classification_system_name)
+    backbone_path = _resolve_backbone_path()
     cache_key = (classification_system_name, model_path)
     if cache_key not in _model_cache:
-        _model_cache[cache_key] = BertModel(model_path, classification_system)
+        _model_cache[cache_key] = BertModel(model_path, classification_system, backbone_path=backbone_path)
     return _model_cache[cache_key]
 
 

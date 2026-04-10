@@ -10,8 +10,9 @@ import datasets
 import torch
 
 # from torch.utils.data import Dataset
+from safetensors.torch import load_file
 from tqdm import tqdm
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers import AutoConfig, AutoModelForSequenceClassification, AutoTokenizer
 from transformers.models.bert.modeling_bert import BertForSequenceClassification
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
@@ -24,17 +25,30 @@ logger = logging.getLogger(__name__)
 class BertModel:
     """Class for BERT model and tokenizer."""
 
-    def __init__(self, model_path: str | Path, classification_system: type[ClassificationSystem]):
+    def __init__(
+        self,
+        model_path: str | Path,
+        classification_system: type[ClassificationSystem],
+        backbone_path: str | Path | None = None,
+    ):
         """Initialize a pretrained BERT model from the transformers librairy.
 
         Args:
-            model_path (str): A string containing the model name.
+            model_path (str | Path): Path to the model directory (full model) or head directory (split model).
             classification_system (type[ClassificationSystem]): The classification system used to classify the data.
+            backbone_path (str | Path | None): Path to backbone.safetensors for split-model loading.
+                When provided, model_path is treated as the head directory and the two weight files are
+                merged before loading. When None, model_path must be a standard full HuggingFace model directory.
         """
         self.classification_system = classification_system
         self._setup_classification_system()
 
-        self.model_path = model_path
+        self.model_path = Path(model_path).resolve() if str(model_path).startswith((".", "/")) else model_path
+        self.backbone_path = (
+            Path(backbone_path).resolve()
+            if backbone_path and str(backbone_path).startswith((".", "/"))
+            else backbone_path
+        )
         self._load_model()
 
     def _setup_classification_system(self) -> None:
@@ -47,13 +61,20 @@ class BertModel:
 
     def _load_model(self) -> None:
         """Load the model and tokennizer with the correct number of labels and mappings."""
-        # Check if model_path is a valid directory for a locally saved model
         if os.path.isdir(self.model_path):
             logger.info(f"Model and tokenizer loaded from local path: {self.model_path}")
         else:
             logger.info(f"Pretrained model and tokenizer loaded from remote source: {self.model_path}")
 
         self.tokenizer: BertTokenizerFast = AutoTokenizer.from_pretrained(self.model_path)
+
+        if self.backbone_path:
+            self._load_split_model()
+        else:
+            self._load_full_model()
+
+    def _load_full_model(self) -> None:
+        """Load a standard HuggingFace model directory (config + full model.safetensors)."""
         try:
             self.model: BertForSequenceClassification = AutoModelForSequenceClassification.from_pretrained(
                 self.model_path,
@@ -71,7 +92,26 @@ class BertModel:
                     f" USCS classification).\nOriginal error: {error_message}"
                 ) from e
             else:
-                raise  # Re-raise the original exception if it's not a size mismatch
+                raise
+
+    def _load_split_model(self) -> None:
+        """Load a model from a separate backbone.safetensors and head directory.
+
+        The head directory must contain config.json and model.safetensors (head weights only).
+        The backbone file contains the frozen encoder layers shared across models.
+        Both state dicts are merged before being applied to the model.
+        """
+        logger.info(f"Loading split model: head from {self.model_path}, backbone from {self.backbone_path}")
+        config = AutoConfig.from_pretrained(
+            self.model_path,
+            num_labels=self.num_class,
+            id2label=self.id2label,
+            label2id=self.label2id,
+        )
+        self.model: BertForSequenceClassification = AutoModelForSequenceClassification.from_config(config)
+        backbone = load_file(self.backbone_path)
+        head = load_file(Path(self.model_path) / "model.safetensors")
+        self.model.load_state_dict({**backbone, **head})
 
     def freeze_all_layers(self):
         """Freeze all layers (base bert model + classifier)."""
