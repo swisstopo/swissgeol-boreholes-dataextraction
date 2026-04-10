@@ -71,65 +71,6 @@ class ExtractionOptions:
     part: str = "all"
 
 
-def run_extraction_predictions(
-    input_directory: Path,
-    predictions_path_tmp: Path,
-    options: ExtractionOptions,
-    on_file_done: Callable[[ExtractionResult], None] | None = None,
-    analytics: MatchingParamsAnalytics | None = None,
-) -> tuple[OverallFilePredictions, int]:
-    """Discover PDF files, run extract() on each, and write incremental predictions.
-
-    This is the core prediction logic, decoupled from tracking and evaluation.
-
-    Resume is supported: if `predictions_path_tmp` already contains partial results from a previous
-    run, those files are skipped and only new files are processed.
-
-    Args:
-        input_directory (Path): Directory of PDF files to process, or path to a single PDF file.
-        predictions_path_tmp (Path): Path to the incremental tmp predictions file. Existing content
-            is used to resume; the file is updated after each successfully processed file.
-        options (ExtractionOptions): Extraction run options.
-        on_file_done (Callable | None, optional): Optional callback invoked after each file is
-            successfully processed. Use this to perform side effects (CSV writing, visualizations)
-            per file. Defaults to None.
-        analytics (MatchingParamsAnalytics | None, optional): Analytics object for tracking matching
-            parameters. Defaults to None.
-
-    Returns:
-        tuple[OverallFilePredictions, int]: All predictions accumulated across files and the total
-            number of PDF files discovered (including any already-predicted files from a resumed run).
-    """
-    # Look for files to process
-    pdf_files = [input_directory] if input_directory.is_file() else list(input_directory.glob("*.pdf"))
-    n_documents = len(pdf_files)
-
-    # Load any partially-completed predictions for resume support
-    predictions = read_json_predictions(predictions_path_tmp)
-
-    for pdf_file in tqdm(pdf_files, desc="Processing files", unit="file"):
-        # Check if file is already computed in previous run
-        if predictions.contains(pdf_file.name):
-            logger.info(f"{pdf_file.name} already predicted.")
-            continue
-
-        logger.info(f"Processing file: {pdf_file.name}")
-        try:
-            result = extract(file=pdf_file, filename=pdf_file.name, part=options.part, analytics=analytics)
-            predictions.add_file_predictions(result.predictions)
-
-            if on_file_done is not None:
-                on_file_done(result)
-
-            logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
-            write_json_predictions(path=predictions_path_tmp, predictions=predictions)
-
-        except Exception as e:
-            logger.error(f"Unexpected error in file {pdf_file.name}. Trace: {e}")
-
-    return predictions, n_documents
-
-
 @dataclass(kw_only=True)
 class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, ExtractionBenchmarkSummary]):
     """Runs the boreholes data extraction pipeline."""
@@ -139,7 +80,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
     out_directory: Path
     metadata_path: Path
     options: ExtractionOptions = field(default_factory=ExtractionOptions)
-    on_file_done: Callable[[ExtractionResult], None] | None = None
+    on_file_done: Callable[[ExtractionResult, Path, Path], None] | None = None
     runname: str | None = None
     analytics: MatchingParamsAnalytics | None = field(init=False, default=None)
 
@@ -170,13 +111,52 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
         )
 
     def run_predictions(self, predictions_path_tmp: Path) -> PipelineRunResult[OverallFilePredictions]:
-        predictions, n_documents = run_extraction_predictions(
-            input_directory=self.input_directory,
-            predictions_path_tmp=predictions_path_tmp,
-            options=self.options,
-            analytics=self.analytics,
-            on_file_done=self.on_file_done,
+        """Discover PDF files, run extract() on each, and write incremental predictions.
+
+        This is the core prediction logic, decoupled from tracking and evaluation.
+
+        Resume is supported: if `predictions_path_tmp` already contains partial results from a previous
+        run, those files are skipped and only new files are processed.
+
+        Args:
+            predictions_path_tmp (Path):  Path to the incremental tmp predictions file. Existing content
+                is used to resume; the file is updated after each successfully processed file.
+
+        Returns:
+            PipelineRunResult[OverallFilePredictions]: All predictions accumulated across files and the total
+                number of PDF files discovered (including any already-predicted files from a resumed run).
+        """
+        # Look for files to process
+        pdf_files: list[Path] = (
+            [self.input_directory] if self.input_directory.is_file() else list(self.input_directory.glob("*.pdf"))
         )
+        n_documents = len(pdf_files)
+
+        # Load any partially-completed predictions for resume support
+        predictions = read_json_predictions(predictions_path_tmp)
+
+        for pdf_file in tqdm(pdf_files, desc="Processing files", unit="file"):
+            # Check if file is already computed in previous run
+            if predictions.contains(pdf_file.name):
+                logger.info(f"{pdf_file.name} already predicted.")
+                continue
+
+            logger.info(f"Processing file: {pdf_file.name}")
+            try:
+                result = extract(
+                    file=pdf_file, filename=pdf_file.name, part=self.options.part, analytics=self.analytics
+                )
+                predictions.add_file_predictions(result.predictions)
+
+                if self.on_file_done is not None:
+                    self.on_file_done(result, self.out_directory, pdf_file)
+
+                logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
+                write_json_predictions(path=predictions_path_tmp, predictions=predictions)
+
+            except Exception as e:
+                logger.error(f"Unexpected error in file {pdf_file.name}. Trace: {e}")
+
         return PipelineRunResult(result=predictions, n_documents=n_documents)
 
     def evaluate(self, run_result: PipelineRunResult[OverallFilePredictions]) -> ExtractionBenchmarkSummary | None:
@@ -222,14 +202,13 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
     runname = "benchmark"
 
     options: ExtractionOptions = field(default_factory=ExtractionOptions)
-    on_file_done_factory: Callable[[Path, Path], Callable[[ExtractionResult], None]] | None = None
+    on_file_done: Callable[[ExtractionResult, Path, Path], None] | None = None
 
     def run_single(self, spec: BenchmarkSpec) -> ExtractionBenchmarkSummary | None:
         logger.info("Running benchmark: %s", spec.name)
         bench_out = self.multi_root / spec.name
         bench_out.mkdir(parents=True, exist_ok=True)
 
-        callback = self.on_file_done_factory(bench_out, spec.input_path) if self.on_file_done_factory else None
         return ExtractionPipelineRunner(
             predictions_path=bench_out / "predictions.json",
             resume=self.resume,
@@ -239,6 +218,6 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
             out_directory=bench_out,
             metadata_path=bench_out / "metadata.json",
             options=self.options,
-            on_file_done=callback,
+            on_file_done=self.on_file_done,
             runname=spec.name,
         ).execute()

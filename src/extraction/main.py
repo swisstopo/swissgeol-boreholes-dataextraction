@@ -1,48 +1,19 @@
 """This module contains the main pipeline for the boreholes data extraction."""
 
 import logging
-from collections.abc import Callable
-from functools import partial
 from pathlib import Path
 
 import click
 from dotenv import load_dotenv
 
 from core.benchmark_utils import configure_logging
-from extraction.core.extract import ExtractionResult
 from extraction.evaluation.benchmark.spec import parse_benchmark_spec
 from extraction.runner import ExtractionBenchmarkRunner, ExtractionOptions, ExtractionPipelineRunner
-from extraction.utils.benchmark_utils import on_file_done
+from extraction.utils.benchmark_utils import CallbackFactory
 from swissgeol_doc_processing.utils.file_utils import get_data_path
 
 load_dotenv()
 logger = logging.getLogger(__name__)
-
-
-def make_callback_factory(
-    *,
-    write_csv: bool,
-    skip_draw_predictions: bool,
-    draw_lines: bool,
-    draw_tables: bool,
-    draw_strip_logs: bool,
-) -> Callable[[Path, Path], Callable[[ExtractionResult], None]]:
-    """Return a factory that builds an on_file_done callback for a given output and input directory."""
-
-    def factory(out_directory: Path, input_directory: Path) -> Callable[[ExtractionResult], None]:
-        return partial(
-            on_file_done,
-            out_directory=out_directory,
-            input_directory=input_directory,
-            write_csv=write_csv,
-            input_is_file=input_directory.is_file(),
-            skip_draw_predictions=skip_draw_predictions,
-            draw_lines=draw_lines,
-            draw_tables=draw_tables,
-            draw_strip_logs=draw_strip_logs,
-        )
-
-    return factory
 
 
 def common_options(f):
@@ -165,7 +136,7 @@ def click_pipeline(
     # Setup logging (same for all)
     configure_logging()
 
-    factory = make_callback_factory(
+    factory = CallbackFactory(
         write_csv=csv,
         skip_draw_predictions=skip_draw_predictions,
         draw_lines=draw_lines,
@@ -181,7 +152,7 @@ def click_pipeline(
             multi_root=out_directory,
             resume=resume,
             options=ExtractionOptions(matching_analytics=matching_analytics, part=part),
-            on_file_done_factory=factory,
+            on_file_done=factory.on_file_done,
         ).run()
     # --- Single-benchmark mode ---
     else:
@@ -196,7 +167,7 @@ def click_pipeline(
             out_directory=out_directory,
             metadata_path=metadata_path,
             options=ExtractionOptions(matching_analytics=matching_analytics, part=part),
-            on_file_done=factory(out_directory, input_directory),
+            on_file_done=factory.on_file_done,
         ).execute()
 
 
@@ -217,7 +188,7 @@ def click_pipeline_metadata(
     matching_analytics: bool = False,
 ):
     """Run only the metadata part of the pipeline."""
-    factory = make_callback_factory(
+    factory = CallbackFactory(
         write_csv=csv,
         skip_draw_predictions=skip_draw_predictions,
         draw_lines=draw_lines,
@@ -232,7 +203,7 @@ def click_pipeline_metadata(
         out_directory=out_directory,
         metadata_path=metadata_path,
         options=ExtractionOptions(matching_analytics=matching_analytics, part="metadata"),
-        on_file_done=factory(out_directory, input_directory),
+        on_file_done=factory.on_file_done,
     ).execute()
 
 

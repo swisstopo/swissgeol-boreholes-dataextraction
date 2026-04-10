@@ -7,11 +7,12 @@ from pathlib import Path
 import pymupdf
 import pytest
 
+from extraction.utils.benchmark_utils import CallbackFactory
+
 # Enforce MLFlow tracking to False before importing modules
 os.environ["MLFLOW_TRACKING"] = "False"
 
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
-from extraction.main import make_callback_factory
 from extraction.runner import ExtractionBenchmarkRunner, ExtractionOptions, ExtractionPipelineRunner, extract
 
 PREDICTION_FILE_ = "predictions.json"
@@ -117,7 +118,7 @@ def test_start_pipeline_csv(tmp_path: Path, borehole_pdf: Path) -> None:
         tmp_path (Path): Path to temporary folder (pytest handled).
         borehole_pdf (Path): Path to borehole PDF file.
     """
-    callback = make_callback_factory(
+    callback = CallbackFactory(
         write_csv=True, skip_draw_predictions=True, draw_lines=False, draw_tables=False, draw_strip_logs=False
     )
     ExtractionPipelineRunner(
@@ -126,7 +127,7 @@ def test_start_pipeline_csv(tmp_path: Path, borehole_pdf: Path) -> None:
         ground_truth_path=None,
         out_directory=tmp_path,
         metadata_path=tmp_path / METADATA_FILE_,
-        on_file_done=callback(tmp_path, borehole_pdf),
+        on_file_done=callback.on_file_done,
     ).execute()
     # Check generated csv files
     assert len([f for f in tmp_path.rglob("*.csv")]) != 0
@@ -139,7 +140,7 @@ def test_start_pipeline_drawing(tmp_path: Path, borehole_pdf: Path) -> None:
         tmp_path (Path): Path to temporary folder (pytest handled).
         borehole_pdf (Path): Path to borehole PDF file.
     """
-    callback = make_callback_factory(
+    callback = CallbackFactory(
         write_csv=False, skip_draw_predictions=False, draw_lines=True, draw_tables=True, draw_strip_logs=True
     )
     ExtractionPipelineRunner(
@@ -148,7 +149,7 @@ def test_start_pipeline_drawing(tmp_path: Path, borehole_pdf: Path) -> None:
         ground_truth_path=None,
         out_directory=tmp_path,
         metadata_path=tmp_path / METADATA_FILE_,
-        on_file_done=callback(tmp_path, borehole_pdf),
+        on_file_done=callback.on_file_done,
     ).execute()
 
     # Generated files

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 from core.mlflow_tracking import mlflow
@@ -66,64 +67,56 @@ def write_csv_for_file(predictions: FilePredictions, out_directory: Path) -> lis
     return csv_paths
 
 
-def on_file_done(
-    result: ExtractionResult,
-    out_directory: Path,
-    input_directory: Path,
-    write_csv: bool,
-    input_is_file: bool,
-    skip_draw_predictions: bool = False,
-    draw_lines: bool = False,
-    draw_tables: bool = False,
-    draw_strip_logs: bool = False,
-) -> None:
-    """Write CSV and/or draw visualizations for a single extracted file.
+@dataclass
+class CallbackFactory:
+    """Contains callback methods for the data extraction pipeline."""
 
-    Intended to be used via functools.partial with all args pre-bound except result.
-    MLflow artifact logging for CSV files is performed here when tracking is active.
+    write_csv: bool
+    skip_draw_predictions: bool
+    draw_lines: bool
+    draw_tables: bool
+    draw_strip_logs: bool
 
-    Args:
-        result (ExtractionResult): Output of extract() for this file.
-        out_directory (Path): Directory for output artifacts.
-        input_directory (Path): Directory (or file path) of input PDFs.
-        write_csv (bool): Whether to write CSV output.
-        input_is_file (bool): True if input_directory points to a single file.
-        skip_draw_predictions (bool): Skip drawing final prediction overlays. Defaults to False.
-        draw_lines (bool): Draw detected lines. Defaults to False.
-        draw_tables (bool): Draw detected table structures. Defaults to False.
-        draw_strip_logs (bool): Draw detected strip log structures. Defaults to False.
-    """
-    if write_csv:
-        csv_paths = write_csv_for_file(result.predictions, out_directory)
-        if mlflow:
-            for csv_path in csv_paths:
-                mlflow.log_artifact(str(csv_path), "csv")
+    def on_file_done(self, result: ExtractionResult, out_directory: Path, pdf_path: Path) -> None:
+        """Write CSV and/or draw visualizations for a single extracted file.
 
-    if not skip_draw_predictions or draw_lines or draw_tables or draw_strip_logs:
-        pdf_path = input_directory if input_is_file else input_directory / result.predictions.file_name
-        file_name = result.predictions.file_name
-        from extraction.annotations.draw import plot_prediction, plot_strip_logs, plot_tables
-        from extraction.annotations.plot_utils import plot_lines, save_visualization
+        MLflow artifact logging for CSV files is performed here when tracking is active.
 
-        draw_directory = out_directory / "draw"
-        draw_directory.mkdir(parents=True, exist_ok=True)
+        Args:
+            result (ExtractionResult): Output of extract() for this file.
+            out_directory (Path): Directory for output artifacts.
+            pdf_path (Path): File path of the input PDF.
+        """
+        if self.write_csv:
+            csv_paths = write_csv_for_file(result.predictions, out_directory)
+            if mlflow:
+                for csv_path in csv_paths:
+                    mlflow.log_artifact(str(csv_path), "csv")
 
-        with open_pdf(file=pdf_path, filename=file_name) as doc:
-            for page_data in result.pages_data:
-                page = doc[page_data.page_index]
-                page_number = page_data.page_index + 1
+        if not self.skip_draw_predictions or self.draw_lines or self.draw_tables or self.draw_strip_logs:
+            file_name = result.predictions.file_name
+            from extraction.annotations.draw import plot_prediction, plot_strip_logs, plot_tables
+            from extraction.annotations.plot_utils import plot_lines, save_visualization
 
-                if draw_tables:
-                    img = plot_tables(page, page_data.table_structures, page_data.page_index)
-                    save_visualization(img, file_name, page_number, "tables", draw_directory)
+            draw_directory = out_directory / "draw"
+            draw_directory.mkdir(parents=True, exist_ok=True)
 
-                if draw_strip_logs:
-                    img = plot_strip_logs(page, page_data.strip_logs, page_data.page_index)
-                    save_visualization(img, file_name, page_number, "strip_logs", draw_directory)
+            with open_pdf(file=pdf_path, filename=file_name) as doc:
+                for page_data in result.pages_data:
+                    page = doc[page_data.page_index]
+                    page_number = page_data.page_index + 1
 
-                if draw_lines:
-                    img = plot_lines(page, page_data.lines, scale_factor=line_detection_params["pdf_scale_factor"])
-                    save_visualization(img, file_name, page_number, "lines", draw_directory)
+                    if self.draw_tables:
+                        img = plot_tables(page, page_data.table_structures, page_data.page_index)
+                        save_visualization(img, file_name, page_number, "tables", draw_directory)
 
-            if not skip_draw_predictions:
-                plot_prediction(result.predictions, doc, draw_directory)
+                    if self.draw_strip_logs:
+                        img = plot_strip_logs(page, page_data.strip_logs, page_data.page_index)
+                        save_visualization(img, file_name, page_number, "strip_logs", draw_directory)
+
+                    if self.draw_lines:
+                        img = plot_lines(page, page_data.lines, scale_factor=line_detection_params["pdf_scale_factor"])
+                        save_visualization(img, file_name, page_number, "lines", draw_directory)
+
+                if not self.skip_draw_predictions:
+                    plot_prediction(result.predictions, doc, draw_directory)
