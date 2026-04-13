@@ -2,15 +2,11 @@
 
 import dataclasses
 
-from extraction.evaluation.benchmark.ground_truth import GroundTruth
-from extraction.evaluation.layer_evaluator import LayerEvaluator
 from extraction.features.metadata.metadata import FileMetadata
 from extraction.features.predictions.borehole_predictions import (
     BoreholePredictions,
-    FilePredictionsWithGroundTruth,
 )
 from extraction.features.predictions.file_predictions import FilePredictions
-from extraction.features.predictions.predictions import AllBoreholePredictionsWithGroundTruth
 
 
 @dataclasses.dataclass
@@ -79,27 +75,3 @@ class OverallFilePredictions:
 
             overall_file_predictions.add_file_predictions(FilePredictions(borehole_list, file_metadata, file_name))
         return overall_file_predictions
-
-    def match_with_ground_truth(self, ground_truth: GroundTruth) -> AllBoreholePredictionsWithGroundTruth:
-        """Match the extracted boreholes with corresponding boreholes in the ground truth data.
-
-        This is done by comparing the layers of the extracted boreholes with those in the groundtruth.
-
-        Args:
-            ground_truth (GroundTruth): The ground truth.
-
-        Returns:
-            AllBoreholePredictionsWithGroundTruth: all predictions per borehole with associated ground truth data.
-        """
-        files = []
-        for file_predictions in self.file_predictions_list:
-            boreholes = []
-            ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
-            if ground_truth_for_file:
-                boreholes = LayerEvaluator.match_predictions_with_ground_truth(file_predictions, ground_truth_for_file)
-            files.append(
-                FilePredictionsWithGroundTruth(
-                    file_predictions.file_name, file_predictions.file_metadata.language, boreholes
-                )
-            )
-        return AllBoreholePredictionsWithGroundTruth(files)

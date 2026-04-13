@@ -209,7 +209,8 @@ def run_extraction_predictions(
         logger.info(f"Processing file: {pdf_file.name}")
         try:
             result = extract(file=pdf_file, filename=pdf_file.name, part=options.part, analytics=analytics)
-            predictions.add_file_predictions(result.predictions)
+            prediction = evaluate_single_prediction(result.predictions, ground_truth)
+            predictions.add_file_predictions(prediction)
 
             if options.csv:
                 all_csv_paths.extend(write_csv_for_file(result.predictions, out_directory))

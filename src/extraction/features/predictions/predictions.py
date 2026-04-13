@@ -7,10 +7,8 @@ from copy import deepcopy
 from typing import TypeVar
 
 from extraction.evaluation.benchmark.metrics import OverallMetricsCatalog
-from extraction.evaluation.evaluation_dataclasses import OverallBoreholeMetadataMetrics
 from extraction.evaluation.groundwater_evaluator import GroundwaterEvaluator
 from extraction.evaluation.layer_evaluator import LayerEvaluator
-from extraction.evaluation.metadata_evaluator import MetadataEvaluator
 from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
     GroundwatersInBorehole,
@@ -22,11 +20,9 @@ from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.predictions.borehole_predictions import (
     BoreholeGroundwaterWithGroundTruth,
     BoreholeLayersWithGroundTruth,
-    BoreholeMetadataWithGroundTruth,
     BoreholePredictions,
     FileGroundwaterWithGroundTruth,
     FileLayersWithGroundTruth,
-    FileMetadataWithGroundTruth,
     FilePredictionsWithGroundTruth,
 )
 from extraction.features.stratigraphy.layer.layer import LayersInBorehole, LayersInDocument
@@ -264,28 +260,6 @@ class AllBoreholePredictionsWithGroundTruth:
     """Class for evaluating all files, after individual boreholes have been match with their ground truth data."""
 
     predictions_list: list[FilePredictionsWithGroundTruth]
-
-    def evaluate_metadata_extraction(self) -> OverallBoreholeMetadataMetrics:
-        """Evaluate the metadata extraction of the predictions against the ground truth.
-
-        Returns:
-            OverallBoreholeMetadataMetrics: the computed metrics for the metadata.
-        """
-        metadata_list = [
-            FileMetadataWithGroundTruth(
-                file.filename,
-                [
-                    BoreholeMetadataWithGroundTruth(
-                        predictions.predictions.metadata if predictions.predictions else None,
-                        predictions.ground_truth.get("metadata", {}),
-                    )
-                    for predictions in file.boreholes
-                ],
-            )
-            for file in self.predictions_list
-        ]
-
-        return MetadataEvaluator(metadata_list).evaluate()
 
     def evaluate_geology(self, verbose: bool = True) -> OverallMetricsCatalog:
         """Evaluate the borehole extraction predictions.
