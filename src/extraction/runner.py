@@ -280,12 +280,13 @@ class ExtractionPipelineRunner(PipelineRunner[_ExtractionResult, ExtractionBench
         )
 
     def run_predictions(self, predictions_path_tmp: Path) -> PipelineRunResult[_ExtractionResult]:
+        ground_truth = GroundTruth(self.ground_truth_path) if self.ground_truth_path else None
         predictions, n_documents, csv_paths = run_extraction_predictions(
             input_directory=self.input_directory,
             out_directory=self.out_directory,
             predictions_path_tmp=predictions_path_tmp,
             options=self.options,
-            ground_truth=None,
+            ground_truth=ground_truth,
             analytics=self.analytics,
         )
         return PipelineRunResult(
