@@ -18,6 +18,7 @@ from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.evaluation.benchmark.score import (
     ExtractionBenchmarkSummary,
     evaluate_all_predictions,
+    evaluate_single_prediction,
 )
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 from extraction.features.predictions.file_predictions import FilePredictions
@@ -162,6 +163,7 @@ def run_extraction_predictions(
     out_directory: Path,
     predictions_path_tmp: Path,
     options: ExtractionOptions,
+    ground_truth: GroundTruth | None = None,
     analytics: MatchingParamsAnalytics | None = None,
 ) -> tuple[OverallFilePredictions, int, list[Path]]:
     """Discover PDF files, run extract() on each, and write incremental predictions.
@@ -177,6 +179,7 @@ def run_extraction_predictions(
         predictions_path_tmp (Path): Path to the incremental tmp predictions file. Existing content
             is used to resume; the file is updated after each successfully processed file.
         options (ExtractionOptions): Extraction run options.
+        ground_truth (GroundTruth | None): Ground truth for evaluation.
         analytics (MatchingParamsAnalytics | None, optional): Analytics object for tracking matching
             parameters. Defaults to None.
 
@@ -212,6 +215,9 @@ def run_extraction_predictions(
                 all_csv_paths.extend(write_csv_for_file(result.predictions, out_directory))
 
             if any_draw:
+                # Run evaluation for current file drawing
+                result.predictions = evaluate_single_prediction(result.predictions, ground_truth)
+
                 draw_file_predictions(
                     result=result,
                     file=pdf_file,
@@ -279,6 +285,7 @@ class ExtractionPipelineRunner(PipelineRunner[_ExtractionResult, ExtractionBench
             out_directory=self.out_directory,
             predictions_path_tmp=predictions_path_tmp,
             options=self.options,
+            ground_truth=None,
             analytics=self.analytics,
         )
         return PipelineRunResult(
