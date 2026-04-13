@@ -18,7 +18,7 @@ from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.evaluation.benchmark.score import (
     ExtractionBenchmarkSummary,
     evaluate_all_predictions,
-    evaluate_single_prediction,
+    evaluate_prediction,
 )
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 from extraction.features.predictions.file_predictions import FilePredictions
@@ -209,7 +209,7 @@ def run_extraction_predictions(
         logger.info(f"Processing file: {pdf_file.name}")
         try:
             result = extract(file=pdf_file, filename=pdf_file.name, part=options.part, analytics=analytics)
-            prediction = evaluate_single_prediction(result.predictions, ground_truth)
+            prediction = evaluate_prediction(result.predictions, ground_truth)
             predictions.add_file_predictions(prediction)
 
             if options.csv:
@@ -217,7 +217,7 @@ def run_extraction_predictions(
 
             if any_draw:
                 # Run evaluation for current file drawing
-                result.predictions = evaluate_single_prediction(result.predictions, ground_truth)
+                result.predictions = evaluate_prediction(result.predictions, ground_truth)
 
                 draw_file_predictions(
                     result=result,

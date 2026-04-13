@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from core.benchmark_utils import BenchmarkSummary
 from core.mlflow_tracking import mlflow
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
+from extraction.evaluation.evaluator import Evaluator
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from swissgeol_doc_processing.utils.file_utils import get_data_path
@@ -40,7 +41,7 @@ class ExtractionBenchmarkSummary(BenchmarkSummary):
         return geology_dict | metadata_dict
 
 
-def evaluate_single_prediction(
+def evaluate_prediction(
     prediction: FilePredictions,
     ground_truth: GroundTruth | None = None,
 ) -> FilePredictions:
@@ -59,17 +60,14 @@ def evaluate_single_prediction(
     if ground_truth is None:
         return prediction
 
-    # Create dummy overall file prediction and append prediction
-    # --- 1 Create prediction with GT
-    # matched_with_ground_truth = Evaluator.match_with_ground_truth(prediction, ground_truth)
+    # Create prediction with GT
+    matched_with_gt = Evaluator.match_with_ground_truth(prediction, ground_truth)
 
     # Run evaluation for file (! mutates prediction !)
-    # TODO: hello
-    # metadata_metrics = Evaluator.evaluate_metadata_extraction(matched_with_ground_truth)
-    # geology_metrics = Evaluator.evaluate_geology(matched_with_ground_truth)
+    Evaluator.evaluate_metadata(matched_with_gt)
+    Evaluator.evaluate_geology(matched_with_gt)
 
     # matched_with_ground_truth.evaluate_geology(verbose=False)
-    # matched_with_ground_truth.evaluate_metadata_extraction()
 
     return prediction
 
@@ -91,22 +89,25 @@ def evaluate_all_predictions(
     if ground_truth is None:
         return None
 
+    matched_list_with_gt = Evaluator.match_overall_with_ground_truth(predictions, ground_truth)
+
     #############################
     # Evaluate the borehole extraction
     #############################
-    matched_with_ground_truth = predictions.match_with_ground_truth(ground_truth)
-    metrics = matched_with_ground_truth.evaluate_geology()
-    metrics_dict = metrics.metrics_dict()
+
+    # matched_with_ground_truth = predictions.match_with_ground_truth(ground_truth)
+    geology_metrics_list = Evaluator.evaluate_overall_geology(matched_list_with_gt)
+    geology_metrics_dict = geology_metrics_list.metrics_dict()
 
     # Format the metrics dictionary to limit to three digits
-    formatted_metrics = {k: f"{v:.3f}" for k, v in metrics_dict.items()}
+    formatted_metrics = {k: f"{v:.3f}" for k, v in geology_metrics_dict.items()}
     logger.info("Performance metrics: %s", formatted_metrics)
 
     #############################
     # Evaluate the borehole extraction metadata
     #############################
 
-    metadata_metrics_list = matched_with_ground_truth.evaluate_metadata_extraction()
+    metadata_metrics_list = Evaluator.evaluate_overall_metadata(matched_list_with_gt)
     metadata_metrics = metadata_metrics_list.get_cumulated_metrics()
     document_level_metadata_metrics: pd.DataFrame = metadata_metrics_list.get_document_level_metrics()
 
@@ -114,25 +115,31 @@ def evaluate_all_predictions(
     logger.info("Metadata Performance metrics:")
     logger.info(metadata_metrics.to_json())
 
+    #############################
+    # Log results
+    #############################
+
     if mlflow:
-        mlflow.log_metrics(metrics_dict)
+        mlflow.log_metrics(geology_metrics_dict)
         mlflow.log_metrics(metadata_metrics.to_json())
 
-        # # Create temporary folder to dump csv file and track them using MLFlow
+        # Create temporary folder to dump csv file and track them using MLFlow
         with tempfile.TemporaryDirectory() as temp_directory:
+            # Metadata
             document_level_metadata_metrics.to_csv(
                 Path(temp_directory) / "document_level_metadata_metrics.csv", index_label="document_name"
             )  # mlflow.log_artifact expects a file
-            metrics.document_level_metrics_df().to_csv(
+            mlflow.log_artifact(Path(temp_directory) / "document_level_metadata_metrics.csv")
+            # Geology
+            geology_metrics_list.document_level_metrics_df().to_csv(
                 Path(temp_directory) / "document_level_metrics.csv", index_label="document_name"
             )  # mlflow.log_artifact expects a file
             mlflow.log_artifact(Path(temp_directory) / "document_level_metrics.csv")
-            mlflow.log_artifact(Path(temp_directory) / "document_level_metadata_metrics.csv")
 
     return ExtractionBenchmarkSummary(
         ground_truth_path=str(ground_truth.path),
         n_documents=len(predictions.file_predictions_list),
-        geology=metrics_dict,
+        geology=geology_metrics_dict,
         metadata=metadata_metrics.to_json(),
     )
 
