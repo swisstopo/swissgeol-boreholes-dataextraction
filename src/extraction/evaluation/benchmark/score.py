@@ -65,9 +65,6 @@ def evaluate_prediction(
 
     # Run evaluation for file (! mutates prediction !)
     Evaluator.evaluate_metadata(matched_with_gt)
-    Evaluator.evaluate_geology(matched_with_gt)
-
-    # matched_with_ground_truth.evaluate_geology(verbose=False)
 
     return prediction
 
@@ -95,7 +92,6 @@ def evaluate_all_predictions(
     # Evaluate the borehole extraction
     #############################
 
-    # matched_with_ground_truth = predictions.match_with_ground_truth(ground_truth)
     geology_metrics_list = Evaluator.evaluate_overall_geology(matched_list_with_gt)
     geology_metrics_dict = geology_metrics_list.metrics_dict()
 
