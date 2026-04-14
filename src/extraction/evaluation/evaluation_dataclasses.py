@@ -53,6 +53,9 @@ class OverallBoreholeMetadataMetrics(metaclass=abc.ABCMeta):
 
     borehole_metadata_metrics: list[BoreholeMetadataMetrics]
 
+    def add_metadata_metrics(self, borehole_metadata_metrics: BoreholeMetadataMetrics):
+        self.borehole_metadata_metrics.append(borehole_metadata_metrics)
+
     def get_cumulated_metrics(self) -> BoreholeMetadataMetrics:
         """Evaluate the metadata metrics."""
         elevation_metrics = Metrics.micro_average(

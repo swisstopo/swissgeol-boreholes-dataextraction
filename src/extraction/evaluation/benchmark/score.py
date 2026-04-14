@@ -91,18 +91,25 @@ def evaluate_all_predictions(
     #############################
     # Evaluate the layer extraction
     #############################
-    metadata_metrics_list = Evaluator.evaluate_overall(matched_list_with_gt)
+    geology_metrics, metadata_metrics_list = Evaluator.evaluate_overall(matched_list_with_gt)
+
+    logger.info("Macro avg:")
+    logger.info(
+        "layer f1: %.1f%%, depth interval f1: %.1f%%, material description f1: %.1f%%",
+        geology_metrics.layer_metrics.macro_f1() * 100,
+        geology_metrics.depth_interval_metrics.macro_f1() * 100,
+        geology_metrics.material_description_metrics.macro_f1() * 100,
+    )
 
     #############################
     # Evaluate the borehole extraction
     #############################
 
-    # geology_metrics_list = Evaluator.evaluate_overall_geology(matched_list_with_gt)
-    # geology_metrics_dict = geology_metrics_list.metrics_dict()
+    geology_metrics_dict = geology_metrics.metrics_dict()
 
-    # # Format the metrics dictionary to limit to three digits
-    # formatted_metrics = {k: f"{v:.3f}" for k, v in geology_metrics_dict.items()}
-    # logger.info("Performance metrics: %s", formatted_metrics)
+    # Format the metrics dictionary to limit to three digits
+    formatted_metrics = {k: f"{v:.3f}" for k, v in geology_metrics_dict.items()}
+    logger.info("Performance metrics: %s", formatted_metrics)
 
     #############################
     # Evaluate the borehole extraction metadata
@@ -130,16 +137,15 @@ def evaluate_all_predictions(
             )  # mlflow.log_artifact expects a file
             mlflow.log_artifact(Path(temp_directory) / "document_level_metadata_metrics.csv")
             # Geology
-            # geology_metrics_list.document_level_metrics_df().to_csv(
-            #     Path(temp_directory) / "document_level_metrics.csv", index_label="document_name"
-            # )  # mlflow.log_artifact expects a file
-            # mlflow.log_artifact(Path(temp_directory) / "document_level_metrics.csv")
+            geology_metrics.document_level_metrics_df().to_csv(
+                Path(temp_directory) / "document_level_metrics.csv", index_label="document_name"
+            )  # mlflow.log_artifact expects a file
+            mlflow.log_artifact(Path(temp_directory) / "document_level_metrics.csv")
 
     return ExtractionBenchmarkSummary(
         ground_truth_path=str(ground_truth.path),
         n_documents=len(predictions.file_predictions_list),
-        # geology=geology_metrics_dict,
-        geology={},
+        geology=geology_metrics_dict,
         metadata=metadata_metrics.to_json(),
     )
 

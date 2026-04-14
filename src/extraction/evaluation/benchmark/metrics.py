@@ -15,8 +15,8 @@ class OverallMetrics:
     # (see micro_average(metric_list: list["Metrics"]). On the long run, we should refactor
     # this to have a single place where these averaging computations are implemented.
 
-    def __init__(self):
-        self.metrics: dict[str, Metrics] = {}
+    def __init__(self, metrics: dict[str, Metrics] | None = None):
+        self.metrics: dict[str, Metrics] = metrics if metrics is not None else {}
 
     def macro_f1(self) -> float:
         """Compute the macro F1 score."""

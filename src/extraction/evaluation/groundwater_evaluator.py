@@ -53,7 +53,7 @@ class GroundwaterEvaluator:
     """Class for evaluating the extracted groundwater information of a borehole."""
 
     @staticmethod
-    def evaluate(groundwater: FileGroundwaterWithGroundTruth) -> GroundwaterMetrics:
+    def evaluate(file_predictions: FileGroundwaterWithGroundTruth) -> GroundwaterMetrics:
         """Evaluate the groundwater information of the file against the ground truth.
 
         Returns:
@@ -65,7 +65,7 @@ class GroundwaterEvaluator:
         groundwater_elevation_metrics_list = []
         groundwater_date_metrics_list = []
 
-        for borehole_data in groundwater.boreholes:
+        for borehole_data in file_predictions.boreholes:
             ############################################################################################################
             ### Compute the metadata correctness for the groundwater information.
             ############################################################################################################
@@ -110,7 +110,7 @@ class GroundwaterEvaluator:
             groundwater_depth_metrics=Metrics.micro_average(groundwater_depth_metrics_list),
             groundwater_elevation_metrics=Metrics.micro_average(groundwater_elevation_metrics_list),
             groundwater_date_metrics=Metrics.micro_average(groundwater_date_metrics_list),
-            filename=groundwater.filename,
+            filename=file_predictions.filename,
         )
 
     @staticmethod
