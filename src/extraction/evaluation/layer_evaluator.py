@@ -29,6 +29,14 @@ class LayerEvaluator:
 
     @staticmethod
     def get_layer_metrics(layers: FileLayersWithGroundTruth) -> OverallMetrics:
+        """Calculate layer-level metrics for the given file's predictions.
+
+        Args:
+            layers (FileLayersWithGroundTruth): Layer predictions paired with ground truth.
+
+        Returns:
+            OverallMetrics: The computed layer metrics.
+        """
         return LayerEvaluator.calculate_metrics(
             layers=layers,
             num_ground_truth_fn=lambda ground_truth_layers: len(ground_truth_layers),
@@ -79,6 +87,7 @@ class LayerEvaluator:
         """Calculate metrics based on a condition per layer, after applying a filter.
 
         Args:
+            layers (FileLayersWithGroundTruth): Borehole layer predictions paired with ground truth.
             num_ground_truth_fn (Callable[[list[dict]], int]): Function that returns the number of ground truth.
             per_layer_filter (Callable[[LayerPrediction], bool]): Function to filter layers to consider.
             per_layer_condition (Callable[[LayerPrediction], bool]): Function that returns True if the layer is a hit.
@@ -122,12 +131,12 @@ class LayerEvaluator:
     def evaluate(file_predictions: FileLayersWithGroundTruth) -> tuple[Metrics, Metrics, Metrics]:
         """Evaluate all predicted layers for a borehole against the ground truth.
 
-        Also performs the matching groundtruth to prediction when there is more than one borehole in the document.
-        It is for this reason that the layers are the first element that needs to be elaluated.
-
         Args:
-            file_predictions (FilePredictions): all predictions for the file
-            ground_truth_for_file (dict): the ground truth for the file
+            file_predictions (FileLayersWithGroundTruth): Layer predictions with ground truth,
+                grouped by borehole.
+
+        Returns:
+            tuple[Metrics, Metrics, Metrics]: (layer_metrics, depth_interval_metrics, material_description_metrics)
         """
 
         # Utility functions to set correctness flags on predicted layers

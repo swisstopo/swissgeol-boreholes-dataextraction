@@ -54,10 +54,14 @@ class GroundwaterEvaluator:
 
     @staticmethod
     def evaluate(file_predictions: FileGroundwaterWithGroundTruth) -> GroundwaterMetrics:
-        """Evaluate the groundwater information of the file against the ground truth.
+        """Evaluate the groundwater information of a single file against the ground truth.
+
+        Args:
+            file_predictions (FileGroundwaterWithGroundTruth): Groundwater predictions for each
+                borehole in the file, paired with their ground truth data.
 
         Returns:
-            OverallGroundwaterMetrics: The overall groundwater metrics.
+            GroundwaterMetrics: The computed groundwater metrics for the file.
         """
         # lists to contain the metrics
         groundwater_metrics_list = []

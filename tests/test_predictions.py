@@ -7,6 +7,7 @@ import pymupdf
 import pytest
 
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
+from extraction.evaluation.evaluator import Evaluator
 from extraction.evaluation.layer_evaluator import LayerEvaluator
 from extraction.evaluation.utility import evaluate, evaluate_single
 from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
@@ -237,8 +238,8 @@ def test_evaluate_layer_matching(
 ):
     """Test the matching of predictions to ground truths when multiple boreholes are present in one document."""
     groundtruth_for_file = groundtruth_with_two_boreholes.for_file("example_borehole_profile.pdf")
-    sample_file_prediction_with_ground_truth: FilePredictionsWithGroundTruth = (
-        LayerEvaluator.match_predictions_with_ground_truth(file_prediction_with_two_boreholes, groundtruth_for_file)
+    sample_file_prediction_with_ground_truth: list[BoreholePredictionsWithGroundTruth] = (
+        LayerEvaluator.match_boreholes_to_ground_truth(file_prediction_with_two_boreholes, groundtruth_for_file)
     )
     # We test the matching by comparing the number of layers, one borehole has 2, the other has 3.
     assert all(
@@ -252,9 +253,11 @@ def test_evaluate_layer_matching(
 def test_evaluate_metadata_extraction(sample_file_prediction_with_ground_truth: FilePredictionsWithGroundTruth):
     """Test evaluate_metadata_extraction method of OverallFilePredictions."""
     all_predictions_with_gt = AllBoreholePredictionsWithGroundTruth([sample_file_prediction_with_ground_truth])
-    metadata_metrics = all_predictions_with_gt.evaluate_metadata_extraction()
+    geology_metrics, metadata_metrics = Evaluator.evaluate_overall(all_predictions_with_gt)
 
-    assert metadata_metrics is not None  # Ensure the evaluation returns a result
+    # Ensure the evaluation returns a result
+    assert metadata_metrics is not None
+    assert geology_metrics is not None
 
 
 @pytest.mark.parametrize(

@@ -6,7 +6,11 @@ from core.benchmark_utils import Metrics
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.evaluation.benchmark.metrics import OverallMetrics, OverallMetricsCatalog
 from extraction.evaluation.evaluation_dataclasses import BoreholeMetadataMetrics, OverallBoreholeMetadataMetrics
-from extraction.evaluation.groundwater_evaluator import GroundwaterEvaluator, OverallGroundwaterMetrics
+from extraction.evaluation.groundwater_evaluator import (
+    GroundwaterEvaluator,
+    GroundwaterMetrics,
+    OverallGroundwaterMetrics,
+)
 from extraction.evaluation.layer_evaluator import LayerEvaluator
 from extraction.evaluation.metadata_evaluator import MetadataEvaluator
 from extraction.features.predictions.borehole_predictions import (
@@ -41,7 +45,7 @@ class Evaluator:
             ground_truth (GroundTruth): The ground truth.
 
         Returns:
-            AllBoreholePredictionsWithGroundTruth: all predictions per borehole with associated ground truth data.
+            FilePredictionsWithGroundTruth: all predictions per borehole with associated ground truth data.
         """
         boreholes = []
         ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
@@ -53,12 +57,27 @@ class Evaluator:
 
     @staticmethod
     def evaluate(file_predictions: FilePredictionsWithGroundTruth) -> tuple[BoreholeMetadataMetrics]:
+        """Evaluate layers, metadata, and groundwater for a single file prediction (mutates prediction flags).
+
+        Args:
+            file_predictions (FilePredictionsWithGroundTruth): Per-file borehole predictions
+                paired with their ground truth data.
+        """
         Evaluator.evaluate_layers(file_predictions)
         Evaluator.evaluate_metadata(file_predictions)
         Evaluator.evaluate_gw(file_predictions)
 
     @staticmethod
-    def evaluate_layers(file_predictions: FilePredictionsWithGroundTruth) -> None:
+    def evaluate_layers(file_predictions: FilePredictionsWithGroundTruth) -> tuple[Metrics, Metrics, Metrics]:
+        """Evaluate layer, depth-interval, and material-description metrics for a single file.
+
+        Args:
+            file_predictions (FilePredictionsWithGroundTruth): Per-file borehole predictions
+                paired with their ground truth data.
+
+        Returns:
+            tuple[Metrics, Metrics, Metrics]: (layer_metrics, depth_interval_metrics, material_description_metrics)
+        """
         return LayerEvaluator.evaluate(
             file_predictions=FileLayersWithGroundTruth(
                 file_predictions.filename,
@@ -100,7 +119,16 @@ class Evaluator:
         )
 
     @staticmethod
-    def evaluate_gw(file_predictions: FilePredictionsWithGroundTruth) -> OverallGroundwaterMetrics:
+    def evaluate_gw(file_predictions: FilePredictionsWithGroundTruth) -> GroundwaterMetrics:
+        """Evaluate groundwater metrics for a single file prediction.
+
+        Args:
+            file_predictions (FilePredictionsWithGroundTruth): Per-file borehole predictions
+                paired with their ground truth data.
+
+        Returns:
+            GroundwaterMetrics: The computed groundwater metrics for the file.
+        """
         return GroundwaterEvaluator.evaluate(
             file_predictions=FileGroundwaterWithGroundTruth(
                 file_predictions.filename,
@@ -143,6 +171,18 @@ class Evaluator:
     def evaluate_overall(
         overall_predictions: AllBoreholePredictionsWithGroundTruth,
     ) -> tuple[OverallMetricsCatalog, OverallBoreholeMetadataMetrics]:
+        """Evaluate all files and aggregate geology and metadata metrics.
+
+        Args:
+            overall_predictions (AllBoreholePredictionsWithGroundTruth): All per-file predictions
+                paired with their ground truth boreholes.
+
+        Returns:
+            tuple[OverallMetricsCatalog, OverallBoreholeMetadataMetrics]:
+                - OverallMetricsCatalog: aggregated geology metrics (layers, depth intervals,
+                  material descriptions, groundwater) globally and per language.
+                - OverallBoreholeMetadataMetrics: aggregated metadata metrics across all files.
+        """
         fp_languages = {fp.filename: fp.language for fp in overall_predictions.predictions_list}
         languages = set(fp_languages.values())
 
