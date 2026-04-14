@@ -17,6 +17,12 @@ from classification.utils.data_loader import LayerInformation
 
 logger = logging.getLogger(__name__)
 
+
+def _resolve_path(p: str | Path) -> str | Path:
+    """Resolve local paths to absolute; leave HuggingFace model name strings unchanged."""
+    return Path(p).resolve() if str(p).startswith((".", "/")) else p
+
+
 # Head parameter prefixes — must match the split performed in model_decoupling.py.
 # All other parameters belong to the shared backbone.
 _HEAD_PARAM_PREFIXES = ("classifier.", "bert.pooler.", "bert.encoder.layer.11.")
@@ -49,12 +55,8 @@ class BertModel:
         self.classification_system = classification_system
         self._setup_classification_system()
 
-        self.model_path = Path(model_path).resolve() if str(model_path).startswith((".", "/")) else model_path
-        self.backbone_path = (
-            Path(backbone_path).resolve()
-            if backbone_path and str(backbone_path).startswith((".", "/"))
-            else backbone_path
-        )
+        self.model_path = _resolve_path(model_path)
+        self.backbone_path = _resolve_path(backbone_path) if backbone_path else None
         self._load_model()
 
     def _setup_classification_system(self) -> None:

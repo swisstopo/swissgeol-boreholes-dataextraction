@@ -237,7 +237,7 @@ def post_classify_lithology(request: ClassifyLithologyRequest) -> ClassifyLithol
 
     ### Request Body
     - **description**: Plain-text material description to classify (e.g. `"Mergel, grau, laminiert"`).
-    - **classification_system**: Target system — one of`'lithology'` or `'en_main'`. Defaults to
+    - **classification_system**: Target system — one of `'lithology'` or `'en_main'`. Defaults to
     `'lithology'`.
 
     ### Returns

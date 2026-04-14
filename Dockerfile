@@ -54,7 +54,7 @@ RUN apt-get update && \
 COPY ./src /app/src
 
 # Copy baked-in models from the download stage
- COPY --from=model-downloader /models /app/models
+COPY --from=model-downloader /models /app/models
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
