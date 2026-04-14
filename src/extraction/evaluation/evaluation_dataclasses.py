@@ -1,7 +1,7 @@
 """Evaluation utilities."""
 
 import abc
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pandas as pd
 
@@ -48,10 +48,10 @@ class FileBoreholeMetadataMetrics(BoreholeMetadataMetrics):
 
 
 @dataclass
-class OverallBoreholeMetadataMetrics(metaclass=abc.ABCMeta):
+class OverallBoreholeMetadataMetrics:
     """Metrics for borehole metadata."""
 
-    borehole_metadata_metrics: list[BoreholeMetadataMetrics]
+    borehole_metadata_metrics: list[BoreholeMetadataMetrics] = field(default_factory=list)
 
     def add_metadata_metrics(self, borehole_metadata_metrics: BoreholeMetadataMetrics):
         self.borehole_metadata_metrics.append(borehole_metadata_metrics)

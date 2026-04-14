@@ -1,6 +1,6 @@
 """Classes for evaluating the groundwater levels of a borehole."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from core.benchmark_utils import Metrics
 from extraction.evaluation.benchmark.metrics import OverallMetrics
@@ -24,7 +24,7 @@ class GroundwaterMetrics:
 class OverallGroundwaterMetrics:
     """Class for storing the overall metrics of the groundwater information."""
 
-    groundwater_metrics: list[GroundwaterMetrics]
+    groundwater_metrics: list[GroundwaterMetrics] = field(default_factory=list)
 
     def add_groundwater_metrics(self, groundwater_metrics: GroundwaterMetrics):
         """Add groundwater metrics to the list.

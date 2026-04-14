@@ -6,9 +6,6 @@ from collections import defaultdict
 from copy import deepcopy
 from typing import TypeVar
 
-from extraction.evaluation.benchmark.metrics import OverallMetricsCatalog
-from extraction.evaluation.groundwater_evaluator import GroundwaterEvaluator
-from extraction.evaluation.layer_evaluator import LayerEvaluator
 from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
     GroundwatersInBorehole,
@@ -18,11 +15,7 @@ from extraction.features.metadata.coordinate_extraction import Coordinate
 from extraction.features.metadata.elevation_extraction import Elevation
 from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.predictions.borehole_predictions import (
-    BoreholeGroundwaterWithGroundTruth,
-    BoreholeLayersWithGroundTruth,
     BoreholePredictions,
-    FileGroundwaterWithGroundTruth,
-    FileLayersWithGroundTruth,
     FilePredictionsWithGroundTruth,
 )
 from extraction.features.stratigraphy.layer.layer import LayersInBorehole, LayersInDocument
@@ -260,78 +253,3 @@ class AllBoreholePredictionsWithGroundTruth:
     """Class for evaluating all files, after individual boreholes have been match with their ground truth data."""
 
     predictions_list: list[FilePredictionsWithGroundTruth]
-
-    def evaluate_geology(self, verbose: bool = True) -> OverallMetricsCatalog:
-        """Evaluate the borehole extraction predictions.
-
-        Args:
-            verbose (bool): If True, log all metrics for the current evaluation.
-
-        Returns:
-            OverallMetricsCatalog: A OverallMetricsCatalog that maps a metrics name to the corresponding
-            OverallMetrics object. If no ground truth is available, None is returned.
-        """
-        languages = set(fp.language for fp in self.predictions_list)
-        all_metrics = OverallMetricsCatalog(languages=languages)
-
-        layers_list = [
-            FileLayersWithGroundTruth(
-                file.filename,
-                file.language,
-                [
-                    BoreholeLayersWithGroundTruth(
-                        predictions.predictions.layers_in_borehole if predictions.predictions else None,
-                        predictions.ground_truth.get("layers", []),
-                    )
-                    for predictions in file.boreholes
-                ],
-            )
-            for file in self.predictions_list
-        ]
-        evaluator = LayerEvaluator(layers_list)
-        all_metrics.material_description_metrics = evaluator.get_material_description_metrics()
-        all_metrics.depth_interval_metrics = evaluator.get_depth_interval_metrics()
-        all_metrics.layer_metrics = evaluator.get_layer_metrics()
-
-        predictions_by_language = {language: [] for language in languages}
-        for borehole_data in layers_list:
-            # even if metadata can be different for boreholes in the same document, langage is the same (take index 0)
-            predictions_by_language[borehole_data.language].append(borehole_data)
-
-        for language, language_predictions_list in predictions_by_language.items():
-            evaluator = LayerEvaluator(language_predictions_list)
-            setattr(all_metrics, f"{language}_layer_metrics", evaluator.get_layer_metrics())
-            setattr(all_metrics, f"{language}_depth_interval_metrics", evaluator.get_depth_interval_metrics())
-            setattr(
-                all_metrics, f"{language}_material_description_metrics", evaluator.get_material_description_metrics()
-            )
-
-        if verbose:
-            logger.info("Macro avg:")
-            logger.info(
-                "layer f1: %.1f%%, depth interval f1: %.1f%%, material description f1: %.1f%%",
-                all_metrics.layer_metrics.macro_f1() * 100,
-                all_metrics.depth_interval_metrics.macro_f1() * 100,
-                all_metrics.material_description_metrics.macro_f1() * 100,
-            )
-
-        # TODO groundwater should not be in evaluate_geology(), it should be handle by a higher-level function call
-        groundwater_list = [
-            FileGroundwaterWithGroundTruth(
-                file.filename,
-                [
-                    BoreholeGroundwaterWithGroundTruth(
-                        predictions.predictions.groundwater_in_borehole if predictions.predictions else None,
-                        predictions.ground_truth.get("groundwater", []) or [],  # value can be `None`
-                    )
-                    for predictions in file.boreholes
-                ],
-            )
-            for file in self.predictions_list
-        ]
-        overall_groundwater_metrics = GroundwaterEvaluator(groundwater_list).evaluate()
-        all_metrics.groundwater_metrics = overall_groundwater_metrics.groundwater_metrics_to_overall_metrics()
-        all_metrics.groundwater_depth_metrics = (
-            overall_groundwater_metrics.groundwater_depth_metrics_to_overall_metrics()
-        )
-        return all_metrics

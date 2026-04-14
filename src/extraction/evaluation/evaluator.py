@@ -146,8 +146,8 @@ class Evaluator:
         fp_languages = {fp.filename: fp.language for fp in overall_predictions.predictions_list}
         languages = set(fp_languages.values())
 
-        overall_groundwater_metrics = OverallGroundwaterMetrics([])
-        overall_metadata_metrics = OverallBoreholeMetadataMetrics([])
+        overall_groundwater_metrics = OverallGroundwaterMetrics()
+        overall_metadata_metrics = OverallBoreholeMetadataMetrics()
 
         overall_geology_metrics = OverallMetricsCatalog(languages=languages)
         overall_layer_metrics = OverallMetrics()
