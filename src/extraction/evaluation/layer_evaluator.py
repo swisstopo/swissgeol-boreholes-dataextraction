@@ -12,6 +12,7 @@ from extraction.evaluation.benchmark.metrics import OverallMetrics
 from extraction.features.predictions.borehole_predictions import (
     BoreholePredictionsWithGroundTruth,
     FileLayersWithGroundTruth,
+    FilePredictionsWithGroundTruth,
 )
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.stratigraphy.layer.layer import Layer
@@ -131,7 +132,7 @@ class LayerEvaluator:
         return overall_metrics
 
     @staticmethod
-    def match_predictions_with_ground_truth(file_predictions: FilePredictions, ground_truth_for_file: dict):
+    def evaluate(file_predictions: FilePredictionsWithGroundTruth) -> None:
         """Evaluate all predicted layers for a borehole against the ground truth.
 
         Also performs the matching groundtruth to prediction when there is more than one borehole in the document.
@@ -140,11 +141,7 @@ class LayerEvaluator:
         Args:
             file_predictions (FilePredictions): all predictions for the file
             ground_truth_for_file (dict): the ground truth for the file
-
-        Returns:
-            list[BoreholePredictionsWithGroundTruth]
         """
-        matched_boreholes = LayerEvaluator.match_boreholes_to_ground_truth(file_predictions, ground_truth_for_file)
 
         # Utility functions to set correctness flags on predicted layers
         def set_depths_flag(predicted_layer, ground_truth_layer):
@@ -167,7 +164,7 @@ class LayerEvaluator:
             )
 
         # now compute the real statistics for the matched pairs of boreholes
-        for borehole_data in matched_boreholes:
+        for borehole_data in file_predictions.boreholes:
             if borehole_data.predictions:
                 predicted_layers = borehole_data.predictions.layers_in_borehole.layers
 
@@ -184,8 +181,6 @@ class LayerEvaluator:
                     ground_truth_layers, predicted_layers, score_material_descriptions, set_material_description_flag
                 )
                 LayerEvaluator.apply_mapping(ground_truth_layers, predicted_layers, score_layer, set_layer_flag)
-
-        return matched_boreholes
 
     @staticmethod
     def apply_mapping(ground_truth_layers, predicted_layers, scoring_fn, set_flag_fn):

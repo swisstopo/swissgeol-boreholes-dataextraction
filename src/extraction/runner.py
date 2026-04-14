@@ -207,34 +207,30 @@ def run_extraction_predictions(
             continue
 
         logger.info(f"Processing file: {pdf_file.name}")
-        try:
-            result = extract(file=pdf_file, filename=pdf_file.name, part=options.part, analytics=analytics)
-            prediction = evaluate_prediction(result.predictions, ground_truth)
-            predictions.add_file_predictions(prediction)
+        result = extract(file=pdf_file, filename=pdf_file.name, part=options.part, analytics=analytics)
+        prediction = evaluate_prediction(result.predictions, ground_truth)
+        predictions.add_file_predictions(prediction)
 
-            if options.csv:
-                all_csv_paths.extend(write_csv_for_file(result.predictions, out_directory))
+        if options.csv:
+            all_csv_paths.extend(write_csv_for_file(result.predictions, out_directory))
 
-            if any_draw:
-                # Run evaluation for current file drawing
-                result.predictions = evaluate_prediction(result.predictions, ground_truth)
+        if any_draw:
+            # Run evaluation for current file drawing
+            result.predictions = evaluate_prediction(result.predictions, ground_truth)
 
-                draw_file_predictions(
-                    result=result,
-                    file=pdf_file,
-                    filename=pdf_file.name,
-                    out_directory=out_directory,
-                    skip_draw_predictions=options.skip_draw_predictions,
-                    draw_lines=options.draw_lines,
-                    draw_tables=options.draw_tables,
-                    draw_strip_logs=options.draw_strip_logs,
-                )
+            draw_file_predictions(
+                result=result,
+                file=pdf_file,
+                filename=pdf_file.name,
+                out_directory=out_directory,
+                skip_draw_predictions=options.skip_draw_predictions,
+                draw_lines=options.draw_lines,
+                draw_tables=options.draw_tables,
+                draw_strip_logs=options.draw_strip_logs,
+            )
 
-            logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
-            write_json_predictions(path=predictions_path_tmp, predictions=predictions)
-
-        except Exception as e:
-            logger.error(f"Unexpected error in file {pdf_file.name}. Trace: {e}")
+        logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
+        write_json_predictions(path=predictions_path_tmp, predictions=predictions)
 
     return predictions, n_documents, all_csv_paths
 
