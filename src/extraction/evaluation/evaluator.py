@@ -237,29 +237,23 @@ class Evaluator:
             overall_groundwater_metrics.groundwater_depth_metrics_to_overall_metrics()
         )
 
-        # Set metrics for language
-        def get_language_metric(fp: dict[str, Metrics], language: str) -> OverallMetrics:
-            return OverallMetrics(
-                {filename: metric for filename, metric in fp.items() if fp_languages.get(filename) == language}
-            )
-
         for language in languages:
             setattr(
                 overall_geology_metrics,
                 f"{language}_layer_metrics",
-                get_language_metric(overall_layer_metrics.metrics, language),
+                overall_layer_metrics.get_language_subset(fp_languages, language),
             )
 
             setattr(
                 overall_geology_metrics,
                 f"{language}_depth_interval_metrics",
-                get_language_metric(overall_depth_interval_metrics.metrics, language),
+                overall_depth_interval_metrics.get_language_subset(fp_languages, language),
             )
 
             setattr(
                 overall_geology_metrics,
                 f"{language}_material_description_metrics",
-                get_language_metric(overall_material_description_metrics.metrics, language),
+                overall_material_description_metrics.get_language_subset(fp_languages, language),
             )
 
         return overall_geology_metrics, overall_metadata_metrics

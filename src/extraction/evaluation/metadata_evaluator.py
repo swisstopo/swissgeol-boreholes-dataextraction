@@ -28,7 +28,7 @@ class MetadataEvaluator:
                 paired with their ground truth data.
 
         Returns:
-            FileBoreholeMetadataMetrics: Metrics across all boreholes in the file.
+            BoreholeMetadataMetrics: Metrics across all boreholes in the file.
         """
         # create the lists that will contain the individual score of each borehole
         elevation_metrics_list = []

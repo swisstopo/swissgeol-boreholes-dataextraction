@@ -54,6 +54,21 @@ class OverallMetrics:
         """Return a list of all metrics."""
         return list(self.metrics.values())
 
+    # Set metrics for language
+    def get_language_subset(self, fp_languages: dict[str, str], language: str) -> "OverallMetrics":
+        """Filter per-file metrics to only those whose file language matches the given language code.
+
+        Args:
+            fp_languages (dict[str, str]): Dictionary with filenames as key and language as value.
+            language (str): Language code to filter by (e.g. "de", "fr").
+
+        Returns:
+            OverallMetrics: Metrics for files matching the specified language.
+        """
+        return OverallMetrics(
+            {filename: metric for filename, metric in self.metrics.items() if fp_languages.get(filename) == language}
+        )
+
 
 class OverallMetricsCatalog:
     """Keeps track of all different relevant metrics that are computed for a dataset."""

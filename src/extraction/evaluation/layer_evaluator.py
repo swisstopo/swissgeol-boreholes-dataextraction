@@ -8,7 +8,6 @@ from typing import Any
 import Levenshtein
 
 from core.benchmark_utils import Metrics
-from extraction.evaluation.benchmark.metrics import OverallMetrics
 from extraction.features.predictions.borehole_predictions import (
     BoreholePredictionsWithGroundTruth,
     FileLayersWithGroundTruth,
@@ -28,14 +27,14 @@ class LayerEvaluator:
     """Class for evaluating the layer information of all boreholes in a document."""
 
     @staticmethod
-    def get_layer_metrics(layers: FileLayersWithGroundTruth) -> OverallMetrics:
+    def get_layer_metrics(layers: FileLayersWithGroundTruth) -> Metrics:
         """Calculate layer-level metrics for the given file's predictions.
 
         Args:
             layers (FileLayersWithGroundTruth): Layer predictions paired with ground truth.
 
         Returns:
-            OverallMetrics: The computed layer metrics.
+            Metrics: The computed layer metrics.
         """
         return LayerEvaluator.calculate_metrics(
             layers=layers,
@@ -45,8 +44,8 @@ class LayerEvaluator:
         )
 
     @staticmethod
-    def get_material_description_metrics(layers: FileLayersWithGroundTruth) -> OverallMetrics:
-        """Calculate metircs for material description extraction across all boreholes in a file.
+    def get_material_description_metrics(layers: FileLayersWithGroundTruth) -> Metrics:
+        """Calculate metrics for material description extraction across all boreholes in a file.
 
         Args:
             layers (FileLayersWithGroundTruth): Layer predictions paired with ground truth.
@@ -71,7 +70,7 @@ class LayerEvaluator:
         )
 
     @staticmethod
-    def get_depth_interval_metrics(layers: FileLayersWithGroundTruth) -> OverallMetrics:
+    def get_depth_interval_metrics(layers: FileLayersWithGroundTruth) -> Metrics:
         """Calculate metrics for depth interval extraction across all boreholes in a file.
 
         Args:
@@ -91,6 +90,7 @@ class LayerEvaluator:
             per_layer_condition=lambda layer: layer.depths is not None and layer.depths.is_correct,
         )
 
+    @staticmethod
     def calculate_metrics(
         layers: FileLayersWithGroundTruth,
         num_ground_truth_fn: Callable[[list[dict]], int],
@@ -103,9 +103,9 @@ class LayerEvaluator:
         Args:
             layers (FileLayersWithGroundTruth): Borehole layer predictions paired with ground truth.
             num_ground_truth_fn (Callable[[list[dict]], int]): Function that returns the number of ground truth.
-            per_layer_filter (Callable[[LayerPrediction], bool]): Function to filter layers to consider.
-            per_layer_condition (Callable[[LayerPrediction], bool]): Function that returns True if the layer is a hit.
-            per_layer_action (Optional[Callable[[LayerPrediction], None]]): Optional action to perform per layer.
+            per_layer_filter (Callable[[Layer], bool]): Function to filter layers to consider.
+            per_layer_condition (Callable[[Layer], bool]): Function that returns True if the layer is a hit.
+            per_layer_action (Optional[Callable[[Layer], None]]): Optional action to perform per layer.
 
         Returns:
             Metrics: The calculated metrics.
