@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
-from app.common.aws import download_model_from_s3
+from app.common.aws import download_backbone_from_s3, download_model_from_s3
 from app.common.schemas import ClassifyLithologyRequest, ClassifyLithologyResponse
 from classification.models.model import BertModel
 from classification.utils.classification_classes import ExistingClassificationSystems
@@ -90,9 +90,9 @@ def _resolve_backbone_path() -> str | None:
 
     s3_key = os.environ.get("BERT_MODEL_S3_KEY_BACKBONE")
     if s3_key:
-        local_dir = _LOCAL_MODEL_CACHE_DIR / "backbone"
-        download_model_from_s3(s3_key, local_dir)
-        return str(local_dir / "backbone.safetensors")
+        local_path = _LOCAL_MODEL_CACHE_DIR / "backbone" / "backbone.safetensors"
+        download_backbone_from_s3(s3_key, local_path)
+        return str(local_path)
 
     return None
 

@@ -239,3 +239,36 @@ def download_model_from_s3(s3_key_prefix: str, local_dir: Path) -> Path:
             ) from None
 
     return local_dir
+
+
+def download_backbone_from_s3(s3_key_prefix: str, local_path: Path) -> None:
+    """Download the shared backbone weights file from S3.
+
+    Skipped if local_path already exists, so warm restarts reuse the cached file.
+
+    Args:
+        s3_key_prefix (str): S3 folder prefix within the model bucket, e.g. "backbone".
+        local_path (Path): Destination path for backbone.safetensors (parent created if absent).
+
+    Raises:
+        HTTPException: If the backbone file is missing in S3 or the download fails.
+    """
+    if local_path.exists():
+        return
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    bucket = _get_model_bucket()
+    s3_key = f"{s3_key_prefix}/backbone.safetensors"
+    try:
+        get_s3_client().download_file(bucket, s3_key, str(local_path))
+        logger.info(f"Downloaded s3://{bucket}/{s3_key} → {local_path}")
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        if error_code in ("404", "NoSuchKey"):
+            raise HTTPException(
+                status_code=500,
+                detail=f"Backbone file '{s3_key}' not found in bucket '{bucket}'.",
+            ) from None
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to download backbone file '{s3_key}': {e}",
+        ) from None

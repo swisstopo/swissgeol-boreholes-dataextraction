@@ -113,6 +113,9 @@ jobs:
           push: true
           build-args: |
             VERSION=${{ env.PEP440_VERSION }}
+            AWS_ACCESS_KEY_ID=${{ secrets.BERT_MODEL_AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY=${{ secrets.BERT_MODEL_AWS_SECRET_ACCESS_KEY }}
+            BERT_MODEL_S3_BUCKET=${{ secrets.BERT_MODEL_S3_BUCKET }}
           tags: ${{ steps.meta-api.outputs.tags }}
           labels: ${{ steps.meta-api.outputs.labels }}
           cache-from: type=registry,ref=${{ env.BASE_IMAGE_NAME }}-api:edge
