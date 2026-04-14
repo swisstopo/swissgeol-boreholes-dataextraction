@@ -53,7 +53,7 @@ def _resolve_model_path(classification_system_name: str) -> str:
         HTTPException: If neither a local path nor an S3 key is configured.
     """
     local_path = os.environ.get(_MODEL_PATH_ENV_VARS[classification_system_name])
-    if local_path:
+    if local_path and Path(local_path).exists():
         logger.info(f"Loading {classification_system_name} model from local path: {local_path}")
         return local_path
 
@@ -85,7 +85,7 @@ def _resolve_backbone_path() -> str | None:
     3. None — fall back to full-model loading (no split).
     """
     local_path = os.environ.get("BERT_MODEL_PATH_BACKBONE")
-    if local_path:
+    if local_path and Path(local_path).exists():
         return local_path
 
     s3_key = os.environ.get("BERT_MODEL_S3_KEY_BACKBONE")
