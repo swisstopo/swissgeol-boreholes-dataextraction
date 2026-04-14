@@ -1,15 +1,19 @@
 """Endpoint for classifying lithological attributes from plain text descriptions using BERT."""
 
+from __future__ import annotations
+
 import logging
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fastapi import HTTPException
 
 from app.common.aws import download_backbone_from_s3, download_model_from_s3
 from app.common.schemas import ClassifyLithologyRequest, ClassifyLithologyResponse
-from classification.models.model import BertModel
-from classification.utils.classification_classes import ExistingClassificationSystems
+
+if TYPE_CHECKING:
+    from classification.models.model import BertModel
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +110,9 @@ def _get_bert_model(classification_system_name: str) -> BertModel:
     Returns:
         BertModel: Ready-to-use model and tokenizer pair.
     """
+    from classification.models.model import BertModel
+    from classification.utils.classification_classes import ExistingClassificationSystems
+
     classification_system = ExistingClassificationSystems.get_classification_system_type(classification_system_name)
     model_path = _resolve_model_path(classification_system_name)
     backbone_path = _resolve_backbone_path()
