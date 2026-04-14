@@ -248,7 +248,4 @@ def post_classify_lithology(request: ClassifyLithologyRequest) -> ClassifyLithol
     - **400 Bad Request**: Invalid request parameters.
     - **500 Internal Server Error**: Model loading or inference failure.
     """
-    try:
-        return classify_lithology(request)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from None
+    return classify_lithology(request)

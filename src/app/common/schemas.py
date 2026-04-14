@@ -819,7 +819,6 @@ class ClassifyLithologyRequest(BaseModel):
             "example": {
                 "description": "Mergel, grau, laminiert - flaserig, Flaserung parallel zur BA",
                 "classification_system": "lithology",
-                "model_path": None,
             }
         }
     )
