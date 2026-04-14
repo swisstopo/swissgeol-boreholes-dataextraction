@@ -9,7 +9,7 @@ WORKDIR /app
 COPY pyproject.toml README.md /app/
 
 # Install dependencies using uv
-RUN uv pip install --system --no-cache .
+RUN uv pip install --system --no-cache ".[deep-learning]"
 
 ## Model download stage
 # Downloads only the inference files needed at runtime (training artifacts are excluded).
