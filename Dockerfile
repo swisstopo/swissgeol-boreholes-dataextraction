@@ -48,12 +48,6 @@ RUN if [ -n "${BERT_MODEL_S3_BUCKET}" ]; then \
   fi
 
 
-# --no-dev: Exclude development dependencies from the environment
-# --no-install-project: Skip building and installing the project package itself
-# --compile: Force generation of compiled files *.pyc (lowers memory load)
-RUN uv sync --no-dev --no-install-project --compile
-
-
 ## ------ Runtime stage
 FROM python:3.12-slim
 
