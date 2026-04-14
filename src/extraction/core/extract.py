@@ -90,8 +90,8 @@ def extract(
 ) -> ExtractionResult:
     """Extract pipeline for input file.
 
-    Core extraction only.
-    Use draw_file_predictions() to render visualizations, and write_csv_for_file() for CSV output.
+    Core extraction only. Pass an on_file_done callback to run_extraction_predictions() for visualizations and CSV
+    output.
 
     Args:
         file (Path | BytesIO): Path or stream of file to process.
