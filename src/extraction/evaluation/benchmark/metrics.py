@@ -16,6 +16,12 @@ class OverallMetrics:
     # this to have a single place where these averaging computations are implemented.
 
     def __init__(self, metrics: dict[str, Metrics] | None = None):
+        """Initialise class with an optional pre-populated metrics dictionary.
+
+        Args:
+            metrics (dict[str, Metrics] | None): Mapping of document filename to per-document
+                Metrics. Defaults to an empty dict when None.
+        """
         self.metrics: dict[str, Metrics] = metrics if metrics is not None else {}
 
     def macro_f1(self) -> float:

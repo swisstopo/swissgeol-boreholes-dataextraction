@@ -56,16 +56,34 @@ class Evaluator:
         )
 
     @staticmethod
-    def evaluate(file_predictions: FilePredictionsWithGroundTruth) -> tuple[BoreholeMetadataMetrics]:
-        """Evaluate layers, metadata, and groundwater for a single file prediction (mutates prediction flags).
+    def evaluate(
+        file_predictions: FilePredictionsWithGroundTruth,
+    ) -> tuple[Metrics, Metrics, Metrics, GroundwaterMetrics, BoreholeMetadataMetrics]:
+        """Evaluate layers, metadata, and groundwater for a single file prediction.
+
+        Sets the `is_correct` flags on layers, depth intervals, material descriptions, groundwater entries,
+        and metadata fields inside `file_predictions`.
 
         Args:
             file_predictions (FilePredictionsWithGroundTruth): Per-file borehole predictions
                 paired with their ground truth data.
+
+        Returns:
+            tuple[Metrics, Metrics, Metrics, GroundwaterMetrics, BoreholeMetadataMetrics]:
+                A 5-tuple of:
+                - layer_metrics (Metrics): Metrics for layer detection.
+                - depth_interval_metrics (Metrics): Metrics for depth intervals.
+                - material_description_metrics (Metrics): Metrics for material descriptions.
+                - groundwater_metrics (GroundwaterMetrics): Metrics for Groundwater detection.
+                - metadata_metrics (BoreholeMetadataMetrics): Metrics for elevation, coordinate, and name.
         """
-        Evaluator.evaluate_layers(file_predictions)
-        Evaluator.evaluate_metadata(file_predictions)
-        Evaluator.evaluate_gw(file_predictions)
+        layer_metrics, depth_interval_metrics, material_description_metrics = Evaluator.evaluate_layers(
+            file_predictions
+        )
+        gw_metrics = Evaluator.evaluate_gw(file_predictions)
+        metadata_metrics = Evaluator.evaluate_metadata(file_predictions)
+
+        return layer_metrics, depth_interval_metrics, material_description_metrics, gw_metrics, metadata_metrics
 
     @staticmethod
     def evaluate_layers(file_predictions: FilePredictionsWithGroundTruth) -> tuple[Metrics, Metrics, Metrics]:
@@ -196,14 +214,15 @@ class Evaluator:
 
         # iteration over all the file
         for file_predictions in overall_predictions.predictions_list:
-            (
-                overall_layer_metrics.metrics[file_predictions.filename],
-                overall_depth_interval_metrics.metrics[file_predictions.filename],
-                overall_material_description_metrics.metrics[file_predictions.filename],
-            ) = Evaluator.evaluate_layers(file_predictions)
-            gw_metrics = Evaluator.evaluate_gw(file_predictions)
-            metadata_metrics = Evaluator.evaluate_metadata(file_predictions)
+            # Evaluate file
+            layer_metrics, depth_interval_metrics, material_description_metrics, gw_metrics, metadata_metrics = (
+                Evaluator.evaluate(file_predictions)
+            )
 
+            # Affect values to overall predictions
+            overall_layer_metrics.metrics[file_predictions.filename] = layer_metrics
+            overall_depth_interval_metrics.metrics[file_predictions.filename] = depth_interval_metrics
+            overall_material_description_metrics.metrics[file_predictions.filename] = material_description_metrics
             overall_groundwater_metrics.add_groundwater_metrics(gw_metrics)
             overall_metadata_metrics.add_metadata_metrics(metadata_metrics)
 

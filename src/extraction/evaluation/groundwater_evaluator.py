@@ -26,7 +26,7 @@ class OverallGroundwaterMetrics:
 
     groundwater_metrics: list[GroundwaterMetrics] = field(default_factory=list)
 
-    def add_groundwater_metrics(self, groundwater_metrics: GroundwaterMetrics):
+    def add_groundwater_metrics(self, groundwater_metrics: GroundwaterMetrics) -> None:
         """Add groundwater metrics to the list.
 
         Args:
@@ -34,15 +34,23 @@ class OverallGroundwaterMetrics:
         """
         self.groundwater_metrics.append(groundwater_metrics)
 
-    def groundwater_metrics_to_overall_metrics(self):
-        """Convert the overall groundwater metrics to an OverallMetrics object."""
+    def groundwater_metrics_to_overall_metrics(self) -> OverallMetrics:
+        """Convert the per-file groundwater metrics to an OverallMetrics object.
+
+        Returns:
+            OverallMetrics: Mapping of filename → groundwater Metrics for all collected files.
+        """
         overall_metrics = OverallMetrics()
         for groundwater_metrics in self.groundwater_metrics:
             overall_metrics.metrics[groundwater_metrics.filename] = groundwater_metrics.groundwater_metrics
         return overall_metrics
 
-    def groundwater_depth_metrics_to_overall_metrics(self):
-        """Convert the overall groundwater depth metrics to an OverallMetrics object."""
+    def groundwater_depth_metrics_to_overall_metrics(self) -> OverallMetrics:
+        """Convert the per-file groundwater depth metrics to an OverallMetrics object.
+
+        Returns:
+            OverallMetrics: Mapping of filename → groundwater depth Metrics for all collected files.
+        """
         overall_metrics = OverallMetrics()
         for groundwater_metrics in self.groundwater_metrics:
             overall_metrics.metrics[groundwater_metrics.filename] = groundwater_metrics.groundwater_depth_metrics

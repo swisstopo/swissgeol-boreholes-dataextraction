@@ -62,7 +62,12 @@ class OverallBoreholeMetadataMetrics:
         self.borehole_metadata_metrics.append(borehole_metadata_metrics)
 
     def get_cumulated_metrics(self) -> BoreholeMetadataMetrics:
-        """Evaluate the metadata metrics."""
+        """Compute metadata metrics across all collected files.
+
+        Returns:
+            BoreholeMetadataMetrics: Micro-average of elevation, coordinate, and name metrics
+                across all files in the collection.
+        """
         elevation_metrics = Metrics.micro_average(
             [metadata.elevation_metrics for metadata in self.borehole_metadata_metrics]
         )
@@ -81,11 +86,12 @@ class OverallBoreholeMetadataMetrics:
             pd.DataFrame: A DataFrame indexed by document names with columns:
                 - elevation: F1 score for elevation predictions
                 - coordinate: F1 score for coordinate predictions
+                - borehole_name: F1 score for borehole name predictions
 
         Example:
-                         elevation  coordinate
-            doc1.pdf     1.00      1.00
-            doc2.pdf     1.00      0.00
+                         elevation  coordinate  borehole_name
+            doc1.pdf     1.00       1.00        0.00
+            doc2.pdf     1.00       0.00        1.00
         """
         # Get a dataframe per document, concatenate, and sort by index (document name)
         return pd.concat(

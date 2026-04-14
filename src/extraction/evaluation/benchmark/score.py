@@ -47,15 +47,15 @@ def evaluate_prediction(
 ) -> FilePredictions:
     """Computes metrics for a given file.
 
-    Note that the implementation of `evaluate_geology` and `evaluate_metadata_extraction` mutates
-    the attributes of `prediction`.
+    Note that evaluation mutates the `is_correct` flags on layers, metadata,
+    and groundwater entries inside `prediction`.
 
     Args:
         prediction (FilePredictions): The predictions object.
-        ground_truth (GroundTruth | None): The ground truth object.
+        ground_truth (GroundTruth | None): The ground truth object. If None, no evaluation is performed.
 
     Returns:
-        FilePredictions: Evaluated prediction.
+        FilePredictions: The prediction, with evaluation flags set when ground truth is provided.
     """
     if ground_truth is None:
         return prediction
