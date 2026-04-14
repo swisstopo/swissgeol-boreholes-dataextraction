@@ -46,7 +46,14 @@ class LayerEvaluator:
 
     @staticmethod
     def get_material_description_metrics(layers: FileLayersWithGroundTruth) -> OverallMetrics:
-        """Calculate metrics for layer predictions."""
+        """Calculate metircs for material description extraction across all boreholes in a file.
+
+        Args:
+            layers (FileLayersWithGroundTruth): Layer predictions paired with ground truth.
+
+        Returns:
+            Metrics: Aggregated material metrics across all boreholes.
+        """
 
         def per_layer_action(layer: Layer):
             if parse_text(layer.material_description.text) == "":
@@ -65,7 +72,14 @@ class LayerEvaluator:
 
     @staticmethod
     def get_depth_interval_metrics(layers: FileLayersWithGroundTruth) -> OverallMetrics:
-        """Calculate metrics for depth interval predictions."""
+        """Calculate metrics for depth interval extraction across all boreholes in a file.
+
+        Args:
+            layers (FileLayersWithGroundTruth): Layer predictions paired with ground truth.
+
+        Returns:
+            Metrics: Aggregated depth metrics across all boreholes.
+        """
 
         def num_ground_truth_fn(ground_truth_layers: list[dict]):
             return sum(lay["depth_interval"] is not None for lay in ground_truth_layers)

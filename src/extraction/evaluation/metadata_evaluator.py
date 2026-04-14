@@ -21,7 +21,15 @@ class MetadataEvaluator:
 
     @staticmethod
     def evaluate(file_predictions: FileMetadataWithGroundTruth) -> BoreholeMetadataMetrics:
-        """Evaluate the metadata of the file against the ground truth."""
+        """Compute elevation, coordinate, and name metrics for a single file.
+
+        Args:
+            file_predictions (FileMetadataWithGroundTruth): Per-file metadata predictions
+                paired with their ground truth data.
+
+        Returns:
+            FileBoreholeMetadataMetrics: Metrics across all boreholes in the file.
+        """
         # create the lists that will contain the individual score of each borehole
         elevation_metrics_list = []
         coordinate_metrics_list = []
