@@ -1,9 +1,12 @@
-## Build stage
+## ------ Build stage
+# Use the specified Python-slim version as the base image
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
+# Add temporary SCM version for hatchling.build
 ARG VERSION=0.0.0
 ENV SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION
 
+# Setup working directory and copy pyproject files
 WORKDIR /app
 COPY pyproject.toml README.md /app/
 
@@ -14,7 +17,7 @@ COPY pyproject.toml README.md /app/
 RUN uv sync --no-dev --no-install-project --compile --extra deep-learning
 
 
-## Model download stage
+## ------ Model download stage
 # Downloads only the inference files needed at runtime (training artifacts are excluded).
 # AWS credentials are only used during build and are not present in the final image.
 FROM amazon/aws-cli AS model-downloader
@@ -45,11 +48,12 @@ RUN if [ -n "${BERT_MODEL_S3_BUCKET}" ]; then \
   fi
 
 
-## Runtime stage
+## ------ Runtime stage
 FROM python:3.12-slim
 
 ARG VERSION
 
+# Main working directory
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 
@@ -59,7 +63,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy the application source code into the container
+# Source files
 COPY ./src /app/src
 
 # Copy baked-in models from the download stage
