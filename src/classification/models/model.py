@@ -1,6 +1,5 @@
 """Model module."""
 
-import gc
 import logging
 import os
 from pathlib import Path
@@ -135,9 +134,6 @@ class BertModel:
             logger.info("Reusing cached mmap'd backbone tensors.")
 
         cached_tensors = _backbone_cache[backbone_key]["tensors"]
-        for name, param in self.model.named_parameters():
-            if name in cached_tensors:
-                param.data = cached_tensors[name]
 
         # Load head weights via mmap — keeps them file-backed like the backbone
         head_key = str(Path(self.model_path) / "model.safetensors")
@@ -148,10 +144,12 @@ class BertModel:
                 "tensors": {key: head_handle.get_tensor(key) for key in head_handle.keys()},  # noqa: SIM118
             }
         head_tensors = _head_cache[head_key]["tensors"]
+
         for name, param in self.model.named_parameters():
             if name.startswith(_HEAD_PARAM_PREFIXES) and name in head_tensors:
                 param.data = head_tensors[name]
-        gc.collect()
+            elif name in cached_tensors:
+                param.data = cached_tensors[name]
 
     def freeze_all_layers(self):
         """Freeze all layers (base bert model + classifier)."""
