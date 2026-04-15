@@ -41,9 +41,7 @@ class MetadataEvaluator:
                 # predictions have no match and must be skipped for the evaluation
                 continue
 
-            ###########################################################################################################
-            ### Compute the metadata correctness for the coordinates.
-            ###########################################################################################################
+            # Compute the metadata correctness for the coordinates.
             extracted_coordinates = (
                 borehole_data.metadata.coordinates.feature
                 if borehole_data.metadata and borehole_data.metadata.coordinates
@@ -59,9 +57,7 @@ class MetadataEvaluator:
                 borehole_data.metadata.coordinates.feature.is_correct = coordinate_metrics.tp > 0
             coordinate_metrics_list.append(coordinate_metrics)
 
-            ############################################################################################################
-            ### Compute the metadata correctness for the elevation.
-            ############################################################################################################
+            # Compute the metadata correctness for the elevation.
             extracted_elevation = (
                 borehole_data.metadata.elevation.feature.elevation
                 if borehole_data.metadata and borehole_data.metadata.elevation
@@ -76,9 +72,7 @@ class MetadataEvaluator:
                 borehole_data.metadata.elevation.feature.is_correct = elevation_metrics.tp > 0
             elevation_metrics_list.append(elevation_metrics)
 
-            ###########################################################################################################
-            ### Compute the metadata correctness for the name.
-            ###########################################################################################################
+            # Compute the metadata correctness for the name.
             extracted_name = (
                 borehole_data.metadata.name.feature if borehole_data.metadata and borehole_data.metadata.name else None
             )

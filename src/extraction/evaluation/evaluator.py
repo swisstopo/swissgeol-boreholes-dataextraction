@@ -102,10 +102,10 @@ class Evaluator:
                 file_predictions.language,
                 [
                     BoreholeLayersWithGroundTruth(
-                        predictions.predictions.layers_in_borehole if predictions.predictions else None,
-                        predictions.ground_truth.get("layers", []),
+                        borehole.predictions.layers_in_borehole if borehole.predictions else None,
+                        borehole.ground_truth.get("layers", []),
                     )
-                    for predictions in file_predictions.boreholes
+                    for borehole in file_predictions.boreholes
                 ],
             )
         )
