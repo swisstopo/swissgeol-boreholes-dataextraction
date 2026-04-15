@@ -45,7 +45,7 @@ class Evaluator:
             ground_truth (GroundTruth): The ground truth.
 
         Returns:
-            FilePredictionsWithGroundTruth: all predictions per borehole with associated ground truth data.
+            FilePredictionsWithGroundTruth: All predictions per borehole with associated ground truth data.
         """
         boreholes = []
         ground_truth_for_file = ground_truth.for_file(file_predictions.file_name)
@@ -121,7 +121,7 @@ class Evaluator:
                 paired with their ground truth data.
 
         Returns:
-            BoreholeMetadataMetrics: the computed metrics for the metadata.
+            BoreholeMetadataMetrics: The computed metrics for the metadata.
         """
         return MetadataEvaluator.evaluate(
             file_predictions=FileMetadataWithGroundTruth(
@@ -212,7 +212,7 @@ class Evaluator:
         overall_depth_interval_metrics = OverallMetrics()
         overall_material_description_metrics = OverallMetrics()
 
-        # Iterate over all the file
+        # Iterate over all the files
         for file_predictions in overall_predictions.predictions_list:
             # Evaluate file
             layer_metrics, depth_interval_metrics, material_description_metrics, gw_metrics, metadata_metrics = (

@@ -53,7 +53,7 @@ class OverallBoreholeMetadataMetrics:
 
     borehole_metadata_metrics: list[BoreholeMetadataMetrics] = field(default_factory=list)
 
-    def add_metadata_metrics(self, borehole_metadata_metrics: BoreholeMetadataMetrics):
+    def add_metadata_metrics(self, borehole_metadata_metrics: BoreholeMetadataMetrics) -> None:
         """Append per-file metadata metrics to the collection.
 
         Args:
