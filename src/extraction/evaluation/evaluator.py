@@ -38,7 +38,7 @@ class Evaluator:
     ) -> FilePredictionsWithGroundTruth:
         """Match the extracted boreholes with corresponding boreholes in the ground truth data.
 
-        This is done by comparing the layers of the extracted boreholes with those in the groundtruth.
+        This is done by comparing the layers of the extracted boreholes with those in the ground truth.
 
         Args:
             file_predictions (FilePredictions): File predictions.
@@ -212,14 +212,14 @@ class Evaluator:
         overall_depth_interval_metrics = OverallMetrics()
         overall_material_description_metrics = OverallMetrics()
 
-        # iteration over all the file
+        # Iterate over all the file
         for file_predictions in overall_predictions.predictions_list:
             # Evaluate file
             layer_metrics, depth_interval_metrics, material_description_metrics, gw_metrics, metadata_metrics = (
                 Evaluator.evaluate(file_predictions)
             )
 
-            # Affect values to overall predictions
+            # Assign values to overall predictions
             overall_layer_metrics.metrics[file_predictions.filename] = layer_metrics
             overall_depth_interval_metrics.metrics[file_predictions.filename] = depth_interval_metrics
             overall_material_description_metrics.metrics[file_predictions.filename] = material_description_metrics

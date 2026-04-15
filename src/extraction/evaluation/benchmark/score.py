@@ -126,7 +126,7 @@ def evaluate_all_predictions(
     #############################
 
     if mlflow:
-        # mlflow.log_metrics(geology_metrics_dict)
+        mlflow.log_metrics(geology_metrics_dict)
         mlflow.log_metrics(metadata_metrics.to_json())
 
         # Create temporary folder to dump csv file and track them using MLFlow

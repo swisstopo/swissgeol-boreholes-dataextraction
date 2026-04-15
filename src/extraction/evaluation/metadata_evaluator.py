@@ -37,7 +37,7 @@ class MetadataEvaluator:
 
         for borehole_data in file_predictions.boreholes:
             if borehole_data.ground_truth is None:
-                # when the extraction detects more borehole than there actually is in the ground truth, the wosrt
+                # when the extraction detects more borehole than there actually is in the ground truth, the worst
                 # predictions have no match and must be skipped for the evaluation
                 continue
 
