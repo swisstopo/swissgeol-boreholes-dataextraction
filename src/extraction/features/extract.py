@@ -932,31 +932,32 @@ def match_lines_to_interval(
     depth_interval_zones = sidebar.get_interval_zone()
 
     if group_by_spacing:
-        # Pre-group consecutive lines by relative vertical spacing. The first line of each
-        # group is used as representative for DP scoring; the full group is expanded back
-        # into the mapping before post-processing so that post_processing is unchanged.
-        # Fall back to the original lines whenever the grouped count does not exactly match
-        # the number of intervals — the grouping would introduce a mismatch, so the original
-        # line-per-line behavior is safer.
+        # Try pre-grouping consecutive lines by relative vertical spacing so that
+        # continuation lines (word-wrapped sentences) are never split across intervals.
+        # Only attempt when there is a genuine count mismatch (more lines than intervals)
+        # and grouping produces exactly the right number of groups. After the grouped DP,
+        # accept the result only when every interval was assigned at least one line;
+        # otherwise fall through to the original (ungrouped) DP so nothing is lost.
         groups = _group_by_spacing(description_lines)
-        if len(groups) != len(depth_interval_zones):
-            groups = [[line] for line in description_lines]
-        representatives = [group[0] for group in groups]
-        group_by_rep_id = {id(rep): group for rep, group in zip(representatives, groups, strict=True)}
-        lines_for_dp = representatives
-        affinities_for_dp = [affinities[description_lines.index(rep)] for rep in representatives]
-    else:
-        lines_for_dp = description_lines
-        affinities_for_dp = affinities
+        n_intervals = len(depth_interval_zones)
+        if len(description_lines) != n_intervals and len(groups) == n_intervals:
+            representatives = [group[0] for group in groups]
+            group_by_rep_id = {id(rep): group for rep, group in zip(representatives, groups, strict=True)}
+            grouped_affinities = [affinities[description_lines.index(rep)] for rep in representatives]
+            affinity_scores = sidebar.dp_weighted_affinities(grouped_affinities)
+            _, mapping = IntervalToLinesDP(depth_interval_zones, representatives, affinity_scores).solve(
+                sidebar.dp_scoring_fn
+            )
+            mapping = [(zone, [line for rep in reps for line in group_by_rep_id[id(rep)]]) for zone, reps in mapping]
+            result = sidebar.post_processing(mapping)
+            if sum(1 for ibp in result if ibp.block.lines) == n_intervals:
+                return result
+            # Grouped DP left some interval(s) empty — fall through to the original DP.
 
-    # affinities can differ depending on sidebar type
-    affinity_scores = sidebar.dp_weighted_affinities(affinities_for_dp)
-    dp = IntervalToLinesDP(depth_interval_zones, lines_for_dp, affinity_scores)
-
+    # Original (ungrouped) DP
+    affinity_scores = sidebar.dp_weighted_affinities(affinities)
+    dp = IntervalToLinesDP(depth_interval_zones, description_lines, affinity_scores)
     _, mapping = dp.solve(sidebar.dp_scoring_fn)
-
-    if group_by_spacing:
-        mapping = [(zone, [line for rep in reps for line in group_by_rep_id[id(rep)]]) for zone, reps in mapping]
     return sidebar.post_processing(mapping)
 
 
