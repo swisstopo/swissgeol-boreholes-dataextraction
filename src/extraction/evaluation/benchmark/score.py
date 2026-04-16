@@ -88,9 +88,7 @@ def evaluate_all_predictions(
 
     matched_list_with_gt = Evaluator.match_overall_with_ground_truth(predictions, ground_truth)
 
-    #############################
-    # Evaluate the layer extraction
-    #############################
+    # Evaluate overall extraction
     geology_metrics, metadata_metrics_list = Evaluator.evaluate_overall(matched_list_with_gt)
 
     logger.info("Macro avg:")
@@ -101,30 +99,18 @@ def evaluate_all_predictions(
         geology_metrics.material_description_metrics.macro_f1() * 100,
     )
 
-    #############################
-    # Evaluate the borehole extraction
-    #############################
-
+    # Log detailed geology metrics
     geology_metrics_dict = geology_metrics.metrics_dict()
-
-    # Format the metrics dictionary to limit to three digits
     formatted_metrics = {k: f"{v:.3f}" for k, v in geology_metrics_dict.items()}
     logger.info("Performance metrics: %s", formatted_metrics)
 
-    #############################
-    # Evaluate the borehole extraction metadata
-    #############################
+    # Log detailed metadata metrics
     metadata_metrics = metadata_metrics_list.get_cumulated_metrics()
     document_level_metadata_metrics: pd.DataFrame = metadata_metrics_list.get_document_level_metrics()
-
-    # print the metrics
     logger.info("Metadata Performance metrics:")
     logger.info(metadata_metrics.to_json())
 
-    #############################
     # Log results
-    #############################
-
     if mlflow:
         mlflow.log_metrics(geology_metrics_dict)
         mlflow.log_metrics(metadata_metrics.to_json())

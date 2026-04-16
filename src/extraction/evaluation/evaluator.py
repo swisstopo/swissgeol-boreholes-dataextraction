@@ -77,16 +77,16 @@ class Evaluator:
                 - groundwater_metrics (GroundwaterMetrics): Metrics for Groundwater detection.
                 - metadata_metrics (BoreholeMetadataMetrics): Metrics for elevation, coordinate, and name.
         """
-        layer_metrics, depth_interval_metrics, material_description_metrics = Evaluator.evaluate_layers(
+        layer_metrics, depth_interval_metrics, material_description_metrics = Evaluator._evaluate_layers(
             file_predictions
         )
-        gw_metrics = Evaluator.evaluate_gw(file_predictions)
-        metadata_metrics = Evaluator.evaluate_metadata(file_predictions)
+        gw_metrics = Evaluator._evaluate_gw(file_predictions)
+        metadata_metrics = Evaluator._evaluate_metadata(file_predictions)
 
         return layer_metrics, depth_interval_metrics, material_description_metrics, gw_metrics, metadata_metrics
 
     @staticmethod
-    def evaluate_layers(file_predictions: FilePredictionsWithGroundTruth) -> tuple[Metrics, Metrics, Metrics]:
+    def _evaluate_layers(file_predictions: FilePredictionsWithGroundTruth) -> tuple[Metrics, Metrics, Metrics]:
         """Evaluate layer, depth-interval, and material-description metrics for a single file.
 
         Args:
@@ -111,7 +111,7 @@ class Evaluator:
         )
 
     @staticmethod
-    def evaluate_metadata(
+    def _evaluate_metadata(
         file_predictions: FilePredictionsWithGroundTruth,
     ) -> BoreholeMetadataMetrics:
         """Evaluate the metadata extraction of the predictions against the ground truth.
@@ -137,7 +137,7 @@ class Evaluator:
         )
 
     @staticmethod
-    def evaluate_gw(file_predictions: FilePredictionsWithGroundTruth) -> GroundwaterMetrics:
+    def _evaluate_gw(file_predictions: FilePredictionsWithGroundTruth) -> GroundwaterMetrics:
         """Evaluate groundwater metrics for a single file prediction.
 
         Args:
