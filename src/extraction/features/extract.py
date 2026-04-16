@@ -1,6 +1,7 @@
 """Contains the main extraction pipeline for stratigraphy."""
 
 import logging
+import statistics
 
 import fastquadtree
 import pymupdf
@@ -858,6 +859,35 @@ def extract_sidebar_information(
     ).extract_sidebars_with_quality_metrics()
 
 
+def _group_by_spacing(lines: list[TextLine]) -> list[list[TextLine]]:
+    """Group consecutive description lines into blocks based on relative vertical spacing.
+
+    Lines whose gap to the previous line is smaller than 40% of the median inter-line gap
+    are treated as continuations and merged into the same group. Using a relative threshold
+    makes the grouping document-agnostic.
+
+    Args:
+        lines: The description text lines to group.
+
+    Returns:
+        List of groups, where each group is a list of consecutive TextLines belonging to
+        the same material description.
+    """
+    if len(lines) < 2:
+        return [lines] if lines else []
+
+    gaps = [lines[i].rect.y0 - lines[i - 1].rect.y1 for i in range(1, len(lines))]
+    threshold = statistics.median(gaps) * 0.4
+
+    groups = [[lines[0]]]
+    for i, gap in enumerate(gaps):
+        if gap < threshold:
+            groups[-1].append(lines[i + 1])
+        else:
+            groups.append([lines[i + 1]])
+    return groups
+
+
 def match_lines_to_interval(
     sidebar: Sidebar,
     description_lines: list[TextLine],
@@ -865,6 +895,13 @@ def match_lines_to_interval(
     diagonals: list[Line],
 ) -> list[IntervalBlockPair]:
     """Match the description lines to the pair intervals.
+
+    Description lines are first pre-grouped by relative vertical spacing so that
+    continuation lines (e.g. a word-wrapped sentence) are never split across depth
+    intervals. The first line of each group acts as the DP representative; inter-group
+    affinities (at group boundaries) are preserved from the original affinity list.
+    After matching, each representative is expanded back to its full group before
+    post-processing.
 
     Args:
         sidebar (Sidebar): The sidebar.
@@ -882,13 +919,22 @@ def match_lines_to_interval(
 
     depth_interval_zones = sidebar.get_interval_zone()
 
+    # Pre-group consecutive lines by relative vertical spacing. The first line of each
+    # group is used as representative for DP scoring; the full group is expanded back
+    # into the mapping before post-processing so that post_processing is unchanged.
+    groups = _group_by_spacing(description_lines)
+    representatives = [group[0] for group in groups]
+    group_by_rep_id = {id(rep): group for rep, group in zip(representatives, groups, strict=True)}
+    inter_group_affinities = [affinities[description_lines.index(rep)] for rep in representatives]
+
     # affinities can differ depending on sidebar type
-    affinity_scores = sidebar.dp_weighted_affinities(affinities)
-    dp = IntervalToLinesDP(depth_interval_zones, description_lines, affinity_scores)
+    affinity_scores = sidebar.dp_weighted_affinities(inter_group_affinities)
+    dp = IntervalToLinesDP(depth_interval_zones, representatives, affinity_scores)
 
     _, mapping = dp.solve(sidebar.dp_scoring_fn)
 
-    return sidebar.post_processing(mapping)
+    expanded_mapping = [(zone, [line for rep in reps for line in group_by_rep_id[id(rep)]]) for zone, reps in mapping]
+    return sidebar.post_processing(expanded_mapping)
 
 
 def get_pairs_based_on_line_affinity(
