@@ -265,7 +265,13 @@ class MaterialDescriptionRectWithSidebarExtractor:
             left_line_length_threshold=self.matching_params["left_line_length_threshold"],
         )
         return (
-            match_lines_to_interval(pair.sidebar, description_lines, line_affinities, diagonals)
+            match_lines_to_interval(
+                pair.sidebar,
+                description_lines,
+                line_affinities,
+                diagonals,
+                group_by_spacing=not bool(self.strip_logs),
+            )
             if pair.sidebar
             else get_pairs_based_on_line_affinity(description_lines, line_affinities, self.matching_params)
         )
@@ -859,12 +865,15 @@ def extract_sidebar_information(
     ).extract_sidebars_with_quality_metrics()
 
 
+_MAX_CONTINUATION_GAP = 1.0  # pt — absolute cap; prevents false merges in documents with large inter-MD spacing
+
+
 def _group_by_spacing(lines: list[TextLine]) -> list[list[TextLine]]:
     """Group consecutive description lines into blocks based on relative vertical spacing.
 
-    Lines whose gap to the previous line is smaller than 40% of the median inter-line gap
-    are treated as continuations and merged into the same group. Using a relative threshold
-    makes the grouping document-agnostic.
+    The threshold is 40% of the median inter-line gap, capped at _MAX_CONTINUATION_GAP pt.
+    The relative part adapts to each document's line rhythm; the absolute cap ensures that
+    documents with unusually large spacing never accidentally merge distinct descriptions.
 
     Args:
         lines: The description text lines to group.
@@ -877,7 +886,7 @@ def _group_by_spacing(lines: list[TextLine]) -> list[list[TextLine]]:
         return [lines] if lines else []
 
     gaps = [lines[i].rect.y0 - lines[i - 1].rect.y1 for i in range(1, len(lines))]
-    threshold = statistics.median(gaps) * 0.4
+    threshold = min(statistics.median(gaps) * 0.4, _MAX_CONTINUATION_GAP)
 
     groups = [[lines[0]]]
     for i, gap in enumerate(gaps):
@@ -893,21 +902,24 @@ def match_lines_to_interval(
     description_lines: list[TextLine],
     affinities: list[Affinity],
     diagonals: list[Line],
+    group_by_spacing: bool = False,
 ) -> list[IntervalBlockPair]:
     """Match the description lines to the pair intervals.
 
-    Description lines are first pre-grouped by relative vertical spacing so that
-    continuation lines (e.g. a word-wrapped sentence) are never split across depth
-    intervals. The first line of each group acts as the DP representative; inter-group
-    affinities (at group boundaries) are preserved from the original affinity list.
-    After matching, each representative is expanded back to its full group before
-    post-processing.
+    When group_by_spacing is True, description lines are first pre-grouped by relative
+    vertical spacing so that continuation lines (e.g. a word-wrapped sentence) are never
+    split across depth intervals. The first line of each group acts as the DP
+    representative; inter-group affinities (at group boundaries) are preserved from the
+    original affinity list. After matching, each representative is expanded back to its
+    full group before post-processing.
 
     Args:
         sidebar (Sidebar): The sidebar.
         description_lines (list[TextLine]): The description lines.
         affinities (list[Affinity]): the affinity between each line pair, previously computed.
         diagonals (list[Line]): The diagonal lines linking text lines to intervals.
+        group_by_spacing (bool): Whether to pre-group continuation lines by vertical spacing
+            before matching. Should only be used when no strip log is present.
 
     Returns:
         list[IntervalBlockPair]: The matched depth intervals and text blocks.
@@ -919,22 +931,33 @@ def match_lines_to_interval(
 
     depth_interval_zones = sidebar.get_interval_zone()
 
-    # Pre-group consecutive lines by relative vertical spacing. The first line of each
-    # group is used as representative for DP scoring; the full group is expanded back
-    # into the mapping before post-processing so that post_processing is unchanged.
-    groups = _group_by_spacing(description_lines)
-    representatives = [group[0] for group in groups]
-    group_by_rep_id = {id(rep): group for rep, group in zip(representatives, groups, strict=True)}
-    inter_group_affinities = [affinities[description_lines.index(rep)] for rep in representatives]
+    if group_by_spacing:
+        # Pre-group consecutive lines by relative vertical spacing. The first line of each
+        # group is used as representative for DP scoring; the full group is expanded back
+        # into the mapping before post-processing so that post_processing is unchanged.
+        # Fall back to the original lines whenever the grouped count does not exactly match
+        # the number of intervals — the grouping would introduce a mismatch, so the original
+        # line-per-line behavior is safer.
+        groups = _group_by_spacing(description_lines)
+        if len(groups) != len(depth_interval_zones):
+            groups = [[line] for line in description_lines]
+        representatives = [group[0] for group in groups]
+        group_by_rep_id = {id(rep): group for rep, group in zip(representatives, groups, strict=True)}
+        lines_for_dp = representatives
+        affinities_for_dp = [affinities[description_lines.index(rep)] for rep in representatives]
+    else:
+        lines_for_dp = description_lines
+        affinities_for_dp = affinities
 
     # affinities can differ depending on sidebar type
-    affinity_scores = sidebar.dp_weighted_affinities(inter_group_affinities)
-    dp = IntervalToLinesDP(depth_interval_zones, representatives, affinity_scores)
+    affinity_scores = sidebar.dp_weighted_affinities(affinities_for_dp)
+    dp = IntervalToLinesDP(depth_interval_zones, lines_for_dp, affinity_scores)
 
     _, mapping = dp.solve(sidebar.dp_scoring_fn)
 
-    expanded_mapping = [(zone, [line for rep in reps for line in group_by_rep_id[id(rep)]]) for zone, reps in mapping]
-    return sidebar.post_processing(expanded_mapping)
+    if group_by_spacing:
+        mapping = [(zone, [line for rep in reps for line in group_by_rep_id[id(rep)]]) for zone, reps in mapping]
+    return sidebar.post_processing(mapping)
 
 
 def get_pairs_based_on_line_affinity(
