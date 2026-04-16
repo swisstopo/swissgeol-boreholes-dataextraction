@@ -4,7 +4,7 @@ import logging
 
 from core.benchmark_utils import Metrics
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
-from extraction.evaluation.benchmark.metrics import OverallMetrics, OverallMetricsCatalog
+from extraction.evaluation.benchmark.metrics import OverallMetricsCatalog
 from extraction.evaluation.evaluation_dataclasses import BoreholeMetadataMetrics, OverallBoreholeMetadataMetrics
 from extraction.evaluation.groundwater_evaluator import (
     GroundwaterEvaluator,
@@ -204,13 +204,9 @@ class Evaluator:
         fp_languages = {fp.filename: fp.language for fp in overall_predictions.predictions_list}
         languages = set(fp_languages.values())
 
-        overall_groundwater_metrics = OverallGroundwaterMetrics()
         overall_metadata_metrics = OverallBoreholeMetadataMetrics()
-
         overall_geology_metrics = OverallMetricsCatalog(languages=languages)
-        overall_layer_metrics = OverallMetrics()
-        overall_depth_interval_metrics = OverallMetrics()
-        overall_material_description_metrics = OverallMetrics()
+        overall_groundwater_metrics = OverallGroundwaterMetrics()
 
         # Iterate over all the files
         for file_predictions in overall_predictions.predictions_list:
@@ -219,17 +215,18 @@ class Evaluator:
                 Evaluator.evaluate(file_predictions)
             )
 
+            # Assigne geology metric for layer, depth and material
+            overall_geology_metrics.layer_metrics.metrics[file_predictions.filename] = layer_metrics
+            overall_geology_metrics.depth_interval_metrics[file_predictions.filename] = depth_interval_metrics
+            overall_geology_metrics.material_description_metrics[file_predictions.filename] = (
+                material_description_metrics
+            )
+
             # Assign values to overall predictions
-            overall_layer_metrics.metrics[file_predictions.filename] = layer_metrics
-            overall_depth_interval_metrics.metrics[file_predictions.filename] = depth_interval_metrics
-            overall_material_description_metrics.metrics[file_predictions.filename] = material_description_metrics
             overall_groundwater_metrics.add_groundwater_metrics(gw_metrics)
             overall_metadata_metrics.add_metadata_metrics(metadata_metrics)
 
         # Set metrics for geology
-        overall_geology_metrics.layer_metrics = overall_layer_metrics
-        overall_geology_metrics.depth_interval_metrics = overall_depth_interval_metrics
-        overall_geology_metrics.material_description_metrics = overall_material_description_metrics
         overall_geology_metrics.groundwater_metrics = (
             overall_groundwater_metrics.groundwater_metrics_to_overall_metrics()
         )
@@ -237,23 +234,24 @@ class Evaluator:
             overall_groundwater_metrics.groundwater_depth_metrics_to_overall_metrics()
         )
 
+        # Set metrics for each language
         for language in languages:
             setattr(
                 overall_geology_metrics,
                 f"{language}_layer_metrics",
-                overall_layer_metrics.get_language_subset(fp_languages, language),
+                overall_geology_metrics.layer_metrics.get_language_subset(fp_languages, language),
             )
 
             setattr(
                 overall_geology_metrics,
                 f"{language}_depth_interval_metrics",
-                overall_depth_interval_metrics.get_language_subset(fp_languages, language),
+                overall_geology_metrics.depth_interval_metrics.get_language_subset(fp_languages, language),
             )
 
             setattr(
                 overall_geology_metrics,
                 f"{language}_material_description_metrics",
-                overall_material_description_metrics.get_language_subset(fp_languages, language),
+                overall_geology_metrics.material_description_metrics.get_language_subset(fp_languages, language),
             )
 
         return overall_geology_metrics, overall_metadata_metrics
