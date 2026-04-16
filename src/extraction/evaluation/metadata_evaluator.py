@@ -2,10 +2,10 @@
 
 import math
 
+from core.benchmark_utils import Metrics
 from extraction.evaluation.evaluation_dataclasses import (
     BoreholeMetadataMetrics,
     FileBoreholeMetadataMetrics,
-    Metrics,
 )
 from extraction.evaluation.utility import evaluate_single
 from extraction.features.metadata.borehole_name_extraction import BoreholeName, clean_borehole_name

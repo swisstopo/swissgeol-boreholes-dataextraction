@@ -215,7 +215,7 @@ class Evaluator:
                 Evaluator.evaluate(file_predictions)
             )
 
-            # Assigne geology metric for layer, depth and material
+            # Assign geology metric for layer, depth and material
             overall_geology_metrics.layer_metrics.metrics[file_predictions.filename] = layer_metrics
             overall_geology_metrics.depth_interval_metrics.metrics[file_predictions.filename] = depth_interval_metrics
             overall_geology_metrics.material_description_metrics.metrics[file_predictions.filename] = (
@@ -234,7 +234,7 @@ class Evaluator:
             overall_groundwater_metrics.groundwater_depth_metrics_to_overall_metrics()
         )
 
-        # Set metrics for each language
+        # Language subsets for geology
         for language in languages:
             setattr(
                 overall_geology_metrics,
