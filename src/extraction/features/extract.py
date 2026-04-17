@@ -865,7 +865,8 @@ def extract_sidebar_information(
     ).extract_sidebars_with_quality_metrics()
 
 
-_MAX_CONTINUATION_GAP = 1.0  # pt — absolute cap; prevents false merges in documents with large inter-MD spacing
+# pt — absolute cap; prevents false merges in documents with large spacing in between material descriptions
+_MAX_CONTINUATION_GAP = 1.0
 
 
 def _group_by_spacing(lines: list[TextLine]) -> list[list[TextLine]]:
