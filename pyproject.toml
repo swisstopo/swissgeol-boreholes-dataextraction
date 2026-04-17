@@ -74,7 +74,7 @@ source = "versioningit"
 default-version = "0.0.0"
 
 [tool.versioningit.tag2version]
-# Only match plain release tags (e.g. v1.0.162), ignore dev tags like v1.0.dev2
+# Only match plain release tags (e.g. v1.0.1), ignore dev tags like v1.0.1.dev2
 regex = "^v(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)$"
 
 [tool.versioningit.format]
