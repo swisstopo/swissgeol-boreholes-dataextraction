@@ -289,7 +289,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Returns:
             bool: True if a valid description match is found, False otherwise.
         """
-        candidate_rects = self._find_all_material_description_candidates(sidebar_noise.sidebar)
+        candidate_rects = self._find_all_material_description_candidates(
+            sidebar_noise.sidebar, use_geometric_seeds=False
+        )
 
         for rect in candidate_rects:
             pair = MaterialDescriptionRectWithSidebar(
@@ -376,11 +378,85 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         return material_descriptions_sidebar_pairs
 
-    def _find_all_material_description_candidates(self, sidebar: Sidebar | None) -> list[pymupdf.Rect]:
+    @staticmethod
+    def _line_has_real_word(text: str) -> bool:
+        """Return True if text contains at least one real-word token.
+
+        A real word requires 3+ alphabetic characters in the token, does not start
+        with a digit, and has at least half of its letters in lowercase. This
+        distinguishes geological description words ("Sand", "schluffig", "Kies")
+        from coded identifiers ("KB1-P6", "4bc", "4a", "4Hb") and unit symbols
+        ("m", "cm") that would otherwise pass a simple alpha-character count.
+        """
+        for token in text.split():
+            alpha = [c for c in token if c.isalpha()]
+            if (
+                len(alpha) >= 3
+                and not token[0].isdigit()
+                and sum(1 for c in alpha if c.islower()) >= 2
+                and sum(1 for c in alpha if c.islower()) / len(alpha) >= 0.5
+            ):
+                return True
+        return False
+
+    def _get_geometric_description_seeds(
+        self, candidate_description: list[TextLine], sidebar: Sidebar | None
+    ) -> list[TextLine] | None:
+        """Return seed lines for description clustering based on spatial proximity.
+
+        Uses the right edge of the sidebar — extended to any strip log that sits between
+        the sidebar and the description column — as an x-anchor. Every candidate line
+        whose left edge starts at or to the right of that anchor is treated as a
+        potential description line, removing the dependency on inclusion keywords.
+
+        Returns None when no spatial anchor can be derived (no sidebar and no strip
+        logs), in which case the caller should fall back to keyword-based seeds.
+
+        Args:
+            candidate_description: Lines already filtered to the correct y-range.
+            sidebar: The sidebar paired with this description, or None.
+
+        Returns:
+            A (possibly empty) list of seed lines, or None if no anchor is available.
+        """
+        if not sidebar and not self.strip_logs:
+            return None
+
+        if sidebar:
+            x_anchor = sidebar.rect.x1
+            # A strip log sitting between the sidebar and the description column shifts the anchor right
+            overlapping_strips = [
+                sl for sl in self.strip_logs if x_overlap(sl.bbox, sidebar.rect) and sl.bbox.x1 > x_anchor
+            ]
+            if overlapping_strips:
+                x_anchor = max(sl.bbox.x1 for sl in overlapping_strips)
+        else:
+            # No sidebar: anchor on the rightmost strip log edge present on the page
+            x_anchor = max(sl.bbox.x1 for sl in self.strip_logs)
+
+        # Small leftward tolerance so lines whose left edge barely overlaps the anchor are not lost
+        x_start = x_anchor - self.page_width * 0.02
+        seeds = [
+            line
+            for line in candidate_description
+            if line.rect.x0 >= x_start
+            and line.rect.width >= line.rect.height  # vertically oriented text is not a description
+            and self._line_has_real_word(line.text)  # excludes codes, unit symbols, pure numbers
+        ]
+        return seeds or None
+
+    def _find_all_material_description_candidates(
+        self, sidebar: Sidebar | None, use_geometric_seeds: bool = True
+    ) -> list[pymupdf.Rect]:
         """Find all material description candidates on the page.
 
         Args:
             sidebar (Sidebar | None): The sidebar for which we want to find the material descriptions.
+            use_geometric_seeds (bool): When True (default), use spatial proximity to the sidebar /
+                strip log as the primary seed signal. Pass False for gating checks such as
+                _has_valid_description_match, where the question is specifically "does real
+                geological keyword content exist here" — geometric seeding would make that check
+                trivially true for any text column and cause false protocol-sidebar blocks.
 
         Returns:
             list[pymupdf.Rect]: A list of candidate rectangles for material descriptions.
@@ -390,7 +466,21 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 line for line in self.lines if x_overlap(line.rect, sidebar.rect) and line.rect.y0 < sidebar.rect.y0
             ]
 
-            min_y0 = max(line.rect.y0 for line in above_sidebar) if above_sidebar else -1
+            if above_sidebar:
+                min_y0 = max(line.rect.y0 for line in above_sidebar)
+            else:
+                # No header lines found above the sidebar in its x-column. Allow a small margin above
+                # the sidebar top so description lines for the synthetic "0 → first entry" interval
+                # are included, but titles and page headers (much higher up) are not.
+                min_y0 = sidebar.rect.y0 - self.page_height * 0.05
+
+            # Strip log top edge: a reliable geometric anchor for where the description zone begins.
+            # If a text header sits between the strip log top and the sidebar start, the header line
+            # would otherwise push min_y0 too high and cause the first description lines to be excluded.
+            overlapping_strips = [sl for sl in self.strip_logs if x_overlap(sl.bbox, sidebar.rect)]
+            if overlapping_strips:
+                strip_top = min(sl.bbox.y0 for sl in overlapping_strips)
+                min_y0 = min(min_y0, strip_top - 1)
 
             def check_y0_condition(y0):
                 return y0 > min_y0 and y0 < sidebar.rect.y1
@@ -406,12 +496,25 @@ class MaterialDescriptionRectWithSidebarExtractor:
             for line in candidate_description
             if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=True)
         ]
-        is_description = [
-            line
-            for line in candidate_description
-            if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=False)
-            and line not in is_not_description
-        ]
+
+        # Primary: use geometric proximity to the sidebar / strip log as the seed signal.
+        # This captures description lines that lack known inclusion keywords (new terminology,
+        # OCR variants, continuation lines) whenever a spatial anchor is available.
+        # Fallback: keyword-based inclusion detection for pages without sidebar or strip logs,
+        # or when geometric seeding is explicitly disabled (e.g. gating checks).
+        geometric_seeds = (
+            self._get_geometric_description_seeds(candidate_description, sidebar) if use_geometric_seeds else None
+        )
+        using_geometric_seeds = geometric_seeds is not None
+        if using_geometric_seeds:
+            is_description = [line for line in geometric_seeds if line not in is_not_description]
+        else:
+            is_description = [
+                line
+                for line in candidate_description
+                if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=False)
+                and line not in is_not_description
+            ]
 
         if len(candidate_description) == 0:
             return []
@@ -455,6 +558,12 @@ class MaterialDescriptionRectWithSidebarExtractor:
             best_x0 = min([line.rect.x0 for line in good_lines])
             best_x1 = max([line.rect.x1 for line in good_lines])
 
+            # A material description must contain at least one line with real word content.
+            # Rejects clusters that are purely numeric or consist only of codes/identifiers,
+            # even when a stray unit symbol or letter-bearing code seeded the cluster.
+            if not any(self._line_has_real_word(line.text) for line in good_lines):
+                continue
+
             # check that no lines that have excluded words are contained in the rect
             cluster_rect = pymupdf.Rect(best_x0, best_y0, best_x1, best_y1)
             non_description_in_rect = [
@@ -489,6 +598,13 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     continue_search = False
 
             candidate_rects.append(pymupdf.Rect(best_x0, best_y0, best_x1, best_y1))
+
+        if using_geometric_seeds and len(candidate_rects) > 1:
+            # Multiple clusters arise when narrow secondary columns (layer codes, measurements)
+            # share the seeding x-range with the real description column. Material descriptions
+            # always occupy the widest column, so prefer by rect width.
+            candidate_rects = [max(candidate_rects, key=lambda r: r.width)]
+
         return candidate_rects
 
     def _find_material_description_column(self, sidebar: Sidebar | None) -> pymupdf.Rect | None:
