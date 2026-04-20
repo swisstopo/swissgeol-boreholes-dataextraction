@@ -50,19 +50,23 @@ def _are_layers_similar(
     force_depth_matching: bool = False,
     is_extremity: bool = False,
 ) -> bool:
-    """_summary_.
+    """Check if two layers are similar based on material description and optional depth matching.
+
+    Validates layers through three rules:
+    1. Both layers must have material descriptions
+    2. Material descriptions must exceed similarity threshold
+    3. If force_depth_matching is enabled, depths must match
 
     Args:
-        layer_prev (Layer): _description_
-        layer_curr (Layer): _description_
-        material_threshold (float): _description_
-        force_depth_matching (bool, optional): _description_. Defaults to False.
-        is_extremity (bool, optional): _description_. Defaults to False.
+        layer_prev (Layer): The layer from the previous page.
+        layer_curr (Layer): The layer from the current page.
+        material_threshold (float): Minimum similarity threshold for material descriptions.
+        force_depth_matching (bool, optional): Whether to enforce matching depths. Defaults to False.
+        is_extremity (bool, optional): Whether this layer is at the boundary of the overlap. Defaults to False.
 
     Returns:
-        bool: _description_
+        bool: True if layers are similar according to all active rules, False otherwise.
     """
-    # Check how close two layers are from each other based on depth and material description
     # Rule 1: Material description should exists
     if not layer_prev.material_description or not layer_curr.material_description:
         return False
@@ -90,19 +94,22 @@ def _are_layers_similar(
 
 
 def find_split_by_convolution(layers_prev: list[Layer], layers_curr: list[Layer], matching_params: dict) -> int | None:
-    """_summary_. Find first layer in current that does not overlap with previous. If none, no overlap.
+    """Find the extent of overlap between consecutive page layers.
+
+    Determines the maximum number of consecutive layers from the bottom of the previous
+    page that match the top layers of the current page.
 
     Args:
-        layers_prev (list[Layer]): _description_
-        layers_curr (list[Layer]): _description_
-        matching_params (dict): _description_
+        layers_prev (list[Layer]): Layers from the previous page, ordered top to bottom.
+        layers_curr (list[Layer]): Layers from the current page, ordered top to bottom.
+        matching_params (dict): Configuration dict with keys.
 
     Returns:
-        int | None: _description_
+        int | None: Index of first non-overlapping layer in current page, or None if no overlap.
     """
     material_threshold = matching_params["duplicate_layer_threshold"]
     force_depth = matching_params["duplicate_layer_force_depth"]
-    idx_best = None
+    idx_next = None
 
     for i in list(range(1, min(len(layers_prev), len(layers_curr)) + 1)):
         # All layers should match to enforce overlap
@@ -116,9 +123,9 @@ def find_split_by_convolution(layers_prev: list[Layer], layers_curr: list[Layer]
             )
             for j, (layer_prev, layer_curr) in enumerate(zip(layers_prev[-i:], layers_curr[:i], strict=True))
         ):
-            idx_best = i
+            idx_next = i
 
-    return idx_best
+    return idx_next
 
 
 def _is_duplicate(cur_text: str, prev_text: str, t: float, is_extremity: bool):
@@ -133,7 +140,8 @@ def _is_duplicate(cur_text: str, prev_text: str, t: float, is_extremity: bool):
         cur_text (str): The text of the current layer to compare.
         prev_text (str): The text of the previous layer to compare against.
         t (float): The similarity threshold.
-        is_extremity (bool): TODO
+        is_extremity (bool): If True, uses partial text matching to handle truncated boundary layers.
+            If False, compares full text content.
 
     Returns:
         bool: True if the layers are considered duplicates, False otherwise.

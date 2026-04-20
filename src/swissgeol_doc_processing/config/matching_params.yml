@@ -5,7 +5,7 @@ block_line_ratio: 0.20
 min_block_clearance: 10
 left_line_length_threshold: 7
 duplicate_layer_threshold: 0.95
-duplicate_layer_force_depth: False
+duplicate_layer_force_depth: True
 min_num_layers: 2
 protocol_min_num_layers: 1
 fallback_min_table_height_ratio: 0.85
