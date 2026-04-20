@@ -83,10 +83,18 @@ def _are_layers_similar(
     # Rule 3: If depth exists, should match
     if force_depth_matching and layer_curr.depths and layer_prev.depths:
         # Rule 3.1 Strating depth should match
-        if layer_curr.depths.start and layer_prev.depths.start and layer_curr.depths.start != layer_prev.depths.start:
+        if (
+            layer_curr.depths.start
+            and layer_prev.depths.start
+            and layer_curr.depths.start.value != layer_prev.depths.start.value
+        ):
             return False
         # Rule 3.2 Ending depth should match
-        if layer_curr.depths.end and layer_prev.depths.end and layer_curr.depths.end != layer_prev.depths.end:
+        if (
+            layer_curr.depths.end
+            and layer_prev.depths.end
+            and layer_curr.depths.end.value != layer_prev.depths.end.value
+        ):
             return False
 
     # All rules validated
@@ -113,7 +121,7 @@ def find_split_by_convolution(layers_prev: list[Layer], layers_curr: list[Layer]
 
     for i in list(range(1, min(len(layers_prev), len(layers_curr)) + 1)):
         # All layers should match to enforce overlap
-        if all(
+        convoluted_layers_match = [
             _are_layers_similar(
                 layer_prev=layer_prev,
                 layer_curr=layer_curr,
@@ -122,7 +130,9 @@ def find_split_by_convolution(layers_prev: list[Layer], layers_curr: list[Layer]
                 is_extremity=(j == 0 or j == i - 1),  # Indicate to function that one layer might be cut (extremities)
             )
             for j, (layer_prev, layer_curr) in enumerate(zip(layers_prev[-i:], layers_curr[:i], strict=True))
-        ):
+        ]
+        print(convoluted_layers_match)
+        if all(convoluted_layers_match):
             idx_next = i
 
     return idx_next
