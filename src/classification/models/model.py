@@ -57,7 +57,7 @@ class BertModel:
 
         self.model_path = _resolve_path(model_path)
         self.backbone_path = _resolve_path(backbone_path) if backbone_path else None
-        self._load_model()
+        self.model = self._load_model()
 
     def _setup_classification_system(self) -> None:
         """Set up label mappings based on the classification system."""
@@ -67,8 +67,12 @@ class BertModel:
         self.label2id = {class_.name: class_.value for class_ in classes}
         self.id2classEnum = {class_.value: class_ for class_ in classes}
 
-    def _load_model(self) -> None:
-        """Load the model and tokenizer with the correct number of labels and mappings."""
+    def _load_model(self) -> BertForSequenceClassification:
+        """Load the tokenizer and model, then put the model in evaluation mode.
+
+        Returns:
+            BertForSequenceClassification: The loaded model in eval mode.
+        """
         if os.path.isdir(self.model_path):
             logger.info(f"Model and tokenizer loaded from local path: {self.model_path}")
         else:
@@ -76,15 +80,19 @@ class BertModel:
 
         self.tokenizer: BertTokenizerFast = AutoTokenizer.from_pretrained(self.model_path)
 
-        if self.backbone_path:
-            self._load_split_model()
-        else:
-            self._load_full_model()
+        model = self._load_split_model() if self.backbone_path else self._load_full_model()
 
-    def _load_full_model(self) -> None:
-        """Load a standard HuggingFace model directory (config + full model.safetensors)."""
+        model.eval()
+        return model
+
+    def _load_full_model(self) -> BertForSequenceClassification:
+        """Load a standard HuggingFace model directory (config + full model.safetensors).
+
+        Returns:
+            BertForSequenceClassification: The loaded model.
+        """
         try:
-            self.model: BertForSequenceClassification = AutoModelForSequenceClassification.from_pretrained(
+            return AutoModelForSequenceClassification.from_pretrained(
                 self.model_path,
                 num_labels=self.num_class,
                 id2label=self.id2label,
@@ -102,7 +110,37 @@ class BertModel:
             else:
                 raise
 
-    def _load_split_model(self) -> None:
+    @staticmethod
+    def _load_tensors_cached(file_path: str, cache: dict) -> dict[str, torch.Tensor]:
+        """Load tensors from a safetensors file via mmap and cache the result.
+
+        On first call: opens the file, caches the handle + tensor references.
+        On subsequent calls: reuses the same mmap'd tensors — no second file read or allocation.
+
+        Args:
+            file_path (str): Path to the .safetensors file.
+            cache (dict): Module-level cache dict to use (e.g. _backbone_cache or _head_cache).
+
+        Returns:
+            dict[str, torch.Tensor]: Tensor map for the weights.
+        """
+        if file_path not in cache:
+            handle = safe_open(file_path, framework="pt", device="cpu")
+            cache[file_path] = {
+                "handle": handle,  # keep alive so mmap stays valid
+                "tensors": {key: handle.get_tensor(key) for key in handle.keys()},  # noqa: SIM118
+            }
+        return cache[file_path]["tensors"]
+
+    def _load_backbone_model(self) -> dict[str, torch.Tensor]:
+        """Load backbone weights via mmap and cache the result."""
+        return self._load_tensors_cached(str(self.backbone_path), _backbone_cache)
+
+    def _load_head_model(self) -> dict[str, torch.Tensor]:
+        """Load head weights via mmap and cache the result."""
+        return self._load_tensors_cached(str(Path(self.model_path) / "model.safetensors"), _head_cache)
+
+    def _load_split_model(self) -> BertForSequenceClassification:
         """Load a model from a separate backbone.safetensors and head directory.
 
         The head directory must contain config.json and model.safetensors (head weights only).
@@ -113,8 +151,10 @@ class BertModel:
 
         On first call: opens the backbone file, caches the handle + tensor references.
         On subsequent calls: reuses the same mmap'd tensors — no second file read or allocation.
+
+        Returns:
+            BertForSequenceClassification: The loaded model with merged backbone and head weights.
         """
-        backbone_key = str(self.backbone_path)
         logger.info(f"Loading split model: head from {self.model_path}, backbone from {self.backbone_path}")
 
         config = AutoConfig.from_pretrained(
@@ -123,35 +163,20 @@ class BertModel:
             id2label=self.id2label,
             label2id=self.label2id,
         )
-        self.model: BertForSequenceClassification = AutoModelForSequenceClassification.from_config(config)
+        model: BertForSequenceClassification = AutoModelForSequenceClassification.from_config(config)
 
-        if backbone_key not in _backbone_cache:
-            logger.info("Backbone not cached — opening mmap and caching tensor references.")
-            handle = safe_open(str(self.backbone_path), framework="pt", device="cpu")
-            _backbone_cache[backbone_key] = {
-                "handle": handle,  # keep alive so mmap stays valid
-                "tensors": {key: handle.get_tensor(key) for key in handle.keys()},  # noqa: SIM118
-            }
-        else:
-            logger.info("Reusing cached mmap'd backbone tensors.")
-
-        cached_tensors = _backbone_cache[backbone_key]["tensors"]
+        cached_tensors = self._load_backbone_model()
 
         # Load head weights via mmap — keeps them file-backed like the backbone
-        head_key = str(Path(self.model_path) / "model.safetensors")
-        if head_key not in _head_cache:
-            head_handle = safe_open(head_key, framework="pt", device="cpu")
-            _head_cache[head_key] = {
-                "handle": head_handle,
-                "tensors": {key: head_handle.get_tensor(key) for key in head_handle.keys()},  # noqa: SIM118
-            }
-        head_tensors = _head_cache[head_key]["tensors"]
+        head_tensors = self._load_head_model()
 
-        for name, param in self.model.named_parameters():
+        for name, param in model.named_parameters():
             if name.startswith(_HEAD_PARAM_PREFIXES) and name in head_tensors:
                 param.data = head_tensors[name]
             elif name in cached_tensors:
                 param.data = cached_tensors[name]
+
+        return model
 
     def freeze_all_layers(self):
         """Freeze all layers (base bert model + classifier)."""
@@ -285,6 +310,7 @@ class BertModel:
         )
         return tokenized_text
 
+    @torch.no_grad()
     def predict_idx(self, text: str) -> int:
         """Runs prediction on a single text input.
 
@@ -295,11 +321,10 @@ class BertModel:
             int: the index of the predicted label.
         """
         inputs = self.tokenize_text(text)
-        with torch.no_grad():
-            outputs = self.model(**inputs)
-        idx = torch.argmax(outputs.logits, dim=1).item()
-        return idx
+        outputs = self.model(**inputs)
+        return torch.argmax(outputs.logits, dim=1).item()
 
+    @torch.no_grad()
     def predict_class(self, text: str) -> ClassificationSystem.EnumMember:
         """Runs prediction on a single text input.
 
@@ -312,6 +337,7 @@ class BertModel:
         idx = self.predict_idx(text)
         return self.id2classEnum[idx]
 
+    @torch.no_grad()
     def predict_class_batched(self, texts: list[str], batch_size: int) -> list[ClassificationSystem.EnumMember]:
         """Runs batch prediction on multiple text inputs.
 
@@ -332,11 +358,10 @@ class BertModel:
         dataloader = torch.utils.data.DataLoader(inputs, batch_size=batch_size, collate_fn=collate_fn)
 
         predictions = []
-        with torch.no_grad():
-            for batch in tqdm(dataloader):
-                outputs = self.model(**batch)
-                predicted_indices = torch.argmax(outputs.logits, dim=1).tolist()
-                predictions.extend(predicted_indices)
+        for batch in tqdm(dataloader):
+            outputs = self.model(**batch)
+            predicted_indices = torch.argmax(outputs.logits, dim=1).tolist()
+            predictions.extend(predicted_indices)
 
         # Convert indices to Enum classes
         return [self.id2classEnum[idx] for idx in predictions]
