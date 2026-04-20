@@ -40,64 +40,15 @@ def select_boreholes_with_overlap(
 
                 return previous_page_borehole, current_borehole, (upper_id, lower_id)
 
-            # TODO remove old methods
-            # bottom_duplicate_idx = find_last_duplicate_layer_index(
-            #     previous_page_borehole.predictions, current_borehole.predictions, matching_params
-            # )
-
-            # # Potential overlap detected
-            # if bottom_duplicate_idx is not None:
-            #     # Compute indices to cut duplicate layers at the overlap
-            #   upper_id, lower_id = find_optimal_split(previous_page_borehole, current_borehole, bottom_duplicate_idx)
-
-            # return previous_page_borehole, current_borehole, (upper_id, lower_id)
-
     return None, None, None
 
 
-def find_optimal_split(
-    borehole_to_extend: ExtractedBorehole, borehole_continuation: ExtractedBorehole, last_duplicate_layer_index: int
-) -> tuple[int, int]:
-    """Find cut indices to remove duplicated layers when merging two boreholes.
-
-    When a borehole continues on the next page, some top layers of the new page
-    may duplicate the bottom layers of the previous page. This function walks the
-    overlap (from the bottom up) and shifts the split upward if the upper
-    layer lacks depth information while the corresponding lower layer has it.
-    This preserves the most complete layer data across the boundary.
-
-    Args:
-        borehole_to_extend (ExtractedBorehole): The borehole from the previous page.
-        borehole_continuation (ExtractedBorehole): The borehole from the current page.
-        last_duplicate_layer_index (int): The index of the last duplicated layer in the continuing borehole.
-
-    Returns:
-        tuple[int, int]: `(id_upper_end, id_lower_start)` such that concatenating these two slices removes
-        duplicates while keeping the most informative depth entries.
-    """
-    # Check the number of layer that overlaps
-    n_overlap = min(len(borehole_to_extend.predictions), last_duplicate_layer_index + 1)
-    offset = 0
-
-    # Check if threshold should be moved
-    for i in range(n_overlap):
-        upper_layer = borehole_to_extend.predictions[-(i + 1)]
-        lower_layer = borehole_continuation.predictions[last_duplicate_layer_index - i]
-        # It is possible that the information of the upper layers is cut (), check if we can retrieve information from
-        # the lower layers
-        if not upper_layer.depth_nonempty() and lower_layer.depth_nonempty():
-            offset += 1
-        else:
-            # As soon as information is missing in the lower layer, stop iteration
-            break
-    # Define cut ids
-    id_upper_end = len(borehole_to_extend.predictions) - offset
-    id_lower_start = 1 + last_duplicate_layer_index - offset
-    return id_upper_end, id_lower_start
-
-
 def _are_layers_similar(
-    layer_prev: Layer, layer_curr: Layer, material_threshold: float, force_depth_matching: bool = False
+    layer_prev: Layer,
+    layer_curr: Layer,
+    material_threshold: float,
+    force_depth_matching: bool = False,
+    is_extremity: bool = False,
 ) -> bool:
     """_summary_.
 
@@ -106,6 +57,7 @@ def _are_layers_similar(
         layer_curr (Layer): _description_
         material_threshold (float): _description_
         force_depth_matching (bool, optional): _description_. Defaults to False.
+        is_extremity (bool, optional): _description_. Defaults to False.
 
     Returns:
         bool: _description_
@@ -120,6 +72,7 @@ def _are_layers_similar(
         cur_text=layer_curr.material_description.text,
         prev_text=layer_prev.material_description.text,
         t=material_threshold,
+        is_extremity=is_extremity,
     ):
         return False
 
@@ -137,7 +90,7 @@ def _are_layers_similar(
 
 
 def find_split_by_convolution(layers_prev: list[Layer], layers_curr: list[Layer], matching_params: dict) -> int | None:
-    """_summary_.
+    """_summary_. Find first layer in current that does not overlap with previous. If none, no overlap.
 
     Args:
         layers_prev (list[Layer]): _description_
@@ -148,90 +101,27 @@ def find_split_by_convolution(layers_prev: list[Layer], layers_curr: list[Layer]
         int | None: _description_
     """
     material_threshold = matching_params["duplicate_layer_threshold"]
+    force_depth = matching_params["duplicate_layer_force_depth"]
     idx_best = None
 
     for i in list(range(1, min(len(layers_prev), len(layers_curr)) + 1)):
         # All layers should match to enforce overlap
         if all(
-            _are_layers_similar(layers_prev, layers_curr, material_threshold)
-            for layers_prev, layers_curr in zip(layers_prev[-i:], layers_curr[:i], strict=True)
+            _are_layers_similar(
+                layer_prev=layer_prev,
+                layer_curr=layer_curr,
+                material_threshold=material_threshold,
+                force_depth_matching=force_depth,
+                is_extremity=(j == 0 or j == i - 1),  # Indicate to function that one layer might be cut (extremities)
+            )
+            for j, (layer_prev, layer_curr) in enumerate(zip(layers_prev[-i:], layers_curr[:i], strict=True))
         ):
             idx_best = i
 
     return idx_best
 
 
-def find_last_duplicate_layer_index(
-    previous_page_layers: list[Layer], sorted_layers: list[Layer], matching_params: dict
-) -> int | None:
-    """Find the index of the last duplicate layer in the current page compared to the previous page.
-
-    The last duplicated layer is the deepest one that is duplicated, starting from the top.
-
-    Args:
-        previous_page_layers (list[Layer]): Layers from a borehole on the previous page sorted from top to bottom
-        sorted_layers (list[Layer]): Layers from a borehole on the current page sorted from top to bottom
-        matching_params (dict): The parameters for matching boreholes.
-
-    Returns:
-        int | None: Index of the last duplicate layer or None if not found
-    """
-    compare_against_idx = len(previous_page_layers) - 1  # begin comparison against the last of previous page
-    layer_idx = len(sorted_layers) - 1  # begin from the bottom of the current page, then validate upwards
-
-    bottom_duplicate_idx = None
-    duplicate_layer_threshold = matching_params["duplicate_layer_threshold"]
-
-    while layer_idx >= 0:
-        current_layer = sorted_layers[layer_idx]
-        if not current_layer.material_description:
-            layer_idx -= 1
-            continue
-        if compare_against_idx < 0:
-            break  # we've run out of previous layers to compare against
-
-        previous_page_layer = previous_page_layers[compare_against_idx]
-
-        # 1. check of the current layer with the compare_against_idx'th layer of previous page.
-        if _is_duplicate(
-            current_layer.material_description.text,
-            previous_page_layer.material_description.text,
-            duplicate_layer_threshold,
-        ):
-            # 2. check in case of wrong lines split of the merged layer with the compare_against_idx'th layer of
-            # previous page.
-            layer_idx_delta = 1
-            if layer_idx >= 1 and sorted_layers[layer_idx - 1].material_description:
-                text_merged = " ".join(
-                    [sorted_layers[layer_idx - 1].material_description.text, current_layer.material_description.text]
-                )
-                if _is_duplicate(
-                    text_merged, previous_page_layer.material_description.text, duplicate_layer_threshold
-                ):
-                    # If the merged is also a duplicate, we should skip both layers.
-                    layer_idx_delta = 2
-
-            if bottom_duplicate_idx is None:
-                # record the lowest layer that is duplicated (i.e. the first encountered, as we iterate backwards).
-                bottom_duplicate_idx = layer_idx
-            layer_idx -= layer_idx_delta  # skip the wrongly split layer(s)
-            compare_against_idx -= 1
-            continue
-
-        # 3. No duplicate was found, we just continue with the above layer
-        if bottom_duplicate_idx is None:
-            layer_idx -= 1
-            continue
-        # 4. No duplicate was found, but we previously found a duplicate (bottom_duplicate_idx was set), it likely
-        # was a false positive and we reset the search
-        layer_idx = bottom_duplicate_idx - 1  # just above the false positive
-        bottom_duplicate_idx = None
-        compare_against_idx = len(previous_page_layers) - 1  # reset with the last layer of the previous page
-
-    return bottom_duplicate_idx
-
-
-def _is_duplicate(cur_text: str, prev_text: str, t: float):
+def _is_duplicate(cur_text: str, prev_text: str, t: float, is_extremity: bool):
     """Detect if layer and prev_layer are duplicates across a page break.
 
     Strategy:
@@ -243,14 +133,21 @@ def _is_duplicate(cur_text: str, prev_text: str, t: float):
         cur_text (str): The text of the current layer to compare.
         prev_text (str): The text of the previous layer to compare against.
         t (float): The similarity threshold.
+        is_extremity (bool): TODO
 
     Returns:
         bool: True if the layers are considered duplicates, False otherwise.
     """
     cur_text = cur_text.lower()
     prev_text = prev_text.lower()
-    min_length = min(len(cur_text), len(prev_text))
-    return (
-        Levenshtein.ratio(cur_text, prev_text[-min_length:]) > t
-        or Levenshtein.ratio(cur_text[:min_length], prev_text) > t
-    )
+
+    if is_extremity:
+        min_length = min(len(cur_text), len(prev_text))
+        score = max(
+            Levenshtein.ratio(cur_text, prev_text[-min_length:]),
+            Levenshtein.ratio(cur_text[:min_length], prev_text),
+        )
+    else:
+        score = Levenshtein.ratio(cur_text, prev_text)
+
+    return score > t
