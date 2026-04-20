@@ -19,29 +19,29 @@ RUN uv sync --no-dev --no-install-project --compile --extra deep-learning
 
 ## ------ Model download stage
 # Downloads only the inference files needed at runtime (training artifacts are excluded).
-# AWS credentials are only used during build and are not present in the final image.
+# AWS credentials are passed as BuildKit secrets and never stored in any image layer.
 FROM amazon/aws-cli AS model-downloader
 
-ARG AWS_ACCESS_KEY_ID
-ARG AWS_SECRET_ACCESS_KEY
 ARG AWS_DEFAULT_REGION=eu-central-1
 ARG BERT_MODEL_S3_BUCKET
-ARG BERT_MODEL_S3_KEY_BACKBONE=backbone
-ARG BERT_MODEL_S3_KEY_LITHOLOGY_HEAD=lithology_head
-ARG BERT_MODEL_S3_KEY_EN_MAIN_HEAD=en_main_head
+ARG BERT_MODEL_S3_BACKBONE_DIR=backbone
+ARG BERT_MODEL_S3_LITHOLOGY_HEAD_DIR=lithology_head
+ARG BERT_MODEL_S3_EN_MAIN_HEAD_DIR=en_main_head
 
-ENV AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-ENV AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 ENV AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION
 
 # Download the shared backbone once, then the small task-specific heads.
 # Head directories follow the standard HuggingFace layout (config.json + model.safetensors + tokenizer files).
 # If BERT_MODEL_S3_BUCKET is not provided, model directories are left empty and
 # models must be supplied at runtime via BERT_MODEL_PATH_* or BERT_MODEL_S3_KEY_* env vars.
-RUN if [ -n "${BERT_MODEL_S3_BUCKET}" ]; then \
-    aws s3 cp s3://${BERT_MODEL_S3_BUCKET}/${BERT_MODEL_S3_KEY_BACKBONE}/backbone.safetensors /models/backbone/backbone.safetensors \
- && aws s3 cp s3://${BERT_MODEL_S3_BUCKET}/${BERT_MODEL_S3_KEY_LITHOLOGY_HEAD}/ /models/lithology_head/ --recursive --exclude "*" --include "config.json" --include "model.safetensors" --include "tokenizer.json" --include "tokenizer_config.json" --include "special_tokens_map.json" --include "vocab.txt" \
- && aws s3 cp s3://${BERT_MODEL_S3_BUCKET}/${BERT_MODEL_S3_KEY_EN_MAIN_HEAD}/ /models/en_main_head/ --recursive --exclude "*" --include "config.json" --include "model.safetensors" --include "tokenizer.json" --include "tokenizer_config.json" --include "special_tokens_map.json" --include "vocab.txt"; \
+RUN --mount=type=secret,id=aws_access_key_id,required=false \
+    --mount=type=secret,id=aws_secret_access_key,required=false \
+    if [ -n "${BERT_MODEL_S3_BUCKET}" ]; then \
+    export AWS_ACCESS_KEY_ID=$(cat /run/secrets/aws_access_key_id) \
+ && export AWS_SECRET_ACCESS_KEY=$(cat /run/secrets/aws_secret_access_key) \
+ && aws s3 cp s3://${BERT_MODEL_S3_BUCKET}/${BERT_MODEL_S3_BACKBONE_DIR}/backbone.safetensors /models/backbone/backbone.safetensors \
+ && aws s3 cp s3://${BERT_MODEL_S3_BUCKET}/${BERT_MODEL_S3_LITHOLOGY_HEAD_DIR}/ /models/lithology_head/ --recursive --exclude "*" --include "config.json" --include "model.safetensors" --include "tokenizer.json" --include "tokenizer_config.json" --include "special_tokens_map.json" --include "vocab.txt" \
+ && aws s3 cp s3://${BERT_MODEL_S3_BUCKET}/${BERT_MODEL_S3_EN_MAIN_HEAD_DIR}/ /models/en_main_head/ --recursive --exclude "*" --include "config.json" --include "model.safetensors" --include "tokenizer.json" --include "tokenizer_config.json" --include "special_tokens_map.json" --include "vocab.txt"; \
   else \
     echo "BERT_MODEL_S3_BUCKET not set — skipping model download." \
  && mkdir -p /models/backbone /models/lithology_head /models/en_main_head; \
@@ -75,7 +75,9 @@ ENV PYTHONPATH=/app/src
 ENV APP_VERSION=$VERSION
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Point the API at the baked-in backbone and heads. These take priority over S3 download.
+# Use the baked-in split model (backbone + heads).
+ENV BERT_LOCAL=true
+ENV BERT_SPLIT=true
 ENV BERT_MODEL_PATH_BACKBONE=/app/models/backbone/backbone.safetensors
 ENV BERT_MODEL_PATH_LITHOLOGY_HEAD=/app/models/lithology_head
 ENV BERT_MODEL_PATH_EN_MAIN_HEAD=/app/models/en_main_head
