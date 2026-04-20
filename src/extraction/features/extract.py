@@ -482,12 +482,29 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 strip_top = min(sl.bbox.y0 for sl in overlapping_strips)
                 min_y0 = min(min_y0, strip_top - 1)
 
+            # If a table encloses the sidebar, its top edge is a hard upper boundary —
+            # description content cannot start above the table the sidebar lives in.
+            for table in self.table_structures:
+                if table.bounding_rect.contains(sidebar.rect):
+                    min_y0 = max(min_y0, table.bounding_rect.y0 - 1)
+                    break
+
             def check_y0_condition(y0):
                 return y0 > min_y0 and y0 < sidebar.rect.y1
         else:
+            if self.table_structures:
+                # No sidebar or strip log available as a spatial anchor. Restrict the description
+                # zone to the largest table on the page so that page titles, footers, and other
+                # non-table content cannot enter the description zone.
+                largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
+                _t_y0, _t_y1 = largest_table.bounding_rect.y0, largest_table.bounding_rect.y1
 
-            def check_y0_condition(y0):
-                return True
+                def check_y0_condition(y0):
+                    return _t_y0 <= y0 <= _t_y1
+            else:
+
+                def check_y0_condition(y0):
+                    return True
 
         candidate_description = [line for line in self.lines if check_y0_condition(line.rect.y0)]
 
@@ -514,6 +531,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 for line in candidate_description
                 if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=False)
                 and line not in is_not_description
+                and line.rect.width >= line.rect.height  # vertically oriented text is not a description
             ]
 
         if len(candidate_description) == 0:
@@ -552,6 +570,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             good_lines = [
                 line
                 for line in candidate_description
+                if line not in is_not_description  # excluded-keyword lines must not expand the rect
                 if line.rect.y0 >= best_y0 and line.rect.y1 <= best_y1
                 if min_description_x0 < line.rect.x0 < max_description_x0
             ]
@@ -570,13 +589,40 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 excl_line
                 for excl_line in is_not_description
                 if x_overlap_significant_smallest(excl_line.rect, cluster_rect, 0.5)
-                and best_y0 < excl_line.rect.y0
-                and excl_line.rect.y1 < best_y1
+                and best_y0 <= excl_line.rect.y0  # inclusive: also catch excluded lines at the cluster top
+                and excl_line.rect.y1 <= best_y1
             ]
 
             # the rect is valid only when description lines are clearly more numerous than non-description lines.
             if len(non_description_in_rect) / len(good_lines) > self.matching_params["non_description_lines_ratio"]:
                 continue
+
+            # Expand upward to capture content above the first seed — most importantly the
+            # description line for the synthetic "0 → first_entry" interval that sits above
+            # sidebar.rect.y0.  candidate_description already enforces the sidebar / strip-log
+            # top boundary via check_y0_condition, so no additional upper-limit check is needed.
+            # Excluded-keyword lines are explicitly blocked so titles and headers are never pulled in.
+            def is_above(best_x0, best_x1, best_y0, line: TextLine) -> bool:
+                return (
+                    line.rect.x0 > best_x0 - 5
+                    and line.rect.x0 < (best_x0 + best_x1) / 2
+                    and line.rect.y1 > best_y0 - 10  # bottom of the line is just above cluster top
+                    and line.rect.y0 < best_y0  # line actually starts above current cluster
+                    and line not in is_not_description  # never pull in excluded-keyword lines
+                )
+
+            continue_search = True
+            while continue_search:
+                line = next(
+                    (line for line in candidate_description if is_above(best_x0, best_x1, best_y0, line)),
+                    None,
+                )
+                if line:
+                    best_x0 = min(best_x0, line.rect.x0)
+                    best_x1 = max(best_x1, line.rect.x1)
+                    best_y0 = line.rect.y0
+                else:
+                    continue_search = False
 
             # expand to include entire last block
             def is_below(best_x0, best_y1, line: TextLine):
@@ -778,6 +824,43 @@ class MaterialDescriptionRectWithSidebarExtractor:
             )
         return None
 
+    @staticmethod
+    def _get_sidebar_first_depth(sidebar: Sidebar) -> float | None:
+        """Return the first (shallowest) numeric depth value from a sidebar, or None.
+
+        Handles all sidebar kinds:
+        - AAboveBSidebar / ProtocolSidebar / SpulprobeSidebar: entries are DepthColumnEntry,
+          first depth is entries[0].value (float).
+        - AToBSidebar: entries are AToBInterval, first depth is entries[0].start.value.
+        - LayerIdentifierSidebar: entries have string values — returns None.
+        """
+        if not sidebar.entries:
+            return None
+        try:
+            if sidebar.kind == "a_to_b":
+                start = sidebar.entries[0].start
+                return start.value if start is not None else None
+            else:
+                value = sidebar.entries[0].value
+                return float(value) if isinstance(value, (int | float)) else None
+        except (AttributeError, IndexError):
+            return None
+
+    def _completeness_score_bonus(self, sidebar: Sidebar) -> float:
+        """Return a bonus score rewarding sidebars that start near ground level and have many entries.
+
+        A sidebar whose first depth is ≤ 1m is very likely the real borehole profile
+        starting from the surface, rather than a sub-interval list (e.g. elevation-based
+        entries like 526.40m). The entry-count bonus rewards completeness: a sidebar
+        covering many layers is more likely to be the primary description column.
+        """
+        first_depth = self._get_sidebar_first_depth(sidebar)
+        bonus = 0.0
+        if first_depth is not None and first_depth <= 1.0:
+            bonus += 20.0
+        bonus += len(sidebar.entries)
+        return bonus
+
     def _extract_filtered_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
         """Extract and filter sidebar pairs using the common pipeline.
 
@@ -790,10 +873,29 @@ class MaterialDescriptionRectWithSidebarExtractor:
         pairs = self._find_layer_identifier_sidebar_pairs()
         pairs.extend(self._find_depth_sidebar_pairs())
 
-        # Step 2: Sort once by score (highest first)
-        pairs.sort(key=lambda pair: pair.score_match, reverse=True)
+        # Step 2: Hard-filter sidebars whose first depth exceeds the configured maximum.
+        # This rejects elevation-based false positives (e.g. 526.40m, 523.50m) that
+        # can score well on geometry alone when the real borehole starts near 0m.
+        max_first_depth = self.matching_params.get("max_sidebar_first_depth", 300)
+        pairs = [
+            pair
+            for pair in pairs
+            if pair.sidebar is None
+            or self._get_sidebar_first_depth(pair.sidebar) is None
+            or self._get_sidebar_first_depth(pair.sidebar) <= max_first_depth
+        ]
 
-        # Step 3: Apply filter chain
+        # Step 3: Sort by score + completeness bonus (highest first).
+        # The completeness bonus rewards sidebars starting near 0m and having many entries,
+        # so that a complete profile (0→20m) is preferred over a sub-interval snippet
+        # even when the snippet happens to sit geometrically closer to some text column.
+        pairs.sort(
+            key=lambda pair: pair.score_match
+            + (self._completeness_score_bonus(pair.sidebar) if pair.sidebar is not None else 0),
+            reverse=True,
+        )
+
+        # Step 4: Apply filter chain
         filtered_pairs = [pair for pair in pairs if pair.score_match >= 0]
         filtered_pairs = self._filter_by_intersections(filtered_pairs)
 
