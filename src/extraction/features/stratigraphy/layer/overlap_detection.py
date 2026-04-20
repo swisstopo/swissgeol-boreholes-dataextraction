@@ -121,7 +121,7 @@ def find_split_by_convolution(layers_prev: list[Layer], layers_curr: list[Layer]
 
     for i in list(range(1, min(len(layers_prev), len(layers_curr)) + 1)):
         # All layers should match to enforce overlap
-        convoluted_layers_match = [
+        if all(
             _are_layers_similar(
                 layer_prev=layer_prev,
                 layer_curr=layer_curr,
@@ -130,9 +130,7 @@ def find_split_by_convolution(layers_prev: list[Layer], layers_curr: list[Layer]
                 is_extremity=(j == 0 or j == i - 1),  # Indicate to function that one layer might be cut (extremities)
             )
             for j, (layer_prev, layer_curr) in enumerate(zip(layers_prev[-i:], layers_curr[:i], strict=True))
-        ]
-        print(convoluted_layers_match)
-        if all(convoluted_layers_match):
+        ):
             idx_next = i
 
     return idx_next
