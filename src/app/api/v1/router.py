@@ -1,6 +1,6 @@
 """Main router for the app."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from app.api.v1.endpoints.bounding_boxes import bounding_boxes
@@ -232,7 +232,7 @@ def post_extract_stratigraphy(request: ExtractStratigraphyRequest) -> ExtractStr
         500: {"model": BadRequestResponse, "description": "Internal server error"},
     },
 )
-def post_classify_lithology(request: ClassifyLithologyRequest) -> ClassifyLithologyResponse:
+def post_classify_lithology(request: ClassifyLithologyRequest, http_request: Request) -> ClassifyLithologyResponse:
     """Classify a plain-text material description using the trained BERT model.
 
     ### Request Body
@@ -248,4 +248,4 @@ def post_classify_lithology(request: ClassifyLithologyRequest) -> ClassifyLithol
     - **400 Bad Request**: Invalid request parameters.
     - **500 Internal Server Error**: Model loading or inference failure.
     """
-    return classify_lithology(request)
+    return classify_lithology(request, http_request.app.state.bert_models)

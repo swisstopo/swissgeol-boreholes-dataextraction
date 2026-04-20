@@ -44,10 +44,6 @@ _MODEL_S3_KEY_HEAD_ENV_VARS = {
 # Where downloaded models are cached on disk between warm Lambda invocations.
 _LOCAL_MODEL_CACHE_DIR = Path("/tmp/bert_models")
 
-# Module-level model cache keyed by (classification_system_name, resolved_model_path).
-# Avoids reloading the BERT model on every request.
-_model_cache: dict[tuple[str, str], BertModel] = {}
-
 
 def _resolve_model_path(classification_system_name: str) -> str:
     """Resolve the local path to the fine-tuned BERT model.
@@ -124,37 +120,41 @@ def _resolve_backbone_path() -> str | None:
     return None
 
 
-def _get_bert_model(classification_system_name: str) -> BertModel:
-    """Return a cached BertModel, loading it from disk on the first call.
-
-    Args:
-        classification_system_name (str): One of 'lithology', 'en_main'.
+def load_models() -> dict[str, BertModel]:
+    """Load all BERT models. Called once at application startup via the lifespan.
 
     Returns:
-        BertModel: Ready-to-use model and tokenizer pair.
+        dict mapping classification system name to its loaded BertModel.
+
+    Raises:
+        HTTPException: If a required env var is missing or a path does not exist.
     """
     from classification.models.model import BertModel
     from classification.utils.classification_classes import ExistingClassificationSystems
 
-    classification_system = ExistingClassificationSystems.get_classification_system_type(classification_system_name)
-    model_path = _resolve_model_path(classification_system_name)
     backbone_path = _resolve_backbone_path()
-    cache_key = (classification_system_name, model_path)
-    if cache_key not in _model_cache:
-        _model_cache[cache_key] = BertModel(model_path, classification_system, backbone_path=backbone_path)
-    return _model_cache[cache_key]
+    models = {}
+    for system_name in _MODEL_PATH_ENV_VARS:
+        model_path = _resolve_model_path(system_name)
+        classification_system = ExistingClassificationSystems.get_classification_system_type(system_name)
+        models[system_name] = BertModel(model_path, classification_system, backbone_path=backbone_path)
+        logger.info(f"Loaded {system_name} model from {model_path}")
+    return models
 
 
-def classify_lithology(request: ClassifyLithologyRequest) -> ClassifyLithologyResponse:
+def classify_lithology(
+    request: ClassifyLithologyRequest, bert_models: dict[str, BertModel]
+) -> ClassifyLithologyResponse:
     """Classify a material description using the BERT model.
 
     Args:
         request (ClassifyLithologyRequest): The classification request containing a plain-text
             material description and the target classification system.
+        bert_models: Models loaded at startup via the lifespan, keyed by classification system name.
 
     Returns:
         ClassifyLithologyResponse: Predicted class name for the input description.
     """
-    bert_model = _get_bert_model(request.classification_system)
+    bert_model = bert_models[request.classification_system]
     predicted_class = bert_model.predict_class(request.description)
     return ClassifyLithologyResponse(class_name=predicted_class.name)
