@@ -399,6 +399,14 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 return True
         return False
 
+    def _count_keyword_matches(self, rect: pymupdf.Rect) -> int:
+        """Count lines within rect that match including_expressions."""
+        return sum(
+            1
+            for line in get_description_lines(self.lines, rect)
+            if line.is_description(self.matching_params, self.language, None, search_excluding=False)
+        )
+
     def _get_geometric_description_seeds(
         self, candidate_description: list[TextLine], sidebar: Sidebar | None
     ) -> list[TextLine] | None:
@@ -526,12 +534,15 @@ class MaterialDescriptionRectWithSidebarExtractor:
         if using_geometric_seeds:
             is_description = [line for line in geometric_seeds if line not in is_not_description]
         else:
+            # No sidebar or strip log available — use all candidate lines as seeds.
+            # The column-level keyword gate later ensures at least one inclusion keyword
+            # is present in the accepted cluster, so no per-line keyword check is needed.
             is_description = [
                 line
                 for line in candidate_description
-                if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=False)
-                and line not in is_not_description
-                and line.rect.width >= line.rect.height  # vertically oriented text is not a description
+                if line not in is_not_description
+                and line.rect.width >= line.rect.height
+                and self._line_has_real_word(line.text)
             ]
 
         if len(candidate_description) == 0:
@@ -581,6 +592,16 @@ class MaterialDescriptionRectWithSidebarExtractor:
             # Rejects clusters that are purely numeric or consist only of codes/identifiers,
             # even when a stray unit symbol or letter-bearing code seeded the cluster.
             if not any(self._line_has_real_word(line.text) for line in good_lines):
+                continue
+
+            # The column must contain at least one line matching the inclusion keyword list.
+            # This is a column-level gate (not per-line), so geometric and table-based detection
+            # still drive which lines are seeds — we just require at least one keyword hit anywhere
+            # in the cluster to confirm it is a geological description column.
+            if not any(
+                line.is_description(self.matching_params, self.language, self.analytics, search_excluding=False)
+                for line in good_lines
+            ):
                 continue
 
             # check that no lines that have excluded words are contained in the rect
@@ -647,9 +668,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         if using_geometric_seeds and len(candidate_rects) > 1:
             # Multiple clusters arise when narrow secondary columns (layer codes, measurements)
-            # share the seeding x-range with the real description column. Material descriptions
-            # always occupy the widest column, so prefer by rect width.
-            candidate_rects = [max(candidate_rects, key=lambda r: r.width)]
+            # share the seeding x-range with the real description column. Prefer by keyword match
+            # count first (more geological content = more likely the real description column),
+            # then fall back to width as a tiebreaker.
+            candidate_rects = [max(candidate_rects, key=lambda r: (self._count_keyword_matches(r), r.width))]
 
         return candidate_rects
 
@@ -669,10 +691,13 @@ class MaterialDescriptionRectWithSidebarExtractor:
         if sidebar:
             return max(
                 candidate_rects,
-                key=lambda rect: MaterialDescriptionRectWithSidebar(sidebar, rect, self.lines).score_match,
+                key=lambda rect: (
+                    self._count_keyword_matches(rect),
+                    MaterialDescriptionRectWithSidebar(sidebar, rect, self.lines).score_match,
+                ),
             )
         else:
-            return candidate_rects[0]
+            return max(candidate_rects, key=lambda rect: (self._count_keyword_matches(rect), rect.width))
 
     def _match_sidebars_to_description_rects(
         self, sidebars_noise: list[SidebarNoise]
