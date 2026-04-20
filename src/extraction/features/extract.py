@@ -6,7 +6,7 @@ import statistics
 import fastquadtree
 import pymupdf
 
-from extraction.features.stratigraphy.interval.interval import IntervalBlockPair
+from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
     Layer,
@@ -559,7 +559,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             - The rectangle has not been used yet.
             - The potential pair does not have an already matched sidebar or rectangle between its elements.
             """
-            joined_rect = joined_rect = sidebars_noise[s_idx].sidebar.rect | mat_desc_rect
+            joined_rect = sidebars_noise[s_idx].sidebar.rect | mat_desc_rect
 
             return (
                 s_idx not in used_sidebars_idx  # don't re-match an already matched sidebar
@@ -901,7 +901,7 @@ def _hard_group_match(
     sidebar: Sidebar,
     description_lines: list[TextLine],
     affinities: list[Affinity],
-    depth_interval_zones: list,
+    depth_interval_zones: list[IntervalZone],
 ) -> list[IntervalBlockPair] | None:
     """Try to match lines to intervals by pre-grouping continuation lines.
 
@@ -917,7 +917,8 @@ def _hard_group_match(
 
     representatives = [group[0] for group in groups]
     group_by_rep_id = {id(rep): group for rep, group in zip(representatives, groups, strict=True)}
-    grouped_affinities = [affinities[description_lines.index(rep)] for rep in representatives]
+    line_index = {id(line): idx for idx, line in enumerate(description_lines)}
+    grouped_affinities = [affinities[line_index[id(rep)]] for rep in representatives]
     affinity_scores = sidebar.dp_weighted_affinities(grouped_affinities)
     _, mapping = IntervalToLinesDP(depth_interval_zones, representatives, affinity_scores).solve(sidebar.dp_scoring_fn)
     mapping = [(zone, [line for rep in reps for line in group_by_rep_id[id(rep)]]) for zone, reps in mapping]
@@ -931,7 +932,7 @@ def _soft_match(
     sidebar: Sidebar,
     description_lines: list[TextLine],
     affinities: list[Affinity],
-    depth_interval_zones: list,
+    depth_interval_zones: list[IntervalZone],
 ) -> list[IntervalBlockPair]:
     """Match lines to intervals using the original ungrouped DP."""
     affinity_scores = sidebar.dp_weighted_affinities(affinities)
