@@ -31,16 +31,26 @@ def select_boreholes_with_overlap(
     """
     for current_borehole in current_page_boreholes:
         for previous_page_borehole in previous_page_boreholes:
-            bottom_duplicate_idx = find_last_duplicate_layer_index(
+            # # Check overlap between layers
+            if id_best := find_split_by_convolution(
                 previous_page_borehole.predictions, current_borehole.predictions, matching_params
-            )
-
-            # Potential overlap detected
-            if bottom_duplicate_idx is not None:
-                # Compute indices to cut duplicate layers at the overlap
-                upper_id, lower_id = find_optimal_split(previous_page_borehole, current_borehole, bottom_duplicate_idx)
+            ):
+                upper_id = len(previous_page_borehole.predictions)
+                lower_id = id_best
 
                 return previous_page_borehole, current_borehole, (upper_id, lower_id)
+
+            # TODO remove old methods
+            # bottom_duplicate_idx = find_last_duplicate_layer_index(
+            #     previous_page_borehole.predictions, current_borehole.predictions, matching_params
+            # )
+
+            # # Potential overlap detected
+            # if bottom_duplicate_idx is not None:
+            #     # Compute indices to cut duplicate layers at the overlap
+            #   upper_id, lower_id = find_optimal_split(previous_page_borehole, current_borehole, bottom_duplicate_idx)
+
+            # return previous_page_borehole, current_borehole, (upper_id, lower_id)
 
     return None, None, None
 
@@ -84,6 +94,71 @@ def find_optimal_split(
     id_upper_end = len(borehole_to_extend.predictions) - offset
     id_lower_start = 1 + last_duplicate_layer_index - offset
     return id_upper_end, id_lower_start
+
+
+def _are_layers_similar(
+    layer_prev: Layer, layer_curr: Layer, material_threshold: float, force_depth_matching: bool = False
+) -> bool:
+    """_summary_.
+
+    Args:
+        layer_prev (Layer): _description_
+        layer_curr (Layer): _description_
+        material_threshold (float): _description_
+        force_depth_matching (bool, optional): _description_. Defaults to False.
+
+    Returns:
+        bool: _description_
+    """
+    # Check how close two layers are from each other based on depth and material description
+    # Rule 1: Material description should exists
+    if not layer_prev.material_description or not layer_curr.material_description:
+        return False
+
+    # Rule 2: Material description score should exceed threshold
+    if not _is_duplicate(
+        cur_text=layer_curr.material_description.text,
+        prev_text=layer_prev.material_description.text,
+        t=material_threshold,
+    ):
+        return False
+
+    # Rule 3: If depth exists, should match
+    if force_depth_matching and layer_curr.depths and layer_prev.depths:
+        # Rule 3.1 Strating depth should match
+        if layer_curr.depths.start and layer_prev.depths.start and layer_curr.depths.start != layer_prev.depths.start:
+            return False
+        # Rule 3.2 Ending depth should match
+        if layer_curr.depths.end and layer_prev.depths.end and layer_curr.depths.end != layer_prev.depths.end:
+            return False
+
+    # All rules validated
+    return True
+
+
+def find_split_by_convolution(layers_prev: list[Layer], layers_curr: list[Layer], matching_params: dict) -> int | None:
+    """_summary_.
+
+    Args:
+        layers_prev (list[Layer]): _description_
+        layers_curr (list[Layer]): _description_
+        matching_params (dict): _description_
+
+    Returns:
+        int | None: _description_
+    """
+    material_threshold = matching_params["duplicate_layer_threshold"]
+    idx_best = None
+
+    for i in list(range(1, min(len(layers_prev), len(layers_curr)) + 1)):
+        # All layers should match to enforce overlap
+        if all(
+            _are_layers_similar(layers_prev, layers_curr, material_threshold)
+            for layers_prev, layers_curr in zip(layers_prev[-i:], layers_curr[:i], strict=True)
+        ):
+            idx_best = i
+
+    return idx_best
 
 
 def find_last_duplicate_layer_index(
