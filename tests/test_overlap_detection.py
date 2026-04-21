@@ -26,9 +26,9 @@ def create_layer():
 
 @pytest.fixture
 def create_elevation_layer():
-    """Create a Layer with given text."""
+    """Create a Layer with given text and depth interval."""
 
-    def _create_elevation_layer(text: str, elevation: tuple[int, int]) -> Layer:
+    def _create_elevation_layer(text: str, elevation: tuple[int | None, int | None]) -> Layer:
         line_feat = FeatureOnPage(MaterialDescriptionLine(text), rect=pymupdf.Rect, page=0)
         material_description = MaterialDescription(text, [line_feat])
         depths = LayerDepths(
@@ -134,7 +134,7 @@ def test_find_last_duplicate_ocr_error(create_layer):
 
 
 def test_find_last_duplicate_full_duplicates(create_layer):
-    """Test when the number of duplicated layer of the current page exeeds the number of layer in the previous."""
+    """Test when the number of duplicated layers of the current page exceeds the number of layer in the previous."""
     prev_layers = [create_layer("Layer B"), create_layer("Layer C"), create_layer("Layer D")]
 
     current_layers_correct = [
@@ -148,7 +148,7 @@ def test_find_last_duplicate_full_duplicates(create_layer):
 
 
 def test_are_layers_similar_text(create_layer):
-    """Test if two layer are matched based on small text difference."""
+    """Test if two layers are matched based on small text difference."""
     layer_a = create_layer("Desc A")
     layer_b = create_layer("Desc AB")
     assert are_layers_similar(layer_a, layer_b, material_threshold=0.80)
@@ -156,7 +156,7 @@ def test_are_layers_similar_text(create_layer):
 
 
 def test_are_layers_similar_elevation(create_elevation_layer):
-    """Test if two layer are matched based on elevation difference."""
+    """Test if two layers are matched based on elevation difference."""
     layer_a = create_elevation_layer("Desc A", [0, 1])
     layer_b = create_elevation_layer("Desc A", [0, 2])
     layer_c = create_elevation_layer("Desc A", [0, None])
@@ -166,7 +166,7 @@ def test_are_layers_similar_elevation(create_elevation_layer):
 
 
 def test_are_layers_similar_extremities(create_layer):
-    """Test if two layer are matched based on position in file."""
+    """Test if two layers are matched based on position in file."""
     layer_a = create_layer("Desc A Desc B")
     layer_b = create_layer("Desc A")
     layer_c = create_layer("Desc B")

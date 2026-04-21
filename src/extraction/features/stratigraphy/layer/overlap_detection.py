@@ -17,8 +17,8 @@ def select_boreholes_with_overlap(
 ) -> tuple[ExtractedBorehole | None, ExtractedBorehole | None, tuple[int, int] | None]:
     """Remove duplicate layers caused by overlapping scanned pages.
 
-    Compare layers from current page with those from previous page to identify and remove
-    duplicates. Layers are compared from bottom to top based on their material descriptions.
+    Compare layers from current page with those from previous page using a sliding-window
+    approach to find the longest contiguous overlap at the page boundary.
 
     Args:
         previous_page_boreholes (list[ExtractedBorehole]): Layers from previous page
@@ -27,12 +27,14 @@ def select_boreholes_with_overlap(
 
     Returns:
         (ExtractedBorehole | None, ExtractedBorehole | None, tuple[int, int] | None):
-                The boreholes to be extended, the continuing borehole, and the indexes of the first and last
-                duplicated layer in the previous and continuing borehole, if any.
+            The borehole to be extended, the continuing borehole, and the cut indices
+            ``(upper_id, lower_id)`` where ``upper_id`` is the number of layers to keep
+            from the previous borehole and ``lower_id`` is the index of the first
+            non-overlapping layer in the continuing borehole.
     """
     for current_borehole in current_page_boreholes:
         for previous_page_borehole in previous_page_boreholes:
-            # # Check overlap between layers
+            # Check overlap between layers
             if id_best := find_split_by_convolution(
                 previous_page_borehole.predictions, current_borehole.predictions, matching_params
             ):
@@ -68,7 +70,7 @@ def are_layers_similar(
     Returns:
         bool: True if layers are similar according to all active rules, False otherwise.
     """
-    # Rule 1: Material description should exists
+    # Rule 1: Material descriptions must exist
     if not layer_prev.material_description or not layer_curr.material_description:
         return False
 
@@ -83,7 +85,7 @@ def are_layers_similar(
 
     # Rule 3: If depth exists, should match
     if force_depth_matching and layer_curr.depths and layer_prev.depths:
-        # Rule 3.1 Strating depth should match within tolerence
+        # Rule 3.1 Starting depth should match within tolerance
         if (
             layer_curr.depths.start
             and layer_curr.depths.start.value
@@ -92,7 +94,7 @@ def are_layers_similar(
             and not math.isclose(layer_curr.depths.start.value, layer_prev.depths.start.value, abs_tol=1e-2)
         ):
             return False
-        # Rule 3.2 Ending depth should match within tolerence
+        # Rule 3.2 Ending depth should match within tolerance
         if (
             layer_curr.depths.end
             and layer_curr.depths.end.value
@@ -141,13 +143,14 @@ def find_split_by_convolution(layers_prev: list[Layer], layers_curr: list[Layer]
     return idx_next
 
 
-def _is_duplicate(cur_text: str, prev_text: str, t: float, is_extremity: bool):
+def _is_duplicate(cur_text: str, prev_text: str, t: float, is_extremity: bool) -> bool:
     """Detect if layer and prev_layer are duplicates across a page break.
 
     Strategy:
-      - Check any suffix of prev_text words vs the full current text.
-      - Check any prefix of current words vs the full prev_text text.
-    This covers both split cases (the prev_text was cut off / the cur_text only repeats the tail).
+        - If `is_extremity` is True: uses partial matching to handle truncated boundary layers. Compares
+        any suffix of `prev_text` against full `cur_text`, and any prefix of `cur_text` against
+        full `prev_text`.
+        - If `is_extremity` is False: compares the full text of both layers directly.
 
     Args:
         cur_text (str): The text of the current layer to compare.
