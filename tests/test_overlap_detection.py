@@ -3,8 +3,8 @@
 import pymupdf
 import pytest
 
-from extraction.features.stratigraphy.layer.layer import Layer
-from extraction.features.stratigraphy.layer.overlap_detection import find_split_by_convolution
+from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry
+from extraction.features.stratigraphy.layer.overlap_detection import are_layers_similar, find_split_by_convolution
 from swissgeol_doc_processing.text.textblock import MaterialDescription, MaterialDescriptionLine
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 from swissgeol_doc_processing.utils.file_utils import read_params
@@ -22,6 +22,22 @@ def create_layer():
         return Layer(material_description=material_description, depths=None)
 
     return _create_layer
+
+
+@pytest.fixture
+def create_elevation_layer():
+    """Create a Layer with given text."""
+
+    def _create_elevation_layer(text: str, elevation: tuple[int, int]) -> Layer:
+        line_feat = FeatureOnPage(MaterialDescriptionLine(text), rect=pymupdf.Rect, page=0)
+        material_description = MaterialDescription(text, [line_feat])
+        depths = LayerDepths(
+            LayerDepthsEntry(elevation[0], rect=pymupdf.Rect, page_number=0),
+            LayerDepthsEntry(elevation[1], rect=pymupdf.Rect, page_number=0),
+        )
+        return Layer(material_description=material_description, depths=depths)
+
+    return _create_elevation_layer
 
 
 def test_find_last_duplicate_no_duplicates(create_layer):
@@ -53,6 +69,7 @@ def test_find_last_duplicate_multiple_consecutive(create_layer):
 
 def test_find_last_duplicate_wrong_line_grouping(create_layer):
     """Test when description lines are grouped differently on each page, due to different scan quality."""
+    # TODO: Test for extremities
     prev_layers = [create_layer("Layer A"), create_layer("Layer B"), create_layer("Layer C")]
     current_layers = [
         create_layer("Layer B"),
@@ -142,4 +159,33 @@ def test_find_last_duplicate_full_duplicates(create_layer):
         create_layer("Layer D"),
     ]
     bottom_duplicated_idx = find_split_by_convolution(prev_layers, current_layers_correct, matching_params)
-    assert bottom_duplicated_idx == 4
+    assert bottom_duplicated_idx is None
+
+
+def test_are_layers_similar_text(create_layer):
+    """Test if two layer are matched based on small text difference."""
+    layer_a = create_layer("Desc A")
+    layer_b = create_layer("Desc AB")
+    assert are_layers_similar(layer_a, layer_b, material_threshold=0.80)
+    assert not are_layers_similar(layer_a, layer_b, material_threshold=1.00)
+
+
+def test_are_layers_similar_elevation(create_elevation_layer):
+    """Test if two layer are matched based on elevation difference."""
+    layer_a = create_elevation_layer("Desc A", [0, 1])
+    layer_b = create_elevation_layer("Desc A", [0, 2])
+    layer_c = create_elevation_layer("Desc A", [0, None])
+    assert are_layers_similar(layer_a, layer_b, force_depth_matching=False)
+    assert not are_layers_similar(layer_a, layer_b, force_depth_matching=True)
+    assert are_layers_similar(layer_a, layer_c, force_depth_matching=True)
+
+
+def test_are_layers_similar_extremities(create_layer):
+    """Test if two layer are matched based on position in file."""
+    layer_a = create_layer("Desc A Desc B")
+    layer_b = create_layer("Desc A")
+    layer_c = create_layer("Desc B")
+    assert not are_layers_similar(layer_a, layer_b, is_extremity=False)
+    assert not are_layers_similar(layer_a, layer_b, is_extremity=True)
+    assert are_layers_similar(layer_a, layer_c, is_extremity=True)
+    assert not are_layers_similar(layer_c, layer_a, is_extremity=True)

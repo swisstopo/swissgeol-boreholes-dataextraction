@@ -1,6 +1,7 @@
 """This module contains functionality for detecting duplicate layers across pdf pages."""
 
 import logging
+import math
 
 import Levenshtein
 
@@ -43,10 +44,10 @@ def select_boreholes_with_overlap(
     return None, None, None
 
 
-def _are_layers_similar(
+def are_layers_similar(
     layer_prev: Layer,
     layer_curr: Layer,
-    material_threshold: float,
+    material_threshold: float = 0.95,
     force_depth_matching: bool = False,
     is_extremity: bool = False,
 ) -> bool:
@@ -60,7 +61,7 @@ def _are_layers_similar(
     Args:
         layer_prev (Layer): The layer from the previous page.
         layer_curr (Layer): The layer from the current page.
-        material_threshold (float): Minimum similarity threshold for material descriptions.
+        material_threshold (float): Minimum similarity threshold for material descriptions. Defaults to 0.95.
         force_depth_matching (bool, optional): Whether to enforce matching depths. Defaults to False.
         is_extremity (bool, optional): Whether this layer is at the boundary of the overlap. Defaults to False.
 
@@ -82,18 +83,22 @@ def _are_layers_similar(
 
     # Rule 3: If depth exists, should match
     if force_depth_matching and layer_curr.depths and layer_prev.depths:
-        # Rule 3.1 Strating depth should match
+        # Rule 3.1 Strating depth should match within tolerence
         if (
             layer_curr.depths.start
+            and layer_curr.depths.start.value
             and layer_prev.depths.start
-            and layer_curr.depths.start.value != layer_prev.depths.start.value
+            and layer_prev.depths.start.value
+            and not math.isclose(layer_curr.depths.start.value, layer_prev.depths.start.value, abs_tol=1e-2)
         ):
             return False
-        # Rule 3.2 Ending depth should match
+        # Rule 3.2 Ending depth should match within tolerence
         if (
             layer_curr.depths.end
+            and layer_curr.depths.end.value
             and layer_prev.depths.end
-            and layer_curr.depths.end.value != layer_prev.depths.end.value
+            and layer_prev.depths.end.value
+            and not math.isclose(layer_curr.depths.end.value, layer_prev.depths.end.value, abs_tol=1e-2)
         ):
             return False
 
@@ -122,7 +127,7 @@ def find_split_by_convolution(layers_prev: list[Layer], layers_curr: list[Layer]
     for i in list(range(1, min(len(layers_prev), len(layers_curr)) + 1)):
         # All layers should match to enforce overlap
         if all(
-            _are_layers_similar(
+            are_layers_similar(
                 layer_prev=layer_prev,
                 layer_curr=layer_curr,
                 material_threshold=material_threshold,
