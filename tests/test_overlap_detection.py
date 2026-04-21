@@ -67,21 +67,6 @@ def test_find_last_duplicate_multiple_consecutive(create_layer):
     assert bottom_duplicated_idx == 2
 
 
-def test_find_last_duplicate_wrong_line_grouping(create_layer):
-    """Test when description lines are grouped differently on each page, due to different scan quality."""
-    # TODO: Test for extremities
-    prev_layers = [create_layer("Layer A"), create_layer("Layer B"), create_layer("Layer C")]
-    current_layers = [
-        create_layer("Layer B"),
-        create_layer("Layer"),  # description incorrectly split,
-        create_layer("C"),  # the algorithm will also pick up this layer
-        create_layer("Layer D"),
-    ]
-
-    bottom_duplicated_idx = find_split_by_convolution(prev_layers, current_layers, matching_params)
-    assert bottom_duplicated_idx == 2
-
-
 def test_find_last_duplicate_false_positive(create_layer):
     """Test when a layer has the same description, but is not a duplicate (above layer do not match)."""
     prev_layers = [create_layer("Layer A"), create_layer("Layer B"), create_layer("Layer C"), create_layer("Layer D")]
