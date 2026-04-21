@@ -173,48 +173,48 @@ def test_evaluate_multiple_documents(groundtruth, groundwater_at_2m22, groundwat
     gt_matching_index_example = {0: 0}
     gt_matching_index_example_2 = {0: 1, 1: 0}
 
-    overall_metrics = OverallGroundwaterMetrics(
-        [
-            GroundwaterEvaluator.evaluate(
-                FileGroundwaterWithGroundTruth(
-                    filename="example_borehole_profile.pdf",
-                    boreholes=[
-                        BoreholeGroundwaterWithGroundTruth(
-                            groundwater=GroundwatersInBorehole([groundwater_at_2m22, groundwater_at_3m22]),
-                            ground_truth=groundtruth.for_file("example_borehole_profile.pdf").get(
-                                gt_matching_index_example[0]
-                            )["groundwater"],
-                        )
-                    ],
+    gw_1 = GroundwaterEvaluator.evaluate(
+        FileGroundwaterWithGroundTruth(
+            filename="example_borehole_profile.pdf",
+            boreholes=[
+                BoreholeGroundwaterWithGroundTruth(
+                    groundwater=GroundwatersInBorehole([groundwater_at_2m22, groundwater_at_3m22]),
+                    ground_truth=groundtruth.for_file("example_borehole_profile.pdf").get(
+                        gt_matching_index_example[0]
+                    )["groundwater"],
                 )
-            ),
-            GroundwaterEvaluator.evaluate(
-                FileGroundwaterWithGroundTruth(
-                    filename="example_borehole_profile_2.pdf",
-                    boreholes=[
-                        BoreholeGroundwaterWithGroundTruth(
-                            groundwater=GroundwatersInBorehole([groundwater_at_2m22]),
-                            ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf").get(
-                                gt_matching_index_example_2[0]
-                            )["groundwater"],
-                        ),
-                        BoreholeGroundwaterWithGroundTruth(
-                            groundwater=GroundwatersInBorehole([groundwater_at_3m22]),
-                            ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf").get(
-                                gt_matching_index_example_2[1]
-                            )["groundwater"],
-                        ),
-                    ],
+            ],
+        )
+    )
+    gw_2 = GroundwaterEvaluator.evaluate(
+        FileGroundwaterWithGroundTruth(
+            filename="example_borehole_profile_2.pdf",
+            boreholes=[
+                BoreholeGroundwaterWithGroundTruth(
+                    groundwater=GroundwatersInBorehole([groundwater_at_2m22]),
+                    ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf").get(
+                        gt_matching_index_example_2[0]
+                    )["groundwater"],
                 ),
-            ),
-        ]
+                BoreholeGroundwaterWithGroundTruth(
+                    groundwater=GroundwatersInBorehole([groundwater_at_3m22]),
+                    ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf").get(
+                        gt_matching_index_example_2[1]
+                    )["groundwater"],
+                ),
+            ],
+        ),
     )
 
     # Assertions
-    assert len(overall_metrics.groundwater_metrics) == 2
-    assert overall_metrics.groundwater_metrics[0].filename == "example_borehole_profile.pdf"
-    assert overall_metrics.groundwater_metrics[1].filename == "example_borehole_profile_2.pdf"
-    assert overall_metrics.groundwater_metrics[0].groundwater_metrics.f1 == 1.0
-    assert overall_metrics.groundwater_metrics[1].groundwater_metrics.tp == 2.0
-    assert overall_metrics.groundwater_metrics[1].groundwater_metrics.fn == 0.0
-    assert overall_metrics.groundwater_metrics[1].groundwater_metrics.fp == 0.0
+    assert gw_1.filename == "example_borehole_profile.pdf"
+    assert gw_1.groundwater_metrics.f1 == 1.0
+    assert gw_1.groundwater_metrics.tp == 2.0
+    assert gw_1.groundwater_metrics.fn == 0.0
+    assert gw_1.groundwater_metrics.fp == 0.0
+
+    assert gw_2.filename == "example_borehole_profile_2.pdf"
+    assert gw_2.groundwater_metrics.f1 == 1.0
+    assert gw_2.groundwater_metrics.tp == 2.0
+    assert gw_2.groundwater_metrics.fn == 0.0
+    assert gw_2.groundwater_metrics.fp == 0.0
