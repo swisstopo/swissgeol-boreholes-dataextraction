@@ -1,6 +1,7 @@
 """Contains the main extraction pipeline for stratigraphy."""
 
 import logging
+import re
 
 import fastquadtree
 import pymupdf
@@ -124,6 +125,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         material_descriptions_without_sidebar = self._extract_material_descriptions_without_sidebar()
         if material_descriptions_without_sidebar and not any(
             self._pairs_intersect(material_descriptions_without_sidebar, other_pair)
+            or self._pairs_adjacent(material_descriptions_without_sidebar, other_pair)
             for other_pair in pairs_from_valid_boreholes
         ):
             # add the material descriptions without sidebar if there is no intersection with any of the already
@@ -200,6 +202,19 @@ class MaterialDescriptionRectWithSidebarExtractor:
             bbox2 = bbox2 | pair2.sidebar.rect
 
         return bbox1.intersects(bbox2)
+
+    def _pairs_adjacent(self, pair1, pair2) -> bool:
+        """Check if two pairs are horizontally adjacent with vertical overlap.
+
+        Catches cases where a false-positive column sits immediately next to a
+        real borehole column without actually overlapping it.
+        """
+        bbox1 = pair1.material_description_rect
+        bbox2 = pair2.material_description_rect
+        gap_threshold = self.page_width * 0.05
+        y_overlap = bbox1.y0 < bbox2.y1 and bbox2.y0 < bbox1.y1
+        h_adjacent = abs(bbox1.x1 - bbox2.x0) < gap_threshold or abs(bbox2.x1 - bbox1.x0) < gap_threshold
+        return y_overlap and h_adjacent
 
     def _create_borehole_from_pair(self, pair: MaterialDescriptionRectWithSidebar) -> ExtractedBorehole | None:
         """Create an ExtractedBorehole from a MaterialDescriptionRectWithSidebar."""
@@ -380,19 +395,17 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
     @staticmethod
     def _line_has_real_word(text: str) -> bool:
-        """Return True if text contains at least one real-word token.
+        """Return True if text contains at least one real word.
 
-        A real word requires 3+ alphabetic characters in the token, does not start
-        with a digit, and has at least half of its letters in lowercase. This
-        distinguishes geological description words ("Sand", "schluffig", "Kies")
-        from coded identifiers ("KB1-P6", "4bc", "4a", "4Hb") and unit symbols
-        ("m", "cm") that would otherwise pass a simple alpha-character count.
+        A real word is a contiguous run of 3+ alphabetic characters that does not
+        start with a digit and has at least half its letters in lowercase. Requiring
+        contiguous letters rejects abbreviations like "m.ü.M." or "Nr." whose scattered
+        alpha chars would otherwise satisfy a simple count check.
         """
-        for token in text.split():
-            alpha = [c for c in token if c.isalpha()]
+        for word in re.findall(r"[^\W\d_]{3,}", text, re.UNICODE):
+            alpha = [c for c in word if c.isalpha()]
             if (
                 len(alpha) >= 3
-                and not token[0].isdigit()
                 and sum(1 for c in alpha if c.islower()) >= 2
                 and sum(1 for c in alpha if c.islower()) / len(alpha) >= 0.5
             ):
@@ -430,24 +443,34 @@ class MaterialDescriptionRectWithSidebarExtractor:
         if not sidebar and not self.strip_logs:
             return None
 
+        tolerance = self.page_width * 0.02
+        proximity = self.page_width * 0.15
+
         if sidebar:
-            x_anchor = sidebar.rect.x1
-            # A strip log sitting between the sidebar and the description column shifts the anchor right
+            x_right = sidebar.rect.x1
+            x_left = sidebar.rect.x0
+            # A strip log sitting between the sidebar and the description column shifts the right anchor
             overlapping_strips = [
-                sl for sl in self.strip_logs if x_overlap(sl.bbox, sidebar.rect) and sl.bbox.x1 > x_anchor
+                sl for sl in self.strip_logs if x_overlap(sl.bbox, sidebar.rect) and sl.bbox.x1 > x_right
             ]
             if overlapping_strips:
-                x_anchor = max(sl.bbox.x1 for sl in overlapping_strips)
-        else:
-            # No sidebar: anchor on the rightmost strip log edge present on the page
-            x_anchor = max(sl.bbox.x1 for sl in self.strip_logs)
+                x_right = max(sl.bbox.x1 for sl in overlapping_strips)
 
-        # Small leftward tolerance so lines whose left edge barely overlaps the anchor are not lost
-        x_start = x_anchor - self.page_width * 0.02
+            def close_to_anchor(line: TextLine) -> bool:
+                right_side = line.rect.x0 >= x_right - tolerance
+                left_side = line.rect.x1 <= x_left + tolerance and line.rect.x1 >= x_left - proximity
+                return right_side or left_side
+        else:
+            # No sidebar: only a right anchor from the strip log edge
+            x_right = max(sl.bbox.x1 for sl in self.strip_logs)
+
+            def close_to_anchor(line: TextLine) -> bool:
+                return line.rect.x0 >= x_right - tolerance
+
         seeds = [
             line
             for line in candidate_description
-            if line.rect.x0 >= x_start
+            if close_to_anchor(line)
             and line.rect.width >= line.rect.height  # vertically oriented text is not a description
             and self._line_has_real_word(line.text)  # excludes codes, unit symbols, pure numbers
         ]
@@ -584,6 +607,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 if line not in is_not_description  # excluded-keyword lines must not expand the rect
                 if line.rect.y0 >= best_y0 and line.rect.y1 <= best_y1
                 if min_description_x0 < line.rect.x0 < max_description_x0
+                if line.rect.width >= line.rect.height  # vertically oriented text is not a description
+                if self._line_has_real_word(line.text)  # pure-number lines (coordinates, heights) are not descriptions
             ]
             best_x0 = min([line.rect.x0 for line in good_lines])
             best_x1 = max([line.rect.x1 for line in good_lines])
@@ -665,6 +690,21 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     continue_search = False
 
             candidate_rects.append(pymupdf.Rect(best_x0, best_y0, best_x1, best_y1))
+
+        # Suppress narrow rects that are immediately adjacent to a wider one — these are
+        # secondary columns sitting next to the real
+        # description column, not separate boreholes.
+        gap_threshold = self.page_width * 0.05
+        suppressed = set()
+        for i, r1 in enumerate(candidate_rects):
+            for j, r2 in enumerate(candidate_rects):
+                if i == j or j in suppressed:
+                    continue
+                y_overlap_exists = r1.y0 < r2.y1 and r2.y0 < r1.y1
+                horizontally_adjacent = abs(r1.x1 - r2.x0) < gap_threshold or abs(r2.x1 - r1.x0) < gap_threshold
+                if y_overlap_exists and horizontally_adjacent:
+                    suppressed.add(i if r1.width < r2.width else j)
+        candidate_rects = [r for idx, r in enumerate(candidate_rects) if idx not in suppressed]
 
         if using_geometric_seeds and len(candidate_rects) > 1:
             # Multiple clusters arise when narrow secondary columns (layer codes, measurements)
