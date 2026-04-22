@@ -170,6 +170,14 @@ class Metrics:
         fn = sum(metric.fn for metric in metric_list)
         return cls(tp=tp, fp=fp, fn=fn)
 
+    def to_dict(self, prefix: str) -> dict[str, float]:
+        """TODO."""
+        return {
+            f"{prefix}_f1": self.f1,
+            f"{prefix}_recall": self.recall,
+            f"{prefix}_precision": self.precision,
+        }
+
 
 def relative_after_common_root(paths: Sequence[Path]) -> list[str]:
     """Return relative paths after the longest common path prefix.

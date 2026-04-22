@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import tempfile
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -101,50 +102,36 @@ def evaluate_all_predictions(
     # Evaluate overall extraction
     overall_metrics = Evaluator.aggregate(predictions)
 
-    logger.info("Macro avg:")
-    logger.info(
-        "layer f1: %.1f%%, depth interval f1: %.1f%%, material description f1: %.1f%%",
-        overall_metrics.layer_metrics.macro_f1() * 100,
-        overall_metrics.depth_interval_metrics.macro_f1() * 100,
-        overall_metrics.material_description_metrics.macro_f1() * 100,
-    )
-
     # Log detailed geology metrics
-    # geology_metrics_dict = geology_metrics.metrics_dict()
-    # logger.info("Performance metrics: %s", {k: f"{v:.3f}" for k, v in geology_metrics_dict.items()})
+    metadata_metrics_dict, geology_metrics_dict = overall_metrics.to_dicts()
+    logger.info("Metadata metrics: %s", {k: f"{v:.3f}" for k, v in metadata_metrics_dict.items()})
+    logger.info("Geology metrics: %s", {k: f"{v:.3f}" for k, v in geology_metrics_dict.items()})
 
-    # # Log detailed metadata metrics
-    # metadata_metrics = metadata_metrics_list.get_cumulated_metrics()
-    # metadata_metrics_dict = flatten(metadata_metrics.to_json(), separator="_")
-    # # document_level_metadata_metrics: pd.DataFrame = metadata_metrics_list.get_document_level_metrics()
-    # logger.info("Metadata Performance metrics: %s", metadata_metrics_dict)
+    if mlflow:
+        # Log results
+        document_level_metadata_metrics, document_level_meology_metrics = overall_metrics.to_dfs()
 
-    # Log results
-    # TODO
-    # if mlflow:
-    #     mlflow.log_metrics(geology_metrics_dict)
-    #     mlflow.log_metrics(metadata_metrics_dict)
+        mlflow.log_metrics(geology_metrics_dict)
+        mlflow.log_metrics(metadata_metrics_dict)
 
-    #     # Create temporary folder to dump csv file and track them using MLFlow
-    #     with tempfile.TemporaryDirectory() as temp_directory:
-    #         # Metadata
-    #         document_level_metadata_metrics.to_csv(
-    #             Path(temp_directory) / "document_level_metadata_metrics.csv", index_label="document_name"
-    #         )  # mlflow.log_artifact expects a file
-    #         mlflow.log_artifact(Path(temp_directory) / "document_level_metadata_metrics.csv")
-    #         # Geology
-    #         geology_metrics.document_level_metrics_df().to_csv(
-    #             Path(temp_directory) / "document_level_metrics.csv", index_label="document_name"
-    #         )  # mlflow.log_artifact expects a file
-    #         mlflow.log_artifact(Path(temp_directory) / "document_level_metrics.csv")
+        # Create temporary folder to dump csv file and track them using MLFlow
+        with tempfile.TemporaryDirectory() as temp_directory:
+            # Metadata
+            document_level_metadata_metrics.to_csv(
+                Path(temp_directory) / "document_level_metadata_metrics.csv", index_label="filename"
+            )  # mlflow.log_artifact expects a file
+            mlflow.log_artifact(Path(temp_directory) / "document_level_metadata_metrics.csv")
+            # Geology
+            document_level_meology_metrics.to_csv(
+                Path(temp_directory) / "document_level_geology_metrics.csv", index_label="filename"
+            )  # mlflow.log_artifact expects a file
+            mlflow.log_artifact(Path(temp_directory) / "document_level_geology_metrics.csv")
 
     return ExtractionBenchmarkSummary(
         ground_truth_path=str(ground_truth.path),
         n_documents=len(predictions.file_predictions_list),
-        geology={},
-        metadata={},
-        # geology=geology_metrics_dict,
-        # metadata=metadata_metrics_dict,
+        geology=geology_metrics_dict,
+        metadata=metadata_metrics_dict,
     )
 
 
