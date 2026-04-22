@@ -267,6 +267,16 @@ class MaterialDescriptionRectWithSidebarExtractor:
             list[IntervalBlockPair]: The interval block pairs.
         """
         description_lines = get_description_lines(self.lines, pair.material_description_rect)
+        # _gw_keys = self.matching_params.get("groundwater_keys", {}).get(self.language, [])
+        _header_kws = self.matching_params.get("material_description_column_headers", {}).get(self.language, [])
+        description_lines = [
+            line
+            for line in description_lines
+            if not line.is_description(self.matching_params, self.language, None, search_excluding=True)
+            and not any(kw.lower() in line.text.lower() for kw in _header_kws)
+            # and not any(key.lower() in line.text.lower() for key in _gw_keys)
+            and self._line_has_real_word(line.text)
+        ]
         diagonals = self.get_diagonals_near_textlines(description_lines, self.line_detection_params)
 
         line_affinities = get_line_affinity(
@@ -393,6 +403,21 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         return material_descriptions_sidebar_pairs
 
+    def _has_separating_line(self, y_top: float, y_bottom: float, x0: float, x1: float) -> bool:
+        """Return True if a significant horizontal line crosses the x-range between y_top and y_bottom.
+
+        Used to detect fat table/box borders that visually separate a column header from its
+        content, so that the header is never pulled into the material description rect.
+        """
+        slope_tol = self.line_detection_params.get("line_merging_params", {}).get("horizontal_slope_tolerance", 0.1)
+        for line in self.long_or_horizontal_lines:
+            if not line.is_horizontal(slope_tol):
+                continue
+            line_y = (line.start.y + line.end.y) / 2
+            if y_top < line_y < y_bottom and line.start.x < x1 and line.end.x > x0:
+                return True
+        return False
+
     @staticmethod
     def _line_has_real_word(text: str) -> bool:
         """Return True if text contains at least one real word.
@@ -413,12 +438,37 @@ class MaterialDescriptionRectWithSidebarExtractor:
         return False
 
     def _count_keyword_matches(self, rect: pymupdf.Rect) -> int:
-        """Count lines within rect that match including_expressions."""
-        return sum(
-            1
-            for line in get_description_lines(self.lines, rect)
-            if line.is_description(self.matching_params, self.language, None, search_excluding=False)
+        """Return 1 if rect contains any line matching including_expressions, 0 otherwise.
+
+        Binary so that all keyword-qualifying columns score equally on this dimension,
+        making width the true differentiator between candidates.
+        Uses direct rect containment (not get_description_lines) to avoid the right-side
+        cutoff that would penalize wide columns whose keyword lines fall in the outer 40%.
+        """
+        return int(
+            any(
+                line.is_description(self.matching_params, self.language, None, search_excluding=False)
+                for line in self.lines
+                if rect.contains(line.rect)
+            )
         )
+
+    def _has_column_header(self, rect: pymupdf.Rect) -> bool:
+        """Return True if an excluded line sits immediately above this rect (a column header).
+
+        Column headers like "Beschreibung" or "Bodenart" are a positive signal that the rect
+        is the material description column, and mark its upper content boundary.
+        """
+        header_keywords = self.matching_params.get("material_description_column_headers", {}).get(self.language, [])
+        for line in self.lines:
+            if (
+                line.rect.x0 < rect.x1
+                and line.rect.x1 > rect.x0
+                and rect.y0 - 50 <= line.rect.y1 <= rect.y0 + 5
+                and any(kw.lower() in line.text.lower() for kw in header_keywords)
+            ):
+                return True
+        return False
 
     def _get_geometric_description_seeds(
         self, candidate_description: list[TextLine], sidebar: Sidebar | None
@@ -500,10 +550,25 @@ class MaterialDescriptionRectWithSidebarExtractor:
             if above_sidebar:
                 min_y0 = max(line.rect.y0 for line in above_sidebar)
             else:
-                # No header lines found above the sidebar in its x-column. Allow a small margin above
-                # the sidebar top so description lines for the synthetic "0 → first entry" interval
-                # are included, but titles and page headers (much higher up) are not.
-                min_y0 = sidebar.rect.y0 - self.page_height * 0.05
+                # No header lines found above the sidebar in its x-column. Use the nearest
+                # horizontal separator line above the sidebar as a hard upper boundary; fall
+                # back to a small geometric margin so the synthetic "0 → first entry" interval
+                # is still reachable.
+                slope_tol = self.line_detection_params.get("line_merging_params", {}).get(
+                    "horizontal_slope_tolerance", 0.1
+                )
+                lines_above = [
+                    ln
+                    for ln in self.long_or_horizontal_lines
+                    if ln.is_horizontal(slope_tol)
+                    and (ln.start.y + ln.end.y) / 2 < sidebar.rect.y0
+                    and ln.start.x < sidebar.rect.x1
+                    and ln.end.x > sidebar.rect.x0
+                ]
+                if lines_above:
+                    min_y0 = max((ln.start.y + ln.end.y) / 2 for ln in lines_above)
+                else:
+                    min_y0 = sidebar.rect.y0 - self.page_height * 0.05
 
             # Strip log top edge: a reliable geometric anchor for where the description zone begins.
             # If a text header sits between the strip log top and the sidebar start, the header line
@@ -539,10 +604,23 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         candidate_description = [line for line in self.lines if check_y0_condition(line.rect.y0)]
 
+        # gw_keys = self.matching_params.get("groundwater_keys", {}).get(self.language, [])
+        header_keywords = self.matching_params.get("material_description_column_headers", {}).get(self.language, [])
+
+        # def is_groundwater_line(line: TextLine) -> bool:
+        #     text_lower = line.text.lower()
+        #     return any(key.lower() in text_lower for key in gw_keys)
+
+        def is_column_header_line(line: TextLine) -> bool:
+            text_lower = line.text.lower()
+            return any(kw.lower() in text_lower for kw in header_keywords)
+
         is_not_description = [
             line
             for line in candidate_description
             if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=True)
+            # or is_groundwater_line(line)
+            or is_column_header_line(line)
         ]
 
         # Primary: use geometric proximity to the sidebar / strip log as the seed signal.
@@ -643,11 +721,56 @@ class MaterialDescriptionRectWithSidebarExtractor:
             if len(non_description_in_rect) / len(good_lines) > self.matching_params["non_description_lines_ratio"]:
                 continue
 
-            # Expand upward to capture content above the first seed — most importantly the
-            # description line for the synthetic "0 → first_entry" interval that sits above
-            # sidebar.rect.y0.  candidate_description already enforces the sidebar / strip-log
-            # top boundary via check_y0_condition, so no additional upper-limit check is needed.
-            # Excluded-keyword lines are explicitly blocked so titles and headers are never pulled in.
+            # Detect the material description column header (Beschreibung, Bodenart, etc.).
+            # Anchor to the FIRST KEYWORD-MATCHING line in good_lines, not to initial_best_y0.
+            # initial_best_y0 is often inflated by stray seeds (date lines, page headers) that
+            # share the same x-column as the real content — anchoring to the first geological
+            # keyword line ensures the search window actually reaches "Beschreibung" even when
+            # date lines at y=31 pushed initial_best_y0 far above the real table.
+            initial_best_y0 = best_y0
+            first_keyword_y0 = min(
+                (
+                    ln.rect.y0
+                    for ln in good_lines
+                    if ln.is_description(self.matching_params, self.language, None, search_excluding=False)
+                ),
+                default=initial_best_y0,
+            )
+            header_y1 = next(
+                (
+                    excl_line.rect.y1
+                    for excl_line in sorted(is_not_description, key=lambda ln: -ln.rect.y1)
+                    if excl_line.rect.y1 <= first_keyword_y0 + 5
+                    and excl_line.rect.x0 < best_x1
+                    and excl_line.rect.x1 > best_x0
+                    and any(kw.lower() in excl_line.text.lower() for kw in header_keywords)
+                ),
+                None,
+            )
+            # Extend header_y1 downward to cover multi-line column names
+            # (e.g. "Beschreibung" line 1, "des aufgeschlossenen Bohrgutes" line 2).
+            if header_y1 is not None:
+                extended = True
+                while extended:
+                    extended = False
+                    for excl_line in is_not_description:
+                        if (
+                            excl_line.rect.y0 >= header_y1
+                            and excl_line.rect.y1 <= initial_best_y0 + 5
+                            and excl_line.rect.x0 < best_x1
+                            and excl_line.rect.x1 > best_x0
+                            and excl_line.rect.y1 > header_y1
+                        ):
+                            header_y1 = excl_line.rect.y1
+                            extended = True
+
+            # Hard upper boundary: only the column name bottom.
+            # Everything below header_y1 is accepted; everything above is rejected.
+            # Without a column name, cap is_above expansion at 50 px to avoid runaway chaining.
+            upward_limit = header_y1 if header_y1 is not None else initial_best_y0 - 50
+            if header_y1 is not None:
+                best_y0 = max(best_y0, header_y1)
+
             def is_above(best_x0, best_x1, best_y0, line: TextLine) -> bool:
                 return (
                     line.rect.x0 > best_x0 - 5
@@ -655,6 +778,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     and line.rect.y1 > best_y0 - 10  # bottom of the line is just above cluster top
                     and line.rect.y0 < best_y0  # line actually starts above current cluster
                     and line not in is_not_description  # never pull in excluded-keyword lines
+                    and not self._has_separating_line(line.rect.y0, best_y0, best_x0, best_x1)
+                    and line.rect.y0 >= upward_limit  # noqa: B023
                 )
 
             continue_search = True
@@ -673,7 +798,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
             # expand to include entire last block
             def is_below(best_x0, best_y1, line: TextLine):
                 return (
-                    (line.rect.x0 > best_x0 - 5)
+                    line not in is_not_description  # noqa: B023
+                    and (line.rect.x0 > best_x0 - 5)
                     and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
                     and (line.rect.y0 < best_y1 + 10)
                     and (line.rect.y1 > best_y1)
@@ -732,12 +858,20 @@ class MaterialDescriptionRectWithSidebarExtractor:
             return max(
                 candidate_rects,
                 key=lambda rect: (
+                    self._has_column_header(rect),
                     self._count_keyword_matches(rect),
                     MaterialDescriptionRectWithSidebar(sidebar, rect, self.lines).score_match,
                 ),
             )
         else:
-            return max(candidate_rects, key=lambda rect: (self._count_keyword_matches(rect), rect.width))
+            return max(
+                candidate_rects,
+                key=lambda rect: (
+                    self._has_column_header(rect),
+                    self._count_keyword_matches(rect),
+                    rect.width,
+                ),
+            )
 
     def _match_sidebars_to_description_rects(
         self, sidebars_noise: list[SidebarNoise]
