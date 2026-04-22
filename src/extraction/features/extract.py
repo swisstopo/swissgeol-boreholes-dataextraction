@@ -912,9 +912,6 @@ def get_pairs_based_on_line_affinity(
     weights = matching_params["affinity_params"]["no_sidebar"]["weights"]
     threshold = -0.3
 
-    for line, aff in zip(description_lines, affinities, strict=False):
-        print(aff.weighted_affinity(**weights), aff.vertical_spacing_affinity, line.text)
-
     for line_idx, affinity in enumerate(affinities):
         # note: the affinity of the first line is always 0.0
         if affinity.weighted_affinity(**weights) <= threshold:
