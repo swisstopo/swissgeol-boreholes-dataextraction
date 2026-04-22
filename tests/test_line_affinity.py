@@ -35,7 +35,7 @@ matching_params = read_params("matching_params.yml")
         pytest.param([], [], 2, id="no_geom_lines"),
         pytest.param(geometric_lines_cut, [], 3, id="span_line"),
         pytest.param(geometric_lines_lefthandside, [], 3, id="left_line"),
-        pytest.param([], diagonal_line, 2, id="diag_line"),
+        pytest.param([], diagonal_line, 3, id="diag_line"),
     ],
 )
 def test_get_description_blocks(geometrical_lines, diagonals, expected_num_block):
