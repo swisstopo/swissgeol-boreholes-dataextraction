@@ -19,7 +19,6 @@ from extraction.features.predictions.borehole_predictions import (
     FilePredictionsWithGroundTruth,
 )
 from extraction.features.predictions.file_predictions import FilePredictions
-from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
@@ -218,17 +217,6 @@ def test_to_json(sample_file_prediction: FilePredictions):
     assert result["boreholes"][0]["metadata"]["coordinates"]["E"] == 2789456
     assert result["language"] == "en"
     assert result["boreholes"][0]["metadata"]["name"]["name"] == "SST KB5"
-
-
-def test_overall_file_predictions(sample_file_prediction: FilePredictions):
-    """Test OverallFilePredictions class functionality."""
-    overall_predictions = OverallFilePredictions()
-
-    overall_predictions.add_file_predictions(sample_file_prediction)
-    result = overall_predictions.to_json()
-
-    assert len(result) == 1
-    assert set(result.keys()) == {"example_borehole_profile.pdf"}
 
 
 def test_evaluate_layer_matching(

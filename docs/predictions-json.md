@@ -30,8 +30,9 @@ All bounding boxes are measured with PDF points as the unit, and with the top-le
 ## Example output
 ```yaml
 {
+# TODO Return metadata as before with page dimmension and language /GT vs predicted
   "B366.pdf": {  # file name
-    "language": "de", 
+    "language": "de",
     "page_dimensions": [
       {
         "width": 591.956787109375,

@@ -109,7 +109,7 @@ def evaluate_all_predictions(
 
     if mlflow:
         # Log results
-        document_level_metadata_metrics, document_level_meology_metrics = overall_metrics.to_dfs()
+        document_level_metadata_metrics, document_level_geology_metrics = overall_metrics.to_dfs()
 
         mlflow.log_metrics(geology_metrics_dict)
         mlflow.log_metrics(metadata_metrics_dict)
@@ -122,7 +122,7 @@ def evaluate_all_predictions(
             )  # mlflow.log_artifact expects a file
             mlflow.log_artifact(Path(temp_directory) / "document_level_metadata_metrics.csv")
             # Geology
-            document_level_meology_metrics.to_csv(
+            document_level_geology_metrics.to_csv(
                 Path(temp_directory) / "document_level_geology_metrics.csv", index_label="filename"
             )  # mlflow.log_artifact expects a file
             mlflow.log_artifact(Path(temp_directory) / "document_level_geology_metrics.csv")

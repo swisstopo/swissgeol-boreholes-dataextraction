@@ -31,7 +31,7 @@ class FilePredictions:
 
 @dataclasses.dataclass
 class FilePredictionsMetrics:
-    """TODO."""
+    """Evaluation metrics for a single extracted file, covering all extraction categories."""
 
     layer_metrics: Metrics
     depth_interval_metrics: Metrics
@@ -55,7 +55,15 @@ class FilePredictionsMetrics:
 
     @classmethod
     def from_json(cls, json: dict) -> "FilePredictionsMetrics":
-        """TODO."""
+        """Construct a FilePredictionsMetrics instance from a dictionary produced by `to_json`.
+
+        Args:
+            json (dict): Dictionary with layer_metrics, depth_interval_metrics, material_description_metrics,
+                gw_metrics, and metadata_metrics.
+
+        Returns:
+            FilePredictionsMetrics: The reconstructed metrics object.
+        """
         return FilePredictionsMetrics(
             layer_metrics=Metrics.from_json(json["layer_metrics"]),
             depth_interval_metrics=Metrics.from_json(json["depth_interval_metrics"]),
@@ -89,6 +97,14 @@ class FilePredictionsWithMetrics:
 
     @classmethod
     def from_json(cls, json: dict) -> "FilePredictionsWithMetrics":
+        """Construct a FilePredictionsWithMetrics instance from a dictionary produced by `to_json`.
+
+        Args:
+            json (dict): Dictionary with filename, language, boreholes, and metrics.
+
+        Returns:
+            FilePredictionsWithMetrics: The reconstructed predictions object.
+        """
         return FilePredictionsWithMetrics(
             filename=json["filename"],
             language=json["language"],

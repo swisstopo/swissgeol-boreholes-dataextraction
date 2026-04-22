@@ -179,7 +179,6 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
 
         logger.info(f"Metadata written to {self.metadata_path}")
         with open(self.metadata_path, "w", encoding="utf8") as file:
-            # TODO: check that part
             json.dump(run_result.result.get_metadata_as_dict(), file, ensure_ascii=False, indent=2)
 
         if self.options.matching_analytics and self.analytics is not None:

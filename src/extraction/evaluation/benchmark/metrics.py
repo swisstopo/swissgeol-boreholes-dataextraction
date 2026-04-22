@@ -61,7 +61,14 @@ class OverallMetrics:
         )
 
     def to_macro_dict(self, prefix: str) -> dict[str, float]:
-        """TODO."""
+        """Return macro-averaged f1, recall, and precision as a dictionary with prefixed keys.
+
+        Args:
+            prefix (str): String prepended to each key.
+
+        Returns:
+            dict[str, float]: Flat macro-averaged metrics dictionary with prefixed keys.
+        """
         return {
             f"{prefix}_f1": self.macro_f1(),
             f"{prefix}_recall": self.macro_recall(),
@@ -69,7 +76,14 @@ class OverallMetrics:
         }
 
     def to_micro_dict(self, prefix: str) -> dict[str, float]:
-        """TODO."""
+        """Return micro-averaged f1, recall, and precision as a dictionary with prefixed keys.
+
+        Args:
+            prefix (str): String prepended to each key.
+
+        Returns:
+            dict[str, float]: Flat micro-averaged metrics dictionary with prefixed keys.
+        """
         micro_avg = Metrics.micro_average(self.metrics.values())
         return {
             f"{prefix}_f1": micro_avg.f1,
@@ -82,7 +96,16 @@ class OverallMetrics:
         prefix: str,
         extra_metrics: dict[str, Callable[[Metrics], float]] | None = None,
     ) -> pd.DataFrame:
-        """TODO."""
+        """Build a per-file DataFrame with f1, recall, and precision columns.
+
+        Args:
+            prefix (str): String prepended to each metric column name.
+            extra_metrics (dict[str, Callable[[Metrics], float]] | None): Dictionary of optional
+                metrics as a callable function. Defaults to None.
+
+        Returns:
+            pd.DataFrame: DataFrame indexed by filename with one prefixed column per metric.
+        """
         metrics = {"f1": lambda m: m.f1, "recall": lambda m: m.recall, "precision": lambda m: m.precision}
         if extra_metrics:
             metrics = metrics | extra_metrics
@@ -125,7 +148,18 @@ class OverallMetricsCatalog:
         elevation_metric: Metrics,
         coordinates_metric: Metrics,
         name_metric: Metrics,
-    ):
+    ) -> None:
+        """Register per-file metrics for all extraction categories.
+
+        Args:
+            filename (str): The file name used as key.
+            material_description_metric (Metrics): Material description metrics.
+            layer_metrics (Metrics): Layer detection metrics.
+            depth_interval_metric (Metrics): Depth interval metrics.
+            elevation_metric (Metrics): Elevation metrics.
+            coordinates_metric (Metrics): Coordinate metrics.
+            name_metric (Metrics): Borehole name metrics.
+        """
         self.layer_metrics.metrics[filename] = layer_metrics
         self.material_description_metrics.metrics[filename] = material_description_metric
         self.depth_interval_metrics.metrics[filename] = depth_interval_metric
@@ -134,11 +168,21 @@ class OverallMetricsCatalog:
         self.name_metrics.metrics[filename] = name_metric
 
     def to_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        """TODO."""
+        """Return document-level metrics as two DataFrames, one for metadata and one for geology.
+
+        Returns:
+            tuple[pd.DataFrame, pd.DataFrame]: A pair (metadata_df, geology_df), both indexed
+                by filename.
+        """
         return self.to_metadata_df(), self.to_geology_df()
 
     def to_metadata_df(self) -> pd.DataFrame:
-        """TODO."""
+        """Build a per-file DataFrame with name, coordinate, and elevation metrics.
+
+        Returns:
+            pd.DataFrame: DataFrame indexed by filename with columns for name, coordinate, and
+                elevation f1/recall/precision.
+        """
         dfs = [
             self.name_metrics.to_df("name"),
             self.coordinates_metrics.to_df("coordinate"),
@@ -149,7 +193,15 @@ class OverallMetricsCatalog:
         return df_final.sort_index(ascending=True)
 
     def to_geology_df(self) -> pd.DataFrame:
-        """TODO."""
+        """Build a per-file DataFrame with layer, depth interval, material description, and groundwater metrics.
+
+        Layer columns also include layer_num_total: (tp + fn) and layer_num_wrong: (fp + fn).
+        Groundwater depth columns also include groundwater_depth_num_detected: (tp + fp).
+
+        Returns:
+            pd.DataFrame: DataFrame indexed by filename with all geology metric columns,
+                sorted alphabetically by filename.
+        """
         dfs = [
             self.layer_metrics.to_df(
                 "layer",
@@ -171,11 +223,22 @@ class OverallMetricsCatalog:
         return df_final.sort_index(ascending=True)
 
     def to_dicts(self) -> tuple[dict[str, float], dict[str, float]]:
-        """TODO."""
+        """Return overall metrics as two flat dictionaries, one for metadata and one for geology.
+
+        Returns:
+            tuple[dict[str, float], dict[str, float]]: A pair (metadata_dict, geology_dict).
+        """
         return self.to_metadata_dict(), self.to_geology_dict()
 
     def to_geology_dict(self) -> dict[str, float]:
-        """TODO."""
+        """Return overall geology metrics as a dictionary.
+
+        Includes macro-averaged layer (and language-specific), depth interval, and material
+        description metrics, annd micro-averaged groundwater metrics.
+
+        Returns:
+            dict[str, float]: Dictionary of overall geology metrics with prefixed keys.
+        """
         # Initialize a defaultdict to automatically return 0.0 for missing keys
         result = defaultdict(lambda: None)
 
@@ -202,7 +265,13 @@ class OverallMetricsCatalog:
         return dict(result)  # Convert defaultdict back to a regular dict
 
     def to_metadata_dict(self) -> dict[str, float]:
-        """TODO."""
+        """Return overall metadata metrics as a dictionary.
+
+        Computes micro-averages across all files for name, elevation, and coordinate metrics.
+
+        Returns:
+            dict[str, float]:  Dictionary with prefixed keys.
+        """
         return (
             self.name_metrics.to_micro_dict("name")
             | self.elevation_metrics.to_micro_dict("elevation")

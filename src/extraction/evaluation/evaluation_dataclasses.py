@@ -26,8 +26,15 @@ class BoreholeMetadataMetrics:
         }
 
     @classmethod
-    def from_json(cls, json: dict) -> Metrics:
-        """TODO."""
+    def from_json(cls, json: dict) -> "BoreholeMetadataMetrics":
+        """Construct a BoreholeMetadataMetrics instance from a dictionary produced by `to_json`.
+
+        Args:
+            json (dict): Dictionary with elevation, coordinates, and name metrics.
+
+        Returns:
+            BoreholeMetadataMetrics: The reconstructed metadata metrics object.
+        """
         return BoreholeMetadataMetrics(
             elevation_metrics=Metrics.from_json(json["elevation"]),
             coordinates_metrics=Metrics.from_json(json["coordinates"]),

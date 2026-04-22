@@ -170,10 +170,8 @@ class Evaluator:
                 paired with their ground truth boreholes.
 
         Returns:
-            tuple[OverallMetricsCatalog]:
-                - OverallMetricsCatalog: aggregated geology metrics (layers, depth intervals,
-                  material descriptions, groundwater) globally and per language.
-                - OverallBoreholeMetadataMetrics: aggregated metadata metrics across all files.
+            OverallMetricsCatalog: Aggregated geology and metadata metrics (layers, depth intervals,
+                material descriptions, groundwater) globally and per language.
         """
         fp_languages = {fp.filename: fp.language for fp in overall_predictions.file_predictions_list}
         languages = set(fp_languages.values())

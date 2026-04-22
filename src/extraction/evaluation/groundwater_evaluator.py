@@ -19,7 +19,13 @@ class GroundwaterMetrics:
     groundwater_date_metrics: Metrics = None
     filename: str = None
 
-    def to_json(self) -> dict[str, float]:
+    def to_json(self) -> dict:
+        """Converts the object to a dictionary.
+
+        Returns:
+            dict: The object as a dictionary, with source filename, nested metric sub-dictionaries
+                for depth, elevation, and date.
+        """
         return {
             "metrics": self.groundwater_metrics.to_json(),
             "depth_metrics": self.groundwater_depth_metrics.to_json(),
@@ -29,8 +35,15 @@ class GroundwaterMetrics:
         }
 
     @classmethod
-    def from_json(cls, json: dict) -> Metrics:
-        """TODO."""
+    def from_json(cls, json: dict) -> "GroundwaterMetrics":
+        """Construct a GroundwaterMetrics instance from a dictionary produced by `to_json`.
+
+        Args:
+            json (dict): Dictionary with groundwater metrics.
+
+        Returns:
+            GroundwaterMetrics: The reconstructed groundwater metrics object.
+        """
         return GroundwaterMetrics(
             groundwater_metrics=Metrics.from_json(json["metrics"]),
             groundwater_depth_metrics=Metrics.from_json(json["depth_metrics"]),

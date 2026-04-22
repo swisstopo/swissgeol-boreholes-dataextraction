@@ -128,9 +128,6 @@ class Metrics:
     def to_json(self) -> dict[str, float]:
         """Converts the object to a dictionary.
 
-        Args:
-            feature_name (str): Name of the feature to append.
-
         Returns:
             dict[str, float]: The object as a dictionary.
         """
@@ -145,7 +142,14 @@ class Metrics:
 
     @classmethod
     def from_json(cls, json: dict) -> Metrics:
-        """TODO."""
+        """Construct a Metrics instance from a dictionary produced by `to_json`.
+
+        Args:
+            json (dict): Dictionary with keys tp, fp, and fn.
+
+        Returns:
+            Metrics: The reconstructed metrics object.
+        """
         return Metrics(
             tp=json["tp"],
             fp=json["fp"],
@@ -171,7 +175,14 @@ class Metrics:
         return cls(tp=tp, fp=fp, fn=fn)
 
     def to_dict(self, prefix: str) -> dict[str, float]:
-        """TODO."""
+        """Return f1, recall, and precision as a flat dictionary with prefixed keys.
+
+        Args:
+            prefix (str): String prepended to each key .
+
+        Returns:
+            dict[str, float]: Flat metrics dictionary with prefixed keys.
+        """
         return {
             f"{prefix}_f1": self.f1,
             f"{prefix}_recall": self.recall,
