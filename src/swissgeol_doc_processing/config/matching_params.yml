@@ -17,7 +17,6 @@ affinity_params:
       spacing_weight: 1.25
       right_end_weight: 1.0
       diagonal_weight: 1.25
-      gap_weight: 0.0
       indentation_weight: 0.6
   a_to_b:
     importance: 2.0
@@ -27,7 +26,6 @@ affinity_params:
       spacing_weight: 1.0
       right_end_weight: 1.0
       diagonal_weight: 0.0
-      gap_weight: 0.0
       indentation_weight: 0.0
   layer_identifier:
     importance: 0.66
@@ -37,7 +35,6 @@ affinity_params:
       spacing_weight: 1.0
       right_end_weight: 0.6
       diagonal_weight: 0.0
-      gap_weight: 0.0
       indentation_weight: 0.0
   spulprobe:
     importance: 2.0
@@ -47,16 +44,14 @@ affinity_params:
       spacing_weight: 1.0
       right_end_weight: 1.0
       diagonal_weight: 0.0
-      gap_weight: 0.0
       indentation_weight: 0.0
   no_sidebar:
     weights:
       line_weight: 1.0
       left_line_weight: 1.0
-      spacing_weight: 1.0
+      spacing_weight: 1.2
       right_end_weight: 1.0
       diagonal_weight: 1.0
-      gap_weight: 0.2
       indentation_weight: 0.0
   protocol:
       importance: 1.0
@@ -72,10 +67,9 @@ affinity_params:
       weights:
         line_weight: 1.0
         left_line_weight: 1.0
-        spacing_weight: 1.0
+        spacing_weight: 1.2
         right_end_weight: 1.0
         diagonal_weight: 1.0
-        gap_weight: 0.2
         indentation_weight: 0.0
 empty_interval_penalty: 0.2
 
