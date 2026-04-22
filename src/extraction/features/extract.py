@@ -910,7 +910,10 @@ def get_pairs_based_on_line_affinity(
     pairs = []
     prev_block_idx = 0
     weights = matching_params["affinity_params"]["no_sidebar"]["weights"]
-    threshold = -1
+    threshold = -0.3
+
+    for line, aff in zip(description_lines, affinities, strict=False):
+        print(aff.weighted_affinity(**weights), aff.vertical_spacing_affinity, line.text)
 
     for line_idx, affinity in enumerate(affinities):
         # note: the affinity of the first line is always 0.0

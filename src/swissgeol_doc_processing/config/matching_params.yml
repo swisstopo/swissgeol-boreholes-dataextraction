@@ -49,7 +49,7 @@ affinity_params:
     weights:
       line_weight: 1.0
       left_line_weight: 1.0
-      spacing_weight: 1.2
+      spacing_weight: 1.0
       right_end_weight: 1.0
       diagonal_weight: 1.0
       indentation_weight: 0.0
@@ -67,7 +67,7 @@ affinity_params:
       weights:
         line_weight: 1.0
         left_line_weight: 1.0
-        spacing_weight: 1.2
+        spacing_weight: 1.0
         right_end_weight: 1.0
         diagonal_weight: 1.0
         indentation_weight: 0.0
