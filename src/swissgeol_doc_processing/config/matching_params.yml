@@ -91,6 +91,20 @@ default_language: de
 
 compound_split_threshold: 0.4
 
+# Lines whose text contains any of these substrings (case-insensitive) are treated as column
+# headers for the material description column. They are excluded from the material description
+# output text and act as a hard upper boundary (nothing above them is included). They are also
+# used as a positive selection signal when choosing between candidate columns.
+material_description_column_headers:
+  de:
+    - beschreibung
+    - beschrieb
+    - bodenart
+    - lithologie
+    - materialbezeichnung
+  fr:
+    - description
+
 material_description:
   de:
     including_expressions:
@@ -104,106 +118,89 @@ material_description:
       - kiesig
       - ton
       - tonig
-      - asphalt
-      - asphaltdeckschicht # is not split by the compound splitter
-      - humus
-      - braun
-      - weich
-      - wurzel
-      - belag
       - stein
-      - beige
-      - beton
+      - kalk
       - kreide
       - mergel
-      - kern
-      - lehm
-      - dito
       - dolomit
-      - kristallin
       - gneis
-      - kalke
-      - mikritisch
-      - laminiert
-      - grob
-      - auffüllung
-      - schlacke
-      - überlagerung
+      - kristallin
       - moräne
+      - auffüllung
       - aufschüttung
+      - beton
+      - asphalt
+      - humus
+      - lehm
+      - braun
+      - grob
+      - kern
+      - wurzel
     excluding_expressions:
       - herr
       - ende
       - profil
-      - beschreibung
-      - materialbeschreibung
       - kiesprospektion
       - signaturen
-      - mischprobe # Should be reviewed, currently not used
+      # - mischprobe # Should be reviewed, currently not used
       - projekt
       - ort
       - adresse
       - wetter
       - pumpversuch
       - kernbohrung
-      - bohrradius # Should be reviewed, currently not used
+      # - bohrradius # Should be reviewed, currently not used
       - wasserzutritt
       - Vollrohr
       - Filterrohr
+      - sondier
+      - sondierbohrung
+      - bohrprofil
+      - bohrung
+      - koordinaten
+      - auftrag
+      - aufgenommen
+      - Datum
 
   fr:
     including_expressions:
       - sol
       - végétal
-      - dallage
       - terre
-      - bitume
-      - bitumineux
-      - grave d'infrastructure # Should be reviewed, currently not used
       - sable
       - limon
+      - limoneuse
+      - argileux
+      - argileuse
       - gravier
       - asphalte
-      - humus
-      - brun
-      - gris
-      - grise
-      - mou
-      - dur
-      - dure
-      - ferme
-      - racine
+      - bitume
+      - enrobé
       - revetement
-      - pierre
-      - beige
       - béton
       - craie
       - marne
-      - materiau # Should be reviewed, currently not used
-      - matrice sableuse # Should be reviewed, currently not used
-      - enrobé
-      - phase
-      - limoneuse
-      - argileuse
-      - argileux
-      - mousse # Should be reviewed, currently not used
+      - humus
+      - racine
+      - pierre
     excluding_expressions:
-      - monsieur # Should be reviewed, currently not used
+      # - monsieur # Should be reviewed, currently not used
       - profil
-      - description
-      - signatures # Should be reviewed, currently not used
-      - echantillon mixte # Should be reviewed, currently not used
+      # - signatures # Should be reviewed, currently not used
+      # - echantillon mixte # Should be reviewed, currently not used
       - projet
       - lieu
       - adresse
       - temps
-      - essai de pompage # Should be reviewed, currently not used
+      # - essai de pompage # Should be reviewed, currently not used
       - carottage
-      - rayon de forage # Should be reviewed, currently not used
+      # - rayon de forage # Should be reviewed, currently not used
       - remarque
       - piezometre
       - profondeur
       - désignation
+      - sondage
+      - lithologie
 
   it:
     including_expressions:
@@ -211,20 +208,14 @@ material_description:
       - limo
       - ghiaia
       - asfalto
+      - cemento
+      - marna
+      - gesso
       - humus
-      - marrone
-      - grigio
-      - morbido
-      - duro
       - radice
       - rivestimento
       - pietra
-      - beige
-      - cemento
-      - gesso
-      - marna
       - materiale di carota
-      - idem
     excluding_expressions:
       - signore
       - fine
@@ -239,6 +230,8 @@ material_description:
       - prova di pompaggio
       - carotaggio
       - raggio di perforazione
+      - sondaggio
+      - litologia
 
   en:
     including_expressions:
@@ -251,23 +244,16 @@ material_description:
       - clay
       - claystone
       - gravel
+      - limestone
+      - marl
+      - chalk
+      - stone
       - asphalt
+      - concrete
       - humus
-      - brown
-      - gray
-      - soft
-      - hard
       - root
       - surface layer
-      - stone
-      - beige
-      - concrete
-      - chalk
-      - marl
       - core material
-      - limestone
-      - ditto # Should be reviewed, currently not used
-      - alternation
       - leucosome
     excluding_expressions:
       - Mr.
@@ -280,9 +266,13 @@ material_description:
       - location
       - address
       - weather
-      - pump test # Should be reviewed, currently not used
+      # - pump test # Should be reviewed, currently not used
       - core drilling
       - drilling radius
+      - sounding
+      - lithology
+      - borehole profile
+      - coordinates
 
 coordinate_keys:
   de:
