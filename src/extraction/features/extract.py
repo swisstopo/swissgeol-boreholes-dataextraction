@@ -210,7 +210,11 @@ class MaterialDescriptionRectWithSidebarExtractor:
         real borehole column without actually overlapping it.
         """
         bbox1 = pair1.material_description_rect
+        if pair1.sidebar:
+            bbox1 = bbox1 | pair1.sidebar.rect
         bbox2 = pair2.material_description_rect
+        if pair2.sidebar:
+            bbox2 = bbox2 | pair2.sidebar.rect
         gap_threshold = self.page_width * 0.05
         y_overlap = bbox1.y0 < bbox2.y1 and bbox2.y0 < bbox1.y1
         h_adjacent = abs(bbox1.x1 - bbox2.x0) < gap_threshold or abs(bbox2.x1 - bbox1.x0) < gap_threshold
@@ -267,14 +271,12 @@ class MaterialDescriptionRectWithSidebarExtractor:
             list[IntervalBlockPair]: The interval block pairs.
         """
         description_lines = get_description_lines(self.lines, pair.material_description_rect)
-        # _gw_keys = self.matching_params.get("groundwater_keys", {}).get(self.language, [])
         _header_kws = self.matching_params.get("material_description_column_headers", {}).get(self.language, [])
         description_lines = [
             line
             for line in description_lines
             if not line.is_description(self.matching_params, self.language, None, search_excluding=True)
             and not any(kw.lower() in line.text.lower() for kw in _header_kws)
-            # and not any(key.lower() in line.text.lower() for key in _gw_keys)
             and self._line_has_real_word(line.text)
         ]
         diagonals = self.get_diagonals_near_textlines(description_lines, self.line_detection_params)
@@ -429,15 +431,11 @@ class MaterialDescriptionRectWithSidebarExtractor:
         """
         for word in re.findall(r"[^\W\d_]{3,}", text, re.UNICODE):
             alpha = [c for c in word if c.isalpha()]
-            if (
-                len(alpha) >= 3
-                and sum(1 for c in alpha if c.islower()) >= 2
-                and sum(1 for c in alpha if c.islower()) / len(alpha) >= 0.5
-            ):
+            if len(alpha) >= 3 and sum(1 for c in alpha if c.islower()) / len(alpha) >= 0.5:
                 return True
         return False
 
-    def _count_keyword_matches(self, rect: pymupdf.Rect) -> int:
+    def _has_keyword_match(self, rect: pymupdf.Rect) -> int:
         """Return 1 if rect contains any line matching including_expressions, 0 otherwise.
 
         Binary so that all keyword-qualifying columns score equally on this dimension,
@@ -460,11 +458,12 @@ class MaterialDescriptionRectWithSidebarExtractor:
         is the material description column, and mark its upper content boundary.
         """
         header_keywords = self.matching_params.get("material_description_column_headers", {}).get(self.language, [])
+        look_above = self.page_height * 0.05
         for line in self.lines:
             if (
                 line.rect.x0 < rect.x1
                 and line.rect.x1 > rect.x0
-                and rect.y0 - 50 <= line.rect.y1 <= rect.y0 + 5
+                and rect.y0 - look_above <= line.rect.y1 <= rect.y0 + 5
                 and any(kw.lower() in line.text.lower() for kw in header_keywords)
             ):
                 return True
@@ -604,12 +603,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         candidate_description = [line for line in self.lines if check_y0_condition(line.rect.y0)]
 
-        # gw_keys = self.matching_params.get("groundwater_keys", {}).get(self.language, [])
         header_keywords = self.matching_params.get("material_description_column_headers", {}).get(self.language, [])
-
-        # def is_groundwater_line(line: TextLine) -> bool:
-        #     text_lower = line.text.lower()
-        #     return any(key.lower() in text_lower for key in gw_keys)
 
         def is_column_header_line(line: TextLine) -> bool:
             text_lower = line.text.lower()
@@ -619,7 +613,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
             line
             for line in candidate_description
             if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=True)
-            # or is_groundwater_line(line)
             or is_column_header_line(line)
         ]
 
@@ -823,6 +816,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
         gap_threshold = self.page_width * 0.05
         suppressed = set()
         for i, r1 in enumerate(candidate_rects):
+            if i in suppressed:
+                continue
             for j, r2 in enumerate(candidate_rects):
                 if i == j or j in suppressed:
                     continue
@@ -837,7 +832,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             # share the seeding x-range with the real description column. Prefer by keyword match
             # count first (more geological content = more likely the real description column),
             # then fall back to width as a tiebreaker.
-            candidate_rects = [max(candidate_rects, key=lambda r: (self._count_keyword_matches(r), r.width))]
+            candidate_rects = [max(candidate_rects, key=lambda r: (self._has_keyword_match(r), r.width))]
 
         return candidate_rects
 
@@ -859,7 +854,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 candidate_rects,
                 key=lambda rect: (
                     self._has_column_header(rect),
-                    self._count_keyword_matches(rect),
+                    self._has_keyword_match(rect),
                     MaterialDescriptionRectWithSidebar(sidebar, rect, self.lines).score_match,
                 ),
             )
@@ -868,7 +863,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 candidate_rects,
                 key=lambda rect: (
                     self._has_column_header(rect),
-                    self._count_keyword_matches(rect),
+                    self._has_keyword_match(rect),
                     rect.width,
                 ),
             )
