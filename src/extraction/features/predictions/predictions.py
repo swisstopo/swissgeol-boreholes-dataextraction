@@ -1,6 +1,5 @@
 """This module contains classes for predictions."""
 
-import dataclasses
 import logging
 from collections import defaultdict
 from copy import deepcopy
@@ -16,7 +15,6 @@ from extraction.features.metadata.elevation_extraction import Elevation
 from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.predictions.borehole_predictions import (
     BoreholePredictions,
-    FilePredictionsWithGroundTruth,
 )
 from extraction.features.stratigraphy.layer.layer import LayersInBorehole, LayersInDocument
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
@@ -246,10 +244,3 @@ class BoreholeListBuilder:
         element_center = (feat.rect.top_left + feat.rect.bottom_right) / 2
         dist = element_center.distance_to(outer_rect)
         return dist
-
-
-@dataclasses.dataclass
-class AllBoreholePredictionsWithGroundTruth:
-    """Class for evaluating all files, after individual boreholes have been match with their ground truth data."""
-
-    predictions_list: list[FilePredictionsWithGroundTruth]

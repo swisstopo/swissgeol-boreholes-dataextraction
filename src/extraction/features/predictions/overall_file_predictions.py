@@ -2,18 +2,14 @@
 
 import dataclasses
 
-from extraction.features.metadata.metadata import FileMetadata
-from extraction.features.predictions.borehole_predictions import (
-    BoreholePredictions,
-)
-from extraction.features.predictions.file_predictions import FilePredictions
+from extraction.features.predictions.file_predictions import FilePredictionsWithMetrics
 
 
 @dataclasses.dataclass
 class OverallFilePredictions:
     """A class to represent predictions for all files."""
 
-    file_predictions_list: list[FilePredictions] = dataclasses.field(default_factory=list)
+    file_predictions_list: list[FilePredictionsWithMetrics] = dataclasses.field(default_factory=list)
 
     def contains(self, filename: str) -> bool:
         """Check if `file_predictions_list` contains `filename`.
@@ -24,9 +20,9 @@ class OverallFilePredictions:
         Returns:
             bool: True if `file_predictions_list` contains `filename`, else False.
         """
-        return any(file.file_name == filename for file in self.file_predictions_list)
+        return any(file.filename == filename for file in self.file_predictions_list)
 
-    def add_file_predictions(self, file_predictions: FilePredictions) -> None:
+    def add_file_predictions(self, file_predictions: FilePredictionsWithMetrics) -> None:
         """Add file predictions to the list of file predictions.
 
         Args:
@@ -41,12 +37,13 @@ class OverallFilePredictions:
             dict: The metadata of the predictions as a dictionary.
         """
         return {
-            "_".join([file_prediction.file_name, str(borehole_prediction.borehole_index)]): {
-                "file_metadata": file_prediction.file_metadata.to_json(),
+            "_".join([file_prediction.filename, str(borehole_prediction.borehole_index)]): {
+                # TODO Add metadata
+                # "file_metadata": file_prediction.file_metadata.to_json(),
                 "borehole_metadata": borehole_prediction.metadata.to_json(),
             }
             for file_prediction in self.file_predictions_list
-            for borehole_prediction in file_prediction.borehole_predictions_list
+            for borehole_prediction in file_prediction.boreholes
         }
 
     def to_json(self) -> dict:
@@ -55,7 +52,7 @@ class OverallFilePredictions:
         Returns:
             dict: A dictionary representation of the object.
         """
-        return {fp.file_name: fp.to_json() for fp in self.file_predictions_list}
+        return {fp.filename: fp.to_json() for fp in self.file_predictions_list}
 
     @classmethod
     def from_json(cls, prediction_from_file: dict) -> "OverallFilePredictions":
@@ -68,10 +65,6 @@ class OverallFilePredictions:
             OverallFilePredictions: The object.
         """
         overall_file_predictions = OverallFilePredictions()
-        for file_name, file_data in prediction_from_file.items():
-            file_metadata = FileMetadata.from_json(file_data, file_name)
-
-            borehole_list = [BoreholePredictions.from_json(bh_data, file_name) for bh_data in file_data["boreholes"]]
-
-            overall_file_predictions.add_file_predictions(FilePredictions(borehole_list, file_metadata, file_name))
+        for file_data in prediction_from_file.values():
+            overall_file_predictions.add_file_predictions(FilePredictionsWithMetrics.from_json(file_data))
         return overall_file_predictions

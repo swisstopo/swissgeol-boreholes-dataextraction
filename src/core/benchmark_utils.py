@@ -125,7 +125,7 @@ class Metrics:
         recall = self.recall
         return 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
 
-    def to_json(self, feature_name: str) -> dict[str, float]:
+    def to_json(self) -> dict[str, float]:
         """Converts the object to a dictionary.
 
         Args:
@@ -135,10 +135,22 @@ class Metrics:
             dict[str, float]: The object as a dictionary.
         """
         return {
-            f"{feature_name}_precision": self.precision,
-            f"{feature_name}_recall": self.recall,
-            f"{feature_name}_f1": self.f1,
+            "tp": self.tp,
+            "fp": self.fp,
+            "fn": self.fn,
+            "precision": self.precision,
+            "recall": self.recall,
+            "f1": self.f1,
         }
+
+    @classmethod
+    def from_json(cls, json: dict) -> Metrics:
+        """TODO."""
+        return Metrics(
+            tp=json["tp"],
+            fp=json["fp"],
+            fn=json["fn"],
+        )
 
     # TODO: Currently, some other methods for averaging metrics are in the OverallMetrics class.
     # On the long run, we should refactor this to have a single place where these averaging computations are

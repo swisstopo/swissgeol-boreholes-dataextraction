@@ -1,6 +1,5 @@
 """Evaluation utilities."""
 
-import abc
 from dataclasses import dataclass, field
 
 import pandas as pd
@@ -9,12 +8,23 @@ from core.benchmark_utils import Metrics
 
 
 @dataclass
-class BoreholeMetadataMetrics(metaclass=abc.ABCMeta):
+class BoreholeMetadataMetrics:
     """Metrics for metadata."""
 
     elevation_metrics: Metrics
     coordinates_metrics: Metrics
     name_metrics: Metrics
+
+    # def get_document_level_metrics(self) -> pd.DataFrame:
+    #     """Get the document level metrics."""
+    #     return pd.DataFrame(
+    #         data={
+    #             "elevation": [self.elevation_metrics.f1],
+    #             "coordinate": [self.coordinates_metrics.f1],
+    #             "borehole_name": [self.name_metrics.f1],
+    #         },
+    #         index=[self.filename],
+    #     )
 
     def to_json(self) -> dict[str, float]:
         """Converts the object to a dictionary.
@@ -23,27 +33,18 @@ class BoreholeMetadataMetrics(metaclass=abc.ABCMeta):
             dict[str, float]: The object as a dictionary.
         """
         return {
-            **self.elevation_metrics.to_json("elevation"),
-            **self.coordinates_metrics.to_json("coordinate"),
-            **self.name_metrics.to_json("borehole_name"),
+            "elevation": self.elevation_metrics.to_json(),
+            "coordinates": self.coordinates_metrics.to_json(),
+            "name": self.name_metrics.to_json(),
         }
 
-
-@dataclass
-class FileBoreholeMetadataMetrics(BoreholeMetadataMetrics):
-    """Single file Metrics for borehole metadata."""
-
-    filename: str
-
-    def get_document_level_metrics(self) -> pd.DataFrame:
-        """Get the document level metrics."""
-        return pd.DataFrame(
-            data={
-                "elevation": [self.elevation_metrics.f1],
-                "coordinate": [self.coordinates_metrics.f1],
-                "borehole_name": [self.name_metrics.f1],
-            },
-            index=[self.filename],
+    @classmethod
+    def from_json(cls, json: dict) -> Metrics:
+        """TODO."""
+        return BoreholeMetadataMetrics(
+            elevation_metrics=Metrics.from_json(json["elevation"]),
+            coordinates_metrics=Metrics.from_json(json["coordinates"]),
+            name_metrics=Metrics.from_json(json["name"]),
         )
 
 
@@ -76,7 +77,9 @@ class OverallBoreholeMetadataMetrics:
         )
         name_metrics = Metrics.micro_average([metadata.name_metrics for metadata in self.borehole_metadata_metrics])
         return BoreholeMetadataMetrics(
-            elevation_metrics=elevation_metrics, coordinates_metrics=coordinates_metrics, name_metrics=name_metrics
+            elevation_metrics=elevation_metrics,
+            coordinates_metrics=coordinates_metrics,
+            name_metrics=name_metrics,
         )
 
     def get_document_level_metrics(self) -> pd.DataFrame:

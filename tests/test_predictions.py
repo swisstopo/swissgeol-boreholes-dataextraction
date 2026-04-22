@@ -7,7 +7,6 @@ import pymupdf
 import pytest
 
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
-from extraction.evaluation.evaluator import Evaluator
 from extraction.evaluation.layer_evaluator import LayerEvaluator
 from extraction.evaluation.utility import evaluate, evaluate_single
 from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
@@ -21,7 +20,6 @@ from extraction.features.predictions.borehole_predictions import (
 )
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
-from extraction.features.predictions.predictions import AllBoreholePredictionsWithGroundTruth
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
@@ -248,16 +246,6 @@ def test_evaluate_layer_matching(
             for pred in sample_file_prediction_with_ground_truth
         ]
     )
-
-
-def test_evaluate_metadata_extraction(sample_file_prediction_with_ground_truth: FilePredictionsWithGroundTruth):
-    """Test evaluate_metadata_extraction method of OverallFilePredictions."""
-    all_predictions_with_gt = AllBoreholePredictionsWithGroundTruth([sample_file_prediction_with_ground_truth])
-    geology_metrics, metadata_metrics = Evaluator.evaluate_overall(all_predictions_with_gt)
-
-    # Ensure the evaluation returns a result
-    assert metadata_metrics is not None
-    assert geology_metrics is not None
 
 
 @pytest.mark.parametrize(

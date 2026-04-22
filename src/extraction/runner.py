@@ -144,23 +144,17 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
                 continue
 
             logger.info(f"Processing file: {pdf_file.name}")
-            try:
-                result = extract(
-                    file=pdf_file, filename=pdf_file.name, part=self.options.part, analytics=self.analytics
-                )
-                predictions.add_file_predictions(result.predictions)
 
-                if self.on_file_done is not None:
-                    # Evaluate results
-                    result.predictions = evaluate_prediction(result.predictions, ground_truth)
-                    # Pass updated results to callback
-                    self.on_file_done(result, self.out_directory, pdf_file)
+            result = extract(file=pdf_file, filename=pdf_file.name, part=self.options.part, analytics=self.analytics)
+            prediction_with_metrics = evaluate_prediction(result.predictions, ground_truth)
+            predictions.add_file_predictions(prediction_with_metrics)
 
-                logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
-                write_json_predictions(path=predictions_path_tmp, predictions=predictions)
+            if self.on_file_done is not None:
+                # Pass updated results to callback
+                self.on_file_done(result, self.out_directory, pdf_file)
 
-            except Exception as e:
-                logger.error(f"Unexpected error in file {pdf_file.name}. Trace: {e}")
+            logger.info(f"Writing predictions to tmp JSON file {predictions_path_tmp}")
+            write_json_predictions(path=predictions_path_tmp, predictions=predictions)
 
         return PipelineRunResult(result=predictions, n_documents=n_documents)
 
@@ -185,7 +179,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
 
         logger.info(f"Metadata written to {self.metadata_path}")
         with open(self.metadata_path, "w", encoding="utf8") as file:
-            json.dump(run_result.result.get_metadata_as_dict(), file, ensure_ascii=False)
+            json.dump(run_result.result.get_metadata_as_dict(), file, ensure_ascii=False, indent=2)
 
         if self.options.matching_analytics and self.analytics is not None:
             analytics_output_path = self.out_directory / "matching_params_analytics.json"

@@ -5,7 +5,6 @@ import math
 from core.benchmark_utils import Metrics
 from extraction.evaluation.evaluation_dataclasses import (
     BoreholeMetadataMetrics,
-    FileBoreholeMetadataMetrics,
 )
 from extraction.evaluation.utility import evaluate_single
 from extraction.features.metadata.borehole_name_extraction import BoreholeName, clean_borehole_name
@@ -85,11 +84,10 @@ class MetadataEvaluator:
             name_metrics_list.append(name_metrics)
 
         # perform micro-average to store the metrics of all the boreholes in the document
-        return FileBoreholeMetadataMetrics(
+        return BoreholeMetadataMetrics(
             elevation_metrics=Metrics.micro_average(elevation_metrics_list),
             coordinates_metrics=Metrics.micro_average(coordinate_metrics_list),
             name_metrics=Metrics.micro_average(name_metrics_list),
-            filename=file_predictions.filename,
         )
 
     @staticmethod

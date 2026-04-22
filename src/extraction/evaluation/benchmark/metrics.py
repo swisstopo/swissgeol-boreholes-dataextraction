@@ -73,11 +73,14 @@ class OverallMetricsCatalog:
     """Keeps track of all different relevant metrics that are computed for a dataset."""
 
     def __init__(self, languages: set[str]):
-        self.material_description_metrics = OverallMetrics()
         self.layer_metrics = OverallMetrics()
+        self.material_description_metrics = OverallMetrics()
         self.depth_interval_metrics = OverallMetrics()
         self.groundwater_metrics = OverallMetrics()
         self.groundwater_depth_metrics = OverallMetrics()
+        self.elevation_metrics = OverallMetrics()
+        self.coordinates_metrics = OverallMetrics()
+        self.name_metrics = OverallMetrics()
         self.languages = languages
 
         # Initialize language-specific metrics
@@ -85,6 +88,23 @@ class OverallMetricsCatalog:
             setattr(self, f"{lang}_layer_metrics", OverallMetrics())
             setattr(self, f"{lang}_depth_interval_metrics", OverallMetrics())
             setattr(self, f"{lang}_material_description_metrics", OverallMetrics())
+
+    def add_datapoint(
+        self,
+        filename: str,
+        material_description_metric: Metrics,
+        layer_metrics: Metrics,
+        depth_interval_metric: Metrics,
+        elevation_metric: Metrics,
+        coordinates_metric: Metrics,
+        name_metric: Metrics,
+    ):
+        self.layer_metrics.metrics[filename] = layer_metrics
+        self.material_description_metrics.metrics[filename] = material_description_metric
+        self.depth_interval_metrics.metrics[filename] = depth_interval_metric
+        self.elevation_metrics.metrics[filename] = elevation_metric
+        self.coordinates_metrics.metrics[filename] = coordinates_metric
+        self.name_metrics.metrics[filename] = name_metric
 
     def document_level_metrics_df(self) -> pd.DataFrame:
         """Return a DataFrame with all the document level metrics."""
