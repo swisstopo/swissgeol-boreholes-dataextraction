@@ -910,11 +910,11 @@ def get_pairs_based_on_line_affinity(
     pairs = []
     prev_block_idx = 0
     weights = matching_params["affinity_params"]["no_sidebar"]["weights"]
-    # The presence of >=3 horiz. lines should tighten the vertical spacing constrain
-    threshold = -0.99 if sum(affinity.long_lines_affinity for affinity in affinities) <= -3.0 else 0.0
+    threshold = -1
+
     for line_idx, affinity in enumerate(affinities):
         # note: the affinity of the first line is always 0.0
-        if affinity.weighted_affinity(**weights) < threshold:
+        if affinity.weighted_affinity(**weights) <= threshold:
             pairs.append(IntervalBlockPair(None, TextBlock(description_lines[prev_block_idx:line_idx])))
             prev_block_idx = line_idx
 
