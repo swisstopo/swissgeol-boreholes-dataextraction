@@ -178,7 +178,7 @@ class Metrics:
         """Return f1, recall, and precision as a flat dictionary with prefixed keys.
 
         Args:
-            prefix (str): String prepended to each key .
+            prefix (str): String prepended to each key.
 
         Returns:
             dict[str, float]: Flat metrics dictionary with prefixed keys.

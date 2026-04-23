@@ -36,7 +36,7 @@ predictions.json
         ├── language                      # Ground truth language for metric computation
         ├── layer_metrics                 # Layer detection
         ├── depth_interval_metrics        # Depth layer detection
-        ├── material_description_metrics  # Meterial description detection
+        ├── material_description_metrics  # Material description detection
         ├── gw_metrics
         │   ├── metrics                   # Groundwater overall detection
         │   ├── depth_metrics             # Groundwater depth detection
@@ -55,17 +55,19 @@ All page numbers are counted starting at 1. All bounding boxes are measured with
 ```yaml
 {
   "B366.pdf": {  # file name
-    "language": "de",
-    "page_dimensions": [
-      {
-        "width": 591.956787109375,
-        "height": 1030.426025390625
-      },
-      {
-        "width": 588.009521484375,
-        "height": 792.114990234375
-      }
-    ],
+    "file_metadata": {
+      "language": "de",
+      "page_dimensions": [
+        {
+          "width": 591.956787109375,
+          "height": 1030.426025390625
+        },
+        {
+          "width": 588.009521484375,
+          "height": 792.114990234375
+        }
+      ],
+    },
     "boreholes": [
       {
         "borehole_index": 0,

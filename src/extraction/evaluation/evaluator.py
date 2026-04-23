@@ -163,7 +163,7 @@ class Evaluator:
     def aggregate(
         overall_predictions: OverallFilePredictions,
     ) -> OverallMetricsCatalog:
-        """Aggregate all files prediction for geology and metadata metrics.
+        """Aggregate all files predictions for geology and metadata metrics.
 
         Args:
             overall_predictions (OverallFilePredictions): All per-file predictions

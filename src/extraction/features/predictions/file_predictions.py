@@ -79,7 +79,7 @@ class FilePredictionsMetrics:
 
 @dataclasses.dataclass
 class FilePredictionsWithMetrics:
-    """A class to represent predictions for a single file."""
+    """Predictions for a single PDF file, including optional per-category evaluation metrics."""
 
     filename: str
     file_metadata: FileMetadata

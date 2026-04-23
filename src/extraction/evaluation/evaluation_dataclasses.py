@@ -13,11 +13,11 @@ class BoreholeMetadataMetrics:
     coordinates_metrics: Metrics
     name_metrics: Metrics
 
-    def to_json(self) -> dict[str, float]:
+    def to_json(self) -> dict[str, dict]:
         """Converts the object to a dictionary.
 
         Returns:
-            dict[str, float]: The object as a dictionary.
+            dict[str, dict]: The object as a dictionary.
         """
         return {
             "elevation": self.elevation_metrics.to_json(),
