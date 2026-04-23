@@ -173,7 +173,7 @@ class Evaluator:
             OverallMetricsCatalog: Aggregated geology and metadata metrics (layers, depth intervals,
                 material descriptions, groundwater) globally and per language.
         """
-        fp_languages = {fp.filename: fp.language for fp in overall_predictions.file_predictions_list}
+        fp_languages = {fp.filename: fp.metrics.language for fp in overall_predictions.file_predictions_list}
         languages = set(fp_languages.values())
 
         overall_metrics_catalog = OverallMetricsCatalog(languages=languages)

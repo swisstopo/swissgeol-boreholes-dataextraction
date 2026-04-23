@@ -13,11 +13,11 @@ from extraction.features.predictions.borehole_predictions import FileGroundwater
 class GroundwaterMetrics:
     """Class for storing the metrics of the groundwater information."""
 
-    groundwater_metrics: Metrics = None
-    groundwater_depth_metrics: Metrics = None
-    groundwater_elevation_metrics: Metrics = None
-    groundwater_date_metrics: Metrics = None
-    filename: str = None
+    filename: str
+    groundwater_metrics: Metrics = Metrics()
+    groundwater_depth_metrics: Metrics = Metrics()
+    groundwater_elevation_metrics: Metrics = Metrics()
+    groundwater_date_metrics: Metrics = Metrics()
 
     def to_json(self) -> dict:
         """Converts the object to a dictionary.
@@ -45,11 +45,11 @@ class GroundwaterMetrics:
             GroundwaterMetrics: The reconstructed groundwater metrics object.
         """
         return GroundwaterMetrics(
+            filename=filename,
             groundwater_metrics=Metrics.from_json(json["metrics"]),
             groundwater_depth_metrics=Metrics.from_json(json["depth_metrics"]),
             groundwater_elevation_metrics=Metrics.from_json(json["elevation_metrics"]),
             groundwater_date_metrics=Metrics.from_json(json["date_metrics"]),
-            filename=filename,
         )
 
 

@@ -92,9 +92,9 @@ class BenchmarkSummary(BaseModel, ABC):
 class Metrics:
     """Metrics for the evaluation of extracted features (e.g., Groundwater, Elevation, Coordinates)."""
 
-    tp: int
-    fp: int
-    fn: int
+    tp: int = 0
+    fp: int = 0
+    fn: int = 0
 
     @property
     def precision(self) -> float:

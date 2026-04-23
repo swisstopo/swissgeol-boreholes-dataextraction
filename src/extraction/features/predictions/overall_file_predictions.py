@@ -38,8 +38,7 @@ class OverallFilePredictions:
         """
         return {
             "_".join([file_prediction.filename, str(borehole_prediction.borehole_index)]): {
-                # TODO Add metadata
-                # "file_metadata": file_prediction.file_metadata.to_json(),
+                "file_metadata": file_prediction.file_metadata.to_json(),
                 "borehole_metadata": borehole_prediction.metadata.to_json(),
             }
             for file_prediction in self.file_predictions_list

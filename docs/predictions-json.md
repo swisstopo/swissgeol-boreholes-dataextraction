@@ -8,8 +8,6 @@ The `predictions.json` file contains the results of a data extraction process in
 ```bash
 predictions.json
 └── "<filename>.pdf"                      # One entry per processed PDF file
-    ├── language                          # Ground truth language if externally provided
-    │
     ├── file_metadata
     │   ├── language                      # Detected language
     │   └── page_dimensions[]             # Dimensions of each page, in PDF points
@@ -35,6 +33,7 @@ predictions.json
     │       └── rect                      # Bounding box of the measurement in the PDF
     │
     └── metrics                           # Evaluation scores with tp, fp, fn,precision, recall, and f1
+        ├── language                      # Ground truth language for metric computation
         ├── layer_metrics                 # Layer detection
         ├── depth_interval_metrics        # Depth layer detection
         ├── material_description_metrics  # Meterial description detection

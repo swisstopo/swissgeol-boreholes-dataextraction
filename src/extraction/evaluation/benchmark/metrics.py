@@ -185,7 +185,7 @@ class OverallMetricsCatalog:
         """
         dfs = [
             self.name_metrics.to_df("name"),
-            self.coordinates_metrics.to_df("coordinate"),
+            self.coordinates_metrics.to_df("coordinates"),
             self.elevation_metrics.to_df("elevation"),
         ]
 
@@ -234,7 +234,7 @@ class OverallMetricsCatalog:
         """Return overall geology metrics as a dictionary.
 
         Includes macro-averaged layer (and language-specific), depth interval, and material
-        description metrics, annd micro-averaged groundwater metrics.
+        description metrics, and micro-averaged groundwater metrics.
 
         Returns:
             dict[str, float]: Dictionary of overall geology metrics with prefixed keys.
@@ -270,7 +270,7 @@ class OverallMetricsCatalog:
         Computes micro-averages across all files for name, elevation, and coordinate metrics.
 
         Returns:
-            dict[str, float]:  Dictionary with prefixed keys.
+            dict[str, float]: Dictionary with prefixed keys.
         """
         return (
             self.name_metrics.to_micro_dict("name")
