@@ -35,7 +35,7 @@ MAX_DEPTH = 200  # Maximum depth of the groundwater in meters - Otherwise, depth
 class Groundwater(ExtractedFeature):
     """Abstract class for Groundwater Information."""
 
-    depth: float  # Depth of the groundwater relative to the surface
+    depth: float | None  # Depth of the groundwater relative to the surface
     date: datetime.date | None = (
         None  # Date of the groundwater measurement, if several dates
         # are present, the date of the document the last measurement is taken
@@ -190,7 +190,15 @@ class GroundwatersInBorehole:
         Returns:
             list[dict]: The object as a list of dictionaries.
         """
-        return [entry.to_json() for entry in self.groundwater_feature_list]
+        sorted_entries = sorted(
+            self.groundwater_feature_list,
+            key=lambda e: (
+                e.feature.depth or 0,
+                e.feature.date or datetime.date.min,
+                e.feature.elevation or 0,
+            ),
+        )
+        return [entry.to_json() for entry in sorted_entries]
 
     @classmethod
     def from_json(cls, json_object: list[dict]) -> "GroundwatersInBorehole":
