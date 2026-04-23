@@ -32,7 +32,7 @@ predictions.json
     │       ├── page                      # Source page number
     │       └── rect                      # Bounding box of the measurement in the PDF
     │
-    └── metrics                           # Evaluation scores with tp, fp, fn,precision, recall, and f1
+    └── metrics                           # Evaluation scores with tp, fp, fn, precision, recall, and f1
         ├── language                      # Ground truth language for metric computation
         ├── layer_metrics                 # Layer detection
         ├── depth_interval_metrics        # Depth layer detection
@@ -119,6 +119,7 @@ All page numbers are counted starting at 1. All bounding boxes are measured with
               }
             }
           }
+          # ... (more layers)
         ],
         "bounding_boxes": [
           {
@@ -126,7 +127,13 @@ All page numbers are counted starting at 1. All bounding boxes are measured with
             "depth_column_entries": [
               [200.1201171875, 321.8956298828125, 208.59901428222656, 328.6802062988281],
               [200.63790893554688, 331.3035888671875, 207.83108520507812, 338.30450439453125],
-              [201.62551879882812, 374.30560302734375, 210.0361328125, 380.828857421875]
+              [201.62551879882812, 374.30560302734375, 210.0361328125, 380.828857421875],
+              [199.86251831054688, 434.51556396484375, 210.10894775390625, 441.4538879394531],
+              [198.11251831054688, 557.5472412109375, 210.35877990722656, 563.9244995117188],
+              [198.28451538085938, 582.0216674804688, 209.76953125, 588.7603759765625],
+              [198.7814178466797, 616.177001953125, 209.50042724609375, 622.502197265625],
+              [198.6378173828125, 663.2830810546875, 210.75906372070312, 669.5428466796875],
+              [198.26901245117188, 695.974609375, 209.12693786621094, 702.2628173828125]
             ],
             "material_description_rect": [256.777099609375, 345.9997253417969, 392.46051025390625, 728.2700805664062],
             "page": 1
@@ -148,6 +155,7 @@ All page numbers are counted starting at 1. All bounding boxes are measured with
           }
         ]
       }
+      # ... (more boreholes)
     ],
     "metrics": {
       "layer_metrics": {
