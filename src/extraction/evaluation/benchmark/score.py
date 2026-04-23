@@ -60,25 +60,28 @@ def evaluate_prediction(
     Returns:
         FilePredictionsWithMetrics: The prediction, with evaluation flags set when ground truth is provided.
     """
-    if ground_truth is None:
-        return FilePredictionsWithMetrics(
-            filename=prediction.file_name,
-            boreholes=prediction.borehole_predictions_list,
-            language=None,
-            metrics=None,
+    language: str | None = None
+    metrics: FilePredictionsMetrics | None = None
+
+    if ground_truth is not None:
+        # Create prediction with GT
+        matched_with_gt = Evaluator.match_with_ground_truth(prediction, ground_truth)
+
+        # Run evaluation for file (! mutates prediction !)
+        layer_metrics, depth_metrics, material_metrics, gw_metrics, metadata_metrics = Evaluator.evaluate(
+            matched_with_gt
         )
 
-    # Create prediction with GT
-    matched_with_gt = Evaluator.match_with_ground_truth(prediction, ground_truth)
-
-    # Run evaluation for file (! mutates prediction !)
-    layer_metrics, depth_metrics, material_metrics, gw_metrics, metadata_metrics = Evaluator.evaluate(matched_with_gt)
+        # Set GT language and aggregate metrics into a single entity
+        language = matched_with_gt.language
+        metrics = FilePredictionsMetrics(layer_metrics, depth_metrics, material_metrics, gw_metrics, metadata_metrics)
 
     return FilePredictionsWithMetrics(
         filename=prediction.file_name,
+        file_metadata=prediction.file_metadata,
         boreholes=prediction.borehole_predictions_list,
-        language=matched_with_gt.language,
-        metrics=FilePredictionsMetrics(layer_metrics, depth_metrics, material_metrics, gw_metrics, metadata_metrics),
+        language=language,
+        metrics=metrics,
     )
 
 

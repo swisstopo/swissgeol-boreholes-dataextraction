@@ -54,12 +54,13 @@ class FilePredictionsMetrics:
         }
 
     @classmethod
-    def from_json(cls, json: dict) -> "FilePredictionsMetrics":
+    def from_json(cls, json: dict, filename: str) -> "FilePredictionsMetrics":
         """Construct a FilePredictionsMetrics instance from a dictionary produced by `to_json`.
 
         Args:
             json (dict): Dictionary with layer_metrics, depth_interval_metrics, material_description_metrics,
                 gw_metrics, and metadata_metrics.
+            filename (str): Linked filename.
 
         Returns:
             FilePredictionsMetrics: The reconstructed metrics object.
@@ -68,7 +69,7 @@ class FilePredictionsMetrics:
             layer_metrics=Metrics.from_json(json["layer_metrics"]),
             depth_interval_metrics=Metrics.from_json(json["depth_interval_metrics"]),
             material_description_metrics=Metrics.from_json(json["material_description_metrics"]),
-            gw_metrics=GroundwaterMetrics.from_json(json["gw_metrics"]),
+            gw_metrics=GroundwaterMetrics.from_json(json["gw_metrics"], filename),
             metadata_metrics=BoreholeMetadataMetrics.from_json(json["metadata_metrics"]),
         )
 
@@ -79,6 +80,7 @@ class FilePredictionsWithMetrics:
 
     language: str
     filename: str
+    file_metadata: FileMetadata
     boreholes: list[BoreholePredictions]
     metrics: FilePredictionsMetrics | None
 
@@ -89,25 +91,27 @@ class FilePredictionsWithMetrics:
             dict: The object as a dictionary.
         """
         return {
-            "filename": self.filename,
             "language": self.language,
+            "file_metadata": self.file_metadata.to_json(),
             "boreholes": [borehole.to_json() for borehole in self.boreholes],
             "metrics": self.metrics.to_json() if self.metrics else None,
         }
 
     @classmethod
-    def from_json(cls, json: dict) -> "FilePredictionsWithMetrics":
+    def from_json(cls, json: dict, filename: str) -> "FilePredictionsWithMetrics":
         """Construct a FilePredictionsWithMetrics instance from a dictionary produced by `to_json`.
 
         Args:
             json (dict): Dictionary with filename, language, boreholes, and metrics.
+            filename (str): Filename of the document.
 
         Returns:
             FilePredictionsWithMetrics: The reconstructed predictions object.
         """
         return FilePredictionsWithMetrics(
-            filename=json["filename"],
+            filename=filename,
             language=json["language"],
-            boreholes=[BoreholePredictions.from_json(bh_data, json["filename"]) for bh_data in json["boreholes"]],
-            metrics=FilePredictionsMetrics.from_json(json["metrics"]),
+            file_metadata=FileMetadata.from_json(json["file_metadata"], filename),
+            boreholes=[BoreholePredictions.from_json(bh_data, filename) for bh_data in json["boreholes"]],
+            metrics=FilePredictionsMetrics.from_json(json["metrics"], filename),
         )

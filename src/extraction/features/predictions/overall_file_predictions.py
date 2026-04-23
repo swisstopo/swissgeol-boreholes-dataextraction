@@ -65,6 +65,6 @@ class OverallFilePredictions:
             OverallFilePredictions: The object.
         """
         overall_file_predictions = OverallFilePredictions()
-        for file_data in prediction_from_file.values():
-            overall_file_predictions.add_file_predictions(FilePredictionsWithMetrics.from_json(file_data))
+        for filename, file_data in prediction_from_file.items():
+            overall_file_predictions.add_file_predictions(FilePredictionsWithMetrics.from_json(file_data, filename))
         return overall_file_predictions
