@@ -57,7 +57,9 @@ class OverallMetrics:
             OverallMetrics: Metrics for files matching the specified language.
         """
         return OverallMetrics(
-            {filename: metric for filename, metric in self.metrics.items() if fp_languages.get(filename) == language}
+            metrics={
+                filename: metric for filename, metric in self.metrics.items() if fp_languages.get(filename) == language
+            }
         )
 
     def to_macro_dict(self, prefix: str) -> dict[str, float]:

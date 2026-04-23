@@ -54,7 +54,6 @@ All page numbers are counted starting at 1. All bounding boxes are measured with
 ## Example output
 ```yaml
 {
-# TODO Return metadata as before with page dimmension and language /GT vs predicted
   "B366.pdf": {  # file name
     "language": "de",
     "page_dimensions": [
