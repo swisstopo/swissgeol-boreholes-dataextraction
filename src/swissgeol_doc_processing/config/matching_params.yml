@@ -50,7 +50,7 @@ affinity_params:
       line_weight: 1.0
       left_line_weight: 1.0
       spacing_weight: 1.0
-      right_end_weight: 1.0
+      right_end_weight: 0.5
       diagonal_weight: 1.0
       indentation_weight: 0.0
   protocol:
