@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 
 def _resolve_path(p: str | Path) -> str | Path:
     """Resolve local paths to absolute; leave HuggingFace model name strings unchanged."""
-    return Path(p).resolve() if str(p).startswith((".", "/")) else p
+    candidate = Path(p).resolve()
+    return candidate if candidate.exists() else p
 
 
 # Head parameter prefixes — must match the split performed in model_decoupling.py.

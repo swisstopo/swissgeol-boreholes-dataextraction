@@ -82,12 +82,13 @@
 
             "-g", "data/geoquat_ground_truth.json",
             "-c", "bert",
-            "-p", "models/uscs/fromaws_balancing/",
-            "-cs", "uscs"
+            "-p", "models/lithology_head",   // or models/en_main_head
+            "-b", "models/backbone/backbone.safetensors",
+            "-cs", "lithology"               // or en_main
         ],
         "cwd": "${workspaceFolder}",
         "justMyCode": true,
-        "python": "${workspaceFolder}/env/bin/python3"
+        "python": "${workspaceFolder}/.venv/bin/python3"
         },
         {
         "name": "Python: Run boreholes-classify (multi)",
@@ -101,14 +102,15 @@
             "--benchmark", "geoquat GT: data/geoquat_ground_truth.json: data/geoquat_ground_truth.json",
             "--benchmark", "geoquat pred : data/output/multi/geoquat_subset/predictions.json: data/geoquat_ground_truth.json",
             "-c", "bert",
-            "-p", "models/uscs/fromaws_balancing/",
-            "-cs", "uscs",
+            "-p", "models/lithology_head",   // or models/en_main_head
+            "-b", "models/backbone/backbone.safetensors",
+            "-cs", "lithology",              // or en_main
             "-o", "data/output_classification/classification_multi",
             "-ob", "data/output_classification/classification_multi_bedrock"
         ],
         "cwd": "${workspaceFolder}",
         "justMyCode": true,
-        "python": "${workspaceFolder}/env/bin/python3"
+        "python": "${workspaceFolder}/.venv/bin/python3"
         },
         {
             "name": "API",
