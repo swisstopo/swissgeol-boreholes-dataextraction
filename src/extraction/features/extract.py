@@ -112,15 +112,27 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Returns:
             list[ExtractedBorehole]: The extracted boreholes from the page.
         """
-        filtered_pairs = self._extract_filtered_sidebar_pairs()
+        filtered_pairs, fallback_dict = self._extract_filtered_sidebar_pairs()
 
         valid_boreholes = []
         pairs_from_valid_boreholes = []
         for pair in filtered_pairs:
             borehole = self._create_borehole_from_pair(pair)
+            accepted_pair = pair
+            if borehole is None and id(pair) in fallback_dict:
+                fallback = fallback_dict[id(pair)]
+                if not any(self._pairs_intersect(fallback, accepted) for accepted in pairs_from_valid_boreholes):
+                    logger.debug(
+                        "Page %s: primary pair (kind=%s) failed validation, retrying with a_above_b fallback",
+                        self.page_number,
+                        pair.sidebar.kind if pair.sidebar else "none",
+                    )
+                    borehole = self._create_borehole_from_pair(fallback)
+                    if borehole is not None:
+                        accepted_pair = fallback
             if borehole is not None:
                 valid_boreholes.append(borehole)
-                pairs_from_valid_boreholes.append(pair)
+                pairs_from_valid_boreholes.append(accepted_pair)
 
         material_descriptions_without_sidebar = self._extract_material_descriptions_without_sidebar()
         if material_descriptions_without_sidebar and not any(
@@ -309,16 +321,15 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         return False
 
-    def _should_block_protocol_with_a_above_b(
-        self,
-        a_above_b_sidebars_noise: list[SidebarNoise],
-    ) -> bool:
-        """Return True if protocol extraction should be skipped because a usable AAboveB exists."""
-        return any(self._has_valid_description_match(sidebar_noise) for sidebar_noise in a_above_b_sidebars_noise)
+    def _should_block_protocol(self, sidebars_noise: list[SidebarNoise]) -> bool:
+        """Return True if protocol extraction should be skipped because a usable primary sidebar exists."""
+        return any(self._has_valid_description_match(sn) for sn in sidebars_noise)
 
-    def _find_depth_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
+    def _find_depth_sidebar_pairs(
+        self,
+    ) -> tuple[list[MaterialDescriptionRectWithSidebar], dict[int, MaterialDescriptionRectWithSidebar]]:
         if not self.lines:
-            return []
+            return [], {}
 
         min_x = min([line.rect.x0 for line in self.lines])
         max_x = max([line.rect.x1 for line in self.lines])
@@ -330,57 +341,133 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
 
-        # create sidebars with noise count
+        has_strip_log = bool(self.strip_logs)
+        logger.debug("Page %s: strip_log detected=%s", self.page_number, has_strip_log)
+
         spulprobe_sidebars = SpulprobeSidebarExtractor.find_in_lines(self.lines)
+        logger.debug(
+            "Page %s: found %d spulprobe sidebar(s): %s",
+            self.page_number,
+            len(spulprobe_sidebars),
+            [f"entries={[str(e.rect) for e in s.entries]}" for s in spulprobe_sidebars],
+        )
         sidebars_noise: list[SidebarNoise] = [
             SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
             for sidebar in spulprobe_sidebars
         ]
-        used_entry_rects = {entry.rect for sidebar in spulprobe_sidebars for entry in sidebar.entries}
 
         a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words)
-        sidebars_noise.extend(
-            [
-                SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
-                for sidebar in a_to_b_sidebars
-            ]
+        logger.debug(
+            "Page %s: found %d a_to_b sidebar(s): %s",
+            self.page_number,
+            len(a_to_b_sidebars),
+            [f"entries={[str(e.start.rect) + '->' + str(e.end.rect) for e in s.entries]}" for s in a_to_b_sidebars],
         )
-        for column in a_to_b_sidebars:
-            for entry in column.entries:
-                used_entry_rects.add(entry.start.rect)
-                used_entry_rects.add(entry.end.rect)
+        a_to_b_sidebars_noise = [
+            SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree)) for sidebar in a_to_b_sidebars
+        ]
+        sidebars_noise.extend(a_to_b_sidebars_noise)
 
-        a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_words(
-            words,
-            line_rtree,
-            self.table_structures,
-            list(used_entry_rects),
-            sidebar_params=self.matching_params["depth_column_params"],
-        )
+        if has_strip_log:
+            # Strip log present: use original blocking pipeline.
+            # Entries claimed by earlier extractors are excluded from later ones.
+            used_entry_rects = {entry.rect for sidebar in spulprobe_sidebars for entry in sidebar.entries}
+            for column in a_to_b_sidebars:
+                for entry in column.entries:
+                    used_entry_rects.add(entry.start.rect)
+                    used_entry_rects.add(entry.end.rect)
 
-        sidebars_noise.extend(a_above_b_sidebars_noise)
-
-        for sidebar_noise in a_above_b_sidebars_noise:
-            for entry in sidebar_noise.sidebar.entries:
-                used_entry_rects.add(entry.rect)
-
-        block_protocol = self._should_block_protocol_with_a_above_b(a_above_b_sidebars_noise)
-
-        if not block_protocol:
-            protocol_sidebars_noise = ProtocolSidebarExtractor.find_in_words(
+            a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_words(
                 words,
-                self.lines,
                 line_rtree,
-                list(used_entry_rects),
                 self.table_structures,
-                sidebar_params=self.matching_params["affinity_params"]["protocol"],
+                list(used_entry_rects),
+                sidebar_params=self.matching_params["depth_column_params"],
             )
-            sidebars_noise.extend(protocol_sidebars_noise)
+            logger.debug(
+                "Page %s: found %d a_above_b sidebar(s): %s",
+                self.page_number,
+                len(a_above_b_sidebars_noise),
+                [
+                    f"entries={[str(e.rect) for e in sn.sidebar.entries]}, noise={sn.noise_count}"
+                    for sn in a_above_b_sidebars_noise
+                ],
+            )
+            sidebars_noise.extend(a_above_b_sidebars_noise)
 
-        # assign all sidebar to their best match
-        material_descriptions_sidebar_pairs = self._match_sidebars_to_description_rects(sidebars_noise)
+            for sidebar_noise in a_above_b_sidebars_noise:
+                for entry in sidebar_noise.sidebar.entries:
+                    used_entry_rects.add(entry.rect)
 
-        return material_descriptions_sidebar_pairs
+            block_protocol = self._should_block_protocol(a_above_b_sidebars_noise + a_to_b_sidebars_noise)
+            logger.debug("Page %s: block_protocol=%s (strip log present)", self.page_number, block_protocol)
+
+            if not block_protocol:
+                protocol_sidebars_noise = ProtocolSidebarExtractor.find_in_words(
+                    words,
+                    self.lines,
+                    line_rtree,
+                    list(used_entry_rects),
+                    self.table_structures,
+                    sidebar_params=self.matching_params["affinity_params"]["protocol"],
+                )
+                logger.debug(
+                    "Page %s: found %d protocol sidebar(s): %s",
+                    self.page_number,
+                    len(protocol_sidebars_noise),
+                    [
+                        f"entries={[str(e.rect) for e in sn.sidebar.entries]}, noise={sn.noise_count}"
+                        for sn in protocol_sidebars_noise
+                    ],
+                )
+                sidebars_noise.extend(protocol_sidebars_noise)
+        else:
+            # No strip log: a_above_b and protocol compete freely; but a_to_b still blocks protocol.
+            a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_words(
+                words,
+                line_rtree,
+                self.table_structures,
+                [],
+                sidebar_params=self.matching_params["depth_column_params"],
+            )
+            logger.debug(
+                "Page %s: found %d a_above_b sidebar(s): %s",
+                self.page_number,
+                len(a_above_b_sidebars_noise),
+                [
+                    f"entries={[str(e.rect) for e in sn.sidebar.entries]}, noise={sn.noise_count}"
+                    for sn in a_above_b_sidebars_noise
+                ],
+            )
+            sidebars_noise.extend(a_above_b_sidebars_noise)
+
+            block_protocol = self._should_block_protocol(a_to_b_sidebars_noise)
+            logger.debug("Page %s: block_protocol=%s (no strip log, a_to_b check)", self.page_number, block_protocol)
+
+            if not block_protocol:
+                protocol_sidebars_noise = ProtocolSidebarExtractor.find_in_words(
+                    words,
+                    self.lines,
+                    line_rtree,
+                    [],
+                    self.table_structures,
+                    sidebar_params=self.matching_params["affinity_params"]["protocol"],
+                )
+                logger.debug(
+                    "Page %s: found %d protocol sidebar(s): %s",
+                    self.page_number,
+                    len(protocol_sidebars_noise),
+                    [
+                        f"entries={[str(e.rect) for e in sn.sidebar.entries]}, noise={sn.noise_count}"
+                        for sn in protocol_sidebars_noise
+                    ],
+                )
+                sidebars_noise.extend(protocol_sidebars_noise)
+
+        # assign all sidebars to their best match
+        material_descriptions_sidebar_pairs, fallback_dict = self._match_sidebars_to_description_rects(sidebars_noise)
+
+        return material_descriptions_sidebar_pairs, fallback_dict
 
     def _find_all_material_description_candidates(self, sidebar: Sidebar | None) -> list[pymupdf.Rect]:
         """Find all material description candidates on the page.
@@ -520,7 +607,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
     def _match_sidebars_to_description_rects(
         self, sidebars_noise: list[SidebarNoise]
-    ) -> list[MaterialDescriptionRectWithSidebar]:
+    ) -> tuple[list[MaterialDescriptionRectWithSidebar], dict[int, MaterialDescriptionRectWithSidebar]]:
         """Matches sidebar objects to material description rectangles based on score.
 
         The algorithm performs greedy matching: each sidebar is paired with the material description rectangle that
@@ -532,7 +619,11 @@ class MaterialDescriptionRectWithSidebarExtractor:
             sidebars_noise (List[SidebarNoise]): List of sidebar objects to match.
 
         Returns:
-            List[MaterialDescriptionRectWithSidebar]: List of matched pairs.
+            A tuple of:
+            - List of matched MaterialDescriptionRectWithSidebar pairs.
+            - A fallback dict mapping id(winning_pair) to an a_above_b fallback pair for cases where a
+              non-a_above_b sidebar won by tiebreaker. Used by process_page to retry if the winner fails
+              borehole validation.
         """
         # Store all possible matched rect with the associate scores in a dictionary: (s_idx, rect) -> score
         score_map = {
@@ -542,6 +633,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         }
 
         matched_pairs = []
+        fallback_dict: dict[int, MaterialDescriptionRectWithSidebar] = {}
         used_sidebars_idx = set()
         used_descr_rects = set()
 
@@ -580,34 +672,92 @@ class MaterialDescriptionRectWithSidebarExtractor:
             if not available_scores:
                 break
 
-            # Get best available match
-            (best_sidebar_idx, best_rect), _ = max(available_scores.items(), key=lambda x: x[1])
-            matched_pairs.append(
-                MaterialDescriptionRectWithSidebar(
-                    sidebars_noise[best_sidebar_idx].sidebar,
-                    best_rect,
-                    self.lines,
-                    sidebars_noise[best_sidebar_idx].noise_count,
-                )
+            # Get best available match.
+            # Tiebreaker: prefer non-a_above_b types — if a_above_b is truly best its score should be clearly higher.
+            (best_sidebar_idx, best_rect), best_score = max(
+                available_scores.items(),
+                key=lambda x: (x[1], sidebars_noise[x[0][0]].sidebar.kind != "a_above_b"),
             )
+            best_sidebar = sidebars_noise[best_sidebar_idx].sidebar
+            logger.debug(
+                "Matching: assigned sidebar kind=%s (idx=%d, entries=%d) to rect=%s with score=%.3f",
+                best_sidebar.kind,
+                best_sidebar_idx,
+                len(best_sidebar.entries),
+                best_rect,
+                best_score,
+            )
+            winning_pair = MaterialDescriptionRectWithSidebar(
+                sidebars_noise[best_sidebar_idx].sidebar,
+                best_rect,
+                self.lines,
+                sidebars_noise[best_sidebar_idx].noise_count,
+            )
+            matched_pairs.append(winning_pair)
+
+            # When a non-a_above_b won by tiebreaker, store the a_above_b as a fallback so
+            # process_page can retry with it if the winner fails borehole validation.
+            if best_sidebar.kind != "a_above_b":
+                a_above_b_alts = [
+                    s_idx
+                    for (s_idx, rect), score in available_scores.items()
+                    if rect == best_rect and score == best_score and sidebars_noise[s_idx].sidebar.kind == "a_above_b"
+                ]
+                if a_above_b_alts:
+                    alt_idx = a_above_b_alts[0]
+                    fallback_pair = MaterialDescriptionRectWithSidebar(
+                        sidebar=sidebars_noise[alt_idx].sidebar,
+                        material_description_rect=best_rect,
+                        lines=self.lines,
+                        noise_count=sidebars_noise[alt_idx].noise_count,
+                    )
+                    fallback_dict[id(winning_pair)] = fallback_pair
+                    logger.debug(
+                        "Matching: tiebreaker — %s (idx=%d) beat a_above_b (idx=%d) at score=%.3f;"
+                        " a_above_b stored as fallback",
+                        best_sidebar.kind,
+                        best_sidebar_idx,
+                        alt_idx,
+                        best_score,
+                    )
+
             used_sidebars_idx.add(best_sidebar_idx)
             used_descr_rects.add(best_rect)
 
         # Step 2: Assign remaining sidebars (if any) to best match (reuse descr_rects)
         remaining_sidebars_idx = [s_idx for s_idx in range(len(sidebars_noise)) if s_idx not in used_sidebars_idx]
+        if remaining_sidebars_idx:
+            logger.debug(
+                "Matching: %d sidebar(s) unmatched after greedy step, assigning to best available rect: kinds=%s",
+                len(remaining_sidebars_idx),
+                [sidebars_noise[i].sidebar.kind for i in remaining_sidebars_idx],
+            )
         for s_idx in remaining_sidebars_idx:
             sidebar = sidebars_noise[s_idx].sidebar
             noise = sidebars_noise[s_idx].noise_count
             mat_rects = self._find_all_material_description_candidates(sidebar)
             if not mat_rects:
+                logger.debug(
+                    "Matching: sidebar kind=%s (idx=%d) has no material description candidates, skipping",
+                    sidebar.kind,
+                    s_idx,
+                )
                 continue
             best_rect = max(
                 mat_rects,
                 key=lambda rect: MaterialDescriptionRectWithSidebar(sidebar, rect, self.lines, noise).score_match,
             )
+            fallback_score = MaterialDescriptionRectWithSidebar(sidebar, best_rect, self.lines, noise).score_match
+            logger.debug(
+                "Matching: fallback assigned sidebar kind=%s (idx=%d) to rect=%s with score=%.3f",
+                sidebar.kind,
+                s_idx,
+                best_rect,
+                fallback_score,
+            )
             matched_pairs.append(MaterialDescriptionRectWithSidebar(sidebar, best_rect, self.lines, noise))
 
-        return matched_pairs
+        return matched_pairs, fallback_dict
 
     def get_diagonals_near_textlines(
         self, description_lines: list[TextLine], line_detection_params: dict
@@ -668,26 +818,59 @@ class MaterialDescriptionRectWithSidebarExtractor:
             )
         return None
 
-    def _extract_filtered_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
+    def _extract_filtered_sidebar_pairs(
+        self,
+    ) -> tuple[list[MaterialDescriptionRectWithSidebar], dict[int, MaterialDescriptionRectWithSidebar]]:
         """Extract and filter sidebar pairs using the common pipeline.
 
         Returns:
-            List of filtered MaterialDescriptionRectWithSidebar pairs, sorted by
-            score (highest first) and filtered by score, table criteria, and
-            intersections.
+            A tuple of filtered MaterialDescriptionRectWithSidebar pairs (sorted by score, highest first,
+            filtered by score and intersections) and a fallback dict for tiebreaker pairs (see
+            _match_sidebars_to_description_rects).
         """
         # Step 1: Find all potential pairs
         pairs = self._find_layer_identifier_sidebar_pairs()
-        pairs.extend(self._find_depth_sidebar_pairs())
+        depth_pairs, fallback_dict = self._find_depth_sidebar_pairs()
+        pairs.extend(depth_pairs)
 
         # Step 2: Sort once by score (highest first)
         pairs.sort(key=lambda pair: pair.score_match, reverse=True)
 
+        logger.debug(
+            "Page %s: all candidate pairs before filtering (%d total): %s",
+            self.page_number,
+            len(pairs),
+            [f"kind={p.sidebar.kind if p.sidebar else 'none'}, score={p.score_match:.3f}" for p in pairs],
+        )
+
         # Step 3: Apply filter chain
         filtered_pairs = [pair for pair in pairs if pair.score_match >= 0]
-        filtered_pairs = self._filter_by_intersections(filtered_pairs)
+        rejected_by_score = len(pairs) - len(filtered_pairs)
+        if rejected_by_score:
+            logger.debug(
+                "Page %s: %d pair(s) rejected by score < 0",
+                self.page_number,
+                rejected_by_score,
+            )
 
-        return filtered_pairs
+        before_intersect = len(filtered_pairs)
+        filtered_pairs = self._filter_by_intersections(filtered_pairs)
+        rejected_by_intersect = before_intersect - len(filtered_pairs)
+        if rejected_by_intersect:
+            logger.debug(
+                "Page %s: %d pair(s) rejected by intersection filter",
+                self.page_number,
+                rejected_by_intersect,
+            )
+
+        logger.debug(
+            "Page %s: final %d accepted pair(s): %s",
+            self.page_number,
+            len(filtered_pairs),
+            [f"kind={p.sidebar.kind if p.sidebar else 'none'}, score={p.score_match:.3f}" for p in filtered_pairs],
+        )
+
+        return filtered_pairs, fallback_dict
 
     @staticmethod
     def _filter_diagonals(
@@ -721,7 +904,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             SidebarQualityMetrics: Quality metrics for all sidebars found on the page.
         """
         # Get filtered pairs (without descriptions without sidebar)
-        good_sidebar_pairs = self._extract_filtered_sidebar_pairs()
+        good_sidebar_pairs, _ = self._extract_filtered_sidebar_pairs()
         best_sidebar_score = max((pair.score_match for pair in good_sidebar_pairs), default=0.0)
 
         return SidebarQualityMetrics(

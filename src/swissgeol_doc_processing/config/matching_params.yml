@@ -68,6 +68,7 @@ affinity_params:
         - bis
         - Depth
       max_header_gap: 40
+      header_x_expansion: 30
       # those parameters were chosen randomly but they behave well so far.
       weights:
         line_weight: 1.0
@@ -84,6 +85,7 @@ material_description_column_width: 0.08
 depth_column_params: # these params should be optimized as soon as there is reliable evaluation data
   noise_count_threshold: 1.25
   noise_count_offset: 2.5
+  corr_coef_threshold: 0.95
 
 non_description_lines_ratio: 0.15
 
