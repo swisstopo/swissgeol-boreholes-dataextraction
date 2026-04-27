@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import statistics
-
 import fastquadtree
 import pymupdf
 
@@ -19,46 +17,6 @@ from swissgeol_doc_processing.utils.table_detection import TableStructure
 
 class ProtocolSidebarExtractor:
     """Class that finds ProtocolSidebar instances in a borehole profile."""
-
-    @staticmethod
-    def _arithmetic_progression_values(values: list[float]) -> set[float]:
-        """Check if some of the values form an arithmetic progression."""
-        if len(values) <= 2:
-            return {}
-
-        integer_values = [int(round(value * 100)) for value in values]
-        differences = [integer_values[i + 1] - integer_values[i] for i in range(len(integer_values) - 1)]
-        step = statistics.mode(differences)
-        if step <= 0:
-            return {}
-
-        candidate_values = [value for value in integer_values if value % step == 0]
-
-        values_set = set(integer_values)
-        matching_steps = [value + step in values_set for value in candidate_values].count(True)
-        if matching_steps > 0.7 * (len(integer_values) - 1):
-            segments = [[value - step, value, value + step] for value in candidate_values]
-            return {
-                value / 100
-                for segment in segments
-                if all(value in values_set for value in segment)
-                for value in segment
-            }
-        else:
-            return {}
-
-    @staticmethod
-    def _arithmetic_progression_entries(entries: list[DepthColumnEntry]) -> list[DepthColumnEntry]:
-        no_decimal_point_entries = [entry for entry in entries if not entry.has_decimal_point]
-        no_decimal_point_values = [entry.value for entry in no_decimal_point_entries]
-        selected_values = ProtocolSidebarExtractor._arithmetic_progression_values(no_decimal_point_values)
-        selected_entries = [entry for entry in no_decimal_point_entries if entry.value in selected_values]
-        if selected_entries:
-            return selected_entries
-
-        values = [entry.value for entry in entries]
-        selected_values = ProtocolSidebarExtractor._arithmetic_progression_values(values)
-        return [entry for entry in entries if entry.value in selected_values]
 
     @staticmethod
     def find_in_words(
@@ -126,17 +84,6 @@ class ProtocolSidebarExtractor:
             clusters = Cluster[DepthColumnEntry].create_clusters(
                 column_entries, lambda entry: entry.rect, allow_size_two=True
             )
-
-            excluded_entries = {
-                entry
-                for cluster in clusters
-                for entry in ProtocolSidebarExtractor._arithmetic_progression_entries(cluster.entries)
-            }
-            if excluded_entries:
-                column_entries = [e for e in column_entries if e not in excluded_entries]
-                clusters = Cluster[DepthColumnEntry].create_clusters(
-                    column_entries, lambda entry: entry.rect, allow_size_two=True
-                )
 
             for cluster in clusters:
                 if len(cluster.entries) < min_entries:

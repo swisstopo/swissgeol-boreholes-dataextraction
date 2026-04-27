@@ -17,15 +17,12 @@ class AAboveBSidebarValidator:
                                        to be valid.
         noise_count_offset (int): Offset for the noise count threshold. Affects the noise count criterion.
                                   Effective specifically for sidebars with very few entries.
-        corr_coef_threshold (float): Minimum Pearson correlation coefficient between depth values and their
-                                     vertical page positions. Raised when no strip log is detected on the page.
     """
 
     noise_count_threshold: float
     noise_count_offset: int
-    corr_coef_threshold: float = 0.95
 
-    def is_valid(self, sidebar_noise: SidebarNoise[AAboveBSidebar]) -> bool:
+    def is_valid(self, sidebar_noise: SidebarNoise[AAboveBSidebar], corr_coef_threshold: float = 0.95) -> bool:
         """Checks whether the sidebar is valid.
 
         The sidebar is considered valid if:
@@ -37,6 +34,7 @@ class AAboveBSidebarValidator:
 
         Args:
             sidebar_noise (SidebarNoise): The SidebarNoise wrapping the sidebar to validate.
+            corr_coef_threshold (float): The minimal correlation coefficient for the column to be deemed valid.
 
         Returns:
             bool: True if the sidebar is valid, False otherwise.
@@ -56,11 +54,12 @@ class AAboveBSidebarValidator:
         if noise > noise_threshold:
             return False
 
+        # Check if the entries are strictly increasing.
         if not sidebar.is_strictly_increasing():
             return False
 
         corr_coef = sidebar.pearson_correlation_coef()
-        return bool(corr_coef and corr_coef > self.corr_coef_threshold)
+        return corr_coef and corr_coef > corr_coef_threshold
 
     def reduce_until_valid(
         self, sidebar_noise: SidebarNoise[AAboveBSidebar], line_rtree: fastquadtree.RectQuadTreeObjects
