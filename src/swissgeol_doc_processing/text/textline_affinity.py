@@ -13,7 +13,7 @@ from swissgeol_doc_processing.text.textline import TextLine
 
 @dataclass
 class Affinity:
-    """class holding the 4 types of affinities.
+    """Class holding the 6 types of affinities.
 
     Each affinity is a float between -1.0 and 1.0 and measures how likely two lines belong together.
 
@@ -21,6 +21,8 @@ class Affinity:
     lines_on_the_left_affinity: affinity based on the presence of lines cutting the left side of the text lines.
     vertical_spacing_affinity: affinity based on the vertical spacing between the two text lines.
     right_end_affinity: affinity based on the alignment of the right end of the two text lines.
+    diagonal_line_affinity: affinity based on the presence of diagonal lines inbetween the two text lines.
+    indentation_affinity: affinity based on the indentation difference between the two text lines.
     """
 
     long_lines_affinity: float
