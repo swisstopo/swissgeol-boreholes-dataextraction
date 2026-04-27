@@ -1,12 +1,11 @@
 """Contains the main extraction pipeline for stratigraphy."""
 
 import logging
-import statistics
 
 import fastquadtree
 import pymupdf
 
-from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
+from extraction.features.stratigraphy.interval.interval import IntervalBlockPair
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
     Layer,
@@ -922,84 +921,6 @@ def extract_sidebar_information(
     ).extract_sidebars_with_quality_metrics()
 
 
-# pt — absolute cap; prevents false merges in documents with large spacing in between material descriptions
-_MAX_CONTINUATION_GAP = 1.0
-
-
-def _group_by_spacing(lines: list[TextLine]) -> list[list[TextLine]]:
-    """Group consecutive description lines into blocks based on relative vertical spacing.
-
-    The threshold is 40% of the median inter-line gap, capped at _MAX_CONTINUATION_GAP pt.
-    The relative part adapts to each document's line rhythm; the absolute cap ensures that
-    documents with unusually large spacing never accidentally merge distinct descriptions.
-
-    Args:
-        lines: The description text lines to group.
-
-    Returns:
-        List of groups, where each group is a list of consecutive TextLines belonging to
-        the same material description.
-    """
-    if len(lines) < 2:
-        return [lines] if lines else []
-
-    gaps = [lines[i].rect.y0 - lines[i - 1].rect.y1 for i in range(1, len(lines))]
-    threshold = min(statistics.median(gaps) * 0.4, _MAX_CONTINUATION_GAP)
-
-    groups = [[lines[0]]]
-    for i, gap in enumerate(gaps):
-        if gap < threshold:
-            groups[-1].append(lines[i + 1])
-        else:
-            groups.append([lines[i + 1]])
-    return groups
-
-
-def _hard_group_match(
-    sidebar: Sidebar,
-    description_lines: list[TextLine],
-    affinities: list[Affinity],
-    depth_interval_zones: list[IntervalZone],
-) -> list[IntervalBlockPair] | None:
-    """Try to match lines to intervals by pre-grouping continuation lines.
-
-    Groups consecutive lines by relative vertical spacing so that word-wrapped sentences
-    are never split across depth intervals. Only attempted when there is a count mismatch
-    (more lines than intervals) and grouping produces exactly the right number of groups.
-    Returns None if the grouped DP fails to assign at least one line to every interval.
-    """
-    n_intervals = len(depth_interval_zones)
-    groups = _group_by_spacing(description_lines)
-    if len(description_lines) == n_intervals or len(groups) != n_intervals:
-        return None
-
-    representatives = [group[0] for group in groups]
-    group_by_rep_id = {id(rep): group for rep, group in zip(representatives, groups, strict=True)}
-    line_index = {id(line): idx for idx, line in enumerate(description_lines)}
-    grouped_affinities = [affinities[line_index[id(rep)]] for rep in representatives]
-    affinity_scores = sidebar.dp_weighted_affinities(grouped_affinities)
-    _, mapping = IntervalToLinesDP(depth_interval_zones, representatives, affinity_scores).solve(sidebar.dp_scoring_fn)
-    mapping = [(zone, [line for rep in reps for line in group_by_rep_id[id(rep)]]) for zone, reps in mapping]
-    result = sidebar.post_processing(mapping)
-    if sum(1 for ibp in result if ibp.block.lines) == n_intervals:
-        return result
-    return None
-
-
-def _soft_match(
-    sidebar: Sidebar,
-    description_lines: list[TextLine],
-    affinities: list[Affinity],
-    depth_interval_zones: list[IntervalZone],
-) -> list[IntervalBlockPair]:
-    """Match lines to intervals using the original ungrouped DP."""
-    affinity_scores = sidebar.dp_weighted_affinities(affinities)
-    _, mapping = IntervalToLinesDP(depth_interval_zones, description_lines, affinity_scores).solve(
-        sidebar.dp_scoring_fn
-    )
-    return sidebar.post_processing(mapping)
-
-
 def match_lines_to_interval(
     sidebar: Sidebar,
     description_lines: list[TextLine],
@@ -1007,10 +928,6 @@ def match_lines_to_interval(
     diagonals: list[Line],
 ) -> list[IntervalBlockPair]:
     """Match the description lines to the pair intervals.
-
-    First attempts a hard group match, which pre-groups continuation lines by vertical
-    spacing so that word-wrapped sentences are never split across depth intervals. If that
-    fails (count mismatch or groups do not align), falls back to the original ungrouped DP.
 
     Args:
         sidebar (Sidebar): The sidebar.
@@ -1028,11 +945,12 @@ def match_lines_to_interval(
 
     depth_interval_zones = sidebar.get_interval_zone()
 
-    result = _hard_group_match(sidebar, description_lines, affinities, depth_interval_zones)
-    if result is not None:
-        return result
-
-    return _soft_match(sidebar, description_lines, affinities, depth_interval_zones)
+    # affinities can differ depending on sidebar type
+    affinity_scores = sidebar.dp_weighted_affinities(affinities)
+    _, mapping = IntervalToLinesDP(depth_interval_zones, description_lines, affinity_scores).solve(
+        sidebar.dp_scoring_fn
+    )
+    return sidebar.post_processing(mapping)
 
 
 def get_pairs_based_on_line_affinity(
