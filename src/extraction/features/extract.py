@@ -1,7 +1,5 @@
 """Contains the main extraction pipeline for stratigraphy."""
 
-import logging
-
 import fastquadtree
 import pymupdf
 
@@ -52,8 +50,6 @@ from swissgeol_doc_processing.utils.strip_log_detection import StripLog
 from swissgeol_doc_processing.utils.table_detection import (
     TableStructure,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class MaterialDescriptionRectWithSidebarExtractor:
