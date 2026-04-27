@@ -45,8 +45,8 @@ def test_find_last_duplicate_no_duplicates(create_layer):
     prev_layers = [create_layer("Layer A"), create_layer("Layer B")]
     current_layers = [create_layer("Layer C"), create_layer("Layer D")]
 
-    bottom_duplicated_idx = find_split_by_convolution(prev_layers, current_layers, matching_params)
-    assert bottom_duplicated_idx is None
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
+    assert overlap_result is None
 
 
 def test_find_last_duplicate_single_at_top(create_layer):
@@ -54,8 +54,9 @@ def test_find_last_duplicate_single_at_top(create_layer):
     prev_layers = [create_layer("Layer A"), create_layer("Layer B")]
     current_layers = [create_layer("Layer B"), create_layer("Layer C"), create_layer("Layer D")]
 
-    bottom_duplicated_idx = find_split_by_convolution(prev_layers, current_layers, matching_params)
-    assert bottom_duplicated_idx == 1
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
+    assert overlap_result.upper_id == 2
+    assert overlap_result.lower_id == 1
 
 
 def test_find_last_duplicate_multiple_consecutive(create_layer):
@@ -63,8 +64,9 @@ def test_find_last_duplicate_multiple_consecutive(create_layer):
     prev_layers = [create_layer("Layer A"), create_layer("Layer B"), create_layer("Layer C")]
     current_layers = [create_layer("Layer B"), create_layer("Layer C"), create_layer("Layer D")]
 
-    bottom_duplicated_idx = find_split_by_convolution(prev_layers, current_layers, matching_params)
-    assert bottom_duplicated_idx == 2
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
+    assert overlap_result.upper_id == 3
+    assert overlap_result.lower_id == 2
 
 
 def test_find_last_duplicate_false_positive(create_layer):
@@ -78,8 +80,9 @@ def test_find_last_duplicate_false_positive(create_layer):
         create_layer("Layer D"),  # false positive, same description but not a duplicate
         create_layer("Layer Z"),
     ]
-    bottom_duplicated_idx = find_split_by_convolution(prev_layers, current_layers_correct, matching_params)
-    assert bottom_duplicated_idx == 2
+    overlap_result = find_split_by_convolution(prev_layers, current_layers_correct, matching_params)
+    assert overlap_result.upper_id == 4
+    assert overlap_result.lower_id == 2
 
     current_layers_correct = [
         create_layer("Layer X"),
@@ -87,8 +90,8 @@ def test_find_last_duplicate_false_positive(create_layer):
         create_layer("Layer D"),  # false positive, same description but not a duplicate
         create_layer("Layer Z"),
     ]
-    bottom_duplicated_idx = find_split_by_convolution(prev_layers, current_layers_correct, matching_params)
-    assert bottom_duplicated_idx is None
+    overlap_result = find_split_by_convolution(prev_layers, current_layers_correct, matching_params)
+    assert overlap_result is None
 
 
 def test_find_last_duplicate_prev_bottom_cropped(create_layer):
@@ -102,8 +105,9 @@ def test_find_last_duplicate_prev_bottom_cropped(create_layer):
         create_layer("Bedrock"),
     ]
 
-    bottom_duplicated_idx = find_split_by_convolution(prev_layers, current_layers, matching_params)
-    assert bottom_duplicated_idx == 1
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
+    assert overlap_result.upper_id == 2
+    assert overlap_result.lower_id == 1
 
 
 def test_find_last_duplicate_current_top_cropped(create_layer):
@@ -117,8 +121,9 @@ def test_find_last_duplicate_current_top_cropped(create_layer):
         create_layer("Bedrock"),
     ]
 
-    bottom_duplicated_idx = find_split_by_convolution(prev_layers, current_layers, matching_params)
-    assert bottom_duplicated_idx == 1
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
+    assert overlap_result.upper_id == 2
+    assert overlap_result.lower_id == 1
 
 
 def test_find_last_duplicate_ocr_error(create_layer):
@@ -129,8 +134,9 @@ def test_find_last_duplicate_ocr_error(create_layer):
         create_layer("Clay with gravel"),
     ]
 
-    bottom_duplicated_idx = find_split_by_convolution(prev_layers, current_layers, matching_params)
-    assert bottom_duplicated_idx == 1
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
+    assert overlap_result.upper_id == 2
+    assert overlap_result.lower_id == 1
 
 
 def test_find_last_duplicate_full_duplicates(create_layer):
@@ -143,8 +149,8 @@ def test_find_last_duplicate_full_duplicates(create_layer):
         create_layer("Layer C"),
         create_layer("Layer D"),
     ]
-    bottom_duplicated_idx = find_split_by_convolution(prev_layers, current_layers_correct, matching_params)
-    assert bottom_duplicated_idx is None
+    overlap_result = find_split_by_convolution(prev_layers, current_layers_correct, matching_params)
+    assert overlap_result is None
 
 
 def test_are_layers_similar_text(create_layer):

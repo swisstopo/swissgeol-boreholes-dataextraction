@@ -2,6 +2,7 @@
 
 import logging
 import math
+from dataclasses import dataclass
 
 import Levenshtein
 
@@ -10,11 +11,23 @@ from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Laye
 logger = logging.getLogger(__name__)
 
 
+@dataclass
+class OverlapResult:
+    """Data class that contains all information regaring overlapping layers on consecutive pages.
+
+    `upper_id` is the number of layers to keep from the previous borehole and `lower_id` is the index of the
+    first non-overlapping layer in the continuing borehole.
+    """
+
+    upper_id: int
+    lower_id: int
+
+
 def select_boreholes_with_overlap(
     previous_page_boreholes: list[ExtractedBorehole],
     current_page_boreholes: list[ExtractedBorehole],
     matching_params: dict,
-) -> tuple[ExtractedBorehole | None, ExtractedBorehole | None, tuple[int, int] | None]:
+) -> tuple[ExtractedBorehole | None, ExtractedBorehole | None, OverlapResult | None]:
     """Remove duplicate layers caused by overlapping scanned pages.
 
     Compare layers from current page with those from previous page using a sliding-window
@@ -26,22 +39,16 @@ def select_boreholes_with_overlap(
         matching_params (dict): The parameters for matching boreholes.
 
     Returns:
-        (ExtractedBorehole | None, ExtractedBorehole | None, tuple[int, int] | None):
-            The borehole to be extended, the continuing borehole, and the cut indices
-            ``(upper_id, lower_id)`` where ``upper_id`` is the number of layers to keep
-            from the previous borehole and ``lower_id`` is the index of the first
-            non-overlapping layer in the continuing borehole.
+        (ExtractedBorehole | None, ExtractedBorehole | None, OverlapResult | None):
+            The borehole to be extended, the continuing borehole, and the precise location of the overlap.
     """
     for current_borehole in current_page_boreholes:
         for previous_page_borehole in previous_page_boreholes:
             # Check overlap between layers
-            if id_best := find_split_by_convolution(
+            if overlap := find_split_by_convolution(
                 previous_page_borehole.predictions, current_borehole.predictions, matching_params
             ):
-                upper_id = len(previous_page_borehole.predictions)
-                lower_id = id_best
-
-                return previous_page_borehole, current_borehole, (upper_id, lower_id)
+                return previous_page_borehole, current_borehole, overlap
 
     return None, None, None
 
@@ -106,7 +113,9 @@ def are_layers_similar(
     return True
 
 
-def find_split_by_convolution(layers_prev: list[Layer], layers_curr: list[Layer], matching_params: dict) -> int | None:
+def find_split_by_convolution(
+    layers_prev: list[Layer], layers_curr: list[Layer], matching_params: dict
+) -> OverlapResult | None:
     """Find the extent of overlap between consecutive page layers.
 
     Determines the maximum number of consecutive layers from the bottom of the previous
@@ -118,7 +127,7 @@ def find_split_by_convolution(layers_prev: list[Layer], layers_curr: list[Layer]
         matching_params (dict): Configuration dict with keys.
 
     Returns:
-        int | None: Index of first non-overlapping layer in current page, or None if no overlap.
+        OverlapResult | None: indices that define the overlapping layers, or None if no overlap.
     """
     material_threshold = matching_params["duplicate_layer_threshold"]
 
@@ -141,14 +150,14 @@ def find_split_by_convolution(layers_prev: list[Layer], layers_curr: list[Layer]
             else:
                 if match_with_depths_count >= 2:
                     # allow the overlap, even though not all layers match
-                    return i
+                    return OverlapResult(upper_id=len(layers_prev) - i + j, lower_id=j)
                 # no valid overlap; break inner loop and go to next value for i
                 match_ok = False
                 break
 
         # all layers matched
         if match_ok:
-            return i
+            return OverlapResult(upper_id=len(layers_prev), lower_id=i)
 
 
 def _is_duplicate(cur_text: str, prev_text: str, t: float, is_extremity: bool) -> bool:
