@@ -95,6 +95,19 @@ We use [uv](https://docs.astral.sh/uv/) to manage package dependencies. Install 
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
+This repository uses [Git LFS](https://git-lfs.github.com) to store the BERT model files. Install and enable it before cloning so the model files are downloaded automatically:
+
+```bash
+brew install git-lfs   # macOS — see https://git-lfs.github.com for other platforms
+git lfs install        # one-time setup per machine
+```
+
+If you already cloned without LFS installed, fetch the model files afterwards:
+
+```bash
+git lfs pull
+```
+
 The below commands will install the package for you (assuming you have successfully cloned the repository):
 ```bash
 uv sync --all-extras
@@ -203,9 +216,11 @@ To execute the layer description classification, follow these steps:
 ### 1. Setup
 
 Repeat steps 1 and 2 of the [data extraction pipeline](#run-data-extraction) to set up the environment and download the data.
-Pre-trained models can be downloaded with
+
+The pre-trained BERT models (`backbone`, `lithology_head`, `en_main_head`) are stored in the repository via Git LFS and are fetched automatically when cloning with LFS installed. If the `models/` directory contains only small pointer files instead of the actual weights, run:
+
 ```bash
-aws s3 sync s3://stijnvermeeren-boreholes-models models/uscs/your_model_folder
+git lfs pull
 ```
 
 ### 2. Run the Classification Pipeline
