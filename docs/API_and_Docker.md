@@ -53,42 +53,6 @@ Additional endpoints and their functionalities can be found in the project's sou
 To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is running. Please refer to the [FastAPI documentation](https://fastapi.tiangolo.com) for more information on how to work with FastAPI and build APIs using this framework.
 
 
-## Classification Model Configuration
-
-The `/api/V1/classify_lithology` endpoint requires fine-tuned BERT models. The models are committed directly to the repository under `models/` using [Git LFS](https://git-lfs.github.com) and are copied into the Docker image at build time — no external download or environment variable configuration is needed:
-
-- `models/backbone/backbone.safetensors` — shared frozen backbone (~609 MB, stored via Git LFS)
-- `models/en_main_head/` — task-specific head for the EN main classification system
-- `models/lithology_head/` — task-specific head for the lithology classification system
-
-### Cloning the repository
-
-Git LFS must be installed to download the model files when cloning:
-
-```bash
-brew install git-lfs   # macOS; see https://git-lfs.github.com for other platforms
-git lfs install        # one-time setup per machine
-git clone <repo-url>   # model files are downloaded automatically
-```
-
-If you already cloned without LFS installed, fetch the model files afterwards:
-
-```bash
-git lfs pull
-```
-
-### Docker
-
-The pre-built Docker image ships with these models baked in — no additional configuration is needed for classification:
-
-```bash
-docker pull ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:latest
-docker run -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:latest
-```
-
-To run without loading the BERT models (extraction endpoints only, saves memory), set `BERT_ENABLED=false`. The `/classify_lithology` endpoint will return HTTP 503 in this case.
-
-
 ## Build API as Local Docker Image
 
 The borehole application offers a given amount of functionalities (extract text, number, and coordinates) through an API. To build this API using a Docker Container, you can run the following commands. 
