@@ -230,6 +230,7 @@ def post_extract_stratigraphy(request: ExtractStratigraphyRequest) -> ExtractStr
     responses={
         400: {"model": BadRequestResponse, "description": "Bad request"},
         500: {"model": BadRequestResponse, "description": "Internal server error"},
+        503: {"model": BadRequestResponse, "description": "BERT models not loaded (set BERT_ENABLED=true)"},
     },
 )
 def post_classify_lithology(request: ClassifyLithologyRequest, http_request: Request) -> ClassifyLithologyResponse:
@@ -247,5 +248,11 @@ def post_classify_lithology(request: ClassifyLithologyRequest, http_request: Req
     - **200 OK**: Classification completed successfully.
     - **400 Bad Request**: Invalid request parameters.
     - **500 Internal Server Error**: Model loading or inference failure.
+    - **503 Service Unavailable**: BERT models were not loaded at startup (`BERT_ENABLED=false`).
     """
+    if http_request.app.state.bert_models is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Classification endpoint is disabled. Set BERT_ENABLED=true to enable BERT model loading.",
+        )
     return classify_lithology(request, http_request.app.state.bert_models)

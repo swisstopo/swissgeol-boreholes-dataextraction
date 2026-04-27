@@ -26,7 +26,14 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan function to load the BERT models when the application starts."""
-    app.state.bert_models = load_models()
+    bert_enabled = os.environ.get("BERT_ENABLED", "true").lower() != "false"
+    if bert_enabled:
+        app.state.bert_models = load_models()
+    else:
+        logger.info(
+            "BERT_ENABLED=false — skipping model loading. The /classify_lithology endpoint will be unavailable."
+        )
+        app.state.bert_models = None
     yield
 
 

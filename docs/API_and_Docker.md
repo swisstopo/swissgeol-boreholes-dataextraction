@@ -55,55 +55,20 @@ To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is
 
 ## Classification Model Configuration
 
-The `/api/V1/classify_lithology` endpoint requires a fine-tuned BERT model. Two independent toggles control how the model is loaded:
+The `/api/V1/classify_lithology` endpoint requires fine-tuned BERT models. The models are committed directly to the repository under `models/` and are copied into the Docker image at build time — no external download or environment variable configuration is needed:
 
-| Variable | Values | Effect |
-|---|---|---|
-| `BERT_LOCAL` | `true` / `false` (default) | Where to load from: local path or S3 |
-| `BERT_SPLIT` | `true` / `false` (default) | Model format: shared backbone + task heads, or single full model |
+- `models/backbone/backbone.safetensors` — shared frozen backbone
+- `models/en_main_head/` — task-specific head for the EN main classification system
+- `models/lithology_head/` — task-specific head for the lithology classification system
 
-This gives four combinations. Set the corresponding variables for whichever combination you use:
-
-**`BERT_LOCAL=true`, `BERT_SPLIT=false` — local full model**
-```bash
-BERT_MODEL_PATH_LITHOLOGY=/path/to/lithology_models/best_model_lithology
-BERT_MODEL_PATH_EN_MAIN=/path/to/en_models/best_model
-```
-
-**`BERT_LOCAL=true`, `BERT_SPLIT=true` — local split model**
-```bash
-BERT_MODEL_PATH_BACKBONE=/path/to/backbone/backbone.safetensors
-BERT_MODEL_PATH_LITHOLOGY_HEAD=/path/to/lithology_head
-BERT_MODEL_PATH_EN_MAIN_HEAD=/path/to/en_main_head
-```
-
-**`BERT_LOCAL=false`, `BERT_SPLIT=false` — S3 full model** *(default)*
-```bash
-BERT_MODEL_S3_BUCKET=your_bucket_name
-BERT_MODEL_S3_KEY_LITHOLOGY=lithology_models/best_model_lithology
-BERT_MODEL_S3_KEY_EN_MAIN=en_models/best_model
-
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
-AWS_ENDPOINT=https://s3.<region>.amazonaws.com
-```
-
-**`BERT_LOCAL=false`, `BERT_SPLIT=true` — S3 split model**
-```bash
-BERT_MODEL_S3_BUCKET=your_bucket_name
-BERT_MODEL_S3_KEY_BACKBONE=backbone
-BERT_MODEL_S3_KEY_LITHOLOGY_HEAD=lithology_head
-BERT_MODEL_S3_KEY_EN_MAIN_HEAD=en_main_head
-```
-
-The pre-built Docker image ships with the split model baked in (`BERT_LOCAL=true`, `BERT_SPLIT=true`) — no additional configuration is needed for classification:
+The pre-built Docker image ships with these models baked in — no additional configuration is needed for classification:
 
 ```bash
 docker pull ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:latest
 docker run -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:latest
 ```
 
-If neither the expected local path nor S3 key is set, the endpoint returns HTTP 500 with a descriptive error — there is no silent fallback to an untrained base model.
+To run without loading the BERT models (extraction endpoints only, saves memory), set `BERT_ENABLED=false`. The `/classify_lithology` endpoint will return HTTP 503 in this case.
 
 
 ## Build API as Local Docker Image
@@ -120,16 +85,12 @@ cd swissgeol-boreholes-dataextraction
 
 2. **Build the Docker image**
 
-Building the image requires AWS credentials to download the BERT classification models at build time. Credentials are passed as [BuildKit secrets](https://docs.docker.com/build/building/secrets/) so they are never stored in any image layer:
+Build the Docker image using the following command:
 
 ```bash
-docker build \
-  --secret id=aws_access_key_id,env=AWS_ACCESS_KEY_ID \
-  --secret id=aws_secret_access_key,env=AWS_SECRET_ACCESS_KEY \
-  --build-arg BERT_MODEL_S3_BUCKET=your_bucket_name \
-  -t borehole-api .
+docker build -t borehole-api . -f Dockerfile
 ```
-
+This command uploads the classification models into the Docker image.
 For a quick build without the classification models (data extraction endpoints only):
 ```bash
 docker build -t borehole-api .
