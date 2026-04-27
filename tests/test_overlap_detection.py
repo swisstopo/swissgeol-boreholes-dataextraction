@@ -160,9 +160,8 @@ def test_are_layers_similar_elevation(create_elevation_layer):
     layer_a = create_elevation_layer("Desc A", [0, 1])
     layer_b = create_elevation_layer("Desc A", [0, 2])
     layer_c = create_elevation_layer("Desc A", [0, None])
-    assert are_layers_similar(layer_a, layer_b, force_depth_matching=False)
-    assert not are_layers_similar(layer_a, layer_b, force_depth_matching=True)
-    assert are_layers_similar(layer_a, layer_c, force_depth_matching=True)
+    assert not are_layers_similar(layer_a, layer_b)
+    assert are_layers_similar(layer_a, layer_c)
 
 
 def test_are_layers_similar_extremities(create_layer):

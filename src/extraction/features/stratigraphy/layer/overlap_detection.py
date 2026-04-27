@@ -50,7 +50,6 @@ def are_layers_similar(
     layer_prev: Layer,
     layer_curr: Layer,
     material_threshold: float = 0.95,
-    force_depth_matching: bool = False,
     is_extremity: bool = False,
 ) -> bool:
     """Check if two layers are similar based on material description and optional depth matching.
@@ -64,7 +63,6 @@ def are_layers_similar(
         layer_prev (Layer): The layer from the previous page.
         layer_curr (Layer): The layer from the current page.
         material_threshold (float): Minimum similarity threshold for material descriptions. Defaults to 0.95.
-        force_depth_matching (bool, optional): Whether to enforce matching depths. Defaults to False.
         is_extremity (bool, optional): Whether this layer is at the boundary of the overlap. Defaults to False.
 
     Returns:
@@ -84,7 +82,7 @@ def are_layers_similar(
         return False
 
     # Rule 3: If depth exists, should match
-    if force_depth_matching and layer_curr.depths and layer_prev.depths:
+    if layer_curr.depths and layer_prev.depths:
         # Rule 3.1 Starting depth should match within tolerance
         if (
             layer_curr.depths.start
@@ -123,24 +121,34 @@ def find_split_by_convolution(layers_prev: list[Layer], layers_curr: list[Layer]
         int | None: Index of first non-overlapping layer in current page, or None if no overlap.
     """
     material_threshold = matching_params["duplicate_layer_threshold"]
-    force_depth = matching_params["duplicate_layer_force_depth"]
-    idx_next = None
 
-    for i in list(range(1, min(len(layers_prev), len(layers_curr)) + 1)):
-        # All layers should match to enforce overlap
-        if all(
-            are_layers_similar(
+    # check the longest possible overlap first
+    for i in range(min(len(layers_prev), len(layers_curr)), 0, -1):
+        match_with_depths_count = 0
+        match_ok = True
+
+        for j, (layer_prev, layer_curr) in enumerate(zip(layers_prev[-i:], layers_curr[:i], strict=True)):
+            if are_layers_similar(
                 layer_prev=layer_prev,
                 layer_curr=layer_curr,
                 material_threshold=material_threshold,
-                force_depth_matching=force_depth,
                 is_extremity=(j == 0 or j == i - 1),  # Indicate to function that one layer might be cut (extremities)
-            )
-            for j, (layer_prev, layer_curr) in enumerate(zip(layers_prev[-i:], layers_curr[:i], strict=True))
-        ):
-            idx_next = i
+            ):
+                if layer_prev.depths and layer_prev.depths.start and layer_prev.depths.end:
+                    match_with_depths_count += 1
+                else:
+                    match_with_depths_count = 0
+            else:
+                if match_with_depths_count >= 2:
+                    # allow the overlap, even though not all layers match
+                    return i
+                # no valid overlap; break inner loop and go to next value for i
+                match_ok = False
+                break
 
-    return idx_next
+        # all layers matched
+        if match_ok:
+            return i
 
 
 def _is_duplicate(cur_text: str, prev_text: str, t: float, is_extremity: bool) -> bool:
