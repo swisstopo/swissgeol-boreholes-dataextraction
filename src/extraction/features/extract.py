@@ -914,7 +914,7 @@ def get_pairs_based_on_line_affinity(
     horizontal_lines_significance = sum(-affinity.long_lines_affinity for affinity in affinities)
     vertical_spacing_significance = sum(max(0.0, -affinity.vertical_spacing_affinity) for affinity in affinities)
     if horizontal_lines_significance > vertical_spacing_significance:
-        # if the precense of horizontal lines seems to be a stronger differentiator than the vertical spacing between
+        # if the presence of horizontal lines seems to be a stronger differentiator than the vertical spacing between
         # lines, then we set the threshold at the level of the presence of such a horizontal line, making it less
         # likely that descriptions are split in the absence of such a line.
         threshold = -weights["line_weight"]
