@@ -46,19 +46,18 @@ class AAboveBSidebarValidator:
 
         sidebar = sidebar_noise.sidebar
         noise = sidebar_noise.noise_count
-        noise_threshold = self.noise_count_threshold * (len(sidebar.entries) - self.noise_count_offset) ** 2
 
         if len(sidebar.entries) < 3:
             return False
 
-        if noise > noise_threshold:
+        if noise > self.noise_count_threshold * (len(sidebar.entries) - self.noise_count_offset) ** 2:
             return False
-
         # Check if the entries are strictly increasing.
         if not sidebar.is_strictly_increasing():
             return False
 
         corr_coef = sidebar.pearson_correlation_coef()
+
         return corr_coef and corr_coef > corr_coef_threshold
 
     def reduce_until_valid(
