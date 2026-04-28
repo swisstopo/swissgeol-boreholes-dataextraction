@@ -15,20 +15,28 @@ from classification.utils.data_loader import LayerInformation
 class BertClassifier(Classifier):
     """Classifier class that uses the BERT model."""
 
-    def __init__(self, model_path: Path | None, classification_system: type[ClassificationSystem]):
+    def __init__(
+        self,
+        model_path: Path | None,
+        classification_system: type[ClassificationSystem],
+        backbone_path: Path | None = None,
+    ):
         """Initialize a BertClassifier instance.
 
         Args:
-            model_path (Path | None): Path to the model checkpoint.
+            model_path (Path | None): Path to the model directory. For split models this is the head
+                directory; for full models it is the complete HuggingFace model directory.
             classification_system (type[ClassificationSystem]): the classification system used to classify
                 the descriptions.
+            backbone_path (Path | None): Path to backbone.safetensors for split-model loading.
+                When provided, model_path is treated as the head directory.
         """
         self.init_config(classification_system)
         if model_path is None:
             # load pretrained from transformers lib (bad)
             model_path = self.config["model_path"]
         self.model_path = model_path
-        self.bert_model = BertModel(model_path, classification_system)
+        self.bert_model = BertModel(model_path, classification_system, backbone_path=backbone_path)
 
     def get_name(self) -> str:
         """Returns a string with the name of the classifier."""

@@ -1,6 +1,7 @@
 """Main file for the backend. Where the endpoints of the borehole ML application are defined."""
 
 import os
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, status
@@ -11,6 +12,7 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 
 import app.common.log as log
+from app.api.v1.endpoints.lithology_classification import load_models
 from app.api.v1.router import router as v1_router
 from app.common.log import get_app_logger
 
@@ -20,8 +22,23 @@ logger = get_app_logger()
 
 load_dotenv()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan function to load the BERT models when the application starts."""
+    bert_enabled = os.environ.get("BERT_ENABLED", "true").lower() != "false"
+    if bert_enabled:
+        app.state.bert_models = load_models()
+    else:
+        logger.info(
+            "BERT_ENABLED=false — skipping model loading. The /classify_lithology endpoint will be unavailable."
+        )
+        app.state.bert_models = None
+    yield
+
+
 root_path = os.getenv("ENV", default="stage")
-app = FastAPI(root_path=f"/{root_path}")
+app = FastAPI(root_path=f"/{root_path}", lifespan=lifespan)
 
 
 def custom_openapi():

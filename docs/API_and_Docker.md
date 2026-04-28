@@ -53,9 +53,27 @@ Additional endpoints and their functionalities can be found in the project's sou
 To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is running. Please refer to the [FastAPI documentation](https://fastapi.tiangolo.com) for more information on how to work with FastAPI and build APIs using this framework.
 
 
+## Classification Model Configuration
+
+The `/api/V1/classify_lithology` endpoint requires fine-tuned BERT models. The models are committed directly to the repository under `models/` and are copied into the Docker image at build time — no external download or environment variable configuration is needed:
+
+- `models/backbone/backbone.safetensors` — shared frozen backbone
+- `models/en_main_head/` — task-specific head for the EN main classification system
+- `models/lithology_head/` — task-specific head for the lithology classification system
+
+The pre-built Docker image ships with these models baked in — no additional configuration is needed for classification:
+
+```bash
+docker pull ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:latest
+docker run -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:latest
+```
+
+To run without loading the BERT models (extraction endpoints only, saves memory), set `BERT_ENABLED=false`. The `/classify_lithology` endpoint will return HTTP 503 in this case.
+
+
 ## Build API as Local Docker Image
 
-The borehole application offers a given amount of functionalities (extract text, number, and coordinates) through an API. To build this API using a Docker Container, you can run the following commands. 
+The borehole application offers a given amount of functionalities (extract text, number, and coordinates) through an API. To build this API using a Docker Container, you can run the following commands.
 
 1. **Navigate to the project directory**
 
@@ -70,8 +88,10 @@ cd swissgeol-boreholes-dataextraction
 Build the Docker image using the following command:
 
 ```bash
-docker build -t borehole-api . -f Dockerfile
+docker build -t borehole-api .
 ```
+The classification models are always included in the image (they are committed to the repository under `models/` and copied at build time). To skip loading them at runtime, set `BERT_ENABLED=false` — see the [Classification Model Configuration](#classification-model-configuration) section.
+
 And for a linux/amd64 build:
 ```bash
 docker build --platform linux/amd64 -t borehole-api:test .
@@ -139,7 +159,7 @@ source ~/.bashrc  # Or ~/.bash_profile, ~/.zshrc based on your configuration
 
 5. **Access the API**
 
-Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8002`.
+Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
 
 You can also use an API testing tool like Postman to send requests to the API endpoints.
 
@@ -172,30 +192,33 @@ Replace `<container_id>` with the ID of the running container, which can be obta
 
 
 ## Use the Docker Image from the GitHub Container Registry
- 
 This repository provides a Docker image hosted in the GitHub Container Registry (GHCR) that can be used to run the application easily. Below are the steps to pull and run the Docker image.
 
 1. **Pull the Docker Image from the GitHub Container Registry**
-   
+
 ```bash
 docker pull ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:edge
 ```
 
 **Run the docker image from the Terminal**
-   
+
 ```bash
 docker run -d --name swissgeol-boreholes-dataextraction-api -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e AWS_ENDPOINT=ZZZ -e AWS_S3_BUCKET=AAA -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
 ```
 
-Where XXX, YYY, ZZZ, AAA, and TAG are placeholder values that users should replace with their actual credentials and desired tag. 
+Where XXX, YYY, ZZZ, AAA, and TAG are placeholder values that users should replace with their actual credentials and desired tag.
 
 Adjust the port mapping (8000:8000) based on the app's requirements.
 
-NOTE: Do not forget to specify your AWS Credentials.
+**Note:** AWS credentials are required for the data extraction endpoints (PDF processing via S3) but are **not** needed for the `/api/V1/classify_lithology` endpoint — the classification models are baked into the image. If you only need classification, you can omit the `-e AWS_*` flags entirely:
+
+```bash
+docker run -d --name swissgeol-boreholes-dataextraction-api -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
+```
 
 **Run the docker image from the Docker Desktop App**
 
-Open the Docker Desktop app and navigate to `Images`, you should be able to see the image you just pulled from GHCR. Click on the image and click on the `Run` button on the top right of the screen. 
+Open the Docker Desktop app and navigate to `Images`, you should be able to see the image you just pulled from GHCR. Click on the image and click on the `Run` button on the top right of the screen.
 
 <img src="../assets/img/docker-1.png" width="400">
 

@@ -203,10 +203,19 @@ To execute the layer description classification, follow these steps:
 ### 1. Setup
 
 Repeat steps 1 and 2 of the [data extraction pipeline](#run-data-extraction) to set up the environment and download the data.
-Pre-trained models can be downloaded with
-```bash
-aws s3 sync s3://stijnvermeeren-boreholes-models models/uscs/your_model_folder
-```
+
+Pre-trained models are available in two ways:
+
+- **From the repository (recommended):** Models are committed under `models/` via Git LFS. Pull them with:
+  ```bash
+  git lfs pull
+  ```
+  This provides `models/backbone/backbone.safetensors`, `models/en_main_head/`, and `models/lithology_head/`.
+
+- **From S3 (swisstopo internal):** If you have access to the swisstopo S3 bucket, you can download models directly:
+  ```bash
+  aws s3 sync s3://stijnvermeeren-boreholes-models models/uscs/your_model_folder
+  ```
 
 ### 2. Run the Classification Pipeline
 
@@ -229,7 +238,13 @@ All combinations that are not described in the table above, are not supported.
 - Use the `-f` or `--file-path` flag to specify the path to the JSON file containing the layer description and USCS ground truth.
 - Use the `-g` or `--ground-truth-path` flag to specify the path to the ground truth json. This flag is not necessary in every case, as described above. If the goal is to classify the material descriptions provided in the ground truth path via `-f`, the `-g`flag is not needed.
 - Use the `-c` or `--classifier` option to choose the classifier type from `dummy`, `baseline` or `bert`.
-- If you are using the classifier `bert` with a trained local [model](#train-bert-model), specify its folder path using the `-p` or `--model-path` flag. The folder has to contain all files generated when saving a model checkpoint with the transformers library.
+- If you are using the classifier `bert`, specify the model path using `-p` or `--model-path`:
+  - **Full model:** pass the path to a complete HuggingFace model directory (contains `config.json`, `model.safetensors`, tokenizer files, etc.).
+  - **Split model (backbone + head):** pass the head directory via `-p` and the shared backbone via `-b` or `--backbone-path`. This is the recommended approach when using the models from this repository:
+    ```bash
+    boreholes-classify-descriptions -f data/geoquat/validation -g data/geoquat_ground_truth.json \
+      -c bert -p models/lithology_head -b models/backbone/backbone.safetensors -cs lithology
+    ```
 - Use `--classification-system` or `-cs` to specify the system you want to classify the description into. Currently supports `uscs`, `lithology` and `en_main`.
 
 The script will classify all given descriptions and write the predictions to the `data/output_classification` directory.

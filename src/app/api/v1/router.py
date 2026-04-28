@@ -1,15 +1,18 @@
 """Main router for the app."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from app.api.v1.endpoints.bounding_boxes import bounding_boxes
 from app.api.v1.endpoints.create_pngs import create_pngs
 from app.api.v1.endpoints.extract_data import extract_data
 from app.api.v1.endpoints.extract_stratigraphy import extract_stratigraphy
+from app.api.v1.endpoints.lithology_classification import classify_lithology
 from app.common.schemas import (
     BoundingBoxesRequest,
     BoundingBoxesResponse,
+    ClassifyLithologyRequest,
+    ClassifyLithologyResponse,
     ExtractCoordinatesResponse,
     ExtractDataRequest,
     ExtractNumberResponse,
@@ -215,3 +218,41 @@ def post_extract_stratigraphy(request: ExtractStratigraphyRequest) -> ExtractStr
     - Bounding boxes are in PNG pixel coordinates (scaled 3x from PDF coordinates)
     """
     return extract_stratigraphy(request.filename, request.include_groundwater)
+
+
+####################################################################################################
+### Classify Lithology
+####################################################################################################
+@router.post(
+    "/classify_lithology",
+    tags=["classify_lithology"],
+    response_model=ClassifyLithologyResponse,
+    responses={
+        400: {"model": BadRequestResponse, "description": "Bad request"},
+        500: {"model": BadRequestResponse, "description": "Internal server error"},
+        503: {"model": BadRequestResponse, "description": "BERT models not loaded (set BERT_ENABLED=true)"},
+    },
+)
+def post_classify_lithology(request: ClassifyLithologyRequest, http_request: Request) -> ClassifyLithologyResponse:
+    """Classify a plain-text material description using the trained BERT model.
+
+    ### Request Body
+    - **description**: Plain-text material description to classify (e.g. `"Mergel, grau, laminiert"`).
+    - **classification_system**: Target system — one of `'lithology'` or `'en_main'`. Defaults to
+    `'lithology'`.
+
+    ### Returns
+    - **class_name**: Predicted class name from the selected classification system (e.g. `"Marlstone"`).
+
+    ### Status Codes
+    - **200 OK**: Classification completed successfully.
+    - **400 Bad Request**: Invalid request parameters.
+    - **500 Internal Server Error**: Model loading or inference failure.
+    - **503 Service Unavailable**: BERT models were not loaded at startup (`BERT_ENABLED=false`).
+    """
+    if http_request.app.state.bert_models is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Classification endpoint is disabled. Set BERT_ENABLED=true to enable BERT model loading.",
+        )
+    return classify_lithology(request, http_request.app.state.bert_models)
