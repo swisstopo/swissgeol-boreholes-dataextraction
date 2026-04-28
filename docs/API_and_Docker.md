@@ -88,13 +88,10 @@ cd swissgeol-boreholes-dataextraction
 Build the Docker image using the following command:
 
 ```bash
-docker build -t borehole-api . -f Dockerfile
-```
-This command uploads the classification models into the Docker image.
-For a quick build without the classification models (data extraction endpoints only):
-```bash
 docker build -t borehole-api .
 ```
+The classification models are always included in the image (they are committed to the repository under `models/` and copied at build time). To skip loading them at runtime, set `BERT_ENABLED=false` — see the [Classification Model Configuration](#classification-model-configuration) section.
+
 And for a linux/amd64 build:
 ```bash
 docker build --platform linux/amd64 -t borehole-api:test .
