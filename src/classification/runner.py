@@ -37,6 +37,7 @@ class ClassificationOptions:
     classifier_type: str
     model_path: Path | None
     classification_system: str
+    backbone_path: Path | None = None
 
 
 def run_classification_predictions(
@@ -79,7 +80,11 @@ def run_classification_predictions(
         return layer_descriptions, None, n_documents
 
     classifier = ClassifierFactory.create_classifier(
-        classifier_type_instance, classification_system_cls, options.model_path, out_directory_bedrock
+        classifier_type_instance,
+        classification_system_cls,
+        options.model_path,
+        out_directory_bedrock,
+        backbone_path=options.backbone_path,
     )
     logger.info(
         f"Classifying layer description into {classification_system_cls.get_name()} classes "
