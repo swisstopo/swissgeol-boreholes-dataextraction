@@ -968,11 +968,20 @@ def get_pairs_based_on_line_affinity(
     pairs = []
     prev_block_idx = 0
     weights = matching_params["affinity_params"]["no_sidebar"]["weights"]
-    # The presence of >=3 horiz. lines should tighten the vertical spacing constrain
-    threshold = -0.99 if sum(affinity.long_lines_affinity for affinity in affinities) <= -3.0 else 0.0
+
+    horizontal_lines_significance = sum(-affinity.long_lines_affinity for affinity in affinities)
+    vertical_spacing_significance = sum(max(0.0, -affinity.vertical_spacing_affinity) for affinity in affinities)
+    if horizontal_lines_significance > vertical_spacing_significance:
+        # if the presence of horizontal lines seems to be a stronger differentiator than the vertical spacing between
+        # lines, then we set the threshold at the level of the presence of such a horizontal line, making it less
+        # likely that descriptions are split in the absence of such a line.
+        threshold = -weights["line_weight"]
+    else:
+        threshold = -0.2 * weights["spacing_weight"]
+
     for line_idx, affinity in enumerate(affinities):
         # note: the affinity of the first line is always 0.0
-        if affinity.weighted_affinity(**weights) < threshold:
+        if affinity.weighted_affinity(**weights) <= threshold:
             pairs.append(IntervalBlockPair(None, TextBlock(description_lines[prev_block_idx:line_idx])))
             prev_block_idx = line_idx
 
