@@ -5,7 +5,7 @@ import logging
 import fastquadtree
 import pymupdf
 
-from extraction.features.stratigraphy.interval.interval import IntervalBlockPair
+from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
     Layer,
@@ -15,6 +15,7 @@ from extraction.features.stratigraphy.layer.page_bounding_boxes import (
     MaterialDescriptionRectWithSidebar,
     PageBoundingBoxes,
 )
+from extraction.features.stratigraphy.sidebar.classes.protocol_sidebar import ProtocolSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import (
     Sidebar,
     SidebarNoise,
@@ -858,6 +859,31 @@ def extract_sidebar_information(
     ).extract_sidebars_with_quality_metrics()
 
 
+def match_with_dynamic_programming(
+    sidebar: Sidebar, description_lines: list[TextLine], affinities: list[Affinity]
+) -> list[tuple[IntervalZone, list[TextLine]]]:
+    """Apply dynamic programming to find the best matching between depth intervals and description lines."""
+    depth_interval_zones = sidebar.get_interval_zone()
+
+    # affinities can differ depending on sidebar type
+    affinity_scores = sidebar.dp_weighted_affinities(affinities)
+    dp = IntervalToLinesDP(depth_interval_zones, description_lines, affinity_scores)
+
+    _, mapping = dp.solve(sidebar.dp_scoring_fn)
+    return mapping
+
+
+def is_great_protocol_sidebar_mapping(mapping: list[tuple[IntervalZone, list[TextLine]]]) -> bool:
+    """Check for a great protocol sidebar fit: depths vertically aligned with the first description lines."""
+    total_relative_y_offset = 0
+    for interval, lines in mapping:
+        if interval.start is None or not lines:
+            return False
+        total_relative_y_offset += abs((interval.start.y0 - lines[0].rect.y0) / interval.start.height)
+
+    return total_relative_y_offset / len(mapping) < 0.1
+
+
 def match_lines_to_interval(
     sidebar: Sidebar,
     description_lines: list[TextLine],
@@ -877,17 +903,17 @@ def match_lines_to_interval(
     """
     # shift the entries of the sidebar using the diagonals, only relevant for AAboveBSidebars
     if sidebar.kind == "a_above_b":
+        # If everything fits really well as a protocol sidebar, then we should treat it as one
+        protocol_sidebar = ProtocolSidebar(sidebar.entries)
+        mapping = match_with_dynamic_programming(protocol_sidebar, description_lines, affinities)
+        if is_great_protocol_sidebar_mapping(mapping):
+            return protocol_sidebar.post_processing(mapping)
+
+        # Adjust coordinates based on the presence of diagonal lines
         sidebar.compute_entries_shift(diagonals)
         sidebar.prevent_shifts_crossing()
 
-    depth_interval_zones = sidebar.get_interval_zone()
-
-    # affinities can differ depending on sidebar type
-    affinity_scores = sidebar.dp_weighted_affinities(affinities)
-    dp = IntervalToLinesDP(depth_interval_zones, description_lines, affinity_scores)
-
-    _, mapping = dp.solve(sidebar.dp_scoring_fn)
-
+    mapping = match_with_dynamic_programming(sidebar, description_lines, affinities)
     return sidebar.post_processing(mapping)
 
 
