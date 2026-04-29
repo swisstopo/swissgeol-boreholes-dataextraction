@@ -5,7 +5,8 @@ import logging
 import fastquadtree
 import pymupdf
 
-from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
+from extraction.features.stratigraphy.depth_description_alignment import match_lines_to_interval
+from extraction.features.stratigraphy.interval.interval import IntervalBlockPair
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
     Layer,
@@ -15,6 +16,7 @@ from extraction.features.stratigraphy.layer.page_bounding_boxes import (
     MaterialDescriptionRectWithSidebar,
     PageBoundingBoxes,
 )
+from extraction.features.stratigraphy.no_sidebar_description_grouping import get_descriptions_blocks
 from extraction.features.stratigraphy.sidebar.classes.protocol_sidebar import ProtocolSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import (
     Sidebar,
@@ -35,7 +37,6 @@ from extraction.features.stratigraphy.sidebar.extractor.protocol_sidebar_extract
     ProtocolSidebarExtractor,
 )
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
-from extraction.utils.dynamic_matching import IntervalToLinesDP
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.line_detection import find_diags_ending_in_zone
 from swissgeol_doc_processing.geometry.util import x_overlap, x_overlap_significant_smallest
@@ -44,10 +45,9 @@ from swissgeol_doc_processing.text.matching_params_analytics import MatchingPara
 from swissgeol_doc_processing.text.textblock import (
     MaterialDescription,
     MaterialDescriptionLine,
-    TextBlock,
 )
 from swissgeol_doc_processing.text.textline import TextLine
-from swissgeol_doc_processing.text.textline_affinity import Affinity, get_line_affinity
+from swissgeol_doc_processing.text.textline_affinity import get_line_affinity
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 from swissgeol_doc_processing.utils.strip_log_detection import StripLog
 from swissgeol_doc_processing.utils.table_detection import (
@@ -210,7 +210,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         # For protocol sidebars, every depth entry must have a matched description.
         if (
             pair.sidebar
-            and pair.sidebar.kind == "protocol"
+            and isinstance(pair.sidebar, ProtocolSidebar)
             and not all(ibp.block.lines for ibp in interval_block_pairs)
         ):
             return None
@@ -236,7 +236,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         borehole_layers = [layer for layer in borehole_layers if layer.description_nonempty()]
 
         min_layers = self.matching_params["min_num_layers"]
-        if pair.sidebar and pair.sidebar.kind == "protocol":
+        if pair.sidebar and isinstance(pair.sidebar, ProtocolSidebar):
             min_layers = self.matching_params.get("protocol_min_num_layers", min_layers)
         if len(borehole_layers) < min_layers:
             return None
@@ -264,11 +264,21 @@ class MaterialDescriptionRectWithSidebarExtractor:
             block_line_ratio=self.matching_params["block_line_ratio"],
             left_line_length_threshold=self.matching_params["left_line_length_threshold"],
         )
-        return (
-            match_lines_to_interval(pair.sidebar, description_lines, line_affinities, diagonals)
-            if pair.sidebar
-            else get_pairs_based_on_line_affinity(description_lines, line_affinities, self.matching_params)
-        )
+
+        if pair.sidebar:
+            return match_lines_to_interval(
+                pair.sidebar,
+                description_lines,
+                line_affinities,
+                diagonals,
+                self.matching_params["protocol_great_match_threshold"],
+            )
+        else:
+            no_sidebar_weights = self.matching_params["affinity_params"]["no_sidebar"]["weights"]
+            return [
+                IntervalBlockPair(depth_interval=None, block=text_block)
+                for text_block in get_descriptions_blocks(description_lines, line_affinities, no_sidebar_weights)
+            ]
 
     def _find_layer_identifier_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
         layer_identifier_sidebars = LayerIdentifierSidebarExtractor.from_lines(self.lines)
@@ -748,210 +758,3 @@ class MaterialDescriptionRectWithSidebarExtractor:
         # below the actual scanned page) --> this mechanism could/should be optimized in the future!
         largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
         return (largest_table.bounding_rect.height / max(self.page_height, 1e-16)) >= min_table_height_ratio
-
-
-def extract_page(
-    text_lines: list[TextLine],
-    long_or_horizontal_lines: list[Line],
-    all_geometric_lines: list[Line],
-    table_structures: list[TableStructure],
-    strip_logs: list[StripLog],
-    language: str,
-    page_index: int,
-    page: pymupdf.Page,
-    line_detection_params: dict,
-    analytics: MatchingParamsAnalytics,
-    **matching_params: dict,
-) -> list[ExtractedBorehole]:
-    """Process a single PDF page and extract borehole information.
-
-    Acts as a simple interface to MaterialDescriptionRectWithSidebarExtractor without requiring direct class usage.
-
-    Args:
-        text_lines (list[TextLine]): All text lines on the page.
-        long_or_horizontal_lines (list[Line]): Geometric lines (only the significant ones and the horizontals).
-        all_geometric_lines (list[Line]): All geometric lines (including the shorter ones).
-        table_structures (list[TableStructure]): The identified table structures.
-        strip_logs (list[StripLog]): The identified strip log structures.
-        language (str): Language of the page (used in parsing).
-        page_index (int): The page index (0-indexed).
-        page (pymupdf.Page): The page object from the document.
-        line_detection_params (dict): The parameters for line detection.
-        analytics (MatchingParamsAnalytics): The analytics tracker for matching parameters.
-        **matching_params (dict): Additional parameters for the matching pipeline.
-
-    Returns:
-        list[ExtractedBorehole]: Extracted borehole layers from the page.
-    """
-    # Get page dimensions from the document
-    page_width = page.rect.width
-    page_height = page.rect.height
-
-    # Extract boreholes
-    return MaterialDescriptionRectWithSidebarExtractor(
-        text_lines,
-        long_or_horizontal_lines,
-        all_geometric_lines,
-        table_structures,
-        strip_logs,
-        language,
-        page_index + 1,
-        page_width,
-        page_height,
-        line_detection_params,
-        analytics,
-        **matching_params,
-    ).process_page()
-
-
-def extract_sidebar_information(
-    text_lines: list[TextLine],
-    long_or_horizontal_lines: list[Line],
-    all_geometric_lines: list[Line],
-    table_structures: list[TableStructure],
-    strip_logs: list[StripLog],
-    language: str,
-    page_index: int,
-    page: pymupdf.Page,
-    line_detection_params: dict,
-    analytics: MatchingParamsAnalytics,
-    **matching_params: dict,
-) -> SidebarQualityMetrics:
-    """Extract sidebar information with quality metrics.
-
-    This function serves as a simple interface to extract sidebar information
-    and quality metrics without requiring direct class usage.
-
-    Args:
-        text_lines (list[TextLine]): All text lines on the page.
-        long_or_horizontal_lines (list[Line]): Geometric lines (only the significant ones and the horizontals).
-        all_geometric_lines (list[Line]): All geometric lines (including the shorter ones).
-        table_structures (list[TableStructure]): The identified table structures.
-        strip_logs (list[StripLog]): The identified strip log structures.
-        language (str): Language of the page (used in parsing).
-        page_index (int): The page index (0-indexed).
-        page (pymupdf.Page): The page object from the document.
-        line_detection_params (dict): The parameters for line detection.
-        analytics (MatchingParamsAnalytics): The analytics tracker for matching parameters.
-        **matching_params (dict): Additional parameters for the matching pipeline.
-
-    Returns:
-        SidebarQualityMetrics: Quality metrics for all sidebars found on the page.
-    """
-    # Get page dimensions from the document
-    page_width = page.rect.width
-    page_height = page.rect.height
-
-    # Extract sidebar information
-    return MaterialDescriptionRectWithSidebarExtractor(
-        text_lines,
-        long_or_horizontal_lines,
-        all_geometric_lines,
-        table_structures,
-        strip_logs,
-        language,
-        page_index + 1,
-        page_width,
-        page_height,
-        line_detection_params,
-        analytics,
-        **matching_params,
-    ).extract_sidebars_with_quality_metrics()
-
-
-def match_with_dynamic_programming(
-    sidebar: Sidebar, description_lines: list[TextLine], affinities: list[Affinity]
-) -> list[tuple[IntervalZone, list[TextLine]]]:
-    """Apply dynamic programming to find the best matching between depth intervals and description lines."""
-    depth_interval_zones = sidebar.get_interval_zone()
-
-    # affinities can differ depending on sidebar type
-    affinity_scores = sidebar.dp_weighted_affinities(affinities)
-    dp = IntervalToLinesDP(depth_interval_zones, description_lines, affinity_scores)
-
-    _, mapping = dp.solve(sidebar.dp_scoring_fn)
-    return mapping
-
-
-def is_great_protocol_sidebar_mapping(mapping: list[tuple[IntervalZone, list[TextLine]]]) -> bool:
-    """Check for a great protocol sidebar fit: depths vertically aligned with the first description lines."""
-    total_relative_y_offset = 0
-    for interval, lines in mapping:
-        if interval.start is None or not lines:
-            return False
-        total_relative_y_offset += abs((interval.start.y0 - lines[0].rect.y0) / interval.start.height)
-
-    return total_relative_y_offset / len(mapping) < 0.1
-
-
-def match_lines_to_interval(
-    sidebar: Sidebar,
-    description_lines: list[TextLine],
-    affinities: list[Affinity],
-    diagonals: list[Line],
-) -> list[IntervalBlockPair]:
-    """Match the description lines to the pair intervals.
-
-    Args:
-        sidebar (Sidebar): The sidebar.
-        description_lines (list[TextLine]): The description lines.
-        affinities (list[Affinity]): the affinity between each line pair, previously computed.
-        diagonals (list[Line]): The diagonal lines linking text lines to intervals.
-
-    Returns:
-        list[IntervalBlockPair]: The matched depth intervals and text blocks.
-    """
-    # shift the entries of the sidebar using the diagonals, only relevant for AAboveBSidebars
-    if sidebar.kind == "a_above_b":
-        # If everything fits really well as a protocol sidebar, then we should treat it as one
-        protocol_sidebar = ProtocolSidebar(sidebar.entries)
-        mapping = match_with_dynamic_programming(protocol_sidebar, description_lines, affinities)
-        if is_great_protocol_sidebar_mapping(mapping):
-            return protocol_sidebar.post_processing(mapping)
-
-        # Adjust coordinates based on the presence of diagonal lines
-        sidebar.compute_entries_shift(diagonals)
-        sidebar.prevent_shifts_crossing()
-
-    mapping = match_with_dynamic_programming(sidebar, description_lines, affinities)
-    return sidebar.post_processing(mapping)
-
-
-def get_pairs_based_on_line_affinity(
-    description_lines: list[TextLine], affinities: list[Affinity], matching_params: dict
-) -> list[IntervalBlockPair]:
-    """Based on the line affinity, group the description lines into blocks.
-
-    The grouping is done based on the presence of geometric lines, the indentation of lines
-    and the vertical spacing between lines.
-
-    Args:
-        description_lines (list[TextLine]): The text lines to group into blocks.
-        affinities (list[Affinity]): the affinity between each line pair, previously computed.
-        matching_params (dict): the matching parameters.
-
-    Returns:
-        list[IntervalBlockPair]: A list of objects containing the description lines without any interval.
-    """
-    pairs = []
-    prev_block_idx = 0
-    weights = matching_params["affinity_params"]["no_sidebar"]["weights"]
-
-    horizontal_lines_significance = sum(-affinity.long_lines_affinity for affinity in affinities)
-    vertical_spacing_significance = sum(max(0.0, -affinity.vertical_spacing_affinity) for affinity in affinities)
-    if horizontal_lines_significance > vertical_spacing_significance:
-        # if the presence of horizontal lines seems to be a stronger differentiator than the vertical spacing between
-        # lines, then we set the threshold at the level of the presence of such a horizontal line, making it less
-        # likely that descriptions are split in the absence of such a line.
-        threshold = -weights["line_weight"]
-    else:
-        threshold = -0.2 * weights["spacing_weight"]
-
-    for line_idx, affinity in enumerate(affinities):
-        # note: the affinity of the first line is always 0.0
-        if affinity.weighted_affinity(**weights) <= threshold:
-            pairs.append(IntervalBlockPair(None, TextBlock(description_lines[prev_block_idx:line_idx])))
-            prev_block_idx = line_idx
-
-    pairs.append(IntervalBlockPair(None, TextBlock(description_lines[prev_block_idx:])))
-    return pairs

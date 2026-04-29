@@ -96,7 +96,7 @@ class LineAffinityCalculator:
         geometric_lines: list[Line],
         line_detection_params: dict,
         description_lines: list[TextLine],
-        diagonals: list[TextLine],
+        diagonals: list[Line],
     ):
         """Initialize the LineAffinityCalculator.
 

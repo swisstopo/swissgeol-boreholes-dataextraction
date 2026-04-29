@@ -10,7 +10,7 @@ from dataclasses import dataclass
 import pymupdf
 from dotenv import load_dotenv
 
-from extraction.features.extract import extract_page, extract_sidebar_information
+from extraction.features.extract import MaterialDescriptionRectWithSidebarExtractor
 from extraction.features.metadata.borehole_name_extraction import extract_borehole_names
 from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarQualityMetrics
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
@@ -178,22 +178,24 @@ def extract_page_features(
 
     number_of_valid_borehole_descriptions = len(valid_descriptions)
 
-    sidebar_information = extract_sidebar_information(
+    # Extract sidebar information
+    sidebar_information = MaterialDescriptionRectWithSidebarExtractor(
         extraction_context.text_lines,
         extraction_context.long_or_horizontal_lines,
         extraction_context.all_geometric_lines,
         extraction_context.table_structures,
         extraction_context.strip_logs,
         language,
-        page_index,
-        page,
+        page_index + 1,
+        page.rect.width,
+        page.rect.height,
         line_detection_params,
-        None,  # analytics parameter
+        analytics=None,
         **matching_params,
-    )
+    ).extract_sidebars_with_quality_metrics()
 
     if extract_boreholes:
-        extracted_boreholes = extract_page(
+        extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(
             extraction_context.text_lines,
             extraction_context.long_or_horizontal_lines,
             extraction_context.all_geometric_lines,
@@ -201,9 +203,10 @@ def extract_page_features(
             extraction_context.strip_logs,
             language,
             page_index,
-            page,
+            page.rect.width,
+            page.rect.height,
             line_detection_params,
-            None,  # analytics parameter
+            analytics=None,
             **matching_params,
         )
     else:

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pymupdf
 
-from extraction.features.extract import extract_page
+from extraction.features.extract import MaterialDescriptionRectWithSidebarExtractor
 from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
     GroundwaterLevelExtractor,
@@ -139,7 +139,7 @@ def extract(
             strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
 
             # Extract the stratigraphy
-            page_layers = extract_page(
+            extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(
                 text_lines,
                 long_or_horizontal_lines,
                 all_geometric_lines,
@@ -147,12 +147,13 @@ def extract(
                 strip_logs,
                 file_metadata.language,
                 page_index,
-                page,
+                page.rect.width,
+                page.rect.height,
                 line_detection_params,
                 analytics,
                 **matching_params,
-            )
-            boreholes_per_page.append(page_layers)
+            ).process_page()
+            boreholes_per_page.append(extracted_boreholes)
 
             # Extract the groundwater levels
             groundwater_extractor = GroundwaterLevelExtractor(file_metadata.language, matching_params)
@@ -160,7 +161,7 @@ def extract(
                 page_number=page_number,
                 text_lines=text_lines,
                 geometric_lines=long_or_horizontal_lines,
-                extracted_boreholes=page_layers,
+                extracted_boreholes=extracted_boreholes,
             )
             all_groundwater_entries.groundwater_feature_list.extend(groundwater_entries)
 
