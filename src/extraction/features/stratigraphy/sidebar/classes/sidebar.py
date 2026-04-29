@@ -87,6 +87,7 @@ class Sidebar(abc.ABC, Generic[EntryT]):
         """Scoring function for dynamic programming matching of description lines to interval zones."""
         pass
 
+    @staticmethod
     def default_score(interval_zone: IntervalZone, line: TextLine) -> float:
         """Returns a default score of 1.0 if the text line is within the zone, or 0.0 otherwise.
 
