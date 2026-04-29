@@ -569,13 +569,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 else:
                     min_y0 = sidebar.rect.y0 - self.page_height * 0.05
 
-            # Strip log top edge: a reliable geometric anchor for where the description zone begins.
-            # If a text header sits between the strip log top and the sidebar start, the header line
-            # would otherwise push min_y0 too high and cause the first description lines to be excluded.
             overlapping_strips = [sl for sl in self.strip_logs if x_overlap(sl.bbox, sidebar.rect)]
             if overlapping_strips:
                 strip_top = min(sl.bbox.y0 for sl in overlapping_strips)
-                min_y0 = min(min_y0, strip_top - 1)
+                min_y0 = min(min_y0, strip_top - 1) if sidebar.rect.y0 < strip_top else strip_top - 1
 
             # If a table encloses the sidebar, its top edge is a hard upper boundary —
             # description content cannot start above the table the sidebar lives in.

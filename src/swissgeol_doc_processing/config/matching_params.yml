@@ -150,7 +150,7 @@ material_description:
       - pumpversuch
       - kernbohrung
       # - bohrradius # Should be reviewed, currently not used
-      - wasserzutritt
+      # - wasserzutritt
       - Vollrohr
       - Filterrohr
       - sondier
