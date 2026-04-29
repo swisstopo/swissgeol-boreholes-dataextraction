@@ -165,6 +165,7 @@ def extract_page_features(
     language_config = material_description_config.get(language, {})
     material_keywords = language_config.get("including_expressions", [])
     split_threshold = matching_params.get("compound_split_threshold", 0.4)
+    page_number = page_index + 1
 
     valid_descriptions = []
     if material_keywords:
@@ -186,7 +187,7 @@ def extract_page_features(
         extraction_context.table_structures,
         extraction_context.strip_logs,
         language,
-        page_index + 1,
+        page_number,
         page.rect.width,
         page.rect.height,
         line_detection_params,
@@ -202,13 +203,13 @@ def extract_page_features(
             extraction_context.table_structures,
             extraction_context.strip_logs,
             language,
-            page_index,
+            page_number,
             page.rect.width,
             page.rect.height,
             line_detection_params,
             analytics=None,
             **matching_params,
-        )
+        ).process_page()
     else:
         extracted_boreholes = []
 

@@ -146,7 +146,7 @@ def extract(
                 table_structures,
                 strip_logs,
                 file_metadata.language,
-                page_index,
+                page_number,
                 page.rect.width,
                 page.rect.height,
                 line_detection_params,
