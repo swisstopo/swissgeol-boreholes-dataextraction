@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from core.benchmark_utils import configure_logging
 from extraction.evaluation.benchmark.spec import parse_benchmark_spec
 from extraction.runner import ExtractionBenchmarkRunner, ExtractionOptions, ExtractionPipelineRunner
+from extraction.utils.benchmark_utils import CallbackFactory
 from swissgeol_doc_processing.utils.file_utils import get_data_path
 
 load_dotenv()
@@ -98,7 +99,7 @@ def common_options(f):
         "--resume",
         is_flag=True,
         default=False,
-        help="Whether to resume extraction. Deaults to False.",
+        help="Whether to resume extraction. Defaults to False.",
     )(f)
     return f
 
@@ -135,23 +136,23 @@ def click_pipeline(
     # Setup logging (same for all)
     configure_logging()
 
+    factory = CallbackFactory(
+        write_csv=csv,
+        skip_draw_predictions=skip_draw_predictions,
+        draw_lines=draw_lines,
+        draw_tables=draw_tables,
+        draw_strip_logs=draw_strip_logs,
+    )
+
     # --- Multi-benchmark mode ---
     if benchmarks:
         specs = [parse_benchmark_spec(b) for b in benchmarks]
-
         ExtractionBenchmarkRunner(
             benchmarks=specs,
             multi_root=out_directory,
             resume=resume,
-            options=ExtractionOptions(
-                skip_draw_predictions=skip_draw_predictions,
-                draw_lines=draw_lines,
-                draw_tables=draw_tables,
-                draw_strip_logs=draw_strip_logs,
-                csv=csv,
-                matching_analytics=matching_analytics,
-                part=part,
-            ),
+            options=ExtractionOptions(matching_analytics=matching_analytics, part=part),
+            on_file_done=factory.on_file_done,
         ).run()
     # --- Single-benchmark mode ---
     else:
@@ -165,15 +166,8 @@ def click_pipeline(
             ground_truth_path=ground_truth_path,
             out_directory=out_directory,
             metadata_path=metadata_path,
-            options=ExtractionOptions(
-                skip_draw_predictions=skip_draw_predictions,
-                draw_lines=draw_lines,
-                draw_tables=draw_tables,
-                draw_strip_logs=draw_strip_logs,
-                csv=csv,
-                matching_analytics=matching_analytics,
-                part=part,
-            ),
+            options=ExtractionOptions(matching_analytics=matching_analytics, part=part),
+            on_file_done=factory.on_file_done,
         ).execute()
 
 
@@ -194,6 +188,13 @@ def click_pipeline_metadata(
     matching_analytics: bool = False,
 ):
     """Run only the metadata part of the pipeline."""
+    factory = CallbackFactory(
+        write_csv=csv,
+        skip_draw_predictions=skip_draw_predictions,
+        draw_lines=draw_lines,
+        draw_tables=draw_tables,
+        draw_strip_logs=draw_strip_logs,
+    )
     ExtractionPipelineRunner(
         predictions_path=predictions_path,
         resume=bool(resume),
@@ -201,15 +202,8 @@ def click_pipeline_metadata(
         ground_truth_path=ground_truth_path,
         out_directory=out_directory,
         metadata_path=metadata_path,
-        options=ExtractionOptions(
-            skip_draw_predictions=skip_draw_predictions,
-            draw_lines=draw_lines,
-            draw_tables=draw_tables,
-            draw_strip_logs=draw_strip_logs,
-            csv=csv,
-            matching_analytics=matching_analytics,
-            part="metadata",
-        ),
+        options=ExtractionOptions(matching_analytics=matching_analytics, part="metadata"),
+        on_file_done=factory.on_file_done,
     ).execute()
 
 
