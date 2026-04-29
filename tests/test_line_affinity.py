@@ -3,7 +3,7 @@
 import pymupdf
 import pytest
 
-from extraction.features.extract import get_pairs_based_on_line_affinity
+from extraction.features.stratigraphy.no_sidebar_description_grouping import get_descriptions_blocks
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
 from swissgeol_doc_processing.text.textline_affinity import get_line_affinity
@@ -56,6 +56,7 @@ def test_get_description_blocks(geometrical_lines, diagonals, expected_num_block
         block_line_ratio,
         left_line_length_threshold,
     )
-    pairs = get_pairs_based_on_line_affinity(description_lines, line_affinities, matching_params)
+    no_sidebar_weights = matching_params["affinity_params"]["no_sidebar"]["weights"]
+    blocks = get_descriptions_blocks(description_lines, line_affinities, no_sidebar_weights)
 
-    assert len(pairs) == expected_num_block
+    assert len(blocks) == expected_num_block

@@ -8,7 +8,7 @@ from app.common.schemas import (
     ExtractStratigraphyResponse,
     GroundwaterSchema,
 )
-from extraction.features.extract import extract_page
+from extraction.features.extract import MaterialDescriptionRectWithSidebarExtractor
 from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
     GroundwaterLevelExtractor,
@@ -75,7 +75,8 @@ def extract_stratigraphy(filename: str, include_groundwater: bool = False) -> Ex
     boreholes_per_page = []
     for page_index, page in enumerate(document):
         # 2. load the png image to infer the scaling, MUST have been generated before
-        png_page = load_png(filename, page_index + 1)  # page number is 1-indexed
+        page_number = page_index + 1  # page number is 1-indexed
+        png_page = load_png(filename, page_number)
         pdf_img_scalings.append((png_page.shape[1] / page.rect.width, png_page.shape[0] / page.rect.height))
 
         # 3. extract layers
@@ -88,25 +89,26 @@ def extract_stratigraphy(filename: str, include_groundwater: bool = False) -> Ex
         # Detect strip logs on the page
         strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
 
-        extracted_boreholes = extract_page(
+        extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(
             text_lines,
             long_or_horizontal_lines,
             all_geometric_lines,
             table_structures,
             strip_logs,
             language,
-            page_index,
-            page,
+            page_number,
+            page.rect.width,
+            page.rect.height,
             line_detection_params,
-            None,
+            analytics=None,
             **matching_params,
-        )
+        ).process_page()
         boreholes_per_page.append(extracted_boreholes)
 
         # Extract groundwater if requested (uses the extracted boreholes as context)
         if include_groundwater and groundwater_extractor and groundwater_in_doc:
             groundwater_entries = groundwater_extractor.extract_groundwater(
-                page_number=page_index + 1,
+                page_number=page_number,
                 text_lines=text_lines,
                 geometric_lines=long_or_horizontal_lines,
                 extracted_boreholes=extracted_boreholes,
