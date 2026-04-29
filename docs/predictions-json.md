@@ -5,7 +5,7 @@ The `predictions.json` file contains the results of a data extraction process in
 
 ## Schema Overview
 
-```yaml
+```text
 predictions.json
 └── "<filename>.pdf"                      # One entry per processed PDF file
     ├── file_metadata
@@ -20,7 +20,7 @@ predictions.json
     │   ├── layers[]                      # Detected layers of the borehole profil
     │   │   ├── material_description      # Material text description
     │   │   └── depth_interval            # Measured depth of the layer's upper and lower limits
-    │   ├── bounding_boxes[]
+    │   ├── bounding_boxes[]              # List of bounding boxes, one for each (part of a) borehole profile, that can be used for visualizations
     │   │   ├── page                      # Page number for this segment
     │   │   ├── sidebar_rect              # Area of the depth sidebar, if found
     │   │   ├── depth_column_entries[]    # Bounding boxes of depth entries
