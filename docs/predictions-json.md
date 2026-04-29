@@ -5,7 +5,7 @@ The `predictions.json` file contains the results of a data extraction process in
 
 ## Schema Overview
 
-```bash
+```yaml
 predictions.json
 └── "<filename>.pdf"                      # One entry per processed PDF file
     ├── file_metadata
@@ -52,9 +52,10 @@ All page numbers are counted starting at 1. All bounding boxes are measured with
 
 
 ## Example output
-```yaml
+```jsonc
 {
-  "B366.pdf": {  # file name
+  // filename
+  "B366.pdf": {
     "file_metadata": {
       "language": "de",
       "page_dimensions": [
@@ -119,7 +120,7 @@ All page numbers are counted starting at 1. All bounding boxes are measured with
               }
             }
           }
-          # ... (more layers)
+          // ... (more layers)
         ],
         "bounding_boxes": [
           {
@@ -155,7 +156,7 @@ All page numbers are counted starting at 1. All bounding boxes are measured with
           }
         ]
       }
-      # ... (more boreholes)
+      // ... (more boreholes)
     ],
     "metrics": {
       "layer_metrics": {
