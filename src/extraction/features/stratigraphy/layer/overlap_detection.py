@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class OverlapResult:
-    """Data class that contains all information regaring overlapping layers on consecutive pages.
+    """Data class that contains all information regarding overlapping layers on consecutive pages.
 
     `upper_id` is the number of layers to keep from the previous borehole and `lower_id` is the index of the
     first non-overlapping layer in the continuing borehole.
@@ -64,7 +64,7 @@ def are_layers_similar(
     Validates layers through three rules:
     1. Both layers must have material descriptions
     2. Material descriptions must exceed similarity threshold
-    3. If force_depth_matching is enabled, depths must match
+    3. It present, depths must match
 
     Args:
         layer_prev (Layer): The layer from the previous page.
@@ -83,7 +83,7 @@ def are_layers_similar(
     if not _is_duplicate(
         cur_text=layer_curr.material_description.text,
         prev_text=layer_prev.material_description.text,
-        t=material_threshold,
+        threshold=material_threshold,
         is_extremity=is_extremity,
     ):
         return False
@@ -160,7 +160,7 @@ def find_split_by_convolution(
             return OverlapResult(upper_id=len(layers_prev), lower_id=i)
 
 
-def _is_duplicate(cur_text: str, prev_text: str, t: float, is_extremity: bool) -> bool:
+def _is_duplicate(cur_text: str, prev_text: str, threshold: float, is_extremity: bool) -> bool:
     """Detect if layer and prev_layer are duplicates across a page break.
 
     Strategy:
@@ -172,7 +172,7 @@ def _is_duplicate(cur_text: str, prev_text: str, t: float, is_extremity: bool) -
     Args:
         cur_text (str): The text of the current layer to compare.
         prev_text (str): The text of the previous layer to compare against.
-        t (float): The similarity threshold.
+        threshold (float): The similarity threshold.
         is_extremity (bool): If True, uses partial text matching to handle truncated boundary layers.
             If False, compares full text content.
 
@@ -191,4 +191,4 @@ def _is_duplicate(cur_text: str, prev_text: str, t: float, is_extremity: bool) -
     else:
         score = Levenshtein.ratio(cur_text, prev_text)
 
-    return score > t
+    return score > threshold
