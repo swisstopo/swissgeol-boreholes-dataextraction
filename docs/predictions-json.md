@@ -13,13 +13,13 @@ predictions.json
     │   └── page_dimensions[]             # Dimensions of each page, in PDF points
     │
     ├── boreholes[]                       # All boreholes identified in the document
-    │   ├── borehole_index                # Zero-based index to distinguish boreholes
+    │   ├── borehole_index                # Zero-based index for extracted boreholes
     │   ├── metadata
     │   │   ├── elevation                 # Borehole surface elevation, if found
     │   │   └── coordinates               # Borehole coordinates, if found
-    │   ├── layers[]                      # Ordered geological layers of the borehole profile
-    │   │   ├── material_description      # Soil/rock description for this layer
-    │   │   └── depth_interval            # Vertical extent of the layer
+    │   ├── layers[]                      # Detected layers of the borehole profil
+    │   │   ├── material_description      # Material text description
+    │   │   └── depth_interval            # Measured depth of the layer's upper and lower limits
     │   ├── bounding_boxes[]
     │   │   ├── page                      # Page number for this segment
     │   │   ├── sidebar_rect              # Area of the depth sidebar, if found
@@ -29,8 +29,8 @@ predictions.json
     │       ├── date                      # Measurement date (YYYY-MM-DD), if found
     │       ├── depth                     # Depth of the measurement (m), if found
     │       ├── elevation                 # Elevation (m above sea level), if found
-    │       ├── page                      # Source page number
-    │       └── rect                      # Bounding box of the measurement in the PDF
+    │       ├── page                      # Page number of detected groundwater
+    │       └── rect                      # Bounding box of detected groundwater
     │
     └── metrics                           # Evaluation scores with tp, fp, fn, precision, recall, and f1
         ├── language                      # Ground truth language for metric computation
