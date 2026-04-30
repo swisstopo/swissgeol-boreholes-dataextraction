@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
+requires = ["hatchling", "hatch-vcs", "versioningit"]
 build-backend = "hatchling.build"
 
 [project]
@@ -68,7 +68,20 @@ all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visu
 
 # ---- Configuration for package building
 [tool.hatch.version]
-source = "vcs"
+source = "versioningit"
+
+[tool.versioningit]
+default-version = "0.0.0"
+
+[tool.versioningit.tag2version]
+# Only match plain release tags (e.g. v1.0.162), ignore dev tags like v1.0.dev2
+regex = "^v(?P<version>[0-9]+\\.[0-9]+\\.[0-9]+)$"
+
+[tool.versioningit.format]
+distance = "{next_version}.dev{distance}+{vcs}{rev}"
+dirty = "{version}+d{build_date:%Y%m%d}"
+distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.d{build_date:%Y%m%d}"
+
 
 [tool.hatch.build.targets.wheel]
 packages = [

@@ -8,7 +8,6 @@ from typing import Any
 import Levenshtein
 
 from core.benchmark_utils import Metrics
-from extraction.evaluation.benchmark.metrics import OverallMetrics
 from extraction.features.predictions.borehole_predictions import (
     BoreholePredictionsWithGroundTruth,
     FileLayersWithGroundTruth,
@@ -27,27 +26,33 @@ MAX_DEPTH_SCORE = 1.0
 class LayerEvaluator:
     """Class for evaluating the layer information of all boreholes in a document."""
 
-    def __init__(
-        self,
-        file_layers_list: list[FileLayersWithGroundTruth],
-    ):
-        """Initializes the LayerEvaluator object.
+    @staticmethod
+    def get_layer_metrics(file_predictions: FileLayersWithGroundTruth) -> Metrics:
+        """Calculate layer-level metrics for the given file's predictions.
 
         Args:
-            file_layers_list (list[FileLayersWithGroundTruth]): The layers to evaluate, grouped by borehole in a list,
-                with associated ground truth data for each borehole.
-        """
-        self.file_layers_list = file_layers_list
+            file_predictions (FileLayersWithGroundTruth): Layer predictions paired with ground truth.
 
-    def get_layer_metrics(self) -> OverallMetrics:
-        return self.calculate_metrics(
+        Returns:
+            Metrics: The computed layer metrics.
+        """
+        return LayerEvaluator.calculate_metrics(
+            file_predictions=file_predictions,
             num_ground_truth_fn=lambda ground_truth_layers: len(ground_truth_layers),
             per_layer_filter=lambda layer: True,
             per_layer_condition=lambda layer: layer.is_correct,
         )
 
-    def get_material_description_metrics(self) -> OverallMetrics:
-        """Calculate metrics for layer predictions."""
+    @staticmethod
+    def get_material_description_metrics(file_predictions: FileLayersWithGroundTruth) -> Metrics:
+        """Calculate metrics for material description extraction across all boreholes in a file.
+
+        Args:
+            file_predictions (FileLayersWithGroundTruth): Layer predictions paired with ground truth.
+
+        Returns:
+            Metrics: Aggregated material metrics across all boreholes.
+        """
 
         def per_layer_action(layer: Layer):
             if parse_text(layer.material_description.text) == "":
@@ -56,95 +61,97 @@ class LayerEvaluator:
         def num_ground_truth_fn(ground_truth_layers: list[dict]):
             return sum(lay["material_description"] is not None for lay in ground_truth_layers)
 
-        return self.calculate_metrics(
+        return LayerEvaluator.calculate_metrics(
+            file_predictions=file_predictions,
             num_ground_truth_fn=num_ground_truth_fn,
             per_layer_filter=lambda layer: True,
             per_layer_condition=lambda layer: layer.material_description.is_correct,
             per_layer_action=per_layer_action,
         )
 
-    def get_depth_interval_metrics(self) -> OverallMetrics:
-        """Calculate metrics for depth interval predictions."""
+    @staticmethod
+    def get_depth_interval_metrics(file_predictions: FileLayersWithGroundTruth) -> Metrics:
+        """Calculate metrics for depth interval extraction across all boreholes in a file.
+
+        Args:
+            file_predictions (FileLayersWithGroundTruth): Layer predictions paired with ground truth.
+
+        Returns:
+            Metrics: Aggregated depth metrics across all boreholes.
+        """
 
         def num_ground_truth_fn(ground_truth_layers: list[dict]):
             return sum(lay["depth_interval"] is not None for lay in ground_truth_layers)
 
-        return self.calculate_metrics(
+        return LayerEvaluator.calculate_metrics(
+            file_predictions=file_predictions,
             num_ground_truth_fn=num_ground_truth_fn,
             per_layer_filter=lambda layer: True,
             per_layer_condition=lambda layer: layer.depths is not None and layer.depths.is_correct,
         )
 
+    @staticmethod
     def calculate_metrics(
-        self,
+        file_predictions: FileLayersWithGroundTruth,
         num_ground_truth_fn: Callable[[list[dict]], int],
         per_layer_filter: Callable[[Layer], bool],
         per_layer_condition: Callable[[Layer], bool],
         per_layer_action: Callable[[Layer], None] | None = None,
-    ) -> OverallMetrics:
+    ) -> Metrics:
         """Calculate metrics based on a condition per layer, after applying a filter.
 
         Args:
+            file_predictions (FileLayersWithGroundTruth): Borehole layer predictions paired with ground truth.
             num_ground_truth_fn (Callable[[list[dict]], int]): Function that returns the number of ground truth.
-            per_layer_filter (Callable[[LayerPrediction], bool]): Function to filter layers to consider.
-            per_layer_condition (Callable[[LayerPrediction], bool]): Function that returns True if the layer is a hit.
-            per_layer_action (Optional[Callable[[LayerPrediction], None]]): Optional action to perform per layer.
+            per_layer_filter (Callable[[Layer], bool]): Function to filter layers to consider.
+            per_layer_condition (Callable[[Layer], bool]): Function that returns True if the layer is a hit.
+            per_layer_action (Optional[Callable[[Layer], None]]): Optional action to perform per layer.
 
         Returns:
-            OverallMetrics: The calculated metrics.
+            Metrics: The calculated metrics.
         """
-        overall_metrics = OverallMetrics()
+        hits_for_all_borehole = 0
+        total_predictions_for_all_boreholes = 0
+        fn_for_all_boreholes = 0
 
-        # iteration over all the files
-        for file in self.file_layers_list:
-            hits_for_all_borehole = 0
-            total_predictions_for_all_boreholes = 0
-            fn_for_all_boreholes = 0
+        for borehole_data in file_predictions.boreholes:
+            number_of_truth_values = num_ground_truth_fn(borehole_data.ground_truth)
+            tp = 0
+            total_predictions = 0
 
-            for borehole_data in file.boreholes:
-                number_of_truth_values = num_ground_truth_fn(borehole_data.ground_truth)
-                tp = 0
-                total_predictions = 0
+            layers = borehole_data.layers.layers if borehole_data.layers else []
+            for layer in layers:
+                if per_layer_action:
+                    per_layer_action(layer)
+                if per_layer_filter(layer):
+                    total_predictions += 1
+                    if per_layer_condition(layer):
+                        tp += 1
 
-                layers = borehole_data.layers.layers if borehole_data.layers else []
-                for layer in layers:
-                    if per_layer_action:
-                        per_layer_action(layer)
-                    if per_layer_filter(layer):
-                        total_predictions += 1
-                        if per_layer_condition(layer):
-                            tp += 1
+            fn = number_of_truth_values - tp
 
-                fn = number_of_truth_values - tp
+            hits_for_all_borehole += tp
+            total_predictions_for_all_boreholes += total_predictions
+            fn_for_all_boreholes += fn
 
-                hits_for_all_borehole += tp
-                total_predictions_for_all_boreholes += total_predictions
-                fn_for_all_boreholes += fn
-
-            # at this point we have the global statistics for all the boreholes in the document
-            overall_metrics.metrics[file.filename] = Metrics(
-                tp=hits_for_all_borehole,
-                fp=total_predictions_for_all_boreholes - hits_for_all_borehole,
-                fn=fn_for_all_boreholes,
-            )
-
-        return overall_metrics
+        # at this point we have the global statistics for all the boreholes in the document
+        return Metrics(
+            tp=hits_for_all_borehole,
+            fp=total_predictions_for_all_boreholes - hits_for_all_borehole,
+            fn=fn_for_all_boreholes,
+        )
 
     @staticmethod
-    def match_predictions_with_ground_truth(file_predictions: FilePredictions, ground_truth_for_file: dict):
+    def evaluate(file_predictions: FileLayersWithGroundTruth) -> tuple[Metrics, Metrics, Metrics]:
         """Evaluate all predicted layers for a borehole against the ground truth.
 
-        Also performs the matching groundtruth to prediction when there is more than one borehole in the document.
-        It is for this reason that the layers are the first element that needs to be elaluated.
-
         Args:
-            file_predictions (FilePredictions): all predictions for the file
-            ground_truth_for_file (dict): the ground truth for the file
+            file_predictions (FileLayersWithGroundTruth): Layer predictions with ground truth,
+                grouped by borehole.
 
         Returns:
-            list[BoreholePredictionsWithGroundTruth]
+            tuple[Metrics, Metrics, Metrics]: (layer_metrics, depth_interval_metrics, material_description_metrics)
         """
-        matched_boreholes = LayerEvaluator.match_boreholes_to_ground_truth(file_predictions, ground_truth_for_file)
 
         # Utility functions to set correctness flags on predicted layers
         def set_depths_flag(predicted_layer, ground_truth_layer):
@@ -166,10 +173,9 @@ class LayerEvaluator:
                 >= MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD
             )
 
-        # now compute the real statistics for the matched pairs of boreholes
-        for borehole_data in matched_boreholes:
-            if borehole_data.predictions:
-                predicted_layers = borehole_data.predictions.layers_in_borehole.layers
+        for borehole_data in file_predictions.boreholes:
+            if borehole_data.layers:
+                predicted_layers = borehole_data.layers.layers
 
                 for pred in predicted_layers:
                     pred.material_description.is_correct = False
@@ -177,15 +183,22 @@ class LayerEvaluator:
                         pred.depths.is_correct = False
                     pred.is_correct = False
 
-                ground_truth_layers = borehole_data.ground_truth.get("layers", [])
-
-                LayerEvaluator.apply_mapping(ground_truth_layers, predicted_layers, score_depths, set_depths_flag)
                 LayerEvaluator.apply_mapping(
-                    ground_truth_layers, predicted_layers, score_material_descriptions, set_material_description_flag
+                    borehole_data.ground_truth, predicted_layers, score_depths, set_depths_flag
                 )
-                LayerEvaluator.apply_mapping(ground_truth_layers, predicted_layers, score_layer, set_layer_flag)
+                LayerEvaluator.apply_mapping(
+                    borehole_data.ground_truth,
+                    predicted_layers,
+                    score_material_descriptions,
+                    set_material_description_flag,
+                )
+                LayerEvaluator.apply_mapping(borehole_data.ground_truth, predicted_layers, score_layer, set_layer_flag)
 
-        return matched_boreholes
+        layer_metrics = LayerEvaluator.get_layer_metrics(file_predictions)
+        depth_interval_metrics = LayerEvaluator.get_depth_interval_metrics(file_predictions)
+        material_description_metrics = LayerEvaluator.get_material_description_metrics(file_predictions)
+
+        return layer_metrics, depth_interval_metrics, material_description_metrics
 
     @staticmethod
     def apply_mapping(ground_truth_layers, predicted_layers, scoring_fn, set_flag_fn):

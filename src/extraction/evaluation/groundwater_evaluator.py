@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 
 from core.benchmark_utils import Metrics
-from extraction.evaluation.benchmark.metrics import OverallMetrics
 from extraction.evaluation.utility import evaluate
 from extraction.features.groundwater.groundwater_extraction import Groundwater
 from extraction.features.predictions.borehole_predictions import FileGroundwaterWithGroundTruth
@@ -13,119 +12,113 @@ from extraction.features.predictions.borehole_predictions import FileGroundwater
 class GroundwaterMetrics:
     """Class for storing the metrics of the groundwater information."""
 
-    groundwater_metrics: Metrics = None
-    groundwater_depth_metrics: Metrics = None
-    groundwater_elevation_metrics: Metrics = None
-    groundwater_date_metrics: Metrics = None
-    filename: str = None
+    filename: str
+    groundwater_metrics: Metrics = Metrics()
+    groundwater_depth_metrics: Metrics = Metrics()
+    groundwater_elevation_metrics: Metrics = Metrics()
+    groundwater_date_metrics: Metrics = Metrics()
 
+    def to_json(self) -> dict[str, dict]:
+        """Converts the object to a dictionary.
 
-class OverallGroundwaterMetrics:
-    """Class for storing the overall metrics of the groundwater information."""
+        Returns:
+            dict[str, dict]: The object as a dictionary, with source filename, nested metric
+                sub-dictionaries for depth, elevation, and date.
+        """
+        return {
+            "metrics": self.groundwater_metrics.to_json(),
+            "depth_metrics": self.groundwater_depth_metrics.to_json(),
+            "elevation_metrics": self.groundwater_elevation_metrics.to_json(),
+            "date_metrics": self.groundwater_date_metrics.to_json(),
+        }
 
-    def __init__(self):
-        self.groundwater_metrics: list[GroundwaterMetrics] = []
-
-    def add_groundwater_metrics(self, groundwater_metrics: GroundwaterMetrics):
-        """Add groundwater metrics to the list.
+    @classmethod
+    def from_json(cls, json: dict, filename: str) -> "GroundwaterMetrics":
+        """Construct a GroundwaterMetrics instance from a dictionary produced by `to_json`.
 
         Args:
-            groundwater_metrics (GroundwaterMetrics): The groundwater metrics to add.
+            json (dict): Dictionary with groundwater metrics.
+            filename (str): Linked filename.
+
+        Returns:
+            GroundwaterMetrics: The reconstructed groundwater metrics object.
         """
-        self.groundwater_metrics.append(groundwater_metrics)
-
-    def groundwater_metrics_to_overall_metrics(self):
-        """Convert the overall groundwater metrics to an OverallMetrics object."""
-        overall_metrics = OverallMetrics()
-        for groundwater_metrics in self.groundwater_metrics:
-            overall_metrics.metrics[groundwater_metrics.filename] = groundwater_metrics.groundwater_metrics
-        return overall_metrics
-
-    def groundwater_depth_metrics_to_overall_metrics(self):
-        """Convert the overall groundwater depth metrics to an OverallMetrics object."""
-        overall_metrics = OverallMetrics()
-        for groundwater_metrics in self.groundwater_metrics:
-            overall_metrics.metrics[groundwater_metrics.filename] = groundwater_metrics.groundwater_depth_metrics
-        return overall_metrics
+        return GroundwaterMetrics(
+            filename=filename,
+            groundwater_metrics=Metrics.from_json(json["metrics"]),
+            groundwater_depth_metrics=Metrics.from_json(json["depth_metrics"]),
+            groundwater_elevation_metrics=Metrics.from_json(json["elevation_metrics"]),
+            groundwater_date_metrics=Metrics.from_json(json["date_metrics"]),
+        )
 
 
 class GroundwaterEvaluator:
     """Class for evaluating the extracted groundwater information of a borehole."""
 
-    def __init__(
-        self,
-        groundwater_list: list[FileGroundwaterWithGroundTruth],
-    ):
-        """Initializes the GroundwaterEvaluator object.
+    @staticmethod
+    def evaluate(file_predictions: FileGroundwaterWithGroundTruth) -> GroundwaterMetrics:
+        """Evaluate the groundwater information of a single file against the ground truth.
 
         Args:
-            groundwater_list (list[FileGroundwaterWithGroundTruth]): A list of extracted groundwater data per
-                borehole, together with the ground truth data associated to it.
-        """
-        self.groundwater_list = groundwater_list
-
-    def evaluate(self) -> OverallGroundwaterMetrics:
-        """Evaluate the groundwater information of the file against the ground truth.
+            file_predictions (FileGroundwaterWithGroundTruth): Groundwater predictions for each
+                borehole in the file, paired with their ground truth data.
 
         Returns:
-            OverallGroundwaterMetrics: The overall groundwater metrics.
+            GroundwaterMetrics: The computed groundwater metrics for the file.
         """
-        overall_groundwater_metrics = OverallGroundwaterMetrics()
+        # lists to contain the metrics
+        groundwater_metrics_list = []
+        groundwater_depth_metrics_list = []
+        groundwater_elevation_metrics_list = []
+        groundwater_date_metrics_list = []
 
-        for file in self.groundwater_list:
-            # lists to contain the metrics
-            groundwater_metrics_list = []
-            groundwater_depth_metrics_list = []
-            groundwater_elevation_metrics_list = []
-            groundwater_date_metrics_list = []
-
-            for borehole_data in file.boreholes:
-                ############################################################################################################
-                ### Compute the metadata correctness for the groundwater information.
-                ############################################################################################################
-                gt_groundwater = [
-                    Groundwater.from_json_values(
-                        depth=json_gt_data.get("depth"),
-                        date=json_gt_data.get("date"),
-                        elevation=json_gt_data.get("elevation"),
-                    )
-                    for json_gt_data in borehole_data.ground_truth
-                ]
-
-                entries = (
-                    [feature_on_page.feature for feature_on_page in borehole_data.groundwater.groundwater_feature_list]
-                    if borehole_data.groundwater
-                    else []
+        for borehole_data in file_predictions.boreholes:
+            ############################################################################################################
+            ### Compute the metadata correctness for the groundwater information.
+            ############################################################################################################
+            gt_groundwater = [
+                Groundwater.from_json_values(
+                    depth=json_gt_data.get("depth"),
+                    date=json_gt_data.get("date"),
+                    elevation=json_gt_data.get("elevation"),
                 )
+                for json_gt_data in borehole_data.ground_truth
+            ]
 
-                groundwater_evaluation = evaluate(entries, gt_groundwater, self.match_groundwater)
-                groundwater_metrics_list.append(groundwater_evaluation.metrics)
-                for feature, is_correct in zip(entries, groundwater_evaluation.extracted_correct, strict=True):
-                    feature.is_correct = is_correct
-
-                groundwater_depth_metrics = evaluate(entries, gt_groundwater, self.match_groundwater_depth).metrics
-                groundwater_depth_metrics_list.append(groundwater_depth_metrics)
-
-                groundwater_elevation_metrics = evaluate(
-                    entries, gt_groundwater, self.match_groundwater_elevation
-                ).metrics
-                groundwater_elevation_metrics_list.append(groundwater_elevation_metrics)
-
-                groundwater_date_metrics = evaluate(entries, gt_groundwater, self.match_groundwater_date).metrics
-                groundwater_date_metrics_list.append(groundwater_date_metrics)
-
-            # we take the micro-average across boreholes
-            file_groundwater_metrics = GroundwaterMetrics(
-                groundwater_metrics=Metrics.micro_average(groundwater_metrics_list),
-                groundwater_depth_metrics=Metrics.micro_average(groundwater_depth_metrics_list),
-                groundwater_elevation_metrics=Metrics.micro_average(groundwater_elevation_metrics_list),
-                groundwater_date_metrics=Metrics.micro_average(groundwater_date_metrics_list),
-                filename=file.filename,
+            entries = (
+                [feature_on_page.feature for feature_on_page in borehole_data.groundwater.groundwater_feature_list]
+                if borehole_data.groundwater
+                else []
             )
 
-            overall_groundwater_metrics.add_groundwater_metrics(file_groundwater_metrics)
+            groundwater_evaluation = evaluate(entries, gt_groundwater, GroundwaterEvaluator.match_groundwater)
+            groundwater_metrics_list.append(groundwater_evaluation.metrics)
+            for feature, is_correct in zip(entries, groundwater_evaluation.extracted_correct, strict=True):
+                feature.is_correct = is_correct
 
-        return overall_groundwater_metrics
+            groundwater_depth_metrics = evaluate(
+                entries, gt_groundwater, GroundwaterEvaluator.match_groundwater_depth
+            ).metrics
+            groundwater_depth_metrics_list.append(groundwater_depth_metrics)
+
+            groundwater_elevation_metrics = evaluate(
+                entries, gt_groundwater, GroundwaterEvaluator.match_groundwater_elevation
+            ).metrics
+            groundwater_elevation_metrics_list.append(groundwater_elevation_metrics)
+
+            groundwater_date_metrics = evaluate(
+                entries, gt_groundwater, GroundwaterEvaluator.match_groundwater_date
+            ).metrics
+            groundwater_date_metrics_list.append(groundwater_date_metrics)
+
+        # we take the micro-average across boreholes
+        return GroundwaterMetrics(
+            groundwater_metrics=Metrics.micro_average(groundwater_metrics_list),
+            groundwater_depth_metrics=Metrics.micro_average(groundwater_depth_metrics_list),
+            groundwater_elevation_metrics=Metrics.micro_average(groundwater_elevation_metrics_list),
+            groundwater_date_metrics=Metrics.micro_average(groundwater_date_metrics_list),
+            filename=file_predictions.filename,
+        )
 
     @staticmethod
     def match_groundwater(extracted: Groundwater, ground_truth: Groundwater) -> bool:

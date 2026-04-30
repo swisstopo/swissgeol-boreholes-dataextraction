@@ -139,7 +139,7 @@ class TextLine(RectWithPageMixin):
 
         return exact_points >= 3 or (exact_points >= 2 and indentation_points >= 1)
 
-    def to_json(self):
+    def to_json(self) -> dict:
         """Convert the TextLine object to a JSON serializable dictionary."""
         return {
             "text": self.text,
