@@ -7,6 +7,7 @@ from extraction.features.stratigraphy.layer.layer import (
     LayerDepths,
     LayerDepthsEntry,
 )
+from extraction.features.stratigraphy.layer.overlap_detection import OverlapResult
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 
 
@@ -47,7 +48,7 @@ def test_merge_boreholes_reconciles_duplicated_boundary_layer(monkeypatch):
 
     def mock_select_boreholes_with_overlap(previous_page_boreholes, current_page_boreholes, matching_params):
         if previous_page_boreholes == [previous_borehole] and current_page_boreholes == [current_borehole]:
-            return previous_borehole, current_borehole, (2, 1)
+            return previous_borehole, current_borehole, OverlapResult(2, 1)
         return None, None, None
 
     monkeypatch.setattr(

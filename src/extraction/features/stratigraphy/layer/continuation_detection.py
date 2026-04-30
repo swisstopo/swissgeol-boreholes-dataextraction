@@ -72,11 +72,11 @@ def _prepare_merge_candidates(
             * Unaffected boreholes from the current page.
     """
     # 1) Overlap-based (returns a triple)
-    borehole_to_extend, borehole_continuation, last_duplicated_layer_index = select_boreholes_with_overlap(
+    borehole_to_extend, borehole_continuation, overlap_result = select_boreholes_with_overlap(
         previous_page_boreholes, current_page_boreholes, matching_params
     )
 
-    if borehole_to_extend is None or borehole_continuation is None or last_duplicated_layer_index is None:
+    if borehole_to_extend is None or borehole_continuation is None or overlap_result is None:
         # 2) Depth/position-based (returns a pair) → normalize to triple
         borehole_to_extend, borehole_continuation = _select_boreholes_for_concatenation(
             previous_page_boreholes, current_page_boreholes, page_number
@@ -89,8 +89,8 @@ def _prepare_merge_candidates(
         borehole for borehole in current_page_boreholes if borehole is not borehole_continuation
     ]
 
-    if last_duplicated_layer_index:
-        upper_id, lower_id = last_duplicated_layer_index
+    if overlap_result:
+        upper_id, lower_id = overlap_result.upper_id, overlap_result.lower_id
 
         if upper_id > 0 and lower_id > 0:
             upper_layer = borehole_to_extend.predictions[upper_id - 1]
