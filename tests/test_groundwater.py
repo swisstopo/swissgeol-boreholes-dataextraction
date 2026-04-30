@@ -8,8 +8,6 @@ from core.benchmark_utils import Metrics
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.evaluation.groundwater_evaluator import (
     GroundwaterEvaluator,
-    GroundwaterMetrics,
-    OverallGroundwaterMetrics,
 )
 from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
 from extraction.features.groundwater.utility import extract_date
@@ -85,80 +83,33 @@ def test_extract_date(date_test_cases):
         assert extract_date(text) == (expected_date, expected_str)
 
 
-def test_add_groundwater_metrics(sample_metrics):
-    """Test adding GroundwaterMetrics to OverallGroundwaterMetrics."""
-    overall_metrics = OverallGroundwaterMetrics()
-    gw_metrics = GroundwaterMetrics(
-        groundwater_metrics=sample_metrics,
-        groundwater_depth_metrics=sample_metrics,
-        groundwater_elevation_metrics=sample_metrics,
-        groundwater_date_metrics=sample_metrics,
-        filename="test_file_1",
-    )
-    overall_metrics.add_groundwater_metrics(gw_metrics)
-    assert len(overall_metrics.groundwater_metrics) == 1
-    assert overall_metrics.groundwater_metrics[0].filename == "test_file_1"
-
-
-def test_groundwater_metrics_to_overall_metrics(sample_metrics):
-    """Test conversion of groundwater metrics to OverallMetrics."""
-    overall_metrics = OverallGroundwaterMetrics()
-    gw_metrics1 = GroundwaterMetrics(groundwater_metrics=sample_metrics, filename="file1")
-    gw_metrics2 = GroundwaterMetrics(groundwater_metrics=sample_metrics, filename="file2")
-    overall_metrics.add_groundwater_metrics(gw_metrics1)
-    overall_metrics.add_groundwater_metrics(gw_metrics2)
-    overall = overall_metrics.groundwater_metrics_to_overall_metrics()
-    assert "file1" in overall.metrics
-    assert "file2" in overall.metrics
-    assert overall.metrics["file1"] == gw_metrics1.groundwater_metrics
-    assert overall.metrics["file2"] == gw_metrics2.groundwater_metrics
-
-
-def test_groundwater_depth_metrics_to_overall_metrics(sample_metrics):
-    """Test conversion of groundwater depth metrics to OverallMetrics."""
-    overall_metrics = OverallGroundwaterMetrics()
-    gw_metrics = GroundwaterMetrics(groundwater_depth_metrics=sample_metrics, filename="file_depth")
-    overall_metrics.add_groundwater_metrics(gw_metrics)
-    overall = overall_metrics.groundwater_depth_metrics_to_overall_metrics()
-    assert "file_depth" in overall.metrics
-    assert overall.metrics["file_depth"] == gw_metrics.groundwater_depth_metrics
-
-
 def test_evaluate_with_ground_truth(groundtruth, groundwater_at_2m22, groundwater_at_3m22):
     """Test the evaluate method with available ground truth data."""
     # In this test, there is one borehole, with two groundwater measurement for it.
-    groundwater_entries = {
-        "example_borehole_profile.pdf": [GroundwatersInBorehole([groundwater_at_2m22, groundwater_at_3m22])]
-    }
+    groundwaterinborehole_list = [GroundwatersInBorehole([groundwater_at_2m22, groundwater_at_3m22])]
 
     # dictionary used to "manually" build the FileGroundwaterWithGroundTruth object
-    pred_to_gt_matching = {"example_borehole_profile.pdf": {0: 0}}
+    filename = "example_borehole_profile.pdf"
+    pred_to_gt_matching = {filename: {0: 0}}
 
-    overall_metrics = OverallGroundwaterMetrics(
-        [
-            GroundwaterEvaluator.evaluate(
-                FileGroundwaterWithGroundTruth(
-                    filename=filename,
-                    boreholes=[
-                        BoreholeGroundwaterWithGroundTruth(
-                            groundwater=groundwaterinborehole,
-                            ground_truth=groundtruth.for_file(filename).get(pred_to_gt_matching[filename][pred_idx])[
-                                "groundwater"
-                            ],
-                        )
-                        for pred_idx, groundwaterinborehole in enumerate(groundwaterinborehole_list)
+    groundwater_metric = GroundwaterEvaluator.evaluate(
+        FileGroundwaterWithGroundTruth(
+            filename=filename,
+            boreholes=[
+                BoreholeGroundwaterWithGroundTruth(
+                    groundwater=groundwaterinborehole,
+                    ground_truth=groundtruth.for_file(filename).get(pred_to_gt_matching[filename][pred_idx])[
+                        "groundwater"
                     ],
                 )
-            )
-            for filename, groundwaterinborehole_list in groundwater_entries.items()
-        ]
+                for pred_idx, groundwaterinborehole in enumerate(groundwaterinborehole_list)
+            ],
+        )
     )
 
     # Assertions
-    assert isinstance(overall_metrics, OverallGroundwaterMetrics)
-    assert len(overall_metrics.groundwater_metrics) == 1
-    assert overall_metrics.groundwater_metrics[0].filename == "example_borehole_profile.pdf"
-    assert overall_metrics.groundwater_metrics[0].groundwater_metrics.precision == 1.0
+    assert groundwater_metric.filename == filename
+    assert groundwater_metric.groundwater_metrics.precision == 1.0
 
 
 def test_evaluate_multiple_documents(groundtruth, groundwater_at_2m22, groundwater_at_3m22):

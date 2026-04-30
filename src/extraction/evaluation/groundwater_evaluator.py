@@ -1,9 +1,8 @@
 """Classes for evaluating the groundwater levels of a borehole."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from core.benchmark_utils import Metrics
-from extraction.evaluation.benchmark.metrics import OverallMetrics
 from extraction.evaluation.utility import evaluate
 from extraction.features.groundwater.groundwater_extraction import Groundwater
 from extraction.features.predictions.borehole_predictions import FileGroundwaterWithGroundTruth
@@ -51,43 +50,6 @@ class GroundwaterMetrics:
             groundwater_elevation_metrics=Metrics.from_json(json["elevation_metrics"]),
             groundwater_date_metrics=Metrics.from_json(json["date_metrics"]),
         )
-
-
-@dataclass
-class OverallGroundwaterMetrics:
-    """Class for storing the overall metrics of the groundwater information."""
-
-    groundwater_metrics: list[GroundwaterMetrics] = field(default_factory=list)
-
-    def add_groundwater_metrics(self, groundwater_metrics: GroundwaterMetrics) -> None:
-        """Add groundwater metrics to the list.
-
-        Args:
-            groundwater_metrics (GroundwaterMetrics): The groundwater metrics to add.
-        """
-        self.groundwater_metrics.append(groundwater_metrics)
-
-    def groundwater_metrics_to_overall_metrics(self) -> OverallMetrics:
-        """Convert the per-file groundwater metrics to an OverallMetrics object.
-
-        Returns:
-            OverallMetrics: Mapping of filename → groundwater Metrics for all collected files.
-        """
-        overall_metrics = OverallMetrics()
-        for groundwater_metrics in self.groundwater_metrics:
-            overall_metrics.metrics[groundwater_metrics.filename] = groundwater_metrics.groundwater_metrics
-        return overall_metrics
-
-    def groundwater_depth_metrics_to_overall_metrics(self) -> OverallMetrics:
-        """Convert the per-file groundwater depth metrics to an OverallMetrics object.
-
-        Returns:
-            OverallMetrics: Mapping of filename → groundwater depth Metrics for all collected files.
-        """
-        overall_metrics = OverallMetrics()
-        for groundwater_metrics in self.groundwater_metrics:
-            overall_metrics.metrics[groundwater_metrics.filename] = groundwater_metrics.groundwater_depth_metrics
-        return overall_metrics
 
 
 class GroundwaterEvaluator:

@@ -6,7 +6,9 @@ from unittest.mock import Mock
 import pymupdf
 import pytest
 
+from core.benchmark_utils import Metrics
 from extraction.evaluation.benchmark.ground_truth import GroundTruth
+from extraction.evaluation.benchmark.metrics import OverallMetricsCatalog
 from extraction.evaluation.layer_evaluator import LayerEvaluator
 from extraction.evaluation.utility import evaluate, evaluate_single
 from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
@@ -31,6 +33,12 @@ from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 from swissgeol_doc_processing.utils.file_utils import read_params
+
+
+@pytest.fixture
+def sample_metrics():
+    """Sample metrics for testing."""
+    return Metrics(tp=3, fn=2, fp=1)
 
 
 @pytest.fixture
@@ -318,3 +326,30 @@ def test_merge_boreholes():
     assert merged_boreholes[0].predictions[1].material_description.text == "second layer"
     assert merged_boreholes[0].predictions[1].depths.start.value == 1
     assert merged_boreholes[0].predictions[1].depths.end.value == 2
+
+
+def test_groundwater_metrics_to_overall_metrics(sample_metrics):
+    """Test adding single datapoint to overall metric."""
+    filename = "file"
+    overall = OverallMetricsCatalog(languages=[])
+
+    overall.add_datapoint(
+        filename=filename,
+        material_description_metric=sample_metrics,
+        layer_metrics=sample_metrics,
+        depth_interval_metric=sample_metrics,
+        elevation_metric=sample_metrics,
+        coordinates_metric=sample_metrics,
+        name_metric=sample_metrics,
+        groundwater_metrics=sample_metrics,
+        groundwater_depth_metrics=sample_metrics,
+    )
+
+    assert filename in overall.material_description_metric
+    assert filename in overall.layer_metrics
+    assert filename in overall.depth_interval_metric
+    assert filename in overall.elevation_metric
+    assert filename in overall.coordinates_metric
+    assert filename in overall.name_metric
+    assert filename in overall.groundwater_metrics
+    assert filename in overall.groundwater_depth_metrics

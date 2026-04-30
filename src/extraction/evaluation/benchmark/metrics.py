@@ -150,6 +150,8 @@ class OverallMetricsCatalog:
         elevation_metric: Metrics,
         coordinates_metric: Metrics,
         name_metric: Metrics,
+        groundwater_metrics: Metrics,
+        groundwater_depth_metrics: Metrics,
     ) -> None:
         """Register per-file metrics for all extraction categories.
 
@@ -161,6 +163,8 @@ class OverallMetricsCatalog:
             elevation_metric (Metrics): Elevation metrics.
             coordinates_metric (Metrics): Coordinate metrics.
             name_metric (Metrics): Borehole name metrics.
+            groundwater_metrics (Metrics): Groundwater metrics.
+            groundwater_depth_metrics (Metrics): Groundwater depth metrics.
         """
         self.layer_metrics.metrics[filename] = layer_metrics
         self.material_description_metrics.metrics[filename] = material_description_metric
@@ -168,6 +172,8 @@ class OverallMetricsCatalog:
         self.elevation_metrics.metrics[filename] = elevation_metric
         self.coordinates_metrics.metrics[filename] = coordinates_metric
         self.name_metrics.metrics[filename] = name_metric
+        self.groundwater_metrics.metrics[filename] = groundwater_metrics
+        self.groundwater_depth_metrics.metrics[filename] = groundwater_depth_metrics
 
     def to_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Return document-level metrics as two DataFrames, one for metadata and one for geology.

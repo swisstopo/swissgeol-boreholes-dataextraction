@@ -1,6 +1,6 @@
 """Evaluation utilities."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from core.benchmark_utils import Metrics
 
@@ -40,18 +40,3 @@ class BoreholeMetadataMetrics:
             coordinates_metrics=Metrics.from_json(json["coordinates"]),
             name_metrics=Metrics.from_json(json["name"]),
         )
-
-
-@dataclass
-class OverallBoreholeMetadataMetrics:
-    """Metrics for borehole metadata."""
-
-    borehole_metadata_metrics: list[BoreholeMetadataMetrics] = field(default_factory=list)
-
-    def add_metadata_metrics(self, borehole_metadata_metrics: BoreholeMetadataMetrics) -> None:
-        """Append per-file metadata metrics to the collection.
-
-        Args:
-            borehole_metadata_metrics (BoreholeMetadataMetrics): The metrics for a single file to add.
-        """
-        self.borehole_metadata_metrics.append(borehole_metadata_metrics)

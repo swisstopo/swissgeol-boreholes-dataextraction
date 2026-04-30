@@ -9,7 +9,6 @@ from extraction.evaluation.evaluation_dataclasses import BoreholeMetadataMetrics
 from extraction.evaluation.groundwater_evaluator import (
     GroundwaterEvaluator,
     GroundwaterMetrics,
-    OverallGroundwaterMetrics,
 )
 from extraction.evaluation.layer_evaluator import LayerEvaluator
 from extraction.evaluation.metadata_evaluator import MetadataEvaluator
@@ -73,7 +72,7 @@ class Evaluator:
                 - layer_metrics (Metrics): Metrics for layer detection.
                 - depth_interval_metrics (Metrics): Metrics for depth intervals.
                 - material_description_metrics (Metrics): Metrics for material descriptions.
-                - groundwater_metrics (GroundwaterMetrics): Metrics for Groundwater detection.
+                - gw_metrics (GroundwaterMetrics): Metrics for Groundwater detection.
                 - metadata_metrics (BoreholeMetadataMetrics): Metrics for elevation, coordinate, and name.
         """
         layer_metrics, depth_interval_metrics, material_description_metrics = Evaluator._evaluate_layers(
@@ -177,7 +176,6 @@ class Evaluator:
         languages = set(fp_languages.values())
 
         overall_metrics_catalog = OverallMetricsCatalog(languages=languages)
-        overall_groundwater_metrics = OverallGroundwaterMetrics()
 
         # Iterate over all the files
         for predictions in overall_predictions.file_predictions_list:
@@ -189,18 +187,9 @@ class Evaluator:
                 elevation_metric=predictions.metrics.metadata_metrics.elevation_metrics,
                 coordinates_metric=predictions.metrics.metadata_metrics.coordinates_metrics,
                 name_metric=predictions.metrics.metadata_metrics.name_metrics,
+                groundwater_metrics=predictions.metrics.gw_metrics.groundwater_metrics,
+                groundwater_depth_metrics=predictions.metrics.gw_metrics.groundwater_depth_metrics,
             )
-
-            # Assign values to overall predictions
-            overall_groundwater_metrics.add_groundwater_metrics(predictions.metrics.gw_metrics)
-
-        # Set metrics for geology
-        overall_metrics_catalog.groundwater_metrics = (
-            overall_groundwater_metrics.groundwater_metrics_to_overall_metrics()
-        )
-        overall_metrics_catalog.groundwater_depth_metrics = (
-            overall_groundwater_metrics.groundwater_depth_metrics_to_overall_metrics()
-        )
 
         # Language subsets for geology
         for language in languages:
