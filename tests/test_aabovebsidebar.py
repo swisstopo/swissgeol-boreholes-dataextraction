@@ -82,12 +82,20 @@ def test_aabovebsidebar_ascendingcount(input, expected):
 def test_aabovebsidebar_fixocrmistakes():  # noqa: D103
     """Test the fix_ocr_mistakes method of the AAboveBSidebar class."""
 
-    def run_test(in_values, out_values):
+    def run_test(in_values: list[float], out_values: list[float], has_decimal_point: list[bool] = None) -> None:
+        if not has_decimal_point:
+            has_decimal_point = [False] * len(in_values)
+
         sidebar = AAboveBSidebar(
             [
                 # TODO: actually specify the y-coordinate instead of using the index as a proxy
-                DepthColumnEntry(rect=pymupdf.Rect(0, index, 0, index), value=value, page_number=0)
-                for index, value in enumerate(in_values)
+                DepthColumnEntry(
+                    rect=pymupdf.Rect(0, index, 0, index),
+                    has_decimal_point=decimal,
+                    value=value,
+                    page_number=0,
+                )
+                for index, (value, decimal) in enumerate(zip(in_values, has_decimal_point, strict=True))
             ]
         )
         result = [entry.value for entry in sidebar.fix_ocr_mistakes().entries]
@@ -125,6 +133,11 @@ def test_aabovebsidebar_fixocrmistakes():  # noqa: D103
 
     # edge case
     run_test([], [])
+
+    # Test decimal point for 383_Schlatt_Gishalden_KB1 (if decimal detected, not rescaled)
+    run_test([1.0, 2.0, 30.0, 4.0], [1.0, 2.0, 3.0, 4.0], has_decimal_point=[False, False, False, False])
+    run_test([1.0, 2.0, 30.0, 4.0], [1.0, 2.0, 3.0, 4.0], has_decimal_point=[True, True, False, True])
+    run_test([1.0, 2.0, 30.0, 4.0], [1.0, 2.0, 30.0, 4.0], has_decimal_point=[False, False, True, False])
 
 
 def test_generate_alternatives():

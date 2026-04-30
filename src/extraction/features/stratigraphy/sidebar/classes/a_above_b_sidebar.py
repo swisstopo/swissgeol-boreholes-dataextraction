@@ -101,9 +101,8 @@ class AAboveBSidebar(DepthColumEntrySidebar):
             median_value = np.median(np.array([entry.value for entry in self.entries]))
 
             for i, entry in enumerate(self.entries):
-                if entry.value.is_integer() and entry.value > median_value:
+                if entry.value.is_integer() and entry.value > median_value and not entry.has_decimal_point:
                     candidate_values = [entry.value / 100, entry.value / 10]
-
                     for new_value in candidate_values:
                         new_score = score(new_sidebar(i, new_value))
                         if new_score > best_score:
