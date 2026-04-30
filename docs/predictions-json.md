@@ -17,7 +17,7 @@ predictions.json
     │   ├── metadata
     │   │   ├── elevation                 # Borehole surface elevation, if found
     │   │   └── coordinates               # Borehole coordinates, if found
-    │   ├── layers[]                      # Detected layers of the borehole profil
+    │   ├── layers[]                      # Detected layers of the borehole profile
     │   │   ├── material_description      # Material text description
     │   │   └── depth_interval            # Measured depth of the layer's upper and lower limits
     │   ├── bounding_boxes[]              # List of bounding boxes, one for each part of a borehole profile, that can be used for visualizations

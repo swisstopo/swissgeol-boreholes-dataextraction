@@ -26,7 +26,7 @@ class OverallFilePredictions:
         """Add file predictions to the list of file predictions.
 
         Args:
-            file_predictions (FilePredictions): The file predictions to add.
+            file_predictions (FilePredictionsWithMetrics): The file predictions to add.
         """
         self.file_predictions_list.append(file_predictions)
 

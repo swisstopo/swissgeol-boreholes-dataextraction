@@ -345,11 +345,11 @@ def test_groundwater_metrics_to_overall_metrics(sample_metrics):
         groundwater_depth_metrics=sample_metrics,
     )
 
-    assert filename in overall.material_description_metric
-    assert filename in overall.layer_metrics
-    assert filename in overall.depth_interval_metric
-    assert filename in overall.elevation_metric
-    assert filename in overall.coordinates_metric
-    assert filename in overall.name_metric
-    assert filename in overall.groundwater_metrics
-    assert filename in overall.groundwater_depth_metrics
+    assert filename in overall.material_description_metrics.metrics
+    assert filename in overall.layer_metrics.metrics
+    assert filename in overall.depth_interval_metrics.metrics
+    assert filename in overall.elevation_metrics.metrics
+    assert filename in overall.coordinates_metrics.metrics
+    assert filename in overall.name_metrics.metrics
+    assert filename in overall.groundwater_metrics.metrics
+    assert filename in overall.groundwater_depth_metrics.metrics
