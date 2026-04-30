@@ -3,8 +3,8 @@
 import pymupdf
 import pytest
 
-from extraction.features.stratigraphy.layer.layer import Layer
-from extraction.features.stratigraphy.layer.overlap_detection import find_last_duplicate_layer_index
+from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry
+from extraction.features.stratigraphy.layer.overlap_detection import are_layers_similar, find_split_by_convolution
 from swissgeol_doc_processing.text.textblock import MaterialDescription, MaterialDescriptionLine
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 from swissgeol_doc_processing.utils.file_utils import read_params
@@ -24,13 +24,29 @@ def create_layer():
     return _create_layer
 
 
+@pytest.fixture
+def create_elevation_layer():
+    """Create a Layer with given text and depth interval."""
+
+    def _create_elevation_layer(text: str, elevation: tuple[int | None, int | None]) -> Layer:
+        line_feat = FeatureOnPage(MaterialDescriptionLine(text), rect=pymupdf.Rect, page=0)
+        material_description = MaterialDescription(text, [line_feat])
+        depths = LayerDepths(
+            LayerDepthsEntry(elevation[0], rect=pymupdf.Rect, page_number=0),
+            LayerDepthsEntry(elevation[1], rect=pymupdf.Rect, page_number=0),
+        )
+        return Layer(material_description=material_description, depths=depths)
+
+    return _create_elevation_layer
+
+
 def test_find_last_duplicate_no_duplicates(create_layer):
     """Test when there are no duplicate layers."""
     prev_layers = [create_layer("Layer A"), create_layer("Layer B")]
     current_layers = [create_layer("Layer C"), create_layer("Layer D")]
 
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers, matching_params)
-    assert bottom_duplicated_idx is None
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
+    assert overlap_result is None
 
 
 def test_find_last_duplicate_single_at_top(create_layer):
@@ -38,8 +54,9 @@ def test_find_last_duplicate_single_at_top(create_layer):
     prev_layers = [create_layer("Layer A"), create_layer("Layer B")]
     current_layers = [create_layer("Layer B"), create_layer("Layer C"), create_layer("Layer D")]
 
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers, matching_params)
-    assert bottom_duplicated_idx == 0
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
+    assert overlap_result.upper_id == 2
+    assert overlap_result.lower_id == 1
 
 
 def test_find_last_duplicate_multiple_consecutive(create_layer):
@@ -47,22 +64,9 @@ def test_find_last_duplicate_multiple_consecutive(create_layer):
     prev_layers = [create_layer("Layer A"), create_layer("Layer B"), create_layer("Layer C")]
     current_layers = [create_layer("Layer B"), create_layer("Layer C"), create_layer("Layer D")]
 
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers, matching_params)
-    assert bottom_duplicated_idx == 1
-
-
-def test_find_last_duplicate_wrong_line_grouping(create_layer):
-    """Test when description lines are grouped differently on each page, due to different scan quality."""
-    prev_layers = [create_layer("Layer A"), create_layer("Layer B"), create_layer("Layer C")]
-    current_layers = [
-        create_layer("Layer B"),
-        create_layer("Layer"),  # description incorrectly split,
-        create_layer("C"),  # the algorithm will also pick up this layer
-        create_layer("Layer D"),
-    ]
-
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers, matching_params)
-    assert bottom_duplicated_idx == 2
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
+    assert overlap_result.upper_id == 3
+    assert overlap_result.lower_id == 2
 
 
 def test_find_last_duplicate_false_positive(create_layer):
@@ -76,8 +80,9 @@ def test_find_last_duplicate_false_positive(create_layer):
         create_layer("Layer D"),  # false positive, same description but not a duplicate
         create_layer("Layer Z"),
     ]
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers_correct, matching_params)
-    assert bottom_duplicated_idx == 1
+    overlap_result = find_split_by_convolution(prev_layers, current_layers_correct, matching_params)
+    assert overlap_result.upper_id == 4
+    assert overlap_result.lower_id == 2
 
     current_layers_correct = [
         create_layer("Layer X"),
@@ -85,8 +90,8 @@ def test_find_last_duplicate_false_positive(create_layer):
         create_layer("Layer D"),  # false positive, same description but not a duplicate
         create_layer("Layer Z"),
     ]
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers_correct, matching_params)
-    assert bottom_duplicated_idx is None
+    overlap_result = find_split_by_convolution(prev_layers, current_layers_correct, matching_params)
+    assert overlap_result is None
 
 
 def test_find_last_duplicate_prev_bottom_cropped(create_layer):
@@ -100,8 +105,9 @@ def test_find_last_duplicate_prev_bottom_cropped(create_layer):
         create_layer("Bedrock"),
     ]
 
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers, matching_params)
-    assert bottom_duplicated_idx == 0
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
+    assert overlap_result.upper_id == 2
+    assert overlap_result.lower_id == 1
 
 
 def test_find_last_duplicate_current_top_cropped(create_layer):
@@ -115,8 +121,9 @@ def test_find_last_duplicate_current_top_cropped(create_layer):
         create_layer("Bedrock"),
     ]
 
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers, matching_params)
-    assert bottom_duplicated_idx == 0
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
+    assert overlap_result.upper_id == 2
+    assert overlap_result.lower_id == 1
 
 
 def test_find_last_duplicate_ocr_error(create_layer):
@@ -127,12 +134,13 @@ def test_find_last_duplicate_ocr_error(create_layer):
         create_layer("Clay with gravel"),
     ]
 
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers, matching_params)
-    assert bottom_duplicated_idx == 0
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
+    assert overlap_result.upper_id == 2
+    assert overlap_result.lower_id == 1
 
 
 def test_find_last_duplicate_full_duplicates(create_layer):
-    """Test when the number of duplicated layer of the current page exeeds the number of layer in the previous."""
+    """Test when the number of duplicated layers of the current page exceeds the number of layer in the previous."""
     prev_layers = [create_layer("Layer B"), create_layer("Layer C"), create_layer("Layer D")]
 
     current_layers_correct = [
@@ -141,5 +149,33 @@ def test_find_last_duplicate_full_duplicates(create_layer):
         create_layer("Layer C"),
         create_layer("Layer D"),
     ]
-    bottom_duplicated_idx = find_last_duplicate_layer_index(prev_layers, current_layers_correct, matching_params)
-    assert bottom_duplicated_idx == 3
+    overlap_result = find_split_by_convolution(prev_layers, current_layers_correct, matching_params)
+    assert overlap_result is None
+
+
+def test_are_layers_similar_text(create_layer):
+    """Test if two layers are matched based on small text difference."""
+    layer_a = create_layer("Desc A")
+    layer_b = create_layer("Desc AB")
+    assert are_layers_similar(layer_a, layer_b, material_threshold=0.80)
+    assert not are_layers_similar(layer_a, layer_b, material_threshold=1.00)
+
+
+def test_are_layers_similar_elevation(create_elevation_layer):
+    """Test if two layers are matched based on elevation difference."""
+    layer_a = create_elevation_layer("Desc A", [0, 1])
+    layer_b = create_elevation_layer("Desc A", [0, 2])
+    layer_c = create_elevation_layer("Desc A", [0, None])
+    assert not are_layers_similar(layer_a, layer_b)
+    assert are_layers_similar(layer_a, layer_c)
+
+
+def test_are_layers_similar_extremities(create_layer):
+    """Test if two layers are matched based on position in file."""
+    layer_a = create_layer("Desc A Desc B")
+    layer_b = create_layer("Desc A")
+    layer_c = create_layer("Desc B")
+    assert not are_layers_similar(layer_a, layer_b, is_extremity=False)
+    assert not are_layers_similar(layer_a, layer_b, is_extremity=True)
+    assert are_layers_similar(layer_a, layer_c, is_extremity=True)
+    assert not are_layers_similar(layer_c, layer_a, is_extremity=True)
