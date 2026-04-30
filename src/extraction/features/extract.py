@@ -726,10 +726,11 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 ),
                 default=initial_best_y0,
             )
+            # Search all page lines
             header_y1 = next(
                 (
                     excl_line.rect.y1
-                    for excl_line in sorted(is_not_description, key=lambda ln: -ln.rect.y1)
+                    for excl_line in sorted(self.lines, key=lambda ln: -ln.rect.y1)
                     if excl_line.rect.y1 <= first_keyword_y0 + 5
                     and excl_line.rect.x0 < best_x1
                     and excl_line.rect.x1 > best_x0
