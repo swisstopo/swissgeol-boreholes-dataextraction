@@ -42,18 +42,20 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull, retag and push release-candidate
-        run: |
-          docker pull ${{ env.IMAGE }}:${{ env.BASE }}
-          docker tag ${{ env.IMAGE }}:${{ env.BASE }} ${{ env.IMAGE }}:release-candidate
-          docker push ${{ env.IMAGE }}:release-candidate
-
       - name: Extract and save version from image labels
         id: version
         run: |
+          docker pull ${{ env.IMAGE }}:${{ env.BASE }}
           VERSION=$(docker inspect --format '{{index .Config.Labels "org.opencontainers.image.version"}}' ${{ env.IMAGE }}:${{ env.BASE }} | sed 's/^v//' | sed 's/-dev[0-9]*//')
           if [ -z "$VERSION" ]; then echo "ERROR: Could not extract version from image labels" && exit 1; fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Pull, retag and push release-candidate
+        run: |
+          docker tag ${{ env.IMAGE }}:${{ env.BASE }} ${{ env.IMAGE }}:release-candidate
+          docker push ${{ env.IMAGE }}:release-candidate
+          docker tag ${{ env.IMAGE }}:${{ env.BASE }} ${{ env.IMAGE }}:v${{ steps.version.outputs.version }}-rc
+          docker push ${{ env.IMAGE }}:v${{ steps.version.outputs.version }}-rc
 
   tag_rc_commit:
     name: Tag release-candidate commit
@@ -79,7 +81,7 @@ jobs:
       - name: Tag clean version
         uses: ./.github/actions/tag-commit
         with:
-          TAG_NAME: ${{ needs.tag-release-candidate.outputs.version }}
+          TAG_NAME: v${{ needs.tag-release-candidate.outputs.version }}
           SHA: ${{ steps.get_base_commit.outputs.sha }}
 
   publish-package:
