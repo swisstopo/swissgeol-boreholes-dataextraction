@@ -21,7 +21,7 @@ class MaterialDescriptionLine(ExtractedFeature):
 
     text: str
 
-    def to_json(self):
+    def to_json(self) -> dict:
         """Convert the MaterialDescriptionLine object to a JSON serializable dictionary."""
         return {"text": self.text}
 
@@ -65,7 +65,7 @@ class MaterialDescription(ExtractedFeature):
         """Get the bounding rectangle for a specific page."""
         return next((p_rect.rect for p_rect in self.rects_with_pages if p_rect.page_number == page_number), None)
 
-    def to_json(self):
+    def to_json(self) -> dict:
         """Convert the MaterialDescription object to a JSON serializable dictionary."""
         return {"text": self.text, "lines": [line.to_json() for line in self.lines]}
 
