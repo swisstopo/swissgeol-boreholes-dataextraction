@@ -480,10 +480,33 @@ class MaterialDescriptionRectWithSidebarExtractor:
             if len(non_description_in_rect) / len(good_lines) > self.matching_params["non_description_lines_ratio"]:
                 continue
 
+            # expand to include content above the cluster top
+            def is_above(best_x0, best_x1, best_y0, line: TextLine) -> bool:
+                return (
+                    line.rect.x0 > best_x0 - 5
+                    and line.rect.x0 < (best_x0 + best_x1) / 2
+                    and line.rect.y1 > best_y0 - 10
+                    and line.rect.y0 < best_y0
+                    and line not in is_not_description
+                )
+
+            continue_search = True
+            while continue_search:
+                line = next(
+                    (line for line in candidate_description if is_above(best_x0, best_x1, best_y0, line)), None
+                )
+                if line:
+                    best_x0 = min(best_x0, line.rect.x0)
+                    best_x1 = max(best_x1, line.rect.x1)
+                    best_y0 = line.rect.y0
+                else:
+                    continue_search = False
+
             # expand to include entire last block
             def is_below(best_x0, best_y1, line: TextLine):
                 return (
-                    (line.rect.x0 > best_x0 - 5)
+                    line not in is_not_description  # noqa: B023
+                    and (line.rect.x0 > best_x0 - 5)
                     and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
                     and (line.rect.y0 < best_y1 + 10)
                     and (line.rect.y1 > best_y1)
