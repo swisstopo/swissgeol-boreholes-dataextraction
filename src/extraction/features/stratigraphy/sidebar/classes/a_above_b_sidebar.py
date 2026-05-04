@@ -34,6 +34,15 @@ class AAboveBSidebar(DepthColumEntrySidebar):
 
     kind: ClassVar[str] = "a_above_b"
 
+    # All entries before filtering based on correlation between depth value and vertical position on the page.
+    # Useful in case we want to check if the depth entries are more suitable as a ProtocolSidebar instead (where
+    # no constraints on correlation coefficient are applicable).
+    unfiltered_entries: list[DepthColumnEntry] = None
+
+    def __post_init__(self):
+        if self.unfiltered_entries is None:
+            self.unfiltered_entries = self.entries
+
     def pearson_correlation_coef(self) -> float:
         # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with
         # the line of the corresponding layer boundary.
@@ -55,7 +64,10 @@ class AAboveBSidebar(DepthColumEntrySidebar):
             return None
 
         new_columns = [
-            AAboveBSidebar([entry for index, entry in enumerate(self.entries) if index != remove_index])
+            AAboveBSidebar(
+                entries=[entry for index, entry in enumerate(self.entries) if index != remove_index],
+                unfiltered_entries=self.unfiltered_entries,
+            )
             for remove_index in range(len(self.entries))
         ]
         return min(new_columns, key=lambda column: column.linear_fit_loss())
@@ -101,9 +113,8 @@ class AAboveBSidebar(DepthColumEntrySidebar):
             median_value = np.median(np.array([entry.value for entry in self.entries]))
 
             for i, entry in enumerate(self.entries):
-                if entry.value.is_integer() and entry.value > median_value:
+                if entry.value.is_integer() and entry.value > median_value and not entry.has_decimal_point:
                     candidate_values = [entry.value / 100, entry.value / 10]
-
                     for new_value in candidate_values:
                         new_score = score(new_sidebar(i, new_value))
                         if new_score > best_score:

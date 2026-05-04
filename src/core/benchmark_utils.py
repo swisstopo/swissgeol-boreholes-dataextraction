@@ -92,9 +92,9 @@ class BenchmarkSummary(BaseModel, ABC):
 class Metrics:
     """Metrics for the evaluation of extracted features (e.g., Groundwater, Elevation, Coordinates)."""
 
-    tp: int
-    fp: int
-    fn: int
+    tp: int = 0
+    fp: int = 0
+    fn: int = 0
 
     @property
     def precision(self) -> float:
@@ -125,20 +125,36 @@ class Metrics:
         recall = self.recall
         return 2 * precision * recall / (precision + recall) if precision + recall > 0 else 0
 
-    def to_json(self, feature_name: str) -> dict[str, float]:
+    def to_json(self) -> dict[str, float]:
         """Converts the object to a dictionary.
-
-        Args:
-            feature_name (str): Name of the feature to append.
 
         Returns:
             dict[str, float]: The object as a dictionary.
         """
         return {
-            f"{feature_name}_precision": self.precision,
-            f"{feature_name}_recall": self.recall,
-            f"{feature_name}_f1": self.f1,
+            "tp": self.tp,
+            "fp": self.fp,
+            "fn": self.fn,
+            "precision": self.precision,
+            "recall": self.recall,
+            "f1": self.f1,
         }
+
+    @classmethod
+    def from_json(cls, json: dict) -> Metrics:
+        """Construct a Metrics instance from a dictionary produced by `to_json`.
+
+        Args:
+            json (dict): Dictionary with keys tp, fp, and fn.
+
+        Returns:
+            Metrics: The reconstructed metrics object.
+        """
+        return Metrics(
+            tp=json["tp"],
+            fp=json["fp"],
+            fn=json["fn"],
+        )
 
     # TODO: Currently, some other methods for averaging metrics are in the OverallMetrics class.
     # On the long run, we should refactor this to have a single place where these averaging computations are
@@ -157,6 +173,21 @@ class Metrics:
         fp = sum(metric.fp for metric in metric_list)
         fn = sum(metric.fn for metric in metric_list)
         return cls(tp=tp, fp=fp, fn=fn)
+
+    def to_dict(self, prefix: str) -> dict[str, float]:
+        """Return f1, recall, and precision as a flat dictionary with prefixed keys.
+
+        Args:
+            prefix (str): String prepended to each key.
+
+        Returns:
+            dict[str, float]: Flat metrics dictionary with prefixed keys.
+        """
+        return {
+            f"{prefix}_f1": self.f1,
+            f"{prefix}_recall": self.recall,
+            f"{prefix}_precision": self.precision,
+        }
 
 
 def relative_after_common_root(paths: Sequence[Path]) -> list[str]:

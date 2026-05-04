@@ -87,6 +87,7 @@ class Sidebar(abc.ABC, Generic[EntryT]):
         """Scoring function for dynamic programming matching of description lines to interval zones."""
         pass
 
+    @staticmethod
     def default_score(interval_zone: IntervalZone, line: TextLine) -> float:
         """Returns a default score of 1.0 if the text line is within the zone, or 0.0 otherwise.
 
@@ -128,16 +129,15 @@ class Sidebar(abc.ABC, Generic[EntryT]):
         return [IntervalBlockPair(zone.related_interval, TextBlock(lines)) for zone, lines in interval_lines_mapping]
 
 
+SidebarT = TypeVar("SidebarT", bound=Sidebar)
+
+
 @dataclass
-class SidebarNoise(Generic[EntryT]):
+class SidebarNoise(Generic[SidebarT]):
     """Wrapper class for Sidebar to calculate noise count using intersecting words."""
 
-    sidebar: Sidebar[EntryT]
+    sidebar: SidebarT
     noise_count: int
-
-    def __post_init__(self):
-        if not isinstance(self.sidebar, Sidebar):
-            raise TypeError(f"Expected a Sidebar instance, got {type(self.sidebar).__name__}")
 
     def __repr__(self):
         return f"SidebarNoise(sidebar={repr(self.sidebar)}, noise_count={self.noise_count})"

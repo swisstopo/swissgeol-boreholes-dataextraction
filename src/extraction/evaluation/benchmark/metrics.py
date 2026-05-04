@@ -2,6 +2,7 @@
 
 from collections import defaultdict
 from collections.abc import Callable
+from functools import reduce
 
 import pandas as pd
 
@@ -15,8 +16,14 @@ class OverallMetrics:
     # (see micro_average(metric_list: list["Metrics"]). On the long run, we should refactor
     # this to have a single place where these averaging computations are implemented.
 
-    def __init__(self):
-        self.metrics: dict[str, Metrics] = {}
+    def __init__(self, metrics: dict[str, Metrics] | None = None):
+        """Initialise class with an optional pre-populated metrics dictionary.
+
+        Args:
+            metrics (dict[str, Metrics] | None): Mapping of document filename to per-document
+                Metrics. Defaults to an empty dict when None.
+        """
+        self.metrics: dict[str, Metrics] = metrics if metrics is not None else {}
 
     def macro_f1(self) -> float:
         """Compute the macro F1 score."""
@@ -39,25 +46,93 @@ class OverallMetrics:
         else:
             return 0
 
-    def to_dataframe(self, name: str, fn: Callable[[Metrics], float]) -> pd.DataFrame:
-        """Convert the metrics to a DataFrame."""
-        series = pd.Series({filename: fn(metric) for filename, metric in self.metrics.items()})
-        return series.to_frame(name=name)
+    def get_language_subset(self, fp_languages: dict[str, str], language: str) -> "OverallMetrics":
+        """Filter per-file metrics to only those whose file language matches the given language code.
 
-    def get_metrics_list(self) -> list[Metrics]:
-        """Return a list of all metrics."""
-        return list(self.metrics.values())
+        Args:
+            fp_languages (dict[str, str]): Dictionary with filenames as key and language as value.
+            language (str): Language code to filter by (e.g. "de", "fr").
+
+        Returns:
+            OverallMetrics: Metrics for files matching the specified language.
+        """
+        return OverallMetrics(
+            metrics={
+                filename: metric for filename, metric in self.metrics.items() if fp_languages.get(filename) == language
+            }
+        )
+
+    def to_macro_dict(self, prefix: str) -> dict[str, float]:
+        """Return macro-averaged f1, recall, and precision as a dictionary with prefixed keys.
+
+        Args:
+            prefix (str): String prepended to each key.
+
+        Returns:
+            dict[str, float]: Flat macro-averaged metrics dictionary with prefixed keys.
+        """
+        return {
+            f"{prefix}_f1": self.macro_f1(),
+            f"{prefix}_recall": self.macro_recall(),
+            f"{prefix}_precision": self.macro_precision(),
+        }
+
+    def to_micro_dict(self, prefix: str) -> dict[str, float]:
+        """Return micro-averaged f1, recall, and precision as a dictionary with prefixed keys.
+
+        Args:
+            prefix (str): String prepended to each key.
+
+        Returns:
+            dict[str, float]: Flat micro-averaged metrics dictionary with prefixed keys.
+        """
+        micro_avg = Metrics.micro_average(self.metrics.values())
+        return {
+            f"{prefix}_f1": micro_avg.f1,
+            f"{prefix}_recall": micro_avg.recall,
+            f"{prefix}_precision": micro_avg.precision,
+        }
+
+    def to_df(
+        self,
+        prefix: str,
+        extra_metrics: dict[str, Callable[[Metrics], float]] | None = None,
+    ) -> pd.DataFrame:
+        """Build a per-file DataFrame with f1, recall, and precision columns.
+
+        Args:
+            prefix (str): String prepended to each metric column name.
+            extra_metrics (dict[str, Callable[[Metrics], float]] | None): Dictionary of optional
+                metrics as a callable function. Defaults to None.
+
+        Returns:
+            pd.DataFrame: DataFrame indexed by filename with one prefixed column per metric.
+        """
+        metrics = {"f1": lambda m: m.f1, "recall": lambda m: m.recall, "precision": lambda m: m.precision}
+        if extra_metrics:
+            metrics = metrics | extra_metrics
+
+        return pd.DataFrame(
+            {
+                "filename": filename,
+                **{f"{prefix}_{name}": fn(metric) for name, fn in metrics.items()},
+            }
+            for filename, metric in self.metrics.items()
+        ).set_index("filename")
 
 
 class OverallMetricsCatalog:
     """Keeps track of all different relevant metrics that are computed for a dataset."""
 
     def __init__(self, languages: set[str]):
-        self.material_description_metrics = OverallMetrics()
         self.layer_metrics = OverallMetrics()
+        self.material_description_metrics = OverallMetrics()
         self.depth_interval_metrics = OverallMetrics()
         self.groundwater_metrics = OverallMetrics()
         self.groundwater_depth_metrics = OverallMetrics()
+        self.elevation_metrics = OverallMetrics()
+        self.coordinates_metrics = OverallMetrics()
+        self.name_metrics = OverallMetrics()
         self.languages = languages
 
         # Initialize language-specific metrics
@@ -66,35 +141,112 @@ class OverallMetricsCatalog:
             setattr(self, f"{lang}_depth_interval_metrics", OverallMetrics())
             setattr(self, f"{lang}_material_description_metrics", OverallMetrics())
 
-    def document_level_metrics_df(self) -> pd.DataFrame:
-        """Return a DataFrame with all the document level metrics."""
-        all_series = [
-            self.layer_metrics.to_dataframe("F1", lambda metric: metric.f1),
-            self.layer_metrics.to_dataframe("precision", lambda metric: metric.precision),
-            self.layer_metrics.to_dataframe("recall", lambda metric: metric.recall),
-            self.depth_interval_metrics.to_dataframe("Depth_interval_f1", lambda metric: metric.f1),
-            self.depth_interval_metrics.to_dataframe("Depth_interval_recall", lambda metric: metric.recall),
-            self.depth_interval_metrics.to_dataframe("Depth_interval_precision", lambda metric: metric.precision),
-            self.material_description_metrics.to_dataframe("material_description_f1", lambda metric: metric.f1),
-            self.material_description_metrics.to_dataframe(
-                "material_description_recall", lambda metric: metric.recall
-            ),
-            self.material_description_metrics.to_dataframe(
-                "material_description_precision", lambda metric: metric.precision
-            ),
-            self.layer_metrics.to_dataframe("Number Elements", lambda metric: metric.tp + metric.fn),
-            self.layer_metrics.to_dataframe("Number wrong elements", lambda metric: metric.fp + metric.fn),
-            self.groundwater_metrics.to_dataframe("groundwater", lambda metric: metric.f1),
-            self.groundwater_depth_metrics.to_dataframe("groundwater_depth", lambda metric: metric.f1),
-            self.groundwater_depth_metrics.to_dataframe("Number of GW detected", lambda metric: metric.tp + metric.fp),
-        ]
-        document_level_metrics = pd.DataFrame()
-        for series in all_series:
-            document_level_metrics = document_level_metrics.join(series, how="outer")
-        return document_level_metrics
+    def add_datapoint(
+        self,
+        filename: str,
+        material_description_metric: Metrics,
+        layer_metrics: Metrics,
+        depth_interval_metric: Metrics,
+        elevation_metric: Metrics,
+        coordinates_metric: Metrics,
+        name_metric: Metrics,
+        groundwater_metrics: Metrics,
+        groundwater_depth_metrics: Metrics,
+    ) -> None:
+        """Register per-file metrics for all extraction categories.
 
-    def metrics_dict(self) -> dict[str, float]:
-        """Return a dictionary with the overall metrics."""
+        Args:
+            filename (str): The file name used as key.
+            material_description_metric (Metrics): Material description metrics.
+            layer_metrics (Metrics): Layer detection metrics.
+            depth_interval_metric (Metrics): Depth interval metrics.
+            elevation_metric (Metrics): Elevation metrics.
+            coordinates_metric (Metrics): Coordinate metrics.
+            name_metric (Metrics): Borehole name metrics.
+            groundwater_metrics (Metrics): Groundwater metrics.
+            groundwater_depth_metrics (Metrics): Groundwater depth metrics.
+        """
+        self.layer_metrics.metrics[filename] = layer_metrics
+        self.material_description_metrics.metrics[filename] = material_description_metric
+        self.depth_interval_metrics.metrics[filename] = depth_interval_metric
+        self.elevation_metrics.metrics[filename] = elevation_metric
+        self.coordinates_metrics.metrics[filename] = coordinates_metric
+        self.name_metrics.metrics[filename] = name_metric
+        self.groundwater_metrics.metrics[filename] = groundwater_metrics
+        self.groundwater_depth_metrics.metrics[filename] = groundwater_depth_metrics
+
+    def to_dfs(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """Return document-level metrics as two DataFrames, one for metadata and one for geology.
+
+        Returns:
+            tuple[pd.DataFrame, pd.DataFrame]: A pair (metadata_df, geology_df), both indexed
+                by filename.
+        """
+        return self.to_metadata_df(), self.to_geology_df()
+
+    def to_metadata_df(self) -> pd.DataFrame:
+        """Build a per-file DataFrame with name, coordinate, and elevation metrics.
+
+        Returns:
+            pd.DataFrame: DataFrame indexed by filename with columns for name, coordinate, and
+                elevation f1/recall/precision.
+        """
+        dfs = [
+            self.name_metrics.to_df("name"),
+            self.coordinates_metrics.to_df("coordinates"),
+            self.elevation_metrics.to_df("elevation"),
+        ]
+
+        df_final = reduce(lambda left, right: left.merge(right, on="filename"), dfs)
+        return df_final.sort_index(ascending=True)
+
+    def to_geology_df(self) -> pd.DataFrame:
+        """Build a per-file DataFrame with layer, depth interval, material description, and groundwater metrics.
+
+        Layer columns also include layer_num_total: (tp + fn) and layer_num_wrong: (fp + fn).
+        Groundwater depth columns also include groundwater_depth_num_detected: (tp + fp).
+
+        Returns:
+            pd.DataFrame: DataFrame indexed by filename with all geology metric columns,
+                sorted alphabetically by filename.
+        """
+        dfs = [
+            self.layer_metrics.to_df(
+                "layer",
+                extra_metrics={
+                    "num_total": lambda metric: metric.tp + metric.fn,
+                    "num_wrong": lambda metric: metric.fp + metric.fn,
+                },
+            ),
+            self.material_description_metrics.to_df("material_description"),
+            self.depth_interval_metrics.to_df("depth_interval"),
+            self.groundwater_metrics.to_df("groundwater"),
+            self.groundwater_depth_metrics.to_df(
+                "groundwater_depth",
+                extra_metrics={"num_detected": lambda metric: metric.tp + metric.fp},
+            ),
+        ]
+
+        df_final = reduce(lambda left, right: left.merge(right, on="filename"), dfs)
+        return df_final.sort_index(ascending=True)
+
+    def to_dicts(self) -> tuple[dict[str, float], dict[str, float]]:
+        """Return overall metrics as two flat dictionaries, one for metadata and one for geology.
+
+        Returns:
+            tuple[dict[str, float], dict[str, float]]: A pair (metadata_dict, geology_dict).
+        """
+        return self.to_metadata_dict(), self.to_geology_dict()
+
+    def to_geology_dict(self) -> dict[str, float]:
+        """Return overall geology metrics as a dictionary.
+
+        Includes macro-averaged layer (and language-specific), depth interval, and material
+        description metrics, and micro-averaged groundwater metrics.
+
+        Returns:
+            dict[str, float]: Dictionary of overall geology metrics with prefixed keys.
+        """
         # Initialize a defaultdict to automatically return 0.0 for missing keys
         result = defaultdict(lambda: None)
 
@@ -103,34 +255,33 @@ class OverallMetricsCatalog:
         groundwater_depth_metrics = Metrics.micro_average(self.groundwater_depth_metrics.metrics.values())
 
         # Populate the basic metrics
-        result.update(
-            {
-                "layer_f1": self.layer_metrics.macro_f1() if self.layer_metrics else None,
-                "layer_recall": self.layer_metrics.macro_recall() if self.layer_metrics else None,
-                "layer_precision": self.layer_metrics.macro_precision() if self.layer_metrics else None,
-                "depth_interval_f1": self.depth_interval_metrics.macro_f1(),
-                "depth_interval_recall": self.depth_interval_metrics.macro_recall(),
-                "depth_interval_precision": self.depth_interval_metrics.macro_precision(),
-                "material_description_f1": self.material_description_metrics.macro_f1(),
-                "material_description_recall": self.material_description_metrics.macro_recall(),
-                "material_description_precision": self.material_description_metrics.macro_precision(),
-                "groundwater_f1": groundwater_metrics.f1,
-                "groundwater_recall": groundwater_metrics.recall,
-                "groundwater_precision": groundwater_metrics.precision,
-                "groundwater_depth_f1": groundwater_depth_metrics.f1,
-                "groundwater_depth_recall": groundwater_depth_metrics.recall,
-                "groundwater_depth_precision": groundwater_depth_metrics.precision,
-            }
-        )
+        result.update(self.layer_metrics.to_macro_dict("layer"))
+        result.update(self.depth_interval_metrics.to_macro_dict("depth_interval"))
+        result.update(self.material_description_metrics.to_macro_dict("material_description"))
+        result.update(groundwater_metrics.to_dict("groundwater"))
+        result.update(groundwater_depth_metrics.to_dict("groundwater_depth"))
 
         # Add dynamic language-specific metrics only if they exist
         for lang in self.languages:
             for metric_topic in ["layer", "depth_interval", "material_description"]:
-                key = f"{lang}_{metric_topic}_metrics"
+                key_prefix = f"{lang}_{metric_topic}"
+                key = f"{key_prefix}_metrics"
 
                 if getattr(self, key) and getattr(self, key).metrics:
-                    result[f"{lang}_{metric_topic}_f1"] = getattr(self, key).macro_f1()
-                    result[f"{lang}_{metric_topic}_recall"] = getattr(self, key).macro_recall()
-                    result[f"{lang}_{metric_topic}_precision"] = getattr(self, key).macro_precision()
+                    result.update(getattr(self, key).to_macro_dict(key_prefix))
 
         return dict(result)  # Convert defaultdict back to a regular dict
+
+    def to_metadata_dict(self) -> dict[str, float]:
+        """Return overall metadata metrics as a dictionary.
+
+        Computes micro-averages across all files for name, elevation, and coordinate metrics.
+
+        Returns:
+            dict[str, float]: Dictionary with prefixed keys.
+        """
+        return (
+            self.name_metrics.to_micro_dict("name")
+            | self.elevation_metrics.to_micro_dict("elevation")
+            | self.coordinates_metrics.to_micro_dict("coordinates")
+        )
