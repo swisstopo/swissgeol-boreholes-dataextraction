@@ -26,7 +26,7 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan function to load the BERT models when the application starts."""
-    bert_enabled = os.environ.get("BERT_ENABLED", "true").lower() != "false"
+    bert_enabled = os.environ.get("BERT_ENABLED", "false").lower() != "false"
     if bert_enabled:
         app.state.bert_models = load_models()
     else:
