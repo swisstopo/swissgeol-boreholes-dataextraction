@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _BACKBONE_PATH = Path("models/backbone/backbone.safetensors")
+_TOKENIZER_PATH = Path("models/backbone")
 _MODEL_PATHS = {
     "lithology": Path("models/lithology_head"),
     "en_main": Path("models/en_main_head"),
@@ -32,7 +33,9 @@ def load_models() -> dict[str, BertModel]:
     models = {}
     for system_name, model_path in _MODEL_PATHS.items():
         classification_system = ExistingClassificationSystems.get_classification_system_type(system_name)
-        models[system_name] = BertModel(model_path, classification_system, backbone_path=_BACKBONE_PATH)
+        models[system_name] = BertModel(
+            model_path, classification_system, backbone_path=_BACKBONE_PATH, tokenizer_path=_TOKENIZER_PATH
+        )
         logger.info(f"Loaded {system_name} model from {model_path}")
     return models
 

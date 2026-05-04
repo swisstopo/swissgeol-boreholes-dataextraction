@@ -43,6 +43,7 @@ class BertModel:
         model_path: str | Path,
         classification_system: type[ClassificationSystem],
         backbone_path: str | Path | None = None,
+        tokenizer_path: str | Path | None = None,
     ):
         """Initialize a pretrained BERT model from the transformers library.
 
@@ -52,12 +53,15 @@ class BertModel:
             backbone_path (str | Path | None): Path to backbone.safetensors for split-model loading.
                 When provided, model_path is treated as the head directory and the two weight files are
                 merged before loading. When None, model_path must be a standard full HuggingFace model directory.
+            tokenizer_path (str | Path | None): Directory containing the tokenizer files. When None, falls back
+                to model_path (standard HuggingFace layout where tokenizer lives alongside weights).
         """
         self.classification_system = classification_system
         self._setup_classification_system()
 
         self.model_path = _resolve_path(model_path)
         self.backbone_path = _resolve_path(backbone_path) if backbone_path else None
+        self.tokenizer_path = _resolve_path(tokenizer_path) if tokenizer_path else None
         self.model = self._load_model()
 
     def _setup_classification_system(self) -> None:
@@ -79,7 +83,7 @@ class BertModel:
         else:
             logger.info(f"Pretrained model and tokenizer loaded from remote source: {self.model_path}")
 
-        self.tokenizer: BertTokenizerFast = AutoTokenizer.from_pretrained(self.model_path)
+        self.tokenizer: BertTokenizerFast = AutoTokenizer.from_pretrained(self.tokenizer_path or self.model_path)
 
         model = self._load_split_model() if self.backbone_path else self._load_full_model()
 
