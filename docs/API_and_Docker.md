@@ -55,11 +55,13 @@ To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is
 
 ## Classification Model Configuration
 
-The `/api/V1/classify_lithology` endpoint requires fine-tuned BERT models. The models are committed directly to the repository under `models/` and are copied into the Docker image at build time — no external download or environment variable configuration is needed:
+The `/api/V1/classify_lithology` endpoint requires fine-tuned BERT models. The models are committed directly to the repository under `models/` via Git LFS and are copied into the Docker image at build time — no external download or environment variable configuration is needed:
 
 - `models/backbone/backbone.safetensors` — shared frozen backbone
 - `models/en_main_head/` — task-specific head for the EN main classification system
 - `models/lithology_head/` — task-specific head for the lithology classification system
+
+> **Prerequisite (running without Docker):** These files are stored via Git LFS. If you haven't already, run `git lfs install && git lfs pull` before starting the server, otherwise the files will be LFS pointers and the app will fail to load the models.
 
 The pre-built Docker image ships with these models baked in — no additional configuration is needed for classification:
 
