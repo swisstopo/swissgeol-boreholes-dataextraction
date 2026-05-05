@@ -526,7 +526,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                                 for other in self.lines
                                 if other is not desc_line
                                 and abs(other.rect.y0 - desc_line.rect.y0) < desc_line.rect.height
-                                and (other.rect.x1 < best_x0 - 10 or other.rect.x0 > best_x1 + 10)  # noqa: B023
+                                and (other.rect.x1 < best_x0 - 10 or other.rect.x0 > best_x1 + 10)
                             )
                         )
                     ),
