@@ -510,10 +510,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
                         (
                             desc_line
                             for desc_line in sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)  # noqa: B023
-                            if desc_line.rect.x0 > best_x0 - 5  # noqa: B023
-                            and desc_line.rect.x0 < (best_x0 + best_x1) / 2  # noqa: B023
-                            and desc_line.rect.y1 > best_y0 - 10  # noqa: B023
-                            and desc_line.rect.y0 < best_y0  # noqa: B023
+                            if desc_line.rect.x0 > best_x0 - 5
+                            and desc_line.rect.x0 < (best_x0 + best_x1) / 2
+                            and desc_line.rect.y1 > best_y0 - 10
+                            and desc_line.rect.y0 < best_y0
                             and not re.fullmatch(r"[\d\s.,\-/]+", desc_line.text.strip())
                         ),
                         None,
