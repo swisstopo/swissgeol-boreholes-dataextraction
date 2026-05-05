@@ -1,6 +1,7 @@
 """Contains the main extraction pipeline for stratigraphy."""
 
 import logging
+import re
 
 import fastquadtree
 import pymupdf
@@ -480,33 +481,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
             if len(non_description_in_rect) / len(good_lines) > self.matching_params["non_description_lines_ratio"]:
                 continue
 
-            # expand to include content above the cluster top
-            def is_above(best_x0, best_x1, best_y0, line: TextLine) -> bool:
-                return (
-                    line.rect.x0 > best_x0 - 5
-                    and line.rect.x0 < (best_x0 + best_x1) / 2
-                    and line.rect.y1 > best_y0 - 10
-                    and line.rect.y0 < best_y0
-                    and line not in is_not_description
-                )
-
-            continue_search = True
-            while continue_search:
-                line = next(
-                    (line for line in candidate_description if is_above(best_x0, best_x1, best_y0, line)), None
-                )
-                if line:
-                    best_x0 = min(best_x0, line.rect.x0)
-                    best_x1 = max(best_x1, line.rect.x1)
-                    best_y0 = line.rect.y0
-                else:
-                    continue_search = False
-
             # expand to include entire last block
             def is_below(best_x0, best_y1, line: TextLine):
                 return (
-                    line not in is_not_description  # noqa: B023
-                    and (line.rect.x0 > best_x0 - 5)
+                    (line.rect.x0 > best_x0 - 5)
                     and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
                     and (line.rect.y0 < best_y1 + 10)
                     and (line.rect.y1 > best_y1)
@@ -521,6 +499,36 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     best_y1 = line.rect.y1
                 else:
                     continue_search = False
+
+            # expand to include content above the cluster top, but only when the topmost
+            # sidebar entry is not yet covered (proxy for "0-x interval not yet matched")
+            should_check_above = (
+                sidebar is None or not sidebar.entries or (best_y0 > min(e.rect.y0 for e in sidebar.entries) + 5)
+            )
+
+            if should_check_above:
+
+                def is_above(best_x0, best_x1, best_y0, line: TextLine) -> bool:
+                    return (
+                        line.rect.x0 > best_x0 - 5
+                        and line.rect.x0 < (best_x0 + best_x1) / 2
+                        and line.rect.y1 > best_y0 - 10
+                        and line.rect.y0 < best_y0
+                        and line not in is_not_description  # noqa: B023
+                        and not re.fullmatch(r"[\d\s.,\-/]+", line.text.strip())
+                    )
+
+                continue_search = True
+                while continue_search:
+                    line = next(
+                        (line for line in candidate_description if is_above(best_x0, best_x1, best_y0, line)), None
+                    )
+                    if line:
+                        best_x0 = min(best_x0, line.rect.x0)
+                        best_x1 = max(best_x1, line.rect.x1)
+                        best_y0 = line.rect.y0
+                    else:
+                        continue_search = False
 
             candidate_rects.append(pymupdf.Rect(best_x0, best_y0, best_x1, best_y1))
         return candidate_rects
