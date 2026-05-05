@@ -500,34 +500,30 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 else:
                     continue_search = False
 
-            # expand to include content above the cluster top, but only when the topmost
-            # sidebar entry is not yet covered (proxy for "0-x interval not yet matched")
-            should_check_above = (
-                sidebar is None or not sidebar.entries or (best_y0 > min(e.rect.y0 for e in sidebar.entries) + 5)
-            )
-
-            if should_check_above:
-
-                def is_above(best_x0, best_x1, best_y0, line: TextLine) -> bool:
-                    return (
-                        line.rect.x0 > best_x0 - 5
-                        and line.rect.x0 < (best_x0 + best_x1) / 2
-                        and line.rect.y1 > best_y0 - 10
-                        and line.rect.y0 < best_y0
-                        and not re.fullmatch(r"[\d\s.,\-/]+", line.text.strip())
+            # Expand upward one line at a time until we reach the y-level of the topmost
+            # sidebar entry. Stopping at that level avoids pulling in column headers above
+            # the first depth entry while ensuring the 0-x interval description is included.
+            if sidebar is not None and sidebar.entries:
+                topmost_entry_y0 = min(e.rect.y0 for e in sidebar.entries)
+                while best_y0 > topmost_entry_y0 + 5:
+                    next_line = next(
+                        (
+                            desc_line
+                            for desc_line in sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)  # noqa: B023
+                            if desc_line.rect.x0 > best_x0 - 5  # noqa: B023
+                            and desc_line.rect.x0 < (best_x0 + best_x1) / 2  # noqa: B023
+                            and desc_line.rect.y1 > best_y0 - 10  # noqa: B023
+                            and desc_line.rect.y0 < best_y0  # noqa: B023
+                            and not re.fullmatch(r"[\d\s.,\-/]+", desc_line.text.strip())
+                        ),
+                        None,
                     )
+                    if next_line is None:
+                        break
 
-                continue_search = True
-                while continue_search:
-                    line = next(
-                        (line for line in candidate_description if is_above(best_x0, best_x1, best_y0, line)), None
-                    )
-                    if line:
-                        best_x0 = min(best_x0, line.rect.x0)
-                        best_x1 = max(best_x1, line.rect.x1)
-                        best_y0 = line.rect.y0
-                    else:
-                        continue_search = False
+                    best_x0 = min(best_x0, next_line.rect.x0)
+                    best_x1 = max(best_x1, next_line.rect.x1)
+                    best_y0 = next_line.rect.y0
 
             candidate_rects.append(pymupdf.Rect(best_x0, best_y0, best_x1, best_y1))
         return candidate_rects
