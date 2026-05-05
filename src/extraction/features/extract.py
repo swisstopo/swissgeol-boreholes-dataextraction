@@ -501,8 +501,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     continue_search = False
 
             # Expand upward one line at a time until we reach the y-level of the topmost
-            # sidebar entry. Stopping at that level avoids pulling in column headers above
-            # the first depth entry while ensuring the 0-x interval description is included.
+            # sidebar entry.
             if sidebar is not None and sidebar.entries:
                 topmost_entry_y0 = min(e.rect.y0 for e in sidebar.entries)
                 while best_y0 > topmost_entry_y0 + 5:
