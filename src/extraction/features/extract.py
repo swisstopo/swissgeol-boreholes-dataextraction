@@ -500,29 +500,43 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 else:
                     continue_search = False
 
-            # Expand upward one line at a time until we reach the y-level of the topmost
-            # sidebar entry.
-            if sidebar is not None and sidebar.entries:
-                topmost_entry_y0 = min(e.rect.y0 for e in sidebar.entries)
-                while best_y0 > topmost_entry_y0 + 5:
-                    next_line = next(
-                        (
-                            desc_line
-                            for desc_line in sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)  # noqa: B023
-                            if desc_line.rect.x0 > best_x0 - 5
-                            and desc_line.rect.x0 < (best_x0 + best_x1) / 2
-                            and desc_line.rect.y1 > best_y0 - 10
-                            and desc_line.rect.y0 < best_y0
-                            and not re.fullmatch(r"[\d\s.,\-/]+", desc_line.text.strip())
-                        ),
-                        None,
-                    )
-                    if next_line is None:
-                        break
-
-                    best_x0 = min(best_x0, next_line.rect.x0)
-                    best_x1 = max(best_x1, next_line.rect.x1)
-                    best_y0 = next_line.rect.y0
+            # Expand upward one line at a time.
+            # With sidebar: stop at the topmost entry's y-level (avoids column headers above first depth entry).
+            # Without sidebar: stop when candidate has sibling lines outside the column (header row signal).
+            min_y0_limit = (
+                min(e.rect.y0 for e in sidebar.entries) + 5
+                if sidebar is not None and sidebar.entries
+                else -float("inf")
+            )
+            sorted_above = sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)
+            while best_y0 > min_y0_limit:
+                next_line = next(
+                    (
+                        desc_line
+                        for desc_line in sorted_above
+                        if desc_line.rect.x0 > best_x0 - 5
+                        and desc_line.rect.x0 < (best_x0 + best_x1) / 2
+                        and desc_line.rect.y1 > best_y0 - 10
+                        and desc_line.rect.y0 < best_y0
+                        and not re.fullmatch(r"[\d\s.,\-/]+", desc_line.text.strip())
+                        and (
+                            sidebar is not None
+                            or not any(
+                                other
+                                for other in self.lines
+                                if other is not desc_line
+                                and abs(other.rect.y0 - desc_line.rect.y0) < desc_line.rect.height
+                                and (other.rect.x1 < best_x0 - 10 or other.rect.x0 > best_x1 + 10)  # noqa: B023
+                            )
+                        )
+                    ),
+                    None,
+                )
+                if next_line is None:
+                    break
+                best_x0 = min(best_x0, next_line.rect.x0)
+                best_x1 = max(best_x1, next_line.rect.x1)
+                best_y0 = next_line.rect.y0
 
             candidate_rects.append(pymupdf.Rect(best_x0, best_y0, best_x1, best_y1))
         return candidate_rects
