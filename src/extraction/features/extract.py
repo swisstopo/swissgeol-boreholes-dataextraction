@@ -514,7 +514,6 @@ class MaterialDescriptionRectWithSidebarExtractor:
                         and line.rect.x0 < (best_x0 + best_x1) / 2
                         and line.rect.y1 > best_y0 - 10
                         and line.rect.y0 < best_y0
-                        and line not in is_not_description  # noqa: B023
                         and not re.fullmatch(r"[\d\s.,\-/]+", line.text.strip())
                     )
 
