@@ -1,6 +1,7 @@
 """Contains the main extraction pipeline for stratigraphy."""
 
 import logging
+import re
 
 import fastquadtree
 import pymupdf
@@ -450,6 +451,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             is_description = [line for line in is_description if line not in max_coverage]
 
         candidate_rects = []
+        sorted_above = sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)
 
         for cluster in description_clusters:
             best_y0 = min([line.rect.y0 for line in cluster])
@@ -481,12 +483,20 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 continue
 
             # expand to include entire last block
-            def is_below(best_x0, best_y1, line: TextLine):
+            def is_below(best_x0, best_y1, line: TextLine, x_tolerance: float = 5, line_gap: float = 10):
                 return (
-                    (line.rect.x0 > best_x0 - 5)
+                    (line.rect.x0 > best_x0 - x_tolerance)
                     and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
-                    and (line.rect.y0 < best_y1 + 10)
+                    and (line.rect.y0 < best_y1 + line_gap)
                     and (line.rect.y1 > best_y1)
+                )
+
+            def is_above(best_x0, best_y0, line: TextLine, x_tolerance: float = 5, line_gap: float = 10):
+                return (
+                    (line.rect.x0 > best_x0 - x_tolerance)
+                    and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
+                    and (line.rect.y1 > best_y0 - line_gap)
+                    and (line.rect.y0 < best_y0)
                 )
 
             continue_search = True
@@ -498,6 +508,40 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     best_y1 = line.rect.y1
                 else:
                     continue_search = False
+
+            # Expand upward one line at a time.
+            # With sidebar: stop at the topmost entry's y-level (avoids column headers above first depth entry).
+            # Without sidebar: stop when candidate has sibling lines outside the column (header row signal).
+            min_y0_limit = (
+                min(e.rect.y0 for e in sidebar.entries) + 5
+                if sidebar is not None and sidebar.entries
+                else -float("inf")
+            )
+            while best_y0 > min_y0_limit:
+                next_line = next(
+                    (
+                        desc_line
+                        for desc_line in sorted_above
+                        if is_above(best_x0, best_y0, desc_line)
+                        and not re.fullmatch(r"[\d\s.,\-/]+", desc_line.text.strip())
+                        and (
+                            sidebar is not None
+                            or not any(
+                                other
+                                for other in self.lines
+                                if other is not desc_line
+                                and abs(other.rect.y0 - desc_line.rect.y0) < desc_line.rect.height
+                                and (other.rect.x1 < best_x0 - 10 or other.rect.x0 > best_x1 + 10)
+                            )
+                        )
+                    ),
+                    None,
+                )
+                if next_line is None:
+                    break
+                best_x0 = min(best_x0, next_line.rect.x0)
+                best_x1 = max(best_x1, next_line.rect.x1)
+                best_y0 = next_line.rect.y0
 
             candidate_rects.append(pymupdf.Rect(best_x0, best_y0, best_x1, best_y1))
         return candidate_rects
