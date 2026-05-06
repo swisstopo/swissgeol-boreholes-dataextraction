@@ -1,6 +1,7 @@
 """Contains the main extraction pipeline for stratigraphy."""
 
 import logging
+import re
 
 import fastquadtree
 import pymupdf
@@ -387,6 +388,36 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         return material_descriptions_sidebar_pairs
 
+    def _spatial_upper_limit(self, sidebar: Sidebar | None) -> float:
+        """Upper y-boundary for material description candidates derived from spatial anchors.
+
+        Takes the highest top edge (max y0) among the available sidebar and strip logs, then
+        subtracts a small buffer so description lines a few pixels above the anchor are still
+        accepted.  Returns -inf when no spatial anchors are available.
+        """
+        anchors = []
+        if sidebar is not None:
+            anchors.append(sidebar.rect.y0)
+        if self.strip_logs:
+            anchors.append(min(sl.bbox.y0 for sl in self.strip_logs))
+        if not anchors:
+            return -float("inf")
+        return max(anchors) - self.page_height * 0.02
+
+    def _has_siblings(self, line: TextLine, x0: float, x1: float) -> bool:
+        """Return True if other lines exist at the same vertical level outside the [x0, x1] column bounds.
+
+        A line with siblings is part of a multi-column header row (e.g. "Tiefe | Beschreibung | Schicht")
+        and should not be treated as material description content.
+        """
+        return any(
+            other
+            for other in self.lines
+            if other is not line
+            and abs(other.rect.y0 - line.rect.y0) < line.rect.height
+            and (other.rect.x1 < x0 - 10 or other.rect.x0 > x1 + 10)
+        )
+
     def _find_all_material_description_candidates(self, sidebar: Sidebar | None) -> list[pymupdf.Rect]:
         """Find all material description candidates on the page.
 
@@ -406,9 +437,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
             def check_y0_condition(y0):
                 return y0 > min_y0 and y0 < sidebar.rect.y1
         else:
+            spatial_limit = self._spatial_upper_limit(None)
 
             def check_y0_condition(y0):
-                return True
+                return y0 >= spatial_limit
 
         candidate_description = [line for line in self.lines if check_y0_condition(line.rect.y0)]
 
@@ -417,12 +449,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             for line in candidate_description
             if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=True)
         ]
-        is_description = [
-            line
-            for line in candidate_description
-            if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=False)
-            and line not in is_not_description
-        ]
+        is_description = [line for line in candidate_description if line not in is_not_description]
 
         if len(candidate_description) == 0:
             return []
@@ -480,6 +507,14 @@ class MaterialDescriptionRectWithSidebarExtractor:
             if len(non_description_in_rect) / len(good_lines) > self.matching_params["non_description_lines_ratio"]:
                 continue
 
+            # The cluster must contain at least one line matching the inclusion keyword list.
+            # This is a column-level gate: any single keyword hit is sufficient.
+            if not any(
+                line.is_description(self.matching_params, self.language, self.analytics, search_excluding=False)
+                for line in good_lines
+            ):
+                continue
+
             # expand to include entire last block
             def is_below(best_x0, best_y1, line: TextLine):
                 return (
@@ -498,6 +533,54 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     best_y1 = line.rect.y1
                 else:
                     continue_search = False
+
+            # Expand upward one line at a time.
+            # With sidebar: stop at the topmost entry's y-level.
+            # In all cases: also stop at the spatial anchor limit (max top edge of sidebar/strip
+            # logs minus buffer), so expansion never reaches far above the borehole data.
+            entries_limit = (
+                min(e.rect.y0 for e in sidebar.entries) + 5
+                if sidebar is not None and sidebar.entries
+                else -float("inf")
+            )
+            min_y0_limit = max(entries_limit, self._spatial_upper_limit(sidebar))
+
+            # For sidebars with numeric depth entries, extrapolate the y-coordinate of depth 0.0
+            # (ground surface) and use it as an additional upward limit.
+            if sidebar is not None and not isinstance(sidebar, ProtocolSidebar) and sidebar.entries:
+                try:
+                    entries_with_depth = [
+                        (float(e.value), e.rect.y0)
+                        for e in sidebar.entries
+                        if hasattr(e, "value") and isinstance(e.value | (int, float))
+                    ]
+                    if len(entries_with_depth) >= 2 and entries_with_depth[0][0] > 0:
+                        (d0, ye0), (d1, ye1) = entries_with_depth[0], entries_with_depth[1]
+                        if d1 > d0:
+                            y_at_zero = ye0 - d0 * (ye1 - ye0) / (d1 - d0)
+                            min_y0_limit = max(min_y0_limit, y_at_zero)
+                except (AttributeError, TypeError, ValueError):
+                    pass
+            sorted_above = sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)
+            while best_y0 > min_y0_limit:
+                next_line = next(
+                    (
+                        desc_line
+                        for desc_line in sorted_above
+                        if desc_line.rect.x0 > best_x0 - 5
+                        and desc_line.rect.x0 < (best_x0 + best_x1) / 2
+                        and desc_line.rect.y1 > best_y0 - 10
+                        and desc_line.rect.y0 < best_y0
+                        and not re.fullmatch(r"[\d\s.,\-/]+", desc_line.text.strip())
+                        and (sidebar is not None or not self._has_siblings(desc_line, best_x0, best_x1))
+                    ),
+                    None,
+                )
+                if next_line is None:
+                    break
+                best_x0 = min(best_x0, next_line.rect.x0)
+                best_x1 = max(best_x1, next_line.rect.x1)
+                best_y0 = next_line.rect.y0
 
             candidate_rects.append(pymupdf.Rect(best_x0, best_y0, best_x1, best_y1))
         return candidate_rects
