@@ -84,6 +84,7 @@
             "-c", "bert",
             "-p", "models/lithology_head",   // or models/en_main_head
             "-b", "models/backbone/backbone.safetensors",
+            "-t", "models/backbone", // tokenizer path
             "-cs", "lithology"               // or en_main
         ],
         "cwd": "${workspaceFolder}",
@@ -104,6 +105,7 @@
             "-c", "bert",
             "-p", "models/lithology_head",   // or models/en_main_head
             "-b", "models/backbone/backbone.safetensors",
+            "-t", "models/backbone", // tokenizer path
             "-cs", "lithology",              // or en_main
             "-o", "data/output_classification/classification_multi",
             "-ob", "data/output_classification/classification_multi_bedrock"

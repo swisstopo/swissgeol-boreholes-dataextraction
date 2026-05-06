@@ -67,6 +67,13 @@ def common_options(f):
         "When provided, --model-path is the head directory.",
     )(f)
     f = click.option(
+        "-t",
+        "--tokenizer-path",
+        type=click.Path(path_type=Path),
+        default=None,
+        help="Directory containing tokenizer files. When omitted, falls back to --model-path.",
+    )(f)
+    f = click.option(
         "-cs",
         "--classification-system",
         type=click.Choice(["uscs", "lithology", "en_main"], case_sensitive=False),
@@ -101,6 +108,7 @@ def click_pipeline(
     classifier_type: str,
     model_path: Path | None,
     backbone_path: Path | None,
+    tokenizer_path: Path | None,
     classification_system: str,
     resume: bool,
     benchmarks: tuple[str, ...] = (),
@@ -112,6 +120,7 @@ def click_pipeline(
         classifier_type=classifier_type,
         model_path=model_path,
         backbone_path=backbone_path,
+        tokenizer_path=tokenizer_path,
         classification_system=classification_system,
     )
 

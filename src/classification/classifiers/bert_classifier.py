@@ -20,6 +20,7 @@ class BertClassifier(Classifier):
         model_path: Path | None,
         classification_system: type[ClassificationSystem],
         backbone_path: Path | None = None,
+        tokenizer_path: Path | None = None,
     ):
         """Initialize a BertClassifier instance.
 
@@ -30,13 +31,17 @@ class BertClassifier(Classifier):
                 the descriptions.
             backbone_path (Path | None): Path to backbone.safetensors for split-model loading.
                 When provided, model_path is treated as the head directory.
+            tokenizer_path (Path | None): Directory containing the tokenizer files. When None, falls back
+                to model_path.
         """
         self.init_config(classification_system)
         if model_path is None:
             # load pretrained from transformers lib (bad)
             model_path = self.config["model_path"]
         self.model_path = model_path
-        self.bert_model = BertModel(model_path, classification_system, backbone_path=backbone_path)
+        self.bert_model = BertModel(
+            model_path, classification_system, backbone_path=backbone_path, tokenizer_path=tokenizer_path
+        )
 
     def get_name(self) -> str:
         """Returns a string with the name of the classifier."""

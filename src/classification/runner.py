@@ -38,6 +38,7 @@ class ClassificationOptions:
     model_path: Path | None
     classification_system: str
     backbone_path: Path | None = None
+    tokenizer_path: Path | None = None
 
 
 def run_classification_predictions(
@@ -85,6 +86,7 @@ def run_classification_predictions(
         options.model_path,
         out_directory_bedrock,
         backbone_path=options.backbone_path,
+        tokenizer_path=options.tokenizer_path,
     )
     logger.info(
         f"Classifying layer description into {classification_system_cls.get_name()} classes "

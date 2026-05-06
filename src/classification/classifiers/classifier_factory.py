@@ -23,6 +23,7 @@ class ClassifierFactory:
         model_path: Path,
         out_directory_bedrock: Path,
         backbone_path: Path | None = None,
+        tokenizer_path: Path | None = None,
     ):
         """Factory method to create a classifier instance.
 
@@ -32,6 +33,7 @@ class ClassifierFactory:
             model_path (Path): Path to the model (used for BERT).
             out_directory_bedrock (Path): Output directory for Bedrock classifier.
             backbone_path (Path | None): Path to backbone.safetensors for split-model BERT loading.
+            tokenizer_path (Path | None): Directory containing the tokenizer files for BERT.
 
         Returns:
             A classifier instance.
@@ -44,7 +46,9 @@ class ClassifierFactory:
         elif classifier_type == ClassifierTypes.BASELINE:
             return BaselineClassifier(classification_system)
         elif classifier_type == ClassifierTypes.BERT:
-            return BertClassifier(model_path, classification_system, backbone_path=backbone_path)
+            return BertClassifier(
+                model_path, classification_system, backbone_path=backbone_path, tokenizer_path=tokenizer_path
+            )
         elif classifier_type == ClassifierTypes.BEDROCK:
             return AWSBedrockClassifier(out_directory_bedrock, classification_system)
         else:
