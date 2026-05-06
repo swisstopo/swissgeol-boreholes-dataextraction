@@ -24,7 +24,7 @@ class LayerDepthsEntry(RectWithPageMixin):
         self.value = value
         self.rect_with_page = RectWithPage(rect, page_number)
 
-    def to_json(self):
+    def to_json(self) -> dict:
         """Convert the LayerDepthsEntry object to a JSON serializable format."""
         return {
             "value": self.value,
@@ -106,7 +106,7 @@ class LayerDepths(ExtractedFeature):
 
         return rect
 
-    def to_json(self):
+    def to_json(self) -> dict:
         """Convert the LayerDepths object to a JSON serializable format."""
         return {"start": self.start.to_json() if self.start else None, "end": self.end.to_json() if self.end else None}
 
@@ -222,7 +222,7 @@ class LayersInBorehole:
 
     layers: list[Layer]
 
-    def to_json(self):
+    def to_json(self) -> dict:
         """Converts the object to a dictionary.
 
         Returns:
