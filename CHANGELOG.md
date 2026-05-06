@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## v1.1.0 - 2026-05-04
+
 ### Changed
 
 
