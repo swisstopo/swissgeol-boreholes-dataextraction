@@ -515,6 +515,12 @@ class MaterialDescriptionRectWithSidebarExtractor:
             ):
                 continue
 
+            # Reject clusters that mix vertically-oriented (height > width) and horizontally-oriented text lines
+            n_vertical = sum(1 for line in good_lines if line.rect.height > line.rect.width)
+            n_horizontal = len(good_lines) - n_vertical
+            if n_vertical > 0 and n_horizontal > 0 and min(n_vertical, n_horizontal) / len(good_lines) > 0.15:
+                continue
+
             # expand to include entire last block
             def is_below(best_x0, best_y1, line: TextLine):
                 return (
