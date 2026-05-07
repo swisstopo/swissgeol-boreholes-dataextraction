@@ -57,7 +57,10 @@ class Elevation(ExtractedFeature):
         Returns:
             dict: The object as a dictionary.
         """
-        return {"elevation": self.elevation}
+        return {
+            "elevation": self.elevation,
+            "is_correct": self.is_correct,
+        }
 
     @classmethod
     def from_json(cls, data: dict) -> "Elevation":

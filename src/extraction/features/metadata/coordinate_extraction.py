@@ -56,7 +56,11 @@ class Coordinate(ExtractedFeature):
         Returns:
             dict: The object as a dictionary.
         """
-        return {"E": self.east.coordinate_value, "N": self.north.coordinate_value}
+        return {
+            "E": self.east.coordinate_value,
+            "N": self.north.coordinate_value,
+            "is_correct": self.is_correct,
+        }
 
     @staticmethod
     def from_values(east: float, north: float) -> Coordinate | None:

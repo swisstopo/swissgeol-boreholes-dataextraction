@@ -47,7 +47,11 @@ class BoreholeName(ExtractedFeature):
         Returns:
             dict: The object as a dictionary.
         """
-        return {"name": self.name, "confidence": self.confidence}
+        return {
+            "name": self.name,
+            "confidence": self.confidence,
+            "is_correct": self.is_correct,
+        }
 
     @classmethod
     def from_json(cls, data: dict) -> BoreholeName:

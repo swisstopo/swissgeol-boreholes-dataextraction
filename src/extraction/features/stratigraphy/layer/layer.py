@@ -108,7 +108,11 @@ class LayerDepths(ExtractedFeature):
 
     def to_json(self) -> dict:
         """Convert the LayerDepths object to a JSON serializable format."""
-        return {"start": self.start.to_json() if self.start else None, "end": self.end.to_json() if self.end else None}
+        return {
+            "start": self.start.to_json() if self.start else None,
+            "end": self.end.to_json() if self.end else None,
+            "is_correct": self.is_correct,
+        }
 
     @classmethod
     def from_json(cls, data: dict) -> "LayerDepths":
@@ -198,6 +202,7 @@ class Layer(ExtractedFeature):
         return {
             "material_description": self.material_description.to_json() if self.material_description else None,
             "depths": self.depths.to_json() if self.depths else None,
+            "is_correct": self.is_correct,
         }
 
     @classmethod

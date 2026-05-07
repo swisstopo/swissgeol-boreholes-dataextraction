@@ -105,6 +105,7 @@ class Groundwater(ExtractedFeature):
             "date": self.format_date(),
             "depth": self.depth,
             "elevation": self.elevation,
+            "is_correct": self.is_correct,
         }
 
     def infer_infos(self, terrain_elevation: float | None, layers: list[Layer], feature_rect: pymupdf.Rect):
