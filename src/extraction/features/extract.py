@@ -258,7 +258,11 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Returns:
             list[IntervalBlockPair]: The interval block pairs.
         """
-        description_lines = get_description_lines(self.lines, pair.material_description_rect)
+        description_lines = [
+            line
+            for line in get_description_lines(self.lines, pair.material_description_rect)
+            if not re.fullmatch(r"[\d\s.,\-/]+", line.text.strip())
+        ]
         diagonals = self.get_diagonals_near_textlines(description_lines, self.line_detection_params)
 
         line_affinities = get_line_affinity(
@@ -544,15 +548,29 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     and (line.rect.y0 < best_y0)
                 )
 
-            continue_search = True
-            while continue_search:
-                line = next((line for line in self.lines if is_below(best_x0, best_y1, line)), None)
-                if line:
-                    best_x0 = min(best_x0, line.rect.x0)
-                    best_x1 = max(best_x1, line.rect.x1)
-                    best_y1 = line.rect.y1
-                else:
-                    continue_search = False
+            # Skip both expansions when every sidebar entry already has at least one
+            # overlapping line in the cluster — no gap to fill.
+            already_covered = (
+                sidebar is not None
+                and bool(sidebar.entries)
+                and all(
+                    any(line.rect.y0 < entry.rect.y1 and line.rect.y1 > entry.rect.y0 for line in good_lines)
+                    for entry in sidebar.entries
+                )
+            )
+
+            if not already_covered:
+                while True:
+                    next_below = min(
+                        (line for line in self.lines if is_below(best_x0, best_y1, line)),
+                        key=lambda line: line.rect.y0,
+                        default=None,
+                    )
+                    if next_below is None or re.fullmatch(r"[\d\s.,\-/]+", next_below.text.strip()):
+                        break
+                    best_x0 = min(best_x0, next_below.rect.x0)
+                    best_x1 = max(best_x1, next_below.rect.x1)
+                    best_y1 = next_below.rect.y1
 
             # Expand upward one line at a time.
             # With sidebar: stop at the topmost entry's y-level.
@@ -582,32 +600,34 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 except (AttributeError, TypeError, ValueError):
                     pass
             sorted_above = sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)
-            while best_y0 > min_y0_limit:
-                next_line = next(
-                    (
-                        desc_line
-                        for desc_line in sorted_above
-                        if is_above(best_x0, best_y0, desc_line)
-                        and desc_line not in is_not_description
-                        and not re.fullmatch(r"[\d\s.,\-/]+", desc_line.text.strip())
-                        and (
-                            sidebar is not None
-                            or not any(
-                                other
-                                for other in self.lines
-                                if other is not desc_line
-                                and abs(other.rect.y0 - desc_line.rect.y0) < desc_line.rect.height
-                                and (other.rect.x1 < best_x0 - 10 or other.rect.x0 > best_x1 + 10)
+            if not already_covered:
+                while best_y0 > min_y0_limit:
+                    next_line = next(
+                        (
+                            desc_line
+                            for desc_line in sorted_above
+                            if is_above(best_x0, best_y0, desc_line)
+                            and desc_line not in is_not_description
+                            and (
+                                sidebar is not None
+                                or not any(
+                                    other
+                                    for other in self.lines
+                                    if other is not desc_line
+                                    and abs(other.rect.y0 - desc_line.rect.y0) < desc_line.rect.height
+                                    and (other.rect.x1 < best_x0 - 10 or other.rect.x0 > best_x1 + 10)
+                                )
                             )
-                        )
-                    ),
-                    None,
-                )
-                if next_line is None:
-                    break
-                best_x0 = min(best_x0, next_line.rect.x0)
-                best_x1 = max(best_x1, next_line.rect.x1)
-                best_y0 = next_line.rect.y0
+                        ),
+                        None,
+                    )
+                    if next_line is None:
+                        break
+                    if re.fullmatch(r"[\d\s.,\-/]+", next_line.text.strip()):
+                        break
+                    best_x0 = min(best_x0, next_line.rect.x0)
+                    best_x1 = max(best_x1, next_line.rect.x1)
+                    best_y0 = next_line.rect.y0
 
             candidate_rects.append(pymupdf.Rect(best_x0, best_y0, best_x1, best_y1))
         return candidate_rects
