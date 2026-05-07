@@ -56,7 +56,22 @@ def common_options(f):
         "--model-path",
         type=click.Path(path_type=Path),
         default=None,
-        help="Path to the local trained model.",
+        help="Path to the model directory (full model) or head directory (split model).",
+    )(f)
+    f = click.option(
+        "-b",
+        "--backbone-path",
+        type=click.Path(path_type=Path),
+        default=None,
+        help="Path to backbone.safetensors for split-model loading. "
+        "When provided, --model-path is the head directory.",
+    )(f)
+    f = click.option(
+        "-t",
+        "--tokenizer-path",
+        type=click.Path(path_type=Path),
+        default=None,
+        help="Directory containing tokenizer files. When omitted, falls back to --model-path.",
     )(f)
     f = click.option(
         "-cs",
@@ -92,6 +107,8 @@ def click_pipeline(
     out_directory_bedrock: Path,
     classifier_type: str,
     model_path: Path | None,
+    backbone_path: Path | None,
+    tokenizer_path: Path | None,
     classification_system: str,
     resume: bool,
     benchmarks: tuple[str, ...] = (),
@@ -102,6 +119,8 @@ def click_pipeline(
     opts = ClassificationOptions(
         classifier_type=classifier_type,
         model_path=model_path,
+        backbone_path=backbone_path,
+        tokenizer_path=tokenizer_path,
         classification_system=classification_system,
     )
 

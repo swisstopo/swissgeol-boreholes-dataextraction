@@ -11,6 +11,7 @@ as well as a patch version with all fields optional for patch operations.
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
+from typing import Literal
 
 import pymupdf
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -795,3 +796,40 @@ class GroundwaterSchema(BaseModel):
             }
         }
     )
+
+
+########################################################################################################################
+### Classify lithology schema
+########################################################################################################################
+
+
+class ClassifyLithologyRequest(BaseModel):
+    """Request schema for the `classify_lithology` endpoint."""
+
+    description: str = Field(
+        ...,
+        description="Plain-text material description to classify.",
+    )
+    classification_system: Literal["lithology", "en_main"] = Field(
+        default="lithology",
+        description="Classification system to apply. One of: 'lithology', 'en_main'.",
+    )
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "description": "Mergel, grau, laminiert - flaserig, Flaserung parallel zur BA",
+                "classification_system": "lithology",
+            }
+        }
+    )
+
+
+class ClassifyLithologyResponse(BaseModel):
+    """Response schema for the `classify_lithology` endpoint."""
+
+    class_name: str = Field(
+        ...,
+        description="Predicted class name for the input description.",
+    )
+
+    model_config = ConfigDict(json_schema_extra={"example": {"class_name": "Marlstone"}})
