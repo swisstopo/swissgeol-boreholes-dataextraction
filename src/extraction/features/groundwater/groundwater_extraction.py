@@ -50,23 +50,26 @@ class Groundwater(ExtractedFeature):
         """
         return f"Groundwater(date={self.format_date()}, depth={self.depth}, elevation={self.elevation})"
 
-    @staticmethod
-    def from_json_values(depth: float | None, date: str | None, elevation: float | None) -> "Groundwater":
+    @classmethod
+    def from_json_values(
+        cls, depth: float | None, date: str | None, elevation: float | None, is_correct: bool | None = None
+    ) -> "Groundwater":
         """Converts the object from a dictionary.
 
         Args:
             depth (float | None): The depth of the groundwater.
             date (str | None): The measurement date of the groundwater.
             elevation (float | None): The elevation of the groundwater.
+            is_correct (bool | None): Indicator of correctness w.r.t. ground truth.
 
         Returns:
             Groundwater: The object created from the dictionary.
         """
         if date is None or date == "":
-            return Groundwater(depth=depth, date=None, elevation=elevation)
+            return cls(depth=depth, date=None, elevation=elevation, is_correct=is_correct)
         date = datetime.datetime.strptime(date, DATE_FORMAT)
         date = date.replace(year=date.year - 100) if date > datetime.datetime.now() else date
-        return Groundwater(depth=depth, date=date, elevation=elevation)
+        return cls(depth=depth, date=date, elevation=elevation, is_correct=is_correct)
 
     @classmethod
     def from_json(cls, json: dict) -> "Groundwater":
@@ -82,6 +85,7 @@ class Groundwater(ExtractedFeature):
             depth=json["depth"],
             date=json["date"],
             elevation=json["elevation"],
+            is_correct=json["is_correct"],
         )
 
     def format_date(self) -> str | None:

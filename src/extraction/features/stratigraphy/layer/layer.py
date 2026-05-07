@@ -127,6 +127,7 @@ class LayerDepths(ExtractedFeature):
         return cls(
             start=LayerDepthsEntry.from_json(data["start"]) if data["start"] else None,
             end=LayerDepthsEntry.from_json(data["end"]) if data["end"] else None,
+            is_correct=data["is_correct"],
         )
 
     @classmethod
@@ -218,7 +219,7 @@ class Layer(ExtractedFeature):
         material_prediction = MaterialDescription.from_json(data["material_description"])
         depths = LayerDepths.from_json(data["depths"]) if ("depths" in data and data["depths"] is not None) else None
 
-        return Layer(material_description=material_prediction, depths=depths)
+        return Layer(material_description=material_prediction, depths=depths, is_correct=data["is_correct"])
 
 
 @dataclass

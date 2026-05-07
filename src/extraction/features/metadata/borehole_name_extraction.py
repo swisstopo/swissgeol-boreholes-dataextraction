@@ -63,7 +63,7 @@ class BoreholeName(ExtractedFeature):
         Returns:
             BoreholeName: The borehole's name information object.
         """
-        return cls(name=data["name"], confidence=data["confidence"])
+        return cls(name=data["name"], confidence=data["confidence"], is_correct=data["is_correct"])
 
 
 @dataclass

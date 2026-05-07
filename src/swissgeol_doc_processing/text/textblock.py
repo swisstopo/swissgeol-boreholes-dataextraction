@@ -77,7 +77,9 @@ class MaterialDescription(ExtractedFeature):
     def from_json(cls, data: dict) -> Self:
         """Converts a dictionary to an object."""
         return cls(
-            text=data["text"], lines=[FeatureOnPage.from_json(line, MaterialDescriptionLine) for line in data["lines"]]
+            text=data["text"],
+            lines=[FeatureOnPage.from_json(line, MaterialDescriptionLine) for line in data["lines"]],
+            is_correct=data["is_correct"],
         )
 
 

@@ -63,23 +63,28 @@ class Coordinate(ExtractedFeature):
         }
 
     @staticmethod
-    def from_values(east: float, north: float) -> Coordinate | None:
+    def from_values(east: float, north: float, is_correct: bool | None = None) -> Coordinate | None:
         """Creates a Coordinate object from the given values.
 
         Args:
             east (float): The east coordinate value.
             north (float): The north coordinate value.
+            is_correct (bool): Indicate if the layer is properly detected.
 
         Returns:
             Coordinate | None: The coordinate object.
         """
         if 1e6 < east < 1e7:
             return LV95Coordinate(
-                east=CoordinateEntry(coordinate_value=east), north=CoordinateEntry(coordinate_value=north)
+                east=CoordinateEntry(coordinate_value=east),
+                north=CoordinateEntry(coordinate_value=north),
+                is_correct=is_correct,
             )
         elif east < 1e6:
             return LV03Coordinate(
-                east=CoordinateEntry(coordinate_value=east), north=CoordinateEntry(coordinate_value=north)
+                east=CoordinateEntry(coordinate_value=east),
+                north=CoordinateEntry(coordinate_value=north),
+                is_correct=is_correct,
             )
         else:
             logger.warning("Invalid coordinates format. Got E: %s, N: %s", east, north)
@@ -95,7 +100,7 @@ class Coordinate(ExtractedFeature):
         Returns:
             Coordinate: The coordinate object.
         """
-        return Coordinate.from_values(east=input["E"], north=input["N"])
+        return Coordinate.from_values(east=input["E"], north=input["N"], is_correct=input["is_correct"])
 
 
 @dataclass

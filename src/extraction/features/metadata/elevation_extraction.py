@@ -72,7 +72,7 @@ class Elevation(ExtractedFeature):
         Returns:
             Elevation: The elevation information object.
         """
-        return cls(elevation=data["elevation"])
+        return cls(elevation=data["elevation"], is_correct=data["is_correct"])
 
 
 class ElevationExtractor(DataExtractor):
