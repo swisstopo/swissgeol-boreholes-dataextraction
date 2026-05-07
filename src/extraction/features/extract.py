@@ -477,6 +477,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             is_description = [line for line in is_description if line not in max_coverage]
 
         candidate_rects = []
+        sorted_above = sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)
 
         for cluster in description_clusters:
             best_y0 = min([line.rect.y0 for line in cluster])
@@ -522,12 +523,20 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 continue
 
             # expand to include entire last block
-            def is_below(best_x0, best_y1, line: TextLine):
+            def is_below(best_x0, best_y1, line: TextLine, x_tolerance: float = 5, line_gap: float = 10):
                 return (
-                    (line.rect.x0 > best_x0 - 5)
+                    (line.rect.x0 > best_x0 - x_tolerance)
                     and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
-                    and (line.rect.y0 < best_y1 + 10)
+                    and (line.rect.y0 < best_y1 + line_gap)
                     and (line.rect.y1 > best_y1)
+                )
+
+            def is_above(best_x0, best_y0, line: TextLine, x_tolerance: float = 5, line_gap: float = 10):
+                return (
+                    (line.rect.x0 > best_x0 - x_tolerance)
+                    and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
+                    and (line.rect.y1 > best_y0 - line_gap)
+                    and (line.rect.y0 < best_y0)
                 )
 
             continue_search = True
@@ -573,12 +582,18 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     (
                         desc_line
                         for desc_line in sorted_above
-                        if desc_line.rect.x0 > best_x0 - 5
-                        and desc_line.rect.x0 < (best_x0 + best_x1) / 2
-                        and desc_line.rect.y1 > best_y0 - 10
-                        and desc_line.rect.y0 < best_y0
+                        if is_above(best_x0, best_y0, desc_line)
                         and not re.fullmatch(r"[\d\s.,\-/]+", desc_line.text.strip())
-                        and (sidebar is not None or not self._has_siblings(desc_line, best_x0, best_x1))
+                        and (
+                            sidebar is not None
+                            or not any(
+                                other
+                                for other in self.lines
+                                if other is not desc_line
+                                and abs(other.rect.y0 - desc_line.rect.y0) < desc_line.rect.height
+                                and (other.rect.x1 < best_x0 - 10 or other.rect.x0 > best_x1 + 10)
+                            )
+                        )
                     ),
                     None,
                 )
