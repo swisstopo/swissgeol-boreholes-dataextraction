@@ -123,10 +123,15 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 valid_boreholes.append(borehole)
                 pairs_from_valid_boreholes.append(pair)
 
+        anchor_pair = pairs_from_valid_boreholes[0] if pairs_from_valid_boreholes else None
         material_descriptions_without_sidebar = self._extract_material_descriptions_without_sidebar()
-        if material_descriptions_without_sidebar and not any(
-            self._pairs_intersect(material_descriptions_without_sidebar, other_pair)
-            for other_pair in pairs_from_valid_boreholes
+        if (
+            material_descriptions_without_sidebar
+            and (anchor_pair is None or not self._pair_has_depth_indicator(anchor_pair))
+            and not any(
+                self._pairs_intersect(material_descriptions_without_sidebar, other_pair)
+                for other_pair in pairs_from_valid_boreholes
+            )
         ):
             # add the material descriptions without sidebar if there is no intersection with any of the already
             # constructed valid boreholes
@@ -778,6 +783,57 @@ class MaterialDescriptionRectWithSidebarExtractor:
             )
         return None
 
+    def _pair_has_depth_indicator(self, pair: MaterialDescriptionRectWithSidebar) -> bool:
+        """Return True if the pair has a sidebar or a spatially associated striplog."""
+        if pair.sidebar is not None:
+            return True
+        return any(
+            x_overlap_significant_smallest(pair.material_description_rect, sl.bbox, 0.3) for sl in self.strip_logs
+        )
+
+    def _filter_pairs_by_similarity_to_best(
+        self,
+        pairs: list[MaterialDescriptionRectWithSidebar],
+    ) -> list[MaterialDescriptionRectWithSidebar]:
+        """Reject secondary pairs that don't match the best pair's format.
+
+        A pair is a MaterialDescriptionRectWithSidebar object with material description paired with a sidebar or
+        striplog,if available. Otherwise its (material description | None)
+        Only active when the best pair has a sidebar or associated striplog. Each additional
+        pair must have its own depth indicator (sidebar or striplog), a similar MD rect width
+        (within ``secondary_borehole_max_width_ratio``), and the same orientation (landscape
+        vs portrait) as the anchor.
+        --> we avoid FP material description clusters with this method
+        """
+        if len(pairs) <= 1:
+            return pairs
+
+        anchor = pairs[0]
+        if not self._pair_has_depth_indicator(anchor):
+            return pairs
+
+        max_width_ratio = self.matching_params.get("secondary_borehole_max_width_ratio", 2.0)
+        anchor_rect = anchor.material_description_rect
+        anchor_is_landscape = anchor_rect.width >= anchor_rect.height
+
+        result = [anchor]
+        for pair in pairs[1:]:
+            rect = pair.material_description_rect
+
+            if not self._pair_has_depth_indicator(pair):
+                continue
+
+            width_ratio = max(anchor_rect.width, rect.width) / max(min(anchor_rect.width, rect.width), 1e-9)
+            if width_ratio > max_width_ratio:
+                continue
+
+            if (rect.width >= rect.height) != anchor_is_landscape:
+                continue
+
+            result.append(pair)
+
+        return result
+
     def _extract_filtered_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
         """Extract and filter sidebar pairs using the common pipeline.
 
@@ -796,6 +852,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         # Step 3: Apply filter chain
         filtered_pairs = [pair for pair in pairs if pair.score_match >= 0]
         filtered_pairs = self._filter_by_intersections(filtered_pairs)
+        filtered_pairs = self._filter_pairs_by_similarity_to_best(filtered_pairs)
 
         return filtered_pairs
 
