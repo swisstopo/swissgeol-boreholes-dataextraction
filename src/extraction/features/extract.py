@@ -583,6 +583,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                         desc_line
                         for desc_line in sorted_above
                         if is_above(best_x0, best_y0, desc_line)
+                        and desc_line not in is_not_description
                         and not re.fullmatch(r"[\d\s.,\-/]+", desc_line.text.strip())
                         and (
                             sidebar is not None

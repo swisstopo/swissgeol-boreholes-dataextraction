@@ -100,27 +100,18 @@ material_description:
       - ton
       - tonig
       - asphalt
-      - asphaltdeckschicht # is not split by the compound splitter
       - humus
-      - braun
-      - weich
-      - wurzel
       - belag
       - stein
-      - beige
       - beton
       - kreide
       - mergel
       - kern
       - lehm
-      - dito
       - dolomit
       - kristallin
-      - gneis
-      - kalke
-      - mikritisch
+      - kalk
       - laminiert
-      - grob
       - auffüllung
       - schlacke
       - überlagerung
@@ -131,20 +122,23 @@ material_description:
       - ende
       - profil
       - beschreibung
+      - beschrieb
+      - bezeichnung
       - materialbeschreibung
       - kiesprospektion
+      - bodenart
       - signaturen
-      - mischprobe # Should be reviewed, currently not used
       - projekt
       - ort
       - adresse
       - wetter
       - pumpversuch
       - kernbohrung
-      - bohrradius # Should be reviewed, currently not used
       - wasserzutritt
       - Vollrohr
       - Filterrohr
+      - sondierung
+      - sondierbohrung
 
   fr:
     including_expressions:
@@ -154,15 +148,11 @@ material_description:
       - terre
       - bitume
       - bitumineux
-      - grave d'infrastructure # Should be reviewed, currently not used
       - sable
       - limon
       - gravier
       - asphalte
       - humus
-      - brun
-      - gris
-      - grise
       - mou
       - dur
       - dure
@@ -170,35 +160,27 @@ material_description:
       - racine
       - revetement
       - pierre
-      - beige
       - béton
       - craie
       - marne
-      - materiau # Should be reviewed, currently not used
-      - matrice sableuse # Should be reviewed, currently not used
       - enrobé
       - phase
       - limoneuse
       - argileuse
       - argileux
-      - mousse # Should be reviewed, currently not used
     excluding_expressions:
-      - monsieur # Should be reviewed, currently not used
       - profil
       - description
-      - signatures # Should be reviewed, currently not used
-      - echantillon mixte # Should be reviewed, currently not used
       - projet
       - lieu
       - adresse
       - temps
-      - essai de pompage # Should be reviewed, currently not used
       - carottage
-      - rayon de forage # Should be reviewed, currently not used
       - remarque
       - piezometre
       - profondeur
       - désignation
+      - coordonnees
 
   it:
     including_expressions:
@@ -248,20 +230,13 @@ material_description:
       - gravel
       - asphalt
       - humus
-      - brown
-      - gray
-      - soft
-      - hard
-      - root
       - surface layer
       - stone
-      - beige
       - concrete
       - chalk
       - marl
       - core material
       - limestone
-      - ditto # Should be reviewed, currently not used
       - alternation
       - leucosome
     excluding_expressions:
@@ -275,7 +250,6 @@ material_description:
       - location
       - address
       - weather
-      - pump test # Should be reviewed, currently not used
       - core drilling
       - drilling radius
 
