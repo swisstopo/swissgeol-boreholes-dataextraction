@@ -98,9 +98,7 @@ def test_evaluate_with_ground_truth(groundtruth, groundwater_at_2m22, groundwate
             boreholes=[
                 BoreholeGroundwaterWithGroundTruth(
                     groundwater=groundwaterinborehole,
-                    ground_truth=groundtruth.for_file(filename).get(pred_to_gt_matching[filename][pred_idx])[
-                        "groundwater"
-                    ],
+                    ground_truth=groundtruth.for_file(filename)[pred_to_gt_matching[filename][pred_idx]].groundwater,
                 )
                 for pred_idx, groundwaterinborehole in enumerate(groundwaterinborehole_list)
             ],
@@ -130,9 +128,9 @@ def test_evaluate_multiple_documents(groundtruth, groundwater_at_2m22, groundwat
             boreholes=[
                 BoreholeGroundwaterWithGroundTruth(
                     groundwater=GroundwatersInBorehole([groundwater_at_2m22, groundwater_at_3m22]),
-                    ground_truth=groundtruth.for_file("example_borehole_profile.pdf").get(
+                    ground_truth=groundtruth.for_file("example_borehole_profile.pdf")[
                         gt_matching_index_example[0]
-                    )["groundwater"],
+                    ].groundwater,
                 )
             ],
         )
@@ -143,15 +141,15 @@ def test_evaluate_multiple_documents(groundtruth, groundwater_at_2m22, groundwat
             boreholes=[
                 BoreholeGroundwaterWithGroundTruth(
                     groundwater=GroundwatersInBorehole([groundwater_at_2m22]),
-                    ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf").get(
+                    ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf")[
                         gt_matching_index_example_2[0]
-                    )["groundwater"],
+                    ].groundwater,
                 ),
                 BoreholeGroundwaterWithGroundTruth(
                     groundwater=GroundwatersInBorehole([groundwater_at_3m22]),
-                    ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf").get(
+                    ground_truth=groundtruth.for_file("example_borehole_profile_2.pdf")[
                         gt_matching_index_example_2[1]
-                    )["groundwater"],
+                    ].groundwater,
                 ),
             ],
         ),

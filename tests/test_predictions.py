@@ -238,7 +238,7 @@ def test_evaluate_layer_matching(
     # We test the matching by comparing the number of layers, one borehole has 2, the other has 3.
     assert all(
         [
-            len(pred.predictions.layers_in_borehole.layers) == len(pred.ground_truth["layers"])
+            len(pred.predictions.layers_in_borehole.layers) == len(pred.ground_truth.layers)
             for pred in sample_file_prediction_with_ground_truth
         ]
     )

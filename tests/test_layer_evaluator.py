@@ -3,6 +3,7 @@
 import pymupdf
 import pytest
 
+from extraction.evaluation.benchmark.ground_truth import GroundTruthLayer
 from extraction.evaluation.layer_evaluator import (
     LayerEvaluator,
     score_depths,
@@ -31,9 +32,9 @@ def test_case_1():
     ]
 
     gt = [
-        {"material_description": "A", "depth_interval": {"start": 0.0, "end": 1.0}},
-        {"material_description": "B", "depth_interval": {"start": 1.0, "end": 2.0}},
-        {"material_description": "C", "depth_interval": {"start": 2.0, "end": 3.0}},
+        GroundTruthLayer.model_validate({"material_description": "A", "depth_interval": {"start": 0.0, "end": 1.0}}),
+        GroundTruthLayer.model_validate({"material_description": "B", "depth_interval": {"start": 1.0, "end": 2.0}}),
+        GroundTruthLayer.model_validate({"material_description": "C", "depth_interval": {"start": 2.0, "end": 3.0}}),
     ]
 
     return gt, preds
@@ -49,9 +50,9 @@ def test_case_2():
     ]
 
     gt = [
-        {"material_description": "A", "depth_interval": {"start": 0.0, "end": 1.0}},
-        {"material_description": "B", "depth_interval": {"start": 1.0, "end": 2.0}},
-        {"material_description": "C", "depth_interval": {"start": 2.0, "end": 3.0}},
+        GroundTruthLayer.model_validate({"material_description": "A", "depth_interval": {"start": 0.0, "end": 1.0}}),
+        GroundTruthLayer.model_validate({"material_description": "B", "depth_interval": {"start": 1.0, "end": 2.0}}),
+        GroundTruthLayer.model_validate({"material_description": "C", "depth_interval": {"start": 2.0, "end": 3.0}}),
     ]
 
     return gt, preds
@@ -70,9 +71,9 @@ def test_case_3():
     ]
 
     gt = [
-        {"material_description": "A", "depth_interval": {"start": 0.0, "end": 1.0}},
-        {"material_description": "B", "depth_interval": {"start": 1.0, "end": 2.0}},
-        {"material_description": "C", "depth_interval": {"start": 2.0, "end": 3.0}},
+        GroundTruthLayer.model_validate({"material_description": "A", "depth_interval": {"start": 0.0, "end": 1.0}}),
+        GroundTruthLayer.model_validate({"material_description": "B", "depth_interval": {"start": 1.0, "end": 2.0}}),
+        GroundTruthLayer.model_validate({"material_description": "C", "depth_interval": {"start": 2.0, "end": 3.0}}),
     ]
 
     return gt, preds
@@ -94,9 +95,9 @@ def test_case_4():
     ]
 
     gt = [
-        {"material_description": "A", "depth_interval": {"start": 0.0, "end": 1.0}},
-        {"material_description": "B", "depth_interval": {"start": 1.0, "end": 2.0}},
-        {"material_description": "C", "depth_interval": {"start": 24.0, "end": 35.0}},
+        GroundTruthLayer.model_validate({"material_description": "A", "depth_interval": {"start": 0.0, "end": 1.0}}),
+        GroundTruthLayer.model_validate({"material_description": "B", "depth_interval": {"start": 1.0, "end": 2.0}}),
+        GroundTruthLayer.model_validate({"material_description": "C", "depth_interval": {"start": 24.0, "end": 35.0}}),
     ]
 
     return gt, preds
