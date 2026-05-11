@@ -1,5 +1,5 @@
 ## ------ Build stage
-# Use the specifidied Python-slim version as the base image
+# Use the specified Python-slim version as the base image
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
 # Add temporary SCM version for hatchling.build
@@ -10,16 +10,16 @@ ENV SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION
 WORKDIR /app
 COPY pyproject.toml README.md /app/
 
-# --no-dev: Exclude development dependencies from the environment
-# --no-install-project: Skip building and installing the project package itself
-# --compile: Force generation of compiled files *.pyc (lowers memory load)
-RUN uv sync --no-dev --no-install-project --compile
+# Install all dependencies including deep-learning extras into a virtualenv.
+# --no-dev: exclude development dependencies
+# --no-install-project: skip building and installing the project package itself
+# --compile: generate *.pyc files to lower memory load at startup
+RUN uv sync --no-dev --no-install-project --compile --extra deep-learning
 
 
 ## ------ Runtime stage
 FROM python:3.12-slim
 
-# Set arguments to be passed from build-args
 ARG VERSION
 
 # Main working directory
@@ -32,8 +32,11 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Source files
+# Source files and the three inference models (committed to the repository)
 COPY ./src /app/src
+COPY ./models/backbone /app/models/backbone
+COPY ./models/en_main_head /app/models/en_main_head
+COPY ./models/lithology_head /app/models/lithology_head
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
