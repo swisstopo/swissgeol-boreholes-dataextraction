@@ -47,15 +47,15 @@ def generate(prediction: Path, ground_truth: Path) -> None:
         ]
 
         # Match correct layers to GT (assume single borehole)
-        for layer_gt in gt_for_prediction[0]["layers"]:
+        for layer_gt in gt_for_prediction[0].layers:
             if matched_layer := list(
-                filter(lambda x: layer_gt["depth_interval"]["start"] == x.depths.start.value, correct_layers)
+                filter(lambda x: layer_gt.depth_interval.start == x.depths.start.value, correct_layers)
             ):
-                layer_gt["material_description"] = matched_layer[0].material_description.text
+                layer_gt.material_description = matched_layer[0].material_description.text
 
     # Count the number of material descriptions
     with open(new_ground_truth, "w", encoding="utf8") as f:
-        json.dump(gts.ground_truth, f, indent=2)
+        json.dump(gts.to_json(), f, indent=4)
 
     logger.info("Done.")
 

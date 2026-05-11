@@ -3,7 +3,7 @@
 import logging
 
 from core.benchmark_utils import Metrics
-from extraction.evaluation.benchmark.ground_truth import GroundTruth
+from extraction.evaluation.benchmark.ground_truth import GroundTruth, GroundTruthMetadata
 from extraction.evaluation.benchmark.metrics import OverallMetricsCatalog
 from extraction.evaluation.evaluation_dataclasses import BoreholeMetadataMetrics
 from extraction.evaluation.groundwater_evaluator import (
@@ -127,7 +127,7 @@ class Evaluator:
                 [
                     BoreholeMetadataWithGroundTruth(
                         predictions.predictions.metadata if predictions.predictions else None,
-                        predictions.ground_truth.metadata if predictions.ground_truth else None,
+                        predictions.ground_truth.metadata if predictions.ground_truth else GroundTruthMetadata(),
                     )
                     for predictions in file_predictions.boreholes
                 ],

@@ -4,15 +4,24 @@ import json
 import logging
 from collections import defaultdict
 from pathlib import Path
+from typing import Any
 
-from pydantic import BaseModel, TypeAdapter, field_validator
+from pydantic import BaseModel, TypeAdapter, field_validator, model_serializer
 
 from swissgeol_doc_processing.utils.file_utils import parse_text
 
 logger = logging.getLogger(__name__)
 
 
-class GroundTruthConsolidated(BaseModel):
+class ExcludeNoneBaseModel(BaseModel):
+    """Avoid dumping all elements if none."""
+
+    @model_serializer
+    def serialize(self) -> dict[str, Any]:
+        return {k: v for k, v in self.__dict__.items() if v is not None}
+
+
+class GroundTruthConsolidated(ExcludeNoneBaseModel):
     """Ground truth material properties for consolidated geological layers."""
 
     model_config = {"extra": "forbid"}
@@ -25,7 +34,7 @@ class GroundTruthConsolidated(BaseModel):
     uscs: list[str] | None = None
 
 
-class GroundTruthUnconsolidated(BaseModel):
+class GroundTruthUnconsolidated(ExcludeNoneBaseModel):
     """Ground truth material properties for unconsolidated geological layers."""
 
     model_config = {"extra": "forbid"}
@@ -59,8 +68,8 @@ class GroundTruthLayer(BaseModel):
 
     @field_validator("material_description", mode="before")
     @classmethod
-    def preprocess(cls, value: str) -> str:
-        return parse_text(value)
+    def preprocess(cls, value: str | None) -> str:
+        return parse_text(value) if value else None
 
 
 class GroundTruthGroundwater(BaseModel):
@@ -85,13 +94,13 @@ class GroundTruthMetadata(BaseModel):
     """Borehole metadata extracted from the document header."""
 
     model_config = {"extra": "forbid"}
-    coordinates: GroundTruthCoordinates
+    coordinates: GroundTruthCoordinates | None = None
     drilling_date: str | None = None
     drilling_methods: list[str] | None = None
     original_name: str | None = None
     project_name: str | None = None
-    reference_elevation: float
-    total_depth: float
+    reference_elevation: float | None = None
+    total_depth: float | None = None
 
 
 class GroundTruthBorehole(BaseModel):
@@ -138,3 +147,10 @@ class GroundTruth:
 
         logger.warning("No ground truth data found for %s.", file_name)
         return {}
+
+    def to_json(self) -> dict:
+        """Convert ground truth objects to dict."""
+        return {
+            filename: [borehole.model_dump() for borehole in boreholes]
+            for filename, boreholes in self.ground_truth.items()
+        }
