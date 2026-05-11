@@ -219,7 +219,7 @@ class Layer(ExtractedFeature):
         material_prediction = MaterialDescription.from_json(data["material_description"])
         depths = LayerDepths.from_json(data["depths"]) if ("depths" in data and data["depths"] is not None) else None
 
-        return Layer(material_description=material_prediction, depths=depths, is_correct=data["is_correct"])
+        return Layer(material_description=material_prediction, depths=depths, is_correct=data.get("is_correct"))
 
 
 @dataclass
