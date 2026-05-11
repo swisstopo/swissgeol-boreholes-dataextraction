@@ -101,7 +101,7 @@ class Evaluator:
                 [
                     BoreholeLayersWithGroundTruth(
                         borehole.predictions.layers_in_borehole if borehole.predictions else None,
-                        borehole.ground_truth.get("layers", []),
+                        borehole.ground_truth.layers if borehole.ground_truth else [],
                     )
                     for borehole in file_predictions.boreholes
                 ],
@@ -127,7 +127,7 @@ class Evaluator:
                 [
                     BoreholeMetadataWithGroundTruth(
                         predictions.predictions.metadata if predictions.predictions else None,
-                        predictions.ground_truth.get("metadata", {}),
+                        predictions.ground_truth.metadata if predictions.ground_truth else None,
                     )
                     for predictions in file_predictions.boreholes
                 ],
@@ -151,7 +151,9 @@ class Evaluator:
                 [
                     BoreholeGroundwaterWithGroundTruth(
                         predictions.predictions.groundwater_in_borehole if predictions.predictions else None,
-                        predictions.ground_truth.get("groundwater", []) or [],  # value can be `None`
+                        predictions.ground_truth.groundwater
+                        if predictions.ground_truth
+                        else [],  # value can be `None`
                     )
                     for predictions in file_predictions.boreholes
                 ],

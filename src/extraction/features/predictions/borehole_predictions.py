@@ -4,6 +4,12 @@ import csv
 import dataclasses
 import io
 
+from extraction.evaluation.benchmark.ground_truth import (
+    GroundTruthBorehole,
+    GroundTruthGroundwater,
+    GroundTruthLayer,
+    GroundTruthMetadata,
+)
 from extraction.features.groundwater.groundwater_extraction import GroundwatersInBorehole
 from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.stratigraphy.layer.layer import LayersInBorehole
@@ -95,7 +101,7 @@ class BoreholePredictionsWithGroundTruth:
     """Predictions for a specific borehole with associated ground truth."""
 
     predictions: BoreholePredictions | None
-    ground_truth: dict
+    ground_truth: GroundTruthBorehole | None
 
 
 @dataclasses.dataclass
@@ -103,7 +109,7 @@ class BoreholeLayersWithGroundTruth:
     """Stratigraphy predictions for a specific borehole with associated ground truth."""
 
     layers: LayersInBorehole | None
-    ground_truth: list
+    ground_truth: GroundTruthLayer | None
 
 
 @dataclasses.dataclass
@@ -111,7 +117,7 @@ class BoreholeGroundwaterWithGroundTruth:
     """Groundwater predictions for a specific borehole with associated ground truth."""
 
     groundwater: GroundwatersInBorehole | None
-    ground_truth: list
+    ground_truth: GroundTruthGroundwater | None
 
 
 @dataclasses.dataclass
@@ -119,7 +125,7 @@ class BoreholeMetadataWithGroundTruth:
     """Borehole metadata predictions for a specific borehole with associated ground truth."""
 
     metadata: BoreholeMetadata | None
-    ground_truth: dict
+    ground_truth: GroundTruthMetadata | None
 
 
 @dataclasses.dataclass

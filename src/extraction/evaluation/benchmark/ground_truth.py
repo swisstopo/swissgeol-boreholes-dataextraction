@@ -5,9 +5,103 @@ import logging
 from collections import defaultdict
 from pathlib import Path
 
+from pydantic import BaseModel, TypeAdapter, field_validator
+
 from swissgeol_doc_processing.utils.file_utils import parse_text
 
 logger = logging.getLogger(__name__)
+
+
+class GroundTruthConsolidated(BaseModel):
+    """Ground truth material properties for consolidated geological layers."""
+
+    model_config = {"extra": "forbid"}
+    accessory_components: list[str] | None = None
+    alteration_degree: str | None = None
+    cementation: str | None = None
+    lithology: str | None = None
+    mineral_components: list[str] | None = None
+    primary_color: str | None = None
+    uscs: list[str] | None = None
+
+
+class GroundTruthUnconsolidated(BaseModel):
+    """Ground truth material properties for unconsolidated geological layers."""
+
+    model_config = {"extra": "forbid"}
+    alteration_degree: str | None = None
+    debris: list[str] | None = None
+    grain_angularity: list[str] | None = None
+    grain_shape: list[str] | None = None
+    main: str | None = None
+    organic_components: list[str] | None = None
+    other: list[str] | None = None
+    primary_color: str | None = None
+    uscs: list[str] | None = None
+
+
+class GroundTruthLayerDepth(BaseModel):
+    """Depth interval of a borehole layer."""
+
+    model_config = {"extra": "forbid"}
+    end: float | None = None
+    start: float | None = None
+
+
+class GroundTruthLayer(BaseModel):
+    """A single annotated borehole layer."""
+
+    model_config = {"extra": "forbid"}
+    consolidated: GroundTruthConsolidated | None = None
+    depth_interval: GroundTruthLayerDepth
+    material_description: str | None = None
+    unconsolidated: GroundTruthUnconsolidated | None = None
+
+    @field_validator("material_description", mode="before")
+    @classmethod
+    def preprocess(cls, value: str) -> str:
+        return parse_text(value)
+
+
+class GroundTruthGroundwater(BaseModel):
+    """A recorded groundwater measurement."""
+
+    model_config = {"extra": "forbid"}
+    date: str | None = None
+    depth: float
+    elevation: float
+
+
+class GroundTruthCoordinates(BaseModel):
+    """Coordinate / location of the borehole, as easting (E) and northing (N)."""
+
+    model_config = {"extra": "forbid"}
+
+    E: float
+    N: float
+
+
+class GroundTruthMetadata(BaseModel):
+    """Borehole metadata extracted from the document header."""
+
+    model_config = {"extra": "forbid"}
+    coordinates: GroundTruthCoordinates
+    drilling_date: str | None = None
+    drilling_methods: list[str] | None = None
+    original_name: str | None = None
+    project_name: str | None = None
+    reference_elevation: float
+    total_depth: float
+
+
+class GroundTruthBorehole(BaseModel):
+    """Ground truth data for a single borehole."""
+
+    model_config = {"extra": "forbid"}
+    borehole_index: int
+    groundwater: list[GroundTruthGroundwater] | None
+    layers: list[GroundTruthLayer]
+    metadata: GroundTruthMetadata
 
 
 class GroundTruth:
@@ -26,29 +120,18 @@ class GroundTruth:
         with open(path, encoding="utf-8") as in_file:
             ground_truth = json.load(in_file)
 
-        # Parse the ground truth data
-        for file_name, ground_truth_item in ground_truth.items():
-            for borehole_data in ground_truth_item:
-                layers = borehole_data["layers"]
-                borehole_index = borehole_data["borehole_index"]
-                self.ground_truth[file_name][borehole_index]["layers"] = [
-                    {
-                        "material_description": parse_text(layer["material_description"]),
-                        "depth_interval": layer["depth_interval"],
-                    }
-                    for layer in layers
-                ]
-                self.ground_truth[file_name][borehole_index]["metadata"] = borehole_data["metadata"]
-                self.ground_truth[file_name][borehole_index]["groundwater"] = borehole_data["groundwater"]
+        # Validate entries
+        for filename, data in ground_truth.items():
+            self.ground_truth[filename] = TypeAdapter(list[GroundTruthBorehole]).validate_python(data)
 
-    def for_file(self, file_name: str) -> dict:
+    def for_file(self, file_name: str) -> list[GroundTruthBorehole]:
         """Get the ground truth data for a given file.
 
         Args:
             file_name (str): The file name.
 
         Returns:
-            dict: The ground truth data for the file.
+            list[GroundTruthBorehole]: The ground truth data for the file.
         """
         if file_name in self.ground_truth:
             return self.ground_truth[file_name]

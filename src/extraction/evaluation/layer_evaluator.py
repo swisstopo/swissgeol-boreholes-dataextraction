@@ -8,6 +8,7 @@ from typing import Any
 import Levenshtein
 
 from core.benchmark_utils import Metrics
+from extraction.evaluation.benchmark.ground_truth import GroundTruthLayer
 from extraction.features.predictions.borehole_predictions import (
     BoreholePredictionsWithGroundTruth,
     FileLayersWithGroundTruth,
@@ -59,7 +60,7 @@ class LayerEvaluator:
                 logger.warning("Empty string found in predictions")
 
         def num_ground_truth_fn(ground_truth_layers: list[dict]):
-            return sum(lay["material_description"] is not None for lay in ground_truth_layers)
+            return sum(lay.material_description is not None for lay in ground_truth_layers)
 
         return LayerEvaluator.calculate_metrics(
             file_predictions=file_predictions,
@@ -81,7 +82,7 @@ class LayerEvaluator:
         """
 
         def num_ground_truth_fn(ground_truth_layers: list[dict]):
-            return sum(lay["depth_interval"] is not None for lay in ground_truth_layers)
+            return sum(lay.depth_interval is not None for lay in ground_truth_layers)
 
         return LayerEvaluator.calculate_metrics(
             file_predictions=file_predictions,
@@ -225,7 +226,7 @@ class LayerEvaluator:
             list[BoreholePredictionsWithGroundTruth] : A list of matched borehole predictions with their ground truth.
         """
         all_ground_truth_layers = {
-            idx: borehole_data["layers"] for idx, borehole_data in ground_truth_for_file.items()
+            idx: borehole_data.layers for idx, borehole_data in enumerate(ground_truth_for_file)
         }
         borehole_layers = [bh.layers_in_borehole for bh in file_predictions.borehole_predictions_list]
         pred_vs_gt_matching_score = defaultdict(dict)
@@ -271,7 +272,7 @@ class LayerEvaluator:
         # add entries with missing ground truth for all unmatched prediction boreholes (will count as false positives)
         for index, pred in enumerate(file_predictions.borehole_predictions_list):
             if index not in assigned_preds:
-                matched_boreholes.append(BoreholePredictionsWithGroundTruth(predictions=pred, ground_truth={}))
+                matched_boreholes.append(BoreholePredictionsWithGroundTruth(predictions=pred, ground_truth=None))
         return matched_boreholes
 
     @staticmethod
@@ -301,20 +302,20 @@ class LayerEvaluator:
         return dp.solve(scoring_fn)
 
 
-def score_material_descriptions(layer: Layer, ground_truth: dict) -> float:
+def score_material_descriptions(layer: Layer, ground_truth: GroundTruthLayer) -> float:
     """Scores how well the extracted material description matches the ground truth on a scale from 0 to 1."""
     parsed_text = parse_text(layer.material_description.text)
-    return Levenshtein.ratio(parsed_text, parse_text(ground_truth["material_description"]))
+    return Levenshtein.ratio(parsed_text, parse_text(ground_truth.material_description))
 
 
-def score_depths(layer: Layer, ground_truth: dict) -> float:
+def score_depths(layer: Layer, ground_truth: GroundTruthLayer) -> float:
     """Scores how well the extracted depths match the ground truth on a scale from 0 to 1.
 
     The total score is composed of 0.5 for matching start and 0.5 for matching end.
     """
     depth_score = 0.0
-    ground_truth_start = ground_truth["depth_interval"]["start"]
-    ground_truth_end = ground_truth["depth_interval"]["end"]
+    ground_truth_start = ground_truth.depth_interval.start
+    ground_truth_end = ground_truth.depth_interval.end
 
     if layer.depths is not None:
         if (layer.depths.start is None and ground_truth_start is None) or (
