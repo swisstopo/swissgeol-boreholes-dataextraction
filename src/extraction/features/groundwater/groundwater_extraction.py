@@ -85,7 +85,7 @@ class Groundwater(ExtractedFeature):
             depth=json["depth"],
             date=json["date"],
             elevation=json["elevation"],
-            is_correct=json["is_correct"],
+            is_correct=json.get("is_correct"),
         )
 
     def format_date(self) -> str | None:

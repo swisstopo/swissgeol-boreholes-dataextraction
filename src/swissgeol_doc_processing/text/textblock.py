@@ -79,7 +79,7 @@ class MaterialDescription(ExtractedFeature):
         return cls(
             text=data["text"],
             lines=[FeatureOnPage.from_json(line, MaterialDescriptionLine) for line in data["lines"]],
-            is_correct=data["is_correct"],
+            is_correct=data.get("is_correct"),
         )
 
 

@@ -100,7 +100,7 @@ class Coordinate(ExtractedFeature):
         Returns:
             Coordinate: The coordinate object.
         """
-        return Coordinate.from_values(east=input["E"], north=input["N"], is_correct=input["is_correct"])
+        return Coordinate.from_values(east=input["E"], north=input["N"], is_correct=input.get("is_correct"))
 
 
 @dataclass

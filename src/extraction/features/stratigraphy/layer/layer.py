@@ -127,7 +127,7 @@ class LayerDepths(ExtractedFeature):
         return cls(
             start=LayerDepthsEntry.from_json(data["start"]) if data["start"] else None,
             end=LayerDepthsEntry.from_json(data["end"]) if data["end"] else None,
-            is_correct=data["is_correct"],
+            is_correct=data.get("is_correct"),
         )
 
     @classmethod
