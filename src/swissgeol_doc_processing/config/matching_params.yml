@@ -81,6 +81,8 @@ depth_column_params: # these params should be optimized as soon as there is reli
   noise_count_offset: 2.5
 
 non_description_lines_ratio: 0.15
+secondary_borehole_max_width_ratio: 2.0
+is_above_max_expansion: 30
 
 default_language: de
 
@@ -181,6 +183,7 @@ material_description:
       - profondeur
       - désignation
       - coordonnees
+      - description
 
   it:
     including_expressions:

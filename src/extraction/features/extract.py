@@ -400,9 +400,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
     def _spatial_upper_limit(self, sidebar: Sidebar | None) -> float:
         """Upper y-boundary for material description candidates derived from spatial anchors.
 
-        Takes the highest top edge (max y0) among the available sidebar and strip logs, then
-        subtracts a small buffer so description lines a few pixels above the anchor are still
-        accepted.  Returns -inf when no spatial anchors are available.
+        Takes the topmost edge (min y0 = smallest y = highest on page) among the available
+        sidebar and strip logs, then subtracts a small buffer so that all content from the
+        borehole start (depth 0) downward is eligible.  Returns -inf when no anchors are
+        available (all lines become candidates).
         """
         anchors = []
         if sidebar is not None:
@@ -411,7 +412,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
             anchors.append(min(sl.bbox.y0 for sl in self.strip_logs))
         if not anchors:
             return -float("inf")
-        return max(anchors) - self.page_height * 0.02
+        # Use the topmost anchor (smallest y = highest on page) so that all content at or
+        # below the borehole start (depth 0) is eligible, not just content below the first
+        # sidebar entry (which may be at depth 2.5 m or similar).
+        return min(anchors) - self.page_height * 0.02
 
     def _has_siblings(self, line: TextLine, x0: float, x1: float) -> bool:
         """Return True if other lines exist at the same vertical level outside the [x0, x1] column bounds.
@@ -441,10 +445,17 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 line for line in self.lines if x_overlap(line.rect, sidebar.rect) and line.rect.y0 < sidebar.rect.y0
             ]
 
-            min_y0 = max(line.rect.y0 for line in above_sidebar) if above_sidebar else -1
+            spatial_limit = self._spatial_upper_limit(sidebar)
+            min_y0_above = max(line.rect.y0 for line in above_sidebar) if above_sidebar else -float("inf")
+            min_y0 = max(min_y0_above, spatial_limit)
+            sidebar_y_min = min(e.rect.y0 for e in sidebar.entries) if sidebar.entries else sidebar.rect.y0
 
             def check_y0_condition(y0):
-                return y0 > min_y0 and y0 < sidebar.rect.y1
+                # Everything within the sidebar's depth range is always a candidate.
+                if y0 >= sidebar_y_min:
+                    return y0 < sidebar.rect.y1
+                # Lines above the first sidebar entry are only allowed within the spatial buffer.
+                return y0 > min_y0
         else:
             spatial_limit = self._spatial_upper_limit(None)
 
@@ -548,15 +559,15 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     and (line.rect.y0 < best_y0)
                 )
 
-            # Skip both expansions when every sidebar entry already has at least one
-            # overlapping line in the cluster — no gap to fill.
+            # Skip both expansions when the cluster already spans the full sidebar vertical
+            # extent — every depth interval is reachable, no gap to fill.
+            # Looser tolerance above accounts for the typical offset between a sidebar entry's
+            # y0 and the start of the corresponding MD line (~one line height).
             already_covered = (
                 sidebar is not None
                 and bool(sidebar.entries)
-                and all(
-                    any(line.rect.y0 < entry.rect.y1 and line.rect.y1 > entry.rect.y0 for line in good_lines)
-                    for entry in sidebar.entries
-                )
+                and best_y0 <= min(e.rect.y0 for e in sidebar.entries) + 20
+                and best_y1 >= max(e.rect.y1 for e in sidebar.entries) - 15
             )
 
             if not already_covered:
@@ -573,9 +584,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     best_y1 = next_below.rect.y1
 
             # Expand upward one line at a time.
-            # With sidebar: stop at the topmost entry's y-level.
-            # In all cases: also stop at the spatial anchor limit (max top edge of sidebar/strip
-            # logs minus buffer), so expansion never reaches far above the borehole data.
+            # With sidebar: stop at the first entry's y-level — lines above it are already
+            # captured directly in candidate_description via the spatial anchor.
+            # Without sidebar: stop at the spatial anchor limit (topmost strip-log minus buffer).
             entries_limit = (
                 min(e.rect.y0 for e in sidebar.entries) + 5
                 if sidebar is not None and sidebar.entries
@@ -583,25 +594,11 @@ class MaterialDescriptionRectWithSidebarExtractor:
             )
             min_y0_limit = max(entries_limit, self._spatial_upper_limit(sidebar))
 
-            # For sidebars with numeric depth entries, extrapolate the y-coordinate of depth 0.0
-            # (ground surface) and use it as an additional upward limit.
-            if sidebar is not None and not isinstance(sidebar, ProtocolSidebar) and sidebar.entries:
-                try:
-                    entries_with_depth = [
-                        (float(e.value), e.rect.y0)
-                        for e in sidebar.entries
-                        if hasattr(e, "value") and isinstance(e.value | (int, float))
-                    ]
-                    if len(entries_with_depth) >= 2 and entries_with_depth[0][0] > 0:
-                        (d0, ye0), (d1, ye1) = entries_with_depth[0], entries_with_depth[1]
-                        if d1 > d0:
-                            y_at_zero = ye0 - d0 * (ye1 - ye0) / (d1 - d0)
-                            min_y0_limit = max(min_y0_limit, y_at_zero)
-                except (AttributeError, TypeError, ValueError):
-                    pass
             sorted_above = sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)
+            initial_best_y0 = best_y0
+            max_upward_expansion = self.matching_params.get("is_above_max_expansion", 30)
             if not already_covered:
-                while best_y0 > min_y0_limit:
+                while best_y0 > min_y0_limit and (initial_best_y0 - best_y0) < max_upward_expansion:
                     next_line = next(
                         (
                             desc_line
