@@ -82,14 +82,12 @@
 
             "-g", "data/geoquat_ground_truth.json",
             "-c", "bert",
-            "-p", "models/lithology_head",   // or models/en_main_head
-            "-b", "models/backbone/backbone.safetensors",
-            "-t", "models/backbone", // tokenizer path
-            "-cs", "lithology"               // or en_main
+            "-p", "models/uscs/fromaws_balancing/",
+            "-cs", "uscs"
         ],
         "cwd": "${workspaceFolder}",
         "justMyCode": true,
-        "python": "${workspaceFolder}/.venv/bin/python3"
+        "python": "${workspaceFolder}/env/bin/python3"
         },
         {
         "name": "Python: Run boreholes-classify (multi)",
@@ -103,16 +101,14 @@
             "--benchmark", "geoquat GT: data/geoquat_ground_truth.json: data/geoquat_ground_truth.json",
             "--benchmark", "geoquat pred : data/output/multi/geoquat_subset/predictions.json: data/geoquat_ground_truth.json",
             "-c", "bert",
-            "-p", "models/lithology_head",   // or models/en_main_head
-            "-b", "models/backbone/backbone.safetensors",
-            "-t", "models/backbone", // tokenizer path
-            "-cs", "lithology",              // or en_main
+            "-p", "models/uscs/fromaws_balancing/",
+            "-cs", "uscs",
             "-o", "data/output_classification/classification_multi",
             "-ob", "data/output_classification/classification_multi_bedrock"
         ],
         "cwd": "${workspaceFolder}",
         "justMyCode": true,
-        "python": "${workspaceFolder}/.venv/bin/python3"
+        "python": "${workspaceFolder}/env/bin/python3"
         },
         {
             "name": "API",
@@ -150,6 +146,32 @@
             "args": [
                 "-cf",
                 "bert/bert_config_lithology.yml"
+            ],
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "${workspaceFolder}/.venv/bin/python3"
+        },
+        {
+            "name": "Python: Run color-training",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.classification.color.main",
+            "args": [
+                // Train slices (-t, repeatable)
+                "-t", "TH-conso",
+                // Test slices (-e, repeatable)
+                "-e", "TH-unconso",
+                // Experiment name
+                "-n", "th_conso_to_unconso",
+                // Pretrained model (local path or HuggingFace ID)
+                "-m", "google-bert/bert-base-multilingual-uncased",
+                // Output directory
+                "-o", "models/color"
+                // Hyperparameters (optional, shown with defaults)
+                // "--num-epochs", "10",
+                // "--batch-size", "32",
+                // "--learning-rate", "1e-4",
+                // "--use-class-balancing"
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
