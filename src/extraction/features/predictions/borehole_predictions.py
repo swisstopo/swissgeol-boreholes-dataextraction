@@ -109,7 +109,7 @@ class BoreholeLayersWithGroundTruth:
     """Stratigraphy predictions for a specific borehole with associated ground truth."""
 
     layers: LayersInBorehole | None
-    ground_truth: GroundTruthLayer | None
+    ground_truth: list[GroundTruthLayer]
 
 
 @dataclasses.dataclass
@@ -117,7 +117,7 @@ class BoreholeGroundwaterWithGroundTruth:
     """Groundwater predictions for a specific borehole with associated ground truth."""
 
     groundwater: GroundwatersInBorehole | None
-    ground_truth: GroundTruthGroundwater | None
+    ground_truth: list[GroundTruthGroundwater] | None
 
 
 @dataclasses.dataclass

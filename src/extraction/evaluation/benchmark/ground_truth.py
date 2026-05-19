@@ -2,7 +2,6 @@
 
 import json
 import logging
-from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -68,7 +67,7 @@ class GroundTruthLayer(BaseModel):
 
     @field_validator("material_description", mode="before")
     @classmethod
-    def preprocess(cls, value: str | None) -> str:
+    def preprocess(cls, value: str | None) -> str | None:
         return parse_text(value) if value else None
 
 
@@ -117,13 +116,13 @@ class GroundTruth:
     """Ground truth data for the stratigraphy benchmark."""
 
     def __init__(self, path: Path) -> None:
-        """Instanciate the GroundTruth object.
+        """Instantiate the GroundTruth object.
 
         Args:
             path (Path): the path to the Ground truth file
         """
         self.path = path
-        self.ground_truth = defaultdict(lambda: defaultdict(dict))
+        self.ground_truth: dict[str, list[GroundTruthBorehole]] = {}
 
         # Load the ground truth data
         with open(path, encoding="utf-8") as in_file:
@@ -146,10 +145,14 @@ class GroundTruth:
             return self.ground_truth[file_name]
 
         logger.warning("No ground truth data found for %s.", file_name)
-        return {}
+        return []
 
-    def to_json(self) -> dict:
-        """Convert ground truth objects to dict."""
+    def to_json(self) -> dict[str, list[dict]]:
+        """Convert all ground truth boreholes to a JSON-serialisable dictionary.
+
+        Returns:
+            dict[str, list[dict]]: Mapping of file names to serialised borehole lists.
+        """
         return {
             filename: [borehole.model_dump() for borehole in boreholes]
             for filename, boreholes in self.ground_truth.items()

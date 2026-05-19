@@ -1,4 +1,4 @@
-"""TODO."""
+"""Script to populate material descriptions in a ground truth file from prediction output."""
 
 import json
 import logging
@@ -28,7 +28,12 @@ logger = logging.getLogger(__name__)
     help="Path to ground truth to update.",
 )
 def generate(prediction: Path, ground_truth: Path) -> None:
-    """TOOD."""
+    """Generate and fill missing material descriptions in a ground truth file.
+
+    Args:
+        prediction (Path): Path to the predictions JSON file from the extraction pipeline.
+        ground_truth (Path): Path to the ground truth JSON file to update.
+    """
     new_ground_truth = ground_truth.parent / f"{ground_truth.stem}.new{ground_truth.suffix}"
     with open(prediction, encoding="utf8") as f:
         predictions = OverallFilePredictions.from_json(json.load(f))
@@ -53,7 +58,7 @@ def generate(prediction: Path, ground_truth: Path) -> None:
             ):
                 layer_gt.material_description = matched_layer[0].material_description.text
 
-    # Count the number of material descriptions
+    # Write updated ground truth to file.
     with open(new_ground_truth, "w", encoding="utf8") as f:
         json.dump(gts.to_json(), f, indent=4)
 

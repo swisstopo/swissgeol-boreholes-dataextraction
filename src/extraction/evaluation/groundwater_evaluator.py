@@ -82,7 +82,7 @@ class GroundwaterEvaluator:
                     date=json_gt_data.date,
                     elevation=json_gt_data.elevation,
                 )
-                for json_gt_data in borehole_data.ground_truth or {}
+                for json_gt_data in borehole_data.ground_truth or []
             ]
 
             entries = (

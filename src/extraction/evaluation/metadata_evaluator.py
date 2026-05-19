@@ -113,7 +113,7 @@ class MetadataEvaluator:
             ground_truth_coordinates (GroundTruthCoordinates): the groundtruth coordinates
 
         Returns:
-            bool: if the extracted cooredinates match the ground truth
+            bool: if the extracted coordinates match the ground truth
         """
         if extracted_coordinates.east.coordinate_value > 2e6 and ground_truth_coordinates.E < 2e6:
             ground_truth_east = int(ground_truth_coordinates.E) + 2e6
@@ -130,14 +130,14 @@ class MetadataEvaluator:
         )
 
     @staticmethod
-    def match_name(extracted_name: BoreholeName, ground_truth_name: dict, ignore_spaces: bool = True) -> bool:
+    def match_name(extracted_name: BoreholeName, ground_truth_name: str, ignore_spaces: bool = True) -> bool:
         """Check matching between extracted and ground truth names.
 
         The matching is based on the filtered and normalized text. Keywords such as "bohrung" or "n°" are ignored.
 
         Args:
             extracted_name (BoreholeName): BoreholeName object that include detected name.
-            ground_truth_name (dict): Ground truth name.
+            ground_truth_name (str): Ground truth name.
             ignore_spaces (bool, optional): Indicate if spaces are ignored during matching. Defaults to True.
 
         Returns:

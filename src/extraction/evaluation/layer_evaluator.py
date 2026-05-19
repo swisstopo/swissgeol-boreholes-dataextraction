@@ -3,12 +3,11 @@
 import logging
 from collections import defaultdict
 from collections.abc import Callable
-from typing import Any
 
 import Levenshtein
 
 from core.benchmark_utils import Metrics
-from extraction.evaluation.benchmark.ground_truth import GroundTruthLayer
+from extraction.evaluation.benchmark.ground_truth import GroundTruthBorehole, GroundTruthLayer
 from extraction.features.predictions.borehole_predictions import (
     BoreholePredictionsWithGroundTruth,
     FileLayersWithGroundTruth,
@@ -59,7 +58,7 @@ class LayerEvaluator:
             if parse_text(layer.material_description.text) == "":
                 logger.warning("Empty string found in predictions")
 
-        def num_ground_truth_fn(ground_truth_layers: list[dict]):
+        def num_ground_truth_fn(ground_truth_layers: list[GroundTruthLayer]):
             return sum(lay.material_description is not None for lay in ground_truth_layers)
 
         return LayerEvaluator.calculate_metrics(
@@ -81,7 +80,7 @@ class LayerEvaluator:
             Metrics: Aggregated depth metrics across all boreholes.
         """
 
-        def num_ground_truth_fn(ground_truth_layers: list[dict]):
+        def num_ground_truth_fn(ground_truth_layers: list[GroundTruthLayer]):
             return sum(lay.depth_interval is not None for lay in ground_truth_layers)
 
         return LayerEvaluator.calculate_metrics(
@@ -94,7 +93,7 @@ class LayerEvaluator:
     @staticmethod
     def calculate_metrics(
         file_predictions: FileLayersWithGroundTruth,
-        num_ground_truth_fn: Callable[[list[dict]], int],
+        num_ground_truth_fn: Callable[[list[GroundTruthLayer]], int],
         per_layer_filter: Callable[[Layer], bool],
         per_layer_condition: Callable[[Layer], bool],
         per_layer_action: Callable[[Layer], None] | None = None,
@@ -103,7 +102,8 @@ class LayerEvaluator:
 
         Args:
             file_predictions (FileLayersWithGroundTruth): Borehole layer predictions paired with ground truth.
-            num_ground_truth_fn (Callable[[list[dict]], int]): Function that returns the number of ground truth.
+            num_ground_truth_fn (Callable[[list[GroundTruthLayer]], int]): Function that returns the number of
+                ground truth.
             per_layer_filter (Callable[[Layer], bool]): Function to filter layers to consider.
             per_layer_condition (Callable[[Layer], bool]): Function that returns True if the layer is a hit.
             per_layer_action (Optional[Callable[[Layer], None]]): Optional action to perform per layer.
@@ -211,16 +211,16 @@ class LayerEvaluator:
 
     @staticmethod
     def match_boreholes_to_ground_truth(
-        file_predictions: FilePredictions, ground_truth_for_file: dict
+        file_predictions: FilePredictions, ground_truth_for_file: list[GroundTruthBorehole]
     ) -> list[BoreholePredictionsWithGroundTruth]:
         """Match predicted boreholes to ground truth boreholes.
 
-        This method compares the predicted boreholes with the ground truth boreholes  and establishes a mapping
+        This method compares the predicted boreholes with the ground truth boreholes and establishes a mapping
             between them based on their similarity.
 
         Args:
             file_predictions (FilePredictions): all predictions for the file
-            ground_truth_for_file (dict): the ground truth for the file
+            ground_truth_for_file (list[GroundTruthBorehole]): the ground truth for the file
 
         Returns:
             list[BoreholePredictionsWithGroundTruth] : A list of matched borehole predictions with their ground truth.
@@ -277,10 +277,10 @@ class LayerEvaluator:
 
     @staticmethod
     def compute_borehole_affinity_and_mapping(
-        ground_truth_layers: list[dict[str, Any]],
+        ground_truth_layers: list[GroundTruthLayer],
         predicted_layers: list[Layer],
-        scoring_fn: Callable[[Layer, dict], float],
-    ) -> tuple[float, list[tuple[Layer, dict]]]:
+        scoring_fn: Callable[[Layer, GroundTruthLayer], float],
+    ) -> tuple[float, list[tuple[Layer, GroundTruthLayer]]]:
         """Computes the matching score between a prediction and a groundtruth borehole.
 
         Computing this score allows to match the predictions identified in the document against the correct
@@ -288,15 +288,15 @@ class LayerEvaluator:
         layers in the ground truth.
 
         Args:
-            ground_truth_layers (list[dict]): list containing the ground truth for the layers
+            ground_truth_layers (list[GroundTruthLayer]): list containing the ground truth for the layers
             predicted_layers (list[Layer]): object containing the list of the predicted layers
-            scoring_fn: Callable[[Layer, dict], float]: the scoring function to be used for selecting the best mapping
+            scoring_fn: Callable[[Layer, GroundTruthLayer], float]: scoring function used for selecting best mapping
 
         Returns:
             tuple: containing
                 - matching_score (float): a score that captures the similarity between the predicted and ground
                     truth layers. Maximum is 1.0.
-                - mapping (list[(Layer, dict)]): a list of mappings between predicted and ground truth layers.
+                - mapping (list[(Layer, GroundTruthLayer)]): mappings between predicted and ground truth layers.
         """
         dp = PredToGroundTruthLayerDP(predicted_layers, ground_truth_layers, [0.0] * len(ground_truth_layers))
         return dp.solve(scoring_fn)
@@ -333,6 +333,6 @@ def score_depths(layer: Layer, ground_truth: GroundTruthLayer) -> float:
     return depth_score
 
 
-def score_layer(layer: Layer, ground_truth: dict) -> float:
+def score_layer(layer: Layer, ground_truth: GroundTruthLayer) -> float:
     """Scores how well the full layer matches the ground truth on a scale from 0 to 1."""
     return (score_material_descriptions(layer, ground_truth) + score_depths(layer, ground_truth)) / 2
