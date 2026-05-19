@@ -67,8 +67,8 @@ class Groundwater(ExtractedFeature):
         """
         if date is None or date == "":
             return cls(depth=depth, date=None, elevation=elevation, is_correct=is_correct)
-        date = datetime.datetime.strptime(date, DATE_FORMAT)
-        date = date.replace(year=date.year - 100) if date > datetime.datetime.now() else date
+        date = datetime.datetime.strptime(date, DATE_FORMAT).date()
+        date = date.replace(year=date.year - 100) if date > datetime.datetime.now().date() else date
         return cls(depth=depth, date=date, elevation=elevation, is_correct=is_correct)
 
     @classmethod
