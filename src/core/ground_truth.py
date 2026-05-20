@@ -65,11 +65,6 @@ class GroundTruthLayer(BaseModel):
     material_description: str | None = None
     unconsolidated: GroundTruthUnconsolidated | None = None
 
-    @field_validator("material_description", mode="before")
-    @classmethod
-    def preprocess(cls, value: str | None) -> str | None:
-        return parse_text(value) if value else None
-
 
 class GroundTruthGroundwater(BaseModel):
     """A recorded groundwater measurement."""
