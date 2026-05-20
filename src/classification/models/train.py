@@ -26,9 +26,12 @@ from transformers import (
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
 
+from classification.dataset.base import TokenizedClassificationDataset
+from classification.dataset.color import ColorClassificationDataset
 from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
 from classification.models.data_provider import DataSplit, TrainingDataProvider
 from classification.models.model import _HEAD_PARAM_PREFIXES, BertModel
+from core.ground_truth import GroundTruth
 from core.mlflow_utils import setup_mlflow_tracking
 
 load_dotenv()
@@ -289,12 +292,26 @@ class BertTrainer:
         if self.use_class_balancing:
             compute_loss_func = WeightedLabelSmoother(class_weights=compute_trainset_weights(split.train))
 
+        # TODO: Test creating datasets myself
+        dataset = ColorClassificationDataset.from_ground_truth(
+            ground_truth=GroundTruth("data/thurgau_ground_truth.462.json"), use_consolidated=True
+        )
+        len(dataset)
+        dataset[0]
+
+        tokenied_dataset = TokenizedClassificationDataset(
+            dataset,
+            tokenizer=bert.tokenizer,
+        )
+        len(tokenied_dataset)
+        tokenied_dataset[0]
+
         checkpointer = _BestHeadCheckpointer(bert.model, run_dir)
         trainer_cls = _BalancedTrainer if self.use_balanced_sampler else Trainer
         trainer_kwargs: dict = dict(
             model=bert.model,
             args=training_args,
-            train_dataset=split.train,
+            train_dataset=tokenied_dataset,
             eval_dataset=split.val,
             processing_class=bert.tokenizer,
             data_collator=DataCollatorWithPadding(tokenizer=bert.tokenizer),
