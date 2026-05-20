@@ -330,6 +330,9 @@ class BertTrainer:
 
         test_metrics = trainer.evaluate(split.test)
         test_metrics = {k.removeprefix("eval_"): v for k, v in test_metrics.items()}
+        for extra_name, extra_test in split.extra_tests.items():
+            extra = trainer.evaluate(extra_test)
+            test_metrics.update({f"{extra_name}_{k.removeprefix('eval_')}": v for k, v in extra.items()})
         (run_dir / "metrics.json").write_text(json.dumps(test_metrics, indent=2), encoding="utf-8")
 
         logger.info(

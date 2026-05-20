@@ -6,7 +6,7 @@ Adding a new classification task means implementing TrainingDataProvider.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 import datasets as hf_datasets
@@ -25,6 +25,7 @@ class DataSplit:
     train: hf_datasets.Dataset
     val: hf_datasets.Dataset
     test: hf_datasets.Dataset
+    extra_tests: dict[str, hf_datasets.Dataset] = field(default_factory=dict)
 
 
 class TrainingDataProvider(Protocol):
@@ -53,18 +54,20 @@ class ColorDataProvider:
     select from these pre-computed splits so the same 80 % of samples is always
     used for training, regardless of which experiment is run.
 
-    Split logic (matches the consolidation study table):
+    Split logic:
         - val tracks the TRAIN distribution for non-mixed experiments
-        - val tracks the TEST distribution for mixed experiments
+        - val tracks conso for mixed experiments
+        - test_consolidation=None evaluates on both conso and unconso in one run;
+          conso metrics are stored under the standard keys, unconso under "unconso_*"
 
     Args:
         train_consolidation: 1=conso, 0=unconso, None=mixed (conso+unconso).
-        test_consolidation:  1=conso, 0=unconso.
+        test_consolidation:  1=conso, 0=unconso, None=both.
         name: Experiment name used for output directory naming.
     """
 
     train_consolidation: int | None
-    test_consolidation: int
+    test_consolidation: int | None
     name: str = "color_experiment"
     val_ratio: float = 0.1
     test_ratio: float = 0.1
@@ -81,11 +84,11 @@ class ColorDataProvider:
         return samples
 
     def get_split(self, tokenizer, max_length: int) -> DataSplit:
-        needed = {self.test_consolidation}
-        if self.train_consolidation is None:
+        needed: set[int] = {0, 1} if self.train_consolidation is None else {self.train_consolidation}
+        if self.test_consolidation is None:
             needed |= {0, 1}
         else:
-            needed.add(self.train_consolidation)
+            needed.add(self.test_consolidation)
 
         pre_split = {
             cons: BoreholeDataset.random_split(
@@ -94,7 +97,8 @@ class ColorDataProvider:
             for cons in needed
         }
 
-        val_cons = self.test_consolidation if self.train_consolidation is None else self.train_consolidation
+        # val tracks train distribution; for mixed training use conso as val reference
+        val_cons = self.train_consolidation if self.train_consolidation is not None else 1
 
         train_ds = (
             BoreholeDataset(list(pre_split[0][0]) + list(pre_split[1][0]))
@@ -102,7 +106,8 @@ class ColorDataProvider:
             else pre_split[self.train_consolidation][0]
         )
         val_ds = pre_split[val_cons][1]
-        test_ds = pre_split[self.test_consolidation][2]
+        primary_test_cons = 1 if self.test_consolidation is None else self.test_consolidation
+        test_ds = pre_split[primary_test_cons][2]
 
         def _to_hf(ds: BoreholeDataset) -> hf_datasets.Dataset:
             texts, labels = [], []
@@ -113,26 +118,21 @@ class ColorDataProvider:
                 labels.append(sample["color"].index(1))
             return _tokenize(texts, labels, tokenizer, max_length)
 
-        return DataSplit(train=_to_hf(train_ds), val=_to_hf(val_ds), test=_to_hf(test_ds))
+        extra_tests = {"unconso": _to_hf(pre_split[0][2])} if self.test_consolidation is None else {}
+        return DataSplit(train=_to_hf(train_ds), val=_to_hf(val_ds), test=_to_hf(test_ds), extra_tests=extra_tests)
 
 
 def consolidation_study_providers() -> list[ColorDataProvider]:
-    """Return the 6 ColorDataProviders for the consolidation generalisation study.
+    """Return the 3 ColorDataProviders for the consolidation generalisation study.
 
     conso   → conso    (in-distribution baseline)
-    conso   → unconso  (cross-type generalisation)
-    unconso → conso    (cross-type generalisation)
     unconso → unconso  (in-distribution baseline)
-    mixed   → conso    (does mixed training help on conso?)
-    mixed   → unconso  (does mixed training help on unconso?)
+    mixed   → both     (train once on conso+unconso; evaluate on both test sets)
     """
     return [
         ColorDataProvider(train_consolidation=1, test_consolidation=1, name="conso_to_conso"),
-        ColorDataProvider(train_consolidation=1, test_consolidation=0, name="conso_to_unconso"),
-        ColorDataProvider(train_consolidation=0, test_consolidation=1, name="unconso_to_conso"),
         ColorDataProvider(train_consolidation=0, test_consolidation=0, name="unconso_to_unconso"),
-        ColorDataProvider(train_consolidation=None, test_consolidation=1, name="mixed_to_conso"),
-        ColorDataProvider(train_consolidation=None, test_consolidation=0, name="mixed_to_unconso"),
+        ColorDataProvider(train_consolidation=None, test_consolidation=None, name="mixed"),
     ]
 
 

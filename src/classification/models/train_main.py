@@ -283,16 +283,13 @@ def consolidation_study_command(
     use_class_balancing: bool | None,
     use_balanced_sampler: bool | None,
 ) -> None:
-    r"""Run all 6 consolidation generalisation experiments and print a comparison table.
+    r"""Run 3 consolidation experiments and print a comparison table.
 
     \b
     Experiments:
         conso   → conso    (in-distribution baseline)
-        conso   → unconso  (cross-type generalisation)
-        unconso → conso    (cross-type generalisation)
         unconso → unconso  (in-distribution baseline)
-        mixed   → conso    (does mixed training help on conso?)
-        mixed   → unconso  (does mixed training help on unconso?)
+        mixed   → both     (train once on conso+unconso; test on both; unconso metrics prefixed with "unconso_")
     """
     configure_logging()
     cfg = _load_cfg(config_file)
