@@ -7,7 +7,7 @@ from collections.abc import Callable
 import Levenshtein
 
 from core.benchmark_utils import Metrics
-from extraction.evaluation.benchmark.ground_truth import GroundTruthBorehole, GroundTruthLayer
+from core.ground_truth import GroundTruthBorehole, GroundTruthLayer
 from extraction.features.predictions.borehole_predictions import (
     BoreholePredictionsWithGroundTruth,
     FileLayersWithGroundTruth,

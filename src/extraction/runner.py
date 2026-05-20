@@ -10,11 +10,11 @@ from pathlib import Path
 
 from tqdm import tqdm
 
+from core.ground_truth import GroundTruth
 from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_tracking
 from core.pipeline_runner import MultiBenchmarkRunner, PipelineRunner, PipelineRunResult
 from extraction.core.extract import ExtractionResult, extract
-from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.evaluation.benchmark.score import (
     ExtractionBenchmarkSummary,
     evaluate_all_predictions,

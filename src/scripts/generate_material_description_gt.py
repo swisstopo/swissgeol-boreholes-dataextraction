@@ -6,7 +6,7 @@ from pathlib import Path
 
 import click
 
-from extraction.evaluation.benchmark.ground_truth import GroundTruth
+from core.ground_truth import GroundTruth
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 
 logger = logging.getLogger(__name__)

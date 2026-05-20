@@ -3,7 +3,7 @@
 import math
 
 from core.benchmark_utils import Metrics
-from extraction.evaluation.benchmark.ground_truth import GroundTruthCoordinates
+from core.ground_truth import GroundTruthCoordinates
 from extraction.evaluation.evaluation_dataclasses import (
     BoreholeMetadataMetrics,
 )

@@ -4,7 +4,7 @@ import csv
 import dataclasses
 import io
 
-from extraction.evaluation.benchmark.ground_truth import (
+from core.ground_truth import (
     GroundTruthBorehole,
     GroundTruthGroundwater,
     GroundTruthLayer,

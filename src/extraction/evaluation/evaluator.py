@@ -3,7 +3,7 @@
 import logging
 
 from core.benchmark_utils import Metrics
-from extraction.evaluation.benchmark.ground_truth import GroundTruth, GroundTruthMetadata
+from core.ground_truth import GroundTruth, GroundTruthMetadata
 from extraction.evaluation.benchmark.metrics import OverallMetricsCatalog
 from extraction.evaluation.evaluation_dataclasses import BoreholeMetadataMetrics
 from extraction.evaluation.groundwater_evaluator import (

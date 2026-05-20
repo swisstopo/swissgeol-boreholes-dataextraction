@@ -3,7 +3,7 @@
 import pymupdf
 import pytest
 
-from extraction.evaluation.benchmark.ground_truth import GroundTruthLayer
+from core.ground_truth import GroundTruthLayer
 from extraction.evaluation.layer_evaluator import (
     LayerEvaluator,
     score_depths,
