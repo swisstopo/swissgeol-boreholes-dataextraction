@@ -107,7 +107,7 @@ class GroundTruthBorehole(BaseModel):
 
     model_config = {"extra": "forbid"}
     borehole_index: int
-    groundwater: list[GroundTruthGroundwater] | None
+    groundwater: list[GroundTruthGroundwater] | None = None
     layers: list[GroundTruthLayer]
     metadata: GroundTruthMetadata
 

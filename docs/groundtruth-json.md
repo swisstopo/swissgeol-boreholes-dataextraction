@@ -89,7 +89,7 @@ All depth and elevation values are in **meters**. Layer depths must be provided 
           "material_description": "Roche en place: phyllade argileux noir avec des plans de strastification dépolis et brillants.",
           "consolidated": {
             "alteration_degree": "fresh",
-            "lithology": "phyllite",
+            "lithology": "phyllite"
           }
         }
       ],
