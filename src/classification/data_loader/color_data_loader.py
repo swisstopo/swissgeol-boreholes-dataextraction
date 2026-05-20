@@ -138,7 +138,6 @@ class BoreholeDataset:
         cls,
         path: Path,
         skip_unknown_consolidation: bool = False,
-        pred_lookup: dict[str, dict[tuple, str]] | None = None,
     ) -> BoreholeDataset:
         """Load a BoreholeDataset from a ground truth JSON file.
 
@@ -146,9 +145,6 @@ class BoreholeDataset:
             path: Path to the ground truth JSON (maps filename → list of boreholes).
             skip_unknown_consolidation: When True, layers where neither 'consolidated'
                 nor 'unconsolidated' is set are excluded from the dataset.
-            pred_lookup: Optional mapping of filename → {(borehole_index, depth_start, depth_end) → text}
-                used to fill in material descriptions that are absent from the ground truth.
-                Layers that still have no description after the lookup are skipped as usual.
 
         Returns:
             BoreholeDataset with one LayerSample per valid layer.
@@ -158,14 +154,9 @@ class BoreholeDataset:
 
         samples: list[LayerSample] = []
         for filename, boreholes in ground_truth.items():
-            file_pred = pred_lookup.get(filename) if pred_lookup else None
             for borehole in boreholes:
-                borehole_index = borehole.get("borehole_index")
                 for layer in borehole.get("layers", []):
                     material_description = layer.get("material_description")
-                    if not material_description and file_pred:
-                        depth = layer.get("depth_interval") or {}
-                        material_description = file_pred.get((borehole_index, depth.get("start"), depth.get("end")))
                     if not material_description:
                         continue
 
@@ -197,60 +188,35 @@ class BoreholeDataset:
         return BoreholeDataset([s for s in self._samples if s["consolidated"] == consolidated])
 
     @classmethod
-    def from_splits(
+    def random_split(
         cls,
-        train: list[tuple[Path, int | None]],
-        test: list[tuple[Path, int | None]],
+        samples: list[LayerSample],
         val_ratio: float = 0.1,
         test_ratio: float = 0.1,
-        random_seed: int = 42,
-        pred_lookup: dict[str, dict[tuple, str]] | None = None,
+        seed: int = 42,
     ) -> tuple[BoreholeDataset, BoreholeDataset, BoreholeDataset]:
-        """Build train, val, and test datasets from named slices with no data leakage.
+        """Split samples into train/val/test with a fixed random shuffle.
 
-        Each (path, consolidated) pair is split once with a fixed seed:
-        - Pairs only in train:  (1 - val_ratio) → train, val_ratio → val
-        - Pairs only in test:   100% → test  (never seen during training)
-        - Pairs in both:        (1 - val_ratio - test_ratio) → train, val_ratio → val,
-                                test_ratio → test
+        The split is fully deterministic for a given seed, so the same 80 % of
+        samples are always used for training regardless of which experiment calls
+        this method.
 
         Args:
-            train: (json_path, consolidated) pairs that form the training set.
-            test:  (json_path, consolidated) pairs that form the test set.
-            val_ratio: Fraction of each shared/train-only slice held out for validation.
-            test_ratio: Fraction of each shared slice held out for the test set.
-            random_seed: Seed for reproducible shuffles.
-            pred_lookup: Optional lookup forwarded to each from_json call to supplement
-                ground-truth layers that have no material_description.
+            samples: All samples to split (typically all data for one consolidation type).
+            val_ratio: Fraction held out for validation.
+            test_ratio: Fraction held out for testing.
+            seed: Random seed for reproducibility.
 
         Returns:
-            A (train_dataset, val_dataset, test_dataset) tuple.
+            (train, val, test) BoreholeDatasets with no overlap.
         """
-        train_keys = set(train)
-        test_keys = set(test)
-        shared = train_keys & test_keys
-
-        train_samples: list[LayerSample] = []
-        val_samples: list[LayerSample] = []
-        test_samples: list[LayerSample] = []
-
-        for path, consolidated in sorted(train_keys - shared, key=lambda x: (str(x[0]), str(x[1]))):
-            samples = list(cls.from_json(path, pred_lookup=pred_lookup).filter(consolidated=consolidated))
-            random.Random(random_seed).shuffle(samples)
-            n_val = max(1, round(len(samples) * val_ratio))
-            val_samples.extend(samples[:n_val])
-            train_samples.extend(samples[n_val:])
-
-        for path, consolidated in sorted(test_keys - shared, key=lambda x: (str(x[0]), str(x[1]))):
-            test_samples.extend(cls.from_json(path, pred_lookup=pred_lookup).filter(consolidated=consolidated))
-
-        for path, consolidated in sorted(shared, key=lambda x: (str(x[0]), str(x[1]))):
-            samples = list(cls.from_json(path, pred_lookup=pred_lookup).filter(consolidated=consolidated))
-            random.Random(random_seed).shuffle(samples)
-            n_test = max(1, round(len(samples) * test_ratio))
-            n_val = max(1, round(len(samples) * val_ratio))
-            test_samples.extend(samples[:n_test])
-            val_samples.extend(samples[n_test : n_test + n_val])
-            train_samples.extend(samples[n_test + n_val :])
-
-        return cls(train_samples), cls(val_samples), cls(test_samples)
+        shuffled = list(samples)
+        random.Random(seed).shuffle(shuffled)
+        n = len(shuffled)
+        n_test = max(1, round(n * test_ratio))
+        n_val = max(1, round(n * val_ratio))
+        return (
+            cls(shuffled[n_test + n_val :]),
+            cls(shuffled[n_test : n_test + n_val]),
+            cls(shuffled[:n_test]),
+        )

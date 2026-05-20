@@ -16,7 +16,7 @@ test_slices:
   - "NA-unconso"
 name: "conso_to_unconso"
 
-# Training hyperparameters (mirrors bert_config_lithology.yml)
+# Training hyperparameters
 batch_size: 32
 num_epochs: 32
 learning_rate: 3.0e-3

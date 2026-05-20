@@ -26,7 +26,8 @@ class Classifier(ABC):
 
         # load the system-specific config (e.g. Lithology, En...)
         config_file = classifier_config[classification_system.get_name()]
-        self.config.update(read_params(config_file))
+        if config_file:
+            self.config.update(read_params(config_file))
 
     @abstractmethod
     def get_name(self) -> str:

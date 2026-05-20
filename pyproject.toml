@@ -96,7 +96,7 @@ boreholes-extract-metadata = "extraction.main:click_pipeline_metadata"
 boreholes-download-profiles = "scripts.get_files:download_directory_froms3"
 boreholes-score = "extraction.evaluation.benchmark.score:main"
 boreholes-classify-descriptions = "classification.main:click_pipeline"
-fine-tune-bert = "classification.models.train:train_model"
+fine-tune-bert = "classification.models.train_main:cli"
 
 # ---- Configuration for Ruff
 [tool.ruff.lint]

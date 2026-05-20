@@ -68,9 +68,40 @@ class BertModel:
         """Set up label mappings based on the classification system."""
         classes = self.classification_system.get_enum()
         self.num_class = len(classes)
-        self.id2label = {class_.value: class_.name for class_ in classes}
-        self.label2id = {class_.name: class_.value for class_ in classes}
-        self.id2classEnum = {class_.value: class_ for class_ in classes}
+        self.id2label = self.classification_system.get_id2label()
+        self.label2id = {v: k for k, v in self.id2label.items()}
+        self.id2classEnum = {c.value: c for c in classes}
+
+    @classmethod
+    def from_labels(
+        cls,
+        model_path: str | Path,
+        labels: list[str],
+        backbone_path: str | Path | None = None,
+        tokenizer_path: str | Path | None = None,
+    ) -> "BertModel":
+        """Create a BertModel from an arbitrary label list, without a ClassificationSystem.
+
+        Use this for training when labels are not part of an existing ClassificationSystem.
+        id2classEnum maps index → label string rather than an IntEnum member.
+
+        Args:
+            model_path: Local BERT checkpoint path or HuggingFace model ID.
+            labels: Ordered list of class names; labels[i] is the display name for class index i.
+            backbone_path: Path to backbone.safetensors for split-model loading.
+            tokenizer_path: Directory containing tokenizer files.
+        """
+        instance = object.__new__(cls)
+        instance.classification_system = None
+        instance.num_class = len(labels)
+        instance.id2label = dict(enumerate(labels))
+        instance.label2id = {label: i for i, label in enumerate(labels)}
+        instance.id2classEnum = dict(enumerate(labels))
+        instance.model_path = _resolve_path(model_path)
+        instance.backbone_path = _resolve_path(backbone_path) if backbone_path else None
+        instance.tokenizer_path = _resolve_path(tokenizer_path) if tokenizer_path else None
+        instance.model = instance._load_model()
+        return instance
 
     def _load_model(self) -> BertForSequenceClassification:
         """Load the tokenizer and model, then put the model in evaluation mode.

@@ -70,6 +70,15 @@ class ClassificationSystem(ABC):
         ...
 
     @classmethod
+    def get_id2label(cls) -> dict[int, str]:
+        """Return a mapping from label index to display name.
+
+        Override this in subclasses when the display name should differ from the enum member name
+        (e.g. names containing spaces that are stored with underscores in the enum).
+        """
+        return {c.value: c.name for c in cls.get_enum()}
+
+    @classmethod
     def map_most_similar_class(cls, class_str: str) -> EnumMember:
         """Maps a given string to the closest matching class in the classification system.
 
@@ -477,6 +486,58 @@ class LithologySystem(ClassificationSystem):
         Trachyte = auto()  # not seen in ground truth data (yet)
 
 
+class ColorClassificationSystem(ClassificationSystem):
+    """Classification system for primary color prediction from borehole layer descriptions.
+
+    Color names contain spaces (e.g. "brownish grey"), so the IntEnum uses underscores
+    internally while get_id2label() returns the original names with spaces for display
+    and model config serialisation.
+    """
+
+    _ColorClasses: type[IntEnum] | None = None
+
+    @classmethod
+    def _get_colors(cls) -> list[str]:
+        from classification.data_loader.color_data_loader import COLORS  # lazy to avoid circular import
+
+        return COLORS
+
+    @classmethod
+    def _get_color_enum(cls) -> type[IntEnum]:
+        if cls._ColorClasses is None:
+            colors = cls._get_colors()
+            cls._ColorClasses = IntEnum("ColorClasses", {c.replace(" ", "_"): i for i, c in enumerate(colors)})
+        return cls._ColorClasses
+
+    @classmethod
+    def get_enum(cls) -> type[IntEnum]:
+        return cls._get_color_enum()
+
+    @classmethod
+    def get_name(cls) -> str:
+        return "color"
+
+    @classmethod
+    def get_id2label(cls) -> dict[int, str]:
+        return dict(enumerate(cls._get_colors()))
+
+    @classmethod
+    def get_layer_ground_truth_keys(cls) -> list[str]:
+        return []
+
+    @classmethod
+    def normalize_class_string(cls, class_str: str) -> str:
+        return class_str.lower().strip()
+
+    @classmethod
+    def get_default_class_value(cls) -> IntEnum:
+        return next(iter(cls.get_enum()))
+
+    @classmethod
+    def get_dummy_classifier_class_value(cls) -> IntEnum:
+        return next(iter(cls.get_enum()))
+
+
 class ExistingClassificationSystems(Enum):
     """Enum listing all existing classification types.
 
@@ -486,10 +547,11 @@ class ExistingClassificationSystems(Enum):
     uscs = USCSSystem
     lithology = LithologySystem
     en_main = ENMainSystem
+    color = ColorClassificationSystem
 
     @classmethod
     def get_classification_system_type(
-        cls, class_system: Literal["uscs", "lithology", "en_main"]
+        cls, class_system: Literal["uscs", "lithology", "en_main", "color"]
     ) -> type[ClassificationSystem]:
         """Returns the class of a classification system based on input string.
 

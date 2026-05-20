@@ -135,15 +135,17 @@ def prepare_classification_data(
                 else:
                     ground_truth_match = layer
 
-                class_str = classification_system.get_class_from_entry(ground_truth_match, layer_class_keys)
-                if not class_str:
-                    logger.debug(
-                        f"Skipping layer: no {layer_class_keys} in ground truth for {filename},"
-                        f"layer: {layer['material_description']}."
-                    )
-                    continue
-
-                ground_truth_class = classification_system.map_most_similar_class(class_str)
+                if layer_class_keys:
+                    class_str = classification_system.get_class_from_entry(ground_truth_match, layer_class_keys)
+                    if not class_str:
+                        logger.debug(
+                            f"Skipping layer: no {layer_class_keys} in ground truth for {filename},"
+                            f"layer: {layer['material_description']}."
+                        )
+                        continue
+                    ground_truth_class = classification_system.map_most_similar_class(class_str)
+                else:
+                    ground_truth_class = classification_system.get_default_class_value()
 
                 layer_descriptions.append(
                     LayerInformation(
