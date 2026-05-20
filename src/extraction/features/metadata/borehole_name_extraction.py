@@ -58,7 +58,7 @@ class BoreholeName(ExtractedFeature):
         """Converts a dictionary to an object.
 
         Args:
-            data (dict): A dictionary representing the elevation information.
+            data (dict): A dictionary representing the name information.
 
         Returns:
             BoreholeName: The borehole's name information object.

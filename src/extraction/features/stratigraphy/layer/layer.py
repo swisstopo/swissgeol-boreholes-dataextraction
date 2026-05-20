@@ -43,7 +43,7 @@ class LayerDepthsEntry(RectWithPageMixin):
             data (dict): A dictionary representing the layer depths entry.
 
         Returns:
-            DepthColumnEntry: the corresponding LayerDepthsEntry object.
+            LayerDepthsEntry: the corresponding LayerDepthsEntry object.
         """
         return cls(
             value=data["value"], rect=pymupdf.Rect(data["rect"]) if data["rect"] else None, page_number=data["page"]
@@ -122,7 +122,7 @@ class LayerDepths(ExtractedFeature):
             data (dict): A dictionary representing the layer depths.
 
         Returns:
-            DepthColumnEntry: the corresponding LayerDepths object.
+            LayerDepths: the corresponding LayerDepths object.
         """
         return cls(
             start=LayerDepthsEntry.from_json(data["start"]) if data["start"] else None,
@@ -211,10 +211,10 @@ class Layer(ExtractedFeature):
         """Converts a dictionary to an object.
 
         Args:
-            data (dict): A dictionarie representing the layer.
+            data (dict): A dictionary representing the layer.
 
         Returns:
-            list[LayerPrediction]: A list of LayerPrediction objects.
+            Layer: The corresponding Layer object.
         """
         material_prediction = MaterialDescription.from_json(data["material_description"])
         depths = LayerDepths.from_json(data["depths"]) if ("depths" in data and data["depths"] is not None) else None

@@ -92,7 +92,7 @@ class MetadataEvaluator:
         )
 
     @staticmethod
-    def match_elevation(extracted_elevation: float, ground_truth_elevation: float):
+    def match_elevation(extracted_elevation: float, ground_truth_elevation: float) -> bool:
         """Method used to evaluate the extracted elevation against the ground truth.
 
         Args:
@@ -105,7 +105,7 @@ class MetadataEvaluator:
         return math.isclose(extracted_elevation, ground_truth_elevation, abs_tol=0.01)
 
     @staticmethod
-    def match_coordinates(extracted_coordinates: Coordinate, ground_truth_coordinates: GroundTruthCoordinates):
+    def match_coordinates(extracted_coordinates: Coordinate, ground_truth_coordinates: GroundTruthCoordinates) -> bool:
         """Method used to evaluate the extracted coordinates against the ground truth.
 
         Args:

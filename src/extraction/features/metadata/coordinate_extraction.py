@@ -69,7 +69,7 @@ class Coordinate(ExtractedFeature):
         Args:
             east (float): The east coordinate value.
             north (float): The north coordinate value.
-            is_correct (bool): Indicate if the layer is properly detected.
+            is_correct (bool): Indicate if the coordinates are properly detected.
 
         Returns:
             Coordinate | None: The coordinate object.

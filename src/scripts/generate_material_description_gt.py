@@ -52,9 +52,15 @@ def generate(prediction: Path, ground_truth: Path) -> None:
         ]
 
         # Match correct layers to GT (assume single borehole)
+        if len(gt_for_prediction) != 1:
+            logger.warning(f"File {file_prediction.filename} has more than one GT boreholes.")
+
         for layer_gt in gt_for_prediction[0].layers:
             if matched_layer := list(
-                filter(lambda x: layer_gt.depth_interval.start == x.depths.start.value, correct_layers)
+                filter(
+                    lambda x: x.depths.start is not None and layer_gt.depth_interval.start == x.depths.start.value,
+                    correct_layers,
+                )
             ):
                 layer_gt.material_description = matched_layer[0].material_description.text
 

@@ -1,202 +1,102 @@
-# `ground_truth.json` input structure
+# `ground_truth.json` Input Structure
 
-**Ground-truth training/evaluation data** needs to be provided in the form of a JSON file in order to do the following:
+The `ground_truth.json` file provides annotated reference data used to compute extraction metrics and train classification models. See [train_BERT.md](train_BERT.md) for details on model training.
 
-- compute accuracy metrics for the extracted data on a certain datasets
-- train classification models (see train_BERT.md for more details on that use case)
+## Schema Overview
 
-This document describes the format of the ground-truth file.
+We denote with `*` all elements that are mandatory. All other elements can be omitted.
 
----
-
-## Top-level structure
-
-The JSON file is a single object (dictionary / map):
-
-- **Key**: `"<pdf_filename>.pdf"` (string) — the name of the PDF file.
-- **Value**: `boreholes` (array) — the list of boreholes contained in that PDF.
-
-```json
-{
-  "<pdf_filename>.pdf": [
-    { "borehole_index": 0, "metadata": { ... }, "layers": [ ... ], "groundwater": [ ... ] }
-  ]
-}
+```text
+ground_truth.json
+└── "<filename>.pdf"                        # One entry per PDF file
+    └── []                                  # List of boreholes in that PDF
+        ├── borehole_index*                 # Zero-based index (0, 1, …)
+        ├── metadata*
+        │   ├── coordinates                 # Borehole location
+        │   │   ├── E*                      # Easting
+        │   │   └── N*                      # Northing
+        │   ├── drilling_date               # Date in YYYY-MM-DD format
+        │   ├── drilling_methods[]          # List of drilling method identifiers
+        │   ├── original_name               # Borehole identifier in the source document
+        │   ├── project_name                # Project / report name
+        │   ├── reference_elevation         # Surface elevation (m above sea level)
+        │   └── total_depth                 # Total borehole depth (m)
+        │
+        ├── layers*[]
+        │   ├── depth_interval*
+        │   │   ├── start                   # Start depth (m)
+        │   │   └── end                     # End depth (m)
+        │   ├── material_description        # Free-text lithology description
+        │   ├── consolidated                # Classification for rock layers
+        │   │   ├── lithology               # Rock or sediment type
+        │   │   ├── uscs[]                  # USCS (Unified Soil Classification System) class codes
+        │   │   ├── primary_color           # Dominant colour
+        │   │   ├── cementation             # Cementation degree or type
+        │   │   ├── accessory_components[]  # Minor mineral or clast components
+        │   │   ├── mineral_components[]    # Primary mineral components
+        │   │   └── alteration_degree       # Weathering / alteration degree
+        │   └── unconsolidated              # Classification for loose sediment layers
+        │       ├── main                    # Dominant grain type (EN two-level code, e.g. "Ba")
+        │       ├── other[]                 # Secondary grain types
+        │       ├── uscs[]                  # USCS class codes
+        │       ├── primary_color           # Dominant colour
+        │       ├── grain_shape[]           # Grain shape descriptors
+        │       ├── grain_angularity[]      # Grain angularity descriptors
+        │       ├── debris[]                # Debris or clast types
+        │       ├── organic_components[]    # Organic material components
+        │       └── alteration_degree       # Weathering / alteration degree
+        │
+        └── groundwater[]                   # Groundwater measurements
+            ├── date                        # Measurement date (YYYY-MM-DD)
+            ├── depth*                      # Groundwater depth (m)
+            └── elevation*                  # Elevation (m above sea level)
 ```
 
-Note:
+All depth and elevation values are in **meters**. Layer depths must be provided in increasing order, with `start` ≤ `end` when both are present.
 
-A single PDF can contain **multiple boreholes** (e.g. `borehole_index: 0`, `borehole_index: 1`, …). 
+`material_description` may be absent from the JSON file and populated later using `generate_material_description_gt.py`. All classification fields (`consolidated`, `unconsolidated`, and their sub-fields) are optional and omitted from serialisation when `null`.
 
-
----
-
-## Borehole object
-
-Each item in the per-PDF list is a **borehole object** with the following keys:
-
-- `borehole_index` *(integer)*  
-  Index to differentiate boreholes inside a single PDF. Starts at `0`. 
-
-- `metadata` *(object)*  
-  Borehole-level metadata (see below). 
-
-- `layers` *(array)*  
-  List of lithological layers (depth intervals + material descriptions). 
-
-- `groundwater` *(array)*  
-  List of groundwater measurements (date + depth + elevation). 
-
----
-
-## `metadata` object
-
-The `metadata` object stores borehole-level information. In the Zurich example, it contains:
-
-- `coordinates` *(object, optional)*  
-  - `E` *(number, optional)* — Easting  
-  - `N` *(number, optional)* — Northing 
-
-- `drilling_date` *(string, optional)*  
-  Date in **`YYYY-MM-DD`** format.
-
-- `drilling_methods` *(any / null, optional)*  
-  May be `null` if unknown. 
-
-- `original_name` *(string, optional)*  
-  Original borehole identifier/name in the source document. 
-
-- `project_name` *(string, optional)*  
-  Project/report name.
-
-- `reference_elevation` *(number, optional)*  
-  Reference elevation in meters above sea level. 
-
-- `total_depth` *(number, optional)*  
-  Total borehole depth in meters. 
-
----
-
-## `layers` array
-
-`layers` is a list of layer objects. Each layer object contains:
-
-- `depth_interval` *(object, required)*  
-  - `start` *(number | null, required)* — start depth in meters  
-  - `end` *(number | null, required)* — end depth in meters 
-
-- `material_description` *(string, required)*  
-  Free-text lithology/material description for the interval. 
-
-### Depth interval conventions
-
-- Depths are in **meters**.
-- `start` should be **<=** `end` when both are present
-- Provide layers in **increasing depth order**.
-
-### `classification`attributes
-For classififcation of the material descriptions from the ground truth or from the predictions, 
-following optional attributes can be added to the `layers`array. 
-- `lithology` *(string, optional)* 
-  Describes the rock or sediment type.
-- `uscs_1` *(string, optional)* 
-  Key used to retrieve the ground truth USCS (Unified Soil Classification System) class from a layer dictionary.
-- `uscs_2`*(string, optional)* 
-  Optional secondary classification.
-- `unconsolidated` *(object, optional)* 
-  Contains the EN two-level geological classification of loose sediments.
-  - `main` *(string, optional)* 
-    The dominant grain type. 
-  - `other` *(array, optional)* 
-    Lists secondary grain types present in smaller proportions.
-
----
-
-## `groundwater` array 
-
-`groundwater` is a list of groundwater measurement objects:
-
-- `date` *(string)* — date in **`YYYY-MM-DD`** format  
-- `depth` *(number)* — measured groundwater depth in meters  
-- `elevation` *(number)* — elevation in meters above sea level 
----
 
 ## Example
 
-Below is a condensed example showing all main fields (one PDF with one borehole).
-
-```json
+```jsonc
 {
-  "680248008-bp.pdf": [
+  "example.pdf": [
     {
       "borehole_index": 0,
       "metadata": {
-        "coordinates": { "E": 680995, "N": 248040 },
-        "drilling_date": "1972-01-01",
+        "coordinates": { "E": 499936.0, "N": 116004.0 },
+        "drilling_date": "1961-06-08",
         "drilling_methods": null,
-        "original_name": "75",
-        "project_name": "Oelunfall Hardstrasse-Albisriederplatz",
-        "reference_elevation": 411.83,
-        "total_depth": 20.0
+        "original_name": "Forage Nº 5",
+        "project_name": "Pont de Carouge - Genève",
+        "reference_elevation": 380.0,
+        "total_depth": 40.32
       },
       "layers": [
         {
-          "depth_interval": { "start": 0.0, "end": 0.2 },
-          "material_description": "Betonbelag"
+          // Unconsolidated layer
+          "depth_interval": { "start": 0.05, "end": 0.3 },
+          "material_description": "Gravier sableux, légèrement limoneux, galets toutes formes, dm. 10 cm, avec débris de construction, compact, sec.",
+          "unconsolidated": {
+            "main": "Ba",
+            "other": ["gr", "si", "sa", "co"]
+          }
         },
         {
-          "depth_interval": { "start": 0.2, "end": 0.6 },
-          "material_description": "Kies mit sandigem Lehm"
+          // Consolidated layer
+          "depth_interval": { "start": 0.3, "end": 2.5 },
+          "material_description": "Roche en place: phyllade argileux noir avec des plans de strastification dépolis et brillants.",
+          "consolidated": {
+            "alteration_degree": "fresh",
+            "lithology": "phyllite",
+          }
         }
       ],
       "groundwater": [
-        { "date": "1972-06-26", "depth": 14.13, "elevation": 397.7 }
+        { "date": "1961-07-14", "depth": 3.2, "elevation": 376.8 }
       ]
     }
   ]
 }
 ```
-
-Below is a condensed example showing the structure of a ground truth file with classification attributes. 
-```json 
-    {"680.pdf": [
-        {
-            "borehole_index": 0,
-            "groundwater": null,
-            "layers": [
-                {
-                    "depth_interval": {
-                        "end": 0.3,
-                        "start": 0.05
-                    },
-                    "lithology": "unconsolidated deposits",
-                    "material_description": "Gravier sableux, légèrement limoneux, galets toutes formes, dm. 10 cm, avec débris de construction, compact, sec.",
-                    "unconsolidated": {
-                        "main": "Ba",
-                        "other": [
-                            "gr",
-                            "si",
-                            "sa",
-                            "co"
-                        ]
-                    },
-                    "uscs_1": null,
-                    "uscs_2": null
-                
-                }
-            ]            
-                "metadata": {
-                "coordinates": {
-                    "E": 499936.0,
-                    "N": 116004.0
-                },
-                "drilling_date": "1961-06-08",
-                "drilling_methods": null,
-                "original_name": "Forage Nº 5",
-                "project_name": "Pont de Carouge - Genève",
-                "reference_elevation": 380.0,
-                "total_depth": 40.32
-            }
-        }
-    ]
-}

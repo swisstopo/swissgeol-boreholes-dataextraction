@@ -161,16 +161,16 @@ class LayerEvaluator:
                     score_depths(predicted_layer, ground_truth_layer) == MAX_DEPTH_SCORE
                 )
 
-        def set_material_description_flag(predicted_layer, groud_truth_layers):
+        def set_material_description_flag(predicted_layer, ground_truth_layers):
             predicted_layer.material_description.is_correct = (
-                score_material_descriptions(predicted_layer, groud_truth_layers)
+                score_material_descriptions(predicted_layer, ground_truth_layers)
                 >= MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD
             )
 
-        def set_layer_flag(predicted_layer, groud_truth_layers):
+        def set_layer_flag(predicted_layer, ground_truth_layers):
             predicted_layer.is_correct = (
-                score_depths(predicted_layer, groud_truth_layers) == MAX_DEPTH_SCORE
-                and score_material_descriptions(predicted_layer, groud_truth_layers)
+                score_depths(predicted_layer, ground_truth_layers) == MAX_DEPTH_SCORE
+                and score_material_descriptions(predicted_layer, ground_truth_layers)
                 >= MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD
             )
 
@@ -202,7 +202,13 @@ class LayerEvaluator:
         return layer_metrics, depth_interval_metrics, material_description_metrics
 
     @staticmethod
-    def apply_mapping(ground_truth_layers, predicted_layers, scoring_fn, set_flag_fn):
+    def apply_mapping(
+        ground_truth_layers: list[GroundTruthLayer],
+        predicted_layers: list[Layer],
+        scoring_fn: Callable[[Layer, GroundTruthLayer], float],
+        set_flag_fn: Callable[[Layer, GroundTruthLayer], None],
+    ) -> None:
+        """Apply a scoring function to map ground truth layers to predicted layers and set flags."""
         _, mapping = LayerEvaluator.compute_borehole_affinity_and_mapping(
             ground_truth_layers, predicted_layers, scoring_fn
         )
@@ -223,7 +229,7 @@ class LayerEvaluator:
             ground_truth_for_file (list[GroundTruthBorehole]): the ground truth for the file
 
         Returns:
-            list[BoreholePredictionsWithGroundTruth] : A list of matched borehole predictions with their ground truth.
+            list[BoreholePredictionsWithGroundTruth]: A list of matched borehole predictions with their ground truth.
         """
         all_ground_truth_layers = {
             idx: borehole_data.layers for idx, borehole_data in enumerate(ground_truth_for_file)
@@ -290,7 +296,7 @@ class LayerEvaluator:
         Args:
             ground_truth_layers (list[GroundTruthLayer]): list containing the ground truth for the layers
             predicted_layers (list[Layer]): object containing the list of the predicted layers
-            scoring_fn: Callable[[Layer, GroundTruthLayer], float]: scoring function used for selecting best mapping
+            scoring_fn (Callable[[Layer, GroundTruthLayer], float]): scoring function used for selecting best mapping
 
         Returns:
             tuple: containing

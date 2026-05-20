@@ -18,7 +18,6 @@ from extraction.features.metadata.metadata import BoreholeMetadata, FileMetadata
 from extraction.features.predictions.borehole_predictions import (
     BoreholePredictions,
     BoreholePredictionsWithGroundTruth,
-    FilePredictionsWithGroundTruth,
 )
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
@@ -187,33 +186,6 @@ def groundtruth():
 def groundtruth_with_two_boreholes():
     """Path to the ground truth file that has two boreholes."""
     return GroundTruth("example/example_layers_groundtruth.json")
-
-
-@pytest.fixture
-def sample_file_prediction_with_ground_truth(
-    sample_file_prediction: FilePredictions, groundtruth: GroundTruth
-) -> FilePredictionsWithGroundTruth:
-    """Builds a FilePredictionsWithGroundTruth object with the given predictions and groundtruth.
-
-    Args:
-        sample_file_prediction (FilePredictions): a fixture that returns the FilePredictions object
-        groundtruth (GroundTruth): a fixture that returns the Groudtruth object
-
-    Returns:
-        FilePredictionsWithGroundTruth: the FilePredictionsWithGroundTruth associated
-    """
-    file_ground_truth: dict = groundtruth.for_file(sample_file_prediction.file_name)
-    gt_index = 0
-    return FilePredictionsWithGroundTruth(
-        filename=sample_file_prediction.file_name,
-        language=sample_file_prediction.file_metadata.language,
-        boreholes=[
-            BoreholePredictionsWithGroundTruth(
-                predictions=borehole_preds, ground_truth=file_ground_truth.get(gt_index)
-            )
-            for borehole_preds in sample_file_prediction.borehole_predictions_list
-        ],
-    )
 
 
 def test_to_json(sample_file_prediction: FilePredictions):
