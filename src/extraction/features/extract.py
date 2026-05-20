@@ -452,6 +452,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
         candidate_rects = []
         sorted_above = sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)
+        consumed_lines: set = set()
 
         for cluster in description_clusters:
             best_y0 = min([line.rect.y0 for line in cluster])
@@ -522,7 +523,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
                     (
                         desc_line
                         for desc_line in sorted_above
-                        if is_above(best_x0, best_y0, desc_line)
+                        if desc_line not in consumed_lines
+                        and is_above(best_x0, best_y0, desc_line)
                         and not re.fullmatch(r"[\d\s.,\-/]+", desc_line.text.strip())
                         and (
                             sidebar is not None
@@ -539,6 +541,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 )
                 if next_line is None:
                     break
+                consumed_lines.add(next_line)
                 best_x0 = min(best_x0, next_line.rect.x0)
                 best_x1 = max(best_x1, next_line.rect.x1)
                 best_y0 = next_line.rect.y0

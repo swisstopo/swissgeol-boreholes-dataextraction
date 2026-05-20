@@ -299,7 +299,7 @@ def consolidation_study_command(
     results: list[TrainingResult] = []
 
     for i, provider in enumerate(consolidation_study_providers(), start=1):
-        logging.getLogger(__name__).info("[%d/6] Running experiment: %s", i, provider.name)
+        logging.getLogger(__name__).info("[%d/3] Running experiment: %s", i, provider.name)
         result = _build_trainer(
             provider,
             cfg,

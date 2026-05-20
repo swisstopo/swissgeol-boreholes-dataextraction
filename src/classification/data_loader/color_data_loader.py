@@ -24,7 +24,7 @@ _NO_COLOR_VALUES = {
     "other",
     "not specified",  # en
     "andere",
-    "keine Angabe",  # de
+    "keine angabe",  # de
     "autre",
     "sans indication",  # fr
     "altro",
@@ -78,7 +78,7 @@ def _encode_color(color: str | None) -> list[int]:
 
     Args: color: Color name in any language, or None.
 
-    Returns: One-hot encoding of the color, where the index is determined by COLORS. If the color
+    Returns: One-hot encoding of the color, where the index is determined by COLORS.
     """
     vec = [0] * len(COLORS)
     if color is None:

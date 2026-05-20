@@ -6,6 +6,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from fastapi import HTTPException
+
 from app.common.schemas import ClassifyLithologyRequest, ClassifyLithologyResponse
 
 if TYPE_CHECKING:
@@ -53,6 +55,12 @@ def classify_lithology(
     Returns:
         ClassifyLithologyResponse: Predicted class name for the input description.
     """
-    bert_model = bert_models[request.classification_system]
+    bert_model = bert_models.get(request.classification_system)
+    if bert_model is None:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Model for '{request.classification_system}' is not available.",
+        )
     predicted_class = bert_model.predict_class(request.description)
+
     return ClassifyLithologyResponse(class_name=predicted_class.name)
