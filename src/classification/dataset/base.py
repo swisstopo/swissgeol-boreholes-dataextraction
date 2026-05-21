@@ -15,7 +15,7 @@ class DatasetSample:
     borehole_index: int
     layer_index: int
     text: str
-    labels: list[str]
+    labels: str
 
 
 class ClassificationDataset(Dataset):
@@ -37,10 +37,10 @@ class ClassificationDataset(Dataset):
         """TODO."""
         return len(self.samples)
 
-    def __getitem__(self, idx: int) -> tuple[str, list[int]]:
+    def __getitem__(self, idx: int) -> tuple[str, int]:
         """TODO."""
         sample = self.samples[idx]
-        return sample.text, self._to_encoded_one_hot(sample.labels)
+        return sample.text, self.label2idx[sample.labels]
 
 
 class TokenizedClassificationDataset(Dataset):
@@ -96,18 +96,21 @@ def _deterministic_hash_ratio(text: str) -> float:
     return int.from_bytes(h[:8], "big") / 2**64
 
 
-# def split(dataset: ClassificationDataset, rtest: float, rvalid: float):
-#     """TODO."""
+def dataset_split(dataset: ClassificationDataset, rtest: float = 0.45, rvalid: float = 0.45):
+    """TODO."""
+    splits = {"train": [], "validation": [], "test": []}
+    for sample in dataset.samples:
+        # Extract filename for hash
+        x_ratio = _deterministic_hash_ratio(sample.filename)
+        if x_ratio < rtest:
+            splits["test"].append(sample)
+        elif x_ratio < rtest + rvalid:
+            splits["validation"].append(sample)
+        else:
+            splits["train"].append(sample)
 
-#     splits = {"train": [], "validation": [], "test": []}
-#     for sample in dataset.samples:
-#         # Extract filename for hash
-#         x_ratio = deterministic_hash_ratio(path.name)
-#         if x_ratio < rtest:
-#             splits["test"].append(path)
-#         elif x_ratio < rtest + rvalid:
-#             splits["validation"].append(path)
-#         else:
-#             splits["train"].append(path)
-
-#     return splits["train"], splits["validation"], splits["test"]
+    return (
+        ClassificationDataset(splits["train"], dataset.label2idx),
+        ClassificationDataset(splits["validation"], dataset.label2idx),
+        ClassificationDataset(splits["test"], dataset.label2idx),
+    )

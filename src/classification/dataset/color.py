@@ -9,10 +9,9 @@ class ColorClassificationDataset(ClassificationDataset):
     """TODO."""
 
     @staticmethod
-    def _layer_to_label(layer: GroundTruthLayer, use_consolidated: bool = True) -> list[int]:
+    def _layer_to_label(layer: GroundTruthLayer, use_consolidated: bool = True) -> str:
         """TODO."""
-        label = layer.consolidated.primary_color if use_consolidated else layer.unconsolidated.primary_color
-        return [label]
+        return layer.consolidated.primary_color if use_consolidated else layer.unconsolidated.primary_color
 
     @staticmethod
     def _is_layer_valid(layer: GroundTruthLayer, use_consolidated: bool = True) -> bool:
@@ -24,6 +23,7 @@ class ColorClassificationDataset(ClassificationDataset):
 
     @classmethod
     def from_ground_truth(cls, ground_truth: GroundTruth, use_consolidated: bool = True) -> "ClassificationDataset":
+        """TODO."""
         return cls(
             samples=[
                 DatasetSample(
