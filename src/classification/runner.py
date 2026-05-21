@@ -14,8 +14,8 @@ from classification.evaluation.benchmark.score import (
     evaluate_all_predictions,
 )
 from classification.evaluation.benchmark.spec import BenchmarkSpec
-from classification.utils.classification_classes import ExistingClassificationSystems
-from classification.utils.data_loader import LayerInformation, prepare_classification_data
+from classification.utils.classification_classes import ExistingClassificationSystems, LayerInformation
+from classification.utils.data_loader import prepare_classification_data
 from classification.utils.data_utils import (
     get_data_class_count,
     get_data_language_count,

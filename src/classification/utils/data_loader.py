@@ -1,36 +1,18 @@
 """Data loader module."""
 
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 
 import Levenshtein
 
-from classification.utils.classification_classes import ClassificationSystem
+from classification.utils.classification_classes import ClassificationSystem, LayerInformation
 from classification.utils.data_formatter import load_and_format_input_data
+from core.ground_truth import GroundTruth
 from swissgeol_doc_processing.utils.file_utils import parse_text
 
 logger = logging.getLogger(__name__)
 
 MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD = 0.7
-
-
-@dataclass
-class LayerInformation:
-    """Class for each layer in the ground truth json file.
-
-    A layer is either classified into USCS or lithology, but never both.
-    """
-
-    filename: str
-    borehole_index: int
-    layer_index: int
-    language: str
-    material_description: str
-    class_system: type[ClassificationSystem]
-    ground_truth_class: None | ClassificationSystem.EnumMember
-    prediction_class: None | ClassificationSystem.EnumMember
-    llm_reasoning: None | str
 
 
 def is_valid_depth_interval(layer_depths, start: float, end: float) -> bool:
@@ -163,4 +145,4 @@ def prepare_classification_data(
         f"Skipped {skipped_count} layers without ground truth out of {total_layers}, "
         f"which is {skipped_count / total_layers * 100:2f}%"
     )
-    return layer_descriptions
+    return classification_system.process(gt=GroundTruth(input_path))

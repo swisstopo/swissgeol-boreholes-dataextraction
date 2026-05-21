@@ -4,10 +4,32 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum, IntEnum, auto
+from functools import reduce
 from typing import Literal
 
+from core.ground_truth import GroundTruth, GroundTruthLayer
+
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class LayerInformation:
+    """Class for each layer in the ground truth json file.
+
+    A layer is either classified into USCS or lithology, but never both.
+    """
+
+    filename: str
+    borehole_index: int
+    layer_index: int
+    language: str
+    material_description: str
+    class_system: type[ClassificationSystem]
+    ground_truth_class: None | ClassificationSystem.EnumMember
+    prediction_class: None | ClassificationSystem.EnumMember
+    llm_reasoning: None | str
 
 
 class ClassificationSystem(ABC):
@@ -46,6 +68,51 @@ class ClassificationSystem(ABC):
         ...
 
     @classmethod
+    @abstractmethod
+    def process_layer(
+        cls,
+        filename: str,
+        borehole_index: int,
+        layer_index: int,
+        layer: GroundTruthLayer,
+    ) -> LayerInformation | None:
+        """TODO."""
+        ...
+
+    @classmethod
+    def reduce_label(
+        cls,
+        layer: GroundTruthLayer,
+    ) -> int | None:
+        """TODO."""
+        try:
+            label_str = reduce(getattr, cls.get_layer_ground_truth_keys(), layer)
+            return cls.map_most_similar_class(label_str)
+        except AttributeError:
+            return None
+
+    @classmethod
+    def process(cls, gt: GroundTruth) -> list[LayerInformation]:
+        """TODO."""
+        return [
+            LayerInformation(
+                filename=filename,
+                borehole_index=borehole_index,
+                layer_index=layer_index,
+                language="",
+                material_description=layer.material_description,
+                class_system=cls,
+                ground_truth_class=cls.reduce_label(layer),
+                prediction_class=None,
+                llm_reasoning=None,
+            )
+            for filename, boreholes in gt.ground_truth.items()
+            for borehole_index, borehole in enumerate(boreholes)
+            for layer_index, layer in enumerate(borehole.layers)
+            if cls.reduce_label(layer) is not None and layer.material_description is not None
+        ]
+
+    @classmethod
     def get_class_from_entry(cls, entry: dict, keys: list[str]) -> str | None:
         """Returns the class of the classification system used from a possibly nested entry.
 
@@ -80,7 +147,7 @@ class ClassificationSystem(ABC):
             class_str (str): The input string to map.
 
         Returns:
-            ClassificationType.EnumMember: The matching enum member, or `kA` if no match is found.
+            ClassificationType.EnumMember: The matching enum member, or default if no match is found.
         """
         normalized_str = cls.normalize_class_string(class_str)
 
@@ -477,6 +544,86 @@ class LithologySystem(ClassificationSystem):
         Trachyte = auto()  # not seen in ground truth data (yet)
 
 
+class ColorConsolidatedSystem(ClassificationSystem):
+    """TODO."""
+
+    @classmethod
+    def normalize_class_string(cls, class_str: str) -> str:
+        """TODO."""
+        return class_str.lower().replace(" ", "_")
+
+    @classmethod
+    def get_enum(cls) -> type[ColorClasses]:
+        """TODO."""
+        return cls.ColorClasses
+
+    @classmethod
+    def get_name(cls) -> str:
+        """Return the name of the system."""
+        return "color"
+
+    @classmethod
+    def get_layer_ground_truth_keys(cls) -> list[str]:
+        """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
+        return ["consolidated", "primary_color"]
+
+    @classmethod
+    def get_default_class_value(cls) -> ColorClasses:
+        """Default value for the enum (not specified)."""
+        return cls.ColorClasses.not_specified
+
+    @classmethod
+    def get_dummy_classifier_class_value(cls) -> ColorClasses:
+        """Return a dummy value."""
+        return cls.ColorClasses.beige
+
+    class ColorClasses(IntEnum):
+        """Complete color class list (0-based indexing)."""
+
+        beige = 0
+        beige_grey = auto()
+        black = auto()
+        bluish_grey = auto()
+        bluish_red = auto()
+        brown = auto()
+        brownish_grey = auto()
+        brownish_red = auto()
+        brownish_yellow = auto()
+        dark_beige = auto()
+        dark_brown = auto()
+        dark_green = auto()
+        dark_grey = auto()
+        dark_olive = auto()
+        dark_red = auto()
+        dark_yellow = auto()
+        green = auto()
+        greenish_beige = auto()
+        greenish_grey = auto()
+        grey = auto()
+        greyish_beige = auto()
+        greyish_blue = auto()
+        greyish_brown = auto()
+        greyish_green = auto()
+        light_beige = auto()
+        light_brown = auto()
+        light_green = auto()
+        light_grey = auto()
+        light_olive = auto()
+        light_yellow = auto()
+        magenta = auto()
+        not_specified = auto()
+        ochre = auto()
+        olive = auto()
+        olive_yellow = auto()
+        red = auto()
+        reddish_brown = auto()
+        reddish_ochre = auto()
+        white = auto()
+        yellow = auto()
+        yellowish_brown = auto()
+        yellowish_white = auto()
+
+
 class ExistingClassificationSystems(Enum):
     """Enum listing all existing classification types.
 
@@ -486,10 +633,11 @@ class ExistingClassificationSystems(Enum):
     uscs = USCSSystem
     lithology = LithologySystem
     en_main = ENMainSystem
+    color = ColorConsolidatedSystem
 
     @classmethod
     def get_classification_system_type(
-        cls, class_system: Literal["uscs", "lithology", "en_main"]
+        cls, class_system: Literal["uscs", "lithology", "en_main", "color"]
     ) -> type[ClassificationSystem]:
         """Returns the class of a classification system based on input string.
 

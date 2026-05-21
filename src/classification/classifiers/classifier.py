@@ -3,8 +3,7 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 
-from classification.utils.classification_classes import ClassificationSystem
-from classification.utils.data_loader import LayerInformation
+from classification.utils.classification_classes import ClassificationSystem, LayerInformation
 from classification.utils.file_utils import read_params
 
 CONFIG_MAPINGS = read_params("classifier_config_paths.yml")
