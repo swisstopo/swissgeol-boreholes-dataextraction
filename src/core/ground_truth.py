@@ -5,9 +5,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, TypeAdapter, field_validator, model_serializer
-
-from swissgeol_doc_processing.utils.file_utils import parse_text
+from pydantic import BaseModel, TypeAdapter, model_serializer
 
 logger = logging.getLogger(__name__)
 
