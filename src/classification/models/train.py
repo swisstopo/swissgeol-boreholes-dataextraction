@@ -28,7 +28,7 @@ from transformers.modeling_outputs import SequenceClassifierOutput
 
 from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
 from classification.models.data_provider import DataSplit, TrainingDataProvider
-from classification.models.model import _HEAD_PARAM_PREFIXES, BertModel
+from classification.models.model import BertModel
 from core.mlflow_utils import setup_mlflow_tracking
 
 load_dotenv()
@@ -122,7 +122,7 @@ class _BestHeadCheckpointer(TrainerCallback):
         self._best_metric = accuracy
         new_path = self._checkpoint_dir / f"best_head_epoch{round(state.epoch)}.pt"
         torch.save(
-            {n: p.data for n, p in self._model.named_parameters() if n.startswith(_HEAD_PARAM_PREFIXES)},
+            {n: p.data for n, p in self._model.named_parameters() if p.requires_grad},
             new_path,
         )
         if self._best_path and self._best_path != new_path and self._best_path.exists():
@@ -316,7 +316,7 @@ class BertTrainer:
         # Save fine-tuned head (small file — backbone loaded separately at inference)
         head_path = run_dir / "finetuned_layers.pt"
         torch.save(
-            {n: p.data for n, p in bert.model.named_parameters() if n.startswith(_HEAD_PARAM_PREFIXES)},
+            {n: p.data for n, p in bert.model.named_parameters() if p.requires_grad},
             head_path,
         )
         bert.tokenizer.save_pretrained(run_dir / "tokenizer")

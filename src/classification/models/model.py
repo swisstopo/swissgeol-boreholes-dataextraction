@@ -207,7 +207,7 @@ class BertModel:
         head_tensors = self._load_head_model()
 
         for name, param in model.named_parameters():
-            if name.startswith(_HEAD_PARAM_PREFIXES) and name in head_tensors:
+            if name in head_tensors:
                 param.data = head_tensors[name]
             elif name in cached_tensors:
                 param.data = cached_tensors[name]
