@@ -1,5 +1,6 @@
 """Model training module."""
 
+import json
 import logging
 import os
 import time
@@ -12,6 +13,7 @@ import mlflow
 import torch
 import torch.nn as nn
 from dotenv import load_dotenv
+from safetensors.torch import save_file
 from transformers import DataCollatorWithPadding, EvalPrediction, Trainer, TrainingArguments
 from transformers.modeling_outputs import SequenceClassifierOutput
 
@@ -82,6 +84,16 @@ class WeightedLabelSmoother:
         nll = nll_loss.sum() / num_active_elements
         smooth = smoothed_loss.sum() / (num_active_elements * log_probs.size(-1))
         return (1 - self.epsilon) * nll + self.epsilon * smooth
+
+
+def save_fine_tuned_head(bert_model: BertModel, out_dir: Path) -> None:
+    """Save only fine-tuned parameters (requires_grad=True) and model config."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fine_tuned_names = {n for n, p in bert_model.model.named_parameters() if p.requires_grad}
+    head_state = {k: v.cpu() for k, v in bert_model.model.state_dict().items() if k in fine_tuned_names}
+    save_file(head_state, out_dir / "model.safetensors")
+    bert_model.model.config.save_pretrained(out_dir)
+    (out_dir / "fine_tuned_keys.json").write_text(json.dumps(sorted(fine_tuned_names), indent=2))
 
 
 def setup_mlflow_tracking(
@@ -159,7 +171,8 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     logger.info("Beginning the training.")
     train_result = trainer.train()
 
-    trainer.save_model()  # Saves the tokenizer too for easy upload
+    save_fine_tuned_head(bert_model, out_directory)
+    bert_model.tokenizer.save_pretrained(out_directory)  # tokenizer stays alongside head for easy upload
     metrics = train_result.metrics
     trainer.log_metrics("train", metrics)
     trainer.save_metrics("train", metrics)

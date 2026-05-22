@@ -24,10 +24,6 @@ def _resolve_path(p: str | Path) -> str | Path:
     return candidate if candidate.exists() else p
 
 
-# Head parameter prefixes — must match the split performed in model_decoupling.py.
-# All other parameters belong to the shared backbone.
-_HEAD_PARAM_PREFIXES = ("classifier.", "bert.pooler.", "bert.encoder.layer.11.")
-
 # Module-level model file cache: file_path → {"handle": safe_open handle, "tensors": {name: tensor}}.
 # Handles keep memory-mapped files open so tensors remain valid.
 # Backbone is shared across all split models; heads are cached per head directory.
@@ -176,7 +172,7 @@ class BertModel:
         head_tensors = self._load_head_model()
 
         for name, param in model.named_parameters():
-            if name.startswith(_HEAD_PARAM_PREFIXES) and name in head_tensors:
+            if name in head_tensors:
                 param.data = head_tensors[name]
             elif name in cached_tensors:
                 param.data = cached_tensors[name]
