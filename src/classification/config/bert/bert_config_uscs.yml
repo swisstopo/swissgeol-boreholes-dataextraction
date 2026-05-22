@@ -4,8 +4,6 @@ model_path: "google-bert/bert-base-multilingual-uncased"
 # Data parameters
 classification_system: "uscs"
 json_file_name: "geoquat_ground_truth.json"
-train_subset: "geoquat/train"
-eval_subset: "geoquat/validation"
 
 # Training hyperparameters
 batch_size: 32

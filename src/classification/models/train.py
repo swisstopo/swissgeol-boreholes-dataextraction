@@ -209,17 +209,8 @@ def setup_data(bert_model: BertModel, model_config: dict) -> tuple[datasets.Data
     Returns:
         tuple[datasets.Dataset, datasets.Dataset]: the training arguments.
     """
-    if model_config["classification_system"] == "lithology":
-        train_file_path = DATAPATH / model_config["train_subset"]
-        eval_file_path = DATAPATH / model_config["eval_subset"]
-
-    else:
-        # the data is not stored the same way for uscs and lithology. Currently the reports names enumerated in the
-        # json file only locally exists for uscs.
-        # Once all of the files are available, we will be able to use the code without the need for this
-        # if-else block.
-        train_file_path = DATAPATH / model_config["json_file_name"]
-        eval_file_path = DATAPATH / model_config["json_file_name"]
+    train_file_path = DATAPATH / model_config["json_file_name"]
+    eval_file_path = DATAPATH / model_config["json_file_name"]
 
     classification_system = ExistingClassificationSystems.get_classification_system_type(
         model_config["classification_system"].lower()

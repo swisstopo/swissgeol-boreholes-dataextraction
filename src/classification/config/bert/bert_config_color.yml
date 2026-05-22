@@ -4,8 +4,6 @@ model_path: "google-bert/bert-base-multilingual-uncased"
 # Data parameters
 classification_system: "color"
 json_file_name: "thurgau_ground_truth.462.json"
-train_subset: null
-eval_subset: null
 
 # Training hyperparameters
 batch_size: 32

@@ -87,9 +87,13 @@ class ClassificationSystem(ABC):
         """TODO."""
         try:
             label_str = reduce(getattr, cls.get_layer_ground_truth_keys(), layer)
-            return cls.map_most_similar_class(label_str)
         except AttributeError:
             return None
+
+        if label_str is None:
+            return None
+
+        return cls.map_most_similar_class(label_str)
 
     @classmethod
     def process(cls, gt: GroundTruth) -> list[LayerInformation]:
@@ -179,7 +183,7 @@ class USCSSystem(ClassificationSystem):
             str: The normalized USCS class string (e.g., "cl_ml").
 
         """
-        return class_str.lower().replace("-", "_")
+        return class_str[0].lower().replace("-", "_")
 
     @classmethod
     def get_enum(cls) -> type[USCSClasses]:
@@ -194,15 +198,7 @@ class USCSSystem(ClassificationSystem):
     @classmethod
     def get_layer_ground_truth_keys(cls) -> list[str]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
-        return ["uscs_1"]
-
-    @classmethod
-    def reduce_label(cls, layer: GroundTruthLayer) -> int | None:
-        """Extract the primary USCS label from the layer's unconsolidated or consolidated sub-object."""
-        for sub in (layer.unconsolidated, layer.consolidated):
-            if sub is not None and sub.uscs:
-                return cls.map_most_similar_class(sub.uscs[0])
-        return None
+        return ["unconsolidated", "uscs"]
 
     @classmethod
     def get_default_class_value(cls) -> USCSClasses:
@@ -336,75 +332,6 @@ class ENMainSystem(ClassificationSystem):
         ns = auto()  # not specified
 
 
-class ENSecondarySystem(ClassificationSystem):
-    """Implementation of the secondary-level EN classification system.
-
-    This class is currently not used, but will be in the future, when 2-level classification will be implemented.
-    """
-
-    @classmethod
-    def normalize_class_string(cls, class_str: str) -> str:
-        """Normalize a EN class string.
-
-        Args:
-            class_str (str): The class string to be normalized (e.g. "Or").
-
-        Returns:
-            str: The normalized EN class string (e.g., "or").
-        """
-        return class_str.lower()
-
-    @classmethod
-    def get_enum(cls) -> type[ENSecondaryClasses]:
-        """Return the ENSecondaryClasses Enum."""
-        return cls.ENSecondaryClasses
-
-    @classmethod
-    def get_name(cls) -> str:
-        """Return the name of the system used as a string."""
-        return "EN_secondary"
-
-    @classmethod
-    def get_layer_ground_truth_keys(cls) -> list[str]:
-        """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
-        # TODO for secondary class, get_class_from_entry needs to be adapted to ba able to return list of strings
-        raise NotImplementedError
-
-    @classmethod
-    def get_default_class_value(cls) -> ENSecondaryClasses:
-        """Return the default value for the enum class."""
-        return cls.ENSecondaryClasses.ns  # not specified
-
-    @classmethod
-    def get_dummy_classifier_class_value(cls) -> ENSecondaryClasses:
-        """Return the default value lbo for the dummy classifier."""
-        return cls.ENSecondaryClasses.lbo
-
-    class ENSecondaryClasses(IntEnum):
-        """Complete EN secondary class list (0-based indexing)."""
-
-        lbo = 0  # coarse blocky / with large blocks
-        bo = auto()  # blocky / with blocks
-        co = auto()  # stony / with stones
-        gr = auto()  # gravelly
-        fgr = auto()  # fine gravelly
-        fmgr = auto()  # fine to medium gravelly
-        mgr = auto()  # medium gravelly
-        mcgr = auto()  # medium to coarse gravelly
-        cgr = auto()  # coarse gravelly
-        sa = auto()  # sandy
-        fsa = auto()  # fine sandy
-        fmsa = auto()  # fine to medium sandy
-        msa = auto()  # medium sandy
-        mcsa = auto()  # medium to coarse sandy
-        csa = auto()  # coarse sandy
-        si = auto()  # silty
-        cl = auto()  # clayey
-        or_ = auto()  # with organic inclusion
-        oth = auto()  # other
-        ns = auto()  # not specified
-
-
 class LithologySystem(ClassificationSystem):
     """Implementation of a classification type based on the Lithology classification system.
 
@@ -438,14 +365,7 @@ class LithologySystem(ClassificationSystem):
     @classmethod
     def get_layer_ground_truth_keys(cls) -> list[str]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
-        return ["lithology"]
-
-    @classmethod
-    def reduce_label(cls, layer: GroundTruthLayer) -> int | None:
-        """Extract the lithology label from the layer's consolidated sub-object."""
-        if layer.consolidated is not None and layer.consolidated.lithology:
-            return cls.map_most_similar_class(layer.consolidated.lithology)
-        return None
+        return ["consolidated", "lithology"]
 
     @classmethod
     def get_default_class_value(cls) -> LithologyClasses:
