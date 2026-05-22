@@ -15,12 +15,12 @@ from classification.evaluation.benchmark.score import (
 )
 from classification.evaluation.benchmark.spec import BenchmarkSpec
 from classification.utils.classification_classes import ExistingClassificationSystems, LayerInformation
-from classification.utils.data_loader import prepare_classification_data
 from classification.utils.data_utils import (
     get_data_class_count,
     get_data_language_count,
     write_predictions,
 )
+from core.ground_truth import GroundTruth
 from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_tracking
 from core.pipeline_runner import MultiBenchmarkRunner, PipelineRunner, PipelineRunResult
@@ -72,7 +72,7 @@ def run_classification_predictions(
     logger.info(
         f"Loading data from {file_path}" + (f" and ground truth from {ground_truth_path}" if ground_truth_path else "")
     )
-    layer_descriptions = prepare_classification_data(file_path, ground_truth_path, classification_system_cls)
+    layer_descriptions = classification_system_cls.process(gt=GroundTruth(file_path))
 
     n_documents = len({layer.filename for layer in layer_descriptions})
 

@@ -19,8 +19,8 @@ from classification import DATAPATH
 from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
 from classification.models.model import BertModel
 from classification.utils.classification_classes import ExistingClassificationSystems
-from classification.utils.data_loader import prepare_classification_data
 from classification.utils.file_utils import read_params
+from core.ground_truth import GroundTruth
 
 if __name__ == "__main__":
     # Only configure logging if this script is run directly (e.g. training pipeline entrypoint)
@@ -224,17 +224,9 @@ def setup_data(bert_model: BertModel, model_config: dict) -> tuple[datasets.Data
     classification_system = ExistingClassificationSystems.get_classification_system_type(
         model_config["classification_system"].lower()
     )
-    train_data = prepare_classification_data(
-        train_file_path,
-        ground_truth_path=None,
-        classification_system=classification_system,
-    )
+    train_data = classification_system.process(gt=GroundTruth(train_file_path))
     train_dataset = bert_model.get_tokenized_dataset(train_data)
-    eval_data = prepare_classification_data(
-        eval_file_path,
-        ground_truth_path=None,
-        classification_system=classification_system,
-    )
+    eval_data = classification_system.process(gt=GroundTruth(eval_file_path))
     eval_dataset = bert_model.get_tokenized_dataset(eval_data)
     return train_dataset, eval_dataset
 
