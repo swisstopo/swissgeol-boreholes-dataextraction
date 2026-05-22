@@ -76,7 +76,7 @@ class ClassificationSystem(ABC):
         layer_index: int,
         layer: GroundTruthLayer,
     ) -> LayerInformation | None:
-        """TODO."""
+        """Convert a single ground truth layer into a LayerInformation entry if possible, or return None."""
         ...
 
     @classmethod
@@ -84,7 +84,7 @@ class ClassificationSystem(ABC):
         cls,
         layer: GroundTruthLayer,
     ) -> int | None:
-        """TODO."""
+        """Extract the integer class index from a layer by resolving the ground truth key path, or None if absent."""
         try:
             label_str = reduce(getattr, cls.get_layer_ground_truth_keys(), layer)
             return cls.map_most_similar_class(label_str)
@@ -93,7 +93,7 @@ class ClassificationSystem(ABC):
 
     @classmethod
     def process(cls, gt: GroundTruth) -> list[LayerInformation]:
-        """TODO."""
+        """Extract all labelled layers from a GroundTruth object as a flat list of LayerInformation entries.."""
         return [
             LayerInformation(
                 filename=filename,
