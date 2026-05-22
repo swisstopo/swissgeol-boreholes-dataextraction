@@ -197,6 +197,14 @@ class USCSSystem(ClassificationSystem):
         return ["uscs_1"]
 
     @classmethod
+    def reduce_label(cls, layer: GroundTruthLayer) -> int | None:
+        """Extract the primary USCS label from the layer's unconsolidated or consolidated sub-object."""
+        for sub in (layer.unconsolidated, layer.consolidated):
+            if sub is not None and sub.uscs:
+                return cls.map_most_similar_class(sub.uscs[0])
+        return None
+
+    @classmethod
     def get_default_class_value(cls) -> USCSClasses:
         """Return the default value for the enum class."""
         return cls.USCSClasses.kA  # keine Angabe = no indication
@@ -431,6 +439,13 @@ class LithologySystem(ClassificationSystem):
     def get_layer_ground_truth_keys(cls) -> list[str]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
         return ["lithology"]
+
+    @classmethod
+    def reduce_label(cls, layer: GroundTruthLayer) -> int | None:
+        """Extract the lithology label from the layer's consolidated sub-object."""
+        if layer.consolidated is not None and layer.consolidated.lithology:
+            return cls.map_most_similar_class(layer.consolidated.lithology)
+        return None
 
     @classmethod
     def get_default_class_value(cls) -> LithologyClasses:
