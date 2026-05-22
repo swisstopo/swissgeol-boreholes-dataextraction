@@ -560,16 +560,27 @@ class LithologySystem(ClassificationSystem):
 
 
 class ColorConsolidatedSystem(ClassificationSystem):
-    """TODO."""
+    """Implementation of a classification type based on the color classification system.
+
+    This class implements the methods defined in `ClassificationType` for the color classification system,
+    which is used to classify consolidated as well as unconsolidated soils.
+    """
 
     @classmethod
     def normalize_class_string(cls, class_str: str) -> str:
-        """TODO."""
+        """Normalize a color class string.
+
+        Args:
+            class_str (str): The class string to be normalized (e.g. "dark grey").
+
+        Returns:
+            str: The normalized color class string (e.g., "dark_grey").
+        """
         return class_str.lower().replace(" ", "_")
 
     @classmethod
     def get_enum(cls) -> type[ColorClasses]:
-        """TODO."""
+        """Return the ColorClasses Enum."""
         return cls.ColorClasses
 
     @classmethod
