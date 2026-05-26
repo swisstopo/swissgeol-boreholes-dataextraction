@@ -1,4 +1,4 @@
-"""TODO."""
+"""Classification datasets package — exports all classification systems and ExistingClassificationSystems."""
 
 from enum import Enum
 from typing import Literal

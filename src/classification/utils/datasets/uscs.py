@@ -28,7 +28,7 @@ class USCSSystem(ClassificationSystem):
             str: The normalized USCS class string (e.g., "cl_ml").
 
         """
-        return class_str[0].lower().replace("-", "_")
+        return class_str.lower().replace("-", "_")
 
     @classmethod
     def get_enum(cls) -> type[USCSClasses]:
@@ -49,11 +49,6 @@ class USCSSystem(ClassificationSystem):
     def get_default_class_value(cls) -> USCSClasses:
         """Return the default value for the enum class."""
         return cls.USCSClasses.kA  # keine Angabe = no indication
-
-    @classmethod
-    def get_dummy_classifier_class_value(cls) -> USCSClasses:
-        """Return the default value CL_ML for the dummy classifier."""
-        return cls.USCSClasses.CL_ML
 
     class USCSClasses(IntEnum):
         """USCS (Unified Soil Classification System) classes.

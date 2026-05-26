@@ -48,11 +48,6 @@ class ENMainSystem(ClassificationSystem):
         """Default value for the enum (not specified)."""
         return cls.ENMainClasses.ns
 
-    @classmethod
-    def get_dummy_classifier_class_value(cls) -> ENMainClasses:
-        """Return a dummy value."""
-        return cls.ENMainClasses.lbo
-
     class ENMainClasses(IntEnum):
         """Complete EN main class list (0-based indexing)."""
 

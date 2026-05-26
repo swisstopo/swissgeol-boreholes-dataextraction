@@ -32,7 +32,7 @@ class LithologySystem(ClassificationSystem):
 
     @classmethod
     def get_enum(cls) -> type[LithologyClasses]:
-        """Return the USCSClasses Enum."""
+        """Return the LithologyClasses Enum."""
         return cls.LithologyClasses
 
     @classmethod
@@ -49,11 +49,6 @@ class LithologySystem(ClassificationSystem):
     def get_default_class_value(cls) -> LithologyClasses:
         """Return the default value for the enum class."""
         return cls.LithologyClasses.kA  # keine Angabe = no indication
-
-    @classmethod
-    def get_dummy_classifier_class_value(cls) -> LithologyClasses:
-        """Return a default dummy value."""
-        return cls.LithologyClasses.Marlstone
 
     unconsolidated_keywords = ["clay", "marl", "silt", "peat", "sand", "pebble", "loam", "unconsolidated"]
 

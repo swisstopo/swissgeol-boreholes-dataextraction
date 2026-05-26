@@ -96,9 +96,7 @@ def setup_mlflow_tracking(
     mlflow.set_experiment(experiment_name)
     mlflow.start_run()
     mlflow.set_tag("classification system", str(model_config["classification_system"]))
-    json_path = model_config.get("json_file_name")
-    json_path = json_path if json_path else model_config.get("train_subset").split("/")[0]
-    mlflow.set_tag("json file path", json_path)
+    mlflow.set_tag("json file path", model_config.get("json_file_name"))
     mlflow.set_tag("out_directory", str(out_directory))
     mlflow.log_params(model_config)
 
@@ -156,6 +154,12 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     # Load datasets
     logger.info("Loading datasets (transformers library).")
     train_dataset, eval_dataset, test_dataset = setup_data(bert_model, model_config)
+    logger.info(
+        "Train: %d | Val: %d | Test: %d samples.",
+        len(train_dataset),
+        len(eval_dataset),
+        len(test_dataset),
+    )
 
     # Initialize the trainer
     trainer = setup_trainer(bert_model, train_dataset, eval_dataset, model_config, out_directory)
@@ -171,7 +175,7 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     trainer.log_metrics("test", test_results.metrics)
     trainer.save_metrics("test", test_results.metrics)
 
-    logger.info("Save model ans state")
+    logger.info("Save model and state")
     trainer.save_model()
     trainer.save_state()
 
@@ -265,10 +269,6 @@ def compute_trainset_weights(
     else:
         scaled_weights = torch.ones_like(raw_weights)  # fallback: uniform weights
 
-    # OR other method
-    # scaled_weights = torch.tensor([
-    #     1.0 / np.log(1 + label_counts.get(i, 1)) for i in range(num_classes)
-    # ])
     return scaled_weights
 
 

@@ -49,11 +49,6 @@ class ColorConsolidatedSystem(ClassificationSystem):
         """Default value for the enum (not specified)."""
         return cls.ColorClasses.not_specified
 
-    @classmethod
-    def get_dummy_classifier_class_value(cls) -> ColorClasses:
-        """Return a dummy value."""
-        return cls.ColorClasses.beige
-
     class ColorClasses(IntEnum):
         """Complete color class list (0-based indexing)."""
 

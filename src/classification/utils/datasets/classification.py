@@ -138,11 +138,15 @@ class ClassificationSystem(ABC):
         if label_str is None:
             return None
 
+        # Multilabel is not supported yet, reduce to first class
+        if isinstance(label_str, list):
+            label_str = label_str[0]
+
         return cls.map_most_similar_class(label_str)
 
     @classmethod
     def process(cls, gt: GroundTruth) -> list[LayerInformation]:
-        """Extract all labelled layers from a GroundTruth object as a flat list of LayerInformation entries.."""
+        """Extract all labelled layers from a GroundTruth object as a flat list of LayerInformation entries."""
         return [
             LayerInformation(
                 filename=filename,
@@ -172,12 +176,6 @@ class ClassificationSystem(ABC):
             if keys and isinstance(entry, dict)
             else entry
         )
-
-    @classmethod
-    @abstractmethod
-    def get_dummy_classifier_class_value(cls) -> EnumMember:
-        """Return a default value for dummy classification."""
-        ...
 
     @classmethod
     @abstractmethod
