@@ -9,9 +9,60 @@ from dataclasses import dataclass
 from enum import IntEnum
 from functools import reduce
 
-from core.ground_truth import GroundTruth, GroundTruthLayer
+from classification.utils.file_utils import read_params
+from core.ground_truth import GroundTruthBorehole, GroundTruthLayer
+from swissgeol_doc_processing.utils.language_detection import detect_language_of_text
 
 logger = logging.getLogger(__name__)
+
+
+classification_params = read_params("classification_params.yml")
+
+
+class GroundTruthBoreholeWithLanguage(GroundTruthBorehole):
+    """Ground truth data with predicted language."""
+
+    language: str
+
+    @classmethod
+    def from_boreholes(cls, boreholes: list[GroundTruthBorehole]) -> list[GroundTruthBoreholeWithLanguage]:
+        """Detect the language shared by a list of boreholes and attach it to each entry.
+
+        Args:
+            boreholes: Source borehole records whose material descriptions are used for language
+                detection.
+
+        Returns:
+            A new list where each borehole is extended with the detected ``language`` field.
+        """
+        language = detect_language_of_text(
+            text="".join(
+                [
+                    layer.material_description
+                    for borehole in boreholes
+                    for layer in borehole.layers
+                    if layer.material_description
+                ]
+            ),
+            default_language=classification_params["default_language"],
+            supported_languages=classification_params["supported_language"],
+        )
+        return [cls.model_validate({**borehole.model_dump(), "language": language}) for borehole in boreholes]
+
+    @classmethod
+    def from_ground_truth(
+        cls, ground_truth: dict[str, list[GroundTruthBorehole]]
+    ) -> dict[str, list[GroundTruthBoreholeWithLanguage]]:
+        """Apply language detection to each group of boreholes.
+
+        Args:
+            ground_truth: Mapping from filename to a list of borehole records.
+
+        Returns:
+            A new mapping with the same keys where every borehole is extended with the detected
+            ``language`` field.
+        """
+        return {key: cls.from_boreholes(boreholes) for key, boreholes in ground_truth.items()}
 
 
 def deterministic_hash_ratio(text: str) -> float:
@@ -145,21 +196,21 @@ class ClassificationSystem(ABC):
         return cls.map_most_similar_class(label_str)
 
     @classmethod
-    def process(cls, gt: GroundTruth) -> list[LayerInformation]:
+    def process(cls, ground_truth: dict[str, list[GroundTruthBoreholeWithLanguage]]) -> list[LayerInformation]:
         """Extract all labelled layers from a GroundTruth object as a flat list of LayerInformation entries."""
         return [
             LayerInformation(
                 filename=filename,
                 borehole_index=borehole_index,
                 layer_index=layer_index,
-                language="",
+                language=borehole.language,
                 material_description=layer.material_description,
                 class_system=cls,
                 ground_truth_class=cls.reduce_label(layer),
                 prediction_class=None,
                 llm_reasoning=None,
             )
-            for filename, boreholes in gt.ground_truth.items()
+            for filename, boreholes in ground_truth.items()
             for borehole_index, borehole in enumerate(boreholes)
             for layer_index, layer in enumerate(borehole.layers)
             if cls.reduce_label(layer) is not None and layer.material_description is not None

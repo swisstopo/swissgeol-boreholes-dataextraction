@@ -19,7 +19,7 @@ from classification import DATAPATH
 from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
 from classification.models.model import BertModel
 from classification.utils.datasets import ExistingClassificationSystems
-from classification.utils.datasets.classification import split_sets
+from classification.utils.datasets.classification import GroundTruthBoreholeWithLanguage, split_sets
 from classification.utils.file_utils import read_params
 from core.ground_truth import GroundTruth
 
@@ -230,7 +230,11 @@ def setup_data(
     classification_system = ExistingClassificationSystems.get_classification_system_type(
         model_config["classification_system"].lower()
     )
-    data = classification_system.process(gt=GroundTruth(file_path))
+    data = classification_system.process(
+        ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
+            ground_truth=GroundTruth(file_path).ground_truth,
+        )
+    )
 
     train_data, val_data, test_data = split_sets(data)
     train_dataset = bert_model.get_tokenized_dataset(train_data)
