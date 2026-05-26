@@ -1,7 +1,7 @@
 """Dummy classifier module."""
 
 from classification.classifiers.classifier import Classifier
-from classification.utils.classification_classes import LayerInformation
+from classification.utils.datasets.classification import LayerInformation
 
 
 class DummyClassifier(Classifier):

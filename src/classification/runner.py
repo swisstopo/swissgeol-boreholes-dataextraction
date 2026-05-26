@@ -14,12 +14,13 @@ from classification.evaluation.benchmark.score import (
     evaluate_all_predictions,
 )
 from classification.evaluation.benchmark.spec import BenchmarkSpec
-from classification.utils.classification_classes import ExistingClassificationSystems, LayerInformation
 from classification.utils.data_utils import (
     get_data_class_count,
     get_data_language_count,
     write_predictions,
 )
+from classification.utils.datasets import ExistingClassificationSystems
+from classification.utils.datasets.classification import LayerInformation
 from core.ground_truth import GroundTruth
 from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_tracking

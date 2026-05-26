@@ -8,7 +8,7 @@ from transformers import Trainer, TrainingArguments
 
 from classification.classifiers.classifier import Classifier
 from classification.models.model import BertModel
-from classification.utils.classification_classes import ClassificationSystem, LayerInformation
+from classification.utils.datasets.classification import ClassificationSystem, LayerInformation
 
 
 class BertClassifier(Classifier):

@@ -18,7 +18,7 @@ from transformers.modeling_outputs import SequenceClassifierOutput
 from classification import DATAPATH
 from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
 from classification.models.model import BertModel
-from classification.utils.classification_classes import ExistingClassificationSystems
+from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.file_utils import read_params
 from core.ground_truth import GroundTruth
 

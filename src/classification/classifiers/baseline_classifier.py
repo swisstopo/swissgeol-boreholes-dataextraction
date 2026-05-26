@@ -5,7 +5,7 @@ import re
 from nltk.stem.snowball import SnowballStemmer
 
 from classification.classifiers.classifier import Classifier
-from classification.utils.classification_classes import ClassificationSystem, LayerInformation
+from classification.utils.datasets.classification import ClassificationSystem, LayerInformation
 
 
 class BaselineClassifier(Classifier):

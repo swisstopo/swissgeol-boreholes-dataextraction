@@ -17,8 +17,8 @@ from botocore.exceptions import ClientError
 from tqdm import tqdm
 
 from classification.classifiers.classifier import Classifier
-from classification.utils.classification_classes import ClassificationSystem, LayerInformation
 from classification.utils.data_utils import write_api_failures, write_predictions
+from classification.utils.datasets.classification import ClassificationSystem, LayerInformation
 from classification.utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)

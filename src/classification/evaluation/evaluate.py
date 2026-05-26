@@ -4,7 +4,7 @@ import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from classification.utils.classification_classes import ClassificationSystem, LayerInformation
+from classification.utils.datasets.classification import ClassificationSystem, LayerInformation
 from classification.utils.file_utils import read_params
 from core.benchmark_utils import Metrics
 from core.mlflow_tracking import mlflow
