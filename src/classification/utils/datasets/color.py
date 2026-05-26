@@ -11,11 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class ColorConsolidatedSystem(ClassificationSystem):
-    """Implementation of a classification type based on the color classification system.
-
-    This class implements the methods defined in `ClassificationType` for the color classification system,
-    which is used to classify consolidated as well as unconsolidated soils.
-    """
+    """Classification system for the primary color of consolidated geological layers."""
 
     @classmethod
     def normalize_class_string(cls, class_str: str) -> str:

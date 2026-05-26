@@ -287,8 +287,8 @@ def setup_trainer(
 
     Args:
         bert_model (BertModel): The bert model and tokenizer.
-        train_dataset: Training dataset,
-        eval_dataset: Evaluation dataset,
+        train_dataset: Training dataset.
+        eval_dataset: Evaluation dataset.
         model_config (dict): The dictionary containing the model configuration.
         out_directory (Path): The directory for storing the model.
 
