@@ -1,4 +1,4 @@
-"""Class module."""
+"""Classification dataset module."""
 
 from __future__ import annotations
 

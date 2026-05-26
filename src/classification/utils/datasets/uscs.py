@@ -1,4 +1,4 @@
-"""TODO."""
+"""USCS classification dataset module."""
 
 from __future__ import annotations
 
