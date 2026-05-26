@@ -12,8 +12,7 @@ from transformers import AutoConfig, AutoModelForSequenceClassification, AutoTok
 from transformers.models.bert.modeling_bert import BertForSequenceClassification
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
-from classification.utils.classification_classes import ClassificationSystem
-from classification.utils.data_loader import LayerInformation
+from classification.utils.datasets.classification import ClassificationSystem, LayerInformation
 
 logger = logging.getLogger(__name__)
 

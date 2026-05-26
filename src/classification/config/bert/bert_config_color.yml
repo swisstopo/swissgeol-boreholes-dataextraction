@@ -2,8 +2,8 @@
 model_path: "google-bert/bert-base-multilingual-uncased"
 
 # Data parameters
-classification_system: "en_main"
-json_file_name: "geoquat_ground_truth.json"
+classification_system: "color"
+json_file_name: "thurgau_ground_truth.462.json"
 
 # Training hyperparameters
 batch_size: 32
@@ -17,7 +17,7 @@ max_grad_norm: 5.0
 unfreeze_layers:
   - "classifier"
   - "pooler"
-  - "layer_11" # uncomment for stage 2
+  - "layer_11"
 use_class_balancing: "false"
 
 # Inference parameters

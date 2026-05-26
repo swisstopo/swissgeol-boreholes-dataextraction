@@ -1,0 +1,246 @@
+"""Classification dataset module."""
+
+from __future__ import annotations
+
+import hashlib
+import logging
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from enum import IntEnum
+from functools import reduce
+
+from classification.utils.file_utils import read_params
+from core.ground_truth import GroundTruthBorehole, GroundTruthLayer
+from swissgeol_doc_processing.utils.language_detection import detect_language_of_text
+
+logger = logging.getLogger(__name__)
+
+
+classification_params = read_params("classification_params.yml")
+
+
+class GroundTruthBoreholeWithLanguage(GroundTruthBorehole):
+    """Ground truth data with predicted language."""
+
+    language: str
+
+    @classmethod
+    def from_boreholes(cls, boreholes: list[GroundTruthBorehole]) -> list[GroundTruthBoreholeWithLanguage]:
+        """Detect the language shared by a list of boreholes and attach it to each entry.
+
+        Args:
+            boreholes: Source borehole records whose material descriptions are used for language
+                detection.
+
+        Returns:
+            A new list where each borehole is extended with the detected ``language`` field.
+        """
+        language = detect_language_of_text(
+            text="".join(
+                [
+                    layer.material_description
+                    for borehole in boreholes
+                    for layer in borehole.layers
+                    if layer.material_description
+                ]
+            ),
+            default_language=classification_params["default_language"],
+            supported_languages=classification_params["supported_language"],
+        )
+        return [cls.model_validate({**borehole.model_dump(), "language": language}) for borehole in boreholes]
+
+    @classmethod
+    def from_ground_truth(
+        cls, ground_truth: dict[str, list[GroundTruthBorehole]]
+    ) -> dict[str, list[GroundTruthBoreholeWithLanguage]]:
+        """Apply language detection to each group of boreholes.
+
+        Args:
+            ground_truth: Mapping from filename to a list of borehole records.
+
+        Returns:
+            A new mapping with the same keys where every borehole is extended with the detected
+            ``language`` field.
+        """
+        return {key: cls.from_boreholes(boreholes) for key, boreholes in ground_truth.items()}
+
+
+def deterministic_hash_ratio(text: str) -> float:
+    """Map a string deterministically to a float in [0, 1).
+
+    This is used to assign files to splits in a reproducible way, based only on
+    their filename (or any stable string key).
+
+    Args:
+        text: Input string to hash (e.g., a filename).
+
+    Returns:
+        A float in the half-open interval [0, 1).
+    """
+    h = hashlib.sha256(text.encode("utf-8")).digest()
+    # Use the first 8 bytes (64 bits) to build a stable ratio in [0, 1).
+    return int.from_bytes(h[:8], "big") / 2**64
+
+
+def split_sets(
+    data: list[LayerInformation], rval: float = 0.15, rtest: float = 0.15
+) -> tuple[list[LayerInformation], list[LayerInformation], list[LayerInformation]]:
+    """Split a flat list of LayerInformation entries into train, validation, and test subsets.
+
+    Args:
+        data: Flat list of LayerInformation entries to split.
+        rval: Fraction of data reserved for validation (default 0.15).
+        rtest: Fraction of data reserved for testing (default 0.15).
+
+    Returns:
+        A tuple (train, val, test) of LayerInformation lists.
+    """
+    # Get split into sets.
+    split_train, split_val, split_test = [], [], []
+    for entry in data:
+        # Extract filename for hash
+        x_ratio = deterministic_hash_ratio(entry.filename)
+        if x_ratio < rtest:
+            split_test.append(entry)
+        elif x_ratio < rtest + rval:
+            split_val.append(entry)
+        else:
+            split_train.append(entry)
+
+    return split_train, split_val, split_test
+
+
+@dataclass
+class LayerInformation:
+    """Class for each layer in the ground truth json file.
+
+    A layer is either classified into USCS or lithology, but never both.
+    """
+
+    filename: str
+    borehole_index: int
+    layer_index: int
+    language: str
+    material_description: str
+    class_system: type[ClassificationSystem]
+    ground_truth_class: None | ClassificationSystem.EnumMember
+    prediction_class: None | ClassificationSystem.EnumMember
+    llm_reasoning: None | str
+
+
+class ClassificationSystem(ABC):
+    """Abstract base class for classification system.
+
+    This class defines the core structure and methods that all classification systems
+    should implement. It defines methods for normalizing input class strings, returning
+    the corresponding Enum class, and providing a default value for dummy classification.
+    """
+
+    EnumClassType = type[IntEnum]  # Type alias for the class that inherit InEnum (e.g. USCSClasses)
+    EnumMember = IntEnum  # Type alias for a member of those class (e.g. USCSClasses.CL_ML)
+
+    @classmethod
+    @abstractmethod
+    def normalize_class_string(cls, class_str: str) -> str:
+        """Normalize input class string."""
+        ...
+
+    @classmethod
+    @abstractmethod
+    def get_enum(cls) -> EnumClassType:
+        """Return the Enum type associated with the classification."""
+        ...
+
+    @classmethod
+    @abstractmethod
+    def get_name(cls) -> str:
+        """Return the name of the system used as a string."""
+        ...
+
+    @classmethod
+    @abstractmethod
+    def get_layer_ground_truth_keys(cls) -> list[str]:
+        """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
+        ...
+
+    @classmethod
+    def reduce_label(
+        cls,
+        layer: GroundTruthLayer,
+    ) -> int | None:
+        """Extract the integer class index from a layer by resolving the ground truth key path, or None if absent."""
+        try:
+            label_str = reduce(getattr, cls.get_layer_ground_truth_keys(), layer)
+        except AttributeError:
+            return None
+
+        if label_str is None:
+            return None
+
+        # Multilabel is not supported yet, reduce to first class
+        if isinstance(label_str, list):
+            label_str = label_str[0]
+
+        return cls.map_most_similar_class(label_str)
+
+    @classmethod
+    def process(cls, ground_truth: dict[str, list[GroundTruthBoreholeWithLanguage]]) -> list[LayerInformation]:
+        """Extract all labelled layers from a GroundTruth object as a flat list of LayerInformation entries."""
+        return [
+            LayerInformation(
+                filename=filename,
+                borehole_index=borehole_index,
+                layer_index=layer_index,
+                language=borehole.language,
+                material_description=layer.material_description,
+                class_system=cls,
+                ground_truth_class=cls.reduce_label(layer),
+                prediction_class=None,
+                llm_reasoning=None,
+            )
+            for filename, boreholes in ground_truth.items()
+            for borehole_index, borehole in enumerate(boreholes)
+            for layer_index, layer in enumerate(borehole.layers)
+            if cls.reduce_label(layer) is not None and layer.material_description is not None
+        ]
+
+    @classmethod
+    def get_class_from_entry(cls, entry: dict, keys: list[str]) -> str | None:
+        """Returns the class of the classification system used from a possibly nested entry.
+
+        If one of the entries is missing from the nested structure, returns None.
+        """
+        return (
+            cls.get_class_from_entry(entry=entry.get(keys[0]), keys=keys[1:])
+            if keys and isinstance(entry, dict)
+            else entry
+        )
+
+    @classmethod
+    @abstractmethod
+    def get_default_class_value(cls) -> EnumMember:
+        """Return the default value for the enum class."""
+        ...
+
+    @classmethod
+    def map_most_similar_class(cls, class_str: str) -> EnumMember:
+        """Maps a string to the closest matching class enum member.
+
+        If no match is found, returns the system's default class via ``get_default_class_value()``.
+
+        Args:
+            class_str (str): The input string to map.
+
+        Returns:
+            ClassificationType.EnumMember: The matching enum member, or default if no match is found.
+        """
+        normalized_str = cls.normalize_class_string(class_str)
+
+        classes_enum = cls.get_enum()
+        for class_ in classes_enum:
+            if normalized_str == class_.name.lower():
+                return class_
+        logger.warning(
+            f"{class_str} does not have a matching class, mapping it to {cls.get_default_class_value().name} instead."
+        )
+        return cls.get_default_class_value()
