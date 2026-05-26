@@ -1,4 +1,4 @@
-"""Color classification dataset module."""
+"""Color classification system for consolidated soils (primary_color field)."""
 
 from __future__ import annotations
 

@@ -216,7 +216,7 @@ def setup_training_args(model_config: dict, out_directory: Path) -> TrainingArgu
 def setup_data(
     bert_model: BertModel, model_config: dict
 ) -> tuple[datasets.Dataset, datasets.Dataset, datasets.Dataset]:
-    """Create tokenized datasets for the train and evaluation parts.
+    """Create tokenized datasets for the train, validation, and test splits.
 
     Args:
         bert_model (BertModel): The bert model and tokenizer.

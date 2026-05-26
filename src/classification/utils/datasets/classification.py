@@ -164,18 +164,6 @@ class ClassificationSystem(ABC):
         ...
 
     @classmethod
-    @abstractmethod
-    def process_layer(
-        cls,
-        filename: str,
-        borehole_index: int,
-        layer_index: int,
-        layer: GroundTruthLayer,
-    ) -> LayerInformation | None:
-        """Convert a single ground truth layer into a LayerInformation entry if possible, or return None."""
-        ...
-
-    @classmethod
     def reduce_label(
         cls,
         layer: GroundTruthLayer,
@@ -236,10 +224,9 @@ class ClassificationSystem(ABC):
 
     @classmethod
     def map_most_similar_class(cls, class_str: str) -> EnumMember:
-        """Maps a given string to the closest matching class in the classification system.
+        """Maps a string to the closest matching class enum member.
 
-        This function normalizes the input string depending on the data type (uscs or lithology) and tries to find a
-        matching class name. If no match is found, it returns the default class `kA`.
+        If no match is found, returns the system's default class via ``get_default_class_value()``.
 
         Args:
             class_str (str): The input string to map.

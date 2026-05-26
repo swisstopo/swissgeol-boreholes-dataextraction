@@ -20,7 +20,7 @@ from classification.utils.data_utils import (
     write_predictions,
 )
 from classification.utils.datasets import ExistingClassificationSystems
-from classification.utils.datasets.classification import LayerInformation
+from classification.utils.datasets.classification import GroundTruthBoreholeWithLanguage, LayerInformation
 from core.ground_truth import GroundTruth
 from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_tracking
@@ -73,7 +73,12 @@ def run_classification_predictions(
     logger.info(
         f"Loading data from {file_path}" + (f" and ground truth from {ground_truth_path}" if ground_truth_path else "")
     )
-    layer_descriptions = classification_system_cls.process(gt=GroundTruth(file_path))
+
+    layer_descriptions = classification_system_cls.process(
+        ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
+            ground_truth=GroundTruth(file_path).ground_truth,
+        )
+    )
 
     n_documents = len({layer.filename for layer in layer_descriptions})
 
