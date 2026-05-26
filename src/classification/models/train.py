@@ -187,11 +187,11 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     trainer.log_metrics("test", test_results.metrics)
     trainer.save_metrics("test", test_results.metrics)
 
+    if mlflow_tracking:
+        mlflow.log_metrics({k: v for k, v in test_results.metrics.items() if isinstance(v, int | float)})
+
     logger.info("Save model and state")
     save_fine_tuned_head(bert_model, out_directory)
-    bert_model.tokenizer.save_pretrained(out_directory)  # tokenizer stays alongside head for easy upload
-    trainer.save_model()
-    trainer.save_state()
 
 
 def setup_training_args(model_config: dict, out_directory: Path) -> TrainingArguments:
