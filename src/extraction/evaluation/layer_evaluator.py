@@ -1,4 +1,4 @@
-"""Classes for evaluating the groundwater levels of a borehole."""
+"""Classes for evaluating the layer and depth predictions of a borehole."""
 
 import logging
 from collections import defaultdict

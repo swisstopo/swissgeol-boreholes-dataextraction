@@ -100,7 +100,7 @@ class MetadataEvaluator:
             ground_truth_elevation (float): the groundtruth elevation
 
         Returns:
-            bool: if the extracted evaluation matches the ground truth
+            bool: if the extracted elevation matches the ground truth
         """
         return math.isclose(extracted_elevation, ground_truth_elevation, abs_tol=0.01)
 
