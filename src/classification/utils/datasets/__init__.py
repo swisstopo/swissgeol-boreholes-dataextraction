@@ -28,7 +28,7 @@ class ExistingClassificationSystems(Enum):
         """Returns the class of a classification system based on input string.
 
         Args:
-            class_system (Literal["uscs", "lithology", "en_main"]): The name of the classification system.
+            class_system (Literal): The name of the classification system.
 
         Returns:
             Type[ClassificationSystem]: The associated ClassificationSystem class.
