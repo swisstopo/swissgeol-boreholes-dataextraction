@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -11,6 +12,51 @@ from functools import reduce
 from core.ground_truth import GroundTruth, GroundTruthLayer
 
 logger = logging.getLogger(__name__)
+
+
+def deterministic_hash_ratio(text: str) -> float:
+    """Map a string deterministically to a float in [0, 1).
+
+    This is used to assign files to splits in a reproducible way, based only on
+    their filename (or any stable string key).
+
+    Args:
+        text: Input string to hash (e.g., a filename).
+
+    Returns:
+        A float in the half-open interval [0, 1).
+    """
+    h = hashlib.sha256(text.encode("utf-8")).digest()
+    # Use the first 8 bytes (64 bits) to build a stable ratio in [0, 1).
+    return int.from_bytes(h[:8], "big") / 2**64
+
+
+def split_sets(
+    data: list[LayerInformation], rval: float = 0.15, rtest: float = 0.15
+) -> tuple[list[LayerInformation], list[LayerInformation], list[LayerInformation]]:
+    """Split a flat list of LayerInformation entries into train, validation, and test subsets.
+
+    Args:
+        data: Flat list of LayerInformation entries to split.
+        rval: Fraction of data reserved for validation (default 0.15).
+        rtest: Fraction of data reserved for testing (default 0.15).
+
+    Returns:
+        A tuple (train, val, test) of LayerInformation lists.
+    """
+    # Get split into sets.
+    split_train, split_val, split_test = [], [], []
+    for entry in data:
+        # Extract filename for hash
+        x_ratio = deterministic_hash_ratio(entry.filename)
+        if x_ratio < rtest:
+            split_test.append(entry)
+        elif x_ratio < rtest + rval:
+            split_val.append(entry)
+        else:
+            split_train.append(entry)
+
+    return split_train, split_val, split_test
 
 
 @dataclass
