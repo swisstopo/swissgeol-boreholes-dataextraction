@@ -1,6 +1,5 @@
 """Model training module."""
 
-import json
 import logging
 import os
 import time
@@ -166,16 +165,6 @@ class WeightedLabelSmoother:
         return (1 - self.epsilon) * nll + self.epsilon * smooth
 
 
-def save_fine_tuned_head(bert_model: BertModel, out_dir: Path) -> None:
-    """Save only fine-tuned parameters (requires_grad=True) and model config."""
-    out_dir.mkdir(parents=True, exist_ok=True)
-    fine_tuned_names = {n for n, p in bert_model.model.named_parameters() if p.requires_grad}
-    head_state = {k: v.cpu() for k, v in bert_model.model.state_dict().items() if k in fine_tuned_names}
-    save_file(head_state, out_dir / "model.safetensors")
-    bert_model.model.config.save_pretrained(out_dir)
-    (out_dir / "fine_tuned_keys.json").write_text(json.dumps(sorted(fine_tuned_names), indent=2))
-
-
 def setup_mlflow_tracking(
     model_config: dict,
     out_directory: Path,
@@ -209,6 +198,14 @@ def common_options(f):
         help="Path to a local folder containing an existing bert model (e.g. models/your_model_folder).",
     )(f)
     f = click.option(
+        "-b",
+        "--backbone-path",
+        type=click.Path(exists=True, path_type=Path),
+        default=None,
+        help="Path to backbone.safetensors for split-model loading. "
+        "When provided, --model-checkpoint is the head directory.",
+    )(f)
+    f = click.option(
         "-o",
         "--out-directory",
         type=click.Path(path_type=Path),
@@ -220,7 +217,7 @@ def common_options(f):
 
 @click.command()
 @common_options
-def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: Path):
+def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: Path, backbone_path: Path):
     """Train a BERT model using the specified datasets and configurations from the YAML config file."""
     model_config = read_params(config_file_path)
     classification_system = ExistingClassificationSystems.get_classification_system_type(
@@ -236,8 +233,12 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     # Initialize the model and tokenizer, freeze layers, put in train mode
 
     model_path = model_config["model_path"] if model_checkpoint is None else model_checkpoint
+    # Head-only checkpoints don't include tokenizer files; use the base model from config as fallback.
+    tokenizer_path = model_config["model_path"] if backbone_path else None
     logger.info(f"Loading pretrained model from {model_path}.")
-    bert_model = BertModel(model_path, classification_system)
+    bert_model = BertModel(
+        model_path, classification_system, backbone_path=backbone_path, tokenizer_path=tokenizer_path
+    )
     bert_model.freeze_all_layers()
     bert_model.unfreeze_list(model_config.get("unfreeze_layers", []))
     bert_model.model.train()
@@ -295,8 +296,9 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
         mlflow.log_artifact(str(csv_path))
         mlflow.log_metrics({k: v for k, v in test_results.metrics.items() if isinstance(v, int | float)})
 
+    # Save final cleaned version
     logger.info("Save model and state")
-    save_fine_tuned_head(bert_model, out_directory)
+    trainer.save_model(str(out_directory))
 
 
 def setup_training_args(model_config: dict, out_directory: Path) -> TrainingArguments:
@@ -398,12 +400,34 @@ def compute_trainset_weights(
 class HeadOnlyTrainer(Trainer):
     """Trainer that saves only fine-tuned parameters at every checkpoint."""
 
-    def __init__(self, bert_model: BertModel, **kwargs):
-        super().__init__(**kwargs)
-        self._bert_model = bert_model
+    def save_fine_tuned_head(self, out_dir: Path) -> None:
+        """Save only the fine-tuned parameters (requires_grad=True) and the model config.
 
-    def save_model(self, output_dir=None, _internal_call=False):
-        save_fine_tuned_head(self._bert_model, Path(output_dir or self.args.output_dir))
+        Skips frozen backbone weights, keeping checkpoints small and focused on what actually changed.
+
+        Args:
+            out_dir: Directory where model.safetensors and config.json will be written.
+        """
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        # Gather only trained layers (gradient is available)
+        fine_tuned_names = {n for n, p in self.model.named_parameters() if p.requires_grad}
+        head_state = {k: v.cpu() for k, v in self.model.state_dict().items() if k in fine_tuned_names}
+
+        # Save trained layer and model config
+        save_file(head_state, out_dir / "model.safetensors")
+        self.model.config.save_pretrained(out_dir)
+
+    def save_model(self, output_dir: str | None = None, _internal_call: bool = False):
+        """Override Trainer.save_model to persist only fine-tuned parameters.
+
+        Called automatically by the Trainer at each checkpoint.
+
+        Args:
+            output_dir: Destination directory. Defaults to self.args.output_dir.
+            _internal_call: Passed by the Trainer internals; unused here.
+        """
+        self.save_fine_tuned_head(Path(output_dir or self.args.output_dir))
 
 
 def setup_trainer(
@@ -455,7 +479,6 @@ def setup_trainer(
 
     # Create the Trainer object
     trainer = HeadOnlyTrainer(
-        bert_model=bert_model,
         model=bert_model.model,
         args=training_args,
         train_dataset=train_dataset,

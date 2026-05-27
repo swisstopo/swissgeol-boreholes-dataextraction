@@ -17,11 +17,11 @@ from swissgeol_doc_processing.text.textline import TextLine
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ExtractedFeature(metaclass=ABCMeta):
     """Class for extracted feature information."""
 
-    is_correct = None
+    is_correct: bool | None = None
 
     @abstractmethod
     def to_json(self) -> dict:
