@@ -10,12 +10,22 @@ from pathlib import Path
 import click
 import datasets
 import mlflow
+import pandas as pd
 import torch
 import torch.nn as nn
 from dotenv import load_dotenv
 from safetensors.torch import save_file
-from transformers import DataCollatorWithPadding, EvalPrediction, Trainer, TrainingArguments
+from transformers import (
+    DataCollatorWithPadding,
+    EvalPrediction,
+    Trainer,
+    TrainerCallback,
+    TrainerControl,
+    TrainerState,
+    TrainingArguments,
+)
 from transformers.modeling_outputs import SequenceClassifierOutput
+from transformers.training_args import TrainingArguments as HFTrainingArguments
 
 from classification import DATAPATH
 from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
@@ -34,6 +44,70 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"
+
+
+class PerClassMetricsCallback(TrainerCallback):
+    """Logs per-class precision/recall/F1 to terminal, CSV, and MLflow after each evaluation."""
+
+    def __init__(self, bert_model: BertModel, eval_dataset: datasets.Dataset, out_directory: Path):
+        self._bert_model = bert_model
+        self._eval_dataset = eval_dataset
+        self._out_directory = out_directory
+
+    def on_evaluate(
+        self,
+        args: HFTrainingArguments,
+        state: TrainerState,
+        control: TrainerControl,
+        model=None,
+        **kwargs,
+    ):
+        # Run inference on eval set
+        model.eval()
+        device = next(model.parameters()).device
+        all_preds, all_labels = [], []
+
+        dataloader = torch.utils.data.DataLoader(
+            self._eval_dataset.select_columns(["input_ids", "attention_mask", "token_type_ids", "label"]),
+            batch_size=args.per_device_eval_batch_size,
+            collate_fn=DataCollatorWithPadding(tokenizer=self._bert_model.tokenizer),
+        )
+
+        with torch.no_grad():
+            for batch in dataloader:
+                labels = batch.pop("labels").tolist()
+                batch = {k: v.to(device) for k, v in batch.items()}
+                logits = model(**batch).logits
+                preds = logits.argmax(dim=-1).tolist()
+                all_preds.extend(preds)
+                all_labels.extend(labels)
+
+        # Convert integer indices to EnumMembers
+        id2class = self._bert_model.id2classEnum
+        pred_classes = [id2class[prediction] for prediction in all_preds]
+        label_classes = [id2class[label] for label in all_labels]
+
+        metrics = per_class_metric(pred_classes, label_classes)
+        epoch = int(state.epoch)
+
+        # --- Terminal ---
+        header = f"{'Class':<30} {'Precision':>10} {'Recall':>10} {'F1':>10} {'TP':>6} {'FP':>6} {'FN':>6}"
+        print(f"\n=== Per-class metrics — Epoch {epoch} (eval) ===")
+        print(header)
+        for cls, m in sorted(metrics.items(), key=lambda x: x[0].value):
+            print(f"{cls.name:<30} {m.precision:>10.3f} {m.recall:>10.3f} {m.f1:>10.3f} {m.tp:>6} {m.fp:>6} {m.fn:>6}")
+
+        # --- CSV ---
+        rows = [{"class": cls.name, **m.to_json()} for cls, m in metrics.items()]
+        df = pd.DataFrame(rows).sort_values("class")
+        csv_path = self._out_directory / f"per_class_metrics_eval_epoch{epoch}.csv"
+        df.to_csv(csv_path, index=False)
+
+        # --- MLflow ---
+        if mlflow_tracking:
+            for cls, m in metrics.items():
+                mlflow.log_metrics(m.to_dict(prefix=f"eval_{cls.name}"), step=epoch)
+            mlflow.log_artifact(str(csv_path))
 
 
 class WeightedLabelSmoother:
@@ -187,7 +261,25 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     trainer.log_metrics("test", test_results.metrics)
     trainer.save_metrics("test", test_results.metrics)
 
+    # Per-class metrics on test set
+    preds = [bert_model.id2classEnum[i] for i in test_results.predictions.argmax(axis=-1)]
+    labels = [bert_model.id2classEnum[i] for i in test_results.label_ids]
+    test_metrics = per_class_metric(preds, labels)
+
+    header = f"{'Class':<30} {'Precision':>10} {'Recall':>10} {'F1':>10} {'TP':>6} {'FP':>6} {'FN':>6}"
+    print("\n=== Per-class metrics — Test ===")
+    print(header)
+    for cls, m in sorted(test_metrics.items(), key=lambda x: x[0].value):
+        print(f"{cls.name:<30} {m.precision:>10.3f} {m.recall:>10.3f} {m.f1:>10.3f} {m.tp:>6} {m.fp:>6} {m.fn:>6}")
+
+    rows = [{"class": cls.name, **m.to_json()} for cls, m in test_metrics.items()]
+    csv_path = out_directory / "per_class_metrics_test.csv"
+    pd.DataFrame(rows).sort_values("class").to_csv(csv_path, index=False)
+
     if mlflow_tracking:
+        for cls, m in test_metrics.items():
+            mlflow.log_metrics(m.to_dict(prefix=f"test_{cls.name}"))
+        mlflow.log_artifact(str(csv_path))
         mlflow.log_metrics({k: v for k, v in test_results.metrics.items() if isinstance(v, int | float)})
 
     logger.info("Save model and state")
@@ -359,6 +451,7 @@ def setup_trainer(
         data_collator=DataCollatorWithPadding(tokenizer=bert_model.tokenizer),
         compute_metrics=compute_metrics,
         compute_loss_func=compute_loss_func,
+        callbacks=[PerClassMetricsCallback(bert_model, eval_dataset, out_directory)],
     )
     return trainer
 
