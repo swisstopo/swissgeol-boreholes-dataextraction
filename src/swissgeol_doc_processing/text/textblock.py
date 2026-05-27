@@ -67,13 +67,19 @@ class MaterialDescription(ExtractedFeature):
 
     def to_json(self) -> dict:
         """Convert the MaterialDescription object to a JSON serializable dictionary."""
-        return {"text": self.text, "lines": [line.to_json() for line in self.lines]}
+        return {
+            "text": self.text,
+            "lines": [line.to_json() for line in self.lines],
+            "is_correct": self.is_correct,
+        }
 
     @classmethod
     def from_json(cls, data: dict) -> Self:
         """Converts a dictionary to an object."""
         return cls(
-            text=data["text"], lines=[FeatureOnPage.from_json(line, MaterialDescriptionLine) for line in data["lines"]]
+            text=data["text"],
+            lines=[FeatureOnPage.from_json(line, MaterialDescriptionLine) for line in data["lines"]],
+            is_correct=data.get("is_correct"),
         )
 
 
