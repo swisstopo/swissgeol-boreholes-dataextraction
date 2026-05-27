@@ -172,7 +172,6 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
 
     # Start training
     logger.info("Beginning the training.")
-    trainer.save_fine_tuned_head()
     train_result = trainer.train(resume_from_checkpoint=model_checkpoint)
     trainer.log_metrics("train", train_result.metrics)
     trainer.save_metrics("train", train_result.metrics)
