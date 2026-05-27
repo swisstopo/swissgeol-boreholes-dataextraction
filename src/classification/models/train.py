@@ -18,9 +18,18 @@ from transformers.modeling_outputs import SequenceClassifierOutput
 
 from classification import DATAPATH
 from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
+from classification.models.config import (
+    ExperimentConfig,
+    ExperimentDatasetConfig,
+    ExperimentHyperparameters,
+)
 from classification.models.model import BertModel
 from classification.utils.datasets import ExistingClassificationSystems
-from classification.utils.datasets.classification import GroundTruthBoreholeWithLanguage, split_sets
+from classification.utils.datasets.classification import (
+    GroundTruthBoreholeWithLanguage,
+    LayerInformation,
+    split_samples,
+)
 from classification.utils.file_utils import read_params
 from core.ground_truth import GroundTruth
 
@@ -132,24 +141,22 @@ def common_options(f):
 @common_options
 def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: Path):
     """Train a BERT model using the specified datasets and configurations from the YAML config file."""
-    model_config = read_params(config_file_path)
+    model_config = ExperimentConfig.model_validate(read_params(config_file_path))
+    out_directory = out_directory / model_config.experiment_name / time.strftime("%Y%m%d-%H%M%S")
     classification_system = ExistingClassificationSystems.get_classification_system_type(
-        model_config["classification_system"].lower()
+        model_config.classification_system
     )
-
-    out_directory = out_directory / classification_system.get_name() / time.strftime("%Y%m%d-%H%M%S")
-
     if mlflow_tracking:
         logger.info("Logging to MLflow.")
-        setup_mlflow_tracking(model_config, out_directory)
+        setup_mlflow_tracking(model_config.model_dump(), out_directory)
 
     # Initialize the model and tokenizer, freeze layers, put in train mode
 
-    model_path = model_config["model_path"] if model_checkpoint is None else model_checkpoint
+    model_path = model_config.model_path if model_checkpoint is None else model_checkpoint
     logger.info(f"Loading pretrained model from {model_path}.")
     bert_model = BertModel(model_path, classification_system)
     bert_model.freeze_all_layers()
-    bert_model.unfreeze_list(model_config.get("unfreeze_layers", []))
+    bert_model.unfreeze_list(model_config.unfreeze_layers)
     bert_model.model.train()
 
     # Load datasets
@@ -184,11 +191,11 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     trainer.save_model(str(out_directory))
 
 
-def setup_training_args(model_config: dict, out_directory: Path) -> TrainingArguments:
+def setup_training_args(model_config: ExperimentHyperparameters, out_directory: Path) -> TrainingArguments:
     """Create a TrainingArgument object from the config file.
 
     Args:
-        model_config (dict): The dictionary containing the model configuration.
+        model_config (ExperimentHyperparameters): The dictionary containing the model configuration.
         out_directory (Path): The directory for storing the model.
 
     Returns:
@@ -199,14 +206,14 @@ def setup_training_args(model_config: dict, out_directory: Path) -> TrainingArgu
     training_args = TrainingArguments(
         output_dir=out_directory,
         logging_dir=out_directory / "logs",
-        per_device_train_batch_size=model_config["batch_size"],
-        per_device_eval_batch_size=model_config["batch_size"],
-        num_train_epochs=model_config["num_epochs"],
-        weight_decay=float(model_config["weight_decay"]),
-        learning_rate=float(model_config["learning_rate"]),
-        lr_scheduler_type=model_config["lr_scheduler_type"],
-        warmup_ratio=float(model_config["warmup_ratio"]),
-        max_grad_norm=float(model_config["max_grad_norm"]),
+        per_device_train_batch_size=model_config.batch_size,
+        per_device_eval_batch_size=model_config.batch_size,
+        num_train_epochs=model_config.num_epochs,
+        weight_decay=model_config.weight_decay,
+        learning_rate=model_config.learning_rate,
+        lr_scheduler_type=model_config.lr_scheduler_type,
+        warmup_ratio=model_config.warmup_ratio,
+        max_grad_norm=model_config.max_grad_norm,
         logging_strategy="epoch",
         eval_strategy="epoch",
         save_strategy="epoch",
@@ -217,33 +224,46 @@ def setup_training_args(model_config: dict, out_directory: Path) -> TrainingArgu
     return training_args
 
 
+def load_samples_from_config(datasets_cfg: list[ExperimentDatasetConfig]) -> list[LayerInformation]:
+    """TODO."""
+    return [
+        sample
+        for dataset_cfg in datasets_cfg
+        for sample in ExistingClassificationSystems.get_classification_system_type(
+            dataset_cfg.classification_system,
+        ).process(
+            ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
+                ground_truth=GroundTruth(DATAPATH / dataset_cfg.ground_truth).ground_truth,
+            )
+        )
+    ]
+
+
 def setup_data(
-    bert_model: BertModel, model_config: dict
+    bert_model: BertModel, model_config: ExperimentConfig
 ) -> tuple[datasets.Dataset, datasets.Dataset, datasets.Dataset]:
     """Create tokenized datasets for the train, validation, and test splits.
 
     Args:
         bert_model (BertModel): The bert model and tokenizer.
-        model_config (dict): The dictionary containing the model configuration.
+        model_config (ExperimentConfiguration): The model configuration.
 
     Returns:
         tuple[datasets.Dataset, datasets.Dataset, datasets.Dataset]: Split datasets.
     """
-    file_path = DATAPATH / model_config["json_file_name"]
+    logger.info("Loading training samples ...")
+    trainval_samples = load_samples_from_config(model_config.training_sets)
+    train_samples, val_samples, _ = split_samples(trainval_samples)
 
-    classification_system = ExistingClassificationSystems.get_classification_system_type(
-        model_config["classification_system"].lower()
-    )
-    data = classification_system.process(
-        ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
-            ground_truth=GroundTruth(file_path).ground_truth,
-        )
-    )
+    logger.info("Loading test samples ...")
+    test_samples = load_samples_from_config(model_config.test_sets)
+    _, _, test_samples = split_samples(test_samples)
 
-    train_data, val_data, test_data = split_sets(data)
-    train_dataset = bert_model.get_tokenized_dataset(train_data)
-    val_dataset = bert_model.get_tokenized_dataset(val_data)
-    test_dataset = bert_model.get_tokenized_dataset(test_data)
+    logger.info("Tokenizing samples ...")
+    train_dataset = bert_model.get_tokenized_dataset(train_samples)
+    val_dataset = bert_model.get_tokenized_dataset(val_samples)
+    test_dataset = bert_model.get_tokenized_dataset(test_samples)
+
     return train_dataset, val_dataset, test_dataset
 
 
@@ -317,7 +337,7 @@ def setup_trainer(
     bert_model: BertModel,
     train_dataset: datasets.Dataset,
     eval_dataset: datasets.Dataset,
-    model_config: dict,
+    model_config: ExperimentConfig,
     out_directory: Path,
 ) -> Trainer:
     """Create a Trainer object.
@@ -326,14 +346,14 @@ def setup_trainer(
         bert_model (BertModel): The bert model and tokenizer.
         train_dataset: Training dataset.
         eval_dataset: Evaluation dataset.
-        model_config (dict): The dictionary containing the model configuration.
+        model_config (ExperimentConfiguration): The dictionary containing the model configuration.
         out_directory (Path): The directory for storing the model.
 
     Returns:
         Trainer: The trainer object.
     """
     # load the training arguments from the config file
-    training_args = setup_training_args(model_config, out_directory)
+    training_args = setup_training_args(model_config.hyperparameters, out_directory)
 
     # Define a custom compute_metrics function
     def compute_metrics(eval_pred: EvalPrediction) -> dict[str, float]:
@@ -353,9 +373,8 @@ def setup_trainer(
         metrics = per_class_metric(predictions, labels)
         return AllClassificationMetrics.compute_micro_average(metrics.values())
 
-    use_class_balacing = model_config.get("use_class_balancing", "false").lower() == "true"
     compute_loss_func = None
-    if use_class_balacing:
+    if model_config.use_class_balancing:
         class_weights = compute_trainset_weights(train_dataset)
         # create the object that will be called to compute the loss function (standard in transformers lib).
         compute_loss_func = WeightedLabelSmoother(class_weights=class_weights)
