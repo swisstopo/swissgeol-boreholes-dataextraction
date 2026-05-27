@@ -12,15 +12,17 @@ import mlflow
 import torch
 import torch.nn as nn
 from dotenv import load_dotenv
+from safetensors.torch import save_file
 from transformers import DataCollatorWithPadding, EvalPrediction, Trainer, TrainingArguments
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from classification import DATAPATH
 from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
 from classification.models.model import BertModel
-from classification.utils.classification_classes import ExistingClassificationSystems
-from classification.utils.data_loader import prepare_classification_data
+from classification.utils.datasets import ExistingClassificationSystems
+from classification.utils.datasets.classification import GroundTruthBoreholeWithLanguage, split_sets
 from classification.utils.file_utils import read_params
+from core.ground_truth import GroundTruth
 
 if __name__ == "__main__":
     # Only configure logging if this script is run directly (e.g. training pipeline entrypoint)
@@ -95,9 +97,7 @@ def setup_mlflow_tracking(
     mlflow.set_experiment(experiment_name)
     mlflow.start_run()
     mlflow.set_tag("classification system", str(model_config["classification_system"]))
-    json_path = model_config.get("json_file_name")
-    json_path = json_path if json_path else model_config.get("train_subset").split("/")[0]
-    mlflow.set_tag("json file path", json_path)
+    mlflow.set_tag("json file path", model_config.get("json_file_name"))
     mlflow.set_tag("out_directory", str(out_directory))
     mlflow.log_params(model_config)
 
@@ -119,6 +119,14 @@ def common_options(f):
         help="Path to a local folder containing an existing bert model (e.g. models/your_model_folder).",
     )(f)
     f = click.option(
+        "-b",
+        "--backbone-path",
+        type=click.Path(exists=True, path_type=Path),
+        default=None,
+        help="Path to backbone.safetensors for split-model loading. "
+        "When provided, --model-checkpoint is the head directory.",
+    )(f)
+    f = click.option(
         "-o",
         "--out-directory",
         type=click.Path(path_type=Path),
@@ -130,7 +138,7 @@ def common_options(f):
 
 @click.command()
 @common_options
-def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: Path):
+def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: Path, backbone_path: Path):
     """Train a BERT model using the specified datasets and configurations from the YAML config file."""
     model_config = read_params(config_file_path)
     classification_system = ExistingClassificationSystems.get_classification_system_type(
@@ -146,24 +154,46 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     # Initialize the model and tokenizer, freeze layers, put in train mode
 
     model_path = model_config["model_path"] if model_checkpoint is None else model_checkpoint
+    # Head-only checkpoints don't include tokenizer files; use the base model from config as fallback.
+    tokenizer_path = model_config["model_path"] if backbone_path else None
     logger.info(f"Loading pretrained model from {model_path}.")
-    bert_model = BertModel(model_path, classification_system)
+    bert_model = BertModel(
+        model_path, classification_system, backbone_path=backbone_path, tokenizer_path=tokenizer_path
+    )
     bert_model.freeze_all_layers()
     bert_model.unfreeze_list(model_config.get("unfreeze_layers", []))
     bert_model.model.train()
 
+    # Load datasets
+    logger.info("Loading datasets (transformers library).")
+    train_dataset, eval_dataset, test_dataset = setup_data(bert_model, model_config)
+    logger.info(
+        "Train: %d | Val: %d | Test: %d samples.",
+        len(train_dataset),
+        len(eval_dataset),
+        len(test_dataset),
+    )
+
     # Initialize the trainer
-    trainer = setup_trainer(bert_model, model_config, out_directory)
+    trainer = setup_trainer(bert_model, train_dataset, eval_dataset, model_config, out_directory)
 
     # Start training
     logger.info("Beginning the training.")
     train_result = trainer.train()
+    trainer.log_metrics("train", train_result.metrics)
+    trainer.save_metrics("train", train_result.metrics)
 
-    trainer.save_model()  # Saves the tokenizer too for easy upload
-    metrics = train_result.metrics
-    trainer.log_metrics("train", metrics)
-    trainer.save_metrics("train", metrics)
-    trainer.save_state()
+    logger.info("Beginning the test.")
+    test_results = trainer.predict(test_dataset)
+    trainer.log_metrics("test", test_results.metrics)
+    trainer.save_metrics("test", test_results.metrics)
+
+    if mlflow_tracking:
+        mlflow.log_metrics({k: v for k, v in test_results.metrics.items() if isinstance(v, int | float)})
+
+    # Save final cleaned version
+    logger.info("Save model and state")
+    trainer.save_model(str(out_directory))
 
 
 def setup_training_args(model_config: dict, out_directory: Path) -> TrainingArguments:
@@ -199,43 +229,34 @@ def setup_training_args(model_config: dict, out_directory: Path) -> TrainingArgu
     return training_args
 
 
-def setup_data(bert_model: BertModel, model_config: dict) -> tuple[datasets.Dataset, datasets.Dataset]:
-    """Create tokenized datasets for the train and evaluation parts.
+def setup_data(
+    bert_model: BertModel, model_config: dict
+) -> tuple[datasets.Dataset, datasets.Dataset, datasets.Dataset]:
+    """Create tokenized datasets for the train, validation, and test splits.
 
     Args:
         bert_model (BertModel): The bert model and tokenizer.
         model_config (dict): The dictionary containing the model configuration.
 
     Returns:
-        tuple[datasets.Dataset, datasets.Dataset]: the training arguments.
+        tuple[datasets.Dataset, datasets.Dataset, datasets.Dataset]: Split datasets.
     """
-    if model_config["classification_system"] in ["uscs", "en_main"]:
-        # the data is not stored the same way for uscs and lithology. Currently the reports names enumerated in the
-        # json file only locally exists for uscs.
-        # Once all of the files are available, we will be able to use the code without the need for this
-        # if-else block.
-        train_file_path = DATAPATH / model_config["json_file_name"]
-        eval_file_path = DATAPATH / model_config["json_file_name"]
-    elif model_config["classification_system"] == "lithology":
-        train_file_path = DATAPATH / model_config["train_subset"]
-        eval_file_path = DATAPATH / model_config["eval_subset"]
+    file_path = DATAPATH / model_config["json_file_name"]
 
     classification_system = ExistingClassificationSystems.get_classification_system_type(
         model_config["classification_system"].lower()
     )
-    train_data = prepare_classification_data(
-        train_file_path,
-        ground_truth_path=None,
-        classification_system=classification_system,
+    data = classification_system.process(
+        ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
+            ground_truth=GroundTruth(file_path).ground_truth,
+        )
     )
+
+    train_data, val_data, test_data = split_sets(data)
     train_dataset = bert_model.get_tokenized_dataset(train_data)
-    eval_data = prepare_classification_data(
-        eval_file_path,
-        ground_truth_path=None,
-        classification_system=classification_system,
-    )
-    eval_dataset = bert_model.get_tokenized_dataset(eval_data)
-    return train_dataset, eval_dataset
+    val_dataset = bert_model.get_tokenized_dataset(val_data)
+    test_dataset = bert_model.get_tokenized_dataset(test_data)
+    return train_dataset, val_dataset, test_dataset
 
 
 def compute_trainset_weights(
@@ -268,18 +289,55 @@ def compute_trainset_weights(
     else:
         scaled_weights = torch.ones_like(raw_weights)  # fallback: uniform weights
 
-    # OR other method
-    # scaled_weights = torch.tensor([
-    #     1.0 / np.log(1 + label_counts.get(i, 1)) for i in range(num_classes)
-    # ])
     return scaled_weights
 
 
-def setup_trainer(bert_model: BertModel, model_config: dict, out_directory: Path) -> Trainer:
+class HeadOnlyTrainer(Trainer):
+    """Trainer that saves only fine-tuned parameters at every checkpoint."""
+
+    def save_fine_tuned_head(self, out_dir: Path) -> None:
+        """Save only the fine-tuned parameters (requires_grad=True) and the model config.
+
+        Skips frozen backbone weights, keeping checkpoints small and focused on what actually changed.
+
+        Args:
+            out_dir: Directory where model.safetensors and config.json will be written.
+        """
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        # Gather only trained layers (gradient is available)
+        fine_tuned_names = {n for n, p in self.model.named_parameters() if p.requires_grad}
+        head_state = {k: v.cpu() for k, v in self.model.state_dict().items() if k in fine_tuned_names}
+
+        # Save trained layer and model config
+        save_file(head_state, out_dir / "model.safetensors")
+        self.model.config.save_pretrained(out_dir)
+
+    def save_model(self, output_dir: str | None = None, _internal_call: bool = False):
+        """Override Trainer.save_model to persist only fine-tuned parameters.
+
+        Called automatically by the Trainer at each checkpoint.
+
+        Args:
+            output_dir: Destination directory. Defaults to self.args.output_dir.
+            _internal_call: Passed by the Trainer internals; unused here.
+        """
+        self.save_fine_tuned_head(Path(output_dir or self.args.output_dir))
+
+
+def setup_trainer(
+    bert_model: BertModel,
+    train_dataset: datasets.Dataset,
+    eval_dataset: datasets.Dataset,
+    model_config: dict,
+    out_directory: Path,
+) -> Trainer:
     """Create a Trainer object.
 
     Args:
         bert_model (BertModel): The bert model and tokenizer.
+        train_dataset: Training dataset.
+        eval_dataset: Evaluation dataset.
         model_config (dict): The dictionary containing the model configuration.
         out_directory (Path): The directory for storing the model.
 
@@ -288,10 +346,6 @@ def setup_trainer(bert_model: BertModel, model_config: dict, out_directory: Path
     """
     # load the training arguments from the config file
     training_args = setup_training_args(model_config, out_directory)
-
-    # Load datasets
-    logger.info("Loading datasets (transformers library).")
-    train_dataset, eval_dataset = setup_data(bert_model, model_config)
 
     # Define a custom compute_metrics function
     def compute_metrics(eval_pred: EvalPrediction) -> dict[str, float]:
@@ -319,7 +373,7 @@ def setup_trainer(bert_model: BertModel, model_config: dict, out_directory: Path
         compute_loss_func = WeightedLabelSmoother(class_weights=class_weights)
 
     # Create the Trainer object
-    trainer = Trainer(
+    trainer = HeadOnlyTrainer(
         model=bert_model.model,
         args=training_args,
         train_dataset=train_dataset,

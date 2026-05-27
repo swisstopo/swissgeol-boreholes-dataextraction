@@ -28,7 +28,7 @@ def load_models() -> dict[str, BertModel]:
         dict mapping classification system name to its loaded BertModel.
     """
     from classification.models.model import BertModel
-    from classification.utils.classification_classes import ExistingClassificationSystems
+    from classification.utils.datasets import ExistingClassificationSystems
 
     models = {}
     for system_name, model_path in _MODEL_PATHS.items():

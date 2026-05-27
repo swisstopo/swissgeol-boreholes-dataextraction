@@ -12,8 +12,7 @@ from transformers import AutoConfig, AutoModelForSequenceClassification, AutoTok
 from transformers.models.bert.modeling_bert import BertForSequenceClassification
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
-from classification.utils.classification_classes import ClassificationSystem
-from classification.utils.data_loader import LayerInformation
+from classification.utils.datasets.classification import ClassificationSystem, LayerInformation
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +22,6 @@ def _resolve_path(p: str | Path) -> str | Path:
     candidate = Path(p).resolve()
     return candidate if candidate.exists() else p
 
-
-# Head parameter prefixes — must match the split performed in model_decoupling.py.
-# All other parameters belong to the shared backbone.
-_HEAD_PARAM_PREFIXES = ("classifier.", "bert.pooler.", "bert.encoder.layer.11.")
 
 # Module-level model file cache: file_path → {"handle": safe_open handle, "tensors": {name: tensor}}.
 # Handles keep memory-mapped files open so tensors remain valid.
@@ -176,7 +171,7 @@ class BertModel:
         head_tensors = self._load_head_model()
 
         for name, param in model.named_parameters():
-            if name.startswith(_HEAD_PARAM_PREFIXES) and name in head_tensors:
+            if name in head_tensors:
                 param.data = head_tensors[name]
             elif name in cached_tensors:
                 param.data = cached_tensors[name]

@@ -1,7 +1,7 @@
 """Dummy classifier module."""
 
 from classification.classifiers.classifier import Classifier
-from classification.utils.data_loader import LayerInformation
+from classification.utils.datasets.classification import LayerInformation
 
 
 class DummyClassifier(Classifier):
@@ -19,7 +19,7 @@ class DummyClassifier(Classifier):
             layer_descriptions (list[LayerInformation]): List of layer information objects to classify.
         """
         for layer in layer_descriptions:
-            layer.prediction_class = layer.class_system.get_dummy_classifier_class_value()
+            layer.prediction_class = layer.class_system.get_default_class_value()
 
     def get_name(self) -> str:
         """Returns a string with the name of the classifier."""
