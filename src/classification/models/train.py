@@ -244,9 +244,6 @@ def setup_data(
     train_dataset = bert_model.get_tokenized_dataset(train_data)
     val_dataset = bert_model.get_tokenized_dataset(val_data)
     test_dataset = bert_model.get_tokenized_dataset(test_data)
-    print("N Training samples:", len(train_dataset))
-    print("N Validation samples:", len(val_dataset))
-    print("N Test samples:", len(test_dataset))
     return train_dataset, val_dataset, test_dataset
 
 
