@@ -1,10 +1,10 @@
-"""TODO."""
+"""Pydantic configuration models for BERT classification experiments."""
 
 from pydantic import BaseModel
 
 
 class ExperimentHyperparameters(BaseModel):
-    """TODO."""
+    """Training hyperparameters shared across all datasets in an experiment."""
 
     batch_size: int
     learning_rate: float
@@ -16,14 +16,14 @@ class ExperimentHyperparameters(BaseModel):
 
 
 class ExperimentDatasetConfig(BaseModel):
-    """TODO."""
+    """Configuration for a single ground-truth dataset used during training or evaluation."""
 
     ground_truth: str
     classification_system: str
 
 
 class ExperimentConfig(BaseModel):
-    """TODO."""
+    """Top-level configuration for a BERT fine-tuning experiment."""
 
     classification_system: str
     experiment_name: str

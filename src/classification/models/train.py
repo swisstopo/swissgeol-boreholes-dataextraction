@@ -2,6 +2,7 @@
 
 import logging
 import os
+import tempfile
 import time
 from collections import Counter
 from pathlib import Path
@@ -96,19 +97,30 @@ class WeightedLabelSmoother:
 
 
 def setup_mlflow_tracking(
-    model_config: dict,
+    config: ExperimentConfig,
     out_directory: Path,
     experiment_name: str = "Bert training",
+    run_name: str | None = None,
 ):
-    """Set up MLFlow tracking."""
+    """Initialise an MLflow run and log experiment metadata.
+
+    Args:
+        config (ExperimentConfig): Experiment configuration.
+        out_directory (Path): Output directory path, logged as a run tag.
+        experiment_name (str): MLflow experiment name. Defaults to "Bert training".
+        run_name (str | None): MLflow run name. Defaults to None.
+    """
     if mlflow.active_run():
         mlflow.end_run()  # Ensure the previous run is closed
     mlflow.set_experiment(experiment_name)
-    mlflow.start_run()
-    mlflow.set_tag("classification system", str(model_config["classification_system"]))
-    mlflow.set_tag("json file path", model_config.get("json_file_name"))
+    mlflow.start_run(run_name=run_name)
+    mlflow.set_tag("classification system", config.classification_system)
     mlflow.set_tag("out_directory", str(out_directory))
-    mlflow.log_params(model_config)
+
+    with tempfile.TemporaryDirectory() as temp_directory:
+        config_path = Path(temp_directory) / "model_config.json"
+        config_path.write_text(config.model_dump_json(indent=2))
+        mlflow.log_artifact(str(config_path))
 
 
 def common_options(f):
@@ -148,10 +160,9 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     )
     if mlflow_tracking:
         logger.info("Logging to MLflow.")
-        setup_mlflow_tracking(model_config.model_dump(), out_directory)
+        setup_mlflow_tracking(model_config, out_directory, run_name=model_config.experiment_name)
 
     # Initialize the model and tokenizer, freeze layers, put in train mode
-
     model_path = model_config.model_path if model_checkpoint is None else model_checkpoint
     logger.info(f"Loading pretrained model from {model_path}.")
     bert_model = BertModel(model_path, classification_system)
@@ -225,7 +236,15 @@ def setup_training_args(model_config: ExperimentHyperparameters, out_directory: 
 
 
 def load_samples_from_config(datasets_cfg: list[ExperimentDatasetConfig]) -> list[LayerInformation]:
-    """TODO."""
+    """Load and flatten all labelled layers from a list of dataset configurations.
+
+    Args:
+        datasets_cfg: List of dataset configurations specifying ground-truth files
+            and classification systems.
+
+    Returns:
+        A flat list of LayerInformation entries from all configured datasets.
+    """
     return [
         sample
         for dataset_cfg in datasets_cfg
@@ -244,9 +263,12 @@ def setup_data(
 ) -> tuple[datasets.Dataset, datasets.Dataset, datasets.Dataset]:
     """Create tokenized datasets for the train, validation, and test splits.
 
+    The split_samples is deterministic on filename, then there is no overlap between
+    train and test slices even when the same files appear in both lists.
+
     Args:
         bert_model (BertModel): The bert model and tokenizer.
-        model_config (ExperimentConfiguration): The model configuration.
+        model_config (ExperimentConfig): The experiment configuration.
 
     Returns:
         tuple[datasets.Dataset, datasets.Dataset, datasets.Dataset]: Split datasets.
@@ -346,7 +368,7 @@ def setup_trainer(
         bert_model (BertModel): The bert model and tokenizer.
         train_dataset: Training dataset.
         eval_dataset: Evaluation dataset.
-        model_config (ExperimentConfiguration): The dictionary containing the model configuration.
+        model_config (ExperimentConfig): The experiment configuration.
         out_directory (Path): The directory for storing the model.
 
     Returns:
