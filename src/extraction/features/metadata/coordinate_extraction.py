@@ -56,26 +56,35 @@ class Coordinate(ExtractedFeature):
         Returns:
             dict: The object as a dictionary.
         """
-        return {"E": self.east.coordinate_value, "N": self.north.coordinate_value}
+        return {
+            "E": self.east.coordinate_value,
+            "N": self.north.coordinate_value,
+            "is_correct": self.is_correct,
+        }
 
     @staticmethod
-    def from_values(east: float, north: float) -> Coordinate | None:
+    def from_values(east: float, north: float, is_correct: bool | None = None) -> Coordinate | None:
         """Creates a Coordinate object from the given values.
 
         Args:
             east (float): The east coordinate value.
             north (float): The north coordinate value.
+            is_correct (bool): Indicate if the coordinates are properly detected.
 
         Returns:
             Coordinate | None: The coordinate object.
         """
         if 1e6 < east < 1e7:
             return LV95Coordinate(
-                east=CoordinateEntry(coordinate_value=east), north=CoordinateEntry(coordinate_value=north)
+                east=CoordinateEntry(coordinate_value=east),
+                north=CoordinateEntry(coordinate_value=north),
+                is_correct=is_correct,
             )
         elif east < 1e6:
             return LV03Coordinate(
-                east=CoordinateEntry(coordinate_value=east), north=CoordinateEntry(coordinate_value=north)
+                east=CoordinateEntry(coordinate_value=east),
+                north=CoordinateEntry(coordinate_value=north),
+                is_correct=is_correct,
             )
         else:
             logger.warning("Invalid coordinates format. Got E: %s, N: %s", east, north)
@@ -91,7 +100,7 @@ class Coordinate(ExtractedFeature):
         Returns:
             Coordinate: The coordinate object.
         """
-        return Coordinate.from_values(east=input["E"], north=input["N"])
+        return Coordinate.from_values(east=input["E"], north=input["N"], is_correct=input.get("is_correct"))
 
 
 @dataclass

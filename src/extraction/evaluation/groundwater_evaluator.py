@@ -78,11 +78,11 @@ class GroundwaterEvaluator:
             ############################################################################################################
             gt_groundwater = [
                 Groundwater.from_json_values(
-                    depth=json_gt_data.get("depth"),
-                    date=json_gt_data.get("date"),
-                    elevation=json_gt_data.get("elevation"),
+                    depth=json_gt_data.depth,
+                    date=json_gt_data.date,
+                    elevation=json_gt_data.elevation,
                 )
-                for json_gt_data in borehole_data.ground_truth
+                for json_gt_data in borehole_data.ground_truth or []
             ]
 
             entries = (
