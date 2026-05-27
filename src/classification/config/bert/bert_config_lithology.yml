@@ -18,7 +18,7 @@ max_grad_norm: 5.0
 unfreeze_layers:
   - "classifier"
   - "pooler"
-  # - "layer_11"
+  - "layer_11"
 use_class_balancing: "false"
 
 # Inference parameters

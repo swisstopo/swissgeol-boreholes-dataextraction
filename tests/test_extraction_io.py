@@ -7,13 +7,12 @@ from pathlib import Path
 import pymupdf
 import pytest
 
-from extraction.utils.benchmark_utils import CallbackFactory
-
 # Enforce MLFlow tracking to False before importing modules
 os.environ["MLFLOW_TRACKING"] = "False"
 
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 from extraction.runner import ExtractionBenchmarkRunner, ExtractionOptions, ExtractionPipelineRunner, extract
+from extraction.utils.benchmark_utils import CallbackFactory
 
 PREDICTION_FILE_ = "predictions.json"
 METADATA_FILE_ = "metadata.json"
