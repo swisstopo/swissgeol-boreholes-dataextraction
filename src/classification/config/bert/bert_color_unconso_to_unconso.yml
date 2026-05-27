@@ -1,32 +1,32 @@
 classification_system: "color"
-experiment_name: "color_consolidated_to_consolidated"
+experiment_name: "color_unconsolidated_to_unconsolidated"
 model_path: "google-bert/bert-base-multilingual-uncased"
 use_class_balancing: "false"
 
 # Training and testing sets
 training_sets:
   - ground_truth: deepwells_ground_truth.json
-    classification_system: color_consolidated
+    classification_system: color_unconsolidated
   - ground_truth: geoquat_ground_truth.json
-    classification_system: color_consolidated
+    classification_system: color_unconsolidated
   - ground_truth: nagra_ground_truth.json
-    classification_system: color_consolidated
+    classification_system: color_unconsolidated
   - ground_truth: thurgau_ground_truth.json
-    classification_system: color_consolidated
+    classification_system: color_unconsolidated
   - ground_truth: zurich_ground_truth.json
-    classification_system: color_consolidated
+    classification_system: color_unconsolidated
 
 test_sets:
   - ground_truth: deepwells_ground_truth.json
-    classification_system: color_consolidated
+    classification_system: color_unconsolidated
   - ground_truth: geoquat_ground_truth.json
-    classification_system: color_consolidated
+    classification_system: color_unconsolidated
   - ground_truth: nagra_ground_truth.json
-    classification_system: color_consolidated
+    classification_system: color_unconsolidated
   - ground_truth: thurgau_ground_truth.json
-    classification_system: color_consolidated
+    classification_system: color_unconsolidated
   - ground_truth: zurich_ground_truth.json
-    classification_system: color_consolidated
+    classification_system: color_unconsolidated
 
 # Custom Training hyperparameters
 hyperparameters:

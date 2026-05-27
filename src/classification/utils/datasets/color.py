@@ -10,7 +10,7 @@ from classification.utils.datasets.classification import ClassificationSystem
 logger = logging.getLogger(__name__)
 
 
-class ColorConsolidatedSystem(ClassificationSystem):
+class ColorSystem(ClassificationSystem):
     """Classification system for the primary color of consolidated geological layers."""
 
     @classmethod
@@ -34,11 +34,6 @@ class ColorConsolidatedSystem(ClassificationSystem):
     def get_name(cls) -> str:
         """Return the name of the system."""
         return "color"
-
-    @classmethod
-    def get_layer_ground_truth_keys(cls) -> list[str]:
-        """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
-        return ["consolidated", "primary_color"]
 
     @classmethod
     def get_default_class_value(cls) -> ColorClasses:
@@ -90,3 +85,21 @@ class ColorConsolidatedSystem(ClassificationSystem):
         yellow = auto()
         yellowish_brown = auto()
         yellowish_white = auto()
+
+
+class ColorConsolidatedSystem(ColorSystem):
+    """Classification system for the primary color of consolidated geological layers."""
+
+    @classmethod
+    def get_layer_ground_truth_keys(cls) -> list[str]:
+        """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
+        return ["consolidated", "primary_color"]
+
+
+class ColorUnconsolidatedSystem(ColorSystem):
+    """Classification system for the primary color of consolidated geological layers."""
+
+    @classmethod
+    def get_layer_ground_truth_keys(cls) -> list[str]:
+        """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
+        return ["unconsolidated", "primary_color"]
