@@ -87,16 +87,6 @@ class WeightedLabelSmoother:
         return (1 - self.epsilon) * nll + self.epsilon * smooth
 
 
-def save_fine_tuned_head(bert_model: BertModel, out_dir: Path) -> None:
-    """Save only fine-tuned parameters (requires_grad=True) and model config."""
-    out_dir.mkdir(parents=True, exist_ok=True)
-    fine_tuned_names = {n for n, p in bert_model.model.named_parameters() if p.requires_grad}
-    head_state = {k: v.cpu() for k, v in bert_model.model.state_dict().items() if k in fine_tuned_names}
-    save_file(head_state, out_dir / "model.safetensors")
-    bert_model.model.config.save_pretrained(out_dir)
-    (out_dir / "fine_tuned_keys.json").write_text(json.dumps(sorted(fine_tuned_names), indent=2))
-
-
 def setup_mlflow_tracking(
     model_config: dict,
     out_directory: Path,
@@ -191,7 +181,7 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
         mlflow.log_metrics({k: v for k, v in test_results.metrics.items() if isinstance(v, int | float)})
 
     logger.info("Save model and state")
-    save_fine_tuned_head(bert_model, out_directory)
+    HeadOnlyTrainer.save_fine_tuned_head(bert_model, out_directory)
 
 
 def setup_training_args(model_config: dict, out_directory: Path) -> TrainingArguments:
@@ -297,8 +287,18 @@ class HeadOnlyTrainer(Trainer):
         super().__init__(**kwargs)
         self._bert_model = bert_model
 
+    @staticmethod
+    def save_fine_tuned_head(bert_model: BertModel, out_dir: Path) -> None:
+        """Save only fine-tuned parameters (requires_grad=True) and model config."""
+        out_dir.mkdir(parents=True, exist_ok=True)
+        fine_tuned_names = {n for n, p in bert_model.model.named_parameters() if p.requires_grad}
+        head_state = {k: v.cpu() for k, v in bert_model.model.state_dict().items() if k in fine_tuned_names}
+        save_file(head_state, out_dir / "model.safetensors")
+        bert_model.model.config.save_pretrained(out_dir)
+        (out_dir / "fine_tuned_keys.json").write_text(json.dumps(sorted(fine_tuned_names), indent=2))
+
     def save_model(self, output_dir=None, _internal_call=False):
-        save_fine_tuned_head(self._bert_model, Path(output_dir or self.args.output_dir))
+        self.save_fine_tuned_head(self._bert_model, Path(output_dir or self.args.output_dir))
 
 
 def setup_trainer(
