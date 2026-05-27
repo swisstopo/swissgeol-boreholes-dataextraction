@@ -1,6 +1,5 @@
 """Model training module."""
 
-import json
 import logging
 import os
 import time
@@ -180,8 +179,9 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     if mlflow_tracking:
         mlflow.log_metrics({k: v for k, v in test_results.metrics.items() if isinstance(v, int | float)})
 
+    # Save final cleaned version
     logger.info("Save model and state")
-    HeadOnlyTrainer.save_fine_tuned_head(bert_model, out_directory)
+    trainer.save_model(str(out_directory))
 
 
 def setup_training_args(model_config: dict, out_directory: Path) -> TrainingArguments:
@@ -283,22 +283,34 @@ def compute_trainset_weights(
 class HeadOnlyTrainer(Trainer):
     """Trainer that saves only fine-tuned parameters at every checkpoint."""
 
-    def __init__(self, bert_model: BertModel, **kwargs):
-        super().__init__(**kwargs)
-        self._bert_model = bert_model
+    def save_fine_tuned_head(self, out_dir: Path) -> None:
+        """Save only the fine-tuned parameters (requires_grad=True) and the model config.
 
-    @staticmethod
-    def save_fine_tuned_head(bert_model: BertModel, out_dir: Path) -> None:
-        """Save only fine-tuned parameters (requires_grad=True) and model config."""
+        Skips frozen backbone weights, keeping checkpoints small and focused on what actually changed.
+
+        Args:
+            out_dir: Directory where model.safetensors and config.json will be written.
+        """
         out_dir.mkdir(parents=True, exist_ok=True)
-        fine_tuned_names = {n for n, p in bert_model.model.named_parameters() if p.requires_grad}
-        head_state = {k: v.cpu() for k, v in bert_model.model.state_dict().items() if k in fine_tuned_names}
-        save_file(head_state, out_dir / "model.safetensors")
-        bert_model.model.config.save_pretrained(out_dir)
-        (out_dir / "fine_tuned_keys.json").write_text(json.dumps(sorted(fine_tuned_names), indent=2))
 
-    def save_model(self, output_dir=None, _internal_call=False):
-        self.save_fine_tuned_head(self._bert_model, Path(output_dir or self.args.output_dir))
+        # Gather only trained layers (gradient is available)
+        fine_tuned_names = {n for n, p in self.model.named_parameters() if p.requires_grad}
+        head_state = {k: v.cpu() for k, v in self.model.state_dict().items() if k in fine_tuned_names}
+
+        # Save trained layer and model config
+        save_file(head_state, out_dir / "model.safetensors")
+        self.model.config.save_pretrained(out_dir)
+
+    def save_model(self, output_dir: str | None = None, _internal_call: bool = False):
+        """Override Trainer.save_model to persist only fine-tuned parameters.
+
+        Called automatically by the Trainer at each checkpoint.
+
+        Args:
+            output_dir: Destination directory. Defaults to self.args.output_dir.
+            _internal_call: Passed by the Trainer internals; unused here.
+        """
+        self.save_fine_tuned_head(Path(output_dir or self.args.output_dir))
 
 
 def setup_trainer(
@@ -350,7 +362,6 @@ def setup_trainer(
 
     # Create the Trainer object
     trainer = HeadOnlyTrainer(
-        bert_model=bert_model,
         model=bert_model.model,
         args=training_args,
         train_dataset=train_dataset,
