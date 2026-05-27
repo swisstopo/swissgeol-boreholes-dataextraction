@@ -1,25 +1,29 @@
-# model_path: "google-bert/bert-base-uncased"
-model_path: "google-bert/bert-base-multilingual-uncased"
-
-# Data parameters
 classification_system: "lithology"
-json_file_name: "thurgau_ground_truth.462.json"
+experiment_name: "lithology_thurgau"
+model_path: "google-bert/bert-base-multilingual-uncased"
+use_class_balancing: "false"
 
-# Training hyperparameters
-batch_size: 32
-num_epochs: 32
-learning_rate: 3e-3
-weight_decay: 0.001
-warmup_ratio: 0.1
-#lr_scheduler_type: "cosine"
-lr_scheduler_type: "cosine_with_restarts"
-max_grad_norm: 5.0
+# Training and testing sets
+training_sets:
+  - ground_truth: thurgau_ground_truth.json
+    classification_system: lithology
+
+test_sets:
+  - ground_truth: thurgau_ground_truth.json
+    classification_system: lithology
+
 # Custom Training hyperparameters
+hyperparameters:
+  batch_size: 32
+  learning_rate: 1e-4
+  lr_scheduler_type: "cosine_with_restarts"
+  num_epochs: 32
+  warmup_ratio: 0.1
+  weight_decay: 0.001
+  max_grad_norm: 5.0
+
+# Layer to train
 unfreeze_layers:
   - "classifier"
   - "pooler"
   - "layer_11"
-use_class_balancing: "false"
-
-# Inference parameters
-inference_batch_size: 32
