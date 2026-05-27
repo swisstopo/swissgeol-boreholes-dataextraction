@@ -138,11 +138,11 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
         model_config["classification_system"].lower()
     )
 
-    # If checkpoint model is provided, load from checkpoitn output
+    # If checkpoint model is provided, load from checkpoint output
     work_directory = (
-        out_directory / classification_system.get_name() / time.strftime("%Y%m%d-%H%M%S")
-        if not model_checkpoint
-        else model_checkpoint.parent
+        model_checkpoint
+        if model_checkpoint
+        else out_directory / classification_system.get_name() / time.strftime("%Y%m%d-%H%M%S")
     )
 
     if mlflow_tracking:
@@ -296,9 +296,6 @@ class HeadOnlyTrainer(Trainer):
         """Save only the fine-tuned parameters (requires_grad=True) and the model config.
 
         Skips frozen backbone weights, keeping checkpoints small and focused on what actually changed.
-
-        Args:
-            out_dir: Directory where model.safetensors and config.json will be written.
         """
         out_dir = Path(self.args.output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -314,7 +311,8 @@ class HeadOnlyTrainer(Trainer):
     def clean_checkpoints(self) -> None:
         """Clean checkpoints after training."""
         for folder in list(Path(self.args.output_dir).rglob("checkpoint*")):
-            shutil.rmtree(folder)
+            if folder.is_dir():
+                shutil.rmtree(folder)
 
 
 def setup_trainer(
