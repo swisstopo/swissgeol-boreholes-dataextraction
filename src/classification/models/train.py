@@ -290,6 +290,17 @@ def compute_trainset_weights(
     return scaled_weights
 
 
+class HeadOnlyTrainer(Trainer):
+    """Trainer that saves only fine-tuned parameters at every checkpoint."""
+
+    def __init__(self, bert_model: BertModel, **kwargs):
+        super().__init__(**kwargs)
+        self._bert_model = bert_model
+
+    def save_model(self, output_dir=None, _internal_call=False):
+        save_fine_tuned_head(self._bert_model, Path(output_dir or self.args.output_dir))
+
+
 def setup_trainer(
     bert_model: BertModel,
     train_dataset: datasets.Dataset,
@@ -338,7 +349,8 @@ def setup_trainer(
         compute_loss_func = WeightedLabelSmoother(class_weights=class_weights)
 
     # Create the Trainer object
-    trainer = Trainer(
+    trainer = HeadOnlyTrainer(
+        bert_model=bert_model,
         model=bert_model.model,
         args=training_args,
         train_dataset=train_dataset,
