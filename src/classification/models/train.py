@@ -33,6 +33,7 @@ from classification.models.model import BertModel
 from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.datasets.classification import GroundTruthBoreholeWithLanguage, split_sets
 from classification.utils.file_utils import read_params
+from classification.utils.plots import plot_confusion_matrices
 from core.ground_truth import GroundTruth
 
 if __name__ == "__main__":
@@ -276,7 +277,13 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     csv_path = out_directory / "per_class_metrics_test.csv"
     pd.DataFrame(rows).sort_values("class").to_csv(csv_path, index=False)
 
+    # Confusion matrices
+    raw_path, pct_path = plot_confusion_matrices(preds, labels, out_directory, split="test")
+
     if mlflow_tracking:
+        mlflow.log_artifact(str(raw_path))
+        mlflow.log_artifact(str(pct_path))
+
         for cls, m in test_metrics.items():
             mlflow.log_metrics(m.to_dict(prefix=f"test_{cls.name}"))
         mlflow.log_artifact(str(csv_path))
