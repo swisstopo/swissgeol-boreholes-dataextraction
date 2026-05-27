@@ -83,7 +83,7 @@ def deterministic_hash_ratio(text: str) -> float:
 
 
 def split_sets(
-    data: list[LayerInformation], rval: float = 0.15, rtest: float = 0.15
+    data: list[LayerInformation], rval: float = 0.08, rtest: float = 0.90
 ) -> tuple[list[LayerInformation], list[LayerInformation], list[LayerInformation]]:
     """Split a flat list of LayerInformation entries into train, validation, and test subsets.
 

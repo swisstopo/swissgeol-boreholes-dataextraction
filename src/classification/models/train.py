@@ -117,7 +117,7 @@ def common_options(f):
         "--model-checkpoint",
         type=click.Path(exists=True, path_type=Path),
         default=None,
-        help="Path to a local folder containing an existing bert model (e.g. models/your_model_folder).",
+        help="Path to a local folder containing an existing bert model (e.g. models/../checkpoint-xx).",
     )(f)
     f = click.option(
         "-o",
@@ -140,7 +140,7 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
 
     # If checkpoint model is provided, load from checkpoint output
     work_directory = (
-        model_checkpoint
+        model_checkpoint.parent
         if model_checkpoint
         else out_directory / classification_system.get_name() / time.strftime("%Y%m%d-%H%M%S")
     )
