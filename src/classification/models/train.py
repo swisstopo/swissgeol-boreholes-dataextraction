@@ -25,7 +25,6 @@ from transformers import (
     TrainingArguments,
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
-from transformers.training_args import TrainingArguments as HFTrainingArguments
 
 from classification import DATAPATH
 from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
@@ -57,12 +56,14 @@ class PerClassMetricsCallback(TrainerCallback):
 
     def on_evaluate(
         self,
-        args: HFTrainingArguments,
+        args: TrainingArguments,
         state: TrainerState,
         control: TrainerControl,
         model=None,
         **kwargs,
     ):
+        if model is None:
+            return
         # Run inference on eval set
         model.eval()
         device = next(model.parameters()).device
@@ -89,19 +90,22 @@ class PerClassMetricsCallback(TrainerCallback):
         label_classes = [id2class[label] for label in all_labels]
 
         metrics = per_class_metric(pred_classes, label_classes)
-        epoch = int(state.epoch)
+        epoch = round(state.epoch)
 
         # --- Terminal ---
         header = f"{'Class':<30} {'Precision':>10} {'Recall':>10} {'F1':>10} {'TP':>6} {'FP':>6} {'FN':>6}"
-        print(f"\n=== Per-class metrics — Epoch {epoch} (eval) ===")
-        print(header)
+        logger.info(f"\n=== Per-class metrics — Epoch {epoch} (eval) ===")
+        logger.info(header)
         for cls, m in sorted(metrics.items(), key=lambda x: x[0].value):
-            print(f"{cls.name:<30} {m.precision:>10.3f} {m.recall:>10.3f} {m.f1:>10.3f} {m.tp:>6} {m.fp:>6} {m.fn:>6}")
+            logger.info(
+                f"{cls.name:<30} {m.precision:>10.3f} {m.recall:>10.3f} {m.f1:>10.3f} {m.tp:>6} {m.fp:>6} {m.fn:>6}"
+            )
 
         # --- CSV ---
         rows = [{"class": cls.name, **m.to_json()} for cls, m in metrics.items()]
         df = pd.DataFrame(rows).sort_values("class")
         csv_path = self._out_directory / f"per_class_metrics_eval_epoch{epoch}.csv"
+        self._out_directory.mkdir(parents=True, exist_ok=True)
         df.to_csv(csv_path, index=False)
 
         # --- MLflow ---
@@ -268,10 +272,12 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     test_metrics = per_class_metric(preds, labels)
 
     header = f"{'Class':<30} {'Precision':>10} {'Recall':>10} {'F1':>10} {'TP':>6} {'FP':>6} {'FN':>6}"
-    print("\n=== Per-class metrics — Test ===")
-    print(header)
+    logger.info("\n=== Per-class metrics — Test ===")
+    logger.info(header)
     for cls, m in sorted(test_metrics.items(), key=lambda x: x[0].value):
-        print(f"{cls.name:<30} {m.precision:>10.3f} {m.recall:>10.3f} {m.f1:>10.3f} {m.tp:>6} {m.fp:>6} {m.fn:>6}")
+        logger.info(
+            f"{cls.name:<30} {m.precision:>10.3f} {m.recall:>10.3f} {m.f1:>10.3f} {m.tp:>6} {m.fp:>6} {m.fn:>6}"
+        )
 
     rows = [{"class": cls.name, **m.to_json()} for cls, m in test_metrics.items()]
     csv_path = out_directory / "per_class_metrics_test.csv"
