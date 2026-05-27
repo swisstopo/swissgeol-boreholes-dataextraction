@@ -119,6 +119,14 @@ def common_options(f):
         help="Path to a local folder containing an existing bert model (e.g. models/your_model_folder).",
     )(f)
     f = click.option(
+        "-b",
+        "--backbone-path",
+        type=click.Path(exists=True, path_type=Path),
+        default=None,
+        help="Path to backbone.safetensors for split-model loading. "
+        "When provided, --model-checkpoint is the head directory.",
+    )(f)
+    f = click.option(
         "-o",
         "--out-directory",
         type=click.Path(path_type=Path),
@@ -130,7 +138,7 @@ def common_options(f):
 
 @click.command()
 @common_options
-def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: Path):
+def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: Path, backbone_path: Path):
     """Train a BERT model using the specified datasets and configurations from the YAML config file."""
     model_config = read_params(config_file_path)
     classification_system = ExistingClassificationSystems.get_classification_system_type(
@@ -146,8 +154,12 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     # Initialize the model and tokenizer, freeze layers, put in train mode
 
     model_path = model_config["model_path"] if model_checkpoint is None else model_checkpoint
+    # Head-only checkpoints don't include tokenizer files; use the base model from config as fallback.
+    tokenizer_path = model_config["model_path"] if backbone_path else None
     logger.info(f"Loading pretrained model from {model_path}.")
-    bert_model = BertModel(model_path, classification_system)
+    bert_model = BertModel(
+        model_path, classification_system, backbone_path=backbone_path, tokenizer_path=tokenizer_path
+    )
     bert_model.freeze_all_layers()
     bert_model.unfreeze_list(model_config.get("unfreeze_layers", []))
     bert_model.model.train()
