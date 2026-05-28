@@ -171,39 +171,39 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
         setup_mlflow_tracking(model_config, work_directory)
 
     # Initialize the model and tokenizer, freeze layers, put in train mode
-    model_path = model_config["model_path"]
-    logger.info(f"Loading pretrained model from {model_path}.")
-    bert_model = BertModel(model_path, classification_system)
+    logger.info(f"Loading pretrained model from {model_config.model_path}.")
+    bert_model = BertModel(model_config.model_path, classification_system)
     bert_model.freeze_all_layers()
     bert_model.unfreeze_list(model_config.unfreeze_layers)
     bert_model.model.train()
 
     # Load datasets
     logger.info("Loading datasets (transformers library).")
-    train_dataset, eval_dataset, test_dataset = setup_data(bert_model, model_config)
+    train_dataset, eval_dataset, test_datasets = setup_data(bert_model, model_config)
     logger.info(
-        "Train: %d | Val: %d | Test: %d samples.",
+        "Train: %d | Val: %d | Test: %s samples.",
         len(train_dataset),
         len(eval_dataset),
-        len(test_dataset),
+        [len(test_dataset) for test_dataset in test_datasets.values()],
     )
 
     # Initialize the trainer
     trainer = setup_trainer(bert_model, train_dataset, eval_dataset, model_config, work_directory)
 
     # Start training
-    logger.info("Beginning the training.")
+    logger.info("Training ...")
     train_result = trainer.train(resume_from_checkpoint=model_checkpoint)
     trainer.log_metrics("train", train_result.metrics)
     trainer.save_metrics("train", train_result.metrics)
 
-    logger.info("Beginning the test.")
-    test_results = trainer.predict(test_dataset)
-    trainer.log_metrics("test", test_results.metrics)
-    trainer.save_metrics("test", test_results.metrics)
+    logger.info("Evaluation test ...")
+    for test_name, test_dataset in test_datasets.items():
+        test_results = trainer.predict(test_dataset)
+        trainer.log_metrics(f"test:{test_name}", test_results.metrics)
+        trainer.save_metrics(f"test:{test_name}", test_results.metrics)
 
-    if mlflow_tracking:
-        mlflow.log_metrics({k: v for k, v in test_results.metrics.items() if isinstance(v, int | float)})
+        if mlflow_tracking:
+            mlflow.log_metrics({k: v for k, v in test_results.metrics.items() if isinstance(v, int | float)})
 
     # Save final cleaned version
     logger.info("Saving model head and state ...")
@@ -246,24 +246,25 @@ def setup_training_args(model_config: ExperimentHyperparameters, out_directory: 
     return training_args
 
 
-def load_samples_from_config(datasets_cfg: list[ExperimentDatasetConfig]) -> list[LayerInformation]:
+def load_samples_from_set(dataset_cfg: ExperimentDatasetConfig) -> list[LayerInformation]:
     """Load and flatten all labelled layers from a list of dataset configurations.
 
     Args:
-        datasets_cfg: List of dataset configurations specifying ground-truth files
+        dataset_cfg (ExperimentDatasetConfig): List of dataset configurations specifying ground-truth files
             and classification systems.
 
     Returns:
-        A flat list of LayerInformation entries from all configured datasets.
+        list[LayerInformation]: A flat list of LayerInformation entries from all configured datasets.
     """
+    classification_system = ExistingClassificationSystems.get_classification_system_type(
+        dataset_cfg.classification_system,
+    )
     return [
         sample
-        for dataset_cfg in datasets_cfg
-        for sample in ExistingClassificationSystems.get_classification_system_type(
-            dataset_cfg.classification_system,
-        ).process(
+        for ground_truth in dataset_cfg.ground_truths
+        for sample in classification_system.process(
             ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
-                ground_truth=GroundTruth(DATAPATH / dataset_cfg.ground_truth).ground_truth,
+                ground_truth=GroundTruth(DATAPATH / ground_truth).ground_truth,
             )
         )
     ]
@@ -271,33 +272,42 @@ def load_samples_from_config(datasets_cfg: list[ExperimentDatasetConfig]) -> lis
 
 def setup_data(
     bert_model: BertModel, model_config: ExperimentConfig
-) -> tuple[datasets.Dataset, datasets.Dataset, datasets.Dataset]:
+) -> tuple[datasets.Dataset, datasets.Dataset, dict[str, datasets.Dataset]]:
     """Create tokenized datasets for the train, validation, and test splits.
 
     The split_samples is deterministic on filename, then there is no overlap between
-    train and test slices even when the same files appear in both lists.
+    train and test slices even when the same files appear in both lists. The train sets
+    are merged into a single dataset. The test sets are kept separated for evaluation.
 
     Args:
         bert_model (BertModel): The bert model and tokenizer.
         model_config (ExperimentConfig): The experiment configuration.
 
     Returns:
-        tuple[datasets.Dataset, datasets.Dataset, datasets.Dataset]: Split datasets.
+        tuple[datasets.Dataset, datasets.Dataset, dict[str, datasets.Dataset]]:
+            - Training dataset
+            - Validationd dataset
+            - Test datasets (multiple evaluaiton possible)
     """
-    logger.info("Loading training samples ...")
-    trainval_samples = load_samples_from_config(model_config.training_sets)
+    logger.info("Loading train datasets ...")
+    trainval_samples = [
+        sample
+        for training_set in model_config.training_sets.values()
+        for sample in load_samples_from_set(training_set)
+    ]
     train_samples, val_samples, _ = split_samples(trainval_samples)
-
-    logger.info("Loading test samples ...")
-    test_samples = load_samples_from_config(model_config.test_sets)
-    _, _, test_samples = split_samples(test_samples)
-
-    logger.info("Tokenizing samples ...")
     train_dataset = bert_model.get_tokenized_dataset(train_samples)
     val_dataset = bert_model.get_tokenized_dataset(val_samples)
-    test_dataset = bert_model.get_tokenized_dataset(test_samples)
 
-    return train_dataset, val_dataset, test_dataset
+    logger.info("Loading test datasets ...")
+    test_datasets = {}
+    for i, (test_name, test_set) in enumerate(model_config.test_sets.items()):
+        logger.info(f"[{i + 1} / {len(model_config.test_sets)}] Loading test: {test_name}")
+        test_samples = load_samples_from_set(test_set)
+        _, _, test_samples = split_samples(test_samples)
+        test_datasets[test_name] = bert_model.get_tokenized_dataset(test_samples)
+
+    return train_dataset, val_dataset, test_datasets
 
 
 def compute_trainset_weights(

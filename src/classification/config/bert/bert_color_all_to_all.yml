@@ -1,0 +1,57 @@
+classification_system: "color"
+experiment_name: "color_all_to_consolidated"
+model_path: "google-bert/bert-base-multilingual-uncased"
+use_class_balancing: "false"
+
+# Training and testing sets
+training_sets:
+  consolidated:
+    classification_system: color_consolidated
+    ground_truths:
+      - deepwells_ground_truth.json
+      - geoquat_ground_truth.json
+      - nagra_ground_truth.json
+      - thurgau_ground_truth.json
+      - zurich_ground_truth.json
+  unconsolidated:
+    classification_system: color_unconsolidated
+    ground_truths:
+      - deepwells_ground_truth.json
+      - geoquat_ground_truth.json
+      - nagra_ground_truth.json
+      - thurgau_ground_truth.json
+      - zurich_ground_truth.json
+
+test_sets:
+  consolidated:
+    classification_system: color_consolidated
+    ground_truths:
+      - deepwells_ground_truth.json
+      - geoquat_ground_truth.json
+      - nagra_ground_truth.json
+      - thurgau_ground_truth.json
+      - zurich_ground_truth.json
+  unconsolidated:
+    classification_system: color_unconsolidated
+    ground_truths:
+      - deepwells_ground_truth.json
+      - geoquat_ground_truth.json
+      - nagra_ground_truth.json
+      - thurgau_ground_truth.json
+      - zurich_ground_truth.json
+
+# Custom Training hyperparameters
+hyperparameters:
+  batch_size: 32
+  learning_rate: 1e-4
+  lr_scheduler_type: "cosine_with_restarts"
+  num_epochs: 32
+  warmup_ratio: 0.1
+  weight_decay: 0.001
+  max_grad_norm: 5.0
+
+# Layer to train
+unfreeze_layers:
+  - "classifier"
+  - "pooler"
+  - "layer_11"

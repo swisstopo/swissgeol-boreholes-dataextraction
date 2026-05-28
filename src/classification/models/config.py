@@ -18,7 +18,7 @@ class ExperimentHyperparameters(BaseModel):
 class ExperimentDatasetConfig(BaseModel):
     """Configuration for a single ground-truth dataset used during training or evaluation."""
 
-    ground_truth: str
+    ground_truths: list[str]
     classification_system: str
 
 
@@ -29,7 +29,7 @@ class ExperimentConfig(BaseModel):
     experiment_name: str
     hyperparameters: ExperimentHyperparameters
     model_path: str | None = None
-    training_sets: list[ExperimentDatasetConfig]
-    test_sets: list[ExperimentDatasetConfig]
+    training_sets: dict[str, ExperimentDatasetConfig]
+    test_sets: dict[str, ExperimentDatasetConfig]
     unfreeze_layers: list[str] = []
     use_class_balancing: bool
