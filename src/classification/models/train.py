@@ -168,7 +168,7 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
 
     if mlflow_tracking:
         logger.info("Logging to MLflow.")
-        setup_mlflow_tracking(model_config, work_directory)
+        setup_mlflow_tracking(model_config, work_directory, run_name="")
 
     # Initialize the model and tokenizer, freeze layers, put in train mode
     logger.info(f"Loading pretrained model from {model_config.model_path}.")
@@ -198,9 +198,10 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
 
     logger.info("Evaluation test ...")
     for test_name, test_dataset in test_datasets.items():
-        test_results = trainer.predict(test_dataset)
-        trainer.log_metrics(f"test:{test_name}", test_results.metrics)
-        trainer.save_metrics(f"test:{test_name}", test_results.metrics)
+        metric_key_prefix = f"test_{test_name}"
+        test_results = trainer.predict(test_dataset, metric_key_prefix=metric_key_prefix)
+        trainer.log_metrics(metric_key_prefix, test_results.metrics)
+        trainer.save_metrics(metric_key_prefix, test_results.metrics)
 
         if mlflow_tracking:
             mlflow.log_metrics({k: v for k, v in test_results.metrics.items() if isinstance(v, int | float)})
