@@ -57,6 +57,7 @@ class PerClassMetricsCallback(TrainerCallback):
         self.last_labels: list | None = None
 
     def _log_and_save(self, split: str, args: TrainingArguments, step: int | None = None) -> Path:
+        """Log per-class metrics to terminal, save to CSV, and log to MLflow."""
         metrics = self.last_per_class_metrics
         title = f"Epoch {step} (eval)" if step is not None else "Test"
         metric_prefix = split.split("_")[0]  # "eval" or "test"
