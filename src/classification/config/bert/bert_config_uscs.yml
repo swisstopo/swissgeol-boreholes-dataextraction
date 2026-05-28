@@ -1,16 +1,28 @@
 classification_system: "uscs"
-experiment_name: "uscs_geoquat"
+experiment_name: "uscs"
 model_path: "google-bert/bert-base-multilingual-uncased"
 use_class_balancing: "false"
 
 # Training and testing sets
 training_sets:
-  - ground_truth: geoquat_ground_truth.json
+  uscs:
     classification_system: uscs
+    ground_truths:
+      - deepwells_ground_truth.json
+      - geoquat_ground_truth.json
+      - nagra_ground_truth.json
+      - thurgau_ground_truth.json
+      - zurich_ground_truth.json
 
 test_sets:
-  - ground_truth: geoquat_ground_truth.json
+  uscs:
     classification_system: uscs
+    ground_truths:
+      - deepwells_ground_truth.json
+      - geoquat_ground_truth.json
+      - nagra_ground_truth.json
+      - thurgau_ground_truth.json
+      - zurich_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:

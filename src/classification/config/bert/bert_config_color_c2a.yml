@@ -1,5 +1,5 @@
 classification_system: "color"
-experiment_name: "color_consolidated_to_consolidated"
+experiment_name: "color_consolidated_to_all"
 model_path: "google-bert/bert-base-multilingual-uncased"
 use_class_balancing: "false"
 
