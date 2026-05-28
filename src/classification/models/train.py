@@ -304,7 +304,7 @@ class HeadOnlyTrainer(Trainer):
         head_state = {k: v.cpu() for k, v in self.model.state_dict().items() if k in fine_tuned_names}
 
         # Save trained layer and model config
-        save_file(head_state, out_dir / "head.safetensors")
+        save_file(head_state, out_dir / "model.safetensors")
         self.model.config.save_pretrained(out_dir)
 
     def clean_checkpoints(self) -> None:
