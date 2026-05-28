@@ -24,17 +24,20 @@ def _get_class_names(classes: list[ClassificationSystem.EnumMember]) -> list[str
 def _compute_confusion_matrix(
     predictions: list[ClassificationSystem.EnumMember],
     labels: list[ClassificationSystem.EnumMember],
+    all_classes: list[ClassificationSystem.EnumMember] | None = None,
 ) -> tuple[np.ndarray, list[str]]:
     """Compute confusion matrix and extract sorted class names.
 
     Args:
         predictions (list[ClassificationSystem.EnumMember]): Predicted classes.
         labels (list[ClassificationSystem.EnumMember]): Ground truth classes.
+        all_classes (list[ClassificationSystem.EnumMember] | None): Full ordered class list.
 
     Returns:
         tuple[np.ndarray, list[str]]: Raw confusion matrix and class names.
     """
-    all_classes = sorted(set(predictions) | set(labels), key=lambda c: c.value)
+    if all_classes is None:
+        all_classes = sorted(set(predictions) | set(labels), key=lambda c: c.value)
     class_names = _get_class_names(all_classes)
 
     # Map EnumMember -> integer index for sklearn
@@ -107,6 +110,7 @@ def plot_confusion_matrices(
     labels: list[ClassificationSystem.EnumMember],
     out_directory: Path,
     split: str = "test",
+    all_classes: list[ClassificationSystem.EnumMember] | None = None,
 ) -> tuple[Path, Path]:
     """Generate and save raw-count and percentage confusion matrix figures.
 
@@ -115,11 +119,13 @@ def plot_confusion_matrices(
         labels (list[ClassificationSystem.EnumMember]): Ground truth classes.
         out_directory (Path): Directory to save the figures.
         split (str): Dataset split name used in filenames and titles (e.g. 'test', 'eval').
+        all_classes (list[ClassificationSystem.EnumMember] | None): Full ordered class list.
+            Pass this to ensure classes absent from predictions/labels still appear in the matrix.
 
     Returns:
         tuple[Path, Path]: Paths to the raw-count and percentage figures respectively.
     """
-    cm, class_names = _compute_confusion_matrix(predictions, labels)
+    cm, class_names = _compute_confusion_matrix(predictions, labels, all_classes)
     cm_normalized = cm.astype(float) / cm.sum(axis=1, keepdims=True).clip(min=1)
 
     raw_path = out_directory / f"confusion_matrix_{split}_raw.png"

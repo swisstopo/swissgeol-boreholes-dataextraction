@@ -49,47 +49,21 @@ mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"
 class PerClassMetricsCallback(TrainerCallback):
     """Logs per-class precision/recall/F1 to terminal, CSV, and MLflow after each evaluation."""
 
-    def __init__(self, bert_model: BertModel, eval_dataset: datasets.Dataset, out_directory: Path):
-        self._bert_model = bert_model
-        self._eval_dataset = eval_dataset
+    def __init__(self, out_directory: Path):
         self._out_directory = out_directory
+        self.last_per_class_metrics: dict | None = None
 
     def on_evaluate(
         self,
         args: TrainingArguments,
         state: TrainerState,
         control: TrainerControl,
-        model=None,
         **kwargs,
     ):
-        if model is None:
+        """Huggingface Trainer callback that runs after each evaluation phase to log per-class metrics."""
+        if self.last_per_class_metrics is None:
             return
-        # Run inference on eval set
-        model.eval()
-        device = next(model.parameters()).device
-        all_preds, all_labels = [], []
-
-        dataloader = torch.utils.data.DataLoader(
-            self._eval_dataset.select_columns(["input_ids", "attention_mask", "token_type_ids", "label"]),
-            batch_size=args.per_device_eval_batch_size,
-            collate_fn=DataCollatorWithPadding(tokenizer=self._bert_model.tokenizer),
-        )
-
-        with torch.no_grad():
-            for batch in dataloader:
-                labels = batch.pop("labels").tolist()
-                batch = {k: v.to(device) for k, v in batch.items()}
-                logits = model(**batch).logits
-                preds = logits.argmax(dim=-1).tolist()
-                all_preds.extend(preds)
-                all_labels.extend(labels)
-
-        # Convert integer indices to EnumMembers
-        id2class = self._bert_model.id2classEnum
-        pred_classes = [id2class[prediction] for prediction in all_preds]
-        label_classes = [id2class[label] for label in all_labels]
-
-        metrics = per_class_metric(pred_classes, label_classes)
+        metrics = self.last_per_class_metrics
         epoch = round(state.epoch)
 
         # --- Terminal ---
@@ -109,7 +83,7 @@ class PerClassMetricsCallback(TrainerCallback):
         df.to_csv(csv_path, index=False)
 
         # --- MLflow ---
-        if mlflow_tracking:
+        if "mlflow" in args.report_to:
             for cls, m in metrics.items():
                 mlflow.log_metrics(m.to_dict(prefix=f"eval_{cls.name}"), step=epoch)
             mlflow.log_artifact(str(csv_path))
@@ -274,11 +248,12 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
         )
 
     rows = [{"class": cls.name, **m.to_json()} for cls, m in test_metrics.items()]
-    csv_path = out_directory / "per_class_metrics_test.csv"
+    csv_path = work_directory / "per_class_metrics_test.csv"
     pd.DataFrame(rows).sort_values("class").to_csv(csv_path, index=False)
 
     # Confusion matrices
-    raw_path, pct_path = plot_confusion_matrices(preds, labels, out_directory, split="test")
+    all_classes = list(bert_model.id2classEnum.values())
+    raw_path, pct_path = plot_confusion_matrices(preds, labels, work_directory, split="test", all_classes=all_classes)
 
     if mlflow_tracking:
         mlflow.log_artifact(str(raw_path))
@@ -441,6 +416,8 @@ def setup_trainer(
     # load the training arguments from the config file
     training_args = setup_training_args(model_config, out_directory)
 
+    per_class_callback = PerClassMetricsCallback(out_directory)
+
     # Define a custom compute_metrics function
     def compute_metrics(eval_pred: EvalPrediction) -> dict[str, float]:
         """Function used for evaluating prediction, and logging during the training.
@@ -456,8 +433,11 @@ def setup_trainer(
         """
         logits, labels = eval_pred
         predictions = logits.argmax(axis=-1)
-        metrics = per_class_metric(predictions, labels)
-        return AllClassificationMetrics.compute_micro_average(metrics.values())
+        pred_classes = [bert_model.id2classEnum[p] for p in predictions]
+        label_classes = [bert_model.id2classEnum[lbl] for lbl in labels]
+        per_class = per_class_metric(pred_classes, label_classes)
+        per_class_callback.last_per_class_metrics = per_class
+        return AllClassificationMetrics.compute_micro_average(per_class.values())
 
     use_class_balacing = model_config.get("use_class_balancing", "false").lower() == "true"
     compute_loss_func = None
@@ -476,11 +456,12 @@ def setup_trainer(
         data_collator=DataCollatorWithPadding(tokenizer=bert_model.tokenizer),
         compute_metrics=compute_metrics,
         compute_loss_func=compute_loss_func,
-        callbacks=[PerClassMetricsCallback(bert_model, eval_dataset, out_directory)],
+        callbacks=[per_class_callback],
     )
     return trainer
 
 
 if __name__ == "__main__":
-    # run: fine-tune-bert -cf bert_config_uscs.yml -c models/your_chekpoint_model_folder
+    # run: fine-tune-bert -cf bert/bert_config_uscs.yml -c models/your_chekpoint_model_folder
+    # python -m src.classification.models.train -cf bert/bert_config_color.yml
     train_model()
