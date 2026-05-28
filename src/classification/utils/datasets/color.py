@@ -11,7 +11,10 @@ logger = logging.getLogger(__name__)
 
 
 class ColorSystem(ClassificationSystem):
-    """Classification system for the primary color of consolidated geological layers."""
+    """Base classification system for the primary color of geological layers.
+
+    Use ColorConsolidatedSystem or ColorUnconsolidatedSystem — do not instantiate directly.
+    """
 
     @classmethod
     def normalize_class_string(cls, class_str: str) -> str:
@@ -97,7 +100,7 @@ class ColorConsolidatedSystem(ColorSystem):
 
 
 class ColorUnconsolidatedSystem(ColorSystem):
-    """Classification system for the primary color of consolidated geological layers."""
+    """Classification system for the primary color of unconsolidated geological layers."""
 
     @classmethod
     def get_layer_ground_truth_keys(cls) -> list[str]:

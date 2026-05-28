@@ -28,7 +28,7 @@ class ExperimentConfig(BaseModel):
     classification_system: str
     experiment_name: str
     hyperparameters: ExperimentHyperparameters
-    model_path: str | None = None
+    model_path: str
     training_sets: dict[str, ExperimentDatasetConfig]
     test_sets: dict[str, ExperimentDatasetConfig]
     unfreeze_layers: list[str] = []

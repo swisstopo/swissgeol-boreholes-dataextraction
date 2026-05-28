@@ -218,7 +218,7 @@ def setup_training_args(model_config: ExperimentHyperparameters, out_directory: 
     """Create a TrainingArgument object from the config file.
 
     Args:
-        model_config (ExperimentHyperparameters): The dictionary containing the model configuration.
+        model_config (ExperimentHyperparameters): The model configuration.
         out_directory (Path): The directory for storing the model.
 
     Returns:
@@ -251,8 +251,8 @@ def load_samples_from_set(dataset_cfg: ExperimentDatasetConfig) -> list[LayerInf
     """Load and flatten all labelled layers from a list of dataset configurations.
 
     Args:
-        dataset_cfg (ExperimentDatasetConfig): List of dataset configurations specifying ground-truth files
-            and classification systems.
+        dataset_cfg (ExperimentDatasetConfig): Configuration specifying ground-truth files
+            and the classification system for a single dataset.
 
     Returns:
         list[LayerInformation]: A flat list of LayerInformation entries from all configured datasets.
@@ -287,8 +287,8 @@ def setup_data(
     Returns:
         tuple[datasets.Dataset, datasets.Dataset, dict[str, datasets.Dataset]]:
             - Training dataset
-            - Validationd dataset
-            - Test datasets (multiple evaluaiton possible)
+            - Validation dataset
+            - Test datasets (multiple evaluation possible)
     """
     logger.info("Loading train datasets ...")
     trainval_samples = [
@@ -387,7 +387,7 @@ def setup_trainer(
         out_directory (Path): The directory for storing the model.
 
     Returns:
-        Trainer: The trainer object.
+        HeadOnlyTrainer: The trainer object.
     """
     # load the training arguments from the config file
     training_args = setup_training_args(model_config.hyperparameters, out_directory)

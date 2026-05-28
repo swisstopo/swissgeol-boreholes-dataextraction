@@ -1,7 +1,7 @@
 classification_system: "en_main"
 experiment_name: "en_main"
 model_path: "google-bert/bert-base-multilingual-uncased"
-use_class_balancing: "false"
+use_class_balancing: false
 
 # Training and testing sets
 training_sets:

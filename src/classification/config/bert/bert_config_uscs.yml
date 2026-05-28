@@ -1,7 +1,7 @@
 classification_system: "uscs"
 experiment_name: "uscs"
 model_path: "google-bert/bert-base-multilingual-uncased"
-use_class_balancing: "false"
+use_class_balancing: false
 
 # Training and testing sets
 training_sets:
