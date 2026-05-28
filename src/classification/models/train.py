@@ -2,6 +2,7 @@
 
 import logging
 import os
+import shutil
 import tempfile
 import time
 from collections import Counter
@@ -137,7 +138,7 @@ def common_options(f):
         "--model-checkpoint",
         type=click.Path(exists=True, path_type=Path),
         default=None,
-        help="Path to a local folder containing an existing bert model (e.g. models/your_model_folder).",
+        help="Path to a local folder containing an existing bert model (e.g. models/../checkpoint-xx).",
     )(f)
     f = click.option(
         "-o",
@@ -154,16 +155,23 @@ def common_options(f):
 def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: Path):
     """Train a BERT model using the specified datasets and configurations from the YAML config file."""
     model_config = ExperimentConfig.model_validate(read_params(config_file_path))
-    out_directory = out_directory / model_config.experiment_name / time.strftime("%Y%m%d-%H%M%S")
     classification_system = ExistingClassificationSystems.get_classification_system_type(
         model_config.classification_system
     )
+
+    # If checkpoint model is provided, load from checkpoint output
+    work_directory = (
+        model_checkpoint.parent
+        if model_checkpoint
+        else out_directory / classification_system.get_name() / time.strftime("%Y%m%d-%H%M%S")
+    )
+
     if mlflow_tracking:
         logger.info("Logging to MLflow.")
-        setup_mlflow_tracking(model_config, out_directory, run_name=model_config.experiment_name)
+        setup_mlflow_tracking(model_config, work_directory)
 
     # Initialize the model and tokenizer, freeze layers, put in train mode
-    model_path = model_config.model_path if model_checkpoint is None else model_checkpoint
+    model_path = model_config["model_path"]
     logger.info(f"Loading pretrained model from {model_path}.")
     bert_model = BertModel(model_path, classification_system)
     bert_model.freeze_all_layers()
@@ -181,11 +189,11 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     )
 
     # Initialize the trainer
-    trainer = setup_trainer(bert_model, train_dataset, eval_dataset, model_config, out_directory)
+    trainer = setup_trainer(bert_model, train_dataset, eval_dataset, model_config, work_directory)
 
     # Start training
     logger.info("Beginning the training.")
-    train_result = trainer.train()
+    train_result = trainer.train(resume_from_checkpoint=model_checkpoint)
     trainer.log_metrics("train", train_result.metrics)
     trainer.save_metrics("train", train_result.metrics)
 
@@ -198,8 +206,11 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
         mlflow.log_metrics({k: v for k, v in test_results.metrics.items() if isinstance(v, int | float)})
 
     # Save final cleaned version
-    logger.info("Save model and state")
-    trainer.save_model(str(out_directory))
+    logger.info("Saving model head and state ...")
+    trainer.save_fine_tuned_head()
+
+    logger.info("Cleaning checkpoints (save space) ...")
+    trainer.clean_checkpoints()
 
 
 def setup_training_args(model_config: ExperimentHyperparameters, out_directory: Path) -> TrainingArguments:
@@ -325,14 +336,12 @@ def compute_trainset_weights(
 class HeadOnlyTrainer(Trainer):
     """Trainer that saves only fine-tuned parameters at every checkpoint."""
 
-    def save_fine_tuned_head(self, out_dir: Path) -> None:
+    def save_fine_tuned_head(self) -> None:
         """Save only the fine-tuned parameters (requires_grad=True) and the model config.
 
         Skips frozen backbone weights, keeping checkpoints small and focused on what actually changed.
-
-        Args:
-            out_dir: Directory where model.safetensors and config.json will be written.
         """
+        out_dir = Path(self.args.output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
         # Gather only trained layers (gradient is available)
@@ -343,16 +352,11 @@ class HeadOnlyTrainer(Trainer):
         save_file(head_state, out_dir / "model.safetensors")
         self.model.config.save_pretrained(out_dir)
 
-    def save_model(self, output_dir: str | None = None, _internal_call: bool = False):
-        """Override Trainer.save_model to persist only fine-tuned parameters.
-
-        Called automatically by the Trainer at each checkpoint.
-
-        Args:
-            output_dir: Destination directory. Defaults to self.args.output_dir.
-            _internal_call: Passed by the Trainer internals; unused here.
-        """
-        self.save_fine_tuned_head(Path(output_dir or self.args.output_dir))
+    def clean_checkpoints(self) -> None:
+        """Clean checkpoints after training."""
+        for folder in list(Path(self.args.output_dir).rglob("checkpoint*")):
+            if folder.is_dir():
+                shutil.rmtree(folder)
 
 
 def setup_trainer(
@@ -361,7 +365,7 @@ def setup_trainer(
     eval_dataset: datasets.Dataset,
     model_config: ExperimentConfig,
     out_directory: Path,
-) -> Trainer:
+) -> HeadOnlyTrainer:
     """Create a Trainer object.
 
     Args:
