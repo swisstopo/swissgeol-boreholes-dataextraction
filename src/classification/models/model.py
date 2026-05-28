@@ -138,7 +138,7 @@ class BertModel:
 
     def _load_head_model(self) -> dict[str, torch.Tensor]:
         """Load head weights via mmap and cache the result."""
-        return self._load_tensors_cached(str(Path(self.model_path) / "head.safetensors"), _head_cache)
+        return self._load_tensors_cached(str(Path(self.model_path) / "model.safetensors"), _head_cache)
 
     def _load_split_model(self) -> BertForSequenceClassification:
         """Load a model from a separate backbone.safetensors and head directory.
