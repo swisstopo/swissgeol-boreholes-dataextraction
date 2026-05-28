@@ -168,7 +168,7 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
 
     if mlflow_tracking:
         logger.info("Logging to MLflow.")
-        setup_mlflow_tracking(model_config, work_directory, run_name="")
+        setup_mlflow_tracking(model_config, work_directory, run_name=model_config.experiment_name)
 
     # Initialize the model and tokenizer, freeze layers, put in train mode
     logger.info(f"Loading pretrained model from {model_config.model_path}.")
