@@ -5,6 +5,7 @@ import os
 import shutil
 import time
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
 import click
@@ -188,15 +189,6 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     trainer.log_metrics("test", test_results.metrics)
     trainer.save_metrics("test", test_results.metrics)
 
-    pred_classes = [bert_model.id2classEnum[p] for p in test_results.predictions.argmax(axis=-1)]
-    label_classes = [bert_model.id2classEnum[lbl] for lbl in test_results.label_ids]
-    csv_path, png_path = plot_confusion_matrix(
-        pred_classes, label_classes, work_directory, all_classes=list(bert_model.id2classEnum.values())
-    )
-    if mlflow_tracking:
-        mlflow.log_artifact(str(csv_path))
-        mlflow.log_artifact(str(png_path))
-
     # Save final cleaned version
     logger.info("Saving model head and state ...")
     trainer.save_fine_tuned_head()
@@ -304,6 +296,36 @@ def compute_trainset_weights(
 class HeadOnlyTrainer(Trainer):
     """Trainer that saves only fine-tuned parameters at every checkpoint."""
 
+    def __init__(self, *args, id2class_enum: dict, out_directory: Path, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._id2class_enum = id2class_enum
+        self._out_directory = out_directory
+
+    def evaluation_loop(
+        self,
+        dataloader,
+        description,
+        prediction_loss_only=None,
+        ignore_keys=None,
+        metric_key_prefix: str = "eval",
+    ):
+        """Run evaluation and generate a confusion matrix for the current split."""
+        output = super().evaluation_loop(dataloader, description, prediction_loss_only, ignore_keys, metric_key_prefix)
+        if metric_key_prefix == "test" and output.predictions is not None and output.label_ids is not None:
+            pred_classes = [self._id2class_enum[p] for p in output.predictions.argmax(axis=-1)]
+            label_classes = [self._id2class_enum[lbl] for lbl in output.label_ids]
+            csv_path, png_path = plot_confusion_matrix(
+                pred_classes,
+                label_classes,
+                self._out_directory,
+                split=metric_key_prefix,
+                all_classes=list(self._id2class_enum.values()),
+            )
+            if "mlflow" in self.args.report_to:
+                mlflow.log_artifact(str(csv_path))
+                mlflow.log_artifact(str(png_path))
+        return output
+
     def save_fine_tuned_head(self) -> None:
         """Save only the fine-tuned parameters (requires_grad=True) and the model config.
 
@@ -327,7 +349,7 @@ class HeadOnlyTrainer(Trainer):
                 shutil.rmtree(folder)
 
 
-def make_compute_metrics(id2enum: dict) -> callable:
+def make_compute_metrics(id2enum: dict) -> Callable[[EvalPrediction], dict[str, float]]:
     """Factory that creates a compute_metrics function with access to the id2enum mapping.
 
     Args:
@@ -389,9 +411,9 @@ def setup_trainer(
     # load the training arguments from the config file
     training_args = setup_training_args(model_config, out_directory)
 
-    use_class_balacing = model_config.get("use_class_balancing", "false").lower() == "true"
+    use_class_balancing = model_config.get("use_class_balancing", "false").lower() == "true"
     compute_loss_func = None
-    if use_class_balacing:
+    if use_class_balancing:
         class_weights = compute_trainset_weights(train_dataset)
         # create the object that will be called to compute the loss function (standard in transformers lib).
         compute_loss_func = WeightedLabelSmoother(class_weights=class_weights)
@@ -406,6 +428,8 @@ def setup_trainer(
         data_collator=DataCollatorWithPadding(tokenizer=bert_model.tokenizer),
         compute_metrics=make_compute_metrics(bert_model.id2classEnum),
         compute_loss_func=compute_loss_func,
+        id2class_enum=bert_model.id2classEnum,
+        out_directory=out_directory,
     )
     return trainer
 
