@@ -1,5 +1,6 @@
 """Plotting utilities for model evaluation."""
 
+import csv
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -9,141 +10,82 @@ from sklearn.metrics import confusion_matrix
 from classification.utils.datasets.classification import ClassificationSystem
 
 
-def _get_class_names(classes: list[ClassificationSystem.EnumMember]) -> list[str]:
-    """Extract class names from a list of EnumMembers, sorted by value.
-
-    Args:
-        classes (list[ClassificationSystem.EnumMember]): List of class enum members.
-
-    Returns:
-        list[str]: Sorted class names.
-    """
-    return [cls.name for cls in sorted(classes, key=lambda c: c.value)]
-
-
-def _compute_confusion_matrix(
-    predictions: list[ClassificationSystem.EnumMember],
-    labels: list[ClassificationSystem.EnumMember],
+def plot_confusion_matrix(
+    pred_classes: list[ClassificationSystem.EnumMember],
+    label_classes: list[ClassificationSystem.EnumMember],
+    out_directory: Path,
+    split: str = "test",
     all_classes: list[ClassificationSystem.EnumMember] | None = None,
-) -> tuple[np.ndarray, list[str]]:
-    """Compute confusion matrix and extract sorted class names.
+) -> tuple[Path, Path]:
+    """Generate and save a raw-count confusion matrix CSV (full) and PNG (active classes only).
 
     Args:
-        predictions (list[ClassificationSystem.EnumMember]): Predicted classes.
-        labels (list[ClassificationSystem.EnumMember]): Ground truth classes.
-        all_classes (list[ClassificationSystem.EnumMember] | None): Full ordered class list.
+        pred_classes: Predicted class enum members.
+        label_classes: Ground-truth class enum members.
+        out_directory (Path): Directory to save the outputs.
+        split (str): Dataset split name used in filenames and the figure title.
+        all_classes: Full ordered class list. Classes absent from pred/label default to 0.
 
     Returns:
-        tuple[np.ndarray, list[str]]: Raw confusion matrix and class names.
+        tuple[Path, Path]: Paths to the saved CSV and PNG respectively.
     """
-    if all_classes is None:
-        all_classes = sorted(set(predictions) | set(labels), key=lambda c: c.value)
-    class_names = _get_class_names(all_classes)
+    classes = sorted(all_classes, key=lambda c: c.value)
+    class_names = [cls.name for cls in classes]
+    class_to_idx = {cls: i for i, cls in enumerate(classes)}
+    n = len(classes)
 
-    # Map EnumMember -> integer index for sklearn
-    class_to_idx = {cls: i for i, cls in enumerate(all_classes)}
-    pred_idx = [class_to_idx[prediction] for prediction in predictions]
-    label_idx = [class_to_idx[label] for label in labels]
+    pred_idx = [class_to_idx[p] for p in pred_classes]
+    label_idx = [class_to_idx[lbl] for lbl in label_classes]
+    cm = confusion_matrix(label_idx, pred_idx, labels=list(range(n)))
 
-    cm = confusion_matrix(label_idx, pred_idx, labels=list(range(len(all_classes))))
-    return cm, class_names
+    out_directory.mkdir(parents=True, exist_ok=True)
 
+    # full matrix → CSV
+    csv_path = out_directory / f"confusion_matrix_{split}.csv"
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow([""] + class_names)
+        for name, row in zip(class_names, cm, strict=True):
+            writer.writerow([name] + row.tolist())
 
-def _plot_confusion_matrix(
-    cm: np.ndarray,
-    class_names: list[str],
-    title: str,
-    fmt: str,
-    out_path: Path,
-    cmap: str = "Blues",
-) -> None:
-    """Render and save a single confusion matrix figure.
+    # filter to active classes (non-zero row or column) for the plot
+    active = (cm.sum(axis=1) > 0) | (cm.sum(axis=0) > 0)
+    active_idx = np.where(active)[0]
+    cm_plot = cm[np.ix_(active_idx, active_idx)]
+    names_plot = [class_names[i] for i in active_idx]
+    n_plot = len(names_plot)
 
-    Args:
-        cm (np.ndarray): The confusion matrix to plot (may be raw or normalized).
-        class_names (list[str]): Labels for each class, in row/column order.
-        title (str): Figure title.
-        fmt (str): Format string for cell annotations (e.g. 'd' for int, '.1%' for percent).
-        out_path (Path): File path to save the figure to.
-        cmap (str): Matplotlib colormap name.
-    """
-    n = len(class_names)
-    fig_size = max(8, n * 0.6)
+    png_path = out_directory / f"confusion_matrix_{split}.png"
+    fig_size = max(8, n_plot * 0.6)
     fig, ax = plt.subplots(figsize=(fig_size, fig_size))
-
-    im = ax.imshow(cm, interpolation="nearest", cmap=cmap)
+    im = ax.imshow(cm_plot, interpolation="nearest", cmap="Blues")
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-
     ax.set(
-        xticks=np.arange(n),
-        yticks=np.arange(n),
-        xticklabels=class_names,
-        yticklabels=class_names,
-        title=title,
+        xticks=np.arange(n_plot),
+        yticks=np.arange(n_plot),
+        xticklabels=names_plot,
+        yticklabels=names_plot,
+        title=f"Confusion Matrix — {split}",
         ylabel="True label",
         xlabel="Predicted label",
     )
     plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
 
-    # Annotate cells
-    thresh = cm.max() / 2.0
-    for i in range(n):
-        for j in range(n):
+    thresh = cm_plot.max() / 2.0
+    for i in range(n_plot):
+        for j in range(n_plot):
             ax.text(
                 j,
                 i,
-                format(cm[i, j], fmt),
+                str(cm_plot[i, j]),
                 ha="center",
                 va="center",
-                color="white" if cm[i, j] > thresh else "black",
-                fontsize=max(6, 10 - n // 5),
+                color="white" if cm_plot[i, j] > thresh else "black",
+                fontsize=max(6, 10 - n_plot // 5),
             )
 
     fig.tight_layout()
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    fig.savefig(png_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
 
-
-def plot_confusion_matrices(
-    predictions: list[ClassificationSystem.EnumMember],
-    labels: list[ClassificationSystem.EnumMember],
-    out_directory: Path,
-    split: str = "test",
-    all_classes: list[ClassificationSystem.EnumMember] | None = None,
-) -> tuple[Path, Path]:
-    """Generate and save raw-count and percentage confusion matrix figures.
-
-    Args:
-        predictions (list[ClassificationSystem.EnumMember]): Predicted classes.
-        labels (list[ClassificationSystem.EnumMember]): Ground truth classes.
-        out_directory (Path): Directory to save the figures.
-        split (str): Dataset split name used in filenames and titles (e.g. 'test', 'eval').
-        all_classes (list[ClassificationSystem.EnumMember] | None): Full ordered class list.
-            Pass this to ensure classes absent from predictions/labels still appear in the matrix.
-
-    Returns:
-        tuple[Path, Path]: Paths to the raw-count and percentage figures respectively.
-    """
-    cm, class_names = _compute_confusion_matrix(predictions, labels, all_classes)
-    cm_normalized = cm.astype(float) / cm.sum(axis=1, keepdims=True).clip(min=1)
-
-    raw_path = out_directory / f"confusion_matrix_{split}_raw.png"
-    pct_path = out_directory / f"confusion_matrix_{split}_pct.png"
-
-    _plot_confusion_matrix(
-        cm=cm,
-        class_names=class_names,
-        title=f"Confusion Matrix — {split} (raw counts)",
-        fmt="d",
-        out_path=raw_path,
-    )
-    _plot_confusion_matrix(
-        cm=cm_normalized,
-        class_names=class_names,
-        title=f"Confusion Matrix — {split} (% of true class)",
-        fmt=".1%",
-        out_path=pct_path,
-    )
-
-    return raw_path, pct_path
+    return csv_path, png_path
