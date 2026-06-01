@@ -297,11 +297,6 @@ def compute_trainset_weights(
 class HeadOnlyTrainer(Trainer):
     """Trainer that saves only fine-tuned parameters at every checkpoint."""
 
-    def __init__(self, *args, id2class_enum: dict, out_directory: Path, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._id2class_enum = id2class_enum
-        self._out_directory = out_directory
-
     def save_fine_tuned_head(self) -> None:
         """Save only the fine-tuned parameters (requires_grad=True) and the model config.
 
@@ -331,40 +326,24 @@ class ConfusionMatrixCallback(TrainerCallback):
     def __init__(self, id2class_enum: dict, out_directory: Path):
         self._id2class_enum = id2class_enum
         self._out_directory = out_directory
-        self._preds = None
-        self._labels = None
+        self._sorted_ids = sorted(id2class_enum.keys(), key=lambda i: id2class_enum[i].value)
+        self._cm: np.ndarray | None = None
 
     def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
         """Compute per-class and overall metrics, and store predictions for confusion matrix plotting."""
         logits, labels = eval_pred
         predictions = np.argmax(logits, axis=-1)
-        self._preds = predictions
-        self._labels = labels
-        pred_classes = [self._id2class_enum[p] for p in predictions]
-        label_classes = [self._id2class_enum[lbl] for lbl in labels]
-        per_class_results = per_class_metric(pred_classes, label_classes)
-        class_metrics = {cls: per_class_results.get(cls, Metrics()) for cls in self._id2class_enum.values()}
-        per_class_metrics = {
-            f"{cls.name}_{subkey}": value
-            for cls, metric in class_metrics.items()
-            for subkey, value in metric.to_json().items()
-        }
-        overall = Metrics.micro_average(class_metrics.values())
-        overall_metrics = {
-            "all_micro_precision": round(overall.precision, 4),
-            "all_micro_recall": round(overall.recall, 4),
-            "all_micro_f1": round(overall.f1, 4),
-        }
+
+        self._cm = confusion_matrix(labels, predictions, labels=self._sorted_ids)
+        class_metrics = per_class_metric(labels, predictions, self._id2class_enum)
+        per_class_metrics = {f"{cls.name}_f1": metric.f1 for cls, metric in class_metrics.items()}
+        overall_metrics = Metrics.micro_average(class_metrics.values()).to_dict("all_micro")
         return overall_metrics | per_class_metrics
 
     def on_predict(self, args, state, control, metrics, **kwargs):
         """After predictions are made, compute and save the confusion matrix."""
-        if self._preds is None:
-            return
-        sorted_ids = sorted(self._id2class_enum.keys(), key=lambda i: self._id2class_enum[i].value)
-        cm = confusion_matrix(self._labels, self._preds, labels=sorted_ids)
         csv_path, png_path = plot_confusion_matrix(
-            cm,
+            self._cm,
             self._out_directory,
             split="test",
             all_classes=list(self._id2class_enum.values()),
@@ -413,8 +392,6 @@ def setup_trainer(
         processing_class=bert_model.tokenizer,
         compute_loss_func=compute_loss_func,
         compute_metrics=cm_callback.compute_metrics,
-        id2class_enum=bert_model.id2classEnum,
-        out_directory=out_directory,
         callbacks=[cm_callback],
     )
     return trainer
