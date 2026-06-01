@@ -5,42 +5,32 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.metrics import confusion_matrix
 
 from classification.utils.datasets.classification import ClassificationSystem
 
 
 def plot_confusion_matrix(
-    pred_classes: list[ClassificationSystem.EnumMember],
-    label_classes: list[ClassificationSystem.EnumMember],
+    cm: np.ndarray,
     out_directory: Path,
     split: str = "test",
     all_classes: list[ClassificationSystem.EnumMember] | None = None,
 ) -> tuple[Path, Path]:
-    """Generate and save a raw-count confusion matrix CSV (full) and PNG (active classes only).
+    """Generate and save a confusion matrix as CSV (all classes) and PNG (active classes only).
 
     Args:
-        pred_classes: Predicted class enum members.
-        label_classes: Ground-truth class enum members.
-        out_directory (Path): Directory to save the outputs.
-        split (str): Dataset split name used in filenames and the figure title.
-        all_classes: Full ordered class list. Classes absent from pred/label default to 0.
+        cm: Square confusion matrix of shape (n_classes, n_classes), row = true label, col = predicted.
+        out_directory: Directory to save the outputs.
+        split: Dataset split name used in filenames and the figure title.
+        all_classes: Ordered list of all classes. Must match the row/column order of cm.
 
     Returns:
-        tuple[Path, Path]: Paths to the saved CSV and PNG respectively.
+        Paths to the saved CSV and PNG respectively.
     """
     classes = sorted(all_classes, key=lambda c: c.value)
     class_names = [cls.name for cls in classes]
-    class_to_idx = {cls: i for i, cls in enumerate(classes)}
-    n = len(classes)
-
-    pred_idx = [class_to_idx[p] for p in pred_classes]
-    label_idx = [class_to_idx[lbl] for lbl in label_classes]
-    cm = confusion_matrix(label_idx, pred_idx, labels=list(range(n)))
 
     out_directory.mkdir(parents=True, exist_ok=True)
 
-    # full matrix → CSV
     csv_path = out_directory / f"confusion_matrix_{split}.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
@@ -48,7 +38,7 @@ def plot_confusion_matrix(
         for name, row in zip(class_names, cm, strict=True):
             writer.writerow([name] + row.tolist())
 
-    # filter to active classes (non-zero row or column) for the plot
+    # Filter to classes with at least one true or predicted sample for a readable plot.
     active = (cm.sum(axis=1) > 0) | (cm.sum(axis=0) > 0)
     active_idx = np.where(active)[0]
     cm_plot = cm[np.ix_(active_idx, active_idx)]

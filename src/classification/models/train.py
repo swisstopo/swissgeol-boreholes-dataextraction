@@ -5,26 +5,27 @@ import os
 import shutil
 import time
 from collections import Counter
-from collections.abc import Callable
 from pathlib import Path
 
 import click
 import datasets
 import mlflow
+import numpy as np
 import torch
 import torch.nn as nn
 from dotenv import load_dotenv
 from safetensors.torch import save_file
+from sklearn.metrics import confusion_matrix
 from transformers import (
-    DataCollatorWithPadding,
     EvalPrediction,
     Trainer,
+    TrainerCallback,
     TrainingArguments,
 )
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from classification import DATAPATH
-from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
+from classification.evaluation.evaluate import per_class_metric
 from classification.models.model import BertModel
 from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.datasets.classification import GroundTruthBoreholeWithLanguage, split_sets
@@ -301,31 +302,6 @@ class HeadOnlyTrainer(Trainer):
         self._id2class_enum = id2class_enum
         self._out_directory = out_directory
 
-    def evaluation_loop(
-        self,
-        dataloader,
-        description,
-        prediction_loss_only=None,
-        ignore_keys=None,
-        metric_key_prefix: str = "eval",
-    ):
-        """Run evaluation and generate a confusion matrix for the current split."""
-        output = super().evaluation_loop(dataloader, description, prediction_loss_only, ignore_keys, metric_key_prefix)
-        if metric_key_prefix == "test" and output.predictions is not None and output.label_ids is not None:
-            pred_classes = [self._id2class_enum[p] for p in output.predictions.argmax(axis=-1)]
-            label_classes = [self._id2class_enum[lbl] for lbl in output.label_ids]
-            csv_path, png_path = plot_confusion_matrix(
-                pred_classes,
-                label_classes,
-                self._out_directory,
-                split=metric_key_prefix,
-                all_classes=list(self._id2class_enum.values()),
-            )
-            if "mlflow" in self.args.report_to:
-                mlflow.log_artifact(str(csv_path))
-                mlflow.log_artifact(str(png_path))
-        return output
-
     def save_fine_tuned_head(self) -> None:
         """Save only the fine-tuned parameters (requires_grad=True) and the model config.
 
@@ -349,44 +325,53 @@ class HeadOnlyTrainer(Trainer):
                 shutil.rmtree(folder)
 
 
-def make_compute_metrics(id2enum: dict) -> Callable[[EvalPrediction], dict[str, float]]:
-    """Factory that creates a compute_metrics function with access to the id2enum mapping.
+class ConfusionMatrixCallback(TrainerCallback):
+    """Trainer callback to compute and save confusion matrix after evaluation."""
 
-    Args:
-        id2enum (dict): Mapping from integer index to class enum member.
+    def __init__(self, id2class_enum: dict, out_directory: Path):
+        self._id2class_enum = id2class_enum
+        self._out_directory = out_directory
+        self._preds = None
+        self._labels = None
 
-    Returns:
-        callable: A compute_metrics function compatible with HuggingFace Trainer.
-    """
-
-    def compute_metrics(eval_pred: EvalPrediction) -> dict[str, float]:
-        """Evaluate predictions and return per-class and overall metrics.
-
-        Note: metrics are not used to optimize the model — only to monitor training.
-
-        Args:
-            eval_pred (EvalPrediction): Logits and labels from the model.
-
-        Returns:
-            dict[str, float]: Per-class and micro-averaged precision, recall, F1, TP, FP, FN.
-        """
+    def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
+        """Compute per-class and overall metrics, and store predictions for confusion matrix plotting."""
         logits, labels = eval_pred
-        predictions = logits.argmax(axis=-1)
-        pred_classes = [id2enum[p] for p in predictions]
-        label_classes = [id2enum[lbl] for lbl in labels]
-        per_class_seen = per_class_metric(pred_classes, label_classes)
-        # include all known classes — unseen ones get zero metrics
-        all_classes = {cls: per_class_seen.get(cls, Metrics()) for cls in id2enum.values()}
+        predictions = np.argmax(logits, axis=-1)
+        self._preds = predictions
+        self._labels = labels
+        pred_classes = [self._id2class_enum[p] for p in predictions]
+        label_classes = [self._id2class_enum[lbl] for lbl in labels]
+        per_class_results = per_class_metric(pred_classes, label_classes)
+        class_metrics = {cls: per_class_results.get(cls, Metrics()) for cls in self._id2class_enum.values()}
         per_class_metrics = {
             f"{cls.name}_{subkey}": value
-            for cls, metric in all_classes.items()
+            for cls, metric in class_metrics.items()
             for subkey, value in metric.to_json().items()
         }
-        overall = AllClassificationMetrics.compute_micro_average(all_classes.values())
-        overall_metrics = {f"all_{key}": value for key, value in overall.items()}
+        overall = Metrics.micro_average(class_metrics.values())
+        overall_metrics = {
+            "all_micro_precision": round(overall.precision, 4),
+            "all_micro_recall": round(overall.recall, 4),
+            "all_micro_f1": round(overall.f1, 4),
+        }
         return overall_metrics | per_class_metrics
 
-    return compute_metrics
+    def on_predict(self, args, state, control, metrics, **kwargs):
+        """After predictions are made, compute and save the confusion matrix."""
+        if self._preds is None:
+            return
+        sorted_ids = sorted(self._id2class_enum.keys(), key=lambda i: self._id2class_enum[i].value)
+        cm = confusion_matrix(self._labels, self._preds, labels=sorted_ids)
+        csv_path, png_path = plot_confusion_matrix(
+            cm,
+            self._out_directory,
+            split="test",
+            all_classes=list(self._id2class_enum.values()),
+        )
+        if "mlflow" in args.report_to:
+            mlflow.log_artifact(str(csv_path))
+            mlflow.log_artifact(str(png_path))
 
 
 def setup_trainer(
@@ -418,6 +403,7 @@ def setup_trainer(
         # create the object that will be called to compute the loss function (standard in transformers lib).
         compute_loss_func = WeightedLabelSmoother(class_weights=class_weights)
 
+    cm_callback = ConfusionMatrixCallback(id2class_enum=bert_model.id2classEnum, out_directory=out_directory)
     # Create the Trainer object
     trainer = HeadOnlyTrainer(
         model=bert_model.model,
@@ -425,11 +411,11 @@ def setup_trainer(
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         processing_class=bert_model.tokenizer,
-        data_collator=DataCollatorWithPadding(tokenizer=bert_model.tokenizer),
-        compute_metrics=make_compute_metrics(bert_model.id2classEnum),
         compute_loss_func=compute_loss_func,
+        compute_metrics=cm_callback.compute_metrics,
         id2class_enum=bert_model.id2classEnum,
         out_directory=out_directory,
+        callbacks=[cm_callback],
     )
     return trainer
 
