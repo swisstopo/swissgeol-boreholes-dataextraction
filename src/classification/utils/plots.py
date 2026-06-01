@@ -5,6 +5,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.metrics import ConfusionMatrixDisplay
 
 from classification.utils.datasets.classification import ClassificationSystem
 
@@ -43,38 +44,14 @@ def plot_confusion_matrix(
     active_idx = np.where(active)[0]
     cm_plot = cm[np.ix_(active_idx, active_idx)]
     names_plot = [class_names[i] for i in active_idx]
-    n_plot = len(names_plot)
 
     png_path = out_directory / f"confusion_matrix_{split}.png"
-    fig_size = max(8, n_plot * 0.6)
-    fig, ax = plt.subplots(figsize=(fig_size, fig_size))
-    im = ax.imshow(cm_plot, interpolation="nearest", cmap="Blues")
-    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    ax.set(
-        xticks=np.arange(n_plot),
-        yticks=np.arange(n_plot),
-        xticklabels=names_plot,
-        yticklabels=names_plot,
-        title=f"Confusion Matrix — {split}",
-        ylabel="True label",
-        xlabel="Predicted label",
-    )
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
 
-    thresh = cm_plot.max() / 2.0
-    for i in range(n_plot):
-        for j in range(n_plot):
-            ax.text(
-                j,
-                i,
-                str(cm_plot[i, j]),
-                ha="center",
-                va="center",
-                color="white" if cm_plot[i, j] > thresh else "black",
-                fontsize=max(6, 10 - n_plot // 5),
-            )
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm_plot, display_labels=names_plot)
+    disp.plot(cmap="Blues", xticks_rotation=45)
+    disp.ax_.set_title(f"Confusion Matrix — {split}")
+    fig = disp.figure_
 
-    fig.tight_layout()
     fig.savefig(png_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
 
