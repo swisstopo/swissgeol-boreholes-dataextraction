@@ -335,7 +335,8 @@ class ConfusionMatrixCallback(TrainerCallback):
         predictions = np.argmax(logits, axis=-1)
 
         self._cm = confusion_matrix(labels, predictions, labels=self._sorted_ids)
-        class_metrics = per_class_metric(labels, predictions, self._id2class_enum)
+        per_class_results = per_class_metric(predictions, labels)
+        class_metrics = {cls: per_class_results.get(id_cls, Metrics()) for id_cls, cls in self._id2class_enum.items()}
         per_class_metrics = {f"{cls.name}_f1": metric.f1 for cls, metric in class_metrics.items()}
         overall_metrics = Metrics.micro_average(class_metrics.values()).to_dict("all_micro")
         return overall_metrics | per_class_metrics
