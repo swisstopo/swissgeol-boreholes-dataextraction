@@ -10,6 +10,7 @@ from pathlib import Path
 import click
 import datasets
 import mlflow
+import numpy as np
 import torch
 import torch.nn as nn
 from dotenv import load_dotenv
@@ -23,6 +24,7 @@ from classification.models.model import BertModel
 from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.datasets.classification import GroundTruthBoreholeWithLanguage, split_sets
 from classification.utils.file_utils import read_params
+from core.benchmark_utils import Metrics
 from core.ground_truth import GroundTruth
 
 if __name__ == "__main__":
@@ -350,6 +352,20 @@ def setup_trainer(
             dict[str, float]: Dictionary containing all the metrics produced to evaluate the predictions.
         """
         logits, labels = eval_pred
+        if labels.ndim == 2:  # multi-label
+            predictions = (1 / (1 + np.exp(-logits)) > 0.5).astype(int)
+            labels = labels.astype(int)
+            # compute per-class metrics and micro-average, since sklearn doesn't handle multi-label well
+            metric_list = [
+                Metrics(
+                    tp=int(((predictions[:, i] == 1) & (labels[:, i] == 1)).sum()),
+                    fp=int(((predictions[:, i] == 1) & (labels[:, i] == 0)).sum()),
+                    fn=int(((predictions[:, i] == 0) & (labels[:, i] == 1)).sum()),
+                )
+                for i in range(predictions.shape[1])
+            ]
+            return AllClassificationMetrics.compute_micro_average(metric_list)
+        # single-label
         predictions = logits.argmax(axis=-1)
         metrics = per_class_metric(predictions, labels)
         return AllClassificationMetrics.compute_micro_average(metrics.values())

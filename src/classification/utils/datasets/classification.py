@@ -123,7 +123,7 @@ class LayerInformation:
     language: str
     material_description: str
     class_system: type[ClassificationSystem]
-    ground_truth_class: None | ClassificationSystem.EnumMember
+    ground_truth_class: None | ClassificationSystem.EnumMember | list[ClassificationSystem.EnumMember]
     prediction_class: None | ClassificationSystem.EnumMember
     llm_reasoning: None | str
 
@@ -177,9 +177,8 @@ class ClassificationSystem(ABC):
         if label_str is None:
             return None
 
-        # Multilabel is not supported yet, reduce to first class
         if isinstance(label_str, list):
-            label_str = label_str[0]
+            return [cls.map_most_similar_class(s) for s in label_str]
 
         return cls.map_most_similar_class(label_str)
 
