@@ -275,7 +275,15 @@ def compute_trainset_weights(
     Returns:
         torch.Tensor: A tensor of shape (num_classes,) with scaled weights.
     """
-    label_counts = Counter(trainset["label"])
+    labels = trainset["labels"]
+    if labels and isinstance(labels[0], list):
+        label_counts: Counter = Counter()
+        for row in labels:
+            for idx, val in enumerate(row):
+                if val > 0:
+                    label_counts[idx] += 1
+    else:
+        label_counts = Counter(labels)
     num_classes = max(label_counts.keys()) + 1  # class index starts at 0
 
     # Compute raw inverse-frequency weights
@@ -332,7 +340,7 @@ def multilabel_confusion_matrix_nxn(labels, predictions, n_labels):
         predictions: binary indicator matrices for predictions  of shape (n_samples, n_labels)
         n_labels: total number of labels
     Returns:
-        cm: confusion matrix of shape (n_labels, n_labels) where cm[i, j
+        cm: confusion matrix of shape (n_labels, n_labels) where cm[i, j]
     """
     cm = np.zeros((n_labels, n_labels), dtype=int)
     for true_row, pred_row in zip(labels, predictions, strict=False):
@@ -386,7 +394,6 @@ class ConfusionMatrixCallback(TrainerCallback):
 
     def on_predict(self, args, state, control, metrics, **kwargs):
         """Save confusion matrix and per-class CSV as test artifacts."""
-        # cm_csv, cm_png = plot_confusion_matrix(
         csv_path, png_path = plot_confusion_matrix(
             self._cm, Path(args.output_dir), split="test", all_classes=list(self._id2class_enum.values())
         )
@@ -394,7 +401,7 @@ class ConfusionMatrixCallback(TrainerCallback):
         macro = AllClassificationMetrics.compute_macro_average(metric_list)
         micro = Metrics.micro_average(metric_list)
 
-        def row(cls_name, m, precision, recall, f1, tp="", fp="", fn=""):
+        def row(cls_name, precision, recall, f1, tp="", fp="", fn=""):
             return {
                 "class": cls_name,
                 "precision": precision,
@@ -406,13 +413,12 @@ class ConfusionMatrixCallback(TrainerCallback):
             }
 
         rows = [
-            row(cls, m, round(m.precision, 4), round(m.recall, 4), round(m.f1, 4), m.tp, m.fp, m.fn)
+            row(cls, round(m.precision, 4), round(m.recall, 4), round(m.f1, 4), m.tp, m.fp, m.fn)
             for cls, m in self._per_class_metrics.items()
         ] + [
-            row("macro_avg", None, macro["macro_precision"], macro["macro_recall"], macro["macro_f1"]),
+            row("macro_avg", macro["macro_precision"], macro["macro_recall"], macro["macro_f1"]),
             row(
                 "micro_avg",
-                None,
                 round(micro.precision, 4),
                 round(micro.recall, 4),
                 round(micro.f1, 4),
@@ -477,6 +483,6 @@ def setup_trainer(
 
 
 if __name__ == "__main__":
-    # run: fine-tune-bert -cf bert/bert_config_uscs.yml -c models/your_chekpoint_model_folder
+    # run: fine-tune-bert -cf bert/bert_config_uscs.yml -c models/your_checkpoint_model_folder
     # python -m src.classification.models.train -cf bert/bert_config_color.yml
     train_model()

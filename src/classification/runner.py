@@ -44,7 +44,6 @@ class ClassificationOptions:
 
 def run_classification_predictions(
     file_path: Path,
-    ground_truth_path: Path | None,
     out_directory: Path,
     out_directory_bedrock: Path,
     options: ClassificationOptions,
@@ -55,7 +54,6 @@ def run_classification_predictions(
 
     Args:
         file_path (Path): Path to the JSON file containing material descriptions to classify.
-        ground_truth_path (Path | None): Path to the ground truth file, or None for single-file mode.
         out_directory (Path): Path to output directory where predictions are written.
         out_directory_bedrock (Path): Path to output directory for Bedrock API files.
         options (ClassificationOptions): Classification run options.
@@ -70,9 +68,7 @@ def run_classification_predictions(
         options.classification_system.lower()
     )
 
-    logger.info(
-        f"Loading data from {file_path}" + (f" and ground truth from {ground_truth_path}" if ground_truth_path else "")
-    )
+    logger.info(f"Loading data from {file_path}")
 
     layer_descriptions = classification_system_cls.process(
         ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
@@ -138,7 +134,6 @@ class ClassificationPipelineRunner(PipelineRunner[_ClassificationResult, Classif
     def run_predictions(self, predictions_path_tmp: Path) -> PipelineRunResult[_ClassificationResult]:
         layer_descriptions, classifier, n_documents = run_classification_predictions(
             file_path=self.file_path,
-            ground_truth_path=self.ground_truth_path,
             out_directory=self.out_directory,
             out_directory_bedrock=self.out_directory_bedrock,
             options=self.options,

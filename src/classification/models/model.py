@@ -264,6 +264,8 @@ class BertModel:
             param.requires_grad = True
 
     def get_tokenized_dataset(self, layers: list[LayerInformation]) -> datasets.Dataset:
+        """Convert a list of LayerInformation entries into a tokenized HuggingFace dataset."""
+
         def encode_label(gt):
             """Encodes the ground truth class into its corresponding integer value."""
             if gt is None:

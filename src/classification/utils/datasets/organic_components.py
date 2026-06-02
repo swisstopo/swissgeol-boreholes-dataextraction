@@ -15,7 +15,7 @@ class OrganicComponentsUnconsolidatedSystem(ClassificationSystem):
 
     @classmethod
     def normalize_class_string(cls, class_str: str) -> str:
-        """Normalize a organic components class string.
+        """Normalize an organic components class string.
 
         Args:
             class_str (str): The class string to be normalized (e.g. "remains of wood").

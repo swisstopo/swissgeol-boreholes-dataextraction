@@ -204,18 +204,6 @@ class ClassificationSystem(ABC):
         ]
 
     @classmethod
-    def get_class_from_entry(cls, entry: dict, keys: list[str]) -> str | None:
-        """Returns the class of the classification system used from a possibly nested entry.
-
-        If one of the entries is missing from the nested structure, returns None.
-        """
-        return (
-            cls.get_class_from_entry(entry=entry.get(keys[0]), keys=keys[1:])
-            if keys and isinstance(entry, dict)
-            else entry
-        )
-
-    @classmethod
     @abstractmethod
     def get_default_class_value(cls) -> EnumMember:
         """Return the default value for the enum class."""
