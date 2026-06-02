@@ -15,15 +15,23 @@ import torch
 import torch.nn as nn
 from dotenv import load_dotenv
 from safetensors.torch import save_file
-from transformers import DataCollatorWithPadding, EvalPrediction, Trainer, TrainingArguments
+from sklearn.metrics import confusion_matrix
+from transformers import (
+    EvalPrediction,
+    Trainer,
+    TrainerCallback,
+    TrainingArguments,
+)
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from classification import DATAPATH
-from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
+from classification.evaluation.evaluate import per_class_metric
 from classification.models.model import BertModel
 from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.datasets.classification import GroundTruthBoreholeWithLanguage, split_sets
 from classification.utils.file_utils import read_params
+from classification.utils.plots import plot_confusion_matrix
+from core.all_classification_metrics import AllClassificationMetrics
 from core.benchmark_utils import Metrics
 from core.ground_truth import GroundTruth
 
@@ -183,9 +191,6 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     trainer.log_metrics("test", test_results.metrics)
     trainer.save_metrics("test", test_results.metrics)
 
-    if mlflow_tracking:
-        mlflow.log_metrics({k: v for k, v in test_results.metrics.items() if isinstance(v, int | float)})
-
     # Save final cleaned version
     logger.info("Saving model head and state ...")
     trainer.save_fine_tuned_head()
@@ -316,6 +321,39 @@ class HeadOnlyTrainer(Trainer):
                 shutil.rmtree(folder)
 
 
+class ConfusionMatrixCallback(TrainerCallback):
+    """Trainer callback to compute and save confusion matrix after evaluation."""
+
+    def __init__(self, id2class_enum: dict):
+        self._id2class_enum = id2class_enum
+        self._sorted_ids = sorted(id2class_enum.keys(), key=lambda i: id2class_enum[i].value)
+        self._cm: np.ndarray | None = None
+
+    def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
+        """Compute per-class and overall metrics, and store predictions for confusion matrix plotting."""
+        logits, labels = eval_pred
+        predictions = np.argmax(logits, axis=-1)
+
+        self._cm = confusion_matrix(labels, predictions, labels=self._sorted_ids)
+        per_class_results = per_class_metric(predictions, labels)
+        class_metrics = {cls: per_class_results.get(id_cls, Metrics()) for id_cls, cls in self._id2class_enum.items()}
+        per_class_metrics = {f"{cls.name}_f1": metric.f1 for cls, metric in class_metrics.items()}
+        overall_metrics = Metrics.micro_average(class_metrics.values()).to_dict("all_micro")
+        return overall_metrics | per_class_metrics
+
+    def on_predict(self, args, state, control, metrics, **kwargs):
+        """After predictions are made, compute and save the confusion matrix."""
+        csv_path, png_path = plot_confusion_matrix(
+            self._cm,
+            Path(args.output_dir),
+            split="test",
+            all_classes=list(self._id2class_enum.values()),
+        )
+        if "mlflow" in args.report_to:
+            mlflow.log_artifact(str(csv_path))
+            mlflow.log_artifact(str(png_path))
+
+
 def setup_trainer(
     bert_model: BertModel,
     train_dataset: datasets.Dataset,
@@ -370,13 +408,14 @@ def setup_trainer(
         metrics = per_class_metric(predictions, labels)
         return AllClassificationMetrics.compute_micro_average(metrics.values())
 
-    use_class_balacing = model_config.get("use_class_balancing", "false").lower() == "true"
+    use_class_balancing = model_config.get("use_class_balancing", "false").lower() == "true"
     compute_loss_func = None
-    if use_class_balacing:
+    if use_class_balancing:
         class_weights = compute_trainset_weights(train_dataset)
         # create the object that will be called to compute the loss function (standard in transformers lib).
         compute_loss_func = WeightedLabelSmoother(class_weights=class_weights)
 
+    cm_callback = ConfusionMatrixCallback(id2class_enum=bert_model.id2classEnum)
     # Create the Trainer object
     trainer = HeadOnlyTrainer(
         model=bert_model.model,
@@ -384,13 +423,14 @@ def setup_trainer(
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         processing_class=bert_model.tokenizer,
-        data_collator=DataCollatorWithPadding(tokenizer=bert_model.tokenizer),
-        compute_metrics=compute_metrics,
         compute_loss_func=compute_loss_func,
+        compute_metrics=cm_callback.compute_metrics,
+        callbacks=[cm_callback],
     )
     return trainer
 
 
 if __name__ == "__main__":
-    # run: fine-tune-bert -cf bert_config_uscs.yml -c models/your_chekpoint_model_folder
+    # run: fine-tune-bert -cf bert/bert_config_uscs.yml -c models/your_chekpoint_model_folder
+    # python -m src.classification.models.train -cf bert/bert_config_color.yml
     train_model()
