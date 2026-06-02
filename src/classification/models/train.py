@@ -26,7 +26,7 @@ from transformers import (
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from classification import DATAPATH
-from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
+from classification.evaluation.evaluate import per_class_metric
 from classification.models.config import (
     ExperimentConfig,
     ExperimentDatasetConfig,
@@ -313,6 +313,9 @@ def setup_data(
         test_samples = load_samples_from_set(test_set)
         _, _, test_samples = split_samples(test_samples)
         test_datasets[test_name] = bert_model.get_tokenized_dataset(test_samples)
+
+        if len(test_samples) == 0:
+            logger.warning(f"No samples detected for {test_name=}")
 
     return train_dataset, val_dataset, test_datasets
 
