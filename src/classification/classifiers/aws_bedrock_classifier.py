@@ -172,7 +172,7 @@ class AWSBedrockClassifier(Classifier):
             layers_by_filename[layer.filename].append(layer)
 
         semaphore = asyncio.Semaphore(self.max_concurrent_calls)
-
+        # TODO Check if instruction can be run by batch instead (faster ?) -> 6 hours otherwise ....
         for filename, filename_layers in tqdm(layers_by_filename.items()):
             logger.info(f"Processing file: {filename} with {len(filename_layers)} layers")
             path = f"{Path(filename).stem}.json"
