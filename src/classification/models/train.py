@@ -323,9 +323,8 @@ class HeadOnlyTrainer(Trainer):
 class ConfusionMatrixCallback(TrainerCallback):
     """Trainer callback to compute and save confusion matrix after evaluation."""
 
-    def __init__(self, id2class_enum: dict, out_directory: Path):
+    def __init__(self, id2class_enum: dict):
         self._id2class_enum = id2class_enum
-        self._out_directory = out_directory
         self._sorted_ids = sorted(id2class_enum.keys(), key=lambda i: id2class_enum[i].value)
         self._cm: np.ndarray | None = None
 
@@ -345,7 +344,7 @@ class ConfusionMatrixCallback(TrainerCallback):
         """After predictions are made, compute and save the confusion matrix."""
         csv_path, png_path = plot_confusion_matrix(
             self._cm,
-            self._out_directory,
+            Path(args.output_dir),
             split="test",
             all_classes=list(self._id2class_enum.values()),
         )
@@ -383,7 +382,7 @@ def setup_trainer(
         # create the object that will be called to compute the loss function (standard in transformers lib).
         compute_loss_func = WeightedLabelSmoother(class_weights=class_weights)
 
-    cm_callback = ConfusionMatrixCallback(id2class_enum=bert_model.id2classEnum, out_directory=out_directory)
+    cm_callback = ConfusionMatrixCallback(id2class_enum=bert_model.id2classEnum)
     # Create the Trainer object
     trainer = HeadOnlyTrainer(
         model=bert_model.model,

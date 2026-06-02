@@ -41,14 +41,11 @@ def plot_confusion_matrix(
 
     # Filter to classes with at least one true or predicted sample for a readable plot.
     active = (cm.sum(axis=1) > 0) | (cm.sum(axis=0) > 0)
-    active_idx = np.where(active)[0]
-    cm_plot = cm[np.ix_(active_idx, active_idx)]
-    names_plot = [class_names[i] for i in active_idx]
 
     png_path = out_directory / f"confusion_matrix_{split}.png"
-
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm_plot, display_labels=names_plot)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm[:, active][active], display_labels=np.array(class_names)[active])
     disp.plot(cmap="Blues", xticks_rotation=45)
+    plt.setp(disp.ax_.get_xticklabels(), ha="right", rotation_mode="anchor")
     disp.ax_.set_title(f"Confusion Matrix — {split}")
     fig = disp.figure_
 
