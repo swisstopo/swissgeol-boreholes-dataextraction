@@ -161,7 +161,7 @@ def common_options(f):
 
 @click.command()
 @common_options
-def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: Path):
+def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: Path | None):
     """Train a BERT model using the specified datasets and configurations from the YAML config file."""
     model_config = ExperimentConfig.model_validate(read_params(config_file_path))
     classification_system = ExistingClassificationSystems.get_classification_system_type(
