@@ -7,7 +7,7 @@ from classification.utils.datasets.classification import ClassificationSystem
 from classification.utils.datasets.color import ColorConsolidatedSystem
 from classification.utils.datasets.en_main import ENMainSystem
 from classification.utils.datasets.lithology import LithologySystem
-from classification.utils.datasets.organic_components import OrganicComponentsConsolidatedSystem
+from classification.utils.datasets.organic_components import OrganicComponentsUnconsolidatedSystem
 from classification.utils.datasets.uscs import USCSSystem
 
 
@@ -21,7 +21,7 @@ class ExistingClassificationSystems(Enum):
     lithology = LithologySystem
     en_main = ENMainSystem
     color = ColorConsolidatedSystem
-    organic_components = OrganicComponentsConsolidatedSystem
+    organic_components = OrganicComponentsUnconsolidatedSystem
 
     @classmethod
     def get_classification_system_type(
