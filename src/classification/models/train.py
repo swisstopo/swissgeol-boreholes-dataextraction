@@ -1,5 +1,6 @@
 """Model training module."""
 
+import csv
 import logging
 import os
 import shutil
@@ -25,7 +26,7 @@ from transformers import (
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from classification import DATAPATH
-from classification.evaluation.evaluate import per_class_metric
+from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
 from classification.models.model import BertModel
 from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.datasets.classification import GroundTruthBoreholeWithLanguage, split_sets
@@ -354,7 +355,7 @@ class ConfusionMatrixCallback(TrainerCallback):
 
     # Define a custom compute_metrics function
     def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
-        """Compute per-class and overall metrics, and store predictions for confusion matrix plotting."""
+        """Compute macro/micro aggregate metrics and cache per-class metrics for test artifacts."""
         logits, labels = eval_pred
         n_labels = len(self._id2class_enum)
         if labels.ndim == 2:  # multi-label
@@ -370,32 +371,66 @@ class ConfusionMatrixCallback(TrainerCallback):
                 for i in range(predictions.shape[1])
             ]
             self._cm = multilabel_confusion_matrix_nxn(labels, predictions, n_labels)
-            overall_metrics_multi = Metrics.micro_average(metric_list).to_dict("all_micro")
-            per_class_metrics = {
-                f"{cls.name}_f1": metric_list[id_cls].f1 for id_cls, cls in self._id2class_enum.items()
+            self._per_class_metrics = {cls.name: metric_list[id_cls] for id_cls, cls in self._id2class_enum.items()}
+        else:  # single-label
+            predictions = logits.argmax(axis=-1)
+            self._cm = confusion_matrix(labels, predictions, labels=self._sorted_ids)
+            per_class_results = per_class_metric(predictions, labels)
+            self._per_class_metrics = {
+                cls.name: per_class_results.get(id_cls, Metrics()) for id_cls, cls in self._id2class_enum.items()
             }
-            return overall_metrics_multi | per_class_metrics
-        # single-label
-        predictions = logits.argmax(axis=-1)
-
-        self._cm = confusion_matrix(labels, predictions, labels=self._sorted_ids)
-        per_class_results = per_class_metric(predictions, labels)
-        class_metrics = {cls: per_class_results.get(id_cls, Metrics()) for id_cls, cls in self._id2class_enum.items()}
-        per_class_metrics = {f"{cls.name}_f1": metric.f1 for cls, metric in class_metrics.items()}
-        overall_metrics = Metrics.micro_average(class_metrics.values()).to_dict("all_micro")
-        return overall_metrics | per_class_metrics
+            metric_list = list(self._per_class_metrics.values())
+        return AllClassificationMetrics.compute_macro_average(
+            metric_list
+        ) | AllClassificationMetrics.compute_micro_average(metric_list)
 
     def on_predict(self, args, state, control, metrics, **kwargs):
-        """After predictions are made, compute and save the confusion matrix."""
+        """Save confusion matrix and per-class CSV as test artifacts."""
+        # cm_csv, cm_png = plot_confusion_matrix(
         csv_path, png_path = plot_confusion_matrix(
-            self._cm,
-            Path(args.output_dir),
-            split="test",
-            all_classes=list(self._id2class_enum.values()),
+            self._cm, Path(args.output_dir), split="test", all_classes=list(self._id2class_enum.values())
         )
+        metric_list = list(self._per_class_metrics.values())
+        macro = AllClassificationMetrics.compute_macro_average(metric_list)
+        micro = Metrics.micro_average(metric_list)
+
+        def row(cls_name, m, precision, recall, f1, tp="", fp="", fn=""):
+            return {
+                "class": cls_name,
+                "precision": precision,
+                "recall": recall,
+                "f1": f1,
+                "tp": tp,
+                "fp": fp,
+                "fn": fn,
+            }
+
+        rows = [
+            row(cls, m, round(m.precision, 4), round(m.recall, 4), round(m.f1, 4), m.tp, m.fp, m.fn)
+            for cls, m in self._per_class_metrics.items()
+        ] + [
+            row("macro_avg", None, macro["macro_precision"], macro["macro_recall"], macro["macro_f1"]),
+            row(
+                "micro_avg",
+                None,
+                round(micro.precision, 4),
+                round(micro.recall, 4),
+                round(micro.f1, 4),
+                micro.tp,
+                micro.fp,
+                micro.fn,
+            ),
+        ]
+
+        per_class_csv = Path(args.output_dir) / "test_per_class_metrics.csv"
+        with per_class_csv.open("w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=["class", "precision", "recall", "f1", "tp", "fp", "fn"])
+            writer.writeheader()
+            writer.writerows(rows)
+
         if "mlflow" in args.report_to:
-            mlflow.log_artifact(str(csv_path))
-            mlflow.log_artifact(str(png_path))
+            for artifact in (csv_path, png_path, per_class_csv):
+                mlflow.log_artifact(str(artifact))
 
 
 def setup_trainer(
