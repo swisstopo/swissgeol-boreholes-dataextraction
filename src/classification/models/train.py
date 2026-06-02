@@ -31,7 +31,6 @@ from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.datasets.classification import GroundTruthBoreholeWithLanguage, split_sets
 from classification.utils.file_utils import read_params
 from classification.utils.plots import plot_confusion_matrix
-from core.all_classification_metrics import AllClassificationMetrics
 from core.benchmark_utils import Metrics
 from core.ground_truth import GroundTruth
 
@@ -321,6 +320,30 @@ class HeadOnlyTrainer(Trainer):
                 shutil.rmtree(folder)
 
 
+def multilabel_confusion_matrix_nxn(labels, predictions, n_labels):
+    """Create nxn confusion matrix for multi-label classification.
+
+    We calculate (true, pred) pairs for each sample and increment the corresponding cell in the confusion matrix.
+    One sample can contribute to multiple cells in the confusion matrix.
+
+    Args:
+        labels: binary indicator matrices for labels of shape (n_samples, n_labels)
+        predictions: binary indicator matrices for predictions  of shape (n_samples, n_labels)
+        n_labels: total number of labels
+    Returns:
+        cm: confusion matrix of shape (n_labels, n_labels) where cm[i, j
+    """
+    cm = np.zeros((n_labels, n_labels), dtype=int)
+    for true_row, pred_row in zip(labels, predictions, strict=False):
+        true_labels = np.where(true_row == 1)[0]
+        pred_labels = np.where(pred_row == 1)[0]
+
+        for t in true_labels:
+            for p in pred_labels:
+                cm[t, p] += 1
+    return cm
+
+
 class ConfusionMatrixCallback(TrainerCallback):
     """Trainer callback to compute and save confusion matrix after evaluation."""
 
@@ -329,10 +352,31 @@ class ConfusionMatrixCallback(TrainerCallback):
         self._sorted_ids = sorted(id2class_enum.keys(), key=lambda i: id2class_enum[i].value)
         self._cm: np.ndarray | None = None
 
+    # Define a custom compute_metrics function
     def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
         """Compute per-class and overall metrics, and store predictions for confusion matrix plotting."""
         logits, labels = eval_pred
-        predictions = np.argmax(logits, axis=-1)
+        n_labels = len(self._id2class_enum)
+        if labels.ndim == 2:  # multi-label
+            predictions = (1 / (1 + np.exp(-logits)) > 0.5).astype(int)
+            labels = labels.astype(int)
+            # compute per-class metrics and micro-average, since sklearn doesn't handle multi-label well
+            metric_list = [
+                Metrics(
+                    tp=int(((predictions[:, i] == 1) & (labels[:, i] == 1)).sum()),
+                    fp=int(((predictions[:, i] == 1) & (labels[:, i] == 0)).sum()),
+                    fn=int(((predictions[:, i] == 0) & (labels[:, i] == 1)).sum()),
+                )
+                for i in range(predictions.shape[1])
+            ]
+            self._cm = multilabel_confusion_matrix_nxn(labels, predictions, n_labels)
+            overall_metrics_multi = Metrics.micro_average(metric_list).to_dict("all_micro")
+            per_class_metrics = {
+                f"{cls.name}_f1": metric_list[id_cls].f1 for id_cls, cls in self._id2class_enum.items()
+            }
+            return overall_metrics_multi | per_class_metrics
+        # single-label
+        predictions = logits.argmax(axis=-1)
 
         self._cm = confusion_matrix(labels, predictions, labels=self._sorted_ids)
         per_class_results = per_class_metric(predictions, labels)
@@ -375,39 +419,6 @@ def setup_trainer(
     """
     # load the training arguments from the config file
     training_args = setup_training_args(model_config, out_directory)
-
-    # Define a custom compute_metrics function
-    def compute_metrics(eval_pred: EvalPrediction) -> dict[str, float]:
-        """Function used for evaluating prediction, and logging during the training.
-
-        Note: The metrics are not used to optimize the model during the training, just to evaluate it.
-            The model is trained by trying to lower the cross-entropy loss.
-
-        Args:
-            eval_pred (EvalPrediction): Object of type EvalPrediction that will be passed to this function.
-
-        Returns:
-            dict[str, float]: Dictionary containing all the metrics produced to evaluate the predictions.
-        """
-        logits, labels = eval_pred
-        if labels.ndim == 2:  # multi-label
-            predictions = (1 / (1 + np.exp(-logits)) > 0.5).astype(int)
-            labels = labels.astype(int)
-            # compute per-class metrics and micro-average, since sklearn doesn't handle multi-label well
-            metric_list = [
-                Metrics(
-                    tp=int(((predictions[:, i] == 1) & (labels[:, i] == 1)).sum()),
-                    fp=int(((predictions[:, i] == 1) & (labels[:, i] == 0)).sum()),
-                    fn=int(((predictions[:, i] == 0) & (labels[:, i] == 1)).sum()),
-                )
-                for i in range(predictions.shape[1])
-            ]
-            return AllClassificationMetrics.compute_micro_average(metric_list)
-        # single-label
-        predictions = logits.argmax(axis=-1)
-        metrics = per_class_metric(predictions, labels)
-        return AllClassificationMetrics.compute_micro_average(metrics.values())
-
     use_class_balancing = model_config.get("use_class_balancing", "false").lower() == "true"
     compute_loss_func = None
     if use_class_balancing:
