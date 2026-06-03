@@ -29,6 +29,7 @@ class AWSBedrockEntry(BaseModel):
 
     index: int
     class_: str
+    reasoning: str | None = None
 
 
 class AWSBedrockPrediction(BaseModel):
@@ -62,7 +63,6 @@ class AWSBedrockClassifier(Classifier):
         self.model_id = os.environ.get("ANTHROPIC_MODEL_ID")
         self.pattern_version = self.config["pattern_version"]
         self.prompt_version = self.config["prompt_version"]
-        # TODO: add reasoning logic
         self.reasoning_mode = self.config["reasoning_mode"]
 
         # Load classification instructions
@@ -136,11 +136,12 @@ class AWSBedrockClassifier(Classifier):
                     AWSBedrockEntry(index=i, class_=self.classification_system.get_default_class_value())
                     for i, _ in enumerate(filename_layers)
                 ]
-            # Update predictions
+            # Update predictions (label and reasoning)
             for data in predictions:
                 filename_layers[data.index].prediction_class = self.classification_system.map_most_similar_class(
                     data.class_
                 )
+                filename_layers[data.index].llm_reasoning = data.reasoning
 
             if self.bedrock_out_directory:
                 write_predictions(filename_layers, self.bedrock_out_directory, f"{Path(filename).stem}.json")
