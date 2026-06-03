@@ -209,6 +209,8 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     logger.info("Evaluation test ...")
     for test_name, test_dataset in test_datasets.items():
         metric_key_prefix = f"test_{test_name}"
+        cm_callback = next(cb for cb in trainer.callback_handler.callbacks if isinstance(cb, ConfusionMatrixCallback))
+        cm_callback.current_test_name = test_name
         test_results = trainer.predict(test_dataset, metric_key_prefix=metric_key_prefix)
         trainer.log_metrics(metric_key_prefix, test_results.metrics)
         trainer.save_metrics(metric_key_prefix, test_results.metrics)
@@ -419,6 +421,7 @@ class ConfusionMatrixCallback(TrainerCallback):
         self._id2class_enum = id2class_enum
         self._sorted_ids = sorted(id2class_enum.keys(), key=lambda i: id2class_enum[i].value)
         self._cm: np.ndarray | None = None
+        self.current_test_name: str = "test"
 
     # Define a custom compute_metrics function
     def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
@@ -454,7 +457,10 @@ class ConfusionMatrixCallback(TrainerCallback):
     def on_predict(self, args, state, control, metrics, **kwargs):
         """Save confusion matrix and per-class CSV as test artifacts."""
         csv_path, png_path = plot_confusion_matrix(
-            self._cm, Path(args.output_dir), split="test", all_classes=list(self._id2class_enum.values())
+            self._cm,
+            Path(args.output_dir),
+            split=self.current_test_name,
+            all_classes=list(self._id2class_enum.values()),
         )
         metric_list = list(self._per_class_metrics.values())
         macro = AllClassificationMetrics.compute_macro_average(metric_list)
@@ -487,7 +493,7 @@ class ConfusionMatrixCallback(TrainerCallback):
             ),
         ]
 
-        per_class_csv = Path(args.output_dir) / "test_per_class_metrics.csv"
+        per_class_csv = Path(args.output_dir) / f"per_class_metrics_{self.current_test_name}.csv"
         with per_class_csv.open("w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=["class", "precision", "recall", "f1", "tp", "fp", "fn"])
             writer.writeheader()
@@ -520,7 +526,7 @@ def setup_trainer(
     # load the training arguments from the config file
     training_args = setup_training_args(model_config.hyperparameters, out_directory)
 
-    use_class_balancing = model_config.get("use_class_balancing", "false").lower() == "true"
+    use_class_balancing = model_config.use_class_balancing
     compute_loss_func = None
     if use_class_balancing:
         class_weights = compute_trainset_weights(train_dataset)
