@@ -82,7 +82,7 @@ def deterministic_hash_ratio(text: str) -> float:
     return int.from_bytes(h[:8], "big") / 2**64
 
 
-def split_sets(
+def split_samples(
     data: list[LayerInformation], rval: float = 0.15, rtest: float = 0.15
 ) -> tuple[list[LayerInformation], list[LayerInformation], list[LayerInformation]]:
     """Split a flat list of LayerInformation entries into train, validation, and test subsets.
@@ -203,18 +203,6 @@ class ClassificationSystem(ABC):
             for layer_index, layer in enumerate(borehole.layers)
             if cls.reduce_label(layer) is not None and layer.material_description is not None
         ]
-
-    @classmethod
-    def get_class_from_entry(cls, entry: dict, keys: list[str]) -> str | None:
-        """Returns the class of the classification system used from a possibly nested entry.
-
-        If one of the entries is missing from the nested structure, returns None.
-        """
-        return (
-            cls.get_class_from_entry(entry=entry.get(keys[0]), keys=keys[1:])
-            if keys and isinstance(entry, dict)
-            else entry
-        )
 
     @classmethod
     @abstractmethod
