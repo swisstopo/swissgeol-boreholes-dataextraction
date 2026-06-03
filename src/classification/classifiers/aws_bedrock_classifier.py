@@ -1,15 +1,14 @@
 """Bedrock LLM-based classifier module."""
 
 import asyncio
+import itertools
 import logging
 import os
-from collections import defaultdict
 from pathlib import Path
 
 import anthropic
 import mlflow
 from pydantic import BaseModel
-from tqdm import tqdm
 
 from classification.classifiers.classifier import Classifier
 from classification.utils.data_utils import write_predictions
@@ -43,7 +42,12 @@ class AWSBedrockPrediction(BaseModel):
 
 
 class AWSBedrockClassifier(Classifier):
-    """AWSBedrockClassifier class uses AWS Bedrock with underlying Anthropic LLM models."""
+    """Classifier that uses AWS Bedrock to call Anthropic Claude models for layer classification.
+
+    Sends batched layer descriptions to the model via the Anthropic Bedrock client using
+    structured tool-use output. Supports optional chain-of-thought reasoning mode.
+    Classification patterns and prompts are loaded from versioned configuration files.
+    """
 
     def __init__(self, bedrock_out_directory: Path | None, classification_system: type[ClassificationSystem]):
         """Creates a boto3 client for AWS Bedrock and initializes the classifier.
@@ -58,7 +62,7 @@ class AWSBedrockClassifier(Classifier):
         self.init_config(classification_system)
         self.classification_system = classification_system
         self.bedrock_out_directory = bedrock_out_directory
-        self.bedrock_client = anthropic.AnthropicBedrock(aws_region=os.environ.get("AWS_DEFAULT_REGION"))
+        self.bedrock_client = anthropic.AsyncAnthropicBedrock(aws_region=os.environ.get("AWS_DEFAULT_REGION"))
 
         self.model_id = os.environ.get("ANTHROPIC_MODEL_ID")
         self.pattern_version = self.config["pattern_version"]
@@ -86,65 +90,79 @@ class AWSBedrockClassifier(Classifier):
         mlflow.log_param("anthropic_class_pattern_version", self.pattern_version)
         mlflow.log_param("anthropic_reasoning_mode", self.reasoning_mode)
 
-    async def classify_async(self, layer_descriptions: list[LayerInformation]):
-        """Classifies the material descriptions of layer information objects into the chosen classification system.
+    async def _classify_file(self, filename: str, filename_layers: list[LayerInformation]) -> None:
+        """Classify all layers belonging to a single borehole file in one batched API call.
 
-        TODO: update documentation
-        The method modifies the input object, layer_descriptions by setting their prediction_class attribute.
-        The approach is as follows:
-        1. Each layer description together with the detected language is added to the prompt sent to an Anthropic
-        LLM model API on AWS Bedrock.
-        2. The LLM model provides an answer in the form of a class and (potentially) reasoning.
-        3. If the class and Reasoning exists in the LLM response both are added to the layer_descriptions object.
+        Sends all layer material descriptions as a numbered list to the model and parses the
+        structured tool-use response back into per-layer predictions. On API failure, every layer
+        in the batch is assigned the default class for the classification system. Writes results
+        to disk when ``bedrock_out_directory`` is set.
+
+        Args:
+            filename: Source filename used as the batch identifier and output stem.
+            filename_layers: Ordered list of layers from that file whose ``prediction_class``
+                and ``llm_reasoning`` fields are updated in-place.
         """
-        layers_by_filename: dict[str, list[LayerInformation]] = defaultdict(list)
-        for layer in layer_descriptions:
-            layers_by_filename[layer.filename].append(layer)
+        logger.info(f"Processing file: {filename} with {len(filename_layers)} layers")
+        predictions: list[AWSBedrockEntry] = []
+        try:
+            message = await self.bedrock_client.messages.create(
+                model=self.model_id,
+                max_tokens=self.config["max_tokens"],
+                temperature=self.config["temperature"],
+                tools=[self.tool],
+                tool_choice={"type": "tool", "name": self.tool["name"]},
+                system=self.system_prompts.format(class_patterns=self.class_examples),
+                messages=[
+                    {
+                        "role": "user",
+                        "content": "\n".join(f"{i}. {t.material_description}" for i, t in enumerate(filename_layers)),
+                    }
+                ],
+            )
+            tool_result = next(b for b in message.content if b.type == "tool_use")
+            predictions = AWSBedrockPrediction.model_validate(tool_result.input).predictions
 
-        # TODO: add (back) concurent calls
-        # TODO: add (back) retries
-        for filename, filename_layers in tqdm(layers_by_filename.items()):
-            logger.info(f"Processing file: {filename} with {len(filename_layers)} layers")
-            predictions: list[AWSBedrockEntry] = []
+            if len(predictions) != len(filename_layers):
+                raise ValueError(f"Wrong number of prediction {len(filename_layers)=}, {len(predictions)=}")
 
-            try:
-                message = self.bedrock_client.messages.create(
-                    model=self.model_id,
-                    max_tokens=self.config["max_tokens"],
-                    temperature=self.config["temperature"],
-                    tools=[self.tool],
-                    tool_choice={"type": "tool", "name": self.tool["name"]},
-                    system=self.system_prompts.format(class_patterns=self.class_examples),
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": "\n".join(
-                                f"{i}. {t.material_description}" for i, t in enumerate(filename_layers)
-                            ),
-                        },
-                    ],
-                )
-                tool_result = next(b for b in message.content if b.type == "tool_use")
-                predictions = AWSBedrockPrediction.model_validate(tool_result.input).predictions
+        except Exception as e:
+            logger.warning(f"API call failed for '{filename}': {str(e)}")
+            predictions = [
+                AWSBedrockEntry(index=i, class_=self.classification_system.get_default_class_value())
+                for i, _ in enumerate(filename_layers)
+            ]
 
-                if len(predictions) != len(filename_layers):
-                    raise ValueError(f"Wrong number of prediction {len(filename_layers)=}, {len(predictions)=}")
+        # Update predictions (label and reasoning)
+        for data in predictions:
+            filename_layers[data.index].prediction_class = self.classification_system.map_most_similar_class(
+                data.class_
+            )
+            filename_layers[data.index].llm_reasoning = data.reasoning
 
-            except Exception as e:
-                logger.warning(f"API call failed for '{filename}': {str(e)}")
-                predictions = [
-                    AWSBedrockEntry(index=i, class_=self.classification_system.get_default_class_value())
-                    for i, _ in enumerate(filename_layers)
-                ]
-            # Update predictions (label and reasoning)
-            for data in predictions:
-                filename_layers[data.index].prediction_class = self.classification_system.map_most_similar_class(
-                    data.class_
-                )
-                filename_layers[data.index].llm_reasoning = data.reasoning
+        if self.bedrock_out_directory:
+            write_predictions(filename_layers, self.bedrock_out_directory, f"{Path(filename).stem}.json")
 
-            if self.bedrock_out_directory:
-                write_predictions(filename_layers, self.bedrock_out_directory, f"{Path(filename).stem}.json")
+    async def classify_async(self, layer_descriptions: list[LayerInformation]):
+        """Classify all layers asynchronously, grouped by source file.
+
+        Layers are sorted and grouped by filename so each borehole file is processed in a single
+        batched API call. All file-level tasks are awaited concurrently via ``asyncio.gather``.
+
+        Args:
+            layer_descriptions: All layers to classify, potentially spanning multiple files.
+        """
+        # Sort layers for grouping
+        layer_descriptions = sorted(layer_descriptions, key=lambda layer: layer.filename)
+
+        tasks = [
+            self._classify_file(filename, list(layers))
+            for filename, layers in itertools.groupby(layer_descriptions, key=lambda layer: layer.filename)
+        ]
+        await asyncio.gather(*tasks)
 
     def classify(self, layer_descriptions: list[LayerInformation]):
+        # TODO check on memory for same token (caching)
+        # TODO check on semaphore (concurent calls)
+        # TODO check on retries
         asyncio.run(self.classify_async(layer_descriptions))
