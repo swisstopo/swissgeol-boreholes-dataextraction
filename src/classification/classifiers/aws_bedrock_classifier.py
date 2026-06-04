@@ -63,12 +63,17 @@ class AWSBedrockClassifier(Classifier):
         self.init_config(classification_system)
         self.classification_system = classification_system
         self.bedrock_out_directory = bedrock_out_directory
-        self.bedrock_client = anthropic.AsyncAnthropicBedrock(aws_region=os.environ.get("AWS_DEFAULT_REGION"))
 
         self.model_id = os.environ.get("ANTHROPIC_MODEL_ID")
+        self.model_region = os.environ.get("AWS_DEFAULT_REGION")
         self.pattern_version = self.config["pattern_version"]
         self.prompt_version = self.config["prompt_version"]
         self.reasoning_mode = self.config["reasoning_mode"]
+        self.max_concurrent_calls = self.config["max_concurrent_calls"]
+
+        # Async functions
+        self.semaphore = asyncio.Semaphore(self.max_concurrent_calls)
+        self.bedrock_client = anthropic.AsyncAnthropicBedrock(aws_region=self.model_region)
 
         # Load classification instructions
         self.class_examples = read_params(self.config["pattern_file"])[self.pattern_version]
@@ -79,7 +84,6 @@ class AWSBedrockClassifier(Classifier):
         ]
         self.system_prompts = prompts["system_prompt"]
         self.tool = prompts["tool"]
-        self.semaphore = asyncio.Semaphore(self.config.get("max_concurrent_calls", 5))
 
     def get_name(self) -> str:
         """Returns a string with the name of the classifier."""
