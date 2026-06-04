@@ -31,14 +31,14 @@ class ExistingClassificationSystems(Enum):
     def get_classification_system_type(
         cls,
         class_system: Literal[
-            "uscs",
-            "lithology",
-            "en_main",
             "color",
-            "organic_components",
             "color_consolidated",
             "color_unconsolidated",
+            "organic_components",
             "debris",
+            "en_main",
+            "lithology",
+            "uscs",
         ],
     ) -> type[ClassificationSystem]:
         """Returns the class of a classification system based on input string.

@@ -429,7 +429,11 @@ class ConfusionMatrixCallback(TrainerCallback):
         logits, labels = eval_pred
         n_labels = len(self._id2class_enum)
         if labels.ndim == 2:  # multi-label
-            predictions = (1 / (1 + np.exp(-logits)) > 0.5).astype(int)
+            predictions = (logits > 0).astype(int)
+            # fallback: if no class predicted for a sample, take the argmax
+            no_prediction = predictions.sum(axis=-1) == 0
+            predictions[no_prediction, logits[no_prediction].argmax(axis=-1)] = 1
+
             labels = labels.astype(int)
             # compute per-class metrics and micro-average, since sklearn doesn't handle multi-label well
             metric_list = [

@@ -123,7 +123,7 @@ class LayerInformation:
     language: str
     material_description: str
     class_system: type[ClassificationSystem]
-    ground_truth_class: None | ClassificationSystem.EnumMember | list[ClassificationSystem.EnumMember]
+    ground_truth_class: None | list[ClassificationSystem.EnumMember]
     prediction_class: None | ClassificationSystem.EnumMember
     llm_reasoning: None | str
 
@@ -167,7 +167,7 @@ class ClassificationSystem(ABC):
     def reduce_label(
         cls,
         layer: GroundTruthLayer,
-    ) -> int | None:
+    ) -> list[ClassificationSystem.EnumMember] | None:
         """Extract the integer class index from a layer by resolving the ground truth key path, or None if absent."""
         try:
             label_str = reduce(getattr, cls.get_layer_ground_truth_keys(), layer)
@@ -180,7 +180,7 @@ class ClassificationSystem(ABC):
         if isinstance(label_str, list):
             return [cls.map_most_similar_class(s) for s in label_str]
 
-        return cls.map_most_similar_class(label_str)
+        return [cls.map_most_similar_class(label_str)]
 
     @classmethod
     def process(cls, ground_truth: dict[str, list[GroundTruthBoreholeWithLanguage]]) -> list[LayerInformation]:

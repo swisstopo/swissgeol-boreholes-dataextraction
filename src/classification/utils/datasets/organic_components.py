@@ -21,7 +21,7 @@ class OrganicComponentsUnconsolidatedSystem(ClassificationSystem):
             class_str (str): The class string to be normalized (e.g. "remains of wood").
 
         Returns:
-            str: The normalized color class string (e.g., "remains_of_wood").
+            str: The normalized organic components class string (e.g., "remains_of_wood").
         """
         return class_str.lower().replace(" ", "_")
 
