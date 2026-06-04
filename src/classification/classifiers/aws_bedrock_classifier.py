@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 import anthropic
+import backoff
 import mlflow
 from pydantic import BaseModel
 from tqdm.asyncio import tqdm_asyncio
@@ -98,6 +99,54 @@ class AWSBedrockClassifier(Classifier):
         """Returns a string with the name of the classifier."""
         return "bedrock"
 
+    @backoff.on_exception(backoff.expo, (anthropic.RateLimitError, anthropic.APIStatusError, ValueError), max_tries=5)
+    async def _call_bedrock(self, filename_layers: list[LayerInformation]) -> list[AWSBedrockEntry]:
+        """Call the Bedrock API, retrying on transient errors.
+
+        Args:
+            filename_layers: List of layers sent to the model.
+
+        Returns:
+            Parsed list of per-layer predictions aligned to the input.
+
+        Raises:
+            ValueError: Re-raised after all retries are exhausted.
+            anthropic.RateLimitError: Re-raised after all retries are exhausted.
+            anthropic.APIStatusError: Re-raised after all retries are exhausted.
+        """
+        message = await self.bedrock_client.messages.create(
+            model=self.model_id,
+            max_tokens=self.config["max_tokens"],
+            temperature=self.config["temperature"],
+            tools=[
+                {
+                    **self.tool,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
+            tool_choice={"type": "tool", "name": self.tool["name"]},
+            system=[
+                {
+                    "type": "text",
+                    "text": self.system_prompts.format(class_patterns=self.class_examples),
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
+            messages=[
+                {
+                    "role": "user",
+                    "content": "\n".join(f"{i}. {t.material_description}" for i, t in enumerate(filename_layers)),
+                }
+            ],
+        )
+        tool_result = next(b for b in message.content if b.type == "tool_use")
+        predictions = AWSBedrockPrediction.model_validate(tool_result.input).predictions
+
+        if len(predictions) != len(filename_layers):
+            raise ValueError(f"Wrong number of prediction {len(filename_layers)=}, {len(predictions)=}")
+
+        return predictions
+
     def log_params(self):
         """Log model and id, prompt and parameter versions if anthropic model used."""
         mlflow.log_param("anthropic_model_id", os.environ.get("ANTHROPIC_MODEL_ID"))
@@ -127,39 +176,7 @@ class AWSBedrockClassifier(Classifier):
         async with self.semaphore:
             predictions: list[AWSBedrockEntry] = []
             try:
-                message = await self.bedrock_client.messages.create(
-                    model=self.model_id,
-                    max_tokens=self.config["max_tokens"],
-                    temperature=self.config["temperature"],
-                    tools=[
-                        {
-                            **self.tool,
-                            "cache_control": {"type": "ephemeral"},
-                        }
-                    ],
-                    tool_choice={"type": "tool", "name": self.tool["name"]},
-                    system=[
-                        {
-                            "type": "text",
-                            "text": self.system_prompts.format(class_patterns=self.class_examples),
-                            "cache_control": {"type": "ephemeral"},
-                        }
-                    ],
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": "\n".join(
-                                f"{i}. {t.material_description}" for i, t in enumerate(filename_layers)
-                            ),
-                        }
-                    ],
-                )
-                tool_result = next(b for b in message.content if b.type == "tool_use")
-                predictions = AWSBedrockPrediction.model_validate(tool_result.input).predictions
-
-                if len(predictions) != len(filename_layers):
-                    raise ValueError(f"Wrong number of prediction {len(filename_layers)=}, {len(predictions)=}")
-
+                predictions = await self._call_bedrock(filename_layers)
             except Exception as e:
                 logger.warning(f"API call failed for '{filename}': {str(e)}")
                 predictions = [
@@ -204,5 +221,4 @@ class AWSBedrockClassifier(Classifier):
         Args:
             layer_descriptions: All layers to classify, potentially spanning multiple files.
         """
-        # TODO check on retries
         asyncio.run(self.classify_async(layer_descriptions))
