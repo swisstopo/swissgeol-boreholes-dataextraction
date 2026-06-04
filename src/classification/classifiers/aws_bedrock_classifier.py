@@ -2,6 +2,7 @@
 
 import asyncio
 import itertools
+import json
 import logging
 import os
 from pathlib import Path
@@ -18,6 +19,7 @@ from classification.utils.datasets.classification import ClassificationSystem, L
 from classification.utils.file_utils import read_params
 
 logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 class AWSBedrockEntry(BaseModel):
@@ -135,7 +137,7 @@ class AWSBedrockClassifier(Classifier):
             messages=[
                 {
                     "role": "user",
-                    "content": "\n".join(f"{i}. {t.material_description}" for i, t in enumerate(filename_layers)),
+                    "content": json.dumps({i: t.material_description for i, t in enumerate(filename_layers)}),
                 }
             ],
         )
