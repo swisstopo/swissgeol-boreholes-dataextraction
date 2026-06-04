@@ -9,6 +9,7 @@ from pathlib import Path
 import anthropic
 import mlflow
 from pydantic import BaseModel
+from tqdm.asyncio import tqdm_asyncio
 
 from classification.classifiers.classifier import Classifier
 from classification.utils.data_utils import write_predictions
@@ -78,6 +79,7 @@ class AWSBedrockClassifier(Classifier):
         ]
         self.system_prompts = prompts["system_prompt"]
         self.tool = prompts["tool"]
+        self.semaphore = asyncio.Semaphore(self.config.get("max_concurrent_calls", 5))
 
     def get_name(self) -> str:
         """Returns a string with the name of the classifier."""
@@ -103,35 +105,48 @@ class AWSBedrockClassifier(Classifier):
             filename_layers: Ordered list of layers from that file whose ``prediction_class``
                 and ``llm_reasoning`` fields are updated in-place.
         """
-        logger.info(f"Processing file: {filename} with {len(filename_layers)} layers")
-        predictions: list[AWSBedrockEntry] = []
-        try:
-            message = await self.bedrock_client.messages.create(
-                model=self.model_id,
-                max_tokens=self.config["max_tokens"],
-                temperature=self.config["temperature"],
-                tools=[self.tool],
-                tool_choice={"type": "tool", "name": self.tool["name"]},
-                system=self.system_prompts.format(class_patterns=self.class_examples),
-                messages=[
-                    {
-                        "role": "user",
-                        "content": "\n".join(f"{i}. {t.material_description}" for i, t in enumerate(filename_layers)),
-                    }
-                ],
-            )
-            tool_result = next(b for b in message.content if b.type == "tool_use")
-            predictions = AWSBedrockPrediction.model_validate(tool_result.input).predictions
+        async with self.semaphore:
+            predictions: list[AWSBedrockEntry] = []
+            try:
+                message = await self.bedrock_client.messages.create(
+                    model=self.model_id,
+                    max_tokens=self.config["max_tokens"],
+                    temperature=self.config["temperature"],
+                    tools=[
+                        {
+                            **self.tool,
+                            "cache_control": {"type": "ephemeral", "ttl": "1h"},
+                        }
+                    ],
+                    tool_choice={"type": "tool", "name": self.tool["name"]},
+                    system=[
+                        {
+                            "type": "text",
+                            "text": self.system_prompts.format(class_patterns=self.class_examples),
+                            "cache_control": {"type": "ephemeral", "ttl": "1h"},
+                        }
+                    ],
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": "\n".join(
+                                f"{i}. {t.material_description}" for i, t in enumerate(filename_layers)
+                            ),
+                        }
+                    ],
+                )
+                tool_result = next(b for b in message.content if b.type == "tool_use")
+                predictions = AWSBedrockPrediction.model_validate(tool_result.input).predictions
 
-            if len(predictions) != len(filename_layers):
-                raise ValueError(f"Wrong number of prediction {len(filename_layers)=}, {len(predictions)=}")
+                if len(predictions) != len(filename_layers):
+                    raise ValueError(f"Wrong number of prediction {len(filename_layers)=}, {len(predictions)=}")
 
-        except Exception as e:
-            logger.warning(f"API call failed for '{filename}': {str(e)}")
-            predictions = [
-                AWSBedrockEntry(index=i, class_=self.classification_system.get_default_class_value())
-                for i, _ in enumerate(filename_layers)
-            ]
+            except Exception as e:
+                logger.warning(f"API call failed for '{filename}': {str(e)}")
+                predictions = [
+                    AWSBedrockEntry(index=i, class_=self.classification_system.get_default_class_value())
+                    for i, _ in enumerate(filename_layers)
+                ]
 
         # Update predictions (label and reasoning)
         for data in predictions:
@@ -159,10 +174,8 @@ class AWSBedrockClassifier(Classifier):
             self._classify_file(filename, list(layers))
             for filename, layers in itertools.groupby(layer_descriptions, key=lambda layer: layer.filename)
         ]
-        await asyncio.gather(*tasks)
+        await tqdm_asyncio.gather(*tasks, desc="Classifying files")
 
     def classify(self, layer_descriptions: list[LayerInformation]):
-        # TODO check on memory for same token (caching)
-        # TODO check on semaphore (concurent calls)
         # TODO check on retries
         asyncio.run(self.classify_async(layer_descriptions))
