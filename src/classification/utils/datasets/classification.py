@@ -127,6 +127,48 @@ class LayerInformation:
     prediction_class: None | ClassificationSystem.EnumMember
     llm_reasoning: None | str
 
+    def to_json(self) -> dict[str, str | int | None]:
+        """Serialize this layer's fields to a JSON-compatible dictionary.
+
+        Returns:
+            A flat dictionary with all layer fields.
+        """
+        return {
+            "filename": self.filename,
+            "borehole_index": self.borehole_index,
+            "layer_index": self.layer_index,
+            "language": self.language,
+            "material_description": self.material_description,
+            "class_system": self.class_system.get_name(),
+            "ground_truth_class": self.ground_truth_class.name,
+            "prediction_class": self.prediction_class.name,
+            "llm_reasoning": self.llm_reasoning,
+        }
+
+    @classmethod
+    def from_json(cls, json: dict, classification_system: type[ClassificationSystem]) -> LayerInformation:
+        """Deserialize a LayerInformation from a JSON dictionary.
+
+        Args:
+            json: Flat dictionary with the keys expected by ``to_json``.
+            classification_system: The classification system used to resolve
+                class strings back to enum members.
+
+        Returns:
+            A new ``LayerInformation`` instance.
+        """
+        return cls(
+            filename=json["filename"],
+            borehole_index=json["borehole_index"],
+            layer_index=json["layer_index"],
+            language=json["language"],
+            material_description=json["material_description"],
+            class_system=classification_system,
+            ground_truth_class=classification_system.map_most_similar_class(json["ground_truth_class"]),
+            prediction_class=classification_system.map_most_similar_class(json["prediction_class"]),
+            llm_reasoning=json["llm_reasoning"],
+        )
+
 
 class ClassificationSystem(ABC):
     """Abstract base class for classification system.

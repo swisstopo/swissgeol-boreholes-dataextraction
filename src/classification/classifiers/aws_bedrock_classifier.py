@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from tqdm.asyncio import tqdm_asyncio
 
 from classification.classifiers.classifier import Classifier
-from classification.utils.data_utils import write_predictions
+from classification.utils.data_utils import read_predictions, write_predictions
 from classification.utils.datasets.classification import ClassificationSystem, LayerInformation
 from classification.utils.file_utils import read_params
 
@@ -55,6 +55,7 @@ class AWSBedrockClassifier(Classifier):
         bedrock_out_directory: Path | None,
         classification_system: type[ClassificationSystem],
         max_concurrent_calls: int = 3,
+        use_local_cache: bool = True,
     ):
         """Creates a boto3 client for AWS Bedrock and initializes the classifier.
 
@@ -64,12 +65,14 @@ class AWSBedrockClassifier(Classifier):
         Args:
             bedrock_out_directory (Path): Directory to write prediction outputs and API failures
             classification_system (type[ClassificationSystem]): the classification system used
-            max_concurrent_calls (int): Max number of concurent calls
+            max_concurrent_calls (int): Max number of concurent calls. Defaults to 3.
+            use_local_cache (bool): Enable local file caching (avoid costs of reprocessing files)
         """
         self.init_config(classification_system)
         self.classification_system = classification_system
         self.bedrock_out_directory = bedrock_out_directory
         self.max_concurrent_calls = max_concurrent_calls
+        self.use_local_cache = use_local_cache
 
         self.model_id = os.environ.get("ANTHROPIC_MODEL_ID")
         self.model_region = os.environ.get("AWS_DEFAULT_REGION")
@@ -115,6 +118,12 @@ class AWSBedrockClassifier(Classifier):
             filename_layers: Ordered list of layers from that file whose ``prediction_class``
                 and ``llm_reasoning`` fields are updated in-place.
         """
+        output_path = self.bedrock_out_directory / f"{Path(filename).stem}.json"
+
+        if self.use_local_cache and output_path.exists():
+            filename_layers = read_predictions(output_path, self.classification_system)
+            return
+
         async with self.semaphore:
             predictions: list[AWSBedrockEntry] = []
             try:
@@ -166,7 +175,7 @@ class AWSBedrockClassifier(Classifier):
             filename_layers[data.index].llm_reasoning = data.reasoning
 
         if self.bedrock_out_directory:
-            write_predictions(filename_layers, self.bedrock_out_directory, f"{Path(filename).stem}.json")
+            write_predictions(filename_layers, output_path)
 
     async def classify_async(self, layer_descriptions: list[LayerInformation]):
         """Classify all layers asynchronously, grouped by source file.

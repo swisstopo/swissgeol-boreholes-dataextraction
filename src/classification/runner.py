@@ -99,7 +99,7 @@ def run_classification_predictions(
         f"with {classifier.__class__.__name__}"
     )
     classifier.classify(layer_descriptions)
-    write_predictions(layer_descriptions, out_directory)
+    write_predictions(layer_descriptions, out_directory / "class_predictions.json")
 
     return layer_descriptions, classifier, n_documents
 
