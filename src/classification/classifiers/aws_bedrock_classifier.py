@@ -10,6 +10,7 @@ from pathlib import Path
 import anthropic
 import backoff
 import mlflow
+import pydantic_core
 from pydantic import BaseModel
 from tqdm.asyncio import tqdm_asyncio
 
@@ -101,7 +102,11 @@ class AWSBedrockClassifier(Classifier):
         """Returns a string with the name of the classifier."""
         return "bedrock"
 
-    @backoff.on_exception(backoff.expo, (anthropic.RateLimitError, anthropic.APIStatusError, ValueError), max_tries=5)
+    @backoff.on_exception(
+        backoff.expo,
+        (anthropic.RateLimitError, anthropic.APIStatusError, ValueError, pydantic_core.ValidationError),
+        max_tries=5,
+    )
     async def _call_bedrock(self, filename_layers: list[LayerInformation]) -> list[AWSBedrockEntry]:
         """Call the Bedrock API, retrying on transient errors.
 
@@ -112,6 +117,7 @@ class AWSBedrockClassifier(Classifier):
             Parsed list of per-layer predictions aligned to the input.
 
         Raises:
+            pydantic_core.ValidationError: Re-raised after all retries are exhausted.
             ValueError: Re-raised after all retries are exhausted.
             anthropic.RateLimitError: Re-raised after all retries are exhausted.
             anthropic.APIStatusError: Re-raised after all retries are exhausted.
@@ -156,7 +162,7 @@ class AWSBedrockClassifier(Classifier):
         mlflow.log_param("anthropic_class_pattern_version", self.pattern_version)
         mlflow.log_param("anthropic_reasoning_mode", self.reasoning_mode)
 
-    async def _classify_file(self, filename: str, filename_layers: list[LayerInformation]) -> None:
+    async def _classify_file(self, filename: str, filename_layers: list[LayerInformation]) -> list[LayerInformation]:
         """Classify all layers belonging to a single borehole file in one batched API call.
 
         Sends all layer material descriptions as a numbered list to the model and parses the
@@ -168,12 +174,14 @@ class AWSBedrockClassifier(Classifier):
             filename: Source filename used as the batch identifier and output stem.
             filename_layers: Ordered list of layers from that file whose ``prediction_class``
                 and ``llm_reasoning`` fields are updated in-place.
+
+        Return:
+            list[LayerInformation]: Classified layer information.
         """
         output_path = self.bedrock_out_directory / f"{Path(filename).stem}.json"
 
         if self.use_local_cache and output_path.exists():
-            filename_layers = read_predictions(output_path, self.classification_system)
-            return
+            return read_predictions(output_path, self.classification_system)
 
         async with self.semaphore:
             predictions: list[AWSBedrockEntry] = []
@@ -196,6 +204,8 @@ class AWSBedrockClassifier(Classifier):
         if self.bedrock_out_directory:
             write_predictions(filename_layers, output_path)
 
+        return filename_layers
+
     async def classify_async(self, layer_descriptions: list[LayerInformation]):
         """Classify all layers asynchronously, grouped by source file.
 
@@ -212,15 +222,18 @@ class AWSBedrockClassifier(Classifier):
             self._classify_file(filename, list(layers))
             for filename, layers in itertools.groupby(layer_descriptions, key=lambda layer: layer.filename)
         ]
-        await tqdm_asyncio.gather(*tasks, desc="Classifying files")
+        return await tqdm_asyncio.gather(*tasks, desc="Classifying files")
 
-    def classify(self, layer_descriptions: list[LayerInformation]):
+    def classify(self, layer_descriptions: list[LayerInformation]) -> list[LayerInformation]:
         """Classify all layers using the Bedrock API.
 
         Synchronous entry point that runs the async classification pipeline via
         ``asyncio.run``. Layers are grouped by source file and processed concurrently.
 
         Args:
-            layer_descriptions: All layers to classify, potentially spanning multiple files.
+            layer_descriptions (list[LayerInformation]): All layers to classify, potentially spanning multiple files.
+
+        Return:
+            list[LayerInformation]: Classified layer information.
         """
-        asyncio.run(self.classify_async(layer_descriptions))
+        return [layer for file_layers in asyncio.run(self.classify_async(layer_descriptions)) for layer in file_layers]

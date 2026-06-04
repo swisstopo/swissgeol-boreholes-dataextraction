@@ -50,13 +50,16 @@ class BertClassifier(Classifier):
         """Log the name of the model used."""
         mlflow.log_param("model_name", "/".join(self.model_path.parts[-2:]))
 
-    def classify(self, layer_descriptions: list[LayerInformation]):
+    def classify(self, layer_descriptions: list[LayerInformation]) -> list[LayerInformation]:
         """Classifies the description of the LayerInformation objects.
 
         This method will populate the prediction_class attribute of each object.
 
         Args:
             layer_descriptions (list[LayerInformation]): The LayerInformation object
+
+        Return:
+            list[LayerInformation]: The updated LayerInformation object
         """
         # We create an instance of Trainer only for prediction as it is much faster than using custom methods.
         eval_dataset = self.bert_model.get_tokenized_dataset(layer_descriptions)
@@ -71,3 +74,5 @@ class BertClassifier(Classifier):
         # Convert indices to Enum classes and assign them
         for layer, idx in zip(layer_descriptions, predicted_indices, strict=True):
             layer.prediction_class = self.bert_model.id2classEnum[idx]
+
+        return layer_descriptions

@@ -139,9 +139,9 @@ class LayerInformation:
             "layer_index": self.layer_index,
             "language": self.language,
             "material_description": self.material_description,
-            "class_system": self.class_system.get_name(),
-            "ground_truth_class": self.ground_truth_class.name,
-            "prediction_class": self.prediction_class.name,
+            "class_system": self.class_system.get_name() if self.class_system else None,
+            "ground_truth_class": self.ground_truth_class.name if self.ground_truth_class else None,
+            "prediction_class": self.prediction_class.name if self.prediction_class else None,
             "llm_reasoning": self.llm_reasoning,
         }
 
@@ -164,8 +164,8 @@ class LayerInformation:
             language=json["language"],
             material_description=json["material_description"],
             class_system=classification_system,
-            ground_truth_class=classification_system.map_most_similar_class(json["ground_truth_class"]),
-            prediction_class=classification_system.map_most_similar_class(json["prediction_class"]),
+            ground_truth_class=classification_system.map_most_similar_class(json["ground_truth_class"] or ""),
+            prediction_class=classification_system.map_most_similar_class(json["prediction_class"] or ""),
             llm_reasoning=json["llm_reasoning"],
         )
 
