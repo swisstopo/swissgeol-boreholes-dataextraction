@@ -151,7 +151,7 @@ class AWSBedrockClassifier(Classifier):
 
     def log_params(self):
         """Log model and id, prompt and parameter versions if anthropic model used."""
-        mlflow.log_param("anthropic_model_id", os.environ.get("ANTHROPIC_MODEL_ID"))
+        mlflow.log_param("anthropic_model_id", self.model_id)
         mlflow.log_param("anthropic_prompt_version", self.prompt_version)
         mlflow.log_param("anthropic_class_pattern_version", self.pattern_version)
         mlflow.log_param("anthropic_reasoning_mode", self.reasoning_mode)
