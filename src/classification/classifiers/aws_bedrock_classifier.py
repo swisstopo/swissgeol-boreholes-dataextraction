@@ -50,7 +50,12 @@ class AWSBedrockClassifier(Classifier):
     Classification patterns and prompts are loaded from versioned configuration files.
     """
 
-    def __init__(self, bedrock_out_directory: Path | None, classification_system: type[ClassificationSystem]):
+    def __init__(
+        self,
+        bedrock_out_directory: Path | None,
+        classification_system: type[ClassificationSystem],
+        max_concurrent_calls: int = 3,
+    ):
         """Creates a boto3 client for AWS Bedrock and initializes the classifier.
 
         Environment variables are used to configure the AWS region, model ID, and Anthropic version.
@@ -59,17 +64,18 @@ class AWSBedrockClassifier(Classifier):
         Args:
             bedrock_out_directory (Path): Directory to write prediction outputs and API failures
             classification_system (type[ClassificationSystem]): the classification system used
+            max_concurrent_calls (int): Max number of concurent calls
         """
         self.init_config(classification_system)
         self.classification_system = classification_system
         self.bedrock_out_directory = bedrock_out_directory
+        self.max_concurrent_calls = max_concurrent_calls
 
         self.model_id = os.environ.get("ANTHROPIC_MODEL_ID")
         self.model_region = os.environ.get("AWS_DEFAULT_REGION")
         self.pattern_version = self.config["pattern_version"]
         self.prompt_version = self.config["prompt_version"]
         self.reasoning_mode = self.config["reasoning_mode"]
-        self.max_concurrent_calls = self.config["max_concurrent_calls"]
 
         # Async functions
         self.semaphore = asyncio.Semaphore(self.max_concurrent_calls)
@@ -119,7 +125,7 @@ class AWSBedrockClassifier(Classifier):
                     tools=[
                         {
                             **self.tool,
-                            "cache_control": {"type": "ephemeral", "ttl": "1h"},
+                            "cache_control": {"type": "ephemeral"},
                         }
                     ],
                     tool_choice={"type": "tool", "name": self.tool["name"]},
@@ -127,7 +133,7 @@ class AWSBedrockClassifier(Classifier):
                         {
                             "type": "text",
                             "text": self.system_prompts.format(class_patterns=self.class_examples),
-                            "cache_control": {"type": "ephemeral", "ttl": "1h"},
+                            "cache_control": {"type": "ephemeral"},
                         }
                     ],
                     messages=[
@@ -181,5 +187,13 @@ class AWSBedrockClassifier(Classifier):
         await tqdm_asyncio.gather(*tasks, desc="Classifying files")
 
     def classify(self, layer_descriptions: list[LayerInformation]):
+        """Classify all layers using the Bedrock API.
+
+        Synchronous entry point that runs the async classification pipeline via
+        ``asyncio.run``. Layers are grouped by source file and processed concurrently.
+
+        Args:
+            layer_descriptions: All layers to classify, potentially spanning multiple files.
+        """
         # TODO check on retries
         asyncio.run(self.classify_async(layer_descriptions))
