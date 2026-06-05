@@ -222,16 +222,21 @@ Pre-trained models are available in two ways:
 The main script for the classification pipeline is located at `src/classification/main.py`. A CLI command is available to run this script:
 
 ```bash
-boreholes-classify-descriptions -f data/geoquat/validation -g data/geoquat_ground_truth.json -c baseline
+# Classification
+boreholes-classify-descriptions -f data/geoquat_ground_truth.json -g data/geoquat_ground_truth.json -c baseline
 ```
 
 **Supported modes:**
 
-| `-f` flag / `input_path`                      | `-g` flag / `ground_truth_path` | Behaviour                                                                                                                                                                                                                                  |
-|-----------------------------------------------|---------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Directory                                     | JSON file (ground truth)        | Classify the descriptions from the ground truth file and compare the predicted classes to the ones in the same file. The `input_path` is interpreted as a subset directory (only filenames that exist in this directory will be included). |
-| JSON file (ground truth)                | _Not provided_                  | Classify the descriptions from the input file and compare the predicted classes to the ones in the same file.                                                                                                                              |
-| JSON file (predictions or ground truth) | JSON file (ground truth)               | Classify the descriptions from the input file and compare the predicted classes to the ones from the ground truth file.                                                                                                                    |
+
+Only the following two modes are supported:
+
+| `-f` flag / `input_path`                      | `-g` flag / `ground_truth_path` | Behaviour                                                                                                                                        |
+|-----------------------------------------------|---------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| _Any_                        | JSON file (ground truth)                  | Use ground truth to classify and evaluate. Used for metic comparison between classifiers. Samples are taken from the test set as in training.|
+| JSON file (predictions from extraction)       | _Not provided_                 | (not supported yet) Classify the descriptions input
+| JSON file (predictions from extraction)       | JSON file (ground truth)        |  (not supported) Classify the descriptions input and compare the predicted classes against the provided ground truth.                     |
+
 
 All combinations that are not described in the table above, are not supported.
 

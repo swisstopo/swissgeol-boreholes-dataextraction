@@ -20,7 +20,11 @@ from classification.utils.data_utils import (
     write_predictions,
 )
 from classification.utils.datasets import ExistingClassificationSystems
-from classification.utils.datasets.classification import GroundTruthBoreholeWithLanguage, LayerInformation
+from classification.utils.datasets.classification import (
+    GroundTruthBoreholeWithLanguage,
+    LayerInformation,
+    split_samples,
+)
 from core.ground_truth import GroundTruth
 from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_tracking
@@ -70,21 +74,21 @@ def run_classification_predictions(
         options.classification_system.lower()
     )
 
-    logger.info(
-        f"Loading data from {file_path}" + (f" and ground truth from {ground_truth_path}" if ground_truth_path else "")
-    )
-
-    layer_descriptions = classification_system_cls.process(
+    # TODO Issue 427 - Discuss how to handle input for different scenarios
+    logger.info(f"Loading data GT {ground_truth_path}")
+    layer_descriptions_gt = classification_system_cls.process(
         ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
-            ground_truth=GroundTruth(file_path).ground_truth,
+            ground_truth=GroundTruth(ground_truth_path).ground_truth,
         )
     )
 
-    n_documents = len({layer.filename for layer in layer_descriptions})
+    _, _, layer_descriptions_test = split_samples(layer_descriptions_gt)
 
-    if not layer_descriptions:
+    n_documents = len({layer.filename for layer in layer_descriptions_test})
+
+    if not layer_descriptions_test:
         logger.warning("No data to classify.")
-        return layer_descriptions, None, n_documents
+        return layer_descriptions_test, None, n_documents
 
     classifier = ClassifierFactory.create_classifier(
         classifier_type_instance,
@@ -98,10 +102,10 @@ def run_classification_predictions(
         f"Classifying layer description into {classification_system_cls.get_name()} classes "
         f"with {classifier.__class__.__name__}"
     )
-    classifier.classify(layer_descriptions)
-    write_predictions(layer_descriptions, out_directory / "class_predictions.json")
+    layer_descriptions_test = classifier.classify(layer_descriptions_test)
+    write_predictions(layer_descriptions_test, out_directory / "class_predictions.json")
 
-    return layer_descriptions, classifier, n_documents
+    return layer_descriptions_test, classifier, n_documents
 
 
 @dataclass(kw_only=True)
