@@ -140,8 +140,8 @@ class LayerInformation:
             "language": self.language,
             "material_description": self.material_description,
             "class_system": self.class_system.get_name() if self.class_system else None,
-            "ground_truth_class": self.ground_truth_class.name if self.ground_truth_class else None,
-            "prediction_class": self.prediction_class.name if self.prediction_class else None,
+            "ground_truth_class": self.ground_truth_class.name if self.ground_truth_class is not None else None,
+            "prediction_class": self.prediction_class.name if self.prediction_class is not None else None,
             "llm_reasoning": self.llm_reasoning,
         }
 

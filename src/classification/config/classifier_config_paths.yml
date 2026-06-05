@@ -14,3 +14,5 @@ bedrock:
   uscs: bedrock/bedrock_config_uscs.yml
   lithology: bedrock/bedrock_config_lithology.yml
   EN_main: bedrock/bedrock_config_en_main.yml
+  color_consolidated: bedrock/bedrock_config_color.yml
+  color_unconsolidated: bedrock/bedrock_config_color.yml
