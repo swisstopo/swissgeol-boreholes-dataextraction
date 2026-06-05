@@ -17,4 +17,4 @@ temperature: 0.0
 max_tokens: 4096
 
 # Parameter indicating if Reasoning (Chain of Thought) mode should be used. Warning this significantly increases latency
-reasoning_mode: True
+reasoning_mode: False

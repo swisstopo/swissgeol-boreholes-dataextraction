@@ -59,7 +59,7 @@ class AWSBedrockClassifier(Classifier):
         bedrock_out_directory: Path | None,
         classification_system: type[ClassificationSystem],
         max_concurrent_calls: int = 3,
-        use_local_cache: bool = True,
+        use_local_cache: bool = False,
     ):
         """Creates a boto3 client for AWS Bedrock and initializes the classifier.
 
@@ -70,7 +70,8 @@ class AWSBedrockClassifier(Classifier):
             bedrock_out_directory (Path): Directory to write prediction outputs and API failures
             classification_system (type[ClassificationSystem]): the classification system used
             max_concurrent_calls (int): Max number of concurent calls. Defaults to 3.
-            use_local_cache (bool): Enable local file caching (avoid costs of reprocessing files)
+            use_local_cache (bool): Enable local file caching to avoid costs of reprocessing
+                files. Default to False.
         """
         self.init_config(classification_system)
         self.classification_system = classification_system
