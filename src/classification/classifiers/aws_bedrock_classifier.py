@@ -92,11 +92,11 @@ class AWSBedrockClassifier(Classifier):
         self.class_examples = read_params(self.config["pattern_file"])[self.pattern_version]
 
         # Load tool and system prompt
-        prompts = read_params(self.config["prompts_file"])["reasoning" if self.reasoning_mode else "classification"][
-            self.prompt_version
-        ]
-        self.system_prompts = prompts["system_prompt"]
-        self.tool = prompts["tool"]
+        self.system_prompts = read_params(self.config["prompts_file"])[
+            "reasoning" if self.reasoning_mode else "classification"
+        ][self.prompt_version]
+
+        self.tool = read_params(self.config["tool_file"])["reasoning" if self.reasoning_mode else "classification"]
 
     def get_name(self) -> str:
         """Returns a string with the name of the classifier."""
