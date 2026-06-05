@@ -69,7 +69,7 @@ class AWSBedrockClassifier(Classifier):
         Args:
             bedrock_out_directory (Path): Directory to write prediction outputs and API failures
             classification_system (type[ClassificationSystem]): the classification system used
-            max_concurrent_calls (int): Max number of concurent calls. Defaults to 3.
+            max_concurrent_calls (int): Max number of concurrent calls. Defaults to 3.
             use_local_cache (bool): Enable local file caching to avoid costs of reprocessing
                 files. Default to False.
         """
@@ -176,12 +176,14 @@ class AWSBedrockClassifier(Classifier):
             filename_layers: Ordered list of layers from that file whose ``prediction_class``
                 and ``llm_reasoning`` fields are updated in-place.
 
-        Return:
+        Returns:
             list[LayerInformation]: Classified layer information.
         """
-        output_path = self.bedrock_out_directory / f"{Path(filename).stem}.json"
+        output_path = (
+            (self.bedrock_out_directory / f"{Path(filename).stem}.json") if self.bedrock_out_directory else None
+        )
 
-        if self.use_local_cache and output_path.exists():
+        if self.use_local_cache and output_path and output_path.exists():
             return read_predictions(output_path, self.classification_system)
 
         async with self.semaphore:
@@ -191,7 +193,7 @@ class AWSBedrockClassifier(Classifier):
             except Exception as e:
                 logger.warning(f"API call failed for '{filename}': {str(e)}")
                 predictions = [
-                    AWSBedrockEntry(index=i, class_=self.classification_system.get_default_class_value())
+                    AWSBedrockEntry(index=i, class_=self.classification_system.get_default_class_value().name)
                     for i, _ in enumerate(filename_layers)
                 ]
 
@@ -203,7 +205,7 @@ class AWSBedrockClassifier(Classifier):
             filename_layers[data.index].llm_reasoning = data.reasoning
 
         if self.bedrock_out_directory:
-            write_predictions(filename_layers, output_path)
+            write_predictions(filename_layers, str(output_path))
 
         return filename_layers
 
@@ -234,7 +236,7 @@ class AWSBedrockClassifier(Classifier):
         Args:
             layer_descriptions (list[LayerInformation]): All layers to classify, potentially spanning multiple files.
 
-        Return:
+        Returns:
             list[LayerInformation]: Classified layer information.
         """
         return [layer for file_layers in asyncio.run(self.classify_async(layer_descriptions)) for layer in file_layers]

@@ -58,7 +58,16 @@ def write_predictions(layers_with_predictions: list[LayerInformation], output_pa
 
 
 def read_predictions(input_path: str, classification_system: type[ClassificationSystem]) -> list[LayerInformation]:
-    """TODO."""
+    """Read classification predictions from a JSON file.
+
+    Args:
+        input_path (str): Path to the JSON file to read.
+        classification_system (type[ClassificationSystem]): Classification system used to resolve
+            class name strings back to enum members.
+
+    Returns:
+        list[LayerInformation]: Deserialized layers with prediction and ground-truth fields populated.
+    """
     with open(input_path, encoding="utf-8") as f:
         layers_with_predictions = [LayerInformation.from_json(item, classification_system) for item in json.load(f)]
 

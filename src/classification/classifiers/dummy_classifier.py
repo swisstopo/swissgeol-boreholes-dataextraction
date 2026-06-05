@@ -18,7 +18,7 @@ class DummyClassifier(Classifier):
         Args:
             layer_descriptions (list[LayerInformation]): List of layer information objects to classify.
 
-        Return:
+        Returns:
             layer_descriptions (list[LayerInformation]): List of updated objects.
         """
         for layer in layer_descriptions:

@@ -74,6 +74,9 @@ def run_classification_predictions(
         options.classification_system.lower()
     )
 
+    if ground_truth_path is None or not ground_truth_path.exists():
+        raise FileNotFoundError("Ground truth file not provided")
+
     # TODO Issue 427 - Discuss how to handle input for different scenarios
     logger.info(f"Loading data GT {ground_truth_path}")
     layer_descriptions_gt = classification_system_cls.process(

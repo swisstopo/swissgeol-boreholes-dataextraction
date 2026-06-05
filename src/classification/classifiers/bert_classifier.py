@@ -58,7 +58,7 @@ class BertClassifier(Classifier):
         Args:
             layer_descriptions (list[LayerInformation]): The LayerInformation object
 
-        Return:
+        Returns:
             list[LayerInformation]: The updated LayerInformation object
         """
         # We create an instance of Trainer only for prediction as it is much faster than using custom methods.
