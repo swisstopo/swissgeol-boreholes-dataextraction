@@ -219,57 +219,45 @@ Pre-trained models are available in two ways:
 
 ### 2. Run the Classification Pipeline
 
-The main script for the classification pipeline is located at `src/classification/main.py`. A CLI command is available to run this script:
+The main script for the classification pipeline is located at `src/classification/main.py`. A CLI command is available to run this script. Use **Python: Run boreholes-classify** (VSCode launch config) or the equivalent CLI command to classify a single input file:
 
 ```bash
-# Classification
-boreholes-classify-descriptions -f data/geoquat_ground_truth.json -g data/geoquat_ground_truth.json -c baseline
+# Classify predictions from the extraction pipeline using the Bedrock classifier
+boreholes-classify-descriptions -f data/output/predictions.json -c bedrock -cs en_main
 ```
 
-**Supported modes:**
+```bash
+# Classify using ground truth as input and evaluate with a baseline classifier
+boreholes-classify-descriptions -f data/geoquat_ground_truth.json -c baseline
+```
+
+To run across multiple datasets in one command and receive an overview of all child runs at parent level:
+
+```bash
+boreholes-classify-descriptions \
+  --benchmark "geoquat_gt:data/nagra_ground_truth.json" \
+  --benchmark "geoquat_pred:data/output/predictions.json" \
+  -c bedrock -cs en_main
+```
 
 
-Only the following two modes are supported:
+**Key options:**
 
-| `-f` flag / `input_path`                      | `-g` flag / `ground_truth_path` | Behaviour                                                                                                                                        |
-|-----------------------------------------------|---------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| _Any_                        | JSON file (ground truth)                  | Use ground truth to classify and evaluate. Used for metic comparison between classifiers. Samples are taken from the test set as in training.|
-| JSON file (predictions from extraction)       | _Not provided_                 | (not supported yet) Classify the descriptions input
-| JSON file (predictions from extraction)       | JSON file (ground truth)        |  (not supported) Classify the descriptions input and compare the predicted classes against the provided ground truth.                     |
-
-
-All combinations that are not described in the table above, are not supported.
-
-- Use the `-f` or `--file-path` flag to specify the path to the JSON file containing the layer description and USCS ground truth.
-- Use the `-g` or `--ground-truth-path` flag to specify the path to the ground truth json. This flag is not necessary in every case, as described above. If the goal is to classify the material descriptions provided in the ground truth path via `-f`, the `-g`flag is not needed.
-- Use the `-c` or `--classifier` option to choose the classifier type from `dummy`, `baseline` or `bert`.
+- Use the `-f` or `--file-path` flag to specify the input JSON file (ground truth or predictions from extraction). When a ground truth JSON is provided, only the **test set** defined within it is classified. This ensures evaluation results are consistent with the train/test split used during BERT training.
+- Use the `-c` or `--classifier-type` option to choose the classifier: `dummy`, `baseline`, `bert`, or `bedrock`.
 - If you are using the classifier `bert`, specify the model path using `-p` or `--model-path`:
   - **Full model:** pass the path to a complete HuggingFace model directory (contains `config.json`, `model.safetensors`, tokenizer files, etc.).
   - **Split model (backbone + head):** pass the head directory via `-p` and the shared backbone via `-b` or `--backbone-path`. This is the recommended approach when using the models from this repository:
     ```bash
-    boreholes-classify-descriptions -f data/geoquat/validation -g data/geoquat_ground_truth.json \
+    boreholes-classify-descriptions -f data/geoquat/validation \
       -c bert -p models/lithology_head -b models/backbone/backbone.safetensors -cs lithology
     ```
-- Use `--classification-system` or `-cs` to specify the system you want to classify the description into. Currently supports `uscs`, `lithology` and `en_main`.
+- Use `--classification-system` or `-cs` to specify the classification system. Currently supports `uscs`, `lithology`, `en_main`, `color_consolidated`, and `color_unconsolidated`.
+- Use `-o` and `-ob` to specify the output directory and bedrock output directory respectively.
 
-The script will classify all given descriptions and write the predictions to the `data/output_classification` directory.
+The script will classify all given descriptions and write the predictions to the `data/output_description_classification` directory (or `data/output_description_classification_bedrock` for Bedrock outputs).
 
 Run `boreholes-classify-descriptions --help` to see all available options.
-
-To run the classification pipeline on multiple datasets in one command and to receive an overview of all child runs on parent level, you can run `boreholes-classify-descriptions (multi, single-file).`or `boreholes-classify-predictions (multi, predictions+GT)`
-Use repeatable benchmark specs with syntax `"<name>:<file_path>:<subset_dir>"` or `"<name>:<predictions_path>:<ground_truth_path>"`respectively.
-E.g.
-```bash
-"--benchmark", "val:data/geoquat_ground_truth.json:data/geoquat/validation",
-"--benchmark", "test:data/geoquat_ground_truth.json:data/geoquat/test",
-```
-or
-```bash
-"--benchmark", "pred_geoquat:path_to_prediction/predictions.json:data/geoquat_ground_truth.json",
-"--benchmark", "pred_zurich:path_to_prediction/predictions.json:data/zurich_ground_truth.json",
-```
-The arguments `-c`, `-p`, and `-cs` are applicable as well.
-Additionally, `-o`and `-ob`can be used to specify the output and bedrock output directories.
 
 ---
 
