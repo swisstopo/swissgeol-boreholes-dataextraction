@@ -1,6 +1,5 @@
 """Model training module."""
 
-import csv
 import logging
 import os
 import shutil
@@ -27,7 +26,7 @@ from transformers import (
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from classification import DATAPATH
-from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
+from classification.evaluation.evaluate import AllClassificationMetrics
 from classification.models.config import (
     ExperimentConfig,
     ExperimentDatasetConfig,
@@ -423,40 +422,39 @@ class ConfusionMatrixCallback(TrainerCallback):
         self._cm: np.ndarray | None = None
         self.current_test_name: str = "test"
 
-    # Define a custom compute_metrics function
+    def _metrics_from_cm(self, cm: np.ndarray) -> dict:
+        metric_list = [
+            Metrics(
+                tp=int(cm[i, i]),
+                fp=int(cm[:, i].sum() - cm[i, i]),
+                fn=int(cm[i, :].sum() - cm[i, i]),
+            )
+            for i in range(cm.shape[0])
+        ]
+        return {cls.name: metric_list[id_cls] for id_cls, cls in self._id2class_enum.items()}
+
     def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
         """Compute macro/micro aggregate metrics and cache per-class metrics for test artifacts."""
         logits, labels = eval_pred
         n_labels = len(self._id2class_enum)
         if labels.ndim == 2:  # multi-label
             predictions = (logits > 0).astype(int)
-            # fallback: if no class predicted for a sample, take the argmax
             no_prediction = predictions.sum(axis=-1) == 0
             predictions[no_prediction, logits[no_prediction].argmax(axis=-1)] = 1
-
-            labels = labels.astype(int)
-            # compute per-class metrics and micro-average, since sklearn doesn't handle multi-label well
-            metric_list = [
-                Metrics(
-                    tp=int(((predictions[:, i] == 1) & (labels[:, i] == 1)).sum()),
-                    fp=int(((predictions[:, i] == 1) & (labels[:, i] == 0)).sum()),
-                    fn=int(((predictions[:, i] == 0) & (labels[:, i] == 1)).sum()),
-                )
-                for i in range(predictions.shape[1])
-            ]
-            self._cm = multilabel_confusion_matrix_nxn(labels, predictions, n_labels)
-            self._per_class_metrics = {cls.name: metric_list[id_cls] for id_cls, cls in self._id2class_enum.items()}
+            self._cm = multilabel_confusion_matrix_nxn(labels.astype(int), predictions, n_labels)
         else:  # single-label
-            predictions = logits.argmax(axis=-1)
-            self._cm = confusion_matrix(labels, predictions, labels=self._sorted_ids)
-            per_class_results = per_class_metric(predictions, labels)
-            self._per_class_metrics = {
-                cls.name: per_class_results.get(id_cls, Metrics()) for id_cls, cls in self._id2class_enum.items()
-            }
-            metric_list = list(self._per_class_metrics.values())
+            self._cm = confusion_matrix(labels, logits.argmax(axis=-1), labels=self._sorted_ids)
+        self._per_class_metrics = self._metrics_from_cm(self._cm)
+        metric_list = list(self._per_class_metrics.values())
         return AllClassificationMetrics.compute_macro_average(
             metric_list
         ) | AllClassificationMetrics.compute_micro_average(metric_list)
+
+    def on_evaluate(self, args, state, control, metrics, **kwargs):
+        """Log per-class F1 scores to MLflow after each evaluation."""
+        if mlflow_tracking and hasattr(self, "_per_class_metrics"):
+            for class_name, class_metrics in self._per_class_metrics.items():
+                mlflow.log_metric(f"eval_{class_name}_f1", class_metrics.f1, step=state.global_step)
 
     def on_predict(self, args, state, control, metrics, **kwargs):
         """Save confusion matrix and per-class CSV as test artifacts."""
@@ -466,45 +464,9 @@ class ConfusionMatrixCallback(TrainerCallback):
             split=self.current_test_name,
             all_classes=list(self._id2class_enum.values()),
         )
-        metric_list = list(self._per_class_metrics.values())
-        macro = AllClassificationMetrics.compute_macro_average(metric_list)
-        micro = Metrics.micro_average(metric_list)
-
-        def row(cls_name, precision, recall, f1, tp="", fp="", fn=""):
-            return {
-                "class": cls_name,
-                "precision": precision,
-                "recall": recall,
-                "f1": f1,
-                "tp": tp,
-                "fp": fp,
-                "fn": fn,
-            }
-
-        rows = [
-            row(cls, round(m.precision, 4), round(m.recall, 4), round(m.f1, 4), m.tp, m.fp, m.fn)
-            for cls, m in self._per_class_metrics.items()
-        ] + [
-            row("macro_avg", macro["macro_precision"], macro["macro_recall"], macro["macro_f1"]),
-            row(
-                "micro_avg",
-                round(micro.precision, 4),
-                round(micro.recall, 4),
-                round(micro.f1, 4),
-                micro.tp,
-                micro.fp,
-                micro.fn,
-            ),
-        ]
-
-        per_class_csv = Path(args.output_dir) / f"per_class_metrics_{self.current_test_name}.csv"
-        with per_class_csv.open("w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=["class", "precision", "recall", "f1", "tp", "fp", "fn"])
-            writer.writeheader()
-            writer.writerows(rows)
 
         if "mlflow" in args.report_to:
-            for artifact in (csv_path, png_path, per_class_csv):
+            for artifact in (csv_path, png_path):
                 mlflow.log_artifact(str(artifact))
 
 
