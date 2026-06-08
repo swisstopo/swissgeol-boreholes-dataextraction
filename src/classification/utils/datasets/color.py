@@ -1,4 +1,4 @@
-"""Color classification system for consolidated soils (primary_color field)."""
+"""Color classification system for consolidated and unconsolidated soils (primary_color field)."""
 
 from __future__ import annotations
 

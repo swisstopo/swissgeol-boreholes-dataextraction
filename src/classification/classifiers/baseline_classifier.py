@@ -96,7 +96,7 @@ class BaselineClassifier(Classifier):
 
         return None
 
-    def classify(self, layer_descriptions: list[LayerInformation]):
+    def classify(self, layer_descriptions: list[LayerInformation]) -> list[LayerInformation]:
         """Classifies the material descriptions of layer information objects into the selected classes.
 
         The method modifies the input object, layer_descriptions by setting their prediction_class attribute.
@@ -114,6 +114,9 @@ class BaselineClassifier(Classifier):
 
         Args:
             layer_descriptions (list[LayerInformation]): The LayerInformation object
+
+        Returns:
+            list[LayerInformation]: Updated LayerInformation object
         """
         for layer in layer_descriptions:
             patterns = self.config["patterns"][layer.language]
@@ -159,3 +162,5 @@ class BaselineClassifier(Classifier):
                 layer.prediction_class = sorted_matches[0]["class"]
             else:
                 layer.prediction_class = layer.class_system.get_default_class_value()
+
+        return layer_descriptions

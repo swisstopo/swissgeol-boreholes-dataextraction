@@ -67,7 +67,7 @@ class AWSBedrockClassifier(Classifier):
         The class patterns and classification prompts are read from the configuration files.
 
         Args:
-            bedrock_out_directory (Path): Directory to write prediction outputs and API failures
+            bedrock_out_directory (Path | None): Directory to write prediction outputs and API failures
             classification_system (type[ClassificationSystem]): the classification system used
             max_concurrent_calls (int): Max number of concurrent calls. Defaults to 3.
             use_local_cache (bool): Enable local file caching to avoid costs of reprocessing

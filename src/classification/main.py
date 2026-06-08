@@ -90,8 +90,7 @@ def common_options(f):
     "--benchmark",
     "benchmarks",
     multiple=True,
-    help="Repeatable benchmark spec: '<name>:<input_path>:<ground_truth_path>'. "
-    "If provided, runs multiple benchmarks in one execution.",
+    help="Repeatable benchmark spec: '<name>:<input_path>'. If provided, runs multiple benchmarks in one execution.",
 )
 @common_options
 def click_pipeline(

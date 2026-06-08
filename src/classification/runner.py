@@ -53,7 +53,7 @@ def run_classification_predictions(
     out_directory: Path,
     out_directory_bedrock: Path,
     options: ClassificationOptions,
-) -> tuple[list[LayerInformation], Classifier | None, int]:
+) -> tuple[list[LayerInformation] | None, Classifier | None, int]:
     """Load data, run classification, and write predictions.
 
     This is the core prediction logic, decoupled from tracking and evaluation.
@@ -66,7 +66,7 @@ def run_classification_predictions(
         options (ClassificationOptions): Classification run options.
 
     Returns:
-        tuple[list[LayerInformation], Classifier | None, int]: The classified layer descriptions,
+        tuple[list[LayerInformation]| None, Classifier | None, int]: The classified layer descriptions,
             the classifier instance used (or None if no data was found), and the number of
             unique documents processed.
     """

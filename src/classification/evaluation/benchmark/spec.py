@@ -12,8 +12,6 @@ class BenchmarkSpec:
         name: Human-readable benchmark name (used for folder/run naming).
         file_path: Input path to classify. Check out the supported modes as defined in load_and_format_input_data in
             src/classification/utils/data_formatter.py.
-        ground_truth_path: Ground truth JSON path used for evaluation/reference.
-            May be equal to file_path.
     """
 
     name: str
@@ -25,7 +23,7 @@ def parse_benchmark_spec(value: str) -> BenchmarkSpec:
 
     Args:
         value: A string in the format:
-            '<name>:<input_path>:<ground_truth_path>'
+            '<name>:<input_path>'
 
     Returns:
         A BenchmarkSpec instance with the parsed values.
@@ -34,7 +32,7 @@ def parse_benchmark_spec(value: str) -> BenchmarkSpec:
     parts = [p.strip() for p in value.split(":")]
 
     if len(parts) != 2:
-        raise ValueError(f"Invalid --benchmark '{value}'. Expected '<name>:<input_path>:<ground_truth_path>'.")
+        raise ValueError(f"Invalid --benchmark '{value}'. Expected '<name>:<input_path>'.")
 
     name, file_path = parts
     return BenchmarkSpec(
