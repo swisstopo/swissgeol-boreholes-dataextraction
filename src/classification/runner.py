@@ -29,6 +29,7 @@ from core.ground_truth import GroundTruth
 from core.mlflow_tracking import mlflow
 from core.mlflow_utils import setup_mlflow_tracking
 from core.pipeline_runner import MultiBenchmarkRunner, PipelineRunner, PipelineRunResult
+from extraction.runner import read_json_predictions
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ class ClassificationOptions:
 
 
 def run_classification_predictions(
-    file_path: Path,
+    file_path: Path | None,
     ground_truth_path: Path | None,
     out_directory: Path,
     out_directory_bedrock: Path,
@@ -58,7 +59,7 @@ def run_classification_predictions(
     This is the core prediction logic, decoupled from tracking and evaluation.
 
     Args:
-        file_path (Path): Path to the JSON file containing material descriptions to classify.
+        file_path (Path | None): Path to the JSON file containing material descriptions to classify.
         ground_truth_path (Path | None): Path to the ground truth file, or None for single-file mode.
         out_directory (Path): Path to output directory where predictions are written.
         out_directory_bedrock (Path): Path to output directory for Bedrock API files.
@@ -73,25 +74,32 @@ def run_classification_predictions(
     classification_system_cls = ExistingClassificationSystems.get_classification_system_type(
         options.classification_system.lower()
     )
+    is_prediction: bool = True
 
-    if ground_truth_path is None or not ground_truth_path.exists():
-        raise FileNotFoundError("Ground truth file not provided")
-
-    # TODO Issue 427 - Discuss how to handle input for different scenarios
-    logger.info(f"Loading data GT {ground_truth_path}")
-    layer_descriptions_gt = classification_system_cls.process(
-        ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
-            ground_truth=GroundTruth(ground_truth_path).ground_truth,
+    try:
+        logger.info(f"Trying to load data as prediction {file_path} ...")
+        layer_descriptions = classification_system_cls.process(
+            ground_truth=GroundTruthBoreholeWithLanguage.from_predictions(
+                predictions=read_json_predictions(file_path).file_predictions_list,
+            ),
+            allow_none=True,  # No ground truth label for prediction from extraction
         )
-    )
 
-    _, _, layer_descriptions_test = split_samples(layer_descriptions_gt)
+    except Exception:
+        logger.info(f"Fallback, load data as GT (test set) {ground_truth_path} ...")
+        is_prediction = False
+        layer_descriptions_gt = classification_system_cls.process(
+            ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
+                ground_truth=GroundTruth(ground_truth_path).ground_truth,
+            )
+        )
+        _, _, layer_descriptions = split_samples(layer_descriptions_gt)
 
-    n_documents = len({layer.filename for layer in layer_descriptions_test})
+    n_documents = len({layer.filename for layer in layer_descriptions})
 
-    if not layer_descriptions_test:
+    if not layer_descriptions:
         logger.warning("No data to classify.")
-        return layer_descriptions_test, None, n_documents
+        return layer_descriptions, None, n_documents
 
     classifier = ClassifierFactory.create_classifier(
         classifier_type_instance,
@@ -105,10 +113,11 @@ def run_classification_predictions(
         f"Classifying layer description into {classification_system_cls.get_name()} classes "
         f"with {classifier.__class__.__name__}"
     )
-    layer_descriptions_test = classifier.classify(layer_descriptions_test)
-    write_predictions(layer_descriptions_test, out_directory / "class_predictions.json")
+    layer_descriptions_cls = classifier.classify(layer_descriptions)
+    write_predictions(layer_descriptions_cls, out_directory / "class_predictions.json")
 
-    return layer_descriptions_test, classifier, n_documents
+    # No layer cls returned, as no metric to compute
+    return None if is_prediction else layer_descriptions_cls, classifier, n_documents
 
 
 @dataclass(kw_only=True)
@@ -233,7 +242,7 @@ class ClassificationBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, Classifi
             resume=self.resume,
             is_nested=True,
             file_path=spec.file_path,
-            ground_truth_path=spec.ground_truth_path,
+            ground_truth_path=spec.file_path,
             out_directory=bench_out,
             out_directory_bedrock=bench_out_bedrock,
             options=self.options,

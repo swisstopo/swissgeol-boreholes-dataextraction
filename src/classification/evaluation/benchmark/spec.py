@@ -18,7 +18,6 @@ class BenchmarkSpec:
 
     name: str
     file_path: Path
-    ground_truth_path: Path | None
 
 
 def parse_benchmark_spec(value: str) -> BenchmarkSpec:
@@ -34,12 +33,11 @@ def parse_benchmark_spec(value: str) -> BenchmarkSpec:
     # Split on ':' and trim whitespace to be tolerant of CLI input
     parts = [p.strip() for p in value.split(":")]
 
-    if len(parts) != 3:
+    if len(parts) != 2:
         raise ValueError(f"Invalid --benchmark '{value}'. Expected '<name>:<input_path>:<ground_truth_path>'.")
 
-    name, file_path, ground_truth_path = parts
+    name, file_path = parts
     return BenchmarkSpec(
         name=name,
         file_path=Path(file_path),
-        ground_truth_path=Path(ground_truth_path) if ground_truth_path else None,
     )
