@@ -10,6 +10,8 @@ bert:
   uscs: bert/bert_config_uscs.yml
   lithology: bert/bert_config_lithology.yml
   EN_main: bert/bert_config_en_main.yml
+  color_consolidated: bedrock/bedrock_config_color.yml
+  color_unconsolidated: bedrock/bedrock_config_color.yml
 bedrock:
   uscs: bedrock/bedrock_config_uscs.yml
   lithology: bedrock/bedrock_config_lithology.yml

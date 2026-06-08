@@ -235,7 +235,7 @@ To run across multiple datasets in one command and receive an overview of all ch
 
 ```bash
 boreholes-classify-descriptions \
-  --benchmark "geoquat_gt:data/nagra_ground_truth.json" \
+  --benchmark "geoquat_gt:data/geoquat_ground_truth.json" \
   --benchmark "geoquat_pred:data/output/predictions.json" \
   -c bedrock -cs en_main
 ```
@@ -249,7 +249,7 @@ boreholes-classify-descriptions \
   - **Full model:** pass the path to a complete HuggingFace model directory (contains `config.json`, `model.safetensors`, tokenizer files, etc.).
   - **Split model (backbone + head):** pass the head directory via `-p` and the shared backbone via `-b` or `--backbone-path`. This is the recommended approach when using the models from this repository:
     ```bash
-    boreholes-classify-descriptions -f data/geoquat/validation \
+    boreholes-classify-descriptions -f data/geoquat_ground_truth.json \
       -c bert -p models/lithology_head -b models/backbone/backbone.safetensors -cs lithology
     ```
 - Use `--classification-system` or `-cs` to specify the classification system. Currently supports `uscs`, `lithology`, `en_main`, `color_consolidated`, and `color_unconsolidated`.

@@ -1,4 +1,4 @@
-# Config file for lithology classification
+# Config file for USCS classification
 # Prompt file and version
 prompts_file: bedrock/prompts/uscs_classification_prompts.yml
 prompt_version: v1

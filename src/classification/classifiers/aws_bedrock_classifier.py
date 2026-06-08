@@ -27,8 +27,9 @@ class AWSBedrockEntry(BaseModel):
     """A single classification result returned by the Bedrock LLM for one layer.
 
     Attributes:
-        index: Position of the layer in the batch sent to the model, used to align predictions back to inputs.
-        class_: Predicted class label as returned by the model.
+        index (int): Position of the layer in the batch sent to the model, used to align predictions back to inputs.
+        class_ (str): Predicted class label as returned by the model.
+        reasoning (str): Reasoning of the predicted output.
     """
 
     index: int
@@ -209,7 +210,7 @@ class AWSBedrockClassifier(Classifier):
 
         return filename_layers
 
-    async def classify_async(self, layer_descriptions: list[LayerInformation]):
+    async def classify_async(self, layer_descriptions: list[LayerInformation]) -> list[LayerInformation]:
         """Classify all layers asynchronously, grouped by source file.
 
         Layers are sorted and grouped by filename so each borehole file is processed in a single
@@ -217,6 +218,9 @@ class AWSBedrockClassifier(Classifier):
 
         Args:
             layer_descriptions: All layers to classify, potentially spanning multiple files.
+
+        Returns:
+            list[LayerInformation]: Updated layer information
         """
         # Sort layers for grouping
         layer_descriptions = sorted(layer_descriptions, key=lambda layer: layer.filename)

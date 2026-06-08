@@ -60,13 +60,13 @@ def run_classification_predictions(
 
     Args:
         file_path (Path | None): Path to the JSON file containing material descriptions to classify.
-        ground_truth_path (Path | None): Path to the ground truth file, or None for single-file mode.
+        ground_truth_path (Path | None): Path to the ground truth file.
         out_directory (Path): Path to output directory where predictions are written.
         out_directory_bedrock (Path): Path to output directory for Bedrock API files.
         options (ClassificationOptions): Classification run options.
 
     Returns:
-        tuple[list[LayerInformation]| None, Classifier | None, int]: The classified layer descriptions,
+        tuple[list[LayerInformation] | None, Classifier | None, int]: The classified layer descriptions,
             the classifier instance used (or None if no data was found), and the number of
             unique documents processed.
     """
