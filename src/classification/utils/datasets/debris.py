@@ -48,10 +48,10 @@ class DebrisUnconsolidatedSystem(ClassificationSystem):
     class DebrisClasses(IntEnum):
         """Complete unclassifiable coarse components class list (0-based indexing)."""
 
-        erratic_block = 0
-        rubble = auto()
+        not_specified = 0
         bed_load = auto()
+        erratic_block = auto()
         fragments_splitters = auto()
-        tufa = auto()
         other = auto()
-        not_specified = auto()
+        rubble = auto()
+        tufa = auto()
