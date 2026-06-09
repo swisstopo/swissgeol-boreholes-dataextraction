@@ -337,11 +337,7 @@ def compute_trainset_weights(
     """
     labels = trainset["labels"]
     if labels and isinstance(labels[0], list):
-        label_counts: Counter = Counter()
-        for row in labels:
-            for idx, val in enumerate(row):
-                if val > 0:
-                    label_counts[idx] += 1
+        label_counts = Counter(idx for row in labels for idx, val in enumerate(row) if val > 0)
     else:
         label_counts = Counter(labels)
     num_classes = max(label_counts.keys()) + 1  # class index starts at 0
@@ -389,28 +385,20 @@ class HeadOnlyTrainer(Trainer):
                 shutil.rmtree(folder)
 
 
-def multilabel_confusion_matrix_nxn(labels, predictions, n_labels):
+def multilabel_confusion_matrix_nxn(labels: np.ndarray, predictions: np.ndarray) -> np.ndarray:
     """Create nxn confusion matrix for multi-label classification.
 
-    We calculate (true, pred) pairs for each sample and increment the corresponding cell in the confusion matrix.
-    One sample can contribute to multiple cells in the confusion matrix.
+    One sample can contribute to multiple cells: cm[i, j] counts samples where label i is true
+    and label j is predicted.
 
     Args:
-        labels: binary indicator matrices for labels of shape (n_samples, n_labels)
-        predictions: binary indicator matrices for predictions  of shape (n_samples, n_labels)
-        n_labels: total number of labels
+        labels (np.ndarray): binary indicator matrix of shape (n_samples, n_labels)
+        predictions (np.ndarray): binary indicator matrix of shape (n_samples, n_labels)
+
     Returns:
         cm: confusion matrix of shape (n_labels, n_labels) where cm[i, j]
     """
-    cm = np.zeros((n_labels, n_labels), dtype=int)
-    for true_row, pred_row in zip(labels, predictions, strict=False):
-        true_labels = np.where(true_row == 1)[0]
-        pred_labels = np.where(pred_row == 1)[0]
-
-        for t in true_labels:
-            for p in pred_labels:
-                cm[t, p] += 1
-    return cm
+    return (labels.T @ predictions).astype(int)
 
 
 class ConfusionMatrixCallback(TrainerCallback):
@@ -423,6 +411,7 @@ class ConfusionMatrixCallback(TrainerCallback):
         self.current_test_name: str = "test"
 
     def _metrics_from_cm(self, cm: np.ndarray) -> dict:
+        """Compute per class f1, precision, recall from confusion matrix."""
         metric_list = [
             Metrics(
                 tp=int(cm[i, i]),
@@ -436,25 +425,20 @@ class ConfusionMatrixCallback(TrainerCallback):
     def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
         """Compute macro/micro aggregate metrics and cache per-class metrics for test artifacts."""
         logits, labels = eval_pred
-        n_labels = len(self._id2class_enum)
         if labels.ndim == 2:  # multi-label
             predictions = (logits > 0).astype(int)
             no_prediction = predictions.sum(axis=-1) == 0
             predictions[no_prediction, logits[no_prediction].argmax(axis=-1)] = 1
-            self._cm = multilabel_confusion_matrix_nxn(labels.astype(int), predictions, n_labels)
+            self._cm = multilabel_confusion_matrix_nxn(labels.astype(int), predictions)
         else:  # single-label
             self._cm = confusion_matrix(labels, logits.argmax(axis=-1), labels=self._sorted_ids)
         self._per_class_metrics = self._metrics_from_cm(self._cm)
         metric_list = list(self._per_class_metrics.values())
-        return AllClassificationMetrics.compute_macro_average(
-            metric_list
-        ) | AllClassificationMetrics.compute_micro_average(metric_list)
-
-    def on_evaluate(self, args, state, control, metrics, **kwargs):
-        """Log per-class F1 scores to MLflow after each evaluation."""
-        if mlflow_tracking and hasattr(self, "_per_class_metrics"):
-            for class_name, class_metrics in self._per_class_metrics.items():
-                mlflow.log_metric(f"eval_{class_name}_f1", class_metrics.f1, step=state.global_step)
+        return (
+            {f"{k}_f1": v.f1 for k, v in self._per_class_metrics.items()}
+            | AllClassificationMetrics.compute_macro_average(metric_list)
+            | AllClassificationMetrics.compute_micro_average(metric_list)
+        )
 
     def on_predict(self, args, state, control, metrics, **kwargs):
         """Save confusion matrix and per-class CSV as test artifacts."""
