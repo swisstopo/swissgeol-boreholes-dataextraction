@@ -10,8 +10,7 @@ class BenchmarkSpec:
 
     Attributes:
         name: Human-readable benchmark name (used for folder/run naming).
-        file_path: Input path to classify. Check out the supported modes as defined in load_and_format_input_data in
-            src/classification/utils/data_formatter.py.
+        file_path: Input path to classify.
     """
 
     name: str

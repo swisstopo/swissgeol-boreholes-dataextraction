@@ -44,7 +44,6 @@ class BenchmarkParams:
     """This class summarizes benchmark parameters which are needed for ClassificationBenchmarkSummary."""
 
     file_path: Path
-    ground_truth_path: Path | None
     classifier_type: str
     model_path: Path | None
     classification_system: str
@@ -105,7 +104,6 @@ def evaluate_all_predictions(
     # --- Return summary object ---
     return ClassificationBenchmarkSummary(
         file_path=str(params.file_path),
-        ground_truth_path=str(params.ground_truth_path) if params.ground_truth_path else None,
         n_documents=params.n_documents,
         classifier_type=params.classifier_type,
         model_path=str(params.model_path) if params.model_path else None,

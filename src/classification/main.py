@@ -136,7 +136,6 @@ def click_pipeline(
     ClassificationPipelineRunner(
         predictions_path=out_directory / "class_predictions.json",
         file_path=file_path,
-        ground_truth_path=file_path,
         out_directory=out_directory,
         out_directory_bedrock=out_directory_bedrock,
         options=opts,

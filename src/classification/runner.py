@@ -49,7 +49,6 @@ class ClassificationOptions:
 
 def run_classification_predictions(
     file_path: Path | None,
-    ground_truth_path: Path | None,
     out_directory: Path,
     out_directory_bedrock: Path,
     options: ClassificationOptions,
@@ -60,7 +59,6 @@ def run_classification_predictions(
 
     Args:
         file_path (Path | None): Path to the JSON file containing material descriptions to classify.
-        ground_truth_path (Path | None): Path to the ground truth file.
         out_directory (Path): Path to output directory where predictions are written.
         out_directory_bedrock (Path): Path to output directory for Bedrock API files.
         options (ClassificationOptions): Classification run options.
@@ -86,11 +84,11 @@ def run_classification_predictions(
         )
 
     except Exception:
-        logger.info(f"Fallback, load data as GT (test set) {ground_truth_path} ...")
+        logger.info(f"Fallback, load data as GT (test set) {file_path} ...")
         is_prediction = False
         layer_descriptions_gt = classification_system_cls.process(
             ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
-                ground_truth=GroundTruth(ground_truth_path).ground_truth,
+                ground_truth=GroundTruth(file_path).ground_truth,
             )
         )
         _, _, layer_descriptions = split_samples(layer_descriptions_gt)
@@ -125,7 +123,6 @@ class ClassificationPipelineRunner(PipelineRunner[_ClassificationResult, Classif
     """Runs the layer descriptions classification pipeline."""
 
     file_path: Path
-    ground_truth_path: Path | None
     out_directory: Path
     out_directory_bedrock: Path
     options: ClassificationOptions
@@ -145,7 +142,6 @@ class ClassificationPipelineRunner(PipelineRunner[_ClassificationResult, Classif
             nested=self.is_nested,
             tags={
                 "json_file_path": self.file_path,
-                "ground_truth_path": self.ground_truth_path,
                 "out_directory": self.out_directory,
             },
             params=None,
@@ -154,7 +150,6 @@ class ClassificationPipelineRunner(PipelineRunner[_ClassificationResult, Classif
     def run_predictions(self, predictions_path_tmp: Path) -> PipelineRunResult[_ClassificationResult]:
         layer_descriptions, classifier, n_documents = run_classification_predictions(
             file_path=self.file_path,
-            ground_truth_path=self.ground_truth_path,
             out_directory=self.out_directory,
             out_directory_bedrock=self.out_directory_bedrock,
             options=self.options,
@@ -172,7 +167,6 @@ class ClassificationPipelineRunner(PipelineRunner[_ClassificationResult, Classif
             logger.warning("No data to classify. Returning empty summary so parent can still aggregate n_documents.")
             return ClassificationBenchmarkSummary(
                 file_path=str(self.file_path),
-                ground_truth_path=str(self.ground_truth_path) if self.ground_truth_path else None,
                 n_documents=run_result.n_documents,
                 classifier_type=self.options.classifier_type,
                 model_path=str(self.options.model_path) if self.options.model_path else None,
@@ -184,7 +178,6 @@ class ClassificationPipelineRunner(PipelineRunner[_ClassificationResult, Classif
             layer_descriptions=layer_descriptions,
             params=BenchmarkParams(
                 file_path=self.file_path,
-                ground_truth_path=self.ground_truth_path,
                 classifier_type=self.options.classifier_type,
                 model_path=self.options.model_path,
                 classification_system=self.options.classification_system,
@@ -242,7 +235,6 @@ class ClassificationBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, Classifi
             resume=self.resume,
             is_nested=True,
             file_path=spec.file_path,
-            ground_truth_path=spec.file_path,
             out_directory=bench_out,
             out_directory_bedrock=bench_out_bedrock,
             options=self.options,
