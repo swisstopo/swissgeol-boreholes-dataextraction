@@ -17,18 +17,27 @@ class LithologySystem(ClassificationSystem):
     which is commonly used to classify consolidated soils.
     """
 
+    UNCONSOLIDATED_KEYWORDS = ["clay", "marl", "silt", "peat", "sand", "pebble", "loam", "unconsolidated"]
+
     @classmethod
     def normalize_class_string(cls, class_str: str) -> str:
         """Normalize a lithology class string.
 
+        Examples include test that are semicolon/coma separated (e.g.  "limestone: micritic" -> "limestone",
+        "sandstone, marly" -> "sandstone") or white space (e.g. "not specified" -> "not_specified")
+
         Args:
-            class_str (str): The class string to be normalized (e.g. " "limestone, bioclasts",").
+            class_str (str): The class string to be normalized.
 
         Returns:
-            str: The normalized lithology class string (e.g., "limestone").
+            str: The normalized lithology class string.
 
         """
-        return class_str.lower().split(",")[0]
+        class_str = class_str.lower()
+        class_str = class_str.split(":")[0].strip()
+        class_str = class_str.split(",")[0].strip()
+        class_str = class_str.replace(" ", "_")
+        return class_str
 
     @classmethod
     def get_enum(cls) -> type[LithologyClasses]:
@@ -48,9 +57,7 @@ class LithologySystem(ClassificationSystem):
     @classmethod
     def get_default_class_value(cls) -> LithologyClasses:
         """Return the default value for the enum class."""
-        return cls.LithologyClasses.kA  # keine Angabe = no indication
-
-    unconsolidated_keywords = ["clay", "marl", "silt", "peat", "sand", "pebble", "loam", "unconsolidated"]
+        return cls.LithologyClasses.not_specified
 
     @classmethod
     def map_most_similar_class(cls, class_str: str) -> LithologyClasses:
@@ -74,10 +81,12 @@ class LithologySystem(ClassificationSystem):
                 return class_
 
         # After the standard class match, check for unconsolidated soil
-        if any(word in cls.unconsolidated_keywords for word in normalized_str.split()):
-            return cls.LithologyClasses.Unconsolidated
+        if any(word in cls.UNCONSOLIDATED_KEYWORDS for word in normalized_str.split()):
+            return cls.LithologyClasses.unconsolidated
 
-        logger.warning(f"{class_str} does not have a matching class, mapping it to {classes_enum.kA.name} instead.")
+        logger.warning(
+            f"{class_str} does not have a matching class, mapping it to {classes_enum.not_specified.name} instead."
+        )
         return cls.get_default_class_value()
 
     class LithologyClasses(IntEnum):
@@ -90,63 +99,64 @@ class LithologySystem(ClassificationSystem):
             0-based indexing is used to maintain consistency with machine learning labeling conventions.
         """
 
-        kA = 0
-        Unconsolidated = auto()
-        Amphibolite = auto()
-        Migmatite = auto()
-        Andesite = auto()  # not seen in ground truth data (yet)
-        Aplite = auto()
-        Basalt = auto()  # not seen in ground truth data (yet)
-        Basanite = auto()  # not seen in ground truth data (yet)
-        Bentonite = auto()  # not seen in ground truth data (yet)
-        Claystone = auto()
-        Breccia = auto()
-        Rock = auto()  # is parent of other primary
-        Rhyolite = auto()
-        Psephite = auto()  # is parent of other primary
-        Tuffite = auto()  # not seen in ground truth data (yet) ..
-        Cataclastite = auto()
-        Pelite = auto()  # is parent of other primary
-        Conglomerate = auto()
-        Dacite = auto()  # not seen in ground truth data (yet)
-        Diorite = auto()
-        Monzonite = auto()  # not seen in ground truth data (yet) ..
-        Dolostone = auto()
-        Eclogite = auto()  # not seen in ground truth data (yet)
-        Evaporite = auto()
-        Foidite = auto()  # not seen in ground truth data (yet)
-        Foidolite = auto()  # not seen in ground truth data (yet)
-        Gabbro = auto()  # not seen in ground truth data (yet)
-        Mylonite = auto()
-        Gneiss = auto()
-        Granite = auto()
-        Granodiorite = auto()
-        Granulite = auto()  # not seen in ground truth data (yet)
-        Psammite = auto()  # is parent of other primary
-        Schist = auto()
-        Syenite = auto()  # not seen in ground truth data (yet)
-        Granofels = auto()  # not seen in ground truth data (yet)
-        Peridotite = auto()  # not seen in ground truth data (yet)
-        Pyroxenite = auto()  # not seen in ground truth data (yet)
-        Granophyre = auto()  # not seen in ground truth data (yet)
-        Hornfels = auto()  # not seen in ground truth data (yet)
-        Ignimbrite = auto()  # not seen in ground truth data (yet)
-        Kakirite = auto()
-        Latite = auto()  # not seen in ground truth data (yet)
-        Limestone = auto()
-        Marble = auto()
-        Marlstone = auto()
-        Phyllite = auto()
-        Pegmatite = auto()  # not seen in ground truth data (yet)
-        Siltstone = auto()
-        Serpentinite = auto()
-        Phonolite = auto()  # not seen in ground truth data (yet)
-        Prasinite = auto()  # not seen in ground truth data (yet)
-        Sandstone = auto()
-        Pseudotachyllite = auto()  # not seen in ground truth data (yet)
-        Quartzite = auto()
-        Rauwacke = auto()  # not seen in ground truth data (yet)
-        Rodingite = auto()  # not seen in ground truth data (yet)
-        Tonalite = auto()  # not seen in ground truth data (yet)
-        Tephrite = auto()  # not seen in ground truth data (yet)
-        Trachyte = auto()  # not seen in ground truth data (yet)
+        not_specified = 0
+        amphibolite = auto()
+        andesite = auto()  # not seen in ground truth data (yet)
+        aplite = auto()
+        basalt = auto()  # not seen in ground truth data (yet)
+        basanite = auto()  # not seen in ground truth data (yet)
+        bentonite = auto()  # not seen in ground truth data (yet)
+        breccia = auto()
+        cataclasite = auto()
+        claystone = auto()
+        conglomerate = auto()
+        dacite = auto()  # not seen in ground truth data (yet)
+        diorite = auto()
+        dolostone = auto()
+        eclogite = auto()  # not seen in ground truth data (yet)
+        evaporite = auto()
+        foidite = auto()  # not seen in ground truth data (yet)
+        foidolite = auto()  # not seen in ground truth data (yet)
+        gabbro = auto()  # not seen in ground truth data (yet)
+        gneiss = auto()
+        granite = auto()
+        granodiorite = auto()
+        granofels = auto()  # not seen in ground truth data (yet)
+        granophyre = auto()  # not seen in ground truth data (yet)
+        granulite = auto()  # not seen in ground truth data (yet)
+        hornfels = auto()  # not seen in ground truth data (yet)
+        ignimbrite = auto()  # not seen in ground truth data (yet)
+        kakirite = auto()
+        latite = auto()  # not seen in ground truth data (yet)
+        limestone = auto()
+        marble = auto()
+        marlstone = auto()
+        migmatite = auto()
+        monzonite = auto()  # not seen in ground truth data (yet) ..
+        mylonite = auto()
+        other = auto()
+        pegmatite = auto()  # not seen in ground truth data (yet)
+        pelite = auto()  # is parent of other primary
+        peridotite = auto()  # not seen in ground truth data (yet)
+        phyllite = auto()
+        phonolite = auto()  # not seen in ground truth data (yet)
+        prasinite = auto()  # not seen in ground truth data (yet)
+        psephite = auto()  # is parent of other primary
+        psammite = auto()  # is parent of other primary
+        pseudotachyllite = auto()  # not seen in ground truth data (yet)
+        pyroxenite = auto()  # not seen in ground truth data (yet)
+        quartzite = auto()
+        rauwacke = auto()  # not seen in ground truth data (yet)
+        rhyolite = auto()
+        rock = auto()  # is parent of other primary
+        rodingite = auto()  # not seen in ground truth data (yet)
+        sandstone = auto()
+        schist = auto()
+        serpentinite = auto()
+        siltstone = auto()
+        syenite = auto()  # not seen in ground truth data (yet)
+        tephrite = auto()  # not seen in ground truth data (yet)
+        tonalite = auto()  # not seen in ground truth data (yet)
+        trachyte = auto()  # not seen in ground truth data (yet)
+        tuff = auto()
+        unconsolidated = auto()
