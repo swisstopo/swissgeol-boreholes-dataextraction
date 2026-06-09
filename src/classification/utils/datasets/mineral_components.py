@@ -52,7 +52,8 @@ class MineralComponentsSystem(ClassificationSystem):
     class MineralComponents(IntEnum):
         """Mineral classes list (0-based indexing)."""
 
-        actinolite = 0
+        not_specified = 0
+        actinolite = auto()
         adularia = auto()
         albite = auto()
         almandine = auto()
@@ -162,4 +163,3 @@ class MineralComponentsSystem(ClassificationSystem):
         zircon = auto()
         zoisite = auto()
         other = auto()
-        not_specified = auto()  # not specified

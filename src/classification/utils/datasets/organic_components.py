@@ -48,14 +48,14 @@ class OrganicComponentsUnconsolidatedSystem(ClassificationSystem):
     class OrganicComponentsClasses(IntEnum):
         """Complete organic components class list (0-based indexing)."""
 
-        earth = 0
-        humus = auto()
-        undifferenciated_organic_material = auto()
-        roots = auto()
-        remains_of_wood = auto()
-        remains_of_plants = auto()
+        not_specified = 0
         coal = auto()
-        peat = auto()
-        varves = auto()
+        earth = auto()
+        humus = auto()
         other = auto()
-        not_specified = auto()
+        peat = auto()
+        remains_of_plants = auto()
+        remains_of_wood = auto()
+        roots = auto()
+        undifferenciated_organic_material = auto()
+        varves = auto()

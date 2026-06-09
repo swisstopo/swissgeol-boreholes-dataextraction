@@ -147,6 +147,11 @@ class ColorConsolidatedSystem(ColorSystem):
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
         return ["consolidated", "primary_color"]
 
+    @classmethod
+    def get_name(cls) -> str:
+        """Return the name of the system used as a string."""
+        return "color_consolidated"
+
 
 class ColorUnconsolidatedSystem(ColorSystem):
     """Classification system for the primary color of unconsolidated geological layers."""
@@ -155,3 +160,8 @@ class ColorUnconsolidatedSystem(ColorSystem):
     def get_layer_ground_truth_keys(cls) -> list[str]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
         return ["unconsolidated", "primary_color"]
+
+    @classmethod
+    def get_name(cls) -> str:
+        """Return the name of the system used as a string."""
+        return "color_unconsolidated"
