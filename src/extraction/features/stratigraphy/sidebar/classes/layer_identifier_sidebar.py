@@ -159,7 +159,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         start_depth = None
         prev_line = None
         prev_interval = None
-        for line in enumerate(lines):
+        for line in lines:
             a_to_b_interval, line_without_depths = AToBIntervalExtractor.from_text(line, require_start_of_string=False)
 
             if prev_line and not a_to_b_interval and not prev_interval:
