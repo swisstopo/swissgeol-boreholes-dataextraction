@@ -5,10 +5,12 @@ from typing import Literal
 
 from classification.utils.datasets.classification import ClassificationSystem
 from classification.utils.datasets.color import ColorConsolidatedSystem, ColorSystem, ColorUnconsolidatedSystem
+from classification.utils.datasets.debris import DebrisUnconsolidatedSystem
 from classification.utils.datasets.en_main import ENMainSystem
 from classification.utils.datasets.grain_angularity import GrainAngularitySystem
 from classification.utils.datasets.lithology import LithologySystem
 from classification.utils.datasets.mineral_components import MineralComponentsSystem
+from classification.utils.datasets.organic_components import OrganicComponentsUnconsolidatedSystem
 from classification.utils.datasets.uscs import USCSSystem
 
 
@@ -21,17 +23,28 @@ class ExistingClassificationSystems(Enum):
     color = ColorSystem
     color_consolidated = ColorConsolidatedSystem
     color_unconsolidated = ColorUnconsolidatedSystem
+    debris = DebrisUnconsolidatedSystem
     en_main = ENMainSystem
     grain_angularity = GrainAngularitySystem
     lithology = LithologySystem
     mineral_components = MineralComponentsSystem
+    organic_components = OrganicComponentsUnconsolidatedSystem
     uscs = USCSSystem
 
     @classmethod
     def get_classification_system_type(
         cls,
         class_system: Literal[
-            "color", "color_consolidated", "color_unconsolidated", "en_main", "lithology", "mineral_components", "uscs"
+            "color",
+            "color_consolidated",
+            "color_unconsolidated",
+            "debris",
+            "en_main",
+            "grain_angularity",
+            "lithology",
+            "mineral_components",
+            "organic_components",
+            "uscs",
         ],
     ) -> type[ClassificationSystem]:
         """Returns the class of a classification system based on input string.

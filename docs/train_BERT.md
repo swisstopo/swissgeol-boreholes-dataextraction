@@ -9,15 +9,19 @@ Each file contains boreholes, and each borehole contains layers. For each layer:
 - `material_description` - input text for BERT
 - a classification label depending on the system:
 
+# TODO: update table
 | Class | Config string | JSON layer tag |
 |-------|--------------|----------------|
 | `ColorSystem` | `color` | - |
 | `ColorConsolidatedSystem` | `color_consolidated` | `consolidated.primary_color` |
 | `ColorUnconsolidatedSystem` | `color_unconsolidated` | `unconsolidated.primary_color` |
+| `DebrisUnconsolidatedSystem` | `debris` | `unconsolidated.debris` |
 | `ENMainSystem` | `en_main` | `unconsolidated.main` |
 | `LithologySystem` | `lithology` | `consolidated.lithology` |
 | `MineralComponentsSystem` | `mineral_components` | `consolidated.mineral_components` |
+| `OrganicComponentsUnconsolidatedSystem` | `organic_components` | `unconsolidated.organic_components` |
 | `USCSSystem` | `uscs` | `unconsolidated.uscs` |
+
 
 An example json can be found in [groundtruth-json.md](groundtruth-json.md).
 
