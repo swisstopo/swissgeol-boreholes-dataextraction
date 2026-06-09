@@ -7,6 +7,7 @@ from classification.utils.datasets.classification import ClassificationSystem
 from classification.utils.datasets.color import ColorConsolidatedSystem, ColorSystem, ColorUnconsolidatedSystem
 from classification.utils.datasets.en_main import ENMainSystem
 from classification.utils.datasets.lithology import LithologySystem
+from classification.utils.datasets.mineral_components import MineralComponentsSystem
 from classification.utils.datasets.uscs import USCSSystem
 
 
@@ -22,11 +23,14 @@ class ExistingClassificationSystems(Enum):
     color = ColorSystem
     color_consolidated = ColorConsolidatedSystem
     color_unconsolidated = ColorUnconsolidatedSystem
+    mineral_components = MineralComponentsSystem
 
     @classmethod
     def get_classification_system_type(
         cls,
-        class_system: Literal["uscs", "lithology", "en_main", "color", "color_consolidated", "color_unconsolidated"],
+        class_system: Literal[
+            "color", "color_consolidated", "color_unconsolidated", "en_main", "lithology", "mineral_components", "uscs"
+        ],
     ) -> type[ClassificationSystem]:
         """Returns the class of a classification system based on input string.
 
