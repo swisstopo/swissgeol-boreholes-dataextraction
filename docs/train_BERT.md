@@ -16,6 +16,7 @@ Each file contains boreholes, and each borehole contains layers. For each layer:
 | `ColorUnconsolidatedSystem` | `color_unconsolidated` | `unconsolidated.primary_color` |
 | `ENMainSystem` | `en_main` | `unconsolidated.main` |
 | `LithologySystem` | `lithology` | `consolidated.lithology` |
+| `MineralComponentsSystem` | `mineral_components` | `consolidated.mineral_components` |
 | `USCSSystem` | `uscs` | `unconsolidated.uscs` |
 
 An example json can be found in [groundtruth-json.md](groundtruth-json.md).
@@ -64,7 +65,7 @@ unfreeze_layers:
 ```
 
 Each entry under `training_sets` and `test_sets` is a named dataset with:
-- `classification_system`: one of `uscs`, `lithology`, `en_main`, `color`, `color_consolidated`, `color_unconsolidated`
+- `classification_system`: one of "`color_consolidated`, `color_unconsolidated`, `en_main`, `lithology`, `mineral_components`, or `uscs`
 - `ground_truths`: list of JSON filenames relative to the project data path
 
 Multiple named datasets can be listed under `training_sets` — their samples are pooled for training. Each entry in `test_sets` is evaluated independently and produces its own metrics report. The train/test split is deterministic per filename, so the same ground-truth files can safely appear in both sections without data leakage.
