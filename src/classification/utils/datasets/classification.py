@@ -210,6 +210,11 @@ class ClassificationSystem(ABC):
         ...
 
     @classmethod
+    def is_multi_label(cls) -> bool:
+        """Return True if layers can carry more than one label."""
+        return False
+
+    @classmethod
     def map_most_similar_class(cls, class_str: str) -> EnumMember:
         """Maps a string to the closest matching class enum member.
 

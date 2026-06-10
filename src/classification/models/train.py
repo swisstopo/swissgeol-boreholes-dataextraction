@@ -404,8 +404,9 @@ def multilabel_confusion_matrix_nxn(labels: np.ndarray, predictions: np.ndarray)
 class ConfusionMatrixCallback(TrainerCallback):
     """Trainer callback to compute and save confusion matrix after evaluation."""
 
-    def __init__(self, id2class_enum: dict):
+    def __init__(self, id2class_enum: dict, is_multi_label: bool = False):
         self._id2class_enum = id2class_enum
+        self._is_multi_label = is_multi_label
         self._sorted_ids = sorted(id2class_enum.keys(), key=lambda i: id2class_enum[i].value)
         self._cm: np.ndarray | None = None
         self.current_test_name: str = "test"
@@ -425,13 +426,14 @@ class ConfusionMatrixCallback(TrainerCallback):
     def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
         """Compute macro/micro aggregate metrics and cache per-class metrics for test artifacts."""
         logits, labels = eval_pred
-        if labels.ndim == 2:  # multi-label
+        if self._is_multi_label:  # multi-label
             predictions = (logits > 0).astype(int)
             no_prediction = predictions.sum(axis=-1) == 0
             predictions[no_prediction, logits[no_prediction].argmax(axis=-1)] = 1
             self._cm = multilabel_confusion_matrix_nxn(labels.astype(int), predictions)
-        else:  # single-label
-            self._cm = confusion_matrix(labels, logits.argmax(axis=-1), labels=self._sorted_ids)
+        else:  # single-label: binary label vectors → integer indices (n_samples,)
+            label_indices = labels.argmax(axis=-1)
+            self._cm = confusion_matrix(label_indices, logits.argmax(axis=-1), labels=self._sorted_ids)
         self._per_class_metrics = self._metrics_from_cm(self._cm)
         metric_list = list(self._per_class_metrics.values())
         return (
@@ -483,7 +485,11 @@ def setup_trainer(
         # create the object that will be called to compute the loss function (standard in transformers lib).
         compute_loss_func = WeightedLabelSmoother(class_weights=class_weights)
 
-    cm_callback = ConfusionMatrixCallback(id2class_enum=bert_model.id2classEnum)
+    cm_callback = ConfusionMatrixCallback(
+        id2class_enum=bert_model.id2classEnum,
+        is_multi_label=bert_model.classification_system.is_multi_label(),
+    )
+
     # Create the Trainer object
     trainer = HeadOnlyTrainer(
         model=bert_model.model,
