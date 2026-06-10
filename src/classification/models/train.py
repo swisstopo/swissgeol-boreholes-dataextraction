@@ -407,6 +407,11 @@ class ConfusionMatrixCallback(TrainerCallback):
     """Trainer callback to compute and save confusion matrix after evaluation."""
 
     def __init__(self, id2class_enum: dict):
+        """Initialise the callback.
+
+        Args:
+            id2class_enum: Mapping from class index to its enum member.
+        """
         self._id2class_enum = id2class_enum
         self._sorted_ids = sorted(id2class_enum.keys(), key=lambda i: id2class_enum[i].value)
         self._cm: np.ndarray | None = None

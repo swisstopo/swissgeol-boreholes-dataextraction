@@ -38,7 +38,7 @@ class Classifier(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def classify(self, layer_descriptions: list[LayerInformation]) -> None:
+    def classify(self, layer_descriptions: list[LayerInformation]) -> list[LayerInformation]:
         """Classifies the description of the LayerInformation objects.
 
         This method will populate the prediction_class attribute of each object.
@@ -46,6 +46,8 @@ class Classifier(ABC):
         Args:
             layer_descriptions (list[LayerInformation]): The LayerInformation object
 
+        Returns:
+            list[LayerInformation]: The updated LayerInformation object
         """
         raise NotImplementedError
 

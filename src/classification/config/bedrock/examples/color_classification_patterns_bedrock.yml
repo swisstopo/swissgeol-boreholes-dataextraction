@@ -1,0 +1,381 @@
+baseline: |
+  beige:
+    description:
+      Pale sandy-yellow, the classic color of dry unconsolidated sand or silt.
+      Neutral, neither warm nor cool. Very common in Quaternary sediments.
+    keywords:
+      de: [beige]
+      fr: [beige]
+      it: [beige]
+
+  beige_grey:
+    description:
+      Between beige and grey — a dull, muted sandy tone with a noticeable grey
+      cast. Neither clearly beige nor clearly grey.
+    keywords:
+      de: [beigegrau, graubeige]
+      fr: [beige grisâtre, gris beige]
+      it: [beige grigiastro, grigio beige]
+
+  black:
+    description:
+      Very dark, near-absent reflectance. Typically associated with
+      organic-rich layers, peat, or coal.
+    keywords:
+      de: [schwarz, schwärzlich]
+      fr: [noir, noirâtre]
+      it: [nero, nerastro]
+
+  bluish_grey:
+    description:
+      A cool grey with a distinct blue tint. Seen in water-saturated, reduced
+      sediments or fine-grained lacustrine deposits.
+    keywords:
+      de: [blaugrau, graubläulich]
+      fr: [gris bleuâtre, bleu grisâtre]
+      it: [grigio bluastro, blu grigiastro]
+
+  bluish_red:
+    description:
+      A red hue shifted noticeably toward blue/purple. Rare; may indicate
+      specific iron oxide mineralogy or oxidized metamorphic material.
+    keywords:
+      de: [blaurot, rötlichblau]
+      fr: [rouge bleuâtre, bleu rougeâtre]
+      it: [rosso bluastro, blu rossastro]
+
+  brown:
+    description:
+      Warm mid-tone brown, the most common color for topsoil, humus-rich silt,
+      and clay. Often described as "braun" in German logs.
+    keywords:
+      de: [braun, bräunlich]
+      fr: [brun, brunâtre, marron]
+      it: [marrone, bruno, brunastro]
+
+  brownish_grey:
+    description:
+      Predominantly grey with a warm brown undertone. Common in silty or
+      clayey sediments with moderate organic content.
+    keywords:
+      de: [braungrau, graubraun]
+      fr: [gris brunâtre, brun grisâtre]
+      it: [grigio brunastro, bruno grigiastro]
+
+  brownish_red:
+    description:
+      A brown with a clear red shift, darker and more muted than pure red.
+      Typical of iron-rich oxidized clays or weathered till.
+    keywords:
+      de: [braunrot, rotbraun]
+      fr: [brun rougeâtre, rouge brunâtre]
+      it: [bruno rossastro, rosso brunastro]
+
+  brownish_yellow:
+    description:
+      A warm yellow heavily tinted with brown. Seen in oxidized sandy or
+      gravelly layers, especially in weathering profiles.
+    keywords:
+      de: [braungelb, gelbbraun]
+      fr: [brun jaunâtre, jaune brunâtre]
+      it: [bruno giallastro, giallo brunastro]
+
+  dark_beige:
+    description:
+      A noticeably deeper, more saturated version of beige — still in the
+      sandy-yellow family but clearly darker than standard beige.
+    keywords:
+      de: [dunkelbeige]
+      fr: [beige foncé]
+      it: [beige scuro]
+
+  dark_brown:
+    description:
+      A deep, rich brown with low lightness. Common in dense organic-rich
+      layers, heavily weathered horizons, or some clays.
+    keywords:
+      de: [dunkelbraun]
+      fr: [brun foncé, brun sombre]
+      it: [marrone scuro, bruno scuro]
+
+  dark_green:
+    description:
+      A deep green with low lightness. Associated with chlorite-rich rocks,
+      glauconitic sediments, or reduced fine-grained material.
+    keywords:
+      de: [dunkelgrün]
+      fr: [vert foncé, vert sombre]
+      it: [verde scuro]
+
+  dark_grey:
+    description:
+      A distinctly dark grey, well below mid-tone. Typical of compacted
+      fine-grained sediments, some mudstones, or slightly carbonaceous layers.
+    keywords:
+      de: [dunkelgrau]
+      fr: [gris foncé, gris sombre]
+      it: [grigio scuro]
+
+  dark_olive:
+    description:
+      A deep, muted yellow-green, darker than standard olive. Seen in some
+      reduced or organic-bearing silts and clays.
+    keywords:
+      de: [dunkelolivgrün, dunkelolivgrau]
+      fr: [olive foncé, vert olive foncé]
+      it: [oliva scuro, verde oliva scuro]
+
+  dark_red:
+    description:
+      A deep, saturated red with low lightness. Characteristic of iron-rich
+      paleosols, red beds, or oxidized consolidated material.
+    keywords:
+      de: [dunkelrot]
+      fr: [rouge foncé, rouge sombre]
+      it: [rosso scuro]
+
+  dark_yellow:
+    description:
+      A deep yellow, more saturated and darker than standard yellow. May
+      indicate limonite staining or iron hydroxide coatings.
+    keywords:
+      de: [dunkelgelb]
+      fr: [jaune foncé, jaune sombre]
+      it: [giallo scuro]
+
+  green:
+    description:
+      A clear mid-tone green, neither dark nor light. Associated with
+      glauconite, chlorite, or reduced iron minerals in sediments.
+    keywords:
+      de: [grün, grünlich]
+      fr: [vert, verdâtre]
+      it: [verde, verdastro]
+
+  greenish_beige:
+    description:
+      Beige with a subtle but perceptible green tinge. Seen in silts or fine
+      sands with minor chlorite or organic matter.
+    keywords:
+      de: [grünlichbeige, beigegrünlich]
+      fr: [beige verdâtre, vert beige]
+      it: [beige verdastro, verde beige]
+
+  greenish_grey:
+    description:
+      A grey with a visible green hue. Common in reduced lacustrine or marine
+      fine-grained sediments.
+    keywords:
+      de: [grünlichgrau, graugrünlich]
+      fr: [gris verdâtre, vert grisâtre]
+      it: [grigio verdastro, verde grigiastro]
+
+  grey:
+    description:
+      A neutral mid-tone grey without strong warm or cool tint. Very common
+      for marlstone, siltstone, and fine-grained consolidated rock in Swiss
+      subsurface logs (e.g. Molasse).
+    keywords:
+      de: [grau, gräulich]
+      fr: [gris, grisâtre]
+      it: [grigio, grigiastro]
+
+  greyish_beige:
+    description:
+      Predominantly beige with a grey tint — lighter and warmer than
+      beige_grey. Common in slightly silty or weathered sands.
+    keywords:
+      de: [graubeige, beigegrau]
+      fr: [beige grisâtre, gris beige]
+      it: [beige grigiastro, grigio beige]
+
+  greyish_blue:
+    description:
+      Predominantly grey with a blue cast, cooler than bluish_grey. Suggests
+      strongly reduced or waterlogged fine sediments.
+    keywords:
+      de: [graublau, bläulichgrau]
+      fr: [gris bleuté, bleu grisâtre]
+      it: [grigio bluastro, blu grigiastro]
+
+  greyish_brown:
+    description:
+      Predominantly brown with a grey cast — common in mixed silt-clay layers
+      with moderate organic content or partial oxidation.
+    keywords:
+      de: [graubraun, braungrau]
+      fr: [brun grisâtre, gris brunâtre]
+      it: [bruno grigiastro, grigio brunastro]
+
+  greyish_green:
+    description:
+      Predominantly green with a grey influence. Typical of weakly
+      metamorphosed or chlorite-bearing fine-grained material.
+    keywords:
+      de: [graugrün, grünlichgrau]
+      fr: [vert grisâtre, gris verdâtre]
+      it: [verde grigiastro, grigio verdastro]
+
+  light_beige:
+    description:
+      A very pale, almost white beige — lighter than standard beige. Seen in
+      clean fine sands or carbonate-rich silts.
+    keywords:
+      de: [hellbeige]
+      fr: [beige clair]
+      it: [beige chiaro]
+
+  light_brown:
+    description:
+      A pale, washed-out brown. Common in weathered or leached horizons,
+      loess-derived silts, or dilute organic material.
+    keywords:
+      de: [hellbraun]
+      fr: [brun clair, marron clair]
+      it: [marrone chiaro, bruno chiaro]
+
+  light_green:
+    description:
+      A pale, bright green. May indicate weakly chloritized material or fresh
+      volcanic minerals.
+    keywords:
+      de: [hellgrün]
+      fr: [vert clair]
+      it: [verde chiaro]
+
+  light_grey:
+    description:
+      A pale grey, close to white but clearly grey. Common in calcareous silt,
+      chalk, or lightly cemented fine-grained rock.
+    keywords:
+      de: [hellgrau]
+      fr: [gris clair]
+      it: [grigio chiaro]
+
+  light_olive:
+    description:
+      A pale, desaturated yellow-green. Seen in oxidized or carbonate-rich
+      silts and fine-grained mixed sediments.
+    keywords:
+      de: [hellolivgrün, hellolivgrau]
+      fr: [olive clair, vert olive clair]
+      it: [oliva chiaro, verde oliva chiaro]
+
+  light_yellow:
+    description:
+      A pale, soft yellow. Often indicates calcareous or carbonate-rich
+      material, or weakly iron-stained sands.
+    keywords:
+      de: [hellgelb]
+      fr: [jaune clair]
+      it: [giallo chiaro]
+
+  magenta:
+    description:
+      A vivid pink-purple. Rare in geology; use only when the description
+      clearly implies a pink or magenta hue, not simply reddish.
+    keywords:
+      de: [magenta, pink, rosa]
+      fr: [magenta, rose vif]
+      it: [magenta, rosa vivace]
+
+  not_specified:
+    description:
+      No color information is provided or inferable from the text. Use when
+      the description is absent, illegible, or entirely ambiguous. Do not use
+      as a fallback when a color can be reasonably inferred.
+    keywords:
+      de: [nicht angegeben, keine Angabe, unbekannt, k.A.]
+      fr: [non spécifié, inconnu, sans indication]
+      it: [non specificato, sconosciuto, non indicato]
+
+  ochre:
+    description:
+      A warm yellow-orange-brown, richer and more saturated than plain yellow.
+      Strongly associated with iron hydroxide (limonite/goethite) coatings on
+      gravels and sands.
+    keywords:
+      de: [ocker, ockerfarben, ockergelb]
+      fr: [ocre, ocré]
+      it: [ocra, ocraceo]
+
+  olive:
+    description:
+      A medium, muted yellow-green. Common in silty or fine-grained sediments
+      with mixed iron oxidation states or organic matter.
+    keywords:
+      de: [olivgrün, oliv]
+      fr: [olive, vert olive]
+      it: [oliva, verde oliva]
+
+  olive_yellow:
+    description:
+      Predominantly yellow with a clear olive (green-brown) tint. Seen in
+      oxidized sands or mixed carbonate-clay sediments.
+    keywords:
+      de: [olivgelb, gelblicholiv]
+      fr: [jaune olive, olive jaunâtre]
+      it: [giallo oliva, oliva giallastro]
+
+  red:
+    description:
+      A clear, saturated mid-tone red. Typical of strongly oxidized iron-rich
+      sediments, red beds, or certain consolidated formations.
+    keywords:
+      de: [rot, rötlich]
+      fr: [rouge, rougeâtre]
+      it: [rosso, rossastro]
+
+  reddish_brown:
+    description:
+      A brown strongly shifted toward red — warmer and more red than
+      brownish_red. Common in oxidized clays and weathered till.
+    keywords:
+      de: [rötlichbraun, rotbraun]
+      fr: [brun rougeâtre, rouge brunâtre]
+      it: [bruno rossastro, rosso brunastro]
+
+  reddish_ochre:
+    description:
+      An ochre with a pronounced red shift. Indicates iron-rich material with
+      advanced oxidation, between ochre and red.
+    keywords:
+      de: [rötlichocker, roter Ocker]
+      fr: [ocre rougeâtre, ocre rouge]
+      it: [ocra rossastra, ocra rossa]
+
+  white:
+    description:
+      Near-pure white, very high lightness. Associated with carbonate rock
+      (limestone, chalk), gypsum, or pure calcareous material.
+    keywords:
+      de: [weiss, weisslich]
+      fr: [blanc, blanchâtre]
+      it: [bianco, biancastro]
+
+  yellow:
+    description:
+      A clear, medium-intensity yellow. Common in sandy or gravelly layers
+      with iron oxide staining, or in some carbonate sediments.
+    keywords:
+      de: [gelb, gelblich]
+      fr: [jaune, jaunâtre]
+      it: [giallo, giallastro]
+
+  yellowish_brown:
+    description:
+      A brown with a clear yellow component — warmer than plain brown.
+      Typical of oxidized sandy or silty material.
+    keywords:
+      de: [gelblichbraun, braungelb]
+      fr: [brun jaunâtre, jaune brunâtre]
+      it: [bruno giallastro, giallo brunastro]
+
+  yellowish_white:
+    description:
+      Very pale white with a warm yellow tint. Seen in highly calcareous or
+      siliceous material, near-white but not fully achromatic.
+    keywords:
+      de: [gelblichweiss, weisslichgelb]
+      fr: [blanc jaunâtre, jaune blanchâtre]
+      it: [bianco giallastro, giallo biancastro]

@@ -22,14 +22,6 @@ def common_options(f):
         help="Input path to classify. Can be a ground truth JSON, "
         "a predictions JSON, or a directory containing subset files.",
     )(f)
-    # ground truth path
-    f = click.option(
-        "-g",
-        "--ground-truth-path",
-        type=click.Path(exists=True, path_type=Path),
-        default=None,
-        help="Path to the ground truth file, if different from file_path.",
-    )(f)
     f = click.option(
         "-o",
         "--out-directory",
@@ -76,7 +68,9 @@ def common_options(f):
     f = click.option(
         "-cs",
         "--classification-system",
-        type=click.Choice(["uscs", "lithology", "en_main"], case_sensitive=False),
+        type=click.Choice(
+            ["uscs", "lithology", "en_main", "color_consolidated", "color_unconsolidated"], case_sensitive=False
+        ),
         default="uscs",
         help="The classification system used to classify the data.",
     )(f)
@@ -96,13 +90,11 @@ def common_options(f):
     "--benchmark",
     "benchmarks",
     multiple=True,
-    help="Repeatable benchmark spec: '<name>:<input_path>:<ground_truth_path>'. "
-    "If provided, runs multiple benchmarks in one execution.",
+    help="Repeatable benchmark spec: '<name>:<input_path>'. If provided, runs multiple benchmarks in one execution.",
 )
 @common_options
 def click_pipeline(
     file_path: Path | None,
-    ground_truth_path: Path | None,
     out_directory: Path,
     out_directory_bedrock: Path,
     classifier_type: str,
@@ -144,7 +136,6 @@ def click_pipeline(
     ClassificationPipelineRunner(
         predictions_path=out_directory / "class_predictions.json",
         file_path=file_path,
-        ground_truth_path=ground_truth_path,
         out_directory=out_directory,
         out_directory_bedrock=out_directory_bedrock,
         options=opts,
