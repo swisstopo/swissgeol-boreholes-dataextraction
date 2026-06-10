@@ -342,7 +342,7 @@ class BertModel:
             text (str): the text to predict the label index from.
 
         Returns:
-            ClassificationSystem.EnumMember: The predicted class the text input.
+            ClassificationSystem.EnumMember: The predicted class of the text input.
         """
         idx = self.predict_idx(text)
         return self.id2classEnum[idx]

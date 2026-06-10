@@ -60,7 +60,7 @@ class LithologySystem(ClassificationSystem):
         return cls.LithologyClasses.not_specified
 
     @classmethod
-    def map_most_similar_class(cls, class_str: str) -> LithologyClasses:
+    def map_most_similar_class(cls, class_str: str) -> ClassificationSystem.EnumMember:
         """Maps a given string to the closest matching class in the classification system.
 
         This function normalizes the input string depending on the data type (uscs or lithology) and tries to find a
@@ -71,7 +71,7 @@ class LithologySystem(ClassificationSystem):
             class_str (str): The input string to map.
 
         Returns:
-            ClassificationType.EnumMember: The matching enum member, or default if no match is found.
+            EnumMember: The matching enum member, or default if no match is found.
         """
         normalized_str = cls.normalize_class_string(class_str)
 

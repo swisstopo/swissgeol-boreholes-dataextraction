@@ -28,7 +28,6 @@ Each file contains boreholes, and each borehole contains layers. For each layer:
 | `OrganicComponentsUnconsolidatedSystem` | `organic_components` | `unconsolidated.organic_components` |
 | `USCSSystem` | `uscs` | `unconsolidated.uscs` |
 
-
 An example json can be found in [groundtruth-json.md](groundtruth-json.md).
 
 ## 2. Choose Hyperparameters
