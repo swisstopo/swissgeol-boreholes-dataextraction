@@ -12,15 +12,33 @@ training_sets:
       - nagra_ground_truth.json
 
 test_sets:
-  consolidated:
+  # Consolidated test (+ global)
+  global_consolidated:
     classification_system: alteration_degree_consolidated
     ground_truths:
       - geoquat_ground_truth.json
       - nagra_ground_truth.json
-  unconsolidated:
+  geoquat_consolidated:
+    classification_system: alteration_degree_consolidated
+    ground_truths:
+      - geoquat_ground_truth.json
+  nagra_consolidated:
+    classification_system: alteration_degree_consolidated
+    ground_truths:
+      - nagra_ground_truth.json
+  # Unconsolidated test (+ global)
+  global_unconsolidated:
     classification_system: alteration_degree_unconsolidated
     ground_truths:
       - geoquat_ground_truth.json
+      - nagra_ground_truth.json
+  geoquat_unconsolidated:
+    classification_system: alteration_degree_unconsolidated
+    ground_truths:
+      - geoquat_ground_truth.json
+  nagra_unconsolidated:
+    classification_system: alteration_degree_unconsolidated
+    ground_truths:
       - nagra_ground_truth.json
 
 # Custom Training hyperparameters

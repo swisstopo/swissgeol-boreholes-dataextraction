@@ -15,13 +15,33 @@ training_sets:
       - zurich_ground_truth.json
 
 test_sets:
-  en_main:
+  global_en_main:
     classification_system: en_main
     ground_truths:
       - deepwells_ground_truth.json
       - geoquat_ground_truth.json
       - nagra_ground_truth.json
       - thurgau_ground_truth.json
+      - zurich_ground_truth.json
+  deepwells_en_main:
+    classification_system: en_main
+    ground_truths:
+      - deepwells_ground_truth.json
+  geoquat_en_main:
+    classification_system: en_main
+    ground_truths:
+      - geoquat_ground_truth.json
+  nagra_en_main:
+    classification_system: en_main
+    ground_truths:
+      - nagra_ground_truth.json
+  thurgau_en_main:
+    classification_system: en_main
+    ground_truths:
+      - thurgau_ground_truth.json
+  zurich_en_main:
+    classification_system: en_main
+    ground_truths:
       - zurich_ground_truth.json
 
 # Custom Training hyperparameters

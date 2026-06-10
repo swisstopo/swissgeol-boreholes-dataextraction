@@ -13,11 +13,23 @@ training_sets:
       - nagra_ground_truth.json
 
 test_sets:
-  grain_angularity:
+  global_grain_angularity:
     classification_system: grain_angularity
     ground_truths:
       - deepwells_ground_truth.json
       - geoquat_ground_truth.json
+      - nagra_ground_truth.json
+  deepwells_grain_angularity:
+    classification_system: grain_angularity
+    ground_truths:
+      - deepwells_ground_truth.json
+  geoquat_grain_angularity:
+    classification_system: grain_angularity
+    ground_truths:
+      - geoquat_ground_truth.json
+  nagra_grain_angularity:
+    classification_system: grain_angularity
+    ground_truths:
       - nagra_ground_truth.json
 
 # Custom Training hyperparameters

@@ -8,15 +8,23 @@ training_sets:
   debris:
     classification_system: debris
     ground_truths:
-      - geoquat_ground_truth.json
       - deepwells_ground_truth.json
+      - geoquat_ground_truth.json
 
 test_sets:
-  debris:
+  global_debris:
     classification_system: debris
     ground_truths:
       - geoquat_ground_truth.json
       - deepwells_ground_truth.json
+  deepwells_debris:
+    classification_system: debris
+    ground_truths:
+      - deepwells_ground_truth.json
+  geoquat_debris:
+    classification_system: debris
+    ground_truths:
+      - geoquat_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import keyword
 import logging
 from enum import IntEnum, auto
 
@@ -21,12 +22,14 @@ class ENMainSystem(ClassificationSystem):
         """Normalize a EN class string.
 
         Args:
-            class_str (str): The class string to be normalized (e.g. "Or").
+            class_str (str): The class string to be normalized (e.g. "Or", "Gr").
 
         Returns:
-            str: The normalized EN class string (e.g., "or").
+            str: The normalized EN class string. Python keywords get a trailing underscore
+                to match enum member names (e.g. "Or" → "or_", "Gr" → "gr").
         """
-        return class_str.lower()
+        normalized = class_str.lower()
+        return normalized + "_" if keyword.iskeyword(normalized) else normalized
 
     @classmethod
     def get_enum(cls) -> type[ENMainClasses]:

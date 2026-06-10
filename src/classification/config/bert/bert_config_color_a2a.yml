@@ -23,7 +23,8 @@ training_sets:
       - zurich_ground_truth.json
 
 test_sets:
-  consolidated:
+  # Consolidated test (+ global)
+  global_consolidated:
     classification_system: color_consolidated
     ground_truths:
       - deepwells_ground_truth.json
@@ -31,13 +32,54 @@ test_sets:
       - nagra_ground_truth.json
       - thurgau_ground_truth.json
       - zurich_ground_truth.json
-  unconsolidated:
+  deepwells_consolidated:
+    classification_system: color_consolidated
+    ground_truths:
+      - deepwells_ground_truth.json
+  geoquat_consolidated:
+    classification_system: color_consolidated
+    ground_truths:
+      - geoquat_ground_truth.json
+  nagra_consolidated:
+    classification_system: color_consolidated
+    ground_truths:
+      - nagra_ground_truth.json
+  thurgau_consolidated:
+    classification_system: color_consolidated
+    ground_truths:
+      - thurgau_ground_truth.json
+  zurich_consolidated:
+    classification_system: color_consolidated
+    ground_truths:
+      - zurich_ground_truth.json
+  # Unconsolidated test (+ global)
+  global_unconsolidated:
     classification_system: color_unconsolidated
     ground_truths:
       - deepwells_ground_truth.json
       - geoquat_ground_truth.json
       - nagra_ground_truth.json
       - thurgau_ground_truth.json
+      - zurich_ground_truth.json
+  deepwells_unconsolidated:
+    classification_system: color_unconsolidated
+    ground_truths:
+      - deepwells_ground_truth.json
+  geoquat_unconsolidated:
+    classification_system: color_unconsolidated
+    ground_truths:
+      - geoquat_ground_truth.json
+  nagra_unconsolidated:
+    classification_system: color_unconsolidated
+    ground_truths:
+      - nagra_ground_truth.json
+  thurgau_unconsolidated:
+    classification_system: color_unconsolidated
+    ground_truths:
+      - thurgau_ground_truth.json
+  zurich_unconsolidated:
+    classification_system: color_unconsolidated
+    ground_truths:
       - zurich_ground_truth.json
 
 # Custom Training hyperparameters

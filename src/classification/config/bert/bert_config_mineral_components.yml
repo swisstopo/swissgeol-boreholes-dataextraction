@@ -12,10 +12,18 @@ training_sets:
       - geoquat_ground_truth.json
 
 test_sets:
-  mineral_components:
+  global_mineral_components:
     classification_system: mineral_components
     ground_truths:
       - deepwells_ground_truth.json
+      - geoquat_ground_truth.json
+  deepwells_mineral_components:
+    classification_system: mineral_components
+    ground_truths:
+      - deepwells_ground_truth.json
+  geoquat_mineral_components:
+    classification_system: mineral_components
+    ground_truths:
       - geoquat_ground_truth.json
 
 # Custom Training hyperparameters

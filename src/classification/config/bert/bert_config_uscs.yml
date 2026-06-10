@@ -8,21 +8,13 @@ training_sets:
   uscs:
     classification_system: uscs
     ground_truths:
-      - deepwells_ground_truth.json
       - geoquat_ground_truth.json
-      - nagra_ground_truth.json
-      - thurgau_ground_truth.json
-      - zurich_ground_truth.json
 
 test_sets:
-  uscs:
+  geoquat_uscs:
     classification_system: uscs
     ground_truths:
-      - deepwells_ground_truth.json
       - geoquat_ground_truth.json
-      - nagra_ground_truth.json
-      - thurgau_ground_truth.json
-      - zurich_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:

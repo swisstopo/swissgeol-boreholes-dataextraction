@@ -16,7 +16,7 @@ training_sets:
       - zurich_ground_truth.json
 
 test_sets:
-  lithology:
+  global_lithology:
     classification_system: lithology
     ground_truths:
       - deepwells_ground_truth.json
@@ -24,6 +24,30 @@ test_sets:
       - lithology_ground_truth.json
       - nagra_ground_truth.json
       - thurgau_ground_truth.json
+      - zurich_ground_truth.json
+  deepwells_lithology:
+    classification_system: lithology
+    ground_truths:
+      - deepwells_ground_truth.json
+  geoquat_lithology:
+    classification_system: lithology
+    ground_truths:
+      - geoquat_ground_truth.json
+  lithology_lithology:
+    classification_system: lithology
+    ground_truths:
+      - lithology_ground_truth.json
+  nagra_lithology:
+    classification_system: lithology
+    ground_truths:
+      - nagra_ground_truth.json
+  thurgau_lithology:
+    classification_system: lithology
+    ground_truths:
+      - thurgau_ground_truth.json
+  zurich_lithology:
+    classification_system: lithology
+    ground_truths:
       - zurich_ground_truth.json
 
 # Custom Training hyperparameters

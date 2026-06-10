@@ -8,19 +8,35 @@ training_sets:
   organic_components:
     classification_system: organic_components
     ground_truths:
-      - geoquat_ground_truth.json
-      - nagra_ground_truth.json
       - deepwells_ground_truth.json
-      - zurich_ground_truth.json # only has three samples
-
-test_sets:
-  organic_components:
-    classification_system: organic_components
-    ground_truths:
       - geoquat_ground_truth.json
       - nagra_ground_truth.json
       - zurich_ground_truth.json
+
+test_sets:
+  global_organic_components:
+    classification_system: organic_components
+    ground_truths:
       - deepwells_ground_truth.json
+      - geoquat_ground_truth.json
+      - nagra_ground_truth.json
+      - zurich_ground_truth.json
+  deepwells_organic_components:
+    classification_system: organic_components
+    ground_truths:
+      - deepwells_ground_truth.json
+  geoquat_organic_components:
+    classification_system: organic_components
+    ground_truths:
+      - geoquat_ground_truth.json
+  nagra_organic_components:
+    classification_system: organic_components
+    ground_truths:
+      - nagra_ground_truth.json
+  zurich_organic_components:
+    classification_system: organic_components
+    ground_truths:
+      - zurich_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:
