@@ -314,11 +314,12 @@ def setup_data(
         logger.info(f"[{i + 1} / {len(model_config.test_sets)}] Loading test: {test_name}")
         test_samples = load_samples_from_set(test_set)
         _, _, test_samples = split_samples(test_samples)
-        test_datasets[test_name] = bert_model.get_tokenized_dataset(test_samples)
 
         if len(test_samples) == 0:
-            logger.warning(f"No samples detected for {test_name=}")
+            logger.warning(f"No samples detected for {test_name=}, omitted")
+            continue
 
+        test_datasets[test_name] = bert_model.get_tokenized_dataset(test_samples)
     return train_dataset, val_dataset, test_datasets
 
 
