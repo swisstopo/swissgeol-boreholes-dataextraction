@@ -412,7 +412,14 @@ class ConfusionMatrixCallback(TrainerCallback):
         self.current_test_name: str = "test"
 
     def _metrics_from_cm(self, cm: np.ndarray) -> dict:
-        """Compute per class f1, precision, recall from confusion matrix."""
+        """Compute per-class Metrics (tp, fp, fn) from a confusion matrix.
+
+        Args:
+            cm (np.ndarray): confusion matrix of shape (n_labels, n_labels).
+
+        Returns:
+            dict: mapping from class name (str) to Metrics for that class.
+        """
         metric_list = [
             Metrics(
                 tp=int(cm[i, i]),

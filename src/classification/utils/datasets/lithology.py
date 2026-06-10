@@ -65,13 +65,13 @@ class LithologySystem(ClassificationSystem):
 
         This function normalizes the input string depending on the data type (uscs or lithology) and tries to find a
         matching class name.  It first attempts standard class matching, then checks for unconsolidated soil
-        keywords. If it finds no match, returns the default class `kA`.
+        keywords. If it finds no match, returns the default class.
 
         Args:
             class_str (str): The input string to map.
 
         Returns:
-            ClassificationType.EnumMember: The matching enum member, or `kA` if no match is found.
+            ClassificationType.EnumMember: The matching enum member, or default if no match is found.
         """
         normalized_str = cls.normalize_class_string(class_str)
 

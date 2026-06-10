@@ -41,8 +41,11 @@ def get_data_class_count(layer_descriptions: list[LayerInformation]) -> dict[str
     Returns:
         dict[str,int]: the count for each class.
     """
-    class_counts = dict(Counter(layer.ground_truth_class.name for layer in layer_descriptions))
-    return class_counts
+    return dict(
+        Counter(
+            cls.name for layer in layer_descriptions if layer.ground_truth_class for cls in layer.ground_truth_class
+        )
+    )
 
 
 def write_predictions(
