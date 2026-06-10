@@ -3,7 +3,6 @@
 import csv
 import json
 import logging
-import os
 import shutil
 from collections import Counter, OrderedDict
 from collections.abc import Callable
@@ -48,82 +47,34 @@ def get_data_class_count(layer_descriptions: list[LayerInformation]) -> dict[str
     )
 
 
-def write_predictions(
-    layers_with_predictions: list[LayerInformation], out_dir: Path, out_path: str = "class_predictions.json"
-):
+def write_predictions(layers_with_predictions: list[LayerInformation], output_path: str):
     """Writes the predictions and ground truth data to a JSON file.
 
     Args:
         layers_with_predictions (list[LayerInformation]): List of layers with predictions.
-        out_dir (Path): Path to the output directory.
-        out_path (str): Name of the output file (default: "class_predictions.json").
+        output_path (str): Path to the output file (default: "class_predictions.json").
     """
-    out_dir.mkdir(parents=True, exist_ok=True)  # Ensure the output directory exists
-    output_file = out_dir / out_path
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)  # Ensure the output directory exists
 
-    output_data = {}
-
-    for layer in layers_with_predictions:
-        if layer.filename not in output_data:
-            output_data[layer.filename] = []
-
-        # Find an existing borehole entry
-        borehole_entry = next(
-            (bh for bh in output_data[layer.filename] if bh["borehole_index"] == layer.borehole_index), None
-        )
-
-        # if the borehole does not exist, create it
-        if not borehole_entry:
-            borehole_entry = {"borehole_index": layer.borehole_index, "layers": []}
-            output_data[layer.filename].append(borehole_entry)
-
-        borehole_entry["layers"].append(
-            {
-                "layer_index": layer.layer_index,
-                "material_description": layer.material_description,
-                "language": layer.language,
-                "class_system": layer.class_system.get_name(),
-                "ground_truth_class": layer.ground_truth_class.name if layer.ground_truth_class is not None else None,
-                "prediction_class": layer.prediction_class.name if layer.prediction_class is not None else None,
-                "llm_reasoning": layer.llm_reasoning if layer.llm_reasoning is not None else None,
-            }
-        )
-
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(output_data, f, ensure_ascii=False, indent=4)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump([layer.to_json() for layer in layers_with_predictions], f, ensure_ascii=False, indent=4)
 
 
-def write_api_failures(api_failures: list, output_directory: Path, filename: str = "api_failure.json") -> None:
-    """Write API call failures to a JSON file.
+def read_predictions(input_path: str, classification_system: type[ClassificationSystem]) -> list[LayerInformation]:
+    """Read classification predictions from a JSON file.
 
     Args:
-        api_failures: List of dictionaries containing API failure information
-        output_directory: Directory where the file should be saved
-        filename: Name of the output file (default: "api_failure.json")
+        input_path (str): Path to the JSON file to read.
+        classification_system (type[ClassificationSystem]): Classification system used to resolve
+            class name strings back to enum members.
+
+    Returns:
+        list[LayerInformation]: Deserialized layers with prediction and ground-truth fields populated.
     """
-    if not api_failures:
-        return
+    with open(input_path, encoding="utf-8") as f:
+        layers_with_predictions = [LayerInformation.from_json(item, classification_system) for item in json.load(f)]
 
-    os.makedirs(output_directory, exist_ok=True)
-    failures_path = output_directory / filename
-
-    existing_failures = []
-    if failures_path.exists():
-        try:
-            with open(failures_path) as f:
-                existing_failures = json.load(f)
-        except json.JSONDecodeError:
-            # Overwrite the file if it isn't a valid JSON
-            logger.warning(f"Existing file {failures_path} contained invalid JSON and will be overwritten")
-
-    all_failures = existing_failures + api_failures
-
-    with open(failures_path, "w") as f:
-        json.dump(all_failures, f, indent=2)
-
-    logger.warning(
-        f"Recorded {len(api_failures)} failed API calls to {failures_path}, total failed records: {len(all_failures)}"
-    )
+    return layers_with_predictions
 
 
 @dataclass

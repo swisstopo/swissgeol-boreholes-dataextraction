@@ -10,16 +10,21 @@ class DummyClassifier(Classifier):
     Assigns the most common class to all descriptions
     """
 
-    def classify(self, layer_descriptions: list[LayerInformation]) -> None:
+    def classify(self, layer_descriptions: list[LayerInformation]) -> list[LayerInformation]:
         """Classifies the description of the LayerInformation objects.
 
         This method will populate the prediction_class attribute of each object.
 
         Args:
             layer_descriptions (list[LayerInformation]): List of layer information objects to classify.
+
+        Returns:
+            layer_descriptions (list[LayerInformation]): List of updated objects.
         """
         for layer in layer_descriptions:
             layer.prediction_class = layer.class_system.get_default_class_value()
+
+        return layer_descriptions
 
     def get_name(self) -> str:
         """Returns a string with the name of the classifier."""

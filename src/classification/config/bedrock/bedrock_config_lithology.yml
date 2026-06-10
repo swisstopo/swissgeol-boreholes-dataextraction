@@ -1,17 +1,20 @@
-# Config file for unconsolidated soil classification
+# Config file for consolidated soil classification
 # Prompt file and version
-prompts_file: bedrock/lithology_classification_prompts.yml
-prompt_version: v1
+prompts_file: bedrock/prompts/lithology_classification_prompts.yml
+prompt_version: baseline
 
 # Pattern file and parameter version
-pattern_file: bedrock/lithology_classification_patterns_bedrock.yml
+pattern_file: bedrock/examples/lithology_classification_patterns_bedrock.yml
 pattern_version: baseline
+
+# Tool file
+tool_file: bedrock/tool/tool_classify_texts.yml
 
 # temperature - answer creativity for the LLM model
 temperature: 0.0
 
 # Maximum response tokens
-max_tokens: 2048
+max_tokens: 4096
 
 # Parameter indicating if Reasoning (Chain of Thought) mode should be used. Warning this significantly increases latency
 reasoning_mode: False
