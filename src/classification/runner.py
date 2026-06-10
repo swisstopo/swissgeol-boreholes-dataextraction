@@ -112,7 +112,7 @@ def run_classification_predictions(
         f"with {classifier.__class__.__name__}"
     )
     layer_descriptions_cls = classifier.classify(layer_descriptions)
-    write_predictions(layer_descriptions_cls, out_directory / "class_predictions.json")
+    write_predictions(layer_descriptions_cls, str(out_directory / "class_predictions.json"))
 
     # No layer cls returned, as no metric to compute
     return None if is_prediction else layer_descriptions_cls, classifier, n_documents

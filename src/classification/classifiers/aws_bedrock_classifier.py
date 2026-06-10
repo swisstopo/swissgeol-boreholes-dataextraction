@@ -188,7 +188,6 @@ class AWSBedrockClassifier(Classifier):
             return read_predictions(output_path, self.classification_system)
 
         async with self.semaphore:
-            predictions: list[AWSBedrockEntry] = []
             try:
                 predictions = await self._call_bedrock(filename_layers)
             except Exception as e:

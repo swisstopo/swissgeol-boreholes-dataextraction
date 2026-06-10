@@ -171,10 +171,7 @@ def split_samples(
 
 @dataclass
 class LayerInformation:
-    """Class for each layer in the ground truth json file.
-
-    A layer is either classified into USCS or lithology, but never both.
-    """
+    """Class for each layer in the ground truth json file."""
 
     filename: str
     borehole_index: int
