@@ -60,12 +60,12 @@ test_sets:
 # Training hyperparameters
 hyperparameters:
   batch_size: 32
-  num_epochs: 32
   learning_rate: 1e-4
-  weight_decay: 0.001
-  warmup_ratio: 0.1
   lr_scheduler_type: "cosine_with_restarts"
   max_grad_norm: 5.0
+  num_epochs: 32
+  warmup_ratio: 0.1
+  weight_decay: 0.001
 
 # Layers to fine-tune
 unfreeze_layers:

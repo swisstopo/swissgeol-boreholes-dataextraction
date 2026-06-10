@@ -40,7 +40,7 @@ class AlterationDegreeSystem(ClassificationSystem):
 
     @classmethod
     def get_default_class_value(cls) -> AlterationDegreeClasses:
-        """Default value for the enum (not specified)."""
+        """Return the default value for the enum class."""
         return cls.AlterationDegreeClasses.not_specified
 
     class AlterationDegreeClasses(IntEnum):

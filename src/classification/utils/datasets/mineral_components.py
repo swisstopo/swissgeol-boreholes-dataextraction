@@ -11,11 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class MineralComponentsSystem(ClassificationSystem):
-    """Implementation of a classification type based on the Mineral classification system.
-
-    This class implements the methods defined in `ClassificationType` for the Mineral classification system,
-    which is commonly used to classify mineral components in borehole layers.
-    """
+    """Classification system for mineral components of consolidated geological layers."""
 
     @classmethod
     def normalize_class_string(cls, class_str: str) -> str:
@@ -31,7 +27,7 @@ class MineralComponentsSystem(ClassificationSystem):
 
     @classmethod
     def get_enum(cls) -> type[MineralComponents]:
-        """Return the Minerals Enum."""
+        """Return the MineralComponents Enum."""
         return cls.MineralComponents
 
     @classmethod
@@ -47,7 +43,7 @@ class MineralComponentsSystem(ClassificationSystem):
     @classmethod
     def get_default_class_value(cls) -> MineralComponents:
         """Default value for the enum (not specified)."""
-        return cls.Minerals.not_specified
+        return cls.MineralComponents.not_specified
 
     class MineralComponents(IntEnum):
         """Mineral classes list (0-based indexing)."""

@@ -33,10 +33,10 @@ hyperparameters:
   batch_size: 32
   learning_rate: 1e-4
   lr_scheduler_type: "cosine_with_restarts"
+  max_grad_norm: 5.0
   num_epochs: 32
   warmup_ratio: 0.1
   weight_decay: 0.001
-  max_grad_norm: 5.0
 
 # Layer to train
 unfreeze_layers:

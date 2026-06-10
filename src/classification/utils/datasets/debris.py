@@ -21,7 +21,7 @@ class DebrisUnconsolidatedSystem(ClassificationSystem):
             class_str (str): The class string to be normalized (e.g. "erratic block").
 
         Returns:
-            str: The normalized color class string (e.g., "erratic_block").
+            str: The normalized coarse components class string (e.g., "erratic_block").
         """
         return class_str.lower().replace(",", "").replace(" ", "_")
 
