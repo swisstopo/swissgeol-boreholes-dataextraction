@@ -42,7 +42,7 @@ class OrganicComponentsUnconsolidatedSystem(ClassificationSystem):
 
     @classmethod
     def get_default_class_value(cls) -> OrganicComponentsClasses:
-        """Default value for the enum (not specified)."""
+        """Return the default value for the enum class."""
         return cls.OrganicComponentsClasses.not_specified
 
     class OrganicComponentsClasses(IntEnum):

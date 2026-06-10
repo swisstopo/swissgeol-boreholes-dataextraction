@@ -42,7 +42,7 @@ class DebrisUnconsolidatedSystem(ClassificationSystem):
 
     @classmethod
     def get_default_class_value(cls) -> DebrisClasses:
-        """Default value for the enum (not specified)."""
+        """Return the default value for the enum class."""
         return cls.DebrisClasses.not_specified
 
     class DebrisClasses(IntEnum):

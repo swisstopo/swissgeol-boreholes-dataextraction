@@ -23,7 +23,7 @@ class LithologySystem(ClassificationSystem):
     def normalize_class_string(cls, class_str: str) -> str:
         """Normalize a lithology class string.
 
-        Examples include test that are semicolon/coma separated (e.g.  "limestone: micritic" -> "limestone",
+        Examples include texts that are semicolon/comma separated (e.g. "limestone: micritic" -> "limestone",
         "sandstone, marly" -> "sandstone") or white space (e.g. "not specified" -> "not_specified")
 
         Args:

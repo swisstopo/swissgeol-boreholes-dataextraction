@@ -168,7 +168,7 @@ class ClassificationSystem(ABC):
         cls,
         layer: GroundTruthLayer,
     ) -> list[ClassificationSystem.EnumMember] | None:
-        """Extract the integer class index from a layer by resolving the ground truth key path, or None if absent."""
+        """Extract the list of class members from a layer by resolving the ground truth key path, or None if absent."""
         try:
             label_str = reduce(getattr, cls.get_layer_ground_truth_keys(), layer)
         except AttributeError:

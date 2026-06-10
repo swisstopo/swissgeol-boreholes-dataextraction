@@ -396,7 +396,8 @@ def multilabel_confusion_matrix_nxn(labels: np.ndarray, predictions: np.ndarray)
         predictions (np.ndarray): binary indicator matrix of shape (n_samples, n_labels)
 
     Returns:
-        cm: confusion matrix of shape (n_labels, n_labels) where cm[i, j]
+        np.ndarray: confusion matrix of shape (n_labels, n_labels) where cm[i, j]
+            counts samples where label i is true and label j is predicted.
     """
     return (labels.T @ predictions).astype(int)
 

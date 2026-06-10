@@ -264,7 +264,14 @@ class BertModel:
             param.requires_grad = True
 
     def get_tokenized_dataset(self, layers: list[LayerInformation]) -> datasets.Dataset:
-        """Convert a list of LayerInformation entries into a tokenized HuggingFace dataset."""
+        """Convert a list of LayerInformation entries into a tokenized HuggingFace dataset.
+
+        Args:
+            layers (list[LayerInformation]): Layers whose material descriptions are tokenized.
+
+        Returns:
+            datasets.Dataset: Dataset with tokenized inputs and multi-label binary encoded labels.
+        """
         data: dict[str, list] = {
             "layer": [layer.material_description for layer in layers],
             "label": [layer.ground_truth_class for layer in layers],

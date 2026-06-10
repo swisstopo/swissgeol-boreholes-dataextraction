@@ -42,7 +42,7 @@ class MineralComponentsSystem(ClassificationSystem):
 
     @classmethod
     def get_default_class_value(cls) -> MineralComponents:
-        """Default value for the enum (not specified)."""
+        """Return the default value for the enum class."""
         return cls.MineralComponents.not_specified
 
     class MineralComponents(IntEnum):
