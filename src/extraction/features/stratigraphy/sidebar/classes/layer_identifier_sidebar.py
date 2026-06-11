@@ -163,7 +163,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             a_to_b_interval, line_without_depths = AToBIntervalExtractor.from_text(line, require_start_of_string=False)
 
             if prev_line and not a_to_b_interval and not prev_interval:
-                # if depth was not found in the previous and current lines, we look for a depth wrapping arround.
+                # if depth was not found in the previous and current lines, we look for a depth wrapping around.
                 combined_lines = TextLine(prev_line.words + line.words)
                 a_to_b_interval, _ = AToBIntervalExtractor.from_text(combined_lines, require_start_of_string=False)
             prev_interval = a_to_b_interval
@@ -233,7 +233,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
                     return True
             return False
 
-        other_lines_presence = any([line not in header_lines for line in block_lines])
+        other_lines_presence = any(line not in header_lines for line in block_lines)
 
         header_capitalized = _is_header_capitalized(header_lines)
 
@@ -254,7 +254,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             block (TextBlock): The block to clean.
 
         Returns:
-            TextBlock: The cleaned block with the ignored lines and layer identifiers removed.
+            TextBlock: The cleaned block with the layer identifiers removed.
         """
         # Create set of entry values
         entry_values = {entry.value.strip() for entry in self.entries}
