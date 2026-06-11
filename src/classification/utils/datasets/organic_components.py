@@ -10,7 +10,7 @@ from classification.utils.datasets.classification import ClassificationSystem
 logger = logging.getLogger(__name__)
 
 
-class OrganicComponentsUnconsolidatedSystem(ClassificationSystem):
+class OrganicComponentsSystem(ClassificationSystem):
     """Classification system for the organic components of unconsolidated geological layers."""
 
     @classmethod

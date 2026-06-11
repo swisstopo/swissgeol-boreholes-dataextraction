@@ -19,13 +19,13 @@ Each file contains boreholes, and each borehole contains layers. For each layer:
 | `ColorSystem` | `color` | - |
 | `ColorConsolidatedSystem` | `color_consolidated` | `consolidated.primary_color` |
 | `ColorUnconsolidatedSystem` | `color_unconsolidated` | `unconsolidated.primary_color` |
-| `DebrisUnconsolidatedSystem` | `debris` | `unconsolidated.debris` |
+| `DebrisSystem` | `debris` | `unconsolidated.debris` |
 | `ENMainSystem` | `en_main` | `unconsolidated.main` |
 | `GrainAngularitySystem` | `grain_angularity` | `unconsolidated.grain_angularity` |
 | `GrainShapeSystem` | `grain_shape` | `unconsolidated.grain_shape` |
 | `LithologySystem` | `lithology` | `consolidated.lithology` |
 | `MineralComponentsSystem` | `mineral_components` | `consolidated.mineral_components` |
-| `OrganicComponentsUnconsolidatedSystem` | `organic_components` | `unconsolidated.organic_components` |
+| `OrganicComponentsSystem` | `organic_components` | `unconsolidated.organic_components` |
 | `USCSSystem` | `uscs` | `unconsolidated.uscs` |
 
 An example json can be found in [groundtruth-json.md](groundtruth-json.md).

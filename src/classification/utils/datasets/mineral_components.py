@@ -18,12 +18,12 @@ class MineralComponentsSystem(ClassificationSystem):
         """Normalize a mineral class string.
 
         Args:
-            class_str (str): The class string to be normalized (e.g. "pyrite").
+            class_str (str): The class string to be normalized (e.g. "not specified", "K-feldspar").
 
         Returns:
-            str: The normalized mineral class string (e.g., "pyrite").
+            str: The normalized mineral class string (e.g. "not_specified", "k_feldspar").
         """
-        return class_str.lower()
+        return class_str.lower().replace("-", "_").replace(" ", "_")
 
     @classmethod
     def get_enum(cls) -> type[MineralComponents]:

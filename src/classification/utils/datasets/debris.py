@@ -10,7 +10,7 @@ from classification.utils.datasets.classification import ClassificationSystem
 logger = logging.getLogger(__name__)
 
 
-class DebrisUnconsolidatedSystem(ClassificationSystem):
+class DebrisSystem(ClassificationSystem):
     """Classification system for the unclassified coarse components (debris) of unconsolidated geological layers."""
 
     @classmethod

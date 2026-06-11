@@ -18,10 +18,10 @@ class GrainShapeSystem(ClassificationSystem):
         """Normalize a grain shape class string.
 
         Args:
-            class_str (str): The class string to be normalized (e.g. "platy").
+            class_str (str): The class string to be normalized (e.g. "not specified").
 
         Returns:
-            str: The normalized grain shape class string.
+            str: The normalized grain shape class string (e.g. "not_specified").
         """
         return class_str.lower().replace(" ", "_")
 

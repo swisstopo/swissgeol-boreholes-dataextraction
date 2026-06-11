@@ -12,13 +12,13 @@ from classification.utils.datasets.alteration_degree import (
 from classification.utils.datasets.cementation import CementationSystem
 from classification.utils.datasets.classification import ClassificationSystem
 from classification.utils.datasets.color import ColorConsolidatedSystem, ColorSystem, ColorUnconsolidatedSystem
-from classification.utils.datasets.debris import DebrisUnconsolidatedSystem
+from classification.utils.datasets.debris import DebrisSystem
 from classification.utils.datasets.en_main import ENMainSystem
 from classification.utils.datasets.grain_angularity import GrainAngularitySystem
 from classification.utils.datasets.grain_shape import GrainShapeSystem
 from classification.utils.datasets.lithology import LithologySystem
 from classification.utils.datasets.mineral_components import MineralComponentsSystem
-from classification.utils.datasets.organic_components import OrganicComponentsUnconsolidatedSystem
+from classification.utils.datasets.organic_components import OrganicComponentsSystem
 from classification.utils.datasets.uscs import USCSSystem
 
 
@@ -36,13 +36,13 @@ class ExistingClassificationSystems(Enum):
     color = ColorSystem
     color_consolidated = ColorConsolidatedSystem
     color_unconsolidated = ColorUnconsolidatedSystem
-    debris = DebrisUnconsolidatedSystem
+    debris = DebrisSystem
     en_main = ENMainSystem
     grain_angularity = GrainAngularitySystem
     grain_shape = GrainShapeSystem
     lithology = LithologySystem
     mineral_components = MineralComponentsSystem
-    organic_components = OrganicComponentsUnconsolidatedSystem
+    organic_components = OrganicComponentsSystem
     uscs = USCSSystem
 
     @classmethod

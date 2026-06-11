@@ -22,13 +22,13 @@ class USCSSystem(ClassificationSystem):
         """Normalize a USCS class string.
 
         Args:
-            class_str (str): The class string to be normalized (e.g. "CL-ML").
+            class_str (str): The class string to be normalized (e.g. "CL-ML", "not specified").
 
         Returns:
-            str: The normalized USCS class string (e.g., "cl_ml").
+            str: The normalized USCS class string (e.g., "cl_ml", "not_specified").
 
         """
-        return class_str.lower().replace("-", "_")
+        return class_str.lower().replace("-", "_").replace(" ", "_")
 
     @classmethod
     def get_enum(cls) -> type[USCSClasses]:
@@ -48,7 +48,7 @@ class USCSSystem(ClassificationSystem):
     @classmethod
     def get_default_class_value(cls) -> USCSClasses:
         """Return the default value for the enum class."""
-        return cls.USCSClasses.kA  # keine Angabe = no indication
+        return cls.USCSClasses.not_specified
 
     class USCSClasses(IntEnum):
         """USCS (Unified Soil Classification System) classes.
@@ -59,7 +59,7 @@ class USCSSystem(ClassificationSystem):
             at 0, so using 0-based indexing avoids the need to address the issue later and prevents potential bugs.
         """
 
-        kA = 0
+        not_specified = 0
         Bl = auto()
         CH = auto()
         CL = auto()
