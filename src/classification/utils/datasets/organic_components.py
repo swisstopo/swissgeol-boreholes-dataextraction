@@ -45,6 +45,10 @@ class OrganicComponentsSystem(ClassificationSystem):
         """Return the default value for the enum class."""
         return cls.OrganicComponentsClasses.not_specified
 
+    @classmethod
+    def is_multi_label(cls) -> bool:
+        return True
+
     class OrganicComponentsClasses(IntEnum):
         """Complete organic components class list (0-based indexing)."""
 

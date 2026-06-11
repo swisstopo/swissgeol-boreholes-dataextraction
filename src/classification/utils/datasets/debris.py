@@ -45,6 +45,10 @@ class DebrisSystem(ClassificationSystem):
         """Return the default value for the enum class."""
         return cls.DebrisClasses.not_specified
 
+    @classmethod
+    def is_multi_label(cls) -> bool:
+        return True
+
     class DebrisClasses(IntEnum):
         """Complete unclassifiable coarse components class list (0-based indexing)."""
 
