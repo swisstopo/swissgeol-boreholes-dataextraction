@@ -10,7 +10,8 @@ from enum import IntEnum
 from functools import reduce
 
 from classification.utils.file_utils import read_params
-from core.ground_truth import GroundTruthBorehole, GroundTruthLayer
+from core.ground_truth import GroundTruthBorehole, GroundTruthLayer, GroundTruthLayerDepth, GroundTruthMetadata
+from extraction.features.predictions.file_predictions import FilePredictionsWithMetrics
 from swissgeol_doc_processing.utils.language_detection import detect_language_of_text
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ class GroundTruthBoreholeWithLanguage(GroundTruthBorehole):
     language: str
 
     @classmethod
-    def from_boreholes(cls, boreholes: list[GroundTruthBorehole]) -> list[GroundTruthBoreholeWithLanguage]:
+    def _from_boreholes(cls, boreholes: list[GroundTruthBorehole]) -> list[GroundTruthBoreholeWithLanguage]:
         """Detect the language shared by a list of boreholes and attach it to each entry.
 
         Args:
@@ -50,6 +51,50 @@ class GroundTruthBoreholeWithLanguage(GroundTruthBorehole):
         return [cls.model_validate({**borehole.model_dump(), "language": language}) for borehole in boreholes]
 
     @classmethod
+    def _from_prediction(cls, prediction: FilePredictionsWithMetrics) -> list[GroundTruthBoreholeWithLanguage]:
+        """Convert a single file's predictions into a list of language-annotated borehole records.
+
+        Detects the language from all material descriptions in the prediction, then wraps each
+        borehole as a ``GroundTruthBoreholeWithLanguage`` with empty depth intervals and metadata.
+
+        Args:
+            prediction (FilePredictionsWithMetrics): Extraction predictions for a single file.
+
+        Returns:
+            A list of ``GroundTruthBoreholeWithLanguage`` entries, one per borehole in the prediction.
+        """
+        language = detect_language_of_text(
+            text="".join(
+                [
+                    layer.material_description.text
+                    for borehole in prediction.boreholes
+                    for layer in borehole.layers_in_borehole.layers
+                    if layer.material_description
+                ]
+            ),
+            default_language=classification_params["default_language"],
+            supported_languages=classification_params["supported_language"],
+        )
+        return [
+            cls.model_validate(
+                {
+                    "borehole_index": borehole.borehole_index,
+                    "layers": [
+                        GroundTruthLayer(
+                            material_description=layer.material_description.text,
+                            depth_interval=GroundTruthLayerDepth(),
+                        )
+                        for layer in borehole.layers_in_borehole.layers
+                    ],
+                    "metadata": GroundTruthMetadata(),
+                    "groundwater": [],
+                    "language": language,
+                }
+            )
+            for borehole in prediction.boreholes
+        ]
+
+    @classmethod
     def from_ground_truth(
         cls, ground_truth: dict[str, list[GroundTruthBorehole]]
     ) -> dict[str, list[GroundTruthBoreholeWithLanguage]]:
@@ -62,7 +107,21 @@ class GroundTruthBoreholeWithLanguage(GroundTruthBorehole):
             A new mapping with the same keys where every borehole is extended with the detected
             ``language`` field.
         """
-        return {key: cls.from_boreholes(boreholes) for key, boreholes in ground_truth.items()}
+        return {key: cls._from_boreholes(boreholes) for key, boreholes in ground_truth.items()}
+
+    @classmethod
+    def from_predictions(
+        cls, predictions: list[FilePredictionsWithMetrics]
+    ) -> dict[str, list[GroundTruthBoreholeWithLanguage]]:
+        """Convert a list of file predictions into a filename-keyed mapping of language-annotated boreholes.
+
+        Args:
+            predictions: Extraction predictions, one entry per file.
+
+        Returns:
+            A mapping from filename to a list of ``GroundTruthBoreholeWithLanguage`` entries.
+        """
+        return {prediction.filename: cls._from_prediction(prediction) for prediction in predictions}
 
 
 def deterministic_hash_ratio(text: str) -> float:
@@ -112,10 +171,7 @@ def split_samples(
 
 @dataclass
 class LayerInformation:
-    """Class for each layer in the ground truth json file.
-
-    A layer is either classified into USCS or lithology, but never both.
-    """
+    """Class for each layer in the ground truth json file."""
 
     filename: str
     borehole_index: int
@@ -126,6 +182,48 @@ class LayerInformation:
     ground_truth_class: None | list[ClassificationSystem.EnumMember]
     prediction_class: None | ClassificationSystem.EnumMember
     llm_reasoning: None | str
+
+    def to_json(self) -> dict[str, str | int | None]:
+        """Serialize this layer's fields to a JSON-compatible dictionary.
+
+        Returns:
+            A flat dictionary with all layer fields.
+        """
+        return {
+            "filename": self.filename,
+            "borehole_index": self.borehole_index,
+            "layer_index": self.layer_index,
+            "language": self.language,
+            "material_description": self.material_description,
+            "class_system": self.class_system.get_name() if self.class_system else None,
+            "ground_truth_class": self.ground_truth_class.name if self.ground_truth_class is not None else None,
+            "prediction_class": self.prediction_class.name if self.prediction_class is not None else None,
+            "llm_reasoning": self.llm_reasoning,
+        }
+
+    @classmethod
+    def from_json(cls, json: dict, classification_system: type[ClassificationSystem]) -> LayerInformation:
+        """Deserialize a LayerInformation from a JSON dictionary.
+
+        Args:
+            json: Flat dictionary with the keys expected by ``to_json``.
+            classification_system: The classification system used to resolve
+                class strings back to enum members.
+
+        Returns:
+            A new ``LayerInformation`` instance.
+        """
+        return cls(
+            filename=json["filename"],
+            borehole_index=json["borehole_index"],
+            layer_index=json["layer_index"],
+            language=json["language"],
+            material_description=json["material_description"],
+            class_system=classification_system,
+            ground_truth_class=classification_system.map_most_similar_class(json["ground_truth_class"] or ""),
+            prediction_class=classification_system.map_most_similar_class(json["prediction_class"] or ""),
+            llm_reasoning=json["llm_reasoning"],
+        )
 
 
 class ClassificationSystem(ABC):
@@ -183,8 +281,20 @@ class ClassificationSystem(ABC):
         return [cls.map_most_similar_class(label_str)]
 
     @classmethod
-    def process(cls, ground_truth: dict[str, list[GroundTruthBoreholeWithLanguage]]) -> list[LayerInformation]:
-        """Extract all labelled layers from a GroundTruth object as a flat list of LayerInformation entries."""
+    def process(
+        cls, ground_truth: dict[str, list[GroundTruthBoreholeWithLanguage]], allow_none: bool = False
+    ) -> list[LayerInformation]:
+        """Extract labelled layers from a ground truth mapping as a flat list of LayerInformation entries.
+
+        Args:
+            ground_truth (dict[str, list[GroundTruthBoreholeWithLanguage]]): Mapping from filename to a
+                list of language-annotated borehole records.
+            allow_none (bool): When True, layers without a ground truth label are included (with
+                ``ground_truth_class=None``). When False (default), unlabelled layers are skipped.
+
+        Returns:
+            list[LayerInformation]: A list of ``LayerInformation``, one per layer across all boreholes.
+        """
         return [
             LayerInformation(
                 filename=filename,
@@ -200,7 +310,7 @@ class ClassificationSystem(ABC):
             for filename, boreholes in ground_truth.items()
             for borehole_index, borehole in enumerate(boreholes)
             for layer_index, layer in enumerate(borehole.layers)
-            if cls.reduce_label(layer) is not None and layer.material_description is not None
+            if (cls.reduce_label(layer) is not None or allow_none) and layer.material_description is not None
         ]
 
     @classmethod

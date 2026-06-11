@@ -405,6 +405,12 @@ class ConfusionMatrixCallback(TrainerCallback):
     """Trainer callback to compute and save confusion matrix after evaluation."""
 
     def __init__(self, id2class_enum: dict, is_multi_label: bool = False):
+        """Initialise the callback.
+
+        Args:
+            id2class_enum: Mapping from class index to its enum member.
+            is_multi_label: Whether the classification task is multi-label (default: False).
+        """
         self._id2class_enum = id2class_enum
         self._is_multi_label = is_multi_label
         self._sorted_ids = sorted(id2class_enum.keys(), key=lambda i: id2class_enum[i].value)

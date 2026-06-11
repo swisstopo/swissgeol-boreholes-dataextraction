@@ -34,7 +34,8 @@ dependencies = [
     "nltk==3.9.1",
     "rdflib==7.1.4",
     "compound_split==1.0.2",
-    "fast-langdetect==1.0.0"
+    "fast-langdetect==1.0.0",
+    "anthropic[bedrock]"
 ]
 
 [project.optional-dependencies]
