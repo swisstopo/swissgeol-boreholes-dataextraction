@@ -45,6 +45,10 @@ class MineralComponentsSystem(ClassificationSystem):
         """Return the default value for the enum class."""
         return cls.MineralComponents.not_specified
 
+    @classmethod
+    def is_multi_label(cls) -> bool:
+        return True
+
     class MineralComponents(IntEnum):
         """Mineral classes list (0-based indexing)."""
 

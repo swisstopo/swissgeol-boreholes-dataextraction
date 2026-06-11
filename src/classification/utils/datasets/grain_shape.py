@@ -45,6 +45,10 @@ class GrainShapeSystem(ClassificationSystem):
         """Return the default value for the enum class."""
         return cls.GrainShapeClasses.not_specified
 
+    @classmethod
+    def is_multi_label(cls) -> bool:
+        return True
+
     class GrainShapeClasses(IntEnum):
         """Grain shape classes for unconsolidated soil classification (0-based indexing)."""
 

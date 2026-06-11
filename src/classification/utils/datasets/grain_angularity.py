@@ -45,6 +45,10 @@ class GrainAngularitySystem(ClassificationSystem):
         """Return the default value for the enum class."""
         return cls.GrainAngularityClasses.not_specified
 
+    @classmethod
+    def is_multi_label(cls) -> bool:
+        return True
+
     class GrainAngularityClasses(IntEnum):
         """Grain angularity classes for unconsolidated soil classification (0-based indexing)."""
 

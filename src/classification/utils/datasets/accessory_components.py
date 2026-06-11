@@ -45,6 +45,10 @@ class AccessoryComponentsSystem(ClassificationSystem):
         """Return the default value for the enum class."""
         return cls.AccessoryComponentsClasses.not_specified
 
+    @classmethod
+    def is_multi_label(cls) -> bool:
+        return True
+
     class AccessoryComponentsClasses(IntEnum):
         """Accessory component classes for consolidated soil classification (0-based indexing)."""
 
