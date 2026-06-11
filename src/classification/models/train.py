@@ -26,7 +26,7 @@ from transformers import (
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from classification import DATAPATH
-from classification.evaluation.evaluate import per_class_metric
+from classification.evaluation.evaluate import AllClassificationMetrics
 from classification.models.config import (
     ExperimentConfig,
     ExperimentDatasetConfig,
@@ -208,6 +208,8 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     logger.info("Evaluation test ...")
     for test_name, test_dataset in test_datasets.items():
         metric_key_prefix = f"test_{test_name}"
+        cm_callback = next(cb for cb in trainer.callback_handler.callbacks if isinstance(cb, ConfusionMatrixCallback))
+        cm_callback.current_test_name = test_name
         test_results = trainer.predict(test_dataset, metric_key_prefix=metric_key_prefix)
         trainer.log_metrics(metric_key_prefix, test_results.metrics)
         trainer.save_metrics(metric_key_prefix, test_results.metrics)
@@ -333,7 +335,11 @@ def compute_trainset_weights(
     Returns:
         torch.Tensor: A tensor of shape (num_classes,) with scaled weights.
     """
-    label_counts = Counter(trainset["label"])
+    labels = trainset["labels"]
+    if labels and isinstance(labels[0], list):
+        label_counts = Counter(idx for row in labels for idx, val in enumerate(row) if val > 0)
+    else:
+        label_counts = Counter(labels)
     num_classes = max(label_counts.keys()) + 1  # class index starts at 0
 
     # Compute raw inverse-frequency weights
@@ -379,42 +385,81 @@ class HeadOnlyTrainer(Trainer):
                 shutil.rmtree(folder)
 
 
+def multilabel_confusion_matrix_nxn(labels: np.ndarray, predictions: np.ndarray) -> np.ndarray:
+    """Create nxn confusion matrix for multi-label classification.
+
+    One sample can contribute to multiple cells: cm[i, j] counts samples where label i is true
+    and label j is predicted.
+
+    Args:
+        labels (np.ndarray): binary indicator matrix of shape (n_samples, n_labels)
+        predictions (np.ndarray): binary indicator matrix of shape (n_samples, n_labels)
+
+    Returns:
+        cm: confusion matrix of shape (n_labels, n_labels) where cm[i, j]
+    """
+    return (labels.T @ predictions).astype(int)
+
+
 class ConfusionMatrixCallback(TrainerCallback):
     """Trainer callback to compute and save confusion matrix after evaluation."""
 
-    def __init__(self, id2class_enum: dict):
+    def __init__(self, id2class_enum: dict, is_multi_label: bool = False):
         """Initialise the callback.
 
         Args:
             id2class_enum: Mapping from class index to its enum member.
+            is_multi_label: Whether the classification task is multi-label (default: False).
         """
         self._id2class_enum = id2class_enum
+        self._is_multi_label = is_multi_label
         self._sorted_ids = sorted(id2class_enum.keys(), key=lambda i: id2class_enum[i].value)
         self._cm: np.ndarray | None = None
+        self.current_test_name: str = "test"
+
+    def _metrics_from_cm(self, cm: np.ndarray) -> dict:
+        """Compute per class f1, precision, recall from confusion matrix."""
+        metric_list = [
+            Metrics(
+                tp=int(cm[i, i]),
+                fp=int(cm[:, i].sum() - cm[i, i]),
+                fn=int(cm[i, :].sum() - cm[i, i]),
+            )
+            for i in range(cm.shape[0])
+        ]
+        return {cls.name: metric_list[id_cls] for id_cls, cls in self._id2class_enum.items()}
 
     def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
-        """Compute per-class and overall metrics, and store predictions for confusion matrix plotting."""
+        """Compute macro/micro aggregate metrics and cache per-class metrics for test artifacts."""
         logits, labels = eval_pred
-        predictions = np.argmax(logits, axis=-1)
-
-        self._cm = confusion_matrix(labels, predictions, labels=self._sorted_ids)
-        per_class_results = per_class_metric(predictions, labels)
-        class_metrics = {cls: per_class_results.get(id_cls, Metrics()) for id_cls, cls in self._id2class_enum.items()}
-        per_class_metrics = {f"{cls.name}_f1": metric.f1 for cls, metric in class_metrics.items()}
-        overall_metrics = Metrics.micro_average(class_metrics.values()).to_dict("all_micro")
-        return overall_metrics | per_class_metrics
+        if self._is_multi_label:  # multi-label
+            predictions = (logits > 0).astype(int)
+            no_prediction = predictions.sum(axis=-1) == 0
+            predictions[no_prediction, logits[no_prediction].argmax(axis=-1)] = 1
+            self._cm = multilabel_confusion_matrix_nxn(labels.astype(int), predictions)
+        else:  # single-label: binary label vectors → integer indices (n_samples,)
+            label_indices = labels.argmax(axis=-1)
+            self._cm = confusion_matrix(label_indices, logits.argmax(axis=-1), labels=self._sorted_ids)
+        self._per_class_metrics = self._metrics_from_cm(self._cm)
+        metric_list = list(self._per_class_metrics.values())
+        return (
+            {f"{k}_f1": v.f1 for k, v in self._per_class_metrics.items()}
+            | AllClassificationMetrics.compute_macro_average(metric_list)
+            | AllClassificationMetrics.compute_micro_average(metric_list)
+        )
 
     def on_predict(self, args, state, control, metrics, **kwargs):
-        """After predictions are made, compute and save the confusion matrix."""
+        """Save confusion matrix and per-class CSV as test artifacts."""
         csv_path, png_path = plot_confusion_matrix(
             self._cm,
             Path(args.output_dir),
-            split="test",
+            split=self.current_test_name,
             all_classes=list(self._id2class_enum.values()),
         )
+
         if "mlflow" in args.report_to:
-            mlflow.log_artifact(str(csv_path))
-            mlflow.log_artifact(str(png_path))
+            for artifact in (csv_path, png_path):
+                mlflow.log_artifact(str(artifact))
 
 
 def setup_trainer(
@@ -439,14 +484,18 @@ def setup_trainer(
     # load the training arguments from the config file
     training_args = setup_training_args(model_config.hyperparameters, out_directory)
 
-    use_class_balancing = model_config.get("use_class_balancing", "false").lower() == "true"
+    use_class_balancing = model_config.use_class_balancing
     compute_loss_func = None
     if use_class_balancing:
         class_weights = compute_trainset_weights(train_dataset)
         # create the object that will be called to compute the loss function (standard in transformers lib).
         compute_loss_func = WeightedLabelSmoother(class_weights=class_weights)
 
-    cm_callback = ConfusionMatrixCallback(id2class_enum=bert_model.id2classEnum)
+    cm_callback = ConfusionMatrixCallback(
+        id2class_enum=bert_model.id2classEnum,
+        is_multi_label=bert_model.classification_system.is_multi_label(),
+    )
+
     # Create the Trainer object
     trainer = HeadOnlyTrainer(
         model=bert_model.model,
@@ -462,6 +511,6 @@ def setup_trainer(
 
 
 if __name__ == "__main__":
-    # run: fine-tune-bert -cf bert/bert_config_uscs.yml -c models/your_chekpoint_model_folder
+    # run: fine-tune-bert -cf bert/bert_config_uscs.yml -c models/your_checkpoint_model_folder
     # python -m src.classification.models.train -cf bert/bert_config_color.yml
     train_model()
