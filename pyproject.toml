@@ -47,6 +47,10 @@ test = [
 lint = [
     "pre-commit==4.3.0",
 ]
+azure = [
+    "azure-ai-ml",
+    "azure-identity",
+]
 experiment-tracking = [
     "mlflow==3.3.1",
     "pygit2==1.18.2"

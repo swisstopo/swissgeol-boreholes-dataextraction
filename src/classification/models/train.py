@@ -120,10 +120,14 @@ def setup_mlflow_tracking(
         experiment_name (str): MLflow experiment name. Defaults to "Bert training".
         run_name (str | None): MLflow run name. Defaults to None.
     """
-    if mlflow.active_run():
-        mlflow.end_run()  # Ensure the previous run is closed
-    mlflow.set_experiment(experiment_name)
-    mlflow.start_run(run_name=run_name)
+    if not mlflow.active_run():
+        if os.getenv("MLFLOW_RUN_ID"):
+            # Azure ML pre-allocates a run via MLFLOW_RUN_ID; calling set_experiment()
+            # before start_run() causes an experiment-mismatch error, so we skip it.
+            mlflow.start_run()
+        else:
+            mlflow.set_experiment(experiment_name)
+            mlflow.start_run(run_name=run_name)
     mlflow.set_tag("classification system", config.classification_system)
     mlflow.set_tag("out_directory", str(out_directory))
 
@@ -232,7 +236,7 @@ def setup_training_args(model_config: ExperimentHyperparameters, out_directory: 
     Returns:
         TrainingArgument: the training arguments.
     """
-    report_to = "mlflow" if mlflow_tracking else "none"
+    report_to = "none"  # metrics logged via MetricsMLflowCallback to avoid Azure ML's 200-param limit
     # Read hyperparameters from the config file
     training_args = TrainingArguments(
         output_dir=out_directory,
@@ -314,11 +318,14 @@ def setup_data(
         logger.info(f"[{i + 1} / {len(model_config.test_sets)}] Loading test: {test_name}")
         test_samples = load_samples_from_set(test_set)
         _, _, test_samples = split_samples(test_samples)
-        test_datasets[test_name] = bert_model.get_tokenized_dataset(test_samples)
+        # test_datasets[test_name] = bert_model.get_tokenized_dataset(test_samples)
 
         if len(test_samples) == 0:
-            logger.warning(f"No samples detected for {test_name=}")
+            # logger.warning(f"No samples detected for {test_name=}")
+            logger.warning(f"No samples detected for {test_name=}, omitted")
+            continue
 
+        test_datasets[test_name] = bert_model.get_tokenized_dataset(test_samples)
     return train_dataset, val_dataset, test_datasets
 
 
@@ -457,9 +464,26 @@ class ConfusionMatrixCallback(TrainerCallback):
             all_classes=list(self._id2class_enum.values()),
         )
 
-        if "mlflow" in args.report_to:
+        if mlflow_tracking and mlflow.active_run():
             for artifact in (csv_path, png_path):
                 mlflow.log_artifact(str(artifact))
+
+
+class MetricsMLflowCallback(TrainerCallback):
+    """Logs step metrics to an active MLflow run.
+
+    Replaces report_to='mlflow' on the Trainer, which dumps all 207 TrainingArguments
+    fields as params and exceeds Azure ML MLflow's 200-parameter limit.
+    """
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        """Log numeric metrics to the active MLflow run at each logging step."""
+        if not state.is_world_process_zero or not logs or not mlflow.active_run():
+            return
+        mlflow.log_metrics(
+            {k: v for k, v in logs.items() if isinstance(v | (int, float))},
+            step=state.global_step,
+        )
 
 
 def setup_trainer(
@@ -495,6 +519,9 @@ def setup_trainer(
         id2class_enum=bert_model.id2classEnum,
         is_multi_label=bert_model.classification_system.is_multi_label(),
     )
+    callbacks = [cm_callback]
+    if mlflow_tracking:
+        callbacks.append(MetricsMLflowCallback())
 
     # Create the Trainer object
     trainer = HeadOnlyTrainer(
@@ -505,7 +532,7 @@ def setup_trainer(
         processing_class=bert_model.tokenizer,
         compute_loss_func=compute_loss_func,
         compute_metrics=cm_callback.compute_metrics,
-        callbacks=[cm_callback],
+        callbacks=callbacks,
     )
     return trainer
 
