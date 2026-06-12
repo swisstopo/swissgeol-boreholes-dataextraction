@@ -1,29 +1,27 @@
-classification_system: "en_main"
-experiment_name: "en_main"
+classification_system: "organic_components"
+experiment_name: "organic_components"
 model_path: "google-bert/bert-base-multilingual-uncased"
 use_class_balancing: false
-inference_batch_size: 32
 
 # Training and testing sets
 training_sets:
-  en_main:
-    classification_system: en_main
+  organic_components:
+    classification_system: organic_components
     ground_truths:
-      - deepwells_ground_truth.json
       - geoquat_ground_truth.json
       - nagra_ground_truth.json
-      - thurgau_ground_truth.json
-      - zurich_ground_truth.json
+      - deepwells_ground_truth.json
+      - zurich_ground_truth.json # only has three samples
+
 
 test_sets:
-  en_main:
-    classification_system: en_main
+  organic_components:
+    classification_system: organic_components
     ground_truths:
-      - deepwells_ground_truth.json
       - geoquat_ground_truth.json
       - nagra_ground_truth.json
-      - thurgau_ground_truth.json
       - zurich_ground_truth.json
+      - deepwells_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:

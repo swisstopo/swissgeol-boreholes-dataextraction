@@ -73,14 +73,10 @@
         "request": "launch",
         "module": "src.classification.main",
         "args": [
-            // classify ground truth descriptions --> gt.json
+            // classify ground truth descriptions (test set)
             "-f", "data/geoquat_ground_truth.json",
-            // classify ONE ground truth description --> subset
-            // "-f", "data/geoquat/onefile",
-            // classify predictions --> predictions.json
-            // "-f", "data/output/multi/geoquat_subset/predictions.json",
-
-            "-g", "data/geoquat_ground_truth.json",
+            // classify predictions (from extraction pipeline)
+            // "-f", "data/output/predictions.json",
             "-c", "bert",
             "-p", "models/lithology_head",   // or models/en_main_head
             "-b", "models/backbone/backbone.safetensors",
@@ -97,11 +93,10 @@
         "request": "launch",
         "module": "src.classification.main",
         "args": [
-            // Repeatable benchmark specs: "<name>:<input_path>:<ground_truth_path>"
-            // input path can be full ground truth file or a subset of ground truth
-            // input can also be the prediction files
-            "--benchmark", "geoquat GT: data/geoquat_ground_truth.json: data/geoquat_ground_truth.json",
-            "--benchmark", "geoquat pred : data/output/multi/geoquat_subset/predictions.json: data/geoquat_ground_truth.json",
+            // Repeatable benchmark specs: "<name>:<input_path>"
+            // input path can be full ground truth or a prediction file
+            "--benchmark", "geoquat GT: data/geoquat_ground_truth.json",
+            "--benchmark", "geoquat pred : data/output/predictions.json",
             "-c", "bert",
             "-p", "models/lithology_head",   // or models/en_main_head
             "-b", "models/backbone/backbone.safetensors",

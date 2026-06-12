@@ -21,6 +21,9 @@ class LithologySystem(ClassificationSystem):
     def normalize_class_string(cls, class_str: str) -> str:
         """Normalize a lithology class string.
 
+        Examples include test that are comma separated (e.g. "limestone, bioclasts")
+            or semicolon ("limestone: micritic")
+
         Args:
             class_str (str): The class string to be normalized (e.g. " "limestone, bioclasts",").
 
@@ -28,7 +31,9 @@ class LithologySystem(ClassificationSystem):
             str: The normalized lithology class string (e.g., "limestone").
 
         """
-        return class_str.lower().split(",")[0]
+        string_comma = class_str.lower().split(",")[0]
+        string_comma_semi = string_comma.lower().split(":")[0]
+        return string_comma_semi.strip()
 
     @classmethod
     def get_enum(cls) -> type[LithologyClasses]:

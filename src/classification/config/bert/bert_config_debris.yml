@@ -1,29 +1,23 @@
-classification_system: "en_main"
-experiment_name: "en_main"
+classification_system: "debris"
+experiment_name: "debris"
 model_path: "google-bert/bert-base-multilingual-uncased"
 use_class_balancing: false
-inference_batch_size: 32
 
 # Training and testing sets
 training_sets:
-  en_main:
-    classification_system: en_main
+  debris:
+    classification_system: debris
     ground_truths:
-      - deepwells_ground_truth.json
       - geoquat_ground_truth.json
-      - nagra_ground_truth.json
-      - thurgau_ground_truth.json
-      - zurich_ground_truth.json
+      - deepwells_ground_truth.json
+
 
 test_sets:
-  en_main:
-    classification_system: en_main
+  debris:
+    classification_system: debris
     ground_truths:
-      - deepwells_ground_truth.json
       - geoquat_ground_truth.json
-      - nagra_ground_truth.json
-      - thurgau_ground_truth.json
-      - zurich_ground_truth.json
+      - deepwells_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:

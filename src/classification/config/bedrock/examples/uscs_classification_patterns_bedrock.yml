@@ -1,5 +1,3 @@
-
-
 baseline:
   de:
     CH: ["fetter Ton"]
@@ -12,9 +10,23 @@ baseline:
     GC: ["toniger Kies", "Kies, Lehm"]
     GC-GM: ["siltiger bis toniger Kies"]
     GM: ["siltiger Kies"]
-    GP: ["schlecht abgestufter Kies", "grober Kies", "mittelgrober Kies", "sandiger Feinkies", "Grobkies", "Feinkies"]
+    GP:
+      [
+        "schlecht abgestufter Kies",
+        "grober Kies",
+        "mittelgrober Kies",
+        "sandiger Feinkies",
+        "Grobkies",
+        "Feinkies",
+      ]
     GP-GC: ["schlecht abgestufter Kies mit Ton"]
-    GP-GM: ["schlecht abgestufter Kies mit Silt", "siltiger Grobkies", "siltiger Mittelkies", "siltiger Feinkeis"]
+    GP-GM:
+      [
+        "schlecht abgestufter Kies mit Silt",
+        "siltiger Grobkies",
+        "siltiger Mittelkies",
+        "siltiger Feinkeis",
+      ]
     GW: ["gut abgestufter Kies"]
     GW-GC: ["gut abgestufter Kies mit Ton"]
     GW-GM: ["gut abgestufter Kies mit Silt"]
@@ -24,18 +36,58 @@ baseline:
     OL: ["organischer Ton", "Humus und Sand"]
     S: ["Sand", "Sand, Kies"]
     S-SC: ["schwach toniger Sand", "leicht toniger Sand"]
-    S-SM: ["schwach siltiger Sand", "leicht siltiger Sand", "leicht siltiger Feinsand", "leicht siltiger Mittelsand"]
+    S-SM:
+      [
+        "schwach siltiger Sand",
+        "leicht siltiger Sand",
+        "leicht siltiger Feinsand",
+        "leicht siltiger Mittelsand",
+      ]
     SC: ["toniger Sand", "lehmiger Sand"]
     SC-SM: ["siltiger, toniger Sand", "Sand, verlehmt, siltig"]
     SM: ["siltiger Sand"]
-    SP: ["schlecht abgestufter Sand", "grobkörniger Sand", "mittelkörniger Sand", "feinkiesiger Mittelsand"]
-    SP-SC: ["schlecht abgestufter Sand mit Ton", "Feinsand, Lehm", "toniger Feinsand"]
-    SP-SM: ["schlecht abgestufter Sand mit Silt", "siltiger Feinsand", "siltiger Mittelsand", "siltiger Grobsand", "siltiger Feinkies"]
+    SP:
+      [
+        "schlecht abgestufter Sand",
+        "grobkörniger Sand",
+        "mittelkörniger Sand",
+        "feinkiesiger Mittelsand",
+      ]
+    SP-SC:
+      [
+        "schlecht abgestufter Sand mit Ton",
+        "Feinsand, Lehm",
+        "toniger Feinsand",
+      ]
+    SP-SM:
+      [
+        "schlecht abgestufter Sand mit Silt",
+        "siltiger Feinsand",
+        "siltiger Mittelsand",
+        "siltiger Grobsand",
+        "siltiger Feinkies",
+      ]
     SW: ["gut abgestufter Sand", "Sand, Kies, Silt"]
     SW-SC: ["gut abgestufter Sand mit Ton"]
-    SW-SM: ["gut abgestufter Sand mit Silt", "Grobmittelsand, siltig", "Feinmittelsand, siltig"]
+    SW-SM:
+      [
+        "gut abgestufter Sand mit Silt",
+        "Grobmittelsand, siltig",
+        "Feinmittelsand, siltig",
+      ]
     Bl: ["Block"]
-    FELS: ["Fels", "Sandstein", "Tonstein", "Mergel", "Molasse", "Kalk", "Sandsteinbrocken", "Sandsteinmolasse", "Gips"]
+    FELS:
+      [
+        "Fels",
+        "Sandstein",
+        "Tonstein",
+        "Mergel",
+        "Molasse",
+        "Kalk",
+        "Sandsteinbrocken",
+        "Sandsteinmolasse",
+        "Gips",
+      ]
     kA: ["keine Angabe", "unbekannt", "nicht beschrieben"]
     kunst: ["Auffüllung", "Aufschüttung", "Beton"]
     Pt: ["Torf"]
@@ -53,10 +105,20 @@ baseline:
     GC-GM: ["gravier limono-argileux"]
     GP: ["gravier mal gradué", "gravier moyen", "gravier grossier"]
     GP-GC: ["gravier mal gradué avec argile"]
-    GP-GM: ["gravier mal gradué avec limon", "gravier moyen, limoneux", "gravier grossier, limoneux"]
+    GP-GM:
+      [
+        "gravier mal gradué avec limon",
+        "gravier moyen, limoneux",
+        "gravier grossier, limoneux",
+      ]
     GM: ["gravier limoneux"]
     GW: ["gravier bien gradué"]
-    GW-GM: ["gravier bien gradué avec limon", "gravier, galets, limoneux", "gravier, éléments roulés, limoneux"]
+    GW-GM:
+      [
+        "gravier bien gradué avec limon",
+        "gravier, galets, limoneux",
+        "gravier, éléments roulés, limoneux",
+      ]
     GW-GC: ["gravier bien gradué avec argile"]
     MH: ["limon élastique"]
     ML: ["limon"]
@@ -162,4 +224,3 @@ baseline:
     GW: ["ghiaia ben classata"]
     GW-GM: ["ghiaia ben con limo"]
     MH: ["limo elastico"]
-
