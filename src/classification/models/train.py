@@ -225,6 +225,10 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     logger.info("Cleaning checkpoints (save space) ...")
     trainer.clean_checkpoints()
 
+    if mlflow_tracking and mlflow.active_run():
+        logger.info("Uploading model head to MLflow artifacts ...")
+        mlflow.log_artifacts(str(work_directory), artifact_path="model")
+
 
 def setup_training_args(model_config: ExperimentHyperparameters, out_directory: Path) -> TrainingArguments:
     """Create a TrainingArgument object from the config file.
@@ -481,7 +485,7 @@ class MetricsMLflowCallback(TrainerCallback):
         if not state.is_world_process_zero or not logs or not mlflow.active_run():
             return
         mlflow.log_metrics(
-            {k: v for k, v in logs.items() if isinstance(v | (int, float))},
+            {k: v for k, v in logs.items() if isinstance(v, int | float)},
             step=state.global_step,
         )
 
