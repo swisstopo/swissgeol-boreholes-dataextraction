@@ -86,12 +86,17 @@ def run_classification_predictions(
     except Exception:
         logger.info(f"Fallback, load data as GT (test set) {file_path} ...")
         is_prediction = False
-        layer_descriptions_gt = classification_system_cls.process(
-            ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
-                ground_truth=GroundTruth(file_path).ground_truth,
-            )
+        gt_boreholes = GroundTruthBoreholeWithLanguage.from_ground_truth(
+            ground_truth=GroundTruth(file_path).ground_truth,
         )
+        layer_descriptions_gt = classification_system_cls.process(ground_truth=gt_boreholes)
         _, _, layer_descriptions = split_samples(layer_descriptions_gt)
+
+        # No labeled data for this classification system — classify all descriptions without evaluation
+        if not layer_descriptions:
+            logger.info("No labeled data found for this classification system. Classifying all descriptions.")
+            layer_descriptions = classification_system_cls.process(ground_truth=gt_boreholes, allow_none=True)
+            is_prediction = True
 
     n_documents = len({layer.filename for layer in layer_descriptions})
 

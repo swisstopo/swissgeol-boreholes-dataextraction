@@ -1,0 +1,674 @@
+baseline: |
+  not_specified:
+    description:
+      No accessory component can be identified from the description, or the
+      description does not mention any minor biological, organic, or mineral
+      inclusions. Use when no specific component is present or inferable.
+    keywords:
+      de: [keine Angabe, unbekannt, nicht beschrieben, k.A.]
+      fr: [non spécifié, sans indication, inconnu]
+      it: [non specificato, senza indicazioni, sconosciuto]
+
+  algae:
+    description:
+      Unicellular or multicellular photosynthetic organisms preserved in rock;
+      includes green, red, and blue-green algae (cyanobacteria). Common in
+      shallow-marine, lacustrine, and carbonate environments.
+    keywords:
+      de: [Algen, Alge, algal]
+      fr: [algues, algue]
+      it: [alghe, alga]
+
+  algal_mats:
+    description:
+      Layered, laminated structures built by mat-forming algae or cyanobacteria;
+      typically occur as thin dark laminae in carbonate or siliciclastic sediments.
+      Distinct from individual algae by their mat or laminate fabric.
+    keywords:
+      de: [Algenteppich, Algenmatte, Algenmatten, Algenteppiche]
+      fr: [tapis algaux, tapis algal, nappe algale]
+      it: [tappeto algale, tappeti algali, stuoia algale]
+
+  ammonites:
+    description:
+      Extinct coiled cephalopod molluscs with a septate shell; highly diverse
+      in Jurassic and Cretaceous marine sediments and used as index fossils.
+      Typically preserved as molds, casts, or pyritised internal molds.
+    keywords:
+      de: [Ammoniten, Ammonit, Ammonitenrest]
+      fr: [ammonites, ammonite]
+      it: [ammoniti, ammonite]
+
+  aptychi:
+    description:
+      Paired calcified plates representing the lower jaw or operculum of
+      ammonites; occur as discrete elements in Jurassic and Cretaceous
+      pelagic limestones and marls, often dissociated from the ammonite shell.
+    keywords:
+      de: [Aptychen, Aptychus, Aptychenfragmente]
+      fr: [aptychus, aptyques]
+      it: [aptichi, aptico]
+
+  ash:
+    description:
+      Fine-grained volcanic tephra (particles <2 mm) deposited from explosive
+      eruptions; may form discrete ash layers (tephrochronology markers) or
+      be dispersed through the sediment as a minor component.
+    keywords:
+      de: [Asche, vulkanische Asche, Tephra, Tuff, Aschenlagen]
+      fr: [cendre volcanique, cendres, tephra]
+      it: [cenere vulcanica, cenere, tephra]
+
+  belemnites:
+    description:
+      Cigar-shaped calcitic rostra (guards) of extinct squid-like cephalopods;
+      abundant in Jurassic and Cretaceous marine sediments, often occurring
+      as discrete cylindrical fossils with a characteristic apical pit.
+    keywords:
+      de: [Belemniten, Belemnit, Donnerkeile, Teufelsfinger]
+      fr: [bélemnites, bélemnite]
+      it: [belemniti, belemnite]
+
+  bioclasts:
+    description:
+      Generic fragmented skeletal or shell material of biological origin without
+      further taxonomic identification; includes shell debris, bone fragments,
+      and unidentifiable organic clasts. Use when specific fossil group cannot
+      be determined.
+    keywords:
+      de: [Bioklasten, Bioclast, Schalendetritus, Schalenbruchstücke, biogener Detritus]
+      fr: [bioclastes, bioclaste, détritus biogène, débris coquilliers]
+      it: [bioclasti, bioclasto, detrito biogenico, frammenti di guscio]
+
+  biodetritus:
+    description:
+      Fine organic detrital material of biological origin; includes finely
+      fragmented skeletal material, organic particles, and decomposed organic
+      residues. Finer-grained and less identifiable than discrete bioclasts.
+    keywords:
+      de: [Biodetritus, biogener Detritus, organischer Detritus]
+      fr: [biodetritus, détritus biogène fin, détritus organique]
+      it: [biodetriti, detrito biogenico fine, detrito organico]
+
+  bitumen:
+    description:
+      Naturally occurring viscous, dark hydrocarbon material impregnating or
+      filling pore spaces and fractures; indicates proximity to petroleum systems.
+      Appears as black, glossy streaks or coatings on rock surfaces.
+    keywords:
+      de: [Bitumen, bituminös, bituminöse Imprägnierung, Erdöl, Kohlenwasserstoff]
+      fr: [bitume, bitumineux, imprégnation bitumineuse, pétrole, hydrocarbures]
+      it: [bitume, bituminoso, impregnazione bituminosa, idrocarburi]
+
+  bivalves:
+    description:
+      Two-valved molluscs (clams, mussels, oysters); shells occur whole or as
+      fragments in marine, brackish, and freshwater sediments. Common in
+      Mesozoic and Cenozoic carbonate and siliciclastic rocks.
+    keywords:
+      de: [Bivalven, Muscheln, Muschel, Lamellibranchiaten, Zweischaler]
+      fr: [bivalves, bivalve, mollusques bivalves, lamellibranches, moules]
+      it: [bivalvi, bivalve, molluschi bivalvi, lamellibranchi]
+
+  brachiopods:
+    description:
+      Sessile marine invertebrates with two valves (pedicle and brachial);
+      abundant in Palaeozoic rocks, less common in Mesozoic and Cenozoic.
+      Distinguished from bivalves by bilateral symmetry across the shell midline.
+    keywords:
+      de: [Brachiopoden, Armfüsser, Brachiopode]
+      fr: [brachiopodes, brachiopode]
+      it: [brachiopodi, brachiopode]
+
+  bryozoans:
+    description:
+      Colonial marine invertebrates forming branching, encrusting, or fenestrate
+      frameworks; common frame-builders in Palaeozoic and Mesozoic reefs. Often
+      fragmented; appear as small lace-like or twig-like calcite fragments.
+    keywords:
+      de: [Bryozoen, Moostierchen, Bryozoa, Bryozoe]
+      fr: [bryozoaires, bryozoaire, polypiers branchus]
+      it: [briozoi, briozoo, briozoi ramificati]
+
+  calcareous_concretion:
+    description:
+      Rounded to irregular diagenetic nodules or masses composed of calcium
+      carbonate precipitated within the host sediment during early diagenesis;
+      harder than surrounding rock, may enclose fossils.
+    keywords:
+      de: [Kalkkonkretionen, Kalkknollen, kalkige Konkretionen, Kalkknoten]
+      fr: [concrétions calcaires, nodules calcaires, rognons calcaires]
+      it: [concrezioni calcaree, noduli calcarei, concrezioni di carbonato]
+
+  calcareous_oncoids:
+    description:
+      Oncoids (concentrically laminated grains formed by microbial encrustation)
+      with a calcareous (calcium carbonate) composition; formed in warm, agitated
+      carbonate environments. Larger and less regular than ooids.
+    keywords:
+      de: [kalkige Onkoide, Kalk-Onkoide, karbonatische Onkoide]
+      fr: [oncoïdes calcaires, oncoïdes carbonatés]
+      it: [oncoidi calcarei, oncoidi carbonatici]
+
+  calcareous_ooids:
+    description:
+      Ooids with a calcium carbonate (calcite or aragonite) composition; spherical
+      grains 0.25–2 mm with concentric laminae around a nucleus. Indicate warm,
+      shallow, agitated marine or lacustrine environments.
+    keywords:
+      de: [kalkige Ooide, Kalk-Ooide, karbonatische Ooide, Kalk-Oolithe]
+      fr: [oolithes calcaires, oïdes calcaires, oolithes carbonatées]
+      it: [oidi calcarei, ooliti calcaree, oidi carbonatici]
+
+  calcareous_pisoids:
+    description:
+      Pisoids (concentrically coated grains >2 mm, larger than ooids) with
+      calcareous composition; form in vadose, cave, or high-energy carbonate
+      environments. Grains called pisolites or pisolitic limestone when abundant.
+    keywords:
+      de: [kalkige Pisoide, Pisolithe, Kalk-Pisoide]
+      fr: [pisolithes calcaires, pisolithes carbonatés]
+      it: [pisoidi calcarei, pisioliti calcaree]
+
+  calpionellids:
+    description:
+      Tiny tintinnid ciliates with calcitic loricas; restricted to Late Jurassic
+      to Early Cretaceous pelagic limestones. Their abundance defines the
+      Tithonian–Berriasian boundary in Tethyan sequences.
+    keywords:
+      de: [Calpionelliden, Calpionella]
+      fr: [calpionelles, calpionellides]
+      it: [calpionelle, calpionellidi]
+
+  cephalopods:
+    description:
+      Class of molluscs including ammonites, belemnites, nautiloids, and
+      squid-like forms; use this general category when the specific group cannot
+      be determined. Occur in marine sediments from Cambrian to present.
+    keywords:
+      de: [Cephalopoden, Kopffüsser, Cephalopode]
+      fr: [céphalopodes, céphalopode]
+      it: [cefalopodi, cefalopode]
+
+  chert:
+    description:
+      Dense microcrystalline silica (quartz) occurring as nodules, beds, or
+      lenses within carbonate or other sedimentary rocks; includes flint (in
+      chalk) and radiolarite. May be biogenic (from sponge spicules, radiolarians)
+      or diagenetic.
+    keywords:
+      de: [Chert, Feuerstein, Hornstein, Silex, Flint, Hornsteinknolle]
+      fr: [chert, silex, rognon siliceux, rognons de silex, pierre à fusil]
+      it: [selce, chert, noduli silicei, pietra focaia]
+
+  coal_fragments:
+    description:
+      Discrete pieces of coal or carbonaceous material derived from buried plant
+      matter; ranges from vitrinite particles to lignite chips and anthracite
+      fragments. Indicates terrestrial or deltaic depositional setting or reworking
+      of organic-rich strata.
+    keywords:
+      de: [Kohlenfragmente, Kohleflitter, Kohlestücke, Kohle, Kohlepartikeln, Lignit, Braunkohle]
+      fr: [fragments de charbon, débris de charbon, charbon, lignite, particules charbonneuses]
+      it: [frammenti di carbone, carbone, lignite, particelle carboniose, detriti di carbone]
+
+  coccoliths:
+    description:
+      Microscopic calcite plates (2–25 µm) produced by coccolithophorid algae;
+      major constituents of pelagic chalk and coccolith ooze. Typically only
+      visible under electron microscopy, but noted as accessory in pelagic rocks.
+    keywords:
+      de: [Coccolithen, Coccolith, Nannoplanikton, Nannofossilien]
+      fr: [coccolithes, coccolithe, nannoplancton calcaire]
+      it: [cocoliti, coccolite, nannoplancton calcareo]
+
+  concretion:
+    description:
+      Rounded or irregular diagenetic masses of various compositions (carbonate,
+      silica, pyrite, siderite, phosphate); use this general term when the mineral
+      composition of the concretion cannot be determined.
+    keywords:
+      de: [Konkretionen, Konkretion, Knolle, Geoden]
+      fr: [concrétions, concrétion, nodules, géodes]
+      it: [concrezioni, concrezione, noduli, geodi]
+
+  corals:
+    description:
+      Colonial or solitary carbonate-secreting coelenterates (Anthozoa); reef-
+      builders in warm shallow marine environments. Include tabulate, rugose
+      (Palaeozoic), and scleractinian (Mesozoic–present) forms.
+    keywords:
+      de: [Korallen, Koralle, Riffkorallen, Skleraktinien]
+      fr: [coraux, corail, polypiers]
+      it: [coralli, corallo, madrepore]
+
+  crinoids:
+    description:
+      Stalked echinoderms (sea lilies) and their free-living relatives (feather
+      stars); calcite ossicles and arm plates abundant in Palaeozoic and Mesozoic
+      shallow-marine limestones. Disarticulated ossicles are common accessory
+      components in crinoidal packstones and grainstones.
+    keywords:
+      de: [Crinoideen, Seelilien, Krinoiden, Stielglieder, Crinoidenreste]
+      fr: [crinoïdes, crinoïde, encrines, articles de crinoïdes]
+      it: [crinoidi, gigli di mare, articoli di crinoide]
+
+  crystals:
+    description:
+      Mineral crystals grown within pore spaces, fractures, or vugs; includes
+      calcite spar, gypsum rosettes, quartz druse, and other diagenetic or
+      hydrothermal minerals visible in hand specimen.
+    keywords:
+      de: [Kristalle, Kristall, Druse, Kalzit-Kristalle, Gipskristalle, Quarzkristalle]
+      fr: [cristaux, cristal, druses, cristaux de calcite, cristaux de gypse]
+      it: [cristalli, cristallo, druse, cristalli di calcite]
+
+  diatoms:
+    description:
+      Microscopic siliceous algae forming ornate frustules; abundant in marine
+      and freshwater sediments from Cretaceous to present. Diatomite and
+      diatomaceous ooze are composed predominantly of their frustules.
+    keywords:
+      de: [Diatomeen, Kieselalgen, Diatomit]
+      fr: [diatomées, algues diatomées, diatomite]
+      it: [diatomee, alghe diatomee, diatomite]
+
+  dinoflagellates:
+    description:
+      Single-celled protists forming organic-walled cysts (dinocysts);
+      important biostratigraphic markers in Triassic to Recent marine sediments.
+      Palynological preparation required for identification.
+    keywords:
+      de: [Dinoflagellaten, Dinoflagellat, Dinoflagellatenzysten]
+      fr: [dinoflagellés, dinoflagellé, kystes de dinoflagellés]
+      it: [dinoflagellati, dinoflagellato, cisti di dinoflagellati]
+
+  echinoderms:
+    description:
+      Marine invertebrates with five-fold symmetry including sea urchins,
+      starfish, brittle stars, crinoids, and sea cucumbers; skeletal elements
+      are distinctive calcite plates or ossicles. Use this general category
+      when the specific echinoderm group cannot be determined.
+    keywords:
+      de: [Echinodermen, Stachelhäuter, Echinoderm]
+      fr: [échinodermes, échinoderme]
+      it: [echinodermi, echinoderma]
+
+  echinoids:
+    description:
+      Sea urchins; a subset of echinoderms with a globular test of interlocking
+      calcite plates. Common in Mesozoic and Cenozoic shallow-marine carbonate
+      rocks; spines and test plates are common accessory components.
+    keywords:
+      de: [Echiniden, Seeigel, Echinoid, Seeigel-Stacheln, Echinoideen]
+      fr: [échinides, oursins, oursin, échinoïdes]
+      it: [echinoidi, ricci di mare, riccio di mare]
+
+  fish_remains:
+    description:
+      Skeletal elements of fish including scales, teeth, vertebrae, and bones;
+      occur in marine, lacustrine, and fluvial sediments. Fish teeth (ichthyoliths)
+      are resistant and common in deep-marine sediments.
+    keywords:
+      de: [Fischreste, Fischzähne, Fischschuppen, Fischknochen, Ichthyolithen]
+      fr: [restes de poissons, dents de poissons, écailles de poissons, ichthyolithes]
+      it: [resti di pesci, denti di pesci, scaglie di pesci, ittioliti]
+
+  foraminifera:
+    description:
+      Single-celled protists secreting calcareous or agglutinated tests;
+      planktonic forms are key biostratigraphic markers, benthic forms indicate
+      water depth and palaeoenvironment. Typically microscopic; visible as
+      white or cream-coloured dots in hand specimen.
+    keywords:
+      de: [Foraminiferen, Foraminifera, Foraminiferenschalen, Globigerinen]
+      fr: [foraminifères, foraminifère, globigérines, tests de foraminifères]
+      it: [foraminiferi, foraminifero, globigérine, test di foraminiferi]
+
+  fossils:
+    description:
+      General term for preserved remains or traces of biological organisms;
+      use when a fossil component is clearly present but cannot be assigned to
+      a more specific taxonomic group. Includes body fossils and trace fossils.
+    keywords:
+      de: [Fossilien, Fossil, Versteinerungen, Versteinerung, fossilführend, fossilreich]
+      fr: [fossiles, fossile, fossilifère]
+      it: [fossili, fossile, fossilifero]
+
+  gastropods:
+    description:
+      Univalved molluscs (snails, slugs); spiral shells occur in marine, brackish,
+      and freshwater sediments and in terrestrial palaeosols. Common in Mesozoic
+      and Cenozoic deposits.
+    keywords:
+      de: [Gastropoden, Schnecken, Schnecke, Gasteropoden, Gastropod]
+      fr: [gastéropodes, gastéropode, escargots, mollusques gastéropodes]
+      it: [gasteropodi, gasteropode, lumache, molluschi gasteropodi]
+
+  gryphaea:
+    description:
+      Extinct aberrant oysters (genus Gryphaea) with a strongly coiled lower
+      valve and flat upper valve; characteristic of Early Jurassic marine
+      sediments. Often called "devil's toenails".
+    keywords:
+      de: [Gryphaea, Gryphäen, Gryphaea-Austern, Teufelszehennagel]
+      fr: [gryphées, gryphée]
+      it: [grifee, grifea]
+
+  iron_ooids:
+    description:
+      Ooids with an iron mineral composition (chamosite, goethite, siderite, or
+      limonite); form in shallow marine, coastal, or swampy environments.
+      Characteristic of ironstones and oolitic iron formations.
+    keywords:
+      de: [Eisenooide, ferruginöse Ooide, oolithischer Eisenstein, Eisenoolith]
+      fr: [oolithes ferrugineuses, oolithes de fer, oolithes ferrugineux]
+      it: [oidi ferruginosi, oidi ferrosi, oolititi ferruginose]
+
+  iron_pisoids:
+    description:
+      Pisoids with iron mineral composition (chamosite, goethite, or siderite);
+      larger (>2 mm) iron-coated grains occurring in ironstone or lateritic
+      deposits.
+    keywords:
+      de: [Eisenpisoide, ferruginöse Pisoide, Eisenpiso]
+      fr: [pisolithes ferrugineuses, pisolithes de fer]
+      it: [pisoidi ferruginosi, pisoidi di ferro]
+
+  lapilli:
+    description:
+      Volcanic pyroclastic fragments 2–64 mm in size, intermediate between fine
+      ash and volcanic bombs; include scoria, pumice, and lithic lapilli. Indicate
+      proximity to a volcanic eruption or reworked volcanic material.
+    keywords:
+      de: [Lapilli, Lapillus, vulkanische Lapilli]
+      fr: [lapillis, lapilli, lapillus]
+      it: [lapilli, lapillo, lapilli vulcanici]
+
+  lithoclasts:
+    description:
+      Rock fragments (clasts) within a sediment derived from older rocks;
+      includes intraclasts (eroded from the depositional basin floor) and
+      extraclasts (from outside the basin). Can be carbonate or siliciclastic.
+    keywords:
+      de: [Lithoklasten, Lithoclast, Gesteinsfragmente, Intraklaste, Extraklaste]
+      fr: [lithoclastes, lithoclaste, fragments rocheux, intraclastes]
+      it: [litoclasti, litoclasto, frammenti di roccia, intraclasti]
+
+  molluscs:
+    description:
+      Phylum comprising bivalves, gastropods, cephalopods, and other soft-bodied
+      invertebrates with a calcareous shell; use this general category when the
+      specific class cannot be determined from the available description.
+    keywords:
+      de: [Mollusken, Weichtiere, Molluske, Schalentiere]
+      fr: [mollusques, mollusque]
+      it: [molluschi, mollusco]
+
+  nautilids:
+    description:
+      Nautiloid cephalopods with coiled or straight external shells; diverse in
+      Palaeozoic, represented by the living Nautilus today. Shells may resemble
+      ammonites but have simpler suture lines.
+    keywords:
+      de: [Nautiloiden, Nautiliden, Nautiloid, Nautiloide]
+      fr: [nautilides, nautilide, nautilus]
+      it: [nautilidi, nautiloidi, nautilus]
+
+  nummulites:
+    description:
+      Large (up to several centimetres) disc-shaped benthic foraminifera;
+      characteristic of Eocene warm shallow-water carbonates in Tethyan and
+      peri-Tethyan areas. Abundantly rock-forming in nummulitic limestones.
+    keywords:
+      de: [Nummuliten, Nummulite, Nummulitenkalk]
+      fr: [nummulites, nummulite, calcaire nummulitique]
+      it: [nummuliti, nummulite, calcare nummulitico]
+
+  oncoids:
+    description:
+      Irregular, concentrically laminated carbonate grains formed by microbial
+      or algal encrustation around a nucleus; larger and less regular than ooids.
+      Indicate shallow, agitated carbonate environments. Use this general term
+      when composition (calcareous vs. iron) is not specified.
+    keywords:
+      de: [Onkoide, Onkolith, Onkolithe]
+      fr: [oncoïdes, oncoïde, oncolithes]
+      it: [oncoidi, oncoide, oncoliti]
+
+  ooids:
+    description:
+      Spherical to sub-spherical concentrically laminated grains 0.25–2 mm with
+      a nucleus; form in warm, shallow, agitated marine or lacustrine waters.
+      Indicate high-energy, supersaturated conditions. Use this general term
+      when composition (calcareous vs. iron) is not specified.
+    keywords:
+      de: [Ooide, Oolithe, Oolith, Ooid, oolithisch]
+      fr: [oolithes, oolithe, oïdes, oolithique]
+      it: [oidi, ooliti, oolitico]
+
+  organic_matter:
+    description:
+      General term for organic material not further classifiable; includes
+      kerogen, dispersed carbon, humus particles, and unidentified organic debris.
+      Appears as dark colouration, organic films, or particles in the sediment.
+    keywords:
+      de: [Organische Substanz, organisches Material, organische Beimengungen, Kerogen]
+      fr: [matière organique, substance organique, débris organiques]
+      it: [materia organica, sostanza organica, detriti organici]
+
+  ostracods:
+    description:
+      Small bivalved crustaceans with a calcite carapace (0.1–2 mm); abundant
+      in marine, brackish, and freshwater sediments. Important for
+      palaeoenvironmental and biostratigraphic reconstruction. Appear as
+      tiny lens-shaped calcite valves.
+    keywords:
+      de: [Ostrakoden, Muschelkrebse, Ostracoda, Ostrakode]
+      fr: [ostracodes, ostracode, crustacés ostracodes]
+      it: [ostracodi, ostracode, crostacei ostracodi]
+
+  other:
+    description:
+      Accessory component clearly present but not assignable to any defined
+      category in this classification system. Use only when the component is
+      identifiable but genuinely falls outside all other classes.
+    keywords:
+      de: [andere, anderes, sonstige, verschiedenes]
+      fr: [autre, autres, divers]
+      it: [altro, altri, varie]
+
+  oysters:
+    description:
+      Bivalve molluscs of family Ostreidae with irregular, heavily calcified
+      shells; abundant in Mesozoic and Cenozoic shallow-marine and estuarine
+      deposits. Includes extinct genera such as Gryphaea (listed separately)
+      and common shallow-water oyster beds.
+    keywords:
+      de: [Austern, Auster, Ostreidae]
+      fr: [huîtres, huître, ostréidés]
+      it: [ostriche, ostrica, ostreidi]
+
+  pellets:
+    description:
+      Small, rounded to ovoid carbonate grains without internal concentric
+      structure; formed by microbial precipitation or as faecal pellets. Common
+      in shallow-marine carbonate mudstones, wackestones, and lagoonal deposits.
+    keywords:
+      de: [Pellets, Pellet, Pelletoide, pelletoid]
+      fr: [pellets, pellet, pelletoïdes]
+      it: [pellets, pellet, pelletoidi]
+
+  pisoids:
+    description:
+      Concentrically coated grains >2 mm (larger than ooids), also called
+      pisolites; form in vadose zones, cave environments, or high-energy
+      carbonate settings. Use this general term when composition is unspecified.
+    keywords:
+      de: [Pisoide, Pisolithe, Pisoid, Pisolith]
+      fr: [pisolithes, pisolithe, pisolites]
+      it: [pisoidi, pisoliti, pisoide]
+
+  plant_remains:
+    description:
+      Macroscopic fragments of terrestrial or aquatic vegetation including
+      leaves, wood fragments, seeds, and roots preserved in sediment. Indicate
+      proximity to palaeoshorelines, swamps, or fluvial environments.
+    keywords:
+      de: [Pflanzenreste, Pflanzenteile, Pflanzenhäcksel, Pflanzendetritus]
+      fr: [restes végétaux, débris végétaux, débris de plantes]
+      it: [resti vegetali, detriti vegetali, frammenti di piante]
+
+  plant_root_tubes:
+    description:
+      Hollow cylindrical structures or casts left by decayed plant roots;
+      common in palaeosols, lacustrine sediments, and loess. Appear as
+      vertical or subvertical tubes often filled with secondary carbonate or
+      iron oxide.
+    keywords:
+      de: [Wurzelröhren, Wurzelhohlröhren, Rhizokonkretionen, Rhizolithe]
+      fr: [tubes racinaires, rhizolithes, rhizoconcrétions]
+      it: [tubicini radicali, rizoliti, rizo-concrezioni]
+
+  pollen:
+    description:
+      Microscopic plant pollen grains and spores preserved in sediment;
+      important in palynological analysis for reconstructing palaeovegetation
+      and dating Quaternary and older sequences. Resistant to decay due to
+      sporopollenin wall.
+    keywords:
+      de: [Pollen, Pollenkörner, Palynomorphe]
+      fr: [pollen, grains de pollen, palynomorphes]
+      it: [polline, granelli di polline, palinomorfi]
+
+  pyroclast:
+    description:
+      Volcanic fragments of any size ejected during explosive eruptions;
+      includes scoria, pumice, volcanic glass shards, and lithic fragments.
+      Use this general category for volcanic ejecta when a more specific term
+      (ash, lapilli) is not warranted.
+    keywords:
+      de: [Pyroklasten, Pyroclast, vulkanische Fragmente, Tephra]
+      fr: [pyroclastes, pyroclaste, fragments pyroclastiques, tephra]
+      it: [piroclasti, piroclasto, frammenti piroclastici]
+
+  radiolarians:
+    description:
+      Single-celled protists with intricate siliceous skeletons; abundant in
+      open-ocean settings from the Cambrian to present. Radiolarian cherts
+      (radiolarites) are common in Mesozoic deep-marine sequences.
+    keywords:
+      de: [Radiolarien, Radiolar, Strahlentierchen]
+      fr: [radiolaires, radiolaire]
+      it: [radiolari, radiolario]
+
+  rootlets:
+    description:
+      Fine root fragments (smaller than general plant remains) preserved in
+      sediment; typically occur as thin carbonaceous strands or casts in
+      terrestrial, palaeosol, and marginal lacustrine deposits.
+    keywords:
+      de: [Wurzeln, Wurzelreste, Feinwurzeln, Wurzelfragmente]
+      fr: [radicelles, racines fines, radicules]
+      it: [radichette, piccole radici, frammenti radicali]
+
+  rudists:
+    description:
+      Extinct reef-building bivalves with highly modified, cone-shaped or
+      coiled shells; dominant carbonate producers in Cretaceous tropical and
+      subtropical shallow-marine environments (Tethyan realm).
+    keywords:
+      de: [Rudisten, Rudist, Hippuriten]
+      fr: [rudistes, rudiste, hippurites]
+      it: [rudiste, rudisto, ippuriti]
+
+  sideritic_concretion:
+    description:
+      Diagenetic concretions composed of siderite (iron carbonate, FeCO3);
+      typically grey-green to yellowish-brown, forming in anoxic reducing
+      environments such as swamps, deltaic plains, and marine mudstones.
+    keywords:
+      de: [Sideritkonkretionen, Sideritknolle, Sideritknoten]
+      fr: [concrétions sidéritiques, nodules sidéritiques]
+      it: [concrezioni sideritiche, noduli sideritici]
+
+  silicified_wood:
+    description:
+      Wood in which the original organic material has been replaced by silica
+      (petrified wood); preserves the original cellular wood texture. Occurs
+      in silica-rich sediments and hydrothermal environments.
+    keywords:
+      de: [Kieselhölzer, verkieseltes Holz, Versteinertes Holz, Holzversteinerung]
+      fr: [bois silicifié, bois pétrifié, silexite végétale]
+      it: [legno silicizzato, legno pietrificato, legno fossile]
+
+  spicules:
+    description:
+      Microscopic skeletal elements of sponges composed of silica (siliceous)
+      or calcite (calcareous); occur as isolated needles, rays, or fused
+      frameworks. Common accessory components in mudstones and deep-marine
+      sediments.
+    keywords:
+      de: [Schwammnadeln, Spiculae, Spicula, Schwammspiculae]
+      fr: [spicules, spicules d'éponges]
+      it: [spicole, spicole di spugna]
+
+  sponges:
+    description:
+      Sessile filter-feeding invertebrates (Porifera) with a porous siliceous
+      or calcareous skeleton; spicules or whole sponge frameworks occur in
+      Palaeozoic through Cenozoic marine sediments.
+    keywords:
+      de: [Schwämme, Schwamm, Porifera, Spongien]
+      fr: [éponges, éponge, spongiaires]
+      it: [spugne, spugna, poriferi]
+
+  spores:
+    description:
+      Microscopic reproductive units of plants, fungi, or algae with resistant
+      outer walls; preserved alongside pollen in palynological assemblages.
+      Important for biostratigraphy and palaeoenvironmental reconstruction.
+    keywords:
+      de: [Sporen, Spore, Sporomorphe]
+      fr: [spores, spore]
+      it: [spore, spora]
+
+  stromatolites:
+    description:
+      Laminated benthic structures formed by sediment trapping and precipitation
+      by microbial mats (mainly cyanobacteria); occur from the Precambrian to
+      present in shallow, restricted carbonate environments.
+    keywords:
+      de: [Stromatolithen, Stromatolith, Stromatolithenkalk]
+      fr: [stromatolithes, stromatolithe]
+      it: [stromatoliti, stromatolithe]
+
+  tintinnids:
+    description:
+      Planktonic ciliates with vase-shaped lorica (agglutinated or calcitic);
+      occur in Jurassic to Cretaceous pelagic carbonates. Related to
+      calpionellids; abundant in Tethyan pelagic limestones.
+    keywords:
+      de: [Tintinniden, Tintinnid, Tintinnidae]
+      fr: [tintinnides, tintinnide]
+      it: [tintinnidi, tintinnide]
+
+  vertebrates:
+    description:
+      Skeletal elements of vertebrate animals including teeth, bones, scales,
+      and vertebrae; occur in marine, lacustrine, and fluvial sediments from
+      Devonian to present.
+    keywords:
+      de: [Vertebraten, Wirbeltiere, Vertebrat, Wirbeltierknochen, Wirbeltierzähne]
+      fr: [vertébrés, vertébré, os de vertébrés, dents de vertébrés]
+      it: [vertebrati, vertebrato, ossa di vertebrati]
+
+  wood_fragments:
+    description:
+      Macroscopic pieces of woody plant material that have not been carbonised
+      into coal; may be waterlogged, permineralised, or compressed. Common in
+      fluvial, deltaic, and swampy environments.
+    keywords:
+      de: [Holzfragmente, Holzstücke, Holzreste]
+      fr: [fragments de bois, morceaux de bois, restes ligneux]
+      it: [frammenti di legno, pezzi di legno, resti legnosi]

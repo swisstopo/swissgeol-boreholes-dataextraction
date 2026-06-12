@@ -3,6 +3,8 @@
 from enum import Enum
 from typing import Literal
 
+from classification.utils.datasets.accessory_components import AccessoryComponentsSystem
+from classification.utils.datasets.cementation import CementationSystem
 from classification.utils.datasets.classification import ClassificationSystem
 from classification.utils.datasets.color import ColorConsolidatedSystem, ColorSystem, ColorUnconsolidatedSystem
 from classification.utils.datasets.debris import DebrisUnconsolidatedSystem
@@ -18,9 +20,11 @@ class ExistingClassificationSystems(Enum):
     The value of each entry is the Classification system class, not an instance of the class.
     """
 
+    accessory_components = AccessoryComponentsSystem
     uscs = USCSSystem
     lithology = LithologySystem
     en_main = ENMainSystem
+    cementation = CementationSystem
     color = ColorSystem
     color_consolidated = ColorConsolidatedSystem
     color_unconsolidated = ColorUnconsolidatedSystem
@@ -31,6 +35,8 @@ class ExistingClassificationSystems(Enum):
     def get_classification_system_type(
         cls,
         class_system: Literal[
+            "accessory_components",
+            "cementation",
             "color",
             "color_consolidated",
             "color_unconsolidated",

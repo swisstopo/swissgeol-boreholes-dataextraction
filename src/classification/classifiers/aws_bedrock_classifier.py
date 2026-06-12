@@ -28,12 +28,15 @@ class AWSBedrockEntry(BaseModel):
 
     Attributes:
         index (int): Position of the layer in the batch sent to the model, used to align predictions back to inputs.
-        class_ (str): Predicted class label as returned by the model.
+        class_ (str | None): Predicted class label for single-label classification.
+        classes_ (list[str] | None): Predicted class labels for multi-label classification.
         reasoning (str): Reasoning of the predicted output.
+
     """
 
     index: int
-    class_: str
+    class_: str | None = None
+    classes_: list[str] | None = None
     reasoning: str | None = None
 
 
@@ -85,6 +88,7 @@ class AWSBedrockClassifier(Classifier):
         self.pattern_version = self.config["pattern_version"]
         self.prompt_version = self.config["prompt_version"]
         self.reasoning_mode = self.config["reasoning_mode"]
+        self.multilabel_mode = self.config.get("multilabel_mode", False)
 
         # Async functions
         self.semaphore = asyncio.Semaphore(self.max_concurrent_calls)
@@ -94,11 +98,16 @@ class AWSBedrockClassifier(Classifier):
         self.class_examples = read_params(self.config["pattern_file"])[self.pattern_version]
 
         # Load tool and system prompt
-        self.system_prompts = read_params(self.config["prompts_file"])[
-            "reasoning" if self.reasoning_mode else "classification"
-        ][self.prompt_version]
+        prompt_section = "reasoning" if self.reasoning_mode else "classification"
+        self.system_prompts = read_params(self.config["prompts_file"])[prompt_section][self.prompt_version]
 
-        self.tool = read_params(self.config["tool_file"])["reasoning" if self.reasoning_mode else "classification"]
+        if self.multilabel_mode:
+            tool_key = "multilabel"
+        elif self.reasoning_mode:
+            tool_key = "reasoning"
+        else:
+            tool_key = "classification"
+        self.tool = read_params(self.config["tool_file"])[tool_key]
 
     def get_name(self) -> str:
         """Returns a string with the name of the classifier."""
@@ -192,16 +201,22 @@ class AWSBedrockClassifier(Classifier):
                 predictions = await self._call_bedrock(filename_layers)
             except Exception as e:
                 logger.warning(f"API call failed for '{filename}': {str(e)}")
-                predictions = [
-                    AWSBedrockEntry(index=i, class_=self.classification_system.get_default_class_value().name)
-                    for i, _ in enumerate(filename_layers)
-                ]
+                default = self.classification_system.get_default_class_value().name
+                if self.multilabel_mode:
+                    predictions = [AWSBedrockEntry(index=i, classes_=[default]) for i, _ in enumerate(filename_layers)]
+                else:
+                    predictions = [AWSBedrockEntry(index=i, class_=default) for i, _ in enumerate(filename_layers)]
 
         # Update predictions (label and reasoning)
         for data in predictions:
-            filename_layers[data.index].prediction_class = self.classification_system.map_most_similar_class(
-                data.class_
-            )
+            if self.multilabel_mode and data.classes_ is not None:
+                filename_layers[data.index].prediction_classes = [
+                    self.classification_system.map_most_similar_class(c) for c in data.classes_
+                ]
+            else:
+                filename_layers[data.index].prediction_class = self.classification_system.map_most_similar_class(
+                    data.class_ or ""
+                )
             filename_layers[data.index].llm_reasoning = data.reasoning
 
         if self.bedrock_out_directory:

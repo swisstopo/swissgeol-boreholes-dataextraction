@@ -35,3 +35,24 @@ reasoning:
               type: "string"
             reasoning:
               type: "string"
+
+
+multilabel:
+  name: "classify_texts"
+  description: "Classify each text and return all applicable labels for every item."
+  input_schema:
+    type: "object"
+    required: ["predictions"]
+    properties:
+      predictions:
+        type: "array"
+        items:
+          type: "object"
+          required: ["index", "classes_"]
+          properties:
+            index:
+              type: "integer"
+            classes_:
+              type: "array"
+              items:
+                type: "string"
