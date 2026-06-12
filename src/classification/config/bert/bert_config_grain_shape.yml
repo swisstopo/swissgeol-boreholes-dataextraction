@@ -2,6 +2,7 @@ classification_system: "grain_shape"
 experiment_name: "grain_shape"
 model_path: "google-bert/bert-base-multilingual-uncased"
 use_class_balancing: false
+inference_batch_size: 32
 
 # Training and testing sets
 training_sets:

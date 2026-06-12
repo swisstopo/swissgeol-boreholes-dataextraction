@@ -2,6 +2,7 @@ classification_system: "color"
 experiment_name: "color_all_to_all"
 model_path: "google-bert/bert-base-multilingual-uncased"
 use_class_balancing: false
+inference_batch_size: 32
 
 # Training and testing sets
 training_sets:

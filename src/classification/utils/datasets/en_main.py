@@ -39,7 +39,7 @@ class ENMainSystem(ClassificationSystem):
     @classmethod
     def get_name(cls) -> str:
         """Return the name of the system."""
-        return "EN_main"
+        return "en_main"
 
     @classmethod
     def get_layer_ground_truth_keys(cls) -> list[str]:
