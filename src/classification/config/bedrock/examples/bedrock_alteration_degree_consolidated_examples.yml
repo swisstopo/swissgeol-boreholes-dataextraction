@@ -1,0 +1,343 @@
+baseline: |
+  not_specified:
+    description:
+      No alteration information is provided or inferable from the text. Use
+      when the description is absent, illegible, or entirely ambiguous with
+      respect to weathering state. Do not use as a fallback when a degree can
+      be reasonably inferred from contextual clues such as hardness, color
+      change, or mineral decomposition.
+    keywords:
+      de: [nicht angegeben, keine Angabe, unbekannt, k.A.]
+      fr: [non spécifié, inconnu, sans indication]
+      it: [non specificato, sconosciuto, non indicato]
+
+  fresh:
+    description:
+      Rock that shows no visible sign of weathering or chemical alteration.
+      Original mineralogy, texture, and color are fully preserved. Typically
+      hard to very hard, compact, and unaffected by moisture. This is the most
+      common state for intact Molasse (marlstone, sandstone, siltstone) and 
+      crystalline bedrock reached below the weathering horizon. Look for terms 
+      indicating hardness ("dur", "sehr hart", "compact"), intact fabric ("massif", 
+      "plaquetté", "stratifié"), and absence of any alteration qualifier.
+    keywords:
+      de: [frisch, unverwittert, gesund, hart, sehr hart, kompakt, fest]
+      fr: [frais, sain, non altéré, dur, très dur, massif, compact]
+      it: [fresco, integro, non alterato, duro, molto duro, compatto, sano]
+
+  slightly_weathered:
+    description:
+      Rock with only incipient weathering — slight discoloration along
+      discontinuities (rust staining, minor color change), but the bulk of
+      the rock mass retains its original strength and mineralogy. Typically noted
+      when an otherwise fresh formation shows surface oxidation ("rostig",
+      "légèrement altéré") or hairline fracture staining without significant
+      softening.
+    keywords:
+      de: [leicht verwittert, schwach verwittert, angewittert, leicht
+           angewittert, schwach angewittert, rostig, leicht verfärbt]
+      fr: [légèrement altéré, faiblement altéré, peu altéré, légèrement
+           oxydé, légèrement rouillé]
+      it: [leggermente alterato, debolmente alterato, poco alterato,
+           leggermente ossidato]
+
+  moderately_weathered:
+    description:
+      Rock in which weathering has penetrated throughout the mass, causing
+      significant discoloration, some softening, and partial decomposition of
+      feldspars or carbonates. Original fabric is still recognizable but the
+      rock is noticeably weaker than fresh material. Characteristic signals
+      include ochre/beige/multicolor mottling ("ocre", "bunt", "oxydée"),
+      residual alteration products ("résidus d'altération"), partial clay formation,
+      and moderate to high plasticity despite preserved structure. Often associated
+      with the transition zone between Quaternary cover and intact bedrock.
+    keywords:
+      de: [mässig verwittert, mittel verwittert, verwittert, teilweise
+           verwittert, mässig angewittert, verlehmt, bunt, z.T. zersetzt]
+      fr: [modérément altéré, altéré, partiellement altéré, oxydé,
+           résidus d'altération, ocre, bigarré]
+      it: [moderatamente alterato, parzialmente alterato, alterato,
+           ossidato, residui di alterazione, variegato]
+
+  highly_weathered:
+    description:
+      Rock in which most original minerals are decomposed. The material has
+      largely lost its original strength and cohesion; it may be crumbly,
+      friable, or plastic. Only relict rock fabric or ghost structures may
+      remain recognizable. Often expressed as "stark verwittert", "zersetzt",
+      "verlehmt" (clay-enriched), or described as crumbly cores ("bröckelig"). 
+      Color is typically highly variable (multicolored, brick-red, mottled),
+      and material may be indistinguishable from a stiff residual soil.
+    keywords:
+      de: [stark verwittert, sehr stark verwittert, stark angewittert,
+           weitgehend zersetzt, zersetzt, verlehmt, bröckelig, mürbe,
+           zerfallen, völlig verwittert]
+      fr: [très altéré, fortement altéré, décomposé, argilisé, friable,
+           désagrégé]
+      it: [molto alterato, fortemente alterato, decomposto, argillificato,
+           friabile, disgregato]
+
+  completely_weathered:
+    description:
+      Rock that has been totally decomposed to a residual soil. No intact rock
+      fabric remains; the material behaves entirely as a soil (cohesive or
+      granular). Original mineralogy is replaced by secondary clay minerals,
+      iron oxides, or hydroxides. Distinct from "highly weathered" in that no ghost 
+      structure or relict rock texture survives. In logs this state may be described
+      as "vollständig zersetzt", "completely decomposed", or simply as a clayey residual 
+      material immediately overlying fresh bedrock, without any preserved lithological
+      character.
+    keywords:
+      de: [vollständig verwittert, vollständig zersetzt, komplett verwittert,
+           völlig zersetzt, gänzlich zersetzt, vollständig verlehmt]
+      fr: [complètement altéré, totalement altéré, complètement décomposé,
+           entièrement décomposé]
+      it: [completamente alterato, totalmente alterato, completamente
+           decomposto, interamente decomposto]
+
+  weathered:
+    description:
+      A generic weathered state used when the log clearly indicates alteration
+      but does not supply enough information to assign a more specific degree
+      (slightly, moderately, or highly). Use this class only as a fallback
+      when degree qualifiers are absent and context does not allow confident
+      disambiguation. If any intensity qualifier is present ("stark", "leicht",
+      "modérément", etc.) prefer the corresponding specific class instead.
+    keywords:
+      de: [verwittert, angewittert, alteriert, zersetzt]
+      fr: [altéré, dégradé, décomposé]
+      it: [alterato, degradato, decomposto]
+
+  other:
+    description:
+      Alteration state that does not fit any of the defined classes — for
+      example, hydrothermal alteration, metasomatism, or diagenetic
+      cementation described in terms that clearly refer to a non-weathering
+      process. Use sparingly; only when the described process is unambiguously
+      distinct from surface or near-surface weathering. Do not use merely
+      because the terminology is unusual.
+    keywords:
+      de: [hydrothermal verändert, metasomatisch, diagenetisch verändert,
+           verkieselt, dolomitisiert]
+      fr: [altération hydrothermale, métasomatisme, silicifié, dolomitisé,
+           diagénétique]
+      it: [alterazione idrotermale, metasomatismo, silicizzato, dolomitizzato,
+           diagenetico]
+v1: |
+  not_specified:
+    description:
+      No alteration information is provided or inferable from the text. Use
+      when the description is absent, illegible, or entirely ambiguous with
+      respect to weathering state. Do not use as a fallback when a degree can
+      be reasonably inferred from contextual clues such as hardness, fabric,
+      or colour.
+      CRITICAL — do NOT use not_specified when:
+      - The description names a rock type with no qualifier at all (e.g.
+        "Mergel", "Sandstein", "Nagelfluh", "Kalkstein", "Fels", "Gips",
+        "Anhydrit", "Schiefer", "Feinsandstein", "Molassesandstein",
+        "Nagelfluhbruchstücke", "Kalkphyllite", "Bloc de grès",
+        "Glaise massive") — a bare lithology name implies fresh unless stated
+        otherwise; classify as fresh.
+      - The description mentions core recovery, drilling behaviour, or
+        structural observations ("Kernausbeute", "zerbohrt", "aufgelockert")
+        without an explicit alteration qualifier — infer from context.
+      - The description uses "weich" or "tendre" for a rock — these indicate
+        low cementation or inherent softness of the lithology, NOT weathering;
+        classify as fresh.
+    keywords:
+      de: [nicht angegeben, keine Angabe, unbekannt, k.A.]
+      fr: [non spécifié, inconnu, sans indication]
+      it: [non specificato, sconosciuto, non indicato]
+
+  fresh:
+    description:
+      Rock that shows no visible sign of weathering or chemical alteration.
+      Original mineralogy, texture, and colour are fully preserved. Typically
+      hard to very hard, compact, and unaffected by moisture. This is the most
+      common state for intact Molasse (marlstone, sandstone, siltstone),
+      evaporites (gypsum, anhydrite), and crystalline bedrock.
+      IMPORTANT — fresh does NOT require the word "frisch" or "frais". A bare
+      rock-type name with no alteration qualifier defaults to fresh. Also use
+      fresh when:
+      - Only structural or tectonic descriptors are present ("fracturé",
+        "geklüftet", "zerbrochen", "zertrümmert", "disloqué") without any
+        chemical alteration language — mechanical breakage is not weathering.
+      - The description mentions "weich", "tendre", "sehr tende", "mou" — for
+        marlstone and similar rocks these describe inherent low cementation,
+        not weathering.
+      - Gypsum or anhydrite is described without alteration qualifiers:
+        "Gipskern", "weisser Gipskern", "Gips-Anhydrit Wechsellagerung",
+        "Gipsscheiben", "aufgelockerter Gipskern", "zerriebener Gips" (the
+        loosening is from drilling, not weathering).
+      - The description mentions "aufgelockert" or "zerbohrt" in the context
+        of a drilling disturbance explanation — this is mechanical, not
+        chemical.
+      - Rock described as "sain", "gesund", "frisch", "massif", "compact",
+        "kompakt", "dur", "très dur", "hart", "sehr hart", "fest".
+      Colour alone (bräunlich, rötlich, bunt) in an otherwise fresh-sounding
+      description should NOT override a fresh classification — these may be
+      primary depositional colours of the Molasse red beds and Triassic
+      evaporites.
+    keywords:
+      de: [frisch, unverwittert, gesund, hart, sehr hart, kompakt, fest,
+           massig, schöne Kerne, aufgelockert durch Bohrung]
+      fr: [frais, sain, non altéré, dur, très dur, massif, compact, roche saine]
+      it: [fresco, integro, non alterato, duro, molto duro, compatto, sano]
+
+  slightly_weathered:
+    description:
+      Rock with only incipient weathering — slight discoloration along
+      discontinuities (rust staining, minor colour change) but the bulk of
+      the rock mass retains its original strength and mineralogy.
+      Key signals: rust-stained or brownish joint surfaces ("rostige Klüfte",
+      "rostige Flächen", "rostig angewittert", "angerostet", "légèrement
+      altéré en surface"), while the rock itself is described as hard or
+      compact. Brownish or yellowish tinge on fracture surfaces while the
+      matrix stays grey = slightly_weathered.
+      Do NOT use slightly_weathered for:
+      - Descriptions where the whole rock mass is discoloured (mottled,
+        multicolour, ochre throughout) → moderately_weathered.
+      - Rust-stained joints alongside words like "verlehmt", "zersetzt",
+        "bröckelig", "mürb" → highly_weathered.
+    keywords:
+      de: [leicht verwittert, schwach verwittert, angewittert, leicht
+           angewittert, schwach angewittert, rostig, rostige Klüfte,
+           rostige Flächen, angerostet, leicht verfärbt]
+      fr: [légèrement altéré, faiblement altéré, peu altéré, légèrement
+           oxydé, légèrement rouillé, altéré en surface]
+      it: [leggermente alterato, debolmente alterato, poco alterato,
+           leggermente ossidato]
+
+  moderately_weathered:
+    description:
+      Rock in which weathering has penetrated throughout the mass, causing
+      significant discoloration, some softening, and partial decomposition of
+      feldspars or carbonates. Original fabric is still recognizable.
+      This is the most commonly annotated alteration class in Swiss borehole
+      logs and covers a wide range of descriptions. Use moderately_weathered
+      when:
+      - Explicit "altéré", "verwittert", "angewittert", "verwitterter [rock]"
+        without a strong intensity qualifier → moderately_weathered (not the
+        generic weathered class, and not highly_weathered).
+      - Words indicating moderate softening and partial clay formation:
+        "grumeleuse", "grumelig", "plastique", "très plastique", "weich",
+        "très tendre" combined with alteration signals.
+      - Mottled or multicoloured rock with preserved structure: "bunt",
+        "bigarré", "moucheté", "marmoriert", "gefleckt" (especially when
+        the log records soil class 14/3, which in Swiss practice = W3
+        moderately weathered).
+      - "très altéré" in French logs annotated with soil class 14/3 is
+        MODERATELY weathered, not highly_weathered — the French term is
+        misleading; the soil class is the decisive signal.
+      - "désagrégé au forage", "grumeleuse", "textures grumeleuses" —
+        these describe drilling-induced disaggregation of a moderately
+        weathered rock, not highly_weathered.
+      - Soft or weak schist, phyllite, or slate zones described as fractured,
+        jointed, or loosened ("délitée", "diaclasée", "weich geschichtet",
+        "Schiefer weich geschichtet") — fabric preserved, so moderately not
+        highly.
+      - Hydrothermally altered rock WITH surface oxidation traces
+        ("Hydrothermaler Quarzgang mit Oxidationsspuren") — the oxidation
+        makes it moderately_weathered, not other.
+      - Gypsum rubble or crushed gypsum that is explicitly described as
+        weathered or discoloured ("zerriebener Gipsschutt" with colour
+        change) — moderately_weathered.
+      - Rock soft enough to be cut with a knife or spade ("mit Spachtel
+        ritzbar", "s'entaillant au couteau") without further decomposition
+        language → moderately_weathered.
+    keywords:
+      de: [mässig verwittert, mittel verwittert, verwittert, teilweise
+           verwittert, mässig angewittert, verlehmt, bunt, z.T. zersetzt,
+           grumelig, weich geschichtet, stark geklüftet, délitée,
+           diaclasée, altéré]
+      fr: [modérément altéré, altéré, très altéré (sol 14/3), partiellement
+           altéré, oxydé, résidus d'altération, ocre, bigarré, grumeleuse,
+           désagrégé au forage]
+      it: [moderatamente alterato, parzialmente alterato, alterato,
+           ossidato, residui di alterazione, variegato]
+
+  highly_weathered:
+    description:
+      Rock in which most original minerals are decomposed. The material has
+      largely lost its original strength and cohesion; it may be crumbly,
+      friable, or plastic. Only relict rock fabric or ghost structures may
+      remain recognizable.
+      Key discriminator from moderately_weathered: the rock can no longer
+      support itself — it is either crumbly ("bröckelig", "mürbe", "mürb"),
+      has been converted to clay ("verlehmt", "zu Lehm verwittert",
+      "verlehmter Mergel"), or can be crushed between fingers ("mit Fingern
+      zerdrückbar", "zerreibbar").
+      IMPORTANT — "stark verwittert" alone without decomposition language
+      may still be moderately_weathered; look for physical breakdown signals.
+      Do NOT use highly_weathered for:
+      - Descriptions annotated with Swiss soil class 14/3 → moderately_weathered
+        regardless of how strong the French alteration terms sound.
+      - Drilling-induced disaggregation without true mineralogical decomposition.
+    keywords:
+      de: [stark verwittert, sehr stark verwittert, stark angewittert,
+           weitgehend zersetzt, zersetzt, verlehmt, bröckelig, mürbe, mürb,
+           zerfallen, mit Fingern zerdrückbar, zerreibbar, zu Lehm verwittert,
+           zu Sand verwittert, entfestigt]
+      fr: [très altéré, fortement altéré, décomposé, argilisé, friable,
+           désagrégé]
+      it: [molto alterato, fortemente alterato, decomposto, argillificato,
+           friabile, disgregato]
+
+  completely_weathered:
+    description:
+      Rock that has been totally decomposed to a residual soil. No intact rock
+      fabric remains; the material behaves entirely as a soil. Distinct from
+      highly_weathered in that no ghost structure or relict rock texture
+      survives.
+      Use completely_weathered only when the description explicitly states
+      total decomposition ("vollständig zersetzt", "vollständig verwittert",
+      "völlig zu Sand verwittert", "completely decomposed") or describes a
+      clearly residual soil directly overlying fresh rock with no preserved
+      lithological character at all.
+      Do NOT use for moderately_weathered descriptions that mention "vollständig
+      zerbohrter" (drill-induced) — this refers to core loss, not decomposition.
+    keywords:
+      de: [vollständig verwittert, vollständig zersetzt, komplett verwittert,
+           völlig zersetzt, gänzlich zersetzt, vollständig verlehmt,
+           völlig zu Sand verwittert]
+      fr: [complètement altéré, totalement altéré, complètement décomposé,
+           entièrement décomposé]
+      it: [completamente alterato, totalmente alterato, completamente
+           decomposto, interamente decomposto]
+
+  weathered:
+    description:
+      Use this class ONLY when no specific degree can be determined — i.e.
+      when "verwittert" or "altéré" appears alone with no intensity qualifier
+      AND the description provides no other contextual clue (colour, hardness,
+      fabric state) to distinguish moderately from highly.
+      IMPORTANT — in practice almost all "verwittert"/"altéré" cases in Swiss
+      logs have enough context to assign a specific degree. Prefer
+      moderately_weathered over this generic class whenever any of the
+      following are present: soil class 14/3, colour mottling, hardness
+      description, fabric description, or plasticity note.
+      This class is a last resort; do not use it as a default for any
+      alteration language.
+    keywords:
+      de: [verwittert, angewittert, alteriert, zersetzt]
+      fr: [altéré, dégradé, décomposé]
+      it: [alterato, degradato, decomposto]
+
+  other:
+    description:
+      Alteration state that does not fit any of the defined classes — for
+      example, pure hydrothermal alteration or metasomatism with no
+      accompanying surface oxidation or weathering language.
+      CRITICAL — use other very sparingly:
+      - "Hydrothermaler Quarzgang mit Oxidationsspuren" → the oxidation
+        traces make this moderately_weathered, NOT other.
+      - Only use other when the process described is unambiguously
+        hydrothermal or diagenetic AND there is no weathering overprint
+        mentioned at all.
+    keywords:
+      de: [hydrothermal verändert, metasomatisch, diagenetisch verändert,
+           verkieselt, dolomitisiert]
+      fr: [altération hydrothermale, métasomatisme, silicifié, dolomitisé,
+           diagénétique]
+      it: [alterazione idrotermale, metasomatismo, silicizzato, dolomitizzato,
+           diagenetico]
