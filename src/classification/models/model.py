@@ -330,7 +330,7 @@ class BertModel:
             outputs = self.model(**batch)
 
             if self.classification_system.is_multi_label():
-                prediction = [row.nonzero()[0].tolist() or [0] for row in (outputs.logits > 0)]
+                prediction = [row.nonzero(as_tuple=True)[0].tolist() or [0] for row in (outputs.logits > 0)]
             else:
                 prediction = outputs.logits.argmax(axis=-1, keepdims=True).tolist()
 
@@ -347,6 +347,6 @@ class BertModel:
             text (str): the text to predict the label index from.
 
         Returns:
-            ClassificationSystem.EnumMember: The predicted class of the text input.
+            list[ClassificationSystem.EnumMember]: The predicted class of the text input.
         """
         return self.predict_class_batched([text], batch_size=1)[0]

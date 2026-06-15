@@ -37,6 +37,7 @@ def _sklearn_macro(y_true, y_pred):
         pytest.param([[0], [0], [0]], [[0], [1], [1]], id="no_1_in_true"),
         pytest.param([[0], [0], [1]], [[0], [0], [0]], id="no_1_in_pred"),
         pytest.param([[0], [0], [0]], [[0], [0], [0]], id="only_0_class"),
+        pytest.param([[0], [0, 1], [1], [1]], [[0], [1], [1], [0]], id="typical_multi_label"),
         pytest.param([[0, 1], [0, 1], [0, 1]], [[0], [1], [1]], id="no_multi_in_true"),
     ],
 )

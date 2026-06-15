@@ -178,10 +178,10 @@ def write_overview(metrics_dict: dict[str, float], layers_with_predictions: list
         ground_truths = [layer.ground_truth_class for layer in layers_with_predictions]
         predictions = [layer.prediction_class for layer in layers_with_predictions]
 
-        ground_truth_classes = set(c for classes in predictions if classes for c in classes)
-        predictions_clases = set(c for classes in ground_truths if classes for c in classes)
+        ground_truth_classes = set(c for classes in ground_truths if classes for c in classes)
+        prediction_classes = set(c for classes in predictions if classes for c in classes)
 
-        for class_ in ground_truth_classes | predictions_clases:
+        for class_ in ground_truth_classes | prediction_classes:
             # filter metrics dict (e.g. extract "CL_ML" for "global_CL_ML_recall")
             class_metrics_dict = {k: v for k, v in metrics_dict.items() if class_.name == "_".join(k.split("_")[1:-1])}
 

@@ -12,7 +12,7 @@ training_sets:
       - deepwells_ground_truth.json
 
 test_sets:
-  deeplwells_accessory_components:
+  deepwells_accessory_components:
     classification_system: accessory_components
     ground_truths:
       - deepwells_ground_truth.json
