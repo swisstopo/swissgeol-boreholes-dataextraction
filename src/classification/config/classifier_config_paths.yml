@@ -19,3 +19,4 @@ bedrock:
   color_consolidated: bedrock/bedrock_config_color.yml
   color_unconsolidated: bedrock/bedrock_config_color.yml
   accessory_components: bedrock/bedrock_config_accessory_components.yml
+  mineral_components: bedrock/bedrock_config_mineral_components.yml

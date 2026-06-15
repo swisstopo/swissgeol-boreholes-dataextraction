@@ -10,6 +10,7 @@ from classification.utils.datasets.color import ColorConsolidatedSystem, ColorSy
 from classification.utils.datasets.debris import DebrisUnconsolidatedSystem
 from classification.utils.datasets.en_main import ENMainSystem
 from classification.utils.datasets.lithology import LithologySystem
+from classification.utils.datasets.mineral_components import MineralComponentsSystem
 from classification.utils.datasets.organic_components import OrganicComponentsUnconsolidatedSystem
 from classification.utils.datasets.uscs import USCSSystem
 
@@ -30,6 +31,7 @@ class ExistingClassificationSystems(Enum):
     color_unconsolidated = ColorUnconsolidatedSystem
     organic_components = OrganicComponentsUnconsolidatedSystem
     debris = DebrisUnconsolidatedSystem
+    mineral_components = MineralComponentsSystem
 
     @classmethod
     def get_classification_system_type(
@@ -44,6 +46,7 @@ class ExistingClassificationSystems(Enum):
             "debris",
             "en_main",
             "lithology",
+            "mineral_components",
             "uscs",
         ],
     ) -> type[ClassificationSystem]:

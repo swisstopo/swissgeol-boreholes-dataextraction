@@ -182,6 +182,7 @@ class LayerInformation:
     ground_truth_class: None | list[ClassificationSystem.EnumMember]
     prediction_class: None | ClassificationSystem.EnumMember
     llm_reasoning: None | str
+    prediction_classes: None | list[ClassificationSystem.EnumMember] = None
 
     def to_json(self) -> dict[str, str | int | None]:
         """Serialize this layer's fields to a JSON-compatible dictionary.
@@ -198,6 +199,9 @@ class LayerInformation:
             "class_system": self.class_system.get_name() if self.class_system else None,
             "ground_truth_class": self.ground_truth_class.name if self.ground_truth_class is not None else None,
             "prediction_class": self.prediction_class.name if self.prediction_class is not None else None,
+            "prediction_classes": [c.name for c in self.prediction_classes]
+            if self.prediction_classes is not None
+            else None,
             "llm_reasoning": self.llm_reasoning,
         }
 
@@ -213,6 +217,7 @@ class LayerInformation:
         Returns:
             A new ``LayerInformation`` instance.
         """
+        raw_prediction_classes = json.get("prediction_classes")
         return cls(
             filename=json["filename"],
             borehole_index=json["borehole_index"],
@@ -223,6 +228,9 @@ class LayerInformation:
             ground_truth_class=classification_system.map_most_similar_class(json["ground_truth_class"] or ""),
             prediction_class=classification_system.map_most_similar_class(json["prediction_class"] or ""),
             llm_reasoning=json["llm_reasoning"],
+            prediction_classes=[classification_system.map_most_similar_class(c) for c in raw_prediction_classes]
+            if raw_prediction_classes is not None
+            else None,
         )
 
 

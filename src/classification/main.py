@@ -69,7 +69,15 @@ def common_options(f):
         "-cs",
         "--classification-system",
         type=click.Choice(
-            ["uscs", "lithology", "en_main", "color_consolidated", "color_unconsolidated", "accessory_components"],
+            [
+                "uscs",
+                "lithology",
+                "en_main",
+                "color_consolidated",
+                "color_unconsolidated",
+                "accessory_components",
+                "mineral_components",
+            ],
             case_sensitive=False,
         ),
         default="uscs",
