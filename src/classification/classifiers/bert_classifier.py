@@ -34,7 +34,7 @@ class BertClassifier(Classifier):
         self.init_config(classification_system)
         if model_path is None:
             # load pretrained from transformers lib (bad)
-            model_path = self.config["model_path"]
+            model_path = Path(self.config["model_path"])
         self.model_path = model_path
         self.bert_model = BertModel(
             model_path, classification_system, backbone_path=backbone_path, tokenizer_path=tokenizer_path
