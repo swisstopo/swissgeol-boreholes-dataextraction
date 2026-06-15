@@ -11,15 +11,22 @@ Each file contains boreholes, and each borehole contains layers. For each layer:
 
 | Class | Config string | JSON layer tag |
 |-------|--------------|----------------|
+| `AccessoryComponentsSystem` | `accessory_components` | `consolidated.accessory_components` |
+| `AlterationDegreeSystem` | `alteration_degree` | - |
+| `AlterationDegreeConsolidatedSystem` | `alteration_degree_consolidated` | `consolidated.alteration_degree` |
+| `AlterationDegreeUnconsolidatedSystem` | `alteration_degree_unconsolidated` | `unconsolidated.alteration_degree` |
+| `CementationSystem` | `cementation` | `consolidated.cementation` |
 | `ColorSystem` | `color` | - |
 | `ColorConsolidatedSystem` | `color_consolidated` | `consolidated.primary_color` |
 | `ColorUnconsolidatedSystem` | `color_unconsolidated` | `unconsolidated.primary_color` |
-| `DebrisUnconsolidatedSystem` | `debris` | `unconsolidated.debris` |
+| `DebrisSystem` | `debris` | `unconsolidated.debris` |
 | `ENMainSystem` | `en_main` | `unconsolidated.main` |
+| `GrainAngularitySystem` | `grain_angularity` | `unconsolidated.grain_angularity` |
+| `GrainShapeSystem` | `grain_shape` | `unconsolidated.grain_shape` |
 | `LithologySystem` | `lithology` | `consolidated.lithology` |
-| `OrganicComponentsUnconsolidatedSystem` | `organic_components` | `unconsolidated.organic_components` |
+| `MineralComponentsSystem` | `mineral_components` | `consolidated.mineral_components` |
+| `OrganicComponentsSystem` | `organic_components` | `unconsolidated.organic_components` |
 | `USCSSystem` | `uscs` | `unconsolidated.uscs` |
-
 
 An example json can be found in [groundtruth-json.md](groundtruth-json.md).
 
@@ -52,12 +59,12 @@ test_sets:
 # Training hyperparameters
 hyperparameters:
   batch_size: 32
-  num_epochs: 32
   learning_rate: 1e-4
-  weight_decay: 0.001
-  warmup_ratio: 0.1
   lr_scheduler_type: "cosine_with_restarts"
   max_grad_norm: 5.0
+  num_epochs: 32
+  warmup_ratio: 0.1
+  weight_decay: 0.001
 
 # Layers to fine-tune
 unfreeze_layers:
@@ -67,7 +74,7 @@ unfreeze_layers:
 ```
 
 Each entry under `training_sets` and `test_sets` is a named dataset with:
-- `classification_system`: one of `uscs`, `lithology`, `en_main`, `color`, `color_consolidated`, `color_unconsolidated`
+- `classification_system`: one of `accessory_components`, `alteration_degree`, `alteration_degree_consolidated`, `alteration_degree_unconsolidated`, `cementation`, `color`, `color_consolidated`, `color_unconsolidated`, `debris`, `en_main`, `grain_angularity`, `grain_shape`, `lithology`, `mineral_components`, `organic_components`, or `uscs`
 - `ground_truths`: list of JSON filenames relative to the project data path
 
 Multiple named datasets can be listed under `training_sets` — their samples are pooled for training. Each entry in `test_sets` is evaluated independently and produces its own metrics report. The train/test split is deterministic per filename, so the same ground-truth files can safely appear in both sections without data leakage.

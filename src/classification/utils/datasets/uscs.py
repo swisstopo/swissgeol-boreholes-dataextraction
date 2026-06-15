@@ -22,13 +22,13 @@ class USCSSystem(ClassificationSystem):
         """Normalize a USCS class string.
 
         Args:
-            class_str (str): The class string to be normalized (e.g. "CL-ML").
+            class_str (str): The class string to be normalized (e.g. "CL-ML", "not specified").
 
         Returns:
-            str: The normalized USCS class string (e.g., "cl_ml").
+            str: The normalized USCS class string (e.g., "cl_ml", "not_specified").
 
         """
-        return class_str.lower().replace("-", "_")
+        return class_str.lower().replace("-", "_").replace(" ", "_")
 
     @classmethod
     def get_enum(cls) -> type[USCSClasses]:
@@ -48,7 +48,7 @@ class USCSSystem(ClassificationSystem):
     @classmethod
     def get_default_class_value(cls) -> USCSClasses:
         """Return the default value for the enum class."""
-        return cls.USCSClasses.kA  # keine Angabe = no indication
+        return cls.USCSClasses.not_specified
 
     class USCSClasses(IntEnum):
         """USCS (Unified Soil Classification System) classes.
@@ -59,42 +59,41 @@ class USCSSystem(ClassificationSystem):
             at 0, so using 0-based indexing avoids the need to address the issue later and prevents potential bugs.
         """
 
-        kunst = 0
+        not_specified = 0
         Bl = auto()
-        GP = auto()
         CH = auto()
-        CM = auto()
         CL = auto()
         CL_ML = auto()
-        G = auto()
-        S = auto()
-        GW_GC = auto()
-        Pt = auto()
-        ML = auto()
-        GM = auto()
-        kA = auto()
+        CM = auto()
         FELS = auto()
-        SC = auto()
+        G = auto()
+        G_GC = auto()
+        G_GM = auto()
+        GC = auto()
+        GC_GM = auto()
+        GM = auto()
+        GP = auto()
+        GP_GC = auto()
+        GP_GM = auto()
+        GW = auto()
+        GW_GC = auto()
+        GW_GM = auto()
+        MH = auto()
+        ML = auto()
+        OH = auto()
+        OL = auto()
+        Pt = auto()
+        S = auto()
+        S_SC = auto()
         S_SM = auto()
+        SC = auto()
+        SC_SM = auto()
         SM = auto()
         SP = auto()
         SP_SC = auto()
         SP_SM = auto()
+        St = auto()
+        St_Bl = auto()
         SW = auto()
         SW_SC = auto()
         SW_SM = auto()
-        G_GC = auto()
-        G_GM = auto()
-        St = auto()
-        St_Bl = auto()
-        OH = auto()
-        OL = auto()
-        S_SC = auto()
-        SC_SM = auto()
-        GC = auto()
-        GC_GM = auto()
-        GP_GC = auto()
-        GP_GM = auto()
-        GW = auto()
-        GW_GM = auto()
-        MH = auto()

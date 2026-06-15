@@ -1,20 +1,29 @@
 dummy:
   uscs: null
   lithology: null
-  EN_main: null
+  en_main: null
 baseline:
   uscs: baseline/baseline_config_uscs.yml
   lithology: baseline/baseline_config_lithology.yml
-  EN_main: null
+  en_main: null
 bert:
   uscs: bert/bert_config_uscs.yml
   lithology: bert/bert_config_lithology.yml
-  EN_main: bert/bert_config_en_main.yml
-  color_consolidated: bedrock/bedrock_config_color.yml
-  color_unconsolidated: bedrock/bedrock_config_color.yml
+  en_main: bert/bert_config_en_main.yml
+  color_consolidated: bert/bert_config_color_c2a.yml
+  color_unconsolidated: bert/bert_config_color_u2a.yml
+  accessory_components: bert/bert_config_accessory_components.yml
+  alteration_degree_consolidated: bert/bert_config_alteration_degree_c2a.yml
+  alteration_degree_unconsolidated: bert/bert_config_alteration_degree_u2a.yml
+  cementation: bert/bert_config_cementation.yml
+  debris: bert/bert_config_debris.yml
+  grain_angularity: bert/bert_config_grain_angularity.yml
+  grain_shape: bert/bert_config_grain_shape.yml
+  mineral_components: bert/bert_config_mineral_components.yml
+  organic_components: bert/bert_config_organic_components.yml
 bedrock:
   uscs: bedrock/bedrock_config_uscs.yml
   lithology: bedrock/bedrock_config_lithology.yml
-  EN_main: bedrock/bedrock_config_en_main.yml
+  en_main: bedrock/bedrock_config_en_main.yml
   color_consolidated: bedrock/bedrock_config_color.yml
   color_unconsolidated: bedrock/bedrock_config_color.yml

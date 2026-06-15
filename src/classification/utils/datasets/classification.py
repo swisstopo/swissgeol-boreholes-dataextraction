@@ -179,9 +179,37 @@ class LayerInformation:
     language: str
     material_description: str
     class_system: type[ClassificationSystem]
-    ground_truth_class: None | list[ClassificationSystem.EnumMember]
-    prediction_class: None | ClassificationSystem.EnumMember
-    llm_reasoning: None | str
+    ground_truth_class: list[ClassificationSystem.EnumMember] | None
+    prediction_class: list[ClassificationSystem.EnumMember] | None
+    llm_reasoning: str | None
+
+    @staticmethod
+    def _to_names(classes: list[ClassificationSystem.EnumMember] | None) -> list[str] | None:
+        """Convert a list of enum members to their name strings, or return None if input is None.
+
+        Args:
+            classes: Enum members to convert.
+
+        Returns:
+            List of enum member name strings, or None if ``classes`` is None.
+        """
+        return [class_.name for class_ in classes] if classes is not None else None
+
+    @staticmethod
+    def _from_names(
+        classes: list[str] | None, classification_system: type[ClassificationSystem]
+    ) -> list[ClassificationSystem.EnumMember] | None:
+        """Resolve a list of class name strings back to enum members using the given classification system.
+
+        Args:
+            classes: Class name strings to resolve. Returns None when empty or None.
+            classification_system: The classification system used to map each string via
+                ``map_most_similar_class``.
+
+        Returns:
+            List of resolved enum members, or None if ``classes`` is falsy.
+        """
+        return [classification_system.map_most_similar_class(class_) for class_ in classes] if classes else None
 
     def to_json(self) -> dict[str, str | int | None]:
         """Serialize this layer's fields to a JSON-compatible dictionary.
@@ -196,8 +224,8 @@ class LayerInformation:
             "language": self.language,
             "material_description": self.material_description,
             "class_system": self.class_system.get_name() if self.class_system else None,
-            "ground_truth_class": self.ground_truth_class.name if self.ground_truth_class is not None else None,
-            "prediction_class": self.prediction_class.name if self.prediction_class is not None else None,
+            "ground_truth_class": self._to_names(self.ground_truth_class),
+            "prediction_class": self._to_names(self.prediction_class),
             "llm_reasoning": self.llm_reasoning,
         }
 
@@ -220,8 +248,8 @@ class LayerInformation:
             language=json["language"],
             material_description=json["material_description"],
             class_system=classification_system,
-            ground_truth_class=classification_system.map_most_similar_class(json["ground_truth_class"] or ""),
-            prediction_class=classification_system.map_most_similar_class(json["prediction_class"] or ""),
+            ground_truth_class=cls._from_names(json["ground_truth_class"], classification_system),
+            prediction_class=cls._from_names(json["prediction_class"], classification_system),
             llm_reasoning=json["llm_reasoning"],
         )
 
@@ -266,7 +294,7 @@ class ClassificationSystem(ABC):
         cls,
         layer: GroundTruthLayer,
     ) -> list[ClassificationSystem.EnumMember] | None:
-        """Extract the integer class index from a layer by resolving the ground truth key path, or None if absent."""
+        """Extract the list of class members from a layer by resolving the ground truth key path, or None if absent."""
         try:
             label_str = reduce(getattr, cls.get_layer_ground_truth_keys(), layer)
         except AttributeError:

@@ -54,5 +54,5 @@ def classify_lithology(
         ClassifyLithologyResponse: Predicted class name for the input description.
     """
     bert_model = bert_models[request.classification_system]
-    predicted_class = bert_model.predict_class(request.description)
+    predicted_class = bert_model.predict_class(request.description)[0]
     return ClassifyLithologyResponse(class_name=predicted_class.name)
