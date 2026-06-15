@@ -10,7 +10,8 @@ ml_client = MLClient(
     credential=DefaultAzureCredential(),
     subscription_id="f12e214d-46c6-49bf-a083-f89cf9c3179d",
     resource_group_name="rg-swisstopo-compute",
-    workspace_name="aml-swisstopo-sn",
+    # workspace_name="aml-swisstopo-sn",
+    workspace_name="swisstopo-dev",
 )
 
 # =============================================================================
@@ -60,3 +61,5 @@ job = command(
 returned_job = ml_client.jobs.create_or_update(job)
 print(f"Job submitted: {returned_job.name}")
 print(f"Monitor at: {returned_job.studio_url}")
+
+# Submit the job with: python src/scripts/azure_jobs/job_train_bert.py
