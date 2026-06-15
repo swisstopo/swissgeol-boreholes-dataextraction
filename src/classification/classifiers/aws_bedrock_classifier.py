@@ -11,7 +11,7 @@ import anthropic
 import backoff
 import mlflow
 import pydantic_core
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from tqdm.asyncio import tqdm_asyncio
 
 from classification.classifiers.classifier import Classifier
@@ -28,13 +28,21 @@ class AWSBedrockEntry(BaseModel):
 
     Attributes:
         index (int): Position of the layer in the batch sent to the model, used to align predictions back to inputs.
-        class_ (str): Predicted class label as returned by the model.
+        class_ (list[str]): List of predicted class label as returned by the model.
         reasoning (str): Reasoning of the predicted output.
     """
 
     index: int
-    class_: str
+    class_: list[str]
     reasoning: str | None = None
+
+    @field_validator("class_", mode="before")
+    @classmethod
+    def validate_class(cls, value: list[str] | str) -> list[str]:
+        """Ensure list if returned in single label prediction case."""
+        if isinstance(value, str):
+            return [value]
+        return value
 
 
 class AWSBedrockPrediction(BaseModel):
@@ -193,14 +201,14 @@ class AWSBedrockClassifier(Classifier):
             except Exception as e:
                 logger.warning(f"API call failed for '{filename}': {str(e)}")
                 predictions = [
-                    AWSBedrockEntry(index=i, class_=self.classification_system.get_default_class_value().name)
+                    AWSBedrockEntry(index=i, classes=[self.classification_system.get_default_class_value().name])
                     for i, _ in enumerate(filename_layers)
                 ]
 
         # Update predictions (label and reasoning)
         for data in predictions:
             filename_layers[data.index].prediction_class = [
-                self.classification_system.map_most_similar_class(data.class_)
+                self.classification_system.map_most_similar_class(class_) for class_ in data.classes
             ]
             filename_layers[data.index].llm_reasoning = data.reasoning
 

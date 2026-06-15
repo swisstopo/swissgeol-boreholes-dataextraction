@@ -8,7 +8,7 @@ pattern_file: bedrock/examples/uscs_classification_patterns_bedrock.yml
 pattern_version: baseline
 
 # Tool file
-tool_file: bedrock/tool/tool_classify_texts.yml
+tool_file: bedrock/tool/tool_classify_single.yml
 
 # temperature - answer creativity for the LLM model
 temperature: 0.0
