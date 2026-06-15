@@ -22,7 +22,7 @@ class DummyClassifier(Classifier):
             layer_descriptions (list[LayerInformation]): List of updated objects.
         """
         for layer in layer_descriptions:
-            layer.prediction_class = layer.class_system.get_default_class_value()
+            layer.prediction_class = [layer.class_system.get_default_class_value()]
 
         return layer_descriptions
 

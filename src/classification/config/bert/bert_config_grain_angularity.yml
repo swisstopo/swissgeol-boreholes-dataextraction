@@ -1,43 +1,37 @@
-classification_system: "organic_components"
-experiment_name: "organic_components"
+classification_system: "grain_angularity"
+experiment_name: "grain_angularity"
 model_path: "google-bert/bert-base-multilingual-uncased"
 use_class_balancing: false
 inference_batch_size: 32
 
 # Training and testing sets
 training_sets:
-  organic_components:
-    classification_system: organic_components
+  grain_angularity:
+    classification_system: grain_angularity
     ground_truths:
       - deepwells_ground_truth.json
       - geoquat_ground_truth.json
       - nagra_ground_truth.json
-      - zurich_ground_truth.json
 
 test_sets:
-  global_organic_components:
-    classification_system: organic_components
+  global_grain_angularity:
+    classification_system: grain_angularity
     ground_truths:
       - deepwells_ground_truth.json
       - geoquat_ground_truth.json
       - nagra_ground_truth.json
-      - zurich_ground_truth.json
-  deepwells_organic_components:
-    classification_system: organic_components
+  deepwells_grain_angularity:
+    classification_system: grain_angularity
     ground_truths:
       - deepwells_ground_truth.json
-  geoquat_organic_components:
-    classification_system: organic_components
+  geoquat_grain_angularity:
+    classification_system: grain_angularity
     ground_truths:
       - geoquat_ground_truth.json
-  nagra_organic_components:
-    classification_system: organic_components
+  nagra_grain_angularity:
+    classification_system: grain_angularity
     ground_truths:
       - nagra_ground_truth.json
-  zurich_organic_components:
-    classification_system: organic_components
-    ground_truths:
-      - zurich_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:

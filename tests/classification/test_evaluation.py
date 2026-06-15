@@ -4,15 +4,24 @@ import math
 
 import pytest
 from sklearn.metrics import f1_score, precision_score, recall_score
+from sklearn.preprocessing import MultiLabelBinarizer
 
 from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
 
 
 def _sklearn_macro(y_true, y_pred):
     """Computes macro-averaged metrics using the sklearn functions."""
-    precision = round(precision_score(y_true, y_pred, average="macro", zero_division=0), 4)
-    recall = round(recall_score(y_true, y_pred, average="macro", zero_division=0), 4)
-    f1 = round(f1_score(y_true, y_pred, average="macro", zero_division=0), 4)
+    if not y_true:
+        return {"macro_precision": 0, "macro_recall": 0, "macro_f1": 0}
+
+    # Transform to one-hot to match sklearn input
+    mlb = MultiLabelBinarizer().fit(y_true + y_pred)
+    y_true_bin = mlb.transform(y_true)
+    y_pred_bin = mlb.transform(y_pred)
+
+    precision = round(precision_score(y_true_bin, y_pred_bin, average="macro", zero_division=0), 4)
+    recall = round(recall_score(y_true_bin, y_pred_bin, average="macro", zero_division=0), 4)
+    f1 = round(f1_score(y_true_bin, y_pred_bin, average="macro", zero_division=0), 4)
 
     return {
         "macro_precision": precision if not math.isnan(precision) else 0.0,
@@ -24,11 +33,12 @@ def _sklearn_macro(y_true, y_pred):
 @pytest.mark.parametrize(
     "y_true, y_pred",
     [
-        pytest.param([0] * 15 + [1] * 30, [0] * 10 + [0] * 5 + [1] * 20 + [0] * 10, id="typical"),
         pytest.param([], [], id="empty_inputs"),
-        pytest.param([0, 0, 0], [0, 1, 1], id="no_1_in_true"),
-        pytest.param([0, 0, 1], [0, 0, 0], id="no_1_in_pred"),
-        pytest.param([0, 0, 0], [0, 0, 0], id="only_0_class"),
+        pytest.param([[0], [0], [0]], [[0], [1], [1]], id="no_1_in_true"),
+        pytest.param([[0], [0], [1]], [[0], [0], [0]], id="no_1_in_pred"),
+        pytest.param([[0], [0], [0]], [[0], [0], [0]], id="only_0_class"),
+        pytest.param([[0], [0, 1], [1], [1]], [[0], [1], [1], [0]], id="typical_multi_label"),
+        pytest.param([[0, 1], [0, 1], [0, 1]], [[0], [1], [1]], id="no_multi_in_true"),
     ],
 )
 def test_macro_average_matches_sklearn(y_true, y_pred):

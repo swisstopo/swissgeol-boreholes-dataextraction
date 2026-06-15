@@ -1,21 +1,21 @@
-classification_system: "uscs"
-experiment_name: "uscs"
+classification_system: "accessory_components"
+experiment_name: "accessory_components"
 model_path: "google-bert/bert-base-multilingual-uncased"
 use_class_balancing: false
 inference_batch_size: 32
 
 # Training and testing sets
 training_sets:
-  uscs:
-    classification_system: uscs
+  accessory_components:
+    classification_system: accessory_components
     ground_truths:
-      - geoquat_ground_truth.json
+      - deepwells_ground_truth.json
 
 test_sets:
-  geoquat_uscs:
-    classification_system: uscs
+  deepwells_accessory_components:
+    classification_system: accessory_components
     ground_truths:
-      - geoquat_ground_truth.json
+      - deepwells_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:

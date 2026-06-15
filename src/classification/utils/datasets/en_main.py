@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import keyword
 import logging
 from enum import IntEnum, auto
 
@@ -21,12 +22,14 @@ class ENMainSystem(ClassificationSystem):
         """Normalize a EN class string.
 
         Args:
-            class_str (str): The class string to be normalized (e.g. "Or").
+            class_str (str): The class string to be normalized (e.g. "Or", "Gr").
 
         Returns:
-            str: The normalized EN class string (e.g., "or").
+            str: The normalized EN class string. Python keywords get a trailing underscore
+                to match enum member names (e.g. "Or" → "or_", "Gr" → "gr").
         """
-        return class_str.lower()
+        normalized = class_str.lower()
+        return normalized + "_" if keyword.iskeyword(normalized) else normalized
 
     @classmethod
     def get_enum(cls) -> type[ENMainClasses]:
@@ -36,7 +39,7 @@ class ENMainSystem(ClassificationSystem):
     @classmethod
     def get_name(cls) -> str:
         """Return the name of the system."""
-        return "EN_main"
+        return "en_main"
 
     @classmethod
     def get_layer_ground_truth_keys(cls) -> list[str]:
@@ -51,27 +54,27 @@ class ENMainSystem(ClassificationSystem):
     class ENMainClasses(IntEnum):
         """Complete EN main class list (0-based indexing)."""
 
-        lbo = 0  # large boulder
-        bo = auto()  # boulder
-        co = auto()  # cobbles
-        gr = auto()  # gravel
-        cgr = auto()  # coarse gravel
-        mcgr = auto()  # medium-coarse gravel
-        mgr = auto()  # medium gravel
-        fmgr = auto()  # fine-medium gravel
-        fgr = auto()  # fine gravel
-        sa = auto()  # sand
-        csa = auto()  # coarse sand
-        mcsa = auto()  # medium-coarse sand
-        msa = auto()  # medium sand
-        fmsa = auto()  # fine-medium sand
-        fsa = auto()  # fine sand
-        si = auto()  # silt
-        cl = auto()  # clay
-        pt = auto()  # peat
-        or_ = auto()  # organic soil
-        hu = auto()  # humus
+        ns = 0  # not specified
         an = auto()  # anthropogenic soil
         ba = auto()  # backfill
+        bo = auto()  # boulder
+        cgr = auto()  # coarse gravel
+        cl = auto()  # clay
+        co = auto()  # cobbles
+        csa = auto()  # coarse sand
+        fgr = auto()  # fine gravel
+        fmgr = auto()  # fine-medium gravel
+        fmsa = auto()  # fine-medium sand
+        fsa = auto()  # fine sand
+        gr = auto()  # gravel
+        hu = auto()  # humus
+        lbo = auto()  # large boulder
+        mcgr = auto()  # medium-coarse gravel
+        mcsa = auto()  # medium-coarse sand
+        mgr = auto()  # medium gravel
+        msa = auto()  # medium sand
+        or_ = auto()  # organic soil
         oth = auto()  # other
-        ns = auto()  # not specified
+        pt = auto()  # peat
+        sa = auto()  # sand
+        si = auto()  # silt

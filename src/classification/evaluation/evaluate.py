@@ -1,7 +1,7 @@
 """Evaluation module."""
 
 import logging
-from collections.abc import Iterable
+from collections import defaultdict
 from dataclasses import dataclass
 
 from classification.utils.datasets.classification import ClassificationSystem, LayerInformation
@@ -227,26 +227,38 @@ def per_class_metrics_from_layers(layers: list[LayerInformation]) -> dict[Classi
     return per_class_metric(predictions, labels)
 
 
-def per_class_metric(predictions: Iterable, labels: Iterable) -> dict[ClassificationSystem.EnumMember, Metrics]:
+def per_class_metric(
+    predictions: list[list[ClassificationSystem.EnumMember]], labels: list[list[ClassificationSystem.EnumMember]]
+) -> dict[ClassificationSystem.EnumMember, Metrics]:
     """Compute per-class classification metrics from the predictions and the labels.
 
+    Supports multi-label inputs where each sample's prediction and label are lists of classes.
+
     Args:
-        predictions (Iterable): An iterable containing the prediction for each sample.
-        labels (Iterable): An iterable containing the ground truth label for each sample.
+        predictions (list[list[ClassificationSystem.EnumMember]]): An iterable of lists of predicted
+            classes per sample.
+        labels (list[list[ClassificationSystem.EnumMember]]): An iterable of lists of ground truth
+            classes per sample.
 
     Returns:
         dict[ClassEnum, Metrics]: A dictionary mapping each class to its TP, FP, FN.
     """
-    metrics_per_class = {}
-    classes: set[ClassificationSystem.EnumMember] = set(predictions) | set(labels)
-    for cls in classes:
-        tp = sum(1 for pred, lab in zip(predictions, labels, strict=True) if pred == lab == cls)
-        fp = sum(1 for pred, lab in zip(predictions, labels, strict=True) if pred == cls and lab != cls)
-        fn = sum(1 for pred, lab in zip(predictions, labels, strict=True) if pred != cls and lab == cls)
+    tp: defaultdict = defaultdict(int)
+    fp: defaultdict = defaultdict(int)
+    fn: defaultdict = defaultdict(int)
 
-        metrics_per_class[cls] = Metrics(tp=tp, fp=fp, fn=fn)
+    for pred, lab in zip(predictions, labels, strict=True):
+        pred_set = set(pred or [])
+        lab_set = set(lab or [])
+        for cls in pred_set | lab_set:
+            if cls in pred_set and cls in lab_set:
+                tp[cls] += 1
+            elif cls in pred_set:
+                fp[cls] += 1
+            else:
+                fn[cls] += 1
 
-    return metrics_per_class
+    return {cls: Metrics(tp=tp[cls], fp=fp[cls], fn=fn[cls]) for cls in tp.keys() | fp.keys() | fn.keys()}
 
 
 def log_metrics_to_mlflow(all_classification_metrics: AllClassificationMetrics):

@@ -1,19 +1,29 @@
-classification_system: "uscs"
-experiment_name: "uscs"
+classification_system: "grain_shape"
+experiment_name: "grain_shape"
 model_path: "google-bert/bert-base-multilingual-uncased"
 use_class_balancing: false
 inference_batch_size: 32
 
 # Training and testing sets
 training_sets:
-  uscs:
-    classification_system: uscs
+  grain_shape:
+    classification_system: grain_shape
     ground_truths:
+      - deepwells_ground_truth.json
       - geoquat_ground_truth.json
 
 test_sets:
-  geoquat_uscs:
-    classification_system: uscs
+  global_grain_shape:
+    classification_system: grain_shape
+    ground_truths:
+      - deepwells_ground_truth.json
+      - geoquat_ground_truth.json
+  deepwells_grain_shape:
+    classification_system: grain_shape
+    ground_truths:
+      - deepwells_ground_truth.json
+  geoquat_grain_shape:
+    classification_system: grain_shape
     ground_truths:
       - geoquat_ground_truth.json
 

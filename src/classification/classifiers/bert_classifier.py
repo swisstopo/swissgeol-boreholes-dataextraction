@@ -3,8 +3,6 @@
 from pathlib import Path
 
 import mlflow
-import numpy as np
-from transformers import Trainer, TrainingArguments
 
 from classification.classifiers.classifier import Classifier
 from classification.models.model import BertModel
@@ -36,7 +34,7 @@ class BertClassifier(Classifier):
         self.init_config(classification_system)
         if model_path is None:
             # load pretrained from transformers lib (bad)
-            model_path = self.config["model_path"]
+            model_path = Path(self.config["model_path"])
         self.model_path = model_path
         self.bert_model = BertModel(
             model_path, classification_system, backbone_path=backbone_path, tokenizer_path=tokenizer_path
@@ -61,18 +59,13 @@ class BertClassifier(Classifier):
         Returns:
             list[LayerInformation]: The updated LayerInformation object
         """
-        # We create an instance of Trainer only for prediction as it is much faster than using custom methods.
-        eval_dataset = self.bert_model.get_tokenized_dataset(layer_descriptions)
-        trainer = Trainer(
-            model=self.bert_model.model,
-            processing_class=self.bert_model.tokenizer,
-            args=TrainingArguments(per_device_eval_batch_size=self.config["inference_batch_size"]),
+        predictions = self.bert_model.predict_class_batched(
+            [layer.material_description for layer in layer_descriptions],
+            batch_size=self.config["inference_batch_size"],
         )
-        output = trainer.predict(eval_dataset)
-        predicted_indices = list(np.argmax(output.predictions, axis=1))
 
         # Convert indices to Enum classes and assign them
-        for layer, idx in zip(layer_descriptions, predicted_indices, strict=True):
-            layer.prediction_class = self.bert_model.id2classEnum[idx]
+        for layer, prediction_idx in zip(layer_descriptions, predictions, strict=True):
+            layer.prediction_class = prediction_idx
 
         return layer_descriptions

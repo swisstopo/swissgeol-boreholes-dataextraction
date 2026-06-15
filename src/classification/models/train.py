@@ -322,10 +322,8 @@ def setup_data(
         logger.info(f"[{i + 1} / {len(model_config.test_sets)}] Loading test: {test_name}")
         test_samples = load_samples_from_set(test_set)
         _, _, test_samples = split_samples(test_samples)
-        # test_datasets[test_name] = bert_model.get_tokenized_dataset(test_samples)
 
         if len(test_samples) == 0:
-            # logger.warning(f"No samples detected for {test_name=}")
             logger.warning(f"No samples detected for {test_name=}, omitted")
             continue
 
@@ -407,7 +405,8 @@ def multilabel_confusion_matrix_nxn(labels: np.ndarray, predictions: np.ndarray)
         predictions (np.ndarray): binary indicator matrix of shape (n_samples, n_labels)
 
     Returns:
-        cm: confusion matrix of shape (n_labels, n_labels) where cm[i, j]
+        np.ndarray: confusion matrix of shape (n_labels, n_labels) where cm[i, j]
+            counts samples where label i is true and label j is predicted.
     """
     return (labels.T @ predictions).astype(int)
 
@@ -429,7 +428,14 @@ class ConfusionMatrixCallback(TrainerCallback):
         self.current_test_name: str = "test"
 
     def _metrics_from_cm(self, cm: np.ndarray) -> dict:
-        """Compute per class f1, precision, recall from confusion matrix."""
+        """Compute per-class Metrics (tp, fp, fn) from a confusion matrix.
+
+        Args:
+            cm (np.ndarray): confusion matrix of shape (n_labels, n_labels).
+
+        Returns:
+            dict: mapping from class name (str) to Metrics for that class.
+        """
         metric_list = [
             Metrics(
                 tp=int(cm[i, i]),
@@ -449,8 +455,7 @@ class ConfusionMatrixCallback(TrainerCallback):
             predictions[no_prediction, logits[no_prediction].argmax(axis=-1)] = 1
             self._cm = multilabel_confusion_matrix_nxn(labels.astype(int), predictions)
         else:  # single-label: binary label vectors → integer indices (n_samples,)
-            label_indices = labels.argmax(axis=-1)
-            self._cm = confusion_matrix(label_indices, logits.argmax(axis=-1), labels=self._sorted_ids)
+            self._cm = confusion_matrix(labels.argmax(axis=-1), logits.argmax(axis=-1), labels=self._sorted_ids)
         self._per_class_metrics = self._metrics_from_cm(self._cm)
         metric_list = list(self._per_class_metrics.values())
         return (
@@ -468,7 +473,8 @@ class ConfusionMatrixCallback(TrainerCallback):
             all_classes=list(self._id2class_enum.values()),
         )
 
-        if mlflow_tracking and mlflow.active_run():
+        if "mlflow" in args.report_to:
+            mlflow.log_metrics(metrics)
             for artifact in (csv_path, png_path):
                 mlflow.log_artifact(str(artifact))
 

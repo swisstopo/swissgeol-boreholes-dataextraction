@@ -10,7 +10,7 @@ from classification.utils.datasets.classification import ClassificationSystem
 logger = logging.getLogger(__name__)
 
 
-class OrganicComponentsUnconsolidatedSystem(ClassificationSystem):
+class OrganicComponentsSystem(ClassificationSystem):
     """Classification system for the organic components of unconsolidated geological layers."""
 
     @classmethod
@@ -42,7 +42,7 @@ class OrganicComponentsUnconsolidatedSystem(ClassificationSystem):
 
     @classmethod
     def get_default_class_value(cls) -> OrganicComponentsClasses:
-        """Default value for the enum (not specified)."""
+        """Return the default value for the enum class."""
         return cls.OrganicComponentsClasses.not_specified
 
     @classmethod
@@ -52,14 +52,14 @@ class OrganicComponentsUnconsolidatedSystem(ClassificationSystem):
     class OrganicComponentsClasses(IntEnum):
         """Complete organic components class list (0-based indexing)."""
 
-        earth = 0
-        humus = auto()
-        undifferenciated_organic_material = auto()
-        roots = auto()
-        remains_of_wood = auto()
-        remains_of_plants = auto()
+        not_specified = 0
         coal = auto()
-        peat = auto()
-        varves = auto()
+        earth = auto()
+        humus = auto()
         other = auto()
-        not_specified = auto()
+        peat = auto()
+        remains_of_plants = auto()
+        remains_of_wood = auto()
+        roots = auto()
+        undifferenciated_organic_material = auto()
+        varves = auto()
