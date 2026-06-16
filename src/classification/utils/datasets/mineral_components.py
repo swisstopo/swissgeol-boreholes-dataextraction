@@ -1,4 +1,4 @@
-"""Accessory minerals classification dataset module."""
+"""Mineral classification dataset module."""
 
 from __future__ import annotations
 
@@ -15,24 +15,24 @@ class MineralComponentsSystem(ClassificationSystem):
 
     @classmethod
     def normalize_class_string(cls, class_str: str) -> str:
-        """Normalize a mineral components class string.
+        """Normalize a mineral class string.
 
         Args:
-            class_str (str): The class string to be normalized (e.g. "not specified").
+            class_str (str): The class string to be normalized (e.g. "not specified", "K-feldspar").
 
         Returns:
-            str: The normalized mineral components class string (e.g., "not_specified").
+            str: The normalized mineral class string (e.g. "not_specified", "k_feldspar").
         """
-        return class_str.lower().replace(" ", "_")
+        return class_str.lower().replace("-", "_").replace(" ", "_")
 
     @classmethod
-    def get_enum(cls) -> type[MineralComponentsClasses]:
-        """Return the MineralComponentsClasses Enum."""
-        return cls.MineralComponentsClasses
+    def get_enum(cls) -> type[MineralComponents]:
+        """Return the MineralComponents Enum."""
+        return cls.MineralComponents
 
     @classmethod
     def get_name(cls) -> str:
-        """Return the name of the system used as a string."""
+        """Return the name of the system."""
         return "mineral_components"
 
     @classmethod
@@ -41,16 +41,16 @@ class MineralComponentsSystem(ClassificationSystem):
         return ["consolidated", "mineral_components"]
 
     @classmethod
-    def get_default_class_value(cls) -> MineralComponentsClasses:
+    def get_default_class_value(cls) -> MineralComponents:
         """Return the default value for the enum class."""
-        return cls.MineralComponentsClasses.not_specified
+        return cls.MineralComponents.not_specified
 
     @classmethod
     def is_multi_label(cls) -> bool:
         return True
 
-    class MineralComponentsClasses(IntEnum):
-        """Mineral component classes for consolidated soil classification (0-based indexing)."""
+    class MineralComponents(IntEnum):
+        """Mineral classes list (0-based indexing)."""
 
         not_specified = 0
         actinolite = auto()
@@ -112,7 +112,7 @@ class MineralComponentsSystem(ClassificationSystem):
         ilmenite = auto()
         jadeite = auto()
         kaolinite = auto()
-        K_feldspar = auto()
+        k_feldspar = auto()  # K-feldspar
         kyanite = auto()
         leucite = auto()
         lignite = auto()

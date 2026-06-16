@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class GrainShapeSystem(ClassificationSystem):
-    """Classification system for grain shapes of unconsolidated geological layers."""
+    """Classification system for grain shape of unconsolidated geological layers."""
 
     @classmethod
     def normalize_class_string(cls, class_str: str) -> str:
@@ -21,7 +21,7 @@ class GrainShapeSystem(ClassificationSystem):
             class_str (str): The class string to be normalized (e.g. "not specified").
 
         Returns:
-            str: The normalized grain shape class string (e.g., "not_specified").
+            str: The normalized grain shape class string (e.g. "not_specified").
         """
         return class_str.lower().replace(" ", "_")
 
@@ -54,6 +54,6 @@ class GrainShapeSystem(ClassificationSystem):
 
         not_specified = 0
         cubic = auto()
-        platy = auto()
         elongated = auto()
         other = auto()
+        platy = auto()

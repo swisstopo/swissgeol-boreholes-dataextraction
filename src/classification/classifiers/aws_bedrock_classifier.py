@@ -209,14 +209,9 @@ class AWSBedrockClassifier(Classifier):
 
         # Update predictions (label and reasoning)
         for data in predictions:
-            if self.multilabel_mode and data.classes_ is not None:
-                filename_layers[data.index].prediction_classes = [
-                    self.classification_system.map_most_similar_class(c) for c in data.classes_
-                ]
-            else:
-                filename_layers[data.index].prediction_class = self.classification_system.map_most_similar_class(
-                    data.class_ or ""
-                )
+            filename_layers[data.index].prediction_class = self.classification_system.map_most_similar_class(
+                data.class_
+            )
             filename_layers[data.index].llm_reasoning = data.reasoning
 
         if self.bedrock_out_directory:

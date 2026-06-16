@@ -264,7 +264,14 @@ class BertModel:
             param.requires_grad = True
 
     def get_tokenized_dataset(self, layers: list[LayerInformation]) -> datasets.Dataset:
-        """Convert a list of LayerInformation entries into a tokenized HuggingFace dataset."""
+        """Convert a list of LayerInformation entries into a tokenized HuggingFace dataset.
+
+        Args:
+            layers (list[LayerInformation]): Layers whose material descriptions are tokenized.
+
+        Returns:
+            datasets.Dataset: Dataset with tokenized inputs and multi-label binary encoded labels.
+        """
         data: dict[str, list] = {
             "layer": [layer.material_description for layer in layers],
             "label": [layer.ground_truth_class for layer in layers],
@@ -282,22 +289,6 @@ class BertModel:
         result["labels"] = labels
         return result
 
-    def tokenize_dataset(self, dataset: datasets.Dataset):
-        """Tokenizes the whole dataset.
-
-        Args:
-            dataset (datasets.Dataset): A dataset from the datasets library (transformers). Must have a column
-                named "layer".
-
-        Returns:
-            datasets.Dataset: the dataset, with tokenized information.
-        """
-
-        def tokenize(entry):
-            return self.tokenize_text(entry["layer"])
-
-        return dataset.map(tokenize, batched=True)
-
     def tokenize_text(self, text: str | list[str]) -> dict[str, torch.Tensor]:
         """Tokenizes a single text string or a list of strings.
 
@@ -314,34 +305,7 @@ class BertModel:
         return tokenized_text
 
     @torch.no_grad()
-    def predict_idx(self, text: str) -> int:
-        """Runs prediction on a single text input.
-
-        Args:
-            text (str): the text to predict the label index from.
-
-        Returns:
-            int: the index of the predicted label.
-        """
-        inputs = self.tokenize_text(text)
-        outputs = self.model(**inputs)
-        return torch.argmax(outputs.logits, dim=1).item()
-
-    @torch.no_grad()
-    def predict_class(self, text: str) -> ClassificationSystem.EnumMember:
-        """Runs prediction on a single text input.
-
-        Args:
-            text (str): the text to predict the label index from.
-
-        Returns:
-            ClassificationSystem.EnumMember: The predicted class the text input.
-        """
-        idx = self.predict_idx(text)
-        return self.id2classEnum[idx]
-
-    @torch.no_grad()
-    def predict_class_batched(self, texts: list[str], batch_size: int) -> list[ClassificationSystem.EnumMember]:
+    def predict_class_batched(self, texts: list[str], batch_size: int) -> list[list[ClassificationSystem.EnumMember]]:
         """Runs batch prediction on multiple text inputs.
 
         Args:
@@ -362,9 +326,27 @@ class BertModel:
 
         predictions = []
         for batch in tqdm(dataloader):
+            batch = {k: v.to(self.model.device) for k, v in batch.items()}
             outputs = self.model(**batch)
-            predicted_indices = torch.argmax(outputs.logits, dim=1).tolist()
-            predictions.extend(predicted_indices)
+
+            if self.classification_system.is_multi_label():
+                prediction = [row.nonzero(as_tuple=True)[0].tolist() or [0] for row in (outputs.logits > 0)]
+            else:
+                prediction = outputs.logits.argmax(axis=-1, keepdims=True).tolist()
+
+            predictions.extend(prediction)
 
         # Convert indices to Enum classes
-        return [self.id2classEnum[idx] for idx in predictions]
+        return [[self.id2classEnum[prediction_index] for prediction_index in prediction] for prediction in predictions]
+
+    @torch.no_grad()
+    def predict_class(self, text: str) -> list[ClassificationSystem.EnumMember]:
+        """Runs prediction on a single text input.
+
+        Args:
+            text (str): the text to predict the label index from.
+
+        Returns:
+            list[ClassificationSystem.EnumMember]: The predicted class of the text input.
+        """
+        return self.predict_class_batched([text], batch_size=1)[0]

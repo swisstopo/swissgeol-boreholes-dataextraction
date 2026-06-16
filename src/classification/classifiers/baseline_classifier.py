@@ -159,8 +159,8 @@ class BaselineClassifier(Classifier):
             sorted_matches = sorted(matches, key=lambda x: (-x["coverage"], -x["complexity"], x["match_positions"]))
 
             if sorted_matches:
-                layer.prediction_class = sorted_matches[0]["class"]
+                layer.prediction_class = [sorted_matches[0]["class"]]
             else:
-                layer.prediction_class = layer.class_system.get_default_class_value()
+                layer.prediction_class = [layer.class_system.get_default_class_value()]
 
         return layer_descriptions

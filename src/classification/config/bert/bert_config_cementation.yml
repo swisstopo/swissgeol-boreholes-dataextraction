@@ -1,19 +1,29 @@
-classification_system: "uscs"
-experiment_name: "uscs"
+classification_system: "cementation"
+experiment_name: "cementation"
 model_path: "google-bert/bert-base-multilingual-uncased"
 use_class_balancing: false
 inference_batch_size: 32
 
 # Training and testing sets
 training_sets:
-  uscs:
-    classification_system: uscs
+  cementation:
+    classification_system: cementation
     ground_truths:
+      - deepwells_ground_truth.json
       - geoquat_ground_truth.json
 
 test_sets:
-  geoquat_uscs:
-    classification_system: uscs
+  global_cementation:
+    classification_system: cementation
+    ground_truths:
+      - deepwells_ground_truth.json
+      - geoquat_ground_truth.json
+  deepwells_cementation:
+    classification_system: cementation
+    ground_truths:
+      - deepwells_ground_truth.json
+  geoquat_cementation:
+    classification_system: cementation
     ground_truths:
       - geoquat_ground_truth.json
 

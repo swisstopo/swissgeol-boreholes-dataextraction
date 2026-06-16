@@ -71,12 +71,18 @@ def common_options(f):
         type=click.Choice(
             [
                 "accessory_components",
+                "alteration_degree_consolidated",
+                "alteration_degree_unconsolidated",
+                "cementation",
                 "color_consolidated",
                 "color_unconsolidated",
+                "debris",
                 "en_main",
+                "grain_angularity",
                 "grain_shape",
                 "lithology",
                 "mineral_components",
+                "organic_components",
                 "uscs",
             ],
             case_sensitive=False,
