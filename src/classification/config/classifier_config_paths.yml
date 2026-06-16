@@ -47,7 +47,7 @@ bedrock:
   accessory_components: bedrock/bedrock_config_accessory_components.yml
   alteration_degree_consolidated: bedrock/bedrock_config_alteration_degree.yml
   alteration_degree_unconsolidated: bedrock/bedrock_config_alteration_degree.yml
-  cementation: null
+  cementation: bedrock/bedrock_config_cementation.yml
   color_consolidated: bedrock/bedrock_config_color.yml
   color_unconsolidated: bedrock/bedrock_config_color.yml
   debris: bedrock/bedrock_config_debris.yml

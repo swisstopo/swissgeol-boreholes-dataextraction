@@ -1,0 +1,133 @@
+baseline: |
+  not_specified:
+    description:
+      No cementation information is present or inferable. Use when the
+      description contains no explicit reference to binding, cementation,
+      or induration — no cement-related adjective, adverb, or compound
+      term appears. Colour, grain size, lithology type, moisture, or
+      mineralogy descriptions without any cementation or hardness qualifier
+      stay here. Never combine not_specified with any other class.
+    keywords:
+      de: [keine Angabe, unbekannt, nicht beschrieben]
+      fr: [sans indication, sans description, sans information]
+      it: [non specificato]
+      en: [not specified]
+
+  uncemented:
+    description:
+      Uncemented — material in which grains or clasts are not bound by
+      any mineral cement. The material is loose, disaggregated, or purely
+      cohesionless. German signals include "unzementiert", "nicht
+      zementiert", and "lose" when used in the context of describing
+      bonding absence rather than packing density. "Locker" alone without
+      any cementation context stays as not_specified; use uncemented only
+      when the descriptor clearly refers to the absence of cement. French
+      signals include "non cimenté" and "meuble". Use uncemented when the
+      description explicitly excludes cement or binding.
+    keywords:
+      de: [unzementiert, nicht zementiert, lose, ungebunden, kein Zement, ohne Zementierung]
+      fr: [non cimenté, sans ciment, meuble, non consolidé, non induré]
+      it: [non cementato, sciolto, non consolidato]
+      en: [uncemented, loose, non-cemented, unconsolidated]
+
+  weakly_cemented:
+    description:
+      Weakly cemented — material in which grains are bound by a sparse or
+      discontinuous cement; the rock or sediment breaks apart with modest
+      hand pressure. In French borehole logs from southwestern Switzerland,
+      the dominant signals are "induré" (indurated) qualified by a weak
+      intensifier, and "tendre/tendres" (soft) as the primary hardness
+      descriptor. Key patterns: "faiblement induré(e/s)" (weakly indurated),
+      "peu induré(e/s)" (slightly indurated), and unqualified "tendre(s)"
+      as the sole or dominant hardness term for the layer. Mixed layers
+      described as "tendres à ... indurées" or "tendres et ... indurées"
+      where the soft component dominates also map here, as do layers where
+      "tendres" is the primary descriptor with only minor indurated
+      intercalations. German signals include "wenig zementiert" and
+      "schwach zementiert". Do not use for layers where "induré(e/s)"
+      appears without a weakening qualifier as the main descriptor — those
+      map to well_cemented.
+    keywords:
+      de: [wenig zementiert, schwach zementiert, gering zementiert, kaum zementiert, schwach gebunden, z.T. zementiert, teilweise zementiert]
+      fr: [faiblement induré, faiblement indurée, faiblement indurées, peu induré, peu indurée, peu indurées, tendre, tendres, marnes tendres, légèrement induré, légèrement indurée, légèrement indurées, faiblement cimenté, peu cimenté]
+      it: [debolmente cementato, poco cementato, tenero]
+      en: [weakly cemented, poorly cemented, slightly cemented, soft, weakly indurated]
+
+  moderately_cemented:
+    description:
+      Moderately cemented — material in which grains are bound by a
+      continuous but not very strong cement; requires significant hand
+      pressure to break. In Swiss borehole logs, plain "zementiert"
+      without a degree qualifier maps here. For French logs from this
+      dataset, this class is the fallback for unqualified "cimenté" without
+      the dominant "induré" vocabulary. German signals include "mässig
+      zementiert" and unqualified "zementiert". Assign moderately_cemented
+      as the default when "zementiert" or "cimenté" appears without any
+      qualifying adverb indicating a different degree.
+    keywords:
+      de: [mässig zementiert, mäßig zementiert, mittel zementiert, mittelmässig zementiert, zementiert, Zementierung mässig, mässig gebunden]
+      fr: [moyennement cimenté, modérément cimenté, cimenté, cimentation moyenne, moyennement induré, modérément induré]
+      it: [moderatamente cementato, cementato, cementazione media]
+      en: [moderately cemented, medium cemented, cemented]
+
+  well_cemented:
+    description:
+      Well cemented — material in which grains are strongly and uniformly
+      bound; the rock is coherent and resists breakage without a hammer.
+      In French borehole logs from this dataset, the dominant signal is
+      unqualified "induré(e/s)" (indurated) as the primary or sole hardness
+      descriptor for the layer — without a weakening adverb ("faiblement",
+      "peu") and without the extreme hardness terms ("durs", "très durs",
+      "très indurées") that trigger strongly_cemented. Common patterns:
+      "marnes indurées", "argiles indurées", "grès indurés", "indurées et
+      stratifiées", as well as mixed layers where "induré(e/s)" is
+      explicitly present alongside minor soft intercalations but the
+      indurated facies clearly dominates. "Matrice/ciment calcaire" (an
+      explicit cement reference) also qualifies. German signals include
+      "gut zementiert" and "fest zementiert". This is the most common
+      non-null class in Swiss French borehole logs: default to well_cemented
+      whenever unqualified "induré(e/s)" is the dominant hardness signal.
+    keywords:
+      de: [gut zementiert, fest zementiert, dicht zementiert, stark zementiert, gut gebunden, fest gebunden, gut verfestigt, gut verkittet]
+      fr: [induré, indurée, indurées, indurés, marnes indurées, argiles indurées, grès indurés, indurées et stratifiées, ciment calcaire, matrice calcaire, bien cimenté, fortement cimenté, bien induré, solidement cimenté]
+      it: [ben cementato, fortemente cementato, indurito]
+      en: [well cemented, firmly cemented, indurated, well indurated, cemented matrix]
+
+  strongly_cemented:
+    description:
+      Strongly cemented — material with very intense cementation or
+      induration; the rock is very hard and effectively lithified. Breaking
+      requires repeated heavy hammer blows. In French borehole logs from
+      this dataset, the key signals are hardness superlatives applied to
+      sandstone or limestone: "durs" / "très durs" (hard / very hard) as
+      the primary descriptor for the layer, "très induré(e/s)" (very
+      indurated), and "très dures" applied to calcaires (limestones).
+      Layers described as "grès durs" or "grès très durs" or "calcaires
+      très dures" map here. "Veines de quartz" co-occurring with "durs"
+      is a supporting signal for extreme silicification-related hardness.
+      German signals include "sehr fest zementiert", "stark verfestigt",
+      and "verkieselt". Strongly_cemented sits above well_cemented: the
+      decisive trigger is a superlative or absolute hardness term ("durs",
+      "très durs", "très indurées"), not merely unqualified "induré(e/s)".
+    keywords:
+      de: [sehr fest zementiert, sehr stark zementiert, stark verfestigt, sehr gut zementiert, verkieselt, hartgebacken, extrem zementiert]
+      fr: [durs, très durs, très dures, très induré, très indurée, très indurées, très indurés, très fortement cimenté, très bien cimenté, calcaires durs, grès durs, grès très durs, calcaires très dures, silicifié]
+      it: [fortissimamente cementato, molto ben cementato, molto indurito, silicizzato]
+      en: [strongly cemented, very strongly cemented, indurated hard, very hard, lithified, silicified]
+
+  other:
+    description:
+      Other — cementation information is present but does not fit any of
+      the defined degree classes. Use when a cementation qualifier appears
+      that is internally contradictory, ambiguous to the degree that no
+      single class can be assigned, or describes an unusual cementation
+      agent or mode not captured by the degree scale. Never use other
+      merely because the description is vague — vague descriptions default
+      to not_specified. Use other only when a cementation term is
+      unambiguously present yet cannot be mapped to any degree class.
+      Never combine other with not_specified.
+    keywords:
+      de: [Zementierungsart unbekannt, besondere Zementierung]
+      fr: [cimenté (ambigu), type de cimentation inconnu]
+      it: [cementato (ambiguo), tipo di cementazione sconosciuto]
+      en: [other cementation, ambiguous cementation, special cementation]
