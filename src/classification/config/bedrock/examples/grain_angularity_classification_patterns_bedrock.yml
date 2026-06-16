@@ -1,0 +1,87 @@
+baseline: |
+  very_angular:
+    description:
+      Grains with sharp, unmodified edges and corners produced directly by
+      fracture; no evidence of abrasion or transport. All faces are fresh
+      and flat, meeting at very acute angles. Typical of freshly crushed
+      rock debris, proximal scree, or fault-derived breccia.
+    keywords:
+      de: [scharfkantig, sehr kantig, scharf kantig]
+      fr: [très anguleux, très anguleuse]
+      it: [a bordi affilati, molto spigoloso, molto angoloso]
+
+  angular:
+    description:
+      Grains with fresh, largely unmodified edges and flat faces; corners
+      may show the slightest wear but surfaces are predominantly unrounded.
+      Characteristic of short-transport sediments, colluvium, and proximal
+      alluvial fans.
+    keywords:
+      de: [kantig, eckig, spitzkantig]
+      fr: [anguleux, anguleuse]
+      it: [spigoloso, angoloso, con spigoli vivi]
+
+  sub_angular:
+    description:
+      Grains with distinct corners and edges that show incipient rounding;
+      flat faces are still present and recognisable. Indicates limited
+      transport distance or moderate abrasion, common in proximal fluvial
+      and glaciofluvial sediments.
+    keywords:
+      de: [kantengerundet, schwach gerundet, teilweise gerundet]
+      fr: [subanguleux, subanguleuse, légèrement arrondi]
+      it: [a bordi arrotondati, sub-angoloso, parzialmente arrotondato]
+
+  sub_rounded:
+    description:
+      Grains transitional between sub-angular and rounded; edges and corners
+      are noticeably smoothed but original grain form is still apparent.
+      Represents moderate transport, typical of medial fluvial reaches or
+      reworked glacial sediments.
+    keywords:
+      de: [angerundet, mässig gerundet, leicht gerundet]
+      fr: [subarrondi, subarrondie, légèrement arrondi]
+      it: [sub-arrotondato, debolmente arrotondato]
+
+  rounded:
+    description:
+      Grains with smoothed edges and corners; flat faces are subdued or
+      absent, and the overall outline is curved. Results from prolonged
+      fluvial, aeolian, or wave abrasion; common in mature river sands,
+      beach sands, and alluvial plains.
+    keywords:
+      de: [gerundet, abgerundet, rund]
+      fr: [arrondi, arrondie]
+      it: [arrotondato, arrotondata]
+
+  well_rounded:
+    description:
+      Grains with highly polished, smoothed surfaces; all corners and edges
+      are completely removed and the grain outline is nearly spherical.
+      Indicates extensive transport or long abrasion history, typical of
+      aeolian dune sands, beach deposits, and mature fluvial sediments.
+    keywords:
+      de: [gut gerundet, stark gerundet, vollständig gerundet]
+      fr: [bien arrondi, bien arrondie, très arrondi]
+      it: [ben arrotondato, ben arrotondata, molto arrotondato]
+
+  other:
+    description:
+      Grain angularity that does not fit any of the defined categories.
+      Use only when the angularity is clearly described but genuinely
+      falls outside the very_angular–well_rounded spectrum.
+    keywords:
+      de: [andere, sonstige, übrige]
+      fr: [autre, autres]
+      it: [altro, altri]
+
+  not_specified:
+    description:
+      No grain angularity information is provided or inferable from the
+      text. Use when the description is absent, illegible, or entirely
+      ambiguous. Do not use as a fallback when angularity can be reasonably
+      inferred.
+    keywords:
+      de: [keine Angabe, nicht angegeben, unbekannt, k.A.]
+      fr: [sans indication, non spécifié, inconnu]
+      it: [senza indicazioni, non specificato, sconosciuto]

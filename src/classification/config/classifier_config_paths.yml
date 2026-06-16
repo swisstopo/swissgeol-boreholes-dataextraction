@@ -30,3 +30,4 @@ bedrock:
   accessory_components: bedrock/bedrock_config_accessory_components.yml
   mineral_components: bedrock/bedrock_config_mineral_components.yml
   grain_shape: bedrock/bedrock_grain_shape.yml
+  grain_angularity: bedrock/bedrock_config_grain_angularity.yml
