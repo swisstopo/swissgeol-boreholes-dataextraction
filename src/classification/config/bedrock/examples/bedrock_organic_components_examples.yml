@@ -1,0 +1,261 @@
+baseline: |
+  not_specified:
+    description:
+      No organic component information is present or inferable. Use when the
+      description contains no explicit reference to any organic material —
+      no plant debris, wood, humus, peat, coal, roots, earth, or varves.
+      Purely mineral descriptions (grain size, colour, plasticity, moisture,
+      compacity, stratification) without any organic qualifier stay here.
+      Bitumen, concrete, and asphalt are anthropogenic and not organic
+      components in the geotechnical sense — they stay here. Shell fragments
+      and mollusc debris are faunal, not plant-derived organic components —
+      they stay here unless co-occurring with an explicit organic keyword.
+      Never combine not_specified with any other class.
+    keywords:
+      de: [keine Angabe, unbekannt, nicht beschrieben]
+      fr: [sans indication, sans description, sans information]
+      it: [non specificato]
+      en: [not specified]
+
+  coal:
+    description:
+      Coal — carbonised or coalified organic matter present as discrete
+      fragments, flakes, or lenses within a sediment. Includes charcoal
+      fragments, lignite (brown coal), and partially carbonised plant
+      material. French signals: "débris charbonneux" (charcoal debris),
+      "esquilles charbonneuses" (charcoal flakes/slivers), "charbons"
+      (charcoal/coal), "lignitisés" / "lignitisées" (lignitised —
+      partially coalified plant remains), "lignite" (lignite), "carbonisés"
+      / "carbonisées" (carbonised), and "végétaux lignitisés" or "plantes
+      lignitisées" (lignitised plants — often co-labelled with
+      remains_of_plants). German signals: "Verkohlungen" (carbonisations),
+      "verkohlte Holzreste" (charred wood remains — often co-labelled with
+      remains_of_wood), "Kohlelage" (coal layer), "Kohle" (coal),
+      "Graphit/Kohle". Coal frequently co-occurs with remains_of_plants
+      (8 cases) and remains_of_wood (2 cases); assign both when both
+      signals are present. Do not confuse "noirâtre" (blackish colour)
+      alone with coal — only assign coal when an explicit carbonisation
+      or charcoal term appears.
+    keywords:
+      de: [Verkohlungen, Verkohlung, verkohlte Holzreste, verkohltes Holz, Kohlelage, Kohle, Graphit/Kohle, Kohlenreste, Schilfresten verkohlte]
+      fr: [débris charbonneux, esquilles charbonneuses, charbons, charbonneux, lignitisés, lignitisées, lignitisé, lignite, carbonisés, carbonisées, végétaux lignitisés, plantes lignitisées, niveaux à lignite, coquilles charbonneuses, fragments charbonneux]
+      it: [carbone, detriti carboniosi, lignitizzato]
+      en: [coal, charcoal, lignite, carbonised, coalified, charred fragments]
+
+  earth:
+    description:
+      Earth — topsoil, cultivated soil, woodland soil, or reworked
+      earthy material; the layer is dominated by a soil-like, earthy
+      matrix rather than pure humus or mineral sediment. French signals:
+      "terre végétale" (topsoil/vegetable earth), "sol végétal" (vegetable
+      soil), "terre arable" (arable land), "terre glaiseuse" (clayey
+      earth), "terreux / terreuse" (earthy). German signals: "Kulturerde"
+      (cultivated earth), "Ackererde" (arable earth), "Walderde" (forest
+      soil), "Erde" appearing as a primary material noun (e.g. "sandige
+      Erde", "siltige Erde", "braune Kulturerde"), "erdig" / "erdigbraun"
+      when describing the dominant material character (not just colour).
+      Earth frequently co-occurs with humus (5 cases) and roots (4 cases);
+      assign all classes that are explicitly signalled. Do not assign earth
+      from "erdig" used purely as a colour adjective alongside a primary
+      mineral description — require an explicit earth-type noun or the
+      "organische Beimengungen, erdig" combination where the earthy
+      character is primary.
+    keywords:
+      de: [Kulturerde, Ackererde, Walderde, Erde, sandige Erde, siltige Erde, tonige Erde, erdig, erdigbraun, Erdig-kiesiges Material, aufgefülltes Material, braune Kulturerde, Braune Ackererde, schwarze Erde]
+      fr: [terre végétale, sol végétal, terre arable, terre glaiseuse, terreux, terreuse, limon terreux, terrain végétal]
+      it: [terra vegetale, suolo vegetale, terriccio]
+      en: [topsoil, vegetable earth, arable soil, forest soil, earthy]
+
+  humus:
+    description:
+      Humus — dark, decomposed organic matter forming the uppermost
+      mineral-organic horizon; typically described as a dark-brown to
+      black layer with significant organic content. German signals: "Humus"
+      (the primary and most common trigger — appearing alone or in compound
+      forms), "humos" / "humös" / "schwach humos" (humic / weakly humic —
+      as an adjective on a mineral substrate), "humoser Silt", "humoser
+      Kies", "siltiger Humus", "Humusspuren" (humus traces), "Grasnarbe"
+      (turf/sod — the vegetated surface layer containing humus). French
+      signals: descriptions of a dark organic-rich soil horizon without an
+      explicit "terre végétale" label may be labelled humus by annotators,
+      but the primary French trigger is "humus" itself or "humeux /
+      humeuse". Humus frequently co-occurs with roots (11 cases), earth (5
+      cases), remains_of_plants (4 cases), and undifferenciated_organic_material
+      (5 cases); assign all co-occurring classes when their signals are
+      present. "Schwach humos" (weakly humic) is sufficient to assign
+      humus even if the dominant material is mineral.
+    keywords:
+      de: [Humus, humos, humös, schwach humos, stark humos, humoser, humoser Silt, humoser Kies, siltiger Humus, toniger Humus, sandiger Humus, Humusspuren, Grasnarbe, Braune Grasnarbe, Humus und Grasnarbe, Humus mit Holz, Humus und Aufschüttung, Humus und schwarze Erde]
+      fr: [humus, humeux, humeuse, horizon humifère]
+      it: [humus, humosum, ricco in humus]
+      en: [humus, humic, humus layer, turf, sod]
+
+  other:
+    description:
+      Other — an organic component is unambiguously present but does not
+      fit any of the defined classes. Use when an organic material is
+      named that is neither coal/lignite, earth/topsoil, humus, peat,
+      plant remains, wood remains, roots, undifferentiated organic matter,
+      nor varves. Examples might include specific organic artefacts or
+      unusual organic material types encountered in contaminated sites.
+      Never use other merely because the description is vague; vague organic
+      mentions default to undifferenciated_organic_material. Never combine
+      other with not_specified.
+    keywords:
+      de: [sonstige organische Bestandteile, organisches Material (unbekannt)]
+      fr: [autre matière organique, matière organique non définie]
+      it: [altro materiale organico]
+      en: [other organic, unclassified organic material]
+
+  peat:
+    description:
+      Peat — fibrous or partially decomposed plant material forming a
+      recognisable peat layer or significant peat admixture. German
+      signals: "Torf" (peat — the primary and most common trigger, either
+      as a standalone material or in compound forms), "torfig" / "torfige"
+      (peaty), "Torfschmitzen" (peat lenses/streaks), "vertorften" (peatified),
+      "Torfhorizonten" (peat horizons). French signals: "tourbe" (peat),
+      "tourbeux / tourbeuses" (peaty), "limons tourbeux" (peaty silts),
+      "zones tourbeuses" (peaty zones), "passages tourbeux" (peaty
+      passages). Peat frequently co-occurs with undifferenciated_organic_material
+      (5 cases) and remains_of_wood (3 cases); assign both when both
+      signals are present. Even minor peat admixtures explicitly named
+      ("Torfschmitzen", "wenig Torf") are sufficient to assign peat.
+      "Faserig" (fibrous) alone without a peat noun does not trigger peat.
+    keywords:
+      de: [Torf, torfig, torfige, torfiger, Torfschmitzen, vertorften, Torfhorizonten, Torflagen, Torfreste, schwarzer Torf, brauner Torf, Torf siltig, Torf faserig, Torf zersetzt]
+      fr: [tourbe, tourbe brune, tourbe noire, tourbeux, tourbeuses, tourbeuse, limons tourbeux, zones tourbeuses, passages tourbeux, niveaux à tourbe]
+      it: [torba, torboso, orizzonti torbosi]
+      en: [peat, peaty, peat layer, peat lens, fibrous peat]
+
+  remains_of_plants:
+    description:
+      Remains of plants — identifiable non-woody plant debris: leaves,
+      stems, reed fragments, needles, grass, straw, or partially decomposed
+      plant material that is not woody (see remains_of_wood) and not yet
+      coalified (see coal). French signals: "débris végétaux" (plant
+      debris), "débris de végétaux" (plant debris), "débris de végétaux
+      palustres" (marsh plant debris), "fragments de plantes" (plant
+      fragments), "fragments de végétaux" (plant fragments), "matière
+      végétale" (plant matter), "végétaux" appearing as a material noun,
+      "radicelles" (fine rootlets — small enough to be plant remains rather
+      than roots), "débris de bois" when preceded by explicit plant context,
+      "Grasnarbe" in German (turf/grass layer — often co-labelled with
+      humus). German signals: "Pflanzenreste" (plant remains), "Pflanzenspuren"
+      (plant traces), "Pflanzenteile" (plant parts), "Schilfresten" (reed
+      remnants), "Tannennadeln" (fir needles), "Grasnarbe" (turf). Remains_of_plants
+      frequently co-occurs with coal (8 cases) when the plant material is
+      lignitised/carbonised, and with undifferenciated_organic_material
+      (5 cases) and humus (4 cases). Assign remains_of_plants and coal
+      together when "végétaux lignitisés" or "plantes lignitisées" appears.
+      Do not assign remains_of_plants from "matière organique" alone —
+      that stays in undifferenciated_organic_material.
+    keywords:
+      de: [Pflanzenreste, Pflanzenspuren, Pflanzenteile, Schilfresten, Tannennadeln, Grasnarbe, Braune Grasnarbe, Humus und Grasnarbe, Pflanzenresten, organische Beimengungen (Pflanzenresten)]
+      fr: [débris végétaux, débris de végétaux, débris de végétaux palustres, fragments de plantes, fragments de végétaux, végétaux palustres, matière végétale, radicelles, débris de plantes, vestiges de plantes, végétaux en décomposition, plantes palustres]
+      it: [resti vegetali, detriti vegetali, resti di piante]
+      en: [plant remains, plant debris, plant fragments, reed remains, grass, turf layer, plant matter]
+
+  remains_of_wood:
+    description:
+      Remains of wood — identifiable woody material: logs, branches,
+      planks, wood chips, or partially decomposed wood fragments. German
+      signals: "Holzreste" (wood remains — the primary trigger), "Holzstück"
+      / "Holzstücke" (piece/pieces of wood), "Holz" appearing as a material
+      component (e.g. "mit Holz", "Holzbeimengungen", "Holzeinschlüssen"),
+      "Holzstückchen" (small wood pieces), "Holzstücke und Halme" (wood
+      pieces and stalks), "Äste/Stämme" (branches/trunks), "Stamm"
+      (trunk), "Holzeinschlüsse" (wood inclusions). French signals: "débris
+      de bois" (wood debris), "morceaux de bois" (wood pieces), "bois"
+      appearing as a material component. Remains_of_wood frequently
+      co-occurs with undifferenciated_organic_material (8 cases) and
+      peat (3 cases); assign both when both signals are present. "Verkohlte
+      Holzreste" (charred wood remains) triggers both remains_of_wood and
+      coal. A single "Holzstück" notation in a layer (common in German
+      logs) is sufficient to assign remains_of_wood for the layer.
+    keywords:
+      de: [Holzreste, Holzstück, Holzstücke, Holzstückchen, Holz, Holzbeimengungen, Holzeinschlüssen, Holzeinschlüsse, Äste, Stämme, Stamm, Halme, Blauer Lehmsand mit Holzresten, Holz vermischt, verkohlte Holzreste]
+      fr: [débris de bois, morceaux de bois, bois, niveaux noirs riche en débris de bois, fragments de bois]
+      it: [resti di legno, frammenti di legno, legno]
+      en: [wood remains, wood debris, pieces of wood, wood fragments, log, branch, trunk, charred wood]
+
+  roots:
+    description:
+      Roots — living or dead root systems or root traces from larger
+      plants, distinguishable from fine plant remains by their size and
+      form. French signals: "racines" (roots — the primary French trigger),
+      "nombreuses racines" (many roots), "petites racines" (small roots),
+      "radicelles" when described as numerous or named alongside "racines".
+      German signals: "Wurzeln" (roots — the primary German trigger),
+      "Wurzelreste" (root remains), "Wurzelwerk" (root network/system),
+      "Wurzeln" appearing in compound descriptions ("Walderde mit Wurzeln",
+      "Kies mit Steinen, mit Wurzelresten"), "Verwurzelungen" (root
+      penetrations). Roots frequently co-occurs with humus (11 cases) and
+      earth (4 cases), as roots are characteristic of topsoil and forest
+      soil horizons. "Radicelles" in French when appearing in small
+      quantities alongside other organic components may be classified as
+      remains_of_plants rather than roots; classify as roots when the
+      description uses "racines" explicitly. A single mention of "racines"
+      or "Wurzeln" in a layer description is sufficient to assign roots.
+    keywords:
+      de: [Wurzeln, Wurzelreste, Wurzelwerk, Verwurzelungen, Würzelchen, Wurzelresten, vereinzelt Wurzeln, wenig Wurzeln, häufig Wurzeln, reichlich Wurzeln]
+      fr: [racines, nombreuses racines, petites racines, racines épars, quelques racines, racines et gravillons, racines et organismes]
+      it: [radici, resti di radici, sistema radicale]
+      en: [roots, root remains, root network, root traces, root system]
+
+  undifferenciated_organic_material:
+    description:
+      Undifferentiated organic material — organic matter that is present
+      but not specifically identified as coal, peat, wood, plant remains,
+      roots, humus, or earth. Includes diffuse organic traces, unspecified
+      organic admixtures, decomposed organic matter of uncertain origin,
+      and general organic-rich matrices. German signals: "organische
+      Beimengungen" (organic admixtures — the primary and dominant German
+      trigger, appearing in over 200 examples), "org. Beimengungen"
+      (abbreviated form), "organisches Material" (organic material),
+      "organische Bestandteile" (organic components), "organisch" as an
+      adjective on a material ("stark organisch", "stark torfige
+      Beimengungen"), "Modergeruch" (musty/mouldy odour — characteristic
+      of decomposing organic matter), "torfige Beimengungen" when the peat
+      character is diffuse rather than a named layer. French signals:
+      "matière organique" (organic matter), "matières organiques" (organic
+      matter — plural), "traces de matières organiques" (traces of organic
+      matter), "débris organiques" (organic debris), "niveaux organiques"
+      (organic levels), "niveaux très organiques" (highly organic levels),
+      "organique" as an adjective, "matrice organique diffuse" (diffuse
+      organic matrix). "Modergeruch" alone (musty smell without a named
+      organic type) is a strong trigger for undifferenciated_organic_material.
+      Assign undifferenciated_organic_material alongside more specific
+      classes when a named organic type (wood, peat, roots) co-occurs with
+      general organic admixture signals — for example, "Holzreste und
+      organische Beimengungen" → both remains_of_wood and
+      undifferenciated_organic_material.
+    keywords:
+      de: [organische Beimengungen, org. Beimengungen, organisches Material, organische Bestandteile, stark organisch, organisch, Modergeruch, torfige Beimengungen, organischd Beimengungen, lokale organische Beimengungen, reichlich organische Beimengungen, wenig organische Beimengungen]
+      fr: [matière organique, matières organiques, traces de matières organiques, débris organiques, niveaux organiques, niveaux très organiques, organique, matrice organique diffuse, petits niveaux organiques, riche en matière organique]
+      it: [materiale organico, sostanza organica, tracce organiche, detriti organici]
+      en: [organic material, organic matter, organic admixture, organic traces, organic debris, undifferentiated organic, organic content]
+
+  varves:
+    description:
+      Varves — annually laminated lacustrine (lake) sediments showing
+      alternating fine layers of clay and silt (or silt and sand) deposited
+      in glacial or proglacial lakes. The varved structure is the defining
+      signal, not the organic content, but varves frequently contain organic
+      traces. French signals: "varvé" / "varvés" / "varvée" / "varvées"
+      (varved — the primary trigger in any grammatical form), "finement
+      varvé(s/e/es)" (finely varved), "grossièrement varvé" (coarsely
+      varved). German signals: "Warven" (varves — German spelling),
+      "Warvensediment" (varve sediment). Note: "varvé" in French and
+      "Warven" in German are unambiguous — assign varves whenever either
+      appears. Varves co-occur with undifferenciated_organic_material (4
+      cases) when organic traces are also noted; assign both when both
+      signals are present. "Rubané" (banded/ribboned) alone does NOT
+      trigger varves — it describes stratification without implying annual
+      lamination. "Feuilleté" (finely laminated) alone does NOT trigger
+      varves either.
+    keywords:
+      de: [Warven, Warvensediment, feine Torfhorizonte mit Warven, Silt mit Warven]
+      fr: [varvé, varvés, varvée, varvées, finement varvé, finement varvés, finement varvée, finement varvées, grossièrement varvé, varvé avec du sable, varvé avec du limon]
+      it: [varve, sedimenti varvati]
+      en: [varves, varved, varved clay, varved sediment, annually laminated]

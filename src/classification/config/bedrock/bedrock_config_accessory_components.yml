@@ -1,4 +1,4 @@
-# Config file for unconsolidated material classification into color classes
+# Config file for consolidated material (bedrock) classification into accessory component classes
 # Prompt file and version
 prompts_file: bedrock/prompts/bedrock_accessory_components_prompts.yml
 prompt_version: baseline

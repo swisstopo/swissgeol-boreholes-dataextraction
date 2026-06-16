@@ -1,4 +1,4 @@
-# Config file for unconsolidated material classification into color classes
+# Config file for unconsolidated material classification into grain angularity classes
 # Prompt file and version
 prompts_file: bedrock/prompts/bedrock_grain_angularity_prompts.yml
 prompt_version: baseline

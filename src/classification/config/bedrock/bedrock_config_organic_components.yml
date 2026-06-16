@@ -1,10 +1,10 @@
-# Config file for unconsolidated material classification into debris classes
+# Config file for unconsolidated material classification into organic component classes
 # Prompt file and version
-prompts_file: bedrock/prompts/bedrock_debris_prompts.yml
+prompts_file: bedrock/prompts/bedrock_organic_components_prompts.yml
 prompt_version: baseline
 
 # Pattern file and parameter version
-pattern_file: bedrock/examples/bedrock_debris_examples.yml
+pattern_file: bedrock/examples/bedrock_organic_components_examples.yml
 pattern_version: baseline
 
 # Tool file
