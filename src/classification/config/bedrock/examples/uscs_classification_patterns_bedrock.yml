@@ -224,3 +224,512 @@ baseline:
     GW: ["ghiaia ben classata"]
     GW-GM: ["ghiaia ben con limo"]
     MH: ["limo elastico"]
+
+v1: |
+  CH:
+    description:
+      Fat clay — high plasticity, cohesive, sticky when wet. The dominant fine
+      material is clay with very low permeability. Described as "fetter Ton" in
+      German logs. Use CH when plasticity clearly exceeds the A-line and liquid
+      limit is high.
+    keywords:
+      de: [fetter Ton]
+      fr: [argile grasse]
+      it: [argilla grassa]
+      en: [fat clay]
+
+  CL:
+    description:
+      Lean to silty clay of low to medium plasticity — cohesive, plastic or
+      firm, fine-grained. This is the correct class for descriptions that
+      combine silt and clay language (limon argileux, limon plus ou moins
+      argileux, toniger Silt argileux) when plasticity terms are present
+      (plastique, ferme, weichplastisch, bindigen). Also covers argile
+      limoneuse, feuilletée (laminated), or varvée clay. Do NOT reassign
+      to CL-ML simply because the word "limon" appears — CL-ML is reserved
+      for descriptions that are explicitly non-plastic or near the A-line
+      boundary. When in doubt between CL and CL-ML, prefer CL.
+    keywords:
+      de: [siltiger Ton, Lehm, toniger Silt weichplastisch, toniger Silt plastisch]
+      fr: [argile limoneuse, argile, argileux, limon argileux, limon plus ou moins argileux, argile limoneuse varvée, feuilletée]
+      it: [argilla limosa]
+      en: [silty clay, lean clay]
+
+  CL-ML:
+    description:
+      Transitional class between lean clay (CL) and silt (ML) — used only
+      when the material is explicitly near-non-plastic or at the boundary of
+      the A-line (IP ~ 4-7). Do NOT use CL-ML for descriptions that include
+      plasticity terms (plastique, ferme, bindigen, weichplastisch) — those
+      are CL. Do NOT use CL-ML simply because both "limon" and "argileux"
+      appear; that combination is CL when plastic. Reserve CL-ML for cases
+      where non-plasticity or very low plasticity is explicit, or where clay
+      and silt fractions are genuinely co-dominant without a plastic character.
+    keywords:
+      de: [tonig-sandiger Silt]
+      fr: [limon argileux non plastique]
+      it: [limo argilloso]
+      en: [clayey silt]
+
+  CM:
+    description:
+      Lean clay — lower plasticity than CH but still cohesive. "Magerer Ton"
+      in German. Use when clay is explicitly described as lean or thin.
+    keywords:
+      de: [magerer Ton]
+      fr: [argile maigre]
+      it: [argilla magra]
+      en: [lean clay]
+
+  G:
+    description:
+      Generic gravel — use ONLY when no gradation qualifier and no fines
+      modifier can be inferred from the description. If the description
+      mentions "sauber" (clean), "viel Sand" (much sand), grain-size
+      diversity, or "bien gradué" without an explicit fines modifier, prefer
+      GW or GP over G. Reserve G for truly unspecified gravel entries.
+    keywords:
+      de: [Kies, Kiessand]
+      fr: [gravier]
+      it: [ghiaia]
+      en: [gravel]
+
+  G-GC:
+    description:
+      Slightly clayey gravel — gravel with only a small clay fines content
+      (typically < 5 %), not enough to classify as GC. Use ONLY when the
+      description includes an explicit weak clay modifier (schwach tonig,
+      leicht tonig, peu argileux). Do NOT use when clay content is described
+      as significant or when "tonig" appears without a weakening qualifier —
+      that is GC.
+    keywords:
+      de: [schwach toniger Kies]
+      fr: [gravier peu argileux]
+      it: [ghiaia leggermente argillosa]
+      en: [slightly clayey gravel]
+
+  G-GM:
+    description:
+      Slightly silty gravel — gravel with only a very minor silt content,
+      not enough to classify as GM. Use ONLY when an explicit weak silt
+      modifier is present (schwach siltig, peu limoneux) and silt content
+      is negligible. Do NOT use G-GM for "leicht siltiger Kies" when the
+      silt content is appreciable — that is GM. The distinction: G-GM is
+      for truly trace silt; GM is for clearly silty gravel.
+    keywords:
+      de: [schwach siltiger Kies]
+      fr: [gravier peu limoneux]
+      it: [ghiaia leggermente limosa]
+      en: [slightly silty gravel]
+
+  GC:
+    description:
+      Clayey gravel — gravel with a significant clay fines fraction that
+      clearly affects engineering behavior (typically > 12 % fines, clay
+      dominated). Use GC when "tonig" appears as a primary modifier without
+      a weakening qualifier. When both clay and silt are mentioned but clay
+      is the primary modifier (tonig-siltiger Kies, toniger Kies mit etwas
+      Silt), still prefer GC over GC-GM unless silt is explicitly co-dominant.
+    keywords:
+      de: [toniger Kies, Kies Lehm, stark toniger Kies]
+      fr: [gravier argileux]
+      it: [ghiaia argillosa]
+      en: [clayey gravel]
+
+  GC-GM:
+    description:
+      Silty to clayey gravel — fines are a genuine mixture of silt and clay
+      with neither fraction clearly dominant. Use GC-GM ONLY when both silt
+      and clay are explicitly described as co-dominant (siltiger bis toniger
+      Kies, gravier limono-argileux). Do NOT use GC-GM when clay is the
+      primary fines modifier with only a secondary silt mention — that is GC.
+      Do NOT use GC-GM when silt is the primary modifier — that is GM.
+    keywords:
+      de: [siltiger bis toniger Kies, siltig-toniger Kies]
+      fr: [gravier limono-argileux]
+      it: [ghiaia limoso argillosa]
+      en: [silty, clayey gravel]
+
+  GM:
+    description:
+      Silty gravel — gravel with silt as the dominant fine fraction. Use GM
+      when "siltig" or "limoneux" is the primary fines modifier, regardless
+      of whether "leicht" (slightly) is present, as long as the silt content
+      is clearly appreciable. Also use GM for "leicht siltiger Kies" entries
+      where the geologic context confirms meaningful silt content. Note:
+      "Steinlage mit Silt" or coarse layers cemented with silt also classify
+      as GM when gravel/stone is the matrix.
+    keywords:
+      de: [siltiger Kies, leicht siltiger Kies, Kies siltig, Steinlage mit Silt]
+      fr: [gravier limoneux, gravier sablo-limoneux]
+      it: [ghiaia limosa]
+      en: [silty gravel]
+
+  GP:
+    description:
+      Poorly graded gravel — coarse-grained, dominantly gravel, with a
+      narrow or gap-graded particle-size distribution and few fines. Use GP
+      for clean gravel descriptions that do not explicitly state good gradation
+      or a wide grain-size range. "Sauberer Kies" (clean gravel), uniform
+      gravel, or gravel with only scattered stones and sand but no stated
+      gradation quality defaults to GP, not G or GW. When unsure between
+      GP and GW for clean gravel with sand, prefer GP.
+    keywords:
+      de: [schlecht abgestufter Kies, grober Kies, mittelgrober Kies, sandiger Feinkies, Grobkies, Feinkies, sauberer Kies]
+      fr: [gravier mal gradué, gravier moyen, gravier grossier]
+      it: [ghiaia mal classata]
+      en: [poorly graded gravel]
+
+  GP-GC:
+    description:
+      Poorly graded gravel with clay — uniform or clean gravel with a clay
+      fines component. Use when both poor gradation (or clean gravel) and a
+      clay modifier are present.
+    keywords:
+      de: [schlecht abgestufter Kies mit Ton]
+      fr: [gravier mal gradué avec argile]
+      it: [ghiaia mal classata con argilla]
+      en: [poorly graded gravel with clay]
+
+  GP-GM:
+    description:
+      Poorly graded gravel with silt — uniform or clean gravel with a silt
+      fines component. Use when both poor gradation and a silt modifier are
+      present, or when a grain-size gravel qualifier (Grobkies, Mittelkies,
+      Feinkies) is combined with "siltig".
+    keywords:
+      de: [schlecht abgestufter Kies mit Silt, siltiger Grobkies, siltiger Mittelkies]
+      fr: [gravier mal gradué avec limon, gravier moyen limoneux, gravier grossier limoneux]
+      it: [ghiaia mal classata con limo]
+      en: [poorly graded gravel with silt]
+
+  GW:
+    description:
+      Well-graded gravel — gravel with a wide, continuous particle-size
+      distribution spanning multiple grain-size classes and few fines. Use
+      GW when "gut abgestuft" appears, or when the description mentions a
+      broad range of clast sizes (cailloux de toutes dimensions, alle
+      Korngrößen) without significant fines. Also use GW when stones
+      (Steine) are described as present within a gravel-sand matrix — stones
+      embedded in a gravel matrix indicate wide grading, not a St class.
+      When both "limoneux" and a wide size range are described, prefer GW
+      over GW-GM unless silt is clearly a significant component.
+    keywords:
+      de: [gut abgestufter Kies, Kies mit viel Sand und Steinen, Steine mit reichlich Kies und Sand]
+      fr: [gravier bien gradué, gravier cailloux de toutes dimensions, gravier plus sableux]
+      it: [ghiaia ben classata]
+      en: [well-graded gravel]
+
+  GW-GC:
+    description:
+      Well-graded gravel with clay — good gradation combined with a clearly
+      significant clay fines component.
+    keywords:
+      de: [gut abgestufter Kies mit Ton]
+      fr: [gravier bien gradué avec argile]
+      it: [ghiaia ben con argilla]
+      en: [well-graded gravel with clay]
+
+  GW-GM:
+    description:
+      Well-graded gravel with silt — good gradation combined with a clearly
+      significant silt fines component. Use GW-GM only when silt is explicitly
+      a notable fraction alongside good gradation. Do NOT use GW-GM for
+      "gravier sablo-limoneux" or "gravier limoneux" with wide grain-size
+      range alone — those are GW (wide grading dominates) or GM (silt
+      dominates).
+    keywords:
+      de: [gut abgestufter Kies mit Silt]
+      fr: [gravier bien gradué avec limon, gravier galets limoneux, gravier éléments roulés limoneux]
+      it: [ghiaia ben con limo]
+      en: [well-graded gravel with silt]
+
+  MH:
+    description:
+      Elastic silt — high-plasticity silt above the A-line. Rare; use only
+      when "elastisch" or equivalent high-plasticity silt language is explicit.
+    keywords:
+      de: [elastischer Silt]
+      fr: [limon élastique]
+      it: [limo elastico]
+      en: [elastic silt]
+
+  ML:
+    description:
+      Silt of low to no plasticity — fine-grained, typically non-plastic or
+      weakly plastic. Use ML when silt is the dominant fraction described
+      without strong clay plasticity indicators. Includes silty sand (Siltsand),
+      silt with fine sand (Silt mit Feinsand, limon avec sable fin), sandy
+      loam (sandiger Lehm), and earthen or weakly described silty material
+      (limon terreux). Also use ML for plastic-described silt when organics
+      are only mentioned incidentally as traces or minor inclusions — organic
+      traces alone do not promote to OH. Do NOT use ML when the description
+      has both silt and clay with plasticity terms — that is CL.
+    keywords:
+      de: [Silt, Siltsand, Silt mit Kies, sandiger Lehm, Silt mit Feinsand, limon terreux, Kohle organische Reste Silt]
+      fr: [limon, limon terreux, limon avec sable fin, limon sableux non plastique]
+      it: [limo]
+      en: [silt]
+
+  OH:
+    description:
+      Organic silt or organic clay of HIGH plasticity. Use OH only when
+      organics are clearly a major fraction AND the material has high
+      plasticity or a dark colour indicative of significant organic content
+      (organischer Silt, Humus, humoser Silt, limon organique). Do NOT use
+      OH for sand or gravel descriptions where organic matter is mentioned
+      alongside mineral fractions — those remain SM, ML, or the appropriate
+      mineral class. Do NOT use OH for silty descriptions with only trace
+      organic inclusions (Pflanzenreste, débris végétaux minoritaires).
+    keywords:
+      de: [organischer Silt, Humus, humoser Silt]
+      fr: [limon organique, végétal]
+      it: [limo organico]
+      en: [organic silt]
+
+  OL:
+    description:
+      Organic clay or organic silt of LOW plasticity. Use OL when organics
+      are a significant component of a silt or clay matrix but plasticity is
+      low or moderate. Typical indicators: "tourbeux" (peaty but not pure
+      peat), "débris végétaux" in a silt/clay context, "organisch" alongside
+      silt or clay. Use OL for "limon tourbeux" — tourbeux means peat-like
+      character, not pure peat (Pt). Do NOT upgrade OL to OH unless high
+      plasticity is explicitly stated. Do NOT upgrade OL to Pt unless the
+      material is described as pure peat (Torf, tourbe without silt/clay
+      matrix). When organic matter appears alongside low-plasticity silt or
+      clay, prefer OL over OH.
+    keywords:
+      de: [organischer Ton, Humus und Sand, toniger Silt mit organischen Bestandteilen]
+      fr: [argile organique, limon tourbeux, limon avec débris végétaux, limon organique peu plastique]
+      it: [argilla organica]
+      en: [organic clay]
+
+  Pt:
+    description:
+      Peat — use ONLY when the description clearly identifies the material as
+      predominantly peat with no significant mineral matrix. "Torf", "tourbe"
+      alone qualify. "Limon tourbeux" (peaty silt) and "toniger Silt mit
+      Torf" (clayey silt with peat) do NOT qualify — those are OL.
+    keywords:
+      de: [Torf]
+      fr: [tourbe]
+      it: [torba]
+      en: [peat]
+
+  S:
+    description:
+      Generic sand — use ONLY when no gradation qualifier and no fines
+      modifier can be inferred. If grain-size qualifiers (Feinsand, Mittelsand,
+      Grobsand) or fines mentions appear, prefer SP or SM. Reserve S for
+      truly unspecified sand entries.
+    keywords:
+      de: [Sand, Sand Kies]
+      fr: [sable, sableux]
+      it: [sabbia]
+      en: [sand]
+
+  S-SC:
+    description:
+      Slightly clayey sand — sand with only a trace clay content (< 5 %).
+      Use ONLY with explicit weak clay qualifier (schwach tonig). When clay
+      content is significant, use SC.
+    keywords:
+      de: [schwach toniger Sand, leicht toniger Sand]
+      fr: [sable peu argileux]
+      it: [sabbia leggermente argillosa]
+      en: [slightly clayey sand]
+
+  S-SM:
+    description:
+      Slightly silty sand — sand with only a trace silt content (< 5 %).
+      Use ONLY with an explicit weak silt qualifier (schwach siltig) and NO
+      grain-size sub-class qualifier. If a grain-size qualifier is also
+      present (leicht siltiger Feinsand, leicht siltiger Mittelsand), use
+      SM instead — those describe real silt content in a classified sand.
+    keywords:
+      de: [schwach siltiger Sand]
+      fr: [sable peu limoneux]
+      it: [sabbia leggermente limosa]
+      en: [slightly silty sand]
+
+  SC:
+    description:
+      Clayey sand — sand with appreciable clay fines. Includes lehmiger Sand
+      (loamy sand). Use SC when clay is the dominant fines modifier.
+    keywords:
+      de: [toniger Sand, lehmiger Sand]
+      fr: [sable argileux]
+      it: [sabbia argillosa]
+      en: [clayey sand]
+
+  SC-SM:
+    description:
+      Silty, clayey sand — fines are a genuine mixture of silt and clay in
+      sand, with neither dominant. Use when both silt and clay modifiers
+      appear in a sand matrix without a dominant one.
+    keywords:
+      de: [siltiger toniger Sand, Sand verlehmt siltig]
+      fr: [sable limono-argileux]
+      it: [sabbia limo argillosa]
+      en: [silty, clayey sand]
+
+  SM:
+    description:
+      Silty sand — sand with silt as the dominant fine fraction. This is the
+      correct class for any sand description where silt is the fines modifier,
+      regardless of grain-size sub-class qualifier (leicht siltiger Feinsand,
+      siltiger Feinsand, feinsandiger Silt, limon avec sable fin, sable très
+      limoneux). Use SM when sand is the primary fraction even if "Silt"
+      appears first in the description (feinsandiger Silt = SM when sand
+      dominates). Also use SM for "sauber bis siltiger Sand" and for silty
+      sand with organic traces — organic traces alone do not promote to OH.
+      Do NOT use SP-SM or S-SM when silt content is real and appreciable.
+    keywords:
+      de: [siltiger Sand, leicht siltiger Sand mit Kies, sauberer bis siltiger Sand, feinsandiger Silt, Silt mit viel Feinsand]
+      fr: [sable limoneux, limon avec sable fin, sable très limoneux, limon sableux]
+      it: [sabbia limosa]
+      en: [silty sand]
+
+  SP:
+    description:
+      Poorly graded sand — sand with a narrow, uniform particle-size
+      distribution. Use SP for clean sand with grain-size qualifiers (Feinsand,
+      Mittelsand, Grobsand) and no fines modifier. When unsure between SP and
+      S for a described grain-size class, prefer SP. Do NOT use SP-SM unless
+      silt content is explicitly stated alongside poor gradation.
+    keywords:
+      de: [schlecht abgestufter Sand, grobkörniger Sand, mittelkörniger Sand, feinkiesiger Mittelsand]
+      fr: [sable mal gradué, sable moyen, sable grossier]
+      it: [sabbia mal classata]
+      en: [poorly graded sand]
+
+  SP-SC:
+    description:
+      Poorly graded sand with clay — uniform sand with a clay fines component.
+      Use when both poor gradation and a clay modifier are explicitly stated.
+    keywords:
+      de: [schlecht abgestufter Sand mit Ton, Feinsand Lehm, toniger Feinsand]
+      fr: [sable mal gradué avec argile]
+      it: [sabbia mal classata con argilla]
+      en: [poorly graded sand with clay]
+
+  SP-SM:
+    description:
+      Poorly graded sand with silt — uniform sand with a silt fines component.
+      Use ONLY when both poor gradation AND a silt modifier are explicitly
+      stated together (schlecht abgestufter Sand mit Silt). Do NOT use SP-SM
+      for general "leicht siltiger Sand" or grain-size sand with silt —
+      those are SM. SP-SM requires explicit poor-gradation language.
+    keywords:
+      de: [schlecht abgestufter Sand mit Silt]
+      fr: [sable mal gradué avec limon, sable moyen limoneux]
+      it: [sabbia mal classata con limo]
+      en: [poorly graded sand with silt]
+
+  SW:
+    description:
+      Well-graded sand — sand with a wide, continuous particle-size
+      distribution. Use SW when "gut abgestuft" appears, or when sand spans
+      multiple grain-size classes (Feinsand bis Grobsand, sable fin à
+      grossier) without significant fines. Also use SW when "teils siltiger,
+      teils gut abgestufter Sand" is described — the dominant character is
+      well-graded sand, not silty sand.
+    keywords:
+      de: [gut abgestufter Sand, Sand Kies Silt]
+      fr: [sable bien gradué]
+      it: [sabbia ben classata]
+      en: [well-graded sand]
+
+  SW-SC:
+    description:
+      Well-graded sand with clay — good gradation combined with significant
+      clay fines.
+    keywords:
+      de: [gut abgestufter Sand mit Ton]
+      fr: [sable bien gradué avec argile]
+      it: [sabbia ben classata con argilla]
+      en: [well-graded sand with clay]
+
+  SW-SM:
+    description:
+      Well-graded sand with silt — good gradation combined with significant
+      silt fines. Use only when both well-graded and silt qualifiers are
+      explicitly present.
+    keywords:
+      de: [gut abgestufter Sand mit Silt, Grobmittelsand siltig, Feinmittelsand siltig, gut abgestufter Feinsand siltiger Sand]
+      fr: [sable bien gradué avec limon]
+      it: [sabbia ben classata con limo]
+      en: [well-graded sand with silt]
+
+  Bl:
+    description:
+      Boulder — very large individual rock fragment (> 200 mm) as primary
+      material. Use only when boulders/blocks are the dominant described
+      material, not when stones or boulders appear as clasts within a gravel
+      or sand matrix.
+    keywords:
+      de: [Block]
+      fr: [bloc]
+      it: [blocco]
+      en: [boulder]
+
+  St:
+    description:
+      Cobbles — rock fragments (63–200 mm) as the PRIMARY material. Use St
+      ONLY when stones are the dominant fraction of the layer with no
+      significant gravel matrix. Do NOT use St when stones are described as
+      embedded in or mixed with gravel, sand, or silt — in that case classify
+      by the matrix material (GW, GM, GP, etc.).
+    keywords:
+      de: [Stein]
+      fr: [pierre]
+      it: [pietra]
+      en: [cobbles]
+
+  St-Bl:
+    description:
+      Cobbles and boulders — mixed coarse rock fragments covering both size
+      classes as PRIMARY material. Use when both Steine and Blöcke are the
+      dominant described material without a finer matrix.
+    keywords:
+      de: [Steine und Blöcke]
+      fr: [pierre et bloc]
+      it: [pietre e blocchi]
+      en: [cobbles and boulders]
+
+  FELS:
+    description:
+      Bedrock or consolidated rock — the material is a rock mass, not a soil.
+      Includes all lithological rock types: sandstone, mudstone, marl,
+      Molasse, limestone, gypsum, schists. Use FELS whenever the description
+      refers to rock rather than soil.
+    keywords:
+      de: [Fels, Sandstein, Tonstein, Mergel, Molasse, Kalk, Sandsteinbrocken, Sandsteinmolasse, Gips]
+      fr: [rocher, marne, marno, molasse, gypse, schistes]
+      it: [roccia]
+      en: [bed rock]
+
+  kA:
+    description:
+      No classification available — the description is absent, illegible, or
+      genuinely unclassifiable. Use kA as a true last resort only. Any
+      description with recognisable mineralogical or textural content should
+      receive a USCS class. "Niveau graveleux" alone → GW or GP. A description
+      mentioning chemical smell or colour with "plastisch" → ML or CL.
+    keywords:
+      de: [keine Angabe, unbekannt, nicht beschrieben]
+      fr: [sans indication]
+      it: [senza indicazioni]
+      en: [not specified]
+
+  kunst:
+    description:
+      Artificial fill or man-made material. Includes engineered fill,
+      embankment, concrete, bituminous material, or urban fill. Use kunst
+      whenever anthropogenic origin is explicitly stated.
+    keywords:
+      de: [Auffüllung, Aufschüttung, Beton]
+      fr: [remplissage artificiel, bitume, bitumineux]
+      it: [riempimento artificiale]
+      en: [artificial landfill]
