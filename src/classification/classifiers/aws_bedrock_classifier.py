@@ -153,7 +153,7 @@ class AWSBedrockClassifier(Classifier):
         predictions = AWSBedrockPrediction.model_validate(tool_result.input).predictions
 
         if len(predictions) != len(filename_layers):
-            raise ValueError(f"Wrong number of prediction {len(filename_layers)=}, {len(predictions)=}")
+            raise ValueError(f"Wrong number of predictions {len(filename_layers)=}, {len(predictions)=}")
 
         return predictions
 
@@ -185,7 +185,7 @@ class AWSBedrockClassifier(Classifier):
         )
 
         if self.use_local_cache and output_path and output_path.exists():
-            return read_predictions(output_path, self.classification_system)
+            return read_predictions(str(output_path), self.classification_system)
 
         async with self.semaphore:
             try:
@@ -209,7 +209,7 @@ class AWSBedrockClassifier(Classifier):
 
         return filename_layers
 
-    async def classify_async(self, layer_descriptions: list[LayerInformation]) -> list[LayerInformation]:
+    async def classify_async(self, layer_descriptions: list[LayerInformation]) -> list[list[LayerInformation]]:
         """Classify all layers asynchronously, grouped by source file.
 
         Layers are sorted and grouped by filename so each borehole file is processed in a single
