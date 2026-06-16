@@ -1,10 +1,10 @@
 # Config file for USCS classification
 # Prompt file and version
-prompts_file: bedrock/prompts/uscs_classification_prompts.yml
+prompts_file: bedrock/prompts/bedrock_uscs_prompts.yml
 prompt_version: v1
 
 # Pattern file and parameter version
-pattern_file: bedrock/examples/uscs_classification_patterns_bedrock.yml
+pattern_file: bedrock/examples/bedrock_uscs_examples.yml
 pattern_version: v1
 
 # Tool file
