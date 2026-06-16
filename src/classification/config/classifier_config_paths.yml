@@ -45,15 +45,15 @@ bert:
   uscs: bert/bert_config_uscs.yml
 bedrock:
   accessory_components: bedrock/bedrock_config_accessory_components.yml
-  alteration_degree_consolidated: bedrock/bedrock_config_alteration_degree_consolidated.yml
-  alteration_degree_unconsolidated: null
+  alteration_degree_consolidated: bedrock/bedrock_config_alteration_degree.yml
+  alteration_degree_unconsolidated: bedrock/bedrock_config_alteration_degree.yml
   cementation: null
   color_consolidated: bedrock/bedrock_config_color.yml
   color_unconsolidated: bedrock/bedrock_config_color.yml
   debris: bedrock/bedrock_config_debris.yml
   en_main: bedrock/bedrock_config_en_main.yml
   grain_angularity: bedrock/bedrock_config_grain_angularity.yml
-  grain_shape: null
+  grain_shape: bedrock/bedrock_config_grain_shape.yml
   lithology: bedrock/bedrock_config_lithology.yml
   mineral_components: null
   organic_components: null
