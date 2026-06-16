@@ -15,13 +15,13 @@ class MineralComponentsSystem(ClassificationSystem):
 
     @classmethod
     def normalize_class_string(cls, class_str: str) -> str:
-        """Normalize an mineral components class string.
+        """Normalize a mineral components class string.
 
         Args:
             class_str (str): The class string to be normalized (e.g. "not specified").
 
         Returns:
-            str: The normalized accessory minerals class string (e.g., "not_specified").
+            str: The normalized mineral components class string (e.g., "not_specified").
         """
         return class_str.lower().replace(" ", "_")
 
@@ -50,7 +50,7 @@ class MineralComponentsSystem(ClassificationSystem):
         return True
 
     class MineralComponentsClasses(IntEnum):
-        """Accessory component classes for consolidated soil classification (0-based indexing)."""
+        """Mineral component classes for consolidated soil classification (0-based indexing)."""
 
         not_specified = 0
         actinolite = auto()

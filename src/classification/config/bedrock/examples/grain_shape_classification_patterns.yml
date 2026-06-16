@@ -1,0 +1,49 @@
+baseline: |
+  cubic:
+    description:
+      Equidimensional, roughly cube- or sphere-shaped grains with similar
+      length, width, and height. Typical of well-rounded quartz grains,
+      feldspar cleavage fragments, or isometric mineral crystals.
+    keywords:
+      de: [kubisch, würfelförmig, isometrisch, gleichkörnig, equidimensional]
+      fr: [cubique, isométrique, équidimensionnel, équant]
+      it: [cubico, isometrico, equidimensionale, equante]
+
+  platy:
+    description:
+      Flat, plate- or disc-shaped grains whose thickness is much smaller than
+      their other dimensions. Characteristic of mica flakes, schist fragments,
+      clay minerals, or flat-lying pebbles and cobbles.
+    keywords:
+      de: [plattig, blättrig, flach, tafelartig, scheibenförmig, lamellarisch]
+      fr: [aplati, plat, lamellaire, tabulaire, feuilleté, en plaquette]
+      it: [appiattito, piatto, lamellare, tabulare, a lamelle]
+
+  elongated:
+    description:
+      Rod-, needle-, or prism-shaped grains whose length clearly exceeds their
+      width and thickness. Includes acicular (needle-like) crystal habits,
+      prismatic mineral fragments, and elongated pebbles.
+    keywords:
+      de: [stängelig, nadelförmig, prismatisch, länglich, stabförmig, säulenförmig]
+      fr: [allongé, aciculaire, prismatique, en bâtonnet, fibreux]
+      it: [allungato, aghiforme, prismatico, aciculare, fibroso]
+
+  other:
+    description:
+      Grain shapes that do not fit the cubic, platy, or elongated categories.
+      Includes irregular, angular, conchoidal, or mixed forms.
+    keywords:
+      de: [andere, sonstige, übrige, irregular, unregelmässig]
+      fr: [autre, autres, irrégulier, inclassable]
+      it: [altro, altri, irregolare, non classificabile]
+
+  not_specified:
+    description:
+      No grain shape information is provided or inferable from the text. Use
+      when the description is absent, illegible, or entirely ambiguous. Do not
+      use as a fallback when a shape can be reasonably inferred.
+    keywords:
+      de: [nicht angegeben, keine Angabe, unbekannt, k.A.]
+      fr: [non spécifié, sans indication, inconnu]
+      it: [non specificato, senza indicazioni, sconosciuto]

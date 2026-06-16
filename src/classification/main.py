@@ -70,13 +70,14 @@ def common_options(f):
         "--classification-system",
         type=click.Choice(
             [
-                "uscs",
-                "lithology",
-                "en_main",
+                "accessory_components",
                 "color_consolidated",
                 "color_unconsolidated",
-                "accessory_components",
+                "en_main",
+                "grain_shape",
+                "lithology",
                 "mineral_components",
+                "uscs",
             ],
             case_sensitive=False,
         ),
