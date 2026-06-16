@@ -1,20 +1,29 @@
 dummy:
+  accessory_components: null
+  alteration_degree_consolidated: null
+  alteration_degree_unconsolidated: null
+  # TODO
   uscs: null
   lithology: null
   en_main: null
 baseline:
+  accessory_components: null
+  alteration_degree_consolidated: null
+  alteration_degree_unconsolidated: null
+  # TODO
   uscs: baseline/baseline_config_uscs.yml
   lithology: baseline/baseline_config_lithology.yml
   en_main: null
 bert:
+  accessory_components: bert/bert_config_accessory_components.yml
+  alteration_degree_consolidated: bert/bert_config_alteration_degree_c2a.yml
+  alteration_degree_unconsolidated: bert/bert_config_alteration_degree_u2a.yml
+  # TODO
   uscs: bert/bert_config_uscs.yml
   lithology: bert/bert_config_lithology.yml
   en_main: bert/bert_config_en_main.yml
   color_consolidated: bert/bert_config_color_c2a.yml
   color_unconsolidated: bert/bert_config_color_u2a.yml
-  accessory_components: bert/bert_config_accessory_components.yml
-  alteration_degree_consolidated: bert/bert_config_alteration_degree_c2a.yml
-  alteration_degree_unconsolidated: bert/bert_config_alteration_degree_u2a.yml
   cementation: bert/bert_config_cementation.yml
   debris: bert/bert_config_debris.yml
   grain_angularity: bert/bert_config_grain_angularity.yml
@@ -22,6 +31,10 @@ bert:
   mineral_components: bert/bert_config_mineral_components.yml
   organic_components: bert/bert_config_organic_components.yml
 bedrock:
+  accessory_components: bedrock/bedrock_accessory_components.yml
+  alteration_degree_consolidated: bedrock/bedrock_alteration_degree_consolidated.yml
+  alteration_degree_unconsolidated: null
+  # TODO
   uscs: bedrock/bedrock_config_uscs.yml
   lithology: bedrock/bedrock_config_lithology.yml
   en_main: bedrock/bedrock_config_en_main.yml
