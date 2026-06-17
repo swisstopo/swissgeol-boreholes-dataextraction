@@ -14,7 +14,7 @@ class BertClassifier(Classifier):
 
     def __init__(
         self,
-        model_path: Path | None,
+        model_path: Path | str | None,
         classification_system: type[ClassificationSystem],
         backbone_path: Path | None = None,
         tokenizer_path: Path | None = None,
@@ -22,8 +22,9 @@ class BertClassifier(Classifier):
         """Initialize a BertClassifier instance.
 
         Args:
-            model_path (Path | None): Path to the model directory. For split models this is the head
-                directory; for full models it is the complete HuggingFace model directory.
+            model_path (Path | str | None): Local path to the model directory or a HuggingFace model ID string.
+                For split models this is the head directory; for full models it is the complete HuggingFace
+                model directory or repo ID.
             classification_system (type[ClassificationSystem]): the classification system used to classify
                 the descriptions.
             backbone_path (Path | None): Path to backbone.safetensors for split-model loading.
@@ -35,7 +36,7 @@ class BertClassifier(Classifier):
         if model_path is None:
             # load pretrained from transformers lib (bad)
             model_path = Path(self.config["model_path"])
-        self.model_path = model_path
+        self.model_path: Path | str = model_path
         self.bert_model = BertModel(
             model_path, classification_system, backbone_path=backbone_path, tokenizer_path=tokenizer_path
         )
@@ -46,7 +47,10 @@ class BertClassifier(Classifier):
 
     def log_params(self):
         """Log the name of the model used."""
-        mlflow.log_param("model_name", "/".join(self.model_path.parts[-2:]))
+        model_name = str(self.model_path)
+        if isinstance(self.model_path, Path):
+            model_name = "/".join(self.model_path.parts[-2:])
+        mlflow.log_param("model_name", model_name)
 
     def classify(self, layer_descriptions: list[LayerInformation]) -> list[LayerInformation]:
         """Classifies the description of the LayerInformation objects.
