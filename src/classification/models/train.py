@@ -240,7 +240,6 @@ def setup_training_args(model_config: ExperimentHyperparameters, out_directory: 
     Returns:
         TrainingArgument: the training arguments.
     """
-    report_to = "none"  # metrics logged via MetricsMLflowCallback to avoid Azure ML's 200-param limit
     # Read hyperparameters from the config file
     training_args = TrainingArguments(
         output_dir=out_directory,
@@ -257,7 +256,7 @@ def setup_training_args(model_config: ExperimentHyperparameters, out_directory: 
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
-        report_to=report_to,
+        report_to="none",  # metrics logged via MetricsMLflowCallback to avoid Azure ML's 200-param limit
         save_total_limit=2,  # Limit checkpoints to save space, only keep best two
     )
     return training_args
@@ -472,11 +471,6 @@ class ConfusionMatrixCallback(TrainerCallback):
             split=self.current_test_name,
             all_classes=list(self._id2class_enum.values()),
         )
-
-        if "mlflow" in args.report_to:
-            mlflow.log_metrics(metrics)
-            for artifact in (csv_path, png_path):
-                mlflow.log_artifact(str(artifact))
 
 
 class MetricsMLflowCallback(TrainerCallback):
