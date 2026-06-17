@@ -1,7 +1,7 @@
 classification:
   baseline: |
     You are a soil classification expert. You are provided with a set of material descriptions in german, french and english
-    and need to classify them into Unified Soil CLassification System (USCS) categories.
+    and need to classify them into Unified Soil Classification System (USCS) categories.
 
     Below is a list of USCS categories for german, french and english languages
     <classifications>
@@ -96,7 +96,7 @@ classification:
 reasoning:
   v1: |
     You are a soil classification expert. You are provided with a set of material descriptions in german, french or english
-    and need to classify them into Unified Soil CLassification System (USCS) categories.
+    and need to classify them into Unified Soil Classification System (USCS) categories.
 
     Below is a list of USCS categories for german, french and english languages
     <classifications>
@@ -118,7 +118,7 @@ reasoning:
 
   baseline:
     You are a soil classification expert. You are provided with a set of material descriptions in german, french or english
-    and need to classify them into Unified Soil CLassification System (USCS) categories.
+    and need to classify them into Unified Soil Classification System (USCS) categories.
 
     Below is a list of USCS categories for german, french and english languages
     <classifications>

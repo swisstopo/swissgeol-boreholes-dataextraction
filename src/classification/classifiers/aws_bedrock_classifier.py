@@ -28,7 +28,7 @@ class AWSBedrockEntry(BaseModel):
 
     Attributes:
         index (int): Position of the layer in the batch sent to the model, used to align predictions back to inputs.
-        class_ (list[str]): List of predicted class label as returned by the model.
+        class_ (list[str]): List of predicted class labels as returned by the model.
         reasoning (str): Reasoning of the predicted output.
     """
 
@@ -39,7 +39,7 @@ class AWSBedrockEntry(BaseModel):
     @field_validator("class_", mode="before")
     @classmethod
     def validate_class(cls, value: list[str] | str) -> list[str]:
-        """Ensure list if returned in single label prediction case."""
+        """Coerce a bare string to a single-element list to handle single-label model responses."""
         if isinstance(value, str):
             return [value]
         return value
@@ -201,7 +201,7 @@ class AWSBedrockClassifier(Classifier):
             except Exception as e:
                 logger.warning(f"API call failed for '{filename}': {str(e)}")
                 predictions = [
-                    AWSBedrockEntry(index=i, classes=[self.classification_system.get_default_class_value().name])
+                    AWSBedrockEntry(index=i, class_=[self.classification_system.get_default_class_value().name])
                     for i, _ in enumerate(filename_layers)
                 ]
 

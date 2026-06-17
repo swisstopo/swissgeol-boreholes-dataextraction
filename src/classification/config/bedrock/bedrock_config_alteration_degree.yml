@@ -1,4 +1,4 @@
-# Config file for consolidated material (bedrock) classification into alteration degree classes
+# Config file for material (consolidated and unconsolidated) classification into alteration degree classes
 # Prompt file and version
 prompts_file: bedrock/prompts/bedrock_alteration_degree_prompts.yml
 prompt_version: v1
