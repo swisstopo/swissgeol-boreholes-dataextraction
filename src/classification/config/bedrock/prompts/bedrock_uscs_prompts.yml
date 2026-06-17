@@ -9,7 +9,7 @@ classification:
     </classifications>
 
     <rules>
-    In case the field is empty or no corresponding category can be found please provide a classification kA.
+    In case the field is empty or no corresponding category can be found please provide a classification not specified.
     Classify the material description using ONLY the classifications listed above.
     </rules>
   v1: |
@@ -29,7 +29,7 @@ classification:
 
     <rules>
     1. OUTPUT FORMAT
-      Return only the USCS code (e.g. SP-SM, GW, CH, FELS, kA). No explanation,
+      Return only the USCS code (e.g. SP-SM, GW, CH, FELS, not specified). No explanation,
       no punctuation, no additional text.
 
     2. GENERAL MATCHING LOGIC
@@ -77,15 +77,14 @@ classification:
           Pt requires the material to be predominantly pure peat.
       e. "Limon ocre avec débris végétaux", "plastique, tendre" → OL (not OH).
 
-    6. kA — USE SPARINGLY
+    6. not specified — USE SPARINGLY
       Any description with recognisable texture, grain size, mineralogy, colour,
       or plasticity should receive a USCS class. "Niveau graveleux" alone → GW
       or GP. A description with chemical smell and "plastisch" → ML or CL.
-      Reserve kA for genuinely blank or illegible entries.
+      Reserve not specified for genuinely blank or illegible entries.
 
     7. SPECIAL CATEGORIES
-      - kA   : blank, illegible, or truly unclassifiable
-      - kunst : explicit artificial fill, concrete, embankment
+      - not specified   : blank, illegible, or truly unclassifiable
       - FELS  : any consolidated rock mass
       - Pt    : pure peat only (Torf, tourbe alone)
       - Bl    : boulders as primary material
@@ -106,7 +105,7 @@ reasoning:
     <rules>
     - Use ONLY the category labels listed in <classifications> above.
     - Assign exactly ONE USCS category.
-    - If the description is empty or no category fits, output: kA
+    - If the description is empty or no category fits, output: not specified
     </rules>
 
     First, reason through the classification inside <thinking> tags:
@@ -126,7 +125,7 @@ reasoning:
     </classifications>
 
     <rules>
-    In case the field is empty or no corresponding category can be found please provide a classification kA.
+    In case the field is empty or no corresponding category can be found please provide a classification not specified.
     Use both your knowledge of the Unified Soil Classification System and the provided list of categories for your classifications
     Begin by enclosing all thoughts within <thinking></thinking> tags, exploring multiple angles and approaches.
     Break down the solution into clear steps within <step> tags. Start with a 10-step budget, requesting more for complex problems if needed.

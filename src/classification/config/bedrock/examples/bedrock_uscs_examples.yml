@@ -89,7 +89,6 @@ baseline:
         "Gips",
       ]
     kA: ["keine Angabe", "unbekannt", "nicht beschrieben"]
-    kunst: ["Auffüllung", "Aufschüttung", "Beton"]
     Pt: ["Torf"]
     St: ["Stein"]
     St-Bl: ["Steine und Blöcke"]
@@ -139,13 +138,11 @@ baseline:
     Bl: ["bloc"]
     FELS: ["rocher", "marne", "marno", "molasse", "gypse", "schistes"]
     kA: ["sans indication"]
-    kunst: ["remplissage artificiel", "bitume", "bitumineux"]
     Pt: ["tourbe"]
     St: ["pierre"]
     St-Bl: ["pierre et bloc"]
 
   en:
-    kunst: ["artificial landfill"]
     Bl: ["boulder"]
     GP: ["poorly graded gravel"]
     CH: ["fat clay"]
@@ -185,7 +182,6 @@ baseline:
     GW-GM: ["well-graded gravel with silt"]
     MH: ["elastic silt"]
   it:
-    kunst: ["riempimento artificiale"]
     Bl: ["blocco"]
     GP: ["ghiaia mal classata"]
     CH: ["argilla grassa"]
@@ -710,10 +706,10 @@ v1: |
       it: [roccia]
       en: [bed rock]
 
-  kA:
+  not specified:
     description:
       No classification available — the description is absent, illegible, or
-      genuinely unclassifiable. Use kA as a true last resort only. Any
+      genuinely unclassifiable. Use not specified as a true last resort only. Any
       description with recognisable mineralogical or textural content should
       receive a USCS class. "Niveau graveleux" alone → GW or GP. A description
       mentioning chemical smell or colour with "plastisch" → ML or CL.
@@ -722,14 +718,3 @@ v1: |
       fr: [sans indication]
       it: [senza indicazioni]
       en: [not specified]
-
-  kunst:
-    description:
-      Artificial fill or man-made material. Includes engineered fill,
-      embankment, concrete, bituminous material, or urban fill. Use kunst
-      whenever anthropogenic origin is explicitly stated.
-    keywords:
-      de: [Auffüllung, Aufschüttung, Beton]
-      fr: [remplissage artificiel, bitume, bitumineux]
-      it: [riempimento artificiale]
-      en: [artificial landfill]
