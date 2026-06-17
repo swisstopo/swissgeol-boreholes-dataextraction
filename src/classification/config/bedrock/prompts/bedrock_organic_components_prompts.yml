@@ -1,7 +1,7 @@
 classification:
   baseline: |
     You are a geotechnical organic component classification expert
-    specialising in Swiss borehole logs. You are given a raw material
+    specialising in borehole logs. You are given a raw material
     description from a borehole log — written in German, French, Italian,
     or English — and must assign one or more organic component class codes.
 

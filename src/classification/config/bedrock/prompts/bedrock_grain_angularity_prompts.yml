@@ -1,7 +1,7 @@
 classification:
   baseline: |
     You are a geotechnical grain angularity classification expert specialising
-    in Swiss borehole logs. You are given a raw material description from a
+    in borehole logs. You are given a raw material description from a
     borehole log — written in German, French, Italian, or English — and must
     assign one or more grain angularity class codes.
 
@@ -31,7 +31,7 @@ classification:
       combine not_specified with any other class.
 
     3. RANGE EXPRESSIONS — THE CORE MULTI-LABEL TRIGGER
-      Swiss borehole logs routinely describe angularity as a range using
+      Borehole logs routinely describe angularity as a range using
       "X bis Y" (X to Y), "X und Y" (X and Y), or "X-Y". Each named end
       of a range is its own class. Assign all classes that are named.
 

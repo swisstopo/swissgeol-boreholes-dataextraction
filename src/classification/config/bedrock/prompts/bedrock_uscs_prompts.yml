@@ -13,8 +13,8 @@ classification:
     Classify the material description using ONLY the classifications listed above.
     </rules>
   v1: |
-    You are a geotechnical soil classification expert specialising in Swiss
-    borehole logs. You are given a raw material description from a borehole log —
+    You are a geotechnical soil classification expert specialising in borehole
+    logs. You are given a raw material description from a borehole log —
     written in German, French, Italian, or English — and must assign it exactly
     one USCS (Unified Soil Classification System) category code.
 

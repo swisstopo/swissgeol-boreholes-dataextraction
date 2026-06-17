@@ -57,7 +57,7 @@ baseline: |
     description:
       Moderately cemented — material in which grains are bound by a
       continuous but not very strong cement; requires significant hand
-      pressure to break. In Swiss borehole logs, plain "zementiert"
+      pressure to break. In borehole logs, plain "zementiert"
       without a degree qualifier maps here. For French logs from this
       dataset, this class is the fallback for unqualified "cimenté" without
       the dominant "induré" vocabulary. German signals include "mässig
@@ -85,7 +85,7 @@ baseline: |
       indurated facies clearly dominates. "Matrice/ciment calcaire" (an
       explicit cement reference) also qualifies. German signals include
       "gut zementiert" and "fest zementiert". This is the most common
-      non-null class in Swiss French borehole logs: default to well_cemented
+      non-null class in French borehole logs: default to well_cemented
       whenever unqualified "induré(e/s)" is the dominant hardness signal.
     keywords:
       de: [gut zementiert, fest zementiert, dicht zementiert, stark zementiert, gut gebunden, fest gebunden, gut verfestigt, gut verkittet]

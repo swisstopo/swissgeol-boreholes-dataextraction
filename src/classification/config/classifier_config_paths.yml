@@ -55,6 +55,6 @@ bedrock:
   grain_angularity: bedrock/bedrock_config_grain_angularity.yml
   grain_shape: bedrock/bedrock_config_grain_shape.yml
   lithology: bedrock/bedrock_config_lithology.yml
-  mineral_components: null
+  mineral_components: bedrock/bedrock_config_mineral_components.yml
   organic_components: bedrock/bedrock_config_organic_components.yml
   uscs: bedrock/bedrock_config_uscs.yml

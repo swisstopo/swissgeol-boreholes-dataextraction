@@ -1,7 +1,7 @@
 classification:
   baseline: |
     You are a geotechnical grain shape classification expert specialising in
-    Swiss borehole logs. You are given a raw material description from a
+    borehole logs. You are given a raw material description from a
     borehole log — written in German, French, Italian, or English — and must
     assign one or more grain shape class codes.
 
@@ -44,7 +44,7 @@ classification:
         "plat", "aplati", "tabulaire", "feuilleté"→ platy
 
     4. COMPOUND FORMS — THE MULTI-LABEL TRIGGER
-      Swiss logs frequently combine shape terms with hyphens or commas.
+      Logs frequently combine shape terms with hyphens or commas.
       Assign all named shapes:
 
         "kubisch-plattig"     → cubic, platy

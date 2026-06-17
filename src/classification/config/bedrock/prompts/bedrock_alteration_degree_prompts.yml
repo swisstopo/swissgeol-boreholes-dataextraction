@@ -51,7 +51,7 @@ classification:
 
     - Base your decision on alteration- or weathering-related terms AND
       contextual clues (hardness, colour change, fabric preservation, mineral
-      decomposition, plasticity, Swiss soil class annotation).
+      decomposition, plasticity, soil class annotation).
 
     - DEFAULT TO `fresh`: if the description names a rock type with no
       alteration qualifier ("Mergel", "Sandstein", "Nagelfluh", "Kalkstein",
@@ -74,7 +74,7 @@ classification:
       `moderately_weathered`, regardless of how strong the French alteration
       terms sound ("très altéré", "désagrégé", "grumeleuse").
 
-    - "TRÈS ALTÉRÉ" IN FRENCH ≠ `highly_weathered` by default: in Swiss
+    - "TRÈS ALTÉRÉ" IN FRENCH ≠ `highly_weathered` by default: in
       Molasse logs, "très altéré" paired with soil class 14/3, preserved
       fabric, or plasticity language maps to `moderately_weathered`.
 

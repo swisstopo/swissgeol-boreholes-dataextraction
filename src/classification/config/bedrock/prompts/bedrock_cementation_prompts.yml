@@ -1,7 +1,7 @@
 classification:
   baseline: |
     You are a geotechnical cementation classification expert specialising in
-    Swiss borehole logs. You are given a raw material description from a
+    borehole logs. You are given a raw material description from a
     borehole log — written in German, French, Italian, or English — and must
     assign one or more cementation class codes.
 
@@ -27,9 +27,9 @@ classification:
       appears. Never combine not_specified with any other class.
 
     3. THE INDURATION VOCABULARY (French primary signal)
-      French borehole logs from the Swiss–French border region use
-      "induré(e/s)" (indurated) as their principal cementation signal —
-      not "cimenté". Map the full "induré" family as follows:
+      French borehole logs use "induré(e/s)" (indurated) as their principal
+      cementation signal — not "cimenté". Map the full "induré" family
+      as follows:
 
         "faiblement induré(e/s)"          → weakly_cemented
         "légèrement induré(e/s)"          → weakly_cemented

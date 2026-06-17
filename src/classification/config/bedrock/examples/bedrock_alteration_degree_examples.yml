@@ -213,7 +213,7 @@ v1: |
       Rock in which weathering has penetrated throughout the mass, causing
       significant discoloration, some softening, and partial decomposition of
       feldspars or carbonates. Original fabric is still recognizable.
-      This is the most commonly annotated alteration class in Swiss borehole
+      This is the most commonly annotated alteration class in borehole
       logs and covers a wide range of descriptions. Use moderately_weathered
       when:
       - Explicit "altéré", "verwittert", "angewittert", "verwitterter [rock]"
@@ -270,7 +270,7 @@ v1: |
       IMPORTANT — "stark verwittert" alone without decomposition language
       may still be moderately_weathered; look for physical breakdown signals.
       Do NOT use highly_weathered for:
-      - Descriptions annotated with Swiss soil class 14/3 → moderately_weathered
+      - Descriptions annotated with soil class 14/3 → moderately_weathered
         regardless of how strong the French alteration terms sound.
       - Drilling-induced disaggregation without true mineralogical decomposition.
     keywords:
@@ -311,7 +311,7 @@ v1: |
       when "verwittert" or "altéré" appears alone with no intensity qualifier
       AND the description provides no other contextual clue (colour, hardness,
       fabric state) to distinguish moderately from highly.
-      IMPORTANT — in practice almost all "verwittert"/"altéré" cases in Swiss
+      IMPORTANT — in practice almost all "verwittert"/"altéré" cases in
       logs have enough context to assign a specific degree. Prefer
       moderately_weathered over this generic class whenever any of the
       following are present: soil class 14/3, colour mottling, hardness
