@@ -227,14 +227,10 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
 
     if mlflow_tracking and mlflow.active_run():
         logger.info("Register model to MLflow (might take a while) ...")
-        _dummy = bert_model.tokenizer(
-            "example", truncation=True, padding="max_length", max_length=512, return_tensors="pt"
-        )
         mlflow.pytorch.log_model(
             pytorch_model=trainer.model,
             artifact_path="model",
             registered_model_name=model_config.experiment_name,
-            input_example={k: v.numpy() for k, v in _dummy.items()},
         )
 
 
