@@ -12,6 +12,7 @@ Submit the job with:
 
 import logging
 import os
+import sys
 
 import click
 from azure.ai.ml import Input, MLClient, command
@@ -106,17 +107,17 @@ def run(config_file_path: str, uri_folder: str) -> None:
         workspace_name=os.environ["AZURE_WORKSPACE_NAME"],
     )
 
-    # Get or update ressources
+    # Get or update resources
     registered_env = get_environement(ml_client)
 
     try:
         data = ml_client.data.get(name=uri_folder, label="latest")
     except ResourceNotFoundError:
         logger.error(f"Azure: unknown ressource {uri_folder=}")
-        exit()
+        sys.exit(1)
 
     job = command(
-        # Copy all files (execpt .amlignore)
+        # Copy all files (except .amlignore)
         code=".",
         # Set data path as mounted disk on Azure and run training
         command=(

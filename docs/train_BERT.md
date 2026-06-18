@@ -100,36 +100,21 @@ The pipeline saves a checkpoint after each epoch and logs training details in th
 
 For long runs, submit the job to the Azure ML cluster instead of running locally.
 
-### Prerequisites
+1. **Register a ground-truth folder asset** in Azure ML Studio containing all ground-truth JSON files (uri-folder). Name it `ground-truth-data`. The filenames must match those referenced in your BERT config YAML.
 
-1. **Register a ground-truth folder asset** in Azure ML Studio containing all ground-truth JSON files (e.g. `deepwells_ground_truth.json`, `geoquat_ground_truth.json`). Name it `ground_truth_data`. The filenames must match those referenced in your BERT config YAML.
-
-2. **Install Azure ML dependencies:**
-   ```bash
-   uv pip install -r requirements-azure.txt
-   ```
-
-3. **Authenticate** (once per session):
+2. **Authenticate**:
    ```bash
    az login
    ```
 
-### Submit a job
-
-Edit `src/scripts/azure_jobs/job_train_bert.py` to set the desired config file, then run:
+3. **Submit a job**:
 
 ```bash
-python src/scripts/azure_jobs/job_train_bert.py
+python src/scripts/azure_jobs/run_azure_train_bert.py --config {config_file_path}
 ```
 
 The script builds (or reuses) the Docker environment, uploads the `src/` code snapshot, and submits the job. It prints the run name and a Studio URL to monitor progress.
 
 ### How it works
 
-The job mounts the `ground_truth_data` folder asset and sets `BOREHOLES_DATA_PATH` to its mount path, then calls:
-
-```bash
-python src/scripts/azure_jobs/run_bert_training.py -cf bert/bert_config_<name>.yml
-```
-
-`run_bert_training.py` is the same entrypoint used locally — it delegates directly to `fine-tune-bert`. Switching between local and remote training only requires changing the `-cf` argument in the job script.
+The job mounts the `ground-truth-data` folder asset and sets `BOREHOLES_DATA_PATH` to its mount path, then calls training module. It is the same entrypoint used locally (as with `fine-tune-bert`).

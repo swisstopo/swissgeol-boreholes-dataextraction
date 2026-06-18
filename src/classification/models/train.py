@@ -235,14 +235,14 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
 
 
 def setup_training_args(model_config: ExperimentHyperparameters, out_directory: Path) -> TrainingArguments:
-    """Create a TrainingArgument object from the config file.
+    """Create a TrainingArguments object from the config file.
 
     Args:
         model_config (ExperimentHyperparameters): The model configuration.
         out_directory (Path): The directory for storing the model.
 
     Returns:
-        TrainingArgument: the training arguments.
+        TrainingArguments: the training arguments.
     """
     # Read hyperparameters from the config file
     training_args = TrainingArguments(
@@ -468,7 +468,7 @@ class ConfusionMatrixCallback(TrainerCallback):
         )
 
     def on_predict(self, args, state, control, metrics, **kwargs):
-        """Save confusion matrix and per-class CSV as test artifacts."""
+        """Save confusion matrix PNG and per-class metrics CSV to the output directory."""
         csv_path, png_path = plot_confusion_matrix(
             self._cm,
             Path(args.output_dir),

@@ -219,7 +219,7 @@ class AWSBedrockClassifier(Classifier):
             layer_descriptions: All layers to classify, potentially spanning multiple files.
 
         Returns:
-            list[LayerInformation]: Updated layer information
+            list[list[LayerInformation]]: Updated layer information
         """
         # Sort layers for grouping
         layer_descriptions = sorted(layer_descriptions, key=lambda layer: layer.filename)
