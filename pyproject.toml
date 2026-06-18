@@ -47,9 +47,12 @@ test = [
 lint = [
     "pre-commit==4.3.0",
 ]
-azure = [
+azure-local = [
     "azure-ai-ml",
     "azure-identity",
+]
+azure-remote = [
+    "azureml-mlflow",
 ]
 experiment-tracking = [
     "mlflow==3.3.1",

@@ -226,8 +226,12 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
     trainer.clean_checkpoints()
 
     if mlflow_tracking and mlflow.active_run():
-        logger.info("Uploading model head to MLflow artifacts ...")
-        mlflow.log_artifacts(str(work_directory), artifact_path="model")
+        logger.info("Register model to MLflow ...")
+        mlflow.pytorch.log_model(
+            pytorch_model=trainer.model,
+            artifact_path="model",
+            registered_model_name=model_config.experiment_name,
+        )
 
 
 def setup_training_args(model_config: ExperimentHyperparameters, out_directory: Path) -> TrainingArguments:

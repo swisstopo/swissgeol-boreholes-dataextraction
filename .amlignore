@@ -1,0 +1,36 @@
+# Excluded on top of .gitignore (Azure ML respects both)
+# Folders
+.claude
+.git
+.gitattributes
+.github
+.gitignore
+.ruff_cache
+.vscode
+.venv
+/assets
+/models
+/mlruns
+/mlartifacts
+/scripts
+/tests
+/docs
+/example
+/data
+/src/app
+/src/scripts
+__pycache__
+# Files
+.pre-commit-config.yaml
+CHANGELOG.md
+Dockerfile
+get-changelog.sh
+LICENSE
+publiccode.yml
+README.md
+.env.template
+.coverage
+.coverage.*
+.pytest_cache
+.DS_Store
+.env
