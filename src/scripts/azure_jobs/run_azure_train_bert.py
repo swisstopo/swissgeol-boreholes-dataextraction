@@ -43,7 +43,7 @@ def get_environement(ml_client: MLClient) -> Environment:
     """
     env = Environment(
         name="bert-training-env",
-        version="7",
+        version="9",
         build=BuildContext(
             path=".",
             dockerfile_path="src/scripts/azure_jobs/Dockerfile.azureml",

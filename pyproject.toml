@@ -55,7 +55,7 @@ azure-remote = [
     "azureml-mlflow",
 ]
 experiment-tracking = [
-    "mlflow==3.3.1",
+    "mlflow>=2.15.0,<3.0.0",
     "pygit2==1.18.2"
 ]
 visualize = [

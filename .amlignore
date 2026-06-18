@@ -1,5 +1,4 @@
 # Excluded on top of .gitignore (Azure ML respects both)
-# Folders
 .claude
 .git
 .gitattributes
@@ -18,9 +17,7 @@
 /example
 /data
 /src/app
-/src/scripts
 __pycache__
-# Files
 .pre-commit-config.yaml
 CHANGELOG.md
 Dockerfile
