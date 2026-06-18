@@ -474,7 +474,7 @@ baseline: |
       category in this classification system. Use only when the component is
       identifiable but genuinely falls outside all other classes.
     keywords:
-      de: [andere, anderes, sonstige, verschiedenes]
+      de: [andere, anderes, sonstige, verschiedenes, Fremdmaterialanteil, Fremdmaterial]
       fr: [autre, autres, divers]
       it: [altro, altri, varie]
 
@@ -568,7 +568,7 @@ baseline: |
       sediment; typically occur as thin carbonaceous strands or casts in
       terrestrial, palaeosol, and marginal lacustrine deposits.
     keywords:
-      de: [Wurzeln, Wurzelreste, Feinwurzeln, Wurzelfragmente]
+      de: [Wurzeln, Wurzelreste, Feinwurzeln, Wurzelfragmente, durchwurzelt]
       fr: [radicelles, racines fines, radicules]
       it: [radichette, piccole radici, frammenti radicali]
 

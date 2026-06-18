@@ -17,3 +17,9 @@ classification:
       platy, or elongated (e.g. irregular, conchoidal, mixed angular/rounded forms).
     - Return `["not_specified"]` only when the description contains no grain shape information whatsoever.
     - Do not include `not_specified` alongside other labels.
+    - IMPORTANT: Grain angularity terms (gerundet, gut gerundet, schlecht gerundet, kantig, eckig, abgeflacht)
+      describe edge sharpness, NOT the overall 3D shape.
+      Do not use these to infer cubic, platy, or elongated — if only angularity terms are present, return not_specified.
+    - IMPORTANT: Intensity qualifiers (schwach, leicht, stark, mässig, deutlich, überwiegend, teilweise) modify
+      degree only — they do NOT change the class. If the base descriptor matches a keyword, assign that class
+      (e.g. "schwach blockig" → cubic, "stark plattig" → platy, "leicht stängelig" → elongated).

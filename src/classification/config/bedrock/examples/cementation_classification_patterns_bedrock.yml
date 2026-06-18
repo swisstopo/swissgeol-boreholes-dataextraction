@@ -6,7 +6,7 @@ baseline: |
       when handled. Typical of unconsolidated alluvial, glacial, or
       aeolian deposits with no diagenetic cementation.
     keywords:
-      de: [nicht zementiert, unzementiert, locker, lose, unverfestigt]
+      de: [nicht zementiert, unzementiert, locker, locker gelagert, sehr locker, lose, unverfestigt, kohäsionslos]
       fr: [non cimenté, non cimentée, non consolidé, meuble]
       it: [non cementato, non cementata, non consolidato, sciolto]
 
@@ -18,9 +18,9 @@ baseline: |
       hand. Common in partially diagenised or weathered sandstones and
       gravels.
     keywords:
-      de: [schwach zementiert, schwach verfestigt, wenig zementiert, gering zementiert]
-      fr: [faiblement cimenté, faiblement cimentée, peu cimenté, légèrement cimenté]
-      it: [debolmente cementato, debolmente cementata, poco cementato, leggermente cementato]
+      de: [schwach zementiert, schwach verfestigt, wenig zementiert, gering zementiert, mürb, mürbe, knapp zerdrückbar, verkittet]
+      fr: [faiblement cimenté, faiblement cimentée, peu cimenté, légèrement cimenté, faiblement induré, faiblement indurée, peu induré, peu indurée, tendre]
+      it: [debolmente cementato, debolmente cementata, poco cementato, leggermente cementato, friabile, tenero]
 
   moderately_cemented:
     description:
@@ -29,7 +29,7 @@ baseline: |
       of well-cemented rock. Intermediate diagenetic stage common in
       sandstones, siltstones, and calcareous conglomerates.
     keywords:
-      de: [mässig zementiert, mittel zementiert, mittelmässig zementiert, mäßig verfestigt]
+      de: [mässig zementiert, mittel zementiert, mittelmässig zementiert, mäßig verfestigt, mittelhart]
       fr: [modérément cimenté, modérément cimentée, moyennement cimenté]
       it: [moderatamente cementato, moderatamente cementata, mediamente cementato]
 
@@ -40,9 +40,9 @@ baseline: |
       break. Typical of well-diagenised sandstones, limestones, and
       conglomerates with siliceous, calcareous, or ferrigenous cement.
     keywords:
-      de: [gut zementiert, stark verfestigt, fest zementiert, gut verfestigt]
-      fr: [bien cimenté, bien cimentée, fortement cimenté, solidement cimenté]
-      it: [ben cementato, ben cementata, fortemente cementato, solidamente cementato]
+      de: [gut zementiert, fest zementiert, gut verfestigt, hart, nicht zerdrückbar, fest verkittet, festgelagert]
+      fr: [bien cimenté, bien cimentée, solidement cimenté, induré, indurée, indurés, indurées]
+      it: [ben cementato, ben cementata, solidamente cementato, indurito, indurita]
 
   strongly_cemented:
     description:
@@ -52,9 +52,9 @@ baseline: |
       of quartzite-like sandstones or rocks with intensive siliceous or iron-oxide
       cementation.
     keywords:
-      de: [stark zementiert, sehr stark zementiert, sehr fest zementiert, intensiv zementiert]
-      fr: [fortement cimenté, fortement cimentée, très fortement cimenté, très solidement cimenté]
-      it: [fortemente cementato, fortemente cementata, molto fortemente cementato, intensamente cementato]
+      de: [stark zementiert, sehr stark zementiert, sehr fest zementiert, intensiv zementiert, sehr hart, stark verkittet, sehr festgelagert]
+      fr: [fortement cimenté, fortement cimentée, très fortement cimenté, très induré, très indurée, très dur, très dure, très durs, très dures]
+      it: [fortemente cementato, fortemente cementata, molto fortemente cementato, intensamente cementato, molto duro, molto dura]
 
   other:
     description:
