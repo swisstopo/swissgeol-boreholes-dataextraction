@@ -100,7 +100,7 @@ class BertModel:
             )
         except RuntimeError as e:
             error_message = str(e)
-            if "size mismatch for classifier" in error_message:
+            if "size mismatch" in error_message:
                 raise ValueError(
                     f"Model loading failed due to a mismatch in the number of output classes.\n"
                     f"Expected {self.num_class} classes, but the loaded model seems to have a different number.\n"

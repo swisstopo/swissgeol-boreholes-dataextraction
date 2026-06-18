@@ -47,9 +47,8 @@ class BertClassifier(Classifier):
 
     def log_params(self):
         """Log the name of the model used."""
-        model_name = str(self.model_path)
-        if isinstance(self.model_path, Path):
-            model_name = "/".join(self.model_path.parts[-2:])
+        p = Path(self.model_path)
+        model_name = "/".join(p.parts[-2:]) if p.exists() else str(self.model_path)
         mlflow.log_param("model_name", model_name)
 
     def classify(self, layer_descriptions: list[LayerInformation]) -> list[LayerInformation]:
