@@ -78,7 +78,7 @@
             // classify predictions (from extraction pipeline)
             // "-f", "data/output/predictions.json",
             "-c", "bert",
-            "-p", "models/lithology_head",   // or models/en_main_head or "-p", "swissgeol/en_main", for huggingface model
+            "-p", "models/lithology_head",   // or: models/en_main_head (local split model) | swissgeol/en_main (HuggingFace ID)
             "-b", "models/backbone/backbone.safetensors",
             "-t", "models/backbone", // tokenizer path
             "-cs", "lithology"               // or en_main
