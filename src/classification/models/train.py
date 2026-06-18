@@ -475,6 +475,9 @@ class ConfusionMatrixCallback(TrainerCallback):
             split=self.current_test_name,
             all_classes=list(self._id2class_enum.values()),
         )
+        if mlflow.active_run():
+            mlflow.log_artifact(str(csv_path))
+            mlflow.log_artifact(str(png_path))
 
 
 class MetricsMLflowCallback(TrainerCallback):

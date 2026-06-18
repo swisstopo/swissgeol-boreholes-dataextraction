@@ -1,13 +1,11 @@
 """Submit a BERT fine-tuning job to Azure ML.
 
-The script reads the BERT config YAML, discovers which ground-truth datasets
-are required, and loads them from the Azure ML registered data assets automatically.
-
-Convention: each ground-truth filename in the config (e.g. deepwells_ground_truth.json)
-must be registered in Azure ML with the matching asset name (deepwells_ground_truth).
+Uploads the local ``src/`` snapshot, mounts a registered URI_FOLDER asset that
+contains all ground-truth JSON files, and runs the same ``train.py`` entrypoint
+that is used locally (``fine-tune-bert``).
 
 Submit the job with:
-    python src/scripts/azure_jobs/run_azure_train_bert.py --config bert/bert_config_cementation.yml
+    python src/scripts/azure_jobs/run_azure_train_bert.py -cf bert/bert_config_cementation.yml
 """
 
 import logging
@@ -29,8 +27,10 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
+ENVIRONMENT_VERSION = "9"
 
-def get_environement(ml_client: MLClient) -> Environment:
+
+def get_environment(ml_client: MLClient) -> Environment:
     """Register or retrieve the BERT training environment.
 
     Builds the environment from the project Dockerfile if version does not exist yet,
@@ -44,7 +44,7 @@ def get_environement(ml_client: MLClient) -> Environment:
     """
     env = Environment(
         name="bert-training-env",
-        version="9",
+        version=ENVIRONMENT_VERSION,
         build=BuildContext(
             path=".",
             dockerfile_path="src/scripts/azure_jobs/Dockerfile.azureml",
@@ -87,14 +87,10 @@ def run(config_file_path: str, uri_folder: str) -> None:
         AZURE_COMPUTE_NAME: Name of the compute cluster to run the job on.
 
     Args:
-        config_file_path (str): Path to the BERT config YAML file (relative to repo root).
+        config_file_path (str): Path relative to the ``config/`` directory
+            (e.g. "bert/bert_config_cementation.yml").
         uri_folder (str): Name of the registered Azure ML data asset (URI_FOLDER) holding
             the ground-truth JSON files. Must already exist in the workspace.
-
-    Example:
-        ```bash
-        python src/scripts/azure_jobs/run_azure_train_bert.py -cf bert/bert_config_cementation.yml
-        ```
     """
     # Load BERT experiment configuration
     model_config = ExperimentConfig.model_validate(read_params(config_file_path))
@@ -108,12 +104,12 @@ def run(config_file_path: str, uri_folder: str) -> None:
     )
 
     # Get or update resources
-    registered_env = get_environement(ml_client)
+    registered_env = get_environment(ml_client)
 
     try:
         data = ml_client.data.get(name=uri_folder, label="latest")
     except ResourceNotFoundError:
-        logger.error(f"Azure: unknown ressource {uri_folder=}")
+        logger.error(f"Azure: unknown resource {uri_folder=}")
         sys.exit(1)
 
     job = command(

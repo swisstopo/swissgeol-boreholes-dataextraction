@@ -110,11 +110,11 @@ For long runs, submit the job to the Azure ML cluster instead of running locally
 3. **Submit a job**:
 
 ```bash
-python src/scripts/azure_jobs/run_azure_train_bert.py --config {config_file_path}
+python src/scripts/azure_jobs/run_azure_train_bert.py -cf {config_file_path}
 ```
 
 The script builds (or reuses) the Docker environment, uploads the `src/` code snapshot, and submits the job. It prints the run name and a Studio URL to monitor progress.
 
 ### How it works
 
-The job mounts the `ground-truth-data` folder asset and sets `BOREHOLES_DATA_PATH` to its mount path, then calls training module. It is the same entrypoint used locally (as with `fine-tune-bert`).
+The job mounts the `ground-truth-data` folder asset and sets `BOREHOLES_DATA_PATH` to its mount path, then calls the training module. It is the same entrypoint used locally (as with `fine-tune-bert`).
