@@ -15,6 +15,6 @@ classification:
        - If the description is too vague to identify the specific species, fall back to the general group category.
     4. Return `["not_specified"]` only when the description contains no mineral components whatsoever.
     5. Use `other` only when a mineral component is clearly present but genuinely falls outside every defined category.
-    6. Mineral components include any mineral mentioned in the description, whether as a primary constituent or a minor inclusion. Classify all minerals explicitly named or strongly implied.
+    6. Only classify minerals that are explicitly named as accessory or secondary components in the description, or whose presence is signalled by an adjective form directly applied in the text (e.g. "pyriteux" → `pyrite`, "glauconieux" → `glauconite`, "gréseux" → `quartz`, "dolomitisé" → `dolomite`). Do NOT assign the primary rock-forming mineral of the main lithology based on its rock-type name alone — for example, do not assign `calcite` because the description says "Kalkstein", "calcaire", or "Mergel", and do not assign `quartz` because the description says "Sandstein" or "grès".
     7. Words like "mit", "avec", "with", "including", "führend", "haltig", "à", "con", "Einschlüsse", "traces de", "grain de" introduce mineral components — scan the full description, not just the opening.
     </rules>
