@@ -381,7 +381,7 @@ class HeadOnlyTrainer(Trainer):
         Skips frozen backbone weights, keeping checkpoints small and focused on what actually changed.
 
         Return:
-            str: Folder path to where data is stored
+            str: Folder containing fine-tuned model head
         """
         out_dir = Path(self.args.output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -393,7 +393,7 @@ class HeadOnlyTrainer(Trainer):
         # Save trained layer and model config
         save_file(head_state, out_dir / "model.safetensors")
         self.model.config.save_pretrained(out_dir)
-        return out_dir
+        return str(out_dir)
 
     def clean_checkpoints(self) -> None:
         """Clean checkpoints after training."""
