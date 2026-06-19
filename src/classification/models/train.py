@@ -380,7 +380,7 @@ class HeadOnlyTrainer(Trainer):
 
         Skips frozen backbone weights, keeping checkpoints small and focused on what actually changed.
 
-        Return:
+        Returns:
             str: Folder containing fine-tuned model head
         """
         out_dir = Path(self.args.output_dir) / "model_head"
