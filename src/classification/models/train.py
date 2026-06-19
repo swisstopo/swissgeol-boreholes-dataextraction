@@ -220,18 +220,19 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
 
     # Save final cleaned version
     logger.info("Saving model head and state ...")
-    trainer.save_fine_tuned_head()
+    path_head = trainer.save_fine_tuned_head()
 
     logger.info("Cleaning checkpoints to save space ...")
     trainer.clean_checkpoints()
 
     if mlflow_tracking and mlflow.active_run():
-        logger.info("Register model to MLflow (might take a while) ...")
+        logger.info("Register model and head to MLflow (might take a while) ...")
         mlflow.pytorch.log_model(
             pytorch_model=trainer.model,
             artifact_path="model",
             registered_model_name=model_config.experiment_name,
         )
+        mlflow.log_artifacts(path_head, artifact_path="model_head")
 
 
 def setup_training_args(model_config: ExperimentHyperparameters, out_directory: Path) -> TrainingArguments:
@@ -374,10 +375,13 @@ def compute_trainset_weights(
 class HeadOnlyTrainer(Trainer):
     """Trainer that saves only fine-tuned parameters at every checkpoint."""
 
-    def save_fine_tuned_head(self) -> None:
+    def save_fine_tuned_head(self) -> str:
         """Save only the fine-tuned parameters (requires_grad=True) and the model config.
 
         Skips frozen backbone weights, keeping checkpoints small and focused on what actually changed.
+
+        Return:
+            str: Folder path to where data is stored
         """
         out_dir = Path(self.args.output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -389,6 +393,7 @@ class HeadOnlyTrainer(Trainer):
         # Save trained layer and model config
         save_file(head_state, out_dir / "model.safetensors")
         self.model.config.save_pretrained(out_dir)
+        return out_dir
 
     def clean_checkpoints(self) -> None:
         """Clean checkpoints after training."""
