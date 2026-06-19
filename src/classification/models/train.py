@@ -383,7 +383,7 @@ class HeadOnlyTrainer(Trainer):
         Return:
             str: Folder containing fine-tuned model head
         """
-        out_dir = Path(self.args.output_dir)
+        out_dir = Path(self.args.output_dir / "model_head")
         out_dir.mkdir(parents=True, exist_ok=True)
 
         # Gather only trained layers (gradient is available)
@@ -391,8 +391,8 @@ class HeadOnlyTrainer(Trainer):
         head_state = {k: v.cpu() for k, v in self.model.state_dict().items() if k in fine_tuned_names}
 
         # Save trained layer and model config
-        save_file(head_state, out_dir / "model.safetensors")
         self.model.config.save_pretrained(out_dir)
+        save_file(head_state, out_dir / "model.safetensors")
         return str(out_dir)
 
     def clean_checkpoints(self) -> None:
@@ -481,6 +481,7 @@ class ConfusionMatrixCallback(TrainerCallback):
             all_classes=list(self._id2class_enum.values()),
         )
         if mlflow.active_run():
+            mlflow.log_metrics({k: v for k, v in metrics.items() if "f1" in k})
             mlflow.log_artifact(str(csv_path))
             mlflow.log_artifact(str(png_path))
 
@@ -494,12 +495,11 @@ class MetricsMLflowCallback(TrainerCallback):
 
     def on_log(self, args, state, control, logs=None, **kwargs):
         """Log numeric metrics to the active MLflow run at each logging step."""
-        if not state.is_world_process_zero or not logs or not mlflow.active_run():
-            return
-        mlflow.log_metrics(
-            {k: v for k, v in logs.items() if isinstance(v, int | float)},
-            step=state.global_step,
-        )
+        if logs and mlflow.active_run():
+            mlflow.log_metrics(
+                {k: v for k, v in logs.items() if isinstance(v, int | float)},
+                step=state.global_step,
+            )
 
 
 def setup_trainer(
