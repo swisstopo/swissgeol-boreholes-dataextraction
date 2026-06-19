@@ -113,12 +113,12 @@ def run(config_file_path: str, uri_folder: str) -> None:
         sys.exit(1)
 
     job = command(
-        # Copy all files (except .amlignore)
-        code=".",
+        # Upload only src/ — avoids stale repo-root snapshot issues and keeps upload small
+        code="src",
         # Set data path as mounted disk on Azure and run training
         command=(
             "export BOREHOLES_DATA_PATH='${{inputs.gt_data}}'"
-            f" && python src/classification/models/train.py -cf {config_file_path}"
+            f" && python classification/models/train.py -cf {config_file_path}"
         ),
         # Compute instance name
         compute=os.environ["AZURE_COMPUTE_NAME"],
@@ -127,10 +127,10 @@ def run(config_file_path: str, uri_folder: str) -> None:
         experiment_name=model_config.experiment_name,
         # Input data to mount with job
         inputs={"gt_data": Input(type=AssetTypes.URI_FOLDER, path=f"azureml:{data.name}:{data.version}")},
-        # Force MLflow tracking and set src as package root
+        # src/ is the code root, so classification is importable directly
         environment_variables={
             "MLFLOW_TRACKING": "True",
-            "PYTHONPATH": "src",
+            "PYTHONPATH": ".",
         },
     )
 
