@@ -383,7 +383,7 @@ class HeadOnlyTrainer(Trainer):
         Return:
             str: Folder containing fine-tuned model head
         """
-        out_dir = Path(self.args.output_dir / "model_head")
+        out_dir = Path(self.args.output_dir) / "model_head"
         out_dir.mkdir(parents=True, exist_ok=True)
 
         # Gather only trained layers (gradient is available)
