@@ -481,7 +481,9 @@ class ConfusionMatrixCallback(TrainerCallback):
             all_classes=list(self._id2class_enum.values()),
         )
         if mlflow.active_run():
-            mlflow.log_metrics({k: v for k, v in metrics.items() if "f1" in k})
+            mlflow.log_metrics(
+                {k: v for k, v in metrics.items() if "f1" in k and any(tag in k for tag in ["micro", "macro"])}
+            )
             mlflow.log_artifact(str(csv_path))
             mlflow.log_artifact(str(png_path))
 
