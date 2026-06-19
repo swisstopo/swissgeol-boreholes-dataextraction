@@ -1,10 +1,10 @@
-# Config file for alteration degree classification (unconsolidated material only)
+# Config file for grain shape classification
 # Prompt file and version
-prompts_file: bedrock/prompts/alteration_degree_unconso_prompts.yml
+prompts_file: bedrock/prompts/grain_shape_classification_prompts.yml
 prompt_version: baseline
 
 # Pattern file and parameter version
-pattern_file: bedrock/examples/alteration_degree_unconso_classification_patterns_bedrock.yml
+pattern_file: bedrock/examples/grain_shape_classification_patterns.yml
 pattern_version: baseline
 
 # Tool file
@@ -14,10 +14,7 @@ tool_file: bedrock/tool/tool_classify_texts.yml
 temperature: 0.0
 
 # Maximum response tokens
-max_tokens: 4096
+max_tokens: 8192
 
 # Parameter indicating if Reasoning (Chain of Thought) mode should be used. Warning this significantly increases latency
 reasoning_mode: False
-
-# Parameter indicating if multi-label classification should be used (one description can yield multiple labels)
-multilabel_mode: False

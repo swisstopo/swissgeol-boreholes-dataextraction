@@ -1,7 +1,7 @@
 baseline: |
   fresh:
     description:
-      Unconsolidated material showing no visible signs of chemical or physical
+      Material showing no visible signs of chemical or physical
       weathering; mineral grains retain original colour and lustre, no
       discolouration, no softening, and no loss of structure. Indicates
       minimal post-depositional alteration.
@@ -12,7 +12,7 @@ baseline: |
 
   slightly_weathered:
     description:
-      Unconsolidated material with minor signs of weathering; slight
+      Material with minor signs of weathering; slight
       discolouration along grain surfaces or pore walls, occasional
       rust staining, but grains are still largely intact and the deposit
       retains most of its original fabric.
@@ -23,7 +23,7 @@ baseline: |
 
   moderately_weathered:
     description:
-      Unconsolidated material with moderate weathering; noticeable
+      Material with moderate weathering; noticeable
       discolouration of grains, partial oxidation, some softening of
       reactive minerals, and moderate loss of original fabric coherence.
       The deposit is clearly altered but still identifiable.
@@ -34,7 +34,7 @@ baseline: |
 
   weathered:
     description:
-      Unconsolidated material with significant weathering; pronounced
+      Material with significant weathering; pronounced
       discolouration throughout, widespread oxidation, softening of
       minerals, and substantial loss of original fabric. Most grains
       are visibly altered but the deposit has not completely broken down.
@@ -45,7 +45,7 @@ baseline: |
 
   highly_weathered:
     description:
-      Unconsolidated material with advanced weathering; most grains are
+      Material with advanced weathering; most grains are
       strongly discoloured, oxidised, or chemically transformed; original
       fabric is largely destroyed and the material is soft, friable, or
       earthy. Only relict structures allow identification of the original
@@ -57,7 +57,7 @@ baseline: |
 
   completely_weathered:
     description:
-      Unconsolidated material completely transformed by weathering; original
+      Material completely transformed by weathering; original
       grain identity and deposit structure are entirely lost. The material
       has been converted to residual soil, clay, or oxide minerals. No
       unaltered grains remain.

@@ -2,7 +2,7 @@ baseline: |
   cubic:
     description:
       Equidimensional, roughly cube-shaped grains with similar
-      length, width, and height. The overall 3D form is blocky or cubic — unrelated to surface texture or angularity.
+      length, width, and height. The overall 3D form is spherical or cubic — unrelated to surface texture or angularity.
       Typical of quartz grains,feldspar cleavage fragments, or isometric mineral crystals.
     keywords:
       de: [kubisch, kubish, kugelig,  würfelförmig, isometrisch, gleichkörnig, equidimensional]

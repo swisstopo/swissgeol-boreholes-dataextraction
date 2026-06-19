@@ -22,4 +22,4 @@ classification:
       Do not use these to infer cubic, platy, or elongated — if only angularity terms are present, return not_specified.
     - IMPORTANT: Intensity qualifiers (schwach, leicht, stark, mässig, deutlich, überwiegend, teilweise) modify
       degree only — they do NOT change the class. If the base descriptor matches a keyword, assign that class
-      (e.g. "schwach blockig" → cubic, "stark plattig" → platy, "leicht stängelig" → elongated).
+      (e.g. "schwach kubisch" → cubic, "stark plattig" → platy, "leicht stängelig" → elongated).

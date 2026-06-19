@@ -158,8 +158,16 @@ class AWSBedrockClassifier(Classifier):
                 }
             ],
         )
+        if message.stop_reason == "max_tokens":
+            raise ValueError(
+                f"Bedrock response truncated (max_tokens={self.config['max_tokens']}): \
+                increase max_tokens or reduce batch size"
+            )
         tool_result = next(b for b in message.content if b.type == "tool_use")
         predictions = AWSBedrockPrediction.model_validate(tool_result.input).predictions
+
+        # tool_result = next(b for b in message.content if b.type == "tool_use")
+        # predictions = AWSBedrockPrediction.model_validate(tool_result.input).predictions
 
         if len(predictions) != len(filename_layers):
             raise ValueError(f"Wrong number of prediction {len(filename_layers)=}, {len(predictions)=}")
