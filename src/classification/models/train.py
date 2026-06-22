@@ -120,10 +120,14 @@ def setup_mlflow_tracking(
         experiment_name (str): MLflow experiment name. Defaults to "Bert training".
         run_name (str | None): MLflow run name. Defaults to None.
     """
-    if mlflow.active_run():
-        mlflow.end_run()  # Ensure the previous run is closed
-    mlflow.set_experiment(experiment_name)
-    mlflow.start_run(run_name=run_name)
+    if not mlflow.active_run():
+        if os.getenv("MLFLOW_RUN_ID"):
+            # Azure ML pre-allocates a run via MLFLOW_RUN_ID; calling set_experiment()
+            # before start_run() causes an experiment-mismatch error, so we skip it.
+            mlflow.start_run()
+        else:
+            mlflow.set_experiment(experiment_name)
+            mlflow.start_run(run_name=run_name)
     mlflow.set_tag("classification system", config.classification_system)
     mlflow.set_tag("out_directory", str(out_directory))
 
@@ -216,23 +220,31 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
 
     # Save final cleaned version
     logger.info("Saving model head and state ...")
-    trainer.save_fine_tuned_head()
+    path_head = trainer.save_fine_tuned_head()
 
-    logger.info("Cleaning checkpoints (save space) ...")
+    logger.info("Cleaning checkpoints to save space ...")
     trainer.clean_checkpoints()
+
+    if mlflow_tracking and mlflow.active_run():
+        logger.info("Register model and head to MLflow (might take a while) ...")
+        mlflow.pytorch.log_model(
+            pytorch_model=trainer.model,
+            artifact_path="model",
+            registered_model_name=model_config.experiment_name,
+        )
+        mlflow.log_artifacts(path_head, artifact_path="model_head")
 
 
 def setup_training_args(model_config: ExperimentHyperparameters, out_directory: Path) -> TrainingArguments:
-    """Create a TrainingArgument object from the config file.
+    """Create a TrainingArguments object from the config file.
 
     Args:
         model_config (ExperimentHyperparameters): The model configuration.
         out_directory (Path): The directory for storing the model.
 
     Returns:
-        TrainingArgument: the training arguments.
+        TrainingArguments: the training arguments.
     """
-    report_to = "mlflow" if mlflow_tracking else "none"
     # Read hyperparameters from the config file
     training_args = TrainingArguments(
         output_dir=out_directory,
@@ -249,7 +261,7 @@ def setup_training_args(model_config: ExperimentHyperparameters, out_directory: 
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
-        report_to=report_to,
+        report_to="none",  # metrics logged via MetricsMLflowCallback to avoid Azure ML's 200-param limit
         save_total_limit=2,  # Limit checkpoints to save space, only keep best two
     )
     return training_args
@@ -363,12 +375,15 @@ def compute_trainset_weights(
 class HeadOnlyTrainer(Trainer):
     """Trainer that saves only fine-tuned parameters at every checkpoint."""
 
-    def save_fine_tuned_head(self) -> None:
+    def save_fine_tuned_head(self) -> str:
         """Save only the fine-tuned parameters (requires_grad=True) and the model config.
 
         Skips frozen backbone weights, keeping checkpoints small and focused on what actually changed.
+
+        Returns:
+            str: Folder containing fine-tuned model head
         """
-        out_dir = Path(self.args.output_dir)
+        out_dir = Path(self.args.output_dir) / "model_head"
         out_dir.mkdir(parents=True, exist_ok=True)
 
         # Gather only trained layers (gradient is available)
@@ -376,8 +391,9 @@ class HeadOnlyTrainer(Trainer):
         head_state = {k: v.cpu() for k, v in self.model.state_dict().items() if k in fine_tuned_names}
 
         # Save trained layer and model config
-        save_file(head_state, out_dir / "model.safetensors")
         self.model.config.save_pretrained(out_dir)
+        save_file(head_state, out_dir / "model.safetensors")
+        return str(out_dir)
 
     def clean_checkpoints(self) -> None:
         """Clean checkpoints after training."""
@@ -457,18 +473,35 @@ class ConfusionMatrixCallback(TrainerCallback):
         )
 
     def on_predict(self, args, state, control, metrics, **kwargs):
-        """Save confusion matrix and per-class CSV as test artifacts."""
+        """Save confusion matrix PNG and per-class metrics CSV to the output directory."""
         csv_path, png_path = plot_confusion_matrix(
             self._cm,
             Path(args.output_dir),
             split=self.current_test_name,
             all_classes=list(self._id2class_enum.values()),
         )
+        if mlflow.active_run():
+            mlflow.log_metrics(
+                {k: v for k, v in metrics.items() if "f1" in k and any(tag in k for tag in ["micro", "macro"])}
+            )
+            mlflow.log_artifact(str(csv_path))
+            mlflow.log_artifact(str(png_path))
 
-        if "mlflow" in args.report_to:
-            mlflow.log_metrics(metrics)
-            for artifact in (csv_path, png_path):
-                mlflow.log_artifact(str(artifact))
+
+class MetricsMLflowCallback(TrainerCallback):
+    """Logs step metrics to an active MLflow run.
+
+    Replaces report_to='mlflow' on the Trainer, which dumps all 207 TrainingArguments
+    fields as params and exceeds Azure ML MLflow's 200-parameter limit.
+    """
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        """Log numeric metrics to the active MLflow run at each logging step."""
+        if logs and mlflow.active_run():
+            mlflow.log_metrics(
+                {k: v for k, v in logs.items() if isinstance(v, int | float)},
+                step=state.global_step,
+            )
 
 
 def setup_trainer(
@@ -504,6 +537,9 @@ def setup_trainer(
         id2class_enum=bert_model.id2classEnum,
         is_multi_label=bert_model.classification_system.is_multi_label(),
     )
+    callbacks = [cm_callback]
+    if mlflow_tracking:
+        callbacks.append(MetricsMLflowCallback())
 
     # Create the Trainer object
     trainer = HeadOnlyTrainer(
@@ -514,7 +550,7 @@ def setup_trainer(
         processing_class=bert_model.tokenizer,
         compute_loss_func=compute_loss_func,
         compute_metrics=cm_callback.compute_metrics,
-        callbacks=[cm_callback],
+        callbacks=callbacks,
     )
     return trainer
 

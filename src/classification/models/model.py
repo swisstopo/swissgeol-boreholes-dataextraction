@@ -277,7 +277,7 @@ class BertModel:
             "label": [layer.ground_truth_class for layer in layers],
         }
         dataset = datasets.Dataset.from_dict(data)
-        return dataset.map(self.preprocess_entry, remove_columns=["label", "layer"])
+        return dataset.map(self.preprocess_entry, batched=False, remove_columns=["label", "layer"])
 
     def preprocess_entry(self, entry: dict) -> dict:
         """Preprocess a single dataset entry by tokenizing the text and encoding the label."""
