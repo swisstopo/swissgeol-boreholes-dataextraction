@@ -206,13 +206,9 @@ Repeat steps 1 and 2 of the [data extraction pipeline](#run-data-extraction) to 
 
 Pre-trained models are available in two ways:
 
-- **From the repository (recommended):** Models are committed under `models/` via Git LFS. Pull them with:
-  ```bash
-  git lfs pull
-  ```
-  This provides `models/backbone/backbone.safetensors`, `models/en_main_head/`, and `models/lithology_head/`.
+- **From HuggingFace (recommended):** Published models are hosted on [HuggingFace](https://huggingface.co/swissgeol). No manual download is needed — pass the HuggingFace model ID (e.g. `swissgeol/lithology`) directly via the `-p` flag at runtime and the model is loaded automatically.
 
-- **From S3 (swisstopo internal):** If you have access to the swisstopo S3 bucket, you can download models directly:
+- **From S3 (swisstopo internal):** If you have access to the swisstopo S3 bucket, you can download models directly (e.g.For models not yet published on HuggingFace), and pass the local path via `-p`:
   ```bash
   aws s3 sync s3://stijnvermeeren-boreholes-models models/uscs/your_model_folder
   ```
@@ -246,8 +242,12 @@ boreholes-classify-descriptions \
 - Use the `-f` or `--file-path` flag to specify the input JSON file (ground truth or predictions from extraction). When a ground truth JSON is provided, only the **test set** defined within it is classified. This ensures evaluation results are consistent with the train/test split used during BERT training.
 - Use the `-c` or `--classifier-type` option to choose the classifier: `dummy`, `baseline`, `bert`, or `bedrock`.
 - If you are using the classifier `bert`, specify the model path using `-p` or `--model-path`:
-  - **Full model:** pass the path to a complete HuggingFace model directory (contains `config.json`, `model.safetensors`, tokenizer files, etc.).
-  - **Split model (backbone + head):** pass the head directory via `-p` and the shared backbone via `-b` or `--backbone-path`. This is the recommended approach when using the models from this repository:
+  - **Full model:** pass either a HuggingFace model ID (downloaded automatically at runtime) or a local directory path (contains `config.json`, `model.safetensors`, tokenizer files, etc.):
+    ```bash
+    boreholes-classify-descriptions -f data/geoquat_ground_truth.json \
+      -c bert -p swissgeol/lithology -cs lithology
+    ```
+  - **Split model (backbone + head):** pass the head directory via `-p` and the shared backbone via `-b` or `--backbone-path`. This is the recommended approach when using models downloaded from S3:
     ```bash
     boreholes-classify-descriptions -f data/geoquat_ground_truth.json \
       -c bert -p models/lithology_head -b models/backbone/backbone.safetensors -cs lithology
