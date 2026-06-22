@@ -1,14 +1,14 @@
-# Config file for material (consolidated and unconsolidated) classification into color classes
+# Config file for consolidated material (bedrock) classification into accessory component classes
 # Prompt file and version
-prompts_file: bedrock/prompts/bedrock_color_prompts.yml
+prompts_file: bedrock/prompts/bedrock_accessory_components_prompts.yml
 prompt_version: baseline
 
 # Pattern file and parameter version
-pattern_file: bedrock/examples/bedrock_color_examples.yml
+pattern_file: bedrock/examples/bedrock_accessory_components_examples.yml
 pattern_version: baseline
 
 # Tool file
-tool_file: bedrock/tool/tool_classify_single.yml
+tool_file: bedrock/tool/tool_classify_multi.yml
 
 # temperature - answer creativity for the LLM model
 temperature: 0.0

@@ -1,10 +1,10 @@
-# Config file for material (consolidated and unconsolidated) classification into color classes
+# Config file for borehole material classification into cementation classes
 # Prompt file and version
-prompts_file: bedrock/prompts/bedrock_color_prompts.yml
+prompts_file: bedrock/prompts/bedrock_cementation_prompts.yml
 prompt_version: baseline
 
 # Pattern file and parameter version
-pattern_file: bedrock/examples/bedrock_color_examples.yml
+pattern_file: bedrock/examples/bedrock_cementation_examples.yml
 pattern_version: baseline
 
 # Tool file

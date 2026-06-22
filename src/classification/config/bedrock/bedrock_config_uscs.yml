@@ -1,14 +1,14 @@
 # Config file for USCS classification
 # Prompt file and version
-prompts_file: bedrock/prompts/uscs_classification_prompts.yml
+prompts_file: bedrock/prompts/bedrock_uscs_prompts.yml
 prompt_version: v1
 
 # Pattern file and parameter version
-pattern_file: bedrock/examples/uscs_classification_patterns_bedrock.yml
-pattern_version: baseline
+pattern_file: bedrock/examples/bedrock_uscs_examples.yml
+pattern_version: v1
 
 # Tool file
-tool_file: bedrock/tool/tool_classify_texts.yml
+tool_file: bedrock/tool/tool_classify_single.yml
 
 # temperature - answer creativity for the LLM model
 temperature: 0.0
@@ -17,4 +17,4 @@ temperature: 0.0
 max_tokens: 4096
 
 # Parameter indicating if Reasoning (Chain of Thought) mode should be used. Warning this significantly increases latency
-reasoning_mode: True
+reasoning_mode: False
