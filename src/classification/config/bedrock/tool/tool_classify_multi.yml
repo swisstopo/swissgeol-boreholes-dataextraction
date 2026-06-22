@@ -1,0 +1,41 @@
+classification:
+  name: "classify_texts"
+  description: "Classify each text and return a prediction for every item."
+  input_schema:
+    type: "object"
+    required: ["predictions"]
+    properties:
+      predictions:
+        type: "array"
+        items:
+          type: "object"
+          required: ["index", "class_"]
+          properties:
+            index:
+              type: "integer"
+            class_:
+              type: "array"
+              items:
+                type: "string"
+
+reasoning:
+  name: "classify_texts"
+  description: "Classify each text and return a prediction with reasoning for every item."
+  input_schema:
+    type: "object"
+    required: ["predictions"]
+    properties:
+      predictions:
+        type: "array"
+        items:
+          type: "object"
+          required: ["index", "class_", "reasoning"]
+          properties:
+            index:
+              type: "integer"
+            class_:
+              type: "array"
+              items:
+                type: "string"
+            reasoning:
+              type: "string"
