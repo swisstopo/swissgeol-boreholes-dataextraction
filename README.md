@@ -115,17 +115,7 @@ Adding packages can be done by editing the `pyproject.toml` of the project and a
 ## Run data extraction
 To execute the data extraction pipeline, follow these steps:
 
-### 1. Set up the environment
-
-Install dependencies using uv:
-
-```bash
-uv sync
-```
-
-Commands are then run with `uv run <command>`, which automatically uses the managed virtual environment.
-
-### 2. Download the borehole profiles, optional
+### 1. Download the borehole profiles, optional
 
 Use `boreholes-download-profiles` to download the files to be processed from an AWS S3 storage. In order to do so, you need to authenticate with aws first. We recommend using the aws CLI for that purpose, or storing your credentials in the ~/.aws configuration files This step is optional, you can continue with step 3 on your own set of borehole profiles.
 
@@ -153,7 +143,7 @@ If you choose to use the ~/.aws files, then they should look like this:
   aws_secret_access_key=YOUR_SECRET_KEY
   ```
 
-## 3. Run the extraction script
+## 2. Run the extraction script
 
 The main script for the extraction pipeline is located at `src/extraction/main.py`. A cli command is created to run this script.
 
@@ -190,7 +180,7 @@ expose_configs()
 
 This will create a `config/` directory at the root of your project containing all configuration files that can be safely edited.
 
-### 4. Check the results
+### 3. Check the results
 
 The script produces output in two different formats:
 - A file `data/output/predictions.json` that contains all extracted data in a machine-readable format. The structure of this file is documented in [README.predictions-json.md](docs/README.predictions-json.md).
