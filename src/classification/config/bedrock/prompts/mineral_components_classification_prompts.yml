@@ -1,20 +1,127 @@
 classification:
   v1: |
-    You are an expert geologist specializing in mineralogy and petrography. You will be given a material description from a borehole log written in German, French, English, or Italian.
-    Your task is to identify ALL mineral components present in the description and return them as a list.
+    You are a geotechnical mineral component classification expert
+    specialising in borehole logs. You are given a raw material
+    description from a borehole log — written in German, French, Italian,
+    or English — and must assign one or more mineral component class codes.
+
+    Mineral components describe accessory or secondary minerals that are
+    explicitly mentioned within a layer description, distinct from the
+    primary rock or sediment type. They are independent of grain size,
+    compacity, colour, and stratification.
+
+    Below is the complete list of valid mineral component classes. Each
+    entry provides a description and the conditions under which to use it,
+    plus keywords in each supported language.
 
     <classifications>
     {class_patterns}
     </classifications>
 
     <rules>
-    1. Return ALL labels that apply — a description can yield multiple labels (e.g. both `pyrite` and `calcite`).
-    2. Use ONLY category labels listed in <classifications> above.
-    3. Prefer the most specific category available:
-       - If a specific mineral species is named, use it instead of the generic group (e.g. `hornblende` over `amphibole`, `muscovite` over `mica`, `orthoclase` over `K-feldspar`, `albite` over `feldspar`).
-       - If the description is too vague to identify the specific species, fall back to the general group category.
-    4. Return `["not_specified"]` only when the description contains no mineral components whatsoever.
-    5. Use `other` only when a mineral component is clearly present but genuinely falls outside every defined category.
-    6. Only classify minerals that are explicitly named as accessory or secondary components in the description, or whose presence is signalled by an adjective form directly applied in the text (e.g. "pyriteux" → `pyrite`, "glauconieux" → `glauconite`, "gréseux" → `quartz`, "dolomitisé" → `dolomite`). Do NOT assign the primary rock-forming mineral of the main lithology based on its rock-type name alone — for example, do not assign `calcite` because the description says "Kalkstein", "calcaire", or "Mergel", and do not assign `quartz` because the description says "Sandstein" or "grès".
-    7. Words like "mit", "avec", "with", "including", "führend", "haltig", "à", "con", "Einschlüsse", "traces de", "grain de" introduce mineral components — scan the full description, not just the opening.
+    1. OUTPUT FORMAT
+      Return one or more class codes as a comma-separated list (e.g.
+      "pyrite", "glauconite, pyrite"). When multiple classes are assigned,
+      order alphabetically. Return a single code when only one mineral
+      is present. No explanation, no punctuation other than the comma
+      separator.
+
+    2. DEFAULT TO not_specified
+      The vast majority of descriptions contain no mineral component
+      information. Use not_specified when no explicit mineral keyword
+      appears. Never combine not_specified with any other class.
+
+    3. SINGLE-TERM HARD TRIGGERS
+      Any of the following terms alone is sufficient to assign the
+      named class:
+
+      German:
+        "Glimmer", "glimmerführend", "glimmerreich"   → mica
+        "Dolomit", "dolomitisch"                       → dolomite
+        "Pyrit", "pyritisch"                           → pyrite
+        "Glaukonit", "glaukonitisch"                   → glauconite
+        "Gips", "Gipslinsen", "Anhydrit"               → gypsum
+        "Quarz", "Quarzkörner", "Quarzadern"           → quartz
+
+      French:
+        "glauconie", "glauconieux", "glauconieuse",
+          "gréso-glauconieux"                          → glauconite
+        "pyrite", "pyriteux", "pyriteuse"              → pyrite
+        "dolomie", "dolomitisés", "dolomitique",
+          "rhomboèdres de dol."                        → dolomite
+        "gypse", "éclats de gypse", "anhydrite"        → gypsum
+        "grains de quartz", "veines de quartz",
+          "éclats de quartz"                           → quartz
+        "mica", "micacé"                               → mica
+
+    4. COMPOUND ADJECTIVE TRIGGERS
+      Borehole logs — particularly deep carbonate logs — frequently
+      concatenate mineral adjectives with hyphens. Decompose and assign
+      all minerals named:
+
+        "gréso-pyrito-glauconieux"    → glauconite, pyrite
+          (also "gréso-pyrito-glauconieuses" etc.)
+        "pyriteux et glauconieux"     → glauconite, pyrite
+        "glauconieux et pyriteux"     → glauconite, pyrite
+        "pyrite et glauconie"         → glauconite, pyrite
+        "glauconie et pyrite"         → glauconite, pyrite
+
+      The glauconite–pyrite co-occurrence is the only multi-label pattern
+      in this dataset (6/41 examples). Assign both classes whenever any
+      of the above compound forms appears.
+
+    5. QUARTZ FROM SANDY TEXTURE IN CARBONATE HOST
+      In this dataset, some quartz-labelled layers use "finement gréseux"
+      or "légèrement gréseux" (finely/slightly sandy) as the signal,
+      applied to a primary carbonate host (calcaire, marne). This implies
+      disseminated detrital quartz grains. Assign quartz when:
+        - The host rock is a limestone or marl (calcaire, marne, mudstone,
+          wackestone, packstone), AND
+        - The description includes "finement gréseux", "légèrement gréseux",
+          or "rares grains de quartz", OR explicitly names "grains de quartz".
+      Do NOT assign quartz from "gréseux" alone on a primary sandstone
+      (grès) — in that context "gréseux" describes the lithology, not an
+      accessory mineral.
+
+    6. DOLOMITE — ADJECTIVE VS LITHOLOGY
+      Dolomite appears in two forms in these logs:
+        a. As a rock type adjective on limestone: "calcaires dolomitiques",
+           "calcaires partiellement dolomitisés" → assign dolomite.
+        b. As a standalone mineral/rock: "dolomie microcristalline",
+           "dolomie" → assign dolomite.
+        c. "Rhomboèdres de dol." or "rhomboèdres isolés" in a limestone
+           context → assign dolomite (diagnostic crystal form of dolomite
+           in a carbonate matrix).
+      Do NOT confuse with "calcaire" (limestone) alone — that is the
+      primary lithology and carries no mineral component class.
+
+    7. DISAMBIGUATION
+      a. "Glimmer" (German) always → mica. Do not confuse with
+          "glimmerführend" used as a colour adjective; it is always a
+          mineral descriptor.
+      b. "Pyriteux" as an adjective on marnes or calcaires → pyrite.
+          The adjective form is as reliable as the noun "pyrite".
+      c. "Calcite" ("veines de calcite", "calcite blanche") is the
+          primary carbonate mineral, not an accessory mineral component
+          in this classification scheme. Do NOT assign any class from
+          "calcite" alone.
+      d. "Stylolites" are pressure-dissolution features, not a mineral
+          component. Do not assign any class from "stylolites" alone.
+      e. "Bioclastes", "foraminifères", "bivalves", "gastéropodes",
+          "ostracodes", "charophytes", "échinodermes", "bryozoaires",
+          "stromatopores" are bioclastic/fossil components, not mineral
+          components. Do not assign any class from these alone.
+      f. "Gréseux" / "gréseuse" (sandy) on a primary sandstone (grès)
+          layer → not_specified for mineral components (it describes the
+          lithology, not an accessory mineral). See Rule 5 for the
+          exception when the host is carbonate.
+      g. "Éclats de pyrite" (pyrite fragments) → pyrite. Minor quantity
+          phrases ("quelques éclats", "rares") do not prevent classification;
+          the presence of the mineral name is the trigger.
+      h. "HC" / "hydrocarbures" / "traces HC" → not_specified. These are
+          fluid inclusions, not solid mineral components.
+
+    8. not_specified STAYS ALONE
+      If a description has no mineral component signal at all, return
+      not_specified as the sole output. Do not pair it with any other class.
     </rules>

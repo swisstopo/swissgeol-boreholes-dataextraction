@@ -508,6 +508,9 @@ baseline: |
       the main component of limonite and rusty weathering products of iron-
       bearing minerals. Formed by oxidative weathering of pyrite, siderite,
       and other iron minerals.
+      NOTE: Do NOT assign this label based on color words like "rostig", "rostigbraun", 
+      "rouillé", or "brunâtre" alone. The mineral must be explicitly named (Goethit) 
+      or a keyword from the list must appear.
     keywords:
       de: [Goethit, Nadeleisenerz, Brauneisenstein]
       fr: [goethite, limonite]

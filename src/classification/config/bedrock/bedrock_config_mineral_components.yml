@@ -4,7 +4,7 @@ prompts_file: bedrock/prompts/mineral_components_classification_prompts.yml
 prompt_version: v1
 
 # Pattern file and parameter version
-pattern_file: bedrock/examples/mineral_components_classification_patterns_bedrock.yml
+pattern_file: bedrock/full_examples/mineral_components_classification_patterns_bedrock.yml
 pattern_version: baseline
 
 # Tool file

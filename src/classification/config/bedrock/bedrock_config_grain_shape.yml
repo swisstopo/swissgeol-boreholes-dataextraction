@@ -4,7 +4,7 @@ prompts_file: bedrock/prompts/grain_shape_classification_prompts.yml
 prompt_version: baseline
 
 # Pattern file and parameter version
-pattern_file: bedrock/examples/grain_shape_classification_patterns.yml
+pattern_file: bedrock/full_examples/grain_shape_classification_patterns.yml
 pattern_version: baseline
 
 # Tool file
