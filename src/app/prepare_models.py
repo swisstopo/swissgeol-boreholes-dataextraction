@@ -5,11 +5,11 @@ head weights, and writes them to the directory layout expected by lithology_clas
 
     models/backbone/backbone.safetensors  — shared frozen BERT encoder weights
     models/backbone/                      — tokenizer files
-    models/lithology_head/model.safetensors
-    models/lithology_head/config.json
-    models/en_main_head/model.safetensors
-    models/en_main_head/config.json
-
+    models/model_head_1/model.safetensors
+    models/model_head_1/config.json
+    ...
+    models/model_head_n/model.safetensors
+    models/model_head_n/config.json
 The backbone is extracted from the first model and assumed to be identical across all
 fine-tuned models (they all share the same frozen pre-trained encoder).
 """
@@ -38,6 +38,7 @@ _HEAD_PREFIXES = ("classifier.", "bert.pooler.", "bert.encoder.layer.11.")
 
 
 def _is_head_param(name: str) -> bool:
+    """Check if a parameter name belongs to the task-specific head."""
     return any(name.startswith(prefix) for prefix in _HEAD_PREFIXES)
 
 
