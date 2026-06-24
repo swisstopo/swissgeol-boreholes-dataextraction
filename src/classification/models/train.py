@@ -434,7 +434,7 @@ class ConfusionMatrixCallback(TrainerCallback):
         self.current_test_name: str = "test"
 
     def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
-        """Compute macro/micro aggregate metrics and cache per-class metrics for test artifacts."""
+        """Compute per-class and aggregate F1 metrics using sklearn's classification report."""
         logits, labels = eval_pred
         if self._is_multi_label:  # multi-label
             predictions = (logits > 0).astype(int)

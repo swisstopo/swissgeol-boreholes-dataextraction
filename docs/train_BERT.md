@@ -130,7 +130,7 @@ The job mounts the `ground-truth-data` folder asset and sets `BOREHOLES_DATA_PAT
 | `cementation`                      |                78 (7) | Single |        - |        - |
 | `color_consolidated`*              |           16,143 (91) | Single |    0.487 |    0.752 |
 | `color_unconsolidated`*            |           20,121 (91) | Single |    0.502 |    0.803 |
-| `debris`                           |           70,084, (7) |  Multi |        - |        - |
+| `debris`                           |            70,084 (7) |  Multi |        - |        - |
 | `en_main`                          |           89,842 (34) | Single |    0.xxx |    0.xxx |
 | `grain_angularity`                 |            70,377 (8) |  Multi |    0.831 |    0.974 |
 | `grain_shape`                      |            70,087 (5) |  Multi |        - |        - |
@@ -140,7 +140,3 @@ The job mounts the `ground-truth-data` folder asset and sets `BOREHOLES_DATA_PAT
 | `uscs`                             |            9,917 (38) | Single |    0.329 |    0.602 |
 
 * Model jointly trained, same for both tasks.
-
-
-
-
