@@ -132,7 +132,7 @@ The job mounts the `ground-truth-data` folder asset and sets `BOREHOLES_DATA_PAT
 | `color_unconsolidated`*            |           20,121 (91) | Single |    0.502 |    0.803 |
 | `debris`                           |           70,084, (7) |  Multi |        - |        - |
 | `en_main`                          |           89,842 (34) | Single |    0.xxx |    0.xxx |
-| `grain_angularity`                 |            70,377 (8) |  Multi |    0.591 |    0.877 |
+| `grain_angularity`                 |            70,377 (8) |  Multi |    0.831 |    0.974 |
 | `grain_shape`                      |            70,087 (5) |  Multi |        - |        - |
 | `lithology`                        |           45,323 (61) | Single |    0.848 |    0.942 |
 | `mineral_components`               |              63 (111) |  Multi |        - |        - |
