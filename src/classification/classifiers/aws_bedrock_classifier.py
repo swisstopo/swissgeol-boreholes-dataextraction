@@ -218,9 +218,11 @@ class AWSBedrockClassifier(Classifier):
         # Update predictions (label and reasoning)
         for data in predictions:
             if self.multilabel_mode:
-                filename_layers[data.index].prediction_class = [
-                    self.classification_system.map_most_similar_class(c) for c in (data.classes_ or [])
-                ] or None
+                mapped = [self.classification_system.map_most_similar_class(c) for c in (data.classes_ or [])]
+                default = self.classification_system.get_default_class_value().name
+                if len(mapped) > 1 and default in mapped:
+                    mapped = [c for c in mapped if c != default]
+                filename_layers[data.index].prediction_class = mapped or None
             else:
                 filename_layers[data.index].prediction_class = [
                     self.classification_system.map_most_similar_class(data.class_)
