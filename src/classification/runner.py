@@ -45,6 +45,7 @@ class ClassificationOptions:
     classification_system: str
     backbone_path: Path | None = None
     tokenizer_path: Path | None = None
+    predict_all: bool = False
 
 
 def run_classification_predictions(
@@ -89,14 +90,20 @@ def run_classification_predictions(
         gt_boreholes = GroundTruthBoreholeWithLanguage.from_ground_truth(
             ground_truth=GroundTruth(file_path).ground_truth,
         )
-        layer_descriptions_gt = classification_system_cls.process(ground_truth=gt_boreholes)
-        _, _, layer_descriptions = split_samples(layer_descriptions_gt)
 
-        # No labeled data for this classification system — classify all descriptions without evaluation
-        if not layer_descriptions:
-            logger.info("No labeled data found for this classification system. Classifying all descriptions.")
+        if options.predict_all:
+            logger.info("predict_all=True: classifying all descriptions without evaluation.")
             layer_descriptions = classification_system_cls.process(ground_truth=gt_boreholes, allow_none=True)
             is_prediction = True
+        else:
+            layer_descriptions_gt = classification_system_cls.process(ground_truth=gt_boreholes)
+            _, _, layer_descriptions = split_samples(layer_descriptions_gt)
+
+            # No labeled data for this classification system — classify all descriptions without evaluation
+            if not layer_descriptions:
+                logger.info("No labeled data found for this classification system. Classifying all descriptions.")
+                layer_descriptions = classification_system_cls.process(ground_truth=gt_boreholes, allow_none=True)
+                is_prediction = True
 
     n_documents = len({layer.filename for layer in layer_descriptions})
 
