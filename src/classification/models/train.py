@@ -16,7 +16,7 @@ import torch
 import torch.nn as nn
 from dotenv import load_dotenv
 from safetensors.torch import save_file
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix
 from transformers import (
     EvalPrediction,
     Trainer,
@@ -26,7 +26,6 @@ from transformers import (
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from classification import DATAPATH
-from classification.evaluation.evaluate import AllClassificationMetrics
 from classification.models.config import (
     ExperimentConfig,
     ExperimentDatasetConfig,
@@ -41,7 +40,6 @@ from classification.utils.datasets.classification import (
 )
 from classification.utils.file_utils import read_params
 from classification.utils.plots import plot_confusion_matrix
-from core.benchmark_utils import Metrics
 from core.ground_truth import GroundTruth
 
 if __name__ == "__main__":
@@ -435,42 +433,34 @@ class ConfusionMatrixCallback(TrainerCallback):
         self._cm: np.ndarray | None = None
         self.current_test_name: str = "test"
 
-    def _metrics_from_cm(self, cm: np.ndarray) -> dict:
-        """Compute per-class Metrics (tp, fp, fn) from a confusion matrix.
-
-        Args:
-            cm (np.ndarray): confusion matrix of shape (n_labels, n_labels).
-
-        Returns:
-            dict: mapping from class name (str) to Metrics for that class.
-        """
-        metric_list = [
-            Metrics(
-                tp=int(cm[i, i]),
-                fp=int(cm[:, i].sum() - cm[i, i]),
-                fn=int(cm[i, :].sum() - cm[i, i]),
-            )
-            for i in range(cm.shape[0])
-        ]
-        return {cls.name: metric_list[id_cls] for id_cls, cls in self._id2class_enum.items()}
-
     def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
         """Compute macro/micro aggregate metrics and cache per-class metrics for test artifacts."""
         logits, labels = eval_pred
         if self._is_multi_label:  # multi-label
             predictions = (logits > 0).astype(int)
-            no_prediction = predictions.sum(axis=-1) == 0
-            predictions[no_prediction, logits[no_prediction].argmax(axis=-1)] = 1
+            id_no_prediction = predictions.sum(axis=-1) == 0
+            predictions[id_no_prediction, logits[id_no_prediction].argmax(axis=-1)] = 1
             self._cm = multilabel_confusion_matrix_nxn(labels.astype(int), predictions)
         else:  # single-label: binary label vectors → integer indices (n_samples,)
+            predictions = np.zeros_like(logits)
+            predictions[range(predictions.shape[0]), logits.argmax(axis=1)] = 1
             self._cm = confusion_matrix(labels.argmax(axis=-1), logits.argmax(axis=-1), labels=self._sorted_ids)
-        self._per_class_metrics = self._metrics_from_cm(self._cm)
-        metric_list = list(self._per_class_metrics.values())
-        return (
-            {f"{k}_f1": v.f1 for k, v in self._per_class_metrics.items()}
-            | AllClassificationMetrics.compute_macro_average(metric_list)
-            | AllClassificationMetrics.compute_micro_average(metric_list)
+
+        # Drop non existing labels
+        (id_keep_col,) = np.nonzero(labels.sum(axis=0) + predictions.sum(axis=0))
+
+        # Use sklearn classification report to get global stats
+        report = classification_report(
+            labels[:, id_keep_col],
+            predictions[:, id_keep_col],
+            target_names=[self._id2class_enum[id_keep].name for id_keep in id_keep_col],
+            output_dict=True,
         )
+
+        return {
+            f"{group_name.replace(' ', '_')}_f1": group_metrics["f1-score"]
+            for group_name, group_metrics in report.items()
+        }
 
     def on_predict(self, args, state, control, metrics, **kwargs):
         """Save confusion matrix PNG and per-class metrics CSV to the output directory."""
