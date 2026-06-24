@@ -29,6 +29,12 @@ Please make sure to define the environment variables needed for the API to acces
 The data extraction API in this repository is designed to be integrated into [swissgeol-boreholes-suite](https://github.com/swisstopo/swissgeol-boreholes-suite) that is configured by [swissgeol-boreholes-config](https://github.com/swisstopo/swissgeol-boreholes-config). You can find the AWS S3 bucket configuration used for that deployment in [charts/swissgeol-boreholes/values.yaml](https://github.com/swisstopo/swissgeol-boreholes-config/blob/ac293abe1c489044b3b15efa30c2238d456ded26/charts/swissgeol-boreholes/values.yaml#L65).
 
 3. **Start the FastAPI server**
+When running the API server without a Docker image, you need to make sure that the necessary models are available. 
+To download all relevant models from Huggingface run: 
+
+```bash 
+python src/app/prepare_models.py
+```
 
 Run the following command to start the FastAPI server:
 
