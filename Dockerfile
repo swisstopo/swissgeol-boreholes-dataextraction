@@ -32,11 +32,12 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Source files and the three inference models (committed to the repository)
+# Source files
 COPY ./src /app/src
-COPY ./models/backbone /app/models/backbone
-COPY ./models/en_main_head /app/models/en_main_head
-COPY ./models/lithology_head /app/models/lithology_head
+
+# Download models from HuggingFace, split into backbone + heads, then wipe the download cache
+RUN /app/.venv/bin/python src/app/prepare_models.py && \
+    rm -rf /root/.cache/huggingface
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1

@@ -29,6 +29,12 @@ Please make sure to define the environment variables needed for the API to acces
 The data extraction API in this repository is designed to be integrated into [swissgeol-boreholes-suite](https://github.com/swisstopo/swissgeol-boreholes-suite) that is configured by [swissgeol-boreholes-config](https://github.com/swisstopo/swissgeol-boreholes-config). You can find the AWS S3 bucket configuration used for that deployment in [charts/swissgeol-boreholes/values.yaml](https://github.com/swisstopo/swissgeol-boreholes-config/blob/ac293abe1c489044b3b15efa30c2238d456ded26/charts/swissgeol-boreholes/values.yaml#L65).
 
 3. **Start the FastAPI server**
+When running the API server without a Docker image, you need to make sure that the necessary models are available. 
+To download all relevant models from Huggingface run: 
+
+```bash 
+python src/app/prepare_models.py
+```
 
 Run the following command to start the FastAPI server:
 
@@ -55,13 +61,12 @@ To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is
 
 ## Classification Model Configuration
 
-The `/api/V1/classify_lithology` endpoint requires fine-tuned BERT models. The models are committed directly to the repository under `models/` via Git LFS and are copied into the Docker image at build time — no external download or environment variable configuration is needed:
+The `/api/V1/classify_lithology` endpoint requires fine-tuned BERT models. The models follow a split backbone/head architecture:
 
-- `models/backbone/backbone.safetensors` — shared frozen backbone
-- `models/en_main_head/` — task-specific head for the EN main classification system
-- `models/lithology_head/` — task-specific head for the lithology classification system
+- **Backbone** (`backbone.safetensors`) — shared frozen backbone used across all classification systems
+- **Head** — task-specific model head for each classification system (e.g. `en_main`, `lithology`)
 
-> **Prerequisite (running without Docker):** These files are stored via Git LFS. If you haven't already, run `git lfs install && git lfs pull` before starting the server, otherwise the files will be LFS pointers and the app will fail to load the models.
+Published models are available on [HuggingFace](https://huggingface.co/swissgeol). During `docker build`, the models are downloaded automatically, split into backbone and heads, and baked into the image — no manual download is needed.
 
 The pre-built Docker image ships with these models baked in — no additional configuration is needed for classification:
 
@@ -92,7 +97,7 @@ Build the Docker image using the following command:
 ```bash
 docker build -t borehole-api .
 ```
-The classification models are always included in the image (they are committed to the repository under `models/` and copied at build time). To skip loading them at runtime, set `BERT_ENABLED=false` — see the [Classification Model Configuration](#classification-model-configuration) section.
+The classification models are always included in the image — they are downloaded from HuggingFace and baked in automatically during `docker build`. To skip loading them at runtime, set `BERT_ENABLED=false` — see the [Classification Model Configuration](#classification-model-configuration) section.
 
 And for a linux/amd64 build:
 ```bash
