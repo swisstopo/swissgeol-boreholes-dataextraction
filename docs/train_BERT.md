@@ -119,28 +119,3 @@ The script builds (or reuses) the Docker environment, uploads the `src/` code sn
 
 The job mounts the `ground-truth-data` folder asset and sets `BOREHOLES_DATA_PATH` to its mount path, then calls the training module. It is the same entrypoint used locally (as with `fine-tune-bert`).
 
-
-## 5. Results
-
-| Dataset                            | Support (num classes) | Target | F1-macro | F1-micro |
-|------------------------------------|-----------------------|--------|----------|----------|
-| `accessory_components`             |               75 (66) |  Multi |        - |        - |
-| `alteration_degree_consolidated`   |             2,716 (8) | Single |        - |        - |
-| `alteration_degree_unconsolidated` |                41 (8) | Single |        - |        - |
-| `cementation`                      |                78 (7) | Single |        - |        - |
-| `color_consolidated`*              |           16,143 (91) | Single |    0.487 |    0.752 |
-| `color_unconsolidated`*            |           20,121 (91) | Single |    0.502 |    0.803 |
-| `debris`                           |           70,084, (7) |  Multi |        - |        - |
-| `en_main`                          |           89,842 (34) | Single |    0.xxx |    0.xxx |
-| `grain_angularity`                 |            70,377 (8) |  Multi |        - |        - |
-| `grain_shape`                      |            70,087 (5) |  Multi |        - |        - |
-| `lithology`                        |           45,323 (61) | Single |    0.848 |    0.942 |
-| `mineral_components`               |              63 (111) |  Multi |        - |        - |
-| `organic_components`               |           70,102 (11) |  Multi |        - |        - |
-| `uscs`                             |            9,917 (38) | Single |    0.329 |    0.602 |
-
-* Model jointly trained, same for both tasks.
-
-
-
-
