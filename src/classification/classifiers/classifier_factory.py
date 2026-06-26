@@ -20,7 +20,7 @@ class ClassifierFactory:
     def create_classifier(
         classifier_type: ClassifierTypes,
         classification_system: type[ClassificationSystem],
-        model_path: Path,
+        model_path: Path | str | None,
         out_directory_bedrock: Path,
         backbone_path: Path | None = None,
         tokenizer_path: Path | None = None,
@@ -30,7 +30,7 @@ class ClassifierFactory:
         Args:
             classifier_type (ClassifierTypes): Type of classifier to create.
             classification_system (type[ClassificationSystem]): The classification system to be used.
-            model_path (Path): Path to the model (used for BERT).
+            model_path (Path | str | None): Local path to the model or a HuggingFace model ID string (used for BERT).
             out_directory_bedrock (Path): Output directory for Bedrock classifier.
             backbone_path (Path | None): Path to backbone.safetensors for split-model BERT loading.
             tokenizer_path (Path | None): Directory containing the tokenizer files for BERT.

@@ -46,9 +46,10 @@ def common_options(f):
     f = click.option(
         "-p",
         "--model-path",
-        type=click.Path(path_type=Path),
+        type=str,
         default=None,
-        help="Path to the model directory (full model) or head directory (split model).",
+        help="Local path to the model directory or a HuggingFace model ID (e.g. 'swissgeol/en_main'). "
+        "For split models this is the head directory.",
     )(f)
     f = click.option(
         "-b",
@@ -114,7 +115,7 @@ def click_pipeline(
     out_directory: Path,
     out_directory_bedrock: Path,
     classifier_type: str,
-    model_path: Path | None,
+    model_path: str | None,
     backbone_path: Path | None,
     tokenizer_path: Path | None,
     classification_system: str,
