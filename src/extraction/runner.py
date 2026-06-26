@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -99,6 +100,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
     runname: str | None = None
     wandb_group: str | None = None
     analytics: MatchingParamsAnalytics | None = field(init=False, default=None)
+    _run_start_time: float = field(init=False, default=0.0)
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -123,6 +125,9 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
             PipelineRunResult[OverallFilePredictions]: All predictions accumulated across files and the total
                 number of PDF files discovered (including any already-predicted files from a resumed run).
         """
+        import time
+
+        self._run_start_time = time.time()
         # Look for files to process
         pdf_files: list[Path] = (
             [self.input_directory] if self.input_directory.is_file() else list(self.input_directory.glob("*.pdf"))
@@ -215,9 +220,22 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
 
             draw_dir = self.out_directory / "draw"
             if draw_dir.exists():
-                png_paths = sorted(draw_dir.rglob("*.png"))
-                if png_paths:
-                    wandb.log({"predictions": [wandb.Image(str(p), caption=p.name) for p in png_paths]})
+                new_images = sorted(
+                    p for p in draw_dir.rglob("*.png") if p.stat().st_mtime >= self._run_start_time - 1
+                )
+                if new_images:
+                    wandb.log({"predictions": [wandb.Image(str(p), caption=p.name) for p in new_images]})
+
+            csv_dir = self.out_directory / "csv"
+            if csv_dir.exists():
+                new_csvs = sorted(p for p in csv_dir.rglob("*.csv") if p.stat().st_mtime >= self._run_start_time - 1)
+                if new_csvs:
+                    media_csv_dir = Path(wandb.run.dir) / "media" / "csv"
+                    media_csv_dir.mkdir(parents=True, exist_ok=True)
+                    for csv_path in new_csvs:
+                        dest = media_csv_dir / csv_path.name
+                        shutil.copy(str(csv_path), str(dest))
+                        wandb.save(str(dest), base_path=wandb.run.dir, policy="now")
 
             if summary:
                 summary_path = self.out_directory / "benchmark_summary.json"

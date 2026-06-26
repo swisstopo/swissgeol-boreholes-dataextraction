@@ -87,12 +87,15 @@ def evaluate_prediction(
 def evaluate_all_predictions(
     predictions: OverallFilePredictions,
     ground_truth: GroundTruth | None = None,
+    out_directory: Path | None = None,
 ) -> None | ExtractionBenchmarkSummary:
-    """Computes all the metrics, logs them, and creates corresponding MLFlow artifacts (when enabled).
+    """Computes all the metrics, logs them, and writes per-document CSV breakdowns.
 
     Args:
         predictions (OverallFilePredictions): The predictions objects.
         ground_truth (GroundTruth | None): The ground truth object.
+        out_directory (Path | None): Directory where document-level metric CSVs are written.
+            When None and MLflow is active the CSVs are written to a temp dir for MLflow only.
 
     Returns:
         ExtractionBenchmarkSummary | None: A JSON-serializable ExtractionBenchmarkSummary
@@ -109,25 +112,34 @@ def evaluate_all_predictions(
     logger.info("Metadata metrics: %s", {k: f"{v:.3f}" for k, v in metadata_metrics_dict.items()})
     logger.info("Geology metrics: %s", {k: f"{v:.3f}" for k, v in geology_metrics_dict.items()})
 
-    if mlflow:
-        # Log results
+    if mlflow or out_directory is not None:
         document_level_metadata_metrics, document_level_geology_metrics = overall_metrics.to_dfs()
 
-        mlflow.log_metrics(geology_metrics_dict)
-        mlflow.log_metrics(metadata_metrics_dict)
+        if mlflow:
+            mlflow.log_metrics(geology_metrics_dict)
+            mlflow.log_metrics(metadata_metrics_dict)
 
-        # Create temporary folder to dump csv file and track them using MLFlow
-        with tempfile.TemporaryDirectory() as temp_directory:
-            # Metadata
+        if out_directory is not None:
+            # Write directly so wandb (or other tools) can pick them up from disk
             document_level_metadata_metrics.to_csv(
-                Path(temp_directory) / "document_level_metadata_metrics.csv", index_label="filename"
-            )  # mlflow.log_artifact expects a file
-            mlflow.log_artifact(Path(temp_directory) / "document_level_metadata_metrics.csv")
-            # Geology
+                out_directory / "document_level_metadata_metrics.csv", index_label="filename"
+            )
             document_level_geology_metrics.to_csv(
-                Path(temp_directory) / "document_level_geology_metrics.csv", index_label="filename"
-            )  # mlflow.log_artifact expects a file
-            mlflow.log_artifact(Path(temp_directory) / "document_level_geology_metrics.csv")
+                out_directory / "document_level_geology_metrics.csv", index_label="filename"
+            )
+            if mlflow:
+                mlflow.log_artifact(out_directory / "document_level_metadata_metrics.csv")
+                mlflow.log_artifact(out_directory / "document_level_geology_metrics.csv")
+        elif mlflow:
+            with tempfile.TemporaryDirectory() as temp_directory:
+                document_level_metadata_metrics.to_csv(
+                    Path(temp_directory) / "document_level_metadata_metrics.csv", index_label="filename"
+                )
+                mlflow.log_artifact(Path(temp_directory) / "document_level_metadata_metrics.csv")
+                document_level_geology_metrics.to_csv(
+                    Path(temp_directory) / "document_level_geology_metrics.csv", index_label="filename"
+                )
+                mlflow.log_artifact(Path(temp_directory) / "document_level_geology_metrics.csv")
 
     return ExtractionBenchmarkSummary(
         ground_truth_path=str(ground_truth.path),
