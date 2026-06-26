@@ -6,7 +6,7 @@
 | Dataset                            | Support (num classes) | Target | F1-macro | F1-micro |
 |------------------------------------|-----------------------|--------|----------|----------|
 | `accessory_components`             |               75 (66) |  Multi |        - |        - |
-| `alteration_degree_consolidated`   |             2,716 (8) | Single |        - |        - |
+| `alteration_degree_consolidated`   |             2,716 (8) | Single |    0.392 |    0.782 |
 | `alteration_degree_unconsolidated` |                41 (8) | Single |        - |        - |
 | `cementation`                      |                78 (7) | Single |        - |        - |
 | `color_consolidated`*              |           16,143 (91) | Single |    0.487 |    0.752 |
@@ -21,6 +21,13 @@
 | `uscs`                             |            9,917 (38) | Single |    0.329 |    0.602 |
 
 * Model jointly trained, same for both tasks.
+
+
+## Alteration Degree (Consolidated)
+
+| Test set  | Train set    | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
+|-----------|--------------|-----------------|-----------------|---------------|---------------|
+| Geoquat-C | Consolidated | 0.179           | 0.536           | 0.392         | 0.782         |
 
 
 ## Color (Consolidated + Unconsolidated)
