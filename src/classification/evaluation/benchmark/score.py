@@ -45,7 +45,7 @@ class BenchmarkParams:
 
     file_path: Path
     classifier_type: str
-    model_path: Path | None
+    model_path: Path | str | None
     classification_system: str
     n_documents: int
 
