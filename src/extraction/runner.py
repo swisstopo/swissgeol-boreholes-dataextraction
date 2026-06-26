@@ -8,12 +8,12 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import pandas as pd
 from tqdm import tqdm
 
 from core.ground_truth import GroundTruth
-from core.mlflow_tracking import mlflow
-from core.mlflow_utils import setup_mlflow_tracking
 from core.pipeline_runner import MultiBenchmarkRunner, PipelineRunner, PipelineRunResult
+from core.wandb_tracking import wandb, wandb_tracking
 from extraction.core.extract import ExtractionResult, extract
 from extraction.evaluation.benchmark.score import (
     ExtractionBenchmarkSummary,
@@ -22,7 +22,6 @@ from extraction.evaluation.benchmark.score import (
 )
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
-from extraction.utils.benchmark_utils import log_metric_mlflow
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics, create_analytics
 from swissgeol_doc_processing.utils.file_utils import flatten, read_params
 
@@ -30,6 +29,21 @@ matching_params = read_params("matching_params.yml")
 line_detection_params = read_params("line_detection_params.yml")
 
 logger = logging.getLogger(__name__)
+
+
+def _git_metadata() -> dict:
+    try:
+        import pygit2
+
+        repo = pygit2.Repository(".")
+        commit = repo[repo.head.target]
+        return {
+            "git_branch": repo.head.shorthand,
+            "git_commit_sha": str(commit.id)[:8],
+            "git_commit_message": commit.message.strip(),
+        }
+    except Exception:
+        return {}
 
 
 def write_json_predictions(path: Path, predictions: OverallFilePredictions) -> None:
@@ -83,6 +97,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
     options: ExtractionOptions = field(default_factory=ExtractionOptions)
     on_file_done: Callable[[ExtractionResult, Path, Path], None] | None = None
     runname: str | None = None
+    wandb_group: str | None = None
     analytics: MatchingParamsAnalytics | None = field(init=False, default=None)
 
     def __post_init__(self) -> None:
@@ -91,25 +106,6 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
         self.copy_predictions_to_final = self.options.part == "all"
         self.out_directory.mkdir(parents=True, exist_ok=True)
         self.metadata_path.parent.mkdir(parents=True, exist_ok=True)
-
-    def setup_mlflow_run(self, runid: str | None) -> str:
-        return setup_mlflow_tracking(
-            run_id=runid,
-            experiment_name="Boreholes data extraction",
-            runname=self.runname,
-            nested=self.is_nested,
-            tags={
-                "input_directory": self.input_directory,
-                "ground_truth_path": self.ground_truth_path,
-                "out_directory": self.out_directory,
-                "predictions_path": self.predictions_path,
-                "metadata_path": self.metadata_path,
-            },
-            params={
-                **flatten(line_detection_params),
-                **flatten(matching_params),
-            },
-        )
 
     def run_predictions(self, predictions_path_tmp: Path) -> PipelineRunResult[OverallFilePredictions]:
         """Discover PDF files, run extract() on each, and write incremental predictions.
@@ -174,9 +170,6 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
         summary: ExtractionBenchmarkSummary | None,
         _predictions_path_tmp: Path,
     ) -> None:
-        if mlflow and summary is not None:
-            log_metric_mlflow(summary, out_dir=self.out_directory)
-
         logger.info(f"Metadata written to {self.metadata_path}")
         with open(self.metadata_path, "w", encoding="utf8") as file:
             json.dump(run_result.result.get_metadata_as_dict(), file, ensure_ascii=False, indent=2)
@@ -189,10 +182,55 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
         if self.options.part == "all":
             logger.info(f"Writing predictions to final JSON file {self.predictions_path}")
 
+        if wandb_tracking and wandb is not None:
+            self._log_to_wandb(run_result, summary)
+
+    def _log_to_wandb(
+        self,
+        run_result: PipelineRunResult[OverallFilePredictions],
+        summary: ExtractionBenchmarkSummary | None,
+    ) -> None:
+        import os
+
+        config = {
+            "input_directory": str(self.input_directory),
+            "ground_truth_path": str(self.ground_truth_path) if self.ground_truth_path else None,
+            **_git_metadata(),
+            **flatten(line_detection_params),
+            **flatten(matching_params),
+        }
+        wandb.init(
+            project=os.getenv("WANDB_PROJECT", "swissgeol-boreholes"),
+            name=self.runname or "extraction",
+            tags=["boreholes", "extraction"],
+            group=self.wandb_group,
+            config=config,
+        )
+        try:
+            base_metrics = {"n_documents": float(run_result.n_documents)}
+            eval_metrics = summary.metrics_flat() if summary else {}
+            all_metrics = {k: v for k, v in {**base_metrics, **eval_metrics}.items() if v is not None}
+            wandb.log(all_metrics)
+            wandb.run.summary.update(all_metrics)
+
+            draw_dir = self.out_directory / "draw"
+            if draw_dir.exists():
+                png_paths = sorted(draw_dir.rglob("*.png"))
+                if png_paths:
+                    wandb.log({"predictions": [wandb.Image(str(p), caption=p.name) for p in png_paths]})
+
+            if summary:
+                summary_path = self.out_directory / "benchmark_summary.json"
+                with open(summary_path, "w", encoding="utf8") as f:
+                    json.dump(summary.model_dump(), f, ensure_ascii=False, indent=2)
+                wandb.save(str(summary_path), base_path=str(self.out_directory), policy="now")
+        finally:
+            wandb.finish()
+
 
 @dataclass(kw_only=True)
 class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBenchmarkSummary]):
-    """Orchestrates multiple extraction benchmarks with shared MLflow parent tracking."""
+    """Orchestrates multiple extraction benchmarks."""
 
     experiment_name = "Boreholes data extraction"
     input_tag_name = "input_directory"
@@ -202,9 +240,15 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
 
     options: ExtractionOptions = field(default_factory=ExtractionOptions)
     on_file_done: Callable[[ExtractionResult, Path, Path], None] | None = None
+    _wandb_group: str | None = field(init=False, default=None)
 
     def run_single(self, spec: BenchmarkSpec) -> ExtractionBenchmarkSummary | None:
         logger.info("Running benchmark: %s", spec.name)
+        if self._wandb_group is None and wandb_tracking:
+            import datetime
+
+            self._wandb_group = f"benchmark-{datetime.datetime.now():%Y%m%d-%H%M%S}"
+
         bench_out = self.multi_root / spec.name
         bench_out.mkdir(parents=True, exist_ok=True)
 
@@ -219,4 +263,46 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
             options=self.options,
             on_file_done=self.on_file_done,
             runname=spec.name,
+            wandb_group=self._wandb_group,
         ).execute()
+
+    def finalize_summary(
+        self, overall_results: list[tuple[str, ExtractionBenchmarkSummary | None]], root: Path
+    ) -> None:
+        """Write overall_summary.csv and log aggregate metrics to W&B."""
+        super().finalize_summary(overall_results, root)
+
+        if not (wandb_tracking and wandb is not None and self._wandb_group):
+            return
+
+        import os
+
+        summary_csv_path = root / "overall_summary.csv"
+        if not summary_csv_path.exists():
+            return
+
+        df = pd.read_csv(summary_csv_path)
+        means = (
+            df.drop(columns=["benchmark", "ground_truth_path"], errors="ignore")
+            .mean(numeric_only=True)
+            .round(3)
+            .to_dict()
+        )
+        aggregate = {
+            "n_benchmarks": len(overall_results),
+            "total_documents": int(df["n_documents"].sum()) if "n_documents" in df.columns else 0,
+            **means,
+        }
+
+        wandb.init(
+            project=os.getenv("WANDB_PROJECT", "swissgeol-boreholes"),
+            name="aggregate",
+            group=self._wandb_group,
+            tags=["boreholes", "benchmark", "aggregate"],
+        )
+        try:
+            wandb.log(aggregate)
+            wandb.run.summary.update(aggregate)
+            wandb.save(str(summary_csv_path), policy="now")
+        finally:
+            wandb.finish()
