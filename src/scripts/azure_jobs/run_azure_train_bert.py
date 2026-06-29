@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-ENVIRONMENT_VERSION = "9"
+ENVIRONMENT_VERSION = "14"
 
 
 def get_environment(ml_client: MLClient) -> Environment:

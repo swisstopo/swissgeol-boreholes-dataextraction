@@ -10,7 +10,7 @@ classification:
     <rules>
     1. Classify using ONLY the categories listed in <classifications> above.
     2. Assign exactly ONE lithology category per description.
-    3. If the description is empty, ambiguous, or does not match any category, classify it as: kA
+    3. If the description is empty, ambiguous, or does not match any category, classify it as: Not specified
     </rules>
 
 reasoning:
@@ -25,7 +25,7 @@ reasoning:
     <rules>
     - Use ONLY the category labels listed in <classifications> above.
     - Assign exactly ONE lithology category.
-    - If the description is empty or no category fits, output: kA
+    - If the description is empty or no category fits, output: Not specified
     </rules>
 
     First, reason through the classification inside <thinking> tags:

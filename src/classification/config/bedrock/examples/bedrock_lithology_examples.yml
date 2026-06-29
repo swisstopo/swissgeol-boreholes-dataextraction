@@ -58,7 +58,7 @@ baseline:
     Tonalite: "tonalite: acidic plutonic rock (20-60% quartz and > 90% plagioclase in the QAPF diagram)"
     Tephrite: "tephrite: undersaturated (no quartz) volcanic rock (> 10% feldspatoid and > 50% plagioclase in the QAPF diagram); the texture is microlithic"
     Trachyte: "trachyte: volcanic rock (max. 20% quartz or max. 10% feldspatoid and < 35% plagioclase in the QAPF diagram); the texture is microlithic to porphyric"
-    kA: "not specified: not specified"
+    Not specified: "not specified: not specified"
     Unconsolidated: "unconsolidated material: Any unconsolidated material like clay, marl, silt, peat, sand, pebble, loam"
   fr:
     Amphibolite: "amphibolite: metamorphic rock essentially composed of minerals of the amphibole group"
@@ -119,7 +119,7 @@ baseline:
     Tonalite: "tonalite: acidic plutonic rock (20-60% quartz and > 90% plagioclase in the QAPF diagram)"
     Tephrite: "téphrite: undersaturated (no quartz) volcanic rock (> 10% feldspatoid and > 50% plagioclase in the QAPF diagram); the texture is microlithic"
     Trachyte: "trachyte: volcanic rock (max. 20% quartz or max. 10% feldspatoid and < 35% plagioclase in the QAPF diagram); the texture is microlithic to porphyric"
-    kA: "sans indication: not specified"
+    Not specified: "sans indication: not specified"
     Unconsolidated: "unconsolidated material: Any unconsolidated material like clay, marl, silt, peat, sand, pebble, loam"
   de:
     Amphibolite: "Amphibolit: metamorphic rock essentially composed of minerals of the amphibole group"
@@ -180,7 +180,7 @@ baseline:
     Tonalite: "Tonalit: acidic plutonic rock (20-60% quartz and > 90% plagioclase in the QAPF diagram)"
     Tephrite: "Tephrit: undersaturated (no quartz) volcanic rock (> 10% feldspatoid and > 50% plagioclase in the QAPF diagram); the texture is microlithic"
     Trachyte: "Trachyt: volcanic rock (max. 20% quartz or max. 10% feldspatoid and < 35% plagioclase in the QAPF diagram); the texture is microlithic to porphyric"
-    kA: "keine Angabe (unbekannt, nicht beschrieben): not specified"
+    Not specified: "keine Angabe (unbekannt, nicht beschrieben): not specified"
     Unconsolidated: "unconsolidated material: Any unconsolidated material like clay, marl, silt, peat, sand, pebble, loam"
   it:
     Amphibolite: "anfibolite: metamorphic rock essentially composed of minerals of the amphibole group"
@@ -241,5 +241,5 @@ baseline:
     Tonalite: "tonalite: acidic plutonic rock (20-60% quartz and > 90% plagioclase in the QAPF diagram)"
     Tephrite: "tefrite: undersaturated (no quartz) volcanic rock (> 10% feldspatoid and > 50% plagioclase in the QAPF diagram); the texture is microlithic"
     Trachyte: "trachite: volcanic rock (max. 20% quartz or max. 10% feldspatoid and < 35% plagioclase in the QAPF diagram); the texture is microlithic to porphyric"
-    kA: "senza indicazioni: not specified"
+    Not specified: "senza indicazioni: not specified"
     Unconsolidated: "unconsolidated material: Any unconsolidated material like clay, marl, silt, peat, sand, pebble, loam"
