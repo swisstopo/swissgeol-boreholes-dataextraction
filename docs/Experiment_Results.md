@@ -92,7 +92,7 @@
 
 | Test set | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
 |----------|------------------|------------------|---------------|---------------|
-| Geoquat  | 0.841            | 0.976            | 0.xxx         | 0.xxx         |
+| Geoquat  | 0.841            | 0.976            | 0.850         | 0.983         |
 
 
 ## USCS
