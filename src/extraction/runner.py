@@ -164,6 +164,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
         eval_summary = evaluate_all_predictions(
             predictions=run_result.result,
             ground_truth=ground_truth,
+            out_directory=self.out_directory if wandb_tracking else None,
         )
         if eval_summary is not None:
             eval_summary.n_documents = run_result.n_documents
@@ -240,6 +241,10 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
                 with open(summary_path, "w", encoding="utf8") as f:
                     json.dump(summary.model_dump(), f, ensure_ascii=False, indent=2)
                 wandb.save(str(summary_path), base_path=str(self.out_directory), policy="now")
+                for csv_name in ("document_level_metadata_metrics.csv", "document_level_geology_metrics.csv"):
+                    csv_path = self.out_directory / csv_name
+                    if csv_path.exists():
+                        wandb.save(str(csv_path), base_path=str(self.out_directory), policy="now")
         finally:
             wandb.finish()
 
