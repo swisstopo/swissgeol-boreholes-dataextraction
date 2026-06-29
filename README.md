@@ -244,7 +244,7 @@ boreholes-classify-descriptions \
     ```
 
 - Use `--classification-system` or `-cs` to specify the classification system. Supported values:
-  `accessory_components`, `alteration_degree_consolidated`, `alteration_degree_unconsolidated`,`cementation`, `color_consolidated`, `color_unconsolidated`, `debris`, `en_main`,`grain_angularity`, `grain_shape`, `lithology`, `mineral_components`, `organic_components`, `uscs`.
+  `accessory_components`, `alteration_degree_consolidated`, `alteration_degree_unconsolidated`,`cementation`, `color_consolidated`, `color_unconsolidated`, `debris`, `en_main`, `en_secondary`,`grain_angularity`, `grain_shape`, `lithology`, `mineral_components`, `organic_components`, `uscs`.
 - Use `-o` and `-ob` to specify the output directory and bedrock output directory respectively.
 
 The script will classify all given descriptions and write the predictions to the `data/output_description_classification` directory (or `data/output_description_classification_bedrock` for Bedrock outputs).
