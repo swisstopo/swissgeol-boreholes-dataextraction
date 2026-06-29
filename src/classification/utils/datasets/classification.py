@@ -343,10 +343,7 @@ class ClassificationSystem(ABC):
         label_groups = [cls.reduce_group(keys, layer) for keys in cls.get_layer_ground_truth_keys()]
         labels_str = [label for label_group in label_groups for label in label_group]
 
-        if not labels_str:
-            return None
-
-        return [cls.map_most_similar_class(labels_str)]
+        return labels_str if labels_str else None
 
     @classmethod
     def process(
