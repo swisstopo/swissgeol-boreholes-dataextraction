@@ -460,6 +460,7 @@ class ConfusionMatrixCallback(TrainerCallback):
         return {
             f"{group_name.replace(' ', '_')}_f1": group_metrics["f1-score"]
             for group_name, group_metrics in report.items()
+            if isinstance(group_metrics, dict) and "f1-score" in group_metrics
         }
 
     def on_predict(self, args, state, control, metrics, **kwargs):
