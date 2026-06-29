@@ -83,11 +83,6 @@ Output files are also written to disk under `--out-directory`:
 ---
 
 ## Troubleshooting
-
-**Metric plots are empty**
-Make sure you pass `-g <ground_truth_path>`. Without a ground truth file the pipeline skips
-evaluation and only logs `n_documents`.
-
 **`wandb: ERROR ...` on first run**
 Check that `WANDB_API_KEY` is set correctly and authenticate:
 ```bash
