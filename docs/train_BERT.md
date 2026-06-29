@@ -118,3 +118,4 @@ The script builds (or reuses) the Docker environment, uploads the `src/` code sn
 ### How it works
 
 The job mounts the `ground-truth-data` folder asset and sets `BOREHOLES_DATA_PATH` to its mount path, then calls the training module. It is the same entrypoint used locally (as with `fine-tune-bert`).
+
