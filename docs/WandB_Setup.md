@@ -26,6 +26,7 @@ Open `.env` and set:
 WANDB_TRACKING=True
 WANDB_API_KEY=<your key>       # from https://wandb.ai/authorize
 WANDB_PROJECT=swissgeol-boreholes   # optional, this is the default
+MLFLOW_TRACKING=False
 ```
 
 Then reload your environment:
