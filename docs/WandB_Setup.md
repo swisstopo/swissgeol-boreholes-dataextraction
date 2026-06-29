@@ -6,7 +6,7 @@ Tracking is **optional** — the pipeline runs fine without it.
 ## Prerequisites
 
 - A free [Weights & Biases](https://wandb.ai) account
-- `wandb` and `pygit2` installed (see Step 1)
+- `wandb` and `pygit2` installed
 
 ---
 
@@ -26,6 +26,7 @@ Open `.env` and set:
 WANDB_TRACKING=True
 WANDB_API_KEY=<your key>       # from https://wandb.ai/authorize
 WANDB_PROJECT=swissgeol-boreholes   # optional, this is the default
+WANDB_BASE_URL=https://api.wandb.ai # to track experiments in the users UI
 MLFLOW_TRACKING=False
 ```
 
@@ -38,8 +39,6 @@ source .env
 ---
 
 ## Step 3 — Run the pipeline
-
-Tracking activates automatically when `WANDB_TRACKING=True` is set.
 Pass a ground truth file with `-g` to get evaluation metrics — without it only `n_documents` is logged.
 
 ### Single directory
