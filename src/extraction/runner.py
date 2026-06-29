@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -125,8 +127,6 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
             PipelineRunResult[OverallFilePredictions]: All predictions accumulated across files and the total
                 number of PDF files discovered (including any already-predicted files from a resumed run).
         """
-        import time
-
         self._run_start_time = time.time()
         # Look for files to process
         pdf_files: list[Path] = (
@@ -195,8 +195,6 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
         run_result: PipelineRunResult[OverallFilePredictions],
         summary: ExtractionBenchmarkSummary | None,
     ) -> None:
-        import os
-
         config = {
             "input_directory": str(self.input_directory),
             "ground_truth_path": str(self.ground_truth_path) if self.ground_truth_path else None,
@@ -292,8 +290,6 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
 
         if not (wandb_tracking and wandb is not None and self._wandb_group):
             return
-
-        import os
 
         summary_csv_path = root / "overall_summary.csv"
         if not summary_csv_path.exists():
