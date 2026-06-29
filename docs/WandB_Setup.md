@@ -69,16 +69,9 @@ Open your W&B project at `https://wandb.ai/<your-entity>/swissgeol-boreholes`.
 |---|---|
 | Metrics (F1, precision, recall) | Charts panel of each run |
 | Config (input path, git commit, YAML params) | Overview tab |
-| Prediction images | Media panel (`predictions` key) |
+| Prediction images | Files tab | media folder | images folder
+| Prediction csv | Files tab | media folder | csv folder
 | Benchmark summary JSON | Files tab |
-| Multi-benchmark aggregate | The `aggregate` run in the group |
-
-Output files are also written to disk under `--out-directory`:
-
-- `predictions.json` — extracted borehole data
-- `metadata.json` — per-file metadata (coordinates, names)
-- `benchmark_summary.json` — evaluation metrics (if ground truth was provided)
-- `overall_summary.csv` — aggregate metrics across benchmarks (multi-benchmark mode only)
 
 ---
 
