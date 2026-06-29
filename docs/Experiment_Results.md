@@ -17,7 +17,7 @@
 | `grain_shape`                      |            70,087 (5) |  Multi |    0.560 |    0.998 |
 | `lithology`                        |           45,323 (61) | Single |    0.848 |    0.942 |
 | `mineral_components`               |              63 (111) |  Multi |        - |        - |
-| `organic_components`               |           70,102 (11) |  Multi |        - |        - |
+| `organic_components`               |           70,102 (11) |  Multi |    0.850 |    0.983 |
 | `uscs`                             |            9,917 (38) | Single |    0.329 |    0.602 |
 
 * Model jointly trained, same for both tasks.
