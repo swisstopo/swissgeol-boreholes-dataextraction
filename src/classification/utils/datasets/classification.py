@@ -293,28 +293,60 @@ class ClassificationSystem(ABC):
 
     @classmethod
     @abstractmethod
-    def get_layer_ground_truth_keys(cls) -> list[str]:
+    def get_layer_ground_truth_keys(cls) -> list[list[str]]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
         ...
+
+    @classmethod
+    def reduce_group(
+        cls,
+        keys: list[str],
+        layer: GroundTruthLayer,
+    ) -> list[ClassificationSystem.EnumMember]:
+        """Walk an attribute path on a layer and return the resolved enum members.
+
+        Args:
+            keys (list[str]): Ordered attribute names forming the path to the ground truth value.
+            layer (GroundTruthLayer): A single layer record from which to extract the label.
+
+        Returns:
+            list[ClassificationSystem.EnumMember]: Matched enum members, or an empty list if the
+                path is absent or the value is ``None``.
+        """
+        try:
+            label_str = reduce(getattr, keys, layer)
+        except AttributeError:
+            return []
+
+        if label_str is None:
+            return []
+
+        if isinstance(label_str, list):
+            return [cls.map_most_similar_class(s) for s in label_str]
+
+        return [cls.map_most_similar_class(label_str)]
 
     @classmethod
     def reduce_label(
         cls,
         layer: GroundTruthLayer,
     ) -> list[ClassificationSystem.EnumMember] | None:
-        """Extract the list of class members from a layer by resolving the ground truth key path, or None if absent."""
-        try:
-            label_str = reduce(getattr, cls.get_layer_ground_truth_keys(), layer)
-        except AttributeError:
+        """Resolve all ground truth labels for a layer across every key group.
+
+        Args:
+            layer (GroundTruthLayer): A single layer record to extract labels from.
+
+        Returns:
+            list[ClassificationSystem.EnumMember] | None: Flat list of resolved enum members,
+                or ``None`` if the layer has no ground truth for this classification system.
+        """
+        label_groups = [cls.reduce_group(keys, layer) for keys in cls.get_layer_ground_truth_keys()]
+        labels_str = [label for label_group in label_groups for label in label_group]
+
+        if not labels_str:
             return None
 
-        if label_str is None:
-            return None
-
-        if isinstance(label_str, list):
-            return [cls.map_most_similar_class(s) for s in label_str]
-
-        return [cls.map_most_similar_class(label_str)]
+        return [cls.map_most_similar_class(labels_str)]
 
     @classmethod
     def process(

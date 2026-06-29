@@ -36,9 +36,9 @@ class GrainShapeSystem(ClassificationSystem):
         return "grain_shape"
 
     @classmethod
-    def get_layer_ground_truth_keys(cls) -> list[str]:
+    def get_layer_ground_truth_keys(cls) -> list[list[str]]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
-        return ["unconsolidated", "grain_shape"]
+        return [["unconsolidated", "grain_shape"]]
 
     @classmethod
     def get_default_class_value(cls) -> GrainShapeClasses:

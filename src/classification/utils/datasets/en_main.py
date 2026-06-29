@@ -42,9 +42,9 @@ class ENMainSystem(ClassificationSystem):
         return "en_main"
 
     @classmethod
-    def get_layer_ground_truth_keys(cls) -> list[str]:
+    def get_layer_ground_truth_keys(cls) -> list[list[str]]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
-        return ["unconsolidated", "main"]
+        return [["unconsolidated", "main"]]
 
     @classmethod
     def get_default_class_value(cls) -> ENMainClasses:
@@ -92,9 +92,9 @@ class ENSecondarySystem(ENMainSystem):
         return "secondary"
 
     @classmethod
-    def get_layer_ground_truth_keys(cls) -> list[str]:
+    def get_layer_ground_truth_keys(cls) -> list[list[str]]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
-        return ["unconsolidated", "other"]
+        return [["unconsolidated", "main"], ["unconsolidated", "other"]]
 
     @classmethod
     def classification_task(cls) -> ClassificationTask:
