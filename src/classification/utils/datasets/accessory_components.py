@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from enum import IntEnum, auto
 
-from classification.utils.datasets.classification import ClassificationSystem
+from classification.utils.datasets.classification import ClassificationSystem, ClassificationTask
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +46,8 @@ class AccessoryComponentsSystem(ClassificationSystem):
         return cls.AccessoryComponentsClasses.not_specified
 
     @classmethod
-    def is_multi_label(cls) -> bool:
-        return True
+    def classification_task(cls) -> ClassificationTask:
+        return ClassificationTask.multi_label
 
     class AccessoryComponentsClasses(IntEnum):
         """Accessory component classes for consolidated soil classification (0-based indexing)."""

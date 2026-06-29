@@ -6,7 +6,7 @@ import hashlib
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import IntEnum
+from enum import IntEnum, auto
 from functools import reduce
 
 from classification.utils.file_utils import read_params
@@ -254,6 +254,14 @@ class LayerInformation:
         )
 
 
+class ClassificationTask(IntEnum):
+    """Enum representing the type of classification task (single-label, multi-label, or ranked)."""
+
+    single_label = 0
+    multi_label = auto()
+    ranked = auto()
+
+
 class ClassificationSystem(ABC):
     """Abstract base class for classification system.
 
@@ -348,9 +356,9 @@ class ClassificationSystem(ABC):
         ...
 
     @classmethod
-    def is_multi_label(cls) -> bool:
-        """Return True if layers can carry more than one label."""
-        return False
+    def classification_task(cls) -> ClassificationTask:
+        """Return the classification task type for this dataset."""
+        return ClassificationTask.single_label
 
     @classmethod
     def map_most_similar_class(cls, class_str: str) -> EnumMember:

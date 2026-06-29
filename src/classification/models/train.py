@@ -34,6 +34,7 @@ from classification.models.config import (
 from classification.models.model import BertModel
 from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.datasets.classification import (
+    ClassificationTask,
     GroundTruthBoreholeWithLanguage,
     LayerInformation,
     split_samples,
@@ -420,15 +421,15 @@ def multilabel_confusion_matrix_nxn(labels: np.ndarray, predictions: np.ndarray)
 class ConfusionMatrixCallback(TrainerCallback):
     """Trainer callback to compute and save confusion matrix after evaluation."""
 
-    def __init__(self, id2class_enum: dict, is_multi_label: bool = False):
+    def __init__(self, id2class_enum: dict, classification_task: ClassificationTask = ClassificationTask.single_label):
         """Initialise the callback.
 
         Args:
             id2class_enum: Mapping from class index to its enum member.
-            is_multi_label: Whether the classification task is multi-label (default: False).
+            classification_task: Type of classification task (default: ClassificationTask.single_label).
         """
         self._id2class_enum = id2class_enum
-        self._is_multi_label = is_multi_label
+        self._classification_task = classification_task
         self._sorted_ids = sorted(id2class_enum.keys(), key=lambda i: id2class_enum[i].value)
         self._cm: np.ndarray | None = None
         self.current_test_name: str = "test"
@@ -436,15 +437,20 @@ class ConfusionMatrixCallback(TrainerCallback):
     def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
         """Compute per-class and aggregate F1 metrics using sklearn's classification report."""
         logits, labels = eval_pred
-        if self._is_multi_label:  # multi-label
+
+        if self._classification_task == ClassificationTask.multi_label:
             predictions = (logits > 0).astype(int)
             id_no_prediction = predictions.sum(axis=-1) == 0
             predictions[id_no_prediction, logits[id_no_prediction].argmax(axis=-1)] = 1
             self._cm = multilabel_confusion_matrix_nxn(labels.astype(int), predictions)
-        else:  # single-label: binary label vectors → integer indices (n_samples,)
+        elif (
+            self._classification_task == ClassificationTask.single_label
+        ):  # single-label: binary label vectors → integer indices (n_samples,)
             predictions = np.zeros_like(logits)
             predictions[range(predictions.shape[0]), logits.argmax(axis=1)] = 1
             self._cm = confusion_matrix(labels.argmax(axis=-1), logits.argmax(axis=-1), labels=self._sorted_ids)
+        else:
+            raise NotImplementedError(f"Unsupported classification task {self._classification_task}")
 
         # Drop non existing labels
         (id_keep_col,) = np.nonzero(labels.sum(axis=0) + predictions.sum(axis=0))
@@ -526,7 +532,7 @@ def setup_trainer(
 
     cm_callback = ConfusionMatrixCallback(
         id2class_enum=bert_model.id2classEnum,
-        is_multi_label=bert_model.classification_system.is_multi_label(),
+        classification_task=bert_model.classification_system.classification_task(),
     )
     callbacks = [cm_callback]
     if mlflow_tracking:
