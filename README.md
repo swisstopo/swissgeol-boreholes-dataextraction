@@ -263,3 +263,5 @@ Run `boreholes-classify-descriptions --help` to see all available options.
 - [train_BERT.md](docs/train_BERT.md) documents how to fine-tune a BERT model on your own data.
 
 - [CICD.md](docs/CICD.md) overview of the deployment process and CICD pipeline
+
+- [Experiment_Results.md](docs/Experiment_Results.md) overview of the classification performances on internal datasets.
