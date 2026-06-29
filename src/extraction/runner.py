@@ -222,7 +222,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
                     p for p in draw_dir.rglob("*.png") if p.stat().st_mtime >= self._run_start_time - 1
                 )
                 if new_images:
-                    wandb.log({"predictions": [wandb.Image(str(p), caption=p.name) for p in new_images]})
+                    wandb.log({p.stem: wandb.Image(str(p)) for p in new_images})
 
             csv_dir = self.out_directory / "csv"
             if csv_dir.exists():
