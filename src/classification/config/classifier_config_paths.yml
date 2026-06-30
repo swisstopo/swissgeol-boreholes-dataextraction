@@ -55,7 +55,7 @@ bedrock:
   color_unconsolidated: bedrock/bedrock_config_color.yml
   debris: bedrock/bedrock_config_debris.yml
   en_main: bedrock/bedrock_config_en_main.yml
-  en_secondary: null
+  en_secondary: bedrock/bedrock_config_en_secondary.yml
   grain_angularity: bedrock/bedrock_config_grain_angularity.yml
   grain_shape: bedrock/bedrock_config_grain_shape.yml
   lithology: bedrock/bedrock_config_lithology.yml
