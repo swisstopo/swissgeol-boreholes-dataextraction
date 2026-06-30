@@ -13,8 +13,8 @@
 | `color_unconsolidated`*            |           20,121 (91) | Single |    0.502 |    0.803 |
 | `debris`                           |           70,084, (7) |  Multi |        - |        - |
 | `en_main`                          |           89,842 (34) | Single |    0.859 |    0.905 |
-| `en_secondary`                     |           xx,xxx (xx) |  Multi |    0.xxx |    0.xxx |
-| `en_secondary_rank`                |           xx,xxx (xx) |   Rank |    0.xxx |    0.xxx |
+| `en_secondary`                     |           89,842 (34) |  Multi |    0.854 |    0.947 |
+| `en_secondary_rank`                |           89,842 (34) |   Rank |    0.xxx |    0.xxx |
 | `grain_angularity`                 |            70,377 (8) |  Multi |    0.831 |    0.974 |
 | `grain_shape`                      |            70,087 (5) |  Multi |        - |        - |
 | `lithology`                        |           45,323 (61) | Single |    0.848 |    0.942 |
@@ -47,6 +47,15 @@
 | Thurgau   | 0.515            | 0.812            | 0.595         | 0.868         |
 | Overall   | -                | -                | 0.859         | 0.905         |
 
+## EN Secondary
+
+| Test set  | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
+|-----------|------------------|------------------|---------------|---------------|
+| Deepwells | -                | -                | 0.696         | 0.979         |
+| Geoquat   | -                | -                | 0.840         | 0.951         |
+| Nagra     | -                | -                | 1.000         | 1.000         |
+| Thurgau   | -                | -                | 0.650         | 0.933         |
+| Overall   | -                | -                | 0.854         | 0.947         |
 
 ## Grain angularity
 
