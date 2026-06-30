@@ -75,7 +75,7 @@ unfreeze_layers:
 ```
 
 Each entry under `training_sets` and `test_sets` is a named dataset with:
-- `classification_system`: one of `accessory_components`, `alteration_degree`, `alteration_degree_consolidated`, `alteration_degree_unconsolidated`, `cementation`, `color`, `color_consolidated`, `color_unconsolidated`, `debris`, `en_main`, `en_secondary`, `grain_angularity`, `grain_shape`, `lithology`, `mineral_components`, `organic_components`, or `uscs`
+- `classification_system`: one of `accessory_components`, `alteration_degree`, `alteration_degree_consolidated`, `alteration_degree_unconsolidated`, `cementation`, `color`, `color_consolidated`, `color_unconsolidated`, `debris`, `en_main`, `en_secondary`, `en_secondary_rank`, `grain_angularity`, `grain_shape`, `lithology`, `mineral_components`, `organic_components`, or `uscs`
 - `ground_truths`: list of JSON filenames relative to the project data path
 
 Multiple named datasets can be listed under `training_sets` — their samples are pooled for training. Each entry in `test_sets` is evaluated independently and produces its own metrics report. The train/test split is deterministic per filename, so the same ground-truth files can safely appear in both sections without data leakage.

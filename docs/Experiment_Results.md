@@ -14,6 +14,7 @@
 | `debris`                           |           70,084, (7) |  Multi |        - |        - |
 | `en_main`                          |           89,842 (34) | Single |    0.859 |    0.905 |
 | `en_secondary`                     |           xx,xxx (xx) |  Multi |    0.xxx |    0.xxx |
+| `en_secondary_rank`                |           xx,xxx (xx) |   Rank |    0.xxx |    0.xxx |
 | `grain_angularity`                 |            70,377 (8) |  Multi |    0.831 |    0.974 |
 | `grain_shape`                      |            70,087 (5) |  Multi |        - |        - |
 | `lithology`                        |           45,323 (61) | Single |    0.848 |    0.942 |

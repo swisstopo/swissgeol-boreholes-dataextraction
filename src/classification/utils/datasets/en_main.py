@@ -81,15 +81,12 @@ class ENMainSystem(ClassificationSystem):
 
 
 class ENSecondarySystem(ENMainSystem):
-    """Implementation of the main-level EN classification system.
-
-    This class provides the EN classes at the main level.
-    """
+    """Multi-label EN classification system combining main and secondary unconsolidated classes."""
 
     @classmethod
     def get_name(cls) -> str:
         """Return the name of the system."""
-        return "secondary"
+        return "en_secondary"
 
     @classmethod
     def get_layer_ground_truth_keys(cls) -> list[list[str]]:
@@ -98,4 +95,19 @@ class ENSecondarySystem(ENMainSystem):
 
     @classmethod
     def classification_task(cls) -> ClassificationTask:
+        """Return the multi-label classification task type for this system."""
         return ClassificationTask.multi_label
+
+
+class ENSecondaryRank(ENSecondarySystem):
+    """Ranked EN classification system treating the secondary label set as an ordered list."""
+
+    @classmethod
+    def get_name(cls) -> str:
+        """Return the name of the system."""
+        return "en_secondary_rank"
+
+    @classmethod
+    def classification_task(cls) -> ClassificationTask:
+        """Return the rank classification task type for this system."""
+        return ClassificationTask.rank

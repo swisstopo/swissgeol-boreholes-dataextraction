@@ -255,11 +255,11 @@ class LayerInformation:
 
 
 class ClassificationTask(IntEnum):
-    """Enum representing the type of classification task (single-label, multi-label, or ranked)."""
+    """Enum representing the type of classification task (single-label, multi-label, or rank)."""
 
     single_label = 0
     multi_label = auto()
-    ranked = auto()
+    rank = auto()
 
 
 class ClassificationSystem(ABC):
