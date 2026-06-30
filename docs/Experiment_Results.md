@@ -17,7 +17,7 @@
 | `grain_shape`                      |            70,087 (5) |  Multi |    0.560 |    0.998 |
 | `lithology`                        |           45,323 (61) | Single |    0.848 |    0.942 |
 | `mineral_components`               |              63 (111) |  Multi |        - |        - |
-| `organic_components`               |           70,102 (11) |  Multi |    0.850 |    0.983 |
+| `organic_components`               |           70,102 (11) |  Multi |    0.839 |    0.983 |
 | `uscs`                             |            9,917 (38) | Single |    0.329 |    0.602 |
 
 * Model jointly trained, same for both tasks.
@@ -92,7 +92,7 @@
 
 | Test set | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
 |----------|------------------|------------------|---------------|---------------|
-| Geoquat  | 0.841            | 0.976            | 0.850         | 0.983         |
+| Geoquat  | 0.841            | 0.976            | 0.839         | 0.983         |
 
 
 ## USCS
