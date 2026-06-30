@@ -3,7 +3,6 @@
 
 ## Overview (BERT Only)
 
-
 | Dataset                            | Support (num classes) | Target | F1-macro | F1-micro |
 |------------------------------------|-----------------------|--------|----------|----------|
 | `accessory_components`             |               75 (66) |  Multi |        - |        - |
@@ -14,7 +13,7 @@
 | `color_unconsolidated`*            |           20,121 (91) | Single |    0.502 |    0.803 |
 | `debris`                           |           70,084, (7) |  Multi |        - |        - |
 | `en_main`                          |           89,842 (34) | Single |    0.859 |    0.905 |
-| `grain_angularity`                 |            70,377 (8) |  Multi |        - |        - |
+| `grain_angularity`                 |            70,377 (8) |  Multi |    0.831 |    0.974 |
 | `grain_shape`                      |            70,087 (5) |  Multi |        - |        - |
 | `lithology`                        |           45,323 (61) | Single |    0.848 |    0.942 |
 | `mineral_components`               |              63 (111) |  Multi |        - |        - |
@@ -35,6 +34,7 @@
 | Thurgau-U  | Unconsolidated | 0.335            | 0.703            | 0.442         | 0.797         |
 | Thurgau-U  | All            | -                | -                | 0.502         | 0.803         |
 
+
 ## EN Main
 
 | Test set  | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
@@ -44,6 +44,16 @@
 | Nagra     | 0.911            | 0.966            | 1.000         | 1.000         |
 | Thurgau   | 0.515            | 0.812            | 0.595         | 0.868         |
 | Overall   | -                | -                | 0.859         | 0.905         |
+
+
+## Grain angularity
+
+| Test set | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
+|----------|------------------|------------------|---------------|---------------|
+| Geoquat  | 0.821            | 0.966            | 0.823         | 0.974         |
+| Nagra    | 0.660            | 0.623            | 0.963         | 0.986         |
+| Overall  | -                | -                | 0.831         | 0.974         |
+
 
 ## Lithology
 
@@ -61,4 +71,5 @@
 | Test set | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
 |----------|------------------|------------------|---------------|---------------|
 | Geoquat  | 0.251            | 0.538            | 0.329         | 0.602         |
+
 
