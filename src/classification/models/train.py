@@ -16,7 +16,7 @@ import torch
 import torch.nn as nn
 from dotenv import load_dotenv
 from safetensors.torch import save_file
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix
 from transformers import (
     EvalPrediction,
     Trainer,
@@ -26,7 +26,6 @@ from transformers import (
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from classification import DATAPATH
-from classification.evaluation.evaluate import AllClassificationMetrics
 from classification.models.config import (
     ExperimentConfig,
     ExperimentDatasetConfig,
@@ -41,7 +40,6 @@ from classification.utils.datasets.classification import (
 )
 from classification.utils.file_utils import read_params
 from classification.utils.plots import plot_confusion_matrix
-from core.benchmark_utils import Metrics
 from core.ground_truth import GroundTruth
 
 if __name__ == "__main__":
@@ -120,10 +118,14 @@ def setup_mlflow_tracking(
         experiment_name (str): MLflow experiment name. Defaults to "Bert training".
         run_name (str | None): MLflow run name. Defaults to None.
     """
-    if mlflow.active_run():
-        mlflow.end_run()  # Ensure the previous run is closed
-    mlflow.set_experiment(experiment_name)
-    mlflow.start_run(run_name=run_name)
+    if not mlflow.active_run():
+        if os.getenv("MLFLOW_RUN_ID"):
+            # Azure ML pre-allocates a run via MLFLOW_RUN_ID; calling set_experiment()
+            # before start_run() causes an experiment-mismatch error, so we skip it.
+            mlflow.start_run()
+        else:
+            mlflow.set_experiment(experiment_name)
+            mlflow.start_run(run_name=run_name)
     mlflow.set_tag("classification system", config.classification_system)
     mlflow.set_tag("out_directory", str(out_directory))
 
@@ -216,23 +218,31 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
 
     # Save final cleaned version
     logger.info("Saving model head and state ...")
-    trainer.save_fine_tuned_head()
+    path_head = trainer.save_fine_tuned_head()
 
-    logger.info("Cleaning checkpoints (save space) ...")
+    logger.info("Cleaning checkpoints to save space ...")
     trainer.clean_checkpoints()
+
+    if mlflow_tracking and mlflow.active_run():
+        logger.info("Register model and head to MLflow (might take a while) ...")
+        mlflow.pytorch.log_model(
+            pytorch_model=trainer.model,
+            artifact_path="model",
+            registered_model_name=model_config.experiment_name,
+        )
+        mlflow.log_artifacts(path_head, artifact_path="model_head")
 
 
 def setup_training_args(model_config: ExperimentHyperparameters, out_directory: Path) -> TrainingArguments:
-    """Create a TrainingArgument object from the config file.
+    """Create a TrainingArguments object from the config file.
 
     Args:
         model_config (ExperimentHyperparameters): The model configuration.
         out_directory (Path): The directory for storing the model.
 
     Returns:
-        TrainingArgument: the training arguments.
+        TrainingArguments: the training arguments.
     """
-    report_to = "mlflow" if mlflow_tracking else "none"
     # Read hyperparameters from the config file
     training_args = TrainingArguments(
         output_dir=out_directory,
@@ -249,7 +259,7 @@ def setup_training_args(model_config: ExperimentHyperparameters, out_directory: 
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
-        report_to=report_to,
+        report_to="none",  # metrics logged via MetricsMLflowCallback to avoid Azure ML's 200-param limit
         save_total_limit=2,  # Limit checkpoints to save space, only keep best two
     )
     return training_args
@@ -363,12 +373,15 @@ def compute_trainset_weights(
 class HeadOnlyTrainer(Trainer):
     """Trainer that saves only fine-tuned parameters at every checkpoint."""
 
-    def save_fine_tuned_head(self) -> None:
+    def save_fine_tuned_head(self) -> str:
         """Save only the fine-tuned parameters (requires_grad=True) and the model config.
 
         Skips frozen backbone weights, keeping checkpoints small and focused on what actually changed.
+
+        Returns:
+            str: Folder containing fine-tuned model head
         """
-        out_dir = Path(self.args.output_dir)
+        out_dir = Path(self.args.output_dir) / "model_head"
         out_dir.mkdir(parents=True, exist_ok=True)
 
         # Gather only trained layers (gradient is available)
@@ -376,8 +389,9 @@ class HeadOnlyTrainer(Trainer):
         head_state = {k: v.cpu() for k, v in self.model.state_dict().items() if k in fine_tuned_names}
 
         # Save trained layer and model config
-        save_file(head_state, out_dir / "model.safetensors")
         self.model.config.save_pretrained(out_dir)
+        save_file(head_state, out_dir / "model.safetensors")
+        return str(out_dir)
 
     def clean_checkpoints(self) -> None:
         """Clean checkpoints after training."""
@@ -419,56 +433,66 @@ class ConfusionMatrixCallback(TrainerCallback):
         self._cm: np.ndarray | None = None
         self.current_test_name: str = "test"
 
-    def _metrics_from_cm(self, cm: np.ndarray) -> dict:
-        """Compute per-class Metrics (tp, fp, fn) from a confusion matrix.
-
-        Args:
-            cm (np.ndarray): confusion matrix of shape (n_labels, n_labels).
-
-        Returns:
-            dict: mapping from class name (str) to Metrics for that class.
-        """
-        metric_list = [
-            Metrics(
-                tp=int(cm[i, i]),
-                fp=int(cm[:, i].sum() - cm[i, i]),
-                fn=int(cm[i, :].sum() - cm[i, i]),
-            )
-            for i in range(cm.shape[0])
-        ]
-        return {cls.name: metric_list[id_cls] for id_cls, cls in self._id2class_enum.items()}
-
     def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
-        """Compute macro/micro aggregate metrics and cache per-class metrics for test artifacts."""
+        """Compute per-class and aggregate F1 metrics using sklearn's classification report."""
         logits, labels = eval_pred
         if self._is_multi_label:  # multi-label
             predictions = (logits > 0).astype(int)
-            no_prediction = predictions.sum(axis=-1) == 0
-            predictions[no_prediction, logits[no_prediction].argmax(axis=-1)] = 1
+            id_no_prediction = predictions.sum(axis=-1) == 0
+            predictions[id_no_prediction, logits[id_no_prediction].argmax(axis=-1)] = 1
             self._cm = multilabel_confusion_matrix_nxn(labels.astype(int), predictions)
         else:  # single-label: binary label vectors → integer indices (n_samples,)
+            predictions = np.zeros_like(logits)
+            predictions[range(predictions.shape[0]), logits.argmax(axis=1)] = 1
             self._cm = confusion_matrix(labels.argmax(axis=-1), logits.argmax(axis=-1), labels=self._sorted_ids)
-        self._per_class_metrics = self._metrics_from_cm(self._cm)
-        metric_list = list(self._per_class_metrics.values())
-        return (
-            {f"{k}_f1": v.f1 for k, v in self._per_class_metrics.items()}
-            | AllClassificationMetrics.compute_macro_average(metric_list)
-            | AllClassificationMetrics.compute_micro_average(metric_list)
+
+        # Drop non existing labels
+        (id_keep_col,) = np.nonzero(labels.sum(axis=0) + predictions.sum(axis=0))
+
+        # Use sklearn classification report to get global stats
+        report = classification_report(
+            labels[:, id_keep_col],
+            predictions[:, id_keep_col],
+            target_names=[self._id2class_enum[id_keep].name for id_keep in id_keep_col],
+            output_dict=True,
         )
 
+        return {
+            f"{group_name.replace(' ', '_')}_f1": group_metrics["f1-score"]
+            for group_name, group_metrics in report.items()
+            if isinstance(group_metrics, dict) and "f1-score" in group_metrics
+        }
+
     def on_predict(self, args, state, control, metrics, **kwargs):
-        """Save confusion matrix and per-class CSV as test artifacts."""
+        """Save confusion matrix PNG and per-class metrics CSV to the output directory."""
         csv_path, png_path = plot_confusion_matrix(
             self._cm,
             Path(args.output_dir),
             split=self.current_test_name,
             all_classes=list(self._id2class_enum.values()),
         )
+        if mlflow.active_run():
+            mlflow.log_metrics(
+                {k: v for k, v in metrics.items() if "f1" in k and any(tag in k for tag in ["micro", "macro"])}
+            )
+            mlflow.log_artifact(str(csv_path))
+            mlflow.log_artifact(str(png_path))
 
-        if "mlflow" in args.report_to:
-            mlflow.log_metrics(metrics)
-            for artifact in (csv_path, png_path):
-                mlflow.log_artifact(str(artifact))
+
+class MetricsMLflowCallback(TrainerCallback):
+    """Logs step metrics to an active MLflow run.
+
+    Replaces report_to='mlflow' on the Trainer, which dumps all 207 TrainingArguments
+    fields as params and exceeds Azure ML MLflow's 200-parameter limit.
+    """
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        """Log numeric metrics to the active MLflow run at each logging step."""
+        if logs and mlflow.active_run():
+            mlflow.log_metrics(
+                {k: v for k, v in logs.items() if isinstance(v, int | float)},
+                step=state.global_step,
+            )
 
 
 def setup_trainer(
@@ -504,6 +528,9 @@ def setup_trainer(
         id2class_enum=bert_model.id2classEnum,
         is_multi_label=bert_model.classification_system.is_multi_label(),
     )
+    callbacks = [cm_callback]
+    if mlflow_tracking:
+        callbacks.append(MetricsMLflowCallback())
 
     # Create the Trainer object
     trainer = HeadOnlyTrainer(
@@ -514,7 +541,7 @@ def setup_trainer(
         processing_class=bert_model.tokenizer,
         compute_loss_func=compute_loss_func,
         compute_metrics=cm_callback.compute_metrics,
-        callbacks=[cm_callback],
+        callbacks=callbacks,
     )
     return trainer
 

@@ -1,0 +1,12 @@
+FROM mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04:latest
+
+WORKDIR /tmp/build
+COPY pyproject.toml uv.lock ./
+
+RUN pip install uv
+RUN uv export --no-emit-project --no-hashes \
+    --extra deep-learning \
+    --extra experiment-tracking \
+    --extra azure-remote \
+    -o requirements.txt && \
+    uv pip install --system -r requirements.txt
