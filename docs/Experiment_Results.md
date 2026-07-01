@@ -5,8 +5,8 @@
 
 | Dataset                            | Support (num classes) | Target | F1-macro | F1-micro |
 |------------------------------------|-----------------------|--------|----------|----------|
-| `accessory_components`             |               75 (66) |  Multi |        - |        - |
-| `alteration_degree_consolidated`   |             2,716 (8) | Single |    0.392 |    0.782 |
+| `accessory_components`             |               75 (66) / enhanced : 152,2083 (47) |  Multi |        - |        - |
+| `alteration_degree_consolidated`   |             2,716 (8)| Single  |    0.392 |    0.782 |
 | `alteration_degree_unconsolidated` |                41 (8) | Single |        - |        - |
 | `cementation`                      |                78 (7) | Single |        - |        - |
 | `color_consolidated`*              |           16,143 (91) | Single |    0.487 |    0.752 |
