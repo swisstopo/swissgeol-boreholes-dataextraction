@@ -15,7 +15,7 @@ ValueT = TypeVar("ValueT")
 class SidebarEntry(abc.ABC, Generic[ValueT], RectWithPageMixin):
     """Abstract class for sidebar entries (e.g. DepthColumnEntry or LayerIdentifierEntry)."""
 
-    def __init__(self, value: ValueT, rect: pymupdf.rect, page_number: int):
+    def __init__(self, value: ValueT, rect: pymupdf.Rect, page_number: int):
         self.value = value
         self.rect_with_page = RectWithPage(rect, page_number)
 
@@ -28,7 +28,7 @@ class DepthColumnEntry(SidebarEntry[float]):
     of the core extraction logic, and is the building block for larger object like Sidebars.
     """
 
-    def __init__(self, value: ValueT, rect: pymupdf.rect, page_number: int, has_decimal_point: bool = False):
+    def __init__(self, value: ValueT, rect: pymupdf.Rect, page_number: int, has_decimal_point: bool = False):
         super().__init__(value, rect, page_number)
         self.has_decimal_point = has_decimal_point
         self.relative_shift = 0.0
