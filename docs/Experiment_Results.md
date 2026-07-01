@@ -24,6 +24,13 @@
 * Model jointly trained, same for both tasks.
 
 
+## Alteration Degree (Consolidated)
+
+| Test set  | Train set    | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
+|-----------|--------------|------------------|------------------|---------------|---------------|
+| Geoquat-C | Consolidated | 0.179            | 0.536            | 0.392         | 0.782         |
+
+
 ## Color (Consolidated + Unconsolidated)
 
 | Test set   | Train set      | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
@@ -35,6 +42,14 @@
 | Thurgau-U  | Unconsolidated | 0.335            | 0.703            | 0.442         | 0.797         |
 | Thurgau-U  | All            | -                | -                | 0.502         | 0.803         |
 
+
+## Debris
+
+| Test set | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
+|----------|------------------|------------------|---------------|---------------|
+| Geoquat  | 0.595            | 0.926            | 0.797         | 0.983         |
+
+
 ## EN Main
 
 | Test set  | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
@@ -44,6 +59,23 @@
 | Nagra     | 0.911            | 0.966            | 1.000         | 1.000         |
 | Thurgau   | 0.515            | 0.812            | 0.595         | 0.868         |
 | Overall   | -                | -                | 0.859         | 0.905         |
+
+
+## Grain Angularity
+
+| Test set | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
+|----------|------------------|------------------|---------------|---------------|
+| Geoquat  | 0.821            | 0.966            | 0.823         | 0.974         |
+| Nagra    | 0.660            | 0.623            | 0.963         | 0.986         |
+| Overall  | -                | -                | 0.831         | 0.974         |
+
+
+## Grain Shape
+
+| Test set | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
+|----------|------------------|------------------|---------------|---------------|
+| Geoquat  | 0.629            | 0.990            | 0.560         | 0.998         |
+
 
 ## Lithology
 
@@ -55,6 +87,14 @@
 | Nagra     | 0.504            | 0.968            | 0.842         | 0.992         |
 | Thurgau   | 0.363            | 0.864            | 0.576         | 0.916         |
 | Overall   | -                | -                | 0.848         | 0.942         |
+
+
+## Organic Components
+
+| Test set | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
+|----------|------------------|------------------|---------------|---------------|
+| Geoquat  | 0.841            | 0.976            | 0.839         | 0.983         |
+
 
 ## USCS
 
