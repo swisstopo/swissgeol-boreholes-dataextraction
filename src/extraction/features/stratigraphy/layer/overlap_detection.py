@@ -118,8 +118,11 @@ def find_split_by_convolution(
 ) -> OverlapResult | None:
     """Find the extent of overlap between consecutive page layers.
 
-    Determines the maximum number of consecutive layers from the bottom of the previous
-    page that match the top layers of the current page.
+    Searches for the longest contiguous window of layers from layers_prev that matches the
+    top of layers_curr. The window may start anywhere in layers_prev — not just at the bottom —
+    so that corrupted or spurious layers at the end of the previous page (e.g. obscured by a
+    ruler on the scan) do not block detection. For equal window sizes, positions closer to the
+    end of layers_prev are preferred (more physically plausible).
 
     Args:
         layers_prev (list[Layer]): Layers from the previous page, ordered top to bottom.
@@ -131,33 +134,36 @@ def find_split_by_convolution(
     """
     material_threshold = matching_params["duplicate_layer_threshold"]
 
-    # check the longest possible overlap first
-    for i in range(min(len(layers_prev), len(layers_curr)), 0, -1):
-        match_with_depths_count = 0
-        match_ok = True
+    # Try longest windows first; for equal size prefer positions closest to end of page
+    for window_size in range(min(len(layers_prev), len(layers_curr)), 0, -1):
+        for start in range(len(layers_prev) - window_size, -1, -1):
+            match_with_depths_count = 0
+            match_ok = True
 
-        for j, (layer_prev, layer_curr) in enumerate(zip(layers_prev[-i:], layers_curr[:i], strict=True)):
-            if are_layers_similar(
-                layer_prev=layer_prev,
-                layer_curr=layer_curr,
-                material_threshold=material_threshold,
-                is_extremity=(j == 0 or j == i - 1),  # Indicate to function that one layer might be cut (extremities)
+            for j, (layer_prev, layer_curr) in enumerate(
+                zip(layers_prev[start : start + window_size], layers_curr[:window_size], strict=True)
             ):
-                if layer_prev.depths and layer_prev.depths.start and layer_prev.depths.end:
-                    match_with_depths_count += 1
+                if are_layers_similar(
+                    layer_prev=layer_prev,
+                    layer_curr=layer_curr,
+                    material_threshold=material_threshold,
+                    is_extremity=(j == 0 or j == window_size - 1),
+                ):
+                    if layer_prev.depths and layer_prev.depths.start and layer_prev.depths.end:
+                        match_with_depths_count += 1
+                    else:
+                        match_with_depths_count = 0
                 else:
-                    match_with_depths_count = 0
-            else:
-                if match_with_depths_count >= 2:
-                    # allow the overlap, even though not all layers match
-                    return OverlapResult(upper_id=len(layers_prev) - i + j, lower_id=j)
-                # no valid overlap; break inner loop and go to next value for i
-                match_ok = False
-                break
+                    if match_with_depths_count >= 2:
+                        # allow the overlap, even though not all layers match
+                        return OverlapResult(upper_id=start + j, lower_id=j)
+                    match_ok = False
+                    break
 
-        # all layers matched
-        if match_ok:
-            return OverlapResult(upper_id=len(layers_prev), lower_id=i)
+            if match_ok:
+                return OverlapResult(upper_id=start + window_size, lower_id=window_size)
+
+    return None
 
 
 def _is_duplicate(cur_text: str, prev_text: str, threshold: float, is_extremity: bool) -> bool:

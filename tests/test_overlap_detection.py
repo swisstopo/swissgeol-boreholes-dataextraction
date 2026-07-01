@@ -153,6 +153,38 @@ def test_find_last_duplicate_full_duplicates(create_layer):
     assert overlap_result is None
 
 
+def test_find_last_duplicate_corrupted_tail(create_layer):
+    """Test when the bottom of page 1 is corrupted (e.g. obscured by a ruler on the scan).
+
+    The overlap region sits in the middle of page 1, not at the bottom. The corrupted layers
+    at the end of page 1 must be discarded; the result should keep only up to the last clean
+    matching layer.
+    """
+    prev_layers = [
+        create_layer("Layer A"),
+        create_layer("Layer B"),
+        create_layer("Layer C"),  # overlap starts here
+        create_layer("Layer D"),
+        create_layer("Layer E"),  # overlap ends here
+        create_layer("CORRUPTED 1"),
+        create_layer("CORRUPTED 2"),
+        create_layer("CORRUPTED 3"),
+    ]
+    current_layers = [
+        create_layer("Layer C"),
+        create_layer("Layer D"),
+        create_layer("Layer E"),
+        create_layer("Layer F"),
+        create_layer("Layer G"),
+    ]
+
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
+    # Keep first 5 layers of page 1 (A-E), discard the 3 corrupted ones
+    assert overlap_result.upper_id == 5
+    # Skip first 3 layers of page 2 (C-E, the overlap), keep F onwards
+    assert overlap_result.lower_id == 3
+
+
 def test_are_layers_similar_text(create_layer):
     """Test if two layers are matched based on small text difference."""
     layer_a = create_layer("Desc A")
