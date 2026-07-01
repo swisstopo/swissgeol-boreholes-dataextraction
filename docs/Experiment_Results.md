@@ -1,26 +1,24 @@
-
 # Classification
 
 ## Overview (BERT Only)
 
-| Dataset                            | Support (num classes) | Target | F1-macro | F1-micro |
-|------------------------------------|-----------------------|--------|----------|----------|
-| `accessory_components`             |               75 (66) |  Multi |        - |        - |
-| `alteration_degree_consolidated`   |             2,716 (8) | Single |    0.392 |    0.782 |
-| `alteration_degree_unconsolidated` |                41 (8) | Single |        - |        - |
-| `cementation`                      |                78 (7) | Single |        - |        - |
-| `color_consolidated`*              |           16,143 (91) | Single |    0.487 |    0.752 |
-| `color_unconsolidated`*            |           20,121 (91) | Single |    0.502 |    0.803 |
-| `debris`                           |           70,084, (7) |  Multi |    0.797 |    0.983 |
-| `en_main`                          |           89,842 (34) | Single |    0.859 |    0.905 |
-| `en_secondary`                     |           89,842 (34) |  Multi |    0.854 |    0.947 |
-| `en_secondary_rank`                |           89,842 (34) |   Rank |    0.xxx |    0.xxx |
-| `grain_angularity`                 |            70,377 (8) |  Multi |    0.831 |    0.974 |
-| `grain_shape`                      |            70,087 (5) |  Multi |    0.560 |    0.998 |
-| `lithology`                        |           45,323 (61) | Single |    0.848 |    0.942 |
-| `mineral_components`               |              63 (111) |  Multi |        - |        - |
-| `organic_components`               |           70,102 (11) |  Multi |    0.839 |    0.983 |
-| `uscs`                             |            9,917 (38) | Single |    0.329 |    0.602 |
+| Dataset                            | Support (num classes) | Target | F1-macro | F1-micro | Kendall's Tau |
+|------------------------------------|-----------------------|--------|----------|----------|---------------|
+| `accessory_components`             |               75 (66) |  Multi |        - |        - |             - |
+| `alteration_degree_consolidated`   |             2,716 (8) | Single |    0.392 |    0.782 |             - |
+| `alteration_degree_unconsolidated` |                41 (8) | Single |        - |        - |             - |
+| `cementation`                      |                78 (7) | Single |        - |        - |             - |
+| `color_consolidated`*              |           16,143 (91) | Single |    0.487 |    0.752 |             - |
+| `color_unconsolidated`*            |           20,121 (91) | Single |    0.502 |    0.803 |             - |
+| `debris`                           |           70,084, (7) |  Multi |    0.797 |    0.983 |             - |
+| `en_main`                          |           89,842 (34) | Single |    0.859 |    0.905 |             - |
+| `en_secondary`                     |           89,842 (34) |   Rank |    0.854 |    0.947 |          0.19 |
+| `grain_angularity`                 |            70,377 (8) |  Multi |    0.831 |    0.974 |             - |
+| `grain_shape`                      |            70,087 (5) |  Multi |    0.560 |    0.998 |             - |
+| `lithology`                        |           45,323 (61) | Single |    0.848 |    0.942 |             - |
+| `mineral_components`               |              63 (111) |  Multi |        - |        - |             - |
+| `organic_components`               |           70,102 (11) |  Multi |    0.839 |    0.983 |             - |
+| `uscs`                             |            9,917 (38) | Single |    0.329 |    0.602 |             - |
 
 * Model jointly trained, same for both tasks.
 
@@ -61,15 +59,24 @@
 | Thurgau   | 0.515            | 0.812            | 0.595         | 0.868         |
 | Overall   | -                | -                | 0.859         | 0.905         |
 
+
 ## EN Secondary
 
-| Test set  | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
-|-----------|------------------|------------------|---------------|---------------|
-| Deepwells | 0.768            | 0.970            | 0.696         | 0.979         |
-| Geoquat   | 0.xxx            | 0.xxx            | 0.840         | 0.951         |
-| Nagra     | 0.514            | 0.954            | 1.000         | 1.000         |
-| Thurgau   | 0.575            | 0.895            | 0.650         | 0.933         |
-| Overall   | -                | -                | 0.854         | 0.947         |
+| Prompt   | Test set  | Bedrock F1-macro | Bedrock F1-micro | Bedrock Kendall's Tau |
+|----------|-----------|------------------|------------------|-----------------------|
+| Baseline | Deepwells | 0.768            | 0.970            | -                     |
+|          | Geoquat   | 0.xxx            | 0.xxx            | -                     |
+|          | Nagra     | 0.514            | 0.954            | -                     |
+|          | Thurgau   | 0.575            | 0.895            | -                     |
+|          | Overall   | -                | -                | -                     |
+
+| Loss | Test set  | BERT F1-macro | BERT F1-micro | BERT Kendall's Tau |
+|------|-----------|---------------|---------------|--------------------|
+| XEnt | Deepwells | 0.696         | 0.979         | 0.xxx              |
+|      | Geoquat   | 0.840         | 0.951         | 0.xxx              |
+|      | Nagra     | 1.000         | 1.000         | 0.195              |
+|      | Thurgau   | 0.650         | 0.933         | 0.xxx              |
+|      | Overall   | 0.854         | 0.947         | -                  |
 
 ## Grain Angularity
 

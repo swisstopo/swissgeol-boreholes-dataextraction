@@ -96,18 +96,4 @@ class ENSecondarySystem(ENMainSystem):
     @classmethod
     def classification_task(cls) -> ClassificationTask:
         """Return the multi-label classification task type for this system."""
-        return ClassificationTask.multi_label
-
-
-class ENSecondaryRank(ENSecondarySystem):
-    """Ranked EN classification system treating the secondary label set as an ordered list."""
-
-    @classmethod
-    def get_name(cls) -> str:
-        """Return the name of the system."""
-        return "en_secondary_rank"
-
-    @classmethod
-    def classification_task(cls) -> ClassificationTask:
-        """Return the rank classification task type for this system."""
         return ClassificationTask.rank

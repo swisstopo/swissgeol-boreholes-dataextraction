@@ -438,7 +438,10 @@ class ConfusionMatrixCallback(TrainerCallback):
         """Compute per-class and aggregate F1 metrics using sklearn's classification report."""
         logits, labels = eval_pred
 
-        if self._classification_task == ClassificationTask.multi_label:
+        if (
+            self._classification_task == ClassificationTask.multi_label
+            or self._classification_task == ClassificationTask.rank
+        ):
             predictions = (logits > 0).astype(int)
             id_no_prediction = predictions.sum(axis=-1) == 0
             predictions[id_no_prediction, logits[id_no_prediction].argmax(axis=-1)] = 1

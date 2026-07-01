@@ -334,6 +334,12 @@ class BertModel:
                 prediction = [row.nonzero(as_tuple=True)[0].tolist() or [0] for row in (outputs.logits > 0)]
             elif task == ClassificationTask.single_label:
                 prediction = outputs.logits.argmax(axis=-1, keepdims=True).tolist()
+            elif task == ClassificationTask.rank:
+                sorted_indices = outputs.logits.argsort(axis=1, descending=True)
+                prediction = [
+                    [idx for idx in row_indices.tolist() if row_logits[idx] > 0] or [0]
+                    for row_indices, row_logits in zip(sorted_indices, outputs.logits, strict=True)
+                ]
             else:
                 raise NotImplementedError(f"Unsupported classification task {task}")
 
