@@ -17,6 +17,7 @@ fine-tuned models (they all share the same frozen pre-trained encoder).
 import logging
 from pathlib import Path
 
+import backoff
 from safetensors.torch import save_file
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
@@ -42,14 +43,25 @@ def _is_head_param(name: str) -> bool:
     return any(name.startswith(prefix) for prefix in _HEAD_PREFIXES)
 
 
+@backoff.on_exception(backoff.expo, OSError, max_tries=5, factor=30)
+def _load_model(hf_model_id: str) -> AutoModelForSequenceClassification:
+    return AutoModelForSequenceClassification.from_pretrained(hf_model_id)
+
+
+@backoff.on_exception(backoff.expo, OSError, max_tries=5, factor=30)
+def _load_tokenizer(hf_model_id: str) -> AutoTokenizer:
+    return AutoTokenizer.from_pretrained(hf_model_id)
+
+
 def prepare_models() -> None:
     """Download and split all models listed in MODELS."""
     backbone_saved = False
 
     for hf_model_id, head_dir in MODELS:
-        logger.info(f"Downloading {hf_model_id} ...")
-        model = AutoModelForSequenceClassification.from_pretrained(hf_model_id)
-        tokenizer = AutoTokenizer.from_pretrained(hf_model_id)
+        logger.info(f"Downloading {hf_model_id} tokenizer ...")
+        tokenizer = _load_tokenizer(hf_model_id)
+        logger.info(f"Downloading {hf_model_id} model ...")
+        model = _load_model(hf_model_id)
 
         state_dict = model.state_dict()
         head_state = {k: v for k, v in state_dict.items() if _is_head_param(k)}
