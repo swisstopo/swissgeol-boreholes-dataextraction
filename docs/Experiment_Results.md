@@ -4,22 +4,22 @@
 ## Overview (BERT Only)
 
 
-| Dataset                            | Support (num classes)      | Target | F1-macro | F1-micro |
-|------------------------------------|-----------------------     |--------|----------|----------|
-| `accessory_components`             |               75 (66)      |  Multi |        - |        - |
-| `alteration_degree_consolidated`   |             2,716 (8)      | Single |        - |        - |
-| `alteration_degree_unconsolidated` |                41 (8)      | Single |        - |        - |
+| Dataset                            | Support (num classes) | Target | F1-macro | F1-micro |
+|------------------------------------|-----------------------|--------|----------|----------|
+| `accessory_components`             |               75 (66) |  Multi |        - |        - |
+| `alteration_degree_consolidated`   |             2,716 (8) | Single |    0.392 |    0.782 |
+| `alteration_degree_unconsolidated` |                41 (8) | Single |        - |        - |
 | `cementation`                      | 78 (7) / enhanced: 119,404 | Single |    0.851 |    0.959 |
-| `color_consolidated`*              |           16,143 (91)      | Single |    0.487 |    0.752 |
-| `color_unconsolidated`*            |           20,121 (91)      | Single |    0.502 |    0.803 |
-| `debris`                           |           70,084, (7)      |  Multi |        - |        - |
-| `en_main`                          |           89,842 (34)      | Single |    0.859 |    0.905 |
-| `grain_angularity`                 |            70,377 (8)      |  Multi |        - |        - |
-| `grain_shape`                      |            70,087 (5)      |  Multi |        - |        - |
-| `lithology`                        |           45,323 (61)      | Single |    0.848 |    0.942 |
-| `mineral_components`               |              63 (111)      |  Multi |        - |        - |
-| `organic_components`               |           70,102 (11)      |  Multi |        - |        - |
-| `uscs`                             |            9,917 (38)      | Single |    0.329 |    0.602 |
+| `color_consolidated`*              |           16,143 (91) | Single |    0.487 |    0.752 |
+| `color_unconsolidated`*            |           20,121 (91) | Single |    0.502 |    0.803 |
+| `debris`                           |           70,084, (7) |  Multi |    0.797 |    0.983 |
+| `en_main`                          |           89,842 (34) | Single |    0.859 |    0.905 |
+| `grain_angularity`                 |            70,377 (8) |  Multi |    0.831 |    0.974 |
+| `grain_shape`                      |            70,087 (5) |  Multi |    0.560 |    0.998 |
+| `lithology`                        |           45,323 (61) | Single |    0.848 |    0.942 |
+| `mineral_components`               |              63 (111) |  Multi |        - |        - |
+| `organic_components`               |           70,102 (11) |  Multi |    0.839 |    0.983 |
+| `uscs`                             |            9,917 (38) | Single |    0.329 |    0.602 |
 
 * Model jointly trained, same for both tasks.
 
