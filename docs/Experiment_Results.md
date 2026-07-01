@@ -6,23 +6,30 @@
 | Dataset                            | Support (num classes) | Target | F1-macro | F1-micro |
 |------------------------------------|-----------------------|--------|----------|----------|
 | `accessory_components`             |               75 (66) |  Multi |        - |        - |
-| `alteration_degree_consolidated`   |             2,716 (8) | Single |        - |        - |
+| `alteration_degree_consolidated`   |             2,716 (8) | Single |    0.392 |    0.782 |
 | `alteration_degree_unconsolidated` |                41 (8) | Single |        - |        - |
 | `cementation`                      |                78 (7) | Single |        - |        - |
 | `color_consolidated`*              |           16,143 (91) | Single |    0.487 |    0.752 |
 | `color_unconsolidated`*            |           20,121 (91) | Single |    0.502 |    0.803 |
-| `debris`                           |           70,084, (7) |  Multi |        - |        - |
+| `debris`                           |           70,084, (7) |  Multi |    0.797 |    0.983 |
 | `en_main`                          |           89,842 (34) | Single |    0.859 |    0.905 |
 | `en_secondary`                     |           89,842 (34) |  Multi |    0.854 |    0.947 |
 | `en_secondary_rank`                |           89,842 (34) |   Rank |    0.xxx |    0.xxx |
 | `grain_angularity`                 |            70,377 (8) |  Multi |    0.831 |    0.974 |
-| `grain_shape`                      |            70,087 (5) |  Multi |        - |        - |
+| `grain_shape`                      |            70,087 (5) |  Multi |    0.560 |    0.998 |
 | `lithology`                        |           45,323 (61) | Single |    0.848 |    0.942 |
 | `mineral_components`               |              63 (111) |  Multi |        - |        - |
-| `organic_components`               |           70,102 (11) |  Multi |        - |        - |
+| `organic_components`               |           70,102 (11) |  Multi |    0.839 |    0.983 |
 | `uscs`                             |            9,917 (38) | Single |    0.329 |    0.602 |
 
 * Model jointly trained, same for both tasks.
+
+
+## Alteration Degree (Consolidated)
+
+| Test set  | Train set    | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
+|-----------|--------------|------------------|------------------|---------------|---------------|
+| Geoquat-C | Consolidated | 0.179            | 0.536            | 0.392         | 0.782         |
 
 
 ## Color (Consolidated + Unconsolidated)
@@ -35,6 +42,13 @@
 | Thurgau-U  | Consolidated   | -                | -                | 0.193         | 0.687         |
 | Thurgau-U  | Unconsolidated | 0.335            | 0.703            | 0.442         | 0.797         |
 | Thurgau-U  | All            | -                | -                | 0.502         | 0.803         |
+
+
+## Debris
+
+| Test set | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
+|----------|------------------|------------------|---------------|---------------|
+| Geoquat  | 0.595            | 0.926            | 0.797         | 0.983         |
 
 
 ## EN Main
@@ -57,13 +71,20 @@
 | Thurgau   | 0.575            | 0.895            | 0.650         | 0.933         |
 | Overall   | -                | -                | 0.854         | 0.947         |
 
-## Grain angularity
+## Grain Angularity
 
 | Test set | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
 |----------|------------------|------------------|---------------|---------------|
 | Geoquat  | 0.821            | 0.966            | 0.823         | 0.974         |
 | Nagra    | 0.660            | 0.623            | 0.963         | 0.986         |
 | Overall  | -                | -                | 0.831         | 0.974         |
+
+
+## Grain Shape
+
+| Test set | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
+|----------|------------------|------------------|---------------|---------------|
+| Geoquat  | 0.629            | 0.990            | 0.560         | 0.998         |
 
 
 ## Lithology
@@ -77,10 +98,17 @@
 | Thurgau   | 0.363            | 0.864            | 0.576         | 0.916         |
 | Overall   | -                | -                | 0.848         | 0.942         |
 
+
+## Organic Components
+
+| Test set | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
+|----------|------------------|------------------|---------------|---------------|
+| Geoquat  | 0.841            | 0.976            | 0.839         | 0.983         |
+
+
 ## USCS
 
 | Test set | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
 |----------|------------------|------------------|---------------|---------------|
 | Geoquat  | 0.251            | 0.538            | 0.329         | 0.602         |
-
 
