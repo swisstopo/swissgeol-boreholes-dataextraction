@@ -343,7 +343,7 @@ class ClassificationSystem(ABC):
         label_groups = [cls.reduce_group(keys, layer) for keys in cls.get_layer_ground_truth_keys()]
         labels_str = [label for label_group in label_groups for label in label_group]
 
-        return labels_str if labels_str else None
+        return list(dict.fromkeys(labels_str)) if labels_str else None
 
     @classmethod
     def process(

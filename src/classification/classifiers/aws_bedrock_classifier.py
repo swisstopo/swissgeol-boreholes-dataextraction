@@ -207,9 +207,8 @@ class AWSBedrockClassifier(Classifier):
 
         # Update predictions (label and reasoning)
         for data in predictions:
-            filename_layers[data.index].prediction_class = [
-                self.classification_system.map_most_similar_class(class_) for class_ in data.class_
-            ]
+            prediction_class = [self.classification_system.map_most_similar_class(class_) for class_ in data.class_]
+            filename_layers[data.index].prediction_class = list(dict.fromkeys(prediction_class))  # Remove duplicates
             filename_layers[data.index].llm_reasoning = data.reasoning
 
         if self.bedrock_out_directory:

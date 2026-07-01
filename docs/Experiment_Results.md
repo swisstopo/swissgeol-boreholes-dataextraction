@@ -72,11 +72,11 @@
 
 | Loss | Test set  | BERT F1-macro | BERT F1-micro | BERT Kendall's Tau |
 |------|-----------|---------------|---------------|--------------------|
-| XEnt | Deepwells | 0.696         | 0.979         | 0.xxx              |
-|      | Geoquat   | 0.840         | 0.951         | 0.xxx              |
-|      | Nagra     | 1.000         | 1.000         | 0.195              |
-|      | Thurgau   | 0.650         | 0.933         | 0.xxx              |
-|      | Overall   | 0.854         | 0.947         | -                  |
+| XEnt | Deepwells | 0.696         | 0.979         | -0.096             |
+|      | Geoquat   | 0.840         | 0.951         |  0.244             |
+|      | Nagra     | 1.000         | 1.000         |  0.195             |
+|      | Thurgau   | 0.650         | 0.933         |  0.202             |
+|      | Overall   | 0.854         | 0.947         |  -                 |
 
 ## Grain Angularity
 
