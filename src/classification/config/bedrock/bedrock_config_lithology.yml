@@ -1,14 +1,14 @@
-# Config file for consolidated soil classification
+# Config file for consolidated material (bedrock) classification into lithology classes
 # Prompt file and version
-prompts_file: bedrock/prompts/lithology_classification_prompts.yml
+prompts_file: bedrock/prompts/bedrock_lithology_prompts.yml
 prompt_version: baseline
 
 # Pattern file and parameter version
-pattern_file: bedrock/examples/lithology_classification_patterns_bedrock.yml
+pattern_file: bedrock/examples/bedrock_lithology_examples.yml
 pattern_version: baseline
 
 # Tool file
-tool_file: bedrock/tool/tool_classify_texts.yml
+tool_file: bedrock/tool/tool_classify_single.yml
 
 # temperature - answer creativity for the LLM model
 temperature: 0.0

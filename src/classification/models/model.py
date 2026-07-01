@@ -100,7 +100,7 @@ class BertModel:
             )
         except RuntimeError as e:
             error_message = str(e)
-            if "size mismatch for classifier" in error_message:
+            if "size mismatch" in error_message:
                 raise ValueError(
                     f"Model loading failed due to a mismatch in the number of output classes.\n"
                     f"Expected {self.num_class} classes, but the loaded model seems to have a different number.\n"
@@ -277,7 +277,7 @@ class BertModel:
             "label": [layer.ground_truth_class for layer in layers],
         }
         dataset = datasets.Dataset.from_dict(data)
-        return dataset.map(self.preprocess_entry, remove_columns=["label", "layer"])
+        return dataset.map(self.preprocess_entry, batched=False, remove_columns=["label", "layer"])
 
     def preprocess_entry(self, entry: dict) -> dict:
         """Preprocess a single dataset entry by tokenizing the text and encoding the label."""

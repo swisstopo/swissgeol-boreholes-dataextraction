@@ -1,14 +1,14 @@
-# Config file for grain shape classification
+# Config file for unconsolidated material classification into grain shape classes
 # Prompt file and version
-prompts_file: bedrock/prompts/grain_shape_classification_prompts.yml
+prompts_file: bedrock/prompts/bedrock_grain_shape_prompts.yml
 prompt_version: baseline
 
 # Pattern file and parameter version
-pattern_file: bedrock/full_examples/grain_shape_classification_patterns.yml
+pattern_file: bedrock/examples/bedrock_grain_shape_examples.yml
 pattern_version: baseline
 
 # Tool file
-tool_file: bedrock/tool/tool_classify_texts.yml
+tool_file: bedrock/tool/tool_classify_multi.yml
 
 # temperature - answer creativity for the LLM model
 temperature: 0.0

@@ -115,17 +115,7 @@ Adding packages can be done by editing the `pyproject.toml` of the project and a
 ## Run data extraction
 To execute the data extraction pipeline, follow these steps:
 
-### 1. Set up the environment
-
-Install dependencies using uv:
-
-```bash
-uv sync
-```
-
-Commands are then run with `uv run <command>`, which automatically uses the managed virtual environment.
-
-### 2. Download the borehole profiles, optional
+### 1. Download the borehole profiles, optional
 
 Use `boreholes-download-profiles` to download the files to be processed from an AWS S3 storage. In order to do so, you need to authenticate with aws first. We recommend using the aws CLI for that purpose, or storing your credentials in the ~/.aws configuration files This step is optional, you can continue with step 3 on your own set of borehole profiles.
 
@@ -153,7 +143,7 @@ If you choose to use the ~/.aws files, then they should look like this:
   aws_secret_access_key=YOUR_SECRET_KEY
   ```
 
-## 3. Run the extraction script
+## 2. Run the extraction script
 
 The main script for the extraction pipeline is located at `src/extraction/main.py`. A cli command is created to run this script.
 
@@ -190,7 +180,7 @@ expose_configs()
 
 This will create a `config/` directory at the root of your project containing all configuration files that can be safely edited.
 
-### 4. Check the results
+### 3. Check the results
 
 The script produces output in two different formats:
 - A file `data/output/predictions.json` that contains all extracted data in a machine-readable format. The structure of this file is documented in [README.predictions-json.md](docs/README.predictions-json.md).
@@ -206,13 +196,9 @@ Repeat steps 1 and 2 of the [data extraction pipeline](#run-data-extraction) to 
 
 Pre-trained models are available in two ways:
 
-- **From the repository (recommended):** Models are committed under `models/` via Git LFS. Pull them with:
-  ```bash
-  git lfs pull
-  ```
-  This provides `models/backbone/backbone.safetensors`, `models/en_main_head/`, and `models/lithology_head/`.
+- **From HuggingFace (recommended):** Published models are hosted on [HuggingFace](https://huggingface.co/swissgeol). No manual download is needed — pass the HuggingFace model ID (e.g. `swissgeol/lithology`) directly via the `-p` flag at runtime and the model is loaded automatically.
 
-- **From S3 (swisstopo internal):** If you have access to the swisstopo S3 bucket, you can download models directly:
+- **From S3 (swisstopo internal):** If you have access to the swisstopo S3 bucket, you can download models directly (e.g.For models not yet published on HuggingFace), and pass the local path via `-p`:
   ```bash
   aws s3 sync s3://stijnvermeeren-boreholes-models models/uscs/your_model_folder
   ```
@@ -246,13 +232,19 @@ boreholes-classify-descriptions \
 - Use the `-f` or `--file-path` flag to specify the input JSON file (ground truth or predictions from extraction). When a ground truth JSON is provided, only the **test set** defined within it is classified. This ensures evaluation results are consistent with the train/test split used during BERT training.
 - Use the `-c` or `--classifier-type` option to choose the classifier: `dummy`, `baseline`, `bert`, or `bedrock`.
 - If you are using the classifier `bert`, specify the model path using `-p` or `--model-path`:
-  - **Full model:** pass the path to a complete HuggingFace model directory (contains `config.json`, `model.safetensors`, tokenizer files, etc.).
-  - **Split model (backbone + head):** pass the head directory via `-p` and the shared backbone via `-b` or `--backbone-path`. This is the recommended approach when using the models from this repository:
+  - **Full model:** pass either a HuggingFace model ID (downloaded automatically at runtime) or a local directory path (contains `config.json`, `model.safetensors`, tokenizer files, etc.):
+    ```bash
+    boreholes-classify-descriptions -f data/geoquat_ground_truth.json \
+      -c bert -p swissgeol/lithology -cs lithology
+    ```
+  - **Split model (backbone + head):** pass the head directory via `-p` and the shared backbone via `-b` or `--backbone-path`. This is the recommended approach when using models downloaded from S3:
     ```bash
     boreholes-classify-descriptions -f data/geoquat_ground_truth.json \
       -c bert -p models/lithology_head -b models/backbone/backbone.safetensors -cs lithology
     ```
-- Use `--classification-system` or `-cs` to specify the classification system. Currently supports `uscs`, `lithology`, `en_main`, `color_consolidated`, and `color_unconsolidated`.
+
+- Use `--classification-system` or `-cs` to specify the classification system. Supported values:
+  `accessory_components`, `alteration_degree_consolidated`, `alteration_degree_unconsolidated`,`cementation`, `color_consolidated`, `color_unconsolidated`, `debris`, `en_main`,`grain_angularity`, `grain_shape`, `lithology`, `mineral_components`, `organic_components`, `uscs`.
 - Use `-o` and `-ob` to specify the output directory and bedrock output directory respectively.
 
 The script will classify all given descriptions and write the predictions to the `data/output_description_classification` directory (or `data/output_description_classification_bedrock` for Bedrock outputs).
@@ -271,3 +263,5 @@ Run `boreholes-classify-descriptions --help` to see all available options.
 - [train_BERT.md](docs/train_BERT.md) documents how to fine-tune a BERT model on your own data.
 
 - [CICD.md](docs/CICD.md) overview of the deployment process and CICD pipeline
+
+- [Experiment_Results.md](docs/Experiment_Results.md) overview of the classification performances on internal datasets.

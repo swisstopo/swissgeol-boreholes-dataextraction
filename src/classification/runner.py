@@ -41,7 +41,7 @@ class ClassificationOptions:
     """Options shared between single and multi-benchmark classification runners."""
 
     classifier_type: str
-    model_path: Path | None
+    model_path: str | None
     classification_system: str
     backbone_path: Path | None = None
     tokenizer_path: Path | None = None

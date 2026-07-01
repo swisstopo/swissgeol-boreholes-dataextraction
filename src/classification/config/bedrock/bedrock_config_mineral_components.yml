@@ -1,14 +1,14 @@
-# Config file for consolidated material classification into mineral components
+# Config file for consolidated material classification into mineral component classes
 # Prompt file and version
-prompts_file: bedrock/prompts/mineral_components_classification_prompts.yml
-prompt_version: v1
+prompts_file: bedrock/prompts/bedrock_mineral_components_prompts.yml
+prompt_version: baseline
 
 # Pattern file and parameter version
-pattern_file: bedrock/full_examples/mineral_components_classification_patterns_bedrock.yml
+pattern_file: bedrock/examples/bedrock_mineral_components_examples.yml
 pattern_version: baseline
 
 # Tool file
-tool_file: bedrock/tool/tool_classify_texts.yml
+tool_file: bedrock/tool/tool_classify_multi.yml
 
 # temperature - answer creativity for the LLM model
 temperature: 0.0
@@ -18,6 +18,3 @@ max_tokens: 8192
 
 # Parameter indicating if Reasoning (Chain of Thought) mode should be used. Warning this significantly increases latency
 reasoning_mode: False
-
-# Parameter indicating if multi-label classification should be used (one description can yield multiple labels)
-multilabel_mode: True

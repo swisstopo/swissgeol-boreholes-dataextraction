@@ -11,7 +11,7 @@ import anthropic
 import backoff
 import mlflow
 import pydantic_core
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from tqdm.asyncio import tqdm_asyncio
 
 from classification.classifiers.classifier import Classifier
@@ -28,16 +28,22 @@ class AWSBedrockEntry(BaseModel):
 
     Attributes:
         index (int): Position of the layer in the batch sent to the model, used to align predictions back to inputs.
-        class_ (str | None): Predicted class label for single-label classification.
-        classes_ (list[str] | None): Predicted class labels for multi-label classification.
+        class_ (list[str]): List of predicted class labels as returned by the model.
         reasoning (str): Reasoning of the predicted output.
 
     """
 
     index: int
-    class_: str | None = None
-    classes_: list[str] | None = None
+    class_: list[str]
     reasoning: str | None = None
+
+    @field_validator("class_", mode="before")
+    @classmethod
+    def validate_class(cls, value: list[str] | str) -> list[str]:
+        """Coerce a bare string to a single-element list to handle single-label model responses."""
+        if isinstance(value, str):
+            return [value]
+        return value
 
 
 class AWSBedrockPrediction(BaseModel):
@@ -170,7 +176,7 @@ class AWSBedrockClassifier(Classifier):
         # predictions = AWSBedrockPrediction.model_validate(tool_result.input).predictions
 
         if len(predictions) != len(filename_layers):
-            raise ValueError(f"Wrong number of prediction {len(filename_layers)=}, {len(predictions)=}")
+            raise ValueError(f"Wrong number of predictions {len(filename_layers)=}, {len(predictions)=}")
 
         return predictions
 
@@ -202,31 +208,23 @@ class AWSBedrockClassifier(Classifier):
         )
 
         if self.use_local_cache and output_path and output_path.exists():
-            return read_predictions(output_path, self.classification_system)
+            return read_predictions(str(output_path), self.classification_system)
 
         async with self.semaphore:
             try:
                 predictions = await self._call_bedrock(filename_layers)
             except Exception as e:
                 logger.warning(f"API call failed for '{filename}': {str(e)}")
-                default = self.classification_system.get_default_class_value().name
-                if self.multilabel_mode:
-                    predictions = [AWSBedrockEntry(index=i, classes_=[default]) for i, _ in enumerate(filename_layers)]
-                else:
-                    predictions = [AWSBedrockEntry(index=i, class_=default) for i, _ in enumerate(filename_layers)]
+                predictions = [
+                    AWSBedrockEntry(index=i, class_=[self.classification_system.get_default_class_value().name])
+                    for i, _ in enumerate(filename_layers)
+                ]
 
         # Update predictions (label and reasoning)
         for data in predictions:
-            if self.multilabel_mode:
-                mapped = [self.classification_system.map_most_similar_class(c) for c in (data.classes_ or [])]
-                default = self.classification_system.get_default_class_value().name
-                if len(mapped) > 1 and default in mapped:
-                    mapped = [c for c in mapped if c != default]
-                filename_layers[data.index].prediction_class = mapped or None
-            else:
-                filename_layers[data.index].prediction_class = [
-                    self.classification_system.map_most_similar_class(data.class_)
-                ]
+            filename_layers[data.index].prediction_class = [
+                self.classification_system.map_most_similar_class(class_) for class_ in data.class_
+            ]
             filename_layers[data.index].llm_reasoning = data.reasoning
 
         if self.bedrock_out_directory:
@@ -234,7 +232,7 @@ class AWSBedrockClassifier(Classifier):
 
         return filename_layers
 
-    async def classify_async(self, layer_descriptions: list[LayerInformation]) -> list[LayerInformation]:
+    async def classify_async(self, layer_descriptions: list[LayerInformation]) -> list[list[LayerInformation]]:
         """Classify all layers asynchronously, grouped by source file.
 
         Layers are sorted and grouped by filename so each borehole file is processed in a single
@@ -244,7 +242,7 @@ class AWSBedrockClassifier(Classifier):
             layer_descriptions: All layers to classify, potentially spanning multiple files.
 
         Returns:
-            list[LayerInformation]: Updated layer information
+            list[list[LayerInformation]]: Updated layer information
         """
         # Sort layers for grouping
         layer_descriptions = sorted(layer_descriptions, key=lambda layer: layer.filename)
