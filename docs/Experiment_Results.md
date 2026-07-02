@@ -65,7 +65,7 @@
 | Prompt   | Test set  | Bedrock F1-macro | Bedrock F1-micro | Bedrock Kendall's Tau |
 |----------|-----------|------------------|------------------|-----------------------|
 | Baseline | Deepwells | 0.768            | 0.970            | -                     |
-|          | Geoquat   | 0.xxx            | 0.xxx            | -                     |
+|          | Geoquat   | 0.649            | 0.933            | -                     |
 |          | Nagra     | 0.514            | 0.954            | -                     |
 |          | Thurgau   | 0.575            | 0.895            | -                     |
 |          | Overall   | -                | -                | -                     |
