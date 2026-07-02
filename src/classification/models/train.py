@@ -574,14 +574,17 @@ def setup_trainer(
     # load the training arguments from the config file
     training_args = setup_training_args(model_config.hyperparameters, out_directory)
 
+    classification_task = bert_model.classification_system.classification_task()
     use_class_balancing = model_config.use_class_balancing
+    use_rank_loss = classification_task == ClassificationTask.rank
+    logger.info(f"{classification_task=}, {use_class_balancing=}, {use_rank_loss=}")
+
     compute_loss_func = None
     if use_class_balancing:
         class_weights = compute_trainset_weights(train_dataset)
         # create the object that will be called to compute the loss function (standard in transformers lib).
         compute_loss_func = WeightedLabelSmoother(class_weights=class_weights)
 
-    classification_task = bert_model.classification_system.classification_task()
     cm_callback = ConfusionMatrixCallback(
         id2class_enum=bert_model.id2classEnum,
         classification_task=classification_task,
@@ -600,7 +603,7 @@ def setup_trainer(
         compute_loss_func=compute_loss_func,
         compute_metrics=cm_callback.compute_metrics,
         callbacks=callbacks,
-        use_rank_loss=classification_task == ClassificationTask.rank,
+        use_rank_loss=use_rank_loss,
     )
     return trainer
 
