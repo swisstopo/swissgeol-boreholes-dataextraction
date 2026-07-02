@@ -101,6 +101,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
     on_file_done: Callable[[ExtractionResult, Path, Path], None] | None = None
     runname: str | None = None
     wandb_group: str | None = None
+    wandb_parent_run_id: str | None = None
     analytics: MatchingParamsAnalytics | None = field(init=False, default=None)
     _run_start_time: float = field(init=False, default=0.0)
 
@@ -185,11 +186,18 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
             **flatten(line_detection_params),
             **flatten(matching_params),
         }
+        if self.wandb_parent_run_id:
+            config["parent_run_id"] = self.wandb_parent_run_id
+            config["benchmark_id"] = self.wandb_group
+            config["child_role"] = self.runname or "extraction"
+
+        job_type = "benchmark-child" if self.wandb_parent_run_id else "extraction"
         wandb.init(
             project=os.getenv("WANDB_PROJECT", "swissgeol-boreholes"),
             name=self.runname or "extraction",
             tags=["boreholes", "extraction"],
             group=self.wandb_group,
+            job_type=job_type,
             config=config,
         )
 
@@ -274,13 +282,31 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
     options: ExtractionOptions = field(default_factory=ExtractionOptions)
     on_file_done: Callable[[ExtractionResult, Path, Path], None] | None = None
     _wandb_group: str | None = field(init=False, default=None)
+    _wandb_parent_run_id: str | None = field(init=False, default=None)
+
+    def _init_wandb_parent(self) -> None:
+        import datetime
+
+        self._wandb_group = f"benchmark-{datetime.datetime.now():%Y%m%d-%H%M%S}"
+        parent_run = wandb.init(
+            project=os.getenv("WANDB_PROJECT", "swissgeol-boreholes"),
+            name="benchmark-parent",
+            group=self._wandb_group,
+            job_type="orchestrator",
+            tags=["boreholes", "benchmark", "parent"],
+            config={
+                "benchmarks": [spec.name for spec in self.benchmarks],
+                "n_benchmarks": len(self.benchmarks),
+                **_git_metadata(),
+            },
+        )
+        self._wandb_parent_run_id = parent_run.id
+        wandb.finish()
 
     def run_single(self, spec: BenchmarkSpec) -> ExtractionBenchmarkSummary | None:
         logger.info("Running benchmark: %s", spec.name)
         if self._wandb_group is None and wandb_tracking:
-            import datetime
-
-            self._wandb_group = f"benchmark-{datetime.datetime.now():%Y%m%d-%H%M%S}"
+            self._init_wandb_parent()
 
         bench_out = self.multi_root / spec.name
         bench_out.mkdir(parents=True, exist_ok=True)
@@ -297,6 +323,7 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
             on_file_done=self.on_file_done,
             runname=spec.name,
             wandb_group=self._wandb_group,
+            wandb_parent_run_id=self._wandb_parent_run_id,
         ).execute()
 
     def finalize_summary(
@@ -325,11 +352,12 @@ class ExtractionBenchmarkRunner(MultiBenchmarkRunner[BenchmarkSpec, ExtractionBe
             **means,
         }
 
+        # Resume the parent orchestrator run to log aggregate metrics alongside initial config.
         wandb.init(
             project=os.getenv("WANDB_PROJECT", "swissgeol-boreholes"),
-            name="aggregate",
+            id=self._wandb_parent_run_id,
+            resume="allow",
             group=self._wandb_group,
-            tags=["boreholes", "benchmark", "aggregate"],
         )
         try:
             wandb.log(aggregate)
