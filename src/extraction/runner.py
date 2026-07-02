@@ -198,12 +198,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
         if draw_dir.exists():
             new_images = [p for p in sorted(draw_dir.rglob("*.png")) if p.stat().st_mtime >= file_start_time - 1]
             if new_images:
-                wandb_draw_dir = Path(wandb.run.dir) / "media" / "draw"
-                wandb_draw_dir.mkdir(parents=True, exist_ok=True)
-                for img_path in new_images:
-                    dest = wandb_draw_dir / img_path.name
-                    shutil.copy(str(img_path), str(dest))
-                    wandb.save(str(dest), base_path=wandb.run.dir, policy="now")
+                wandb.log({img_path.stem: wandb.Image(str(img_path)) for img_path in new_images})
 
         csv_dir = self.out_directory / "csv"
         if csv_dir.exists():
