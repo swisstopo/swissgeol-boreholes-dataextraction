@@ -287,6 +287,12 @@ class BertModel:
         for class_id in label:
             labels[class_id] = 1.0  # multi-label binary encoding (1.0 for present classes, 0.0 for absent classes)
         result["labels"] = labels
+
+        # Assume that if class is not cited, it should be ranked last (high penalty)
+        result["rank_labels"] = [self.num_class] * (self.num_class)
+        for rank, rank_label in enumerate(entry["label"]):
+            result["rank_labels"][rank_label] = rank
+
         return result
 
     def tokenize_text(self, text: str | list[str]) -> dict[str, torch.Tensor]:

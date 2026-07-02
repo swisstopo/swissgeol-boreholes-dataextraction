@@ -256,6 +256,7 @@ def setup_training_args(model_config: ExperimentHyperparameters, out_directory: 
         lr_scheduler_type=model_config.lr_scheduler_type,
         warmup_ratio=model_config.warmup_ratio,
         max_grad_norm=model_config.max_grad_norm,
+        remove_unused_columns=False,
         logging_strategy="epoch",
         eval_strategy="epoch",
         save_strategy="epoch",
@@ -374,6 +375,17 @@ def compute_trainset_weights(
 class HeadOnlyTrainer(Trainer):
     """Trainer that saves only fine-tuned parameters at every checkpoint."""
 
+    def __init__(self, *args, use_rank_loss: bool = False, **kwargs):
+        """Initialise the trainer.
+
+        Args:
+            *args: Positional arguments forwarded to `Trainer.__init__`.
+            use_rank_loss (bool): Whether to add the pairwise rank loss term to the base loss.
+            **kwargs: Keyword arguments forwarded to `Trainer.__init__`.
+        """
+        super().__init__(*args, **kwargs)
+        self.use_rank_loss = use_rank_loss
+
     def save_fine_tuned_head(self) -> str:
         """Save only the fine-tuned parameters (requires_grad=True) and the model config.
 
@@ -399,6 +411,42 @@ class HeadOnlyTrainer(Trainer):
         for folder in list(Path(self.args.output_dir).rglob("checkpoint*")):
             if folder.is_dir():
                 shutil.rmtree(folder)
+
+    def compute_rank_loss(self, outputs: SequenceClassifierOutput, rank_labels: torch.Tensor) -> torch.Tensor:
+        """Pairwise RankNet loss that pushes higher-ranked classes' logits above lower-ranked ones.
+
+        For every pair of classes (i, j) where the ground truth ranks i above j, penalizes the model with a
+        smooth logistic loss on the score gap, log(1 + exp(-(s_i - s_j))). Minimizing it directly increases the
+        fraction of correctly-ordered pairs, which is what Kendall's tau measures.
+
+        Args:
+            outputs (SequenceClassifierOutput): Model outputs; only `logits` (shape (batch, num_class)) is used.
+            rank_labels (torch.Tensor): Ground-truth class ids in rank order per sample (index 0 = primary,
+                1 = secondary, ...).
+
+        Returns:
+            torch.Tensor: Scalar ranking loss, averaged over all comparable (non-tied) class pairs in the batch.
+        """
+        logits = outputs["logits"]
+        batch_size, num_class = logits.shape
+
+        # outranks[b, i, j] is True if class i is ranked above class j for sample b (ties excluded).
+        # Map of pairs where rank is expected to be lower -> reduce loss
+        outranks = rank_labels.unsqueeze(2) < rank_labels.unsqueeze(1)
+        score_diff = logits.unsqueeze(2) - logits.unsqueeze(1)  # s_i - s_j
+
+        pair_losses = nn.functional.softplus(-score_diff)[outranks]  # log(1 + exp(-(s_i - s_j)))
+        if pair_losses.numel() == 0:
+            return torch.zeros((), dtype=logits.dtype, device=logits.device)
+        return pair_losses.mean()
+
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+        """Compute the training loss, combining the base loss with a custom loss term."""
+        rank_labels = inputs.pop("rank_labels", None) if self.use_rank_loss else None
+        loss, outputs = super().compute_loss(model, inputs, return_outputs=True, num_items_in_batch=num_items_in_batch)
+        if self.use_rank_loss:
+            loss = loss + self.compute_rank_loss(outputs, rank_labels)
+        return (loss, outputs) if return_outputs else loss
 
 
 def multilabel_confusion_matrix_nxn(labels: np.ndarray, predictions: np.ndarray) -> np.ndarray:
@@ -533,9 +581,10 @@ def setup_trainer(
         # create the object that will be called to compute the loss function (standard in transformers lib).
         compute_loss_func = WeightedLabelSmoother(class_weights=class_weights)
 
+    classification_task = bert_model.classification_system.classification_task()
     cm_callback = ConfusionMatrixCallback(
         id2class_enum=bert_model.id2classEnum,
-        classification_task=bert_model.classification_system.classification_task(),
+        classification_task=classification_task,
     )
     callbacks = [cm_callback]
     if mlflow_tracking:
@@ -551,6 +600,7 @@ def setup_trainer(
         compute_loss_func=compute_loss_func,
         compute_metrics=cm_callback.compute_metrics,
         callbacks=callbacks,
+        use_rank_loss=classification_task == ClassificationTask.rank,
     )
     return trainer
 
