@@ -104,6 +104,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
     wandb_parent_run_id: str | None = None
     analytics: MatchingParamsAnalytics | None = field(init=False, default=None)
     _run_start_time: float = field(init=False, default=0.0)
+    _logged_image_paths: list[Path] = field(init=False, default_factory=list)
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -204,9 +205,14 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
     def _log_file_artifacts_to_wandb(self, file_start_time: float) -> None:
         draw_dir = self.out_directory / "draw"
         if draw_dir.exists():
-            new_images = [p for p in sorted(draw_dir.rglob("*.png")) if p.stat().st_mtime >= file_start_time - 1]
+            known = set(self._logged_image_paths)
+            new_images = [p for p in sorted(draw_dir.rglob("*.png")) if p not in known]
             if new_images:
-                wandb.log({img_path.stem: wandb.Image(str(img_path)) for img_path in new_images})
+                self._logged_image_paths.extend(new_images)
+                table = wandb.Table(columns=["filename", "image"])
+                for img_path in self._logged_image_paths:
+                    table.add_data(img_path.name, wandb.Image(str(img_path), caption=img_path.name))
+                wandb.log({"png_browser": table})
 
         csv_dir = self.out_directory / "csv"
         if csv_dir.exists():
