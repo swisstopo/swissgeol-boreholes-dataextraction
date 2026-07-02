@@ -16,7 +16,7 @@
 | `grain_angularity`                 |            70,377 (8) |  Multi |    0.831 |    0.974 |
 | `grain_shape`                      |            70,087 (5) |  Multi |    0.560 |    0.998 |
 | `lithology`                        |           45,323 (61) | Single |    0.848 |    0.942 |
-| `mineral_components`               |              63 (111) |  Multi |        - |        - |
+| `mineral_components`               |  63 (111)/ enhanced: 141,825  |  Multi |        - |        - |
 | `organic_components`               |           70,102 (11) |  Multi |    0.839 |    0.983 |
 | `uscs`                             |            9,917 (38) | Single |    0.329 |    0.602 |
 
