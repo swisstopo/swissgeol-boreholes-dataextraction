@@ -5,7 +5,7 @@ import re
 
 import pymupdf
 
-from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
+from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
 from swissgeol_doc_processing.geometry.util import x_overlap, x_overlap_significant_smallest
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
@@ -17,7 +17,7 @@ class MaterialDescriptionExtractor:
     """Finds possible bounding boxes for material descriptions."""
 
     sidebar: Sidebar | None
-    lines: list[TextLine]
+    horizontal_text_lines: list[TextLine]
     language: str
     matching_params: dict
     analytics: MatchingParamsAnalytics = None
@@ -34,7 +34,7 @@ class MaterialDescriptionExtractor:
         if self.sidebar:
             above_sidebar = [
                 line
-                for line in self.lines
+                for line in self.horizontal_text_lines
                 if x_overlap(line.rect, self.sidebar.rect) and line.rect.y0 < self.sidebar.rect.y0
             ]
 
@@ -47,7 +47,7 @@ class MaterialDescriptionExtractor:
             def check_y0_condition(y0):
                 return True
 
-        candidate_description = [line for line in self.lines if check_y0_condition(line.rect.y0)]
+        candidate_description = [line for line in self.horizontal_text_lines if check_y0_condition(line.rect.y0)]
 
         is_not_description = [
             line
@@ -137,30 +137,60 @@ class MaterialDescriptionExtractor:
 
         # expand to include entire last block
         def can_extend_below(best_x0, best_y1, line: TextLine, x_tolerance: float = 5, line_gap: float = 10):
+            if self.sidebar and self.sidebar.rect.contains(line.rect):
+                # Don't extend using lines that entirely fall within the sidebar rect. Avoids false positives e.g. for
+                # Geoquat A430.pdf. This workaround should no longer be necessary with a more robust clustering
+                # approach.
+                return False
+
             not_far_below_current_rect = line.rect.y0 < best_y1 + line_gap
             within_sidebar = self.sidebar and ((line.rect.y0 + line.rect.y1) / 2 < self.sidebar.rect.y1)
+
+            if not_far_below_current_rect:  # noqa: SIM108
+                # if immediately below the previous line, then allow for indentation or centered text
+                max_x0 = (best_x0 + best_x1) / 2
+            else:
+                # else only consider text that is nicely left-aligned with the current box
+                max_x0 = best_x0 + 2 * x_tolerance
+
             return (
-                (line.rect.x0 > best_x0 - x_tolerance)
-                and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
+                (best_x0 - x_tolerance < line.rect.x0 < max_x0)
                 and (not_far_below_current_rect or within_sidebar)
                 and (line.rect.y1 > best_y1)
+                and len(line.text) > 4  # avoid OCR artefacts
             )
 
         def can_extend_above(best_x0, best_y0, line: TextLine, x_tolerance: float = 5, line_gap: float = 10):
             not_far_above_current_rect = line.rect.y1 > best_y0 - line_gap
-            above_sidebar_zero = self.sidebar and any(
-                entry.value == 0.0 and (line.rect.y0 + line.rect.y1) / 2 < entry.rect.y0
-                for entry in self.sidebar.entries
-                if isinstance(entry, DepthColumnEntry)
-            )
+
+            above_sidebar_zero = False
+            if self.sidebar:
+                if isinstance(self.sidebar, AAboveBSidebar) and len(self.sidebar.entries) > 1:
+                    first_entry = self.sidebar.entries[0]
+                    if first_entry.value <= 0.0:
+                        sidebar_zero_y0 = first_entry.rect.y0
+                    else:
+                        # extrapolate for AAboveBSidebars that don't have an explicit 0 depth
+                        last_entry = self.sidebar.entries[-1]
+                        if last_entry.rect.y0 != first_entry.rect.y0:
+                            slope = (last_entry.value - first_entry.value) / (last_entry.rect.y0 - first_entry.rect.y0)
+                            sidebar_zero_y0 = first_entry.rect.y0 - slope * first_entry.value
+                        else:
+                            sidebar_zero_y0 = first_entry.rect.y0
+                else:
+                    sidebar_zero_y0 = self.sidebar.rect.y0
+                above_sidebar_zero = (line.rect.y0 + line.rect.y1) / 2 < sidebar_zero_y0
+
             return (
-                (line.rect.x0 > best_x0 - x_tolerance)
-                and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
+                (best_x0 - x_tolerance < line.rect.x0 < best_x0 + 2 * x_tolerance)
                 and (not_far_above_current_rect and not above_sidebar_zero)
                 and (line.rect.y0 < best_y0)
+                and len(line.text) > 4  # avoid OCR artefacts
             )
 
-        while line := next((line for line in self.lines if can_extend_below(best_x0, best_y1, line)), None):
+        while line := next(
+            (line for line in self.horizontal_text_lines if can_extend_below(best_x0, best_y1, line)), None
+        ):
             best_x0 = min(best_x0, line.rect.x0)
             best_x1 = max(best_x1, line.rect.x1)
             best_y1 = line.rect.y1
@@ -175,7 +205,7 @@ class MaterialDescriptionExtractor:
                     self.sidebar is not None
                     or not any(
                         other
-                        for other in self.lines
+                        for other in self.horizontal_text_lines
                         if other is not desc_line
                         and abs(other.rect.y0 - desc_line.rect.y0) < desc_line.rect.height
                         and (other.rect.x1 < best_x0 - 10 or other.rect.x0 > best_x1 + 10)

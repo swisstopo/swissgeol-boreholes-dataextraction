@@ -396,9 +396,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Returns:
             list[pymupdf.Rect]: A list of candidate rectangles for material descriptions.
         """
+        horizontal_text_lines = [line for line in self.lines if line.rect.width > line.rect.height]
         extractor = MaterialDescriptionExtractor(
             sidebar,
-            lines=self.lines,
+            horizontal_text_lines=horizontal_text_lines,
             language=self.language,
             matching_params=self.matching_params,
             analytics=self.analytics,
