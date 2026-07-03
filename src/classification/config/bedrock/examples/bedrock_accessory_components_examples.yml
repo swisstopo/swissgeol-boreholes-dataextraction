@@ -1,0 +1,233 @@
+baseline: |
+  not_specified:
+    description:
+      No accessory components are mentioned or inferable from the text.
+      Use when the description focuses entirely on the main lithology with
+      no reference to fossils, grains, organic matter, or other accessory
+      constituents. Do not use as a fallback when components can be
+      reasonably inferred from facies terminology (e.g. "oolithique" implies
+      ooids, "bioclastique" implies bioclasts).
+    keywords:
+      de: [nicht angegeben, keine Angabe, k.A.]
+      fr: [non spécifié, sans indication]
+      it: [non specificato, non indicato]
+
+  algae:
+    description:
+      Calcareous algae, primarily charophytes (freshwater green algae whose
+      stem internodes and gyrogonites are preserved in limestone). The most
+      common algal component in this dataset. Strongly associated with
+      lacustrine and shallow freshwater carbonate facies. Triggered by
+      "charophytes", "algues", "dacycladacées" (marine green algae common
+      in Triassic-Jurassic platform carbonates), and similar terms.
+      Distinct from algal_mats (which refers to laminated encrusting films,
+      not discrete skeletal grains).
+    keywords:
+      de: [Charophyten, Algen, Dasycladaceen, Dasycladeen]
+      fr: [charophytes, algues, dacycladacées, dacycladales, Chlorophytes]
+      it: [carofite, alghe, dasicladacee]
+
+  algal_mats:
+    description:
+      Laminated microbial or algal encrusting films coating grains or
+      surfaces — "encroûtements algaires" in French. Distinct from discrete
+      algal grains (algae): the mat is a coating or stromatolite-like fabric,
+      not a skeletal component. Found in shallow, warm, low-energy carbonate
+      environments, often associated with oncoids.
+    keywords:
+      de: [Algenmatten, algale Krusten, mikrobielle Matten]
+      fr: [encroûtements algaires, tapis algaires, croûtes algaires]
+      it: [tappeti algali, incrostazioni algali]
+
+  bioclasts:
+    description:
+      Generic skeletal debris — fragments of biological origin that cannot
+      be assigned to a single fossil group, or a mix of shell/skeletal
+      material used as a bulk facies descriptor. Triggered by "bioclaste",
+      "bioclastique", "débris organiques", "débris coquilliers". Also infer
+      from Dunham texture terms when explicitly listed as "bioclastiques"
+      without further specificity. Do NOT assign bioclasts when a more
+      specific fossil group is identified — use that specific class instead
+      (or in addition if the description lists both).
+    keywords:
+      de: [Bioklasten, biogener Detritus, Schalendetritus, biogen]
+      fr: [bioclastes, bioclastique, débris bioclastiques, débris coquilliers,
+           débris organiques, débris squelettiques]
+      it: [bioclasti, bioclastico, detriti bioclastici]
+
+  bitumen:
+    description:
+      Solid or semi-solid natural hydrocarbon material visible in the rock
+      or as cutting fragments. In this dataset appears as "galettes de
+      bitume" or "cuttings de bitume" arriving during drilling of fractured
+      or karstic carbonate intervals. Indicates a paleohydrocarbon system
+      or residual oil staining in vugs and fractures.
+    keywords:
+      de: [Bitumen, Asphalt, Erdpech, bituminös]
+      fr: [bitume, galettes de bitume, cuttings de bitume, bitumineux,
+           asphalte]
+      it: [bitume, asfaltite, bituminoso]
+
+  bivalves:
+    description:
+      Bivalve mollusc shells or fragments. In this dataset found in
+      wackestone-packstone carbonate facies alongside other benthic fauna.
+      Triggered by "bivalves", "lamellibranches", "pelecypodes", or general
+      references to bivalve shells. Distinct from oysters (Gryphaea,
+      Ostrea) and rudists, which have their own classes.
+    keywords:
+      de: [Bivalven, Muscheln, Zweischaler, Lamellibranchiaten]
+      fr: [bivalves, lamellibranches, pélécypodes, coquilles bivalves]
+      it: [bivalvi, lamellibranchi, pelecipodi]
+
+  brachiopods:
+    description:
+      Brachiopod shells, often associated with benthic carbonate facies.
+      In this dataset co-occurs with foraminifera and bivalves in
+      wackestone textures. Triggered by "brachiopodes", "brachiopods",
+      "Brachiopoden".
+    keywords:
+      de: [Brachiopoden, Armfüsser]
+      fr: [brachiopodes, brachiopods]
+      it: [brachiopodi]
+
+  bryozoans:
+    description:
+      Colonial marine invertebrates whose skeletal debris occurs in
+      bioclastic grainstone and packstone facies. In this dataset associated
+      with strongly recrystallized bioclastic limestones at depth. Triggered
+      by "bryozoaires", "bryozoa", "Bryozoen", or "débris de bryozoaires".
+    keywords:
+      de: [Bryozoen, Moostierchen]
+      fr: [bryozoaires, débris de bryozoaires]
+      it: [briozoi, detriti di briozoi]
+
+  coal_fragments:
+    description:
+      Macroscopic fragments of coal or carbonaceous material in a
+      sedimentary context. In this dataset appears as "marnes charbonneuses"
+      (carbonaceous marls) within alternating grey marls and fine sandstone
+      sequences. Indicates terrestrial or paralic depositional environments
+      with preserved organic carbon. Distinct from organic_matter (which
+      is dispersed) and plant_remains (which are plant tissue rather than
+      coalified material).
+    keywords:
+      de: [Kohlefragmente, Kohlebröckchen, kohlige Einlagerungen,
+           kohlehaltiger Mergel]
+      fr: [fragments de charbon, marnes charbonneuses, niveaux
+           charbonneux, débris charbonneux]
+      it: [frammenti di carbone, marne carboniose]
+
+  echinoderms:
+    description:
+      Echinoderm skeletal debris (crinoid ossicles, echinoid plates, etc.)
+      in bioclastic carbonate facies. In this dataset co-occurs with
+      bryozoans and sponges in recrystallized grainstones. Use this class
+      for generic echinoderm debris; use crinoids or echinoids if the
+      specific group is identified.
+    keywords:
+      de: [Echinodermen, Stachelhäuter, Echinodermendetritus]
+      fr: [échinodermes, débris d'échinodermes, échinodermes]
+      it: [echinodermi, detriti di echinodermi]
+
+  foraminifera:
+    description:
+      Foraminifera tests — either benthic (most common at these depths in
+      platform carbonates) or planktonic. In this dataset strongly
+      associated with Mesozoic carbonate platform facies containing
+      dacycladacean algae and complex larger benthic foraminifera.
+      Triggered by "foraminifères", "foraminifères benthiques",
+      "foraminifères complexes", "Foraminifera", "Foram.".
+    keywords:
+      de: [Foraminiferen, Foram., benthische Foraminiferen]
+      fr: [foraminifères, foraminifères benthiques, foraminifères complexes,
+           foraminifères planctoniques]
+      it: [foraminiferi, foraminiferi bentonici]
+
+  gastropods:
+    description:
+      Gastropod mollusc shells. In this dataset found in freshwater to
+      brackish lacustrine carbonate facies alongside charophytes, bivalves,
+      and ostracods. Triggered by "gastéropodes", "gastropodes",
+      "Gastropoden", "escargots".
+    keywords:
+      de: [Gastropoden, Schnecken]
+      fr: [gastéropodes, gastropodes, escargots, coquilles de gastéropodes]
+      it: [gasteropodi, lumache]
+
+  oncoids:
+    description:
+      Oncoids are irregularly laminated carbonate grains formed by
+      microbial or algal encrustation around a nucleus — similar to ooids
+      but larger and with irregular lamination. In this dataset co-occurs
+      with bioclasts and algal_mats in shallow carbonate facies. Triggered
+      by "oncoïdes", "oncolites", "Onkoide". Distinct from ooids (regular
+      concentric lamination, smaller) and pellets (micritic, no lamination).
+    keywords:
+      de: [Onkoide, Onkolite]
+      fr: [oncoïdes, oncolites, onkoïdes]
+      it: [oncoidi, oncòliti]
+
+  ooids:
+    description:
+      Ooids are spherical to sub-spherical carbonate grains with regular
+      concentric lamination around a nucleus, typically 0.25–2 mm. Indicate
+      high-energy, warm, shallow-marine or lacustrine agitated environments.
+      Triggered by "oolithes", "oolithe", "oolithique", "oolitisch",
+      "ooïdes". Infer ooids from "oolithique" even without explicit listing.
+      Distinct from oncoids (irregular lamination) and pellets (no lamination).
+    keywords:
+      de: [Ooide, Oolithe, oolithisch]
+      fr: [oolithes, oolithe, oolithique, ooïdes, oolitique]
+      it: [ooids, oòliti, oolitico]
+
+  ostracods:
+    description:
+      Ostracod valves — small bivalved crustaceans common in freshwater to
+      brackish lacustrine carbonate facies. In this dataset co-occurs with
+      charophytes, bivalves, and gastropods. Triggered by "ostracodes",
+      "ostracods", "Ostrakoden".
+    keywords:
+      de: [Ostrakoden, Muschelkrebse]
+      fr: [ostracodes, ostracods]
+      it: [ostracodi]
+
+  pellets:
+    description:
+      Peloids or pellets — small, rounded, structureless micritic carbonate
+      grains of probable faecal or microbial origin. Indicate low-energy
+      lagoonal or restricted platform environments. In this dataset described
+      as "péloides", "péloidal", "microcoprolites" (faecal pellets).
+      Triggered by "péloides", "péloidal", "pellets", "microcoprolites",
+      "pelloidal". Distinct from ooids (laminated) and oncoids (larger,
+      irregularly laminated).
+    keywords:
+      de: [Peloide, Pellets, Kotpillen, Mikrokoprolithe]
+      fr: [péloides, péloidal, pellets, microcoprolites, pelloidal]
+      it: [peloidi, pellets, microcoproliti]
+
+  plant_remains:
+    description:
+      Macroscopic plant tissue fragments (leaves, stems, wood fragments not
+      further specified as silicified wood or coal). In this dataset appears
+      as "débris de plantes" in freshwater lacustrine carbonate facies.
+      Distinct from coal_fragments (coalified) and wood_fragments (woody
+      tissue specifically).
+    keywords:
+      de: [Pflanzenreste, Pflanzendetritus, Pflanzenfragmente]
+      fr: [débris de plantes, restes de plantes, fragments végétaux,
+           débris végétaux]
+      it: [resti vegetali, detriti vegetali, frammenti di piante]
+
+  sponges:
+    description:
+      Sponge skeletal remains (stromatopores, calcisponges, or spicule-
+      bearing sponges). In this dataset "stromatopores" appears alongside
+      echinoderms and bryozoans in recrystallized bioclastic grainstones.
+      Triggered by "stromatopores", "éponges", "sponges", "Schwämme",
+      "spicules d'éponges". Note: stromatopores are extinct hypercalcified
+      sponges; classify as sponges.
+    keywords:
+      de: [Schwämme, Stromatoporen, Kalkschwämme, Schwammnadeln]
+      fr: [stromatopores, éponges, spongiaires, spicules d'éponges]
+      it: [spugne, stromatopori, spicole di spugna]
