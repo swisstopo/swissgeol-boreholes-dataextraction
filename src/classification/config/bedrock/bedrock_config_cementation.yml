@@ -4,7 +4,7 @@ prompts_file: bedrock/prompts/bedrock_cementation_prompts.yml
 prompt_version: baseline
 
 # Pattern file and parameter version
-pattern_file: bedrock/examples/bedrock_cementation_examples.yml
+pattern_file: bedrock/full_examples/bedrock_cementation_examples.yml
 pattern_version: baseline
 
 # Tool file
