@@ -107,12 +107,15 @@ class AWSBedrockClassifier(Classifier):
         prompt_section = "reasoning" if self.reasoning_mode else "classification"
         self.system_prompts = read_params(self.config["prompts_file"])[prompt_section][self.prompt_version]
 
-        if self.multilabel_mode:
+        if self.multilabel_mode and self.reasoning_mode:
+            tool_key = "multilabel_reasoning"
+        elif self.multilabel_mode:
             tool_key = "multilabel"
         elif self.reasoning_mode:
             tool_key = "reasoning"
         else:
             tool_key = "classification"
+
         self.tool = read_params(self.config["tool_file"])[tool_key]
 
     def get_name(self) -> str:
@@ -166,14 +169,12 @@ class AWSBedrockClassifier(Classifier):
         )
         if message.stop_reason == "max_tokens":
             raise ValueError(
-                f"Bedrock response truncated (max_tokens={self.config['max_tokens']}): \
-                increase max_tokens or reduce batch size"
+                f"Bedrock response truncated (max_tokens={self.config['max_tokens']}): "
+                "increase max_tokens or reduce batch size"
             )
+
         tool_result = next(b for b in message.content if b.type == "tool_use")
         predictions = AWSBedrockPrediction.model_validate(tool_result.input).predictions
-
-        # tool_result = next(b for b in message.content if b.type == "tool_use")
-        # predictions = AWSBedrockPrediction.model_validate(tool_result.input).predictions
 
         if len(predictions) != len(filename_layers):
             raise ValueError(f"Wrong number of predictions {len(filename_layers)=}, {len(predictions)=}")

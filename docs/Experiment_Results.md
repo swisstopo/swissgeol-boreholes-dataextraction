@@ -5,7 +5,7 @@
 
 | Dataset                            | Enhanced | Support (num classes) | Target | F1-macro | F1-micro |
 |------------------------------------|----------|-----------------------|--------|----------|----------|
-| `accessory_components`             | x        |         152,2083 (47) |  Multi |    0.842 |    0.972 |
+| `accessory_components`             | x        |         152,083 (47) |  Multi |    0.842 |    0.972 |
 | `alteration_degree_consolidated`   |          |             2,716 (8) | Single |    0.392 |    0.782 |
 | `alteration_degree_unconsolidated` |          |                41 (8) | Single |        - |        - |
 | `cementation`                      |          |                78 (7) | Single |        - |        - |
