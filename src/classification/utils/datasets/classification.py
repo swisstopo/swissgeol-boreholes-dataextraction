@@ -241,7 +241,6 @@ class LayerInformation:
         Returns:
             A new ``LayerInformation`` instance.
         """
-        raw_prediction_classes = json.get("prediction_classes")
         return cls(
             filename=json["filename"],
             borehole_index=json["borehole_index"],
@@ -252,9 +251,6 @@ class LayerInformation:
             ground_truth_class=cls._from_names(json["ground_truth_class"], classification_system),
             prediction_class=cls._from_names(json["prediction_class"], classification_system),
             llm_reasoning=json["llm_reasoning"],
-            prediction_classes=[classification_system.map_most_similar_class(c) for c in raw_prediction_classes]
-            if raw_prediction_classes is not None
-            else None,
         )
 
 
