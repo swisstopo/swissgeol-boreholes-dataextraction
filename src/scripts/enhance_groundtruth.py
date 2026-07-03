@@ -68,24 +68,21 @@ def _apply_predictions(ground_truth: GroundTruth, predictions_path: Path) -> int
 
     updated = 0
     for entry in predictions:
-        prediction = entry.get("prediction_class") or entry.get("prediction_classes")
+        prediction = entry.get("prediction_class")
         if not prediction:
             continue
 
-        boreholes = ground_truth.ground_truth.get(entry["filename"], [])
+        boreholes = ground_truth.for_file(entry["filename"]) or []
         borehole = next((b for b in boreholes if b.borehole_index == entry["borehole_index"]), None)
         if borehole is None or entry["layer_index"] >= len(borehole.layers):
             continue
 
         layer = borehole.layers[entry["layer_index"]]
-        if getattr(layer, sub_model_key) is None:
-            setattr(layer, sub_model_key, sub_model_cls())
+        values = prediction if isinstance(prediction, list) else [prediction]
+        value = values if is_list else values[0]
 
-        if is_list:
-            value = prediction if isinstance(prediction, list) else [prediction]
-        else:
-            value = prediction[0] if isinstance(prediction, list) else prediction
-        setattr(getattr(layer, sub_model_key), field_name, value)
+        sub_model = getattr(layer, sub_model_key) or sub_model_cls()
+        setattr(layer, sub_model_key, sub_model.model_copy(update={field_name: value}))
         updated += 1
 
     logger.info("Applied %d predictions from %s (%s).", updated, predictions_path.name, class_system_name)
