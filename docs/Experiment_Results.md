@@ -8,7 +8,7 @@
 | `accessory_components`             | x        |         152,2083 (47) |  Multi |    0.842 |    0.972 |
 | `alteration_degree_consolidated`   |          |             2,716 (8) | Single |    0.392 |    0.782 |
 | `alteration_degree_unconsolidated` |          |                41 (8) | Single |        - |        - |
-| `cementation`                      |          |                78 (7) | Single |        - |        - |
+| `cementation`                      | x        |           119,404 (7) | Single |    0.851 |    0.959|
 | `color_consolidated`*              |          |           16,143 (91) | Single |    0.487 |    0.752 |
 | `color_unconsolidated`*            |          |           20,121 (91) | Single |    0.502 |    0.803 |
 | `debris`                           |          |           70,084, (7) |  Multi |    0.797 |    0.983 |
