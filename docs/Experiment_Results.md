@@ -12,7 +12,7 @@
 | `color_unconsolidated`*            |           20,121 (91) | Single |    0.502 |    0.803 |             - |
 | `debris`                           |           70,084, (7) |  Multi |    0.797 |    0.983 |             - |
 | `en_main`                          |           89,842 (34) | Single |    0.859 |    0.905 |             - |
-| `en_secondary`                     |           89,842 (34) |   Rank |    0.854 |    0.947 |          0.19 |
+| `en_secondary`                     |           89,842 (34) |   Rank |    0.808 |    0.945 |         0.744 |
 | `grain_angularity`                 |            70,377 (8) |  Multi |    0.831 |    0.974 |             - |
 | `grain_shape`                      |            70,087 (5) |  Multi |    0.560 |    0.998 |             - |
 | `lithology`                        |           45,323 (61) | Single |    0.848 |    0.942 |             - |
@@ -62,12 +62,27 @@
 
 ## EN Secondary
 
+|           | Bedrock (v1) |          |               | BERT (Rank) |          |               |
+|-----------|--------------|----------|---------------|-------------|----------|---------------|
+| Test set  | F1-macro     | F1-micro | Kendall's Tau | F1-macro    | F1-micro | Kendall's Tau |
+| Deepwells | 0.xxx        | 0.xxx    | 0.xxx         | 0.629       | 0.966    | 0.965         |
+| Geoquat   | 0.xxx        | 0.xxx    | 0.xxx         | 0.829       | 0.948    | 0.778         |
+| Nagra     | 0.xxx        | 0.xxx    | 0.xxx         | 0.880       | 0.991    | 0.798         |
+| Thurgau   | 0.xxx        | 0.xxx    | 0.xxx         | 0.646       | 0.932    | 0.617         |
+| Overall   | -            | -        | -             | 0.808       | 0.945    | 0.744         |
+
+
 | Prompt   | Test set  | Bedrock F1-macro | Bedrock F1-micro | Bedrock Kendall's Tau |
 |----------|-----------|------------------|------------------|-----------------------|
 | Baseline | Deepwells | 0.768            | 0.970            | -                     |
 |          | Geoquat   | 0.649            | 0.933            | -                     |
 |          | Nagra     | 0.514            | 0.954            | -                     |
 |          | Thurgau   | 0.575            | 0.895            | -                     |
+|          | Overall   | -                | -                | -                     |
+| v1       | Deepwells | 0.xxx            | 0.xxx            | 0.xxx                 |
+|          | Geoquat   | 0.xxx            | 0.xxx            | 0.xxx                 |
+|          | Nagra     | 0.xxx            | 0.xxx            | 0.xxx                 |
+|          | Thurgau   | 0.xxx            | 0.xxx            | 0.xxx                 |
 |          | Overall   | -                | -                | -                     |
 
 | Loss | Test set  | BERT F1-macro | BERT F1-micro | BERT Kendall's Tau |
@@ -77,6 +92,12 @@
 |      | Nagra     | 1.000         | 1.000         |  0.195             |
 |      | Thurgau   | 0.650         | 0.933         |  0.202             |
 |      | Overall   | 0.854         | 0.947         |  -                 |
+| Rank | Deepwells | 0.629         | 0.966         |  0.965             |
+|      | Geoquat   | 0.829         | 0.948         |  0.778             |
+|      | Nagra     | 0.880         | 0.991         |  0.798             |
+|      | Thurgau   | 0.646         | 0.932         |  0.617             |
+|      | Overall   | 0.808         | 0.945         |  0.744             |
+
 
 ## Grain Angularity
 
