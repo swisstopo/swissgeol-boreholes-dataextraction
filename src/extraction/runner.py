@@ -142,6 +142,9 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
 
         if wandb_tracking and wandb is not None:
             self._init_wandb()
+            draw_dir = self.out_directory / "draw"
+            if draw_dir.exists():
+                self._logged_image_paths = list(draw_dir.rglob("*.png"))
 
         for pdf_file in tqdm(pdf_files, desc="Processing files", unit="file"):
             # Check if file is already computed in previous run
@@ -210,7 +213,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
             if new_images:
                 self._logged_image_paths.extend(new_images)
                 table = wandb.Table(columns=["filename", "image"])
-                for img_path in self._logged_image_paths:
+                for img_path in new_images:
                     table.add_data(img_path.name, wandb.Image(str(img_path), caption=img_path.name))
                 wandb.log({"png_browser": table})
 
