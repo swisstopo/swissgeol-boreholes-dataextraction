@@ -142,9 +142,6 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
 
         if wandb_tracking and wandb is not None:
             self._init_wandb()
-            draw_dir = self.out_directory / "draw"
-            if draw_dir.exists():
-                self._logged_image_paths = list(draw_dir.rglob("*.png"))
 
         for pdf_file in tqdm(pdf_files, desc="Processing files", unit="file"):
             # Check if file is already computed in previous run
@@ -208,14 +205,10 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
     def _log_file_artifacts_to_wandb(self, file_start_time: float) -> None:
         draw_dir = self.out_directory / "draw"
         if draw_dir.exists():
-            known = set(self._logged_image_paths)
-            new_images = [p for p in sorted(draw_dir.rglob("*.png")) if p not in known]
+            new_images = [p for p in sorted(draw_dir.rglob("*.png")) if p.stat().st_mtime >= file_start_time - 1]
             if new_images:
                 self._logged_image_paths.extend(new_images)
-                table = wandb.Table(columns=["filename", "image"])
-                for img_path in new_images:
-                    table.add_data(img_path.name, wandb.Image(str(img_path), caption=img_path.name))
-                wandb.log({"png_browser": table})
+                wandb.log({"png_browser": [wandb.Image(str(p), caption=p.name) for p in new_images]})
 
         csv_dir = self.out_directory / "csv"
         if csv_dir.exists():
@@ -274,6 +267,12 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
                     csv_path = self.out_directory / csv_name
                     if csv_path.exists():
                         wandb.save(str(csv_path), base_path=str(self.out_directory), policy="now")
+
+            if self._logged_image_paths:
+                table = wandb.Table(columns=["filename", "image"])
+                for img_path in self._logged_image_paths:
+                    table.add_data(img_path.name, wandb.Image(str(img_path), caption=img_path.name))
+                wandb.log({"png_browser_table": table})
         finally:
             wandb.finish()
 
