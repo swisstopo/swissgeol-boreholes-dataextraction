@@ -428,7 +428,6 @@ class HeadOnlyTrainer(Trainer):
             torch.Tensor: Scalar ranking loss, averaged over all comparable (non-tied) class pairs in the batch.
         """
         logits = outputs["logits"]
-        batch_size, num_class = logits.shape
 
         # outranks[b, i, j] is True if class i is ranked above class j for sample b (ties excluded).
         # Map of pairs where rank is expected to be lower -> reduce loss
