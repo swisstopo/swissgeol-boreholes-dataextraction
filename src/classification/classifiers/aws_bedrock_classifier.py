@@ -30,7 +30,6 @@ class AWSBedrockEntry(BaseModel):
         index (int): Position of the layer in the batch sent to the model, used to align predictions back to inputs.
         class_ (list[str]): List of predicted class labels as returned by the model.
         reasoning (str): Reasoning of the predicted output.
-
     """
 
     index: int
