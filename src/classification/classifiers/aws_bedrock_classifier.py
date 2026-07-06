@@ -93,7 +93,6 @@ class AWSBedrockClassifier(Classifier):
         self.pattern_version = self.config["pattern_version"]
         self.prompt_version = self.config["prompt_version"]
         self.reasoning_mode = self.config["reasoning_mode"]
-        self.multilabel_mode = self.config.get("multilabel_mode", False)
 
         # Async functions
         self.semaphore = asyncio.Semaphore(self.max_concurrent_calls)
@@ -106,14 +105,7 @@ class AWSBedrockClassifier(Classifier):
         prompt_section = "reasoning" if self.reasoning_mode else "classification"
         self.system_prompts = read_params(self.config["prompts_file"])[prompt_section][self.prompt_version]
 
-        if self.multilabel_mode and self.reasoning_mode:
-            tool_key = "multilabel_reasoning"
-        elif self.multilabel_mode:
-            tool_key = "multilabel"
-        elif self.reasoning_mode:
-            tool_key = "reasoning"
-        else:
-            tool_key = "classification"
+        tool_key = "reasoning" if self.reasoning_mode else "classification"
 
         self.tool = read_params(self.config["tool_file"])[tool_key]
 
