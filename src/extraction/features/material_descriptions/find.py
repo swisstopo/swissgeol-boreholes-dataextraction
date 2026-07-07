@@ -7,7 +7,7 @@ import pymupdf
 
 from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
-from swissgeol_doc_processing.geometry.util import x_overlap, x_overlap_significant_smallest
+from swissgeol_doc_processing.geometry.util import x_overlap_significant_smallest
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
 from swissgeol_doc_processing.text.textline import TextLine
 
@@ -22,6 +22,26 @@ class MaterialDescriptionExtractor:
     matching_params: dict
     analytics: MatchingParamsAnalytics = None
 
+    def __post_init__(self):
+        sidebar_zero_y0 = None
+        if self.sidebar:
+            if isinstance(self.sidebar, AAboveBSidebar) and len(self.sidebar.entries) > 1:
+                first_entry = self.sidebar.entries[0]
+                if first_entry.value <= 0.0:
+                    sidebar_zero_y0 = first_entry.rect.y0
+                else:
+                    # extrapolate for AAboveBSidebars that don't have an explicit 0 depth
+                    last_entry = self.sidebar.entries[-1]
+                    if last_entry.value != first_entry.value:
+                        slope = (last_entry.rect.y0 - first_entry.rect.y0) / (last_entry.value - first_entry.value)
+                        sidebar_zero_y0 = first_entry.rect.y0 - slope * first_entry.value
+                    else:
+                        sidebar_zero_y0 = first_entry.rect.y0
+            else:
+                sidebar_zero_y0 = self.sidebar.rect.y0
+
+        self.sidebar_zero_y0 = sidebar_zero_y0
+
     def find_candidates(self) -> list[pymupdf.Rect]:
         """Find all material description candidates on the page.
 
@@ -31,23 +51,14 @@ class MaterialDescriptionExtractor:
         Returns:
             list[pymupdf.Rect]: A list of candidate rectangles for material descriptions.
         """
-        if self.sidebar:
-            above_sidebar = [
-                line
-                for line in self.horizontal_text_lines
-                if x_overlap(line.rect, self.sidebar.rect) and line.rect.y0 < self.sidebar.rect.y0
-            ]
 
-            min_y0 = max(line.rect.y0 for line in above_sidebar) if above_sidebar else -1
-
-            def check_y0_condition(y0):
-                return y0 > min_y0 and y0 < self.sidebar.rect.y1
-        else:
-
-            def check_y0_condition(y0):
+        def check_y_condition(rect: pymupdf.Rect) -> bool:
+            if self.sidebar and self.sidebar_zero_y0 is not None:
+                return self.sidebar_zero_y0 < (rect.y0 + rect.y1) / 2 and rect.y0 < self.sidebar.rect.y1
+            else:
                 return True
 
-        candidate_description = [line for line in self.horizontal_text_lines if check_y0_condition(line.rect.y0)]
+        candidate_description = [line for line in self.horizontal_text_lines if check_y_condition(line.rect)]
 
         is_not_description = [
             line
@@ -162,28 +173,13 @@ class MaterialDescriptionExtractor:
 
         def can_extend_above(best_x0, best_y0, line: TextLine, x_tolerance: float = 5, line_gap: float = 10):
             not_far_above_current_rect = line.rect.y1 > best_y0 - line_gap
-
-            above_sidebar_zero = False
-            if self.sidebar:
-                if isinstance(self.sidebar, AAboveBSidebar) and len(self.sidebar.entries) > 1:
-                    first_entry = self.sidebar.entries[0]
-                    if first_entry.value <= 0.0:
-                        sidebar_zero_y0 = first_entry.rect.y0
-                    else:
-                        # extrapolate for AAboveBSidebars that don't have an explicit 0 depth
-                        last_entry = self.sidebar.entries[-1]
-                        if last_entry.rect.y0 != first_entry.rect.y0:
-                            slope = (last_entry.value - first_entry.value) / (last_entry.rect.y0 - first_entry.rect.y0)
-                            sidebar_zero_y0 = first_entry.rect.y0 - slope * first_entry.value
-                        else:
-                            sidebar_zero_y0 = first_entry.rect.y0
-                else:
-                    sidebar_zero_y0 = self.sidebar.rect.y0
-                above_sidebar_zero = (line.rect.y0 + line.rect.y1) / 2 < sidebar_zero_y0
+            within_sidebar = (
+                self.sidebar_zero_y0 is not None and (line.rect.y0 + line.rect.y1) / 2 > self.sidebar_zero_y0
+            )
 
             return (
                 (best_x0 - x_tolerance < line.rect.x0 < best_x0 + 2 * x_tolerance)
-                and (not_far_above_current_rect and not above_sidebar_zero)
+                and (not_far_above_current_rect or within_sidebar)
                 and (line.rect.y0 < best_y0)
                 and len(line.text) > 4  # avoid OCR artefacts
             )
