@@ -84,6 +84,6 @@ class SpulprobeSidebarExtractor:
         """
         entries = cls.find_spulprobe_entries(lines)
 
-        clusters = Cluster[SpulprobeEntry].create_clusters(entries, lambda entry: entry.rect)
+        clusters = Cluster[SpulprobeEntry].create_clusters(entries, lambda entry: entry.rect, table_structure=None)
 
         return [SpulprobeSidebar(cluster.entries) for cluster in clusters]

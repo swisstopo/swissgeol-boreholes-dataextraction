@@ -6,8 +6,10 @@ from typing import Generic, Self, TypeVar
 
 import pymupdf
 
+from extraction.features.stratigraphy.sidebar.columnlimits.column_limits import ColumnLimits
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_largest, x_overlap_significant_smallest
+from swissgeol_doc_processing.utils.table_detection import TableStructure
 
 EntryT = TypeVar("EntryT")
 
@@ -23,6 +25,7 @@ class Cluster(Generic[EntryT]):
         cls,
         entries: list[EntryT],
         entry_to_rect: Callable[[EntryT], pymupdf.Rect],
+        table_structure: TableStructure | None,
         allow_size_two: bool = False,
     ) -> list[Self]:
         def midpoint(entry: EntryT) -> Point:
@@ -45,9 +48,25 @@ class Cluster(Generic[EntryT]):
         assignments: dict[EntryT, set[int]] = {entry: set() for entry in entries}
 
         # iterate over all possibilities for the topmost entry of a cluster
+        print()
+        print(table_structure)
         for index1, entry1 in enumerate(entries):
+            if table_structure is not None:
+                entry1_middle = (entry1.rect.top_left + entry1.rect.bottom_right) / 2
+                column_limits = ColumnLimits.from_table_structure(table_structure, entry1_middle, entry1.rect.height)
+                print(entry1)
+                print(column_limits.left_extent)
+                print(column_limits.right_extent)
+                print(column_limits.max_y)
+            else:
+                column_limits = None
+
             # iterate over all possibilities for the bottom entry of a cluster
             for index2, entry2 in enumerate(entries[:index1:-1]):
+                entry2_middle = (entry2.rect.top_left + entry2.rect.bottom_right) / 2
+                if column_limits is not None and not column_limits.contains(entry2_middle):
+                    continue
+
                 index2 = len(entries) - 1 - index2  # use index relative to the full list of entries
                 if not perfect_assignments[entry1].isdisjoint(perfect_assignments[entry2]):
                     # skip if the entries already belong to the same cluster

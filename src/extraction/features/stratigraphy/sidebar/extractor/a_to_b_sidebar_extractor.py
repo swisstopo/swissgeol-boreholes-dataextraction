@@ -34,7 +34,12 @@ class AToBSidebarExtractor:
         intervals = []
         for word in all_words:
             a_to_b_interval, _ = AToBIntervalExtractor.from_text(TextLine([word]))
-            if a_to_b_interval and a_to_b_interval.start and a_to_b_interval.end:
+            if (
+                a_to_b_interval
+                and a_to_b_interval.start
+                and a_to_b_interval.end
+                and (a_to_b_interval.start.value < a_to_b_interval.end.value)
+            ):
                 intervals.append(a_to_b_interval)
 
         # Find additional pairs that do not come from a single TextWord
@@ -72,6 +77,7 @@ class AToBSidebarExtractor:
         clusters = Cluster[AToBInterval].create_clusters(
             sorted(intervals, key=lambda interval: interval.rect.y0),
             lambda interval: interval.rect,
+            table_structure=None,
             allow_size_two=True,
         )
         return [
