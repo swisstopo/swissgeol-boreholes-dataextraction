@@ -411,7 +411,8 @@ class MaterialDescriptionRectWithSidebarExtractor:
             def check_y0_condition(y0):
                 return True
 
-        candidate_description = [line for line in self.lines if check_y0_condition(line.rect.y0)]
+        horizontal_text_lines = [line for line in self.lines if line.rect.width > line.rect.height]
+        candidate_description = [line for line in horizontal_text_lines if check_y0_condition(line.rect.y0)]
 
         is_not_description = [
             line
@@ -501,7 +502,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
 
             continue_search = True
             while continue_search:
-                line = next((line for line in self.lines if is_below(best_x0, best_y1, line)), None)
+                line = next((line for line in horizontal_text_lines if is_below(best_x0, best_y1, line)), None)
                 if line:
                     best_x0 = min(best_x0, line.rect.x0)
                     best_x1 = max(best_x1, line.rect.x1)
@@ -528,7 +529,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
                             sidebar is not None
                             or not any(
                                 other
-                                for other in self.lines
+                                for other in horizontal_text_lines
                                 if other is not desc_line
                                 and abs(other.rect.y0 - desc_line.rect.y0) < desc_line.rect.height
                                 and (other.rect.x1 < best_x0 - 10 or other.rect.x0 > best_x1 + 10)

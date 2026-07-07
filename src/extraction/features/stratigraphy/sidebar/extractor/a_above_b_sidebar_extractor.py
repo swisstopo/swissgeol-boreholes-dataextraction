@@ -1,6 +1,7 @@
 """Module for finding AAboveBSidebar instances in a borehole profile."""
 
 import statistics
+from dataclasses import dataclass
 
 import fastquadtree
 import pymupdf
@@ -13,6 +14,14 @@ from extraction.features.stratigraphy.sidebar.utils.a_above_b_sidebar_validator 
 from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
 from swissgeol_doc_processing.text.textline import TextWord
 from swissgeol_doc_processing.utils.table_detection import TableStructure
+
+
+@dataclass
+class TableEntries:
+    """An optional table structure along with all possible depth column entries within this structure."""
+
+    table: TableStructure | None
+    entries: list[DepthColumnEntry]
 
 
 class AAboveBSidebarExtractor:
@@ -37,13 +46,13 @@ class AAboveBSidebarExtractor:
     def _arithmetic_progression_values(values: list[float]) -> set[float]:
         """Check if some of the values form an arithmetic progression."""
         if len(values) <= 2:
-            return {}
+            return set()
 
         integer_values = [int(round(value * 100)) for value in values]
         differences = [integer_values[i + 1] - integer_values[i] for i in range(len(integer_values) - 1)]
         step = statistics.mode(differences)
         if step <= 0:
-            return {}
+            return set()
 
         # only consider arithmetic progressions that include 0 (when extended if necessary)
         candidate_values = [value for value in integer_values if value % step == 0]
@@ -62,7 +71,7 @@ class AAboveBSidebarExtractor:
                 for value in segment
             }
         else:
-            return {}
+            return set()
 
     @staticmethod
     def find_in_words(
@@ -99,11 +108,16 @@ class AAboveBSidebarExtractor:
                 if not table_found:
                     entries_no_table.append(entry)
 
-        entry_partitions = list(entries_per_table.values()) + [entries_no_table]
+        entry_partitions = [
+            TableEntries(table_structures[table_index], entries) for table_index, entries in entries_per_table.items()
+        ]
+        entry_partitions += [TableEntries(table=None, entries=entries_no_table)]
         clusters = [
             cluster
             for entry_partition in entry_partitions
-            for cluster in Cluster[DepthColumnEntry].create_clusters(entry_partition, lambda entry: entry.rect)
+            for cluster in Cluster[DepthColumnEntry].create_clusters(
+                entry_partition.entries, lambda entry: entry.rect, entry_partition.table
+            )
         ]
 
         excluded_entries = {
@@ -115,13 +129,18 @@ class AAboveBSidebarExtractor:
         if excluded_entries:
             # cluster again, but without the entries that are part of an arithmetic progression
             entry_partitions = [
-                [entry for entry in entry_partition if entry not in excluded_entries]
+                TableEntries(
+                    entry_partition.table,
+                    [entry for entry in entry_partition.entries if entry not in excluded_entries],
+                )
                 for entry_partition in entry_partitions
             ]
             clusters = [
                 cluster
                 for entry_partition in entry_partitions
-                for cluster in Cluster[DepthColumnEntry].create_clusters(entry_partition, lambda entry: entry.rect)
+                for cluster in Cluster[DepthColumnEntry].create_clusters(
+                    entry_partition.entries, lambda entry: entry.rect, entry_partition.table
+                )
             ]
 
         numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters]

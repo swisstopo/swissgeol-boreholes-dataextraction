@@ -49,7 +49,9 @@ class ProtocolSidebarExtractor:
         if not entries:
             return []
 
-        clusters = Cluster[DepthColumnEntry].create_clusters(entries, lambda entry: entry.rect, allow_size_two=True)
+        clusters = Cluster[DepthColumnEntry].create_clusters(
+            entries, lambda entry: entry.rect, table_structure=None, allow_size_two=True
+        )
 
         min_entries = sidebar_params.get("min_entries")
         header_keywords = sidebar_params.get("header_keywords")

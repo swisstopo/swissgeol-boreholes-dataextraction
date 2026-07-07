@@ -94,6 +94,7 @@ def _separate_by_orientation(lines: list[Line], table_detection_params: dict) ->
     structure_lines = []
 
     for line in lines:
+        # line.angle is a value between -90 and 90
         angle = abs(line.angle)
 
         # Horizontal lines (close to 0° or 180°)
@@ -108,7 +109,7 @@ def _separate_by_orientation(lines: list[Line], table_detection_params: dict) ->
                 )
             )
         # Vertical lines (close to 90°)
-        elif angle - 90 <= angle_tolerance:
+        elif angle >= 90 - angle_tolerance:
             structure_lines.append(
                 StructureLine(
                     start=min(line.start.y, line.end.y),

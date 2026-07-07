@@ -23,7 +23,7 @@ class DepthColumnEntryExtractor:
             list[DepthColumnEntry]: The extracted depth column entries.
         """
         entries = []
-        regex = re.compile(r"^-?\.?([0-9]+(\.[0-9]*)?)[müMN\\.]*$")
+        regex = re.compile(r"^-?\.?([0-9]+(\.[0-9]*)?)m?\.?$")
 
         for word in sorted(all_words, key=lambda word: word.rect.y0):
             try:

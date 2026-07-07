@@ -8,8 +8,53 @@ import pymupdf
 
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_largest, x_overlap_significant_smallest
+from swissgeol_doc_processing.utils.table_detection import TableStructure
 
 EntryT = TypeVar("EntryT")
+
+
+@dataclasses.dataclass
+class VerticalLinePartition(Generic[EntryT]):
+    """Represents how a vertical line partitions depth entries."""
+
+    line: Line
+    left: set[EntryT]
+    right: set[EntryT]
+    left_all: set[EntryT]
+    right_all: set[EntryT]
+
+    @classmethod
+    def from_line(
+        cls, line: Line, entries: list[EntryT], entry_to_rect: Callable[[EntryT], pymupdf.Rect]
+    ) -> "VerticalLinePartition[EntryT]":
+        left = set()
+        right = set()
+        left_all = set()
+        right_all = set()
+        line_y0 = min(line.start.y, line.end.y)
+        line_y1 = max(line.start.y, line.end.y)
+        for entry in entries:
+            rect = entry_to_rect(entry)
+            is_inside = line_y0 <= rect.y1 and rect.y0 <= line_y1
+            entry_middle = (rect.top_left + rect.bottom_right) / 2
+            if entry_middle.x < line.x_from_y(entry_middle.y):
+                left_all.add(entry)
+                if is_inside:
+                    left.add(entry)
+            else:
+                right_all.add(entry)
+                if is_inside:
+                    right.add(entry)
+
+        return VerticalLinePartition(line, left=left, right=right, left_all=left_all, right_all=right_all)
+
+    def no_conflict(self, partition: "VerticalLinePartition[EntryT]") -> bool:
+        return partition.left.isdisjoint(self.right) and partition.right.isdisjoint(self.left)
+
+    def splits(self, entries: list[EntryT]) -> bool:
+        return (not self.left_all.isdisjoint(entries) and not self.right.isdisjoint(entries)) or (
+            not self.left.isdisjoint(entries) and not self.right_all.isdisjoint(entries)
+        )
 
 
 @dataclasses.dataclass
@@ -23,6 +68,7 @@ class Cluster(Generic[EntryT]):
         cls,
         entries: list[EntryT],
         entry_to_rect: Callable[[EntryT], pymupdf.Rect],
+        table_structure: TableStructure | None,
         allow_size_two: bool = False,
     ) -> list[Self]:
         def midpoint(entry: EntryT) -> Point:
@@ -43,6 +89,13 @@ class Cluster(Generic[EntryT]):
         # maps every entry to the set of indices of the clusters that contain this entry
         perfect_assignments: dict[EntryT, set[int]] = {entry: set() for entry in entries}
         assignments: dict[EntryT, set[int]] = {entry: set() for entry in entries}
+
+        vertical_partitions = []
+        if table_structure is not None:
+            vertical_partitions = [
+                VerticalLinePartition.from_line(line, entries, entry_to_rect)
+                for line in table_structure.vertical_lines
+            ]
 
         # iterate over all possibilities for the topmost entry of a cluster
         for index1, entry1 in enumerate(entries):
@@ -84,7 +137,8 @@ class Cluster(Generic[EntryT]):
                             # cluster is already fully contained in an existing cluster -> skip
                             continue
 
-                        if ClusterSpanFit.detect_misalignment([entry_to_rect(entry) for entry in cluster.entries]):
+                        if any(partition.splits(cluster.entries) for partition in vertical_partitions):
+                            # there is a vertical line that splits the cluster entries -> skip
                             continue
 
                         cluster_index = len(clusters)
@@ -159,45 +213,3 @@ class ClusterSpanFit:
 
         reference_rect = pymupdf.Rect(self.x0_expected, self.rect.y0, self.x1_expected, self.rect.y1)
         return not x_overlap_significant_smallest(reference_rect, self.rect, level=0.4)
-
-    @staticmethod
-    def detect_misalignment(rects: list[pymupdf.Rect]) -> bool:
-        """Detect when certain entries are not nicely aligned and they should not form valid cluster."""
-        if len(rects) <= 2:
-            return False
-
-        half_length = int(len(rects) / 2)
-
-        misaligned_count = 0
-        total_count = 0
-
-        for index1, rect1 in enumerate(rects[:half_length]):
-            index2 = index1 + half_length
-            rect2 = rects[index2]
-
-            # To make the cluster-span of constant width, we make the narrower rect equally wide as the
-            # wider rect. We keep the x-coordinates of boths rects as close together as possible.
-            if rect2.width > rect1.width:
-                wider_rect, narrower_rect = pymupdf.Rect(rect2), pymupdf.Rect(rect1)
-            else:
-                wider_rect, narrower_rect = pymupdf.Rect(rect1), pymupdf.Rect(rect2)
-
-            if narrower_rect.x0 < wider_rect.x0:
-                # narrower rect is more to the left -> extend narrower rect to the right
-                narrower_rect.x1 = narrower_rect.x0 + wider_rect.width
-            elif narrower_rect.x1 > wider_rect.x1:
-                # narrower rect is more to the right -> extend narrower rect to the left
-                narrower_rect.x0 = narrower_rect.x1 - wider_rect.width
-            else:
-                # narrower rect is in between wider rect -> copy x-coordinates of wider rect
-                narrower_rect.x0 = wider_rect.x0
-                narrower_rect.x1 = wider_rect.x1
-
-            cluster_span = ClusterSpan(wider_rect, narrower_rect)
-            for index, rect in enumerate(rects):
-                if index != index1 and index != index2:
-                    if ClusterSpanFit(cluster_span, rect).significantly_outside():
-                        misaligned_count += 1
-                    total_count += 1
-        # This threshold has been tuned by manual experimentation. Some tests to verify the behaviour would be useful.
-        return misaligned_count / total_count > 1 / len(rects)
