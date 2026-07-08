@@ -4,7 +4,7 @@ prompts_file: bedrock/prompts/bedrock_accessory_components_prompts.yml
 prompt_version: baseline
 
 # Pattern file and parameter version
-pattern_file: bedrock/examples/bedrock_accessory_components_examples.yml
+pattern_file: bedrock/full_examples/bedrock_accessory_components_examples.yml
 pattern_version: baseline
 
 # Tool file
@@ -14,7 +14,7 @@ tool_file: bedrock/tool/tool_classify_multi.yml
 temperature: 0.0
 
 # Maximum response tokens
-max_tokens: 4096
+max_tokens: 8192
 
 # Parameter indicating if Reasoning (Chain of Thought) mode should be used. Warning this significantly increases latency
 reasoning_mode: False
