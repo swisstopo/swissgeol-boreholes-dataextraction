@@ -449,9 +449,9 @@ class HeadOnlyTrainer(Trainer):
 
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
         """Compute the training loss, combining the base loss with a custom loss term."""
-        rank_labels = inputs.pop("rank_labels", None) if self.use_rank_loss else None
+        rank_labels = inputs.pop("rank_labels", None)  # always remove; model doesn't accept this kwarg
         loss, outputs = super().compute_loss(model, inputs, return_outputs=True, num_items_in_batch=num_items_in_batch)
-        if self.use_rank_loss:
+        if self.use_rank_loss and rank_labels is not None:
             loss = loss + self.compute_rank_loss(outputs, rank_labels)
         return (loss, outputs) if return_outputs else loss
 
@@ -535,7 +535,9 @@ class ConfusionMatrixCallback(TrainerCallback):
         if self._classification_task == ClassificationTask.rank and rank_labels is not None:
             n_classes = rank_labels.shape[1]
             pred_enum_lists = [
-                [self._id2class_enum[i] for i in np.argsort(logit)[::-1] if logit[i] > 0] for logit in logits
+                [self._id2class_enum[i] for i in np.argsort(logit)[::-1] if logit[i] > 0]
+                or [self._id2class_enum[int(np.argmax(logit))]]  # fallback: top-1 class
+                for logit in logits
             ]
             label_enum_lists = [
                 [self._id2class_enum[i] for i in np.argsort(rank_row) if rank_row[i] < n_classes]

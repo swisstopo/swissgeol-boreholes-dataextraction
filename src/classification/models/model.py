@@ -289,7 +289,7 @@ class BertModel:
         result["labels"] = labels
 
         # Assume that if class is not cited, it should be ranked last (high penalty)
-        result["rank_labels"] = [self.num_class] * (self.num_class)
+        result["rank_labels"] = [self.num_class] * self.num_class
         for rank, rank_label in enumerate(entry["label"]):
             result["rank_labels"][rank_label] = rank
 
