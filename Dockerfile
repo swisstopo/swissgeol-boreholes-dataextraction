@@ -14,7 +14,7 @@ COPY pyproject.toml README.md /app/
 # --no-dev: exclude development dependencies
 # --no-install-project: skip building and installing the project package itself
 # --compile: generate *.pyc files to lower memory load at startup
-RUN uv sync --no-dev --no-install-project --compile --extra deep-learning
+RUN uv sync --no-dev --no-install-project --compile --extra deep-learning-cpu
 
 
 ## ------ Runtime stage
