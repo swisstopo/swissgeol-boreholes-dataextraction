@@ -72,6 +72,13 @@ deep-learning = [
     "accelerate==1.10.0",
 ]
 
+deep-learning-cpu = [
+    "transformers==4.55.2",
+    "datasets==4.0.0",
+    "torch==2.8.0",
+    "accelerate==1.10.0"
+]
+
 all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize, devtools, deep-learning]"]
 
 # ---- Configuration for package building
@@ -138,6 +145,16 @@ convention = "google"
 
 [tool.uv]
 exclude-newer = "7 days"
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu", marker = "extra == 'deep-learning-cpu'" },
+]
 
 # ---- Configuration for pytest
 [tool.pytest.ini_options]
