@@ -26,6 +26,7 @@ from transformers import (
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from classification import DATAPATH
+from classification.evaluation.evaluate import rank_metrics_from
 from classification.models.config import (
     ExperimentConfig,
     ExperimentDatasetConfig,
@@ -234,12 +235,18 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
         mlflow.log_artifacts(path_head, artifact_path="model_head")
 
 
-def setup_training_args(model_config: ExperimentHyperparameters, out_directory: Path) -> TrainingArguments:
+def setup_training_args(
+    model_config: ExperimentHyperparameters,
+    out_directory: Path,
+    label_names: list[str] | None = None,
+) -> TrainingArguments:
     """Create a TrainingArguments object from the config file.
 
     Args:
         model_config (ExperimentHyperparameters): The model configuration.
         out_directory (Path): The directory for storing the model.
+        label_names (list[str] | None): Column names treated as labels by the Trainer's
+            prediction_step; when set they are packed into EvalPrediction.label_ids as a tuple.
 
     Returns:
         TrainingArguments: the training arguments.
@@ -263,6 +270,7 @@ def setup_training_args(model_config: ExperimentHyperparameters, out_directory: 
         load_best_model_at_end=True,
         report_to="none",  # metrics logged via MetricsMLflowCallback to avoid Azure ML's 200-param limit
         save_total_limit=2,  # Limit checkpoints to save space, only keep best two
+        label_names=label_names,
     )
     return training_args
 
@@ -482,8 +490,13 @@ class ConfusionMatrixCallback(TrainerCallback):
         self.current_test_name: str = "test"
 
     def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
-        """Compute per-class and aggregate F1 metrics using sklearn's classification report."""
-        logits, labels = eval_pred
+        """Compute per-class F1 and (for rank tasks) Kendall's tau metrics."""
+        logits = eval_pred.predictions
+        # For rank tasks the Trainer passes label_ids as (labels, rank_labels); unpack accordingly.
+        if isinstance(eval_pred.label_ids, tuple):
+            labels, rank_labels = eval_pred.label_ids
+        else:
+            labels, rank_labels = eval_pred.label_ids, None
 
         if (
             self._classification_task == ClassificationTask.multi_label
@@ -513,11 +526,24 @@ class ConfusionMatrixCallback(TrainerCallback):
             output_dict=True,
         )
 
-        return {
+        metrics = {
             f"{group_name.replace(' ', '_')}_f1": group_metrics["f1-score"]
             for group_name, group_metrics in report.items()
             if isinstance(group_metrics, dict) and "f1-score" in group_metrics
         }
+
+        if self._classification_task == ClassificationTask.rank and rank_labels is not None:
+            n_classes = rank_labels.shape[1]
+            pred_enum_lists = [
+                [self._id2class_enum[i] for i in np.argsort(logit)[::-1] if logit[i] > 0] for logit in logits
+            ]
+            label_enum_lists = [
+                [self._id2class_enum[i] for i in np.argsort(rank_row) if rank_row[i] < n_classes]
+                for rank_row in rank_labels
+            ]
+            metrics["kendall_tau"] = rank_metrics_from(pred_enum_lists, label_enum_lists)
+
+        return metrics
 
     def on_predict(self, args, state, control, metrics, **kwargs):
         """Save confusion matrix PNG and per-class metrics CSV to the output directory."""
@@ -570,13 +596,13 @@ def setup_trainer(
     Returns:
         HeadOnlyTrainer: The trainer object.
     """
-    # load the training arguments from the config file
-    training_args = setup_training_args(model_config.hyperparameters, out_directory)
-
     classification_task = bert_model.classification_system.classification_task()
     use_class_balancing = model_config.use_class_balancing
     use_rank_loss = classification_task == ClassificationTask.rank
     logger.info(f"{classification_task=}, {use_class_balancing=}, {use_rank_loss=}")
+
+    label_names = ["labels", "rank_labels"] if use_rank_loss else None
+    training_args = setup_training_args(model_config.hyperparameters, out_directory, label_names=label_names)
 
     compute_loss_func = None
     if use_class_balancing:

@@ -1,6 +1,7 @@
 """Evaluation module."""
 
 import logging
+import math
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -288,6 +289,35 @@ def per_class_metric(
     return {cls: Metrics(tp=tp[cls], fp=fp[cls], fn=fn[cls]) for cls in tp.keys() | fp.keys() | fn.keys()}
 
 
+def rank_metrics_from(
+    predictions: list[list[ClassificationSystem.EnumMember]],
+    labels: list[list[ClassificationSystem.EnumMember]],
+) -> float:
+    """Compute average Kendall's tau between parallel ranked lists of enum members.
+
+    Args:
+        predictions (list[list[ClassificationSystem.EnumMember]]): Predicted class lists in rank
+            order (index 0 = highest rank) for each sample.
+        labels (list[list[ClassificationSystem.EnumMember]]): Ground-truth class lists in rank
+            order for each sample.
+
+    Returns:
+        float: Average Kendall's tau across all samples, or 0 if no valid pairs exist.
+    """
+    metrics = []
+    for preds_row, labels_row in zip(predictions, labels, strict=True):
+        if preds_row == labels_row:
+            metrics.append(1)
+            continue
+        missing_to_pred = [lab for lab in labels_row if lab not in preds_row]
+        missing_to_lab = [pred for pred in preds_row if pred not in labels_row]
+        metric = kendalltau(preds_row + missing_to_pred, labels_row + missing_to_lab)
+        statistic = metric.statistic.item()
+        if not math.isnan(statistic):
+            metrics.append(statistic)
+    return sum(metrics) / len(metrics) if metrics else 0
+
+
 def rank_metrics_from_layers(layers: list[LayerInformation]) -> float:
     """Compute the average rank correlation between predicted and ground truth class orderings.
 
@@ -298,22 +328,10 @@ def rank_metrics_from_layers(layers: list[LayerInformation]) -> float:
         float: the average Kendall's tau rank correlation across all layers, or 0 if there are
             no layers.
     """
-    predictions = [layer.prediction_class for layer in layers]
-    labels = [layer.ground_truth_class for layer in layers]
-
-    metrics = []
-    for preds_row, labels_row in zip(predictions, labels, strict=True):
-        # Handle trivial case
-        if preds_row == labels_row:
-            metrics.append(1)
-            continue
-        # Reconstruct sets if missing items
-        missing_to_pred = [lab for lab in labels_row if lab not in preds_row]
-        missing_to_lab = [pred for pred in preds_row if pred not in labels_row]
-        metric = kendalltau(preds_row + missing_to_pred, labels_row + missing_to_lab)
-        metrics.append(metric.statistic.item())
-
-    return sum(metrics) / len(metrics) if metrics else 0
+    return rank_metrics_from(
+        predictions=[layer.prediction_class for layer in layers],
+        labels=[layer.ground_truth_class for layer in layers],
+    )
 
 
 def log_metrics_to_mlflow(all_classification_metrics: AllClassificationMetrics):
