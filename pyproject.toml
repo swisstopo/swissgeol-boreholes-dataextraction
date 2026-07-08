@@ -58,6 +58,10 @@ experiment-tracking = [
     "mlflow>=2.15.0,<3.0.0",
     "pygit2==1.18.2"
 ]
+wandb = [
+    "wandb>=0.17.0",
+    "pygit2==1.18.2",
+]
 visualize = [
     "matplotlib==3.10.5"
 ]
@@ -72,7 +76,7 @@ deep-learning = [
     "accelerate==1.10.0",
 ]
 
-all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, visualize, devtools, deep-learning]"]
+all = ["swissgeol-boreholes-dataextraction[test, lint, experiment-tracking, wandb, visualize, devtools, deep-learning]"]
 
 # ---- Configuration for package building
 [tool.hatch.version]

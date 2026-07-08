@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from core.mlflow_tracking import mlflow
 from extraction.core.extract import ExtractionResult, open_pdf
-from extraction.evaluation.benchmark.score import ExtractionBenchmarkSummary
 from extraction.features.predictions.file_predictions import FilePredictions
 from swissgeol_doc_processing.utils.file_utils import read_params
 
@@ -18,26 +15,6 @@ DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 
 line_detection_params = read_params("line_detection_params.yml")
 logger = logging.getLogger(__name__)
-
-
-def log_metric_mlflow(
-    summary: ExtractionBenchmarkSummary,
-    out_dir: Path,
-    artifact_name: str = "benchmark_summary.json",
-) -> None:
-    """Log benchmark metrics + a JSON summary artifact to the *currently active* MLflow run.
-
-    - Does NOT start/end MLflow runs.
-    """
-    metrics = summary.metrics_flat(short=True)
-    mlflow.log_metrics(metrics)
-
-    out_dir.mkdir(parents=True, exist_ok=True)
-    summary_path = out_dir / artifact_name
-    with open(summary_path, "w", encoding="utf8") as f:
-        json.dump(summary.model_dump(), f, ensure_ascii=False, indent=2)
-
-    mlflow.log_artifact(str(summary_path), artifact_path="summary")
 
 
 def write_csv_for_file(predictions: FilePredictions, out_directory: Path) -> list[Path]:
@@ -80,18 +57,13 @@ class CallbackFactory:
     def on_file_done(self, result: ExtractionResult, out_directory: Path, pdf_path: Path) -> None:
         """Write CSV and/or draw visualizations for a single extracted file.
 
-        MLflow artifact logging for CSV files is performed here when tracking is active.
-
         Args:
             result (ExtractionResult): Output of extract() for this file.
             out_directory (Path): Directory for output artifacts.
             pdf_path (Path): File path of the input PDF.
         """
         if self.write_csv:
-            csv_paths = write_csv_for_file(result.predictions, out_directory)
-            if mlflow:
-                for csv_path in csv_paths:
-                    mlflow.log_artifact(str(csv_path), "csv")
+            write_csv_for_file(result.predictions, out_directory)
 
         if not self.skip_draw_predictions or self.draw_lines or self.draw_tables or self.draw_strip_logs:
             file_name = result.predictions.file_name
