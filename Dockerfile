@@ -8,7 +8,7 @@ ENV SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION
 
 # Setup working directory and copy pyproject files
 WORKDIR /app
-COPY pyproject.toml README.md /app/
+COPY pyproject.toml README.md uv.lock /app/
 
 # Install all dependencies including deep-learning extras into a virtualenv.
 # --no-dev: exclude development dependencies
