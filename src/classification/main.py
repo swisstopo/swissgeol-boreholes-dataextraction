@@ -99,6 +99,13 @@ def common_options(f):
         default=False,
         help="Whether to resume previous run. Defaults to False.",
     )(f)
+    f = click.option(
+        "--predict-all",
+        is_flag=True,
+        default=False,
+        help="Classify every layer description regardless of existing labels. "
+        "Skips train/test splitting and evaluation. Use when generating labels for a full dataset.",
+    )(f)
 
     return f
 
@@ -121,6 +128,7 @@ def click_pipeline(
     tokenizer_path: Path | None,
     classification_system: str,
     resume: bool,
+    predict_all: bool,
     benchmarks: tuple[str, ...] = (),
 ):
     """Command line interface for the classification pipeline (single or multi-benchmark)."""
@@ -132,6 +140,7 @@ def click_pipeline(
         backbone_path=backbone_path,
         tokenizer_path=tokenizer_path,
         classification_system=classification_system,
+        predict_all=predict_all,
     )
 
     if benchmarks:

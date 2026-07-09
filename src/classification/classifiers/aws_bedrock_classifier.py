@@ -102,11 +102,12 @@ class AWSBedrockClassifier(Classifier):
         self.class_examples = read_params(self.config["pattern_file"])[self.pattern_version]
 
         # Load tool and system prompt
-        self.system_prompts = read_params(self.config["prompts_file"])[
-            "reasoning" if self.reasoning_mode else "classification"
-        ][self.prompt_version]
+        prompt_section = "reasoning" if self.reasoning_mode else "classification"
+        self.system_prompts = read_params(self.config["prompts_file"])[prompt_section][self.prompt_version]
 
-        self.tool = read_params(self.config["tool_file"])["reasoning" if self.reasoning_mode else "classification"]
+        tool_key = "reasoning" if self.reasoning_mode else "classification"
+
+        self.tool = read_params(self.config["tool_file"])[tool_key]
 
     def get_name(self) -> str:
         """Returns a string with the name of the classifier."""
@@ -157,6 +158,12 @@ class AWSBedrockClassifier(Classifier):
                 }
             ],
         )
+        if message.stop_reason == "max_tokens":
+            raise ValueError(
+                f"Bedrock response truncated (max_tokens={self.config['max_tokens']}): "
+                "increase max_tokens or reduce batch size"
+            )
+
         tool_result = next(b for b in message.content if b.type == "tool_use")
         predictions = AWSBedrockPrediction.model_validate(tool_result.input).predictions
 
