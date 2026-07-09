@@ -305,42 +305,6 @@ class BertModel:
         return tokenized_text
 
     @torch.no_grad()
-    def compute_pooled_embedding(self, text: str) -> torch.Tensor:
-        """Run the BERT backbone on a text input and return the pooled [CLS] embedding.
-
-        Use this to compute a shared backbone representation once, then pass it to
-        predict_from_embedding for each task head without re-running the encoder.
-
-        Args:
-            text: Input text string.
-
-        Returns:
-            Pooled output tensor of shape [1, hidden_size].
-        """
-        tokenized = self.tokenize_text(text)
-        return self.model.bert(**tokenized).pooler_output
-
-    @torch.no_grad()
-    def predict_from_embedding(self, pooled_output: torch.Tensor) -> list[ClassificationSystem.EnumMember]:
-        """Run only the task-specific classification head on a pre-computed pooled embedding.
-
-        Avoids re-running the backbone encoder — pair with compute_pooled_embedding to share
-        computation across multiple task heads for the same input.
-
-        Args:
-            pooled_output: Pooled [CLS] embedding of shape [1, hidden_size].
-
-        Returns:
-            Predicted class(es) for this task.
-        """
-        logits = self.model.classifier(self.model.dropout(pooled_output))
-        if self.classification_system.is_multi_label():
-            indices = (logits > 0)[0].nonzero(as_tuple=True)[0].tolist() or [0]
-        else:
-            indices = [logits.argmax(dim=-1).item()]
-        return [self.id2classEnum[i] for i in indices]
-
-    @torch.no_grad()
     def predict_class_batched(self, texts: list[str], batch_size: int) -> list[list[ClassificationSystem.EnumMember]]:
         """Runs batch prediction on multiple text inputs.
 

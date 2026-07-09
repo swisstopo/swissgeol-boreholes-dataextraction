@@ -815,8 +815,9 @@ class ClassifyRequest(BaseModel):
         json_schema_extra={
             "example": {
                 "description": (
-                    "schwach tonig-siltiger Sand und Kies, in wechselndem Anteil, mit organischem Material, "
-                    "brau-beige, Schalenreste, Holz; Komponenten vorw. eckig, aber auch plattig bis stengelig"
+                    "Siltiger Kies mit Sand, Steinen und organischen Beimengungen; "
+                    "Grobkornform: kubisch und plattig; kohäsionslos, kantengerundet bis eckig; "
+                    "braun; weich; schlecht abgestuft; Bodenhorizont; kalkhaltige Gerölle"
                 ),
             }
         }

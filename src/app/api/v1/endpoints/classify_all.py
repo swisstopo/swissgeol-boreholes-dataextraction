@@ -76,11 +76,10 @@ def load_models() -> dict[str, BertModel]:
 
 
 def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> ClassifyResponse:
-    """Classify a description across all relevant tasks in a single backbone forward pass.
+    """Classify a description across all relevant tasks.
 
-    Computes the shared backbone embedding once, then fans out to each task-specific
-    classification head independently. The lithology head determines whether the material
-    is consolidated or unconsolidated; only tasks relevant to that rock type are returned.
+    The lithology head determines whether the material is consolidated or unconsolidated;
+    only tasks relevant to that rock type are returned.
 
     Args:
         request: Classification request containing a plain-text material description.
@@ -92,12 +91,8 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
     """
     from classification.utils.datasets.lithology import LithologySystem
 
-    # Compute backbone embedding once — all task models share the same backbone weights.
     lithology_model = bert_models["lithology"]
-    pooled_embedding = lithology_model.compute_pooled_embedding(request.description)
-
-    # Determine rock type from the lithology head.
-    lithology_class = lithology_model.predict_from_embedding(pooled_embedding)[0]
+    lithology_class = lithology_model.predict_class(request.description)[0]
     is_unconsolidated = lithology_class == LithologySystem.LithologyClasses.unconsolidated
 
     relevant_tasks = _UNCONSOLIDATED_TASKS if is_unconsolidated else _CONSOLIDATED_TASKS
@@ -108,7 +103,7 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
             logger.warning(f"Task '{task_name}' not loaded, skipping.")
             continue
         model = bert_models[task_name]
-        classes = model.predict_from_embedding(pooled_embedding)
+        classes = model.predict_class(request.description)
         if model.classification_system.is_multi_label():
             predictions[task_name] = [c.name for c in classes]
         else:
