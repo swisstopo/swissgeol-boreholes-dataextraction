@@ -799,7 +799,70 @@ class GroundwaterSchema(BaseModel):
 
 
 ########################################################################################################################
-### Classify lithology schema
+### Unified classify schema
+########################################################################################################################
+
+
+class ClassifyRequest(BaseModel):
+    """Request schema for the unified `/classify` endpoint."""
+
+    description: str = Field(
+        ...,
+        description="Plain-text material description to classify.",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "description": (
+                    "schwach tonig-siltiger Sand und Kies, in wechselndem Anteil, mit organischem Material, "
+                    "brau-beige, Schalenreste, Holz; Komponenten vorw. eckig, aber auch plattig bis stengelig"
+                ),
+            }
+        }
+    )
+
+
+class ClassifyResponse(BaseModel):
+    """Response schema for the unified `/classify` endpoint.
+
+    Contains predictions for all tasks relevant to the inferred rock type. Each value is either a single
+    class name (single-label tasks) or a list of class names (multi-label tasks such as accessory_components,
+    debris, grain_angularity, grain_shape, mineral_components, and organic_components).
+
+    Consolidated rock tasks: lithology, alteration_degree_consolidated, cementation, color, mineral_components.
+    Unconsolidated sediment tasks: en_main, uscs, debris, color, grain_angularity, grain_shape,
+        organic_components, accessory_components.
+    """
+
+    predictions: dict[str, str | list[str]] = Field(
+        ...,
+        description=(
+            "Mapping of task name to predicted class name(s). "
+            "Single-label tasks return a string; multi-label tasks return a list of strings."
+        ),
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "predictions": {
+                    "en_main": "sa",
+                    "uscs": "SC",
+                    "debris": ["not_specified"],
+                    "color": "beige",
+                    "grain_angularity": ["angular"],
+                    "grain_shape": ["platy", "elongated"],
+                    "organic_components": ["undifferenciated_organic_material", "remains_of_wood"],
+                    "accessory_components": ["not_specified"],
+                }
+            }
+        }
+    )
+
+
+########################################################################################################################
+### Classify lithology schema (legacy — kept for the deprecated /classify_lithology endpoint)
 ########################################################################################################################
 
 
