@@ -10,7 +10,7 @@ ENV SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION
 WORKDIR /app
 COPY pyproject.toml README.md uv.lock /app/
 
-# Install all dependencies including deep-learning extras into a virtualenv.
+# Install all dependencies including deep-learning-cpu extras into a virtualenv.
 # --no-dev: exclude development dependencies
 # --no-install-project: skip building and installing the project package itself
 # --compile: generate *.pyc files to lower memory load at startup
