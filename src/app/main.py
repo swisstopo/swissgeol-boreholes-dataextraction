@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from mangum import Mangum
 
 import app.common.log as log
-from app.api.v1.endpoints.lithology_classification import load_models
+from app.api.v1.endpoints.classify_all import load_models
 from app.api.v1.router import router as v1_router
 from app.common.log import get_app_logger
 
@@ -30,9 +30,7 @@ async def lifespan(app: FastAPI):
     if bert_enabled:
         app.state.bert_models = load_models()
     else:
-        logger.info(
-            "BERT_ENABLED=false — skipping model loading. The /classify_lithology endpoint will be unavailable."
-        )
+        logger.info("BERT_ENABLED=false — skipping model loading. The /classify endpoint will be unavailable.")
         app.state.bert_models = None
     yield
 

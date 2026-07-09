@@ -38,7 +38,7 @@ MODELS: list[tuple[str, Path]] = [
     ("swissgeol/lithology", Path("models/lithology_head")),
     ("swissgeol/mineral_components", Path("models/mineral_components_head")),
     ("swissgeol/organic_components", Path("models/organic_components_head")),
-    ("swissgeol/ucsc", Path("models/ucsc_head")),
+    ("swissgeol/uscs", Path("models/uscs_head")),
 ]
 
 BACKBONE_DIR = Path("models/backbone")

@@ -4,15 +4,15 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from app.api.v1.endpoints.bounding_boxes import bounding_boxes
+from app.api.v1.endpoints.classify_all import classify
 from app.api.v1.endpoints.create_pngs import create_pngs
 from app.api.v1.endpoints.extract_data import extract_data
 from app.api.v1.endpoints.extract_stratigraphy import extract_stratigraphy
-from app.api.v1.endpoints.lithology_classification import classify_lithology
 from app.common.schemas import (
     BoundingBoxesRequest,
     BoundingBoxesResponse,
-    ClassifyLithologyRequest,
-    ClassifyLithologyResponse,
+    ClassifyRequest,
+    ClassifyResponse,
     ExtractCoordinatesResponse,
     ExtractDataRequest,
     ExtractNumberResponse,
@@ -221,28 +221,41 @@ def post_extract_stratigraphy(request: ExtractStratigraphyRequest) -> ExtractStr
 
 
 ####################################################################################################
-### Classify Lithology
+### Classify (unified multi-task)
 ####################################################################################################
 @router.post(
-    "/classify_lithology",
-    tags=["classify_lithology"],
-    response_model=ClassifyLithologyResponse,
+    "/classify",
+    tags=["classify"],
+    response_model=ClassifyResponse,
     responses={
         400: {"model": BadRequestResponse, "description": "Bad request"},
         500: {"model": BadRequestResponse, "description": "Internal server error"},
         503: {"model": BadRequestResponse, "description": "BERT models not loaded (set BERT_ENABLED=true)"},
     },
 )
-def post_classify_lithology(request: ClassifyLithologyRequest, http_request: Request) -> ClassifyLithologyResponse:
-    """Classify a plain-text material description using the trained BERT model.
+def post_classify(request: ClassifyRequest, http_request: Request) -> ClassifyResponse:
+    """Classify a plain-text material description across all relevant tasks in one forward pass.
+
+    The backbone embedding is computed once from the description, then fed independently into each
+    task-specific classification head. The lithology head determines whether the material is consolidated
+    or unconsolidated; only tasks relevant to that rock type are returned.
 
     ### Request Body
-    - **description**: Plain-text material description to classify (e.g. `"Mergel, grau, laminiert"`).
-    - **classification_system**: Target system — one of `'lithology'` or `'en_main'`. Defaults to
-    `'lithology'`.
+    - **description**: Plain-text material description (e.g. `"schwach tonig-siltiger Sand und Kies,
+      brau-beige, Komponenten vorw. eckig"`).
 
     ### Returns
-    - **class_name**: Predicted class name from the selected classification system (e.g. `"Marlstone"`).
+    - **predictions**: Mapping of task name → predicted class name(s).
+      - Single-label tasks (e.g. `en_main`, `uscs`, `color`) return a string.
+      - Multi-label tasks (e.g. `grain_angularity`, `grain_shape`, `organic_components`,
+        `accessory_components`, `debris`, `mineral_components`) return a list of strings.
+
+    ### Consolidated rock tasks
+    `lithology`, `alteration_degree_consolidated`, `cementation`, `color`, `mineral_components`
+
+    ### Unconsolidated sediment tasks
+    `en_main`, `uscs`, `debris`, `color`, `grain_angularity`, `grain_shape`, `organic_components`,
+    `accessory_components`
 
     ### Status Codes
     - **200 OK**: Classification completed successfully.
@@ -255,4 +268,4 @@ def post_classify_lithology(request: ClassifyLithologyRequest, http_request: Req
             status_code=503,
             detail="Classification endpoint is disabled. Set BERT_ENABLED=true to enable BERT model loading.",
         )
-    return classify_lithology(request, http_request.app.state.bert_models)
+    return classify(request, http_request.app.state.bert_models)

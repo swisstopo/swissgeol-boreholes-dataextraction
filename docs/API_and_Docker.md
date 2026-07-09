@@ -61,10 +61,10 @@ To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is
 
 ## Classification Model Configuration
 
-The `/api/V1/classify_lithology` endpoint requires fine-tuned BERT models. The models follow a split backbone/head architecture:
+The `/api/V1/classify` endpoint requires fine-tuned BERT models. The models follow a split backbone/head architecture:
 
 - **Backbone** (`backbone.safetensors`) — shared frozen backbone used across all classification systems
-- **Head** — task-specific model head for each classification system (e.g. `en_main`, `lithology`)
+- **Heads** — one task-specific head per classification system (e.g. `lithology`, `en_main`, `uscs`, `color`, …)
 
 Published models are available on [HuggingFace](https://huggingface.co/swissgeol). During `docker build`, the models are downloaded automatically, split into backbone and heads, and baked into the image — no manual download is needed.
 
@@ -75,7 +75,24 @@ docker pull ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:latest
 docker run -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:latest
 ```
 
-To run without loading the BERT models (extraction endpoints only, saves memory), set `BERT_ENABLED=false`. The `/classify_lithology` endpoint will return HTTP 503 in this case.
+To run without loading the BERT models (extraction endpoints only, saves memory), set `BERT_ENABLED=false`. The `/classify` endpoint will return HTTP 503 in this case.
+
+### Unified `/classify` endpoint
+
+`POST /api/V1/classify` accepts a plain-text material description and returns predictions for all tasks
+relevant to the inferred rock type in a single forward pass:
+
+1. The shared backbone embedding is computed **once** from the description.
+2. The `lithology` head determines whether the material is **consolidated** or **unconsolidated**.
+3. Each task-specific head runs independently on the same embedding.
+4. Only tasks relevant to the inferred rock type are returned.
+
+**Consolidated rock** tasks: `lithology`, `alteration_degree_consolidated`, `cementation`, `color`, `mineral_components`
+
+**Unconsolidated sediment** tasks: `en_main`, `uscs`, `debris`, `color`, `grain_angularity`, `grain_shape`, `organic_components`, `accessory_components`
+
+Single-label tasks (e.g. `lithology`, `en_main`, `color`) return a string; multi-label tasks (e.g.
+`mineral_components`, `grain_angularity`, `organic_components`) return a list of strings.
 
 
 ## Build API as Local Docker Image
