@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
-
-import psutil
 
 from app.common.schemas import ClassifyRequest, ClassifyResponse
 
@@ -96,9 +93,6 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
     """
     from classification.utils.datasets.lithology import LithologySystem
 
-    _proc = psutil.Process(os.getpid())
-    _mem_before = _proc.memory_info().rss / 1024**2
-
     # Step 1: shared backbone (layers 0–10) — runs once regardless of how many task heads follow.
     lithology_model = bert_models["lithology"]
     shared_hidden_states, extended_mask = lithology_model.compute_shared_embedding(request.description)
@@ -121,8 +115,5 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
             predictions[task_name] = [c.name for c in classes]
         else:
             predictions[task_name] = classes[0].name
-
-    _mem_after = _proc.memory_info().rss / 1024**2
-    logger.info(f"RSS memory: {_mem_before:.1f} MB → {_mem_after:.1f} MB (Δ {_mem_after - _mem_before:+.1f} MB)")
 
     return ClassifyResponse(predictions=predictions)
