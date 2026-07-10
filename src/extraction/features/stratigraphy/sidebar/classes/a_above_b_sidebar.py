@@ -43,22 +43,6 @@ class AAboveBSidebar(DepthColumEntrySidebar):
         if self.unfiltered_entries is None:
             self.unfiltered_entries = self.entries
 
-    def pearson_correlation_coef(self) -> float:
-        # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with
-        # the line of the corresponding layer boundary.
-        positions = np.array([entry.rect.y1 for entry in self.entries])
-        entries = np.array([entry.value for entry in self.entries])
-
-        std_positions = np.std(positions)
-        std_entries = np.std(entries)
-        if std_positions == 0 or std_entries == 0:
-            return 0
-
-        # We calculate the Pearson correlation coefficient manually
-        # to avoid redundant standard deviation calculations that would occur with np.corrcoef.
-        covariance = np.mean((positions - np.mean(positions)) * (entries - np.mean(entries)))
-        return covariance / (std_positions * std_entries)
-
     def remove_entry_by_correlation_gradient(self) -> AAboveBSidebar | None:
         if len(self.entries) < 3:
             return None

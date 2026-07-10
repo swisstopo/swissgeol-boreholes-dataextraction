@@ -3,6 +3,7 @@
 import dataclasses
 
 import fastquadtree
+import numpy as np
 
 from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarNoise, noise_count
@@ -22,7 +23,7 @@ class AAboveBSidebarValidator:
     noise_count_threshold: float
     noise_count_offset: int
 
-    def is_valid(self, sidebar_noise: SidebarNoise[AAboveBSidebar], corr_coef_threshold: float = 0.95) -> bool:
+    def is_valid(self, sidebar_noise: SidebarNoise[AAboveBSidebar]) -> bool:
         """Checks whether the sidebar is valid.
 
         The sidebar is considered valid if:
@@ -56,9 +57,22 @@ class AAboveBSidebarValidator:
         if not sidebar.is_strictly_increasing():
             return False
 
-        corr_coef = sidebar.pearson_correlation_coef()
+        linear_fit_loss = sidebar.linear_fit_loss()
+        avg_line_height = sum(entry.rect.height for entry in sidebar.entries) / len(sidebar.entries)
+        slopes = []
+        for index, entry in enumerate(sidebar.entries[:-1]):
+            next_entry = sidebar.entries[index + 1]
+            y_diff = next_entry.rect.y1 - entry.rect.y1
+            value_diff = next_entry.value - entry.value
+            if y_diff > 0:
+                slopes.append(value_diff / y_diff)
 
-        return corr_coef and corr_coef > corr_coef_threshold
+        if len(slopes) < 2:
+            return False
+
+        # it's acceptable if on average, every value is off by at most the height of the text of that value
+        acceptable_loss = (avg_line_height * np.median(slopes)) ** 2
+        return linear_fit_loss <= acceptable_loss
 
     def reduce_until_valid(
         self, sidebar_noise: SidebarNoise[AAboveBSidebar], line_rtree: fastquadtree.RectQuadTreeObjects
