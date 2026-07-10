@@ -251,11 +251,10 @@ def post_classify(request: ClassifyRequest, http_request: Request) -> ClassifyRe
         `accessory_components`, `debris`, `mineral_components`) return a list of strings.
 
     ### Consolidated rock tasks
-    `lithology`, `alteration_degree_consolidated`, `cementation`, `color`, `mineral_components`
+    `lithology`, `alteration_degree_consolidated`, `cementation`, `color`, `mineral_components`, `accessory_components`
 
     ### Unconsolidated sediment tasks
     `en_main`, `uscs`, `debris`, `color`, `grain_angularity`, `grain_shape`, `organic_components`,
-    `accessory_components`
 
     ### Status Codes
     - **200 OK**: Classification completed successfully.

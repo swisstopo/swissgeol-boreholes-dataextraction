@@ -831,9 +831,9 @@ class ClassifyResponse(BaseModel):
     class name (single-label tasks) or a list of class names (multi-label tasks such as accessory_components,
     debris, grain_angularity, grain_shape, mineral_components, and organic_components).
 
-    Consolidated rock tasks: lithology, alteration_degree_consolidated, cementation, color, mineral_components.
-    Unconsolidated sediment tasks: en_main, uscs, debris, color, grain_angularity, grain_shape,
-        organic_components, accessory_components.
+    Consolidated rock tasks: lithology, alteration_degree_consolidated, cementation, color, mineral_components,
+        accessory_components.
+    Unconsolidated sediment tasks: en_main, uscs, debris, color, grain_angularity, grain_shape, organic_components.
     """
 
     predictions: dict[str, str | list[str]] = Field(
@@ -855,7 +855,6 @@ class ClassifyResponse(BaseModel):
                     "grain_angularity": ["angular"],
                     "grain_shape": ["platy", "elongated"],
                     "organic_components": ["undifferenciated_organic_material", "remains_of_wood"],
-                    "accessory_components": ["not_specified"],
                 }
             }
         }

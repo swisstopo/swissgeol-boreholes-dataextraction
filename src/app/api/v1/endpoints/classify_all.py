@@ -38,6 +38,7 @@ _CONSOLIDATED_TASKS: frozenset[str] = frozenset(
         "cementation",
         "color",
         "mineral_components",
+        "accessory_components",
     }
 )
 
@@ -51,7 +52,6 @@ _UNCONSOLIDATED_TASKS: frozenset[str] = frozenset(
         "grain_angularity",
         "grain_shape",
         "organic_components",
-        "accessory_components",
     }
 )
 
