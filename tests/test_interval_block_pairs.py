@@ -9,7 +9,7 @@ import pymupdf
 import pytest
 
 from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
-from extraction.features.stratigraphy.sidebarentry.sidebar_entry import DepthColumnEntry
+from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
 from extraction.utils.dynamic_matching import IntervalToLinesDP
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
 

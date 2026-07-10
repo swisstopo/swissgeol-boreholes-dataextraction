@@ -28,6 +28,8 @@ def test_depth_column_entries():  # noqa: D103
         TextWord(pymupdf.Rect(0, 8, 5, 9), "60.", PAGE_NUMBER),
         TextWord(pymupdf.Rect(0, 10, 5, 11), "-70m", PAGE_NUMBER),
         TextWord(pymupdf.Rect(0, 12, 5, 13), "word.", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(0, 14, 5, 15), "412müM.", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(0, 16, 5, 17), "144mm", PAGE_NUMBER),
     ]
     entries = DepthColumnEntryExtractor.find_in_words(all_words)
     assert len(entries) == 7, "There should be 7 entries"

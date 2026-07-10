@@ -2,7 +2,7 @@
 
 import pymupdf
 
-from extraction.features.stratigraphy.sidebarentry.sidebar_entry import DepthColumnEntry
+from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
 
 
 def test_from_string_value():

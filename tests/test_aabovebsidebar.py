@@ -8,7 +8,7 @@ from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import (
     generate_alternatives,
 )
 from extraction.features.stratigraphy.sidebar.extractor.a_above_b_sidebar_extractor import AAboveBSidebarExtractor
-from extraction.features.stratigraphy.sidebarentry.sidebar_entry import DepthColumnEntry
+from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
 
 
 @pytest.mark.parametrize(
