@@ -1,12 +1,12 @@
 """Contains the main extraction pipeline for stratigraphy."""
 
 import logging
-import re
 
 import fastquadtree
 import pymupdf
 
 from extraction.features.stratigraphy.depth_description_alignment import match_lines_to_interval
+from extraction.features.stratigraphy.find_material_descriptions import MaterialDescriptionExtractor
 from extraction.features.stratigraphy.interval.interval import IntervalBlockPair
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
@@ -40,7 +40,6 @@ from extraction.features.stratigraphy.sidebar.extractor.protocol_sidebar_extract
 from extraction.features.stratigraphy.sidebar.extractor.spulprobe_sidebar_extractor import SpulprobeSidebarExtractor
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.line_detection import find_diags_ending_in_zone
-from swissgeol_doc_processing.geometry.util import x_overlap, x_overlap_significant_smallest
 from swissgeol_doc_processing.text.find_description import get_description_lines
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
 from swissgeol_doc_processing.text.textblock import (
@@ -73,7 +72,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         page_width: float,
         page_height: float,
         line_detection_params: dict,
-        analytics: MatchingParamsAnalytics = None,
+        analytics: MatchingParamsAnalytics | None = None,
         **matching_params: dict,
     ):
         """Creates a new MaterialDescriptionRectWithSidebarExtractor.
@@ -396,155 +395,15 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Returns:
             list[pymupdf.Rect]: A list of candidate rectangles for material descriptions.
         """
-        if sidebar:
-            above_sidebar = [
-                line for line in self.lines if x_overlap(line.rect, sidebar.rect) and line.rect.y0 < sidebar.rect.y0
-            ]
-
-            min_y0 = max(line.rect.y0 for line in above_sidebar) if above_sidebar else -1
-
-            def check_y0_condition(y0):
-                return y0 > min_y0 and y0 < sidebar.rect.y1
-        else:
-
-            def check_y0_condition(y0):
-                return True
-
         horizontal_text_lines = [line for line in self.lines if line.rect.width > line.rect.height]
-        candidate_description = [line for line in horizontal_text_lines if check_y0_condition(line.rect.y0)]
-
-        is_not_description = [
-            line
-            for line in candidate_description
-            if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=True)
-        ]
-        is_description = [
-            line
-            for line in candidate_description
-            if line.is_description(self.matching_params, self.language, self.analytics, search_excluding=False)
-            and line not in is_not_description
-        ]
-
-        if len(candidate_description) == 0:
-            return []
-
-        description_clusters: list[list[TextLine]] = []
-        while len(is_description) > 0:
-            # 0.4 instead of 0.5 slightly improves geoquat/validation/A76.pdf
-            coverage_by_generating_line = [
-                [other for other in is_description if x_overlap_significant_smallest(line.rect, other.rect, 0.4)]
-                for line in is_description
-            ]
-
-            def filter_coverage(coverage: list[TextLine]) -> list[TextLine]:
-                if coverage:
-                    min_x0 = min(line.rect.x0 for line in coverage)
-                    max_x1 = max(line.rect.x1 for line in coverage)
-                    x0_threshold = max_x1 - 0.4 * (max_x1 - min_x0)
-                    return [line for line in coverage if line.rect.x0 < x0_threshold]
-                else:
-                    return []
-
-            coverage_by_generating_line = [filter_coverage(coverage) for coverage in coverage_by_generating_line]
-            max_coverage = max(coverage_by_generating_line, key=len)
-            description_clusters.append(max_coverage)
-            is_description = [line for line in is_description if line not in max_coverage]
-
-        candidate_rects = []
-        sorted_above = sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)
-
-        for cluster in description_clusters:
-            best_y0 = min([line.rect.y0 for line in cluster])
-            best_y1 = max([line.rect.y1 for line in cluster])
-
-            min_description_x0 = min([line.rect.x0 - 0.01 * line.rect.width for line in cluster])
-            max_description_x0 = max([line.rect.x0 + 0.2 * line.rect.width for line in cluster])
-            good_lines = [
-                line
-                for line in candidate_description
-                if line.rect.y0 >= best_y0 and line.rect.y1 <= best_y1
-                if min_description_x0 < line.rect.x0 < max_description_x0
-            ]
-            best_x0 = min([line.rect.x0 for line in good_lines])
-            best_x1 = max([line.rect.x1 for line in good_lines])
-
-            # check that no lines that have excluded words are contained in the rect
-            cluster_rect = pymupdf.Rect(best_x0, best_y0, best_x1, best_y1)
-            non_description_in_rect = [
-                excl_line
-                for excl_line in is_not_description
-                if x_overlap_significant_smallest(excl_line.rect, cluster_rect, 0.5)
-                and best_y0 < excl_line.rect.y0
-                and excl_line.rect.y1 < best_y1
-            ]
-
-            # the rect is valid only when description lines are clearly more numerous than non-description lines.
-            if len(non_description_in_rect) / len(good_lines) > self.matching_params["non_description_lines_ratio"]:
-                continue
-
-            # expand to include entire last block
-            def is_below(best_x0, best_y1, line: TextLine, x_tolerance: float = 5, line_gap: float = 10):
-                return (
-                    (line.rect.x0 > best_x0 - x_tolerance)
-                    and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
-                    and (line.rect.y0 < best_y1 + line_gap)
-                    and (line.rect.y1 > best_y1)
-                )
-
-            def is_above(best_x0, best_y0, line: TextLine, x_tolerance: float = 5, line_gap: float = 10):
-                return (
-                    (line.rect.x0 > best_x0 - x_tolerance)
-                    and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
-                    and (line.rect.y1 > best_y0 - line_gap)
-                    and (line.rect.y0 < best_y0)
-                )
-
-            continue_search = True
-            while continue_search:
-                line = next((line for line in horizontal_text_lines if is_below(best_x0, best_y1, line)), None)
-                if line:
-                    best_x0 = min(best_x0, line.rect.x0)
-                    best_x1 = max(best_x1, line.rect.x1)
-                    best_y1 = line.rect.y1
-                else:
-                    continue_search = False
-
-            # Expand upward one line at a time.
-            # With sidebar: stop at the topmost entry's y-level (avoids column headers above first depth entry).
-            # Without sidebar: stop when candidate has sibling lines outside the column (header row signal).
-            min_y0_limit = (
-                min(e.rect.y0 for e in sidebar.entries) + 5
-                if sidebar is not None and sidebar.entries
-                else -float("inf")
-            )
-            while best_y0 > min_y0_limit:
-                next_line = next(
-                    (
-                        desc_line
-                        for desc_line in sorted_above
-                        if is_above(best_x0, best_y0, desc_line)
-                        and not re.fullmatch(r"[\d\s.,\-/]+", desc_line.text.strip())
-                        and (
-                            sidebar is not None
-                            or not any(
-                                other
-                                for other in horizontal_text_lines
-                                if other is not desc_line
-                                and abs(other.rect.y0 - desc_line.rect.y0) < desc_line.rect.height
-                                and (other.rect.x1 < best_x0 - 10 or other.rect.x0 > best_x1 + 10)
-                            )
-                        )
-                    ),
-                    None,
-                )
-                if next_line is None:
-                    break
-                best_x0 = min(best_x0, next_line.rect.x0)
-                best_x1 = max(best_x1, next_line.rect.x1)
-                best_y0 = next_line.rect.y0
-
-            candidate_rects.append(pymupdf.Rect(best_x0, best_y0, best_x1, best_y1))
-        return candidate_rects
+        extractor = MaterialDescriptionExtractor(
+            sidebar,
+            horizontal_text_lines=horizontal_text_lines,
+            language=self.language,
+            matching_params=self.matching_params,
+            analytics=self.analytics,
+        )
+        return extractor.find_candidates()
 
     def _find_material_description_column(self, sidebar: Sidebar | None) -> pymupdf.Rect | None:
         """Find the best material description column for a given depth column.
