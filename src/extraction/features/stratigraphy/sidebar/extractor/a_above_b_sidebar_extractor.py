@@ -1,27 +1,19 @@
 """Module for finding AAboveBSidebar instances in a borehole profile."""
 
 import statistics
-from dataclasses import dataclass
 
 import fastquadtree
 import pymupdf
 
-from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
 from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
 from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarNoise, noise_count
 from extraction.features.stratigraphy.sidebar.utils.a_above_b_sidebar_validator import AAboveBSidebarValidator
 from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
+from extraction.features.stratigraphy.sidebar.utils.entries_per_table import TableEntries
+from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
 from swissgeol_doc_processing.text.textline import TextWord
 from swissgeol_doc_processing.utils.table_detection import TableStructure
-
-
-@dataclass
-class TableEntries:
-    """An optional table structure along with all possible depth column entries within this structure."""
-
-    table: TableStructure | None
-    entries: list[DepthColumnEntry]
 
 
 class AAboveBSidebarExtractor:
@@ -96,28 +88,16 @@ class AAboveBSidebarExtractor:
         # Group entries that are contained in the same table-like structure. We avoid clusters that break outside of
         # a table-like structure to be more computationally efficient in clustering, and to avoid clusters that go
         # across several borehole profiles on the same page (e.g. 269126143-bp.pdf).
-        entries_per_table = {index: [] for index, table in enumerate(table_structures)}
-        entries_no_table = []
-        for entry in DepthColumnEntryExtractor.find_in_words(all_words):
-            if all((entry.rect & used_rect).is_empty for used_rect in used_entry_rects):
-                table_found = False
-                for index, table in enumerate(table_structures):
-                    if table.bounding_rect.intersects(entry.rect):
-                        table_found = True
-                        entries_per_table[index].append(entry)
-                if not table_found:
-                    entries_no_table.append(entry)
-
-        entry_partitions = [
-            TableEntries(table_structures[table_index], entries) for table_index, entries in entries_per_table.items()
+        filtered_entries = [
+            entry
+            for entry in DepthColumnEntryExtractor.find_in_words(all_words)
+            if all((entry.rect & used_rect).is_empty for used_rect in used_entry_rects)
         ]
-        entry_partitions += [TableEntries(table=None, entries=entries_no_table)]
+        entry_partitions = TableEntries.partition_entries(table_structures, filtered_entries)
         clusters = [
             cluster
             for entry_partition in entry_partitions
-            for cluster in Cluster[DepthColumnEntry].create_clusters(
-                entry_partition.entries, lambda entry: entry.rect, entry_partition.table
-            )
+            for cluster in Cluster[DepthColumnEntry].create_clusters(entry_partition.entries, entry_partition.table)
         ]
 
         excluded_entries = {
@@ -139,7 +119,7 @@ class AAboveBSidebarExtractor:
                 cluster
                 for entry_partition in entry_partitions
                 for cluster in Cluster[DepthColumnEntry].create_clusters(
-                    entry_partition.entries, lambda entry: entry.rect, entry_partition.table
+                    entry_partition.entries, entry_partition.table
                 )
             ]
 

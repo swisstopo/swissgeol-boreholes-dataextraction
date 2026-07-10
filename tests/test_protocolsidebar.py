@@ -2,10 +2,10 @@
 
 import pymupdf
 
-from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
 from extraction.features.stratigraphy.sidebar.classes.protocol_sidebar import (
     ProtocolSidebar,
 )
+from extraction.features.stratigraphy.sidebarentry.sidebar_entry import DepthColumnEntry
 
 
 def test_trim_trailing_duplicate_depths():

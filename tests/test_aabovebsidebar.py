@@ -3,12 +3,12 @@
 import pymupdf
 import pytest
 
-from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
 from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import (
     AAboveBSidebar,
     generate_alternatives,
 )
 from extraction.features.stratigraphy.sidebar.extractor.a_above_b_sidebar_extractor import AAboveBSidebarExtractor
+from extraction.features.stratigraphy.sidebarentry.sidebar_entry import DepthColumnEntry
 
 
 @pytest.mark.parametrize(

@@ -11,12 +11,13 @@ from extraction.features.stratigraphy.interval.partitions_and_sublayers import (
     set_interval_hierarchy_flags,
 )
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
+from extraction.features.stratigraphy.sidebarentry.interval_entry import IntervalEntry
 from swissgeol_doc_processing.text.textblock import TextBlock
 from swissgeol_doc_processing.text.textline import TextLine
 
 
 @dataclass
-class AToBSidebar(Sidebar[AToBInterval]):
+class AToBSidebar(Sidebar[IntervalEntry]):
     """Represents a sidebar where the upper and lower depths of each layer are explicitly specified.
 
     Example::
@@ -26,7 +27,7 @@ class AToBSidebar(Sidebar[AToBInterval]):
         ...
     """
 
-    entries: list[AToBInterval]
+    entries: list[IntervalEntry]
 
     kind: ClassVar[str] = "a_to_b"
 
@@ -37,6 +38,10 @@ class AToBSidebar(Sidebar[AToBInterval]):
             str: The object as a string.
         """
         return "AToBSidebar({})".format(", ".join([str(entry) for entry in self.entries]))
+
+    @property
+    def intervals(self) -> list[AToBInterval]:
+        return [entry.value for entry in self.entries]
 
     def break_on_mismatch(self) -> list[AToBSidebar]:
         """Breaks the sidebar into segments where the depths clearly don't belong to the same boreholes.
@@ -50,14 +55,14 @@ class AToBSidebar(Sidebar[AToBInterval]):
         Returns:
             list[AToBSidebar]: A list of depth column segments.
         """
-        segments = []
+        segments: list[list[IntervalEntry]] = []
         segment_start = 0
         index = 0
-        while index < len(self.entries):
+        while index < len(self.intervals):
             # We allow sublayers with depths lower than the end of the current entry, as long as the next layer
             # has a start depth that exactly matches the current end depth.
-            current_interval = self.entries[index]
-            sublayer_count = number_of_subintervals(current_interval, self.entries[index + 1 :])
+            current_interval = self.entries[index].value
+            sublayer_count = number_of_subintervals(current_interval, self.intervals[index + 1 :])
 
             # It seems reasonable that a single "parent" layer should not have more than 8 sublayers. This check
             # ensures that when e.g. a scale "1:100" is misinterpreted as a parent layer from 1m to 100m, the entire
@@ -68,7 +73,7 @@ class AToBSidebar(Sidebar[AToBInterval]):
                 if index + sublayer_count + 1 >= len(self.entries):
                     depths_ok = True
                 else:
-                    next_interval = self.entries[index + sublayer_count + 1]
+                    next_interval = self.intervals[index + sublayer_count + 1]
                     if sublayer_count == 0:
                         # no subintervals, the next interval must start deeper or at the same depth than the end of
                         # the current interval
@@ -94,7 +99,7 @@ class AToBSidebar(Sidebar[AToBInterval]):
     def process(self) -> list[AToBSidebar]:
         sidebar_list = []
         for segment in self.break_on_mismatch():
-            set_interval_hierarchy_flags(segment.entries)
+            set_interval_hierarchy_flags(segment.intervals)
             sidebar_list.append(AToBSidebar(segment.entries))
 
         return sidebar_list
@@ -108,14 +113,14 @@ class AToBSidebar(Sidebar[AToBInterval]):
         Returns:
             bool: True if the depth column is valid, False otherwise.
         """
-        filtered_entries = [entry for entry in self.entries if not entry.skip_interval]
+        filtered_entries = [entry for entry in self.entries if not entry.value.skip_interval]
         if len(filtered_entries) <= 1:
             return False
 
         # At least 50% of the "end" values must match the subsequent "start" value (e.g. 2-5m, 5-9m).
         sequence_matches_count = 0
         for index, entry in enumerate(filtered_entries):
-            if index >= 1 and filtered_entries[index - 1].end.value == entry.start.value:
+            if index >= 1 and filtered_entries[index - 1].end_value == entry.start_value:
                 sequence_matches_count += 1
 
         return sequence_matches_count / (len(filtered_entries) - 1) >= 0.5
@@ -144,11 +149,13 @@ class AToBSidebar(Sidebar[AToBInterval]):
         Returns:
             list[IntervalZone]: A list of interval zones.
         """
-        filtered_entries = [entry for entry in self.entries if not entry.is_sublayer]
-        filtered_entries = [entry for entry in filtered_entries if not (entry.start is None and entry.end.value == 0)]
-        if not filtered_entries:
+        filtered_intervals = [interval for interval in self.intervals if not interval.is_sublayer]
+        filtered_intervals = [
+            interval for interval in filtered_intervals if not (interval.start is None and interval.end.value == 0)
+        ]
+        if not filtered_intervals:
             return []
-        return self.get_zones_from_entries(filtered_entries, include_open_ended=True)
+        return self.get_zones_from_entries(filtered_intervals, include_open_ended=True)
 
     def post_processing(self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]):
         """Post-process the matched interval zones and description lines into IntervalBlockPairs.

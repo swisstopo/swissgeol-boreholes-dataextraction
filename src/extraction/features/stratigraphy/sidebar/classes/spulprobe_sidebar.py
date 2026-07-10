@@ -2,9 +2,9 @@
 
 from typing import ClassVar
 
-from extraction.features.stratigraphy.base.sidebar_entry import SpulprobeEntry
 from extraction.features.stratigraphy.interval.interval import Interval, IntervalZone
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
+from extraction.features.stratigraphy.sidebarentry.sidebar_entry import SpulprobeEntry
 from swissgeol_doc_processing.text.textline import TextLine
 
 

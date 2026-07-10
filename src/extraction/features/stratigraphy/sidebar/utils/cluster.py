@@ -1,16 +1,16 @@
 """Module for clustering DepthColumnEntries when extracting sidebars."""
 
 import dataclasses
-from collections.abc import Callable
 from typing import Generic, Self, TypeVar
 
 import pymupdf
 
+from extraction.features.stratigraphy.sidebarentry.sidebar_entry import SidebarEntry
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_largest, x_overlap_significant_smallest
 from swissgeol_doc_processing.utils.table_detection import TableStructure
 
-EntryT = TypeVar("EntryT")
+EntryT = TypeVar("EntryT", bound=SidebarEntry)
 
 
 @dataclasses.dataclass
@@ -24,9 +24,7 @@ class VerticalLinePartition(Generic[EntryT]):
     right_all: set[EntryT]
 
     @classmethod
-    def from_line(
-        cls, line: Line, entries: list[EntryT], entry_to_rect: Callable[[EntryT], pymupdf.Rect]
-    ) -> "VerticalLinePartition[EntryT]":
+    def from_line(cls, line: Line, entries: list[EntryT]) -> "VerticalLinePartition[EntryT]":
         left = set()
         right = set()
         left_all = set()
@@ -34,7 +32,7 @@ class VerticalLinePartition(Generic[EntryT]):
         line_y0 = min(line.start.y, line.end.y)
         line_y1 = max(line.start.y, line.end.y)
         for entry in entries:
-            rect = entry_to_rect(entry)
+            rect = entry.rect
             is_inside = line_y0 <= rect.y1 and rect.y0 <= line_y1
             entry_middle = (rect.top_left + rect.bottom_right) / 2
             if entry_middle.x < line.x_from_y(entry_middle.y):
@@ -67,20 +65,19 @@ class Cluster(Generic[EntryT]):
     def create_clusters(
         cls,
         entries: list[EntryT],
-        entry_to_rect: Callable[[EntryT], pymupdf.Rect],
         table_structure: TableStructure | None,
         allow_size_two: bool = False,
     ) -> list[Self]:
         def midpoint(entry: EntryT) -> Point:
-            rect = entry_to_rect(entry)
+            rect = entry.rect
             return Point((rect.x0 + rect.x1) / 2, (rect.y0 + rect.y1) / 2)
 
         def left_edge(entry: EntryT) -> Point:
-            rect = entry_to_rect(entry)
+            rect = entry.rect
             return Point(rect.x0, (rect.y0 + rect.y1) / 2)
 
         def right_edge(entry: EntryT) -> Point:
-            rect = entry_to_rect(entry)
+            rect = entry.rect
             return Point(rect.x1, (rect.y0 + rect.y1) / 2)
 
         max_skew_degrees = 5
@@ -93,8 +90,7 @@ class Cluster(Generic[EntryT]):
         vertical_partitions = []
         if table_structure is not None:
             vertical_partitions = [
-                VerticalLinePartition.from_line(line, entries, entry_to_rect)
-                for line in table_structure.vertical_lines
+                VerticalLinePartition.from_line(line, entries) for line in table_structure.vertical_lines
             ]
 
         # iterate over all possibilities for the topmost entry of a cluster
@@ -118,12 +114,12 @@ class Cluster(Generic[EntryT]):
                         break
 
                 if accepted:
-                    cluster_span = ClusterSpan(entry_to_rect(entry1), entry_to_rect(entry2))
+                    cluster_span = ClusterSpan(entry1.rect, entry2.rect)
 
                     intermediate_entries = []
                     perfect_fits = []
                     for entry3 in entries[index1 + 1 : index2]:
-                        cluster_span_fit = ClusterSpanFit(cluster_span, entry_to_rect(entry3))
+                        cluster_span_fit = ClusterSpanFit(cluster_span, entry3.rect)
                         if cluster_span_fit.perfect_fit():
                             intermediate_entries.append(entry3)
                             perfect_fits.append(entry3)

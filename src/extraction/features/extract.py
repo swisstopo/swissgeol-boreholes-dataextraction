@@ -282,7 +282,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             ]
 
     def _find_layer_identifier_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
-        layer_identifier_sidebars = LayerIdentifierSidebarExtractor.from_lines(self.lines)
+        layer_identifier_sidebars = LayerIdentifierSidebarExtractor.from_lines(self.lines, self.table_structures)
         material_descriptions_sidebar_pairs = []
         for layer_identifier_sidebar in layer_identifier_sidebars:
             material_description_rect = self._find_material_description_column(layer_identifier_sidebar)
@@ -337,14 +337,14 @@ class MaterialDescriptionRectWithSidebarExtractor:
         words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
 
         # create sidebars with noise count
-        spulprobe_sidebars = SpulprobeSidebarExtractor.find_in_lines(self.lines)
+        spulprobe_sidebars = SpulprobeSidebarExtractor.find_in_lines(self.lines, self.table_structures)
         sidebars_noise: list[SidebarNoise] = [
             SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
             for sidebar in spulprobe_sidebars
         ]
         used_entry_rects = {entry.rect for sidebar in spulprobe_sidebars for entry in sidebar.entries}
 
-        a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words)
+        a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words, self.table_structures)
         sidebars_noise.extend(
             [
                 SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
@@ -353,8 +353,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         )
         for column in a_to_b_sidebars:
             for entry in column.entries:
-                used_entry_rects.add(entry.start.rect)
-                used_entry_rects.add(entry.end.rect)
+                used_entry_rects.add(entry.rect)
 
         a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_words(
             words,

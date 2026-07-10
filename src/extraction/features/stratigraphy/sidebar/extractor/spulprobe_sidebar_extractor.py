@@ -4,11 +4,13 @@ import re
 
 import pymupdf
 
-from extraction.features.stratigraphy.base.sidebar_entry import SpulprobeEntry
 from extraction.features.stratigraphy.sidebar.classes.spulprobe_sidebar import SpulprobeSidebar
 from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
+from extraction.features.stratigraphy.sidebar.utils.entries_per_table import TableEntries
+from extraction.features.stratigraphy.sidebarentry.sidebar_entry import SpulprobeEntry
 from swissgeol_doc_processing.geometry.util import compute_outer_rect, y_overlap_significant_smallest
 from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.utils.table_detection import TableStructure
 
 
 class SpulprobeSidebarExtractor:
@@ -51,7 +53,7 @@ class SpulprobeSidebarExtractor:
     @classmethod
     def search_depths_in_lines_on_the_right(
         cls, current_line: TextLine, lines: list[TextLine]
-    ) -> tuple[list[float], pymupdf.Rect]:
+    ) -> tuple[list[float], pymupdf.Rect | None]:
         """Searches for depths in lines that are to the right of the line with the Sp. tag.
 
         Args:
@@ -73,17 +75,23 @@ class SpulprobeSidebarExtractor:
         return [], None
 
     @classmethod
-    def find_in_lines(cls, lines: list[TextLine]) -> list[SpulprobeSidebar]:
+    def find_in_lines(cls, lines: list[TextLine], table_structures: list[TableStructure]) -> list[SpulprobeSidebar]:
         """Find Spulprobe sidebars in the given lines.
 
         Args:
             lines (list[TextLine]): The text lines to search in.
+            table_structures (list[TableStructure]): List of detected table-like structures
 
         Returns:
             list[SpulprobeSidebar]: A list of SpulprobeSidebar objects found in the lines.
         """
         entries = cls.find_spulprobe_entries(lines)
 
-        clusters = Cluster[SpulprobeEntry].create_clusters(entries, lambda entry: entry.rect, table_structure=None)
+        entry_partitions = TableEntries.partition_entries(table_structures, entries)
+        clusters = [
+            cluster
+            for partition in entry_partitions
+            for cluster in Cluster[SpulprobeEntry].create_clusters(partition.entries, table_structure=partition.table)
+        ]
 
         return [SpulprobeSidebar(cluster.entries) for cluster in clusters]

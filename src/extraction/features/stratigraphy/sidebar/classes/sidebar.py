@@ -9,8 +9,8 @@ from typing import ClassVar, Generic, TypeVar
 import fastquadtree
 import pymupdf
 
-from extraction.features.stratigraphy.base.sidebar_entry import SidebarEntry
-from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
+from extraction.features.stratigraphy.interval.interval import AToBInterval, IntervalBlockPair, IntervalZone
+from extraction.features.stratigraphy.sidebarentry.sidebar_entry import SidebarEntry
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_smallest
 from swissgeol_doc_processing.text.textblock import TextBlock
 from swissgeol_doc_processing.text.textline import TextLine
@@ -72,7 +72,7 @@ class Sidebar(abc.ABC, Generic[EntryT]):
         pass
 
     @staticmethod
-    def get_zones_from_entries(entries: list[EntryT], include_open_ended: bool = True):
+    def get_zones_from_entries(entries: list[AToBInterval], include_open_ended: bool = True):
         zones = [
             IntervalZone(entry.rect, next_entry.rect, entry)
             for entry, next_entry in zip(entries, entries[1:], strict=False)
