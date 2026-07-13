@@ -95,25 +95,17 @@ class MaterialDescriptionExtractor:
             is_description = [line for line in is_description if line not in max_coverage]
 
         candidate_rects = []
-        sorted_above = sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)
 
         for cluster in description_clusters:
             bounding_box = self._expand_lines_to_bounding_box(
-                cluster=cluster,
-                candidate_description=candidate_description,
-                is_not_description=is_not_description,
-                sorted_above=sorted_above,
+                cluster=cluster, candidate_description=candidate_description, is_not_description=is_not_description
             )
             if bounding_box is not None:
                 candidate_rects.append(bounding_box)
         return candidate_rects
 
     def _expand_lines_to_bounding_box(
-        self,
-        cluster: list[TextLine],
-        candidate_description: list[TextLine],
-        is_not_description: list[TextLine],
-        sorted_above: list[TextLine],
+        self, cluster: list[TextLine], candidate_description: list[TextLine], is_not_description: list[TextLine]
     ) -> pymupdf.Rect | None:
         best_y0 = min([line.rect.y0 for line in cluster])
         best_y1 = max([line.rect.y1 for line in cluster])
@@ -183,12 +175,19 @@ class MaterialDescriptionExtractor:
                 and (line.rect.y0 < best_y0)
             )
 
-        while line := next(
-            (line for line in self.horizontal_text_lines if can_extend_below(best_x0, best_y1, line)), None
-        ):
+        extension_candidates = [
+            line
+            for line in self.horizontal_text_lines
+            if not line.is_description(self.matching_params, self.language, self.analytics, search_excluding=True)
+        ]
+
+        while line := next((line for line in extension_candidates if can_extend_below(best_x0, best_y1, line)), None):
+            print("below", line.text)
             best_x0 = min(best_x0, line.rect.x0)
             best_x1 = max(best_x1, line.rect.x1)
             best_y1 = line.rect.y1
+
+        sorted_above = sorted(extension_candidates, key=lambda c: c.rect.y0, reverse=True)
 
         while next_line := next(
             (
@@ -209,6 +208,7 @@ class MaterialDescriptionExtractor:
             ),
             None,
         ):
+            print("above", next_line.text)
             best_x0 = min(best_x0, next_line.rect.x0)
             best_x1 = max(best_x1, next_line.rect.x1)
             best_y0 = next_line.rect.y0

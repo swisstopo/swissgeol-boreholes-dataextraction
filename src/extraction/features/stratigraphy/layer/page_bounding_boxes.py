@@ -46,9 +46,9 @@ class MaterialDescriptionRectWithSidebar:
         rect = self.sidebar.rect
         sidebar_top, sidebar_bottom, sidebar_right = rect.y0, rect.y1, rect.x1
         material_left = self.material_description_rect.x0
-        material_top, material_bottom = self.material_description_rect.y0, self.material_description_rect.y1
+        material_top, _ = self.material_description_rect.y0, self.material_description_rect.y1
         x_distance = abs(sidebar_right - material_left)
-        y_distance = abs(sidebar_top - material_top) + abs(sidebar_bottom - material_bottom)
+        y_distance = abs(sidebar_top - material_top)
 
         height = sidebar_bottom - sidebar_top
 
