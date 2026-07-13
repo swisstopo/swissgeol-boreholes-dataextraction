@@ -4,7 +4,7 @@ prompts_file: bedrock/prompts/bedrock_alteration_degree_prompts.yml
 prompt_version: v1
 
 # Pattern file and parameter version
-pattern_file: bedrock/examples/bedrock_alteration_degree_examples.yml
+pattern_file: bedrock/full_examples/bedrock_alteration_degree_examples.yml
 pattern_version: v1
 
 # Tool file

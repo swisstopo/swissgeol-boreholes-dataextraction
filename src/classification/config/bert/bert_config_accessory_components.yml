@@ -9,13 +9,37 @@ training_sets:
   accessory_components:
     classification_system: accessory_components
     ground_truths:
-      - deepwells_ground_truth.json
+      - deepwells_ground_truth_enhanced.json
+      - geoquat_ground_truth_enhanced.json
+      - zurich_ground_truth_enhanced.json
+      - nagra_ground_truth_enhanced.json
+
 
 test_sets:
+  global_accessory_components:
+    classification_system: accessory_components
+    ground_truths:
+      - deepwells_ground_truth_enhanced.json
+      - geoquat_ground_truth_enhanced.json
+      - zurich_ground_truth_enhanced.json
+      - nagra_ground_truth_enhanced.json
   deepwells_accessory_components:
     classification_system: accessory_components
     ground_truths:
-      - deepwells_ground_truth.json
+      - deepwells_ground_truth_enhanced.json
+  geoquat_accessory_components:
+    classification_system: accessory_components
+    ground_truths:
+      - geoquat_ground_truth_enhanced.json
+
+  zurich_accessory_components:
+    classification_system: accessory_components
+    ground_truths:
+      - zurich_ground_truth_enhanced.json
+  nagra_accessory_components:
+    classification_system: accessory_components
+    ground_truths:
+      - nagra_ground_truth_enhanced.json
 
 # Custom Training hyperparameters
 hyperparameters:

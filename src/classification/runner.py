@@ -21,6 +21,7 @@ from classification.utils.data_utils import (
 )
 from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.datasets.classification import (
+    ClassificationSystem,
     GroundTruthBoreholeWithLanguage,
     LayerInformation,
     split_samples,
@@ -45,6 +46,51 @@ class ClassificationOptions:
     classification_system: str
     backbone_path: Path | None = None
     tokenizer_path: Path | None = None
+    predict_all: bool = False
+
+
+def _load_layer_descriptions(
+    file_path: Path | None,
+    classification_system_cls: type[ClassificationSystem],
+    options: ClassificationOptions,
+) -> tuple[list[LayerInformation], bool]:
+    """Load layer descriptions either as predictions or as ground truth (test set).
+
+    Returns:
+        tuple[list[LayerInformation], bool]: The layer descriptions to classify, and whether
+            they came from prediction data (True) or ground truth data (False).
+    """
+    try:
+        logger.info(f"Trying to load data as prediction {file_path} ...")
+        return (
+            classification_system_cls.process(
+                ground_truth=GroundTruthBoreholeWithLanguage.from_predictions(
+                    predictions=read_json_predictions(file_path).file_predictions_list,
+                ),
+                allow_none=True,  # No ground truth label for prediction from extraction
+            ),
+            True,
+        )
+    except Exception:
+        pass
+
+    logger.info(f"Fallback, load data as GT (test set) {file_path} ...")
+    gt_boreholes = GroundTruthBoreholeWithLanguage.from_ground_truth(
+        ground_truth=GroundTruth(file_path).ground_truth,
+    )
+
+    if options.predict_all:
+        logger.info("predict_all=True: classifying all descriptions without evaluation.")
+        return classification_system_cls.process(ground_truth=gt_boreholes, allow_none=True), True
+
+    layer_descriptions_gt = classification_system_cls.process(ground_truth=gt_boreholes)
+    _, _, layer_descriptions = split_samples(layer_descriptions_gt)
+
+    if not layer_descriptions:
+        logger.info("No labeled data found for this classification system. Classifying all descriptions.")
+        return classification_system_cls.process(ground_truth=gt_boreholes, allow_none=True), True
+
+    return layer_descriptions, False
 
 
 def run_classification_predictions(
@@ -72,26 +118,7 @@ def run_classification_predictions(
     classification_system_cls = ExistingClassificationSystems.get_classification_system_type(
         options.classification_system.lower()
     )
-    is_prediction: bool = True
-
-    try:
-        logger.info(f"Trying to load data as prediction {file_path} ...")
-        layer_descriptions = classification_system_cls.process(
-            ground_truth=GroundTruthBoreholeWithLanguage.from_predictions(
-                predictions=read_json_predictions(file_path).file_predictions_list,
-            ),
-            allow_none=True,  # No ground truth label for prediction from extraction
-        )
-
-    except Exception:
-        logger.info(f"Fallback, load data as GT (test set) {file_path} ...")
-        is_prediction = False
-        layer_descriptions_gt = classification_system_cls.process(
-            ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
-                ground_truth=GroundTruth(file_path).ground_truth,
-            )
-        )
-        _, _, layer_descriptions = split_samples(layer_descriptions_gt)
+    layer_descriptions, is_prediction = _load_layer_descriptions(file_path, classification_system_cls, options)
 
     n_documents = len({layer.filename for layer in layer_descriptions})
 
