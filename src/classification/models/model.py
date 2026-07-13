@@ -323,6 +323,7 @@ class BertModel:
                       extended_attention_mask [1, 1, 1, seq_len]).
         """
         tokenized = self.tokenize_text(text)
+        tokenized = {k: v.to(self.model.device) for k, v in tokenized.items()}
         attention_mask = tokenized["attention_mask"]
         extended_mask = self.model.bert.get_extended_attention_mask(attention_mask, attention_mask.shape)
 
@@ -330,6 +331,7 @@ class BertModel:
             input_ids=tokenized["input_ids"],
             token_type_ids=tokenized.get("token_type_ids"),
         )
+
         for layer in self.model.bert.encoder.layer[:11]:  # layers 0–10 (shared backbone)
             hidden_states = layer(hidden_states, attention_mask=extended_mask)[0]
 
