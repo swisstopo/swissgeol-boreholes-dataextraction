@@ -1,4 +1,4 @@
-"""Contains a dataclasses for different types of sidebar entries."""
+"""Contains dataclasses for different types of sidebar entries."""
 
 from __future__ import annotations
 
@@ -22,11 +22,5 @@ class SidebarEntry(abc.ABC, Generic[ValueT], RectWithPageMixin):
 
 class LayerIdentifierEntry(SidebarEntry[str]):
     """Class for a layer identifier entry."""
-
-    pass
-
-
-class SpulprobeEntry(SidebarEntry[float]):
-    """Sidebar entry of type Sp. X m, for boreholes with dicrete sampled depths instead of continued intervals."""
 
     pass

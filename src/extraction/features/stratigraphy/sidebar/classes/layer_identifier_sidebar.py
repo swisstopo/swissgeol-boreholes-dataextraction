@@ -7,7 +7,7 @@ from typing import ClassVar
 import numpy as np
 
 from extraction.features.stratigraphy.interval.a_to_b_interval_extractor import AToBIntervalExtractor
-from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
+from extraction.features.stratigraphy.interval.interval import Interval, IntervalBlockPair, IntervalZone
 from extraction.features.stratigraphy.interval.partitions_and_sublayers import (
     get_optimal_intervals_with_text,
 )
@@ -39,9 +39,10 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         Returns:
             list[IntervalZone]: A list of interval zones.
         """
-        if not self.entries:
-            return []
-        return self.get_zones_from_entries(self.entries, include_open_ended=True)
+        return [
+            IntervalZone(start=entry.rect, end=entry.rect, related_interval=Interval(start=None, end=None))
+            for entry in self.entries
+        ]
 
     @staticmethod
     def dp_scoring_fn(interval_zone: IntervalZone, line: TextLine) -> float:

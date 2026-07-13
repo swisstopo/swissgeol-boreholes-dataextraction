@@ -1,4 +1,4 @@
-"""Module for grouping sidebar entries by containment in detected table-like structures."""
+"""Module for grouping sidebar entries by intersection with detected table-like structures."""
 
 import dataclasses
 from typing import Generic, TypeVar

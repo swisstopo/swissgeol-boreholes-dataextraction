@@ -72,13 +72,13 @@ class Sidebar(abc.ABC, Generic[EntryT]):
         pass
 
     @staticmethod
-    def get_zones_from_entries(entries: list[AToBInterval], include_open_ended: bool = True):
+    def get_zones_from_intervals(intervals: list[AToBInterval], include_open_ended: bool = True):
         zones = [
-            IntervalZone(entry.rect, next_entry.rect, entry)
-            for entry, next_entry in zip(entries, entries[1:], strict=False)
+            IntervalZone(interval.rect, next_interval.rect, interval)
+            for interval, next_interval in zip(intervals, intervals[1:], strict=False)
         ]
         if include_open_ended:
-            return zones + [IntervalZone(entries[-1].rect, None, entries[-1])]
+            return zones + [IntervalZone(intervals[-1].rect, None, intervals[-1])]
         return zones
 
     @staticmethod

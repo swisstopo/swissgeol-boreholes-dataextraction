@@ -9,8 +9,10 @@ table_detection_params = read_params("table_detection_params.yml")
 
 def test_table_detection_lines() -> None:
     """Test simple cases for table detection."""
-    table_detection_params_modified = table_detection_params.copy()
-    table_detection_params_modified["tables"]["min_confidence"] = 0
+    table_detection_params_modified = {
+        **table_detection_params,
+        "tables": {**table_detection_params["tables"], "min_confidence": 0},
+    }
 
     x0 = 10
     x1 = 190
@@ -52,7 +54,7 @@ def test_table_detection_lines() -> None:
         text_lines=[],
         table_detection_params=table_detection_params_modified,
     )
-    assert len(tables) == 0, "There should no detected table after excluding the bottom line"
+    assert len(tables) == 0, "There should be no detected table after excluding the bottom line"
 
     lines_without_right = lines.copy()
     lines_without_right.remove(right)
@@ -63,4 +65,4 @@ def test_table_detection_lines() -> None:
         text_lines=[],
         table_detection_params=table_detection_params_modified,
     )
-    assert len(tables) == 0, "There should no detected table after excluding the right line"
+    assert len(tables) == 0, "There should be no detected table after excluding the right line"

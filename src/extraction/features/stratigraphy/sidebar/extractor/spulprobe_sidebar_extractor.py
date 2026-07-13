@@ -7,7 +7,7 @@ import pymupdf
 from extraction.features.stratigraphy.sidebar.classes.spulprobe_sidebar import SpulprobeSidebar
 from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
 from extraction.features.stratigraphy.sidebar.utils.entries_per_table import TableEntries
-from extraction.features.stratigraphy.sidebarentry.sidebar_entry import SpulprobeEntry
+from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
 from swissgeol_doc_processing.geometry.util import compute_outer_rect, y_overlap_significant_smallest
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.utils.table_detection import TableStructure
@@ -20,14 +20,14 @@ class SpulprobeSidebarExtractor:
     depths_pattern = r"\d+(?:[.,]\d+)?"
 
     @classmethod
-    def find_spulprobe_entries(cls, lines: list[TextLine]) -> list[SpulprobeEntry]:
+    def find_spulprobe_entries(cls, lines: list[TextLine]) -> list[DepthColumnEntry]:
         """Find the spulprobe entries.
 
         Args:
             lines (list[TextLine]): The text lines to search in.
 
         Returns:
-            list[SpulprobeEntry]: A list of SpulprobeEntry objects found in the lines.
+            list[DepthColumnEntry]: A list of DepthColumnEntry objects found in the lines.
         """
         entries = []
         for line in sorted(lines, key=lambda line: (line.rect.y0, line.rect.x0)):
@@ -47,7 +47,7 @@ class SpulprobeSidebarExtractor:
                     entry_rect = compute_outer_rect([line.rect, line_rect])
                 page_number = line.page_number
                 most_shallow = min(depths)
-                entries.append(SpulprobeEntry(rect=entry_rect, value=most_shallow, page_number=page_number))
+                entries.append(DepthColumnEntry(rect=entry_rect, value=most_shallow, page_number=page_number))
         return entries
 
     @classmethod
@@ -61,8 +61,8 @@ class SpulprobeSidebarExtractor:
             lines (list[TextLine]): The list of lines to search in.
 
         Returns:
-            tuple[list[float], pymupdf.Rect] : A tuple containing a list of depths found and the rectangle of the
-                line where they were found.
+            tuple[list[float], pymupdf.Rect | None] : A tuple containing a list of depths found and the rectangle of
+                the line where they were found.
         """
         for line in lines:
             if line == current_line:
@@ -91,7 +91,9 @@ class SpulprobeSidebarExtractor:
         clusters = [
             cluster
             for partition in entry_partitions
-            for cluster in Cluster[SpulprobeEntry].create_clusters(partition.entries, table_structure=partition.table)
+            for cluster in Cluster[DepthColumnEntry].create_clusters(
+                partition.entries, table_structure=partition.table
+            )
         ]
 
         return [SpulprobeSidebar(cluster.entries) for cluster in clusters]
