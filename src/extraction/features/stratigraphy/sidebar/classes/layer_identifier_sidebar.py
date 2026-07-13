@@ -39,10 +39,11 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         Returns:
             list[IntervalZone]: A list of interval zones.
         """
-        return [
-            IntervalZone(start=entry.rect, end=entry.rect, related_interval=Interval(start=None, end=None))
-            for entry in self.entries
-        ]
+        zones = []
+        for index, entry in enumerate(self.entries):
+            next_entry_rect = self.entries[index + 1].rect if len(self.entries) > index + 1 else None
+            zones.append(IntervalZone(entry.rect, next_entry_rect, Interval(start=None, end=None)))
+        return zones
 
     @staticmethod
     def dp_scoring_fn(interval_zone: IntervalZone, line: TextLine) -> float:

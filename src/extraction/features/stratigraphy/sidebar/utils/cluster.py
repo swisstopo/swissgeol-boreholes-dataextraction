@@ -52,9 +52,6 @@ class VerticalLinePartition(Generic[EntryT]):
             line, left=left, right=right, left_extended=left_extended, right_extended=right_extended
         )
 
-    def no_conflict(self, partition: "VerticalLinePartition[EntryT]") -> bool:
-        return partition.left.isdisjoint(self.right) and partition.right.isdisjoint(self.left)
-
     def splits(self, entries: list[EntryT]) -> bool:
         return (not self.left_extended.isdisjoint(entries) and not self.right.isdisjoint(entries)) or (
             not self.left.isdisjoint(entries) and not self.right_extended.isdisjoint(entries)

@@ -155,7 +155,12 @@ class AToBSidebar(Sidebar[IntervalEntry]):
         ]
         if not filtered_intervals:
             return []
-        return self.get_zones_from_intervals(filtered_intervals, include_open_ended=True)
+
+        zones = [
+            IntervalZone(interval.rect, next_interval.rect, interval)
+            for interval, next_interval in zip(filtered_intervals, filtered_intervals[1:], strict=False)
+        ]
+        return zones + [IntervalZone(filtered_intervals[-1].rect, None, filtered_intervals[-1])]
 
     def post_processing(self, interval_lines_mapping: list[tuple[IntervalZone, list[TextLine]]]):
         """Post-process the matched interval zones and description lines into IntervalBlockPairs.

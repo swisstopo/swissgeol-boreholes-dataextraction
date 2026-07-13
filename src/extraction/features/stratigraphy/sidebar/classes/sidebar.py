@@ -9,7 +9,7 @@ from typing import ClassVar, Generic, TypeVar
 import fastquadtree
 import pymupdf
 
-from extraction.features.stratigraphy.interval.interval import AToBInterval, IntervalBlockPair, IntervalZone
+from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
 from extraction.features.stratigraphy.sidebarentry.sidebar_entry import SidebarEntry
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_smallest
 from swissgeol_doc_processing.text.textblock import TextBlock
@@ -70,16 +70,6 @@ class Sidebar(abc.ABC, Generic[EntryT]):
     def get_interval_zone(self) -> list[IntervalZone]:
         """Get the interval zones defined by the sidebar entries."""
         pass
-
-    @staticmethod
-    def get_zones_from_intervals(intervals: list[AToBInterval], include_open_ended: bool = True):
-        zones = [
-            IntervalZone(interval.rect, next_interval.rect, interval)
-            for interval, next_interval in zip(intervals, intervals[1:], strict=False)
-        ]
-        if include_open_ended:
-            return zones + [IntervalZone(intervals[-1].rect, None, intervals[-1])]
-        return zones
 
     @staticmethod
     @abc.abstractmethod
