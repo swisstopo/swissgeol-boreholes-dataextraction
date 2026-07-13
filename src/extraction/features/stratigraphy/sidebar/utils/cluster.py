@@ -20,38 +20,44 @@ class VerticalLinePartition(Generic[EntryT]):
     line: Line
     left: set[EntryT]
     right: set[EntryT]
-    left_all: set[EntryT]
-    right_all: set[EntryT]
+    left_extended: set[EntryT]
+    right_extended: set[EntryT]
 
     @classmethod
     def from_line(cls, line: Line, entries: list[EntryT]) -> "VerticalLinePartition[EntryT]":
         left = set()
         right = set()
-        left_all = set()
-        right_all = set()
+        left_extended = set()
+        right_extended = set()
         line_y0 = min(line.start.y, line.end.y)
         line_y1 = max(line.start.y, line.end.y)
         for entry in entries:
             rect = entry.rect
-            is_inside = line_y0 <= rect.y1 and rect.y0 <= line_y1
-            entry_middle = (rect.top_left + rect.bottom_right) / 2
-            if entry_middle.x < line.x_from_y(entry_middle.y):
-                left_all.add(entry)
-                if is_inside:
-                    left.add(entry)
-            else:
-                right_all.add(entry)
-                if is_inside:
-                    right.add(entry)
 
-        return VerticalLinePartition(line, left=left, right=right, left_all=left_all, right_all=right_all)
+            # Only consider entries that are to the right or left of the extension of the line that goes one line
+            # length below and one line length above the actual line.
+            is_inside_extended = line_y0 - line.length <= rect.y1 and rect.y0 <= line_y1 + line.length
+            if is_inside_extended:
+                entry_middle = (rect.top_left + rect.bottom_right) / 2
+                if entry_middle.x < line.x_from_y(entry_middle.y):
+                    inside_set, extended_set = left, left_extended
+                else:
+                    inside_set, extended_set = right, right_extended
+
+                extended_set.add(entry)
+                if line_y0 <= rect.y1 and rect.y0 <= line_y1:
+                    inside_set.add(entry)
+
+        return VerticalLinePartition(
+            line, left=left, right=right, left_extended=left_extended, right_extended=right_extended
+        )
 
     def no_conflict(self, partition: "VerticalLinePartition[EntryT]") -> bool:
         return partition.left.isdisjoint(self.right) and partition.right.isdisjoint(self.left)
 
     def splits(self, entries: list[EntryT]) -> bool:
-        return (not self.left_all.isdisjoint(entries) and not self.right.isdisjoint(entries)) or (
-            not self.left.isdisjoint(entries) and not self.right_all.isdisjoint(entries)
+        return (not self.left_extended.isdisjoint(entries) and not self.right.isdisjoint(entries)) or (
+            not self.left.isdisjoint(entries) and not self.right_extended.isdisjoint(entries)
         )
 
 
