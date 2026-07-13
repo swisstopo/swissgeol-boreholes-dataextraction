@@ -109,11 +109,13 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
         if task_name not in bert_models:
             logger.warning(f"Task '{task_name}' not loaded, skipping.")
             continue
+        if task_name == "lithology":
+            predictions["lithology"] = lithology_class.name
+            continue
         model = bert_models[task_name]
         classes = model.predict_from_embedding(shared_hidden_states, extended_mask)
-        if model.classification_system.is_multi_label():
-            predictions[task_name] = [c.name for c in classes]
-        else:
-            predictions[task_name] = classes[0].name
+        predictions[task_name] = (
+            [c.name for c in classes] if model.classification_system.is_multi_label() else classes[0].name
+        )
 
     return ClassifyResponse(predictions=predictions)

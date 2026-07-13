@@ -1,7 +1,8 @@
 """Download full models from HuggingFace and split them into backbone + head format.
 
 It downloads each full fine-tuned model, extracts the frozen backbone (shared across all systems) and the task-specific
-head weights, and writes them to the directory layout expected by lithology_classification.py:
+head weights, and writes them to the directory layout expected by classify_all.py:
+
 
     models/backbone/backbone.safetensors  — shared frozen BERT encoder weights
     models/backbone/                      — tokenizer files

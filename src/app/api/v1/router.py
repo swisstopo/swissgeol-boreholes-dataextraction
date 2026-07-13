@@ -254,7 +254,7 @@ def post_classify(request: ClassifyRequest, http_request: Request) -> ClassifyRe
     `lithology`, `alteration_degree_consolidated`, `cementation`, `color`, `mineral_components`, `accessory_components`
 
     ### Unconsolidated sediment tasks
-    `en_main`, `uscs`, `debris`, `color`, `grain_angularity`, `grain_shape`, `organic_components`,
+    `en_main`, `uscs`, `debris`, `color`, `grain_angularity`, `grain_shape`, `organic_components`
 
     ### Status Codes
     - **200 OK**: Classification completed successfully.

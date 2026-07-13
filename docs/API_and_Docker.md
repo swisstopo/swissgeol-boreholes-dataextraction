@@ -87,9 +87,9 @@ relevant to the inferred rock type in a single forward pass:
 3. Each task-specific head runs independently on the same embedding.
 4. Only tasks relevant to the inferred rock type are returned.
 
-**Consolidated rock** tasks: `lithology`, `alteration_degree_consolidated`, `cementation`, `color`, `mineral_components`
+**Consolidated rock** tasks: `lithology`, `alteration_degree_consolidated`, `cementation`, `color`, `mineral_components`, `accessory_components`
 
-**Unconsolidated sediment** tasks: `en_main`, `uscs`, `debris`, `color`, `grain_angularity`, `grain_shape`, `organic_components`, `accessory_components`
+**Unconsolidated sediment** tasks: `en_main`, `uscs`, `debris`, `color`, `grain_angularity`, `grain_shape`, `organic_components`
 
 Single-label tasks (e.g. `lithology`, `en_main`, `color`) return a string; multi-label tasks (e.g.
 `mineral_components`, `grain_angularity`, `organic_components`) return a list of strings.
