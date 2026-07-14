@@ -1,7 +1,7 @@
 # Config file for material classification into EN secondary classes
 # Prompt file and version
 prompts_file: bedrock/prompts/bedrock_en_secondary_prompts.yml
-prompt_version: baseline
+prompt_version: v1
 
 # Pattern file and parameter version
 pattern_file: bedrock/examples/bedrock_en_secondary_examples.yml
