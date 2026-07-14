@@ -60,9 +60,9 @@ class AlterationDegreeConsolidatedSystem(AlterationDegreeSystem):
     """Classification system for the alteration degree of consolidated geological layers."""
 
     @classmethod
-    def get_layer_ground_truth_keys(cls) -> list[str]:
+    def get_layer_ground_truth_keys(cls) -> list[list[str]]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
-        return ["consolidated", "alteration_degree"]
+        return [["consolidated", "alteration_degree"]]
 
     @classmethod
     def get_name(cls) -> str:
@@ -74,9 +74,9 @@ class AlterationDegreeUnconsolidatedSystem(AlterationDegreeSystem):
     """Classification system for the alteration degree of unconsolidated geological layers."""
 
     @classmethod
-    def get_layer_ground_truth_keys(cls) -> list[str]:
+    def get_layer_ground_truth_keys(cls) -> list[list[str]]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
-        return ["unconsolidated", "alteration_degree"]
+        return [["unconsolidated", "alteration_degree"]]
 
     @classmethod
     def get_name(cls) -> str:

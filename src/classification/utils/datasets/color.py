@@ -148,9 +148,9 @@ class ColorConsolidatedSystem(ColorSystem):
         return "color_consolidated"
 
     @classmethod
-    def get_layer_ground_truth_keys(cls) -> list[str]:
+    def get_layer_ground_truth_keys(cls) -> list[list[str]]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
-        return ["consolidated", "primary_color"]
+        return [["consolidated", "primary_color"]]
 
 
 class ColorUnconsolidatedSystem(ColorSystem):
@@ -162,6 +162,6 @@ class ColorUnconsolidatedSystem(ColorSystem):
         return "color_unconsolidated"
 
     @classmethod
-    def get_layer_ground_truth_keys(cls) -> list[str]:
+    def get_layer_ground_truth_keys(cls) -> list[list[str]]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
-        return ["unconsolidated", "primary_color"]
+        return [["unconsolidated", "primary_color"]]

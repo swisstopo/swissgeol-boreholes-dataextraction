@@ -1,10 +1,13 @@
 """Evaluation module."""
 
 import logging
+import math
 from collections import defaultdict
 from dataclasses import dataclass
 
-from classification.utils.datasets.classification import ClassificationSystem, LayerInformation
+from scipy.stats import kendalltau
+
+from classification.utils.datasets.classification import ClassificationSystem, ClassificationTask, LayerInformation
 from classification.utils.file_utils import read_params
 from core.benchmark_utils import Metrics
 from core.mlflow_tracking import mlflow
@@ -21,13 +24,20 @@ class AllClassificationMetrics:
     Attributes:
         global_metrics (dict[ClassificationType.EnumMember, Metrics]): A dictionary containing the
         classification metrics for each of the classes at a global level.
+        global_rank (float | None): The average Kendall's tau rank correlation between predicted and ground truth
+            class orderings, computed across all layers at a global level. None for non-rank tasks.
         language_metrics (dict[str, dict[ClassificationType.EnumMember, Metrics]]): A dictionary where each key
             represents a supported language. Each value is another dictionary containing the classification metrics
             for each class in that language.
+        language_ranks (dict[str, float] | None): A dictionary where each key represents a supported language and
+            each value is the average Kendall's tau rank correlation between predicted and ground truth class
+            orderings for that language. None for non-rank tasks.
     """
 
     global_metrics: dict[ClassificationSystem.EnumMember, Metrics]
+    global_rank: float | None
     language_metrics: dict[str, dict[ClassificationSystem.EnumMember, Metrics]]
+    language_ranks: dict[str, float] | None
 
     @staticmethod
     def compute_macro_average(metric_list: list[Metrics]) -> dict[str, float]:
@@ -132,6 +142,17 @@ class AllClassificationMetrics:
         }
 
     @property
+    def per_language_rank_dict(self) -> dict[str, float]:
+        """Dictionary containing rank for each language, empty for non-rank tasks.
+
+        Returns:
+            dict[str, float]: The dictionary
+        """
+        if self.language_ranks is None:
+            return {}
+        return {f"{lang}_rank": rank for lang, rank in self.language_ranks.items()}
+
+    @property
     def per_class_global_metrics_dict(self) -> dict[str, float]:
         """Dictionary containing the global f1, recall and precision, detailled for each class.
 
@@ -169,10 +190,12 @@ class AllClassificationMetrics:
             dict[str, float]: the dictionary.
         """
         return {
+            **({"global_rank": self.global_rank} if self.global_rank is not None else {}),
             **self.global_macro_avg_dict,
-            **self.per_language_macro_avg_metrics_dict,
             **self.global_micro_avg_dict,
+            **self.per_language_rank_dict,
             **self.per_language_micro_avg_metrics_dict,
+            **self.per_language_macro_avg_metrics_dict,
         }
 
     def to_json_per_class(self) -> dict[str, float]:
@@ -196,15 +219,32 @@ def evaluate(layer_descriptions: list[LayerInformation]) -> AllClassificationMet
     Returns:
         AllClassificationMetrics: the holder for the metrics
     """
-    global_metrics: dict[ClassificationSystem.EnumMember, Metrics] = per_class_metrics_from_layers(layer_descriptions)
+    is_rank_task = (
+        layer_descriptions[0].class_system.classification_task() == ClassificationTask.rank
+        if layer_descriptions
+        else False
+    )
 
-    supported_language: list[str] = classification_params["supported_language"]
-    language_metrics: dict[str, dict[ClassificationSystem.EnumMember, Metrics]] = {
+    global_metrics = per_class_metrics_from_layers(layer_descriptions)
+    global_ranks = rank_metrics_from_layers(layer_descriptions) if is_rank_task else None
+
+    supported_language = classification_params["supported_language"]
+    language_metrics = {
         language: per_class_metrics_from_layers([layer for layer in layer_descriptions if layer.language == language])
         for language in supported_language
     }
+    language_ranks = (
+        {
+            language: rank_metrics_from_layers([layer for layer in layer_descriptions if layer.language == language])
+            for language in supported_language
+        }
+        if is_rank_task
+        else None
+    )
 
-    all_classification_metrics = AllClassificationMetrics(global_metrics, language_metrics)
+    all_classification_metrics = AllClassificationMetrics(
+        global_metrics, global_ranks, language_metrics, language_ranks
+    )
 
     if mlflow:
         logger.info("Logging metrics to MLFlow")
@@ -259,6 +299,51 @@ def per_class_metric(
                 fn[cls] += 1
 
     return {cls: Metrics(tp=tp[cls], fp=fp[cls], fn=fn[cls]) for cls in tp.keys() | fp.keys() | fn.keys()}
+
+
+def rank_metrics_from(
+    predictions: list[list[ClassificationSystem.EnumMember]],
+    labels: list[list[ClassificationSystem.EnumMember]],
+) -> float:
+    """Compute average Kendall's tau between parallel ranked lists of enum members.
+
+    Args:
+        predictions (list[list[ClassificationSystem.EnumMember]]): Predicted class lists in rank
+            order (index 0 = highest rank) for each sample.
+        labels (list[list[ClassificationSystem.EnumMember]]): Ground-truth class lists in rank
+            order for each sample.
+
+    Returns:
+        float: Average Kendall's tau across all samples, or 0 if no valid pairs exist.
+    """
+    metrics = []
+    for preds_row, labels_row in zip(predictions, labels, strict=True):
+        if preds_row == labels_row:
+            metrics.append(1)
+            continue
+        missing_to_pred = [lab for lab in labels_row if lab not in preds_row]
+        missing_to_lab = [pred for pred in preds_row if pred not in labels_row]
+        metric = kendalltau(preds_row + missing_to_pred, labels_row + missing_to_lab)
+        statistic = metric.statistic.item()
+        if not math.isnan(statistic):
+            metrics.append(statistic)
+    return sum(metrics) / len(metrics) if metrics else 0
+
+
+def rank_metrics_from_layers(layers: list[LayerInformation]) -> float:
+    """Compute the average rank correlation between predicted and ground truth class orderings.
+
+    Args:
+        layers (list[LayerInformation]): the layers to compute the rank metric from.
+
+    Returns:
+        float: the average Kendall's tau rank correlation across all layers, or 0 if there are
+            no layers.
+    """
+    return rank_metrics_from(
+        predictions=[layer.prediction_class for layer in layers],
+        labels=[layer.ground_truth_class for layer in layers],
+    )
 
 
 def log_metrics_to_mlflow(all_classification_metrics: AllClassificationMetrics):

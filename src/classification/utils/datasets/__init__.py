@@ -13,7 +13,7 @@ from classification.utils.datasets.cementation import CementationSystem
 from classification.utils.datasets.classification import ClassificationSystem
 from classification.utils.datasets.color import ColorConsolidatedSystem, ColorSystem, ColorUnconsolidatedSystem
 from classification.utils.datasets.debris import DebrisSystem
-from classification.utils.datasets.en_main import ENMainSystem
+from classification.utils.datasets.en_main import ENMainSystem, ENSecondarySystem
 from classification.utils.datasets.grain_angularity import GrainAngularitySystem
 from classification.utils.datasets.grain_shape import GrainShapeSystem
 from classification.utils.datasets.lithology import LithologySystem
@@ -38,6 +38,7 @@ class ExistingClassificationSystems(Enum):
     color_unconsolidated = ColorUnconsolidatedSystem
     debris = DebrisSystem
     en_main = ENMainSystem
+    en_secondary = ENSecondarySystem
     grain_angularity = GrainAngularitySystem
     grain_shape = GrainShapeSystem
     lithology = LithologySystem
@@ -59,6 +60,7 @@ class ExistingClassificationSystems(Enum):
             "color_unconsolidated",
             "debris",
             "en_main",
+            "en_secondary",
             "grain_angularity",
             "grain_shape",
             "lithology",
