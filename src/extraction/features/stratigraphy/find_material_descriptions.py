@@ -189,18 +189,13 @@ class MaterialDescriptionExtractor:
         ]
 
         while line := next((line for line in extension_candidates if can_extend_below(best_x0, best_y1, line)), None):
-            print("below", line.text)
             best_x0 = min(best_x0, line.rect.x0)
             best_x1 = max(best_x1, line.rect.x1)
             best_y1 = line.rect.y1
 
         sorted_above = sorted(extension_candidates, key=lambda c: c.rect.y0, reverse=True)
 
-        while next_line := next(
-            (desc_line for desc_line in sorted_above if can_extend_above(best_x0, best_y0, desc_line)),
-            None,
-        ):
-            print("above", next_line.text)
+        while next_line := next((line for line in sorted_above if can_extend_above(best_x0, best_y0, line)), None):
             best_x0 = min(best_x0, next_line.rect.x0)
             best_x1 = max(best_x1, next_line.rect.x1)
             best_y0 = next_line.rect.y0

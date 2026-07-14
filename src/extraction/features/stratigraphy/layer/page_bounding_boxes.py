@@ -49,7 +49,8 @@ class MaterialDescriptionRectWithSidebar:
         geometry_score = self.material_description_rect.width - x_distance + height - 2 * y_distance
 
         if sidebar_left > material_left and (
-            not isinstance(self.sidebar, AAboveBSidebar) or material_right <= sidebar_left - self.sidebar.rect.width
+            not isinstance(self.sidebar, AAboveBSidebar)
+            or material_right <= sidebar_left - 2 * self.sidebar.rect.width
         ):
             # sidebar to the right of descriptions is only allowed for AAboveBSidebar and the descriptions should not
             # be far to the left of the sidebar
