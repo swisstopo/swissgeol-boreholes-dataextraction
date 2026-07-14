@@ -13,8 +13,20 @@ from enum import Enum
 from pathlib import Path
 
 import pymupdf
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
+from classification.utils.datasets.accessory_components import AccessoryComponentsSystem
+from classification.utils.datasets.alteration_degree import AlterationDegreeConsolidatedSystem
+from classification.utils.datasets.cementation import CementationSystem
+from classification.utils.datasets.color import ColorSystem
+from classification.utils.datasets.debris import DebrisSystem
+from classification.utils.datasets.en_main import ENMainSystem
+from classification.utils.datasets.grain_angularity import GrainAngularitySystem
+from classification.utils.datasets.grain_shape import GrainShapeSystem
+from classification.utils.datasets.lithology import LithologySystem
+from classification.utils.datasets.mineral_components import MineralComponentsSystem
+from classification.utils.datasets.organic_components import OrganicComponentsSystem
+from classification.utils.datasets.uscs import USCSSystem
 from extraction.features.groundwater.groundwater_extraction import Groundwater
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepthsEntry
 from swissgeol_doc_processing.text.textblock import MaterialDescription
@@ -812,13 +824,22 @@ class ClassifyRequest(BaseModel):
 
     model_config = ConfigDict(
         json_schema_extra={
-            "example": {
-                "description": (
-                    "Siltiger Kies mit Sand, Steinen und organischen Beimengungen; "
-                    "Grobkornform: kubisch und plattig; kohäsionslos, kantengerundet bis eckig; "
-                    "braun; weich; schlecht abgestuft; Bodenhorizont; kalkhaltige Gerölle"
-                ),
-            }
+            "examples": [
+                {
+                    "description": (
+                        "Silt, calcareous, argillaceous, grey, with thin light grey interlayers and "
+                        "yellowish olive reduction patches, with gravels, angular to sub-rounded, very "
+                        "poorly to poorly sorted; from 2 m to 4 m: some plant roots; from 6 m to 8 m: "
+                        "one chert nodule."
+                    ),
+                },
+                {
+                    "description": (
+                        "Peloidal bioclastic limestone, fine to medium grained, slightly oolitic, yellow "
+                        "to orange, finely sandy, with pyrite and glauconite."
+                    ),
+                },
+            ]
         }
     )
 
@@ -826,35 +847,89 @@ class ClassifyRequest(BaseModel):
 class ClassifyResponse(BaseModel):
     """Response schema for the unified `/classify` endpoint.
 
-    Contains predictions for all tasks relevant to the inferred rock type. Each value is either a single
-    class name (single-label tasks) or a list of class names (multi-label tasks such as accessory_components,
-    debris, grain_angularity, grain_shape, mineral_components, and organic_components).
+    Each field corresponds to one classification task. A field is `None` if that task wasn't run for the
+    inferred rock type; otherwise it holds the predicted class (single-label tasks) or classes (multi-label
+    tasks: accessory_components, debris, grain_angularity, grain_shape, mineral_components,
+    organic_components).
 
     Consolidated rock tasks: lithology, alteration_degree_consolidated, cementation, color, mineral_components,
         accessory_components.
     Unconsolidated sediment tasks: en_main, uscs, debris, color, grain_angularity, grain_shape, organic_components.
     """
 
-    predictions: dict[str, str | list[str]] = Field(
-        ...,
-        description=(
-            "Mapping of task name to predicted class name(s). "
-            "Single-label tasks return a string; multi-label tasks return a list of strings."
-        ),
+    accessory_components: list[AccessoryComponentsSystem.AccessoryComponentsClasses] | None = Field(
+        default=None, description="Predicted accessory component classes (consolidated rock only)."
     )
+    alteration_degree_consolidated: AlterationDegreeConsolidatedSystem.AlterationDegreeClasses | None = Field(
+        default=None, description="Predicted alteration degree class (consolidated rock only)."
+    )
+    cementation: CementationSystem.CementationClasses | None = Field(
+        default=None, description="Predicted cementation class (consolidated rock only)."
+    )
+    color: ColorSystem.ColorClasses | None = Field(default=None, description="Predicted color class.")
+    debris: list[DebrisSystem.DebrisClasses] | None = Field(
+        default=None, description="Predicted debris classes (unconsolidated sediment only)."
+    )
+    en_main: ENMainSystem.ENMainClasses | None = Field(
+        default=None, description="Predicted en_main class (unconsolidated sediment only)."
+    )
+    grain_angularity: list[GrainAngularitySystem.GrainAngularityClasses] | None = Field(
+        default=None, description="Predicted grain angularity classes (unconsolidated sediment only)."
+    )
+    grain_shape: list[GrainShapeSystem.GrainShapeClasses] | None = Field(
+        default=None, description="Predicted grain shape classes (unconsolidated sediment only)."
+    )
+    lithology: LithologySystem.LithologyClasses | None = Field(
+        default=None, description="Predicted lithology class; also determines consolidated vs unconsolidated."
+    )
+    mineral_components: list[MineralComponentsSystem.MineralComponents] | None = Field(
+        default=None, description="Predicted mineral component classes (consolidated rock only)."
+    )
+    organic_components: list[OrganicComponentsSystem.OrganicComponentsClasses] | None = Field(
+        default=None, description="Predicted organic component classes (unconsolidated sediment only)."
+    )
+    uscs: USCSSystem.USCSClasses | None = Field(
+        default=None, description="Predicted USCS class (unconsolidated sediment only)."
+    )
+
+    @field_serializer(
+        "alteration_degree_consolidated", "cementation", "color", "en_main", "lithology", "uscs", when_used="always"
+    )
+    def _serialize_single_label(self, value: Enum | None, _info) -> str | None:
+        return value.name if value is not None else None
+
+    @field_serializer(
+        "accessory_components",
+        "debris",
+        "grain_angularity",
+        "grain_shape",
+        "mineral_components",
+        "organic_components",
+        when_used="always",
+    )
+    def _serialize_multi_label(self, value: list[Enum] | None, _info) -> list[str] | None:
+        return [member.name for member in value] if value is not None else None
 
     model_config = ConfigDict(
         json_schema_extra={
-            "example": {
-                "predictions": {
-                    "en_main": "sa",
-                    "uscs": "SC",
+            "examples": [
+                {
+                    "en_main": "si",
+                    "uscs": "not_specified",
                     "debris": ["not_specified"],
-                    "color": "beige",
-                    "grain_angularity": ["angular"],
-                    "grain_shape": ["platy", "elongated"],
-                    "organic_components": ["undifferenciated_organic_material", "remains_of_wood"],
-                }
-            }
+                    "color": "grey",
+                    "grain_angularity": ["angular", "sub_angular", "sub_rounded"],
+                    "grain_shape": ["not_specified"],
+                    "organic_components": ["roots"],
+                },
+                {
+                    "lithology": "limestone",
+                    "alteration_degree_consolidated": "not_specified",
+                    "cementation": "not_specified",
+                    "color": "yellowish_orange",
+                    "mineral_components": ["pyrite", "glauconite"],
+                    "accessory_components": ["ooids", "pellets"],
+                },
+            ]
         }
     )

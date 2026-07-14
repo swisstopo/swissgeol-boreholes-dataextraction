@@ -1,6 +1,8 @@
 """Main router for the app."""
 
-from fastapi import APIRouter, HTTPException, Request
+from typing import Annotated
+
+from fastapi import APIRouter, Body, HTTPException, Request
 from pydantic import BaseModel
 
 from app.api.v1.endpoints.bounding_boxes import bounding_boxes
@@ -24,6 +26,29 @@ from app.common.schemas import (
 )
 
 router = APIRouter(prefix="/api/V1")
+
+_CLASSIFY_REQUEST_EXAMPLES = {
+    "unconsolidated_silt": {
+        "summary": "Unconsolidated sediment (silt)",
+        "value": {
+            "description": (
+                "Silt, calcareous, argillaceous, grey, with thin light grey interlayers and "
+                "yellowish olive reduction patches, with gravels, angular to sub-rounded, very "
+                "poorly to poorly sorted; from 2 m to 4 m: some plant roots; from 6 m to 8 m: "
+                "one chert nodule."
+            )
+        },
+    },
+    "consolidated_limestone": {
+        "summary": "Consolidated rock (limestone)",
+        "value": {
+            "description": (
+                "Peloidal bioclastic limestone, fine to medium grained, slightly oolitic, yellow "
+                "to orange, finely sandy, with pyrite and glauconite."
+            )
+        },
+    },
+}
 
 
 class BadRequestResponse(BaseModel):
@@ -233,7 +258,10 @@ def post_extract_stratigraphy(request: ExtractStratigraphyRequest) -> ExtractStr
         503: {"model": BadRequestResponse, "description": "BERT models not loaded (set BERT_ENABLED=true)"},
     },
 )
-def post_classify(request: ClassifyRequest, http_request: Request) -> ClassifyResponse:
+def post_classify(
+    request: Annotated[ClassifyRequest, Body(openapi_examples=_CLASSIFY_REQUEST_EXAMPLES)],
+    http_request: Request,
+) -> ClassifyResponse:
     """Classify a plain-text material description across all relevant tasks in one forward pass.
 
     The backbone embedding is computed once from the description, then fed independently into each
@@ -245,10 +273,10 @@ def post_classify(request: ClassifyRequest, http_request: Request) -> ClassifyRe
       brau-beige, Komponenten vorw. eckig"`).
 
     ### Returns
-    - **predictions**: Mapping of task name → predicted class name(s).
-      - Single-label tasks (e.g. `en_main`, `uscs`, `color`) return a string.
-      - Multi-label tasks (e.g. `grain_angularity`, `grain_shape`, `organic_components`,
-        `accessory_components`, `debris`, `mineral_components`) return a list of strings.
+    One field per classification task. A field is `null` if that task isn't relevant to the inferred
+    rock type; otherwise it holds the predicted class name (single-label tasks, e.g. `en_main`, `uscs`,
+    `color`) or class names (multi-label tasks, e.g. `grain_angularity`, `grain_shape`,
+    `organic_components`, `accessory_components`, `debris`, `mineral_components`).
 
     ### Consolidated rock tasks
     `lithology`, `alteration_degree_consolidated`, `cementation`, `color`, `mineral_components`, `accessory_components`

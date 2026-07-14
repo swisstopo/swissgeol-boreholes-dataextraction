@@ -4,12 +4,9 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from app.common.schemas import ClassifyRequest, ClassifyResponse
-
-if TYPE_CHECKING:
-    from classification.models.model import BertModel
+from classification.models.model import BertModel
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +85,8 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
         bert_models: Models loaded at startup via the lifespan, keyed by task name.
 
     Returns:
-        ClassifyResponse with a mapping of task name to predicted class name (string) or
-        class names (list of strings for multi-label tasks).
+        ClassifyResponse with the predicted class (or classes, for multi-label tasks) for every task
+        relevant to the inferred rock type; irrelevant tasks are left as `None`.
     """
     from classification.utils.datasets.lithology import LithologySystem
 
@@ -104,18 +101,16 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
     relevant_tasks = _UNCONSOLIDATED_TASKS if is_unconsolidated else _CONSOLIDATED_TASKS
 
     # Step 2: fan out to each relevant task head using the same shared backbone output.
-    predictions: dict[str, str | list[str]] = {}
+    predictions = {}
     for task_name in relevant_tasks:
         if task_name not in bert_models:
             logger.warning(f"Task '{task_name}' not loaded, skipping.")
             continue
         if task_name == "lithology":
-            predictions["lithology"] = lithology_class.name
+            predictions["lithology"] = lithology_class
             continue
         model = bert_models[task_name]
         classes = model.predict_from_embedding(shared_hidden_states, extended_mask)
-        predictions[task_name] = (
-            [c.name for c in classes] if model.classification_system.is_multi_label() else classes[0].name
-        )
+        predictions[task_name] = classes if model.classification_system.is_multi_label() else classes[0]
 
-    return ClassifyResponse(predictions=predictions)
+    return ClassifyResponse(**predictions)

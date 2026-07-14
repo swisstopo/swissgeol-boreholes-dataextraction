@@ -23,16 +23,16 @@ Please make sure to define the environment variables needed for the API to acces
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 - `AWS_ENDPOINT`, in the format `https://s3.<RegionName>.amazonaws.com`
-  - During local development, a S3-compatible service like [MinIO](https://min.io/) can be used. In this case, the endpoint will look like `http://minio:9000`. 
+  - During local development, a S3-compatible service like [MinIO](https://min.io/) can be used. In this case, the endpoint will look like `http://minio:9000`.
 - `AWS_S3_BUCKET`
 
 The data extraction API in this repository is designed to be integrated into [swissgeol-boreholes-suite](https://github.com/swisstopo/swissgeol-boreholes-suite) that is configured by [swissgeol-boreholes-config](https://github.com/swisstopo/swissgeol-boreholes-config). You can find the AWS S3 bucket configuration used for that deployment in [charts/swissgeol-boreholes/values.yaml](https://github.com/swisstopo/swissgeol-boreholes-config/blob/ac293abe1c489044b3b15efa30c2238d456ded26/charts/swissgeol-boreholes/values.yaml#L65).
 
 3. **Start the FastAPI server**
-When running the API server without a Docker image, you need to make sure that the necessary models are available. 
-To download all relevant models from Huggingface run: 
+When running the API server without a Docker image, you need to make sure that the necessary models are available.
+To download all relevant models from Huggingface run:
 
-```bash 
+```bash
 python src/app/prepare_models.py
 ```
 
@@ -42,7 +42,7 @@ Run the following command to start the FastAPI server:
 uvicorn src.app.main:app --reload --host 0.0.0.0 --port 8002
 ```
 
-This will start the server on port 8002 of the localhost and enable automatic reloading whenever changes are made to the code. You can see the OpenAPI Specification (formerly Swagger Specification) by opening: `http://127.0.0.1:8002/docs#/` in your favorite browser. 
+This will start the server on port 8002 of the localhost and enable automatic reloading whenever changes are made to the code. You can see the OpenAPI Specification (formerly Swagger Specification) by opening: `http://127.0.0.1:8002/docs#/` in your favorite browser.
 
 4. **Access the API endpoints**
 
