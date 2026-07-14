@@ -1,7 +1,6 @@
 """Module for finding bounding boxes containing material descriptions."""
 
 import dataclasses
-import re
 
 import pymupdf
 
@@ -35,6 +34,14 @@ class MaterialDescriptionExtractor:
                     if last_entry.value != first_entry.value:
                         slope = (last_entry.rect.y0 - first_entry.rect.y0) / (last_entry.value - first_entry.value)
                         sidebar_zero_y0 = first_entry.rect.y0 - slope * first_entry.value
+
+                        if sidebar_zero_y0 <= 0:
+                            # if the sidebar zero is above the top edge of the page, then we are likely on a
+                            # continuation page, and it is not safe to "blindly" extend the material descriptions all
+                            # the way to the top. Ideally, we would already know at which depth the current page
+                            # starts, and compute the corresponding y0. However, this information is currently not
+                            # readily available, so this is left as a future improvement.
+                            sidebar_zero_y0 = None
                     else:
                         sidebar_zero_y0 = first_entry.rect.y0
             else:
@@ -190,22 +197,7 @@ class MaterialDescriptionExtractor:
         sorted_above = sorted(extension_candidates, key=lambda c: c.rect.y0, reverse=True)
 
         while next_line := next(
-            (
-                desc_line
-                for desc_line in sorted_above
-                if can_extend_above(best_x0, best_y0, desc_line)
-                and not re.fullmatch(r"[\d\s.,\-/]+", desc_line.text.strip())
-                and (
-                    self.sidebar is not None
-                    or not any(
-                        other
-                        for other in self.horizontal_text_lines
-                        if other is not desc_line
-                        and abs(other.rect.y0 - desc_line.rect.y0) < desc_line.rect.height
-                        and (other.rect.x1 < best_x0 - 10 or other.rect.x0 > best_x1 + 10)
-                    )
-                )
-            ),
+            (desc_line for desc_line in sorted_above if can_extend_above(best_x0, best_y0, desc_line)),
             None,
         ):
             print("above", next_line.text)

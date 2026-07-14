@@ -13,8 +13,8 @@ affinity_params:
   a_above_b:
     importance: 5.0
     weights:
-      line_weight: 3.5
-      left_line_weight: 1.0
+      line_weight: 4.0
+      left_line_weight: 2.0
       spacing_weight: 1.25
       right_end_weight: 1.0
       diagonal_weight: 1.25
@@ -127,24 +127,19 @@ material_description:
       - moräne
       - aufschüttung
     excluding_expressions:
-      - herr
       - ende
       - profil
       - beschreibung
       - materialbeschreibung
       - kiesprospektion
       - signaturen
-      - mischprobe # Should be reviewed, currently not used
-      - projekt
-      - ort
-      - adresse
-      - wetter
+      - mischprobe  # for ZH 268125303-bp.pdf
       - pumpversuch
       - kernbohrung
-      - bohrradius # Should be reviewed, currently not used
       - wasserzutritt
-      - Vollrohr
-      - Filterrohr
+      - vollrohr
+      - filterrohr
+      - filterkies
 
   fr:
     including_expressions:
