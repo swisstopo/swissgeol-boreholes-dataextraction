@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from app.common.schemas import ClassifyRequest, ClassifyResponse
-from classification.models.model import BertModel
+
+if TYPE_CHECKING:
+    from classification.models.model import BertModel
 
 logger = logging.getLogger(__name__)
 
