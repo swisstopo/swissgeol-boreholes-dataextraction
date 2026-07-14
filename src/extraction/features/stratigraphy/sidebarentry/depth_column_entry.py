@@ -1,4 +1,4 @@
-"""Contains a dataclass for depth column entries, which indicate the measured depth of an interface between layers."""
+"""Contains a class for depth column entries, which indicate the measured depth of an interface between layers."""
 
 import pymupdf
 

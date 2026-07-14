@@ -20,7 +20,7 @@ class TableEntries(Generic[EntryT]):
     def partition_entries(
         cls, table_structures: list[TableStructure], entries: list[EntryT]
     ) -> "list[TableEntries[EntryT]]":
-        entries_per_table = {index: [] for index, table in enumerate(table_structures)}
+        entries_per_table = {index: [] for index in range(len(table_structures))}
         entries_no_table = []
         for entry in entries:
             table_found = False

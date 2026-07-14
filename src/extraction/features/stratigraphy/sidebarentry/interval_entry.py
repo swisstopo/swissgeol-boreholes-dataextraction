@@ -1,4 +1,4 @@
-"""Contains a dataclass for interval entries, which each define the start and end depth of a layer."""
+"""Contains a class for interval entries, which each entry defines the start and end depth of a layer."""
 
 from extraction.features.stratigraphy.interval.interval import AToBInterval
 from extraction.features.stratigraphy.sidebarentry.sidebar_entry import SidebarEntry

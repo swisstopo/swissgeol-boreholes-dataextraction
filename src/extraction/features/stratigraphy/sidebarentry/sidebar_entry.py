@@ -1,4 +1,4 @@
-"""Contains dataclasses for different types of sidebar entries."""
+"""Contains classes for different types of sidebar entries."""
 
 from __future__ import annotations
 
