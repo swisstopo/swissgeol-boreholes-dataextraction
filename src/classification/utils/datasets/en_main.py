@@ -6,7 +6,7 @@ import keyword
 import logging
 from enum import IntEnum, auto
 
-from classification.utils.datasets.classification import ClassificationSystem
+from classification.utils.datasets.classification import ClassificationSystem, ClassificationTask
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +42,9 @@ class ENMainSystem(ClassificationSystem):
         return "en_main"
 
     @classmethod
-    def get_layer_ground_truth_keys(cls) -> list[str]:
+    def get_layer_ground_truth_keys(cls) -> list[list[str]]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
-        return ["unconsolidated", "main"]
+        return [["unconsolidated", "main"]]
 
     @classmethod
     def get_default_class_value(cls) -> ENMainClasses:
@@ -78,3 +78,22 @@ class ENMainSystem(ClassificationSystem):
         pt = auto()  # peat
         sa = auto()  # sand
         si = auto()  # silt
+
+
+class ENSecondarySystem(ENMainSystem):
+    """Multi-label EN classification system combining main and secondary unconsolidated classes."""
+
+    @classmethod
+    def get_name(cls) -> str:
+        """Return the name of the system."""
+        return "en_secondary"
+
+    @classmethod
+    def get_layer_ground_truth_keys(cls) -> list[list[str]]:
+        """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
+        return [["unconsolidated", "main"], ["unconsolidated", "other"]]
+
+    @classmethod
+    def classification_task(cls) -> ClassificationTask:
+        """Return the multi-label classification task type for this system."""
+        return ClassificationTask.rank

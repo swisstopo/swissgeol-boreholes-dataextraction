@@ -12,7 +12,7 @@ from transformers import AutoConfig, AutoModelForSequenceClassification, AutoTok
 from transformers.models.bert.modeling_bert import BertForSequenceClassification
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
-from classification.utils.datasets.classification import ClassificationSystem, LayerInformation
+from classification.utils.datasets.classification import ClassificationSystem, ClassificationTask, LayerInformation
 
 logger = logging.getLogger(__name__)
 
@@ -287,6 +287,12 @@ class BertModel:
         for class_id in label:
             labels[class_id] = 1.0  # multi-label binary encoding (1.0 for present classes, 0.0 for absent classes)
         result["labels"] = labels
+
+        # Assume that if class is not cited, it should be ranked last (high penalty)
+        result["rank_labels"] = [self.num_class] * self.num_class
+        for rank, rank_label in enumerate(entry["label"]):
+            result["rank_labels"][rank_label] = rank
+
         return result
 
     def tokenize_text(self, text: str | list[str]) -> dict[str, torch.Tensor]:
@@ -377,6 +383,7 @@ class BertModel:
             list[ClassificationSystem.EnumMember]: The predicted class for each text.
         """
         inputs = [self.tokenize_text(text) for text in texts]
+        task = self.classification_system.classification_task()
 
         def collate_fn(batch):
             """Collates tokenized inputs into a batch-friendly format."""
@@ -390,10 +397,18 @@ class BertModel:
             batch = {k: v.to(self.model.device) for k, v in batch.items()}
             outputs = self.model(**batch)
 
-            if self.classification_system.is_multi_label():
+            if task == ClassificationTask.multi_label:
                 prediction = [row.nonzero(as_tuple=True)[0].tolist() or [0] for row in (outputs.logits > 0)]
-            else:
+            elif task == ClassificationTask.single_label:
                 prediction = outputs.logits.argmax(axis=-1, keepdims=True).tolist()
+            elif task == ClassificationTask.rank:
+                sorted_indices = outputs.logits.argsort(axis=1, descending=True)
+                prediction = [
+                    [idx for idx in row_indices.tolist() if row_logits[idx] > 0] or [0]
+                    for row_indices, row_logits in zip(sorted_indices, outputs.logits, strict=True)
+                ]
+            else:
+                raise NotImplementedError(f"Unsupported classification task {task}")
 
             predictions.extend(prediction)
 

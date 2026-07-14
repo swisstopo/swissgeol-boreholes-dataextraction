@@ -7,6 +7,7 @@ dummy:
   color_unconsolidated: null
   debris: null
   en_main: null
+  en_secondary: null
   grain_angularity: null
   grain_shape: null
   lithology: null
@@ -22,6 +23,7 @@ baseline:
   color_unconsolidated: null
   debris: null
   en_main: null
+  en_secondary: null
   grain_angularity: null
   grain_shape: null
   lithology: baseline/baseline_config_lithology.yml
@@ -37,6 +39,7 @@ bert:
   color_unconsolidated: bert/bert_config_color_u2a.yml
   debris: bert/bert_config_debris.yml
   en_main: bert/bert_config_en_main.yml
+  en_secondary: bert/bert_config_en_secondary.yml
   grain_angularity: bert/bert_config_grain_angularity.yml
   grain_shape: bert/bert_config_grain_shape.yml
   lithology: bert/bert_config_lithology.yml
@@ -52,6 +55,7 @@ bedrock:
   color_unconsolidated: bedrock/bedrock_config_color.yml
   debris: bedrock/bedrock_config_debris.yml
   en_main: bedrock/bedrock_config_en_main.yml
+  en_secondary: bedrock/bedrock_config_en_secondary.yml
   grain_angularity: bedrock/bedrock_config_grain_angularity.yml
   grain_shape: bedrock/bedrock_config_grain_shape.yml
   lithology: bedrock/bedrock_config_lithology.yml
