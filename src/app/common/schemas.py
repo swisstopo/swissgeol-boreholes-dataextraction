@@ -909,27 +909,3 @@ class ClassifyResponse(BaseModel):
     )
     def _serialize_multi_label(self, value: list[Enum] | None, _info) -> list[str] | None:
         return [member.name for member in value] if value is not None else None
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "examples": [
-                {
-                    "en_main": "si",
-                    "uscs": "not_specified",
-                    "debris": ["not_specified"],
-                    "color": "grey",
-                    "grain_angularity": ["angular", "sub_angular", "sub_rounded"],
-                    "grain_shape": ["not_specified"],
-                    "organic_components": ["roots"],
-                },
-                {
-                    "lithology": "limestone",
-                    "alteration_degree_consolidated": "not_specified",
-                    "cementation": "not_specified",
-                    "color": "yellowish_orange",
-                    "mineral_components": ["pyrite", "glauconite"],
-                    "accessory_components": ["ooids", "pellets"],
-                },
-            ]
-        }
-    )

@@ -50,6 +50,32 @@ _CLASSIFY_REQUEST_EXAMPLES = {
     },
 }
 
+_CLASSIFY_RESPONSE_EXAMPLES = {
+    "unconsolidated_silt": {
+        "summary": "Unconsolidated sediment (silt)",
+        "value": {
+            "en_main": "si",
+            "uscs": "not_specified",
+            "debris": ["not_specified"],
+            "color": "grey",
+            "grain_angularity": ["angular", "sub_angular", "sub_rounded"],
+            "grain_shape": ["not_specified"],
+            "organic_components": ["roots"],
+        },
+    },
+    "consolidated_limestone": {
+        "summary": "Consolidated rock (limestone)",
+        "value": {
+            "lithology": "limestone",
+            "alteration_degree_consolidated": "not_specified",
+            "cementation": "not_specified",
+            "color": "yellowish_orange",
+            "mineral_components": ["pyrite", "glauconite"],
+            "accessory_components": ["ooids", "pellets"],
+        },
+    },
+}
+
 
 class BadRequestResponse(BaseModel):
     """Response schema for the extract_data endpoint."""
@@ -253,6 +279,7 @@ def post_extract_stratigraphy(request: ExtractStratigraphyRequest) -> ExtractStr
     tags=["classify"],
     response_model=ClassifyResponse,
     responses={
+        200: {"content": {"application/json": {"examples": _CLASSIFY_RESPONSE_EXAMPLES}}},
         400: {"model": BadRequestResponse, "description": "Bad request"},
         500: {"model": BadRequestResponse, "description": "Internal server error"},
         503: {"model": BadRequestResponse, "description": "BERT models not loaded (set BERT_ENABLED=true)"},
