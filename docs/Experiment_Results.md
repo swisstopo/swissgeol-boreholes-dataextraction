@@ -86,24 +86,24 @@
 |           | Bedrock (v1) |          |               | BERT (Rank) |          |               |
 |-----------|--------------|----------|---------------|-------------|----------|---------------|
 | Test set  | F1-macro     | F1-micro | Kendall's Tau | F1-macro    | F1-micro | Kendall's Tau |
-| Deepwells | 0.xxx        | 0.xxx    | 0.xxx         | 0.629       | 0.966    | 0.965         |
-| Geoquat   | 0.xxx        | 0.xxx    | 0.xxx         | 0.829       | 0.948    | 0.778         |
-| Nagra     | 0.xxx        | 0.xxx    | 0.xxx         | 0.880       | 0.991    | 0.798         |
-| Thurgau   | 0.xxx        | 0.xxx    | 0.xxx         | 0.646       | 0.932    | 0.617         |
+| Deepwells | 0.766        | 0.966    | 0.832         | 0.629       | 0.966    | 0.965         |
+| Geoquat   | 0.736        | 0.9196   | 0.621        | 0.829       | 0.948    | 0.778         |
+| Nagra     | 0.668	       | 0.963	  | 0.866         | 0.880       | 0.991    | 0.798         |
+| Thurgau   | 0.581	       | 0.885	  | 0.595        | 0.646       | 0.932    | 0.617         |
 | Overall   | -            | -        | -             | 0.808       | 0.945    | 0.744         |
 
 
 | Prompt   | Test set  | Bedrock F1-macro | Bedrock F1-micro | Bedrock Kendall's Tau |
 |----------|-----------|------------------|------------------|-----------------------|
-| Baseline | Deepwells | 0.768            | 0.970            | -                     |
-|          | Geoquat   | 0.649            | 0.933            | -                     |
-|          | Nagra     | 0.514            | 0.954            | -                     |
-|          | Thurgau   | 0.575            | 0.895            | -                     |
+| Baseline | Deepwells | 0.768            | 0.970            | 0.499                 |
+|          | Geoquat   | 0.649            | 0.933            | 0.249                 |
+|          | Nagra     | 0.514            | 0.954            | 0.899                 |
+|          | Thurgau   | 0.575            | 0.895            | 0.14                  |
 |          | Overall   | -                | -                | -                     |
-| v1       | Deepwells | 0.xxx            | 0.xxx            | 0.xxx                 |
-|          | Geoquat   | 0.xxx            | 0.xxx            | 0.xxx                 |
-|          | Nagra     | 0.xxx            | 0.xxx            | 0.xxx                 |
-|          | Thurgau   | 0.xxx            | 0.xxx            | 0.xxx                 |
+| v1       | Deepwells | 0.766	          | 0.966	         | 0.832                 |
+|          | Geoquat   | 0.736	          | 0.9196	         | 0.621                 |
+|          | Nagra     | 0.668	          | 0.963	         | 0.866                 |
+|          | Thurgau   | 0.581	          | 0.885	         | 0.595                 |
 |          | Overall   | -                | -                | -                     |
 
 | Loss | Test set  | BERT F1-macro | BERT F1-micro | BERT Kendall's Tau |
