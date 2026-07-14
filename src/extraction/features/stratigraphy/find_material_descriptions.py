@@ -162,9 +162,9 @@ class MaterialDescriptionExtractor:
             )
 
         def can_extend_above(
-            best_x0: float, best_y0: float, line: TextLine, x_tolerance: float = 5, line_gap: float = 10
+            best_x0: float, best_y0: float, line: TextLine, x_tolerance: float = 5, line_gap: float = 5
         ):
-            not_far_above_current_rect = line.rect.y1 > best_y0 - line_gap
+            not_far_above_current_rect = best_y0 >= line.rect.y1 > best_y0 - line_gap
             within_sidebar = (
                 self.sidebar_zero_y0 is not None and (line.rect.y0 + line.rect.y1) / 2 > self.sidebar_zero_y0
             )

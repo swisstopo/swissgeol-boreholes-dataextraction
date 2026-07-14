@@ -57,9 +57,10 @@ class MaterialDescriptionRectWithSidebar:
         noise_penalty_multiplier = math.pow(0.8, 10 * self.noise_count / len(self.sidebar.entries))
 
         description_lines = get_description_lines(self.lines, self.material_description_rect)
-        num_lines_score = len(description_lines)
+        # Increases from 0 (for 0 lines) and converges to 1 (for infinite number of lines)
+        num_lines_score = 1 - 1 / (1 + len(description_lines))
 
-        return (geometry_score + num_lines_score) * noise_penalty_multiplier
+        return geometry_score * num_lines_score * noise_penalty_multiplier
 
 
 @dataclass
