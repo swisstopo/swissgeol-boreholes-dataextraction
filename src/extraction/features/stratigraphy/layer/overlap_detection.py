@@ -185,8 +185,8 @@ def _is_duplicate(cur_text: str, prev_text: str, threshold: float, is_extremity:
     if is_extremity:
         min_length = min(len(cur_text), len(prev_text))
         score = max(
-            Levenshtein.ratio(cur_text, prev_text[-min_length:]),
-            Levenshtein.ratio(cur_text[:min_length], prev_text),
+            Levenshtein.ratio(cur_text, prev_text[:min_length]),
+            Levenshtein.ratio(cur_text[-min_length:], prev_text),
         )
     else:
         score = Levenshtein.ratio(cur_text, prev_text)
