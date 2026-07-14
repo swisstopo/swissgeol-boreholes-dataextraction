@@ -24,6 +24,9 @@ from app.api.v1.endpoints.classify_all import classify
 from app.common.schemas import ClassifyRequest
 from app.main import app
 from classification.utils.datasets import ExistingClassificationSystems
+from classification.utils.datasets.cementation import CementationSystem
+from classification.utils.datasets.grain_angularity import GrainAngularitySystem
+from classification.utils.datasets.lithology import LithologySystem
 
 #   lithology=limestone, cementation=strongly_cemented, grain_angularity=not_specified
 CONSOLIDATED_DESCRIPTION = "Kalkstein, hellgrau, geschichtet, feinkoernig, stark verkittet"
@@ -99,9 +102,14 @@ def test_classify_consolidated_rock_description(real_bert_models):
     """A real consolidated-rock description runs the lithology and cementation heads (both loaded)."""
     response = classify(ClassifyRequest(description=CONSOLIDATED_DESCRIPTION), real_bert_models)
 
+    assert response.lithology == LithologySystem.LithologyClasses.limestone
+    assert response.cementation == CementationSystem.CementationClasses.strongly_cemented
     # alteration_degree_consolidated/color/mineral_components/accessory_components are also
     # consolidated tasks but aren't loaded here, so they're skipped as not-loaded.
-    assert response.predictions == {"lithology": "limestone", "cementation": "strongly_cemented"}
+    assert response.alteration_degree_consolidated is None
+    assert response.color is None
+    assert response.mineral_components is None
+    assert response.accessory_components is None
 
 
 def test_classify_unconsolidated_sediment_description(real_bert_models, caplog):
@@ -109,9 +117,15 @@ def test_classify_unconsolidated_sediment_description(real_bert_models, caplog):
     with caplog.at_level(logging.WARNING):
         response = classify(ClassifyRequest(description=UNCONSOLIDATED_DESCRIPTION), real_bert_models)
 
+    assert response.grain_angularity == [
+        GrainAngularitySystem.GrainAngularityClasses.angular,
+        GrainAngularitySystem.GrainAngularityClasses.sub_angular,
+    ]
     # lithology/cementation aren't part of the unconsolidated task set; en_main/uscs/debris/color/
     # grain_shape/organic_components aren't loaded here, so only grain_angularity comes back.
-    assert response.predictions == {"grain_angularity": ["angular", "sub_angular"]}
+    assert response.lithology is None
+    assert response.cementation is None
+    assert response.en_main is None
     assert any("not loaded" in message for message in caplog.messages)
 
 
@@ -136,4 +150,7 @@ def test_post_classify_returns_predictions_when_bert_models_loaded(
     response = test_client.post("/api/V1/classify", content=request.model_dump_json())
 
     assert response.status_code == 200
-    assert response.json()["predictions"] == {"lithology": "limestone", "cementation": "strongly_cemented"}
+    body = response.json()
+    assert body["lithology"] == "limestone"
+    assert body["cementation"] == "strongly_cemented"
+    assert body["color"] is None
