@@ -19,13 +19,12 @@ class AToBSidebarExtractor:
 
     @staticmethod
     def find_in_words(all_words: list[TextWord], table_structures: list[TableStructure]) -> list[AToBSidebar]:
-        """Finds all AToBSidebars.
+        """Finds all AToBSidebars, where start and end point of a layer are defined together (e.g. 1.10-1.60m).
 
-        Generates a list of AToBDepthColumnEntry objects by finding consecutive pairs of DepthColumnEntry objects.
-        Different columns are grouped together in LayerDepthColumn objects. Finally, a list of AToBSidebars objects,
-        one for each column, is returned.
+        Generates a list of IntervalEntry objects by finding consecutive pairs of DepthColumnEntry objects.
+        Intervals are clustered together into columns. Finally, a list of AToBSidebars objects, one for each
+        column, is returned.
 
-        A layer corresponds to a material layer. The layer is defined using a start and end point (e.g. 1.10-1.60m).
         The start and end points are represented as DepthColumnEntry objects.
 
         Args:
