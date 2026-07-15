@@ -1,5 +1,6 @@
 """Model training module."""
 
+import json
 import logging
 import os
 import shutil
@@ -275,8 +276,25 @@ def setup_training_args(
     return training_args
 
 
+def load_document_texts(json_filenames: list[str]) -> dict[str, str]:
+    """Load a filename -> text mapping from one or more JSON files.
+
+    Args:
+        json_filenames (list[str]): JSON filenames, relative to `DATAPATH`, each holding a flat
+            filename -> text mapping, e.g. as produced by `scripts.extract_full_text_csv`.
+
+    Returns:
+        dict[str, str]: Mapping from filename to text, merged across all given JSON files.
+    """
+    text_by_filename: dict[str, str] = {}
+    for json_filename in json_filenames:
+        with open(DATAPATH / json_filename, encoding="utf8") as f:
+            text_by_filename.update(json.load(f))
+    return text_by_filename
+
+
 def load_samples_from_set(dataset_cfg: ExperimentDatasetConfig) -> list[LayerInformation]:
-    """Load and flatten all labelled layers from a list of dataset configurations.
+    """Load and flatten all labelled layers (or documents) from a list of dataset configurations.
 
     Args:
         dataset_cfg (ExperimentDatasetConfig): Configuration specifying ground-truth files
@@ -288,13 +306,15 @@ def load_samples_from_set(dataset_cfg: ExperimentDatasetConfig) -> list[LayerInf
     classification_system = ExistingClassificationSystems.get_classification_system_type(
         dataset_cfg.classification_system,
     )
+    document_text = load_document_texts(dataset_cfg.document_texts) if dataset_cfg.document_texts else None
     return [
         sample
         for ground_truth in dataset_cfg.ground_truths
         for sample in classification_system.process(
             ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
                 ground_truth=GroundTruth(DATAPATH / ground_truth).ground_truth,
-            )
+            ),
+            document_text=document_text,
         )
     ]
 

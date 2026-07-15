@@ -44,6 +44,11 @@ class BoreholeTypeSystem(ClassificationSystem):
         return [["metadata", "borehole_type"]]
 
     @classmethod
+    def is_document_level(cls) -> bool:
+        """Train on one example per file (full/header document text), not per layer material description."""
+        return True
+
+    @classmethod
     def get_default_class_value(cls) -> BoreholeTypeClasses:
         """Return the default value for the enum class."""
         return cls.BoreholeTypeClasses.not_specified

@@ -86,6 +86,8 @@ class GroundTruthMetadata(BaseModel):
     """Borehole metadata extracted from the document header."""
 
     model_config = {"extra": "forbid"}
+    borehole_purpose: str | None = None
+    borehole_type: str | None = None
     coordinates: GroundTruthCoordinates | None = None
     drilling_date: str | None = None
     drilling_methods: list[str] | None = None
