@@ -24,7 +24,7 @@ class TableEntries(Generic[EntryT]):
 
         An entry can belong to several groups in the output, if it intersects several table structures.
 
-        Entries that don't intersect with any table are put into a separate talbe-less group.
+        Entries that don't intersect with any table are put into a separate table-less group.
 
         Args:
             table_structures: a list of detected table structures
