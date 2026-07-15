@@ -2,10 +2,12 @@
 
 import re
 
-from extraction.features.stratigraphy.base.sidebar_entry import LayerIdentifierEntry
 from extraction.features.stratigraphy.sidebar.classes.layer_identifier_sidebar import LayerIdentifierSidebar
 from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
+from extraction.features.stratigraphy.sidebar.utils.entries_per_table import TableEntries
+from extraction.features.stratigraphy.sidebarentry.sidebar_entry import LayerIdentifierEntry
 from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.utils.table_detection import TableStructure
 
 
 class LayerIdentifierSidebarExtractor:
@@ -45,13 +47,14 @@ class LayerIdentifierSidebarExtractor:
         return entries
 
     @classmethod
-    def from_lines(cls, lines: list[TextLine]) -> list[LayerIdentifierSidebar]:
+    def from_lines(cls, lines: list[TextLine], table_structures: list[TableStructure]) -> list[LayerIdentifierSidebar]:
         """Find layer identifier sidebars from text lines.
 
         TODO: Similar to AToBSidebarExtractor.find_in_words(). Refactoring may be desired.
 
         Args:
             lines (list[TextLine]): The text lines in the document
+            table_structures (list[TableStructure]): List of detected table-like structures
 
         Returns:
             list[LayerIdentifierSidebar]: The found layer identifier sidebar.
@@ -60,7 +63,16 @@ class LayerIdentifierSidebarExtractor:
         if not entries:
             return []
 
-        clusters = Cluster[LayerIdentifierEntry].create_clusters(entries, lambda entry: entry.rect)
+        entry_partitions = TableEntries.group_entries_by_table(table_structures, entries)
+        clusters = [
+            cluster
+            for partition in entry_partitions
+            for cluster in Cluster[LayerIdentifierEntry].create_clusters(
+                partition.entries,
+                table_structure=partition.table,
+                allow_size_two=True,
+            )
+        ]
 
         sidebars = [LayerIdentifierSidebar(cluster.entries) for cluster in clusters if len(cluster.entries) >= 2]
 

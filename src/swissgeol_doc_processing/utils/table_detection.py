@@ -46,7 +46,8 @@ def detect_structure_lines(
 
 
 def detect_table_structures(
-    page: pymupdf.Page,
+    page_width: float,
+    page_height: float,
     geometric_lines: list[Line],
     text_lines: list[TextLine],
     table_detection_params: dict,
@@ -54,7 +55,8 @@ def detect_table_structures(
     """Detect multiple non-overlapping table structures on a page.
 
     Args:
-        page (pymupdf.Page): The page to analyze.
+        page_width (float): The width of the page to analyze.
+        page_height (float): The height of the page to analyze.
         geometric_lines (list[Line]): The geometric lines on the page.
         text_lines (list[TextLine]): All text lines on the page.
         table_detection_params (dict): Table detection parameters.
@@ -62,9 +64,6 @@ def detect_table_structures(
     Returns:
         List of detected table structures
     """
-    page_width = page.rect.width
-    page_height = page.rect.height
-
     structure_lines = detect_structure_lines(geometric_lines, table_detection_params)
     table_candidates = _find_table_structures(
         structure_lines, table_detection_params, page_width, page_height, text_lines
@@ -94,10 +93,11 @@ def _separate_by_orientation(lines: list[Line], table_detection_params: dict) ->
     structure_lines = []
 
     for line in lines:
+        # line.angle is a value between -90 and 90
         angle = abs(line.angle)
 
-        # Horizontal lines (close to 0° or 180°)
-        if angle <= angle_tolerance or angle >= (180 - angle_tolerance):
+        # Horizontal lines (close to 0°)
+        if angle <= angle_tolerance:
             structure_lines.append(
                 StructureLine(
                     start=min(line.start.x, line.end.x),
@@ -108,7 +108,7 @@ def _separate_by_orientation(lines: list[Line], table_detection_params: dict) ->
                 )
             )
         # Vertical lines (close to 90°)
-        elif angle - 90 <= angle_tolerance:
+        elif angle >= 90 - angle_tolerance:
             structure_lines.append(
                 StructureLine(
                     start=min(line.start.y, line.end.y),

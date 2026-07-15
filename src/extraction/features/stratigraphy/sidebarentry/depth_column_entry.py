@@ -1,23 +1,8 @@
-"""Contains a dataclass for depth column entries, which indicate the measured depth of an interface between layers."""
-
-from __future__ import annotations
-
-import abc
-from typing import Generic, TypeVar
+"""Contains a class for depth column entries, which indicate the measured depth of an interface between layers."""
 
 import pymupdf
 
-from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
-
-ValueT = TypeVar("ValueT")
-
-
-class SidebarEntry(abc.ABC, Generic[ValueT], RectWithPageMixin):
-    """Abstract class for sidebar entries (e.g. DepthColumnEntry or LayerIdentifierEntry)."""
-
-    def __init__(self, value: ValueT, rect: pymupdf.rect, page_number: int):
-        self.value = value
-        self.rect_with_page = RectWithPage(rect, page_number)
+from extraction.features.stratigraphy.sidebarentry.sidebar_entry import SidebarEntry
 
 
 class DepthColumnEntry(SidebarEntry[float]):
@@ -28,7 +13,7 @@ class DepthColumnEntry(SidebarEntry[float]):
     of the core extraction logic, and is the building block for larger object like Sidebars.
     """
 
-    def __init__(self, value: ValueT, rect: pymupdf.rect, page_number: int, has_decimal_point: bool = False):
+    def __init__(self, value: float, rect: pymupdf.Rect, page_number: int, has_decimal_point: bool = False):
         super().__init__(value, rect, page_number)
         self.has_decimal_point = has_decimal_point
         self.relative_shift = 0.0
@@ -37,7 +22,7 @@ class DepthColumnEntry(SidebarEntry[float]):
         return str(self.value)
 
     @classmethod
-    def from_string_value(cls, rect: pymupdf.Rect, string_value: str, page_number: int) -> DepthColumnEntry:
+    def from_string_value(cls, rect: pymupdf.Rect, string_value: str, page_number: int) -> "DepthColumnEntry":
         """Creates a DepthColumnEntry from a string representation of the value.
 
         Args:
@@ -65,15 +50,3 @@ class DepthColumnEntry(SidebarEntry[float]):
         return pymupdf.Rect(
             self.rect.x0, self.rect.y0 + self.relative_shift, self.rect.x1, self.rect.y1 + self.relative_shift
         )
-
-
-class LayerIdentifierEntry(SidebarEntry[str]):
-    """Class for a layer identifier entry."""
-
-    pass
-
-
-class SpulprobeEntry(SidebarEntry[float]):
-    """Sidebar entry of type Sp. X m, for boreholes with dicrete sampled depths instead of continued intervals."""
-
-    pass

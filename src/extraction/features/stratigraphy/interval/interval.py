@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import pymupdf
 
-from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
+from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
 from swissgeol_doc_processing.text.textblock import TextBlock
 
 

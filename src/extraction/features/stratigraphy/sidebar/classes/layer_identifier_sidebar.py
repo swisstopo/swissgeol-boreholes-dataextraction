@@ -6,13 +6,13 @@ from typing import ClassVar
 
 import numpy as np
 
-from extraction.features.stratigraphy.base.sidebar_entry import LayerIdentifierEntry
 from extraction.features.stratigraphy.interval.a_to_b_interval_extractor import AToBIntervalExtractor
-from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
+from extraction.features.stratigraphy.interval.interval import Interval, IntervalBlockPair, IntervalZone
 from extraction.features.stratigraphy.interval.partitions_and_sublayers import (
     get_optimal_intervals_with_text,
 )
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
+from extraction.features.stratigraphy.sidebarentry.sidebar_entry import LayerIdentifierEntry
 from swissgeol_doc_processing.geometry.util import y_overlap_significant_smallest
 from swissgeol_doc_processing.text.textblock import TextBlock
 from swissgeol_doc_processing.text.textline import TextLine
@@ -39,9 +39,11 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         Returns:
             list[IntervalZone]: A list of interval zones.
         """
-        if not self.entries:
-            return []
-        return self.get_zones_from_entries(self.entries, include_open_ended=True)
+        zones = []
+        for index, entry in enumerate(self.entries):
+            next_entry_rect = self.entries[index + 1].rect if len(self.entries) > index + 1 else None
+            zones.append(IntervalZone(entry.rect, next_entry_rect, Interval(start=None, end=None)))
+        return zones
 
     @staticmethod
     def dp_scoring_fn(interval_zone: IntervalZone, line: TextLine) -> float:

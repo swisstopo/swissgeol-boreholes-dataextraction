@@ -132,7 +132,7 @@ def extract(
 
             # Detect table structures on the page
             table_structures = detect_table_structures(
-                page, long_or_horizontal_lines, text_lines, table_detection_params
+                page.rect.width, page.rect.height, long_or_horizontal_lines, text_lines, table_detection_params
             )
 
             # Detect strip logs on the page
