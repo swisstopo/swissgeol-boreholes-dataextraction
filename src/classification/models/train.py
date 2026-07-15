@@ -281,7 +281,7 @@ def load_document_texts(json_filenames: list[str]) -> dict[str, str]:
 
     Args:
         json_filenames (list[str]): JSON filenames, relative to `DATAPATH`, each holding a flat
-            filename -> text mapping, e.g. as produced by `scripts.extract_full_text_csv`.
+            filename.
 
     Returns:
         dict[str, str]: Mapping from filename to text, merged across all given JSON files.
