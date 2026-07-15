@@ -79,7 +79,7 @@ class AToBSidebarExtractor:
                 interval = AToBInterval(entry, other)
                 interval_entries.append(IntervalEntry(interval, entry.page_number))
 
-        entry_partitions = TableEntries.partition_entries(
+        entry_partitions = TableEntries.group_entries_by_table(
             table_structures, sorted(interval_entries, key=lambda entry: entry.rect.y0)
         )
         clusters = [

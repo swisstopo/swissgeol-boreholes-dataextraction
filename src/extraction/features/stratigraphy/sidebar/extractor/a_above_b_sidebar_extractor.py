@@ -93,7 +93,7 @@ class AAboveBSidebarExtractor:
             for entry in DepthColumnEntryExtractor.find_in_words(all_words)
             if all((entry.rect & used_rect).is_empty for used_rect in used_entry_rects)
         ]
-        entry_partitions = TableEntries.partition_entries(table_structures, filtered_entries)
+        entry_partitions = TableEntries.group_entries_by_table(table_structures, filtered_entries)
         clusters = [
             cluster
             for entry_partition in entry_partitions

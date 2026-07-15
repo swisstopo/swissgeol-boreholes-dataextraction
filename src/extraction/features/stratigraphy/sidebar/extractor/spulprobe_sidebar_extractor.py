@@ -87,7 +87,7 @@ class SpulprobeSidebarExtractor:
         """
         entries = cls.find_spulprobe_entries(lines)
 
-        entry_partitions = TableEntries.partition_entries(table_structures, entries)
+        entry_partitions = TableEntries.group_entries_by_table(table_structures, entries)
         clusters = [
             cluster
             for partition in entry_partitions

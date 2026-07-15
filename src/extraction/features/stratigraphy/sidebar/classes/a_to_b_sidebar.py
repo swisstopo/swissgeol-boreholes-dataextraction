@@ -55,14 +55,15 @@ class AToBSidebar(Sidebar[IntervalEntry]):
         Returns:
             list[AToBSidebar]: A list of depth column segments.
         """
+        intervals = self.intervals
         segments: list[list[IntervalEntry]] = []
         segment_start = 0
         index = 0
-        while index < len(self.intervals):
+        while index < len(intervals):
             # We allow sublayers with depths lower than the end of the current entry, as long as the next layer
             # has a start depth that exactly matches the current end depth.
             current_interval = self.entries[index].value
-            sublayer_count = number_of_subintervals(current_interval, self.intervals[index + 1 :])
+            sublayer_count = number_of_subintervals(current_interval, intervals[index + 1 :])
 
             # It seems reasonable that a single "parent" layer should not have more than 8 sublayers. This check
             # ensures that when e.g. a scale "1:100" is misinterpreted as a parent layer from 1m to 100m, the entire
@@ -73,7 +74,7 @@ class AToBSidebar(Sidebar[IntervalEntry]):
                 if index + sublayer_count + 1 >= len(self.entries):
                     depths_ok = True
                 else:
-                    next_interval = self.intervals[index + sublayer_count + 1]
+                    next_interval = intervals[index + sublayer_count + 1]
                     if sublayer_count == 0:
                         # no subintervals, the next interval must start deeper or at the same depth than the end of
                         # the current interval
