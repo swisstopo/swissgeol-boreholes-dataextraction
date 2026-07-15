@@ -1,8 +1,21 @@
-"""Methods for extracting plain text from a PDF document."""
+"""Methods for extracting plain text from a PDF document.
+
+Run with
+uv run python -m scripts.extract_full_text_csv -i data/pdfs/ -o full_text.json
+
+e.g.
+uv run python -m scripts.extract_full_text_csv -i data/zurich/ -o data/filteredtext/zurich_full_text.json --header-only
+
+"""
+
+import re
 
 import pymupdf
 
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
+
+NUMBER_PATTERN = re.compile(r"^-?\d+([.,]\d+)?$")
+PUNCTUATION_PATTERN = re.compile(r"^[?%!><.,/\\-]+$=")
 
 
 def extract_text_lines(page: pymupdf.Page) -> list[TextLine]:
@@ -60,3 +73,33 @@ def extract_text_lines_from_bbox(page: pymupdf.Page, bbox: pymupdf.Rect | None) 
             current_line_words = []
 
     return lines
+
+
+def filter_header_candidate_lines(lines: list[TextLine], language: str, matching_params: dict) -> list[TextLine]:
+    """Remove material description lines, standalone numbers and standalone punctuation from a list of lines.
+
+    Intended for use cases (e.g. document-level classification) where only the "header-like" remainder of
+    the page text is of interest, since material descriptions, numeric depth/coordinate values and stray
+    punctuation marks make up most of a borehole log's token count without being relevant header content.
+
+    Args:
+        lines (list[TextLine]): The text lines to filter, e.g. as returned by `extract_text_lines`.
+        language (str): The language of the document, e.g. "de", "fr", "en", "it".
+        matching_params (dict): The matching parameters, as used by `TextLine.is_description`.
+
+    Returns:
+        list[TextLine]: The filtered text lines, with material description lines removed entirely and
+            standalone number/punctuation words removed from the remaining lines.
+    """
+    header_lines = []
+    for line in lines:
+        if line.is_description(matching_params, language):
+            continue
+        remaining_words = [
+            word
+            for word in line.words
+            if not NUMBER_PATTERN.match(word.text) and not PUNCTUATION_PATTERN.match(word.text)
+        ]
+        if remaining_words:
+            header_lines.append(TextLine(remaining_words))
+    return header_lines
