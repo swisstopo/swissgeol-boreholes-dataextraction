@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from enum import IntEnum, auto
 
-from classification.utils.datasets.classification import ClassificationSystem
+from classification.utils.datasets.classification import ClassificationSystem, ClassificationTask
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +36,9 @@ class GrainAngularitySystem(ClassificationSystem):
         return "grain_angularity"
 
     @classmethod
-    def get_layer_ground_truth_keys(cls) -> list[str]:
+    def get_layer_ground_truth_keys(cls) -> list[list[str]]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
-        return ["unconsolidated", "grain_angularity"]
+        return [["unconsolidated", "grain_angularity"]]
 
     @classmethod
     def get_default_class_value(cls) -> GrainAngularityClasses:
@@ -46,8 +46,8 @@ class GrainAngularitySystem(ClassificationSystem):
         return cls.GrainAngularityClasses.not_specified
 
     @classmethod
-    def is_multi_label(cls) -> bool:
-        return True
+    def classification_task(cls) -> ClassificationTask:
+        return ClassificationTask.multi_label
 
     class GrainAngularityClasses(IntEnum):
         """Grain angularity classes for unconsolidated soil classification (0-based indexing)."""

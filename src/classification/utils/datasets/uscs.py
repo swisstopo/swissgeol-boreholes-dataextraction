@@ -41,9 +41,9 @@ class USCSSystem(ClassificationSystem):
         return "uscs"
 
     @classmethod
-    def get_layer_ground_truth_keys(cls) -> list[str]:
+    def get_layer_ground_truth_keys(cls) -> list[list[str]]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
-        return ["unconsolidated", "uscs"]
+        return [["unconsolidated", "uscs"]]
 
     @classmethod
     def get_default_class_value(cls) -> USCSClasses:
