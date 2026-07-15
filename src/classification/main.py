@@ -79,6 +79,7 @@ def common_options(f):
                 "color_unconsolidated",
                 "debris",
                 "en_main",
+                "en_secondary",
                 "grain_angularity",
                 "grain_shape",
                 "lithology",

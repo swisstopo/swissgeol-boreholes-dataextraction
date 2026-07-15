@@ -6,7 +6,7 @@ import hashlib
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import IntEnum
+from enum import IntEnum, auto
 from functools import reduce
 
 from classification.utils.file_utils import read_params
@@ -254,6 +254,14 @@ class LayerInformation:
         )
 
 
+class ClassificationTask(IntEnum):
+    """Enum representing the type of classification task (single-label, multi-label, or rank)."""
+
+    single_label = 0
+    multi_label = auto()
+    rank = auto()
+
+
 class ClassificationSystem(ABC):
     """Abstract base class for classification system.
 
@@ -285,28 +293,57 @@ class ClassificationSystem(ABC):
 
     @classmethod
     @abstractmethod
-    def get_layer_ground_truth_keys(cls) -> list[str]:
+    def get_layer_ground_truth_keys(cls) -> list[list[str]]:
         """Return a list of keys in the layer dictionary that retrieves the ground truth class string."""
         ...
+
+    @classmethod
+    def reduce_group(
+        cls,
+        keys: list[str],
+        layer: GroundTruthLayer,
+    ) -> list[ClassificationSystem.EnumMember]:
+        """Walk an attribute path on a layer and return the resolved enum members.
+
+        Args:
+            keys (list[str]): Ordered attribute names forming the path to the ground truth value.
+            layer (GroundTruthLayer): A single layer record from which to extract the label.
+
+        Returns:
+            list[ClassificationSystem.EnumMember]: Matched enum members, or an empty list if the
+                path is absent or the value is ``None``.
+        """
+        try:
+            label_str = reduce(getattr, keys, layer)
+        except AttributeError:
+            return []
+
+        if label_str is None:
+            return []
+
+        if isinstance(label_str, list):
+            return [cls.map_most_similar_class(s) for s in label_str]
+
+        return [cls.map_most_similar_class(label_str)]
 
     @classmethod
     def reduce_label(
         cls,
         layer: GroundTruthLayer,
     ) -> list[ClassificationSystem.EnumMember] | None:
-        """Extract the list of class members from a layer by resolving the ground truth key path, or None if absent."""
-        try:
-            label_str = reduce(getattr, cls.get_layer_ground_truth_keys(), layer)
-        except AttributeError:
-            return None
+        """Resolve all ground truth labels for a layer across every key group.
 
-        if label_str is None:
-            return None
+        Args:
+            layer (GroundTruthLayer): A single layer record to extract labels from.
 
-        if isinstance(label_str, list):
-            return [cls.map_most_similar_class(s) for s in label_str]
+        Returns:
+            list[ClassificationSystem.EnumMember] | None: Flat list of resolved enum members,
+                or ``None`` if the layer has no ground truth for this classification system.
+        """
+        label_groups = [cls.reduce_group(keys, layer) for keys in cls.get_layer_ground_truth_keys()]
+        labels_str = [label for label_group in label_groups for label in label_group]
 
-        return [cls.map_most_similar_class(label_str)]
+        return list(dict.fromkeys(labels_str)) if labels_str else None
 
     @classmethod
     def process(
@@ -348,9 +385,9 @@ class ClassificationSystem(ABC):
         ...
 
     @classmethod
-    def is_multi_label(cls) -> bool:
-        """Return True if layers can carry more than one label."""
-        return False
+    def classification_task(cls) -> ClassificationTask:
+        """Return the classification task type for this dataset."""
+        return ClassificationTask.single_label
 
     @classmethod
     def map_most_similar_class(cls, class_str: str) -> EnumMember:

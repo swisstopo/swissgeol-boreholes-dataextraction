@@ -1,0 +1,287 @@
+baseline: |
+  si:
+    description:
+      Silt as a soil constituent. Use whenever the description names silt as
+      one of the soil components (main or secondary), via the noun or any
+      adjectival form. Do not confuse with clay ("cl") or with general
+      fine-grained wording that does not specifically name silt.
+    keywords:
+      de: [Silt, siltig, siltiger, siltige, Schluff, schluffig]
+      fr: [limon, limoneux, limoneuse, limono-]
+      it: [limo, limoso]
+      en: [silt, silty]
+
+  cl:
+    description:
+      Clay as a soil constituent. Use whenever the description names clay,
+      either via the noun or an adjectival form, including the common Swiss
+      German term "Lehm" (loam/clay) and its derivatives. Independent of
+      plasticity wording, which only confirms but does not by itself trigger
+      this class.
+    keywords:
+      de: [Ton, tonig, tonige, toniger, Lehm, lehmig, lehmige]
+      fr: [argile, argileux, argileuse]
+      it: [argilla, argilloso]
+      en: [clay, clayey]
+
+  sa:
+    description:
+      Sand as a soil constituent, used whenever the grain-size sub-fraction
+      (fine/medium/coarse, see fsa/msa/csa/fmsa/mcsa) is NOT specified.
+      If a fine, medium, or coarse qualifier is attached to "sand", assign
+      the corresponding sub-fraction class instead of (not in addition to)
+      "sa" — the two are mutually exclusive for the same population.
+    keywords:
+      de: [Sand, sandig, sandige, sandiger]
+      fr: [sable, sableux, sableuse]
+      it: [sabbia, sabbioso]
+      en: [sand, sandy]
+
+  gr:
+    description:
+      Gravel as a soil constituent, used whenever the grain-size sub-fraction
+      (fine/medium/coarse, see fgr/mgr/cgr/fmgr/mcgr) is NOT specified.
+      If a fine, medium, or coarse qualifier is attached to "gravel", assign
+      the corresponding sub-fraction class instead of (not in addition to)
+      "gr" — the two are mutually exclusive for the same population.
+    keywords:
+      de: [Kies, kiesig, kiesige, kiesiger]
+      fr: [gravier, graveleux, graveleuse, grave]
+      it: [ghiaia, ghiaioso]
+      en: [gravel, gravelly]
+
+  co:
+    description:
+      Cobbles — coarse rock fragments larger than gravel but smaller than
+      boulders (roughly 6-20 cm), described as loose, transported clasts
+      within a finer matrix. The primary German signal is "Steine" /
+      "Gerölle" (and "Komponenten" when paired with a size or roundness
+      qualifier referring to coarse clasts). French: "cailloux". Do not
+      confuse with "bo" (boulders, larger blocks) or with anthropogenic
+      debris ("ba"), which refers to construction material, not natural
+      rock clasts.
+    keywords:
+      de: [Steine, Stein, Gerölle, Geröll, Komponenten, Kiesel]
+      fr: [cailloux, caillou, galets, galet]
+      it: [ciottoli, ciottolo]
+      en: [cobbles, cobble, stones]
+
+  bo:
+    description:
+      Boulders — large rock fragments, typically described singly or in
+      small numbers, with diameters above roughly 20 cm (often explicitly
+      stated with "Ø" or "dm."). The primary German signal is "Block" /
+      "Blöcke". French: "bloc(s)". Use bo for naturally occurring rock
+      boulders; if the boulder-like object is explicitly man-made (e.g. a
+      concrete block, "Betonblock"), assign "an" instead.
+    keywords:
+      de: [Block, Blöcke, Blockes, Findling]
+      fr: [bloc, blocs]
+      it: [blocco, blocchi, masso, massi]
+      en: [boulder, boulders, block]
+
+  lbo:
+    description:
+      Large boulders / blocky rock mass fragments — an extreme, rare
+      end of the boulder size range, generally only assigned for very large
+      individual rock masses or competent bedrock fragments encountered in
+      a borehole, distinct from ordinary "bo" boulders. This class is very
+      rare in practice; assign it only when the description clearly conveys
+      an unusually large, massive rock body rather than a normal-sized
+      boulder.
+    keywords:
+      de: [Grossblock, Grossblöcke, massiver Block, Felsblock]
+      fr: [très gros bloc, bloc massif]
+      it: [grande masso]
+      en: [large boulder, massive block]
+
+  ba:
+    description:
+      Construction/building debris occurring as an admixture WITHIN a
+      natural soil matrix (made-ground inclusions), e.g. brick fragments,
+      rubble, demolition waste, mortar pieces, or other building remnants
+      mixed into silt, clay, sand, or gravel. Always co-occurs with at
+      least one natural soil-component class (si, cl, sa, gr, co, ...) that
+      describes the host matrix. Distinguish from "an", which is used when
+      the entire layer IS the artificial material itself (e.g. a slab of
+      concrete or an asphalt course), with no natural soil matrix present.
+    keywords:
+      de: [Bauschutt, Ziegel, Backstein, Mauerwerk, Gravats, Schutt]
+      fr: [gravats, débris de brique, brique, briques, déchets de construction, matériaux de décharge, matériel de décharge]
+      it: [macerie, mattoni]
+      en: [building debris, rubble, brick fragments, construction debris]
+
+  an:
+    description:
+      Anthropogenic / man-made material forming the layer itself, rather
+      than an admixture in natural soil — concrete, asphalt, bitumen,
+      pavement, masonry, slabs, foundations, or industrial residues (e.g.
+      slag, foundry sand) described as the primary material of the layer.
+      The primary German signals are "Beton", "Asphalt", "Belag",
+      "Schwarzbelag". French: "béton", "bitume", "enrobé", "revêtement",
+      "dallage". Never combine "an" with "ba" — when artificial material is
+      the whole layer use "an"; when it is debris mixed into natural soil
+      use "ba" instead.
+    keywords:
+      de: [Beton, Asphalt, Belag, Schwarzbelag, Bitumen, Teerbelag, Pflästerung, Mauerwerk, Magerbeton]
+      fr: [béton, bitume, enrobé, revêtement bitumineux, dallage, chaussée, pavé, pavés, maçonnerie]
+      it: [calcestruzzo, asfalto, rivestimento, pavimentazione]
+      en: [concrete, asphalt, bitumen, pavement, slab, masonry]
+
+  hu:
+    description:
+      Humus / topsoil — dark, organically enriched surface soil horizon.
+      The primary German signal is "Humus". French: "terre végétale".
+      Distinguish from generic organic admixtures ("or_"), which describe
+      organic traces within an otherwise mineral soil rather than a topsoil
+      horizon itself, and from peat ("pt"), which is a distinct, denser
+      organic accumulation.
+    keywords:
+      de: [Humus, Humushorizont, Mutterboden]
+      fr: [terre végétale, humus]
+      it: [humus, terreno vegetale]
+      en: [humus, topsoil]
+
+  or_:
+    description:
+      Organic matter present as an admixture or trace within mineral soil —
+      plant remains, roots, organic staining, decomposed vegetation, wood
+      fragments, charring, or generic "organic content" wording, without
+      forming a distinct humus or peat horizon. Use alongside whatever
+      mineral classes describe the host matrix.
+    keywords:
+      de: [organisch, organische Beimengungen, Pflanzenreste, Wurzelreste, Wurzeln, Verkohlung]
+      fr: [matière organique, débris végétaux, racines, organique]
+      it: [materia organica, resti vegetali, radici]
+      en: [organic matter, plant remains, roots, organic]
+
+  pt:
+    description:
+      Peat — a distinct, fibrous to amorphous accumulation of decomposed
+      plant material, denser and more clearly a soil type of its own than
+      the scattered organic traces covered by "or_". The primary German
+      signal is "Torf". French: "tourbe".
+    keywords:
+      de: [Torf, torfig, Torfschicht]
+      fr: [tourbe, tourbeux]
+      it: [torba]
+      en: [peat, peaty]
+
+  fsa:
+    description:
+      Fine sand. Use when "sand" is explicitly qualified as fine
+      ("Feinsand"). Mutually exclusive with the unqualified "sa" class for
+      the same population, and distinct from compound fine-medium ("fmsa")
+      or fine-coarse ranges, which get their own classes.
+    keywords:
+      de: [Feinsand, feinsandig, feinkörniger Sand]
+      fr: [sable fin]
+      it: [sabbia fine]
+      en: [fine sand]
+
+  msa:
+    description:
+      Medium sand. Use when "sand" is explicitly qualified as medium
+      ("Mittelsand"). Mutually exclusive with the unqualified "sa" class for
+      the same population.
+    keywords:
+      de: [Mittelsand, mittelsandig]
+      fr: [sable moyen]
+      it: [sabbia media]
+      en: [medium sand]
+
+  csa:
+    description:
+      Coarse sand. Use when "sand" is explicitly qualified as coarse
+      ("Grobsand"). Mutually exclusive with the unqualified "sa" class for
+      the same population.
+    keywords:
+      de: [Grobsand, grobsandig]
+      fr: [sable grossier]
+      it: [sabbia grossolana]
+      en: [coarse sand]
+
+  fmsa:
+    description:
+      Fine to medium sand, a single graded population spanning both the
+      fine and medium sand sub-fractions (German "Fein- bis Mittelsand" or
+      "Fein-Mittelsand"; French "sable fin à moyen"). Assign this single
+      combined class rather than fsa + msa separately when the description
+      explicitly spans this range as one fraction.
+    keywords:
+      de: [Fein-Mittelsand, Fein- bis Mittelsand, fein- bis mittelkörniger Sand, feinmittelsandig]
+      fr: [sable fin à moyen, sable moyen à fin]
+      it: [sabbia da fine a media]
+      en: [fine to medium sand]
+
+  mcsa:
+    description:
+      Medium to coarse sand, a single graded population spanning both the
+      medium and coarse sand sub-fractions (German "Mittel- bis Grobsand" or
+      "Mittelgrobsand"; French "sable moyen à grossier"). Assign this single
+      combined class rather than msa + csa separately when the description
+      explicitly spans this range as one fraction.
+    keywords:
+      de: [Mittel-Grobsand, Mittel- bis Grobsand, Mittelgrobsand, mittel- bis grobkörniger Sand]
+      fr: [sable moyen à grossier, sable grossier à moyen]
+      it: [sabbia da media a grossolana]
+      en: [medium to coarse sand]
+
+  fgr:
+    description:
+      Fine gravel. Use when "gravel" is explicitly qualified as fine
+      ("Feinkies"). Mutually exclusive with the unqualified "gr" class for
+      the same population.
+    keywords:
+      de: [Feinkies, feinkiesig]
+      fr: [gravier fin]
+      it: [ghiaia fine]
+      en: [fine gravel]
+
+  mgr:
+    description:
+      Medium gravel. Use when "gravel" is explicitly qualified as medium
+      ("Mittelkies"). Mutually exclusive with the unqualified "gr" class for
+      the same population.
+    keywords:
+      de: [Mittelkies, mittelkiesig]
+      fr: [gravier moyen]
+      it: [ghiaia media]
+      en: [medium gravel]
+
+  cgr:
+    description:
+      Coarse gravel. Use when "gravel" is explicitly qualified as coarse
+      ("Grobkies"). Mutually exclusive with the unqualified "gr" class for
+      the same population.
+    keywords:
+      de: [Grobkies, grobkiesig]
+      fr: [gravier grossier]
+      it: [ghiaia grossolana]
+      en: [coarse gravel]
+
+  fmgr:
+    description:
+      Fine to medium gravel, a single graded population spanning both the
+      fine and medium gravel sub-fractions (German "Fein- bis Mittelkies"
+      or "Fein-Mittelkies"; French "gravier fin à moyen"). Assign this
+      single combined class rather than fgr + mgr separately when the
+      description explicitly spans this range as one fraction.
+    keywords:
+      de: [Fein-Mittelkies, Fein- bis Mittelkies, fein- bis mittelkörniger Kies]
+      fr: [gravier fin à moyen, gravier moyen à fin]
+      it: [ghiaia da fine a media]
+      en: [fine to medium gravel]
+
+  mcgr:
+    description:
+      Medium to coarse gravel, a single graded population spanning both the
+      medium and coarse gravel sub-fractions (German "Mittel- bis Grobkies"
+      or "Mittelgrobkies"; French "gravier moyen à grossier"). Assign this
+      single combined class rather than mgr + cgr separately when the
+      description explicitly spans this range as one fraction.
+    keywords:
+      de: [Mittel-Grobkies, Mittel- bis Grobkies, Mittelgrobkies, mittel- bis grobkörniger Kies]
+      fr: [gravier moyen à grossier, gravier grossier à moyen]
+      it: [ghiaia da media a grossolana]
+      en: [medium to coarse gravel]

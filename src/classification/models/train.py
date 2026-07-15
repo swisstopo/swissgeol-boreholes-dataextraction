@@ -26,6 +26,7 @@ from transformers import (
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from classification import DATAPATH
+from classification.evaluation.evaluate import rank_metrics_from
 from classification.models.config import (
     ExperimentConfig,
     ExperimentDatasetConfig,
@@ -34,6 +35,7 @@ from classification.models.config import (
 from classification.models.model import BertModel
 from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.datasets.classification import (
+    ClassificationTask,
     GroundTruthBoreholeWithLanguage,
     LayerInformation,
     split_samples,
@@ -233,12 +235,18 @@ def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: P
         mlflow.log_artifacts(path_head, artifact_path="model_head")
 
 
-def setup_training_args(model_config: ExperimentHyperparameters, out_directory: Path) -> TrainingArguments:
+def setup_training_args(
+    model_config: ExperimentHyperparameters,
+    out_directory: Path,
+    label_names: list[str] | None = None,
+) -> TrainingArguments:
     """Create a TrainingArguments object from the config file.
 
     Args:
         model_config (ExperimentHyperparameters): The model configuration.
         out_directory (Path): The directory for storing the model.
+        label_names (list[str] | None): Column names treated as labels by the Trainer's
+            prediction_step; when set they are packed into EvalPrediction.label_ids as a tuple.
 
     Returns:
         TrainingArguments: the training arguments.
@@ -255,12 +263,14 @@ def setup_training_args(model_config: ExperimentHyperparameters, out_directory: 
         lr_scheduler_type=model_config.lr_scheduler_type,
         warmup_ratio=model_config.warmup_ratio,
         max_grad_norm=model_config.max_grad_norm,
+        remove_unused_columns=False,
         logging_strategy="epoch",
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
         report_to="none",  # metrics logged via MetricsMLflowCallback to avoid Azure ML's 200-param limit
         save_total_limit=2,  # Limit checkpoints to save space, only keep best two
+        label_names=label_names,
     )
     return training_args
 
@@ -373,6 +383,17 @@ def compute_trainset_weights(
 class HeadOnlyTrainer(Trainer):
     """Trainer that saves only fine-tuned parameters at every checkpoint."""
 
+    def __init__(self, *args, use_rank_loss: bool = False, **kwargs):
+        """Initialise the trainer.
+
+        Args:
+            *args: Positional arguments forwarded to `Trainer.__init__`.
+            use_rank_loss (bool): Whether to add the pairwise rank loss term to the base loss.
+            **kwargs: Keyword arguments forwarded to `Trainer.__init__`.
+        """
+        super().__init__(*args, **kwargs)
+        self.use_rank_loss = use_rank_loss
+
     def save_fine_tuned_head(self) -> str:
         """Save only the fine-tuned parameters (requires_grad=True) and the model config.
 
@@ -399,6 +420,41 @@ class HeadOnlyTrainer(Trainer):
             if folder.is_dir():
                 shutil.rmtree(folder)
 
+    def compute_rank_loss(self, outputs: SequenceClassifierOutput, rank_labels: torch.Tensor) -> torch.Tensor:
+        """Pairwise RankNet loss that pushes higher-ranked classes' logits above lower-ranked ones.
+
+        For every pair of classes (i, j) where the ground truth ranks i above j, penalizes the model with a
+        smooth logistic loss on the score gap, log(1 + exp(-(s_i - s_j))). Minimizing it directly increases the
+        fraction of correctly-ordered pairs, which is what Kendall's tau measures.
+
+        Args:
+            outputs (SequenceClassifierOutput): Model outputs; only `logits` (shape (batch, num_class)) is used.
+            rank_labels (torch.Tensor): Ground-truth class ids in rank order per sample (index 0 = primary,
+                1 = secondary, ...).
+
+        Returns:
+            torch.Tensor: Scalar ranking loss, averaged over all comparable (non-tied) class pairs in the batch.
+        """
+        logits = outputs["logits"]
+
+        # outranks[b, i, j] is True if class i is ranked above class j for sample b (ties excluded).
+        # Map of pairs where rank is expected to be lower -> reduce loss
+        outranks = rank_labels.unsqueeze(2) < rank_labels.unsqueeze(1)
+        score_diff = logits.unsqueeze(2) - logits.unsqueeze(1)  # s_i - s_j
+
+        pair_losses = nn.functional.softplus(-score_diff)[outranks]  # log(1 + exp(-(s_i - s_j)))
+        if pair_losses.numel() == 0:
+            return torch.zeros((), dtype=logits.dtype, device=logits.device)
+        return pair_losses.mean()
+
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+        """Compute the training loss, combining the base loss with a custom loss term."""
+        rank_labels = inputs.pop("rank_labels", None)  # always remove; model doesn't accept this kwarg
+        loss, outputs = super().compute_loss(model, inputs, return_outputs=True, num_items_in_batch=num_items_in_batch)
+        if self.use_rank_loss and rank_labels is not None:
+            loss = loss + self.compute_rank_loss(outputs, rank_labels)
+        return (loss, outputs) if return_outputs else loss
+
 
 def multilabel_confusion_matrix_nxn(labels: np.ndarray, predictions: np.ndarray) -> np.ndarray:
     """Create nxn confusion matrix for multi-label classification.
@@ -420,31 +476,44 @@ def multilabel_confusion_matrix_nxn(labels: np.ndarray, predictions: np.ndarray)
 class ConfusionMatrixCallback(TrainerCallback):
     """Trainer callback to compute and save confusion matrix after evaluation."""
 
-    def __init__(self, id2class_enum: dict, is_multi_label: bool = False):
+    def __init__(self, id2class_enum: dict, classification_task: ClassificationTask = ClassificationTask.single_label):
         """Initialise the callback.
 
         Args:
             id2class_enum: Mapping from class index to its enum member.
-            is_multi_label: Whether the classification task is multi-label (default: False).
+            classification_task: Type of classification task (default: ClassificationTask.single_label).
         """
         self._id2class_enum = id2class_enum
-        self._is_multi_label = is_multi_label
+        self._classification_task = classification_task
         self._sorted_ids = sorted(id2class_enum.keys(), key=lambda i: id2class_enum[i].value)
         self._cm: np.ndarray | None = None
         self.current_test_name: str = "test"
 
     def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
-        """Compute per-class and aggregate F1 metrics using sklearn's classification report."""
-        logits, labels = eval_pred
-        if self._is_multi_label:  # multi-label
+        """Compute per-class F1 and (for rank tasks) Kendall's tau metrics."""
+        logits = eval_pred.predictions
+        # For rank tasks the Trainer passes label_ids as (labels, rank_labels); unpack accordingly.
+        if isinstance(eval_pred.label_ids, tuple):
+            labels, rank_labels = eval_pred.label_ids
+        else:
+            labels, rank_labels = eval_pred.label_ids, None
+
+        if (
+            self._classification_task == ClassificationTask.multi_label
+            or self._classification_task == ClassificationTask.rank
+        ):
             predictions = (logits > 0).astype(int)
             id_no_prediction = predictions.sum(axis=-1) == 0
             predictions[id_no_prediction, logits[id_no_prediction].argmax(axis=-1)] = 1
             self._cm = multilabel_confusion_matrix_nxn(labels.astype(int), predictions)
-        else:  # single-label: binary label vectors → integer indices (n_samples,)
+        elif (
+            self._classification_task == ClassificationTask.single_label
+        ):  # single-label: binary label vectors → integer indices (n_samples,)
             predictions = np.zeros_like(logits)
             predictions[range(predictions.shape[0]), logits.argmax(axis=1)] = 1
             self._cm = confusion_matrix(labels.argmax(axis=-1), logits.argmax(axis=-1), labels=self._sorted_ids)
+        else:
+            raise NotImplementedError(f"Unsupported classification task {self._classification_task}")
 
         # Drop non existing labels
         (id_keep_col,) = np.nonzero(labels.sum(axis=0) + predictions.sum(axis=0))
@@ -457,11 +526,26 @@ class ConfusionMatrixCallback(TrainerCallback):
             output_dict=True,
         )
 
-        return {
+        metrics = {
             f"{group_name.replace(' ', '_')}_f1": group_metrics["f1-score"]
             for group_name, group_metrics in report.items()
             if isinstance(group_metrics, dict) and "f1-score" in group_metrics
         }
+
+        if self._classification_task == ClassificationTask.rank and rank_labels is not None:
+            n_classes = rank_labels.shape[1]
+            pred_enum_lists = [
+                [self._id2class_enum[i] for i in np.argsort(logit)[::-1] if logit[i] > 0]
+                or [self._id2class_enum[int(np.argmax(logit))]]  # fallback: top-1 class
+                for logit in logits
+            ]
+            label_enum_lists = [
+                [self._id2class_enum[i] for i in np.argsort(rank_row) if rank_row[i] < n_classes]
+                for rank_row in rank_labels
+            ]
+            metrics["kendall_tau"] = rank_metrics_from(pred_enum_lists, label_enum_lists)
+
+        return metrics
 
     def on_predict(self, args, state, control, metrics, **kwargs):
         """Save confusion matrix PNG and per-class metrics CSV to the output directory."""
@@ -514,10 +598,14 @@ def setup_trainer(
     Returns:
         HeadOnlyTrainer: The trainer object.
     """
-    # load the training arguments from the config file
-    training_args = setup_training_args(model_config.hyperparameters, out_directory)
-
+    classification_task = bert_model.classification_system.classification_task()
     use_class_balancing = model_config.use_class_balancing
+    use_rank_loss = classification_task == ClassificationTask.rank
+    logger.info(f"{classification_task=}, {use_class_balancing=}, {use_rank_loss=}")
+
+    label_names = ["labels", "rank_labels"] if use_rank_loss else None
+    training_args = setup_training_args(model_config.hyperparameters, out_directory, label_names=label_names)
+
     compute_loss_func = None
     if use_class_balancing:
         class_weights = compute_trainset_weights(train_dataset)
@@ -526,7 +614,7 @@ def setup_trainer(
 
     cm_callback = ConfusionMatrixCallback(
         id2class_enum=bert_model.id2classEnum,
-        is_multi_label=bert_model.classification_system.is_multi_label(),
+        classification_task=classification_task,
     )
     callbacks = [cm_callback]
     if mlflow_tracking:
@@ -542,6 +630,7 @@ def setup_trainer(
         compute_loss_func=compute_loss_func,
         compute_metrics=cm_callback.compute_metrics,
         callbacks=callbacks,
+        use_rank_loss=use_rank_loss,
     )
     return trainer
 
