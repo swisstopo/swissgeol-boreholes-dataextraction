@@ -5,7 +5,6 @@ from dataclasses import dataclass
 
 import pymupdf
 
-from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
 from swissgeol_doc_processing.geometry.geometry_dataclasses import BoundingBox
 
@@ -46,14 +45,14 @@ class MaterialDescriptionRectWithSidebar:
         x_distance = abs(sidebar_right - material_left)
         y_distance = abs(sidebar_top - material_top)
         height = sidebar_bottom - sidebar_top
-        geometry_score = self.material_description_rect.width - x_distance + height - 2 * y_distance
-
-        if sidebar_left > material_left and (
-            not isinstance(self.sidebar, AAboveBSidebar) or material_right <= sidebar_left - self.sidebar.rect.width
-        ):
-            # sidebar to the right of descriptions is only allowed for AAboveBSidebar and the descriptions should not
-            # be far to the left of the sidebar
-            return -1
+        sidebar_right_of_descriptions_penalty = max(0, sidebar_left - material_right)
+        geometry_score = (
+            self.material_description_rect.width
+            - x_distance
+            + height
+            - 2 * y_distance
+            - 10 * sidebar_right_of_descriptions_penalty
+        )
 
         noise_penalty_multiplier = math.pow(0.8, 10 * self.noise_count / len(self.sidebar.entries))
 

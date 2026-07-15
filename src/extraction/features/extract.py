@@ -379,7 +379,11 @@ class BoreholeExtractor:
             def check_y0_condition(y0):
                 return True
 
-        horizontal_text_lines = [line for line in self.lines if line.rect.width > line.rect.height]
+        horizontal_text_lines = [
+            line
+            for line in self.lines
+            if line.rect.width > line.rect.height and not re.fullmatch(r"[\d\s.,\-/]+", line.text.strip())
+        ]
         candidate_description = [line for line in horizontal_text_lines if check_y0_condition(line.rect.y0)]
 
         is_not_description = [
@@ -492,12 +496,11 @@ class BoreholeExtractor:
                         desc_line
                         for desc_line in sorted_above
                         if is_above(best_x0, best_y0, desc_line)
-                        and not re.fullmatch(r"[\d\s.,\-/]+", desc_line.text.strip())
                         and (
                             sidebar is not None
                             or not any(
                                 other
-                                for other in horizontal_text_lines
+                                for other in candidate_description
                                 if other is not desc_line
                                 and abs(other.rect.y0 - desc_line.rect.y0) < desc_line.rect.height
                                 and (other.rect.x1 < best_x0 - 10 or other.rect.x0 > best_x1 + 10)
