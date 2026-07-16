@@ -5,12 +5,13 @@ import statistics
 import fastquadtree
 import pymupdf
 
-from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
 from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
 from extraction.features.stratigraphy.sidebar.classes.a_above_b_sidebar import AAboveBSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import SidebarNoise, noise_count
 from extraction.features.stratigraphy.sidebar.utils.a_above_b_sidebar_validator import AAboveBSidebarValidator
 from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
+from extraction.features.stratigraphy.sidebar.utils.entries_per_table import TableEntries
+from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
 from swissgeol_doc_processing.text.textline import TextWord
 from swissgeol_doc_processing.utils.table_detection import TableStructure
 
@@ -37,13 +38,13 @@ class AAboveBSidebarExtractor:
     def _arithmetic_progression_values(values: list[float]) -> set[float]:
         """Check if some of the values form an arithmetic progression."""
         if len(values) <= 2:
-            return {}
+            return set()
 
         integer_values = [int(round(value * 100)) for value in values]
         differences = [integer_values[i + 1] - integer_values[i] for i in range(len(integer_values) - 1)]
         step = statistics.mode(differences)
         if step <= 0:
-            return {}
+            return set()
 
         # only consider arithmetic progressions that include 0 (when extended if necessary)
         candidate_values = [value for value in integer_values if value % step == 0]
@@ -62,7 +63,7 @@ class AAboveBSidebarExtractor:
                 for value in segment
             }
         else:
-            return {}
+            return set()
 
     @staticmethod
     def find_in_words(
@@ -87,23 +88,16 @@ class AAboveBSidebarExtractor:
         # Group entries that are contained in the same table-like structure. We avoid clusters that break outside of
         # a table-like structure to be more computationally efficient in clustering, and to avoid clusters that go
         # across several borehole profiles on the same page (e.g. 269126143-bp.pdf).
-        entries_per_table = {index: [] for index, table in enumerate(table_structures)}
-        entries_no_table = []
-        for entry in DepthColumnEntryExtractor.find_in_words(all_words):
-            if all((entry.rect & used_rect).is_empty for used_rect in used_entry_rects):
-                table_found = False
-                for index, table in enumerate(table_structures):
-                    if table.bounding_rect.intersects(entry.rect):
-                        table_found = True
-                        entries_per_table[index].append(entry)
-                if not table_found:
-                    entries_no_table.append(entry)
-
-        entry_partitions = list(entries_per_table.values()) + [entries_no_table]
+        filtered_entries = [
+            entry
+            for entry in DepthColumnEntryExtractor.find_in_words(all_words)
+            if all((entry.rect & used_rect).is_empty for used_rect in used_entry_rects)
+        ]
+        entry_partitions = TableEntries.group_entries_by_table(table_structures, filtered_entries)
         clusters = [
             cluster
             for entry_partition in entry_partitions
-            for cluster in Cluster[DepthColumnEntry].create_clusters(entry_partition, lambda entry: entry.rect)
+            for cluster in Cluster[DepthColumnEntry].create_clusters(entry_partition.entries, entry_partition.table)
         ]
 
         excluded_entries = {
@@ -115,13 +109,18 @@ class AAboveBSidebarExtractor:
         if excluded_entries:
             # cluster again, but without the entries that are part of an arithmetic progression
             entry_partitions = [
-                [entry for entry in entry_partition if entry not in excluded_entries]
+                TableEntries(
+                    entry_partition.table,
+                    [entry for entry in entry_partition.entries if entry not in excluded_entries],
+                )
                 for entry_partition in entry_partitions
             ]
             clusters = [
                 cluster
                 for entry_partition in entry_partitions
-                for cluster in Cluster[DepthColumnEntry].create_clusters(entry_partition, lambda entry: entry.rect)
+                for cluster in Cluster[DepthColumnEntry].create_clusters(
+                    entry_partition.entries, entry_partition.table
+                )
             ]
 
         numeric_columns = [AAboveBSidebar(cluster.entries) for cluster in clusters]
