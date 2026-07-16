@@ -1,0 +1,81 @@
+classification_system: "borehole_type"
+experiment_name: "borehole_type"
+model_path: "google-bert/bert-base-multilingual-uncased"
+use_class_balancing: false
+inference_batch_size: 32
+
+# Training and testing sets
+# Scoped to zurich,thurgau, geooquat and deepwells only: this is a document-level system (is_document_level() == True),
+# so it needs the source PDF's text (via document_texts), not just the ground truth JSON.
+# nagra_ground_truth_new.json references entirely different documents than what's in data/nagra/)
+training_sets:
+  borehole_type:
+    classification_system: borehole_type
+    ground_truths:
+      - zurich_ground_truth_new.json
+      - thurgau_ground_truth_new.json
+      - geoquat_ground_truth_new.json
+      - deepwells_ground_truth_new.json
+    document_texts:
+      - zurich_filtered_text.json
+      - thurgau_filtered_text.json
+      - geoquat_train_filtered_text.json
+      - deepwells_filtered_text.json
+
+
+test_sets:
+  global_borehole_type:
+    classification_system: borehole_type
+    ground_truths:
+      - zurich_ground_truth_new.json
+      - thurgau_ground_truth_new.json
+      - geoquat_ground_truth_new.json
+      - deepwells_ground_truth_new.json
+    document_texts:
+      - zurich_filtered_text.json
+      - thurgau_filtered_text.json
+      - geoquat_train_filtered_text.json
+      - deepwells_filtered_text.json
+  zurich_borehole_types:
+    classification_system: borehole_type
+    ground_truths:
+      - zurich_ground_truth_new.json
+    document_texts:
+      - zurich_filtered_text.json
+  thurgau_borehole_type:
+    classification_system: borehole_type
+    ground_truths:
+      - thurgau_ground_truth_new.json
+    document_texts:
+      - thurgau_filtered_text.json
+  geoquat_borehole_type:
+    classification_system: borehole_type
+    ground_truths:
+      - geoquat_ground_truth_new.json
+    document_texts:
+      - geoquat_train_filtered_text.json
+  deepwells_borehole_type:
+    classification_system: borehole_type
+    ground_truths:
+      - deepwells_ground_truth_new.json
+    document_texts:
+      - deepwells_train_filtered_text.json
+
+
+
+
+# Custom Training hyperparameters
+hyperparameters:
+  batch_size: 32
+  learning_rate: 1e-4
+  lr_scheduler_type: "cosine_with_restarts"
+  max_grad_norm: 5.0
+  num_epochs: 32
+  warmup_ratio: 0.1
+  weight_decay: 0.001
+
+# Layer to train
+unfreeze_layers:
+  - "classifier"
+  - "pooler"
+  - "layer_11"
