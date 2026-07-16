@@ -59,7 +59,7 @@ test_sets:
     ground_truths:
       - deepwells_ground_truth_new.json
     document_texts:
-      - deepwells_train_filtered_text.json
+      - deepwells_filtered_text.json
 
 
 
