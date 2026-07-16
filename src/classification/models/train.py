@@ -277,20 +277,20 @@ def setup_training_args(
 
 
 def load_document_texts(json_filenames: list[str]) -> dict[str, str]:
-    """Load a filename -> text mapping from one or more JSON files.
+    """Load a "filename::borehole_index" -> text mapping from one or more JSON files.
 
     Args:
-        json_filenames (list[str]): JSON filenames, relative to `DATAPATH`, each holding a flat
-            filename.
+        json_filenames (list[str]): JSON filenames, relative to `DATAPATH`, each holding a flat mapping
+            keyed by `extraction.features.classification_text.borehole_text_key(filename, borehole_irndex)`.
 
     Returns:
-        dict[str, str]: Mapping from filename to text, merged across all given JSON files.
+        dict[str, str]: Mapping from key to text, merged across all given JSON files.
     """
-    text_by_filename: dict[str, str] = {}
+    text_by_key: dict[str, str] = {}
     for json_filename in json_filenames:
         with open(DATAPATH / json_filename, encoding="utf8") as f:
-            text_by_filename.update(json.load(f))
-    return text_by_filename
+            text_by_key.update(json.load(f))
+    return text_by_key
 
 
 def load_samples_from_set(dataset_cfg: ExperimentDatasetConfig) -> list[LayerInformation]:

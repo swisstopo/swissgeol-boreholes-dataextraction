@@ -11,6 +11,7 @@ from functools import reduce
 
 from classification.utils.file_utils import read_params
 from core.ground_truth import GroundTruthBorehole, GroundTruthLayer, GroundTruthLayerDepth, GroundTruthMetadata
+from extraction.features.classification_text import borehole_text_key
 from extraction.features.predictions.file_predictions import FilePredictionsWithMetrics
 from swissgeol_doc_processing.utils.language_detection import detect_language_of_text
 
@@ -299,11 +300,10 @@ class ClassificationSystem(ABC):
 
     @classmethod
     def is_document_level(cls) -> bool:
-        """Whether this system's label and input text are per-document (file) rather than per-layer.
+        """Whether this system's label and input text are per-borehole document text rather than per-layer.
 
-        Document-level systems (e.g. borehole_type) produce one training example per file, using
-        externally supplied text (see `process`'s `document_text` argument) instead of a layer's
-        material description.
+        Document-level systems (e.g. borehole_type) produce one training example per borehole, using
+        externally supplied text scoped to that borehole instead of a layer's material description.
         """
         return False
 
@@ -371,22 +371,23 @@ class ClassificationSystem(ABC):
         allow_none: bool = False,
         document_text: dict[str, str] | None = None,
     ) -> list[LayerInformation]:
-        """Extract labelled layers (or documents) from a ground truth mapping as a list of LayerInformation.
+        """Extract labelled layers (or boreholes) from a ground truth mapping as a list of LayerInformation.
 
         Args:
             ground_truth (dict[str, list[GroundTruthBoreholeWithLanguage]]): Mapping from filename to a
                 list of language-annotated borehole records.
-            allow_none (bool): When True, layers/documents without a ground truth label are included
+            allow_none (bool): When True, layers/boreholes without a ground truth label are included
                 (with ``ground_truth_class=None``). When False (default), unlabelled entries are skipped.
             document_text (dict[str, str] | None): For document-level systems (`is_document_level()`),
-                a mapping from filename to the text to use as input. Ignored for layer-level systems.
+                a mapping from `borehole_text_key(filename, borehole_index)` to the text to use as input.
+                Ignored for layer-level systems.
 
         Returns:
-            list[LayerInformation]: One entry per layer (layer-level systems) or per file
+            list[LayerInformation]: One entry per layer (layer-level systems) or per borehole
                 (document-level systems).
         """
         if cls.is_document_level():
-            return cls._process_documents(ground_truth, document_text or {}, allow_none)
+            return cls._process_boreholes(ground_truth, document_text or {}, allow_none)
 
         return [
             LayerInformation(
@@ -407,59 +408,52 @@ class ClassificationSystem(ABC):
         ]
 
     @classmethod
-    def _process_documents(
+    def _process_boreholes(
         cls,
         ground_truth: dict[str, list[GroundTruthBoreholeWithLanguage]],
         document_text: dict[str, str],
         allow_none: bool,
     ) -> list[LayerInformation]:
-        """Build one LayerInformation entry per file, using externally supplied document-level text.
+        """Build one LayerInformation entry per borehole, using externally supplied borehole-scoped text.
 
-        The ground truth label is resolved from the first borehole in the file that has one (all
-        boreholes belonging to the same file are expected to share the same document-level label,
-        e.g. `borehole_type`).
+        Each borehole in a file is a separate training example, with its own ground truth label and its
+        own text (looked up via `borehole_text_key`).
 
         Args:
             ground_truth (dict[str, list[GroundTruthBoreholeWithLanguage]]): Mapping from filename to a
                 list of language-annotated borehole records.
-            document_text (dict[str, str]): Mapping from filename to the text to use as input.
-            allow_none (bool): When True, files without a ground truth label are included (with
-                ``ground_truth_class=None``). When False (default), unlabelled files are skipped.
+            document_text (dict[str, str]): Mapping from `borehole_text_key(filename, borehole_index)` to
+                the text to use as input.
+            allow_none (bool): When True, boreholes without a ground truth label are included (with
+                ``ground_truth_class=None``). When False (default), unlabelled boreholes are skipped.
 
         Returns:
-            list[LayerInformation]: One entry per file that has text available in `document_text`.
+            list[LayerInformation]: One entry per borehole that has text available in `document_text`.
         """
         entries = []
         for filename, boreholes in ground_truth.items():
-            text = document_text.get(filename)
-            if not text or not boreholes:
-                continue
-
-            ground_truth_class = None
-            for borehole in boreholes:
-                if not borehole.layers:
+            for borehole_index, borehole in enumerate(boreholes):
+                text = document_text.get(borehole_text_key(filename, borehole_index))
+                if not text or not borehole.layers:
                     continue
-                label = cls.reduce_label(borehole.layers[0], borehole)
-                if label is not None:
-                    ground_truth_class = label
-                    break
 
-            if ground_truth_class is None and not allow_none:
-                continue
+                ground_truth_class = cls.reduce_label(borehole.layers[0], borehole)
+                if ground_truth_class is None and not allow_none:
+                    continue
 
-            entries.append(
-                LayerInformation(
-                    filename=filename,
-                    borehole_index=0,
-                    layer_index=0,
-                    language=boreholes[0].language,
-                    material_description=text,
-                    class_system=cls,
-                    ground_truth_class=ground_truth_class,
-                    prediction_class=None,
-                    llm_reasoning=None,
+                entries.append(
+                    LayerInformation(
+                        filename=filename,
+                        borehole_index=borehole_index,
+                        layer_index=0,
+                        language=borehole.language,
+                        material_description=text,
+                        class_system=cls,
+                        ground_truth_class=ground_truth_class,
+                        prediction_class=None,
+                        llm_reasoning=None,
+                    )
                 )
-            )
         return entries
 
     @classmethod
