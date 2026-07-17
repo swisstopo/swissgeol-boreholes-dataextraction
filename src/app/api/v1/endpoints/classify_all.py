@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from app.common.schemas import ClassifyRequest, ClassifyResponse
+from classification.utils.datasets.classification import ClassificationTask
 
 if TYPE_CHECKING:
     from classification.models.model import BertModel
@@ -114,6 +115,10 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
             continue
         model = bert_models[task_name]
         classes = model.predict_from_embedding(shared_hidden_states, extended_mask)
-        predictions[task_name] = classes if model.classification_system.is_multi_label() else classes[0]
+        predictions[task_name] = (
+            classes
+            if model.classification_system.classification_task() == ClassificationTask.multi_label
+            else classes[0]
+        )
 
     return ClassifyResponse(**predictions)

@@ -365,10 +365,14 @@ class BertModel:
         hidden = self.model.bert.encoder.layer[11](layer_10_hidden_states, attention_mask=extended_attention_mask)[0]
         pooled = self.model.bert.pooler(hidden)
         logits = self.model.classifier(self.model.dropout(pooled))
-        if self.classification_system.is_multi_label():
+        task = self.classification_system.classification_task()
+        if task == ClassificationTask.multi_label:
             indices = (logits > 0)[0].nonzero(as_tuple=True)[0].tolist() or [0]
-        else:
+        elif task == ClassificationTask.single_label:
             indices = [logits.argmax(dim=-1).item()]
+        elif task == ClassificationTask.rank:
+            sorted_indices = logits.argsort(dim=-1, descending=True)[0]
+            indices = [idx for idx in sorted_indices.tolist() if logits[0, idx] > 0] or [0]
         return [self.id2classEnum[i] for i in indices]
 
     @torch.no_grad()
