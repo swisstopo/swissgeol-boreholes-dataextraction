@@ -1,9 +1,10 @@
 """Main router for the app."""
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
 from app.api.v1.endpoints.bounding_boxes import bounding_boxes
+from app.api.v1.endpoints.classify_borehole_type import classify_borehole_type
 from app.api.v1.endpoints.create_pngs import create_pngs
 from app.api.v1.endpoints.extract_data import extract_data
 from app.api.v1.endpoints.extract_stratigraphy import extract_stratigraphy
@@ -11,6 +12,7 @@ from app.api.v1.endpoints.lithology_classification import classify_lithology
 from app.common.schemas import (
     BoundingBoxesRequest,
     BoundingBoxesResponse,
+    ClassifyBoreholeTypeResponse,
     ClassifyLithologyRequest,
     ClassifyLithologyResponse,
     ExtractCoordinatesResponse,
@@ -256,3 +258,52 @@ def post_classify_lithology(request: ClassifyLithologyRequest, http_request: Req
             detail="Classification endpoint is disabled. Set BERT_ENABLED=true to enable BERT model loading.",
         )
     return classify_lithology(request, http_request.app.state.bert_models)
+
+
+####################################################################################################
+### Classify Borehole Type
+####################################################################################################
+@router.post(
+    "/classify_borehole_type",
+    tags=["classify_borehole_type"],
+    response_model=ClassifyBoreholeTypeResponse,
+    responses={
+        400: {"model": BadRequestResponse, "description": "Bad request (e.g. not a PDF)"},
+        500: {"model": BadRequestResponse, "description": "Internal server error"},
+        503: {"model": BadRequestResponse, "description": "BERT models not loaded (set BERT_ENABLED=true)"},
+    },
+)
+async def post_classify_borehole_type(
+    http_request: Request,
+    file: UploadFile = File(..., description="The PDF document to classify."),  # noqa: B008
+) -> ClassifyBoreholeTypeResponse:
+    """Classify the borehole type of every borehole detected in an uploaded PDF document.
+
+    This endpoint takes a raw PDF file upload:
+    it runs the extraction pipeline to detect each borehole in the document, extracts header-like
+    text scoped to each borehole's own pages, and classifies each one independently with a single full
+    forward pass through the `borehole_type` model.
+
+    ### Request
+
+    A `multipart/form-data` upload with a single `file` field containing the PDF.
+
+    ### Returns
+    - **boreholes**: One `{borehole_index, class_name}` entry per borehole detected in the document.
+
+    ### Status Codes
+    - **200 OK**: Classification completed successfully.
+    - **400 Bad Request**: The uploaded file is not a PDF.
+    - **500 Internal Server Error**: Model loading or inference failure.
+    - **503 Service Unavailable**: BERT models were not loaded at startup (`BERT_ENABLED=false`).
+    """
+    if http_request.app.state.bert_models is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Classification endpoint is disabled. Set BERT_ENABLED=true to enable BERT model loading.",
+        )
+    if not (file.filename or "").lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Invalid request. The uploaded file must be a PDF.")
+
+    data = await file.read()
+    return classify_borehole_type(data, file.filename, http_request.app.state.bert_models)

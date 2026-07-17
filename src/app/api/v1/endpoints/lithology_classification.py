@@ -18,6 +18,7 @@ _TOKENIZER_PATH = Path("models/backbone")
 _MODEL_PATHS = {
     "lithology": Path("models/lithology_head"),
     "en_main": Path("models/en_main_head"),
+    "borehole_type": Path("models/borehole_type"),
 }
 
 

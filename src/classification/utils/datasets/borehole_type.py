@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import logging
 from enum import IntEnum, auto
 
 from classification.utils.datasets.classification import ClassificationSystem
-
-logger = logging.getLogger(__name__)
 
 
 class BoreholeTypeSystem(ClassificationSystem):

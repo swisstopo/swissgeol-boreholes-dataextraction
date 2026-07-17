@@ -281,7 +281,7 @@ def load_document_texts(json_filenames: list[str]) -> dict[str, str]:
 
     Args:
         json_filenames (list[str]): JSON filenames, relative to `DATAPATH`, each holding a flat mapping
-            keyed by `extraction.features.classification_text.borehole_text_key(filename, borehole_irndex)`.
+            keyed by `extraction.features.classification_text.borehole_text_key(filename, borehole_index)`.
 
     Returns:
         dict[str, str]: Mapping from key to text, merged across all given JSON files.

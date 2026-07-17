@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 MODELS: list[tuple[str, Path]] = [
     ("swissgeol/lithology", Path("models/lithology_head")),
     ("swissgeol/en_main", Path("models/en_main_head")),
+    ("swissgeol/borehole_type", Path("models/borehole_type")),
 ]
 
 BACKBONE_DIR = Path("models/backbone")
