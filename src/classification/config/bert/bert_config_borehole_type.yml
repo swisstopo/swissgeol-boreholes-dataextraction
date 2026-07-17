@@ -5,7 +5,7 @@ use_class_balancing: false
 inference_batch_size: 32
 
 # Training and testing sets
-# Scoped to zurich,thurgau, geooquat and deepwells only: this is a document-level system (is_document_level() == True),
+# Scoped to zurich,thurgau, geoquat and deepwells only: this is a document-level system (is_document_level() == True),
 # so it needs the source PDF's text (via document_texts), not just the ground truth JSON.
 # nagra_ground_truth_new.json references entirely different documents than what's in data/nagra/)
 training_sets:

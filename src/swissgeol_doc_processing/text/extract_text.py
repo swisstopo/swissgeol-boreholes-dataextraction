@@ -15,7 +15,7 @@ import pymupdf
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
 
 NUMBER_PATTERN = re.compile(r"^-?\d+([.,]\d+)?$")
-PUNCTUATION_PATTERN = re.compile(r"^[?%!><.,/\\-]+$=")
+PUNCTUATION_PATTERN = re.compile(r"^[?%!><.,/\\-]+$")
 
 
 def extract_text_lines(page: pymupdf.Page) -> list[TextLine]:

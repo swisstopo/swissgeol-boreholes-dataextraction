@@ -17,8 +17,8 @@ def classify_borehole_type(
 ) -> ClassifyBoreholeTypeResponse:
     """Classify the borehole type of every borehole detected in an uploaded PDF document.
 
-    Unlike `classify_lithology`, which takes a plain-text material description, this endpoint takes the
-    raw bytes of an uploaded PDF: it runs the extraction pipeline to detect each borehole and its page
+    This endpoint takes the raw bytes of an uploaded PDF:
+    it runs the extraction pipeline to detect each borehole and its page
     span, extracts and filters header-like text scoped to that borehole (matching how the model was
     trained), and runs a single full forward pass through the `borehole_type` model per borehole — no
     shared-embedding shortcut across models, since `borehole_type`'s fine-tuned head/pooler layers are
