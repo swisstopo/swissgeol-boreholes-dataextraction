@@ -27,6 +27,7 @@ class MaterialDescriptionRectWithSidebar:
           left-hand-side of) the material descriptions
         - positively influenced by the height of the sidebar
         - negatively influenced by vertical distance between the top of the sidebar and the top of the material
+          descriptions, and the vertical distance between the bottom of the sidebar and the bottom of the material
           descriptions
         The resulting score is also reduced if the sidebar has a high noise count (many unrelated tokens in between
         the extracted depths values).
@@ -39,20 +40,15 @@ class MaterialDescriptionRectWithSidebar:
         if not self.sidebar:
             return 0.0
         rect = self.sidebar.rect
-        sidebar_top, sidebar_bottom, sidebar_left, sidebar_right = rect.y0, rect.y1, rect.x0, rect.x1
-        material_left, material_right = self.material_description_rect.x0, self.material_description_rect.x1
-        material_top = self.material_description_rect.y0
+        sidebar_top, sidebar_bottom, sidebar_right = rect.y0, rect.y1, rect.x1
+        material_left = self.material_description_rect.x0
+        material_top, material_bottom = self.material_description_rect.y0, self.material_description_rect.y1
         x_distance = abs(sidebar_right - material_left)
-        y_distance = abs(sidebar_top - material_top)
+        y_distance = abs(sidebar_top - material_top) + abs(sidebar_bottom - material_bottom)
+
         height = sidebar_bottom - sidebar_top
-        sidebar_right_of_descriptions_penalty = max(0, sidebar_left - material_right)
-        geometry_score = (
-            self.material_description_rect.width
-            - x_distance
-            + height
-            - 2 * y_distance
-            - 10 * sidebar_right_of_descriptions_penalty
-        )
+
+        geometry_score = self.material_description_rect.width - 1.64 * x_distance + height - 2 * y_distance
 
         noise_penalty_multiplier = math.pow(0.8, 10 * self.noise_count / len(self.sidebar.entries))
 

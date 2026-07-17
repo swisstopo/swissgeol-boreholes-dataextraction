@@ -36,7 +36,7 @@ class BoreholeCandidate:
         )
         layers_without_description_penalty = 1 / (1 + layers_without_description)
 
-        description_length_score = sum([len(layer.material_description.text) for layer in borehole.predictions])
+        description_lines_score = sum([len(layer.material_description.lines) for layer in borehole.predictions])
 
-        score = pair.score_match * layers_without_description_penalty * description_length_score
+        score = pair.score_match * layers_without_description_penalty * description_lines_score
         return BoreholeCandidate(borehole, pair.material_description_rect, pair.sidebar, score)

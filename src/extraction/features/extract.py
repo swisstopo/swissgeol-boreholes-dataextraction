@@ -125,7 +125,15 @@ class BoreholeExtractor:
             # constructed valid boreholes
             valid_candidates.append(candidate_without_sidebar)
 
-        return [candidate.borehole for candidate in valid_candidates]
+        # Only return layers with nonempty description for the time being, for the sake of consistency.
+        # TODO After verifying the impact on benchmarking scores, we should also return layers without description.
+        return [
+            ExtractedBorehole(
+                [layer for layer in candidate.borehole.predictions if layer.description_nonempty()],
+                candidate.borehole.bounding_boxes,
+            )
+            for candidate in valid_candidates
+        ]
 
     def _contained_in_table_index(
         self, pair: MaterialDescriptionRectWithSidebar, table_structures: list[TableStructure], proximity_buffer: float
@@ -212,9 +220,7 @@ class BoreholeExtractor:
         min_layers = self.matching_params["min_num_layers"]
         if pair.sidebar and isinstance(pair.sidebar, ProtocolSidebar):
             min_layers = self.matching_params.get("protocol_min_num_layers", min_layers)
-        if len(borehole_layers_with_description) < min_layers or len(borehole_layers_with_description) <= 0.5 * len(
-            borehole_layers
-        ):
+        if len(borehole_layers_with_description) < min_layers:
             return None
 
         return ExtractedBorehole(borehole_layers, [bounding_boxes])  # takes a list of bounding boxes
