@@ -60,7 +60,7 @@ logger = logging.getLogger(__name__)
 
 
 class BoreholeExtractor:
-    """Class with methods to extract boreholes by combining a optional sidebar with a material description rect."""
+    """Class with methods to extract boreholes by combining an optional sidebar with a material description rect."""
 
     def __init__(
         self,
