@@ -42,7 +42,7 @@ class BoreholeTypeSystem(ClassificationSystem):
 
     @classmethod
     def is_document_level(cls) -> bool:
-        """Train on one example per borehole (full/header text of the borehole), not per layer."""
+        """Train on one example per file (full/header document text), not per layer material description."""
         return True
 
     @classmethod

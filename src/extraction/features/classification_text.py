@@ -27,11 +27,6 @@ class BoreholeText:
     text: str
 
 
-def borehole_text_key(filename: str, borehole_index: int) -> str:
-    """Build the compound key used to store/look up a single borehole's text in a filename->text JSON mapping."""
-    return f"{filename}::{borehole_index}"
-
-
 def _borehole_pages(borehole: BoreholePredictions) -> list[int]:
     """Return the sorted, deduplicated 1-indexed page numbers a borehole's bounding boxes span."""
     return sorted({bboxes.page for bboxes in borehole.bounding_boxes})
