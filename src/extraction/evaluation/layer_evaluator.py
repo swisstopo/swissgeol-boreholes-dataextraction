@@ -54,19 +54,14 @@ class LayerEvaluator:
             Metrics: Aggregated material metrics across all boreholes.
         """
 
-        def per_layer_action(layer: Layer):
-            if parse_text(layer.material_description.text) == "":
-                logger.warning("Empty string found in predictions")
-
         def num_ground_truth_fn(ground_truth_layers: list[GroundTruthLayer]):
             return sum(lay.material_description is not None for lay in ground_truth_layers)
 
         return LayerEvaluator.calculate_metrics(
             file_predictions=file_predictions,
             num_ground_truth_fn=num_ground_truth_fn,
-            per_layer_filter=lambda layer: True,
+            per_layer_filter=lambda layer: layer.description_nonempty(),
             per_layer_condition=lambda layer: layer.material_description.is_correct,
-            per_layer_action=per_layer_action,
         )
 
     @staticmethod
@@ -96,7 +91,6 @@ class LayerEvaluator:
         num_ground_truth_fn: Callable[[list[GroundTruthLayer]], int],
         per_layer_filter: Callable[[Layer], bool],
         per_layer_condition: Callable[[Layer], bool],
-        per_layer_action: Callable[[Layer], None] | None = None,
     ) -> Metrics:
         """Calculate metrics based on a condition per layer, after applying a filter.
 
@@ -106,7 +100,6 @@ class LayerEvaluator:
                 ground truth.
             per_layer_filter (Callable[[Layer], bool]): Function to filter layers to consider.
             per_layer_condition (Callable[[Layer], bool]): Function that returns True if the layer is a hit.
-            per_layer_action (Optional[Callable[[Layer], None]]): Optional action to perform per layer.
 
         Returns:
             Metrics: The calculated metrics.
@@ -122,8 +115,6 @@ class LayerEvaluator:
 
             layers = borehole_data.layers.layers if borehole_data.layers else []
             for layer in layers:
-                if per_layer_action:
-                    per_layer_action(layer)
                 if per_layer_filter(layer):
                     total_predictions += 1
                     if per_layer_condition(layer):
@@ -187,9 +178,10 @@ class LayerEvaluator:
                 LayerEvaluator.apply_mapping(
                     borehole_data.ground_truth, predicted_layers, score_depths, set_depths_flag
                 )
+                # Only consider predicted layers with a description when scoring the material descriptions
                 LayerEvaluator.apply_mapping(
                     borehole_data.ground_truth,
-                    predicted_layers,
+                    [layer for layer in predicted_layers if layer.description_nonempty()],
                     score_material_descriptions,
                     set_material_description_flag,
                 )
