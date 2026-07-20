@@ -12,7 +12,7 @@ training_sets:
   borehole_type:
     classification_system: borehole_type
     ground_truths:
-      - zurich_ground_truth_new.json
+      - zurich_ground_truth_new2.json
       - thurgau_ground_truth_new.json
       - geoquat_ground_truth_new.json
       - deepwells_ground_truth_new.json
@@ -27,7 +27,7 @@ test_sets:
   global_borehole_type:
     classification_system: borehole_type
     ground_truths:
-      - zurich_ground_truth_new.json
+      - zurich_ground_truth_new2.json
       - thurgau_ground_truth_new.json
       - geoquat_ground_truth_new.json
       - deepwells_ground_truth_new.json
@@ -39,7 +39,7 @@ test_sets:
   zurich_borehole_types:
     classification_system: borehole_type
     ground_truths:
-      - zurich_ground_truth_new.json
+      - zurich_ground_truth_new2.json
     document_texts:
       - zurich_filtered_text.json
   thurgau_borehole_type:
