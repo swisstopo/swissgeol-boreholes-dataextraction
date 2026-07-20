@@ -710,7 +710,7 @@ class BoreholeExtractor:
         """
         # Get filtered pairs (without descriptions without sidebar)
         good_borehole_candidates = self._extract_filtered_borehole_candidates()
-        best_candidate_score = max((candidate.core for candidate in good_borehole_candidates), default=0.0)
+        best_candidate_score = max((candidate.score for candidate in good_borehole_candidates), default=0.0)
 
         return SidebarQualityMetrics(
             number_of_good_sidebars=len(good_borehole_candidates),
