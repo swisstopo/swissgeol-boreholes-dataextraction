@@ -596,6 +596,12 @@ class BoreholeExtractor:
             selected_boreholes.append(best_borehole)
             used_sidebars_idx.add(best_sidebar_index)
 
+        # Step 2: Assign remaining sidebars (if any) to best match
+        remaining_sidebars_idx = [s_idx for s_idx in range(len(sidebars_noise)) if s_idx not in used_sidebars_idx]
+        for sidebar_index in remaining_sidebars_idx:
+            if candidates := sidebar_boreholes[sidebar_index]:
+                best_candidate = max(candidates, key=lambda candidate: candidate.score)
+                selected_boreholes.append(best_candidate)
         return selected_boreholes
 
     def get_diagonals_near_textlines(
