@@ -9,6 +9,7 @@ as well as a patch version with all fields optional for patch operations.
 ########################################################################################################################
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
 
@@ -844,6 +845,25 @@ class ClassifyRequest(BaseModel):
     )
 
 
+def _enum_names_schema_extra(enum_cls: type[Enum]) -> Callable[[dict], None]:
+    """Build a `json_schema_extra` callback documenting an enum-backed field's possible name values.
+
+    `ClassifyResponse`'s enum fields are serialized to plain strings (see `_serialize_single_label` and
+    `_serialize_multi_label` below), which is what the API actually returns, but it also erases the enum's
+    member names from the generated OpenAPI schema. This restores the member names for documentation.
+    """
+    names = [member.name for member in enum_cls]
+
+    def _add_enum(schema: dict) -> None:
+        for variant in schema.get("anyOf", [schema]):
+            if variant.get("type") == "array":
+                variant["items"] = {"type": "string", "enum": names}
+            elif variant.get("type") != "null":
+                variant["enum"] = names
+
+    return _add_enum
+
+
 class ClassifyResponse(BaseModel):
     """Response schema for the unified `/classify` endpoint.
 
@@ -858,38 +878,64 @@ class ClassifyResponse(BaseModel):
     """
 
     accessory_components: list[AccessoryComponentsSystem.AccessoryComponentsClasses] | None = Field(
-        default=None, description="Predicted accessory component classes (consolidated rock only)."
+        default=None,
+        description="Predicted accessory component classes (consolidated rock only).",
+        json_schema_extra=_enum_names_schema_extra(AccessoryComponentsSystem.AccessoryComponentsClasses),
     )
     alteration_degree_consolidated: AlterationDegreeConsolidatedSystem.AlterationDegreeClasses | None = Field(
-        default=None, description="Predicted alteration degree class (consolidated rock only)."
+        default=None,
+        description="Predicted alteration degree class (consolidated rock only).",
+        json_schema_extra=_enum_names_schema_extra(AlterationDegreeConsolidatedSystem.AlterationDegreeClasses),
     )
     cementation: CementationSystem.CementationClasses | None = Field(
-        default=None, description="Predicted cementation class (consolidated rock only)."
+        default=None,
+        description="Predicted cementation class (consolidated rock only).",
+        json_schema_extra=_enum_names_schema_extra(CementationSystem.CementationClasses),
     )
-    color: ColorSystem.ColorClasses | None = Field(default=None, description="Predicted color class.")
+    color: ColorSystem.ColorClasses | None = Field(
+        default=None,
+        description="Predicted color class.",
+        json_schema_extra=_enum_names_schema_extra(ColorSystem.ColorClasses),
+    )
     debris: list[DebrisSystem.DebrisClasses] | None = Field(
-        default=None, description="Predicted debris classes (unconsolidated sediment only)."
+        default=None,
+        description="Predicted debris classes (unconsolidated sediment only).",
+        json_schema_extra=_enum_names_schema_extra(DebrisSystem.DebrisClasses),
     )
     en_main: ENMainSystem.ENMainClasses | None = Field(
-        default=None, description="Predicted en_main class (unconsolidated sediment only)."
+        default=None,
+        description="Predicted en_main class (unconsolidated sediment only).",
+        json_schema_extra=_enum_names_schema_extra(ENMainSystem.ENMainClasses),
     )
     grain_angularity: list[GrainAngularitySystem.GrainAngularityClasses] | None = Field(
-        default=None, description="Predicted grain angularity classes (unconsolidated sediment only)."
+        default=None,
+        description="Predicted grain angularity classes (unconsolidated sediment only).",
+        json_schema_extra=_enum_names_schema_extra(GrainAngularitySystem.GrainAngularityClasses),
     )
     grain_shape: list[GrainShapeSystem.GrainShapeClasses] | None = Field(
-        default=None, description="Predicted grain shape classes (unconsolidated sediment only)."
+        default=None,
+        description="Predicted grain shape classes (unconsolidated sediment only).",
+        json_schema_extra=_enum_names_schema_extra(GrainShapeSystem.GrainShapeClasses),
     )
     lithology: LithologySystem.LithologyClasses | None = Field(
-        default=None, description="Predicted lithology class; also determines consolidated vs unconsolidated."
+        default=None,
+        description="Predicted lithology class; also determines consolidated vs unconsolidated.",
+        json_schema_extra=_enum_names_schema_extra(LithologySystem.LithologyClasses),
     )
     mineral_components: list[MineralComponentsSystem.MineralComponents] | None = Field(
-        default=None, description="Predicted mineral component classes (consolidated rock only)."
+        default=None,
+        description="Predicted mineral component classes (consolidated rock only).",
+        json_schema_extra=_enum_names_schema_extra(MineralComponentsSystem.MineralComponents),
     )
     organic_components: list[OrganicComponentsSystem.OrganicComponentsClasses] | None = Field(
-        default=None, description="Predicted organic component classes (unconsolidated sediment only)."
+        default=None,
+        description="Predicted organic component classes (unconsolidated sediment only).",
+        json_schema_extra=_enum_names_schema_extra(OrganicComponentsSystem.OrganicComponentsClasses),
     )
     uscs: USCSSystem.USCSClasses | None = Field(
-        default=None, description="Predicted USCS class (unconsolidated sediment only)."
+        default=None,
+        description="Predicted USCS class (unconsolidated sediment only).",
+        json_schema_extra=_enum_names_schema_extra(USCSSystem.USCSClasses),
     )
 
     @field_serializer(
