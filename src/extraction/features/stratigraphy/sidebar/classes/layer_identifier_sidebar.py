@@ -178,7 +178,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
                 if not start_depth:
                     start_depth = a_to_b_interval.start.value
                 if a_to_b_interval.start.value >= start_depth:
-                    if current_interval:
+                    if current_interval and current_block:
                         entries.append(IntervalBlockPair(current_interval, TextBlock(current_block)))
                         current_block = []
                     current_interval = a_to_b_interval
