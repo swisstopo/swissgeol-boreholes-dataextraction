@@ -31,12 +31,10 @@ class BoreholeCandidate:
 
     @classmethod
     def from_pair(cls, borehole: ExtractedBorehole, pair: MaterialDescriptionRectWithSidebar) -> "BoreholeCandidate":
-        layers_without_description = sum(
-            1 for layer in borehole.predictions if len(layer.material_description.text) == 0
-        )
+        layers_without_description = sum(1 for layer in borehole.predictions if not layer.description_nonempty())
         layers_without_description_penalty = 1 / (1 + layers_without_description)
 
-        description_lines_score = sum([len(layer.material_description.lines) for layer in borehole.predictions])
+        description_lines_score = sum(len(layer.material_description.lines) for layer in borehole.predictions)
 
         score = pair.score_match * layers_without_description_penalty * description_lines_score
-        return BoreholeCandidate(borehole, pair.material_description_rect, pair.sidebar, score)
+        return cls(borehole, pair.material_description_rect, pair.sidebar, score)

@@ -60,7 +60,7 @@ logger = logging.getLogger(__name__)
 
 
 class BoreholeExtractor:
-    """Class with methods to extract pairs of a material description rect with a corresponding sidebar."""
+    """Class with methods to extract boreholes by combining an optional sidebar with a material description rect."""
 
     def __init__(
         self,
@@ -568,12 +568,8 @@ class BoreholeExtractor:
 
         def no_intersection(candidate: BoreholeCandidate, selected_boreholes: list[BoreholeCandidate]) -> bool:
             """Check if the bounding boxes of the candidate do not intersect with selected candidates."""
-            joined_rect = candidate.sidebar.rect | candidate.material_description_rect
-
-            return all(
-                (joined_rect & (other_candidate.sidebar.rect | other_candidate.material_description_rect)).is_empty
-                for other_candidate in selected_boreholes
-            )  # don't allow taking the same rect or crossing pairs (pair having another pair element in between)
+            joined_rect = candidate.bounding_box
+            return all((joined_rect & other_candidate.bounding_box).is_empty for other_candidate in selected_boreholes)
 
         # Step 1: Greedy match based on max scores
         while available_boreholes := [
@@ -702,7 +698,7 @@ class BoreholeExtractor:
         """
         # Get filtered pairs (without descriptions without sidebar)
         good_borehole_candidates = self._extract_filtered_borehole_candidates()
-        best_candidate_score = max((candidate.core for candidate in good_borehole_candidates), default=0.0)
+        best_candidate_score = max((candidate.score for candidate in good_borehole_candidates), default=0.0)
 
         return SidebarQualityMetrics(
             number_of_good_sidebars=len(good_borehole_candidates),
