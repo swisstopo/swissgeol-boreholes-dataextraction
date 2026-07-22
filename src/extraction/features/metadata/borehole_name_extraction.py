@@ -11,7 +11,6 @@ from swissgeol_doc_processing.geometry.util import y_overlap_significant_smalles
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature, FeatureOnPage
 from swissgeol_doc_processing.utils.language_filtering import (
-    match_any_keyword,
     normalize_spaces,
     remove_any_keyword,
     remove_in_parenthesis,
@@ -25,13 +24,6 @@ class BoreholeName(ExtractedFeature):
 
     name: str  # Name of the borehole
     confidence: float  # Confidence score based on distance
-
-    def __post_init__(self):
-        """Checks if the information is valid."""
-        if not isinstance(self.name, str):
-            raise ValueError("Name must be a string")
-        if not isinstance(self.confidence, float):
-            raise ValueError("Confidence must be a float")
 
     def __str__(self) -> str:
         """Converts the object to a string.
@@ -138,29 +130,6 @@ def clean_borehole_name(text: str, excluded_keywords: list[str]) -> str | None:
     return cleaned
 
 
-def _is_name_length_valid(name: str, max_name_length: int | None, max_word_length: int | None) -> bool:
-    """Check if the name is too long or containing too long words.
-
-    Args:
-        name (str): Name to validate
-        max_name_length (int | None): Maximal length of name.
-        max_word_length (int | None): Maximal length for words (alphabetical) in name
-
-    Returns:
-        bool: True if the name is valid, False otherwise.
-    """
-    # Check that overall length is at most max_name_length
-    is_name_length = len(name) <= max_name_length if max_name_length else True
-
-    # Check if all words (alpha only) are at most max_word_length
-    is_word_length = True
-    if max_word_length:
-        matches = re.findall(r"[a-z]+", name, flags=re.IGNORECASE)
-        is_word_length = all(len(match) <= max_word_length for match in matches)
-
-    return is_name_length and is_word_length
-
-
 def extract_borehole_names(
     text_lines: list[TextLine], name_detection_params: dict
 ) -> list[FeatureOnPage[BoreholeName]]:
@@ -193,82 +162,178 @@ def extract_borehole_names(
         list[FeatureOnPage[BoreholeName]]: A list of extracted borehole names, if found
     """
     candidates: list[FeatureOnPage[BoreholeName]] = []
-    matching_keywords_suffix = name_detection_params.get("matching_keywords_suffix", [])
-    matching_keywords_inner = name_detection_params.get("matching_keywords_inner", [])
+    keywords = name_detection_params["matching_keywords"]
     excluded_keywords = name_detection_params.get("excluded_keywords", [])
     min_vertical_overlap = name_detection_params.get("min_vertical_overlap", 1.0)
     max_horizontal_distance = name_detection_params.get("max_horizontal_distance", 1e16)
-    max_name_length = name_detection_params.get("max_name_length", 1e16)
-    max_word_length = name_detection_params.get("max_word_length", 1e16)
+
+    # only horizontal lines
+    horizontal_lines = [line for line in text_lines if line.rect.width > line.rect.height]
+    line_heights = sorted([line.rect.height for line in horizontal_lines])
+    if len(line_heights) < 2:
+        return []
+
+    median_line_height = line_heights[len(line_heights) // 2 + 1]
+    percentile_90_line_height = line_heights[int(0.9 * len(line_heights))]
 
     # Iterate over all lines
-    for line in text_lines:
-        # Step 1: Check line for keyword
-        # Step 1.1: Enforce end matching with matching_keywords_suffix
-        match_suffix = match_any_keyword(
-            line.text, matching_keywords_suffix, start=False, end=True, ignore_case=True, enforce_digit=False
-        )
-        # Step 1.2: Enforce start and end matching with matching_keywords_inner
-        match_inner = match_any_keyword(
-            line.text, matching_keywords_inner, start=True, end=True, ignore_case=False, enforce_digit=True
-        )
+    for line in horizontal_lines:
+        is_tall_line = line.rect.height > 1.25 * median_line_height and line.rect.height > percentile_90_line_height
+        words = line.words
 
-        # Extract matched text (prioritize suffix over inner)
-        if not (match := match_suffix or match_inner):
+        if len(words) == 0:
             continue
 
-        # Step 2: Clean detection
-        # If suffix, ignore keywords, otherwise (inner) keep it
-        detection = line.text[match.end() :] if match_suffix else line.text[match.start() :]
-        # Take match as starting point of borehole name
-        if following_text_cleaned := clean_borehole_name(detection, excluded_keywords):
-            candidates.append(
-                FeatureOnPage(
-                    feature=BoreholeName(name=following_text_cleaned, confidence=1.0),
-                    rect=line.rect,
-                    page=line.page_number,
+        first_word = words[0]
+        if first_word.text.lower() in {"anhang", "allegato", "annexe"}:
+            continue
+
+        keyword_match_length = _keyword_match_length([word.text for word in words], keywords)
+        prefix_is_keyword = keyword_match_length > 0
+        words = words[keyword_match_length:]
+
+        scale_index = None
+        for index, word in enumerate(words):
+            # detect a scale like "1:50"
+            if re.search(r"\d+:\d+", word.text):
+                scale_index = index
+                break
+        if scale_index is not None:
+            words = words[:scale_index]
+
+        def is_excluded(word: str) -> bool:
+            letter_only = "".join(char for char in word if char.isalpha()).lower()
+            return letter_only in excluded_keywords
+
+        words = [word for word in words if not is_excluded(word.text)]
+
+        # Letter- or number-only borehole name as the only word on a line after a keyword prefix
+        if prefix_is_keyword and len(words) == 1:
+            word = words[0].text
+            if (word.isalpha() and len(word) <= 1) or word.isdigit():
+                candidates.append(
+                    FeatureOnPage(
+                        feature=BoreholeName(name=word, confidence=1),
+                        rect=words[0].rect,
+                        page=line.page_number,
+                    )
                 )
-            )
-            continue
+                continue
 
-        # Fallback: closest line to the right
-        hit_line = _find_closest_nearby_line(line, text_lines, min_vertical_overlap, max_horizontal_distance)
-        if not hit_line:
-            continue
+        if name_match := _find_candidate_name([word.text for word in words]):
+            start, end = name_match
+            name: str = " ".join([word.text for word in words[start:end]])
 
-        # Confidence based on horizontal gap (non-negative)
-        dy = max(0.0, hit_line.rect.y1 - hit_line.rect.y0)
-        dx = max(0.0, hit_line.rect.x0 - line.rect.x1)
-        confidence = dy / (1 + dy + dx)
+            rect = pymupdf.Rect()
+            for word in words[start:end]:
+                rect.include_rect(word.rect)
 
-        if cleaned := clean_borehole_name(hit_line.text, excluded_keywords):
-            # Define new bounding box as merge of both
-            candidates.append(
-                FeatureOnPage(
-                    feature=BoreholeName(name=cleaned, confidence=confidence),
-                    rect=pymupdf.Rect(
-                        min(line.rect.x0, hit_line.rect.x0),
-                        min(line.rect.y0, hit_line.rect.y0),
-                        max(line.rect.x1, hit_line.rect.x1),
-                        max(line.rect.y1, hit_line.rect.y1),
-                    ),
-                    page=line.page_number,
+            is_at_start = start == 0
+            is_at_end = end == len(words)
+
+            if not prefix_is_keyword and not is_tall_line:
+                continue
+
+            confidence = rect.height
+            if prefix_is_keyword:
+                confidence *= 3
+            if is_at_start:
+                confidence *= 1.5
+            if is_at_end:
+                confidence *= 1.5
+
+            # Step 2: Clean detection
+            if text_cleaned := clean_borehole_name(name, excluded_keywords):
+                print(name, text_cleaned)
+                candidates.append(
+                    FeatureOnPage(
+                        feature=BoreholeName(name=text_cleaned, confidence=confidence),
+                        rect=rect,
+                        page=line.page_number,
+                    )
                 )
-            )
+                continue
+
+            # Fallback: closest line to the right
+            hit_line = _find_closest_nearby_line(line, text_lines, min_vertical_overlap, max_horizontal_distance)
+            if not hit_line:
+                continue
+
+            # Confidence based on horizontal gap (non-negative)
+            dy = max(0.0, hit_line.rect.y1 - hit_line.rect.y0)
+            dx = max(0.0, hit_line.rect.x0 - line.rect.x1)
+            confidence = dy / (1 + dy + dx)
+
+            if cleaned := clean_borehole_name(hit_line.text, excluded_keywords):
+                # Define new bounding box as merge of both
+                candidates.append(
+                    FeatureOnPage(
+                        feature=BoreholeName(name=cleaned, confidence=confidence),
+                        rect=pymupdf.Rect(
+                            min(line.rect.x0, hit_line.rect.x0),
+                            min(line.rect.y0, hit_line.rect.y0),
+                            max(line.rect.x1, hit_line.rect.x1),
+                            max(line.rect.y1, hit_line.rect.y1),
+                        ),
+                        page=line.page_number,
+                    )
+                )
 
     if not candidates:
         return []
 
-    # Remove entires where text is too long
-    candidates = [
-        candidate
-        for candidate in candidates
-        if _is_name_length_valid(candidate.feature.name, max_name_length, max_word_length)
-    ]
-
     # Sort unique candidates by highest confidence and height on the page
     # TODO Use confidence for better matching
-    unique_candidates = list(set(candidates))
-    unique_candidates.sort(key=lambda bh_name: (bh_name.feature.confidence, -bh_name.rect.y0), reverse=True)
+    candidates.sort(key=lambda bh_name: (bh_name.feature.confidence, -bh_name.rect.y0), reverse=True)
 
-    return unique_candidates
+    highest_confidence = candidates[0].feature.confidence
+    # we expect all borehole names from the same page to have a similar confidence
+    return [candidate for candidate in candidates if candidate.feature.confidence > 0.8 * highest_confidence]
+
+
+def _preprocess_word(word: str) -> str:
+    return "".join(char for char in word.lower() if char.isalnum())
+
+
+def _keyword_match_length(words: list[str], keywords: list[str]) -> int:
+    longest_match = 0
+    keywords_preprocessed = [[_preprocess_word(word) for word in keyword.split(" ")] for keyword in keywords]
+    words_preprocessed = [_preprocess_word(word) for word in words]
+    for keyword in keywords_preprocessed:
+        if len(keyword) > longest_match and words_preprocessed[: len(keyword)] == keyword:
+            longest_match = len(keyword)
+    return longest_match
+
+
+def _find_candidate_name(words: list[str]) -> tuple[int, int] | None:
+    start = None
+    current_candidate_has_digit = False
+    for index, word in enumerate(words):
+        # (?![0-9_])\w  for matching any Unicode letter
+        match_letter_before_number = re.search(r"(?![0-9_])\w.*\d", word)
+        match_number_hyphen_number = re.search(r"\d-\d", word)
+
+        has_letter = any(char.isalpha() for char in word)
+        has_digit = any(char.isdigit() for char in word)
+        starts_with_digit = len(word) and word[0].isdigit()
+        all_uppercase = has_letter and word.isupper()
+
+        if not current_candidate_has_digit and not starts_with_digit:
+            # no digit in the first words and second word does not start with a digit -> start again
+            start = None
+
+        if start is None:
+            if match_letter_before_number or match_number_hyphen_number:
+                start = index
+                current_candidate_has_digit = True
+            if has_letter and not has_digit and (len(word) <= 3 or all_uppercase):
+                start = index
+        else:
+            if has_digit or (len(word) == 1 and word.isalpha()):
+                current_candidate_has_digit = current_candidate_has_digit or has_digit
+                continue
+            return start, index
+    if start is not None and current_candidate_has_digit:
+        return start, len(words)
+
+    return None
