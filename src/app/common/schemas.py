@@ -845,7 +845,7 @@ class ClassifyRequest(BaseModel):
     )
 
 
-def EnumAsName(enum_cls: type[Enum]) -> type:
+def enum_as_name(enum_cls: type[Enum]) -> type:
     """Build a field type that validates as `enum_cls` but serializes/documents as the member `.name`.
 
     The classification enums are `IntEnum` internally (their `.value` is a HuggingFace label id), but the
@@ -871,53 +871,53 @@ class ClassifyResponse(BaseModel):
     Unconsolidated sediment tasks: en_main, uscs, debris, color, grain_angularity, grain_shape, organic_components.
     """
 
-    accessory_components: list[EnumAsName(AccessoryComponentsSystem.AccessoryComponentsClasses)] | None = Field(
+    accessory_components: list[enum_as_name(AccessoryComponentsSystem.AccessoryComponentsClasses)] | None = Field(
         default=None,
         description="Predicted accessory component classes (consolidated rock only).",
     )
-    alteration_degree_consolidated: EnumAsName(AlterationDegreeConsolidatedSystem.AlterationDegreeClasses) | None = (
+    alteration_degree_consolidated: enum_as_name(AlterationDegreeConsolidatedSystem.AlterationDegreeClasses) | None = (
         Field(
             default=None,
             description="Predicted alteration degree class (consolidated rock only).",
         )
     )
-    cementation: EnumAsName(CementationSystem.CementationClasses) | None = Field(
+    cementation: enum_as_name(CementationSystem.CementationClasses) | None = Field(
         default=None,
         description="Predicted cementation class (consolidated rock only).",
     )
-    color: EnumAsName(ColorSystem.ColorClasses) | None = Field(
+    color: enum_as_name(ColorSystem.ColorClasses) | None = Field(
         default=None,
         description="Predicted color class.",
     )
-    debris: list[EnumAsName(DebrisSystem.DebrisClasses)] | None = Field(
+    debris: list[enum_as_name(DebrisSystem.DebrisClasses)] | None = Field(
         default=None,
         description="Predicted debris classes (unconsolidated sediment only).",
     )
-    en_main: EnumAsName(ENMainSystem.ENMainClasses) | None = Field(
+    en_main: enum_as_name(ENMainSystem.ENMainClasses) | None = Field(
         default=None,
         description="Predicted en_main class (unconsolidated sediment only).",
     )
-    grain_angularity: list[EnumAsName(GrainAngularitySystem.GrainAngularityClasses)] | None = Field(
+    grain_angularity: list[enum_as_name(GrainAngularitySystem.GrainAngularityClasses)] | None = Field(
         default=None,
         description="Predicted grain angularity classes (unconsolidated sediment only).",
     )
-    grain_shape: list[EnumAsName(GrainShapeSystem.GrainShapeClasses)] | None = Field(
+    grain_shape: list[enum_as_name(GrainShapeSystem.GrainShapeClasses)] | None = Field(
         default=None,
         description="Predicted grain shape classes (unconsolidated sediment only).",
     )
-    lithology: EnumAsName(LithologySystem.LithologyClasses) | None = Field(
+    lithology: enum_as_name(LithologySystem.LithologyClasses) | None = Field(
         default=None,
         description="Predicted lithology class; also determines consolidated vs unconsolidated.",
     )
-    mineral_components: list[EnumAsName(MineralComponentsSystem.MineralComponents)] | None = Field(
+    mineral_components: list[enum_as_name(MineralComponentsSystem.MineralComponents)] | None = Field(
         default=None,
         description="Predicted mineral component classes (consolidated rock only).",
     )
-    organic_components: list[EnumAsName(OrganicComponentsSystem.OrganicComponentsClasses)] | None = Field(
+    organic_components: list[enum_as_name(OrganicComponentsSystem.OrganicComponentsClasses)] | None = Field(
         default=None,
         description="Predicted organic component classes (unconsolidated sediment only).",
     )
-    uscs: EnumAsName(USCSSystem.USCSClasses) | None = Field(
+    uscs: enum_as_name(USCSSystem.USCSClasses) | None = Field(
         default=None,
         description="Predicted USCS class (unconsolidated sediment only).",
     )
