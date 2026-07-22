@@ -278,6 +278,7 @@ def post_extract_stratigraphy(request: ExtractStratigraphyRequest) -> ExtractStr
     "/classify",
     tags=["classify"],
     response_model=ClassifyResponse,
+    response_model_exclude_unset=True,
     responses={
         200: {"content": {"application/json": {"examples": _CLASSIFY_RESPONSE_EXAMPLES}}},
         400: {"model": BadRequestResponse, "description": "Bad request"},

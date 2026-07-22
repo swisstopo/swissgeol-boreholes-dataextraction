@@ -105,7 +105,7 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
     relevant_tasks = _UNCONSOLIDATED_TASKS if is_unconsolidated else _CONSOLIDATED_TASKS
 
     # Step 2: fan out to each relevant task head using the same shared backbone output.
-    predictions = {}
+    predictions = dict.fromkeys(relevant_tasks)
     for task_name in relevant_tasks:
         if task_name not in bert_models:
             logger.warning(f"Task '{task_name}' not loaded, skipping.")
