@@ -8,7 +8,7 @@ from app.common.schemas import (
     ExtractStratigraphyResponse,
     GroundwaterSchema,
 )
-from extraction.features.extract import MaterialDescriptionRectWithSidebarExtractor
+from extraction.features.extract import BoreholeExtractor
 from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
     GroundwaterLevelExtractor,
@@ -91,7 +91,7 @@ def extract_stratigraphy(filename: str, include_groundwater: bool = False) -> Ex
         # Detect strip logs on the page
         strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
 
-        extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(
+        extracted_boreholes = BoreholeExtractor(
             text_lines,
             long_or_horizontal_lines,
             all_geometric_lines,
