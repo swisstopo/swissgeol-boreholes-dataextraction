@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import pymupdf
 
 from swissgeol_doc_processing.geometry.util import y_overlap_significant_smallest
-from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.text.textline import TextLine, TextWord
 from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature, FeatureOnPage
 from swissgeol_doc_processing.utils.language_filtering import (
     normalize_spaces,
@@ -184,15 +184,32 @@ def extract_borehole_names(
         if len(words) == 0:
             continue
 
+        contracted_words = []
+        skip_next = False
+        for index, word in enumerate(words):
+            if word.text in {"-", ".", ":", "/"} and 0 < index < len(words) - 1:
+                previous_word = words[index - 1]
+                next_word = words[index + 1]
+                if previous_word.text[-1].isalnum() and next_word.text[0].isalnum():
+                    new_rect = previous_word.rect | word.rect | next_word.rect
+                    new_text = previous_word.text + word.text + next_word.text
+                    new_word = TextWord(new_rect, new_text, word.page_number)
+                    contracted_words.insert(len(contracted_words) - 1, new_word)
+                    skip_next = True
+            else:
+                if skip_next:
+                    skip_next = False
+                else:
+                    contracted_words.append(word)
+
+        words = contracted_words
+
         first_word = words[0]
         if first_word.text.lower() in {"anhang", "allegato", "annexe"}:
             continue
 
         keyword_match_length = _keyword_match_length([word.text for word in words], keywords)
         prefix_is_keyword = keyword_match_length > 0
-
-        if not prefix_is_keyword and not is_tall_line:
-            continue
 
         words = words[keyword_match_length:]
 
@@ -225,7 +242,10 @@ def extract_borehole_names(
 
             is_at_start = start == 0
             is_at_end = end == len(words)
-            all_uppercase = any(char.isalpha() for char in name) and name.isupper()
+            has_lowercase = any(char.isalpha() for char in name) and name.islower()
+
+            if not (prefix_is_keyword or is_tall_line or (not has_lowercase and is_at_start and is_at_end)):
+                continue
 
             confidence = rect.height
             if prefix_is_keyword:
@@ -234,8 +254,8 @@ def extract_borehole_names(
                 confidence *= 1.5
             if is_at_end:
                 confidence *= 1.5
-            if all_uppercase:
-                confidence *= 1.5
+            if has_lowercase:
+                confidence *= 0.5
 
             # Step 2: Clean detection
             if text_cleaned := clean_borehole_name(name, excluded_keywords):
@@ -303,8 +323,6 @@ def _find_candidate_names(words: list[str], allow_simple: bool = False) -> list[
         else:
             if is_simple_match:
                 current_candidate_is_valid = current_candidate_is_valid or has_digit
-                continue
-            if word in {"-", "/"}:
                 continue
             results.append((start, index))
             start = None

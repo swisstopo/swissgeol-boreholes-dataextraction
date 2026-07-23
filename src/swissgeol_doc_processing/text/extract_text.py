@@ -56,22 +56,21 @@ def extract_text_lines_from_bbox(page: pymupdf.Page, bbox: pymupdf.Rect | None) 
                     if len(word_text) > 0:
                         words.append(TextWord(word_rect, word_text, page.number + 1))
 
-                print(words)
                 raw_lines.append(TextLine(words, text_angle))
 
     lines = []
     current_line_words = []
     for line_index, raw_line in enumerate(raw_lines):
         for word_index, word in enumerate(raw_line.words):
-            remaining_line = TextLine(raw_line.words[word_index:])
+            remaining_line = TextLine(raw_line.words[word_index:], raw_line.text_angle)
             # Check if the remaining words of the line should be treated as a separate text line, even if they are
             # only a tailing segment of the "raw line" as it was extracted from the PDF.
             if len(current_line_words) > 0 and remaining_line.is_line_start(lines, raw_lines[line_index + 1 :]):
-                lines.append(TextLine(current_line_words))
+                lines.append(TextLine(current_line_words, raw_line.text_angle))
                 current_line_words = []
             current_line_words.append(word)
         if current_line_words:
-            lines.append(TextLine(current_line_words))
+            lines.append(TextLine(current_line_words, raw_line.text_angle))
             current_line_words = []
 
     return lines

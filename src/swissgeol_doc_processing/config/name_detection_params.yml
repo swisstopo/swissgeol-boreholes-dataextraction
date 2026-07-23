@@ -2,7 +2,7 @@
 # These paramaters should be changed only if we want to impact the functionality of the package globally.
 
 # Overlap threshold for closest next line detection.
-min_vertical_overlap: 0.5
+min_vertical_overlap: 0.9
 # Max allowed distance between keyword and next line
 max_horizontal_distance: 50
 
@@ -14,27 +14,28 @@ matching_keywords:
   [
     "baggerschacht",
     "baggerschlitz",
+    "baugrundsondierung",
     "bohrstelle",
+    "bohrung",
+    "coupe de fouille",
+    "coupe du forage",
     "forage",
+    "fouille",
     "kernbohrung",
     "probenahmestelle",
     "rammkernbohrung",
     "rammsondierung",
     "rotationsbohrung",
     "rotationskernbohrung",
+    "schacht",
     "schachtprofil",
-    "sondierbohrung",
-    "sondierschacht",
+    "sondage",
     "sondage à la pelle",
     "sondage carotté",
-    "sondage",
-    "tranchée",
-    "bohrung",
-    "schacht",
+    "sondierbohrung",
+    "sondierschacht",
     "sondierung",
-    "coupe de fouille",
-    "coupe du forage",
-    "fouille"
+    "tranchée"
   ]
 
 # Keyword to ignore in borehole name detection and evaluation

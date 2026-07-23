@@ -164,7 +164,6 @@ def test_clean_borehole_name(text: str, excluded_keywords: list[str], expected: 
         ("1 /82", ["1 /82"], True),
         ("Nr.8", ["Nr.8"], False),
         ("Datum:9.2.81 Sondierung No. KR.1", ["Datum:9.2.81", "KR.1"], False),
-        ("K 15 - 6", ["K 15 - 6"], False),
     ],
 )
 def test_findcandidatename(text: str, expected: str | None, allow_simple: bool) -> None:
