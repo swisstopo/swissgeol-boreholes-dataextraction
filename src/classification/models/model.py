@@ -311,6 +311,71 @@ class BertModel:
         return tokenized_text
 
     @torch.no_grad()
+    def compute_shared_embedding(self, text: str) -> tuple[torch.Tensor, torch.Tensor]:
+        """Run the shared backbone (layers 0–10) and return its output for fan-out to task heads.
+
+        The split is defined by _HEAD_PREFIXES: layer 11, the pooler, and the classifier are
+        task-specific and must NOT be run here. Each task head runs them separately via
+        predict_from_embedding so that its own weights are used.
+
+        Intended for the API two-step inference path only; regular inference should use
+        predict_class instead.
+
+        Args:
+            text: Input text string.
+
+        Returns:
+            Tuple of (layer_10_hidden_states [1, seq_len, hidden_size],
+                      extended_attention_mask [1, 1, 1, seq_len]).
+        """
+        tokenized = self.tokenize_text(text)
+        tokenized = {k: v.to(self.model.device) for k, v in tokenized.items()}
+        attention_mask = tokenized["attention_mask"]
+        extended_mask = self.model.bert.get_extended_attention_mask(attention_mask, attention_mask.shape)
+
+        hidden_states = self.model.bert.embeddings(
+            input_ids=tokenized["input_ids"],
+            token_type_ids=tokenized.get("token_type_ids"),
+        )
+
+        for layer in self.model.bert.encoder.layer[:11]:  # layers 0–10 (shared backbone)
+            hidden_states = layer(hidden_states, attention_mask=extended_mask)[0]
+
+        return hidden_states, extended_mask
+
+    @torch.no_grad()
+    def predict_from_embedding(
+        self, layer_10_hidden_states: torch.Tensor, extended_attention_mask: torch.Tensor
+    ) -> list[ClassificationSystem.EnumMember]:
+        """Run the task-specific head (layer 11 → pooler → classifier) on shared backbone output.
+
+        Produces identical results to predict_class because it runs the exact same task-specific
+        weights on the exact same shared representation.
+
+        Intended for the API two-step inference path only; regular inference should use
+        predict_class instead.
+
+        Args:
+            layer_10_hidden_states: Output of shared layer 10, shape [1, seq_len, hidden_size].
+            extended_attention_mask: Attention mask in BERT's extended format [1, 1, 1, seq_len].
+
+        Returns:
+            Predicted class(es) for this task.
+        """
+        hidden = self.model.bert.encoder.layer[11](layer_10_hidden_states, attention_mask=extended_attention_mask)[0]
+        pooled = self.model.bert.pooler(hidden)
+        logits = self.model.classifier(self.model.dropout(pooled))
+        task = self.classification_system.classification_task()
+        if task == ClassificationTask.multi_label:
+            indices = (logits > 0)[0].nonzero(as_tuple=True)[0].tolist() or [0]
+        elif task == ClassificationTask.single_label:
+            indices = [logits.argmax(dim=-1).item()]
+        elif task == ClassificationTask.rank:
+            sorted_indices = logits.argsort(dim=-1, descending=True)[0]
+            indices = [idx for idx in sorted_indices.tolist() if logits[0, idx] > 0] or [0]
+        return [self.id2classEnum[i] for i in indices]
+
+    @torch.no_grad()
     def predict_class_batched(self, texts: list[str], batch_size: int) -> list[list[ClassificationSystem.EnumMember]]:
         """Runs batch prediction on multiple text inputs.
 

@@ -11,11 +11,23 @@ as well as a patch version with all fields optional for patch operations.
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
-from typing import Literal
+from typing import Annotated
 
 import pymupdf
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, WithJsonSchema, field_validator
 
+from classification.utils.datasets.accessory_components import AccessoryComponentsSystem
+from classification.utils.datasets.alteration_degree import AlterationDegreeConsolidatedSystem
+from classification.utils.datasets.cementation import CementationSystem
+from classification.utils.datasets.color import ColorSystem
+from classification.utils.datasets.debris import DebrisSystem
+from classification.utils.datasets.en_main import ENMainSystem
+from classification.utils.datasets.grain_angularity import GrainAngularitySystem
+from classification.utils.datasets.grain_shape import GrainShapeSystem
+from classification.utils.datasets.lithology import LithologySystem
+from classification.utils.datasets.mineral_components import MineralComponentsSystem
+from classification.utils.datasets.organic_components import OrganicComponentsSystem
+from classification.utils.datasets.uscs import USCSSystem
 from extraction.features.groundwater.groundwater_extraction import Groundwater
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepthsEntry
 from swissgeol_doc_processing.text.textblock import MaterialDescription
@@ -799,37 +811,113 @@ class GroundwaterSchema(BaseModel):
 
 
 ########################################################################################################################
-### Classify lithology schema
+### Unified classify schema
 ########################################################################################################################
 
 
-class ClassifyLithologyRequest(BaseModel):
-    """Request schema for the `classify_lithology` endpoint."""
+class ClassifyRequest(BaseModel):
+    """Request schema for the unified `/classify` endpoint."""
 
     description: str = Field(
         ...,
         description="Plain-text material description to classify.",
     )
-    classification_system: Literal["lithology", "en_main"] = Field(
-        default="lithology",
-        description="Classification system to apply. One of: 'lithology', 'en_main'.",
-    )
+
     model_config = ConfigDict(
         json_schema_extra={
-            "example": {
-                "description": "Mergel, grau, laminiert - flaserig, Flaserung parallel zur BA",
-                "classification_system": "lithology",
-            }
+            "examples": [
+                {
+                    "description": (
+                        "Silt, calcareous, argillaceous, grey, with thin light grey interlayers and "
+                        "yellowish olive reduction patches, with gravels, angular to sub-rounded, very "
+                        "poorly to poorly sorted; from 2 m to 4 m: some plant roots; from 6 m to 8 m: "
+                        "one chert nodule."
+                    ),
+                },
+                {
+                    "description": (
+                        "Peloidal bioclastic limestone, fine to medium grained, slightly oolitic, yellow "
+                        "to orange, finely sandy, with pyrite and glauconite."
+                    ),
+                },
+            ]
         }
     )
 
 
-class ClassifyLithologyResponse(BaseModel):
-    """Response schema for the `classify_lithology` endpoint."""
+def enum_as_name(enum_cls: type[Enum]) -> type:
+    """Build a field type that validates as `enum_cls` but serializes/documents as the member `.name`.
 
-    class_name: str = Field(
-        ...,
-        description="Predicted class name for the input description.",
+    The classification enums are `IntEnum` internally (their `.value` is a HuggingFace label id), but the
+    API should expose and document the human-readable member name instead.
+    """
+    return Annotated[
+        enum_cls,
+        PlainSerializer(lambda v: v.name, return_type=str),
+        WithJsonSchema({"type": "string", "enum": [member.name for member in enum_cls]}),
+    ]
+
+
+class ClassifyResponse(BaseModel):
+    """Response schema for the unified `/classify` endpoint.
+
+    Each field corresponds to one classification task. A field is `None` if that task wasn't run for the
+    inferred rock type; otherwise it holds the predicted class (single-label tasks) or classes (multi-label
+    tasks: accessory_components, debris, grain_angularity, grain_shape, mineral_components,
+    organic_components).
+
+    Consolidated rock tasks: lithology, alteration_degree_consolidated, cementation, color, mineral_components,
+        accessory_components.
+    Unconsolidated sediment tasks: en_main, uscs, debris, color, grain_angularity, grain_shape, organic_components.
+    """
+
+    accessory_components: list[enum_as_name(AccessoryComponentsSystem.AccessoryComponentsClasses)] | None = Field(
+        default=None,
+        description="Predicted accessory component classes (consolidated rock only).",
     )
-
-    model_config = ConfigDict(json_schema_extra={"example": {"class_name": "Marlstone"}})
+    alteration_degree_consolidated: enum_as_name(AlterationDegreeConsolidatedSystem.AlterationDegreeClasses) | None = (
+        Field(
+            default=None,
+            description="Predicted alteration degree class (consolidated rock only).",
+        )
+    )
+    cementation: enum_as_name(CementationSystem.CementationClasses) | None = Field(
+        default=None,
+        description="Predicted cementation class (consolidated rock only).",
+    )
+    color: enum_as_name(ColorSystem.ColorClasses) | None = Field(
+        default=None,
+        description="Predicted color class.",
+    )
+    debris: list[enum_as_name(DebrisSystem.DebrisClasses)] | None = Field(
+        default=None,
+        description="Predicted debris classes (unconsolidated sediment only).",
+    )
+    en_main: enum_as_name(ENMainSystem.ENMainClasses) | None = Field(
+        default=None,
+        description="Predicted en_main class (unconsolidated sediment only).",
+    )
+    grain_angularity: list[enum_as_name(GrainAngularitySystem.GrainAngularityClasses)] | None = Field(
+        default=None,
+        description="Predicted grain angularity classes (unconsolidated sediment only).",
+    )
+    grain_shape: list[enum_as_name(GrainShapeSystem.GrainShapeClasses)] | None = Field(
+        default=None,
+        description="Predicted grain shape classes (unconsolidated sediment only).",
+    )
+    lithology: enum_as_name(LithologySystem.LithologyClasses) | None = Field(
+        default=None,
+        description="Predicted lithology class; also determines consolidated vs unconsolidated.",
+    )
+    mineral_components: list[enum_as_name(MineralComponentsSystem.MineralComponents)] | None = Field(
+        default=None,
+        description="Predicted mineral component classes (consolidated rock only).",
+    )
+    organic_components: list[enum_as_name(OrganicComponentsSystem.OrganicComponentsClasses)] | None = Field(
+        default=None,
+        description="Predicted organic component classes (unconsolidated sediment only).",
+    )
+    uscs: enum_as_name(USCSSystem.USCSClasses) | None = Field(
+        default=None,
+        description="Predicted USCS class (unconsolidated sediment only).",
+    )
