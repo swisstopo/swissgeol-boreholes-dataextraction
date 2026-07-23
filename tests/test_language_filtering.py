@@ -2,7 +2,7 @@
 
 import pytest
 
-from extraction.features.metadata.borehole_name_extraction import _find_candidate_name, clean_borehole_name
+from extraction.features.metadata.borehole_name_extraction import _find_candidate_names, clean_borehole_name
 from swissgeol_doc_processing.utils.language_filtering import (
     normalize_spaces,
     remove_any_keyword,
@@ -152,27 +152,25 @@ def test_clean_borehole_name(text: str, excluded_keywords: list[str], expected: 
 
 
 @pytest.mark.parametrize(
-    "text, expected",
+    "text, expected, allow_simple",
     [
-        ("SONDAGE CAROTTÉ S1", "S1"),
-        ("Kernbohrung Kb 02/4", "Kb 02/4"),
-        ("Bohrung KB1-18/P", "KB1-18/P"),
-        ("G6/P", "G6/P"),
-        ("Baggerschlitz BS 16-1/P", "BS 16-1/P"),
-        ("N°8366", "N°8366"),
+        ("SONDAGE CAROTTÉ S1", ["S1"], False),
+        ("Kernbohrung Kb 02/4", ["Kb 02/4"], False),
+        ("Bohrung KB1-18/P", ["KB1-18/P"], False),
+        ("G6/P", ["G6/P"], False),
+        ("Baggerschlitz BS 16-1/P", ["BS 16-1/P"], False),
+        ("N°8366", ["N°8366"], False),
+        ("1 /82", [], False),
+        ("1 /82", ["1 /82"], True),
+        ("Nr.8", ["Nr.8"], False),
+        ("Datum:9.2.81 Sondierung No. KR.1", ["Datum:9.2.81", "KR.1"], False),
+        ("K 15 - 6", ["K 15 - 6"], False),
     ],
 )
-def test_findcandidatename(text: str, expected: str | None) -> None:
-    """Test borehole name extraction behavior.
-
-    Args:
-        text (str): Input string containing the borehole name.
-        expected (str | None): The candidate borehole name that should be extracted from the input.
-    """
+def test_findcandidatename(text: str, expected: str | None, allow_simple: bool) -> None:
+    """Test borehole name extraction behavior."""
     words = text.split(" ")
-    if match := _find_candidate_name(words):
-        start, end = match
-        name = " ".join(words[start:end])
-    else:
-        name = None
-    assert name == expected
+    names = []
+    for start, end in _find_candidate_names(words, allow_simple):
+        names.append(" ".join(words[start:end]))
+    assert names == expected
