@@ -35,7 +35,7 @@ def extract_text_lines_from_bbox(page: pymupdf.Page, bbox: pymupdf.Rect | None) 
     """
     raw_lines = []
 
-    for block in page.get_text("rawdict", clip=bbox, sort=True)["blocks"]:
+    for block in page.get_text("rawdict", clip=bbox)["blocks"]:
         if "lines" in block:
             for line in block["lines"]:
                 x, y = line["dir"]
