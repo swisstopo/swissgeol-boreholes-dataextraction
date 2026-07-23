@@ -7,8 +7,6 @@ import pymupdf
 
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
 from swissgeol_doc_processing.geometry.geometry_dataclasses import BoundingBox
-from swissgeol_doc_processing.text.find_description import get_description_lines
-from swissgeol_doc_processing.text.textline import TextLine
 
 
 @dataclass
@@ -17,7 +15,6 @@ class MaterialDescriptionRectWithSidebar:
 
     sidebar: Sidebar | None
     material_description_rect: pymupdf.Rect
-    lines: list[TextLine]
     noise_count: int = 0
 
     @property
@@ -32,7 +29,6 @@ class MaterialDescriptionRectWithSidebar:
         - negatively influenced by vertical distance between the top of the sidebar and the top of the material
           descriptions, and the vertical distance between the bottom of the sidebar and the bottom of the material
           descriptions
-        - positively influenced by the number of text lines contained in the material description rectangle
         The resulting score is also reduced if the sidebar has a high noise count (many unrelated tokens in between
         the extracted depths values).
 
@@ -56,10 +52,7 @@ class MaterialDescriptionRectWithSidebar:
 
         noise_penalty_multiplier = math.pow(0.8, 10 * self.noise_count / len(self.sidebar.entries))
 
-        description_lines = get_description_lines(self.lines, self.material_description_rect)
-        num_lines_score = len(description_lines)
-
-        return (geometry_score + num_lines_score) * noise_penalty_multiplier
+        return geometry_score * noise_penalty_multiplier
 
 
 @dataclass
