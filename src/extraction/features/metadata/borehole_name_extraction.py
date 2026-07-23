@@ -168,7 +168,7 @@ def extract_borehole_names(
     max_horizontal_distance = name_detection_params.get("max_horizontal_distance", 1e16)
 
     # only horizontal lines
-    horizontal_lines = [line for line in text_lines if line.rect.width > line.rect.height]
+    horizontal_lines = [line for line in text_lines if abs(line.text_angle) < 5]
     line_heights = sorted([line.rect.height for line in horizontal_lines])
     if len(line_heights) < 2:
         return []

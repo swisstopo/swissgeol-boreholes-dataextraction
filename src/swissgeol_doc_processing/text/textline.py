@@ -35,22 +35,23 @@ class TextLine(RectWithPageMixin):
     It is used to represent a line of text in a PDF document.
     """
 
-    def __init__(self, words: list[TextWord]):
+    def __init__(self, words: list[TextWord], text_angle: float = 0):
         """Initialize the TextLine object.
 
         Args:
             words (list[TextWord]): The words that make up the line.
-            page_number (int): The page number of the line. The first page has idx 1.
+            text_angle (float): The angle in degrees (between -180 and 180) that the text makes with the x-axis.
         """
         rect = pymupdf.Rect()
         for word in words:
             rect.include_rect(word.rect)
         self.rect_with_page = RectWithPage(rect, next((word.page_number for word in words), None))
         self.words = words
+        self.text_angle = text_angle
         self.is_indented = False
 
     def __repr__(self) -> str:
-        return f"TextLine({self.text}, {self.rect})"
+        return f"TextLine({self.text}, {self.text_angle})"
 
     @property
     def text(self) -> str:
