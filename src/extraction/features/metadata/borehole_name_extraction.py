@@ -173,7 +173,7 @@ def extract_borehole_names(
     if len(line_heights) < 2:
         return []
 
-    median_line_height = line_heights[len(line_heights) // 2 + 1]
+    median_line_height = line_heights[len(line_heights) // 2]
     percentile_90_line_height = line_heights[int(0.9 * len(line_heights))]
 
     # Iterate over all lines

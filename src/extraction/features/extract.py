@@ -330,6 +330,10 @@ class MaterialDescriptionRectWithSidebarExtractor:
         max_x = max([line.rect.x1 for line in self.lines])
         min_y = min([line.rect.y0 for line in self.lines])
         max_y = max([line.rect.y1 for line in self.lines])
+
+        if min_x >= max_x or min_y >= max_y:
+            return []
+
         line_rtree = fastquadtree.RectQuadTreeObjects((min_x, min_y, max_x, max_y), capacity=8)
         for line in self.lines:
             line_rtree.insert((line.rect.x0, line.rect.y0, line.rect.x1, line.rect.y1), obj=line)
