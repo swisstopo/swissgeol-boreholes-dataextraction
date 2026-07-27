@@ -1,20 +1,22 @@
 """Main router for the app."""
 
-from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from typing import Annotated
+
+from fastapi import APIRouter, Body, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
 from app.api.v1.endpoints.bounding_boxes import bounding_boxes
+from app.api.v1.endpoints.classify_all import classify
 from app.api.v1.endpoints.classify_borehole_type import classify_borehole_type
 from app.api.v1.endpoints.create_pngs import create_pngs
 from app.api.v1.endpoints.extract_data import extract_data
 from app.api.v1.endpoints.extract_stratigraphy import extract_stratigraphy
-from app.api.v1.endpoints.lithology_classification import classify_lithology
 from app.common.schemas import (
     BoundingBoxesRequest,
     BoundingBoxesResponse,
     ClassifyBoreholeTypeResponse,
-    ClassifyLithologyRequest,
-    ClassifyLithologyResponse,
+    ClassifyRequest,
+    ClassifyResponse,
     ExtractCoordinatesResponse,
     ExtractDataRequest,
     ExtractNumberResponse,
@@ -26,6 +28,55 @@ from app.common.schemas import (
 )
 
 router = APIRouter(prefix="/api/V1")
+
+_CLASSIFY_REQUEST_EXAMPLES = {
+    "unconsolidated_silt": {
+        "summary": "Unconsolidated sediment (silt)",
+        "value": {
+            "description": (
+                "Silt, calcareous, argillaceous, grey, with thin light grey interlayers and "
+                "yellowish olive reduction patches, with gravels, angular to sub-rounded, very "
+                "poorly to poorly sorted; from 2 m to 4 m: some plant roots; from 6 m to 8 m: "
+                "one chert nodule."
+            )
+        },
+    },
+    "consolidated_limestone": {
+        "summary": "Consolidated rock (limestone)",
+        "value": {
+            "description": (
+                "Peloidal bioclastic limestone, fine to medium grained, slightly oolitic, yellow "
+                "to orange, finely sandy, with pyrite and glauconite."
+            )
+        },
+    },
+}
+
+_CLASSIFY_RESPONSE_EXAMPLES = {
+    "unconsolidated_silt": {
+        "summary": "Unconsolidated sediment (silt)",
+        "value": {
+            "en_main": "si",
+            "uscs": "not_specified",
+            "debris": ["not_specified"],
+            "color": "grey",
+            "grain_angularity": ["angular", "sub_angular", "sub_rounded"],
+            "grain_shape": ["not_specified"],
+            "organic_components": ["roots"],
+        },
+    },
+    "consolidated_limestone": {
+        "summary": "Consolidated rock (limestone)",
+        "value": {
+            "lithology": "limestone",
+            "alteration_degree_consolidated": "not_specified",
+            "cementation": "not_specified",
+            "color": "yellowish_orange",
+            "mineral_components": ["pyrite", "glauconite"],
+            "accessory_components": ["ooids", "pellets"],
+        },
+    },
+}
 
 
 class BadRequestResponse(BaseModel):
@@ -223,28 +274,45 @@ def post_extract_stratigraphy(request: ExtractStratigraphyRequest) -> ExtractStr
 
 
 ####################################################################################################
-### Classify Lithology
+### Classify (unified multi-task)
 ####################################################################################################
 @router.post(
-    "/classify_lithology",
-    tags=["classify_lithology"],
-    response_model=ClassifyLithologyResponse,
+    "/classify",
+    tags=["classify"],
+    response_model=ClassifyResponse,
+    response_model_exclude_unset=True,
     responses={
+        200: {"content": {"application/json": {"examples": _CLASSIFY_RESPONSE_EXAMPLES}}},
         400: {"model": BadRequestResponse, "description": "Bad request"},
         500: {"model": BadRequestResponse, "description": "Internal server error"},
         503: {"model": BadRequestResponse, "description": "BERT models not loaded (set BERT_ENABLED=true)"},
     },
 )
-def post_classify_lithology(request: ClassifyLithologyRequest, http_request: Request) -> ClassifyLithologyResponse:
-    """Classify a plain-text material description using the trained BERT model.
+def post_classify(
+    request: Annotated[ClassifyRequest, Body(openapi_examples=_CLASSIFY_REQUEST_EXAMPLES)],
+    http_request: Request,
+) -> ClassifyResponse:
+    """Classify a plain-text material description across all relevant tasks in one forward pass.
+
+    The backbone embedding is computed once from the description, then fed independently into each
+    task-specific classification head. The lithology head determines whether the material is consolidated
+    or unconsolidated; only tasks relevant to that rock type are returned.
 
     ### Request Body
-    - **description**: Plain-text material description to classify (e.g. `"Mergel, grau, laminiert"`).
-    - **classification_system**: Target system — one of `'lithology'` or `'en_main'`. Defaults to
-    `'lithology'`.
+    - **description**: Plain-text material description (e.g. `"schwach tonig-siltiger Sand und Kies,
+      brau-beige, Komponenten vorw. eckig"`).
 
     ### Returns
-    - **class_name**: Predicted class name from the selected classification system (e.g. `"Marlstone"`).
+    One field per classification task. A field is `null` if that task isn't relevant to the inferred
+    rock type; otherwise it holds the predicted class name (single-label tasks, e.g. `en_main`, `uscs`,
+    `color`) or class names (multi-label tasks, e.g. `grain_angularity`, `grain_shape`,
+    `organic_components`, `accessory_components`, `debris`, `mineral_components`).
+
+    ### Consolidated rock tasks
+    `lithology`, `alteration_degree_consolidated`, `cementation`, `color`, `mineral_components`, `accessory_components`
+
+    ### Unconsolidated sediment tasks
+    `en_main`, `uscs`, `debris`, `color`, `grain_angularity`, `grain_shape`, `organic_components`
 
     ### Status Codes
     - **200 OK**: Classification completed successfully.
@@ -257,7 +325,7 @@ def post_classify_lithology(request: ClassifyLithologyRequest, http_request: Req
             status_code=503,
             detail="Classification endpoint is disabled. Set BERT_ENABLED=true to enable BERT model loading.",
         )
-    return classify_lithology(request, http_request.app.state.bert_models)
+    return classify(request, http_request.app.state.bert_models)
 
 
 ####################################################################################################
