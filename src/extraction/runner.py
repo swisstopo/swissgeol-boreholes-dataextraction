@@ -49,6 +49,16 @@ def _git_metadata() -> dict:
         return {}
 
 
+def _pdf_filename_and_page(img_path: Path) -> tuple[str, str]:
+    """Recover the source pdf filename and page number from a draw/ visualization filename.
+
+    Draw filenames follow "<pdf_stem>_page<N>_<viz_type>.png" (see plot_utils.save_visualization).
+    """
+    pdf_stem, _, rest = img_path.stem.partition("_page")
+    page = rest.split("_", 1)[0] if rest else ""
+    return f"{pdf_stem}.pdf", page
+
+
 def write_json_predictions(path: Path, predictions: OverallFilePredictions) -> None:
     """Write prediction to json output.
 
@@ -269,9 +279,23 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
                         wandb.save(str(csv_path), base_path=str(self.out_directory), policy="now")
 
             if self._logged_image_paths:
-                table = wandb.Table(columns=["filename", "image"])
-                for img_path in self._logged_image_paths:
-                    table.add_data(img_path.name, wandb.Image(str(img_path), caption=img_path.name))
+                # Per-file metrics, keyed by pdf filename, so scores sit next to the image in the same row.
+                metric_columns: dict[str, dict[str, float]] = {}
+                for csv_name in ("document_level_metadata_metrics.csv", "document_level_geology_metrics.csv"):
+                    csv_path = self.out_directory / csv_name
+                    if csv_path.exists():
+                        metric_columns.update(pd.read_csv(csv_path, index_col="filename").to_dict())
+
+                table = wandb.Table(columns=["filename", "pdf_filename", "page", "image", *metric_columns])
+                for img_path in sorted(self._logged_image_paths):
+                    pdf_filename, page = _pdf_filename_and_page(img_path)
+                    table.add_data(
+                        img_path.name,
+                        pdf_filename,
+                        page,
+                        wandb.Image(str(img_path), caption=img_path.name),
+                        *(metric_columns[col].get(pdf_filename) for col in metric_columns),
+                    )
                 wandb.log({"png_browser_table": table})
         finally:
             wandb.finish()
