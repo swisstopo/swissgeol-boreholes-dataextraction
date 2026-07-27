@@ -6,59 +6,7 @@ from extraction.features.metadata.borehole_name_extraction import _find_candidat
 from swissgeol_doc_processing.utils.language_filtering import (
     normalize_spaces,
     remove_any_keyword,
-    remove_in_parenthesis,
-    remove_scale,
 )
-
-
-@pytest.mark.parametrize(
-    "text, expected",
-    [
-        ("text", "text"),
-        ("text 1:100", "text"),
-        ("text 1 : 100", "text"),
-        ("text M1:100", "text"),
-        ("text M.1:100", "text"),
-        ("text M 1:100", "text"),
-    ],
-    ids=[
-        "none",
-        "scale-simple",
-        "scale-with-spaces",
-        "scale-masstab",
-        "scale-masstab-punct",
-        "scale-space",
-    ],
-)
-def test_remove_scale(text: str, expected: str) -> None:
-    """Verify that `remove_scale` removes scale notations.
-
-    Args:
-        text (str): Input text possibly containing a scale pattern.
-        expected (str): The expected string after removing the scale pattern.
-    """
-    assert expected == remove_scale(text)
-
-
-@pytest.mark.parametrize(
-    "text, expected",
-    [
-        ("text", "text"),
-        ("text (parenthesis)", "text"),
-    ],
-    ids=[
-        "none",
-        "parenthesis",
-    ],
-)
-def test_remove_in_parenthesis(text: str, expected: str) -> None:
-    """Verify that `remove_in_parenthesis` removes content inside parentheses.
-
-    Args:
-        text (str): Input text possibly containing parenthetical content.
-        expected (str): The expected string after removal.
-    """
-    assert expected == remove_in_parenthesis(text)
 
 
 @pytest.mark.parametrize(
@@ -124,8 +72,6 @@ def test_remove_any_keyword(text: str, keywords: list[str], expected: str) -> No
         ("schachtprofil 12", [], "schachtprofil 12"),
         ("schachtprofil 12", None, "schachtprofil 12"),
         ("n r nr. schachtprofil nr-12", ["schachtprofil", "nr.", "n r"], "nr-12"),
-        ("SP1 1:20", [], "SP1"),
-        ("SP1 (comment)", [], "SP1"),
         ("schachtprofil.:_ 12", [], "schachtprofil 12"),
         ("", [], None),
     ],
@@ -133,8 +79,6 @@ def test_remove_any_keyword(text: str, keywords: list[str], expected: str) -> No
         "empty-keywords",
         "none-keywords",
         "exclude-keywords",
-        "exclude-scale",
-        "exclude-parenthesis",
         "exclude-punc",
         "exclude-empty",
     ],
@@ -164,6 +108,11 @@ def test_clean_borehole_name(text: str, excluded_keywords: list[str], expected: 
         ("1 /82", ["1 /82"], True),
         ("Nr.8", ["Nr.8"], False),
         ("Datum:9.2.81 Sondierung No. KR.1", ["Datum:9.2.81", "KR.1"], False),
+        ("571112/256198", [], False),
+        ("CBOA", [], False),
+        ("CBOA", ["CBOA"], True),  # deal with OCR mistake 0 vs O
+        ("KBI", [], False),
+        ("KBI", ["KBI"], True),  # deal with OCR mistake 1 vs I
     ],
 )
 def test_findcandidatename(text: str, expected: str | None, allow_simple: bool) -> None:

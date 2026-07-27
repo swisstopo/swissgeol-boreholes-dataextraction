@@ -10,12 +10,7 @@ import pymupdf
 from swissgeol_doc_processing.geometry.util import y_overlap_significant_smallest
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
 from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature, FeatureOnPage
-from swissgeol_doc_processing.utils.language_filtering import (
-    normalize_spaces,
-    remove_any_keyword,
-    remove_in_parenthesis,
-    remove_scale,
-)
+from swissgeol_doc_processing.utils.language_filtering import normalize_spaces, remove_any_keyword
 
 
 @dataclass
@@ -115,12 +110,8 @@ def clean_borehole_name(text: str, excluded_keywords: list[str]) -> str | None:
     if excluded_keywords is not None and len(excluded_keywords) != 0:
         text = remove_any_keyword(text, excluded_keywords)
 
-    # Remove scale from text (eg: "1:100")
-    cleaned = remove_scale(text)
-    cleaned = remove_in_parenthesis(cleaned)
-
     # Replace punctuation, normalize whitespace and remove trailing spaces
-    cleaned = re.sub(r"[:._]", " ", cleaned)
+    cleaned = re.sub(r"[:._]", " ", text)
     cleaned = normalize_spaces(cleaned)
 
     # Check if result is empty
@@ -162,10 +153,6 @@ def extract_borehole_names(
         list[FeatureOnPage[BoreholeName]]: A list of extracted borehole names, if found
     """
     candidates: list[FeatureOnPage[BoreholeName]] = []
-    keywords = name_detection_params["matching_keywords"]
-    excluded_keywords = name_detection_params.get("excluded_keywords", [])
-    min_vertical_overlap = name_detection_params.get("min_vertical_overlap", 1.0)
-    max_horizontal_distance = name_detection_params.get("max_horizontal_distance", 1e16)
 
     # only horizontal lines
     horizontal_lines = [line for line in text_lines if abs(line.text_angle) < 5]
@@ -179,94 +166,7 @@ def extract_borehole_names(
     # Iterate over all lines
     for line in horizontal_lines:
         is_tall_line = line.rect.height > 1.2 * median_line_height and line.rect.height > percentile_90_line_height
-        words = line.words
-
-        if len(words) == 0:
-            continue
-
-        contracted_words = []
-        skip_next = False
-        for index, word in enumerate(words):
-            if word.text in {"-", ".", ":", "/"} and 0 < index < len(words) - 1:
-                previous_word = words[index - 1]
-                next_word = words[index + 1]
-                if previous_word.text[-1].isalnum() and next_word.text[0].isalnum():
-                    new_rect = previous_word.rect | word.rect | next_word.rect
-                    new_text = previous_word.text + word.text + next_word.text
-                    new_word = TextWord(new_rect, new_text, word.page_number)
-                    contracted_words.insert(len(contracted_words) - 1, new_word)
-                    skip_next = True
-            else:
-                if skip_next:
-                    skip_next = False
-                else:
-                    contracted_words.append(word)
-
-        words = contracted_words
-
-        first_word = words[0]
-        if first_word.text.lower() in {"anhang", "allegato", "annexe"}:
-            continue
-
-        keyword_match_length = _keyword_match_length([word.text for word in words], keywords)
-        prefix_is_keyword = keyword_match_length > 0
-
-        words = words[keyword_match_length:]
-
-        scale_index = None
-        for index, word in enumerate(words):
-            # detect a scale like "1:50"
-            if re.search(r"\d+:\d+", word.text):
-                scale_index = index
-                break
-        if scale_index is not None:
-            words = words[:scale_index]
-
-        def is_excluded(word: str) -> bool:
-            alnum_only = "".join(char for char in word if char.isalnum()).lower()
-            return alnum_only in excluded_keywords
-
-        words = [word for word in words if not is_excluded(word.text)]
-
-        if len(words) == 0:  # noqa: SIM102
-            # Fallback: closest line to the right
-            if hit_line := _find_closest_nearby_line(line, text_lines, min_vertical_overlap, max_horizontal_distance):
-                words = hit_line.words
-
-        for start, end in _find_candidate_names([word.text for word in words], allow_simple=prefix_is_keyword):
-            name: str = " ".join([word.text for word in words[start:end]])
-
-            rect = pymupdf.Rect()
-            for word in words[start:end]:
-                rect.include_rect(word.rect)
-
-            is_at_start = start == 0
-            is_at_end = end == len(words)
-            has_lowercase = any(char.isalpha() for char in name) and name.islower()
-
-            if not (prefix_is_keyword or is_tall_line or (not has_lowercase and is_at_start and is_at_end)):
-                continue
-
-            confidence = rect.height
-            if prefix_is_keyword:
-                confidence *= 3
-            if is_at_start:
-                confidence *= 1.5
-            if is_at_end:
-                confidence *= 1.5
-            if has_lowercase:
-                confidence *= 0.5
-
-            # Step 2: Clean detection
-            if text_cleaned := clean_borehole_name(name, excluded_keywords):
-                candidates.append(
-                    FeatureOnPage(
-                        feature=BoreholeName(name=text_cleaned, confidence=confidence),
-                        rect=rect,
-                        page=line.page_number,
-                    )
-                )
-                continue
+        candidates.extend(_extract_borehole_names_from_line(line, text_lines, is_tall_line, name_detection_params))
 
     if not candidates:
         return []
@@ -277,6 +177,108 @@ def extract_borehole_names(
     highest_confidence = candidates[0].feature.confidence
     # we expect all borehole names from the same page to have a similar confidence
     return [candidate for candidate in candidates if candidate.feature.confidence > 0.8 * highest_confidence]
+
+
+def _extract_borehole_names_from_line(
+    line: TextLine, text_lines: list[TextLine], is_tall_line: bool, name_detection_params: dict
+) -> list[FeatureOnPage[BoreholeName]]:
+    candidates: list[FeatureOnPage[BoreholeName]] = []
+
+    keywords = name_detection_params["matching_keywords"]
+    excluded_keywords = name_detection_params.get("excluded_keywords", [])
+    min_vertical_overlap = name_detection_params.get("min_vertical_overlap", 1.0)
+    max_horizontal_distance = name_detection_params.get("max_horizontal_distance", 1e16)
+
+    words = line.words
+
+    if len(words) == 0:
+        return []
+
+    # convert e.g. "1 : 100" to a single word "1:100" for more consistent behaviour
+    contracted_words = []
+    skip_next = False
+    for index, word in enumerate(words):
+        if word.text in {"-", ".", ":", "/"} and 0 < index < len(words) - 1:
+            previous_word = words[index - 1]
+            next_word = words[index + 1]
+            if previous_word.text[-1].isalnum() and next_word.text[0].isalnum():
+                new_rect = previous_word.rect | word.rect | next_word.rect
+                new_text = previous_word.text + word.text + next_word.text
+                new_word = TextWord(new_rect, new_text, word.page_number)
+                contracted_words.insert(len(contracted_words) - 1, new_word)
+                skip_next = True
+        else:
+            if skip_next:
+                skip_next = False
+            else:
+                contracted_words.append(word)
+
+    words = contracted_words
+
+    first_word = words[0]
+    if first_word.text.lower() in {"anhang", "allegato", "annexe"}:
+        return []
+
+    keyword_match_length = _keyword_match_length([word.text for word in words], keywords)
+    prefix_is_keyword = keyword_match_length > 0
+
+    words = words[keyword_match_length:]
+
+    scale_index = None
+    for index, word in enumerate(words):
+        # detect a scale like "1:50"
+        if re.search(r"\d+:\d+", word.text):
+            scale_index = index
+            break
+    if scale_index is not None:
+        words = words[:scale_index]
+
+    def is_excluded(word: str) -> bool:
+        alnum_only = "".join(char for char in word if char.isalnum()).lower()
+        return alnum_only in excluded_keywords
+
+    words = [word for word in words if not is_excluded(word.text)]
+
+    if len(words) == 0:  # noqa: SIM102
+        # Fallback: closest line to the right
+        if hit_line := _find_closest_nearby_line(line, text_lines, min_vertical_overlap, max_horizontal_distance):
+            words = hit_line.words
+
+    for start, end in _find_candidate_names([word.text for word in words], allow_simple=prefix_is_keyword):
+        name: str = " ".join([word.text for word in words[start:end]])
+
+        rect = pymupdf.Rect()
+        for word in words[start:end]:
+            rect.include_rect(word.rect)
+
+        is_at_start = start == 0
+        is_at_end = end == len(words)
+        has_lowercase = any(char.isalpha() for char in name) and name.islower()
+
+        if not (prefix_is_keyword or is_tall_line or (not has_lowercase and is_at_start and is_at_end)):
+            continue
+
+        confidence = rect.height
+        if prefix_is_keyword:
+            confidence *= 3
+        if is_at_start:
+            confidence *= 1.5
+        if is_at_end:
+            confidence *= 1.5
+        if has_lowercase:
+            confidence *= 0.5
+
+        # Step 2: Clean detection
+        if text_cleaned := clean_borehole_name(name, excluded_keywords):
+            candidates.append(
+                FeatureOnPage(
+                    feature=BoreholeName(name=text_cleaned, confidence=confidence),
+                    rect=rect,
+                    page=line.page_number,
+                )
+            )
+            continue
+    return candidates
 
 
 def _preprocess_word(word: str) -> str:
@@ -301,14 +303,17 @@ def _find_candidate_names(words: list[str], allow_simple: bool = False) -> list[
     for index, word in enumerate(words):
         # (?![0-9_])\w  for matching any Unicode letter
         match_letter_before_number = re.search(r"(?![0-9_])\w.*\d", word)
-        match_number_symbol_number = re.search(r"\d[/\-]\d", word)
+        # require at most 6 digits to avoid matching with coordinate pairs
+        match_number_symbol_number = re.search(r"\d[/\-]\d", word) and sum(1 for char in word if char.isdigit()) <= 7
 
         has_letter = any(char.isalpha() for char in word)
         has_digit = any(char.isdigit() for char in word)
+        # flexibility for common OCR mistakes O vs. 0 and I vs. 1
+        has_digit_with_ocr_flexibility = has_digit or any(char in {"I", "O"} for char in word)
         starts_with_digit = len(word) and word[0].isdigit()
         all_uppercase = has_letter and word.isupper()
 
-        is_simple_match = has_digit or (len(word) == 1 and word.isalpha())
+        is_simple_match = has_digit_with_ocr_flexibility or (len(word) == 1 and word.isalpha())
 
         if not current_candidate_is_valid and not starts_with_digit:
             # first word not valid on its own and second word does not start with a digit -> start again
