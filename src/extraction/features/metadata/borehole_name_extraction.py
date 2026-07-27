@@ -224,14 +224,14 @@ def _extract_borehole_names_from_line(
 
     words = words[keyword_match_length:]
 
-    scale_index = None
+    interrupt_index = None
     for index, word in enumerate(words):
-        # detect a scale like "1:50"
-        if re.search(r"\d+:\d+", word.text):
-            scale_index = index
+        # detect a scale like "1:50" or an opening parenthesis
+        if re.search(r"\d+:\d+", word.text) or "(" in word.text:
+            interrupt_index = index
             break
-    if scale_index is not None:
-        words = words[:scale_index]
+    if interrupt_index is not None:
+        words = words[:interrupt_index]
 
     def is_excluded(word: str) -> bool:
         alnum_only = "".join(char for char in word if char.isalnum()).lower()
@@ -253,12 +253,12 @@ def _extract_borehole_names_from_line(
 
         is_at_start = start == 0
         is_at_end = end == len(words)
-        has_lowercase = any(char.isalpha() for char in name) and name.islower()
+        has_lowercase = any(char.isalpha() and char.islower() for char in name)
 
         if not (prefix_is_keyword or is_tall_line or (not has_lowercase and is_at_start and is_at_end)):
             continue
 
-        confidence = rect.height
+        confidence = rect.height**2
         if prefix_is_keyword:
             confidence *= 3
         if is_at_start:

@@ -179,10 +179,15 @@ class BoreholeListBuilder:
 
             borehole_index_to_matched_elem[best_bbox_idx].append((feat, distances[best_bbox_idx]))
 
-        return {
-            borehole_index: min(candidates, key=lambda candidate: candidate[1])[0]
-            for borehole_index, candidates in borehole_index_to_matched_elem.items()
-        }
+        return defaultdict(
+            list,
+            {
+                borehole_index: [
+                    candidate for candidate, score in sorted(candidates, key=lambda candidate: candidate[1])
+                ]
+                for borehole_index, candidates in borehole_index_to_matched_elem.items()
+            },
+        )
 
     def _one_to_one_match_element_to_borehole(
         self, element_list: list[FeatureOnPage]
