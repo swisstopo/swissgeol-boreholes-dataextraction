@@ -34,6 +34,7 @@ MODELS: list[tuple[str, Path]] = [
     ("swissgeol/color", Path("models/color_head")),
     ("swissgeol/debris", Path("models/debris_head")),
     ("swissgeol/en_main", Path("models/en_main_head")),
+    ("swissgeol/en_secondary", Path("models/en_secondary_head")),
     ("swissgeol/grain_angularity", Path("models/grain_angularity_head")),
     ("swissgeol/grain_shape", Path("models/grain_shape_head")),
     ("swissgeol/lithology", Path("models/lithology_head")),

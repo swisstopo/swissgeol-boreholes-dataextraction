@@ -23,6 +23,7 @@ _MODEL_PATHS = {
     "color": Path("models/color_head"),
     "debris": Path("models/debris_head"),
     "en_main": Path("models/en_main_head"),
+    "en_secondary": Path("models/en_secondary_head"),
     "grain_angularity": Path("models/grain_angularity_head"),
     "grain_shape": Path("models/grain_shape_head"),
     "lithology": Path("models/lithology_head"),
@@ -47,6 +48,7 @@ _CONSOLIDATED_TASKS: frozenset[str] = frozenset(
 _UNCONSOLIDATED_TASKS: frozenset[str] = frozenset(
     {
         "en_main",
+        "en_secondary",
         "uscs",
         "debris",
         "color",
