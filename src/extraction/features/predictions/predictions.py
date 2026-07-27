@@ -177,10 +177,12 @@ class BoreholeListBuilder:
             # Find best candidate
             best_bbox_idx = min(candidates_idx, key=lambda j: distances[j])
 
-            # Distance should not be infinite
-            borehole_index_to_matched_elem[best_bbox_idx].append(feat)
+            borehole_index_to_matched_elem[best_bbox_idx].append((feat, distances[best_bbox_idx]))
 
-        return borehole_index_to_matched_elem
+        return {
+            borehole_index: min(candidates, key=lambda candidate: candidate[1])[0]
+            for borehole_index, candidates in borehole_index_to_matched_elem.items()
+        }
 
     def _one_to_one_match_element_to_borehole(
         self, element_list: list[FeatureOnPage]
@@ -226,8 +228,7 @@ class BoreholeListBuilder:
             for borehole_index, available_elements in borehole_idx_to_many_element_mapping.items():
                 assert borehole_index not in borehole_index_to_matched_elem_index
                 assert available_elements
-                # if multiple element are bound to the same borehole, always pick the highest on the page
-                best_element = min(available_elements, key=lambda elem: (elem.page_number, elem.rect.y0))
+                best_element = available_elements[0]
                 # fill the mapping borehole_index -> element and remove the element from the element list
                 borehole_index_to_matched_elem_index[borehole_index] = best_element
                 element_list.remove(best_element)
