@@ -864,11 +864,12 @@ class ClassifyResponse(BaseModel):
     Each field corresponds to one classification task. A field is `None` if that task wasn't run for the
     inferred rock type; otherwise it holds the predicted class (single-label tasks) or classes (multi-label
     tasks: accessory_components, debris, grain_angularity, grain_shape, mineral_components,
-    organic_components).
+    organic_components; rank tasks: en_secondary).
 
     Consolidated rock tasks: lithology, alteration_degree_consolidated, cementation, color, mineral_components,
         accessory_components.
-    Unconsolidated sediment tasks: en_main, uscs, debris, color, grain_angularity, grain_shape, organic_components.
+    Unconsolidated sediment tasks: en_main, en_secondary, uscs, debris, color, grain_angularity, grain_shape,
+        organic_components.
     """
 
     accessory_components: list[enum_as_name(AccessoryComponentsSystem.AccessoryComponentsClasses)] | None = Field(
@@ -896,6 +897,10 @@ class ClassifyResponse(BaseModel):
     en_main: enum_as_name(ENMainSystem.ENMainClasses) | None = Field(
         default=None,
         description="Predicted en_main class (unconsolidated sediment only).",
+    )
+    en_secondary: list[enum_as_name(ENMainSystem.ENMainClasses)] | None = Field(
+        default=None,
+        description="Predicted en_secondary classes, ranked (unconsolidated sediment only).",
     )
     grain_angularity: list[enum_as_name(GrainAngularitySystem.GrainAngularityClasses)] | None = Field(
         default=None,

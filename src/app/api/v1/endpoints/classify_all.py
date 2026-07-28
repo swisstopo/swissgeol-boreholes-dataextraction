@@ -23,6 +23,7 @@ _MODEL_PATHS = {
     "color": Path("models/color_head"),
     "debris": Path("models/debris_head"),
     "en_main": Path("models/en_main_head"),
+    "en_secondary": Path("models/en_secondary_head"),
     "grain_angularity": Path("models/grain_angularity_head"),
     "grain_shape": Path("models/grain_shape_head"),
     "lithology": Path("models/lithology_head"),
@@ -47,6 +48,7 @@ _CONSOLIDATED_TASKS: frozenset[str] = frozenset(
 _UNCONSOLIDATED_TASKS: frozenset[str] = frozenset(
     {
         "en_main",
+        "en_secondary",
         "uscs",
         "debris",
         "color",
@@ -89,7 +91,7 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
         bert_models: Models loaded at startup via the lifespan, keyed by task name.
 
     Returns:
-        ClassifyResponse with the predicted class (or classes, for multi-label tasks) for every task
+        ClassifyResponse with the predicted class (or classes, for multi-label/rank tasks) for every task
         relevant to the inferred rock type; irrelevant tasks are left as `None`.
     """
     from classification.utils.datasets.lithology import LithologySystem
@@ -117,7 +119,7 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
         classes = model.predict_from_embedding(shared_hidden_states, extended_mask)
         predictions[task_name] = (
             classes
-            if model.classification_system.classification_task() == ClassificationTask.multi_label
+            if model.classification_system.classification_task() != ClassificationTask.single_label
             else classes[0]
         )
 
