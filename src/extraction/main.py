@@ -101,6 +101,11 @@ def common_options(f):
         default=False,
         help="Whether to resume extraction. Defaults to False.",
     )(f)
+    f = click.option(
+        "--baseline-run-id",
+        default=None,
+        help="W&B run id to compare against; if set, a comparison report is created after the run.",
+    )(f)
     return f
 
 
@@ -131,6 +136,7 @@ def click_pipeline(
     part: str = "all",
     resume: bool = False,
     benchmarks: tuple[str, ...] = (),
+    baseline_run_id: str | None = None,
 ):
     """Run the boreholes data extraction pipeline."""
     # Setup logging (same for all)
@@ -168,6 +174,7 @@ def click_pipeline(
             metadata_path=metadata_path,
             options=ExtractionOptions(matching_analytics=matching_analytics, part=part),
             on_file_done=factory.on_file_done,
+            wandb_baseline_run_id=baseline_run_id,
         ).execute()
 
 
@@ -186,6 +193,7 @@ def click_pipeline_metadata(
     csv: bool = False,
     resume: bool = False,
     matching_analytics: bool = False,
+    baseline_run_id: str | None = None,
 ):
     """Run only the metadata part of the pipeline."""
     factory = CallbackFactory(
@@ -204,6 +212,7 @@ def click_pipeline_metadata(
         metadata_path=metadata_path,
         options=ExtractionOptions(matching_analytics=matching_analytics, part="metadata"),
         on_file_done=factory.on_file_done,
+        wandb_baseline_run_id=baseline_run_id,
     ).execute()
 
 

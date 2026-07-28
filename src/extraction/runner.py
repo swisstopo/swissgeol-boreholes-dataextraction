@@ -112,6 +112,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
     runname: str | None = None
     wandb_group: str | None = None
     wandb_parent_run_id: str | None = None
+    wandb_baseline_run_id: str | None = None
     analytics: MatchingParamsAnalytics | None = field(init=False, default=None)
     _run_start_time: float = field(init=False, default=0.0)
     _logged_image_paths: list[Path] = field(init=False, default_factory=list)
@@ -201,6 +202,8 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
             config["parent_run_id"] = self.wandb_parent_run_id
             config["benchmark_id"] = self.wandb_group
             config["child_role"] = self.runname or "extraction"
+        if self.wandb_baseline_run_id:
+            config["baseline_run_id"] = self.wandb_baseline_run_id
 
         job_type = "benchmark-child" if self.wandb_parent_run_id else "extraction"
         wandb.init(
@@ -297,8 +300,26 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
                         *(metric_columns[col].get(pdf_filename) for col in metric_columns),
                     )
                 wandb.log({"png_browser_table": table})
+
+            if self.wandb_baseline_run_id:
+                self._create_and_log_prediction_report()
         finally:
             wandb.finish()
+
+    def _create_and_log_prediction_report(self) -> None:
+        from reports.create_prediction_report import create_prediction_report
+
+        try:
+            report_url = create_prediction_report(
+                entity=wandb.run.entity,
+                project=wandb.run.project,
+                prediction_run_id=wandb.run.id,
+                baseline_run_id=self.wandb_baseline_run_id,
+            )
+        except Exception:
+            logger.exception("Failed to create W&B prediction report; continuing without it.")
+            return
+        wandb.run.summary["prediction_report_url"] = report_url
 
 
 @dataclass(kw_only=True)

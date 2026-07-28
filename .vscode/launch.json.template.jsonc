@@ -16,7 +16,8 @@
                 "-i",
                 "data/zurich",
                 "-g",
-                "data/zurich_ground_truth.json"
+                "data/zurich_ground_truth.json",
+                "--baseline-run-id", "aeb3wgs6" // OPTIONAL W&B run id to compare against; creates a report after the run
             ],
             "cwd": "${workspaceFolder}",
             "justMyCode": true,

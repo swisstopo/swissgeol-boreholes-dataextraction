@@ -59,7 +59,10 @@ experiment-tracking = [
     "pygit2==1.18.2"
 ]
 wandb = [
-    "wandb>=0.17.0",
+    # wandb>=0.27.1 breaks wandb_workspaces report saving ("relogin required" on Report.save());
+    # cap until upstream fixes it. See https://github.com/wandb/wandb/issues (report.save + wandb 0.27.1+).
+    "wandb>=0.17.0,<0.27.1",
+    "wandb-workspaces>=0.1.0",
     "pygit2==1.18.2",
 ]
 visualize = [
@@ -99,7 +102,8 @@ distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.d{build_date:%Y%m%d}"
 packages = [
     "src/swissgeol_doc_processing",
     "src/extraction",
-    "src/core"
+    "src/core",
+    "src/reports"
 ]
 
 [project.scripts]
