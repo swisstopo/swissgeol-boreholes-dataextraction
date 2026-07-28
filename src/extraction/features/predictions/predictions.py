@@ -2,8 +2,11 @@
 
 import logging
 from collections import defaultdict
+from collections.abc import Callable
 from copy import deepcopy
 from typing import TypeVar
+
+from pymupdf import pymupdf
 
 from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
@@ -80,7 +83,7 @@ class BoreholeListBuilder:
 
         # for groundwater entries, assign each of them to the closest borehole
         borehole_idx_to_list_groundwater = self._many_to_one_match_element_to_borehole(
-            self._groundwater_in_doc.groundwater_feature_list
+            self._groundwater_in_doc.groundwater_feature_list, self._compute_distance
         )
 
         return [
@@ -135,7 +138,10 @@ class BoreholeListBuilder:
         self._elevations_list = real_elevations
 
     def _many_to_one_match_element_to_borehole(
-        self, element_list: list[FeatureOnPage], taken_boreholes: set[int] | None = None
+        self,
+        element_list: list[FeatureOnPage],
+        distance_fn: Callable[[FeatureOnPage, list[PageBoundingBoxes]], float | None],
+        taken_boreholes: set[int] | None = None,
     ) -> dict[int, list[FeatureOnPage]]:
         """Matches extracted elements to boreholes.
 
@@ -143,6 +149,8 @@ class BoreholeListBuilder:
 
         Args:
             element_list (list[FeatureOnPage]): list of element to match
+            distance_fn (Callable[[FeatureOnPage, list[PageBoundingBoxes]], float | None]): method for computing the
+                distance between an element and the borehole stratigraphy.
             taken_boreholes (set[int]): the set of borehole index that needs to be ignored for the mapping. In this
                 context, it is the boreholes that have already been matched (defaults to None).
 
@@ -168,7 +176,7 @@ class BoreholeListBuilder:
         borehole_index_to_matched_elem = defaultdict(list)
         for feat in element_list:
             # Compute distance between feature and borehole
-            distances = {j: self._compute_distance(feat, borehole_bounding_boxes[j]) for j in available_boreholes}
+            distances = {j: distance_fn(feat, borehole_bounding_boxes[j]) for j in available_boreholes}
             # Filter candidates based on valid distance
             candidates_idx = [j for j, d in distances.items() if d is not None]
             # Check if at least one valid candidate
@@ -222,7 +230,7 @@ class BoreholeListBuilder:
         while len(borehole_index_to_matched_elem_index) != self._num_boreholes:
             # map all elements to their closest borehole.
             borehole_idx_to_many_element_mapping = self._many_to_one_match_element_to_borehole(
-                element_list, set(borehole_index_to_matched_elem_index.keys())
+                element_list, self._compute_distance_header, set(borehole_index_to_matched_elem_index.keys())
             )
 
             # No more potential matching found, break rule
@@ -240,7 +248,8 @@ class BoreholeListBuilder:
 
         return borehole_index_to_matched_elem_index
 
-    def _compute_distance(self, feat: FeatureOnPage, bounding_boxes: list[PageBoundingBoxes]) -> float | None:
+    @staticmethod
+    def _compute_distance(feat: FeatureOnPage, bounding_boxes: list[PageBoundingBoxes]) -> float | None:
         """Computes the distance between a FeatureOnPage objects and the bounding boxes of one borehole."""
         bbox = next((bbox for bbox in bounding_boxes if bbox.page == feat.page_number), None)
         if bbox is None:
@@ -250,3 +259,21 @@ class BoreholeListBuilder:
         element_center = (feat.rect.top_left + feat.rect.bottom_right) / 2
         dist = element_center.distance_to(outer_rect)
         return dist
+
+    @staticmethod
+    def _compute_distance_header(feat: FeatureOnPage, bounding_boxes: list[PageBoundingBoxes]) -> float | None:
+        """Computes the distance between the feature and the top of a borehole stratigraphy."""
+        bbox = next((bbox for bbox in bounding_boxes if bbox.page == feat.page_number), None)
+        if bbox is None:
+            # the current boreholes layers don't appear on the page where the element is
+            return None
+        outer_rect = bbox.get_outer_rect()
+        if feat.rect.x1 < outer_rect.x0:
+            closest_x = outer_rect.x1
+        elif feat.rect.x0 > outer_rect.x1:
+            closest_x = outer_rect.x0
+        else:
+            # overlap between feature and bbox
+            closest_x = max(feat.rect.x0, outer_rect.x0)
+        # distance from the feature to the top of the stratigraphy
+        return pymupdf.Point(closest_x, outer_rect.y0).distance_to(feat.rect)

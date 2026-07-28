@@ -180,12 +180,12 @@ def extract_borehole_names(
 
 
 def _extract_borehole_names_from_line(
-    line: TextLine, text_lines: list[TextLine], is_tall_line: bool, name_detection_params: dict
+    line: TextLine, lines_for_fallback: list[TextLine], is_tall_line: bool, name_detection_params: dict
 ) -> list[FeatureOnPage[BoreholeName]]:
     candidates: list[FeatureOnPage[BoreholeName]] = []
 
-    keywords = name_detection_params["matching_keywords"]
-    excluded_keywords = name_detection_params.get("excluded_keywords", [])
+    keywords: list[str] = name_detection_params["matching_keywords"]
+    excluded_keywords: list[str] = name_detection_params.get("excluded_keywords")
     min_vertical_overlap = name_detection_params.get("min_vertical_overlap", 1.0)
     max_horizontal_distance = name_detection_params.get("max_horizontal_distance", 1e16)
 
@@ -224,6 +224,22 @@ def _extract_borehole_names_from_line(
 
     words = words[keyword_match_length:]
 
+    if len(lines_for_fallback) and all(_is_number_keyword(word.text, excluded_keywords) for word in words):
+        # The current line only contains a matched keyword (e.g. "Bohrung") and/or a number keyword (e.g. "nr").
+        # Fallback: closest line to the right. Concatenate the two lines and try again.
+        if hit_line := _find_closest_nearby_line(
+            line, lines_for_fallback, min_vertical_overlap, max_horizontal_distance
+        ):
+            concatenated_line = TextLine(line.words + hit_line.words, line.text_angle)
+            return _extract_borehole_names_from_line(
+                concatenated_line,
+                lines_for_fallback=list(),
+                is_tall_line=is_tall_line,
+                name_detection_params=name_detection_params,
+            )
+        else:
+            return []
+
     interrupt_index = None
     for index, word in enumerate(words):
         # detect a scale like "1:50" or an opening parenthesis
@@ -233,40 +249,47 @@ def _extract_borehole_names_from_line(
     if interrupt_index is not None:
         words = words[:interrupt_index]
 
-    def is_excluded(word: str) -> bool:
-        alnum_only = "".join(char for char in word if char.isalnum()).lower()
-        return alnum_only in excluded_keywords
-
-    words = [word for word in words if not is_excluded(word.text)]
-
-    if len(words) == 0:  # noqa: SIM102
-        # Fallback: closest line to the right
-        if hit_line := _find_closest_nearby_line(line, text_lines, min_vertical_overlap, max_horizontal_distance):
-            words = hit_line.words
-
-    for start, end in _find_candidate_names([word.text for word in words], allow_simple=prefix_is_keyword):
+    allow_simple = prefix_is_keyword or is_tall_line
+    for start, end in _find_candidate_names(
+        [word.text for word in words], excluded_keywords, allow_simple=allow_simple
+    ):
         name: str = " ".join([word.text for word in words[start:end]])
 
         rect = pymupdf.Rect()
         for word in words[start:end]:
             rect.include_rect(word.rect)
 
-        is_at_start = start == 0
+        has_number_prefix = start > 0 and _is_number_keyword(words[start - 1].text, excluded_keywords)
+
+        is_at_start = start == 1 if has_number_prefix else start == 0
         is_at_end = end == len(words)
         has_lowercase = any(char.isalpha() and char.islower() for char in name)
+        has_letter_and_number = any(char.isalpha() for char in name) and any(char.isdigit() for char in name)
 
-        if not (prefix_is_keyword or is_tall_line or (not has_lowercase and is_at_start and is_at_end)):
+        # if the name is not immediately following the prefix keywords, then don't treat it as something special
+        if not is_at_start:
+            prefix_is_keyword = False
+
+        if not (
+            prefix_is_keyword
+            or is_tall_line
+            or (has_letter_and_number and not has_lowercase and is_at_start and is_at_end)
+        ):
             continue
 
-        confidence = rect.height**2
+        confidence = rect.height
         if prefix_is_keyword:
             confidence *= 3
+        if has_number_prefix:
+            confidence *= 2
         if is_at_start:
             confidence *= 1.5
         if is_at_end:
             confidence *= 1.5
         if has_lowercase:
             confidence *= 0.5
+        if has_letter_and_number:
+            confidence *= 1.2
 
         # Step 2: Clean detection
         if text_cleaned := clean_borehole_name(name, excluded_keywords):
@@ -279,6 +302,11 @@ def _extract_borehole_names_from_line(
             )
             continue
     return candidates
+
+
+def _is_number_keyword(word: str, excluded_keywords: list[str]) -> bool:
+    alnum_only = "".join(char for char in word if char.isalnum()).lower()
+    return alnum_only in excluded_keywords
 
 
 def _preprocess_word(word: str) -> str:
@@ -295,7 +323,9 @@ def _keyword_match_length(words: list[str], keywords: list[str]) -> int:
     return longest_match
 
 
-def _find_candidate_names(words: list[str], allow_simple: bool = False) -> list[tuple[int, int]]:
+def _find_candidate_names(
+    words: list[str], excluded_keywords: list[str], allow_simple: bool = False
+) -> list[tuple[int, int]]:
     results = []
 
     start = None
@@ -308,30 +338,35 @@ def _find_candidate_names(words: list[str], allow_simple: bool = False) -> list[
 
         has_letter = any(char.isalpha() for char in word)
         has_digit = any(char.isdigit() for char in word)
-        # flexibility for common OCR mistakes O vs. 0 and I vs. 1
-        has_digit_with_ocr_flexibility = has_digit or any(char in {"I", "O"} for char in word)
         starts_with_digit = len(word) and word[0].isdigit()
         all_uppercase = has_letter and word.isupper()
 
-        is_simple_match = has_digit_with_ocr_flexibility or (len(word) == 1 and word.isalpha())
+        is_simple_match = has_digit or (len(word) == 1 and word.isalpha())
+        is_number_keyword = _is_number_keyword(word, excluded_keywords)
 
         if not current_candidate_is_valid and not starts_with_digit:
             # first word not valid on its own and second word does not start with a digit -> start again
             start = None
 
         if start is None:
-            if match_letter_before_number or match_number_symbol_number or (allow_simple and is_simple_match):
+            if is_number_keyword:
+                continue
+            if (
+                match_letter_before_number
+                or match_number_symbol_number
+                or (allow_simple and is_simple_match and len(word) <= 4)
+            ):
                 start = index
                 current_candidate_is_valid = True
             if has_letter and not has_digit and (len(word) <= 3 or all_uppercase):
                 start = index
         else:
-            if is_simple_match:
+            if is_number_keyword or not is_simple_match:
+                results.append((start, index))
+                start = None
+                current_candidate_is_valid = False
+            else:
                 current_candidate_is_valid = current_candidate_is_valid or has_digit
-                continue
-            results.append((start, index))
-            start = None
-            current_candidate_is_valid = False
     if start is not None and current_candidate_is_valid:
         results.append((start, len(words)))
 

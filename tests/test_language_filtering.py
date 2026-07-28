@@ -3,6 +3,7 @@
 import pytest
 
 from extraction.features.metadata.borehole_name_extraction import _find_candidate_names, clean_borehole_name
+from swissgeol_doc_processing.utils.file_utils import read_params
 from swissgeol_doc_processing.utils.language_filtering import (
     normalize_spaces,
     remove_any_keyword,
@@ -95,6 +96,10 @@ def test_clean_borehole_name(text: str, excluded_keywords: list[str], expected: 
     assert text == expected
 
 
+name_detection_params = read_params("name_detection_params.yml")
+excluded_keywords: list[str] = name_detection_params.get("excluded_keywords")
+
+
 @pytest.mark.parametrize(
     "text, expected, allow_simple",
     [
@@ -107,18 +112,16 @@ def test_clean_borehole_name(text: str, excluded_keywords: list[str], expected: 
         ("1 /82", [], False),
         ("1 /82", ["1 /82"], True),
         ("Nr.8", ["Nr.8"], False),
+        ("Nr. 102", [], False),
+        ("Nr. 102", ["102"], True),
         ("Datum:9.2.81 Sondierung No. KR.1", ["Datum:9.2.81", "KR.1"], False),
         ("571112/256198", [], False),
-        ("CBOA", [], False),
-        ("CBOA", ["CBOA"], True),  # deal with OCR mistake 0 vs O
-        ("KBI", [], False),
-        ("KBI", ["KBI"], True),  # deal with OCR mistake 1 vs I
     ],
 )
 def test_findcandidatename(text: str, expected: str | None, allow_simple: bool) -> None:
     """Test borehole name extraction behavior."""
     words = text.split(" ")
     names = []
-    for start, end in _find_candidate_names(words, allow_simple):
+    for start, end in _find_candidate_names(words, excluded_keywords, allow_simple):
         names.append(" ".join(words[start:end]))
     assert names == expected
