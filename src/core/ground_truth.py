@@ -89,6 +89,8 @@ class GroundTruthMetadata(BaseModel):
     borehole_purpose: str | None = None
     borehole_type: str | None = None
     coordinates: GroundTruthCoordinates | None = None
+    borehole_type: str | None = None
+    borehole_purpose: str | None = None
     drilling_date: str | None = None
     drilling_methods: list[str] | None = None
     original_name: str | None = None
