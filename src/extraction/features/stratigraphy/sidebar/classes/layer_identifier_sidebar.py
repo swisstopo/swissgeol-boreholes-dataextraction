@@ -175,10 +175,10 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             if a_to_b_interval:
                 # We assume that the first depth encountered is the start depth, and we reject further depth values
                 # smaller than this first one. This avoids some false positives (e.g. GeoQuat 3339.pdf).
-                if not start_depth:
+                if start_depth is None:
                     start_depth = a_to_b_interval.start.value
                 if a_to_b_interval.start.value >= start_depth:
-                    if current_interval:
+                    if current_interval and current_block:
                         entries.append(IntervalBlockPair(current_interval, TextBlock(current_block)))
                         current_block = []
                     current_interval = a_to_b_interval

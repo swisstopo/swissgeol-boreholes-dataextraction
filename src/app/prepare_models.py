@@ -1,7 +1,8 @@
 """Download full models from HuggingFace and split them into backbone + head format.
 
 It downloads each full fine-tuned model, extracts the frozen backbone (shared across all systems) and the task-specific
-head weights, and writes them to the directory layout expected by lithology_classification.py:
+head weights, and writes them to the directory layout expected by classify_all.py:
+
 
     models/backbone/backbone.safetensors  — shared frozen BERT encoder weights
     models/backbone/                      — tokenizer files
@@ -27,8 +28,19 @@ logger = logging.getLogger(__name__)
 # HuggingFace model IDs mapped to their output head directory.
 # The backbone is extracted from the first entry and reused for all subsequent ones.
 MODELS: list[tuple[str, Path]] = [
-    ("swissgeol/lithology", Path("models/lithology_head")),
+    ("swissgeol/accessory_components", Path("models/accessory_components_head")),
+    ("swissgeol/alteration_degree_consolidated", Path("models/alteration_degree_consolidated_head")),
+    ("swissgeol/cementation", Path("models/cementation_head")),
+    ("swissgeol/color", Path("models/color_head")),
+    ("swissgeol/debris", Path("models/debris_head")),
     ("swissgeol/en_main", Path("models/en_main_head")),
+    ("swissgeol/en_secondary", Path("models/en_secondary_head")),
+    ("swissgeol/grain_angularity", Path("models/grain_angularity_head")),
+    ("swissgeol/grain_shape", Path("models/grain_shape_head")),
+    ("swissgeol/lithology", Path("models/lithology_head")),
+    ("swissgeol/mineral_components", Path("models/mineral_components_head")),
+    ("swissgeol/organic_components", Path("models/organic_components_head")),
+    ("swissgeol/uscs", Path("models/uscs_head")),
 ]
 
 BACKBONE_DIR = Path("models/backbone")
