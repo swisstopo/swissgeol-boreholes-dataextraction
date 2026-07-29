@@ -18,7 +18,7 @@ from swissgeol_doc_processing.utils.data_extractor import (
 
 logger = logging.getLogger(__name__)
 
-COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})(?:\.(\d{1,}))?"
+COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,3})?(\d{3})[\.\s'‘’]{0,3}(\d{3})(?:\.(\d{1,}))?"
 
 
 @dataclass(kw_only=True)

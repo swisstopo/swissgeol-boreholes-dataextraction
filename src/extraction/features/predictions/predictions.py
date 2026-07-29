@@ -157,9 +157,6 @@ class BoreholeListBuilder:
         Returns:
             dict[int, list[FeatureOnPage]]: the dictionary containing the best mapping borehole_index -> all element
         """
-        # solve trivial case
-        if self._num_boreholes == 1:
-            return {0: element_list}
         # solve case where the list is empty
         if not element_list:
             return {idx: [] for idx in range(self._num_boreholes)}

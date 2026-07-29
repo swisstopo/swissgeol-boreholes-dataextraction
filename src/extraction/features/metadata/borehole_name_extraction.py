@@ -165,7 +165,7 @@ def extract_borehole_names(
 
     # Iterate over all lines
     for line in horizontal_lines:
-        is_tall_line = line.rect.height > 1.2 * median_line_height and line.rect.height > percentile_90_line_height
+        is_tall_line = line.rect.height > 1.5 * median_line_height and line.rect.height > percentile_90_line_height
         candidates.extend(_extract_borehole_names_from_line(line, text_lines, is_tall_line, name_detection_params))
 
     if not candidates:
@@ -272,8 +272,9 @@ def _extract_borehole_names_from_line(
 
         if not (
             prefix_is_keyword
-            or is_tall_line
-            or (has_letter_and_number and not has_lowercase and is_at_start and is_at_end)
+            or has_number_prefix
+            or (is_tall_line and (has_letter_and_number or (is_at_start and is_at_end)))
+            or (has_letter_and_number and not has_lowercase and is_at_end)
         ):
             continue
 
@@ -354,7 +355,8 @@ def _find_candidate_names(
             if (
                 match_letter_before_number
                 or match_number_symbol_number
-                or (allow_simple and is_simple_match and len(word) <= 4)
+                or (allow_simple and is_simple_match and len(word) <= 5)
+                # simple match with length 5 allows e.g. "6056. 12" from Geoquat B537.pdf
             ):
                 start = index
                 current_candidate_is_valid = True

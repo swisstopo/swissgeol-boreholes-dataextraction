@@ -116,6 +116,7 @@ excluded_keywords: list[str] = name_detection_params.get("excluded_keywords")
         ("Nr. 102", ["102"], True),
         ("Datum:9.2.81 Sondierung No. KR.1", ["Datum:9.2.81", "KR.1"], False),
         ("571112/256198", [], False),
+        ("bei 7m", [], False),
     ],
 )
 def test_findcandidatename(text: str, expected: str | None, allow_simple: bool) -> None:
