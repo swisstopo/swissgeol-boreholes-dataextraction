@@ -267,7 +267,22 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
         try:
             base_metrics = {"n_documents": float(run_result.n_documents)}
             eval_metrics = summary.metrics_flat() if summary else {}
-            all_metrics = {k: v for k, v in {**base_metrics, **eval_metrics}.items() if v is not None}
+            per_file_metrics = {}
+            if summary:
+                for csv_name in ("document_level_metadata_metrics.csv", "document_level_geology_metrics.csv"):
+                    csv_path = self.out_directory / csv_name
+                    if csv_path.exists():
+                        df = pd.read_csv(csv_path, index_col="filename")
+                        per_file_metrics.update(
+                            {
+                                f"{Path(filename).stem}_{column}": value
+                                for filename, row in df.iterrows()
+                                for column, value in row.items()
+                            }
+                        )
+            all_metrics = {
+                k: v for k, v in {**base_metrics, **eval_metrics, **per_file_metrics}.items() if v is not None
+            }
             wandb.log(all_metrics)
             wandb.run.summary.update(all_metrics)
 

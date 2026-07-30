@@ -118,6 +118,14 @@ def evaluate_all_predictions(
         if mlflow:
             mlflow.log_metrics(geology_metrics_dict)
             mlflow.log_metrics(metadata_metrics_dict)
+            mlflow.log_metrics(
+                {
+                    f"{Path(filename).stem}_{column}": value
+                    for df in (document_level_metadata_metrics, document_level_geology_metrics)
+                    for filename, row in df.iterrows()
+                    for column, value in row.items()
+                }
+            )
 
         if out_directory is not None:
             # Write directly so wandb (or other tools) can pick them up from disk
