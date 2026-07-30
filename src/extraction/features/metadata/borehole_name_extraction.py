@@ -341,6 +341,7 @@ def _find_candidate_names(
         has_digit = any(char.isdigit() for char in word)
         starts_with_digit = len(word) and word[0].isdigit()
         all_uppercase = has_letter and word.isupper()
+        has_uppercase = any(char.isalpha() and char.isupper() for char in word)
 
         is_simple_match = has_digit or (len(word) == 1 and word.isalpha())
         is_number_keyword = _is_number_keyword(word, excluded_keywords)
@@ -355,12 +356,12 @@ def _find_candidate_names(
             if (
                 match_letter_before_number
                 or match_number_symbol_number
-                or (allow_simple and is_simple_match and len(word) <= 5)
+                or (allow_simple and is_simple_match and len(word) <= 5 and (has_digit or all_uppercase))
                 # simple match with length 5 allows e.g. "6056. 12" from Geoquat B537.pdf
             ):
                 start = index
                 current_candidate_is_valid = True
-            if has_letter and not has_digit and (len(word) <= 3 or all_uppercase):
+            if has_uppercase and not has_digit and (len(word) <= 3 or all_uppercase):
                 start = index
         else:
             if is_number_keyword or not is_simple_match:
