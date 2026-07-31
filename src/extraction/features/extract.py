@@ -14,10 +14,7 @@ from extraction.features.stratigraphy.layer.layer import (
     Layer,
     LayerDepths,
 )
-from extraction.features.stratigraphy.layer.page_bounding_boxes import (
-    MaterialDescriptionRectWithSidebar,
-    PageBoundingBoxes,
-)
+from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from extraction.features.stratigraphy.no_sidebar_description_grouping import get_descriptions_blocks
 from extraction.features.stratigraphy.sidebar.classes.protocol_sidebar import ProtocolSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import (
@@ -128,20 +125,25 @@ class BoreholeExtractor:
         return [candidate.borehole for candidate in valid_candidates]
 
     def _contained_in_table_index(
-        self, pair: MaterialDescriptionRectWithSidebar, table_structures: list[TableStructure], proximity_buffer: float
+        self,
+        sidebar: Sidebar | None,
+        material_description_rect: pymupdf.Rect,
+        table_structures: list[TableStructure],
+        proximity_buffer: float,
     ) -> int:
         """Returns the index of the first table structure that contains this pair, or -1 if none is found.
 
         Args:
-            pair: MaterialDescriptionRectWithSidebar object
+            sidebar: An optional sidebar
+            material_description_rect: The bounding box of the material descriptions
             table_structures: List of table structures
             proximity_buffer: Distance threshold for proximity check
 
         Returns:
             The index of the first table structure that contains this pair, or -1 if none is found
         """
-        material_rect = pair.material_description_rect
-        sidebar_rect = pair.sidebar.rect if pair.sidebar else None
+        material_rect = material_description_rect
+        sidebar_rect = sidebar.rect if sidebar else None
 
         for index, table in enumerate(table_structures):
             # Check if rectangle is within proximity buffer of table
@@ -176,15 +178,15 @@ class BoreholeExtractor:
 
         return kept_candidates
 
-    def _create_borehole_from_pair(self, pair: MaterialDescriptionRectWithSidebar) -> ExtractedBorehole | None:
+    def _create_borehole_from_pair(self, sidebar: Sidebar | None, rect: pymupdf.Rect) -> ExtractedBorehole | None:
         """Create an ExtractedBorehole from a MaterialDescriptionRectWithSidebar."""
-        bounding_boxes = PageBoundingBoxes.from_material_description_rect_with_sidebar(pair, self.page_number)
+        bounding_boxes = PageBoundingBoxes.from_sidebar_and_rect(sidebar, rect, self.page_number)
 
-        interval_block_pairs = self._get_interval_block_pairs(pair)
+        interval_block_pairs = self._get_interval_block_pairs(sidebar, rect)
         # For protocol sidebars, every depth entry must have a matched description.
         if (
-            pair.sidebar
-            and isinstance(pair.sidebar, ProtocolSidebar)
+            sidebar
+            and isinstance(sidebar, ProtocolSidebar)
             and not all(ibp.block.lines for ibp in interval_block_pairs)
         ):
             return None
@@ -210,28 +212,31 @@ class BoreholeExtractor:
         borehole_layers_with_description = [layer for layer in borehole_layers if layer.description_nonempty()]
 
         min_layers = self.matching_params["min_num_layers"]
-        if pair.sidebar and isinstance(pair.sidebar, ProtocolSidebar):
+        if sidebar and isinstance(sidebar, ProtocolSidebar):
             min_layers = self.matching_params.get("protocol_min_num_layers", min_layers)
         if len(borehole_layers_with_description) < min_layers:
             return None
 
         return ExtractedBorehole(borehole_layers, [bounding_boxes])  # takes a list of bounding boxes
 
-    def _get_interval_block_pairs(self, pair: MaterialDescriptionRectWithSidebar) -> list[IntervalBlockPair]:
+    def _get_interval_block_pairs(
+        self, sidebar: Sidebar | None, material_description_rect: pymupdf.Rect
+    ) -> list[IntervalBlockPair]:
         """Get the interval block pairs for a given material description rect with sidebar.
 
         Args:
-            pair (MaterialDescriptionRectWithSidebar): The material description rect with sidebar.
+            sidebar (Sidebar | None): An optional sidebar.
+            material_description_rect (pymupdf.Rect): The bounding box of the material descriptions.
 
         Returns:
             list[IntervalBlockPair]: The interval block pairs.
         """
-        description_lines = get_description_lines(self.lines, pair.material_description_rect)
+        description_lines = get_description_lines(self.lines, material_description_rect)
         diagonals = self.get_diagonals_near_textlines(description_lines, self.line_detection_params)
 
         line_affinities = get_line_affinity(
             description_lines,
-            pair.material_description_rect,
+            material_description_rect,
             self.all_geometric_lines,
             self.line_detection_params,
             diagonals,
@@ -239,9 +244,9 @@ class BoreholeExtractor:
             left_line_length_threshold=self.matching_params["left_line_length_threshold"],
         )
 
-        if pair.sidebar:
+        if sidebar:
             return match_lines_to_interval(
-                pair.sidebar,
+                sidebar,
                 description_lines,
                 line_affinities,
                 diagonals,
@@ -273,16 +278,7 @@ class BoreholeExtractor:
         """
         candidate_rects = self._find_all_material_description_candidates(sidebar_noise.sidebar)
 
-        for rect in candidate_rects:
-            pair = MaterialDescriptionRectWithSidebar(
-                sidebar=sidebar_noise.sidebar,
-                material_description_rect=rect,
-                noise_count=sidebar_noise.noise_count,
-            )
-            if pair.score_match >= 0:
-                return True
-
-        return False
+        return any(sidebar_noise.score_match(rect) >= 0 for rect in candidate_rects)
 
     def _should_block_protocol_with_a_above_b(
         self,
@@ -533,11 +529,11 @@ class BoreholeExtractor:
         Returns:
             BoreholeCandidate | None: The selected borehole candidate (if any).
         """
+        sidebar_noise = None if sidebar is None else SidebarNoise(sidebar, noise_count=0)
         candidate_boreholes = []
         for rect in self._find_all_material_description_candidates(sidebar):
-            pair = MaterialDescriptionRectWithSidebar(sidebar=sidebar, material_description_rect=rect)
-            if borehole := self._create_borehole_from_pair(pair):
-                candidate_boreholes.append(BoreholeCandidate.from_pair(borehole, pair))
+            if borehole := self._create_borehole_from_pair(sidebar, rect):
+                candidate_boreholes.append(BoreholeCandidate.from_pair(borehole, sidebar_noise))
 
         if len(candidate_boreholes) == 0:
             return None
@@ -565,9 +561,8 @@ class BoreholeExtractor:
         for sidebar_index, sn in enumerate(sidebars_noise):
             candidate_boreholes = []
             for rect in self._find_all_material_description_candidates(sn.sidebar):
-                pair = MaterialDescriptionRectWithSidebar(sn.sidebar, rect, sn.noise_count)
-                if borehole := self._create_borehole_from_pair(pair):
-                    candidate_boreholes.append(BoreholeCandidate.from_pair(borehole, pair))
+                if borehole := self._create_borehole_from_pair(sn.sidebar, rect):
+                    candidate_boreholes.append(BoreholeCandidate.from_pair(borehole, sn))
 
             sidebar_boreholes[sidebar_index] = candidate_boreholes
 
