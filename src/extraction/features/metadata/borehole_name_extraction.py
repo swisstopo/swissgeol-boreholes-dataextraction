@@ -176,7 +176,7 @@ def extract_borehole_names(
 
     highest_confidence = candidates[0].feature.confidence
     # we expect all borehole names from the same page to have a similar confidence
-    return [candidate for candidate in candidates if candidate.feature.confidence > 0.8 * highest_confidence]
+    return [candidate for candidate in candidates if candidate.feature.confidence > 0.5 * highest_confidence]
 
 
 def _extract_borehole_names_from_line(
@@ -331,6 +331,7 @@ def _find_candidate_names(
 
     start = None
     current_candidate_is_valid = False
+    current_candidate_text = ""
     for index, word in enumerate(words):
         # (?![0-9_])\w  for matching any Unicode letter
         match_letter_before_number = re.search(r"(?![0-9_])\w.*\d", word)
@@ -346,8 +347,14 @@ def _find_candidate_names(
         is_simple_match = has_digit or (len(word) == 1 and word.isalpha())
         is_number_keyword = _is_number_keyword(word, excluded_keywords)
 
-        if not current_candidate_is_valid and not starts_with_digit:
-            # first word not valid on its own and second word does not start with a digit -> start again
+        if (
+            not current_candidate_is_valid
+            and not starts_with_digit
+            and not (has_digit and len(current_candidate_text) <= 3)
+        ):
+            # first word not valid on its own, then we start again, unless...
+            # - the second word starts with a digit
+            # - the first word is at most 3 characters long and the second word contains a digit
             start = None
 
         if start is None:
@@ -360,16 +367,19 @@ def _find_candidate_names(
                 # simple match with length 5 allows e.g. "6056. 12" from Geoquat B537.pdf
             ):
                 start = index
+                current_candidate_text = word
                 current_candidate_is_valid = True
             if has_uppercase and not has_digit and (len(word) <= 3 or all_uppercase):
                 start = index
+                current_candidate_text = word
         else:
-            if is_number_keyword or not is_simple_match:
+            if is_number_keyword or not (is_simple_match or match_letter_before_number or match_number_symbol_number):
                 results.append((start, index))
                 start = None
                 current_candidate_is_valid = False
             else:
                 current_candidate_is_valid = current_candidate_is_valid or has_digit
+                current_candidate_text += " " + word
     if start is not None and current_candidate_is_valid:
         results.append((start, len(words)))
 

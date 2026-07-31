@@ -118,6 +118,9 @@ excluded_keywords: list[str] = name_detection_params.get("excluded_keywords")
         ("571112/256198", [], False),
         ("bei 7m", [], False),
         ("a", [], True),
+        ("A", ["A"], True),
+        ("KB B5.2", ["KB B5.2"], False),
+        ("Sonnig 12°C", [], False),
     ],
 )
 def test_findcandidatename(text: str, expected: str | None, allow_simple: bool) -> None:
