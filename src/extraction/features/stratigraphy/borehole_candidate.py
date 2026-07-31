@@ -5,8 +5,8 @@ from dataclasses import dataclass
 import pymupdf
 
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole
-from extraction.features.stratigraphy.layer.page_bounding_boxes import MaterialDescriptionRectWithSidebar
-from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
+from extraction.features.stratigraphy.sidebar.classes.layer_identifier_sidebar import LayerIdentifierSidebar
+from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar, SidebarNoise
 
 
 @dataclass
@@ -30,11 +30,24 @@ class BoreholeCandidate:
         return bbox
 
     @classmethod
-    def from_pair(cls, borehole: ExtractedBorehole, pair: MaterialDescriptionRectWithSidebar) -> "BoreholeCandidate":
+    def from_pair(cls, borehole: ExtractedBorehole, sidebar_noise: SidebarNoise | None) -> "BoreholeCandidate":
         layers_without_description = sum(1 for layer in borehole.predictions if not layer.description_nonempty())
         layers_without_description_penalty = 1 / (1 + layers_without_description)
 
         description_lines_score = sum(len(layer.material_description.lines) for layer in borehole.predictions)
 
-        score = pair.score_match * layers_without_description_penalty * description_lines_score
-        return cls(borehole, pair.material_description_rect, pair.sidebar, score)
+        sidebar = sidebar_noise.sidebar if sidebar_noise else None
+        # we boost the indicator sidebar, because they usually filter out some description lines, which should not have
+        # a negative impact on the matching score
+        indicator_sidebar_boost = 1.5 if sidebar and isinstance(sidebar, LayerIdentifierSidebar) else 1.0
+
+        accurate_rect = pymupdf.Rect()
+        for layer in borehole.predictions:
+            for line in layer.material_description.lines:
+                accurate_rect.include_rect(line.rect)
+
+        # boreholes without a sidebar always score 0.0
+        score_match = indicator_sidebar_boost * sidebar_noise.score_match(accurate_rect) if sidebar_noise else 0.0
+        score = score_match * layers_without_description_penalty * description_lines_score
+
+        return cls(borehole, accurate_rect, sidebar, score)
