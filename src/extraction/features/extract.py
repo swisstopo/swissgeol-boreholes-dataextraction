@@ -97,6 +97,37 @@ class BoreholeExtractor:
         self.long_or_horizontal_lines = long_or_horizontal_lines
         self.all_geometric_lines = all_geometric_lines
         self.table_structures = table_structures
+
+        processed_lines = []
+        for text_line in self.lines:
+            text_line_left = (text_line.rect.top_left + text_line.rect.bottom_left) / 2
+            text_line_right = (text_line.rect.top_right + text_line.rect.bottom_right) / 2
+            partition = [text_line.words]
+
+            for structure in table_structures:
+                for line in structure.vertical_lines:
+                    if line.intersects_with(Line(text_line_left, text_line_right)):
+                        new_partition = []
+                        for words in partition:
+                            words_left = []
+                            words_right = []
+                            for word in words:
+                                if (word.rect.x0 + word.rect.x1) / 2 < (line.start.x + line.end.x) / 2:
+                                    words_left.append(word)
+                                else:
+                                    words_right.append(word)
+
+                            if len(words_left) > 0:
+                                new_partition.append(words_left)
+                            if len(words_right) > 0:
+                                new_partition.append(words_right)
+                        partition = new_partition
+
+            for words in partition:
+                text_line = TextLine(words, text_angle=text_line.text_angle)
+                processed_lines.append(text_line)
+        self.processed_lines = processed_lines
+
         self.strip_logs = strip_logs  # added for future usage
         self.language = language
         self.page_number = page_number
@@ -226,7 +257,21 @@ class BoreholeExtractor:
         Returns:
             list[IntervalBlockPair]: The interval block pairs.
         """
-        description_lines = get_description_lines(self.lines, pair.material_description_rect)
+        description_lines = get_description_lines(self.processed_lines, pair.material_description_rect)
+
+        if pair.sidebar is not None:
+            # remove description words that are already part of the sidebar
+            clean_description_lines = []
+            for text_line in description_lines:
+                clean_words = [
+                    word
+                    for word in text_line.words
+                    if not any(entry.rect.contains(word.rect) for entry in pair.sidebar.entries)
+                ]
+                if len(clean_words) > 0:
+                    clean_description_lines.append(TextLine(words=clean_words, text_angle=text_line.text_angle))
+            description_lines = clean_description_lines
+
         diagonals = self.get_diagonals_near_textlines(description_lines, self.line_detection_params)
 
         line_affinities = get_line_affinity(
@@ -365,7 +410,9 @@ class BoreholeExtractor:
         """
         if sidebar:
             above_sidebar = [
-                line for line in self.lines if x_overlap(line.rect, sidebar.rect) and line.rect.y0 < sidebar.rect.y0
+                line
+                for line in self.processed_lines
+                if x_overlap(line.rect, sidebar.rect) and line.rect.y0 < sidebar.rect.y0
             ]
 
             min_y0 = max(line.rect.y0 for line in above_sidebar) if above_sidebar else -1
@@ -379,7 +426,7 @@ class BoreholeExtractor:
 
         horizontal_text_lines = [
             line
-            for line in self.lines
+            for line in self.processed_lines
             if line.rect.width > line.rect.height and not re.fullmatch(r"[\d\s.,\-/]+", line.text.strip())
         ]
         candidate_description = [line for line in horizontal_text_lines if check_y0_condition(line.rect.y0)]
