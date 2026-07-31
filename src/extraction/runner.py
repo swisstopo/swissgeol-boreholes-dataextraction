@@ -315,11 +315,44 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
                         *(metric_columns[col].get(pdf_filename) for col in metric_columns),
                     )
                 wandb.log({"png_browser_table": table})
+                self._log_prediction_comparison_table()
 
             if self.wandb_baseline_run_id:
                 self._create_and_log_prediction_report()
         finally:
             wandb.finish()
+
+    def _log_prediction_comparison_table(self) -> None:
+        """Rebuild `prediction_comparison_table` with one image column per run.
+
+        Gathers every run that currently exists in the project (including this one, via the same
+        W&B API + backoff-retry path already used for the just-logged `png_browser_table`) and
+        logs the result onto this run - no separate run, no run selection ahead of time. Columns
+        are named after each run's id; rows are the union of every included run's files, with a
+        blank cell for runs that didn't process a given file.
+
+        No-ops if fewer than two runs end up with usable `png_browser_table` data.
+        """
+        from reports.comparison_table import build_run_gallery_table, load_table
+
+        entity, project = wandb.run.entity, wandb.run.project
+        api = wandb.Api()
+
+        runs = {}
+        for run in api.runs(f"{entity}/{project}"):
+            if run.state not in ("finished", "running"):
+                continue
+            try:
+                runs[run.id] = load_table(run, "png_browser_table")
+            except Exception:
+                logger.info("Run %s has no usable png_browser_table; excluding it from the comparison.", run.id)
+
+        if len(runs) < 2:
+            logger.info("Fewer than two runs with a png_browser_table; skipping prediction comparison table.")
+            return
+
+        table, gallery, _keys = build_run_gallery_table(runs, join_key="filename", image_column="image")
+        wandb.log({"prediction_comparison_table": table, "prediction_comparison_gallery": gallery})
 
     def _create_and_log_prediction_report(self) -> None:
         from reports.create_prediction_report import create_prediction_report

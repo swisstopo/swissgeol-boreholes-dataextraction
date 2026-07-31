@@ -49,6 +49,53 @@ def _image_path(row: dict, image_column: str, table_dir: Path) -> Path:
     return table_dir / cell["path"]
 
 
+def build_multi_run_comparison_table(
+    runs: dict[str, tuple[list[dict], Path]],
+    *,
+    join_key: str,
+    image_column: str,
+    max_images: int | None = None,
+) -> tuple["wandb.Table", list, list[str], dict[str, set[str]]]:
+    """Join two or more runs' rows by `join_key` into a table with one image column per run.
+
+    Args:
+        runs (dict[str, tuple[list[dict], Path]]): Mapping of run id to that run's
+            (rows, table_dir), as returned by `load_table`. One entry per run being compared.
+        join_key (str): Column shared by every run's table to match rows on (e.g. "filename").
+        image_column (str): Column holding the W&B Image cell to read (e.g. "image").
+        max_images (int | None): Cap on the number of shared rows to include. `None` for no cap.
+
+    Returns:
+        tuple: (table, gallery, shared_keys, only_in_run). `only_in_run` maps each run id to the
+        keys present in that run but missing from at least one other (excluded from the table).
+    """
+    keys_by_run = {run_id: {row[join_key] for row in rows} for run_id, (rows, _) in runs.items()}
+    shared_keys = sorted(set.intersection(*keys_by_run.values()))
+    only_in_run = {run_id: keys - set(shared_keys) for run_id, keys in keys_by_run.items()}
+    for run_id, missing in only_in_run.items():
+        if missing:
+            logger.warning("Skipping %d file(s) only in %s (not present in every compared run)", len(missing), run_id)
+
+    if max_images is not None and len(shared_keys) > max_images:
+        logger.warning("Capping comparison table at %d of %d shared file(s)", max_images, len(shared_keys))
+        shared_keys = shared_keys[:max_images]
+
+    by_key_per_run = {run_id: {row[join_key]: row for row in rows} for run_id, (rows, _) in runs.items()}
+
+    table = wandb.Table(columns=[join_key, *runs])
+    gallery = []
+    for key in shared_keys:
+        images = []
+        for run_id, (_, table_dir) in runs.items():
+            row = by_key_per_run[run_id][key]
+            image = wandb.Image(str(_image_path(row, image_column, table_dir)), caption=f"{key} ({run_id})")
+            images.append(image)
+            gallery.append(image)
+        table.add_data(key, *images)
+
+    return table, gallery, shared_keys, only_in_run
+
+
 def build_comparison_table(
     rows_a: list[dict],
     dir_a: Path,
@@ -75,32 +122,60 @@ def build_comparison_table(
     Returns:
         tuple: (table, gallery, shared_keys, only_in_a, only_in_b).
     """
-    by_key_a = {row[join_key]: row for row in rows_a}
-    by_key_b = {row[join_key]: row for row in rows_b}
+    table, gallery, shared_keys, only_in_run = build_multi_run_comparison_table(
+        {run_a_id: (rows_a, dir_a), run_b_id: (rows_b, dir_b)},
+        join_key=join_key,
+        image_column=image_column,
+    )
+    return table, gallery, shared_keys, only_in_run[run_a_id], only_in_run[run_b_id]
 
-    shared_keys = sorted(by_key_a.keys() & by_key_b.keys())
-    only_in_a = by_key_a.keys() - by_key_b.keys()
-    only_in_b = by_key_b.keys() - by_key_a.keys()
-    if only_in_a or only_in_b:
-        logger.warning(
-            "Skipping %d file(s) only in %s and %d only in %s (not present in both runs)",
-            len(only_in_a),
-            run_a_id,
-            len(only_in_b),
-            run_b_id,
-        )
 
-    table = wandb.Table(columns=[join_key, run_a_id, run_b_id])
+def build_run_gallery_table(
+    runs: dict[str, tuple[list[dict], Path]],
+    *,
+    join_key: str,
+    image_column: str,
+    max_images: int | None = None,
+) -> tuple["wandb.Table", list, list[str]]:
+    """Union any number of runs' rows by `join_key` into one table, one image column per run.
+
+    This keeps every file logged by any included run - a run's
+    cell is just left blank for files it didn't process.
+
+    Args:
+        runs (dict[str, tuple[list[dict], Path]]): Mapping of run id to that run's
+            (rows, table_dir), as returned by `load_table`.
+        join_key (str): Column shared by every run's table to match rows on (e.g. "filename").
+        image_column (str): Column holding the W&B Image cell to read (e.g. "image").
+        max_images (int | None): Cap on the number of rows to include. `None` for no cap.
+
+    Returns:
+        tuple: (table, gallery, keys) - every file key included, across every run.
+    """
+    by_key_per_run = {run_id: {row[join_key]: row for row in rows} for run_id, (rows, _) in runs.items()}
+    all_keys = sorted(set.union(*(set(rows_by_key) for rows_by_key in by_key_per_run.values())))
+
+    if max_images is not None and len(all_keys) > max_images:
+        logger.warning("Capping gallery table at %d of %d file(s)", max_images, len(all_keys))
+        all_keys = all_keys[:max_images]
+
+    table = wandb.Table(columns=[join_key, *runs])
     gallery = []
-    for key in shared_keys:
-        image_a = wandb.Image(str(_image_path(by_key_a[key], image_column, dir_a)), caption=f"{key} ({run_a_id})")
-        image_b = wandb.Image(str(_image_path(by_key_b[key], image_column, dir_b)), caption=f"{key} ({run_b_id})")
+    for key in all_keys:
+        images = []
+        for run_id, (_, table_dir) in runs.items():
+            row = by_key_per_run[run_id].get(key)
+            image = (
+                wandb.Image(str(_image_path(row, image_column, table_dir)), caption=f"{key} ({run_id})")
+                if row is not None
+                else None
+            )
+            images.append(image)
+            if image is not None:
+                gallery.append(image)
+        table.add_data(key, *images)
 
-        table.add_data(key, image_a, image_b)
-        gallery.append(image_a)
-        gallery.append(image_b)
-
-    return table, gallery, shared_keys, only_in_a, only_in_b
+    return table, gallery, all_keys
 
 
 def dedupe_file_metric_rows(
