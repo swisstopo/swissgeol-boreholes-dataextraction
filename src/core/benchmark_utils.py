@@ -95,6 +95,7 @@ class Metrics:
     tp: int = 0
     fp: int = 0
     fn: int = 0
+    summary: str | None = None
 
     @property
     def precision(self) -> float:
@@ -172,7 +173,9 @@ class Metrics:
         tp = sum(metric.tp for metric in metric_list)
         fp = sum(metric.fp for metric in metric_list)
         fn = sum(metric.fn for metric in metric_list)
-        return cls(tp=tp, fp=fp, fn=fn)
+        # join summary for multiple extracted boreholes
+        summary = ";".join(metric.summary for metric in metric_list if metric.summary is not None)
+        return cls(tp=tp, fp=fp, fn=fn, summary=summary)
 
     def to_dict(self, prefix: str) -> dict[str, float]:
         """Return f1, recall, and precision as a flat dictionary with prefixed keys.

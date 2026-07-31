@@ -83,7 +83,7 @@ class OverallMetrics:
         Args:
             prefix (str): String prepended to each key.
 
-        Returns:
+        Returns:m
             dict[str, float]: Flat micro-averaged metrics dictionary with prefixed keys.
         """
         micro_avg = Metrics.micro_average(self.metrics.values())
@@ -108,16 +108,23 @@ class OverallMetrics:
         Returns:
             pd.DataFrame: DataFrame indexed by filename with one prefixed column per metric.
         """
-        metrics = {"f1": lambda m: m.f1, "recall": lambda m: m.recall, "precision": lambda m: m.precision}
-        if extra_metrics:
-            metrics = metrics | extra_metrics
+
+        def create_metrics_dict(filename: str, metrics: Metrics) -> dict:
+            data = {
+                "filename": filename,
+                f"{prefix}_f1": metrics.f1,
+                f"{prefix}_recall": metrics.recall,
+                f"{prefix}_precision": metrics.precision,
+            }
+            if metrics.summary is not None:
+                data[f"{prefix}_summary"] = metrics.summary
+            if extra_metrics is not None:
+                for key, fn in extra_metrics.items():
+                    data[f"{prefix}_{key}"] = fn(metrics)
+            return data
 
         return pd.DataFrame(
-            {
-                "filename": filename,
-                **{f"{prefix}_{name}": fn(metric) for name, fn in metrics.items()},
-            }
-            for filename, metric in self.metrics.items()
+            create_metrics_dict(filename, metric) for filename, metric in self.metrics.items()
         ).set_index("filename")
 
 
