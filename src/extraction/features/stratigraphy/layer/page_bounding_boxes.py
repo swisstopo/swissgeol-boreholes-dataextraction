@@ -1,58 +1,11 @@
 """Classes for JSON-serializable bounding boxes of different parts of a borehole profile."""
 
-import math
 from dataclasses import dataclass
 
 import pymupdf
 
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
 from swissgeol_doc_processing.geometry.geometry_dataclasses import BoundingBox
-
-
-@dataclass
-class MaterialDescriptionRectWithSidebar:
-    """A class to represent pairs of sidebar and material description rectangle."""
-
-    sidebar: Sidebar | None
-    material_description_rect: pymupdf.Rect
-    noise_count: int = 0
-
-    @property
-    def score_match(self) -> float:
-        """Scores the match between a sidebar and a material description.
-
-        For pairs that have a sidebar, the score is
-        - positively influenced by the width of the material description bounding box
-        - negatively influenced by the horizontal distance between (the right-hand-side of) the sidebar and (the
-          left-hand-side of) the material descriptions
-        - positively influenced by the height of the sidebar
-        - negatively influenced by vertical distance between the top of the sidebar and the top of the material
-          descriptions, and the vertical distance between the bottom of the sidebar and the bottom of the material
-          descriptions
-        The resulting score is also reduced if the sidebar has a high noise count (many unrelated tokens in between
-        the extracted depths values).
-
-        Pairs without a sidebar receive a default score of 0.
-
-        Returns:
-            float: The score of the match. Better matches have a higher score value.
-        """
-        if not self.sidebar:
-            return 0.0
-        rect = self.sidebar.rect
-        sidebar_top, sidebar_bottom, sidebar_right = rect.y0, rect.y1, rect.x1
-        material_left = self.material_description_rect.x0
-        material_top, material_bottom = self.material_description_rect.y0, self.material_description_rect.y1
-        x_distance = abs(sidebar_right - material_left)
-        y_distance = abs(sidebar_top - material_top) + abs(sidebar_bottom - material_bottom)
-
-        height = sidebar_bottom - sidebar_top
-
-        geometry_score = self.material_description_rect.width - 1.64 * x_distance + height - 2 * y_distance
-
-        noise_penalty_multiplier = math.pow(0.8, 10 * self.noise_count / len(self.sidebar.entries))
-
-        return geometry_score * noise_penalty_multiplier
 
 
 @dataclass
@@ -90,20 +43,20 @@ class PageBoundingBoxes:
         )
 
     @classmethod
-    def from_material_description_rect_with_sidebar(
-        cls, pair: MaterialDescriptionRectWithSidebar, page_number: int
+    def from_sidebar_and_rect(
+        cls, sidebar: None | Sidebar, material_description_rect: pymupdf.Rect, page_number: int
     ) -> "PageBoundingBoxes":
         """Convert a MaterialDescriptionRectWithSidebar instance to a BoundingBoxes object."""
-        if pair.sidebar:
-            depth_column_bbox = BoundingBox(pair.sidebar.rect)
-            depth_column_entry_bboxes = [BoundingBox(entry.rect) for entry in pair.sidebar.entries]
+        if sidebar:
+            depth_column_bbox = BoundingBox(sidebar.rect)
+            depth_column_entry_bboxes = [BoundingBox(entry.rect) for entry in sidebar.entries]
         else:
             depth_column_bbox = None
             depth_column_entry_bboxes = []
         return PageBoundingBoxes(
             sidebar_bbox=depth_column_bbox,
             depth_column_entry_bboxes=depth_column_entry_bboxes,
-            material_description_bbox=BoundingBox(pair.material_description_rect),
+            material_description_bbox=BoundingBox(material_description_rect),
             page=page_number,
         )
 
