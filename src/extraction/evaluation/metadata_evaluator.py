@@ -50,7 +50,10 @@ class MetadataEvaluator:
             ground_truth_coordinates = borehole_data.ground_truth.coordinates
 
             evaluation_result = evaluate_single(
-                extracted_coordinates, ground_truth_coordinates, MetadataEvaluator.match_coordinates
+                extracted_coordinates,
+                ground_truth_coordinates,
+                MetadataEvaluator.match_coordinates,
+                create_summary=lambda coordinates: "" if coordinates is None else str(coordinates),
             )
             coordinate_metrics = evaluation_result.metrics
             if borehole_data.metadata and borehole_data.metadata.coordinates:
@@ -65,7 +68,10 @@ class MetadataEvaluator:
             )
             ground_truth_elevation = borehole_data.ground_truth.reference_elevation
             evaluation_result = evaluate_single(
-                extracted_elevation, ground_truth_elevation, MetadataEvaluator.match_elevation
+                extracted_elevation,
+                ground_truth_elevation,
+                MetadataEvaluator.match_elevation,
+                create_summary=lambda elevation: "" if elevation is None else str(elevation),
             )
             elevation_metrics = evaluation_result.metrics
             if borehole_data.metadata and borehole_data.metadata.elevation:
@@ -78,7 +84,12 @@ class MetadataEvaluator:
             )
             ground_truth_name = borehole_data.ground_truth.original_name
 
-            evaluation_result = evaluate_single(extracted_name, ground_truth_name, MetadataEvaluator.match_name)
+            evaluation_result = evaluate_single(
+                extracted_name,
+                ground_truth_name,
+                MetadataEvaluator.match_name,
+                create_summary=lambda extracted_name: "" if extracted_name is None else extracted_name.name,
+            )
             name_metrics = evaluation_result.metrics
             if borehole_data.metadata and borehole_data.metadata.name:
                 borehole_data.metadata.name.feature.is_correct = name_metrics.tp > 0
