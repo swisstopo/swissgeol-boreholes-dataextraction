@@ -423,7 +423,7 @@ class BoreholeExtractor:
         horizontal_text_lines = [
             line
             for line in self.processed_lines
-            if line.rect.width > line.rect.height and not re.fullmatch(r"[\d\s.,\-/]+", line.text.strip())
+            if abs(line.text_angle) < 10 and not re.fullmatch(r"[\d\s.,\-/]+", line.text.strip())
         ]
         candidate_description = [line for line in horizontal_text_lines if check_y0_condition(line.rect.y0)]
 
