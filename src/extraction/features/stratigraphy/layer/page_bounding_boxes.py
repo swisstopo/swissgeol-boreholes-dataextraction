@@ -46,7 +46,7 @@ class PageBoundingBoxes:
     def from_sidebar_and_rect(
         cls, sidebar: None | Sidebar, material_description_rect: pymupdf.Rect, page_number: int
     ) -> "PageBoundingBoxes":
-        """Convert a MaterialDescriptionRectWithSidebar instance to a BoundingBoxes object."""
+        """Convert an optional sidebar and a material description bounding box to a BoundingBoxes object."""
         if sidebar:
             depth_column_bbox = BoundingBox(sidebar.rect)
             depth_column_entry_bboxes = [BoundingBox(entry.rect) for entry in sidebar.entries]
