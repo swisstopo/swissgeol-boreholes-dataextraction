@@ -179,7 +179,7 @@ class BoreholeExtractor:
         return kept_candidates
 
     def _create_borehole_from_pair(self, sidebar: Sidebar | None, rect: pymupdf.Rect) -> ExtractedBorehole | None:
-        """Create an ExtractedBorehole from a MaterialDescriptionRectWithSidebar."""
+        """Create an ExtractedBorehole from an optional sidebar and a material descriptions bounding box."""
         bounding_boxes = PageBoundingBoxes.from_sidebar_and_rect(sidebar, rect, self.page_number)
 
         interval_block_pairs = self._get_interval_block_pairs(sidebar, rect)
