@@ -1,12 +1,4 @@
-"""Methods for extracting plain text from a PDF document.
-
-Run with
-uv run python -m scripts.extract_full_text_csv -i data/pdfs/ -o full_text.json
-
-e.g.
-uv run python -m scripts.extract_full_text_csv -i data/zurich/ -o data/filteredtext/zurich_full_text.json --header-only
-
-"""
+"""Methods for extracting plain text from a PDF document."""
 
 import re
 

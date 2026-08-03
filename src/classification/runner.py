@@ -190,11 +190,6 @@ def _load_layer_descriptions(
     return layer_descriptions, False
 
 
-def _is_pdf_input(paths: tuple[Path, ...]) -> bool:
-    """Whether `paths` (files or directories) refer to PDF(s) rather than ground truth/predictions JSON."""
-    return _is_pdf_path(paths[0])
-
-
 def _load_document_descriptions(
     file_paths: tuple[Path, ...],
     classification_system_cls: type[ClassificationSystem],
@@ -257,7 +252,7 @@ def run_classification_predictions(
     classification_system_cls = ExistingClassificationSystems.get_classification_system_type(
         options.classification_system.lower()
     )
-    if classification_system_cls.is_document_level() and _is_pdf_input(file_paths):
+    if classification_system_cls.is_document_level() and _is_pdf_path(file_paths[0]):
         layer_descriptions, is_prediction = _load_document_descriptions(file_paths, classification_system_cls), True
     else:
         document_text = None

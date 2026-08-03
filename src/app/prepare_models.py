@@ -30,11 +30,11 @@ logger = logging.getLogger(__name__)
 MODELS: list[tuple[str, Path]] = [
     ("swissgeol/accessory_components", Path("models/accessory_components_head")),
     ("swissgeol/alteration_degree_consolidated", Path("models/alteration_degree_consolidated_head")),
+    ("swissgeol/borehole_type", Path("models/borehole_type")),
     ("swissgeol/cementation", Path("models/cementation_head")),
     ("swissgeol/color", Path("models/color_head")),
     ("swissgeol/debris", Path("models/debris_head")),
     ("swissgeol/en_main", Path("models/en_main_head")),
-    ("swissgeol/borehole_type", Path("models/borehole_type")),
     ("swissgeol/en_secondary", Path("models/en_secondary_head")),
     ("swissgeol/grain_angularity", Path("models/grain_angularity_head")),
     ("swissgeol/grain_shape", Path("models/grain_shape_head")),
