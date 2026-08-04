@@ -10,7 +10,7 @@ from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
 from extraction.features.stratigraphy.sidebar.utils.entries_per_table import TableEntries
 from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
 from extraction.features.stratigraphy.sidebarentry.interval_entry import IntervalEntry
-from swissgeol_doc_processing.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.utils.table_detection import TableStructure
 
 
@@ -18,7 +18,7 @@ class AToBSidebarExtractor:
     """Class that finds AToBSidebar instances in a borehole profile."""
 
     @staticmethod
-    def find_in_words(all_words: list[TextWord], table_structures: list[TableStructure]) -> list[AToBSidebar]:
+    def find_in_lines(all_lines: list[TextLine], table_structures: list[TableStructure]) -> list[AToBSidebar]:
         """Finds all AToBSidebars, where start and end point of a layer are defined together (e.g. 1.10-1.60m).
 
         Generates a list of IntervalEntry objects by finding consecutive pairs of DepthColumnEntry objects.
@@ -28,25 +28,31 @@ class AToBSidebarExtractor:
         The start and end points are represented as DepthColumnEntry objects.
 
         Args:
-            all_words (list[TextWord]): List of all TextWord objects.
+            all_lines (list[TextLine]): List of all text lines.
             table_structures (list[TableStructure]): List of detected table-like structures
 
         Returns:
             list[AToBSidebar]: List of all AToBSidebars identified.
         """
         interval_entries: list[IntervalEntry] = []
-        for word in all_words:
-            a_to_b_interval, _ = AToBIntervalExtractor.from_text(TextLine([word]))
+        for line in all_lines:
+            a_to_b_interval, _ = AToBIntervalExtractor.from_text(line)
             if (
                 a_to_b_interval
                 and a_to_b_interval.start
                 and a_to_b_interval.end
                 and (a_to_b_interval.start.value < a_to_b_interval.end.value)
             ):
-                interval_entries.append(IntervalEntry(a_to_b_interval, word.page_number))
+                interval_entries.append(IntervalEntry(a_to_b_interval, line.page_number))
 
-        # Find additional pairs that do not come from a single TextWord
-        entries = DepthColumnEntryExtractor.find_in_words(all_words)
+        unused_words = [
+            word
+            for line in all_lines
+            for word in line.words
+            if not any(entry.rect.intersects(word.rect) for entry in interval_entries)
+        ]
+        # Find additional pairs that do not come from a single TextLine
+        entries = DepthColumnEntryExtractor.find_in_words(unused_words)
 
         def find_pair(entry: DepthColumnEntry) -> DepthColumnEntry | None:  # noqa: D103
             min_y0 = entry.rect.y0 - entry.rect.height / 2
@@ -65,7 +71,7 @@ class AToBSidebarExtractor:
                 in_between_text = " ".join(
                     [
                         word.text
-                        for word in all_words
+                        for word in unused_words
                         if entry.rect.x0 < word.rect.x0 < other.rect.x0 and min_y0 <= word.rect.y0 <= max_y0
                     ]
                 )
@@ -75,7 +81,8 @@ class AToBSidebarExtractor:
         for entry in entries:
             other = find_pair(entry)
             if other:
-                interval = AToBInterval(entry, other)
+                rect = entry.rect | other.rect
+                interval = AToBInterval(entry, other, rect)
                 interval_entries.append(IntervalEntry(interval, entry.page_number))
 
         entry_partitions = TableEntries.group_entries_by_table(

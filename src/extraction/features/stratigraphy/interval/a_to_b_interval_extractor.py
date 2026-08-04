@@ -51,9 +51,8 @@ class AToBIntervalExtractor:
         if not require_start_of_string:
             query = r".*?" + query
         regex = re.compile(query)
-        depths_match = regex.match(input_string)
 
-        def rect_from_group_index(index):
+        def rect_from_group_index(depths_match: re.Match, index: int):
             """Give the rect that covers all the words that intersect with the given regex group."""
             rect = pymupdf.Rect()
             start_word_index = char_index_to_word_index[depths_match.start(index)]
@@ -71,11 +70,16 @@ class AToBIntervalExtractor:
                 return text_line  # the depths found do not start the line
             return TextLine(text_line.words[char_index_to_word_index[depths_match.end(1) - 1] + 1 :])
 
-        if depths_match:
+        if depths_match := regex.match(input_string):
             return (
                 AToBInterval(
-                    DepthColumnEntry.from_string_value(rect_from_group_index(2), depths_match.group(2), page_number),
-                    DepthColumnEntry.from_string_value(rect_from_group_index(3), depths_match.group(3), page_number),
+                    DepthColumnEntry.from_string_value(
+                        rect_from_group_index(depths_match, 2), depths_match.group(2), page_number
+                    ),
+                    DepthColumnEntry.from_string_value(
+                        rect_from_group_index(depths_match, 3), depths_match.group(3), page_number
+                    ),
+                    rect_from_group_index(depths_match, 0),
                 ),
                 remaining_line(),
             )
@@ -87,10 +91,13 @@ class AToBIntervalExtractor:
         if not require_start_of_string:
             fallback_query = r".*?" + fallback_query
         fallback_regex = re.compile(fallback_query, re.IGNORECASE)
-        depths_match = fallback_regex.search(input_string)
-        if depths_match:
+        if depths_match := fallback_regex.search(input_string):
             return AToBInterval(
-                DepthColumnEntry.from_string_value(rect_from_group_index(2), depths_match.group(2), page_number), None
+                DepthColumnEntry.from_string_value(
+                    rect_from_group_index(depths_match, 2), depths_match.group(2), page_number
+                ),
+                None,
+                rect_from_group_index(depths_match, 0),
             ), remaining_line()
 
         return None, text_line
