@@ -32,14 +32,17 @@ def _borehole_pages(borehole: BoreholePredictions) -> list[int]:
     return sorted({bboxes.page for bboxes in borehole.bounding_boxes})
 
 
-def extract_borehole_texts(file: Path | BytesIO, filename: str, header_only: bool = False) -> list[BoreholeText]:
+def extract_borehole_texts(
+    file: Path | BytesIO, filename: str, include_description: bool = False
+) -> list[BoreholeText]:
     """Extract per-borehole text from a PDF, scoped to the pages each borehole was detected on.
 
     Args:
         file (Path | BytesIO): Path or stream of the PDF file to process.
         filename (str): Name of the file used as identifier.
-        header_only (bool): If True, drop material description lines and standalone numbers (e.g. depths),
-            keeping only the header-like remainder of the text. Defaults to exporting the full text.
+        include_description (bool): If False (default), drop material description lines and standalone
+            numbers (e.g. depths), keeping only the header-like remainder of the text. If True, export the
+            full text.
 
     Returns:
         list[BoreholeText]: One entry per borehole detected in the file, in `borehole_index` order.
@@ -53,7 +56,7 @@ def extract_borehole_texts(file: Path | BytesIO, filename: str, header_only: boo
             lines: list[TextLine] = [
                 line for page_number in _borehole_pages(borehole) for line in extract_text_lines(doc[page_number - 1])
             ]
-            if header_only:
+            if not include_description:
                 lines = filter_header_candidate_lines(lines, language, matching_params)
 
             borehole_texts.append(

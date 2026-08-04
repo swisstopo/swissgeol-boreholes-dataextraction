@@ -77,12 +77,8 @@ def _load_ground_truth_dict(paths: tuple[Path, ...]) -> dict[str, list[GroundTru
 
 
 def _extract_file_text(pdf_path: Path) -> str:
-    """Extract a single file-level text for `pdf_path`, merging all its boreholes (dropping exact repeats).
-
-    Mirrors `scripts.extract_full_text_csv`, the script used to precompute the *_filtered_text.json
-    caches: same extraction call, same per-file merge, just run live instead of read from a cache.
-    """
-    borehole_texts = extract_borehole_texts(pdf_path, pdf_path.name, header_only=True)
+    """Extract a single file-level text for `pdf_path`, merging all its boreholes (dropping exact repeats)."""
+    borehole_texts = extract_borehole_texts(pdf_path, pdf_path.name)
     return "\n".join(dict.fromkeys(borehole_text.text for borehole_text in borehole_texts))
 
 
@@ -217,7 +213,7 @@ def _load_document_descriptions(
             llm_reasoning=None,
         )
         for pdf in tqdm(pdf_paths, desc="Extracting text", unit="file")
-        for borehole_text in extract_borehole_texts(pdf, pdf.name, header_only=True)
+        for borehole_text in extract_borehole_texts(pdf, pdf.name)
     ]
 
 
@@ -237,7 +233,7 @@ def run_classification_predictions(
     This is the core prediction logic, decoupled from tracking and evaluation.
 
     Args:
-        file_paths: One or more JSON files (or directories of such files) containing material
+        file_paths (tuple[Path, ...]): One or more JSON files (or directories of such files) containing material
             descriptions to classify, merged into a single dataset.
         out_directory (Path): Path to output directory where predictions are written.
         out_directory_bedrock (Path): Path to output directory for Bedrock API files.

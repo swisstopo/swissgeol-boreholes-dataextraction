@@ -27,19 +27,20 @@ def classify_borehole_type(
     Args:
         data (bytes): Raw bytes of the uploaded PDF document.
         filename (str): Name of the uploaded file, used as an identifier.
-        bert_models: Models loaded at startup via the lifespan, keyed by classification system name.
+        bert_models (dict[str, BertModel]): Models loaded at startup via the lifespan, keyed by classification
+            system name.
 
     Returns:
         ClassifyBoreholeTypeResponse: One predicted borehole type per borehole detected in the document.
     """
     bert_model = bert_models["borehole_type"]
 
-    borehole_texts = extract_borehole_texts(BytesIO(data), filename, header_only=True)
+    borehole_texts = extract_borehole_texts(BytesIO(data), filename)
 
     predictions = [
         BoreholeTypePrediction(
             borehole_index=borehole_text.borehole_index,
-            class_name=bert_model.predict_class(borehole_text.text)[0].name,
+            class_name=bert_model.predict_class(borehole_text.text)[0],
         )
         for borehole_text in borehole_texts
     ]

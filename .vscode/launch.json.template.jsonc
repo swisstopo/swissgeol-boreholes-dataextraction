@@ -109,6 +109,36 @@
         "justMyCode": true,
         "python": "${workspaceFolder}/.venv/bin/python3"
         },
+
+        {
+        "name": "Python: Run boreholes-classify (borehole_type, test-set eval)",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "src.classification.main",
+        "args": [
+            // -f/-dt are repeatable: pass every dataset directly.
+            // Each dataset's held-out test split is picked automatically (split_samples, same
+            // deterministic filename hash used in training), so files the model trained on are excluded.
+            "-f", "data/zurich_ground_truth_new2.json",
+            "-f", "data/thurgau_ground_truth_new.json",
+            "-f", "data/geoquat_ground_truth_new.json",
+            "-f", "data/deepwells_ground_truth_new.json",
+            // zurich/deepwells: -dt points at the PDF folder directly, extracted live (same pipeline as
+            // the API/raw-PDF inference) -- their *_filtered_text.json caches predate a key-format
+            // change and no longer match by filename.
+            "-dt", "data/zurich",
+            "-dt", "data/deepwells",
+            "-dt", "data/thurgau_filtered_text.json",
+            "-dt", "data/geoquat_train_filtered_text.json",
+
+            "-c", "bert",
+            "-p", "swissgeol/borehole_type",
+            "-cs", "borehole_type"
+        ],
+        "cwd": "${workspaceFolder}",
+        "justMyCode": true,
+        "python": "${workspaceFolder}/.venv/bin/python3"
+        },
         {
             "name": "API",
             "type": "debugpy",

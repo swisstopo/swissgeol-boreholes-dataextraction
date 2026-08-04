@@ -365,48 +365,6 @@ class ClassificationSystem(ABC):
         return list(dict.fromkeys(labels_str)) if labels_str else None
 
     @classmethod
-    def process(
-        cls,
-        ground_truth: dict[str, list[GroundTruthBoreholeWithLanguage]],
-        allow_none: bool = False,
-        document_text: dict[str, str] | None = None,
-    ) -> list[LayerInformation]:
-        """Extract labelled layers (or documents) from a ground truth mapping as a list of LayerInformation.
-
-        Args:
-            ground_truth (dict[str, list[GroundTruthBoreholeWithLanguage]]): Mapping from filename to a
-                list of language-annotated borehole records.
-            allow_none (bool): When True, layers/documents without a ground truth label are included
-                (with ``ground_truth_class=None``). When False (default), unlabelled entries are skipped.
-            document_text (dict[str, str] | None): For document-level systems (`is_document_level()`),
-                a mapping from filename to the text to use as input. Ignored for layer-level systems.
-
-        Returns:
-            list[LayerInformation]: One entry per layer (layer-level systems) or per file
-                (document-level systems).
-        """
-        if cls.is_document_level():
-            return cls._process_documents(ground_truth, document_text or {}, allow_none)
-
-        return [
-            LayerInformation(
-                filename=filename,
-                borehole_index=borehole_index,
-                layer_index=layer_index,
-                language=borehole.language,
-                material_description=layer.material_description,
-                class_system=cls,
-                ground_truth_class=cls.reduce_label(layer, borehole),
-                prediction_class=None,
-                llm_reasoning=None,
-            )
-            for filename, boreholes in ground_truth.items()
-            for borehole_index, borehole in enumerate(boreholes)
-            for layer_index, layer in enumerate(borehole.layers)
-            if (cls.reduce_label(layer, borehole) is not None or allow_none) and layer.material_description is not None
-        ]
-
-    @classmethod
     def _process_documents(
         cls,
         ground_truth: dict[str, list[GroundTruthBoreholeWithLanguage]],
@@ -461,6 +419,48 @@ class ClassificationSystem(ABC):
                 )
             )
         return entries
+
+    @classmethod
+    def process(
+        cls,
+        ground_truth: dict[str, list[GroundTruthBoreholeWithLanguage]],
+        allow_none: bool = False,
+        document_text: dict[str, str] | None = None,
+    ) -> list[LayerInformation]:
+        """Extract labelled layers (or documents) from a ground truth mapping as a list of LayerInformation.
+
+        Args:
+            ground_truth (dict[str, list[GroundTruthBoreholeWithLanguage]]): Mapping from filename to a
+                list of language-annotated borehole records.
+            allow_none (bool): When True, layers/documents without a ground truth label are included
+                (with ``ground_truth_class=None``). When False (default), unlabelled entries are skipped.
+            document_text (dict[str, str] | None): For document-level systems (`is_document_level()`),
+                a mapping from filename to the text to use as input. Ignored for layer-level systems.
+
+        Returns:
+            list[LayerInformation]: One entry per layer (layer-level systems) or per file
+                (document-level systems).
+        """
+        if cls.is_document_level():
+            return cls._process_documents(ground_truth, document_text or {}, allow_none)
+
+        return [
+            LayerInformation(
+                filename=filename,
+                borehole_index=borehole_index,
+                layer_index=layer_index,
+                language=borehole.language,
+                material_description=layer.material_description,
+                class_system=cls,
+                ground_truth_class=cls.reduce_label(layer, borehole),
+                prediction_class=None,
+                llm_reasoning=None,
+            )
+            for filename, boreholes in ground_truth.items()
+            for borehole_index, borehole in enumerate(boreholes)
+            for layer_index, layer in enumerate(borehole.layers)
+            if (cls.reduce_label(layer, borehole) is not None or allow_none) and layer.material_description is not None
+        ]
 
     @classmethod
     @abstractmethod

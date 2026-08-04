@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, WithJsonSche
 
 from classification.utils.datasets.accessory_components import AccessoryComponentsSystem
 from classification.utils.datasets.alteration_degree import AlterationDegreeConsolidatedSystem
+from classification.utils.datasets.borehole_type import BoreholeTypeSystem
 from classification.utils.datasets.cementation import CementationSystem
 from classification.utils.datasets.color import ColorSystem
 from classification.utils.datasets.debris import DebrisSystem
@@ -942,7 +943,7 @@ class BoreholeTypePrediction(BaseModel):
         ...,
         description="Index of the borehole within the document (0-based).",
     )
-    class_name: str = Field(
+    class_name: enum_as_name(BoreholeTypeSystem.BoreholeTypeClasses) = Field(
         ...,
         description="Predicted borehole type for this borehole.",
     )

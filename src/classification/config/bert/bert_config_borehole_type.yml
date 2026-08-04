@@ -36,7 +36,7 @@ test_sets:
       - thurgau_filtered_text.json
       - geoquat_train_filtered_text.json
       - deepwells_filtered_text.json
-  zurich_borehole_types:
+  zurich_borehole_type:
     classification_system: borehole_type
     ground_truths:
       - zurich_ground_truth_new2.json
