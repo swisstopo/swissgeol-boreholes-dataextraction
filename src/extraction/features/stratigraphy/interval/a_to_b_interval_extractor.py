@@ -38,13 +38,13 @@ class AToBIntervalExtractor:
         for index, word in enumerate(text_line.words):
             char_index_to_word_index.extend([index] * (len(word.text) + 1))  # +1 to include the space between words
 
-        number_capturing = r"([0-9]+(?:[\.,][0-9]+)?)"
+        number_capturing = r"[0-9]+(?:[\.,][0-9]+)?"
         unit = r"(?:[müMN\s]*(?![A-Za-z]))?"
 
         query = (
-            rf"(-?{number_capturing}{unit}"
+            rf"(?P<interval>-?(?P<start>{number_capturing}){unit}"
             r"[\s-]+"
-            rf"{number_capturing}{unit}"
+            rf"(?P<end>{number_capturing}){unit}"
             r"[\s\\.:;]*)"
         )
 
@@ -52,52 +52,52 @@ class AToBIntervalExtractor:
             query = r".*?" + query
         regex = re.compile(query)
 
-        def rect_from_group_index(depths_match: re.Match, index: int):
+        def rect_from_group_index(depths_match: re.Match, group_name: str):
             """Give the rect that covers all the words that intersect with the given regex group."""
             rect = pymupdf.Rect()
-            start_word_index = char_index_to_word_index[depths_match.start(index)]
+            start_word_index = char_index_to_word_index[depths_match.start(group_name)]
             # `match.end(index) - 1`, because match.end gives the index of the first character that is *not* matched,
             # whereas we want the last character that *is* matched.
-            end_word_index = char_index_to_word_index[depths_match.end(index) - 1]
+            end_word_index = char_index_to_word_index[depths_match.end(group_name) - 1]
             # `end_word_index + 1` because the end of the range is exclusive by default, whereas we also want to
             # include the word with this index
             for word_index in range(start_word_index, end_word_index + 1):
                 rect.include_rect(text_line.words[word_index].rect)
             return rect
 
-        def remaining_line() -> TextLine:
-            if char_index_to_word_index[depths_match.start(1)] != 0:  # group 1 is the whole depth matching
+        def remaining_line(depths_match: re.Match) -> TextLine:
+            if char_index_to_word_index[depths_match.start("interval")] != 0:
                 return text_line  # the depths found do not start the line
-            return TextLine(text_line.words[char_index_to_word_index[depths_match.end(1) - 1] + 1 :])
+            return TextLine(text_line.words[char_index_to_word_index[depths_match.end("interval") - 1] + 1 :])
 
         if depths_match := regex.match(input_string):
             return (
                 AToBInterval(
                     DepthColumnEntry.from_string_value(
-                        rect_from_group_index(depths_match, 2), depths_match.group(2), page_number
+                        rect_from_group_index(depths_match, "start"), depths_match.group("start"), page_number
                     ),
                     DepthColumnEntry.from_string_value(
-                        rect_from_group_index(depths_match, 3), depths_match.group(3), page_number
+                        rect_from_group_index(depths_match, "end"), depths_match.group("end"), page_number
                     ),
-                    rect_from_group_index(depths_match, 0),
+                    rect_from_group_index(depths_match, "interval"),
                 ),
-                remaining_line(),
+                remaining_line(depths_match),
             )
 
         open_ended_words = matching_params["open_ended_depth_key"]
         words_pattern = "|".join([re.escape(w) for w in open_ended_words])
 
-        fallback_query = rf"((?:{words_pattern})\s*([0-9]+(?:[\.,][0-9]+)?)\s*[müMN]*)"
+        fallback_query = rf"(?P<interval>(?:{words_pattern})\s*(?P<start>[0-9]+(?:[\.,][0-9]+)?)\s*[müMN]*)"
         if not require_start_of_string:
             fallback_query = r".*?" + fallback_query
         fallback_regex = re.compile(fallback_query, re.IGNORECASE)
         if depths_match := fallback_regex.search(input_string):
             return AToBInterval(
                 DepthColumnEntry.from_string_value(
-                    rect_from_group_index(depths_match, 2), depths_match.group(2), page_number
+                    rect_from_group_index(depths_match, "start"), depths_match.group("start"), page_number
                 ),
                 None,
-                rect_from_group_index(depths_match, 0),
-            ), remaining_line()
+                rect_from_group_index(depths_match, "interval"),
+            ), remaining_line(depths_match)
 
         return None, text_line
