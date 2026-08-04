@@ -232,6 +232,20 @@ class BoreholeExtractor:
             list[IntervalBlockPair]: The interval block pairs.
         """
         description_lines = get_description_lines(self.lines, material_description_rect)
+
+        if sidebar is not None:
+            # remove description words that are already part of the sidebar
+            clean_description_lines = []
+            for text_line in description_lines:
+                clean_words = [
+                    word
+                    for word in text_line.words
+                    if not any(entry.rect.contains(word.rect) for entry in sidebar.entries)
+                ]
+                if len(clean_words) > 0:
+                    clean_description_lines.append(TextLine(words=clean_words))
+            description_lines = clean_description_lines
+
         diagonals = self.get_diagonals_near_textlines(description_lines, self.line_detection_params)
 
         line_affinities = get_line_affinity(
@@ -299,8 +313,6 @@ class BoreholeExtractor:
         for line in self.lines:
             line_rtree.insert((line.rect.x0, line.rect.y0, line.rect.x1, line.rect.y1), obj=line)
 
-        words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
-
         # create sidebars with noise count
         spulprobe_sidebars = SpulprobeSidebarExtractor.find_in_lines(self.lines, self.table_structures)
         sidebars_noise: list[SidebarNoise] = [
@@ -309,7 +321,7 @@ class BoreholeExtractor:
         ]
         used_entry_rects = {entry.rect for sidebar in spulprobe_sidebars for entry in sidebar.entries}
 
-        a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words, self.table_structures)
+        a_to_b_sidebars = AToBSidebarExtractor.find_in_lines(self.lines, self.table_structures)
         sidebars_noise.extend(
             [
                 SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
@@ -320,6 +332,7 @@ class BoreholeExtractor:
             for entry in column.entries:
                 used_entry_rects.add(entry.rect)
 
+        words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
         a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_words(
             words,
             line_rtree,
