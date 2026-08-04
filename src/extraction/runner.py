@@ -174,7 +174,7 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
         self,
         run_result: PipelineRunResult[OverallFilePredictions],
         summary: ExtractionBenchmarkSummary | None,
-        predictions_path_tmp: Path,
+        _predictions_path_tmp: Path,
     ) -> None:
         if mlflow and summary is not None:
             log_metric_mlflow(summary, out_dir=self.out_directory)
