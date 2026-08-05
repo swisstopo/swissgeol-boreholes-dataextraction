@@ -27,7 +27,8 @@ class DepthColumnEntryExtractor:
 
         for word in sorted(all_words, key=lambda word: word.rect.y0):
             try:
-                input_string = word.text.strip().replace(",", ".")
+                # deal with common OCR mistakes
+                input_string = word.text.strip().replace(",", ".").replace("o", "0").replace("l", "1")
                 # numbers such as '.40' are not supported. The reason is that sometimes the OCR
                 # recognizes a '-' as a '.' and we just ommit the leading '.' to avoid this issue.
                 match = regex.match(input_string)
