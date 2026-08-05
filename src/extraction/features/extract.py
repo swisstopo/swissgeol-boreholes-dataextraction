@@ -205,7 +205,7 @@ class BoreholeExtractor:
                     if not any(entry.rect.contains(word.rect) for entry in sidebar.entries)
                 ]
                 if len(clean_words) > 0:
-                    clean_description_lines.append(TextLine(words=clean_words))
+                    clean_description_lines.append(TextLine(words=clean_words, text_angle=text_line.text_angle))
             description_lines = clean_description_lines
 
         diagonals = self.get_diagonals_near_textlines(description_lines, self.line_detection_params)

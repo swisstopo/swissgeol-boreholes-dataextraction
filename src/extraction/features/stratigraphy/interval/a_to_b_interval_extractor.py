@@ -68,7 +68,9 @@ class AToBIntervalExtractor:
         def remaining_line(depths_match: re.Match) -> TextLine:
             if char_index_to_word_index[depths_match.start("interval")] != 0:
                 return text_line  # the depths found do not start the line
-            return TextLine(text_line.words[char_index_to_word_index[depths_match.end("interval") - 1] + 1 :])
+            return TextLine(
+                text_line.words[char_index_to_word_index[depths_match.end("interval") - 1] + 1 :], text_line.text_angle
+            )
 
         if depths_match := regex.match(input_string):
             return (
