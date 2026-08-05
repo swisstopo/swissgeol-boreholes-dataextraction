@@ -1,5 +1,6 @@
 """Methods for extracting plain text from a PDF document."""
 
+import math
 import re
 
 import pymupdf
@@ -36,18 +37,29 @@ def extract_text_lines_from_bbox(page: pymupdf.Page, bbox: pymupdf.Rect | None) 
     Returns:
         list[TextLine]: A list of text lines.
     """
-    words = []
-    words_by_line = {}
-    for x0, y0, x1, y1, word, block_no, line_no, _word_no in page.get_text("words", clip=bbox):
-        rect = pymupdf.Rect(x0, y0, x1, y1) * page.rotation_matrix
-        text_word = TextWord(rect, word, page.number + 1)
-        words.append(text_word)
-        key = f"{block_no}_{line_no}"
-        if key not in words_by_line:
-            words_by_line[key] = []
-        words_by_line[key].append(text_word)
+    raw_lines = []
+    for block in page.get_text("rawdict", clip=bbox)["blocks"]:
+        if "lines" in block:
+            for line in block["lines"]:
+                x, y = line["dir"]
+                text_angle = math.degrees(math.atan2(y, x))
 
-    raw_lines = [TextLine(words_by_line[key]) for key in words_by_line]
+                words = []
+                for span in line["spans"]:
+                    word_rect = pymupdf.Rect()
+                    word_text = ""
+                    for char in span["chars"]:
+                        if char["c"] == " " and len(word_text) > 0:
+                            words.append(TextWord(word_rect, word_text, page.number + 1))
+                            word_text = ""
+                            word_rect = pymupdf.Rect()
+                        if char["c"] != " ":
+                            word_text += char["c"]
+                            word_rect.include_rect(pymupdf.Rect(char["bbox"]) * page.rotation_matrix)
+                    if len(word_text) > 0:
+                        words.append(TextWord(word_rect, word_text, page.number + 1))
+
+                raw_lines.append(TextLine(words, text_angle))
 
     lines = []
     current_line_words = []
@@ -57,11 +69,11 @@ def extract_text_lines_from_bbox(page: pymupdf.Page, bbox: pymupdf.Rect | None) 
             # Check if the remaining words of the line should be treated as a separate text line, even if they are
             # only a tailing segment of the "raw line" as it was extracted from the PDF.
             if len(current_line_words) > 0 and remaining_line.is_line_start(lines, raw_lines[line_index + 1 :]):
-                lines.append(TextLine(current_line_words))
+                lines.append(TextLine(current_line_words, raw_line.text_angle))
                 current_line_words = []
             current_line_words.append(word)
         if current_line_words:
-            lines.append(TextLine(current_line_words))
+            lines.append(TextLine(current_line_words, raw_line.text_angle))
             current_line_words = []
 
     return lines
