@@ -280,6 +280,12 @@ def test_get_single_decimal_coordinates():
     assert coordinates[0].feature.east.coordinate_value == 2600000.6
     assert coordinates[0].feature.north.coordinate_value == 1200000.5
 
+    # From ZH 680270004-bp.pdf
+    lines = _create_simple_lines(["680' '100/270'120"])
+    coordinates = extractor_de.get_coordinates_from_lines(lines, page=1)
+    assert coordinates[0].feature.east.coordinate_value == 680100
+    assert coordinates[0].feature.north.coordinate_value == 270120
+
 
 def test_get_double_decimal_coordinates():
     """Test the extraction of decimal coordinates from a list of text lines."""

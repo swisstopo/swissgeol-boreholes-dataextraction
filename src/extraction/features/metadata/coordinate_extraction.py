@@ -18,7 +18,7 @@ from swissgeol_doc_processing.utils.data_extractor import (
 
 logger = logging.getLogger(__name__)
 
-COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})(?:\.(\d{1,}))?"
+COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,3})?(\d{3})[\.\s'‘’]{0,3}(\d{3})(?:\.(\d{1,}))?"
 
 
 @dataclass(kw_only=True)
@@ -202,16 +202,16 @@ class CoordinateExtractor(DataExtractor):
         'X:123.456, Y:123.456', 'X 123 456 Y 123 456', whereby the X and Y are optional.
 
         The full regular expressions query is:
-        "[XY]?[=:\s]{0,2}(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})\.?\d?.{0,4}?[XY]?[=:\s]{0,2}(?:([12])[\.\s'‘’]{0,2})?(\d{3})[\.\s'‘’]{0,2}(\d{3})\.?\d?"
+        "[XY]?[=:\s]{0,2}(?:([12])[\.\s'‘’]{0,3})?(\d{3})[\.\s'‘’]{0,3}(\d{3})\.?\d?.{0,4}?[XY]?[=:\s]{0,2}(?:([12])[\.\s'‘’]{0,3})?(\d{3})[\.\s'‘’]{0,3}(\d{3})\.?\d?"
         Query explanation:
             - [XY]?: This matches an optional 'X' or 'Y'. The ? makes the preceding character optional.
             - [=:\s]{0,2}: This matches zero to two occurrences of either an equals sign, a colon, or a whitespace
               character.
-            - (?:([12])[\.\s'‘’]{0,2})?: This is a non-capturing group (indicated by ?:), which means it groups the
+            - (?:([12])[\.\s'‘’]{0,3})?: This is a non-capturing group (indicated by ?:), which means it groups the
               enclosed characters but does not create a backreference. It matches an optional '1' or '2' (which is
-              captured in a group) followed by zero to two occurrences of a period, space, or single quote.
+              captured in a group) followed by zero to three occurrences of a period, space, or single quote.
             - \d{3}: This matches exactly three digits.
-            - [\.\s'‘’]{0,2}: This matches zero to two occurrences of a period, space, or single quote.
+            - [\.\s'‘’]{0,3}: This matches zero to three occurrences of a period, space, or single quote.
             - \d{3}: This again matches exactly three digits.
             - \.?\d?: This matches an optional period followed by an optional digit.
             - .{0,4}?: This matches up to four occurrences of any characters, except newline.
