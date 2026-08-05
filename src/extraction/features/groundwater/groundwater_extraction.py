@@ -378,6 +378,52 @@ class GroundwaterLevelExtractor(DataExtractor):
             page=page_number,
         )
 
+    def merge_weak_candidates(
+        self, found_groundwaters: list[FeatureOnPage[Groundwater]]
+    ) -> list[FeatureOnPage[Groundwater]]:
+        """Merges single-field candidates into a compatible richer candidate.
+
+        Some documents split one groundwater reading across two separate mentions (e.g. a diagram
+        annotation gives only the elevation, while a caption elsewhere gives only the depth and date).
+        A candidate with a single field is not a usable reading on its own, so if there is exactly one
+        richer, non-conflicting candidate to fold it into, merge them instead of reporting both as
+        separate (incomplete, and therefore wrong) entries. If more than one candidate could take it,
+        which one it belongs to is ambiguous, so it is left as is rather than risk a wrong pairing.
+
+        Args:
+            found_groundwaters (list[FeatureOnPage[Groundwater]]): The list of found groundwater features.
+
+        Returns:
+            list[FeatureOnPage[Groundwater]]: The list of groundwater features, with weak candidates merged.
+        """
+
+        def num_fields(gw: FeatureOnPage[Groundwater]) -> int:
+            return sum(v is not None for v in (gw.feature.depth, gw.feature.date, gw.feature.elevation))
+
+        def conflicts(a: FeatureOnPage[Groundwater], b: FeatureOnPage[Groundwater]) -> bool:
+            return any(
+                getattr(a.feature, field) is not None
+                and getattr(b.feature, field) is not None
+                and getattr(a.feature, field) != getattr(b.feature, field)
+                for field in ("depth", "date", "elevation")
+            )
+
+        weak = [gw for gw in found_groundwaters if num_fields(gw) == 1]
+        result = [gw for gw in found_groundwaters if num_fields(gw) > 1]
+
+        for w in weak:
+            candidates = [gw for gw in result if not conflicts(w, gw)]
+            if len(candidates) == 1:
+                target = candidates[0]
+                for field in ("depth", "date", "elevation"):
+                    if getattr(target.feature, field) is None:
+                        setattr(target.feature, field, getattr(w.feature, field))
+                target.rect_with_page.rect |= w.rect
+            else:
+                result.append(w)
+
+        return result
+
     def remove_overlaps(
         self, found_groundwaters: list[FeatureOnPage[Groundwater]]
     ) -> list[FeatureOnPage[Groundwater]]:
@@ -440,6 +486,7 @@ class GroundwaterLevelExtractor(DataExtractor):
             if found_groundwater:
                 found_groundwaters.append(found_groundwater)
 
+        found_groundwaters = self.merge_weak_candidates(found_groundwaters)
         unique_groundwaters = self.remove_overlaps(found_groundwaters)
 
         if unique_groundwaters:
