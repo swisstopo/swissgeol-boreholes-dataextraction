@@ -7,6 +7,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TypeVar
 
 from tqdm import tqdm
 
@@ -21,6 +22,7 @@ from extraction.evaluation.benchmark.score import (
     evaluate_prediction,
 )
 from extraction.evaluation.benchmark.spec import BenchmarkSpec
+from extraction.features.predictions.borehole_predictions import BoreholePredictions
 from extraction.features.predictions.overall_file_predictions import OverallFilePredictions
 from extraction.utils.benchmark_utils import log_metric_mlflow
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics, create_analytics
@@ -181,13 +183,57 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
         with open(self.metadata_path, "w", encoding="utf8") as file:
             json.dump(run_result.result.get_metadata_as_dict(), file, ensure_ascii=False, indent=2)
 
+        self._log_per_borehole_predictions(
+            run_result,
+            "predictions_name.json",
+            lambda borehole: borehole.metadata.name,
+            lambda name: {"name": name.feature.name, "is_correct": name.feature.is_correct},
+        )
+
+        self._log_per_borehole_predictions(
+            run_result,
+            "predictions_elevation.json",
+            lambda borehole: borehole.metadata.elevation,
+            lambda elevation: {"elevation": elevation.feature.elevation, "is_correct": elevation.feature.is_correct},
+        )
+
+        self._log_per_borehole_predictions(
+            run_result,
+            "predictions_coordinates.json",
+            lambda borehole: borehole.metadata.coordinates,
+            lambda coordinates: {
+                "E": coordinates.feature.east.coordinate_value,
+                "N": coordinates.feature.north.coordinate_value,
+                "is_correct": coordinates.feature.is_correct,
+            },
+        )
+
         if self.options.matching_analytics and self.analytics is not None:
             analytics_output_path = self.out_directory / "matching_params_analytics.json"
             self.analytics.save_analytics(analytics_output_path)
             logger.info(f"Matching parameters analytics saved to {analytics_output_path}")
 
-        if self.options.part == "all":
-            logger.info(f"Writing predictions to final JSON file {self.predictions_path}")
+    T = TypeVar("T")
+
+    def _log_per_borehole_predictions(
+        self,
+        run_result: PipelineRunResult[OverallFilePredictions],
+        filename: str,
+        get_feature: Callable[[BoreholePredictions], T | None],
+        get_data: Callable[[T], dict],
+    ) -> None:
+        data = {}
+        for predictions in sorted(run_result.result.file_predictions_list, key=lambda x: x.filename):
+            data[predictions.filename] = []
+            for borehole in predictions.boreholes:
+                if feature := get_feature(borehole):
+                    data[predictions.filename].append(get_data(feature))
+
+        filepath = self.out_directory / filename
+        with open(filepath, "w", encoding="utf8") as file:
+            json.dump(data, file, ensure_ascii=False, indent=2)
+        if mlflow:
+            mlflow.log_artifact(filepath)
 
 
 @dataclass(kw_only=True)

@@ -182,8 +182,9 @@ This will create a `config/` directory at the root of your project containing al
 
 ### 3. Check the results
 
-The script produces output in two different formats:
+The script produces output in different formats:
 - A file `data/output/predictions.json` that contains all extracted data in a machine-readable format. The structure of this file is documented in [README.predictions-json.md](docs/README.predictions-json.md).
+- More concise output files `data/output/predictions_coordinates.json`, `data/output/predictions_elevation.json` and `data/output/predictions_name.json` with the extracted values (optionally evaluated against ground truth values) for individual borehole metadata properties (coordinates, elevation and borehole name respectively).
 - A PNG image of each processed PDF page in the `data/output/draw` directory, where the extracted data is highlighted.
 
 ## Run Layer Description Classification
