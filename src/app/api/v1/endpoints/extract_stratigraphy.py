@@ -110,6 +110,7 @@ def extract_stratigraphy(filename: str, include_groundwater: bool = False) -> Ex
         # Extract groundwater if requested (uses the extracted boreholes as context)
         if include_groundwater and groundwater_extractor and groundwater_in_doc:
             groundwater_entries = groundwater_extractor.extract_groundwater(
+                page=page,
                 page_number=page_number,
                 text_lines=text_lines,
                 geometric_lines=long_or_horizontal_lines,

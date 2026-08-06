@@ -158,6 +158,7 @@ def extract(
             # Extract the groundwater levels
             groundwater_extractor = GroundwaterLevelExtractor(file_metadata.language, matching_params)
             groundwater_entries = groundwater_extractor.extract_groundwater(
+                page=page,
                 page_number=page_number,
                 text_lines=text_lines,
                 geometric_lines=long_or_horizontal_lines,

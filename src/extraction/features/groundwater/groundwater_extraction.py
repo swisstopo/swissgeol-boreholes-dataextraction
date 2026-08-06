@@ -8,6 +8,7 @@ import numpy as np
 import pymupdf
 from scipy.stats import pearsonr
 
+from extraction.features.groundwater.groundwater_color_detection import get_minority_color_lines
 from extraction.features.groundwater.groundwater_symbol_detection import (
     get_groundwater_symbol_upper_lines,
     get_text_lines_near_symbol,
@@ -293,7 +294,7 @@ class GroundwaterLevelExtractor(DataExtractor):
     search_left_factor: float = 2
     search_right_factor: float = 8
     search_below_factor: float = 2
-    search_above_factor: float = 0
+    search_above_factor: float = 2
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ü": "u"}
 
@@ -453,6 +454,7 @@ class GroundwaterLevelExtractor(DataExtractor):
 
     def extract_groundwater(
         self,
+        page: pymupdf.Page,
         page_number: int,
         text_lines: list[TextLine],
         geometric_lines: list[Line],
@@ -461,6 +463,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         """Extracts the groundwater information from a borehole profile.
 
         Args:
+            page (pymupdf.Page): The page to extract the groundwater information from.
             page_number (int): The page number (1-indexed) of the PDF document.
             text_lines (list[TextLine]): The lines of text to extract the groundwater information from.
             geometric_lines (list[Line]): The geometric lines on the page.
@@ -476,6 +479,9 @@ class GroundwaterLevelExtractor(DataExtractor):
         # extract visual clues, like groundwater symbols
         for upper_symbol_geom_line in get_groundwater_symbol_upper_lines(text_lines, geometric_lines):
             areas_of_interest.append(get_text_lines_near_symbol(text_lines, upper_symbol_geom_line))
+        # extract color clues: some documents highlight the reading in a distinct color
+        for highlighted_line in get_minority_color_lines(page, text_lines):
+            areas_of_interest.append(self.get_text_lines_near_key(highlighted_line, text_lines))
 
         seen_depths = [lay.depths for bh in extracted_boreholes for lay in bh.predictions if lay.depths]
         seen_depth_entries = [d for depth in seen_depths for d in (depth.start, depth.end) if d and d.rect]
