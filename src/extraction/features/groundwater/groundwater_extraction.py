@@ -211,7 +211,7 @@ class GroundwatersInBorehole:
         """Extract a GroundwatersInBorehole object from a json dictionary.
 
         Args:
-            json_object (list[dict]): the json object containing the informations of the borehole
+            json_object (list[dict]): the json object containing the information of the borehole
 
         Returns:
             GroundwatersInBorehole: the GroundwatersInBorehole object
@@ -232,7 +232,7 @@ class GroundwatersInBorehole:
     def remove_duplicates(self):
         """Removes groundwater entries that have the same date and not a different depth.
 
-        Those entry likelly are the same information, showns twice on the page. This step can't be done during the
+        Those entry likely are the same information, shown twice on the page. This step can't be done during the
         extraction process, as entries with the same date could belong to different boreholes at that point.
         """
         unique_groundwaters: list[FeatureOnPage[Groundwater]] = []
@@ -286,7 +286,7 @@ class GroundwaterInDocument:
 
 
 class GroundwaterLevelExtractor(DataExtractor):
-    """Extract groundwater informations from a PDF document."""
+    """Extract groundwater information from a PDF document."""
 
     feature_name = "groundwater"
 
@@ -308,7 +308,7 @@ class GroundwaterLevelExtractor(DataExtractor):
             lines (list[TextLine]): all the lines of text to search in
 
         Returns:
-            list[TextLine]: all found lists of textlines that appeared arround a key
+            list[TextLine]: all found lists of textlines that appeared around a key
         """
         key_rect = groundwater_key_line.rect
         groundwater_info_lines = self.get_lines_near_key(lines, groundwater_key_line)
@@ -372,7 +372,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         for rect in matched_lines_rect[1:]:
             rect_union |= rect
 
-        # return anyway, we can infer informations later
+        # return anyway, we can infer information later
         return FeatureOnPage(
             feature=Groundwater(depth=depth, date=date, elevation=elevation),
             rect=rect_union,
