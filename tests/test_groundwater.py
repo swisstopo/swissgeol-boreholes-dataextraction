@@ -10,7 +10,7 @@ from extraction.evaluation.groundwater_evaluator import (
     GroundwaterEvaluator,
 )
 from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
-from extraction.features.groundwater.utility import extract_date
+from extraction.features.groundwater.utility import extract_date, extract_elevation
 from extraction.features.predictions.borehole_predictions import (
     BoreholeGroundwaterWithGroundTruth,
     FileGroundwaterWithGroundTruth,
@@ -81,6 +81,13 @@ def test_extract_date(date_test_cases):
     """Test extract_date function with various inputs."""
     for text, expected_date, expected_str in date_test_cases:
         assert extract_date(text) == (expected_date, expected_str)
+
+
+def test_extract_elevation_ignores_millimeter_diameters():
+    """A "600 mm" drilling diameter must not be read as a 600m elevation."""
+    assert extract_elevation("Greiferbohrung 0 600 mm") is None
+    assert extract_elevation("448.07 m") == 448.07
+    assert extract_elevation("430.75 m u.M.") == 430.75
 
 
 def test_evaluate_with_ground_truth(groundtruth, groundwater_at_2m22, groundwater_at_3m22):
