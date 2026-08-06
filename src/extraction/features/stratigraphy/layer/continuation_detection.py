@@ -258,9 +258,12 @@ def _is_continuation(
 
     ok_layers = [lay for lay in borehole_continuation.predictions if lay.depths is not None]
     depths = [d.value for lay in ok_layers for d in (lay.depths.start, lay.depths.end) if d is not None]
+    if not depths or not prev_depths:
+        # no depth values to compare on either side: without evidence, don't assume continuation
+        return False
     # use quantile to allow some slack (e.g. few undetected duplicated layers)
     # if depth values decrease, it must be a new borehole
-    return not (depths and prev_depths and depths[0] < np.quantile(prev_depths, 1 - DEPTHS_QUANTILE_SLACK))
+    return depths[0] >= np.quantile(prev_depths, 1 - DEPTHS_QUANTILE_SLACK)
 
 
 def _merge_boreholes(
