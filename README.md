@@ -230,7 +230,8 @@ boreholes-classify-descriptions \
 
 **Key options:**
 
-- Use the `-f` or `--file-path` flag to specify the input JSON file (ground truth or predictions from extraction). When a ground truth JSON is provided, only the **test set** defined within it is classified. This ensures evaluation results are consistent with the train/test split used during BERT training.
+- Use the `-f` or `--file-path` flag to specify the input JSON file (ground truth or predictions from extraction). When a ground truth JSON is provided, only the **test set** defined within it is classified. This ensures evaluation results are consistent with the train/test split used during BERT training. For document-level systems (e.g. `borehole_type`), `-f` can instead point at a PDF file or a directory of PDFs.
+- For document-level systems when `-f` is ground truth JSON rather than PDFs, use `-dt` or `--document-texts` to supply the filename → text mapping: either a precomputed `*_filtered_text.json` (see `scripts.extract_full_text_csv`) or a PDF file/directory, extracted live. Repeatable and mixable, like `-f`. Ignored for layer-level systems.
 - Use the `-c` or `--classifier-type` option to choose the classifier: `dummy`, `baseline`, `bert`, or `bedrock`.
 - If you are using the classifier `bert`, specify the model path using `-p` or `--model-path`:
   - **Full model:** pass either a HuggingFace model ID (downloaded automatically at runtime) or a local directory path (contains `config.json`, `model.safetensors`, tokenizer files, etc.):
@@ -245,7 +246,7 @@ boreholes-classify-descriptions \
     ```
 
 - Use `--classification-system` or `-cs` to specify the classification system. Supported values:
-  `accessory_components`, `alteration_degree_consolidated`, `alteration_degree_unconsolidated`,`cementation`, `color_consolidated`, `color_unconsolidated`, `debris`, `en_main`, `en_secondary`, `grain_angularity`, `grain_shape`, `lithology`, `mineral_components`, `organic_components`, `uscs`.
+  `accessory_components`, `alteration_degree_consolidated`, `alteration_degree_unconsolidated`, `borehole_type`, `cementation`, `color_consolidated`, `color_unconsolidated`, `debris`, `en_main`, `en_secondary`, `grain_angularity`, `grain_shape`, `lithology`, `mineral_components`, `organic_components`, `uscs`.
 - Use `-o` and `-ob` to specify the output directory and bedrock output directory respectively.
 
 The script will classify all given descriptions and write the predictions to the `data/output_description_classification` directory (or `data/output_description_classification_bedrock` for Bedrock outputs).

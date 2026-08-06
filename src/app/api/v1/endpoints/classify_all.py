@@ -19,6 +19,7 @@ _TOKENIZER_PATH = Path("models/backbone")
 _MODEL_PATHS = {
     "accessory_components": Path("models/accessory_components_head"),
     "alteration_degree_consolidated": Path("models/alteration_degree_consolidated_head"),
+    "borehole_type": Path("models/borehole_type"),
     "cementation": Path("models/cementation_head"),
     "color": Path("models/color_head"),
     "debris": Path("models/debris_head"),
