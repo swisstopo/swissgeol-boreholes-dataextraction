@@ -20,6 +20,7 @@ class ExperimentDatasetConfig(BaseModel):
 
     ground_truths: list[str]
     classification_system: str
+    document_texts: list[str] | None = None
 
 
 class ExperimentConfig(BaseModel):
