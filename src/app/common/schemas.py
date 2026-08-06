@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, PlainSerializer, WithJsonSche
 
 from classification.utils.datasets.accessory_components import AccessoryComponentsSystem
 from classification.utils.datasets.alteration_degree import AlterationDegreeConsolidatedSystem
+from classification.utils.datasets.borehole_type import BoreholeTypeSystem
 from classification.utils.datasets.cementation import CementationSystem
 from classification.utils.datasets.color import ColorSystem
 from classification.utils.datasets.debris import DebrisSystem
@@ -925,4 +926,37 @@ class ClassifyResponse(BaseModel):
     uscs: enum_as_name(USCSSystem.USCSClasses) | None = Field(
         default=None,
         description="Predicted USCS class (unconsolidated sediment only).",
+    )
+
+    model_config = ConfigDict(json_schema_extra={"example": {"class_name": "Marlstone"}})
+
+
+########################################################################################################################
+### Classify borehole type schema
+########################################################################################################################
+
+
+class BoreholeTypePrediction(BaseModel):
+    """A single borehole's predicted type."""
+
+    borehole_index: int = Field(
+        ...,
+        description="Index of the borehole within the document (0-based).",
+    )
+    class_name: enum_as_name(BoreholeTypeSystem.BoreholeTypeClasses) = Field(
+        ...,
+        description="Predicted borehole type for this borehole.",
+    )
+
+
+class ClassifyBoreholeTypeResponse(BaseModel):
+    """Response schema for the `classify_borehole_type` endpoint."""
+
+    boreholes: list[BoreholeTypePrediction] = Field(
+        ...,
+        description="One prediction per borehole detected in the document.",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"boreholes": [{"borehole_index": 0, "class_name": "borehole"}]}}
     )

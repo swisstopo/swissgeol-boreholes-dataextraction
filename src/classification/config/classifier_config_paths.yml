@@ -2,6 +2,7 @@ dummy:
   accessory_components: null
   alteration_degree_consolidated: null
   alteration_degree_unconsolidated: null
+  borehole_type: null
   cementation: null
   color_consolidated: null
   color_unconsolidated: null
@@ -18,6 +19,7 @@ baseline:
   accessory_components: null
   alteration_degree_consolidated: null
   alteration_degree_unconsolidated: null
+  borehole_type: null
   cementation: null
   color_consolidated: null
   color_unconsolidated: null
@@ -34,6 +36,7 @@ bert:
   accessory_components: bert/bert_config_accessory_components.yml
   alteration_degree_consolidated: bert/bert_config_alteration_degree_c2a.yml
   alteration_degree_unconsolidated: bert/bert_config_alteration_degree_u2a.yml
+  borehole_type: bert/bert_config_borehole_type.yml
   cementation: bert/bert_config_cementation.yml
   color_consolidated: bert/bert_config_color_c2a.yml
   color_unconsolidated: bert/bert_config_color_u2a.yml
@@ -50,6 +53,7 @@ bedrock:
   accessory_components: bedrock/bedrock_config_accessory_components.yml
   alteration_degree_consolidated: bedrock/bedrock_config_alteration_degree.yml
   alteration_degree_unconsolidated: bedrock/bedrock_config_alteration_degree.yml
+  borehole_type: null
   cementation: bedrock/bedrock_config_cementation.yml
   color_consolidated: bedrock/bedrock_config_color.yml
   color_unconsolidated: bedrock/bedrock_config_color.yml
