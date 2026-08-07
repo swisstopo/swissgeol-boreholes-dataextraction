@@ -124,44 +124,6 @@ class BoreholeExtractor:
 
         return [candidate.borehole for candidate in valid_candidates]
 
-    def _contained_in_table_index(
-        self,
-        sidebar: Sidebar | None,
-        material_description_rect: pymupdf.Rect,
-        table_structures: list[TableStructure],
-        proximity_buffer: float,
-    ) -> int:
-        """Returns the index of the first table structure that contains this pair, or -1 if none is found.
-
-        Args:
-            sidebar: An optional sidebar
-            material_description_rect: The bounding box of the material descriptions
-            table_structures: List of table structures
-            proximity_buffer: Distance threshold for proximity check
-
-        Returns:
-            The index of the first table structure that contains this pair, or -1 if none is found
-        """
-        material_rect = material_description_rect
-        sidebar_rect = sidebar.rect if sidebar else None
-
-        for index, table in enumerate(table_structures):
-            # Check if rectangle is within proximity buffer of table
-            expanded_table_rect = pymupdf.Rect(
-                table.bounding_rect.x0 - proximity_buffer,
-                table.bounding_rect.y0 - proximity_buffer,
-                table.bounding_rect.x1 + proximity_buffer,
-                table.bounding_rect.y1 + proximity_buffer,
-            )
-
-            material_rect_inside = expanded_table_rect.contains(material_rect)
-            sidebar_rect_inside = expanded_table_rect.contains(sidebar_rect) if sidebar_rect else True
-
-            if material_rect_inside and sidebar_rect_inside:
-                return index
-
-        return -1
-
     def _filter_by_intersections(self, candidates: list[BoreholeCandidate]) -> list[BoreholeCandidate]:
         """Remove candidates that intersect with higher-scoring candidates."""
         kept_candidates = []
@@ -376,7 +338,7 @@ class BoreholeExtractor:
         horizontal_text_lines = [
             line
             for line in self.lines
-            if line.rect.width > line.rect.height and not re.fullmatch(r"[\d\s.,\-/]+", line.text.strip())
+            if abs(line.text_angle) < 10 and not re.fullmatch(r"[\d\s.,\-/]+", line.text.strip())
         ]
         candidate_description = [line for line in horizontal_text_lines if check_y0_condition(line.rect.y0)]
 
@@ -468,7 +430,14 @@ class BoreholeExtractor:
 
             continue_search = True
             while continue_search:
-                line = next((line for line in horizontal_text_lines if is_below(best_x0, best_y1, line)), None)
+                line = next(
+                    (
+                        line
+                        for line in horizontal_text_lines
+                        if is_below(best_x0, best_y1, line) and len(line.text) > 1
+                    ),
+                    None,
+                )
                 if line:
                     best_x0 = min(best_x0, line.rect.x0)
                     best_x1 = max(best_x1, line.rect.x1)
@@ -490,6 +459,7 @@ class BoreholeExtractor:
                         desc_line
                         for desc_line in sorted_above
                         if is_above(best_x0, best_y0, desc_line)
+                        and len(desc_line.text) > 1
                         and (
                             sidebar is not None
                             or not any(
