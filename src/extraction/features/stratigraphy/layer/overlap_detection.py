@@ -2,6 +2,8 @@
 
 import logging
 import math
+import re
+import unicodedata
 from dataclasses import dataclass
 
 import Levenshtein
@@ -9,6 +11,8 @@ import Levenshtein
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer
 
 logger = logging.getLogger(__name__)
+
+MAX_BOUNDARY_LAYERS_TO_DROP = 2
 
 
 @dataclass
@@ -56,7 +60,7 @@ def select_boreholes_with_overlap(
 def are_layers_similar(
     layer_prev: Layer,
     layer_curr: Layer,
-    material_threshold: float = 0.95,
+    material_threshold: float = 0.90,
     is_extremity: bool = False,
 ) -> bool:
     """Check if two layers are similar based on material description and optional depth matching.
@@ -69,7 +73,7 @@ def are_layers_similar(
     Args:
         layer_prev (Layer): The layer from the previous page.
         layer_curr (Layer): The layer from the current page.
-        material_threshold (float): Minimum similarity threshold for material descriptions. Defaults to 0.95.
+        material_threshold (float): Minimum similarity threshold for material descriptions. Defaults to 0.90.
         is_extremity (bool, optional): Whether this layer is at the boundary of the overlap. Defaults to False.
 
     Returns:
@@ -118,6 +122,72 @@ def find_split_by_convolution(
 ) -> OverlapResult | None:
     """Find the extent of overlap between consecutive page layers.
 
+    Tries a plain match first. `_find_longest_overlap`'s window always starts its comparison at
+    `layers_curr[0]` (and ends at `layers_prev[-1]`), so a boundary layer that doesn't compare well to
+    its counterpart - e.g. because table/OCR parsing collapsed several real rows into it, or
+    truncated/paraphrased its text - blocks every window from aligning, hiding a genuine overlap in
+    the rest of the page. If the plain match fails, retry with up to `MAX_BOUNDARY_LAYERS_TO_DROP`
+    layers dropped from either end.
+
+    Args:
+        layers_prev (list[Layer]): Layers from the previous page, ordered top to bottom.
+        layers_curr (list[Layer]): Layers from the current page, ordered top to bottom.
+        matching_params (dict): Configuration dict with keys.
+
+    Returns:
+        OverlapResult | None: indices that define the overlapping layers, or None if no overlap.
+    """
+    result = _find_longest_overlap(layers_prev, layers_curr, matching_params)
+    if result is not None:
+        return result
+
+    for drop in range(1, MAX_BOUNDARY_LAYERS_TO_DROP + 1):
+        if len(layers_curr) <= drop:
+            break
+        trimmed_curr = layers_curr[drop:]
+        result = _find_longest_overlap(layers_prev, trimmed_curr, matching_params)
+        if result is not None and _is_trustworthy_retry_match(result, trimmed_curr):
+            return OverlapResult(upper_id=result.upper_id, lower_id=result.lower_id + drop)
+
+    for drop in range(1, MAX_BOUNDARY_LAYERS_TO_DROP + 1):
+        if len(layers_prev) <= drop:
+            break
+        trimmed_prev = layers_prev[:-drop]
+        result = _find_longest_overlap(trimmed_prev, layers_curr, matching_params)
+        if result is not None and _is_trustworthy_retry_match(result, layers_curr):
+            return result
+
+    return None
+
+
+def _is_trustworthy_retry_match(result: OverlapResult, trimmed_curr: list[Layer]) -> bool:
+    """Guard against accepting a boundary-drop retry on a single coincidental text match.
+
+    Dropping boundary layers to force an alignment is inherently speculative - unlike a match found
+    without dropping anything, it discards content to make things fit. A match spanning several
+    layers is trustworthy regardless of depth info (consistent with the plain, undropped search). A
+    match of just one layer needs the extra corroboration of a real, matching depth interval - text
+    similarity alone on a single row is too easy to hit by coincidence (e.g. a short, generic
+    description repeated elsewhere in the document).
+
+    Args:
+        result (OverlapResult): The result from `_find_longest_overlap` on the trimmed layers.
+        trimmed_curr (list[Layer]): The (already boundary-trimmed) current-page layers that were matched.
+
+    Returns:
+        bool: True if the match is trustworthy enough to accept.
+    """
+    if result.lower_id > 1:
+        return True
+    matched_layer = trimmed_curr[0]
+    return bool(matched_layer.depths and matched_layer.depths.start and matched_layer.depths.end)
+
+
+def _find_longest_overlap(
+    layers_prev: list[Layer], layers_curr: list[Layer], matching_params: dict
+) -> OverlapResult | None:
+    """Find the extent of overlap between consecutive page layers.
+
     Determines the maximum number of consecutive layers from the bottom of the previous
     page that match the top layers of the current page.
 
@@ -143,12 +213,19 @@ def find_split_by_convolution(
                 material_threshold=material_threshold,
                 is_extremity=(j == 0 or j == i - 1),  # Indicate to function that one layer might be cut (extremities)
             ):
-                if layer_prev.depths and layer_prev.depths.start and layer_prev.depths.end:
+                if (
+                    layer_prev.depths
+                    and layer_prev.depths.start
+                    and layer_prev.depths.end
+                    and layer_curr.depths
+                    and layer_curr.depths.start
+                    and layer_curr.depths.end
+                ):
                     match_with_depths_count += 1
                 else:
                     match_with_depths_count = 0
             else:
-                if match_with_depths_count >= 2:
+                if match_with_depths_count >= 1:
                     # allow the overlap, even though not all layers match
                     return OverlapResult(upper_id=len(layers_prev) - i + j, lower_id=j)
                 # no valid overlap; break inner loop and go to next value for i
@@ -158,6 +235,25 @@ def find_split_by_convolution(
         # all layers matched
         if match_ok:
             return OverlapResult(upper_id=len(layers_prev), lower_id=i)
+
+
+def _normalize_for_comparison(text: str) -> str:
+    """Fold accents and collapse punctuation/whitespace noise so independent OCR passes compare as equal.
+
+    Two scans of the same physical row commonly disagree only on comma placement, spacing, or an
+    accented character (e.g. "MERGEL, DUNKELGRÜN" vs "MERGEL DUNKELGRUN") - noise that otherwise drops
+    the Levenshtein ratio just below the similarity threshold.
+
+    Args:
+        text (str): The raw material description text.
+
+    Returns:
+        str: Lowercased text with accents folded to their base letter and punctuation/whitespace collapsed.
+    """
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    text = re.sub(r"[^\w\s]", " ", text)
+    return re.sub(r"\s+", " ", text).strip().lower()
 
 
 def _is_duplicate(cur_text: str, prev_text: str, threshold: float, is_extremity: bool) -> bool:
@@ -179,8 +275,8 @@ def _is_duplicate(cur_text: str, prev_text: str, threshold: float, is_extremity:
     Returns:
         bool: True if the layers are considered duplicates, False otherwise.
     """
-    cur_text = cur_text.lower()
-    prev_text = prev_text.lower()
+    cur_text = _normalize_for_comparison(cur_text)
+    prev_text = _normalize_for_comparison(prev_text)
 
     if is_extremity:
         min_length = min(len(cur_text), len(prev_text))
