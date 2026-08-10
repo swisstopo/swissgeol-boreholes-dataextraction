@@ -21,9 +21,6 @@ def _names_conflict(borehole_a: ExtractedBorehole, borehole_b: ExtractedBorehole
     A borehole's own printed name is stronger evidence of identity than the layer text or depth
     heuristics used elsewhere in this module: if both pages name their borehole and the names don't
     match, they must be different boreholes, regardless of what those other heuristics conclude.
-    Names are short identifiers (e.g. "KB12" vs "KB13"), not prose, so unlike the fuzzy material
-    description matching elsewhere in this module, a single differing digit is a real conflict, not
-    noise - comparing for exact equality (after the same normalization) is the correct check here.
 
     Args:
         borehole_a (ExtractedBorehole): One of the two boreholes being considered for a merge.
