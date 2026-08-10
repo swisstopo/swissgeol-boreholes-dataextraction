@@ -103,6 +103,36 @@ class BoreholeExtractor:
         self.analytics = analytics
         self.matching_params = matching_params
 
+        processed_lines = []
+        for text_line in self.lines:
+            text_line_left = (text_line.rect.top_left + text_line.rect.bottom_left) / 2
+            text_line_right = (text_line.rect.top_right + text_line.rect.bottom_right) / 2
+            partition = [text_line.words]
+
+            for structure in table_structures:
+                for line in structure.vertical_lines:
+                    if line.intersects_with(Line(text_line_left, text_line_right)):
+                        new_partition = []
+                        for words in partition:
+                            words_left = []
+                            words_right = []
+                            for word in words:
+                                if (word.rect.x0 + word.rect.x1) / 2 < (line.start.x + line.end.x) / 2:
+                                    words_left.append(word)
+                                else:
+                                    words_right.append(word)
+
+                            if len(words_left) > 0:
+                                new_partition.append(words_left)
+                            if len(words_right) > 0:
+                                new_partition.append(words_right)
+                        partition = new_partition
+
+            for words in partition:
+                text_line = TextLine(words, text_angle=text_line.text_angle)
+                processed_lines.append(text_line)
+        self.processed_lines = processed_lines
+
     def process_page(self) -> list[ExtractedBorehole]:
         """Process a single page of a pdf.
 
@@ -193,7 +223,7 @@ class BoreholeExtractor:
         Returns:
             list[IntervalBlockPair]: The interval block pairs.
         """
-        description_lines = get_description_lines(self.lines, material_description_rect)
+        description_lines = get_description_lines(self.processed_lines, material_description_rect)
 
         if sidebar is not None:
             # remove description words that are already part of the sidebar
@@ -336,7 +366,9 @@ class BoreholeExtractor:
         """
         if sidebar:
             above_sidebar = [
-                line for line in self.lines if x_overlap(line.rect, sidebar.rect) and line.rect.y0 < sidebar.rect.y0
+                line
+                for line in self.processed_lines
+                if x_overlap(line.rect, sidebar.rect) and line.rect.y0 < sidebar.rect.y0
             ]
 
             min_y0 = max(line.rect.y0 for line in above_sidebar) if above_sidebar else -1
@@ -350,7 +382,7 @@ class BoreholeExtractor:
 
         horizontal_text_lines = [
             line
-            for line in self.lines
+            for line in self.processed_lines
             if abs(line.text_angle) < 10 and not re.fullmatch(r"[\d\s.,\-/]+", line.text.strip())
         ]
         candidate_description = [line for line in horizontal_text_lines if check_y0_condition(line.rect.y0)]
