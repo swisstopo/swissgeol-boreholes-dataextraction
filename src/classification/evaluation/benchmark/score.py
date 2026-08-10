@@ -43,7 +43,7 @@ class ClassificationBenchmarkSummary(BenchmarkSummary):
 class BenchmarkParams:
     """This class summarizes benchmark parameters which are needed for ClassificationBenchmarkSummary."""
 
-    file_path: Path
+    file_path: Path | str
     classifier_type: str
     model_path: Path | str | None
     classification_system: str

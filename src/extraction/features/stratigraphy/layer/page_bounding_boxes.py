@@ -44,7 +44,7 @@ class PageBoundingBoxes:
 
     @classmethod
     def from_sidebar_and_rect(
-        cls, sidebar: None | Sidebar, material_description_rect: pymupdf.Rect, page_number: int
+        cls, sidebar: Sidebar | None, material_description_rect: pymupdf.Rect, page_number: int
     ) -> "PageBoundingBoxes":
         """Convert an optional sidebar and a material description bounding box to a BoundingBoxes object."""
         if sidebar:

@@ -1,4 +1,6 @@
-# Excluded on top of .gitignore (Azure ML respects both)
+# NOTE: .amlignore takes precedence OVER .gitignore for Azure ML (either/or, not additive) —
+# see azure.ai.ml._utils._asset_utils.get_ignore_file. Anything only listed in .gitignore
+# (e.g. env/, /wandb) is NOT excluded from the Azure ML code upload unless also listed here.
 .claude
 .git
 .gitattributes
@@ -7,10 +9,13 @@
 .ruff_cache
 .vscode
 .venv
+env
+/wandb
 /assets
 /models
 /mlruns
 /mlartifacts
+/plots
 /scripts
 /tests
 /docs
