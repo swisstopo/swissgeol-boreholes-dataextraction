@@ -9,6 +9,7 @@ from classification.utils.datasets.alteration_degree import (
     AlterationDegreeSystem,
     AlterationDegreeUnconsolidatedSystem,
 )
+from classification.utils.datasets.borehole_type import BoreholeTypeSystem
 from classification.utils.datasets.cementation import CementationSystem
 from classification.utils.datasets.classification import ClassificationSystem
 from classification.utils.datasets.color import ColorConsolidatedSystem, ColorSystem, ColorUnconsolidatedSystem
@@ -32,6 +33,7 @@ class ExistingClassificationSystems(Enum):
     alteration_degree = AlterationDegreeSystem
     alteration_degree_consolidated = AlterationDegreeConsolidatedSystem
     alteration_degree_unconsolidated = AlterationDegreeUnconsolidatedSystem
+    borehole_type = BoreholeTypeSystem
     cementation = CementationSystem
     color = ColorSystem
     color_consolidated = ColorConsolidatedSystem
@@ -54,6 +56,7 @@ class ExistingClassificationSystems(Enum):
             "alteration_degree",
             "alteration_degree_consolidated",
             "alteration_degree_unconsolidated",
+            "borehole_type",
             "cementation",
             "color",
             "color_consolidated",

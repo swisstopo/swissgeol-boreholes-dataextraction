@@ -17,10 +17,25 @@ def common_options(f):
     f = click.option(
         "-f",
         "--file-path",
-        required=False,  # allow multi-benchmark mode
+        "file_paths",
+        multiple=True,  # repeatable: -f a.json -f b.json ... merges all of them (each may also be a directory)
         type=click.Path(exists=True, path_type=Path),
-        help="Input path to classify. Can be a ground truth JSON, "
-        "a predictions JSON, or a directory containing subset files.",
+        help="Input path to classify. Repeatable: pass one per dataset to merge them into a single run "
+        "(e.g. -f zurich_ground_truth.json -f thurgau_ground_truth.json). Each can be a ground truth "
+        "JSON, a predictions JSON, or a directory of such files. For document-level systems (e.g. "
+        "borehole_type), a PDF file or a directory of PDFs instead.",
+    )(f)
+    f = click.option(
+        "-dt",
+        "--document-texts",
+        "document_texts",
+        multiple=True,  # repeatable, same merge semantics as -f
+        type=click.Path(exists=True, path_type=Path),
+        help="For document-level systems (e.g. borehole_type) when -f is ground truth JSON rather than "
+        "PDFs: one or more sources of filename -> text, merged together. Each can be a precomputed "
+        "filename -> text JSON file/directory (fast, e.g. training's cached *_filtered_text.json), or a "
+        "PDF file/directory of PDFs, extracted live via the same pipeline used for raw-PDF inference "
+        "-- mix both as needed. Ignored for layer-level systems and for PDF input via -f.",
     )(f)
     f = click.option(
         "-o",
@@ -74,6 +89,7 @@ def common_options(f):
                 "accessory_components",
                 "alteration_degree_consolidated",
                 "alteration_degree_unconsolidated",
+                "borehole_type",
                 "cementation",
                 "color_consolidated",
                 "color_unconsolidated",
@@ -119,7 +135,8 @@ def common_options(f):
 )
 @common_options
 def click_pipeline(
-    file_path: Path | None,
+    file_paths: tuple[Path, ...],
+    document_texts: tuple[Path, ...],
     out_directory: Path,
     out_directory_bedrock: Path,
     classifier_type: str,
@@ -141,6 +158,7 @@ def click_pipeline(
         tokenizer_path=tokenizer_path,
         classification_system=classification_system,
         predict_all=predict_all,
+        document_texts_paths=document_texts,
     )
 
     if benchmarks:
@@ -157,12 +175,12 @@ def click_pipeline(
         return
 
     # --- Single-benchmark mode ---
-    if file_path is None:
-        raise click.BadParameter("Missing -f/--file-path. Provide it, or use one or more --benchmark specs.")
+    if not file_paths:
+        raise click.BadParameter("Missing -f/--file-path. Provide at least one, or use one or more --benchmark specs.")
 
     ClassificationPipelineRunner(
         predictions_path=out_directory / "class_predictions.json",
-        file_path=file_path,
+        file_paths=file_paths,
         out_directory=out_directory,
         out_directory_bedrock=out_directory_bedrock,
         options=opts,
