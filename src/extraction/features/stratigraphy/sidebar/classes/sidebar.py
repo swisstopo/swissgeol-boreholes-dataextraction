@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import abc
+import math
 from dataclasses import dataclass, field
 from typing import ClassVar, Generic, TypeVar
 
@@ -131,6 +132,37 @@ class SidebarNoise(Generic[SidebarT]):
 
     def __repr__(self):
         return f"SidebarNoise(sidebar={repr(self.sidebar)}, noise_count={self.noise_count})"
+
+    def score_match(self, rect: pymupdf.Rect) -> float:
+        """Scores the match between the sidebar and a material description bounding box.
+
+        The score is
+        - positively influenced by the width of the material description bounding box
+        - negatively influenced by the horizontal distance between (the right-hand-side of) the sidebar and (the
+          left-hand-side of) the material descriptions
+        - positively influenced by the height of the sidebar
+        - negatively influenced by vertical distance between the top of the sidebar and the top of the material
+          descriptions, and the vertical distance between the bottom of the sidebar and the bottom of the material
+          descriptions
+        The resulting score is also reduced if the sidebar has a high noise count (many unrelated tokens in between
+        the extracted depths values).
+
+        Returns:
+            float: The score of the match. Better matches have a higher score value.
+        """
+        sidebar_top, sidebar_bottom, sidebar_right = self.sidebar.rect.y0, self.sidebar.rect.y1, self.sidebar.rect.x1
+        material_left = rect.x0
+        material_top, material_bottom = rect.y0, rect.y1
+        x_distance = abs(sidebar_right - material_left)
+        y_distance = abs(sidebar_top - material_top) + abs(sidebar_bottom - material_bottom)
+
+        height = sidebar_bottom - sidebar_top
+
+        geometry_score = rect.width - 1.64 * x_distance + height - 2 * y_distance
+
+        noise_penalty_multiplier = math.pow(0.8, 10 * self.noise_count / len(self.sidebar.entries))
+
+        return geometry_score * noise_penalty_multiplier
 
 
 @dataclass
