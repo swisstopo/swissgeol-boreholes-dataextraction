@@ -5,10 +5,43 @@ import dataclasses
 import numpy as np
 
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepths, LayerDepthsEntry
-from extraction.features.stratigraphy.layer.overlap_detection import select_boreholes_with_overlap
+from extraction.features.stratigraphy.layer.overlap_detection import (
+    _normalize_for_comparison,
+    select_boreholes_with_overlap,
+)
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 
 DEPTHS_QUANTILE_SLACK = 0.1
+MIN_NAME_CONFIDENCE = 0.5
+
+
+def _names_conflict(borehole_a: ExtractedBorehole, borehole_b: ExtractedBorehole) -> bool:
+    """Check whether both boreholes have their own confidently detected name, and those names disagree.
+
+    A borehole's own printed name is stronger evidence of identity than the layer text or depth
+    heuristics used elsewhere in this module: if both pages name their borehole and the names don't
+    match, they must be different boreholes, regardless of what those other heuristics conclude.
+    Names are short identifiers (e.g. "KB12" vs "KB13"), not prose, so unlike the fuzzy material
+    description matching elsewhere in this module, a single differing digit is a real conflict, not
+    noise - comparing for exact equality (after the same normalization) is the correct check here.
+
+    Args:
+        borehole_a (ExtractedBorehole): One of the two boreholes being considered for a merge.
+        borehole_b (ExtractedBorehole): The other borehole being considered for a merge.
+
+    Returns:
+        bool: True if both boreholes have a confidently detected name and those names disagree.
+    """
+    if not (
+        borehole_a.name
+        and borehole_b.name
+        and borehole_a.name.feature.confidence >= MIN_NAME_CONFIDENCE
+        and borehole_b.name.feature.confidence >= MIN_NAME_CONFIDENCE
+    ):
+        return False
+    name_a = _normalize_for_comparison(borehole_a.name.feature.name)
+    name_b = _normalize_for_comparison(borehole_b.name.feature.name)
+    return name_a != name_b
 
 
 def _reconcile_duplicated_boundary_layer(previous_layer: Layer, current_layer: Layer) -> Layer | None:
@@ -81,6 +114,11 @@ def _prepare_merge_candidates(
         borehole_to_extend, borehole_continuation = _select_boreholes_for_concatenation(
             previous_page_boreholes, current_page_boreholes, page_number
         )
+
+    # A disagreeing, confidently-detected name on both sides overrides any of the above: it's direct
+    # evidence these are two different boreholes, regardless of what the text/depth heuristics conclude.
+    if borehole_to_extend and borehole_continuation and _names_conflict(borehole_to_extend, borehole_continuation):
+        borehole_to_extend, borehole_continuation, overlap_result = None, None, None
 
     unaffected_boreholes_previous_page = [
         borehole for borehole in previous_page_boreholes if borehole is not borehole_to_extend
@@ -310,6 +348,7 @@ def _merge_boreholes(
         borehole_to_extend,
         predictions=new_predictions,
         bounding_boxes=borehole_to_extend.bounding_boxes + borehole_continuation.bounding_boxes,
+        name=borehole_to_extend.name or borehole_continuation.name,
     )
 
 

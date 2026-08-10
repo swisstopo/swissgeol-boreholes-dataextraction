@@ -13,6 +13,8 @@ from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Laye
 logger = logging.getLogger(__name__)
 
 MAX_BOUNDARY_LAYERS_TO_DROP = 2
+DEPTH_VALUE_TOLERANCE = 0.05
+MIN_DEPTH_OVERLAP_MATCHES = 2
 
 
 @dataclass
@@ -157,7 +159,7 @@ def find_split_by_convolution(
         if result is not None and _is_trustworthy_retry_match(result, layers_curr):
             return result
 
-    return None
+    return _find_depth_reset_overlap(layers_prev, layers_curr)
 
 
 def _is_trustworthy_retry_match(result: OverlapResult, trimmed_curr: list[Layer]) -> bool:
@@ -181,6 +183,63 @@ def _is_trustworthy_retry_match(result: OverlapResult, trimmed_curr: list[Layer]
         return True
     matched_layer = trimmed_curr[0]
     return bool(matched_layer.depths and matched_layer.depths.start and matched_layer.depths.end)
+
+
+def _collect_depth_values(layers: list[Layer]) -> list[float]:
+    """Collect all known depth boundary values (layer starts and ends), in top-to-bottom order.
+
+    Args:
+        layers (list[Layer]): Layers to collect boundary values from.
+
+    Returns:
+        list[float]: The depth values, in the order they appear.
+    """
+    values = []
+    for layer in layers:
+        if not layer.depths:
+            continue
+        if layer.depths.start and layer.depths.start.value is not None:
+            values.append(layer.depths.start.value)
+        if layer.depths.end and layer.depths.end.value is not None:
+            values.append(layer.depths.end.value)
+    return values
+
+
+def _find_depth_reset_overlap(layers_prev: list[Layer], layers_curr: list[Layer]) -> OverlapResult | None:
+    """Find an overlap by depth values alone, for boundaries where the OCR'd text can't be trusted.
+
+    Some scans have a physical ruler or fold obscuring the material description text right where a
+    borehole continues onto the next page, so the text-based matches above find nothing there. When
+    that happens, the current page's depths restart lower than the previous page's last depth -
+    looking like a new, shallower borehole - but several of those depth values are the exact same
+    ones already seen on the previous page. That repetition is strong evidence that this is a
+    re-scanned duplicate of already-seen content, not a new borehole.
+
+    Args:
+        layers_prev (list[Layer]): Layers from the previous page, ordered top to bottom.
+        layers_curr (list[Layer]): Layers from the current page, ordered top to bottom.
+
+    Returns:
+        OverlapResult | None: indices that define the overlapping layers, or None if no overlap.
+    """
+    prev_values = _collect_depth_values(layers_prev)
+    if not prev_values:
+        return None
+    prev_max = max(prev_values)
+
+    lower_id = 0
+    matches = 0
+    for layer in layers_curr:
+        end = layer.depths.end.value if layer.depths and layer.depths.end else None
+        if end is None or end > prev_max + DEPTH_VALUE_TOLERANCE:
+            break
+        if any(math.isclose(end, value, abs_tol=DEPTH_VALUE_TOLERANCE) for value in prev_values):
+            matches += 1
+        lower_id += 1
+
+    if matches < MIN_DEPTH_OVERLAP_MATCHES:
+        return None
+    return OverlapResult(upper_id=len(layers_prev), lower_id=lower_id)
 
 
 def _find_longest_overlap(
