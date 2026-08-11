@@ -100,35 +100,7 @@ class BoreholeExtractor:
         self.line_detection_params = line_detection_params
         self.analytics = analytics
         self.matching_params = matching_params
-
-        processed_lines = []
-        for text_line in self.lines:
-            text_middle_line = middle_line(text_line.rect)
-            partition = [text_line.words]
-
-            for structure in table_structures:
-                for line in structure.vertical_lines:
-                    if line.intersects_with(text_middle_line):
-                        new_partition = []
-                        for words in partition:
-                            words_left = []
-                            words_right = []
-                            for word in words:
-                                if (word.rect.x0 + word.rect.x1) / 2 < (line.start.x + line.end.x) / 2:
-                                    words_left.append(word)
-                                else:
-                                    words_right.append(word)
-
-                            if len(words_left) > 0:
-                                new_partition.append(words_left)
-                            if len(words_right) > 0:
-                                new_partition.append(words_right)
-                        partition = new_partition
-
-            for words in partition:
-                text_line = TextLine(words, text_angle=text_line.text_angle)
-                processed_lines.append(text_line)
-        self.processed_lines = processed_lines
+        self.processed_lines = _split_text_lines_by_table_structures(lines, table_structures)
 
     def process_page(self) -> list[ExtractedBorehole]:
         """Process a single page of a pdf.
@@ -730,3 +702,38 @@ class BoreholeExtractor:
         # below the actual scanned page) --> this mechanism could/should be optimized in the future!
         largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
         return (largest_table.bounding_rect.height / max(self.page_height, 1e-16)) >= min_table_height_ratio
+
+
+def _split_text_lines_by_table_structures(
+    text_lines: list[TextLine], table_structures: list[TableStructure]
+) -> list[TextLine]:
+    """Split certain text lines into multiple lines based on intersecting vertical table structure lines."""
+    processed_lines = []
+    for text_line in text_lines:
+        text_middle_line = middle_line(text_line.rect)
+        partition = [text_line.words]
+
+        for structure in table_structures:
+            for line in structure.vertical_lines:
+                if line.intersects_with(text_middle_line):
+                    new_partition = []
+                    for words in partition:
+                        words_left = []
+                        words_right = []
+                        for word in words:
+                            if (word.rect.x0 + word.rect.x1) / 2 < (line.start.x + line.end.x) / 2:
+                                words_left.append(word)
+                            else:
+                                words_right.append(word)
+
+                        if len(words_left) > 0:
+                            new_partition.append(words_left)
+                        if len(words_right) > 0:
+                            new_partition.append(words_right)
+                    partition = new_partition
+
+        for words in partition:
+            text_line = TextLine(words, text_angle=text_line.text_angle)
+            processed_lines.append(text_line)
+
+        return processed_lines
