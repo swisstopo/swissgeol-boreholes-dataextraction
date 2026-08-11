@@ -49,9 +49,7 @@ from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.text.textline_affinity import get_line_affinity
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 from swissgeol_doc_processing.utils.strip_log_detection import StripLog
-from swissgeol_doc_processing.utils.table_detection import (
-    TableStructure,
-)
+from swissgeol_doc_processing.utils.table_detection import TableStructure, middle_line
 
 logger = logging.getLogger(__name__)
 
@@ -105,13 +103,12 @@ class BoreholeExtractor:
 
         processed_lines = []
         for text_line in self.lines:
-            text_line_left = (text_line.rect.top_left + text_line.rect.bottom_left) / 2
-            text_line_right = (text_line.rect.top_right + text_line.rect.bottom_right) / 2
+            text_middle_line = middle_line(text_line.rect)
             partition = [text_line.words]
 
             for structure in table_structures:
                 for line in structure.vertical_lines:
-                    if line.intersects_with(Line(text_line_left, text_line_right)):
+                    if line.intersects_with(text_middle_line):
                         new_partition = []
                         for words in partition:
                             words_left = []

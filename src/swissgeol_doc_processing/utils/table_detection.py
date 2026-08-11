@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 import pymupdf
 
-from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
+from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
 from swissgeol_doc_processing.text.textline import TextLine
 
 logger = logging.getLogger(__name__)
@@ -26,23 +26,44 @@ class TableStructure:
 
 
 def detect_structure_lines(
-    geometric_lines: list[Line], table_detection_params: dict, filter_lines=True
+    geometric_lines: list[Line], text_lines: list[TextLine], table_detection_params: dict
 ) -> list[StructureLine]:
     """Detect significant horizonal and vertical lines in a document.
 
     Args:
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
-        filter_lines (bool, optional): Whether to filter lines before classification. Defaults to True.
+        text_lines (list[TextLine]): The text lines on the page, to filter out geometric lines that intersect with text
+            lines.
         table_detection_params (dict): Table detection parameters.
 
     Returns:
         List of detected structure lines
     """
     # Filter and classify lines
-    final_lines = (
-        _filter_significant_lines(geometric_lines, table_detection_params) if filter_lines else geometric_lines
-    )
+    final_lines = _filter_significant_lines(geometric_lines, table_detection_params)
+
+    final_lines = [
+        line
+        for line in final_lines
+        if not any(
+            middle_line(text_word.rect).intersects_with(line)
+            for text_line in text_lines
+            for text_word in text_line.words
+        )
+    ]
     return _separate_by_orientation(final_lines, table_detection_params)
+
+
+def middle_line(rect: pymupdf.Rect) -> Line:
+    """Returns a horizontal line through the middle of the rectangle.
+
+    Keep a small margin of 25% of the rectangle's height to the left and right edges.
+    """
+    x_middle = (rect.x0 + rect.x1) / 2
+    y_middle = (rect.y0 + rect.y1) / 2
+    left = min(rect.x0 + 0.25 * rect.height, x_middle)
+    right = max(rect.x1 - 0.25 * rect.height, x_middle)
+    return Line(Point(left, y_middle), Point(right, y_middle))
 
 
 def detect_table_structures(
@@ -64,7 +85,7 @@ def detect_table_structures(
     Returns:
         List of detected table structures
     """
-    structure_lines = detect_structure_lines(geometric_lines, table_detection_params)
+    structure_lines = detect_structure_lines(geometric_lines, text_lines, table_detection_params)
     table_candidates = _find_table_structures(
         structure_lines, table_detection_params, page_width, page_height, text_lines
     )
