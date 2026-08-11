@@ -102,8 +102,7 @@ class MaterialDescription(ExtractedFeature):
     def to_json(self) -> dict:
         """Convert the MaterialDescription object to a JSON serializable dictionary."""
         return {
-            "text": self.text,
-            "text_with_line_breaks": self.text_with_line_breaks,
+            "text": self.text_with_line_breaks,
             "lines": [line.to_json() for line in self.lines],
             "is_correct": self.is_correct,
         }
