@@ -14,6 +14,9 @@ from swissgeol_doc_processing.utils.data_extractor import (
     FeatureOnPage,
 )
 
+# fixed list of German abbreviations spotted in practice, not exhaustive; add more as you find them.
+_ABBREVIATIONS_ENDING_IN_PERIOD = ("max.", "z.T.", "bzw.", "ca.", "etc.", "z.B.")
+
 
 @dataclass
 class MaterialDescriptionLine(ExtractedFeature):
@@ -37,6 +40,7 @@ class MaterialDescription(ExtractedFeature):
 
     text: str
     lines: list[FeatureOnPage[MaterialDescriptionLine]]
+    max_line_width: float | None = None
 
     @property
     def rects_with_pages(self) -> list[RectWithPage]:
@@ -65,10 +69,41 @@ class MaterialDescription(ExtractedFeature):
         """Get the bounding rectangle for a specific page."""
         return next((p_rect.rect for p_rect in self.rects_with_pages if p_rect.page_number == page_number), None)
 
+    @property
+    def text_with_line_breaks(self) -> str:
+        """Rejoin description lines with inferred line breaks, for display purposes only.
+
+        Compares each line's width against `max_line_width` - the widest description line seen anywhere
+        in this borehole - as a proxy for "how long a line can get before the layout wraps it": a line
+        ending well short of that reference, or ending in sentence-final punctuation, is treated as an
+        intentional line break rather than a layout wrap. A trailing period doesn't count as sentence-final
+        punctuation when it's part of a known abbreviation (e.g. "ca.", "bzw.") - such lines only break via
+        the length-based signal. Falls back to this description's own widest line when no borehole-wide
+        reference was provided.
+        """
+        if not self.lines:
+            return self.text
+        reference_width = self.max_line_width or max((line.rect.width for line in self.lines), default=0)
+        parts = [self.lines[0].feature.text]
+        for prev_line, line in zip(self.lines, self.lines[1:], strict=False):
+            gap_ratio = (reference_width - prev_line.rect.width) / reference_width if reference_width else 0.0
+            prev_text = prev_line.feature.text.rstrip()
+            ends_with_abbreviation = prev_text.endswith(_ABBREVIATIONS_ENDING_IN_PERIOD)
+            ends_with_break_punct = prev_text.endswith((":", ";")) or (
+                prev_text.endswith(".") and not ends_with_abbreviation
+            )
+            new_page = line.page_number != prev_line.page_number
+            # TODO: 30% relative-to-longest-line threshold picked by eye, not tuned
+            # yet; revisit once you've looked at a batch of extracted descriptions.
+            is_break = new_page or ends_with_break_punct or gap_ratio > 0.3
+            parts.append(("\n" if is_break else " ") + line.feature.text)
+        return "".join(parts)
+
     def to_json(self) -> dict:
         """Convert the MaterialDescription object to a JSON serializable dictionary."""
         return {
             "text": self.text,
+            "text_with_line_breaks": self.text_with_line_breaks,
             "lines": [line.to_json() for line in self.lines],
             "is_correct": self.is_correct,
         }
