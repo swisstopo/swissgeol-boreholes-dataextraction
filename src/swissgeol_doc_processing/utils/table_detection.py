@@ -43,8 +43,8 @@ def detect_structure_lines(
         List of detected structure lines
     """
     # Filter and classify lines
-    signficant_lines = _filter_significant_lines(geometric_lines, table_detection_params)
-    structure_lines = _separate_by_orientation(signficant_lines, table_detection_params)
+    significant_lines = _filter_significant_lines(geometric_lines, table_detection_params)
+    structure_lines = _separate_by_orientation(significant_lines, table_detection_params)
 
     final_lines = []
     for structure_line in structure_lines:
@@ -185,7 +185,7 @@ def _find_table_structures(
         table_detection_params: Configuration parameters
         page_width: Page width
         page_height: Page height
-        text_line_rtree (TextLineRTree): All text lines on the page as an RTree for efficient spacial querying.
+        text_line_rtree (TextLineRTree): All text lines on the page as an RTree for efficient spatial querying.
 
     Returns:
         List of table structures
@@ -320,7 +320,7 @@ def _create_table_from_region(
         table_detection_params: Configuration parameters
         page_width: Page width
         page_height: Page height
-        text_line_rtree (TextLineRTree): All text lines on the page as an RTree for efficient spacial querying.
+        text_line_rtree (TextLineRTree): All text lines on the page as an RTree for efficient spatial querying.
 
     Returns:
         TableStructure object or None
@@ -380,7 +380,7 @@ def _calculate_structure_confidence(
         table_detection_params: Configuration parameters
         page_width: Page width
         page_height: Page height
-        text_line_rtree (TextLineRTree): All text lines on the page as an RTree for efficient spacial querying.
+        text_line_rtree (TextLineRTree): All text lines on the page as an RTree for efficient spatial querying.
 
     Returns:
         Confidence score between 0 and 1
@@ -405,13 +405,9 @@ def _calculate_structure_confidence(
 
     # Text bonus score - bonus for text content within the table structure
     text_bonus = 0.0
-    if text_line_rtree:
-        text_within = text_line_rtree.query(rect)
-        if text_within:
-            text_scoring = table_config.get("text_scoring", {})
-            text_bonus = min(
-                text_scoring.get("text_weights"), len(text_within) * text_scoring.get("text_presence_weight")
-            )
+    if text_within := text_line_rtree.query(rect):
+        text_scoring = table_config.get("text_scoring", {})
+        text_bonus = min(text_scoring.get("text_weights"), len(text_within) * text_scoring.get("text_presence_weight"))
 
     # Weighted combination
     total_confidence = size_score + line_score + text_bonus
