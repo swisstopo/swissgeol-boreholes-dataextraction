@@ -1,4 +1,4 @@
-"""This module provides an efficient spacial index for text lines."""
+"""This module provides an efficient spatial index for text lines."""
 
 import fastquadtree
 import pymupdf

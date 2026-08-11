@@ -29,7 +29,7 @@ class TableStructure:
 def detect_structure_lines(
     geometric_lines: list[Line], text_line_rtree: TextLineRTree, table_detection_params: dict
 ) -> list[StructureLine]:
-    """Detect significant horizonal and vertical lines in a document.
+    """Detect significant horizontal and vertical lines in a document.
 
     We ignore vertical lines that significantly intersect with any word, since these are likely to be
     grid lines, not lines from a table structure.
@@ -44,23 +44,28 @@ def detect_structure_lines(
     """
     # Filter and classify lines
     signficant_lines = _filter_significant_lines(geometric_lines, table_detection_params)
+    structure_lines = _separate_by_orientation(signficant_lines, table_detection_params)
 
     final_lines = []
-    for line in signficant_lines:
-        bbox = pymupdf.Rect(
-            min(line.start.x, line.end.x),
-            min(line.start.y, line.end.y),
-            max(line.start.x, line.end.x),
-            max(line.start.y, line.end.y),
-        )
-        if not any(
-            middle_line(text_word.rect).intersects_with(line)
-            for text_line in text_line_rtree.query(bbox)
-            for text_word in text_line.words
-        ):
-            final_lines.append(line)
+    for structure_line in structure_lines:
+        if structure_line.is_vertical:
+            line = structure_line.line
+            bbox = pymupdf.Rect(
+                min(line.start.x, line.end.x),
+                min(line.start.y, line.end.y),
+                max(line.start.x, line.end.x),
+                max(line.start.y, line.end.y),
+            )
+            if not any(
+                middle_line(text_word.rect).intersects_with(line)
+                for text_line in text_line_rtree.query(bbox)
+                for text_word in text_line.words
+            ):
+                final_lines.append(structure_line)
+        else:
+            final_lines.append(structure_line)
 
-    return _separate_by_orientation(final_lines, table_detection_params)
+    return final_lines
 
 
 def middle_line(rect: pymupdf.Rect) -> Line:
