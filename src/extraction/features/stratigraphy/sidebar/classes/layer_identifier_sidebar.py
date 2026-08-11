@@ -101,10 +101,6 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
             interval_block_pairs = self._extract_intervals_from_lines(block.lines, ignored_lines)
             interval_block_pairs = get_optimal_intervals_with_text(interval_block_pairs)
 
-            interval_block_pairs = [
-                IntervalBlockPair(pair.depth_interval, self._clean_block(pair.block)) for pair in interval_block_pairs
-            ]
-
             if (
                 interval_block_pairs
                 and interval_block_pairs[0].depth_interval
@@ -166,7 +162,7 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
 
             if prev_line and not a_to_b_interval and not prev_interval:
                 # if depth was not found in the previous and current lines, we look for a depth wrapping around.
-                combined_lines = TextLine(prev_line.words + line.words)
+                combined_lines = TextLine(prev_line.words + line.words, prev_line.text_angle)
                 a_to_b_interval, _ = AToBIntervalExtractor.from_text(combined_lines, require_start_of_string=False)
             prev_interval = a_to_b_interval
             prev_line = line
@@ -248,22 +244,3 @@ class LayerIdentifierSidebar(Sidebar[LayerIdentifierEntry]):
         # If the header is capitalized, or there is other lines than the header and depth info are found in the header
         # we exclude the header from the material description.
         return header_capitalized or (depths_in_header and other_lines_presence)
-
-    def _clean_block(self, block: TextBlock) -> TextBlock:
-        """Remove the layer identifiers from the block.
-
-        Args:
-            block (TextBlock): The block to clean.
-
-        Returns:
-            TextBlock: The cleaned block with the layer identifiers removed.
-        """
-        # Create set of entry values
-        entry_values = {entry.value.strip() for entry in self.entries}
-
-        new_word_lists = [
-            [word for word in line.words if word.text.strip() not in entry_values] for line in block.lines
-        ]
-
-        # Only keep lines that have words remaining after filtering
-        return TextBlock([TextLine(words) for words in new_word_lists if words])
