@@ -181,7 +181,7 @@ def test_atobsidebarextractor():  # noqa: D103
         TextWord(pymupdf.Rect(0, 8, 2, 9), "50.0", PAGE_NUMBER),  # layer 50.0-60.0m
         TextWord(pymupdf.Rect(3, 8, 5, 9), "60.0", PAGE_NUMBER),
     ]
-    columns = AToBSidebarExtractor.find_in_words(all_words, table_structures=[])
+    columns = AToBSidebarExtractor.find_in_lines([TextLine([word]) for word in all_words], table_structures=[])
     assert len(columns) == 1, "There should be 1 column"
     assert len(columns[0].entries) == 5, "The column should have 5 entries"
     assert columns[0].entries[0].start_value == 12.0, "The first entry should have a value of 12.0"
@@ -221,7 +221,7 @@ def test_atobsidebarextractor_two_columns():  # noqa: D103
         TextWord(pymupdf.Rect(20, 8, 22, 9), "50.0", PAGE_NUMBER),  # layer 50.0-60.0m
         TextWord(pymupdf.Rect(23, 8, 25, 9), "60.0", PAGE_NUMBER),
     ]
-    columns = AToBSidebarExtractor.find_in_words(all_words, table_structures=[])
+    columns = AToBSidebarExtractor.find_in_lines([TextLine([word]) for word in all_words], table_structures=[])
     assert len(columns) == 2, "There should be 2 columns"
     assert len(columns[0].entries) == 5, "The first column should have 5 entries"
     assert len(columns[1].entries) == 5, "The second column should have 5 entries"

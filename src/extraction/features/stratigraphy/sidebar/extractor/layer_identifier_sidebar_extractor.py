@@ -50,8 +50,6 @@ class LayerIdentifierSidebarExtractor:
     def from_lines(cls, lines: list[TextLine], table_structures: list[TableStructure]) -> list[LayerIdentifierSidebar]:
         """Find layer identifier sidebars from text lines.
 
-        TODO: Similar to AToBSidebarExtractor.find_in_words(). Refactoring may be desired.
-
         Args:
             lines (list[TextLine]): The text lines in the document
             table_structures (list[TableStructure]): List of detected table-like structures
