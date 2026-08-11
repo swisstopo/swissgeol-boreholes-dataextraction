@@ -3,7 +3,6 @@
 import logging
 import re
 
-import fastquadtree
 import pymupdf
 
 from extraction.features.stratigraphy.borehole_candidate import BoreholeCandidate
@@ -47,6 +46,7 @@ from swissgeol_doc_processing.text.textblock import (
 )
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.text.textline_affinity import get_line_affinity
+from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 from swissgeol_doc_processing.utils.strip_log_detection import StripLog
 from swissgeol_doc_processing.utils.table_detection import TableStructure, middle_line
@@ -294,13 +294,7 @@ class BoreholeExtractor:
         if not self.lines:
             return []
 
-        min_x = min([line.rect.x0 for line in self.lines])
-        max_x = max([line.rect.x1 for line in self.lines])
-        min_y = min([line.rect.y0 for line in self.lines])
-        max_y = max([line.rect.y1 for line in self.lines])
-        line_rtree = fastquadtree.RectQuadTreeObjects((min_x, min_y, max_x, max_y), capacity=8)
-        for line in self.lines:
-            line_rtree.insert((line.rect.x0, line.rect.y0, line.rect.x1, line.rect.y1), obj=line)
+        line_rtree = TextLineRTree(self.lines)
 
         # create sidebars with noise count
         spulprobe_sidebars = SpulprobeSidebarExtractor.find_in_lines(self.lines, self.table_structures)

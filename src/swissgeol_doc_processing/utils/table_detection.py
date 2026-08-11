@@ -10,6 +10,7 @@ import pymupdf
 
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line, Point
 from swissgeol_doc_processing.text.textline import TextLine
+from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 
 logger = logging.getLogger(__name__)
 
@@ -26,31 +27,39 @@ class TableStructure:
 
 
 def detect_structure_lines(
-    geometric_lines: list[Line], text_lines: list[TextLine], table_detection_params: dict
+    geometric_lines: list[Line], text_line_rtree: TextLineRTree, table_detection_params: dict
 ) -> list[StructureLine]:
     """Detect significant horizonal and vertical lines in a document.
 
+    We ignore vertical lines that significantly intersect with any word, since these are likely to be
+    grid lines, not lines from a table structure.
+
     Args:
         geometric_lines (list[Line]): Geometric lines (e.g., from layout analysis).
-        text_lines (list[TextLine]): The text lines on the page, to filter out geometric lines that intersect with text
-            lines.
+        text_line_rtree (TextLineRTree): Pre-built R-tree of all text lines on page for spatial queries.
         table_detection_params (dict): Table detection parameters.
 
     Returns:
         List of detected structure lines
     """
     # Filter and classify lines
-    final_lines = _filter_significant_lines(geometric_lines, table_detection_params)
+    signficant_lines = _filter_significant_lines(geometric_lines, table_detection_params)
 
-    final_lines = [
-        line
-        for line in final_lines
+    final_lines = []
+    for line in signficant_lines:
+        bbox = pymupdf.Rect(
+            min(line.start.x, line.end.x),
+            min(line.start.y, line.end.y),
+            max(line.start.x, line.end.x),
+            max(line.start.y, line.end.y),
+        )
         if not any(
             middle_line(text_word.rect).intersects_with(line)
-            for text_line in text_lines
+            for text_line in text_line_rtree.query(bbox)
             for text_word in text_line.words
-        )
-    ]
+        ):
+            final_lines.append(line)
+
     return _separate_by_orientation(final_lines, table_detection_params)
 
 
@@ -85,10 +94,13 @@ def detect_table_structures(
     Returns:
         List of detected table structures
     """
-    structure_lines = detect_structure_lines(geometric_lines, text_lines, table_detection_params)
+    text_line_rtree = TextLineRTree(text_lines)
+
+    structure_lines = detect_structure_lines(geometric_lines, text_line_rtree, table_detection_params)
     table_candidates = _find_table_structures(
-        structure_lines, table_detection_params, page_width, page_height, text_lines
+        structure_lines, table_detection_params, page_width, page_height, text_line_rtree
     )
+
     table_candidates = [
         table
         for table in table_candidates
@@ -157,9 +169,9 @@ class StructureLine:
 def _find_table_structures(
     lines: list[StructureLine],
     table_detection_params: dict,
-    page_width: float = None,
-    page_height: float = None,
-    text_lines: list = None,
+    page_width: float,
+    page_height: float,
+    text_line_rtree: TextLineRTree,
 ) -> list[TableStructure]:
     """Find multiple non-intersecting table structures using region-based detection.
 
@@ -168,7 +180,7 @@ def _find_table_structures(
         table_detection_params: Configuration parameters
         page_width: Page width
         page_height: Page height
-        text_lines: List of text lines for content analysis
+        text_line_rtree (TextLineRTree): All text lines on the page as an RTree for efficient spacial querying.
 
     Returns:
         List of table structures
@@ -184,7 +196,7 @@ def _find_table_structures(
 
         # Create table structure for this region
         table = _create_table_from_region(
-            region_h_lines, region_v_lines, table_detection_params, page_width, page_height, text_lines
+            region_h_lines, region_v_lines, table_detection_params, page_width, page_height, text_line_rtree
         )
         if table.confidence >= table_detection_params["tables"]["min_confidence"]:
             detected_tables.append(table)
@@ -291,9 +303,9 @@ def _create_table_from_region(
     horizontal_lines: list[Line],
     vertical_lines: list[Line],
     table_detection_params: dict,
-    page_width: float = None,
-    page_height: float = None,
-    text_lines: list = None,
+    page_width: float,
+    page_height: float,
+    text_line_rtree: TextLineRTree,
 ) -> TableStructure | None:
     """Create a table structure from a region of connected lines.
 
@@ -303,7 +315,7 @@ def _create_table_from_region(
         table_detection_params: Configuration parameters
         page_width: Page width
         page_height: Page height
-        text_lines: Text lines for content analysis
+        text_line_rtree (TextLineRTree): All text lines on the page as an RTree for efficient spacial querying.
 
     Returns:
         TableStructure object or None
@@ -327,7 +339,13 @@ def _create_table_from_region(
     line_density = len(horizontal_lines + vertical_lines) / (area / 10000) if area > 0 else 0
 
     confidence = _calculate_structure_confidence(
-        bounding_rect, horizontal_lines, vertical_lines, table_detection_params, page_width, page_height, text_lines
+        bounding_rect,
+        horizontal_lines,
+        vertical_lines,
+        table_detection_params,
+        page_width,
+        page_height,
+        text_line_rtree,
     )
 
     return TableStructure(
@@ -344,9 +362,9 @@ def _calculate_structure_confidence(
     h_lines: list[Line],
     v_lines: list[Line],
     table_detection_params: dict,
-    page_width: float = None,
-    page_height: float = None,
-    text_lines: list = None,
+    page_width: float,
+    page_height: float,
+    text_line_rtree: TextLineRTree,
 ) -> float:
     """Calculate confidence score for the table structure.
 
@@ -357,7 +375,7 @@ def _calculate_structure_confidence(
         table_detection_params: Configuration parameters
         page_width: Page width
         page_height: Page height
-        text_lines: List of text lines for content analysis
+        text_line_rtree (TextLineRTree): All text lines on the page as an RTree for efficient spacial querying.
 
     Returns:
         Confidence score between 0 and 1
@@ -382,8 +400,8 @@ def _calculate_structure_confidence(
 
     # Text bonus score - bonus for text content within the table structure
     text_bonus = 0.0
-    if text_lines:
-        text_within = [line for line in text_lines if rect.intersects(line.rect)]
+    if text_line_rtree:
+        text_within = text_line_rtree.query(rect)
         if text_within:
             text_scoring = table_config.get("text_scoring", {})
             text_bonus = min(
