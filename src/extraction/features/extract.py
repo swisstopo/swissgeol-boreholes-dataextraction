@@ -736,4 +736,4 @@ def _split_text_lines_by_table_structures(
             text_line = TextLine(words, text_angle=text_line.text_angle)
             processed_lines.append(text_line)
 
-        return processed_lines
+    return processed_lines
