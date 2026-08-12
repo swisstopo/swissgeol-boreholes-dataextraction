@@ -96,9 +96,9 @@ class MaterialDescription(ExtractedFeature):
             )
             new_page = line.page_number != prev_line.page_number
             vertical_gap = line.rect.y0 - prev_line.rect.y1
-            # TODO: 30% relative-to-longest-line and 1x-line-height thresholds picked by eye, not
+            # TODO: 30% relative-to-longest-line and 0.5x-line-height thresholds picked by eye, not
             # tuned, works well enough so far
-            has_large_vertical_gap = not new_page and vertical_gap > 1 * prev_line.rect.height
+            has_large_vertical_gap = not new_page and vertical_gap > 0.5 * prev_line.rect.height
             is_break = new_page or ends_with_break_punct or gap_ratio > 0.3 or has_large_vertical_gap
             parts.append(("\n" if is_break else " ") + line.feature.text)
         return "".join(parts)
