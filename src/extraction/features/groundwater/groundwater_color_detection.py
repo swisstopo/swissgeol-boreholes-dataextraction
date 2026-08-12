@@ -40,6 +40,7 @@ def get_minority_color_lines(page: pymupdf.Page, text_lines: list[TextLine]) -> 
     modal_color = Counter(color for _, color in span_colors).most_common(1)[0][0]
 
     def line_color(text_line: TextLine) -> int | None:
+        """Determine the color of a text line by checking which span colors intersect with it."""
         return next((color for rect, color in span_colors if rect.intersects(text_line.rect)), modal_color)
 
     return [line for line in text_lines if line_color(line) != modal_color and extract_date(line.text)[0] is not None]

@@ -399,9 +399,11 @@ class GroundwaterLevelExtractor(DataExtractor):
         """
 
         def num_fields(gw: FeatureOnPage[Groundwater]) -> int:
+            """Counts the number of non-None fields in a groundwater feature."""
             return sum(v is not None for v in (gw.feature.depth, gw.feature.date, gw.feature.elevation))
 
         def conflicts(a: FeatureOnPage[Groundwater], b: FeatureOnPage[Groundwater]) -> bool:
+            """Returns True if two groundwater features have conflicting non-None fields."""
             return any(
                 getattr(a.feature, field) is not None
                 and getattr(b.feature, field) is not None
