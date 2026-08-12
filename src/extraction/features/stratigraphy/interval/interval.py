@@ -44,10 +44,9 @@ class AAboveBInterval(Interval):
 class AToBInterval(Interval):
     """Class for intervals that are defined in a single line like "1.00 - 2.30m"."""
 
-    @property
-    def rect(self) -> pymupdf.Rect:
-        """Get the rectangle surrounding the interval."""
-        return pymupdf.Rect(self.start.rect).include_rect(self.end.rect)
+    def __init__(self, start: DepthColumnEntry | None, end: DepthColumnEntry | None, rect: pymupdf.Rect):
+        super().__init__(start, end)
+        self.rect = rect
 
 
 @dataclass
