@@ -20,9 +20,10 @@ class TextWord(RectWithPageMixin):
     to represent the location of the word in a PDF document.
     """
 
-    def __init__(self, rect: pymupdf.Rect, text: str, page: int):
+    def __init__(self, rect: pymupdf.Rect, text: str, page: int, color: int | None = None):
         self.rect_with_page = RectWithPage(rect, page)
         self.text = text
+        self.color = color
 
     def __repr__(self) -> str:
         return f"TextWord({self.rect}, {self.text})"

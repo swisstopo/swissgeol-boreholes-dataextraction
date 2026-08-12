@@ -456,7 +456,6 @@ class GroundwaterLevelExtractor(DataExtractor):
 
     def extract_groundwater(
         self,
-        page: pymupdf.Page,
         page_number: int,
         text_lines: list[TextLine],
         geometric_lines: list[Line],
@@ -465,7 +464,6 @@ class GroundwaterLevelExtractor(DataExtractor):
         """Extracts the groundwater information from a borehole profile.
 
         Args:
-            page (pymupdf.Page): The page to extract the groundwater information from.
             page_number (int): The page number (1-indexed) of the PDF document.
             text_lines (list[TextLine]): The lines of text to extract the groundwater information from.
             geometric_lines (list[Line]): The geometric lines on the page.
@@ -482,7 +480,7 @@ class GroundwaterLevelExtractor(DataExtractor):
         for upper_symbol_geom_line in get_groundwater_symbol_upper_lines(text_lines, geometric_lines):
             areas_of_interest.append(get_text_lines_near_symbol(text_lines, upper_symbol_geom_line))
         # extract color clues: some documents highlight the reading in a distinct color
-        for highlighted_line in get_minority_color_lines(page, text_lines):
+        for highlighted_line in get_minority_color_lines(text_lines):
             areas_of_interest.append(self.get_text_lines_near_key(highlighted_line, text_lines))
 
         seen_depths = [lay.depths for bh in extracted_boreholes for lay in bh.predictions if lay.depths]

@@ -6,41 +6,32 @@ Some documents mark the groundwater reading in a color that differs from the res
 
 from collections import Counter
 
-import pymupdf
-
 from extraction.features.groundwater.utility import extract_date
 from swissgeol_doc_processing.text.textline import TextLine
 
 
-def get_minority_color_lines(page: pymupdf.Page, text_lines: list[TextLine]) -> list[TextLine]:
+def get_minority_color_lines(text_lines: list[TextLine]) -> list[TextLine]:
     """Find text lines whose color differs from the page's dominant color and that contain a date.
 
-    The page's most common span color is treated as "normal" (usually, but not always, black).
+    The page's most common word color is treated as "normal" (usually, but not always, black).
     Any line rendered in a different color is only considered a groundwater candidate if it also
     contains a date, to avoid flagging unrelated colored annotations (e.g. other highlighted
     elevations, watermarks, or documents that render all their text in a uniform non-black color).
 
     Args:
-        page (pymupdf.Page): The page to read span colors from.
         text_lines (list[TextLine]): The text lines already extracted for this page.
 
     Returns:
         list[TextLine]: Lines in a minority color that also contain a date.
     """
-    span_colors: list[tuple[pymupdf.Rect, int]] = [
-        (pymupdf.Rect(span["bbox"]), span.get("color"))
-        for block in page.get_text("rawdict")["blocks"]
-        if "lines" in block
-        for line in block["lines"]
-        for span in line["spans"]
-    ]
-    if not span_colors:
+    word_colors = [word.color for line in text_lines for word in line.words]
+    if not word_colors:
         return []
 
-    modal_color = Counter(color for _, color in span_colors).most_common(1)[0][0]
+    modal_color = Counter(word_colors).most_common(1)[0][0]
 
     def line_color(text_line: TextLine) -> int | None:
-        """Determine the color of a text line by checking which span colors intersect with it."""
-        return next((color for rect, color in span_colors if rect.intersects(text_line.rect)), modal_color)
+        """Determine the color of a text line from the color of its words."""
+        return next((word.color for word in text_line.words), modal_color)
 
     return [line for line in text_lines if line_color(line) != modal_color and extract_date(line.text)[0] is not None]
