@@ -79,7 +79,9 @@ class MaterialDescription(ExtractedFeature):
         intentional line break rather than a layout wrap. A trailing period doesn't count as sentence-final
         punctuation when it's part of a known abbreviation (e.g. "ca.", "bzw.") - such lines only break via
         the length-based signal. Falls back to this description's own widest line when no borehole-wide
-        reference was provided.
+        reference was provided. A vertical gap to the next line that's noticeably larger than the line's
+        own height (e.g. a blank line in the layout) is also treated as a break, even if none of the other
+        criteria apply.
         """
         if not self.lines:
             return self.text
@@ -93,9 +95,11 @@ class MaterialDescription(ExtractedFeature):
                 prev_text.endswith(".") and not ends_with_abbreviation
             )
             new_page = line.page_number != prev_line.page_number
-            # TODO: 30% relative-to-longest-line threshold picked by eye, not tuned
-            # yet; revisit once you've looked at a batch of extracted descriptions.
-            is_break = new_page or ends_with_break_punct or gap_ratio > 0.3
+            vertical_gap = line.rect.y0 - prev_line.rect.y1
+            # TODO: 30% relative-to-longest-line and 1x-line-height thresholds picked by eye, not
+            # tuned, works well enough so far
+            has_large_vertical_gap = not new_page and vertical_gap > 1 * prev_line.rect.height
+            is_break = new_page or ends_with_break_punct or gap_ratio > 0.3 or has_large_vertical_gap
             parts.append(("\n" if is_break else " ") + line.feature.text)
         return "".join(parts)
 
