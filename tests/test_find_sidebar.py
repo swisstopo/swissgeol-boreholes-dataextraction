@@ -1,6 +1,5 @@
 """Test suite for the find_depth_columns module."""
 
-import fastquadtree
 import pymupdf
 import pytest
 
@@ -13,6 +12,7 @@ from extraction.features.stratigraphy.sidebar.extractor.a_to_b_sidebar_extractor
     AToBSidebarExtractor,
 )
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 
 PAGE_NUMBER = 1
 
@@ -92,9 +92,7 @@ def test_aabovebsidebarextractor_arithmetic_progression():  # noqa: D103
         TextWord(pymupdf.Rect(0, 6, 5, 7), "40.0", PAGE_NUMBER),
         TextWord(pymupdf.Rect(0, 8, 5, 9), "50.0", PAGE_NUMBER),
     ]
-    word_rtree = fastquadtree.RectQuadTreeObjects((0, 0, 10, 10), capacity=8)
-    for word in all_words:
-        word_rtree.insert((word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1))
+    word_rtree = TextLineRTree([TextLine([word]) for word in all_words])
     """Test the AAboveBSidebarExtractor with an arithmetic progression."""
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
@@ -116,9 +114,7 @@ def test_aabovebsidebarextractor():  # noqa: D103
         TextWord(pymupdf.Rect(0, 6, 5, 7), "40.0", PAGE_NUMBER),
         TextWord(pymupdf.Rect(0, 8, 5, 9), "50.0", PAGE_NUMBER),
     ]
-    word_rtree = fastquadtree.RectQuadTreeObjects((0, 0, 10, 10), capacity=8)
-    for word in all_words:
-        word_rtree.insert((word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
+    word_rtree = TextLineRTree([TextLine([word]) for word in all_words])
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,
@@ -151,9 +147,7 @@ def test_aabovebsidebarextractor_two_column():  # noqa: D103
         TextWord(pymupdf.Rect(20, 8, 25, 9), "50.0", PAGE_NUMBER),
         TextWord(pymupdf.Rect(20, 10, 25, 11), "61.0", PAGE_NUMBER),
     ]
-    word_rtree = fastquadtree.RectQuadTreeObjects((0, 0, 30, 30), capacity=8)
-    for word in all_words:
-        word_rtree.insert((word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
+    word_rtree = TextLineRTree([TextLine([word]) for word in all_words])
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,
