@@ -23,4 +23,5 @@ class TextLineRTree:
             self.text_line_rtree.insert((line.rect.x0, line.rect.y0, line.rect.x1, line.rect.y1), obj=line)
 
     def query(self, rect: pymupdf.Rect) -> list[TextLine]:
+        """Efficiently finds all text lines whose bounding box intersects with the given rectangle."""
         return [item.obj for item in self.text_line_rtree.query((rect.x0, rect.y0, rect.x1, rect.y1))]
