@@ -3,7 +3,6 @@
 import logging
 import re
 
-import fastquadtree
 import pymupdf
 
 from extraction.features.stratigraphy.borehole_candidate import BoreholeCandidate
@@ -47,11 +46,10 @@ from swissgeol_doc_processing.text.textblock import (
 )
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.text.textline_affinity import get_line_affinity
+from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 from swissgeol_doc_processing.utils.strip_log_detection import StripLog
-from swissgeol_doc_processing.utils.table_detection import (
-    TableStructure,
-)
+from swissgeol_doc_processing.utils.table_detection import TableStructure, middle_line
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +100,7 @@ class BoreholeExtractor:
         self.line_detection_params = line_detection_params
         self.analytics = analytics
         self.matching_params = matching_params
+        self.processed_lines = _split_text_lines_by_table_structures(lines, table_structures)
 
     def process_page(self) -> list[ExtractedBorehole]:
         """Process a single page of a pdf.
@@ -193,7 +192,7 @@ class BoreholeExtractor:
         Returns:
             list[IntervalBlockPair]: The interval block pairs.
         """
-        description_lines = get_description_lines(self.lines, material_description_rect)
+        description_lines = get_description_lines(self.processed_lines, material_description_rect)
 
         if sidebar is not None:
             # remove description words that are already part of the sidebar
@@ -267,13 +266,7 @@ class BoreholeExtractor:
         if not self.lines:
             return []
 
-        min_x = min([line.rect.x0 for line in self.lines])
-        max_x = max([line.rect.x1 for line in self.lines])
-        min_y = min([line.rect.y0 for line in self.lines])
-        max_y = max([line.rect.y1 for line in self.lines])
-        line_rtree = fastquadtree.RectQuadTreeObjects((min_x, min_y, max_x, max_y), capacity=8)
-        for line in self.lines:
-            line_rtree.insert((line.rect.x0, line.rect.y0, line.rect.x1, line.rect.y1), obj=line)
+        line_rtree = TextLineRTree(self.lines)
 
         # create sidebars with noise count
         spulprobe_sidebars = SpulprobeSidebarExtractor.find_in_lines(self.lines, self.table_structures)
@@ -336,7 +329,9 @@ class BoreholeExtractor:
         """
         if sidebar:
             above_sidebar = [
-                line for line in self.lines if x_overlap(line.rect, sidebar.rect) and line.rect.y0 < sidebar.rect.y0
+                line
+                for line in self.processed_lines
+                if x_overlap(line.rect, sidebar.rect) and line.rect.y0 < sidebar.rect.y0
             ]
 
             min_y0 = max(line.rect.y0 for line in above_sidebar) if above_sidebar else -1
@@ -350,7 +345,7 @@ class BoreholeExtractor:
 
         horizontal_text_lines = [
             line
-            for line in self.lines
+            for line in self.processed_lines
             if abs(line.text_angle) < 10 and not re.fullmatch(r"[\d\s.,\-/]+", line.text.strip())
         ]
         candidate_description = [line for line in horizontal_text_lines if check_y0_condition(line.rect.y0)]
@@ -707,3 +702,38 @@ class BoreholeExtractor:
         # below the actual scanned page) --> this mechanism could/should be optimized in the future!
         largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
         return (largest_table.bounding_rect.height / max(self.page_height, 1e-16)) >= min_table_height_ratio
+
+
+def _split_text_lines_by_table_structures(
+    text_lines: list[TextLine], table_structures: list[TableStructure]
+) -> list[TextLine]:
+    """Split certain text lines into multiple lines based on intersecting vertical table structure lines."""
+    processed_lines = []
+    for text_line in text_lines:
+        text_middle_line = middle_line(text_line.rect)
+        partition = [text_line.words]
+
+        for structure in table_structures:
+            for line in structure.vertical_lines:
+                if line.intersects_with(text_middle_line):
+                    new_partition = []
+                    for words in partition:
+                        words_left = []
+                        words_right = []
+                        for word in words:
+                            if (word.rect.x0 + word.rect.x1) / 2 < (line.start.x + line.end.x) / 2:
+                                words_left.append(word)
+                            else:
+                                words_right.append(word)
+
+                        if len(words_left) > 0:
+                            new_partition.append(words_left)
+                        if len(words_right) > 0:
+                            new_partition.append(words_right)
+                    partition = new_partition
+
+        for words in partition:
+            text_line = TextLine(words, text_angle=text_line.text_angle)
+            processed_lines.append(text_line)
+
+    return processed_lines

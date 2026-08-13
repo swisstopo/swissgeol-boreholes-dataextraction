@@ -7,7 +7,6 @@ import math
 from dataclasses import dataclass, field
 from typing import ClassVar, Generic, TypeVar
 
-import fastquadtree
 import pymupdf
 
 from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
@@ -16,6 +15,7 @@ from swissgeol_doc_processing.geometry.util import x_overlap_significant_smalles
 from swissgeol_doc_processing.text.textblock import TextBlock
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.text.textline_affinity import Affinity
+from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 from swissgeol_doc_processing.utils.file_utils import read_params
 
 EntryT = TypeVar("EntryT", bound=SidebarEntry)
@@ -178,18 +178,20 @@ class SidebarQualityMetrics:
     best_sidebar_score: float
 
 
-def noise_count(sidebar: Sidebar, line_rtree: fastquadtree.RectQuadTreeObjects) -> int:
+def noise_count(sidebar: Sidebar, line_rtree: TextLineRTree) -> int:
     """Counts the number of text lines that intersect with the Sidebar entries.
 
     Args:
         sidebar (Sidebar): Sidebar object for which the noise count is calculated.
-        line_rtree (fastquadtree.RectQuadTreeObjects): Pre-built R-tree of all text lines on page for spatial queries.
+        line_rtree (TextLineRTree): Pre-built R-tree of all text lines on page for spatial queries.
 
     Returns:
         int: The number of text lines that intersect with the Sidebar entries but are not part of it.
     """
     sidebar_rect = sidebar.rect
-    intersecting_lines = _get_intersecting_lines(line_rtree, sidebar_rect)
+
+    intersecting_lines = line_rtree.query(sidebar_rect)
+    intersecting_lines = [line for line in intersecting_lines if any(char.isalnum() for char in line.text)]
 
     def significant_intersection(line: TextLine) -> bool:
         line_rect = line.rect
@@ -202,9 +204,3 @@ def noise_count(sidebar: Sidebar, line_rtree: fastquadtree.RectQuadTreeObjects) 
         return not any(line_rect.intersects(entry.rect) for entry in sidebar.all_entries)
 
     return sum(1 for line in intersecting_lines if significant_intersection(line) and not_in_entries(line))
-
-
-def _get_intersecting_lines(line_rtree: fastquadtree.RectQuadTreeObjects, rect: pymupdf.Rect) -> list[TextLine]:
-    """Retrieve all words from the page intersecting with Sidebar bounding box."""
-    intersecting_lines = [item.obj for item in line_rtree.query((rect.x0, rect.y0, rect.x1, rect.y1))]
-    return [line for line in intersecting_lines if any(char.isalnum() for char in line.text)]
