@@ -2,7 +2,6 @@
 
 import statistics
 
-import fastquadtree
 import pymupdf
 
 from extraction.features.stratigraphy.interval.depth_column_entry_extractor import DepthColumnEntryExtractor
@@ -13,6 +12,7 @@ from extraction.features.stratigraphy.sidebar.utils.cluster import Cluster
 from extraction.features.stratigraphy.sidebar.utils.entries_per_table import TableEntries
 from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
 from swissgeol_doc_processing.text.textline import TextWord
+from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 from swissgeol_doc_processing.utils.table_detection import TableStructure
 
 
@@ -68,7 +68,7 @@ class AAboveBSidebarExtractor:
     @staticmethod
     def find_in_words(
         all_words: list[TextWord],
-        line_rtree: fastquadtree.RectQuadTreeObjects,
+        line_rtree: TextLineRTree,
         table_structures: list[TableStructure],
         used_entry_rects: list[pymupdf.Rect],
         sidebar_params: dict,
@@ -77,7 +77,7 @@ class AAboveBSidebarExtractor:
 
         Args:
             all_words (list[TextWord]): All words in the page.
-            line_rtree (rtree.index.Index): Pre-built R-tree for spatial queries.
+            line_rtree (TextLineRTree): Pre-built R-tree for spatial queries.
             table_structures (list[TableStructure]): List of identified table-like structures on the page.
             used_entry_rects (list[pymupdf.Rect]): Part of the document to ignore.
             sidebar_params (dict): Parameters for the AAboveBSidebar objects.
