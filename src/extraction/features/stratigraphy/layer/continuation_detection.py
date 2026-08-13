@@ -15,6 +15,21 @@ DEPTHS_QUANTILE_SLACK = 0.1
 MIN_NAME_CONFIDENCE = 0.5
 
 
+def _confident_names(borehole_a: ExtractedBorehole, borehole_b: ExtractedBorehole) -> tuple[str, str] | None:
+    """Return both boreholes' normalized printed names, if each was confidently detected, else None."""
+    if not (
+        borehole_a.name
+        and borehole_b.name
+        and borehole_a.name.feature.confidence >= MIN_NAME_CONFIDENCE
+        and borehole_b.name.feature.confidence >= MIN_NAME_CONFIDENCE
+    ):
+        return None
+    return (
+        _normalize_for_comparison(borehole_a.name.feature.name),
+        _normalize_for_comparison(borehole_b.name.feature.name),
+    )
+
+
 def _names_conflict(borehole_a: ExtractedBorehole, borehole_b: ExtractedBorehole) -> bool:
     """Check whether both boreholes have their own confidently detected name, and those names disagree.
 
@@ -29,16 +44,45 @@ def _names_conflict(borehole_a: ExtractedBorehole, borehole_b: ExtractedBorehole
     Returns:
         bool: True if both boreholes have a confidently detected name and those names disagree.
     """
-    if not (
-        borehole_a.name
-        and borehole_b.name
-        and borehole_a.name.feature.confidence >= MIN_NAME_CONFIDENCE
-        and borehole_b.name.feature.confidence >= MIN_NAME_CONFIDENCE
-    ):
-        return False
-    name_a = _normalize_for_comparison(borehole_a.name.feature.name)
-    name_b = _normalize_for_comparison(borehole_b.name.feature.name)
-    return name_a != name_b
+    names = _confident_names(borehole_a, borehole_b)
+    return names is not None and names[0] != names[1]
+
+
+def _names_match(borehole_a: ExtractedBorehole, borehole_b: ExtractedBorehole) -> bool:
+    """Check whether both boreholes have their own confidently detected name, and those names agree.
+
+    Args:
+        borehole_a (ExtractedBorehole): One of the two boreholes being considered for a merge.
+        borehole_b (ExtractedBorehole): The other borehole being considered for a merge.
+
+    Returns:
+        bool: True if both boreholes have a confidently detected name and those names agree.
+    """
+    names = _confident_names(borehole_a, borehole_b)
+    return names is not None and names[0] == names[1]
+
+
+def _select_boreholes_by_matching_name(
+    previous_page_boreholes: list[ExtractedBorehole], current_page_boreholes: list[ExtractedBorehole]
+) -> tuple[ExtractedBorehole | None, ExtractedBorehole | None]:
+    """Find a pair of boreholes across the page break whose confidently detected names agree.
+
+    A matching, confidently detected name on both sides is direct evidence of continuation, strong
+    enough to treat as a continuation even when the overlap/depth heuristics found no candidate at all.
+
+    Args:
+        previous_page_boreholes (list[ExtractedBorehole]): The boreholes than can potentially be extended.
+        current_page_boreholes (list[ExtractedBorehole]): The boreholes than can potentially be a continuation.
+
+    Returns:
+        tuple[ExtractedBorehole | None, ExtractedBorehole | None]:
+                A pair of boreholes, or (None, None) if no pair has a matching name.
+    """
+    for previous_borehole in previous_page_boreholes:
+        for current_borehole in current_page_boreholes:
+            if _names_match(previous_borehole, current_borehole):
+                return previous_borehole, current_borehole
+    return None, None
 
 
 def _reconcile_duplicated_boundary_layer(previous_layer: Layer, current_layer: Layer) -> Layer | None:
@@ -87,6 +131,7 @@ def _prepare_merge_candidates(
     If it finds overlapping boreholes, it identifies the duplicated layers and prepares the boreholes for
     merging by reconciling the boundary layers if necessary.
     If no overlap is detected, it falls back to depth/position-based matching.
+    If that also finds no candidate, it falls back to a matching, confidently-detected borehole name.
 
     Args:
         previous_page_boreholes (list[ExtractedBorehole]): List of boreholes from the previous page.
@@ -110,6 +155,13 @@ def _prepare_merge_candidates(
         # 2) Depth/position-based (returns a pair) → normalize to triple
         borehole_to_extend, borehole_continuation = _select_boreholes_for_concatenation(
             previous_page_boreholes, current_page_boreholes, page_number
+        )
+
+    if borehole_to_extend is None or borehole_continuation is None:
+        # 3) Neither of the above found a candidate: a matching, confidently-detected name on both
+        # sides is still direct evidence of continuation, even without overlap or depth continuity.
+        borehole_to_extend, borehole_continuation = _select_boreholes_by_matching_name(
+            previous_page_boreholes, current_page_boreholes
         )
 
     # A disagreeing, confidently-detected name on both sides overrides any of the above: it's direct
