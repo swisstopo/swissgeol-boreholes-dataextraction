@@ -13,7 +13,6 @@ from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Laye
 logger = logging.getLogger(__name__)
 
 MAX_BOUNDARY_LAYERS_TO_DROP = 2
-DEPTH_VALUE_TOLERANCE = 0.05
 MIN_DEPTH_OVERLAP_MATCHES = 2
 
 
@@ -231,9 +230,9 @@ def _find_depth_reset_overlap(layers_prev: list[Layer], layers_curr: list[Layer]
     matches = 0
     for layer in layers_curr:
         end = layer.depths.end.value if layer.depths and layer.depths.end else None
-        if end is None or end > prev_max + DEPTH_VALUE_TOLERANCE:
+        if end is None or end > prev_max and not math.isclose(end, prev_max):
             break
-        if any(math.isclose(end, value, abs_tol=DEPTH_VALUE_TOLERANCE) for value in prev_values):
+        if any(math.isclose(end, value) for value in prev_values):
             matches += 1
         lower_id += 1
 
