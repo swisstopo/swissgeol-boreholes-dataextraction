@@ -123,13 +123,6 @@ def find_split_by_convolution(
 ) -> OverlapResult | None:
     """Find the extent of overlap between consecutive page layers.
 
-    Tries a plain match first. `_find_longest_overlap`'s window always starts its comparison at
-    `layers_curr[0]` (and ends at `layers_prev[-1]`), so a boundary layer that doesn't compare well to
-    its counterpart - e.g. because table/OCR parsing collapsed several real rows into it, or
-    truncated/paraphrased its text - blocks every window from aligning, hiding a genuine overlap in
-    the rest of the page. If the plain match fails, retry with up to `MAX_BOUNDARY_LAYERS_TO_DROP`
-    layers dropped from either end.
-
     Args:
         layers_prev (list[Layer]): Layers from the previous page, ordered top to bottom.
         layers_curr (list[Layer]): Layers from the current page, ordered top to bottom.
@@ -138,26 +131,38 @@ def find_split_by_convolution(
     Returns:
         OverlapResult | None: indices that define the overlapping layers, or None if no overlap.
     """
+    # try the finding a match in the untouched lists first; return immediately if that alone finds an overlap.
     result = _find_longest_overlap(layers_prev, layers_curr, matching_params)
     if result is not None:
         return result
 
+    # In some cases, the first layer on the current page is distorted and doesn't match the last layer on the
+    # previous page. In that case, we can try dropping the first layer of the current page and see if a match is found
+    # with the next layer down.
+    # --> Retry ignoring the current page's leading layers, in case a distorted first layer is blocking the match.
     for drop in range(1, MAX_BOUNDARY_LAYERS_TO_DROP + 1):
         if len(layers_curr) <= drop:
             break
         trimmed_curr = layers_curr[drop:]
         result = _find_longest_overlap(layers_prev, trimmed_curr, matching_params)
         if result is not None and _is_trustworthy_retry_match(result, trimmed_curr):
+            # lower_id was computed against trimmed_curr, so shift it back to index into the real layers_curr.
             return OverlapResult(upper_id=result.upper_id, lower_id=result.lower_id + drop)
 
+    # If the last layer on the previous page is distorted, we can try dropping it and see if a match is found with
+    # the next-to-last layer.
+    # --> Retry ignoring the previous page's trailing layers, in case a distorted last layer is blocking the match.
     for drop in range(1, MAX_BOUNDARY_LAYERS_TO_DROP + 1):
         if len(layers_prev) <= drop:
             break
         trimmed_prev = layers_prev[:-drop]
         result = _find_longest_overlap(trimmed_prev, layers_curr, matching_params)
         if result is not None and _is_trustworthy_retry_match(result, layers_curr):
+            # Dropping from the end of layers_prev doesn't renumber what's left, and layers_curr wasn't
+            # touched at all, so both indices already match the original lists.
             return result
 
+    # No text-based match at all; fall back to matching on repeated depth values alone.
     return _find_depth_reset_overlap(layers_prev, layers_curr)
 
 
