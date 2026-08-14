@@ -226,15 +226,15 @@ def _find_depth_reset_overlap(layers_prev: list[Layer], layers_curr: list[Layer]
         return None
     prev_max = max(prev_values)
 
-    lower_id = 0
     matches = 0
-    for layer in layers_curr:
+    for lower_id, layer in enumerate(layers_curr):  # noqa: B007
         end = layer.depths.end.value if layer.depths and layer.depths.end else None
         if end is None or end > prev_max and not math.isclose(end, prev_max):
             break
         if any(math.isclose(end, value) for value in prev_values):
             matches += 1
-        lower_id += 1
+    else:
+        lower_id = len(layers_curr)
 
     if matches < MIN_DEPTH_OVERLAP_MATCHES:
         return None
