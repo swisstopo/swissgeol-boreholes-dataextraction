@@ -140,7 +140,11 @@ def test_find_last_duplicate_ocr_error(create_layer):
 
 
 def test_find_last_duplicate_full_duplicates(create_layer):
-    """Test when the number of duplicated layers of the current page exceeds the number of layer in the previous."""
+    """Test when the current page has one new leading layer before the full duplicated block.
+
+    The plain window search can't align "Layer A" against anything in prev, but dropping it reveals
+    that the rest of the page (B, C, D) is a full duplicate of prev.
+    """
     prev_layers = [create_layer("Layer B"), create_layer("Layer C"), create_layer("Layer D")]
 
     current_layers_correct = [
@@ -150,6 +154,79 @@ def test_find_last_duplicate_full_duplicates(create_layer):
         create_layer("Layer D"),
     ]
     overlap_result = find_split_by_convolution(prev_layers, current_layers_correct, matching_params)
+    assert overlap_result.upper_id == 3
+    assert overlap_result.lower_id == 4
+
+
+def test_find_last_duplicate_unmatched_boundary_layer(create_elevation_layer):
+    """A boundary layer that doesn't compare well to its counterpart must not block detection.
+
+    Regression test inspired by 3384.pdf: the current page's first layer's text was OCR-truncated
+    enough that it no longer matched its counterpart in prev, which used to prevent the sliding
+    window from ever aligning with the real duplicate content right after it.
+    """
+    prev_layers = [
+        create_elevation_layer("dito grau", (26.1, 27.4)),
+        create_elevation_layer("Lehm mit Sandstein", (27.4, 27.95)),
+        create_elevation_layer("Mergel grau, fest, braun bis rotlich", (27.95, 28.75)),
+        create_elevation_layer("Sandstein zerbrockelt", (28.75, 29.95)),
+    ]
+    current_layers = [
+        create_elevation_layer("fest braun bis rotlich", (None, 28.75)),  # truncated, doesn't match prev's layer
+        create_elevation_layer("Sandstein zerbrockelt", (28.75, 29.95)),
+        create_elevation_layer("Mergel bunt", (29.95, 31.6)),
+    ]
+
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
+    assert overlap_result is not None
+    assert overlap_result.upper_id == 4
+    assert overlap_result.lower_id == 2
+
+
+def test_find_split_by_convolution_depth_reset_overlap(create_elevation_layer):
+    """Test depth reset overlap.
+
+    A ruler blocking the OCR text at the page boundary breaks text matching, but the current page's
+    depths restart lower while reproducing several exact depth values from the previous page - this
+    must still be detected as an overlap of the re-scanned section, not a new borehole.
+    """
+    prev_layers = [
+        create_elevation_layer("Sandstein grau", (11.3, 11.55)),
+        create_elevation_layer("Sandstein hart", (11.55, 12.6)),
+        create_elevation_layer("Mergel bunt", (12.6, 13.6)),
+        create_elevation_layer("Mergel bunt Fortsetzung", (13.6, 16.15)),
+    ]
+    current_layers = [
+        create_elevation_layer("XXXX unlesbar unter Lineal", (11.3, 11.55)),
+        create_elevation_layer("XXXX unlesbar unter Lineal", (11.55, 12.6)),
+        create_elevation_layer("XXXX unlesbar unter Lineal", (12.6, 13.6)),
+        create_elevation_layer("XXXX unlesbar unter Lineal", (13.6, 16.15)),
+        create_elevation_layer("Sandstein neu", (16.15, 18.1)),
+    ]
+
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
+    assert overlap_result is not None
+    assert overlap_result.upper_id == 4
+    assert overlap_result.lower_id == 4
+
+
+def test_find_split_by_convolution_depth_reset_no_overlap(create_elevation_layer):
+    """A current page that genuinely starts a new, shallower borehole must not be merged in.
+
+    Only one depth value coincides with the previous borehole (12.6) - not enough evidence of a
+    real re-scanned overlap.
+    """
+    prev_layers = [
+        create_elevation_layer("Sandstein grau", (11.3, 11.55)),
+        create_elevation_layer("Sandstein hart", (11.55, 12.6)),
+    ]
+    current_layers = [
+        create_elevation_layer("Humus", (0.0, 0.5)),
+        create_elevation_layer("Lehm", (0.5, 3.0)),
+        create_elevation_layer("Kies", (3.0, 12.6)),
+    ]
+
+    overlap_result = find_split_by_convolution(prev_layers, current_layers, matching_params)
     assert overlap_result is None
 
 
