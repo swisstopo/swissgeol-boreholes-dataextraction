@@ -14,7 +14,7 @@ from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
     GroundwaterLevelExtractor,
 )
-from extraction.features.metadata.borehole_name_extraction import NameInDocument, extract_borehole_names
+from extraction.features.metadata.borehole_name_extraction import BoreholeName, NameInDocument, extract_borehole_names
 from extraction.features.metadata.metadata import FileMetadata, MetadataInDocument
 from extraction.features.predictions.borehole_predictions import BoreholePredictions
 from extraction.features.predictions.file_predictions import FilePredictions
@@ -25,6 +25,7 @@ from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
+from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 from swissgeol_doc_processing.utils.file_utils import read_params
 from swissgeol_doc_processing.utils.strip_log_detection import StripLog, detect_strip_logs
 from swissgeol_doc_processing.utils.table_detection import TableStructure, detect_table_structures
@@ -36,6 +37,25 @@ table_detection_params = read_params("table_detection_params.yml")
 striplog_detection_params = read_params("striplog_detection_params.yml")
 
 logger = logging.getLogger(__name__)
+
+
+def _assign_borehole_names(
+    extracted_boreholes: list[ExtractedBorehole], name_entries: list[FeatureOnPage[BoreholeName]]
+) -> None:
+    """Attach the closest name candidate found on this same page to each borehole, if any were found.
+
+    A page essentially always has at most a couple of boreholes and name candidates, so matching by
+    vertical distance to the top of each borehole's column on this page is enough.
+
+    Args:
+        extracted_boreholes (list[ExtractedBorehole]): The boreholes just extracted from this page.
+        name_entries (list[FeatureOnPage[BoreholeName]]): The name candidates found on this same page.
+    """
+    if not name_entries:
+        return
+    for borehole in extracted_boreholes:
+        borehole_top = borehole.bounding_boxes[-1].get_outer_rect().y0
+        borehole.name = min(name_entries, key=lambda entry: abs(entry.rect.y0 - borehole_top))
 
 
 @dataclasses.dataclass
@@ -164,6 +184,7 @@ def extract(
                 analytics,
                 **matching_params,
             ).process_page()
+            _assign_borehole_names(extracted_boreholes, name_entries)
             boreholes_per_page.append(extracted_boreholes)
 
             # Extract the groundwater levels
