@@ -40,7 +40,6 @@ class MaterialDescription(ExtractedFeature):
 
     text: str
     lines: list[FeatureOnPage[MaterialDescriptionLine]]
-    max_line_width: float | None = None
 
     @property
     def rects_with_pages(self) -> list[RectWithPage]:
@@ -69,8 +68,7 @@ class MaterialDescription(ExtractedFeature):
         """Get the bounding rectangle for a specific page."""
         return next((p_rect.rect for p_rect in self.rects_with_pages if p_rect.page_number == page_number), None)
 
-    @property
-    def text_with_line_breaks(self) -> str:
+    def insert_line_breaks(self, max_line_width: float | None) -> MaterialDescription:
         """Rejoin description lines with inferred line breaks, for display purposes only.
 
         Compares each line's width against `max_line_width` - the widest description line seen anywhere
@@ -84,9 +82,9 @@ class MaterialDescription(ExtractedFeature):
         criteria apply.
         """
         if not self.lines:
-            return self.text
-        reference_width = self.max_line_width or max((line.rect.width for line in self.lines), default=0)
-        parts = [self.lines[0].feature.text]
+            return self
+        reference_width = max_line_width or max((line.rect.width for line in self.lines), default=0)
+
         for prev_line, line in zip(self.lines, self.lines[1:], strict=False):
             gap_ratio = (reference_width - prev_line.rect.width) / reference_width if reference_width else 0.0
             prev_text = prev_line.feature.text.rstrip()
@@ -100,13 +98,16 @@ class MaterialDescription(ExtractedFeature):
             # tuned, works well enough so far
             has_large_vertical_gap = not new_page and vertical_gap > 0.5 * prev_line.rect.height
             is_break = new_page or ends_with_break_punct or gap_ratio > 0.3 or has_large_vertical_gap
-            parts.append(("\n" if is_break else " ") + line.feature.text)
-        return "".join(parts)
+            if is_break:
+                prev_line.feature.text += "\n"
+
+        self.text = "".join([line.feature.text for line in self.lines])
+        return self
 
     def to_json(self) -> dict:
         """Convert the MaterialDescription object to a JSON serializable dictionary."""
         return {
-            "text": self.text_with_line_breaks,
+            "text": self.text,
             "lines": [line.to_json() for line in self.lines],
             "is_correct": self.is_correct,
         }

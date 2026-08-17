@@ -531,7 +531,7 @@ class LayerMaterialDescriptionSchema(BaseModel):
         cls, prediction: MaterialDescription, pdf_img_scalings: list[tuple[float]]
     ) -> "LayerMaterialDescriptionSchema":
         return cls(
-            text=prediction.text_with_line_breaks,
+            text=prediction.text,
             bounding_boxes=[
                 BoundingBoxWithPage(
                     page_number=line_feature.page_number,
