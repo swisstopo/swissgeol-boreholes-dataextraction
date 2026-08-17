@@ -12,7 +12,6 @@ from extraction.evaluation.groundwater_evaluator import (
 )
 from extraction.features.groundwater.groundwater_extraction import (
     Groundwater,
-    GroundwaterLevelExtractor,
     GroundwatersInBorehole,
 )
 from extraction.features.groundwater.utility import extract_date, extract_elevation
@@ -21,14 +20,11 @@ from extraction.features.predictions.borehole_predictions import (
     FileGroundwaterWithGroundTruth,
 )
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
-from swissgeol_doc_processing.utils.file_utils import read_params
-
-matching_params = read_params("matching_params.yml")
 
 
-def _gw(depth=None, date_=None, elevation=None, rect=(0, 0, 1, 1)) -> FeatureOnPage:
+def _gw(depth=None, date_=None, elevation=None, rect=(0, 0, 1, 1), page=1) -> FeatureOnPage:
     return FeatureOnPage(
-        feature=Groundwater(depth=depth, date=date_, elevation=elevation), rect=pymupdf.Rect(*rect), page=1
+        feature=Groundwater(depth=depth, date=date_, elevation=elevation), rect=pymupdf.Rect(*rect), page=page
     )
 
 
@@ -190,54 +186,87 @@ def test_evaluate_multiple_documents(groundtruth, groundwater_at_2m22, groundwat
     assert gw_2.groundwater_metrics.fp == 0.0
 
 
-@pytest.fixture
-def groundwater_extractor() -> GroundwaterLevelExtractor:
-    """A GroundwaterLevelExtractor instance, only used to call merge_compatible_candidates."""
-    return GroundwaterLevelExtractor("de", matching_params)
-
-
-def test_merge_compatible_candidates_merges_unique_pair(groundwater_extractor):
+def test_merge_compatible_candidates_merges_unique_pair():
     """Two candidates with no overlapping fields are merged into one."""
     depth_only = _gw(depth=5.0, rect=(0, 0, 1, 1))
     date_only = _gw(date_=date(2020, 3, 12), rect=(2, 2, 3, 3))
 
-    merged = groundwater_extractor.merge_compatible_candidates([depth_only, date_only])
+    borehole = GroundwatersInBorehole([depth_only, date_only])
+    borehole.merge_compatible_candidates(terrain_elevation=None)
 
-    assert len(merged) == 1
-    feature = merged[0].feature
+    assert len(borehole.groundwater_feature_list) == 1
+    feature = borehole.groundwater_feature_list[0].feature
     assert (feature.depth, feature.date, feature.elevation) == (5.0, date(2020, 3, 12), None)
-    assert merged[0].rect == pymupdf.Rect(0, 0, 3, 3)
+    assert borehole.groundwater_feature_list[0].rect == pymupdf.Rect(0, 0, 3, 3)
 
 
-def test_merge_compatible_candidates_blocks_on_conflicting_field(groundwater_extractor):
+def test_merge_compatible_candidates_blocks_on_conflicting_field():
     """A shared field with different values must not be merged."""
     a = _gw(depth=5.0, date_=date(2020, 3, 12))
     b = _gw(elevation=400.0, date_=date(2020, 1, 1))
 
-    merged = groundwater_extractor.merge_compatible_candidates([a, b])
+    borehole = GroundwatersInBorehole([a, b])
+    borehole.merge_compatible_candidates(terrain_elevation=None)
 
-    assert len(merged) == 2
+    assert len(borehole.groundwater_feature_list) == 2
 
 
-def test_merge_compatible_candidates_merges_mutually_compatible_group(groundwater_extractor):
+def test_merge_compatible_candidates_merges_mutually_compatible_group():
     """Depth, date and elevation extracted as three separate candidates merge into a single reading."""
     depth_only = _gw(depth=5.0)
     date_only = _gw(date_=date(2020, 3, 12))
     elevation_only = _gw(elevation=400.0)
 
-    merged = groundwater_extractor.merge_compatible_candidates([depth_only, date_only, elevation_only])
+    borehole = GroundwatersInBorehole([depth_only, date_only, elevation_only])
+    borehole.merge_compatible_candidates(terrain_elevation=None)
 
-    assert len(merged) == 1
-    feature = merged[0].feature
+    assert len(borehole.groundwater_feature_list) == 1
+    feature = borehole.groundwater_feature_list[0].feature
     assert (feature.depth, feature.date, feature.elevation) == (5.0, date(2020, 3, 12), 400.0)
 
 
-def test_merge_compatible_candidates_leaves_pairwise_conflicting_group_unmerged(groundwater_extractor):
+def test_merge_compatible_candidates_leaves_pairwise_conflicting_group_unmerged():
     """Three candidates that all conflict with each other pairwise are left as three separate readings."""
     depth_5 = _gw(depth=5.0)
     depth_9 = _gw(depth=9.0)
     depth_13 = _gw(depth=13.0)
 
-    merged = groundwater_extractor.merge_compatible_candidates([depth_5, depth_9, depth_13])
+    borehole = GroundwatersInBorehole([depth_5, depth_9, depth_13])
+    borehole.merge_compatible_candidates(terrain_elevation=None)
 
-    assert len(merged) == 3
+    assert len(borehole.groundwater_feature_list) == 3
+
+
+def test_merge_compatible_candidates_uses_terrain_elevation_to_detect_conflict():
+    """A depth-only and an elevation-only candidate must not merge if the terrain elevation shows they differ."""
+    depth_only = _gw(depth=4.0)  # implies elevation 470 - 4 = 466
+    elevation_only = _gw(elevation=460.0)  # implies depth 470 - 460 = 10
+
+    borehole = GroundwatersInBorehole([depth_only, elevation_only])
+    borehole.merge_compatible_candidates(terrain_elevation=470.0)
+
+    assert len(borehole.groundwater_feature_list) == 2
+
+
+def test_merge_compatible_candidates_uses_terrain_elevation_to_confirm_match():
+    """A depth-only and an elevation-only candidate merge if the terrain elevation shows they agree."""
+    depth_only = _gw(depth=4.0)
+    elevation_only = _gw(elevation=460.0)  # implies depth 464 - 460 = 4, matching depth_only
+
+    borehole = GroundwatersInBorehole([depth_only, elevation_only])
+    borehole.merge_compatible_candidates(terrain_elevation=464.0)
+
+    assert len(borehole.groundwater_feature_list) == 1
+    feature = borehole.groundwater_feature_list[0].feature
+    assert (feature.depth, feature.elevation) == (4.0, 460.0)
+
+
+def test_merge_compatible_candidates_does_not_merge_across_pages():
+    """Non-conflicting candidates found on different pages must not be merged into one reading."""
+    depth_only = _gw(depth=5.0, page=1)
+    date_only = _gw(date_=date(2020, 3, 12), page=2)
+
+    borehole = GroundwatersInBorehole([depth_only, date_only])
+    borehole.merge_compatible_candidates(terrain_elevation=None)
+
+    assert len(borehole.groundwater_feature_list) == 2
