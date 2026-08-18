@@ -55,7 +55,15 @@ def extract_text_lines_from_bbox(page: pymupdf.Page, bbox: pymupdf.Rect | None) 
                             word_rect = pymupdf.Rect()
                         if char["c"] != " ":
                             word_text += char["c"]
-                            word_rect.include_rect(pymupdf.Rect(char["bbox"]) * page.rotation_matrix)
+                            char_rect = pymupdf.Rect(char["bbox"]) * page.rotation_matrix
+
+                            # note: the pymupdf methods include_rect and | don't deal well with zero-width rectangles
+                            word_rect = pymupdf.Rect(
+                                min(word_rect.x0, char_rect.x0),
+                                min(word_rect.y0, char_rect.y0),
+                                max(word_rect.x1, char_rect.x1),
+                                max(word_rect.y1, char_rect.y1),
+                            )
                     if len(word_text) > 0:
                         words.append(TextWord(word_rect, word_text, page.number + 1))
 
