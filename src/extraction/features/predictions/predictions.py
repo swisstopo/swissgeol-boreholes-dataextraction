@@ -104,22 +104,6 @@ class BoreholeListBuilder:
             )
         ]
 
-    @staticmethod
-    def _extend_list(lst: list[T], default_elem: T, target_length: int) -> list[T]:
-        """Extends a list with deep copies of a base element until it reaches the target length.
-
-        deepcopy is necessary, because the is_correct attribute is already stored on this object, but the same
-        extracted value might be correct on one borehole and incorrect on another one.
-        """
-
-        def create_new_elem():
-            return deepcopy(lst[0]) if lst else default_elem
-
-        while len(lst) < target_length:
-            lst.append(create_new_elem())  # Append copies to match the required length
-
-        return lst
-
     def remove_elevations_overlaping_groundwater(self) -> None:
         """Removes elevation entries that are also groundwater entries.
 
@@ -203,9 +187,8 @@ class BoreholeListBuilder:
         multiple elements might be close to a single borehole. It works iteratively by:
 
         1. Using a many-to-one matching heuristic to suggest possible element candidates per borehole.
-        2. Filtering out elements that have already been assigned.
-        3. Selecting the best candidate — defined as the topmost one on the page — if multiple are available.
-        4. Repeating until each borehole has a unique match.
+        2. Selecting the best candidate — above and close to the stratigraphy bounding box — if multiple are available.
+        3. Repeating until each borehole has a unique match
 
         Args:
             element_list (list[FeatureOnPage]): List of extracted elements to match.
@@ -215,10 +198,6 @@ class BoreholeListBuilder:
         """
         if not element_list:
             return {idx: None for idx in range(self._num_boreholes)}
-
-        # Ensure there is at least one element for each borehole. This is done by duplicating elements if fewer
-        # values were extracted than the number of boreholes, or by filling the list with None values.
-        element_list = self._extend_list(element_list, None, self._num_boreholes)
 
         borehole_index_to_matched_elem_index = {}
         # continue until all boreholes are matched
@@ -238,9 +217,11 @@ class BoreholeListBuilder:
                 assert borehole_index not in borehole_index_to_matched_elem_index
                 assert available_elements
                 best_element = available_elements[0]
-                # fill the mapping borehole_index -> element and remove the element from the element list
-                borehole_index_to_matched_elem_index[borehole_index] = best_element
-                element_list.remove(best_element)
+                # Fill the mapping borehole_index -> element and remove the element from the element list.
+                # We create a deep copy, because we might assign the same extracted element to different boreholes,
+                # in which case the is_correct attribute should also be set separately for each assignment (the
+                # extracted element might be correct for one borehole and incorrect for another).
+                borehole_index_to_matched_elem_index[borehole_index] = deepcopy(best_element)
 
         return borehole_index_to_matched_elem_index
 
