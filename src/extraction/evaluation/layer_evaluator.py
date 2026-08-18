@@ -9,6 +9,7 @@ import Levenshtein
 from core.benchmark_utils import Metrics
 from core.ground_truth import GroundTruthBorehole, GroundTruthLayer
 from extraction.features.predictions.borehole_predictions import (
+    BoreholePredictions,
     BoreholePredictionsWithGroundTruth,
     FileLayersWithGroundTruth,
 )
@@ -21,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 MATERIAL_DESCRIPTION_SIMILARITY_THRESHOLD = 0.9
 MAX_DEPTH_SCORE = 1.0
+BOREHOLE_ORDER_BONUS_WEIGHT = 0.4  # tune, revisit, if necessary
 
 
 class LayerEvaluator:
@@ -214,7 +216,9 @@ class LayerEvaluator:
         """Match predicted boreholes to ground truth boreholes.
 
         This method compares the predicted boreholes with the ground truth boreholes and establishes a mapping
-            between them based on their similarity.
+            between them based on their similarity, with a bonus for agreeing on page position (reading order)
+            to break close, ambiguous ties --> ground truth is usually, but not always, annotated in reading order
+            (see `BOREHOLE_ORDER_BONUS_WEIGHT`).
 
         Args:
             file_predictions (FilePredictions): all predictions for the file
@@ -223,17 +227,24 @@ class LayerEvaluator:
         Returns:
             list[BoreholePredictionsWithGroundTruth]: A list of matched borehole predictions with their ground truth.
         """
-        all_ground_truth_layers = {
-            idx: borehole_data.layers for idx, borehole_data in enumerate(ground_truth_for_file)
-        }
-        borehole_layers = [bh.layers_in_borehole for bh in file_predictions.borehole_predictions_list]
+        predictions = file_predictions.borehole_predictions_list
+        reading_rank = {id(pred): rank for rank, pred in enumerate(_boreholes_in_reading_order(predictions))}
+        # using position as a tie-breaker when there are multiple boreholes in a file
+        bonus_weight = BOREHOLE_ORDER_BONUS_WEIGHT if len(predictions) > 1 and len(ground_truth_for_file) > 1 else 0.0
+
+        def relative_position(rank: int, count: int) -> float:
+            return rank / (count - 1) if count > 1 else 0.0
+
         pred_vs_gt_matching_score = defaultdict(dict)
-        for gt_idx, ground_truth_layers in all_ground_truth_layers.items():
-            for pred_idx, predicted_layers in enumerate(borehole_layers):
-                matching_score, _ = LayerEvaluator.compute_borehole_affinity_and_mapping(
-                    ground_truth_layers, predicted_layers.layers, score_layer
+        for gt_idx, ground_truth_borehole in enumerate(ground_truth_for_file):
+            gt_position = relative_position(gt_idx, len(ground_truth_for_file))
+            for pred_idx, prediction in enumerate(predictions):
+                content_score, _ = LayerEvaluator.compute_borehole_affinity_and_mapping(
+                    ground_truth_borehole.layers, prediction.layers_in_borehole.layers, score_layer
                 )
-                pred_vs_gt_matching_score[gt_idx][pred_idx] = matching_score
+                pred_position = relative_position(reading_rank[id(prediction)], len(predictions))
+                order_bonus = bonus_weight * (1 - abs(pred_position - gt_position))
+                pred_vs_gt_matching_score[gt_idx][pred_idx] = content_score + order_bonus
 
         # matching of all the boreholes detected to a borehole in the ground truth
         matched_boreholes = []
@@ -248,16 +259,14 @@ class LayerEvaluator:
 
             gt_best_idx, pred_best_idx = best_matches
             matched_boreholes.append(
-                BoreholePredictionsWithGroundTruth(
-                    file_predictions.borehole_predictions_list[pred_best_idx], ground_truth_for_file[gt_best_idx]
-                )
+                BoreholePredictionsWithGroundTruth(predictions[pred_best_idx], ground_truth_for_file[gt_best_idx])
             )
             assigned_preds.add(pred_best_idx)  # Mark this pred_idx as used
 
             # Remove the matched gt_idx from consideration
             del pred_vs_gt_matching_score[gt_best_idx]
 
-            if len(assigned_preds) == len(borehole_layers):
+            if len(assigned_preds) == len(predictions):
                 # all preds have been assigned
                 break
 
@@ -268,7 +277,7 @@ class LayerEvaluator:
             )
 
         # add entries with missing ground truth for all unmatched prediction boreholes (will count as false positives)
-        for index, pred in enumerate(file_predictions.borehole_predictions_list):
+        for index, pred in enumerate(predictions):
             if index not in assigned_preds:
                 matched_boreholes.append(BoreholePredictionsWithGroundTruth(predictions=pred, ground_truth=None))
         return matched_boreholes
@@ -334,3 +343,32 @@ def score_depths(layer: Layer, ground_truth: GroundTruthLayer) -> float:
 def score_layer(layer: Layer, ground_truth: GroundTruthLayer) -> float:
     """Scores how well the full layer matches the ground truth on a scale from 0 to 1."""
     return (score_material_descriptions(layer, ground_truth) + score_depths(layer, ground_truth)) / 2
+
+
+def _borehole_position(prediction: BoreholePredictions) -> tuple[int, float, float, float]:
+    """Return (page, y0, y1, x0) of a borehole's first page, used to order it by reading position."""
+    if not prediction.bounding_boxes:
+        return (0, 0.0, 0.0, 0.0)
+    rect = prediction.bounding_boxes[0].get_outer_rect()
+    return (prediction.bounding_boxes[0].page, rect.y0, rect.y1, rect.x0)
+
+
+def _boreholes_in_reading_order(predictions: list[BoreholePredictions]) -> list[BoreholePredictions]:
+    """Sort boreholes into page reading order: top-to-bottom by row, then left-to-right within a row."""
+    positioned = sorted(
+        ((_borehole_position(prediction), prediction) for prediction in predictions), key=lambda item: item[0][:2]
+    )
+
+    # positioned is sorted by (page, y0)
+    rows = []
+    current_page, row_bottom = None, None
+    for position, prediction in positioned:
+        page, y0, y1, _ = position
+        if page != current_page or y0 >= row_bottom:
+            rows.append([])
+            current_page, row_bottom = page, y1
+        else:
+            row_bottom = max(row_bottom, y1)
+        rows[-1].append((position, prediction))
+
+    return [prediction for row in rows for _, prediction in sorted(row, key=lambda item: item[0][3])]
