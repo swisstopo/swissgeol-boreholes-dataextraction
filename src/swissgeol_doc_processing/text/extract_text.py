@@ -37,6 +37,18 @@ def extract_text_lines_from_bbox(page: pymupdf.Page, bbox: pymupdf.Rect | None) 
     Returns:
         list[TextLine]: A list of text lines.
     """
+
+    def _word_rect(char_rects: list[pymupdf.Rect]) -> pymupdf.Rect:
+        if len(char_rects) == 0:
+            return pymupdf.Rect()
+        else:
+            return pymupdf.Rect(
+                min(rect.x0 for rect in char_rects),
+                min(rect.y0 for rect in char_rects),
+                max(rect.x1 for rect in char_rects),
+                max(rect.y1 for rect in char_rects),
+            )
+
     lines = []
     for block in page.get_text("rawdict", clip=bbox)["blocks"]:
         if "lines" in block:
@@ -46,26 +58,18 @@ def extract_text_lines_from_bbox(page: pymupdf.Page, bbox: pymupdf.Rect | None) 
 
                 words = []
                 for span in line["spans"]:
-                    word_rect = pymupdf.Rect()
+                    char_rects = []
                     word_text = ""
                     for char in span["chars"]:
                         if char["c"] == " " and len(word_text) > 0:
-                            words.append(TextWord(word_rect, word_text, page.number + 1))
+                            words.append(TextWord(_word_rect(char_rects), word_text, page.number + 1))
                             word_text = ""
-                            word_rect = pymupdf.Rect()
+                            char_rects = []
                         if char["c"] != " ":
                             word_text += char["c"]
-                            char_rect = pymupdf.Rect(char["bbox"]) * page.rotation_matrix
-
-                            # note: the pymupdf methods include_rect and | don't deal well with zero-width rectangles
-                            word_rect = pymupdf.Rect(
-                                min(word_rect.x0, char_rect.x0),
-                                min(word_rect.y0, char_rect.y0),
-                                max(word_rect.x1, char_rect.x1),
-                                max(word_rect.y1, char_rect.y1),
-                            )
+                            char_rects.append(pymupdf.Rect(char["bbox"]) * page.rotation_matrix)
                     if len(word_text) > 0:
-                        words.append(TextWord(word_rect, word_text, page.number + 1))
+                        words.append(TextWord(_word_rect(char_rects), word_text, page.number + 1))
 
                 lines.append(TextLine(words, text_angle))
 
