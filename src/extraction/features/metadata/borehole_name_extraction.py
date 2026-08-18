@@ -205,7 +205,7 @@ def _extract_borehole_names_from_line(
                 new_rect = previous_word.rect | word.rect | next_word.rect
                 new_text = previous_word.text + word.text + next_word.text
                 new_word = TextWord(new_rect, new_text, word.page_number)
-                contracted_words.insert(len(contracted_words) - 1, new_word)
+                contracted_words[len(contracted_words) - 1] = new_word
                 skip_next = True
         else:
             if skip_next:

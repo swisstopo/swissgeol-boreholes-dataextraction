@@ -213,13 +213,12 @@ class BoreholeListBuilder:
         Returns:
             dict[int, FeatureOnPage | None]: Mapping from borehole index to matched element.
         """
+        if not element_list:
+            return {idx: None for idx in range(self._num_boreholes)}
+
         # Ensure there is at least one element for each borehole. This is done by duplicating elements if fewer
         # values were extracted than the number of boreholes, or by filling the list with None values.
         element_list = self._extend_list(element_list, None, self._num_boreholes)
-
-        # solve trivial case and case where the elements are None
-        if len(element_list) == 1 or not element_list[0]:
-            return {idx: elem for idx, elem in enumerate(element_list)}
 
         borehole_index_to_matched_elem_index = {}
         # continue until all boreholes are matched
