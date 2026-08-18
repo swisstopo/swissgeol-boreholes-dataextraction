@@ -41,9 +41,7 @@ class TextLine(RectWithPageMixin):
             words (list[TextWord]): The words that make up the line.
             text_angle (float): The angle in degrees (between -180 and 180) that the text makes with the x-axis.
         """
-        rect = pymupdf.Rect()
-        for word in words:
-            rect.include_rect(word.rect)
+        rect = rect_union([word.rect for word in words])
         self.rect_with_page = RectWithPage(rect, next((word.page_number for word in words), None))
         self.words = words
         self.text_angle = text_angle
@@ -93,3 +91,20 @@ class TextLine(RectWithPageMixin):
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1],
             "page": self.page_number,
         }
+
+
+def rect_union(char_rects: list[pymupdf.Rect]) -> pymupdf.Rect:
+    """Takes the union of all the rects in the list.
+
+    Contrary to the pymupdf methods include_rect and |, this implementation also works well for zero-width or
+    zero-height rects.
+    """
+    if len(char_rects) == 0:
+        return pymupdf.Rect()
+    else:
+        return pymupdf.Rect(
+            min(rect.x0 for rect in char_rects),
+            min(rect.y0 for rect in char_rects),
+            max(rect.x1 for rect in char_rects),
+            max(rect.y1 for rect in char_rects),
+        )
