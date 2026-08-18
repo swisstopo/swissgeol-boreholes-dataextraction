@@ -87,17 +87,12 @@ class MaterialDescription(ExtractedFeature):
 
         for prev_line, line in zip(self.lines, self.lines[1:], strict=False):
             gap_ratio = (reference_width - prev_line.rect.width) / reference_width if reference_width else 0.0
-            prev_text = prev_line.feature.text.rstrip()
-            ends_with_abbreviation = prev_text.endswith(_ABBREVIATIONS_ENDING_IN_PERIOD)
-            ends_with_break_punct = prev_text.endswith((":", ";")) or (
-                prev_text.endswith(".") and not ends_with_abbreviation
-            )
             new_page = line.page_number != prev_line.page_number
             vertical_gap = line.rect.y0 - prev_line.rect.y1
             # TODO: 30% relative-to-longest-line and 0.5x-line-height thresholds picked by eye, not
             # tuned, works well enough so far
             has_large_vertical_gap = not new_page and vertical_gap > 0.5 * prev_line.rect.height
-            is_break = new_page or ends_with_break_punct or gap_ratio > 0.3 or has_large_vertical_gap
+            is_break = new_page or gap_ratio > 0.3 or has_large_vertical_gap
             if is_break:
                 prev_line.feature.text += "\n"
 
