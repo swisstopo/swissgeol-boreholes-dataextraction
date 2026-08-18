@@ -265,6 +265,11 @@ class BoreholeListBuilder:
             # the current boreholes layers don't appear on the page where the element is
             return None
         outer_rect = bbox.get_outer_rect()
+
+        if feat.rect.y0 > outer_rect.y0:
+            # metadata feature must be above the stratigraphy bounding box
+            return None
+
         if feat.rect.x1 < outer_rect.x0:
             closest_x = outer_rect.x1
         elif feat.rect.x0 > outer_rect.x1:
