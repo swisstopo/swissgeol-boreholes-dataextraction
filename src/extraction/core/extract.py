@@ -101,6 +101,17 @@ def open_pdf(
     doc.close()
 
 
+def _reference_line_width(borehole: ExtractedBorehole) -> float | None:
+    """Return the width of each borehole's longest description line.
+
+    `MaterialDescription.insert_line_breaks` uses this as a reference for how long a line can get
+    before the layout wraps it. Scoped per borehole (not per file): different boreholes, even across
+    pages of the same file, can have differently sized description columns.
+    """
+    line_widths = [line.rect.width for layer in borehole.predictions for line in layer.material_description.lines]
+    return max(line_widths, default=None)
+
+
 def extract(
     file: Path | BytesIO,
     filename: str,
@@ -197,6 +208,11 @@ def extract(
 
         # Merge detections if possible
         layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page, matching_params), filename)
+
+        for borehole in layers_with_bb_in_document.boreholes_layers_with_bb:
+            max_line_width = _reference_line_width(borehole)
+            for layer in borehole.predictions:
+                layer.material_description.insert_line_breaks(max_line_width)
 
         # create list of BoreholePrediction objects with all the separate lists
         borehole_predictions_list: list[BoreholePredictions] = BoreholeListBuilder(
