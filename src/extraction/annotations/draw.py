@@ -250,6 +250,13 @@ class PageDrawer:
                     fill=pymupdf.utils.getColor(color),
                     width=0,
                 )
+                if line.feature.text.endswith("\n"):
+                    self.shape.draw_line(
+                        line.rect.top_right * self.page.derotation_matrix,
+                        line.rect.bottom_right * self.page.derotation_matrix,
+                    )
+                    self.shape.finish(color=pymupdf.utils.getColor("blue"), stroke_opacity=0.5, width=2)
+
                 self._draw_correctness_line(
                     start=pymupdf.Point(line.rect.top_left.x - 6, line.rect.top_left.y),
                     end=pymupdf.Point(line.rect.bottom_left.x - 6, line.rect.bottom_left.y),
