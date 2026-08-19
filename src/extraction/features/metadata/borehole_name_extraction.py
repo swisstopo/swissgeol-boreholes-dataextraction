@@ -220,6 +220,10 @@ def _extract_borehole_names_from_line(
         return []
 
     keyword_match_length = _keyword_match_length([word.text for word in words], keywords)
+
+    # We only give a special treatment if the remaining text is not longer than 1.5 times the keyword prefix.
+    # For example, "BORHUNG 201" gets the flag, but "BOHRUNG AUSGEFÜHRT 12.03.2016" does not.
+    prefix_text = " ".join(word.text for word in words[:keyword_match_length])
     prefix_is_keyword = keyword_match_length > 0
 
     words = words[keyword_match_length:]
@@ -279,7 +283,7 @@ def _extract_borehole_names_from_line(
             continue
 
         confidence = rect.height
-        if prefix_is_keyword:
+        if prefix_is_keyword and 1.5 * len(prefix_text) > len(name):
             confidence *= 3
         if has_number_prefix:
             confidence *= 2
