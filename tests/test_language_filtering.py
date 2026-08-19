@@ -123,7 +123,7 @@ excluded_keywords: list[str] = name_detection_params.get("excluded_keywords")
         ("Sonnig 12°C", [], False),
     ],
 )
-def test_findcandidatename(text: str, expected: str | None, allow_simple: bool) -> None:
+def test_findcandidatename(text: str, expected: list[str], allow_simple: bool) -> None:
     """Test borehole name extraction behavior."""
     words = text.split(" ")
     names = []

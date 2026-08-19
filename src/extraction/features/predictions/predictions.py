@@ -6,7 +6,7 @@ from collections.abc import Callable
 from copy import deepcopy
 from typing import TypeVar
 
-from pymupdf import pymupdf
+import pymupdf
 
 from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
@@ -251,9 +251,9 @@ class BoreholeListBuilder:
             return None
 
         if feat.rect.x1 < outer_rect.x0:
-            closest_x = outer_rect.x1
-        elif feat.rect.x0 > outer_rect.x1:
             closest_x = outer_rect.x0
+        elif feat.rect.x0 > outer_rect.x1:
+            closest_x = outer_rect.x1
         else:
             # overlap between feature and bbox
             closest_x = max(feat.rect.x0, outer_rect.x0)
