@@ -192,7 +192,7 @@ def test_merge_compatible_candidates_merges_unique_pair():
     date_only = _gw(date_=date(2020, 3, 12), rect=(2, 2, 3, 3))
 
     borehole = GroundwatersInBorehole([depth_only, date_only])
-    borehole.merge_compatible_candidates(terrain_elevation=None)
+    borehole.merge_compatible_candidates()
 
     assert len(borehole.groundwater_feature_list) == 1
     feature = borehole.groundwater_feature_list[0].feature
@@ -206,7 +206,7 @@ def test_merge_compatible_candidates_blocks_on_conflicting_field():
     b = _gw(elevation=400.0, date_=date(2020, 1, 1))
 
     borehole = GroundwatersInBorehole([a, b])
-    borehole.merge_compatible_candidates(terrain_elevation=None)
+    borehole.merge_compatible_candidates()
 
     assert len(borehole.groundwater_feature_list) == 2
 
@@ -218,7 +218,7 @@ def test_merge_compatible_candidates_merges_mutually_compatible_group():
     elevation_only = _gw(elevation=400.0)
 
     borehole = GroundwatersInBorehole([depth_only, date_only, elevation_only])
-    borehole.merge_compatible_candidates(terrain_elevation=None)
+    borehole.merge_compatible_candidates()
 
     assert len(borehole.groundwater_feature_list) == 1
     feature = borehole.groundwater_feature_list[0].feature
@@ -232,33 +232,9 @@ def test_merge_compatible_candidates_leaves_pairwise_conflicting_group_unmerged(
     depth_13 = _gw(depth=13.0)
 
     borehole = GroundwatersInBorehole([depth_5, depth_9, depth_13])
-    borehole.merge_compatible_candidates(terrain_elevation=None)
+    borehole.merge_compatible_candidates()
 
     assert len(borehole.groundwater_feature_list) == 3
-
-
-def test_merge_compatible_candidates_uses_terrain_elevation_to_detect_conflict():
-    """A depth-only and an elevation-only candidate must not merge if the terrain elevation shows they differ."""
-    depth_only = _gw(depth=4.0)  # implies elevation 470 - 4 = 466
-    elevation_only = _gw(elevation=460.0)  # implies depth 470 - 460 = 10
-
-    borehole = GroundwatersInBorehole([depth_only, elevation_only])
-    borehole.merge_compatible_candidates(terrain_elevation=470.0)
-
-    assert len(borehole.groundwater_feature_list) == 2
-
-
-def test_merge_compatible_candidates_uses_terrain_elevation_to_confirm_match():
-    """A depth-only and an elevation-only candidate merge if the terrain elevation shows they agree."""
-    depth_only = _gw(depth=4.0)
-    elevation_only = _gw(elevation=460.0)  # implies depth 464 - 460 = 4, matching depth_only
-
-    borehole = GroundwatersInBorehole([depth_only, elevation_only])
-    borehole.merge_compatible_candidates(terrain_elevation=464.0)
-
-    assert len(borehole.groundwater_feature_list) == 1
-    feature = borehole.groundwater_feature_list[0].feature
-    assert (feature.depth, feature.elevation) == (4.0, 460.0)
 
 
 def test_merge_compatible_candidates_does_not_merge_across_pages():
@@ -267,6 +243,6 @@ def test_merge_compatible_candidates_does_not_merge_across_pages():
     date_only = _gw(date_=date(2020, 3, 12), page=2)
 
     borehole = GroundwatersInBorehole([depth_only, date_only])
-    borehole.merge_compatible_candidates(terrain_elevation=None)
+    borehole.merge_compatible_candidates()
 
     assert len(borehole.groundwater_feature_list) == 2

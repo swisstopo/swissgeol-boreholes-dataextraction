@@ -229,7 +229,7 @@ class GroundwatersInBorehole:
         """
         return cls([FeatureOnPage.from_json(gw_data, Groundwater) for gw_data in json_object])
 
-    def merge_compatible_candidates(self, terrain_elevation: float | None):
+    def merge_compatible_candidates(self):
         """Merges candidates that likely describe the same groundwater reading.
 
         Some documents mention one groundwater reading in more than one place, so different mentions of the
@@ -239,10 +239,6 @@ class GroundwatersInBorehole:
 
         This runs once the borehole's terrain elevation is known.
         Only candidates found on the same page are considered for merging
-
-        Args:
-            terrain_elevation (float | None): The elevation of the terrain at the top of the borehole, used to
-                cross-check a candidate's depth against another candidate's elevation.
         """
 
         def conflicts(a: FeatureOnPage[Groundwater], b: FeatureOnPage[Groundwater]) -> bool:
@@ -251,7 +247,7 @@ class GroundwatersInBorehole:
                 getattr(a.feature, field) is not None
                 and getattr(b.feature, field) is not None
                 and getattr(a.feature, field) != getattr(b.feature, field)
-                for field in ("date", "elevation")
+                for field in ("depth", "date", "elevation")
             )
 
         def mutually_compatible(group: list[FeatureOnPage[Groundwater]]) -> bool:
@@ -316,45 +312,6 @@ class GroundwatersInBorehole:
             result.extend(non_overlapping)
         self.groundwater_feature_list = result
 
-    def remove_duplicates(self):
-        """Removes groundwater entries that have the same date and not a different depth.
-
-        Those entry likely are the same information, shown twice on the page. This step can't be done during the
-        extraction process, as entries with the same date could belong to different boreholes at that point.
-        """
-        unique_groundwaters: list[FeatureOnPage[Groundwater]] = []
-        for gw in self.groundwater_feature_list:
-            keep = True
-            to_remove = []
-            for other_gw in unique_groundwaters:
-                if (
-                    gw.feature.date is not None
-                    and other_gw.feature.date is not None
-                    and gw.feature.date == other_gw.feature.date
-                ):
-                    # same date means that the groundwaters are duplicates shown twice on the page
-                    if (
-                        gw.feature.depth is not None
-                        and other_gw.feature.depth is not None
-                        and other_gw.feature.depth != gw.feature.depth
-                    ):
-                        continue
-                    elif gw.feature.depth is None and other_gw.feature.depth is not None:
-                        keep = False
-                    elif gw.feature.depth is None and other_gw.feature.depth is None:
-                        # both depths are None, look at elevation to break ties
-                        if gw.feature.elevation is None and other_gw.feature.elevation is not None:
-                            keep = False
-                        else:
-                            to_remove.append(other_gw)
-                    else:
-                        to_remove.append(other_gw)
-            for other_gw in to_remove:
-                unique_groundwaters.remove(other_gw)
-            if keep:
-                unique_groundwaters.append(gw)
-        self.groundwater_feature_list = unique_groundwaters
-
     def filter_entries(self, terrain_elevation: float | None, layers: list[Layer]):
         """Merges compatible candidates, removes duplicates, and sets the depth/elevation of all entries.
 
@@ -364,9 +321,8 @@ class GroundwatersInBorehole:
         """
         for entry in self.groundwater_feature_list:
             entry.feature.infer_infos(terrain_elevation, layers, entry.rect)
-        self.merge_compatible_candidates(terrain_elevation)
+        self.merge_compatible_candidates()
         self.remove_overlaps()
-        self.remove_duplicates()
 
 
 @dataclass
