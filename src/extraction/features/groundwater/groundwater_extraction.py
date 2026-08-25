@@ -245,25 +245,14 @@ class GroundwatersInBorehole:
                 cross-check a candidate's depth against another candidate's elevation.
         """
 
-        def implied_depth(feature: Groundwater) -> float | None:
-            """Returns the depth of a groundwater feature, either directly or inferred."""
-            if feature.depth is not None:
-                return feature.depth
-            if feature.elevation is not None and terrain_elevation is not None:
-                return round(terrain_elevation - feature.elevation, 2)
-            return None
-
         def conflicts(a: FeatureOnPage[Groundwater], b: FeatureOnPage[Groundwater]) -> bool:
             """Returns True if two groundwater features have conflicting non-None fields."""
-            if any(
+            return any(
                 getattr(a.feature, field) is not None
                 and getattr(b.feature, field) is not None
                 and getattr(a.feature, field) != getattr(b.feature, field)
                 for field in ("date", "elevation")
-            ):
-                return True
-            depth_a, depth_b = implied_depth(a.feature), implied_depth(b.feature)
-            return depth_a is not None and depth_b is not None and depth_a != depth_b
+            )
 
         def mutually_compatible(group: list[FeatureOnPage[Groundwater]]) -> bool:
             """Returns True if no two members of the group conflict with each other."""
@@ -373,11 +362,11 @@ class GroundwatersInBorehole:
             terrain_elevation (float): The elevation of the terrain at the top of the borehole.
             layers (list[Layer]): The list of layers in the borehole.
         """
+        for entry in self.groundwater_feature_list:
+            entry.feature.infer_infos(terrain_elevation, layers, entry.rect)
         self.merge_compatible_candidates(terrain_elevation)
         self.remove_overlaps()
         self.remove_duplicates()
-        for entry in self.groundwater_feature_list:
-            entry.feature.infer_infos(terrain_elevation, layers, entry.rect)
 
 
 @dataclass
