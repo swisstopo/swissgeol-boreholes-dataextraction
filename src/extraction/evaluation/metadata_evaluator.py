@@ -130,15 +130,15 @@ class MetadataEvaluator:
         )
 
     @staticmethod
-    def match_name(extracted_name: BoreholeName, ground_truth_name: str, ignore_spaces: bool = True) -> bool:
+    def match_name(extracted_name: BoreholeName, ground_truth_name: str) -> bool:
         """Check matching between extracted and ground truth names.
 
         The matching is based on the filtered and normalized text. Keywords such as "bohrung" or "n°" are ignored.
+        Spaces and periods are also ignored.
 
         Args:
             extracted_name (BoreholeName): BoreholeName object that include detected name.
             ground_truth_name (str): Ground truth name.
-            ignore_spaces (bool, optional): Indicate if spaces are ignored during matching. Defaults to True.
 
         Returns:
             bool: True if texts match, False otherwise.
@@ -152,9 +152,9 @@ class MetadataEvaluator:
         extracted_name = clean_borehole_name(extracted_name.name, keywords)
         ground_truth_name = clean_borehole_name(ground_truth_name, keywords)
 
-        # Check if space should be ignored
-        if ignore_spaces:
-            extracted_name = extracted_name.replace(" ", "") if extracted_name else None
-            ground_truth_name = ground_truth_name.replace(" ", "") if ground_truth_name else None
+        # Ingore spaces and periods
+        extracted_name = extracted_name.replace(" ", "").replace(".", "") if extracted_name else None
+        ground_truth_name = ground_truth_name.replace(" ", "").replace(".", "") if ground_truth_name else None
+
         # Return comparison
         return extracted_name == ground_truth_name

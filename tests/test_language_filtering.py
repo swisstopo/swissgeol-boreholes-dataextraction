@@ -73,7 +73,7 @@ def test_remove_any_keyword(text: str, keywords: list[str], expected: str) -> No
         ("schachtprofil 12", [], "schachtprofil 12"),
         ("schachtprofil 12", None, "schachtprofil 12"),
         ("n r nr. schachtprofil nr-12", ["schachtprofil", "nr.", "n r"], "nr-12"),
-        ("schachtprofil.:_ 12", [], "schachtprofil 12"),
+        (".A2", [], "A2"),
         ("", [], None),
     ],
     ids=[

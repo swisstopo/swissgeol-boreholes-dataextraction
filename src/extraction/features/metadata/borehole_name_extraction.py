@@ -110,8 +110,9 @@ def clean_borehole_name(text: str, excluded_keywords: list[str]) -> str | None:
     if excluded_keywords is not None and len(excluded_keywords) != 0:
         text = remove_any_keyword(text, excluded_keywords)
 
-    # Replace punctuation, normalize whitespace and remove trailing spaces
-    cleaned = re.sub(r"[:._]", " ", text)
+    # Remove leading/trailing whitespae and punctuation, normalize whitespace
+    cleaned = re.sub(r"^[^\w]+", "", text)
+    cleaned = re.sub(r"[^\w]+$", " ", cleaned)
     cleaned = normalize_spaces(cleaned)
 
     # Check if result is empty
