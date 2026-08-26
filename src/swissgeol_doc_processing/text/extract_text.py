@@ -46,18 +46,19 @@ def extract_text_lines_from_bbox(page: pymupdf.Page, bbox: pymupdf.Rect | None) 
 
                 words = []
                 for span in line["spans"]:
+                    color = span.get("color")
                     char_rects = []
                     word_text = ""
                     for char in span["chars"]:
                         if char["c"] == " " and len(word_text) > 0:
-                            words.append(TextWord(rect_union(char_rects), word_text, page.number + 1))
+                            words.append(TextWord(rect_union(char_rects), word_text, page.number + 1, color))
                             word_text = ""
                             char_rects = []
                         if char["c"] != " ":
                             word_text += char["c"]
                             char_rects.append(pymupdf.Rect(char["bbox"]) * page.rotation_matrix)
                     if len(word_text) > 0:
-                        words.append(TextWord(rect_union(char_rects), word_text, page.number + 1))
+                        words.append(TextWord(rect_union(char_rects), word_text, page.number + 1, color))
 
                 lines.append(TextLine(words, text_angle))
 

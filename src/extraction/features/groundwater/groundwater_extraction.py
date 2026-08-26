@@ -2,12 +2,14 @@
 
 import datetime
 import logging
+from collections import defaultdict
 from dataclasses import dataclass
 
 import numpy as np
 import pymupdf
 from scipy.stats import pearsonr
 
+from extraction.features.groundwater.groundwater_color_detection import get_minority_color_lines
 from extraction.features.groundwater.groundwater_symbol_detection import (
     get_groundwater_symbol_upper_lines,
     get_text_lines_near_symbol,
@@ -115,7 +117,7 @@ class Groundwater(ExtractedFeature):
     def infer_infos(self, terrain_elevation: float | None, layers: list[Layer], feature_rect: pymupdf.Rect):
         """Sets the depth or elevation of the groundwater, knowing one and the terrain elevation.
 
-        If both informations are missing, tries to infer them from the given layers and the feature rectangle.
+        If both information are missing, tries to infer them from the given layers and the feature rectangle.
 
         Args:
             terrain_elevation (float): The elevation of the terrain at the top of the borehole.
@@ -183,6 +185,16 @@ class Groundwater(ExtractedFeature):
         return depth
 
 
+def _group_by_page(
+    features: list[FeatureOnPage[Groundwater]],
+) -> dict[int, list[FeatureOnPage[Groundwater]]]:
+    """Group groundwater features by their page number, preserving order within each page."""
+    pages: dict[int, list[FeatureOnPage[Groundwater]]] = defaultdict(list)
+    for feature in features:
+        pages[feature.page_number].append(feature)
+    return pages
+
+
 @dataclass
 class GroundwatersInBorehole:
     """Class for extracted groundwater information from a single borehole."""
@@ -210,62 +222,107 @@ class GroundwatersInBorehole:
         """Extract a GroundwatersInBorehole object from a json dictionary.
 
         Args:
-            json_object (list[dict]): the json object containing the informations of the borehole
+            json_object (list[dict]): the json object containing the information of the borehole
 
         Returns:
             GroundwatersInBorehole: the GroundwatersInBorehole object
         """
         return cls([FeatureOnPage.from_json(gw_data, Groundwater) for gw_data in json_object])
 
+    def merge_compatible_candidates(self):
+        """Merges candidates that likely describe the same groundwater reading.
+
+        Some documents mention one groundwater reading in more than one place, so different mentions of the
+        same reading can end up as several separate, partially-overlapping candidates. All of a candidate's
+        non-conflicting neighbors are merged together in one go if they in turn don't conflict with each
+        other either.
+
+        This runs once the borehole's terrain elevation is known.
+        Only candidates found on the same page are considered for merging
+        """
+
+        def conflicts(a: FeatureOnPage[Groundwater], b: FeatureOnPage[Groundwater]) -> bool:
+            """Returns True if two groundwater features have conflicting non-None fields."""
+            return any(
+                getattr(a.feature, field) is not None
+                and getattr(b.feature, field) is not None
+                and getattr(a.feature, field) != getattr(b.feature, field)
+                for field in ("depth", "date", "elevation")
+            )
+
+        def mutually_compatible(group: list[FeatureOnPage[Groundwater]]) -> bool:
+            """Returns True if no two members of the group conflict with each other."""
+            return all(not conflicts(group[i], group[j]) for i in range(len(group)) for j in range(i + 1, len(group)))
+
+        def merge_into(target: FeatureOnPage[Groundwater], others: list[FeatureOnPage[Groundwater]]) -> None:
+            for other in others:
+                for field in ("depth", "date", "elevation"):
+                    if getattr(target.feature, field) is None:
+                        setattr(target.feature, field, getattr(other.feature, field))
+                target.rect_with_page.rect |= other.rect
+
+        def merge_page(candidates: list[FeatureOnPage[Groundwater]]) -> list[FeatureOnPage[Groundwater]]:
+            result = list(candidates)
+            merged_one = True
+            while merged_one:
+                merged_one = False
+                for gw in result:
+                    neighbors = [other for other in result if other is not gw and not conflicts(gw, other)]
+                    if len(neighbors) == 1 or (len(neighbors) > 1 and mutually_compatible([gw, *neighbors])):
+                        group = neighbors
+                    else:
+                        continue
+                    merge_into(gw, group)
+                    for other in group:
+                        result.remove(other)
+                    merged_one = True
+                    break
+            return result
+
+        pages = _group_by_page(self.groundwater_feature_list)
+
+        self.groundwater_feature_list = [
+            gw for page_candidates in pages.values() for gw in merge_page(page_candidates)
+        ]
+
+    def remove_overlaps(self):
+        """Removes groundwater entries whose bounding box overlaps with another entry on the same page.
+
+        When two entries' rects intersect, only the more compact one is kept, since the larger one likely
+        just encloses unrelated neighboring text along with the actual reading.
+        """
+        pages = _group_by_page(self.groundwater_feature_list)
+
+        result: list[FeatureOnPage[Groundwater]] = []
+        for page_candidates in pages.values():
+            non_overlapping: list[FeatureOnPage[Groundwater]] = []
+            for gw in page_candidates:
+                keep = True
+                to_remove = []
+                for other_gw in non_overlapping:
+                    if gw.rect.intersects(other_gw.rect):
+                        if gw.rect.get_area() < other_gw.rect.get_area():
+                            to_remove.append(other_gw)  # keep the more compact one
+                        else:
+                            keep = False  # skip gw
+                for other_gw in to_remove:
+                    non_overlapping.remove(other_gw)
+                if keep:
+                    non_overlapping.append(gw)
+            result.extend(non_overlapping)
+        self.groundwater_feature_list = result
+
     def filter_entries(self, terrain_elevation: float | None, layers: list[Layer]):
-        """Remove duplicates and sets the depth and elevation of all groundwater entries.
+        """Merges compatible candidates, removes duplicates, and sets the depth/elevation of all entries.
 
         Args:
             terrain_elevation (float): The elevation of the terrain at the top of the borehole.
             layers (list[Layer]): The list of layers in the borehole.
         """
-        self.remove_duplicates()
         for entry in self.groundwater_feature_list:
             entry.feature.infer_infos(terrain_elevation, layers, entry.rect)
-
-    def remove_duplicates(self):
-        """Removes groundwater entries that have the same date and not a different depth.
-
-        Those entry likelly are the same information, showns twice on the page. This step can't be done during the
-        extraction process, as entries with the same date could belong to different boreholes at that point.
-        """
-        unique_groundwaters: list[FeatureOnPage[Groundwater]] = []
-        for gw in self.groundwater_feature_list:
-            keep = True
-            to_remove = []
-            for other_gw in unique_groundwaters:
-                if (
-                    gw.feature.date is not None
-                    and other_gw.feature.date is not None
-                    and gw.feature.date == other_gw.feature.date
-                ):
-                    # same date means that the groundwaters are duplicates shown twice on the page
-                    if (
-                        gw.feature.depth is not None
-                        and other_gw.feature.depth is not None
-                        and other_gw.feature.depth != gw.feature.depth
-                    ):
-                        continue
-                    elif gw.feature.depth is None and other_gw.feature.depth is not None:
-                        keep = False
-                    elif gw.feature.depth is None and other_gw.feature.depth is None:
-                        # both depths are None, look at elevation to break ties
-                        if gw.feature.elevation is None and other_gw.feature.elevation is not None:
-                            keep = False
-                        else:
-                            to_remove.append(other_gw)
-                    else:
-                        to_remove.append(other_gw)
-            for other_gw in to_remove:
-                unique_groundwaters.remove(other_gw)
-            if keep:
-                unique_groundwaters.append(gw)
-        self.groundwater_feature_list = unique_groundwaters
+        self.merge_compatible_candidates()
+        self.remove_overlaps()
 
 
 @dataclass
@@ -285,7 +342,7 @@ class GroundwaterInDocument:
 
 
 class GroundwaterLevelExtractor(DataExtractor):
-    """Extract groundwater informations from a PDF document."""
+    """Extract groundwater information from a PDF document."""
 
     feature_name = "groundwater"
 
@@ -293,7 +350,7 @@ class GroundwaterLevelExtractor(DataExtractor):
     search_left_factor: float = 2
     search_right_factor: float = 8
     search_below_factor: float = 2
-    search_above_factor: float = 0
+    search_above_factor: float = 2
 
     preprocess_replacements = {",": ".", "'": ".", "o": "0", "\n": " ", "ü": "u"}
 
@@ -307,7 +364,7 @@ class GroundwaterLevelExtractor(DataExtractor):
             lines (list[TextLine]): all the lines of text to search in
 
         Returns:
-            list[TextLine]: all found lists of textlines that appeared arround a key
+            list[TextLine]: all found lists of textlines that appeared around a key
         """
         key_rect = groundwater_key_line.rect
         groundwater_info_lines = self.get_lines_near_key(lines, groundwater_key_line)
@@ -371,39 +428,12 @@ class GroundwaterLevelExtractor(DataExtractor):
         for rect in matched_lines_rect[1:]:
             rect_union |= rect
 
-        # return anyway, we can infer informations later
+        # return anyway, we can infer information later
         return FeatureOnPage(
             feature=Groundwater(depth=depth, date=date, elevation=elevation),
             rect=rect_union,
             page=page_number,
         )
-
-    def remove_overlaps(
-        self, found_groundwaters: list[FeatureOnPage[Groundwater]]
-    ) -> list[FeatureOnPage[Groundwater]]:
-        """Filters out groundwater features that are overlapping.
-
-        Args:
-            found_groundwaters (list[FeatureOnPage[Groundwater]]): The list of found groundwater features.
-
-        Returns:
-            list[FeatureOnPage[Groundwater]]: The filtered list of non-overlapping groundwater features.
-        """
-        non_overlapping_groundwaters: list[FeatureOnPage[Groundwater]] = []
-        for gw in found_groundwaters:
-            keep = True
-            to_remove = []
-            for other_gw in non_overlapping_groundwaters:
-                if gw.rect.intersects(other_gw.rect):
-                    if gw.rect.get_area() < other_gw.rect.get_area():
-                        to_remove.append(other_gw)  # keep the more compact one
-                    else:
-                        keep = False  # skip gw
-            for other_gw in to_remove:
-                non_overlapping_groundwaters.remove(other_gw)
-            if keep:
-                non_overlapping_groundwaters.append(gw)
-        return non_overlapping_groundwaters
 
     def extract_groundwater(
         self,
@@ -430,6 +460,9 @@ class GroundwaterLevelExtractor(DataExtractor):
         # extract visual clues, like groundwater symbols
         for upper_symbol_geom_line in get_groundwater_symbol_upper_lines(text_lines, geometric_lines):
             areas_of_interest.append(get_text_lines_near_symbol(text_lines, upper_symbol_geom_line))
+        # extract color clues: some documents highlight the reading in a distinct color
+        for highlighted_line in get_minority_color_lines(text_lines):
+            areas_of_interest.append(self.get_text_lines_near_key(highlighted_line, text_lines))
 
         seen_depths = [lay.depths for bh in extracted_boreholes for lay in bh.predictions if lay.depths]
         seen_depth_entries = [d for depth in seen_depths for d in (depth.start, depth.end) if d and d.rect]
@@ -440,12 +473,10 @@ class GroundwaterLevelExtractor(DataExtractor):
             if found_groundwater:
                 found_groundwaters.append(found_groundwater)
 
-        unique_groundwaters = self.remove_overlaps(found_groundwaters)
-
-        if unique_groundwaters:
-            groundwater_output = ", ".join([str(entry.feature) for entry in unique_groundwaters])
+        if found_groundwaters:
+            groundwater_output = ", ".join([str(entry.feature) for entry in found_groundwaters])
             logger.info("Found groundwater information on page %s: %s", page_number, groundwater_output)
-            return unique_groundwaters
+            return found_groundwaters
 
         logger.info("No groundwater found in this borehole profile.")
         return []

@@ -14,9 +14,6 @@ from swissgeol_doc_processing.utils.data_extractor import (
     FeatureOnPage,
 )
 
-# fixed list of German abbreviations spotted in practice, not exhaustive; add more as you find them.
-_ABBREVIATIONS_ENDING_IN_PERIOD = ("max.", "z.T.", "bzw.", "ca.", "etc.", "z.B.")
-
 
 @dataclass
 class MaterialDescriptionLine(ExtractedFeature):
