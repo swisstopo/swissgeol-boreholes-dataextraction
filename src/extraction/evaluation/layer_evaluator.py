@@ -114,7 +114,7 @@ class LayerEvaluator:
             tp = 0
             total_predictions = 0
 
-            layers = borehole_data.layers.layers if borehole_data.layers else []
+            layers = borehole_data.layers if borehole_data.layers else []
             for layer in layers:
                 if per_layer_filter(layer):
                     total_predictions += 1
@@ -168,7 +168,7 @@ class LayerEvaluator:
 
         for borehole_data in file_predictions.boreholes:
             if borehole_data.layers:
-                predicted_layers = borehole_data.layers.layers
+                predicted_layers = borehole_data.layers
 
                 for pred in predicted_layers:
                     pred.material_description.is_correct = False
@@ -227,13 +227,13 @@ class LayerEvaluator:
         all_ground_truth_layers = {
             idx: borehole_data.layers for idx, borehole_data in enumerate(ground_truth_for_file)
         }
-        borehole_layers = [bh.layers_in_borehole for bh in file_predictions.borehole_predictions_list]
+        borehole_layers = [bh.layers for bh in file_predictions.borehole_predictions_list]
         cost_matrix_dimension = max(len(borehole_layers), len(all_ground_truth_layers))
         costs = np.zeros((cost_matrix_dimension, cost_matrix_dimension))
         for gt_idx, ground_truth_layers in all_ground_truth_layers.items():
             for pred_idx, predicted_layers in enumerate(borehole_layers):
                 prediction_depth_values = set()
-                for layer in predicted_layers.layers:
+                for layer in predicted_layers:
                     if layer.depths is not None:
                         if layer.depths.start is not None:
                             prediction_depth_values.add(layer.depths.start.value)
@@ -254,9 +254,7 @@ class LayerEvaluator:
                     fn=len(ground_truth_depth_values) - depth_value_tp,
                 ).f1
 
-                full_prediction_descriptions = "\n".join(
-                    layer.material_description.text for layer in predicted_layers.layers
-                )
+                full_prediction_descriptions = "\n".join(layer.material_description.text for layer in predicted_layers)
                 full_ground_truth_descriptions = "\n".join(
                     layer.material_description
                     for layer in ground_truth_layers
