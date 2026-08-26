@@ -9,7 +9,7 @@ as well as a patch version with all fields optional for patch operations.
 ########################################################################################################################
 
 from abc import ABC, abstractmethod
-from enum import Enum
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import Annotated
 
@@ -33,6 +33,13 @@ from extraction.features.groundwater.groundwater_extraction import Groundwater
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepthsEntry
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
+
+
+class ClassificationTasksClasses(StrEnum):
+    """Rock type inferred by the lithology head, determining which classification tasks apply."""
+
+    consolidated = "consolidated"
+    unconsolidated = "unconsolidated"
 
 
 def validate_filename(value: str) -> str:
@@ -873,6 +880,11 @@ class ClassifyResponse(BaseModel):
         organic_components.
     """
 
+    classification_tasks: ClassificationTasksClasses | None = Field(
+        default=None,
+        description="Whether the lithology head classified the material as consolidated rock or "
+        "unconsolidated sediment; determines which of the other fields are populated.",
+    )
     accessory_components: list[enum_as_name(AccessoryComponentsSystem.AccessoryComponentsClasses)] | None = Field(
         default=None,
         description="Predicted accessory component classes (consolidated rock only).",

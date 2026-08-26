@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from app.common.schemas import ClassifyRequest, ClassifyResponse
+from app.common.schemas import ClassificationTasksClasses, ClassifyRequest, ClassifyResponse
 from classification.utils.datasets.classification import ClassificationTask
 
 if TYPE_CHECKING:
@@ -124,4 +124,9 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
             else classes[0]
         )
 
-    return ClassifyResponse(**predictions)
+    return ClassifyResponse(
+        classification_tasks=ClassificationTasksClasses.unconsolidated
+        if is_unconsolidated
+        else ClassificationTasksClasses.consolidated,
+        **predictions,
+    )
