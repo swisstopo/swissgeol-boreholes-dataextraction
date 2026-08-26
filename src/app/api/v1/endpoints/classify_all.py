@@ -92,8 +92,9 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
         bert_models: Models loaded at startup via the lifespan, keyed by task name.
 
     Returns:
-        ClassifyResponse with the predicted class (or classes, for multi-label/rank tasks) for every task
-        relevant to the inferred rock type; irrelevant tasks are left as `None`.
+        ClassifyResponse with `classification_tasks` set to the inferred rock type (consolidated or
+        unconsolidated), plus the predicted class (or classes, for multi-label/rank tasks) for every task
+        relevant to that rock type; irrelevant tasks are left as `None`.
     """
     from classification.utils.datasets.lithology import LithologySystem
 

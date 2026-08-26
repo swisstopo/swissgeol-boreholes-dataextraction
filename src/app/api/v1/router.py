@@ -56,6 +56,7 @@ _CLASSIFY_RESPONSE_EXAMPLES = {
     "unconsolidated_silt": {
         "summary": "Unconsolidated sediment (silt)",
         "value": {
+            "classification_tasks": "unconsolidated",
             "en_main": "si",
             "en_secondary": ["si", "cl", "gr"],
             "uscs": "not_specified",
@@ -69,6 +70,7 @@ _CLASSIFY_RESPONSE_EXAMPLES = {
     "consolidated_limestone": {
         "summary": "Consolidated rock (limestone)",
         "value": {
+            "classification_tasks": "consolidated",
             "lithology": "limestone",
             "alteration_degree_consolidated": "not_specified",
             "cementation": "not_specified",

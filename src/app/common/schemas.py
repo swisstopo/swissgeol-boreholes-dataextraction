@@ -36,7 +36,7 @@ from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 
 class ClassificationTasksClasses(StrEnum):
-    """Rock type inferred by the lithology head, determining which classification tasks apply."""
+    """Rock category inferred by the lithology head."""
 
     consolidated = "consolidated"
     unconsolidated = "unconsolidated"
@@ -869,9 +869,12 @@ def enum_as_name(enum_cls: type[Enum]) -> type:
 class ClassifyResponse(BaseModel):
     """Response schema for the unified `/classify` endpoint.
 
-    Each field corresponds to one classification task. A field is `None` if that task wasn't run for the
-    inferred rock type; otherwise it holds the predicted class (single-label tasks) or classes (multi-label
-    tasks: accessory_components, debris, grain_angularity, grain_shape, mineral_components,
+    `classification_tasks` indicates whether the lithology head classified the material as consolidated
+    rock or unconsolidated sediment, which determines which of the remaining fields are populated.
+
+    Each remaining field corresponds to one classification task. A field is `None` if that task wasn't run
+    for the inferred rock type; otherwise it holds the predicted class (single-label tasks) or classes
+    (multi-label tasks: accessory_components, debris, grain_angularity, grain_shape, mineral_components,
     organic_components; rank tasks: en_secondary).
 
     Consolidated rock tasks: lithology, alteration_degree_consolidated, cementation, color, mineral_components,
@@ -880,11 +883,6 @@ class ClassifyResponse(BaseModel):
         organic_components.
     """
 
-    classification_tasks: ClassificationTasksClasses | None = Field(
-        default=None,
-        description="Whether the lithology head classified the material as consolidated rock or "
-        "unconsolidated sediment; determines which of the other fields are populated.",
-    )
     accessory_components: list[enum_as_name(AccessoryComponentsSystem.AccessoryComponentsClasses)] | None = Field(
         default=None,
         description="Predicted accessory component classes (consolidated rock only).",
@@ -898,6 +896,11 @@ class ClassifyResponse(BaseModel):
     cementation: enum_as_name(CementationSystem.CementationClasses) | None = Field(
         default=None,
         description="Predicted cementation class (consolidated rock only).",
+    )
+    classification_tasks: ClassificationTasksClasses | None = Field(
+        default=None,
+        description="Whether the lithology head classified the material as consolidated rock or "
+        "unconsolidated sediment; determines which of the other fields are populated.",
     )
     color: enum_as_name(ColorSystem.ColorClasses) | None = Field(
         default=None,

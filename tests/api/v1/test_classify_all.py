@@ -21,7 +21,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api.v1.endpoints.classify_all import classify
-from app.common.schemas import ClassifyRequest
+from app.common.schemas import ClassificationTasksClasses, ClassifyRequest
 from app.main import app
 from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.datasets.cementation import CementationSystem
@@ -102,6 +102,7 @@ def test_classify_consolidated_rock_description(real_bert_models):
     """A real consolidated-rock description runs the lithology and cementation heads (both loaded)."""
     response = classify(ClassifyRequest(description=CONSOLIDATED_DESCRIPTION), real_bert_models)
 
+    assert response.classification_tasks == ClassificationTasksClasses.consolidated
     assert response.lithology == LithologySystem.LithologyClasses.limestone
     assert response.cementation == CementationSystem.CementationClasses.strongly_cemented
     # alteration_degree_consolidated/color/mineral_components/accessory_components are also
@@ -117,6 +118,7 @@ def test_classify_unconsolidated_sediment_description(real_bert_models, caplog):
     with caplog.at_level(logging.WARNING):
         response = classify(ClassifyRequest(description=UNCONSOLIDATED_DESCRIPTION), real_bert_models)
 
+    assert response.classification_tasks == ClassificationTasksClasses.unconsolidated
     assert response.grain_angularity == [
         GrainAngularitySystem.GrainAngularityClasses.angular,
         GrainAngularitySystem.GrainAngularityClasses.sub_angular,
