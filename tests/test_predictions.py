@@ -113,7 +113,10 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
     layers = [
         Layer(
             material_description=MaterialDescription(text=descr, lines=[]),
-            depths=LayerDepths(LayerDepthsEntry(start, pymupdf.Rect(), 0), LayerDepthsEntry(end, pymupdf.Rect(), 0)),
+            depths=LayerDepths(
+                LayerDepthsEntry(start, pymupdf.Rect(), 0) if start is not None else None,
+                LayerDepthsEntry(end, pymupdf.Rect(), 0),
+            ),
         )
         for descr, start, end in [
             ("HUMUS", None, 1),

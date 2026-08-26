@@ -36,7 +36,7 @@ dependencies = [
     "rdflib==7.1.4",
     "compound_split==1.0.2",
     "fast-langdetect==1.0.0",
-    "anthropic[bedrock]"
+    "scipy>=1.17.1",
 ]
 
 [project.optional-dependencies]
