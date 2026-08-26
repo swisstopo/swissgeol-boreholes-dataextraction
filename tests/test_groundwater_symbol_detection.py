@@ -45,8 +45,7 @@ from swissgeol_doc_processing.text.textline import TextLine, TextWord
             False,
             "invalid_symbol_too_big",
         ),
-        (
-            # Case 5: text not overlapping the top line x-values
+        (  # Case 5: text not overlapping the top line x-values
             Line(Point(100, 100), Point(120, 100)),
             Line(Point(103, 104), Point(117, 104)),
             TextLine([TextWord(pymupdf.Rect(121, 90, 140, 99), "12.5", 0)]),

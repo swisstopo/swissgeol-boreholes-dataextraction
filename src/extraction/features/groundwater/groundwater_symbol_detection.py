@@ -110,7 +110,7 @@ def is_valid_pair(l_top: Line, l_bot: Line, hit_line: TextLine, text_lines: list
         bool: True if the pair is valid, False otherwise.
     """
     avg_text_size = sum(line.rect.height for line in text_lines) / len(text_lines)
-    rel_size_ok = l_top.length * 0.8 > l_bot.length > l_top.length / 4  # bottom one is smaler, but not too small
+    rel_size_ok = l_top.length * 0.8 > l_bot.length > l_top.length / 4  # bottom one is smaller, but not too small
     global_size_ok = avg_text_size < l_top.length < 3 * avg_text_size  # size comparable to avg text height
     pos_ok = l_top.start.x < l_bot.start.x and l_bot.end.x < l_top.end.x  # the top one fully "spans" the bottom one
     pos_to_bb_ok = hit_line.rect.x0 < l_top.end.x and l_top.start.x < hit_line.rect.x1  # longest line overlaps the bb
