@@ -84,14 +84,14 @@ def load_models() -> dict[str, BertModel]:
 def _update_main_secondary_consistency(
     main: ENMainSystem.ENMainClasses, secondary: list[ENMainSystem.ENMainClasses]
 ) -> list[ENMainSystem.ENMainClasses]:
-    """Drop the main class from the secondary predictions to avoid redundance.
+    """Drop the main class from the secondary predictions to avoid redundancy.
 
     Args:
         main: Predicted main lithology class.
         secondary: Predicted secondary lithology classes (ranked).
 
     Returns:
-        The secondary classes with entry matching `main` removed.
+        The secondary classes with the entry matching `main` removed.
     """
     return [sec for sec in secondary if sec != main]
 
