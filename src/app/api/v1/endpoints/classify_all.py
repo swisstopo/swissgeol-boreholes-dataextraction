@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from app.common.schemas import ClassifyRequest, ClassifyResponse
+from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.datasets.classification import ClassificationTask
+from classification.utils.datasets.en_main import ENMainSystem
 
 if TYPE_CHECKING:
     from classification.models.model import BertModel
@@ -79,6 +81,21 @@ def load_models() -> dict[str, BertModel]:
     return models
 
 
+def _update_main_secondary_consistency(
+    main: ENMainSystem.ENMainClasses, secondary: list[ENMainSystem.ENMainClasses]
+) -> list[ENMainSystem.ENMainClasses]:
+    """Drop the main class from the secondary predictions to avoid redundance.
+
+    Args:
+        main: Predicted main lithology class.
+        secondary: Predicted secondary lithology classes (ranked).
+
+    Returns:
+        The secondary classes with entry matching `main` removed.
+    """
+    return [sec for sec in secondary if sec != main]
+
+
 def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> ClassifyResponse:
     """Classify a description across all relevant tasks via a two-step backbone pass.
 
@@ -122,6 +139,17 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
             classes
             if model.classification_system.classification_task() != ClassificationTask.single_label
             else classes[0]
+        )
+
+    # Step 3: en_main and en_secondary are predicted independently, so the same class can appear
+    # in both; remove it from en_secondary to keep the two predictions mutually exclusive.
+    if (
+        ExistingClassificationSystems.en_secondary.name in predictions
+        and ExistingClassificationSystems.en_main.name in predictions
+    ):
+        predictions[ExistingClassificationSystems.en_secondary.name] = _update_main_secondary_consistency(
+            main=predictions[ExistingClassificationSystems.en_main.name],
+            secondary=predictions[ExistingClassificationSystems.en_secondary.name],
         )
 
     return ClassifyResponse(**predictions)
