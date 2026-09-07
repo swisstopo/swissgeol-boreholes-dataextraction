@@ -92,6 +92,8 @@ class MaterialDescription(ExtractedFeature):
             is_break = new_page or gap_ratio > 0.3 or has_large_vertical_gap
             if is_break:
                 prev_line.feature.text += "\n"
+            else:
+                prev_line.feature.text += " "
 
         self.text = "".join([line.feature.text for line in self.lines])
         return self
