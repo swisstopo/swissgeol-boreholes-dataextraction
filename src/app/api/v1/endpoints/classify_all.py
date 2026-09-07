@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from app.common.schemas import ClassificationTasksClasses, ClassifyRequest, ClassifyResponse
+from app.common.schemas import ClassificationConsolidationClasses, ClassifyRequest, ClassifyResponse
 from classification.utils.datasets.classification import ClassificationTask
 
 if TYPE_CHECKING:
@@ -92,7 +92,7 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
         bert_models: Models loaded at startup via the lifespan, keyed by task name.
 
     Returns:
-        ClassifyResponse with `classification_tasks` set to the inferred rock type (consolidated or
+        ClassifyResponse with `consolidation` set to the inferred rock type (consolidated or
         unconsolidated), plus the predicted class (or classes, for multi-label/rank tasks) for every task
         relevant to that rock type; irrelevant tasks are left as `None`.
     """
@@ -126,8 +126,8 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
         )
 
     return ClassifyResponse(
-        classification_tasks=ClassificationTasksClasses.unconsolidated
+        consolidation=ClassificationConsolidationClasses.unconsolidated
         if is_unconsolidated
-        else ClassificationTasksClasses.consolidated,
+        else ClassificationConsolidationClasses.consolidated,
         **predictions,
     )

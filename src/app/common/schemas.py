@@ -35,7 +35,7 @@ from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 
-class ClassificationTasksClasses(StrEnum):
+class ClassificationConsolidationClasses(StrEnum):
     """Rock category inferred by the lithology head."""
 
     consolidated = "consolidated"
@@ -869,7 +869,7 @@ def enum_as_name(enum_cls: type[Enum]) -> type:
 class ClassifyResponse(BaseModel):
     """Response schema for the unified `/classify` endpoint.
 
-    `classification_tasks` indicates whether the lithology head classified the material as consolidated
+    `consolidation` indicates whether the lithology head classified the material as consolidated
     rock or unconsolidated sediment, which determines which of the remaining fields are populated.
 
     Each remaining field corresponds to one classification task. A field is `None` if that task wasn't run
@@ -897,7 +897,7 @@ class ClassifyResponse(BaseModel):
         default=None,
         description="Predicted cementation class (consolidated rock only).",
     )
-    classification_tasks: ClassificationTasksClasses | None = Field(
+    consolidation: ClassificationConsolidationClasses | None = Field(
         default=None,
         description="Whether the lithology head classified the material as consolidated rock or "
         "unconsolidated sediment; determines which of the other fields are populated.",

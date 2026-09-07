@@ -56,7 +56,7 @@ _CLASSIFY_RESPONSE_EXAMPLES = {
     "unconsolidated_silt": {
         "summary": "Unconsolidated sediment (silt)",
         "value": {
-            "classification_tasks": "unconsolidated",
+            "consolidation": "unconsolidated",
             "en_main": "si",
             "en_secondary": ["si", "cl", "gr"],
             "uscs": "not_specified",
@@ -70,7 +70,7 @@ _CLASSIFY_RESPONSE_EXAMPLES = {
     "consolidated_limestone": {
         "summary": "Consolidated rock (limestone)",
         "value": {
-            "classification_tasks": "consolidated",
+            "consolidation": "consolidated",
             "lithology": "limestone",
             "alteration_degree_consolidated": "not_specified",
             "cementation": "not_specified",
@@ -306,7 +306,7 @@ def post_classify(
       brau-beige, Komponenten vorw. eckig"`).
 
     ### Returns
-    - **classification_tasks**: `"consolidated"` or `"unconsolidated"`, as determined by the lithology head;
+    - **consolidation**: `"consolidated"` or `"unconsolidated"`, as determined by the lithology head;
       indicates which of the fields are populated.
     - One field per classification task. A field is `null` if that task isn't relevant to the inferred
       rock type; otherwise it holds the predicted class name (single-label tasks, e.g. `en_main`, `uscs`,
