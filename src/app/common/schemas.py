@@ -9,7 +9,7 @@ as well as a patch version with all fields optional for patch operations.
 ########################################################################################################################
 
 from abc import ABC, abstractmethod
-from enum import Enum, StrEnum
+from enum import Enum, IntEnum, auto
 from pathlib import Path
 from typing import Annotated
 
@@ -35,11 +35,12 @@ from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 
-class ClassificationConsolidationClasses(StrEnum):
+class ClassificationConsolidationClasses(IntEnum):
     """Rock category inferred by the lithology head."""
 
-    consolidated = "consolidated"
-    unconsolidated = "unconsolidated"
+    not_specified = 0
+    consolidated = auto()
+    unconsolidated = auto()
 
 
 def validate_filename(value: str) -> str:

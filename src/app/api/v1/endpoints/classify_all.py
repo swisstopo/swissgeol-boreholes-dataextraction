@@ -119,11 +119,15 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
             continue
         model = bert_models[task_name]
         classes = model.predict_from_embedding(shared_hidden_states, extended_mask)
-        predictions[task_name] = (
-            classes
-            if model.classification_system.classification_task() != ClassificationTask.single_label
-            else classes[0]
-        )
+        predictions[task_name] = None
+
+        # Check if all classes are valid. Assume index 0 is not specified -> then empty
+        if any([class_ for class_ in classes]):
+            predictions[task_name] = (
+                classes
+                if model.classification_system.classification_task() != ClassificationTask.single_label
+                else classes[0]
+            )
 
     return ClassifyResponse(
         consolidation=ClassificationConsolidationClasses.unconsolidated
