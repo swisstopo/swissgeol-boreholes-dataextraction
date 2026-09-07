@@ -12,7 +12,7 @@ from core.ground_truth import (
 )
 from extraction.features.groundwater.groundwater_extraction import GroundwatersInBorehole
 from extraction.features.metadata.metadata import BoreholeMetadata
-from extraction.features.stratigraphy.layer.layer import LayersInBorehole
+from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 
 
@@ -21,7 +21,7 @@ class BoreholePredictions:
     """Class that hold predicted information about a single borehole."""
 
     borehole_index: int
-    layers_in_borehole: LayersInBorehole
+    layers: list[Layer]
     file_name: str
     metadata: BoreholeMetadata
     groundwater_in_borehole: GroundwatersInBorehole
@@ -36,7 +36,7 @@ class BoreholePredictions:
         return {
             "borehole_index": self.borehole_index,
             "metadata": self.metadata.to_json(),
-            "layers": [layer.to_json() for layer in self.layers_in_borehole.layers],
+            "layers": [layer.to_json() for layer in self.layers],
             "bounding_boxes": [bboxes.to_json() for bboxes in self.bounding_boxes],
             "groundwater": self.groundwater_in_borehole.to_json() if self.groundwater_in_borehole is not None else [],
         }
@@ -54,7 +54,7 @@ class BoreholePredictions:
         writer = csv.writer(output)
         writer.writerow(["layer_index", "from_depth", "to_depth", "material_description"])
 
-        for layer_index, layer in enumerate(self.layers_in_borehole.layers):
+        for layer_index, layer in enumerate(self.layers):
             start_depth = layer.depths.start.value if layer.depths and layer.depths.start else None
             end_depth = layer.depths.end.value if layer.depths and layer.depths.end else None
             material_description = layer.material_description.text if layer.material_description else None
@@ -83,7 +83,7 @@ class BoreholePredictions:
         """
         return cls(
             json_object["borehole_index"],
-            LayersInBorehole.from_json(json_object["layers"]),
+            [Layer.from_json(layer_json) for layer_json in json_object["layers"]],
             file_name,
             BoreholeMetadata.from_json(json_object["metadata"]),
             GroundwatersInBorehole.from_json(json_object["groundwater"]),
@@ -93,7 +93,7 @@ class BoreholePredictions:
     def filter_groundwater_entries(self):
         """Sets the depth and elevation of the groundwater entries of this borehole."""
         borehole_terrain_elevation = self.metadata.elevation.feature.elevation if self.metadata.elevation else None
-        self.groundwater_in_borehole.filter_entries(borehole_terrain_elevation, self.layers_in_borehole.layers)
+        self.groundwater_in_borehole.filter_entries(borehole_terrain_elevation, self.layers)
 
 
 @dataclasses.dataclass
@@ -108,7 +108,7 @@ class BoreholePredictionsWithGroundTruth:
 class BoreholeLayersWithGroundTruth:
     """Stratigraphy predictions for a specific borehole with associated ground truth."""
 
-    layers: LayersInBorehole | None
+    layers: list[Layer] | None
     ground_truth: list[GroundTruthLayer]
 
 

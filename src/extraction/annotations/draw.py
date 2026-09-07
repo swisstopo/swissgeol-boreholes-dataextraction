@@ -86,7 +86,7 @@ class PageDrawer:
             elevation = borehole_predictions.metadata.elevation
             name = borehole_predictions.metadata.name
             groundwaters = borehole_predictions.groundwater_in_borehole
-            bh_layers = borehole_predictions.layers_in_borehole
+            bh_layers = borehole_predictions.layers
 
             if coordinates is not None and self.page_number == coordinates.page_number:
                 self.draw_feature(
@@ -120,7 +120,7 @@ class PageDrawer:
                     bboxes, start_is_continuation=start_is_continuation, end_has_continuation=end_has_continuation
                 )
 
-            layers = [layer for layer in bh_layers.layers if self.page_number in layer.material_description.pages]
+            layers = [layer for layer in bh_layers if self.page_number in layer.material_description.pages]
             for index, layer in enumerate(layers):
                 self.draw_layer(
                     layer=layer,

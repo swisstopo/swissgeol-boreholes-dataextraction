@@ -26,7 +26,6 @@ from extraction.features.stratigraphy.layer.layer import (
     Layer,
     LayerDepths,
     LayerDepthsEntry,
-    LayersInBorehole,
 )
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
@@ -63,7 +62,7 @@ def sample_file_prediction() -> FilePredictions:
     layer2 = Mock(
         material_description=Mock(text="Clay"), depth_interval=Mock(start=Mock(value=30), end=Mock(value=50))
     )
-    layers_in_borehole = LayersInBorehole(layers=[layer1, layer2])
+    layers = [layer1, layer2]
 
     dt_date = datetime(2024, 10, 1)
     groundwater_on_page = FeatureOnPage(
@@ -81,7 +80,7 @@ def sample_file_prediction() -> FilePredictions:
         [
             BoreholePredictions(
                 borehole_index=0,
-                layers_in_borehole=layers_in_borehole,
+                layers=layers,
                 file_name=filename,
                 metadata=metadata,
                 groundwater_in_borehole=groundwater_in_bh,
@@ -111,35 +110,30 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
         page=1,
     )
 
-    layers_in_borehole = LayersInBorehole(
-        [
-            Layer(
-                material_description=MaterialDescription(text=descr, lines=[]),
-                depths=LayerDepths(
-                    LayerDepthsEntry(start, pymupdf.Rect(), 0), LayerDepthsEntry(end, pymupdf.Rect(), 0)
-                ),
-            )
-            for descr, start, end in [
-                ("HUMUS", None, 1),
-                ("KIES, grau", 1, 2),
-                ("sand", 2, 3),
-            ]
+    layers = [
+        Layer(
+            material_description=MaterialDescription(text=descr, lines=[]),
+            depths=LayerDepths(
+                LayerDepthsEntry(start, pymupdf.Rect(), 0) if start is not None else None,
+                LayerDepthsEntry(end, pymupdf.Rect(), 0),
+            ),
+        )
+        for descr, start, end in [
+            ("HUMUS", None, 1),
+            ("KIES, grau", 1, 2),
+            ("sand", 2, 3),
         ]
-    )
-    layers_in_borehole_2 = LayersInBorehole(
-        [
-            Layer(
-                material_description=MaterialDescription(text=descr, lines=[]),
-                depths=LayerDepths(
-                    LayerDepthsEntry(start, pymupdf.Rect(), 0), LayerDepthsEntry(end, pymupdf.Rect(), 0)
-                ),
-            )
-            for descr, start, end in [
-                ("KIES, Sand,", 0.0, 0.5),
-                ("stein, sand", 0.5, 2.0),
-            ]
+    ]
+    layers_2 = [
+        Layer(
+            material_description=MaterialDescription(text=descr, lines=[]),
+            depths=LayerDepths(LayerDepthsEntry(start, pymupdf.Rect(), 0), LayerDepthsEntry(end, pymupdf.Rect(), 0)),
+        )
+        for descr, start, end in [
+            ("KIES, Sand,", 0.0, 0.5),
+            ("stein, sand", 0.5, 2.0),
         ]
-    )
+    ]
 
     dt_date = datetime(2024, 10, 1)
     groundwater_on_page = FeatureOnPage(
@@ -156,7 +150,7 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
         [
             BoreholePredictions(
                 borehole_index=0,
-                layers_in_borehole=layers_in_borehole,
+                layers=layers,
                 file_name=filename,
                 metadata=metadata,
                 groundwater_in_borehole=groundwater_in_bh,
@@ -164,7 +158,7 @@ def file_prediction_with_two_boreholes() -> FilePredictions:
             ),
             BoreholePredictions(
                 borehole_index=1,
-                layers_in_borehole=layers_in_borehole_2,
+                layers=layers_2,
                 file_name=filename,
                 metadata=metadata,
                 groundwater_in_borehole=groundwater_in_bh,
@@ -210,7 +204,7 @@ def test_evaluate_layer_matching(
     # We test the matching by comparing the number of layers, one borehole has 2, the other has 3.
     assert all(
         [
-            len(pred.predictions.layers_in_borehole.layers) == len(pred.ground_truth.layers)
+            len(pred.predictions.layers) == len(pred.ground_truth.layers)
             for pred in sample_file_prediction_with_ground_truth
         ]
     )
