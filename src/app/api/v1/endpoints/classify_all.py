@@ -109,28 +109,30 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
     relevant_tasks = _UNCONSOLIDATED_TASKS if is_unconsolidated else _CONSOLIDATED_TASKS
 
     # Step 2: fan out to each relevant task head using the same shared backbone output.
-    predictions = dict.fromkeys(relevant_tasks)
+    predictions = {}
     for task_name in relevant_tasks:
         if task_name not in bert_models:
             logger.warning(f"Task '{task_name}' not loaded, skipping.")
             continue
-        if task_name == "lithology":
-            predictions["lithology"] = lithology_class
-            continue
+
+        # Output for lithology already computed
         model = bert_models[task_name]
-        classes = model.predict_from_embedding(shared_hidden_states, extended_mask)
-        predictions[task_name] = None
+        classes = (
+            [lithology_class]
+            if task_name == "lithology"
+            else model.predict_from_embedding(shared_hidden_states, extended_mask)
+        )
 
         # Index 0 is "not_specified" for every classification system, skip
-        # assignment when nothing else was predicted, leaving the field as None.
-        if not any([class_ for class_ in classes]):
-            continue
-
-        predictions[task_name] = (
-            classes
-            if model.classification_system.classification_task() != ClassificationTask.single_label
-            else classes[0]
-        )
+        # assignment when only not_specified is predicted, leaving the field as None.
+        if any(classes):
+            predictions[task_name] = (
+                classes
+                if model.classification_system.classification_task() != ClassificationTask.single_label
+                else classes[0]
+            )
+        else:
+            predictions[task_name] = None
 
     return ClassifyResponse(
         consolidation=ClassificationConsolidationClasses.unconsolidated

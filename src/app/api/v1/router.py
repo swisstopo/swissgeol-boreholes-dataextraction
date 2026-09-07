@@ -303,6 +303,8 @@ def post_classify(
       brau-beige, Komponenten vorw. eckig"`).
 
     ### Returns
+    A field is OMITTED from the response if the task wasn't run for that rock type,
+    or if it ran but predicted no specific class (not_specified only). Otherwise it holds the predicted class.
     - **consolidation**: `"consolidated"` or `"unconsolidated"`, as determined by the lithology head;
       indicates which of the fields are populated.
     - One field per classification task. A field is `null` if that task isn't relevant to the inferred
