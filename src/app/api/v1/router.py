@@ -305,12 +305,10 @@ def post_classify(
     ### Returns
     A field is OMITTED from the response if the task wasn't run for that rock type,
     or if it ran but predicted no specific class (not_specified only). Otherwise it holds the predicted class.
-    - **consolidation**: `"consolidated"` or `"unconsolidated"`, as determined by the lithology head;
+    - **consolidation**: "consolidated" or "unconsolidated", as determined by the lithology head;
       indicates which of the fields are populated.
-    - One field per classification task. A field is `null` if that task isn't relevant to the inferred
-      rock type; otherwise it holds the predicted class name (single-label tasks, e.g. `en_main`, `uscs`,
-      `color`) or class names (multi-label/rank tasks, e.g. `en_secondary`, `grain_angularity`, `grain_shape`,
-      `organic_components`, `accessory_components`, `debris`, `mineral_components`).
+    - One field per classification task, omitted when not relevant to the inferred rock type;
+      otherwise it holds the predicted class name (single-label tasks) or class names (multi-label/rank tasks).
 
     ### Consolidated rock tasks
     `lithology`, `alteration_degree_consolidated`, `cementation`, `color`, `mineral_components`, `accessory_components`

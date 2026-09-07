@@ -155,4 +155,4 @@ def test_post_classify_returns_predictions_when_bert_models_loaded(
     body = response.json()
     assert body["lithology"] == "limestone"
     assert body["cementation"] == "strongly_cemented"
-    assert body["color"] is None
+    assert "color" not in body  # color is now omitted, not null
