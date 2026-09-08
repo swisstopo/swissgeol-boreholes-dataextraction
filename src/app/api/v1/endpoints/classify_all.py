@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 from app.common.schemas import ClassificationConsolidationClasses, ClassifyRequest, ClassifyResponse
 from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.datasets.classification import ClassificationTask
-from classification.utils.datasets.en_main import ENMainSystem
 
 if TYPE_CHECKING:
     from classification.models.model import BertModel
@@ -79,21 +78,6 @@ def load_models() -> dict[str, BertModel]:
         )
         logger.info(f"Loaded {system_name} model from {model_path}")
     return models
-
-
-def _update_main_secondary_consistency(
-    main: ENMainSystem.ENMainClasses, secondary: list[ENMainSystem.ENMainClasses]
-) -> list[ENMainSystem.ENMainClasses]:
-    """Drop the main class from the secondary predictions to avoid redundancy.
-
-    Args:
-        main: Predicted main lithology class.
-        secondary: Predicted secondary lithology classes (ranked).
-
-    Returns:
-        The secondary classes with the entry matching `main` removed.
-    """
-    return [sec for sec in secondary if sec != main]
 
 
 def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> ClassifyResponse:
