@@ -150,6 +150,7 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
             )
         else:
             predictions[task_name] = None
+
     # Step 3: en_main and en_secondary are predicted independently, so the same class can appear
     # in both; remove it from en_secondary to keep the two predictions mutually exclusive.
     if (
