@@ -47,7 +47,7 @@ def generate(prediction: Path, ground_truth: Path) -> None:
         correct_layers = [
             layer
             for borehole in file_prediction.boreholes
-            for layer in borehole.layers_in_borehole.layers
+            for layer in borehole.layers
             if layer.depths and layer.depths.is_correct
         ]
 

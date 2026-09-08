@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from app.common.schemas import ClassificationConsolidationClasses, ClassifyRequest, ClassifyResponse
+from classification.utils.datasets import ExistingClassificationSystems
 from classification.utils.datasets.classification import ClassificationTask
+from classification.utils.datasets.en_main import ENMainSystem
 
 if TYPE_CHECKING:
     from classification.models.model import BertModel
@@ -79,6 +81,21 @@ def load_models() -> dict[str, BertModel]:
     return models
 
 
+def _update_main_secondary_consistency(
+    main: ENMainSystem.ENMainClasses, secondary: list[ENMainSystem.ENMainClasses]
+) -> list[ENMainSystem.ENMainClasses]:
+    """Drop the main class from the secondary predictions to avoid redundancy.
+
+    Args:
+        main: Predicted main lithology class.
+        secondary: Predicted secondary lithology classes (ranked).
+
+    Returns:
+        The secondary classes with the entry matching `main` removed.
+    """
+    return [sec for sec in secondary if sec != main]
+
+
 def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> ClassifyResponse:
     """Classify a description across all relevant tasks via a two-step backbone pass.
 
@@ -133,6 +150,17 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
             )
         else:
             predictions[task_name] = None
+    # Step 3: en_main and en_secondary are predicted independently, so the same class can appear
+    # in both; remove it from en_secondary to keep the two predictions mutually exclusive.
+    if (
+        ExistingClassificationSystems.en_secondary.name in predictions
+        and ExistingClassificationSystems.en_main.name in predictions
+    ):
+        predictions[ExistingClassificationSystems.en_secondary.name] = [
+            sec
+            for sec in predictions[ExistingClassificationSystems.en_secondary.name]
+            if sec != predictions[ExistingClassificationSystems.en_main.name]
+        ]
 
     return ClassifyResponse(
         consolidation=ClassificationConsolidationClasses.unconsolidated
