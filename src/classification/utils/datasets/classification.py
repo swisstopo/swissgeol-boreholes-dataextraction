@@ -68,7 +68,7 @@ class GroundTruthBoreholeWithLanguage(GroundTruthBorehole):
                 [
                     layer.material_description.text
                     for borehole in prediction.boreholes
-                    for layer in borehole.layers_in_borehole.layers
+                    for layer in borehole.layers
                     if layer.material_description
                 ]
             ),
@@ -84,7 +84,7 @@ class GroundTruthBoreholeWithLanguage(GroundTruthBorehole):
                             material_description=layer.material_description.text,
                             depth_interval=GroundTruthLayerDepth(),
                         )
-                        for layer in borehole.layers_in_borehole.layers
+                        for layer in borehole.layers
                     ],
                     "metadata": GroundTruthMetadata(),
                     "groundwater": [],
