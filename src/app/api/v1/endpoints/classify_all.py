@@ -147,9 +147,10 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
         ExistingClassificationSystems.en_secondary.name in predictions
         and ExistingClassificationSystems.en_main.name in predictions
     ):
-        predictions[ExistingClassificationSystems.en_secondary.name] = _update_main_secondary_consistency(
-            main=predictions[ExistingClassificationSystems.en_main.name],
-            secondary=predictions[ExistingClassificationSystems.en_secondary.name],
-        )
+        predictions[ExistingClassificationSystems.en_secondary.name] = [
+            sec
+            for sec in predictions[ExistingClassificationSystems.en_secondary.name]
+            if sec != predictions[ExistingClassificationSystems.en_main.name]
+        ]
 
     return ClassifyResponse(**predictions)
