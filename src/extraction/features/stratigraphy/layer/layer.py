@@ -224,33 +224,6 @@ class Layer(ExtractedFeature):
 
 
 @dataclass
-class LayersInBorehole:
-    """Represent the data for all layers in a borehole profile."""
-
-    layers: list[Layer]
-
-    def to_json(self) -> dict:
-        """Converts the object to a dictionary.
-
-        Returns:
-            dict: The object as a dictionary.
-        """
-        return [layer.to_json() for layer in self.layers]
-
-    @classmethod
-    def from_json(cls, json_object) -> "LayersInBorehole":
-        """Extract a LayersInBorehole object from a json dictionary.
-
-        Args:
-            json_object (dict): The object as a dictionary.
-
-        Returns:
-            LayersInBorehole: The LayersInBorehole object.
-        """
-        return cls([Layer.from_json(layer_data) for layer_data in json_object])
-
-
-@dataclass
 class ExtractedBorehole:
     """A class to store the extracted information of one single borehole."""
 
@@ -262,10 +235,7 @@ class ExtractedBorehole:
 
 
 class LayersInDocument:
-    """A class to represent predictions for a single document.
-
-    It contains a list of LayersInBorehole, not just a list of Layer.
-    """
+    """A class to represent predictions for a single document."""
 
     def __init__(self, boreholes_layers: list[ExtractedBorehole], filename: str):
         self.boreholes_layers_with_bb = boreholes_layers

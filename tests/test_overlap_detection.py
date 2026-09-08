@@ -28,12 +28,12 @@ def create_layer():
 def create_elevation_layer():
     """Create a Layer with given text and depth interval."""
 
-    def _create_elevation_layer(text: str, elevation: tuple[int | None, int | None]) -> Layer:
-        line_feat = FeatureOnPage(MaterialDescriptionLine(text), rect=pymupdf.Rect, page=0)
+    def _create_elevation_layer(text: str, elevation: tuple[float | None, float | None]) -> Layer:
+        line_feat = FeatureOnPage(MaterialDescriptionLine(text), rect=pymupdf.Rect(), page=0)
         material_description = MaterialDescription(text, [line_feat])
         depths = LayerDepths(
-            LayerDepthsEntry(elevation[0], rect=pymupdf.Rect, page_number=0),
-            LayerDepthsEntry(elevation[1], rect=pymupdf.Rect, page_number=0),
+            LayerDepthsEntry(elevation[0], rect=pymupdf.Rect(), page_number=0) if elevation[0] is not None else None,
+            LayerDepthsEntry(elevation[1], rect=pymupdf.Rect(), page_number=0) if elevation[1] is not None else None,
         )
         return Layer(material_description=material_description, depths=depths)
 
@@ -240,9 +240,9 @@ def test_are_layers_similar_text(create_layer):
 
 def test_are_layers_similar_elevation(create_elevation_layer):
     """Test if two layers are matched based on elevation difference."""
-    layer_a = create_elevation_layer("Desc A", [0, 1])
-    layer_b = create_elevation_layer("Desc A", [0, 2])
-    layer_c = create_elevation_layer("Desc A", [0, None])
+    layer_a = create_elevation_layer("Desc A", (0, 1))
+    layer_b = create_elevation_layer("Desc A", (0, 2))
+    layer_c = create_elevation_layer("Desc A", (0, None))
     assert not are_layers_similar(layer_a, layer_b)
     assert are_layers_similar(layer_a, layer_c)
 
