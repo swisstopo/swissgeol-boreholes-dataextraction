@@ -349,7 +349,7 @@ def compute_trainset_weights(trainset: datasets.Dataset, max_scale: float = 10.0
     n_classes = labels_flat.max() + 1
     counts = torch.bincount(labels_flat, minlength=n_classes)
 
-    w = torch.clip((counts.sum() / (counts + 1e-16)) ** tau, 1, max_scale)
+    w = torch.clip((counts.sum() / (counts + 1)) ** tau, 1, max_scale)
     w = w * n_classes / w.sum()  # normalize so mean weight is 1
     return w
 
