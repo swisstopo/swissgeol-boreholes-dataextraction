@@ -329,7 +329,7 @@ def setup_data(
     return train_dataset, val_dataset, test_datasets
 
 
-def compute_trainset_weights(trainset: datasets.Dataset, max_scale: float = 10.0, tau: float = 0.1) -> torch.Tensor:
+def compute_trainset_weights(trainset: datasets.Dataset, max_scale: float = 10.0, tau: float = 0.3) -> torch.Tensor:
     """Computes normalized inverse-frequency class weights.
 
     Args:

@@ -157,6 +157,17 @@ def split_samples(
     # Get split into sets.
     split_train, split_val, split_test = [], [], []
     for entry in data:
+        # Affect based on keywords
+        if "train_set" in entry.filename:
+            split_train.append(entry)
+            continue
+        elif "validation_set" in entry.filename:
+            split_val.append(entry)
+            continue
+        elif "test_set" in entry.filename:
+            split_test.append(entry)
+            continue
+
         # Extract filename for hash
         x_ratio = deterministic_hash_ratio(entry.filename)
         if x_ratio < rtest:

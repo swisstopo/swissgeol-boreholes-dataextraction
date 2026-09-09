@@ -15,6 +15,7 @@ training_sets:
       - nagra_ground_truth.json
       - thurgau_ground_truth.json
       - zurich_ground_truth.json
+      - bert_extra/lithology_extra_ground_truth.json
 
 test_sets:
   global_lithology:
