@@ -161,7 +161,7 @@ def split_samples(
         if "train_set" in entry.filename:
             split_train.append(entry)
             continue
-        elif "validation_set" in entry.filename:
+        elif "val_set" in entry.filename:
             split_val.append(entry)
             continue
         elif "test_set" in entry.filename:
