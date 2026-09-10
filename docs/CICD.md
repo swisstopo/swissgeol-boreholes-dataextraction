@@ -44,11 +44,13 @@ feature/issue-001/name    →    develop    →    main    →    GitHub Release
 │           pre-release.yml                                           |
 |  · Retag (no rebuild)                                               │
 │      :edge → :release-candidate                                     │
+|      :edge → :v1.0.0-rc                                             |
 │  · Create GitHub pre-release                                        │
 │  · Build and publish Python package                                 │
 │      swissgeol_boreholes_dataextraction-1.0.0-py3-none-any.whl      │
 │  · Create git tag                                                   │
 │      1.0.0 (no v — signals full release to versioning)              │
+|      release-candidate                                              |
 └────────────────────┬────────────────────────────────────────────────┘
                      │ GitHub Release published (manual)
                      ▼
@@ -99,6 +101,7 @@ These run automatically on every pull request to `develop` or `main`.
 | `:edge` | Latest `develop` build | DEV |
 | `:v1.0.0-dev1` | Specific dev build | DEV |
 | `:release-candidate` | Latest `main` promotion | INT / Staging |
+| `:v1.0.0-rc` | 	Specific pre-release build | INT / Staging |
 | `:latest` | Latest stable release | PROD |
 | `:v1` | Latest release in major version 1 | PROD |
 | `:v1.0` | Latest release in minor version 1.0 | PROD |
