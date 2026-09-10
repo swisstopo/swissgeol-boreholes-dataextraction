@@ -22,6 +22,7 @@
 
 * Model jointly trained, same for both tasks.
 
+
 ## Accessory Components - Enhanced
 
 | Test set  | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
@@ -140,13 +141,13 @@
 
 | Test set  | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
 |-----------|------------------|------------------|---------------|---------------|
-| Deepwells | 0.469            | 0.374            | 0.816         | 0.939         |
-| Geoquat   | 0.456            | 0.745            | 0.536         | 0.846         |
-| Lithology | 0.735            | 0.925            | 0.903         | 0.945         |
-| Nagra     | 0.504            | 0.968            | 0.995         | 0.992         |
-| Thurgau   | 0.363            | 0.864            | 0.563         | 0.914         |
-| Extra     | -                | -                | 0.986         | 0.994         |
-| Overall   | -                | -                | 0.910         | 0.941         |
+| Deepwells | 0.490            | 0.384            | 0.xxx         | 0.xxx         |
+| Geoquat   | 0.548            | 0.747            | 0.xxx         | 0.xxx         |
+| Lithology | 0.767            | 0.931            | 0.xxx         | 0.945         |
+| Nagra     | 0.579            | 0.973            | 0.xxx         | 0.xxx         |
+| Thurgau   | 0.406            | 0.855            | 0.xxx         | 0.xxx         |
+| Extra     | -                | -                | 0.xxx         | 0.xxx         |
+| Overall   | -                | -                | 0.xxx         | 0.xxx         |
 
 
 ## Mineral Components - Enhanced
