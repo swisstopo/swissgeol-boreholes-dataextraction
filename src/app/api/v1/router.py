@@ -57,26 +57,23 @@ _CLASSIFY_RESPONSE_EXAMPLES = {
         "summary": "Unconsolidated sediment (silt)",
         "value": {
             "consolidation": "unconsolidated",
-            "en_main": "si",
-            "en_secondary": ["si", "cl", "gr"],
-            "uscs": "not_specified",
-            "debris": ["not_specified"],
             "color": "grey",
+            "en_main": "si",
+            "en_secondary": ["cl", "gr"],
             "grain_angularity": ["angular", "sub_angular", "sub_rounded"],
-            "grain_shape": ["not_specified"],
-            "organic_components": ["roots"],
+            "organic_components": ["remains_of_plants"],
+            "uscs": "ML",
         },
     },
     "consolidated_limestone": {
         "summary": "Consolidated rock (limestone)",
         "value": {
+            "accessory_components": ["bioclasts", "ooids", "pellets"],
+            "alteration_degree_consolidated": "fresh",
             "consolidation": "consolidated",
+            "color": "yellow",
             "lithology": "limestone",
-            "alteration_degree_consolidated": "not_specified",
-            "cementation": "not_specified",
-            "color": "yellowish_orange",
             "mineral_components": ["pyrite", "glauconite"],
-            "accessory_components": ["ooids", "pellets"],
         },
     },
 }
@@ -283,7 +280,7 @@ def post_extract_stratigraphy(request: ExtractStratigraphyRequest) -> ExtractStr
     "/classify",
     tags=["classify"],
     response_model=ClassifyResponse,
-    response_model_exclude_unset=True,
+    response_model_exclude_none=True,
     responses={
         200: {"content": {"application/json": {"examples": _CLASSIFY_RESPONSE_EXAMPLES}}},
         400: {"model": BadRequestResponse, "description": "Bad request"},
@@ -306,12 +303,12 @@ def post_classify(
       brau-beige, Komponenten vorw. eckig"`).
 
     ### Returns
-    - **consolidation**: `"consolidated"` or `"unconsolidated"`, as determined by the lithology head;
+    A field is OMITTED from the response if the task wasn't run for that rock type,
+    or if it ran but predicted no specific class (not_specified only). Otherwise it holds the predicted class.
+    - **consolidation**: "consolidated" or "unconsolidated", as determined by the lithology head;
       indicates which of the fields are populated.
-    - One field per classification task. A field is `null` if that task isn't relevant to the inferred
-      rock type; otherwise it holds the predicted class name (single-label tasks, e.g. `en_main`, `uscs`,
-      `color`) or class names (multi-label/rank tasks, e.g. `en_secondary`, `grain_angularity`, `grain_shape`,
-      `organic_components`, `accessory_components`, `debris`, `mineral_components`).
+    - One field per classification task, omitted when not relevant to the inferred rock type;
+      otherwise it holds the predicted class name (single-label tasks) or class names (multi-label/rank tasks).
 
     ### Consolidated rock tasks
     `lithology`, `alteration_degree_consolidated`, `cementation`, `color`, `mineral_components`, `accessory_components`
