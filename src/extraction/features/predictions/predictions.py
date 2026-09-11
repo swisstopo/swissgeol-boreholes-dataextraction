@@ -2,8 +2,11 @@
 
 import logging
 from collections import defaultdict
+from collections.abc import Callable
 from copy import deepcopy
 from typing import TypeVar
+
+import pymupdf
 
 from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
@@ -40,8 +43,8 @@ class BoreholeListBuilder:
         file_name: str,
         groundwater_in_doc: GroundwaterInDocument,
         names_in_doc: NameInDocument,
-        elevations_list: list[FeatureOnPage[Elevation] | None],
-        coordinates_list: list[FeatureOnPage[Coordinate] | None],
+        elevations_list: list[FeatureOnPage[Elevation]],
+        coordinates_list: list[FeatureOnPage[Coordinate]],
     ):
         """Initializes the BoreholeListBuilder with extracted borehole-related data.
 
@@ -51,9 +54,9 @@ class BoreholeListBuilder:
             file_name (str): The name of the processed document.
             groundwater_in_doc (GroundwaterInDocument): Contains detected groundwater entries for boreholes.
             names_in_doc (NameInDocument): Contains detected names entries for boreholes.
-            elevations_list (list[FeatureOnPage[Elevation] | None]): List of terrain elevation values for detected
+            elevations_list (list[FeatureOnPage[Elevation]]): List of terrain elevation values for detected
                 boreholes.
-            coordinates_list (list[FeatureOnPage[Coordinate] | None]): List of borehole coordinates.
+            coordinates_list (list[FeatureOnPage[Coordinate]]): List of borehole coordinates.
         """
         self._layers_with_bb_in_document = layers_with_bb_in_document
         self._file_name = file_name
@@ -80,7 +83,7 @@ class BoreholeListBuilder:
 
         # for groundwater entries, assign each of them to the closest borehole
         borehole_idx_to_list_groundwater = self._many_to_one_match_element_to_borehole(
-            self._groundwater_in_doc.groundwater_feature_list
+            self._groundwater_in_doc.groundwater_feature_list, self._compute_distance
         )
 
         return [
@@ -101,22 +104,6 @@ class BoreholeListBuilder:
             )
         ]
 
-    @staticmethod
-    def _extend_list(lst: list[T], default_elem: T, target_length: int) -> list[T]:
-        """Extends a list with deep copies of a base element until it reaches the target length.
-
-        deepcopy is necessary, because the is_correct attribute is already stored on this object, but the same
-        extracted value might be correct on one borehole and incorrect on another one.
-        """
-
-        def create_new_elem():
-            return deepcopy(lst[0]) if lst else default_elem
-
-        while len(lst) < target_length:
-            lst.append(create_new_elem())  # Append copies to match the required length
-
-        return lst
-
     def remove_elevations_overlaping_groundwater(self) -> None:
         """Removes elevation entries that are also groundwater entries.
 
@@ -135,13 +122,18 @@ class BoreholeListBuilder:
         self._elevations_list = real_elevations
 
     def _many_to_one_match_element_to_borehole(
-        self, element_list: list[FeatureOnPage], taken_boreholes: set[int] | None = None
+        self,
+        element_list: list[FeatureOnPage],
+        distance_fn: Callable[[FeatureOnPage, list[PageBoundingBoxes]], float | None],
+        taken_boreholes: set[int] | None = None,
     ) -> dict[int, list[FeatureOnPage]]:
         """Matches extracted elements to boreholes.
 
         This is done by assigning the clossest borehole to each element.
 
         Args:
+            distance_fn (Callable[[FeatureOnPage, list[PageBoundingBoxes]], float | None]): method for computing the
+                distance between an element and the borehole stratigraphy.
             element_list (list[FeatureOnPage]): list of element to match
             taken_boreholes (set[int]): the set of borehole index that needs to be ignored for the mapping. In this
                 context, it is the boreholes that have already been matched (defaults to None).
@@ -149,9 +141,6 @@ class BoreholeListBuilder:
         Returns:
             dict[int, list[FeatureOnPage]]: the dictionary containing the best mapping borehole_index -> all element
         """
-        # solve trivial case
-        if self._num_boreholes == 1:
-            return {0: element_list}
         # solve case where the list is empty
         if not element_list:
             return {idx: [] for idx in range(self._num_boreholes)}
@@ -168,7 +157,7 @@ class BoreholeListBuilder:
         borehole_index_to_matched_elem = defaultdict(list)
         for feat in element_list:
             # Compute distance between feature and borehole
-            distances = {j: self._compute_distance(feat, borehole_bounding_boxes[j]) for j in available_boreholes}
+            distances = {j: distance_fn(feat, borehole_bounding_boxes[j]) for j in available_boreholes}
             # Filter candidates based on valid distance
             candidates_idx = [j for j, d in distances.items() if d is not None]
             # Check if at least one valid candidate
@@ -177,10 +166,17 @@ class BoreholeListBuilder:
             # Find best candidate
             best_bbox_idx = min(candidates_idx, key=lambda j: distances[j])
 
-            # Distance should not be infinite
-            borehole_index_to_matched_elem[best_bbox_idx].append(feat)
+            borehole_index_to_matched_elem[best_bbox_idx].append((feat, distances[best_bbox_idx]))
 
-        return borehole_index_to_matched_elem
+        return defaultdict(
+            list,
+            {
+                borehole_index: [
+                    candidate for candidate, score in sorted(candidates, key=lambda candidate: candidate[1])
+                ]
+                for borehole_index, candidates in borehole_index_to_matched_elem.items()
+            },
+        )
 
     def _one_to_one_match_element_to_borehole(
         self, element_list: list[FeatureOnPage]
@@ -191,9 +187,8 @@ class BoreholeListBuilder:
         multiple elements might be close to a single borehole. It works iteratively by:
 
         1. Using a many-to-one matching heuristic to suggest possible element candidates per borehole.
-        2. Filtering out elements that have already been assigned.
-        3. Selecting the best candidate — defined as the topmost one on the page — if multiple are available.
-        4. Repeating until each borehole has a unique match.
+        2. Selecting the best candidate — above and close to the stratigraphy bounding box — if multiple are available.
+        3. Repeating until each borehole has a unique match
 
         Args:
             element_list (list[FeatureOnPage]): List of extracted elements to match.
@@ -201,13 +196,8 @@ class BoreholeListBuilder:
         Returns:
             dict[int, FeatureOnPage | None]: Mapping from borehole index to matched element.
         """
-        # Ensure there is at least one element for each borehole. This is done by duplicating elements if fewer
-        # values were extracted than the number of boreholes, or by filling the list with None values.
-        element_list = self._extend_list(element_list, None, self._num_boreholes)
-
-        # solve trivial case and case where the elements are None
-        if len(element_list) == 1 or not element_list[0]:
-            return {idx: elem for idx, elem in enumerate(element_list)}
+        if not element_list:
+            return {idx: None for idx in range(self._num_boreholes)}
 
         borehole_index_to_matched_elem_index = {}
         # continue until all boreholes are matched
@@ -215,7 +205,7 @@ class BoreholeListBuilder:
         while len(borehole_index_to_matched_elem_index) != self._num_boreholes:
             # map all elements to their closest borehole.
             borehole_idx_to_many_element_mapping = self._many_to_one_match_element_to_borehole(
-                element_list, set(borehole_index_to_matched_elem_index.keys())
+                element_list, self._compute_distance_header, set(borehole_index_to_matched_elem_index.keys())
             )
 
             # No more potential matching found, break rule
@@ -226,15 +216,17 @@ class BoreholeListBuilder:
             for borehole_index, available_elements in borehole_idx_to_many_element_mapping.items():
                 assert borehole_index not in borehole_index_to_matched_elem_index
                 assert available_elements
-                # if multiple element are bound to the same borehole, always pick the highest on the page
-                best_element = min(available_elements, key=lambda elem: (elem.page_number, elem.rect.y0))
-                # fill the mapping borehole_index -> element and remove the element from the element list
-                borehole_index_to_matched_elem_index[borehole_index] = best_element
-                element_list.remove(best_element)
+                best_element = available_elements[0]
+                # Fill the mapping borehole_index -> element and remove the element from the element list.
+                # We create a deep copy, because we might assign the same extracted element to different boreholes,
+                # in which case the is_correct attribute should also be set separately for each assignment (the
+                # extracted element might be correct for one borehole and incorrect for another).
+                borehole_index_to_matched_elem_index[borehole_index] = deepcopy(best_element)
 
         return borehole_index_to_matched_elem_index
 
-    def _compute_distance(self, feat: FeatureOnPage, bounding_boxes: list[PageBoundingBoxes]) -> float | None:
+    @staticmethod
+    def _compute_distance(feat: FeatureOnPage, bounding_boxes: list[PageBoundingBoxes]) -> float | None:
         """Computes the distance between a FeatureOnPage objects and the bounding boxes of one borehole."""
         bbox = next((bbox for bbox in bounding_boxes if bbox.page == feat.page_number), None)
         if bbox is None:
@@ -244,3 +236,26 @@ class BoreholeListBuilder:
         element_center = (feat.rect.top_left + feat.rect.bottom_right) / 2
         dist = element_center.distance_to(outer_rect)
         return dist
+
+    @staticmethod
+    def _compute_distance_header(feat: FeatureOnPage, bounding_boxes: list[PageBoundingBoxes]) -> float | None:
+        """Computes the distance between the feature and the top of a borehole stratigraphy."""
+        bbox = next((bbox for bbox in bounding_boxes if bbox.page == feat.page_number), None)
+        if bbox is None:
+            # the current boreholes layers don't appear on the page where the element is
+            return None
+        outer_rect = bbox.get_outer_rect()
+
+        if feat.rect.y0 > outer_rect.y0:
+            # metadata feature must be above the stratigraphy bounding box
+            return None
+
+        if feat.rect.x1 < outer_rect.x0:
+            closest_x = outer_rect.x0
+        elif feat.rect.x0 > outer_rect.x1:
+            closest_x = outer_rect.x1
+        else:
+            # overlap between feature and bbox
+            closest_x = max(feat.rect.x0, outer_rect.x0)
+        # distance from the feature to the top of the stratigraphy
+        return pymupdf.Point(closest_x, outer_rect.y0).distance_to(feat.rect)

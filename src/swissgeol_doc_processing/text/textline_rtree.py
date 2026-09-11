@@ -10,14 +10,15 @@ class TextLineRTree:
     """Small wrapper around fastquadtree.RectQuadTreeObjects for text lines collections."""
 
     def __init__(self, text_lines: list[TextLine]):
+        bounds = (0, 0, 1, 1)
         if text_lines:
             min_x = min([line.rect.x0 for line in text_lines])
             max_x = max([line.rect.x1 for line in text_lines])
             min_y = min([line.rect.y0 for line in text_lines])
             max_y = max([line.rect.y1 for line in text_lines])
-            bounds = (min_x, min_y, max_x, max_y)
-        else:
-            bounds = (0, 0, 1, 1)
+            if min_x < max_x and min_y < max_y:
+                bounds = (min_x, min_y, max_x, max_y)
+
         self.text_line_rtree = fastquadtree.RectQuadTreeObjects(bounds, capacity=8)
         for line in text_lines:
             self.text_line_rtree.insert((line.rect.x0, line.rect.y0, line.rect.x1, line.rect.y1), obj=line)

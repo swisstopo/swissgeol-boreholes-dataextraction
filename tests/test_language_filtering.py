@@ -2,111 +2,12 @@
 
 import pytest
 
-from extraction.features.metadata.borehole_name_extraction import _is_name_length_valid, clean_borehole_name
+from extraction.features.metadata.borehole_name_extraction import _find_candidate_names, clean_borehole_name
+from swissgeol_doc_processing.utils.file_utils import read_params
 from swissgeol_doc_processing.utils.language_filtering import (
-    match_any_keyword,
     normalize_spaces,
     remove_any_keyword,
-    remove_in_parenthesis,
-    remove_scale,
 )
-
-
-@pytest.mark.parametrize(
-    "text, expected",
-    [
-        ("text", "text"),
-        ("text 1:100", "text "),
-        ("text M1:100", "text "),
-        ("text M.1:100", "text "),
-        ("text M 1:100", "text "),
-    ],
-    ids=[
-        "none",
-        "scale-simple",
-        "scale-masstab",
-        "scale-masstab-punct",
-        "scale-space",
-    ],
-)
-def test_remove_scale(text: str, expected: str) -> None:
-    """Verify that `remove_scale` removes scale notations.
-
-    Args:
-        text (str): Input text possibly containing a scale pattern.
-        expected (str): The expected string after removing the scale pattern.
-    """
-    assert expected == remove_scale(text)
-
-
-@pytest.mark.parametrize(
-    "text, expected",
-    [
-        ("text", "text"),
-        ("text (parenthesis)", "text "),
-    ],
-    ids=[
-        "none",
-        "parenthesis",
-    ],
-)
-def test_remove_in_parenthesis(text: str, expected: str) -> None:
-    """Verify that `remove_in_parenthesis` removes content inside parentheses.
-
-    Args:
-        text (str): Input text possibly containing parenthetical content.
-        expected (str): The expected string after removal.
-    """
-    assert expected == remove_in_parenthesis(text)
-
-
-@pytest.mark.parametrize(
-    "text, keywords, start, end, ignore_case, enforce_digit, expected",
-    [
-        ("test schachtprofil 12", ["schachtprofil"], False, False, True, False, "schachtprofil"),
-        ("test Schachtprofil 12", ["schachtprofil"], False, False, True, False, "Schachtprofil"),
-        ("test Schachtprofil 12", ["schachtprofil"], False, False, False, False, None),
-        ("test schachtprofil 12", ["schacht"], True, False, True, False, "schachtprofil"),
-        ("test schachtprofil 12", ["schacht"], False, True, True, False, None),
-        ("test schachtprofil 12", ["profil"], False, True, True, False, "schachtprofil"),
-        ("test schachtprofil 12", ["profil"], True, False, True, False, None),
-        ("test forage schachtprofil 12", ["forage", "profil"], False, True, True, False, "forage"),
-        ("KB Guatelli KB12", ["KB"], True, True, False, True, "KB12"),
-        ("KB Guatelli KBaBcd12", ["KB"], True, True, False, True, None),
-    ],
-    ids=[
-        "full-word",
-        "ignore-case",
-        "case-sensitive",
-        "anchored-start",
-        "neg-anchored-start",
-        "anchored-end",
-        "neg-anchored-end",
-        "first-match",
-        "regex-kb-match",
-        "regex-no-kb-match",
-    ],
-)
-def test_match_any_keyword(
-    text: str, keywords: list[str], start: bool, end: bool, ignore_case: bool, enforce_digit: bool, expected: str
-) -> None:
-    """Test keyword search from a predefined list in a text.
-
-    Args:
-        text (str): Text to search within.
-        keywords (list[str]): Keywords to look for (treated as raw regex patterns).
-        start (bool): If True, the matched word must start with the keyword.
-        end (bool): If True, the matched word must end with the keyword.
-        ignore_case (bool): If True, keyword matching is case insensitive.
-        enforce_digit (bool): If True, keyword must be followed by at least one digit.
-        expected (str): The substring expected to be matched in `text`.
-    """
-    match = match_any_keyword(text, keywords, start, end, ignore_case, enforce_digit)
-
-    if expected:
-        assert text[match.start() : match.end()] == expected
-    else:
-        assert match is None
 
 
 @pytest.mark.parametrize(
@@ -172,17 +73,13 @@ def test_remove_any_keyword(text: str, keywords: list[str], expected: str) -> No
         ("schachtprofil 12", [], "schachtprofil 12"),
         ("schachtprofil 12", None, "schachtprofil 12"),
         ("n r nr. schachtprofil nr-12", ["schachtprofil", "nr.", "n r"], "nr-12"),
-        ("SP1 1:20", [], "SP1"),
-        ("SP1 (comment)", [], "SP1"),
-        ("schachtprofil.:_ 12", [], "schachtprofil 12"),
+        (".A2", [], "A2"),
         ("", [], None),
     ],
     ids=[
         "empty-keywords",
         "none-keywords",
         "exclude-keywords",
-        "exclude-scale",
-        "exclude-parenthesis",
         "exclude-punc",
         "exclude-empty",
     ],
@@ -199,34 +96,37 @@ def test_clean_borehole_name(text: str, excluded_keywords: list[str], expected: 
     assert text == expected
 
 
+name_detection_params = read_params("name_detection_params.yml")
+excluded_keywords: list[str] = name_detection_params.get("excluded_keywords")
+
+
 @pytest.mark.parametrize(
-    "name, max_name_length, max_word_length, expected",
+    "text, expected, allow_simple",
     [
-        ("BS 10", None, None, True),
-        ("BS 10 Spiez", 15, None, True),
-        ("BS 10 Spiez", 5, None, False),
-        ("BS 10 Spiez", None, 5, True),
-        ("BS 10 Spiez (123/SP3)", None, 5, True),
-        ("BS 10 Spiez", None, 4, False),
-    ],
-    ids=[
-        "no-constrains",
-        "valid-name-length",
-        "non-valid-name-length",
-        "valid-word-length",
-        "valid-word-length-complex",
-        "non-valid-word-length",
+        ("SONDAGE CAROTTÉ S1", ["S1"], False),
+        ("Kernbohrung Kb 02/4", ["Kb 02/4"], False),
+        ("Bohrung KB1-18/P", ["KB1-18/P"], False),
+        ("G6/P", ["G6/P"], False),
+        ("Baggerschlitz BS 16-1/P", ["BS 16-1/P"], False),
+        ("N°8366", ["N°8366"], False),
+        ("1 /82", [], False),
+        ("1 /82", ["1 /82"], True),
+        ("Nr.8", ["Nr.8"], False),
+        ("Nr. 102", [], False),
+        ("Nr. 102", ["102"], True),
+        ("Datum:9.2.81 Sondierung No. KR.1", ["Datum:9.2.81", "KR.1"], False),
+        ("571112/256198", [], False),
+        ("bei 7m", [], False),
+        ("a", [], True),
+        ("A", ["A"], True),
+        ("KB B5.2", ["KB B5.2"], False),
+        ("Sonnig 12°C", [], False),
     ],
 )
-def test_is_name_length_valid(
-    name: str, max_name_length: int | None, max_word_length: int | None, expected: bool
-) -> None:
-    """Check if the he name / words (alphabetical) length are valid.
-
-    Args:
-        name (str): Name to check
-        max_name_length (int | None): Maximum length of name.
-        max_word_length (int | None): Maximum length of any word (alphabetical).
-        expected (bool): Indicate if the name should be valid.
-    """
-    assert expected == _is_name_length_valid(name, max_name_length, max_word_length)
+def test_findcandidatename(text: str, expected: list[str], allow_simple: bool) -> None:
+    """Test borehole name extraction behavior."""
+    words = text.split(" ")
+    names = []
+    for start, end in _find_candidate_names(words, excluded_keywords, allow_simple):
+        names.append(" ".join(words[start:end]))
+    assert names == expected
