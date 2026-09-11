@@ -141,13 +141,13 @@
 
 | Test set  | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
 |-----------|------------------|------------------|---------------|---------------|
-| Deepwells | 0.490            | 0.384            | 0.xxx         | 0.xxx         |
-| Geoquat   | 0.548            | 0.747            | 0.xxx         | 0.xxx         |
-| Lithology | 0.767            | 0.931            | 0.xxx         | 0.945         |
-| Nagra     | 0.579            | 0.973            | 0.xxx         | 0.xxx         |
-| Thurgau   | 0.406            | 0.855            | 0.xxx         | 0.xxx         |
-| Extra     | -                | -                | 0.xxx         | 0.xxx         |
-| Overall   | -                | -                | 0.xxx         | 0.xxx         |
+| Deepwells | 0.490            | 0.384            | 0.784         | 0.938         |
+| Geoquat   | 0.548            | 0.747            | 0.585         | 0.865         |
+| Lithology | 0.767            | 0.931            | 0.858         | 0.960         |
+| Nagra     | 0.579            | 0.973            | 0.912         | 0.992         |
+| Thurgau   | 0.406            | 0.855            | 0.537         | 0.912         |
+| Extra     | -                | -                | 0.989         | 0.990         |
+| Overall   | -                | -                | 0.941         | 0.942         |
 
 
 ## Mineral Components - Enhanced
