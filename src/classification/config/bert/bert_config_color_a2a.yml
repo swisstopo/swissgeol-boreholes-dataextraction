@@ -1,7 +1,7 @@
 classification_system: "color"
 experiment_name: "color_all_to_all"
 model_path: "google-bert/bert-base-multilingual-uncased"
-use_class_balancing: false
+use_class_balancing: true
 inference_batch_size: 32
 
 # Training and testing sets
@@ -22,6 +22,11 @@ training_sets:
       - nagra_ground_truth.json
       - thurgau_ground_truth.json
       - zurich_ground_truth.json
+  extra:
+    classification_system: color_consolidated
+    ground_truths:
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/color_extra_ground_truth.json
 
 test_sets:
   # Consolidated test (+ global)
@@ -33,6 +38,8 @@ test_sets:
       - nagra_ground_truth.json
       - thurgau_ground_truth.json
       - zurich_ground_truth.json
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/color_extra_ground_truth.json
   deepwells_consolidated:
     classification_system: color_consolidated
     ground_truths:
@@ -53,6 +60,11 @@ test_sets:
     classification_system: color_consolidated
     ground_truths:
       - zurich_ground_truth.json
+  extra_consolidated:
+    classification_system: color_consolidated
+    ground_truths:
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/color_extra_ground_truth.json
   # Unconsolidated test (+ global)
   global_unconsolidated:
     classification_system: color_unconsolidated
@@ -62,6 +74,8 @@ test_sets:
       - nagra_ground_truth.json
       - thurgau_ground_truth.json
       - zurich_ground_truth.json
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/color_extra_ground_truth.json
   deepwells_unconsolidated:
     classification_system: color_unconsolidated
     ground_truths:
@@ -82,6 +96,11 @@ test_sets:
     classification_system: color_unconsolidated
     ground_truths:
       - zurich_ground_truth.json
+  extra_unconsolidated:
+    classification_system: color_unconsolidated
+    ground_truths:
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/color_extra_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:

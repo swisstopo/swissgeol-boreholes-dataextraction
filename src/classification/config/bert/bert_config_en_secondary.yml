@@ -1,7 +1,7 @@
 classification_system: "en_secondary"
 experiment_name: "en_secondary"
 model_path: "google-bert/bert-base-multilingual-uncased"
-use_class_balancing: false
+use_class_balancing: true
 inference_batch_size: 32
 
 # Training and testing sets
@@ -14,6 +14,8 @@ training_sets:
       - nagra_ground_truth.json
       - thurgau_ground_truth.json
       - zurich_ground_truth.json
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/en_main_extra_ground_truth.json
 
 test_sets:
   global_en_secondary:
@@ -24,6 +26,8 @@ test_sets:
       - nagra_ground_truth.json
       - thurgau_ground_truth.json
       - zurich_ground_truth.json
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/en_main_extra_ground_truth.json
   deepwells_en_secondary:
     classification_system: en_secondary
     ground_truths:
@@ -44,6 +48,11 @@ test_sets:
     classification_system: en_secondary
     ground_truths:
       - zurich_ground_truth.json
+  extra_en_secondary:
+    classification_system: en_secondary
+    ground_truths:
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/en_main_extra_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:

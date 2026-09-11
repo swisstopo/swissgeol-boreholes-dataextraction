@@ -1,7 +1,7 @@
 classification_system: "accessory_components"
 experiment_name: "accessory_components"
 model_path: "google-bert/bert-base-multilingual-uncased"
-use_class_balancing: false
+use_class_balancing: true
 inference_batch_size: 32
 
 # Training and testing sets
@@ -13,7 +13,8 @@ training_sets:
       - geoquat_ground_truth_enhanced.json
       - zurich_ground_truth_enhanced.json
       - nagra_ground_truth_enhanced.json
-
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/accessory_components_extra_ground_truth.json
 
 test_sets:
   global_accessory_components:
@@ -23,6 +24,8 @@ test_sets:
       - geoquat_ground_truth_enhanced.json
       - zurich_ground_truth_enhanced.json
       - nagra_ground_truth_enhanced.json
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/accessory_components_extra_ground_truth.json
   deepwells_accessory_components:
     classification_system: accessory_components
     ground_truths:
@@ -40,6 +43,11 @@ test_sets:
     classification_system: accessory_components
     ground_truths:
       - nagra_ground_truth_enhanced.json
+  extra_accessory_components:
+    classification_system: accessory_components
+    ground_truths:
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/accessory_components_extra_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:
