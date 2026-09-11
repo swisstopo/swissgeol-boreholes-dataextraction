@@ -1,7 +1,7 @@
 classification_system: "lithology"
 experiment_name: "lithology"
 model_path: "google-bert/bert-base-multilingual-uncased"
-use_class_balancing: false
+use_class_balancing: true
 inference_batch_size: 32
 
 # Training and testing sets
@@ -15,6 +15,8 @@ training_sets:
       - nagra_ground_truth.json
       - thurgau_ground_truth.json
       - zurich_ground_truth.json
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/lithology_extra_ground_truth.json
 
 test_sets:
   global_lithology:
@@ -26,6 +28,8 @@ test_sets:
       - nagra_ground_truth.json
       - thurgau_ground_truth.json
       - zurich_ground_truth.json
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/lithology_extra_ground_truth.json
   deepwells_lithology:
     classification_system: lithology
     ground_truths:
@@ -50,6 +54,11 @@ test_sets:
     classification_system: lithology
     ground_truths:
       - zurich_ground_truth.json
+  extra_lithology:
+    classification_system: lithology
+    ground_truths:
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/lithology_extra_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:

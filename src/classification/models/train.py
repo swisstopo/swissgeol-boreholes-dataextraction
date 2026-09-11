@@ -6,7 +6,6 @@ import os
 import shutil
 import tempfile
 import time
-from collections import Counter
 from pathlib import Path
 
 import click
@@ -57,14 +56,7 @@ mlflow_tracking = os.getenv("MLFLOW_TRACKING") == "True"
 
 
 class WeightedLabelSmoother:
-    """Label Smoothing with optional per-class weighting for classification tasks.
-
-    Acts as a loss function when called. It is the standard way of doing in the transformers librairy.
-    Modified from https://github.com/huggingface/transformers/blob/main/src/transformers/trainer_pt_utils.py#L539.
-    """
-
-    epsilon: float = 0.1
-    ignore_index: int = -100
+    """Label Smoothing with optional per-class weighting for classification tasks."""
 
     def __init__(self, class_weights: torch.Tensor = None):
         """Initialize the object.
@@ -72,39 +64,13 @@ class WeightedLabelSmoother:
         Args:
             class_weights (torch.Tensor, optional): A 1D tensor of shape (num_classes,) with per-class weights.
         """
-        self.class_weights = class_weights  # Tensor of shape [num_classes]
+        self.class_weights = class_weights
 
-    def __call__(
-        self, model_output: SequenceClassifierOutput, labels: torch.Tensor, num_items_in_batch: torch.Tensor = None
-    ) -> torch.Tensor:
-        logits = model_output["logits"] if isinstance(model_output, dict) else model_output[0]
-
-        log_probs = -nn.functional.log_softmax(logits, dim=-1)  # shape: (batch_size, seq_len, vocab_size)
-        if labels.dim() == log_probs.dim() - 1:
-            labels = labels.unsqueeze(-1)  # shape: (batch_size, seq_len, 1)
-
-        padding_mask = labels.eq(self.ignore_index)
-        # In case the ignore_index is -100, the gather will fail, so we replace labels by 0. The padding_mask
-        # will ignore them in any case
-        safe_labels = torch.clamp(labels, min=0)
-        nll_loss = log_probs.gather(dim=-1, index=safe_labels)  # shape: (batch_size, seq_len, 1)
-
-        # New: Apply per-class weights if provided
-        if self.class_weights is not None:
-            weights = self.class_weights.to(logits.device)
-            per_token_weights = weights[safe_labels.squeeze(-1)]  # shape: (batch_size, seq_len)
-            per_token_weights = per_token_weights.unsqueeze(-1)  # shape: (batch_size, seq_len, 1)
-            nll_loss = nll_loss * per_token_weights
-
-        smoothed_loss = log_probs.sum(dim=-1, keepdim=True, dtype=torch.float32)  # (batch_size, seq_len, 1)
-
-        nll_loss = nll_loss.masked_fill(padding_mask, 0.0)
-        smoothed_loss = smoothed_loss.masked_fill(padding_mask, 0.0)
-
-        num_active_elements = padding_mask.numel() - padding_mask.long().sum()
-        nll = nll_loss.sum() / num_active_elements
-        smooth = smoothed_loss.sum() / (num_active_elements * log_probs.size(-1))
-        return (1 - self.epsilon) * nll + self.epsilon * smooth
+    def loss_func(
+        self, outputs: SequenceClassifierOutput, labels: torch.Tensor, num_items_in_batch: torch.Tensor | None = None
+    ):
+        logits = outputs.logits
+        return nn.functional.cross_entropy(logits, labels, weight=self.class_weights.to(logits.device))
 
 
 def setup_mlflow_tracking(
@@ -363,41 +329,31 @@ def setup_data(
     return train_dataset, val_dataset, test_datasets
 
 
-def compute_trainset_weights(
-    trainset: datasets.Dataset, min_scale: float = 0.5, max_scale: float = 2.0
-) -> torch.Tensor:
+def compute_trainset_weights(trainset: datasets.Dataset, max_scale: float = 10.0, tau: float = 0.3) -> torch.Tensor:
     """Computes normalized inverse-frequency class weights.
 
     Args:
         trainset (datasets.Dataset): the dataset to infer the weights from.
-        min_scale (float): Minimum weight value after scaling.
-        max_scale (float): Maximum weight value after scaling.
+        max_scale (float): Maximum weight value after scaling. Defaults to 10.
+        tau (float): Weight smoothing 0: uniform, 1: fully balanced. Defaults to 0.1.
 
     Returns:
         torch.Tensor: A tensor of shape (num_classes,) with scaled weights.
     """
     labels = trainset["labels"]
     if labels and isinstance(labels[0], list):
-        label_counts = Counter(idx for row in labels for idx, val in enumerate(row) if val > 0)
+        labels_flat = torch.tensor([idx for row in labels for idx, val in enumerate(row) if val > 0])
     else:
-        label_counts = Counter(labels)
-    num_classes = max(label_counts.keys()) + 1  # class index starts at 0
+        labels_flat = torch.tensor([labels])
 
-    # Compute raw inverse-frequency weights
-    raw_weights = torch.tensor(
-        [1.0 / label_counts[i] if i in label_counts else 0.0 for i in range(num_classes)], dtype=torch.float32
-    )
+    n_classes = labels_flat.max() + 1
+    counts = torch.bincount(labels_flat, minlength=n_classes)
 
-    # Scale to desired range [min_scale, max_scale]
-    nonzero = raw_weights[raw_weights > 0]
-    if len(nonzero) > 0 and nonzero.max() != nonzero.min():
-        min_w, max_w = nonzero.min(), nonzero.max()
-        scaled_weights = (raw_weights - min_w) / (max_w - min_w)  # normalize to [0, 1]
-        scaled_weights = min_scale + (max_scale - min_scale) * scaled_weights  # scale to [min_scale, max_scale]
-    else:
-        scaled_weights = torch.ones_like(raw_weights)  # fallback: uniform weights
-
-    return scaled_weights
+    w = torch.ones(n_classes, dtype=torch.float32)
+    w_nonzero = torch.clip((counts.sum() / (counts[counts != 0] + 1)) ** tau, 1, max_scale)
+    w_nonzero = w_nonzero * len(w_nonzero) / w_nonzero.sum()  # normalize so mean weight is 1
+    w[counts != 0] = w_nonzero
+    return w
 
 
 class HeadOnlyTrainer(Trainer):
@@ -630,7 +586,7 @@ def setup_trainer(
     if use_class_balancing:
         class_weights = compute_trainset_weights(train_dataset)
         # create the object that will be called to compute the loss function (standard in transformers lib).
-        compute_loss_func = WeightedLabelSmoother(class_weights=class_weights)
+        compute_loss_func = WeightedLabelSmoother(class_weights=class_weights).loss_func
 
     cm_callback = ConfusionMatrixCallback(
         id2class_enum=bert_model.id2classEnum,
