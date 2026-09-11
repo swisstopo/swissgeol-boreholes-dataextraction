@@ -872,9 +872,9 @@ class ClassifyResponse(BaseModel):
     `consolidation` indicates whether the lithology head classified the material as consolidated
     rock or unconsolidated sediment, which determines which of the remaining fields are populated.
 
-    Each remaining field corresponds to one classification task. A field is None if that task wasn't run for the
-    inferred rock type, or if it ran but predicted no specific class (not_specified only). Otherwise it holds the
-    predicted class (single-label tasks) or classes (multi-label tasks; rank tasks).
+    Each remaining field corresponds to one classification task. A field is omitted from the response if that task
+    wasn't run for the inferred rock type, or if it ran but predicted no specific class (not_specified only).
+    Otherwise it holds the predicted class (single-label tasks) or classes (multi-label tasks; rank tasks).
 
     Consolidated rock tasks: lithology, alteration_degree_consolidated, cementation, color, mineral_components,
         accessory_components.

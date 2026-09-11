@@ -32,6 +32,9 @@ from classification.utils.datasets.lithology import LithologySystem
 CONSOLIDATED_DESCRIPTION = "Kalkstein, hellgrau, geschichtet, feinkoernig, stark verkittet"
 #   lithology=unconsolidated, cementation=not_specified, grain_angularity=[angular, sub_angular]
 UNCONSOLIDATED_DESCRIPTION = "Siltiger Kies mit Sand und Steinen, braun, eckig bis kantengerundet"
+#   lithology=sandstone (consolidated), cementation=not_specified — cementation IS a relevant,
+#   loaded task here, but predicts only not_specified.
+CONSOLIDATED_NOT_SPECIFIED_DESCRIPTION = "Sandstein, grau"
 
 _REAL_TASK_NAMES = ("lithology", "cementation", "grain_angularity")
 
@@ -156,3 +159,22 @@ def test_post_classify_returns_predictions_when_bert_models_loaded(
     assert body["lithology"] == "limestone"
     assert body["cementation"] == "strongly_cemented"
     assert "color" not in body  # color is now omitted, not null
+
+
+def test_post_classify_omits_field_that_ran_but_predicted_not_specified(
+    test_client: TestClient, bert_models_state, real_bert_models
+):
+    """A relevant, loaded task that predicts only not_specified must be omitted, not null.
+
+    Unlike `color` above (omitted because it's not loaded at all), `cementation` here is loaded
+    and relevant to the consolidated branch, runs, and predicts not_specified.
+    """
+    app.state.bert_models = real_bert_models
+
+    request = ClassifyRequest(description=CONSOLIDATED_NOT_SPECIFIED_DESCRIPTION)
+    response = test_client.post("/api/V1/classify", content=request.model_dump_json())
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["lithology"] == "sandstone"
+    assert "cementation" not in body
