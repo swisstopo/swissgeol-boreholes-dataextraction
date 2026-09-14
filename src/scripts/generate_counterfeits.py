@@ -5,6 +5,7 @@ import asyncio
 import json
 import logging
 import os
+from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -19,10 +20,17 @@ from classification.utils.datasets.classification import (
     ClassificationSystem,
     GroundTruthBoreholeWithLanguage,
     LayerInformation,
-    split_samples,
 )
 from classification.utils.file_utils import read_params
-from core.ground_truth import GroundTruth
+from core.ground_truth import (
+    GroundTruth,
+    GroundTruthBorehole,
+    GroundTruthConsolidated,
+    GroundTruthLayer,
+    GroundTruthLayerDepth,
+    GroundTruthMetadata,
+    GroundTruthUnconsolidated,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +43,9 @@ class LayerInformationCounterfeits:
     counterfeit_text: str | None
     ground_truth_class: str | None
     counterfeit_class: str | None
+    filename: str = ""
+    borehole_index: int = 0
+    layer_index: int = 0
 
 
 class AWSBedrockCounterfeits:
@@ -114,6 +125,13 @@ class AWSBedrockCounterfeits:
         if len(predictions) != len(layers):
             raise ValueError(f"Wrong number of predictions {len(layers)=}, {len(predictions)=}")
 
+        # The tool schema only asks Bedrock for the text/class fields; carry the routing info
+        # (filename/borehole_index/layer_index) over from the input instead of round-tripping it.
+        for prediction, layer in zip(predictions, layers, strict=True):
+            prediction.filename = layer.filename
+            prediction.borehole_index = layer.borehole_index
+            prediction.layer_index = layer.layer_index
+
         return predictions
 
     async def _process_batch(self, layers: list[LayerInformationCounterfeits]) -> list[LayerInformationCounterfeits]:
@@ -156,7 +174,7 @@ class AWSBedrockCounterfeits:
 def generate(
     samples: list[LayerInformation],
     classification_system_cls: type[ClassificationSystem],
-    examples_path: Path,
+    aws_model: AWSBedrockCounterfeits,
     seed: int = 0,
 ) -> list[LayerInformationCounterfeits]:
     """Generate a counterfeit rewrite for each sample, targeting a random other class.
@@ -164,26 +182,27 @@ def generate(
     Args:
         samples (list[LayerInformation]): Ground truth layers to generate counterfeits for.
         classification_system_cls (type[ClassificationSystem]): Classification system defining the class set.
-        examples_path (Path): Path to the YAML file of classification examples shown to Bedrock.
+        aws_model (AWSBedrockCounterfeits): Bedrock client used to generate the counterfeit rewrites.
         seed (int): Seed for the random target-class assignment. Defaults to 0.
 
     Returns:
         list[LayerInformationCounterfeits]: One counterfeit item per input sample.
     """
-    aws = AWSBedrockCounterfeits(examples_path=examples_path)
-
     counterfeit_classes = list(classification_system_cls.get_enum())
     rnd = np.random.RandomState(seed=seed)
     rnd_class_samples = rnd.randint(low=0, high=len(counterfeit_classes), size=len(samples))
 
     return asyncio.run(
-        aws.process(
+        aws_model.process(
             [
                 LayerInformationCounterfeits(
                     ground_truth_text=layer.material_description,
                     counterfeit_text=None,
                     ground_truth_class=layer.ground_truth_class[0].name,
                     counterfeit_class=counterfeit_classes[rnd_class].name,
+                    filename=layer.filename,
+                    borehole_index=layer.borehole_index,
+                    layer_index=layer.layer_index,
                 )
                 for layer, rnd_class in zip(samples, rnd_class_samples, strict=True)
             ]
@@ -191,8 +210,91 @@ def generate(
     )
 
 
+def to_ground_truth(
+    samples: list[LayerInformationCounterfeits], classification_system_cls: type[ClassificationSystem]
+) -> dict[str, list[GroundTruthBorehole]]:
+    """Rebuild counterfeit samples into the same dict[filename] -> list[GroundTruthBorehole] shape as GroundTruth.
+
+    The counterfeit class is written to the single nested field this classification system reads from
+    (its first `get_layer_ground_truth_keys()` group): `consolidated`/`unconsolidated` on the layer, or
+    `metadata` on the borehole for document-level systems (e.g. `borehole_type`). Depth intervals and
+    any other metadata are left at their defaults, since counterfeits carry no such information.
+
+    Args:
+        samples (list[LayerInformationCounterfeits]): Counterfeit samples to convert.
+        classification_system_cls (type[ClassificationSystem]): Classification system that produced them.
+
+    Returns:
+        dict[str, list[GroundTruthBorehole]]: Same structure as `GroundTruth.ground_truth`.
+    """
+    root, field = classification_system_cls.get_layer_ground_truth_keys()[0]
+
+    samples_by_file_and_borehole: dict[str, dict[int, list[LayerInformationCounterfeits]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    for sample in samples:
+        samples_by_file_and_borehole[sample.filename][sample.borehole_index].append(sample)
+
+    return {
+        filename: [
+            GroundTruthBorehole(
+                borehole_index=borehole_index,
+                layers=[
+                    GroundTruthLayer(
+                        depth_interval=GroundTruthLayerDepth(),
+                        material_description=sample.counterfeit_text,
+                        consolidated=GroundTruthConsolidated(**{field: sample.counterfeit_class})
+                        if root == "consolidated"
+                        else None,
+                        unconsolidated=GroundTruthUnconsolidated(**{field: sample.counterfeit_class})
+                        if root == "unconsolidated"
+                        else None,
+                    )
+                    for sample in borehole_samples
+                ],
+                metadata=GroundTruthMetadata(**{field: borehole_samples[0].counterfeit_class})
+                if root == "metadata"
+                else GroundTruthMetadata(),
+            )
+            for borehole_index, borehole_samples in boreholes.items()
+        ]
+        for filename, boreholes in samples_by_file_and_borehole.items()
+    }
+
+
+def write_counterfeit_gt(
+    counterfeit_samples: list[LayerInformationCounterfeits],
+    classification_system_cls: type[ClassificationSystem],
+    out_path: Path,
+) -> None:
+    """Write counterfeit samples to a GroundTruth-shaped JSON file.
+
+    Args:
+        counterfeit_samples (list[LayerInformationCounterfeits]): Counterfeit items.
+        classification_system_cls (type[ClassificationSystem]): Classification system that produced the samples.
+        out_path (Path): Output JSON file path. Parent directories are created if missing.
+    """
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                filename: [borehole.model_dump() for borehole in boreholes]
+                for filename, boreholes in to_ground_truth(counterfeit_samples, classification_system_cls).items()
+            },
+            f,
+            indent=2,
+            ensure_ascii=False,
+        )
+    logger.info("Wrote %d counterfeit samples to %s", len(counterfeit_samples), out_path)
+
+
 def main(
-    ground_truth_path: Path, classification_system: str, examples_path: Path, n_samples: int = 10, seed: int = 0
+    ground_truth_path: Path,
+    classification_system: str,
+    examples_path: Path,
+    output_folder: Path,
+    n_samples: int = 10,
+    seed: int = 0,
 ) -> None:
     """Load ground truth samples for a classification system and generate counterfeits for the train split.
 
@@ -200,28 +302,29 @@ def main(
         ground_truth_path (Path): Path to the ground truth JSON file.
         classification_system (str): Name of the classification system to generate counterfeits for.
         examples_path (Path): Path to the YAML file of classification examples shown to Bedrock.
+        output_folder (Path): Output JSON file path for the generated counterfeit ground truth.
         n_samples (int): Number of train samples to generate counterfeits for. Defaults to 10.
         seed (int): Seed for the random target-class assignment. Defaults to 0.
     """
+    aws_model = AWSBedrockCounterfeits(examples_path=examples_path)
     ground_truth = GroundTruth(ground_truth_path)
     classification_system_cls = ExistingClassificationSystems.get_classification_system_type(classification_system)
 
     gt_boreholes = GroundTruthBoreholeWithLanguage.from_ground_truth(ground_truth=ground_truth.ground_truth)
     samples = classification_system_cls.process(ground_truth=gt_boreholes)
 
-    train_samples, val_samples, test_samples = split_samples(samples)
-    logger.info("Loaded %d train, %d val, %d test samples.", len(train_samples), len(val_samples), len(test_samples))
-
-    counterfeit_train_samples = generate(
-        samples=train_samples[:n_samples],
+    counterfeit_samples = generate(
+        samples=samples[:n_samples],
         classification_system_cls=classification_system_cls,
-        examples_path=examples_path,
+        aws_model=aws_model,
         seed=seed,
     )
-    logger.info("Generated %d counterfeit samples.", len(counterfeit_train_samples))
 
-    # TODO: create GT with sets train/val/test for model training
-    logger.info("Done.", len(train_samples), len(val_samples), len(test_samples))
+    write_counterfeit_gt(
+        counterfeit_samples,
+        classification_system_cls,
+        output_folder / f"{classification_system}_counterfeit_ground_truth.json",
+    )
 
 
 if __name__ == "__main__":
@@ -252,7 +355,14 @@ if __name__ == "__main__":
         default=10,
         help="Number of train samples to generate counterfeits for.",
     )
+    parser.add_argument(
+        "-o",
+        "--output-folder",
+        type=Path,
+        default=Path("data/bert_extra"),
+        help="Output folder for the generated counterfeit ground truth.",
+    )
 
     args = parser.parse_args()
 
-    main(args.ground_truth_path, args.classification_system, args.examples_path, args.n_samples)
+    main(args.ground_truth_path, args.classification_system, args.examples_path, args.output_folder, args.n_samples)
