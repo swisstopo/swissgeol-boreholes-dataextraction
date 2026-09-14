@@ -49,7 +49,7 @@ feature/issue-001/name    →    develop    →    main    →    GitHub Release
 │  · Build and publish Python package                                 │
 │      swissgeol_boreholes_dataextraction-1.0.0-py3-none-any.whl      │
 │  · Create git tag                                                   │
-│      1.0.0 (no v — signals full release to versioning)              │
+│      v1.0.0                                                         │
 |      release-candidate                                              |
 └────────────────────┬────────────────────────────────────────────────┘
                      │ GitHub Release published (manual)
