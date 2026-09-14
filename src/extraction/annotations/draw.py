@@ -86,7 +86,7 @@ class PageDrawer:
             elevation = borehole_predictions.metadata.elevation
             name = borehole_predictions.metadata.name
             groundwaters = borehole_predictions.groundwater_in_borehole
-            bh_layers = borehole_predictions.layers_in_borehole
+            bh_layers = borehole_predictions.layers
 
             if coordinates is not None and self.page_number == coordinates.page_number:
                 self.draw_feature(
@@ -120,7 +120,7 @@ class PageDrawer:
                     bboxes, start_is_continuation=start_is_continuation, end_has_continuation=end_has_continuation
                 )
 
-            layers = [layer for layer in bh_layers.layers if self.page_number in layer.material_description.pages]
+            layers = [layer for layer in bh_layers if self.page_number in layer.material_description.pages]
             for index, layer in enumerate(layers):
                 self.draw_layer(
                     layer=layer,
@@ -250,6 +250,13 @@ class PageDrawer:
                     fill=pymupdf.utils.getColor(color),
                     width=0,
                 )
+                if line.feature.text.endswith("\n"):
+                    self.shape.draw_line(
+                        line.rect.top_right * self.page.derotation_matrix,
+                        line.rect.bottom_right * self.page.derotation_matrix,
+                    )
+                    self.shape.finish(color=pymupdf.utils.getColor("blue"), stroke_opacity=0.5, width=2)
+
                 self._draw_correctness_line(
                     start=pymupdf.Point(line.rect.top_left.x - 6, line.rect.top_left.y),
                     end=pymupdf.Point(line.rect.bottom_left.x - 6, line.rect.bottom_left.y),

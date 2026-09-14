@@ -5,10 +5,84 @@ import dataclasses
 import numpy as np
 
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepths, LayerDepthsEntry
-from extraction.features.stratigraphy.layer.overlap_detection import select_boreholes_with_overlap
+from extraction.features.stratigraphy.layer.overlap_detection import (
+    _normalize_for_comparison,
+    select_boreholes_with_overlap,
+)
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 
 DEPTHS_QUANTILE_SLACK = 0.1
+MIN_NAME_CONFIDENCE = 0.5
+
+
+def _confident_names(borehole_a: ExtractedBorehole, borehole_b: ExtractedBorehole) -> tuple[str, str] | None:
+    """Return both boreholes' normalized printed names, if each was confidently detected, else None."""
+    if not (
+        borehole_a.name
+        and borehole_b.name
+        and borehole_a.name.feature.confidence >= MIN_NAME_CONFIDENCE
+        and borehole_b.name.feature.confidence >= MIN_NAME_CONFIDENCE
+    ):
+        return None
+    return (
+        _normalize_for_comparison(borehole_a.name.feature.name),
+        _normalize_for_comparison(borehole_b.name.feature.name),
+    )
+
+
+def _names_conflict(borehole_a: ExtractedBorehole, borehole_b: ExtractedBorehole) -> bool:
+    """Check whether both boreholes have their own confidently detected name, and those names disagree.
+
+    A borehole's own printed name is stronger evidence of identity than the layer text or depth
+    heuristics used elsewhere in this module: if both pages name their borehole and the names don't
+    match, they must be different boreholes, regardless of what those other heuristics conclude.
+
+    Args:
+        borehole_a (ExtractedBorehole): One of the two boreholes being considered for a merge.
+        borehole_b (ExtractedBorehole): The other borehole being considered for a merge.
+
+    Returns:
+        bool: True if both boreholes have a confidently detected name and those names disagree.
+    """
+    names = _confident_names(borehole_a, borehole_b)
+    return names is not None and names[0] != names[1]
+
+
+def _names_match(borehole_a: ExtractedBorehole, borehole_b: ExtractedBorehole) -> bool:
+    """Check whether both boreholes have their own confidently detected name, and those names agree.
+
+    Args:
+        borehole_a (ExtractedBorehole): One of the two boreholes being considered for a merge.
+        borehole_b (ExtractedBorehole): The other borehole being considered for a merge.
+
+    Returns:
+        bool: True if both boreholes have a confidently detected name and those names agree.
+    """
+    names = _confident_names(borehole_a, borehole_b)
+    return names is not None and names[0] == names[1]
+
+
+def _select_boreholes_by_matching_name(
+    previous_page_boreholes: list[ExtractedBorehole], current_page_boreholes: list[ExtractedBorehole]
+) -> tuple[ExtractedBorehole | None, ExtractedBorehole | None]:
+    """Find a pair of boreholes across the page break whose confidently detected names agree.
+
+    A matching, confidently detected name on both sides is direct evidence of continuation, strong
+    enough to treat as a continuation even when the overlap/depth heuristics found no candidate at all.
+
+    Args:
+        previous_page_boreholes (list[ExtractedBorehole]): The boreholes than can potentially be extended.
+        current_page_boreholes (list[ExtractedBorehole]): The boreholes than can potentially be a continuation.
+
+    Returns:
+        tuple[ExtractedBorehole | None, ExtractedBorehole | None]:
+                A pair of boreholes, or (None, None) if no pair has a matching name.
+    """
+    for previous_borehole in previous_page_boreholes:
+        for current_borehole in current_page_boreholes:
+            if _names_match(previous_borehole, current_borehole):
+                return previous_borehole, current_borehole
+    return None, None
 
 
 def _reconcile_duplicated_boundary_layer(previous_layer: Layer, current_layer: Layer) -> Layer | None:
@@ -57,6 +131,7 @@ def _prepare_merge_candidates(
     If it finds overlapping boreholes, it identifies the duplicated layers and prepares the boreholes for
     merging by reconciling the boundary layers if necessary.
     If no overlap is detected, it falls back to depth/position-based matching.
+    If that also finds no candidate, it falls back to a matching, confidently-detected borehole name.
 
     Args:
         previous_page_boreholes (list[ExtractedBorehole]): List of boreholes from the previous page.
@@ -81,6 +156,18 @@ def _prepare_merge_candidates(
         borehole_to_extend, borehole_continuation = _select_boreholes_for_concatenation(
             previous_page_boreholes, current_page_boreholes, page_number
         )
+
+    if borehole_to_extend is None or borehole_continuation is None:
+        # 3) Neither of the above found a candidate: a matching, confidently-detected name on both
+        # sides is still direct evidence of continuation, even without overlap or depth continuity.
+        borehole_to_extend, borehole_continuation = _select_boreholes_by_matching_name(
+            previous_page_boreholes, current_page_boreholes
+        )
+
+    # A disagreeing, confidently-detected name on both sides overrides any of the above: it's direct
+    # evidence these are two different boreholes, regardless of what the text/depth heuristics conclude.
+    if borehole_to_extend and borehole_continuation and _names_conflict(borehole_to_extend, borehole_continuation):
+        borehole_to_extend, borehole_continuation, overlap_result = None, None, None
 
     unaffected_boreholes_previous_page = [
         borehole for borehole in previous_page_boreholes if borehole is not borehole_to_extend
@@ -258,9 +345,12 @@ def _is_continuation(
 
     ok_layers = [lay for lay in borehole_continuation.predictions if lay.depths is not None]
     depths = [d.value for lay in ok_layers for d in (lay.depths.start, lay.depths.end) if d is not None]
+    if not depths or not prev_depths:
+        # no depth values to compare on either side: without evidence, don't assume continuation
+        return False
     # use quantile to allow some slack (e.g. few undetected duplicated layers)
     # if depth values decrease, it must be a new borehole
-    return not (depths and prev_depths and depths[0] < np.quantile(prev_depths, 1 - DEPTHS_QUANTILE_SLACK))
+    return depths[0] >= np.quantile(prev_depths, 1 - DEPTHS_QUANTILE_SLACK)
 
 
 def _merge_boreholes(
@@ -307,6 +397,7 @@ def _merge_boreholes(
         borehole_to_extend,
         predictions=new_predictions,
         bounding_boxes=borehole_to_extend.bounding_boxes + borehole_continuation.bounding_boxes,
+        name=borehole_to_extend.name or borehole_continuation.name,
     )
 
 

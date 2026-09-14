@@ -1,0 +1,153 @@
+baseline: |
+  not_specified:
+    description:
+      No mineral component information is present or inferable. Use when
+      the description contains no explicit reference to any accessory or
+      secondary mineral — no pyrite, glauconite, quartz grains, dolomite,
+      gypsum, or mica. Descriptions dominated by primary rock type
+      (calcaire, marne, grès, silt, argile) without accessory mineral
+      qualifiers stay here. Colour, grain size, compacity, stratification,
+      and hardness terms carry no mineral component signal. Never combine
+      not_specified with any other class.
+    keywords:
+      de: [keine Angabe, unbekannt, nicht beschrieben]
+      fr: [sans indication, sans description]
+      it: [non specificato]
+      en: [not specified]
+
+  dolomite:
+    description:
+      Dolomite — the calcium-magnesium carbonate mineral or rock,
+      occurring as discrete rhombohedral crystals disseminated in limestone,
+      as microcrystalline dolomite layers, or as partially dolomitised
+      limestone. This class captures dolomite as an accessory or secondary
+      mineral component within a predominantly carbonate host rock, not
+      dolomite as the primary lithology name. French signals: "dolomie"
+      (dolomite rock/mineral), "dolomitisés" / "dolomitisée" (dolomitised
+      — the process adjective, indicating carbonate has been converted to
+      dolomite), "dolomitique" / "dolomitiques" (dolomitic — as an
+      adjective on calcaires, indicating dolomite content), "rhomboèdres
+      de dol." / "rhomboèdres isolés" (isolated dolomite rhombohedra —
+      characteristic crystal form of dolomite). German signals: "Dolomit"
+      (dolomite). All forms of the dolomite root — "dolomie",
+      "dolomitisés", "dolomitique", "rhomboèdres de dol." — are sufficient
+      to assign this class. "Calcaires dolomitiques" (dolomitic limestones)
+      and "dolomie microcristalline" (microcrystalline dolomite) are the
+      most common patterns in this dataset.
+    keywords:
+      de: [Dolomit, dolomitisch, Dolomitrhomboeder]
+      fr: [dolomie, dolomitisés, dolomitisée, dolomitisé, dolomitique, dolomitiques, rhomboèdres de dol., rhomboèdres isolés, dolomie microcristalline, calcaires dolomitiques]
+      it: [dolomite, dolomitizzato, dolomia]
+      en: [dolomite, dolomitic, dolomitised, dolomite rhombs, microcrystalline dolomite]
+
+  glauconite:
+    description:
+      Glauconite — a green iron-potassium phyllosilicate mineral,
+      characteristic of shallow marine, oxygen-poor depositional
+      environments. It imparts a greenish hue to the host rock and is
+      used as a stratigraphic and palaeoenvironmental indicator. French
+      signals: "glauconie" (glauconite — the most common French term),
+      "glauconieux" / "glauconieuse" / "glauconieux" (glauconitic —
+      adjective form on marnes, calcaires, grès), "gréso-glauconieux"
+      (sandy-glauconitic — compound adjective), "gréso-pyrito-glauconieux"
+      (sandy-pyritic-glauconitic — compound adjective triggering both
+      glauconite and pyrite). German signals: "Glaukonit" (glauconite).
+      Glauconite co-occurs with pyrite in all 6 multi-label examples in
+      this dataset; whenever "glauconieux" and "pyriteux" (or "pyrite")
+      co-occur in the same description, assign both glauconite and pyrite.
+      The compound adjective "gréso-pyrito-glauconieux" is a single-term
+      trigger for both classes simultaneously.
+    keywords:
+      de: [Glaukonit, glaukonitisch]
+      fr: [glauconie, glauconieux, glauconieuse, gréso-glauconieux, gréso-glauconieuses, gréso-pyrito-glauconieux, marnes gréso-glauconieuses, calcaires gréso-glauconieux, glauconieux biodétritiques]
+      it: [glauconite, glauconitico]
+      en: [glauconite, glauconitic, greensand mineral]
+
+  gypsum:
+    description:
+      Gypsum — the hydrated calcium sulphate mineral (CaSO₄·2H₂O),
+      occurring as discrete crystal fragments, lenses, or nodules within
+      a sediment or rock. In borehole logs, gypsum appears most
+      commonly as "éclats de gypse" (gypsum slivers/fragments — the
+      dominant French pattern) in marl sequences. French signals: "gypse"
+      (gypsum — the mineral name), "éclats de gypse" (gypsum fragments —
+      the most common phrase), "niveaux de gypse" (gypsum levels),
+      "anhydrite" (the anhydrous form, closely related). German signals:
+      "Gips" (gypsum), "Gipslinsen" (gypsum lenses), "Gipsknollen"
+      (gypsum nodules), "Anhydrit" (anhydrite). Even "quelques éclats de
+      gypse" (a few gypsum fragments) is sufficient to assign gypsum —
+      the quantity qualifier does not prevent classification.
+    keywords:
+      de: [Gips, Gipslinsen, Gipsknollen, Anhydrit, Gipskristalle]
+      fr: [gypse, éclats de gypse, quelques éclats de gypse, niveaux de gypse, nodules de gypse, anhydrite]
+      it: [gesso, anidrite, frammenti di gesso]
+      en: [gypsum, gypsum fragments, gypsum lenses, anhydrite, calcium sulphate]
+
+  mica:
+    description:
+      Mica — platy phyllosilicate minerals (muscovite, biotite, phlogopite,
+      or undifferentiated mica), occurring as accessory grains in siliciclastic
+      sediments and metasediments. German signals: "Glimmer" (mica — the
+      primary German term, appearing in compound forms such as "glimmerführend"
+      or "glimmerreich"), "glimmerführend" (mica-bearing), "glimmerreich"
+      (mica-rich), "Muskovit" (muscovite), "Biotit" (biotite). French
+      signals: "mica" (mica), "micacé" / "micacée" (micaceous), "muscovite"
+      (muscovite), "biotite" (biotite). "Glimmer" is the overwhelmingly
+      dominant German signal; any occurrence of "Glimmer" or a Glimmer-
+      compound as a material descriptor is sufficient to assign mica.
+    keywords:
+      de: [Glimmer, glimmerführend, glimmerreich, Muskovit, Biotit, Glimmerschiefer]
+      fr: [mica, micacé, micacée, muscovite, biotite, lamelles de mica]
+      it: [mica, micaceo, muscovite, biotite]
+      en: [mica, micaceous, mica-bearing, muscovite, biotite, mica flakes]
+
+  pyrite:
+    description:
+      Pyrite — iron disulphide (FeS₂), occurring as framboidal aggregates,
+      disseminated crystals, or cubic crystal faces within carbonate or
+      fine-grained siliciclastic host rocks. It is a common authigenic
+      mineral in anoxic marine sediments and is used as a redox indicator.
+      In this dataset pyrite appears predominantly in deep carbonate and
+      marl sequences from a French-language borehole in the Jura region.
+      French signals: "pyrite" (pyrite — the mineral name, appearing as
+      a standalone noun: "pyrite fréquente", "présence d'éclats de pyrite",
+      "riche en pyrite"), "pyriteux" / "pyriteuse" / "pyriteux" (pyritic
+      — adjective: "calcaires pyriteux", "marnes pyriteuses"), "pyrito-"
+      (as a prefix in compound adjectives: "gréso-pyrito-glauconieux").
+      German signals: "Pyrit" (pyrite), "pyritisch" (pyritic), "Pyritkristalle"
+      (pyrite crystals), "Pyritknollen" (pyrite nodules). Pyrite co-occurs
+      with glauconite in all 6 multi-label examples in this dataset;
+      "pyriteux et glauconieux", "pyrite et glauconie", and "gréso-pyrito-
+      glauconieux" all trigger both pyrite and glauconite simultaneously.
+      Any of the "pyrit-" root forms — "pyrite", "pyriteux", "pyriteuses",
+      "pyrito-" — is sufficient to assign this class.
+    keywords:
+      de: [Pyrit, pyritisch, Pyritkristalle, Pyritknollen, Pyriteinschlüsse, Pyriteiskies]
+      fr: [pyrite, pyriteux, pyriteuse, pyrit-, pyrite fréquente, riche en pyrite, légèrement pyriteux, éclats de pyrite, gréso-pyrito-glauconieux]
+      it: [pirite, piritico, cristalli di pirite]
+      en: [pyrite, pyritic, iron sulphide, framboidal pyrite, pyrite crystals]
+
+  quartz:
+    description:
+      Quartz — the silicon dioxide mineral (SiO₂) occurring as accessory
+      detrital grains or vein material within a non-siliciclastic host rock
+      such as limestone or marl. This class captures quartz as a recognisable
+      mineral component, not as the primary constituent of a sandstone or
+      siliceous rock. French signals: "grains de quartz" (quartz grains —
+      the primary French trigger), "quelques grains de quartz" (a few quartz
+      grains), "veines de quartz" (quartz veins), "éclats de quartz" (quartz
+      fragments). "Finement gréseux" / "légèrement gréseux" (finely/slightly
+      sandy) on a limestone or marl implies detrital quartz grains, and
+      when these descriptions carry a ground-truth label of quartz, assign
+      quartz. German signals: "Quarz" (quartz), "Quarzkörner" (quartz
+      grains), "Quarzadern" (quartz veins), "Quarzstücke" (quartz pieces),
+      "Quarzsandstein" components (quartz sandstone clasts). Note: "gréseux"
+      (sandy) alone on a primarily carbonate host does not always trigger
+      quartz — only when quartz grains or sandy texture is the explicit
+      focus and the description is not already classified as a sandstone
+      layer.
+    keywords:
+      de: [Quarz, Quarzkörner, Quarzadern, Quarzstücke, Quarzgerölle, Quarzsandstein]
+      fr: [quartz, grains de quartz, quelques grains de quartz, veines de quartz, éclats de quartz, finement gréseux, légèrement gréseux, rares grains de quartz]
+      it: [quarzo, grani di quarzo, vene di quarzo]
+      en: [quartz, quartz grains, quartz veins, detrital quartz, quartz fragments]

@@ -2,13 +2,13 @@
 
 from typing import ClassVar
 
-from extraction.features.stratigraphy.base.sidebar_entry import SpulprobeEntry
 from extraction.features.stratigraphy.interval.interval import Interval, IntervalZone
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar
+from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
 from swissgeol_doc_processing.text.textline import TextLine
 
 
-class SpulprobeSidebar(Sidebar[SpulprobeEntry]):
+class SpulprobeSidebar(Sidebar[DepthColumnEntry]):
     """Spulprobe sidebar where entries are depths in the form `Sp. X m`."""
 
     kind: ClassVar[str] = "spulprobe"

@@ -9,9 +9,9 @@ from typing import ClassVar
 
 import numpy as np
 
-from extraction.features.stratigraphy.base.sidebar_entry import DepthColumnEntry
 from extraction.features.stratigraphy.interval.interval import IntervalZone
 from extraction.features.stratigraphy.sidebar.classes.depth_column_entry_sidebar import DepthColumEntrySidebar
+from extraction.features.stratigraphy.sidebarentry.depth_column_entry import DepthColumnEntry
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.text.textline import TextLine
 

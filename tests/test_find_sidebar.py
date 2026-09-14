@@ -1,6 +1,5 @@
 """Test suite for the find_depth_columns module."""
 
-import fastquadtree
 import pymupdf
 import pytest
 
@@ -13,6 +12,7 @@ from extraction.features.stratigraphy.sidebar.extractor.a_to_b_sidebar_extractor
     AToBSidebarExtractor,
 )
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
+from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 
 PAGE_NUMBER = 1
 
@@ -28,6 +28,8 @@ def test_depth_column_entries():  # noqa: D103
         TextWord(pymupdf.Rect(0, 8, 5, 9), "60.", PAGE_NUMBER),
         TextWord(pymupdf.Rect(0, 10, 5, 11), "-70m", PAGE_NUMBER),
         TextWord(pymupdf.Rect(0, 12, 5, 13), "word.", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(0, 14, 5, 15), "412müM.", PAGE_NUMBER),
+        TextWord(pymupdf.Rect(0, 16, 5, 17), "144mm", PAGE_NUMBER),
     ]
     entries = DepthColumnEntryExtractor.find_in_words(all_words)
     assert len(entries) == 7, "There should be 7 entries"
@@ -90,9 +92,7 @@ def test_aabovebsidebarextractor_arithmetic_progression():  # noqa: D103
         TextWord(pymupdf.Rect(0, 6, 5, 7), "40.0", PAGE_NUMBER),
         TextWord(pymupdf.Rect(0, 8, 5, 9), "50.0", PAGE_NUMBER),
     ]
-    word_rtree = fastquadtree.RectQuadTreeObjects((0, 0, 10, 10), capacity=8)
-    for word in all_words:
-        word_rtree.insert((word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1))
+    word_rtree = TextLineRTree([TextLine([word]) for word in all_words])
     """Test the AAboveBSidebarExtractor with an arithmetic progression."""
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
@@ -114,9 +114,7 @@ def test_aabovebsidebarextractor():  # noqa: D103
         TextWord(pymupdf.Rect(0, 6, 5, 7), "40.0", PAGE_NUMBER),
         TextWord(pymupdf.Rect(0, 8, 5, 9), "50.0", PAGE_NUMBER),
     ]
-    word_rtree = fastquadtree.RectQuadTreeObjects((0, 0, 10, 10), capacity=8)
-    for word in all_words:
-        word_rtree.insert((word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
+    word_rtree = TextLineRTree([TextLine([word]) for word in all_words])
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,
@@ -149,9 +147,7 @@ def test_aabovebsidebarextractor_two_column():  # noqa: D103
         TextWord(pymupdf.Rect(20, 8, 25, 9), "50.0", PAGE_NUMBER),
         TextWord(pymupdf.Rect(20, 10, 25, 11), "61.0", PAGE_NUMBER),
     ]
-    word_rtree = fastquadtree.RectQuadTreeObjects((0, 0, 30, 30), capacity=8)
-    for word in all_words:
-        word_rtree.insert((word.rect.x0, word.rect.y0, word.rect.x1, word.rect.y1), obj=word)
+    word_rtree = TextLineRTree([TextLine([word]) for word in all_words])
     sidebars_noise = AAboveBSidebarExtractor.find_in_words(
         all_words,
         word_rtree,
@@ -179,19 +175,19 @@ def test_atobsidebarextractor():  # noqa: D103
         TextWord(pymupdf.Rect(0, 8, 2, 9), "50.0", PAGE_NUMBER),  # layer 50.0-60.0m
         TextWord(pymupdf.Rect(3, 8, 5, 9), "60.0", PAGE_NUMBER),
     ]
-    columns = AToBSidebarExtractor.find_in_words(all_words)
+    columns = AToBSidebarExtractor.find_in_lines([TextLine([word]) for word in all_words], table_structures=[])
     assert len(columns) == 1, "There should be 1 column"
     assert len(columns[0].entries) == 5, "The column should have 5 entries"
-    assert columns[0].entries[0].start.value == 12.0, "The first entry should have a value of 12.0"
-    assert columns[0].entries[0].end.value == 20.0, "The first entry should have a value of 20.0"
-    assert columns[0].entries[1].start.value == 20.0, "The second entry should have a value of 20.0"
-    assert columns[0].entries[1].end.value == 34.0, "The second entry should have a value of 34.0"
-    assert columns[0].entries[2].start.value == 34.0, "The third entry should have a value of 34.0"
-    assert columns[0].entries[2].end.value == 40.0, "The third entry should have a value of 40.0"
-    assert columns[0].entries[3].start.value == 40.0, "The fourth entry should have a value of 40.0"
-    assert columns[0].entries[3].end.value == 50.0, "The fourth entry should have a value of 50.0"
-    assert columns[0].entries[4].start.value == 50.0, "The fourth entry should have a value of 50.0"
-    assert columns[0].entries[4].end.value == 60.0, "The fourth entry should have a value of 60.0"
+    assert columns[0].entries[0].start_value == 12.0, "The first entry should have a value of 12.0"
+    assert columns[0].entries[0].end_value == 20.0, "The first entry should have a value of 20.0"
+    assert columns[0].entries[1].start_value == 20.0, "The second entry should have a value of 20.0"
+    assert columns[0].entries[1].end_value == 34.0, "The second entry should have a value of 34.0"
+    assert columns[0].entries[2].start_value == 34.0, "The third entry should have a value of 34.0"
+    assert columns[0].entries[2].end_value == 40.0, "The third entry should have a value of 40.0"
+    assert columns[0].entries[3].start_value == 40.0, "The fourth entry should have a value of 40.0"
+    assert columns[0].entries[3].end_value == 50.0, "The fourth entry should have a value of 50.0"
+    assert columns[0].entries[4].start_value == 50.0, "The fourth entry should have a value of 50.0"
+    assert columns[0].entries[4].end_value == 60.0, "The fourth entry should have a value of 60.0"
 
 
 def test_atobsidebarextractor_two_columns():  # noqa: D103
@@ -219,7 +215,7 @@ def test_atobsidebarextractor_two_columns():  # noqa: D103
         TextWord(pymupdf.Rect(20, 8, 22, 9), "50.0", PAGE_NUMBER),  # layer 50.0-60.0m
         TextWord(pymupdf.Rect(23, 8, 25, 9), "60.0", PAGE_NUMBER),
     ]
-    columns = AToBSidebarExtractor.find_in_words(all_words)
+    columns = AToBSidebarExtractor.find_in_lines([TextLine([word]) for word in all_words], table_structures=[])
     assert len(columns) == 2, "There should be 2 columns"
     assert len(columns[0].entries) == 5, "The first column should have 5 entries"
     assert len(columns[1].entries) == 5, "The second column should have 5 entries"

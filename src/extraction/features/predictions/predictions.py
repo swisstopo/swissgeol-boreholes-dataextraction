@@ -16,7 +16,7 @@ from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.predictions.borehole_predictions import (
     BoreholePredictions,
 )
-from extraction.features.stratigraphy.layer.layer import LayersInBorehole, LayersInDocument
+from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
@@ -86,7 +86,7 @@ class BoreholeListBuilder:
         return [
             BoreholePredictions(
                 borehole_index,
-                LayersInBorehole(layers_in_borehole_with_bb.predictions),
+                layers_in_borehole_with_bb.predictions,
                 self._file_name,
                 BoreholeMetadata(
                     borehole_idx_to_elevation.get(borehole_index),

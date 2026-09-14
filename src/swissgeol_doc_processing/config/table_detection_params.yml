@@ -7,7 +7,7 @@ tables:
   min_line_length: 20
 
   # Angle requirements
-  angle_tolerance: 10
+  angle_tolerance: 5
 
   # Connection threshold for line groups
   connection_threshold: 8.0

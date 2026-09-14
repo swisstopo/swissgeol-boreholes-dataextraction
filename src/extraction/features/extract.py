@@ -1,10 +1,11 @@
 """Contains the main extraction pipeline for stratigraphy."""
 
 import logging
+import re
 
-import fastquadtree
 import pymupdf
 
+from extraction.features.stratigraphy.borehole_candidate import BoreholeCandidate
 from extraction.features.stratigraphy.depth_description_alignment import match_lines_to_interval
 from extraction.features.stratigraphy.interval.interval import IntervalBlockPair
 from extraction.features.stratigraphy.layer.layer import (
@@ -12,10 +13,7 @@ from extraction.features.stratigraphy.layer.layer import (
     Layer,
     LayerDepths,
 )
-from extraction.features.stratigraphy.layer.page_bounding_boxes import (
-    MaterialDescriptionRectWithSidebar,
-    PageBoundingBoxes,
-)
+from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from extraction.features.stratigraphy.no_sidebar_description_grouping import get_descriptions_blocks
 from extraction.features.stratigraphy.sidebar.classes.protocol_sidebar import ProtocolSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import (
@@ -48,17 +46,16 @@ from swissgeol_doc_processing.text.textblock import (
 )
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.text.textline_affinity import get_line_affinity
+from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 from swissgeol_doc_processing.utils.strip_log_detection import StripLog
-from swissgeol_doc_processing.utils.table_detection import (
-    TableStructure,
-)
+from swissgeol_doc_processing.utils.table_detection import TableStructure, middle_line
 
 logger = logging.getLogger(__name__)
 
 
-class MaterialDescriptionRectWithSidebarExtractor:
-    """Class with methods to extract pairs of a material description rect with a corresponding sidebar."""
+class BoreholeExtractor:
+    """Class with methods to extract boreholes by combining an optional sidebar with a material description rect."""
 
     def __init__(
         self,
@@ -75,7 +72,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         analytics: MatchingParamsAnalytics = None,
         **matching_params: dict,
     ):
-        """Creates a new MaterialDescriptionRectWithSidebarExtractor.
+        """Creates a new BoreholeExtractor.
 
         Args:
             lines (list[TextLine]): all the text lines on the page.
@@ -103,6 +100,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         self.line_detection_params = line_detection_params
         self.analytics = analytics
         self.matching_params = matching_params
+        self.processed_lines = _split_text_lines_by_table_structures(lines, table_structures)
 
     def process_page(self) -> list[ExtractedBorehole]:
         """Process a single page of a pdf.
@@ -112,105 +110,44 @@ class MaterialDescriptionRectWithSidebarExtractor:
         Returns:
             list[ExtractedBorehole]: The extracted boreholes from the page.
         """
-        filtered_pairs = self._extract_filtered_sidebar_pairs()
+        valid_candidates = self._extract_filtered_borehole_candidates()
 
-        valid_boreholes = []
-        pairs_from_valid_boreholes = []
-        for pair in filtered_pairs:
-            borehole = self._create_borehole_from_pair(pair)
-            if borehole is not None:
-                valid_boreholes.append(borehole)
-                pairs_from_valid_boreholes.append(pair)
-
-        material_descriptions_without_sidebar = self._extract_material_descriptions_without_sidebar()
-        if material_descriptions_without_sidebar and not any(
-            self._pairs_intersect(material_descriptions_without_sidebar, other_pair)
-            for other_pair in pairs_from_valid_boreholes
+        candidate_without_sidebar = self._extract_borehole_without_sidebar()
+        if candidate_without_sidebar and not any(
+            candidate_without_sidebar.bounding_box.intersects(other_candidate.bounding_box)
+            for other_candidate in valid_candidates
         ):
             # add the material descriptions without sidebar if there is no intersection with any of the already
             # constructed valid boreholes
-            borehole = self._create_borehole_from_pair(material_descriptions_without_sidebar)
-            if borehole is not None:
-                valid_boreholes.append(borehole)
+            valid_candidates.append(candidate_without_sidebar)
 
-        return valid_boreholes
+        return [candidate.borehole for candidate in valid_candidates]
 
-    def _contained_in_table_index(
-        self, pair: MaterialDescriptionRectWithSidebar, table_structures: list[TableStructure], proximity_buffer: float
-    ) -> int:
-        """Returns the index of the first table structure that contains this pair, or -1 if none is found.
+    def _filter_by_intersections(self, candidates: list[BoreholeCandidate]) -> list[BoreholeCandidate]:
+        """Remove candidates that intersect with higher-scoring candidates."""
+        kept_candidates = []
 
-        Args:
-            pair: MaterialDescriptionRectWithSidebar object
-            table_structures: List of table structures
-            proximity_buffer: Distance threshold for proximity check
-
-        Returns:
-            The index of the first table structure that contains this pair, or -1 if none is found
-        """
-        material_rect = pair.material_description_rect
-        sidebar_rect = pair.sidebar.rect if pair.sidebar else None
-
-        for index, table in enumerate(table_structures):
-            # Check if rectangle is within proximity buffer of table
-            expanded_table_rect = pymupdf.Rect(
-                table.bounding_rect.x0 - proximity_buffer,
-                table.bounding_rect.y0 - proximity_buffer,
-                table.bounding_rect.x1 + proximity_buffer,
-                table.bounding_rect.y1 + proximity_buffer,
-            )
-
-            material_rect_inside = expanded_table_rect.contains(material_rect)
-            sidebar_rect_inside = expanded_table_rect.contains(sidebar_rect) if sidebar_rect else True
-
-            if material_rect_inside and sidebar_rect_inside:
-                return index
-
-        return -1
-
-    def _filter_by_intersections(
-        self, pairs: list[MaterialDescriptionRectWithSidebar]
-    ) -> list[MaterialDescriptionRectWithSidebar]:
-        """Remove pairs that intersect with higher-scoring pairs."""
-        kept_pairs = []
-
-        for pair in pairs:
+        for candidate in candidates:
             # Check if this pair intersects with any already-kept (higher-scoring) pair
-            intersects = any(self._pairs_intersect(pair, kept_pair) for kept_pair in kept_pairs)
+            intersects = any(
+                candidate.bounding_box.intersects(kept_candidate.bounding_box) for kept_candidate in kept_candidates
+            )
 
             # Only keep if no conflicts found
             if not intersects:
-                kept_pairs.append(pair)
+                kept_candidates.append(candidate)
 
-        return kept_pairs
+        return kept_candidates
 
-    def _pairs_intersect(self, pair1, pair2) -> bool:
-        """Check if two pairs have any intersecting bounding boxes.
+    def _create_borehole_from_pair(self, sidebar: Sidebar | None, rect: pymupdf.Rect) -> ExtractedBorehole | None:
+        """Create an ExtractedBorehole from an optional sidebar and a material descriptions bounding box."""
+        bounding_boxes = PageBoundingBoxes.from_sidebar_and_rect(sidebar, rect, self.page_number)
 
-        Creates a bounding box around each pair (union of material description rect and sidebar rect,
-        if present) and checks for intersection.
-        """
-        # Create bounding box for pair1, expanding to include sidebar if present
-        bbox1 = pair1.material_description_rect
-        if pair1.sidebar:
-            bbox1 = bbox1 | pair1.sidebar.rect
-
-        # Create bounding box for pair2 , expanding to include sidebar if present
-        bbox2 = pair2.material_description_rect
-        if pair2.sidebar:
-            bbox2 = bbox2 | pair2.sidebar.rect
-
-        return bbox1.intersects(bbox2)
-
-    def _create_borehole_from_pair(self, pair: MaterialDescriptionRectWithSidebar) -> ExtractedBorehole | None:
-        """Create an ExtractedBorehole from a MaterialDescriptionRectWithSidebar."""
-        bounding_boxes = PageBoundingBoxes.from_material_description_rect_with_sidebar(pair, self.page_number)
-
-        interval_block_pairs = self._get_interval_block_pairs(pair)
+        interval_block_pairs = self._get_interval_block_pairs(sidebar, rect)
         # For protocol sidebars, every depth entry must have a matched description.
         if (
-            pair.sidebar
-            and isinstance(pair.sidebar, ProtocolSidebar)
+            sidebar
+            and isinstance(sidebar, ProtocolSidebar)
             and not all(ibp.block.lines for ibp in interval_block_pairs)
         ):
             return None
@@ -233,31 +170,48 @@ class MaterialDescriptionRectWithSidebarExtractor:
             for pair in interval_block_pairs
         ]
 
-        borehole_layers = [layer for layer in borehole_layers if layer.description_nonempty()]
+        borehole_layers_with_description = [layer for layer in borehole_layers if layer.description_nonempty()]
 
         min_layers = self.matching_params["min_num_layers"]
-        if pair.sidebar and isinstance(pair.sidebar, ProtocolSidebar):
+        if sidebar and isinstance(sidebar, ProtocolSidebar):
             min_layers = self.matching_params.get("protocol_min_num_layers", min_layers)
-        if len(borehole_layers) < min_layers:
+        if len(borehole_layers_with_description) < min_layers:
             return None
 
         return ExtractedBorehole(borehole_layers, [bounding_boxes])  # takes a list of bounding boxes
 
-    def _get_interval_block_pairs(self, pair: MaterialDescriptionRectWithSidebar) -> list[IntervalBlockPair]:
+    def _get_interval_block_pairs(
+        self, sidebar: Sidebar | None, material_description_rect: pymupdf.Rect
+    ) -> list[IntervalBlockPair]:
         """Get the interval block pairs for a given material description rect with sidebar.
 
         Args:
-            pair (MaterialDescriptionRectWithSidebar): The material description rect with sidebar.
+            sidebar (Sidebar | None): An optional sidebar.
+            material_description_rect (pymupdf.Rect): The bounding box of the material descriptions.
 
         Returns:
             list[IntervalBlockPair]: The interval block pairs.
         """
-        description_lines = get_description_lines(self.lines, pair.material_description_rect)
+        description_lines = get_description_lines(self.processed_lines, material_description_rect)
+
+        if sidebar is not None:
+            # remove description words that are already part of the sidebar
+            clean_description_lines = []
+            for text_line in description_lines:
+                clean_words = [
+                    word
+                    for word in text_line.words
+                    if not any(entry.rect.contains(word.rect) for entry in sidebar.entries)
+                ]
+                if len(clean_words) > 0:
+                    clean_description_lines.append(TextLine(words=clean_words, text_angle=text_line.text_angle))
+            description_lines = clean_description_lines
+
         diagonals = self.get_diagonals_near_textlines(description_lines, self.line_detection_params)
 
         line_affinities = get_line_affinity(
             description_lines,
-            pair.material_description_rect,
+            material_description_rect,
             self.all_geometric_lines,
             self.line_detection_params,
             diagonals,
@@ -265,9 +219,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
             left_line_length_threshold=self.matching_params["left_line_length_threshold"],
         )
 
-        if pair.sidebar:
+        if sidebar:
             return match_lines_to_interval(
-                pair.sidebar,
+                sidebar,
                 description_lines,
                 line_affinities,
                 diagonals,
@@ -280,16 +234,13 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 for text_block in get_descriptions_blocks(description_lines, line_affinities, no_sidebar_weights)
             ]
 
-    def _find_layer_identifier_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
-        layer_identifier_sidebars = LayerIdentifierSidebarExtractor.from_lines(self.lines)
-        material_descriptions_sidebar_pairs = []
+    def _find_layer_identifier_candidates(self) -> list[BoreholeCandidate]:
+        layer_identifier_sidebars = LayerIdentifierSidebarExtractor.from_lines(self.lines, self.table_structures)
+        candidates = []
         for layer_identifier_sidebar in layer_identifier_sidebars:
-            material_description_rect = self._find_material_description_column(layer_identifier_sidebar)
-            if material_description_rect:
-                material_descriptions_sidebar_pairs.append(
-                    MaterialDescriptionRectWithSidebar(layer_identifier_sidebar, material_description_rect, self.lines)
-                )
-        return material_descriptions_sidebar_pairs
+            if candidate := self._find_borehole_candidate(layer_identifier_sidebar):
+                candidates.append(candidate)
+        return candidates
 
     def _has_valid_description_match(self, sidebar_noise: SidebarNoise) -> bool:
         """Return True if the sidebar can form at least one plausible sidebar/description pair.
@@ -302,17 +253,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
         """
         candidate_rects = self._find_all_material_description_candidates(sidebar_noise.sidebar)
 
-        for rect in candidate_rects:
-            pair = MaterialDescriptionRectWithSidebar(
-                sidebar=sidebar_noise.sidebar,
-                material_description_rect=rect,
-                lines=self.lines,
-                noise_count=sidebar_noise.noise_count,
-            )
-            if pair.score_match >= 0:
-                return True
-
-        return False
+        return any(sidebar_noise.score_match(rect) >= 0 for rect in candidate_rects)
 
     def _should_block_protocol_with_a_above_b(
         self,
@@ -321,29 +262,21 @@ class MaterialDescriptionRectWithSidebarExtractor:
         """Return True if protocol extraction should be skipped because a usable AAboveB exists."""
         return any(self._has_valid_description_match(sidebar_noise) for sidebar_noise in a_above_b_sidebars_noise)
 
-    def _find_depth_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
+    def _find_depth_sidebar_candidates(self) -> list[BoreholeCandidate]:
         if not self.lines:
             return []
 
-        min_x = min([line.rect.x0 for line in self.lines])
-        max_x = max([line.rect.x1 for line in self.lines])
-        min_y = min([line.rect.y0 for line in self.lines])
-        max_y = max([line.rect.y1 for line in self.lines])
-        line_rtree = fastquadtree.RectQuadTreeObjects((min_x, min_y, max_x, max_y), capacity=8)
-        for line in self.lines:
-            line_rtree.insert((line.rect.x0, line.rect.y0, line.rect.x1, line.rect.y1), obj=line)
-
-        words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
+        line_rtree = TextLineRTree(self.lines)
 
         # create sidebars with noise count
-        spulprobe_sidebars = SpulprobeSidebarExtractor.find_in_lines(self.lines)
+        spulprobe_sidebars = SpulprobeSidebarExtractor.find_in_lines(self.lines, self.table_structures)
         sidebars_noise: list[SidebarNoise] = [
             SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
             for sidebar in spulprobe_sidebars
         ]
         used_entry_rects = {entry.rect for sidebar in spulprobe_sidebars for entry in sidebar.entries}
 
-        a_to_b_sidebars = AToBSidebarExtractor.find_in_words(words)
+        a_to_b_sidebars = AToBSidebarExtractor.find_in_lines(self.lines, self.table_structures)
         sidebars_noise.extend(
             [
                 SidebarNoise(sidebar=sidebar, noise_count=noise_count(sidebar, line_rtree))
@@ -352,9 +285,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
         )
         for column in a_to_b_sidebars:
             for entry in column.entries:
-                used_entry_rects.add(entry.start.rect)
-                used_entry_rects.add(entry.end.rect)
+                used_entry_rects.add(entry.rect)
 
+        words = sorted([word for line in self.lines for word in line.words], key=lambda word: word.rect.y0)
         a_above_b_sidebars_noise = AAboveBSidebarExtractor.find_in_words(
             words,
             line_rtree,
@@ -383,9 +316,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             sidebars_noise.extend(protocol_sidebars_noise)
 
         # assign all sidebar to their best match
-        material_descriptions_sidebar_pairs = self._match_sidebars_to_description_rects(sidebars_noise)
-
-        return material_descriptions_sidebar_pairs
+        return self._match_sidebars_to_description_rects(sidebars_noise)
 
     def _find_all_material_description_candidates(self, sidebar: Sidebar | None) -> list[pymupdf.Rect]:
         """Find all material description candidates on the page.
@@ -398,7 +329,9 @@ class MaterialDescriptionRectWithSidebarExtractor:
         """
         if sidebar:
             above_sidebar = [
-                line for line in self.lines if x_overlap(line.rect, sidebar.rect) and line.rect.y0 < sidebar.rect.y0
+                line
+                for line in self.processed_lines
+                if x_overlap(line.rect, sidebar.rect) and line.rect.y0 < sidebar.rect.y0
             ]
 
             min_y0 = max(line.rect.y0 for line in above_sidebar) if above_sidebar else -1
@@ -410,7 +343,12 @@ class MaterialDescriptionRectWithSidebarExtractor:
             def check_y0_condition(y0):
                 return True
 
-        candidate_description = [line for line in self.lines if check_y0_condition(line.rect.y0)]
+        horizontal_text_lines = [
+            line
+            for line in self.processed_lines
+            if abs(line.text_angle) < 10 and not re.fullmatch(r"[\d\s.,\-/]+", line.text.strip())
+        ]
+        candidate_description = [line for line in horizontal_text_lines if check_y0_condition(line.rect.y0)]
 
         is_not_description = [
             line
@@ -450,6 +388,7 @@ class MaterialDescriptionRectWithSidebarExtractor:
             is_description = [line for line in is_description if line not in max_coverage]
 
         candidate_rects = []
+        sorted_above = sorted(candidate_description, key=lambda c: c.rect.y0, reverse=True)
 
         for cluster in description_clusters:
             best_y0 = min([line.rect.y0 for line in cluster])
@@ -481,17 +420,32 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 continue
 
             # expand to include entire last block
-            def is_below(best_x0, best_y1, line: TextLine):
+            def is_below(best_x0, best_y1, line: TextLine, x_tolerance: float = 5, line_gap: float = 10):
                 return (
-                    (line.rect.x0 > best_x0 - 5)
+                    (line.rect.x0 > best_x0 - x_tolerance)
                     and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
-                    and (line.rect.y0 < best_y1 + 10)
+                    and (line.rect.y0 < best_y1 + line_gap)
                     and (line.rect.y1 > best_y1)
+                )
+
+            def is_above(best_x0, best_y0, line: TextLine, x_tolerance: float = 5, line_gap: float = 10):
+                return (
+                    (line.rect.x0 > best_x0 - x_tolerance)
+                    and (line.rect.x0 < (best_x0 + best_x1) / 2)  # noqa: B023
+                    and (line.rect.y1 > best_y0 - line_gap)
+                    and (line.rect.y0 < best_y0)
                 )
 
             continue_search = True
             while continue_search:
-                line = next((line for line in self.lines if is_below(best_x0, best_y1, line)), None)
+                line = next(
+                    (
+                        line
+                        for line in horizontal_text_lines
+                        if is_below(best_x0, best_y1, line) and len(line.text) > 1
+                    ),
+                    None,
+                )
                 if line:
                     best_x0 = min(best_x0, line.rect.x0)
                     best_x1 = max(best_x1, line.rect.x1)
@@ -499,33 +453,66 @@ class MaterialDescriptionRectWithSidebarExtractor:
                 else:
                     continue_search = False
 
+            # Expand upward one line at a time.
+            # With sidebar: stop at the topmost entry's y-level (avoids column headers above first depth entry).
+            # Without sidebar: stop when candidate has sibling lines outside the column (header row signal).
+            min_y0_limit = (
+                min(e.rect.y0 for e in sidebar.entries) + 5
+                if sidebar is not None and sidebar.entries
+                else -float("inf")
+            )
+            while best_y0 > min_y0_limit:
+                next_line = next(
+                    (
+                        desc_line
+                        for desc_line in sorted_above
+                        if is_above(best_x0, best_y0, desc_line)
+                        and len(desc_line.text) > 1
+                        and (
+                            sidebar is not None
+                            or not any(
+                                other
+                                for other in candidate_description
+                                if other is not desc_line
+                                and abs(other.rect.y0 - desc_line.rect.y0) < desc_line.rect.height
+                                and (other.rect.x1 < best_x0 - 10 or other.rect.x0 > best_x1 + 10)
+                            )
+                        )
+                    ),
+                    None,
+                )
+                if next_line is None:
+                    break
+                best_x0 = min(best_x0, next_line.rect.x0)
+                best_x1 = max(best_x1, next_line.rect.x1)
+                best_y0 = next_line.rect.y0
+
             candidate_rects.append(pymupdf.Rect(best_x0, best_y0, best_x1, best_y1))
         return candidate_rects
 
-    def _find_material_description_column(self, sidebar: Sidebar | None) -> pymupdf.Rect | None:
-        """Find the best material description column for a given depth column.
+    def _find_borehole_candidate(self, sidebar: Sidebar | None) -> BoreholeCandidate | None:
+        """Create a borehole candidate by finding the best material description column for a given depth column.
 
         Args:
             sidebar (Sidebar | None): The sidebar to be associated with the material descriptions.
 
         Returns:
-            pymupdf.Rect | None: The material description column.
+            BoreholeCandidate | None: The selected borehole candidate (if any).
         """
-        candidate_rects = self._find_all_material_description_candidates(sidebar)
+        sidebar_noise = None if sidebar is None else SidebarNoise(sidebar, noise_count=0)
+        candidate_boreholes = []
+        for rect in self._find_all_material_description_candidates(sidebar):
+            if borehole := self._create_borehole_from_pair(sidebar, rect):
+                candidate_boreholes.append(BoreholeCandidate.from_pair(borehole, sidebar_noise))
 
-        if len(candidate_rects) == 0:
+        if len(candidate_boreholes) == 0:
             return None
         if sidebar:
-            return max(
-                candidate_rects,
-                key=lambda rect: MaterialDescriptionRectWithSidebar(sidebar, rect, self.lines).score_match,
-            )
+            return max(candidate_boreholes, key=lambda candidate: candidate.score)
         else:
-            return candidate_rects[0]
+            return candidate_boreholes[0]
 
-    def _match_sidebars_to_description_rects(
-        self, sidebars_noise: list[SidebarNoise]
-    ) -> list[MaterialDescriptionRectWithSidebar]:
+    def _match_sidebars_to_description_rects(self, sidebars_noise: list[SidebarNoise]) -> list[BoreholeCandidate]:
         """Matches sidebar objects to material description rectangles based on score.
 
         The algorithm performs greedy matching: each sidebar is paired with the material description rectangle that
@@ -537,82 +524,46 @@ class MaterialDescriptionRectWithSidebarExtractor:
             sidebars_noise (List[SidebarNoise]): List of sidebar objects to match.
 
         Returns:
-            List[MaterialDescriptionRectWithSidebar]: List of matched pairs.
+            List[BoreholeCandidate]: List of candidate boreholes constructed from matched pairs.
         """
-        # Store all possible matched rect with the associate scores in a dictionary: (s_idx, rect) -> score
-        score_map = {
-            (s_idx, rect): MaterialDescriptionRectWithSidebar(sn.sidebar, rect, self.lines, sn.noise_count).score_match
-            for s_idx, sn in enumerate(sidebars_noise)
-            for rect in self._find_all_material_description_candidates(sn.sidebar)
-        }
+        sidebar_boreholes: dict[int, list[BoreholeCandidate]] = dict()
 
-        matched_pairs = []
+        for sidebar_index, sn in enumerate(sidebars_noise):
+            candidate_boreholes = []
+            for rect in self._find_all_material_description_candidates(sn.sidebar):
+                if borehole := self._create_borehole_from_pair(sn.sidebar, rect):
+                    candidate_boreholes.append(BoreholeCandidate.from_pair(borehole, sn))
+
+            sidebar_boreholes[sidebar_index] = candidate_boreholes
+
+        selected_boreholes = []
         used_sidebars_idx = set()
-        used_descr_rects = set()
 
-        def is_valid_pair(
-            s_idx: int,
-            mat_desc_rect: pymupdf.Rect,
-            used_sidebars_idx: set[int],
-            sidebars_noise: list[SidebarNoise],
-            matched_pairs: list[MaterialDescriptionRectWithSidebar],
-        ) -> bool:
-            """Check if a sidebar index and material description rectangle can form a valid pair.
-
-            A pair is valid if:
-            - The sidebar index has not been used yet.
-            - The rectangle has not been used yet.
-            - The potential pair does not have an already matched sidebar or rectangle between its elements.
-            """
-            joined_rect = joined_rect = sidebars_noise[s_idx].sidebar.rect | mat_desc_rect
-
-            return (
-                s_idx not in used_sidebars_idx  # don't re-match an already matched sidebar
-                and all(
-                    (joined_rect & (pair.sidebar.rect | pair.material_description_rect)).is_empty
-                    for pair in matched_pairs
-                )  # don't allow taking the same rect or crossing pairs (pair having another pair element in between)
-            )
+        def no_intersection(candidate: BoreholeCandidate, selected_boreholes: list[BoreholeCandidate]) -> bool:
+            """Check if the bounding boxes of the candidate do not intersect with selected candidates."""
+            joined_rect = candidate.bounding_box
+            return all((joined_rect & other_candidate.bounding_box).is_empty for other_candidate in selected_boreholes)
 
         # Step 1: Greedy match based on max scores
-        while True:
-            # Filter available scores
-            available_scores = {
-                (s_idx, rect): v
-                for (s_idx, rect), v in score_map.items()
-                if is_valid_pair(s_idx, rect, used_sidebars_idx, sidebars_noise, matched_pairs)
-            }
-            if not available_scores:
-                break
-
+        while available_boreholes := [
+            (sidebar_index, sidebar_boreholes[sidebar_index][borehole_index])
+            for sidebar_index, boreholes_for_sidebar in sidebar_boreholes.items()
+            if sidebar_index not in used_sidebars_idx
+            for borehole_index, candidate in enumerate(boreholes_for_sidebar)
+            if no_intersection(candidate, selected_boreholes)
+        ]:
             # Get best available match
-            (best_sidebar_idx, best_rect), _ = max(available_scores.items(), key=lambda x: x[1])
-            matched_pairs.append(
-                MaterialDescriptionRectWithSidebar(
-                    sidebars_noise[best_sidebar_idx].sidebar,
-                    best_rect,
-                    self.lines,
-                    sidebars_noise[best_sidebar_idx].noise_count,
-                )
-            )
-            used_sidebars_idx.add(best_sidebar_idx)
-            used_descr_rects.add(best_rect)
+            best_sidebar_index, best_borehole = max(available_boreholes, key=lambda pair: pair[1].score)
+            selected_boreholes.append(best_borehole)
+            used_sidebars_idx.add(best_sidebar_index)
 
-        # Step 2: Assign remaining sidebars (if any) to best match (reuse descr_rects)
+        # Step 2: Assign remaining sidebars (if any) to best match
         remaining_sidebars_idx = [s_idx for s_idx in range(len(sidebars_noise)) if s_idx not in used_sidebars_idx]
-        for s_idx in remaining_sidebars_idx:
-            sidebar = sidebars_noise[s_idx].sidebar
-            noise = sidebars_noise[s_idx].noise_count
-            mat_rects = self._find_all_material_description_candidates(sidebar)
-            if not mat_rects:
-                continue
-            best_rect = max(
-                mat_rects,
-                key=lambda rect: MaterialDescriptionRectWithSidebar(sidebar, rect, self.lines, noise).score_match,
-            )
-            matched_pairs.append(MaterialDescriptionRectWithSidebar(sidebar, best_rect, self.lines, noise))
-
-        return matched_pairs
+        for sidebar_index in remaining_sidebars_idx:
+            if candidates := sidebar_boreholes[sidebar_index]:
+                best_candidate = max(candidates, key=lambda candidate: candidate.score)
+                selected_boreholes.append(best_candidate)
+        return selected_boreholes
 
     def get_diagonals_near_textlines(
         self, description_lines: list[TextLine], line_detection_params: dict
@@ -651,21 +602,15 @@ class MaterialDescriptionRectWithSidebarExtractor:
         )
         return diagonals
 
-    def _extract_material_descriptions_without_sidebar(self) -> MaterialDescriptionRectWithSidebar | None:
+    def _extract_borehole_without_sidebar(self) -> BoreholeCandidate | None:
         """Extract material descriptions without a sidebar (if there is strong enough evidence).
 
         Returns:
-            An optional MaterialDescriptionRectWithSidebar object, which will not have a sidebar.
+            An optional BoreholeCandidate object, which will not have a sidebar.
         """
         # only allow sidebar=None fallback if strong evidence exists
         if self._allow_description_only_fallback():
-            material_description_rect_without_sidebar = self._find_material_description_column(sidebar=None)
-            if material_description_rect_without_sidebar:
-                return MaterialDescriptionRectWithSidebar(
-                    sidebar=None,
-                    material_description_rect=material_description_rect_without_sidebar,
-                    lines=self.lines,
-                )
+            return self._find_borehole_candidate(sidebar=None)
         else:
             logger.debug(
                 "Page %s: skipping description-only fallback (insufficient evidence)",
@@ -673,26 +618,25 @@ class MaterialDescriptionRectWithSidebarExtractor:
             )
         return None
 
-    def _extract_filtered_sidebar_pairs(self) -> list[MaterialDescriptionRectWithSidebar]:
-        """Extract and filter sidebar pairs using the common pipeline.
+    def _extract_filtered_borehole_candidates(self) -> list[BoreholeCandidate]:
+        """Extract and filter borehole candidates using the common pipeline.
 
         Returns:
-            List of filtered MaterialDescriptionRectWithSidebar pairs, sorted by
-            score (highest first) and filtered by score, table criteria, and
-            intersections.
+            List of filtered BoreholeCandidate objects, sorted by score (highest first) and filtered by score, table
+            criteria, and intersections.
         """
         # Step 1: Find all potential pairs
-        pairs = self._find_layer_identifier_sidebar_pairs()
-        pairs.extend(self._find_depth_sidebar_pairs())
+        candidates = self._find_layer_identifier_candidates()
+        candidates.extend(self._find_depth_sidebar_candidates())
 
         # Step 2: Sort once by score (highest first)
-        pairs.sort(key=lambda pair: pair.score_match, reverse=True)
+        candidates.sort(key=lambda candidate: candidate.score, reverse=True)
 
         # Step 3: Apply filter chain
-        filtered_pairs = [pair for pair in pairs if pair.score_match >= 0]
-        filtered_pairs = self._filter_by_intersections(filtered_pairs)
+        filtered_candidates = [candidate for candidate in candidates if candidate.score >= 0]
+        filtered_candidates = self._filter_by_intersections(filtered_candidates)
 
-        return filtered_pairs
+        return filtered_candidates
 
     @staticmethod
     def _filter_diagonals(
@@ -726,12 +670,12 @@ class MaterialDescriptionRectWithSidebarExtractor:
             SidebarQualityMetrics: Quality metrics for all sidebars found on the page.
         """
         # Get filtered pairs (without descriptions without sidebar)
-        good_sidebar_pairs = self._extract_filtered_sidebar_pairs()
-        best_sidebar_score = max((pair.score_match for pair in good_sidebar_pairs), default=0.0)
+        good_borehole_candidates = self._extract_filtered_borehole_candidates()
+        best_candidate_score = max((candidate.score for candidate in good_borehole_candidates), default=0.0)
 
         return SidebarQualityMetrics(
-            number_of_good_sidebars=len(good_sidebar_pairs),
-            best_sidebar_score=best_sidebar_score,
+            number_of_good_sidebars=len(good_borehole_candidates),
+            best_sidebar_score=best_candidate_score,
         )
 
     def _allow_description_only_fallback(self) -> bool:
@@ -758,3 +702,38 @@ class MaterialDescriptionRectWithSidebarExtractor:
         # below the actual scanned page) --> this mechanism could/should be optimized in the future!
         largest_table = max(self.table_structures, key=lambda t: t.bounding_rect.height)
         return (largest_table.bounding_rect.height / max(self.page_height, 1e-16)) >= min_table_height_ratio
+
+
+def _split_text_lines_by_table_structures(
+    text_lines: list[TextLine], table_structures: list[TableStructure]
+) -> list[TextLine]:
+    """Split certain text lines into multiple lines based on intersecting vertical table structure lines."""
+    processed_lines = []
+    for text_line in text_lines:
+        text_middle_line = middle_line(text_line.rect)
+        partition = [text_line.words]
+
+        for structure in table_structures:
+            for line in structure.vertical_lines:
+                if line.intersects_with(text_middle_line):
+                    new_partition = []
+                    for words in partition:
+                        words_left = []
+                        words_right = []
+                        for word in words:
+                            if (word.rect.x0 + word.rect.x1) / 2 < (line.start.x + line.end.x) / 2:
+                                words_left.append(word)
+                            else:
+                                words_right.append(word)
+
+                        if len(words_left) > 0:
+                            new_partition.append(words_left)
+                        if len(words_right) > 0:
+                            new_partition.append(words_right)
+                    partition = new_partition
+
+        for words in partition:
+            text_line = TextLine(words, text_angle=text_line.text_angle)
+            processed_lines.append(text_line)
+
+    return processed_lines

@@ -3,7 +3,6 @@
 import csv
 import json
 import logging
-import os
 import shutil
 from collections import Counter, OrderedDict
 from collections.abc import Callable
@@ -11,8 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from classification.evaluation.evaluate import AllClassificationMetrics
-from classification.utils.classification_classes import ClassificationSystem
-from classification.utils.data_loader import LayerInformation
+from classification.utils.datasets.classification import ClassificationSystem, LayerInformation
 from classification.utils.file_utils import read_params
 
 classification_params = read_params("classification_params.yml")
@@ -42,86 +40,41 @@ def get_data_class_count(layer_descriptions: list[LayerInformation]) -> dict[str
     Returns:
         dict[str,int]: the count for each class.
     """
-    class_counts = dict(Counter(layer.ground_truth_class.name for layer in layer_descriptions))
-    return class_counts
+    return dict(
+        Counter(
+            cls.name for layer in layer_descriptions if layer.ground_truth_class for cls in layer.ground_truth_class
+        )
+    )
 
 
-def write_predictions(
-    layers_with_predictions: list[LayerInformation], out_dir: Path, out_path: str = "class_predictions.json"
-):
+def write_predictions(layers_with_predictions: list[LayerInformation], output_path: str):
     """Writes the predictions and ground truth data to a JSON file.
 
     Args:
         layers_with_predictions (list[LayerInformation]): List of layers with predictions.
-        out_dir (Path): Path to the output directory.
-        out_path (str): Name of the output file (default: "class_predictions.json").
+        output_path (str): Path to the output file (default: "class_predictions.json").
     """
-    out_dir.mkdir(parents=True, exist_ok=True)  # Ensure the output directory exists
-    output_file = out_dir / out_path
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)  # Ensure the output directory exists
 
-    output_data = {}
-
-    for layer in layers_with_predictions:
-        if layer.filename not in output_data:
-            output_data[layer.filename] = []
-
-        # Find an existing borehole entry
-        borehole_entry = next(
-            (bh for bh in output_data[layer.filename] if bh["borehole_index"] == layer.borehole_index), None
-        )
-
-        # if the borehole does not exist, create it
-        if not borehole_entry:
-            borehole_entry = {"borehole_index": layer.borehole_index, "layers": []}
-            output_data[layer.filename].append(borehole_entry)
-
-        borehole_entry["layers"].append(
-            {
-                "layer_index": layer.layer_index,
-                "material_description": layer.material_description,
-                "language": layer.language,
-                "class_system": layer.class_system.get_name(),
-                "ground_truth_class": layer.ground_truth_class.name if layer.ground_truth_class is not None else None,
-                "prediction_class": layer.prediction_class.name if layer.prediction_class is not None else None,
-                "llm_reasoning": layer.llm_reasoning if layer.llm_reasoning is not None else None,
-            }
-        )
-
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(output_data, f, ensure_ascii=False, indent=4)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump([layer.to_json() for layer in layers_with_predictions], f, ensure_ascii=False, indent=4)
 
 
-def write_api_failures(api_failures: list, output_directory: Path, filename: str = "api_failure.json") -> None:
-    """Write API call failures to a JSON file.
+def read_predictions(input_path: str, classification_system: type[ClassificationSystem]) -> list[LayerInformation]:
+    """Read classification predictions from a JSON file.
 
     Args:
-        api_failures: List of dictionaries containing API failure information
-        output_directory: Directory where the file should be saved
-        filename: Name of the output file (default: "api_failure.json")
+        input_path (str): Path to the JSON file to read.
+        classification_system (type[ClassificationSystem]): Classification system used to resolve
+            class name strings back to enum members.
+
+    Returns:
+        list[LayerInformation]: Deserialized layers with prediction and ground-truth fields populated.
     """
-    if not api_failures:
-        return
+    with open(input_path, encoding="utf-8") as f:
+        layers_with_predictions = [LayerInformation.from_json(item, classification_system) for item in json.load(f)]
 
-    os.makedirs(output_directory, exist_ok=True)
-    failures_path = output_directory / filename
-
-    existing_failures = []
-    if failures_path.exists():
-        try:
-            with open(failures_path) as f:
-                existing_failures = json.load(f)
-        except json.JSONDecodeError:
-            # Overwrite the file if it isn't a valid JSON
-            logger.warning(f"Existing file {failures_path} contained invalid JSON and will be overwritten")
-
-    all_failures = existing_failures + api_failures
-
-    with open(failures_path, "w") as f:
-        json.dump(all_failures, f, indent=2)
-
-    logger.warning(
-        f"Recorded {len(api_failures)} failed API calls to {failures_path}, total failed records: {len(all_failures)}"
-    )
+    return layers_with_predictions
 
 
 @dataclass
@@ -136,8 +89,8 @@ class KeyClassConfig:
         metric_used: the metric name ("recall" or "precision")
     """
 
-    get_first_key_class: Callable[[LayerInformation], ClassificationSystem.EnumMember]
-    get_second_key_class: Callable[[LayerInformation], ClassificationSystem.EnumMember]
+    get_first_key_class: Callable[[LayerInformation], list[ClassificationSystem.EnumMember] | None]
+    get_second_key_class: Callable[[LayerInformation], list[ClassificationSystem.EnumMember] | None]
     first_key_str: str
     second_key_str: str
     metric_used: str
@@ -220,20 +173,17 @@ def write_overview(metrics_dict: dict[str, float], layers_with_predictions: list
     with open(output_file, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-
         rows = []
 
         ground_truths = [layer.ground_truth_class for layer in layers_with_predictions]
         predictions = [layer.prediction_class for layer in layers_with_predictions]
 
-        all_classes = set(predictions) | set(ground_truths)
+        ground_truth_classes = set(c for classes in ground_truths if classes for c in classes)
+        prediction_classes = set(c for classes in predictions if classes for c in classes)
 
-        for class_ in all_classes:
+        for class_ in ground_truth_classes | prediction_classes:
             # filter metrics dict (e.g. extract "CL_ML" for "global_CL_ML_recall")
             class_metrics_dict = {k: v for k, v in metrics_dict.items() if class_.name == "_".join(k.split("_")[1:-1])}
-
-            num_pred = sum(pred == class_ for pred in predictions)
-            num_ground_truth = sum(gt == class_ for gt in ground_truths)
 
             rows.append(
                 {
@@ -241,8 +191,8 @@ def write_overview(metrics_dict: dict[str, float], layers_with_predictions: list
                     "f1": next(v for k, v in class_metrics_dict.items() if k.endswith("f1")),
                     "precision": next(v for k, v in class_metrics_dict.items() if k.endswith("precision")),
                     "recall": next(v for k, v in class_metrics_dict.items() if k.endswith("recall")),
-                    "number_ground_truth": num_ground_truth,
-                    "number_prediction": num_pred,
+                    "number_ground_truth": sum(class_ in gt for gt in ground_truths if gt),
+                    "number_prediction": sum(class_ in pred for pred in predictions if pred),
                 }
             )
 
@@ -269,13 +219,15 @@ def write_per_class_predictions(
     """
     out_dir.mkdir(parents=True, exist_ok=True)  # Ensure the output directory exists
 
-    all_first_key_classes = set([key_class_config.get_first_key_class(layer) for layer in layers_with_predictions])
+    all_first_key_classes = set(
+        c for layer in layers_with_predictions for c in (key_class_config.get_first_key_class(layer) or [])
+    )
 
     for first_key_class in all_first_key_classes:
         samples_for_first_key = [
             layer
             for layer in layers_with_predictions
-            if key_class_config.get_first_key_class(layer) == first_key_class
+            if first_key_class in (key_class_config.get_first_key_class(layer) or [])
         ]
 
         # get the statistics for each second class, relative to the first_key_class
@@ -328,11 +280,15 @@ def build_class_stats(
     class_stats = {}
     samples_grouped = {}
 
-    all_second_key_classes = set([key_class_config.get_second_key_class(layer) for layer in samples_for_class])
+    all_second_key_classes = set(
+        c for layer in samples_for_class for c in (key_class_config.get_second_key_class(layer) or [])
+    )
 
     for second_key_class in all_second_key_classes:
         matched_samples = [
-            layer for layer in samples_for_class if key_class_config.get_second_key_class(layer) == second_key_class
+            layer
+            for layer in samples_for_class
+            if second_key_class in (key_class_config.get_second_key_class(layer) or [])
         ]
 
         stat = {
@@ -351,8 +307,8 @@ def build_class_stats(
                 "language": layer.language,
                 "class_system": layer.class_system.get_name(),
                 "material_description": layer.material_description,
-                "ground_truth_class": layer.ground_truth_class.name,
-                "prediction_class": layer.prediction_class.name,
+                "ground_truth_class": [c.name for c in layer.ground_truth_class] if layer.ground_truth_class else None,
+                "prediction_class": [c.name for c in layer.prediction_class] if layer.prediction_class else None,
             }
             for layer in matched_samples
         ]

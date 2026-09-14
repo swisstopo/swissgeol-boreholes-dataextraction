@@ -47,19 +47,23 @@ class BoreholeName(ExtractedFeature):
         Returns:
             dict: The object as a dictionary.
         """
-        return {"name": self.name, "confidence": self.confidence}
+        return {
+            "name": self.name,
+            "confidence": self.confidence,
+            "is_correct": self.is_correct,
+        }
 
     @classmethod
     def from_json(cls, data: dict) -> BoreholeName:
         """Converts a dictionary to an object.
 
         Args:
-            data (dict): A dictionary representing the elevation information.
+            data (dict): A dictionary representing the name information.
 
         Returns:
             BoreholeName: The borehole's name information object.
         """
-        return cls(name=data["name"], confidence=data["confidence"])
+        return cls(name=data["name"], confidence=data["confidence"], is_correct=data.get("is_correct"))
 
 
 @dataclass

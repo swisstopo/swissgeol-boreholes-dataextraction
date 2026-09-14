@@ -1,15 +1,22 @@
 """Main router for the app."""
 
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, Body, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
 from app.api.v1.endpoints.bounding_boxes import bounding_boxes
+from app.api.v1.endpoints.classify_all import classify
+from app.api.v1.endpoints.classify_borehole_type import classify_borehole_type
 from app.api.v1.endpoints.create_pngs import create_pngs
 from app.api.v1.endpoints.extract_data import extract_data
 from app.api.v1.endpoints.extract_stratigraphy import extract_stratigraphy
 from app.common.schemas import (
     BoundingBoxesRequest,
     BoundingBoxesResponse,
+    ClassifyBoreholeTypeResponse,
+    ClassifyRequest,
+    ClassifyResponse,
     ExtractCoordinatesResponse,
     ExtractDataRequest,
     ExtractNumberResponse,
@@ -21,6 +28,55 @@ from app.common.schemas import (
 )
 
 router = APIRouter(prefix="/api/V1")
+
+_CLASSIFY_REQUEST_EXAMPLES = {
+    "unconsolidated_silt": {
+        "summary": "Unconsolidated sediment (silt)",
+        "value": {
+            "description": (
+                "Silt, calcareous, argillaceous, grey, with thin light grey interlayers and "
+                "yellowish olive reduction patches, with gravels, angular to sub-rounded, very "
+                "poorly to poorly sorted; from 2 m to 4 m: some plant roots; from 6 m to 8 m: "
+                "one chert nodule."
+            )
+        },
+    },
+    "consolidated_limestone": {
+        "summary": "Consolidated rock (limestone)",
+        "value": {
+            "description": (
+                "Peloidal bioclastic limestone, fine to medium grained, slightly oolitic, yellow "
+                "to orange, finely sandy, with pyrite and glauconite."
+            )
+        },
+    },
+}
+
+_CLASSIFY_RESPONSE_EXAMPLES = {
+    "unconsolidated_silt": {
+        "summary": "Unconsolidated sediment (silt)",
+        "value": {
+            "consolidation": "unconsolidated",
+            "color": "grey",
+            "en_main": "si",
+            "en_secondary": ["cl", "gr"],
+            "grain_angularity": ["angular", "sub_angular", "sub_rounded"],
+            "organic_components": ["remains_of_plants"],
+            "uscs": "ML",
+        },
+    },
+    "consolidated_limestone": {
+        "summary": "Consolidated rock (limestone)",
+        "value": {
+            "accessory_components": ["bioclasts", "ooids", "pellets"],
+            "alteration_degree_consolidated": "fresh",
+            "consolidation": "consolidated",
+            "color": "yellow",
+            "lithology": "limestone",
+            "mineral_components": ["pyrite", "glauconite"],
+        },
+    },
+}
 
 
 class BadRequestResponse(BaseModel):
@@ -215,3 +271,109 @@ def post_extract_stratigraphy(request: ExtractStratigraphyRequest) -> ExtractStr
     - Bounding boxes are in PNG pixel coordinates (scaled 3x from PDF coordinates)
     """
     return extract_stratigraphy(request.filename, request.include_groundwater)
+
+
+####################################################################################################
+### Classify (unified multi-task)
+####################################################################################################
+@router.post(
+    "/classify",
+    tags=["classify"],
+    response_model=ClassifyResponse,
+    response_model_exclude_none=True,
+    responses={
+        200: {"content": {"application/json": {"examples": _CLASSIFY_RESPONSE_EXAMPLES}}},
+        400: {"model": BadRequestResponse, "description": "Bad request"},
+        500: {"model": BadRequestResponse, "description": "Internal server error"},
+        503: {"model": BadRequestResponse, "description": "BERT models not loaded (set BERT_ENABLED=true)"},
+    },
+)
+def post_classify(
+    request: Annotated[ClassifyRequest, Body(openapi_examples=_CLASSIFY_REQUEST_EXAMPLES)],
+    http_request: Request,
+) -> ClassifyResponse:
+    """Classify a plain-text material description across all relevant tasks in one forward pass.
+
+    The backbone embedding is computed once from the description, then fed independently into each
+    task-specific classification head. The lithology head determines whether the material is consolidated
+    or unconsolidated; only tasks relevant to that rock type are returned.
+
+    ### Request Body
+    - **description**: Plain-text material description (e.g. `"schwach tonig-siltiger Sand und Kies,
+      brau-beige, Komponenten vorw. eckig"`).
+
+    ### Returns
+    A field is OMITTED from the response if the task wasn't run for that rock type,
+    or if it ran but predicted no specific class (not_specified only). Otherwise it holds the predicted class.
+    - **consolidation**: "consolidated" or "unconsolidated", as determined by the lithology head;
+      indicates which of the fields are populated.
+    - One field per classification task, omitted when not relevant to the inferred rock type;
+      otherwise it holds the predicted class name (single-label tasks) or class names (multi-label/rank tasks).
+
+    ### Consolidated rock tasks
+    `lithology`, `alteration_degree_consolidated`, `cementation`, `color`, `mineral_components`, `accessory_components`
+
+    ### Unconsolidated sediment tasks
+    `en_main`, `en_secondary`, `uscs`, `debris`, `color`, `grain_angularity`, `grain_shape`, `organic_components`
+
+    ### Status Codes
+    - **200 OK**: Classification completed successfully.
+    - **400 Bad Request**: Invalid request parameters.
+    - **500 Internal Server Error**: Model loading or inference failure.
+    - **503 Service Unavailable**: BERT models were not loaded at startup (`BERT_ENABLED=false`).
+    """
+    if http_request.app.state.bert_models is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Classification endpoint is disabled. Set BERT_ENABLED=true to enable BERT model loading.",
+        )
+    return classify(request, http_request.app.state.bert_models)
+
+
+####################################################################################################
+### Classify Borehole Type
+####################################################################################################
+@router.post(
+    "/classify_borehole_type",
+    tags=["classify_borehole_type"],
+    response_model=ClassifyBoreholeTypeResponse,
+    responses={
+        400: {"model": BadRequestResponse, "description": "Bad request (e.g. not a PDF)"},
+        500: {"model": BadRequestResponse, "description": "Internal server error"},
+        503: {"model": BadRequestResponse, "description": "BERT models not loaded (set BERT_ENABLED=true)"},
+    },
+)
+async def post_classify_borehole_type(
+    http_request: Request,
+    file: UploadFile = File(..., description="The PDF document to classify."),  # noqa: B008
+) -> ClassifyBoreholeTypeResponse:
+    """Classify the borehole type of every borehole detected in an uploaded PDF document.
+
+    This endpoint takes a raw PDF file upload:
+    it runs the extraction pipeline to detect each borehole in the document, extracts header-like
+    text scoped to each borehole's own pages, and classifies each one independently with a single full
+    forward pass through the `borehole_type` model.
+
+    ### Request
+
+    A `multipart/form-data` upload with a single `file` field containing the PDF.
+
+    ### Returns
+    - **boreholes**: One `{borehole_index, class_name}` entry per borehole detected in the document.
+
+    ### Status Codes
+    - **200 OK**: Classification completed successfully.
+    - **400 Bad Request**: The uploaded file is not a PDF.
+    - **500 Internal Server Error**: Model loading or inference failure.
+    - **503 Service Unavailable**: BERT models were not loaded at startup (`BERT_ENABLED=false`).
+    """
+    if http_request.app.state.bert_models is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Classification endpoint is disabled. Set BERT_ENABLED=true to enable BERT model loading.",
+        )
+    if not (file.filename or "").lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Invalid request. The uploaded file must be a PDF.")
+
+    data = await file.read()
+    return classify_borehole_type(data, file.filename, http_request.app.state.bert_models)

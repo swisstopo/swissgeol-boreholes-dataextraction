@@ -11,8 +11,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from core.benchmark_utils import BenchmarkSummary
+from core.ground_truth import GroundTruth
 from core.mlflow_tracking import mlflow
-from extraction.evaluation.benchmark.ground_truth import GroundTruth
 from extraction.evaluation.evaluator import Evaluator
 from extraction.features.predictions.file_predictions import (
     FilePredictions,

@@ -23,12 +23,18 @@ Please make sure to define the environment variables needed for the API to acces
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 - `AWS_ENDPOINT`, in the format `https://s3.<RegionName>.amazonaws.com`
-  - During local development, a S3-compatible service like [MinIO](https://min.io/) can be used. In this case, the endpoint will look like `http://minio:9000`. 
+  - During local development, a S3-compatible service like [MinIO](https://min.io/) can be used. In this case, the endpoint will look like `http://minio:9000`.
 - `AWS_S3_BUCKET`
 
 The data extraction API in this repository is designed to be integrated into [swissgeol-boreholes-suite](https://github.com/swisstopo/swissgeol-boreholes-suite) that is configured by [swissgeol-boreholes-config](https://github.com/swisstopo/swissgeol-boreholes-config). You can find the AWS S3 bucket configuration used for that deployment in [charts/swissgeol-boreholes/values.yaml](https://github.com/swisstopo/swissgeol-boreholes-config/blob/ac293abe1c489044b3b15efa30c2238d456ded26/charts/swissgeol-boreholes/values.yaml#L65).
 
 3. **Start the FastAPI server**
+When running the API server without a Docker image, you need to make sure that the necessary models are available.
+To download all relevant models from Huggingface run:
+
+```bash
+python src/app/prepare_models.py
+```
 
 Run the following command to start the FastAPI server:
 
@@ -36,7 +42,7 @@ Run the following command to start the FastAPI server:
 uvicorn src.app.main:app --reload --host 0.0.0.0 --port 8002
 ```
 
-This will start the server on port 8002 of the localhost and enable automatic reloading whenever changes are made to the code. You can see the OpenAPI Specification (formerly Swagger Specification) by opening: `http://127.0.0.1:8002/docs#/` in your favorite browser. 
+This will start the server on port 8002 of the localhost and enable automatic reloading whenever changes are made to the code. You can see the OpenAPI Specification (formerly Swagger Specification) by opening: `http://127.0.0.1:8002/docs#/` in your favorite browser.
 
 4. **Access the API endpoints**
 
@@ -53,9 +59,45 @@ Additional endpoints and their functionalities can be found in the project's sou
 To stop the FastAPI server, press `Ctrl + C` in the terminal where the server is running. Please refer to the [FastAPI documentation](https://fastapi.tiangolo.com) for more information on how to work with FastAPI and build APIs using this framework.
 
 
+## Classification Model Configuration
+
+The `/api/V1/classify` endpoint requires fine-tuned BERT models. The models follow a split backbone/head architecture:
+
+- **Backbone** (`backbone.safetensors`) — shared frozen backbone used across all classification systems
+- **Heads** — one task-specific head per classification system (e.g. `lithology`, `en_main`, `uscs`, `color`, …)
+
+Published models are available on [HuggingFace](https://huggingface.co/swissgeol). During `docker build`, the models are downloaded automatically, split into backbone and heads, and baked into the image — no manual download is needed.
+
+The pre-built Docker image ships with these models baked in — no additional configuration is needed for classification:
+
+```bash
+docker pull ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:latest
+docker run -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:latest
+```
+
+To run without loading the BERT models (extraction endpoints only, saves memory), set `BERT_ENABLED=false`. The `/classify` endpoint will return HTTP 503 in this case.
+
+### Unified `/classify` endpoint
+
+`POST /api/V1/classify` accepts a plain-text material description and returns predictions for all tasks
+relevant to the inferred rock type in a single forward pass:
+
+1. The shared backbone embedding is computed **once** from the description.
+2. The `lithology` head determines whether the material is **consolidated** or **unconsolidated**.
+3. Each task-specific head runs independently on the same embedding.
+4. Only tasks relevant to the inferred rock type are returned.
+
+**Consolidated rock** tasks: `lithology`, `alteration_degree_consolidated`, `cementation`, `color`, `mineral_components`, `accessory_components`
+
+**Unconsolidated sediment** tasks: `en_main`, `uscs`, `debris`, `color`, `grain_angularity`, `grain_shape`, `organic_components`
+
+Single-label tasks (e.g. `lithology`, `en_main`, `color`) return a string; multi-label tasks (e.g.
+`mineral_components`, `grain_angularity`, `organic_components`) return a list of strings.
+
+
 ## Build API as Local Docker Image
 
-The borehole application offers a given amount of functionalities (extract text, number, and coordinates) through an API. To build this API using a Docker Container, you can run the following commands. 
+The borehole application offers a given amount of functionalities (extract text, number, and coordinates) through an API. To build this API using a Docker Container, you can run the following commands.
 
 1. **Navigate to the project directory**
 
@@ -70,8 +112,10 @@ cd swissgeol-boreholes-dataextraction
 Build the Docker image using the following command:
 
 ```bash
-docker build -t borehole-api . -f Dockerfile
+docker build -t borehole-api .
 ```
+The classification models are always included in the image — they are downloaded from HuggingFace and baked in automatically during `docker build`. To skip loading them at runtime, set `BERT_ENABLED=false` — see the [Classification Model Configuration](#classification-model-configuration) section.
+
 And for a linux/amd64 build:
 ```bash
 docker build --platform linux/amd64 -t borehole-api:test .
@@ -139,7 +183,7 @@ source ~/.bashrc  # Or ~/.bash_profile, ~/.zshrc based on your configuration
 
 5. **Access the API**
 
-Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8002`.
+Once the container is running, you can access the API by opening a web browser and navigating to `http://localhost:8000`.
 
 You can also use an API testing tool like Postman to send requests to the API endpoints.
 
@@ -172,30 +216,33 @@ Replace `<container_id>` with the ID of the running container, which can be obta
 
 
 ## Use the Docker Image from the GitHub Container Registry
- 
 This repository provides a Docker image hosted in the GitHub Container Registry (GHCR) that can be used to run the application easily. Below are the steps to pull and run the Docker image.
 
 1. **Pull the Docker Image from the GitHub Container Registry**
-   
+
 ```bash
 docker pull ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:edge
 ```
 
 **Run the docker image from the Terminal**
-   
+
 ```bash
 docker run -d --name swissgeol-boreholes-dataextraction-api -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e AWS_ENDPOINT=ZZZ -e AWS_S3_BUCKET=AAA -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
 ```
 
-Where XXX, YYY, ZZZ, AAA, and TAG are placeholder values that users should replace with their actual credentials and desired tag. 
+Where XXX, YYY, ZZZ, AAA, and TAG are placeholder values that users should replace with their actual credentials and desired tag.
 
 Adjust the port mapping (8000:8000) based on the app's requirements.
 
-NOTE: Do not forget to specify your AWS Credentials.
+**Note:** AWS credentials are required for the data extraction endpoints (PDF processing via S3) but are **not** needed for the `/api/V1/classify_lithology` endpoint — the classification models are baked into the image. If you only need classification, you can omit the `-e AWS_*` flags entirely:
+
+```bash
+docker run -d --name swissgeol-boreholes-dataextraction-api -p 8000:8000 ghcr.io/swisstopo/swissgeol-boreholes-dataextraction-api:TAG
+```
 
 **Run the docker image from the Docker Desktop App**
 
-Open the Docker Desktop app and navigate to `Images`, you should be able to see the image you just pulled from GHCR. Click on the image and click on the `Run` button on the top right of the screen. 
+Open the Docker Desktop app and navigate to `Images`, you should be able to see the image you just pulled from GHCR. Click on the image and click on the `Run` button on the top right of the screen.
 
 <img src="../assets/img/docker-1.png" width="400">
 

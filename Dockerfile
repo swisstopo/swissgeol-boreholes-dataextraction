@@ -1,5 +1,5 @@
 ## ------ Build stage
-# Use the specifidied Python-slim version as the base image
+# Use the specified Python-slim version as the base image
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
 # Add temporary SCM version for hatchling.build
@@ -8,18 +8,18 @@ ENV SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION
 
 # Setup working directory and copy pyproject files
 WORKDIR /app
-COPY pyproject.toml README.md /app/
+COPY pyproject.toml README.md uv.lock /app/
 
-# --no-dev: Exclude development dependencies from the environment
-# --no-install-project: Skip building and installing the project package itself
-# --compile: Force generation of compiled files *.pyc (lowers memory load)
-RUN uv sync --no-dev --no-install-project --compile
+# Install all dependencies including deep-learning-cpu extras into a virtualenv.
+# --no-dev: exclude development dependencies
+# --no-install-project: skip building and installing the project package itself
+# --compile: generate *.pyc files to lower memory load at startup
+RUN uv sync --no-dev --no-install-project --compile --extra deep-learning-cpu
 
 
 ## ------ Runtime stage
 FROM python:3.12-slim
 
-# Set arguments to be passed from build-args
 ARG VERSION
 
 # Main working directory
@@ -34,6 +34,10 @@ RUN apt-get update && \
 
 # Source files
 COPY ./src /app/src
+
+# Download models from HuggingFace, split into backbone + heads, then wipe the download cache
+RUN /app/.venv/bin/python src/app/prepare_models.py && \
+    rm -rf /root/.cache/huggingface
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1

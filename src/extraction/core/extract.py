@@ -9,22 +9,23 @@ from pathlib import Path
 
 import pymupdf
 
-from extraction.features.extract import MaterialDescriptionRectWithSidebarExtractor
+from extraction.features.extract import BoreholeExtractor
 from extraction.features.groundwater.groundwater_extraction import (
     GroundwaterInDocument,
     GroundwaterLevelExtractor,
 )
-from extraction.features.metadata.borehole_name_extraction import NameInDocument, extract_borehole_names
+from extraction.features.metadata.borehole_name_extraction import BoreholeName, NameInDocument, extract_borehole_names
 from extraction.features.metadata.metadata import FileMetadata, MetadataInDocument
 from extraction.features.predictions.borehole_predictions import BoreholePredictions
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.predictions import BoreholeListBuilder
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
-from extraction.features.stratigraphy.layer.layer import LayersInDocument
+from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, LayersInDocument
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.text.matching_params_analytics import MatchingParamsAnalytics
+from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 from swissgeol_doc_processing.utils.file_utils import read_params
 from swissgeol_doc_processing.utils.strip_log_detection import StripLog, detect_strip_logs
 from swissgeol_doc_processing.utils.table_detection import TableStructure, detect_table_structures
@@ -36,6 +37,25 @@ table_detection_params = read_params("table_detection_params.yml")
 striplog_detection_params = read_params("striplog_detection_params.yml")
 
 logger = logging.getLogger(__name__)
+
+
+def _assign_borehole_names(
+    extracted_boreholes: list[ExtractedBorehole], name_entries: list[FeatureOnPage[BoreholeName]]
+) -> None:
+    """Attach the closest name candidate found on this same page to each borehole, if any were found.
+
+    A page essentially always has at most a couple of boreholes and name candidates, so matching by
+    vertical distance to the top of each borehole's column on this page is enough.
+
+    Args:
+        extracted_boreholes (list[ExtractedBorehole]): The boreholes just extracted from this page.
+        name_entries (list[FeatureOnPage[BoreholeName]]): The name candidates found on this same page.
+    """
+    if not name_entries:
+        return
+    for borehole in extracted_boreholes:
+        borehole_top = borehole.bounding_boxes[-1].get_outer_rect().y0
+        borehole.name = min(name_entries, key=lambda entry: abs(entry.rect.y0 - borehole_top))
 
 
 @dataclasses.dataclass
@@ -80,6 +100,17 @@ def open_pdf(
     )
     yield doc
     doc.close()
+
+
+def _reference_line_width(borehole: ExtractedBorehole) -> float | None:
+    """Return the width of each borehole's longest description line.
+
+    `MaterialDescription.insert_line_breaks` uses this as a reference for how long a line can get
+    before the layout wraps it. Scoped per borehole (not per file): different boreholes, even across
+    pages of the same file, can have differently sized description columns.
+    """
+    line_widths = [line.rect.width for layer in borehole.predictions for line in layer.material_description.lines]
+    return max(line_widths, default=None)
 
 
 def extract(
@@ -132,14 +163,14 @@ def extract(
 
             # Detect table structures on the page
             table_structures = detect_table_structures(
-                page, long_or_horizontal_lines, text_lines, table_detection_params
+                page.rect.width, page.rect.height, long_or_horizontal_lines, text_lines, table_detection_params
             )
 
             # Detect strip logs on the page
             strip_logs = detect_strip_logs(page, text_lines, striplog_detection_params)
 
             # Extract the stratigraphy
-            extracted_boreholes = MaterialDescriptionRectWithSidebarExtractor(
+            extracted_boreholes = BoreholeExtractor(
                 text_lines,
                 long_or_horizontal_lines,
                 all_geometric_lines,
@@ -153,6 +184,7 @@ def extract(
                 analytics,
                 **matching_params,
             ).process_page()
+            _assign_borehole_names(extracted_boreholes, name_entries)
             boreholes_per_page.append(extracted_boreholes)
 
             # Extract the groundwater levels
@@ -177,6 +209,11 @@ def extract(
 
         # Merge detections if possible
         layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page, matching_params), filename)
+
+        for borehole in layers_with_bb_in_document.boreholes_layers_with_bb:
+            max_line_width = _reference_line_width(borehole)
+            for layer in borehole.predictions:
+                layer.material_description.insert_line_breaks(max_line_width)
 
         # create list of BoreholePrediction objects with all the separate lists
         borehole_predictions_list: list[BoreholePredictions] = BoreholeListBuilder(

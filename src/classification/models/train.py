@@ -1,7 +1,10 @@
 """Model training module."""
 
+import json
 import logging
 import os
+import shutil
+import tempfile
 import time
 from collections import Counter
 from pathlib import Path
@@ -9,18 +12,38 @@ from pathlib import Path
 import click
 import datasets
 import mlflow
+import numpy as np
 import torch
 import torch.nn as nn
 from dotenv import load_dotenv
-from transformers import DataCollatorWithPadding, EvalPrediction, Trainer, TrainingArguments
+from safetensors.torch import save_file
+from sklearn.metrics import classification_report, confusion_matrix
+from transformers import (
+    EvalPrediction,
+    Trainer,
+    TrainerCallback,
+    TrainingArguments,
+)
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from classification import DATAPATH
-from classification.evaluation.evaluate import AllClassificationMetrics, per_class_metric
+from classification.evaluation.evaluate import rank_metrics_from
+from classification.models.config import (
+    ExperimentConfig,
+    ExperimentDatasetConfig,
+    ExperimentHyperparameters,
+)
 from classification.models.model import BertModel
-from classification.utils.classification_classes import ExistingClassificationSystems
-from classification.utils.data_loader import prepare_classification_data
+from classification.utils.datasets import ExistingClassificationSystems
+from classification.utils.datasets.classification import (
+    ClassificationTask,
+    GroundTruthBoreholeWithLanguage,
+    LayerInformation,
+    split_samples,
+)
 from classification.utils.file_utils import read_params
+from classification.utils.plots import plot_confusion_matrix
+from core.ground_truth import GroundTruth
 
 if __name__ == "__main__":
     # Only configure logging if this script is run directly (e.g. training pipeline entrypoint)
@@ -85,21 +108,34 @@ class WeightedLabelSmoother:
 
 
 def setup_mlflow_tracking(
-    model_config: dict,
+    config: ExperimentConfig,
     out_directory: Path,
     experiment_name: str = "Bert training",
+    run_name: str | None = None,
 ):
-    """Set up MLFlow tracking."""
-    if mlflow.active_run():
-        mlflow.end_run()  # Ensure the previous run is closed
-    mlflow.set_experiment(experiment_name)
-    mlflow.start_run()
-    mlflow.set_tag("classification system", str(model_config["classification_system"]))
-    json_path = model_config.get("json_file_name")
-    json_path = json_path if json_path else model_config.get("train_subset").split("/")[0]
-    mlflow.set_tag("json file path", json_path)
+    """Initialise an MLflow run and log experiment metadata.
+
+    Args:
+        config (ExperimentConfig): Experiment configuration.
+        out_directory (Path): Output directory path, logged as a run tag.
+        experiment_name (str): MLflow experiment name. Defaults to "Bert training".
+        run_name (str | None): MLflow run name. Defaults to None.
+    """
+    if not mlflow.active_run():
+        if os.getenv("MLFLOW_RUN_ID"):
+            # Azure ML pre-allocates a run via MLFLOW_RUN_ID; calling set_experiment()
+            # before start_run() causes an experiment-mismatch error, so we skip it.
+            mlflow.start_run()
+        else:
+            mlflow.set_experiment(experiment_name)
+            mlflow.start_run(run_name=run_name)
+    mlflow.set_tag("classification system", config.classification_system)
     mlflow.set_tag("out_directory", str(out_directory))
-    mlflow.log_params(model_config)
+
+    with tempfile.TemporaryDirectory() as temp_directory:
+        config_path = Path(temp_directory) / "model_config.json"
+        config_path.write_text(config.model_dump_json(indent=2))
+        mlflow.log_artifact(str(config_path))
 
 
 def common_options(f):
@@ -116,7 +152,7 @@ def common_options(f):
         "--model-checkpoint",
         type=click.Path(exists=True, path_type=Path),
         default=None,
-        help="Path to a local folder containing an existing bert model (e.g. models/your_model_folder).",
+        help="Path to a local folder containing an existing bert model (e.g. models/../checkpoint-xx).",
     )(f)
     f = click.option(
         "-o",
@@ -130,112 +166,201 @@ def common_options(f):
 
 @click.command()
 @common_options
-def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: Path):
+def train_model(config_file_path: Path, out_directory: Path, model_checkpoint: Path | None):
     """Train a BERT model using the specified datasets and configurations from the YAML config file."""
-    model_config = read_params(config_file_path)
+    model_config = ExperimentConfig.model_validate(read_params(config_file_path))
     classification_system = ExistingClassificationSystems.get_classification_system_type(
-        model_config["classification_system"].lower()
+        model_config.classification_system
     )
 
-    out_directory = out_directory / classification_system.get_name() / time.strftime("%Y%m%d-%H%M%S")
+    # If checkpoint model is provided, load from checkpoint output
+    work_directory = (
+        model_checkpoint.parent
+        if model_checkpoint
+        else out_directory / classification_system.get_name() / time.strftime("%Y%m%d-%H%M%S")
+    )
 
     if mlflow_tracking:
         logger.info("Logging to MLflow.")
-        setup_mlflow_tracking(model_config, out_directory)
+        setup_mlflow_tracking(model_config, work_directory, run_name=model_config.experiment_name)
 
     # Initialize the model and tokenizer, freeze layers, put in train mode
-
-    model_path = model_config["model_path"] if model_checkpoint is None else model_checkpoint
-    logger.info(f"Loading pretrained model from {model_path}.")
-    bert_model = BertModel(model_path, classification_system)
+    logger.info(f"Loading pretrained model from {model_config.model_path}.")
+    bert_model = BertModel(model_config.model_path, classification_system)
     bert_model.freeze_all_layers()
-    bert_model.unfreeze_list(model_config.get("unfreeze_layers", []))
+    bert_model.unfreeze_list(model_config.unfreeze_layers)
     bert_model.model.train()
 
+    # Load datasets
+    logger.info("Loading datasets (transformers library).")
+    train_dataset, eval_dataset, test_datasets = setup_data(bert_model, model_config)
+    logger.info(
+        "Train: %d | Val: %d | Test: %s samples.",
+        len(train_dataset),
+        len(eval_dataset),
+        [len(test_dataset) for test_dataset in test_datasets.values()],
+    )
+
     # Initialize the trainer
-    trainer = setup_trainer(bert_model, model_config, out_directory)
+    trainer = setup_trainer(bert_model, train_dataset, eval_dataset, model_config, work_directory)
 
     # Start training
-    logger.info("Beginning the training.")
-    train_result = trainer.train()
+    logger.info("Training ...")
+    train_result = trainer.train(resume_from_checkpoint=model_checkpoint)
+    trainer.log_metrics("train", train_result.metrics)
+    trainer.save_metrics("train", train_result.metrics)
 
-    trainer.save_model()  # Saves the tokenizer too for easy upload
-    metrics = train_result.metrics
-    trainer.log_metrics("train", metrics)
-    trainer.save_metrics("train", metrics)
-    trainer.save_state()
+    logger.info("Evaluation test ...")
+    for test_name, test_dataset in test_datasets.items():
+        metric_key_prefix = f"test_{test_name}"
+        cm_callback = next(cb for cb in trainer.callback_handler.callbacks if isinstance(cb, ConfusionMatrixCallback))
+        cm_callback.current_test_name = test_name
+        test_results = trainer.predict(test_dataset, metric_key_prefix=metric_key_prefix)
+        trainer.log_metrics(metric_key_prefix, test_results.metrics)
+        trainer.save_metrics(metric_key_prefix, test_results.metrics)
+
+    # Save final cleaned version
+    logger.info("Saving model head and state ...")
+    path_head = trainer.save_fine_tuned_head()
+
+    logger.info("Cleaning checkpoints to save space ...")
+    trainer.clean_checkpoints()
+
+    if mlflow_tracking and mlflow.active_run():
+        logger.info("Register model and head to MLflow (might take a while) ...")
+        mlflow.pytorch.log_model(
+            pytorch_model=trainer.model,
+            artifact_path="model",
+            registered_model_name=model_config.experiment_name,
+        )
+        mlflow.log_artifacts(path_head, artifact_path="model_head")
 
 
-def setup_training_args(model_config: dict, out_directory: Path) -> TrainingArguments:
-    """Create a TrainingArgument object from the config file.
+def setup_training_args(
+    model_config: ExperimentHyperparameters,
+    out_directory: Path,
+    label_names: list[str] | None = None,
+) -> TrainingArguments:
+    """Create a TrainingArguments object from the config file.
 
     Args:
-        model_config (dict): The dictionary containing the model configuration.
+        model_config (ExperimentHyperparameters): The model configuration.
         out_directory (Path): The directory for storing the model.
+        label_names (list[str] | None): Column names treated as labels by the Trainer's
+            prediction_step; when set they are packed into EvalPrediction.label_ids as a tuple.
 
     Returns:
-        TrainingArgument: the training arguments.
+        TrainingArguments: the training arguments.
     """
-    report_to = "mlflow" if mlflow_tracking else "none"
     # Read hyperparameters from the config file
     training_args = TrainingArguments(
         output_dir=out_directory,
         logging_dir=out_directory / "logs",
-        per_device_train_batch_size=model_config["batch_size"],
-        per_device_eval_batch_size=model_config["batch_size"],
-        num_train_epochs=model_config["num_epochs"],
-        weight_decay=float(model_config["weight_decay"]),
-        learning_rate=float(model_config["learning_rate"]),
-        lr_scheduler_type=model_config["lr_scheduler_type"],
-        warmup_ratio=float(model_config["warmup_ratio"]),
-        max_grad_norm=float(model_config["max_grad_norm"]),
+        per_device_train_batch_size=model_config.batch_size,
+        per_device_eval_batch_size=model_config.batch_size,
+        num_train_epochs=model_config.num_epochs,
+        weight_decay=model_config.weight_decay,
+        learning_rate=model_config.learning_rate,
+        lr_scheduler_type=model_config.lr_scheduler_type,
+        warmup_ratio=model_config.warmup_ratio,
+        max_grad_norm=model_config.max_grad_norm,
+        remove_unused_columns=False,
         logging_strategy="epoch",
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
-        report_to=report_to,
+        report_to="none",  # metrics logged via MetricsMLflowCallback to avoid Azure ML's 200-param limit
         save_total_limit=2,  # Limit checkpoints to save space, only keep best two
+        label_names=label_names,
     )
     return training_args
 
 
-def setup_data(bert_model: BertModel, model_config: dict) -> tuple[datasets.Dataset, datasets.Dataset]:
-    """Create tokenized datasets for the train and evaluation parts.
+def load_document_texts(json_filenames: list[str]) -> dict[str, str]:
+    """Load a filename -> text mapping from one or more JSON files.
+
+    Args:
+        json_filenames (list[str]): JSON filenames, relative to `DATAPATH`, each holding a flat
+            filename.
+
+    Returns:
+        dict[str, str]: Mapping from filename to text, merged across all given JSON files.
+    """
+    text_by_filename: dict[str, str] = {}
+    for json_filename in json_filenames:
+        with open(DATAPATH / json_filename, encoding="utf8") as f:
+            text_by_filename.update(json.load(f))
+    return text_by_filename
+
+
+def load_samples_from_set(dataset_cfg: ExperimentDatasetConfig) -> list[LayerInformation]:
+    """Load and flatten all labelled layers (or documents) from a list of dataset configurations.
+
+    Args:
+        dataset_cfg (ExperimentDatasetConfig): Configuration specifying ground-truth files
+            and the classification system for a single dataset.
+
+    Returns:
+        list[LayerInformation]: A flat list of LayerInformation entries from all configured datasets.
+    """
+    classification_system = ExistingClassificationSystems.get_classification_system_type(
+        dataset_cfg.classification_system,
+    )
+    document_text = load_document_texts(dataset_cfg.document_texts) if dataset_cfg.document_texts else None
+    return [
+        sample
+        for ground_truth in dataset_cfg.ground_truths
+        for sample in classification_system.process(
+            ground_truth=GroundTruthBoreholeWithLanguage.from_ground_truth(
+                ground_truth=GroundTruth(DATAPATH / ground_truth).ground_truth,
+            ),
+            document_text=document_text,
+        )
+    ]
+
+
+def setup_data(
+    bert_model: BertModel, model_config: ExperimentConfig
+) -> tuple[datasets.Dataset, datasets.Dataset, dict[str, datasets.Dataset]]:
+    """Create tokenized datasets for the train, validation, and test splits.
+
+    The split_samples is deterministic on filename, then there is no overlap between
+    train and test slices even when the same files appear in both lists. The train sets
+    are merged into a single dataset. The test sets are kept separated for evaluation.
 
     Args:
         bert_model (BertModel): The bert model and tokenizer.
-        model_config (dict): The dictionary containing the model configuration.
+        model_config (ExperimentConfig): The experiment configuration.
 
     Returns:
-        tuple[datasets.Dataset, datasets.Dataset]: the training arguments.
+        tuple[datasets.Dataset, datasets.Dataset, dict[str, datasets.Dataset]]:
+            - Training dataset
+            - Validation dataset
+            - Test datasets (multiple evaluation possible)
     """
-    if model_config["classification_system"] in ["uscs", "en_main"]:
-        # the data is not stored the same way for uscs and lithology. Currently the reports names enumerated in the
-        # json file only locally exists for uscs.
-        # Once all of the files are available, we will be able to use the code without the need for this
-        # if-else block.
-        train_file_path = DATAPATH / model_config["json_file_name"]
-        eval_file_path = DATAPATH / model_config["json_file_name"]
-    elif model_config["classification_system"] == "lithology":
-        train_file_path = DATAPATH / model_config["train_subset"]
-        eval_file_path = DATAPATH / model_config["eval_subset"]
+    logger.info("Loading train datasets ...")
+    trainval_samples = [
+        sample
+        for training_set in model_config.training_sets.values()
+        for sample in load_samples_from_set(training_set)
+    ]
+    train_samples, val_samples, _ = split_samples(trainval_samples)
+    train_dataset = bert_model.get_tokenized_dataset(train_samples)
+    val_dataset = bert_model.get_tokenized_dataset(val_samples)
 
-    classification_system = ExistingClassificationSystems.get_classification_system_type(
-        model_config["classification_system"].lower()
-    )
-    train_data = prepare_classification_data(
-        train_file_path,
-        ground_truth_path=None,
-        classification_system=classification_system,
-    )
-    train_dataset = bert_model.get_tokenized_dataset(train_data)
-    eval_data = prepare_classification_data(
-        eval_file_path,
-        ground_truth_path=None,
-        classification_system=classification_system,
-    )
-    eval_dataset = bert_model.get_tokenized_dataset(eval_data)
-    return train_dataset, eval_dataset
+    logger.info("Loading test datasets ...")
+    test_datasets = {}
+    for i, (test_name, test_set) in enumerate(model_config.test_sets.items()):
+        logger.info(f"[{i + 1} / {len(model_config.test_sets)}] Loading test: {test_name}")
+        test_samples = load_samples_from_set(test_set)
+        _, _, test_samples = split_samples(test_samples)
+
+        if len(test_samples) == 0:
+            logger.warning(f"No samples detected for {test_name=}, omitted")
+            continue
+
+        test_datasets[test_name] = bert_model.get_tokenized_dataset(test_samples)
+    return train_dataset, val_dataset, test_datasets
 
 
 def compute_trainset_weights(
@@ -251,7 +376,11 @@ def compute_trainset_weights(
     Returns:
         torch.Tensor: A tensor of shape (num_classes,) with scaled weights.
     """
-    label_counts = Counter(trainset["label"])
+    labels = trainset["labels"]
+    if labels and isinstance(labels[0], list):
+        label_counts = Counter(idx for row in labels for idx, val in enumerate(row) if val > 0)
+    else:
+        label_counts = Counter(labels)
     num_classes = max(label_counts.keys()) + 1  # class index starts at 0
 
     # Compute raw inverse-frequency weights
@@ -268,70 +397,265 @@ def compute_trainset_weights(
     else:
         scaled_weights = torch.ones_like(raw_weights)  # fallback: uniform weights
 
-    # OR other method
-    # scaled_weights = torch.tensor([
-    #     1.0 / np.log(1 + label_counts.get(i, 1)) for i in range(num_classes)
-    # ])
     return scaled_weights
 
 
-def setup_trainer(bert_model: BertModel, model_config: dict, out_directory: Path) -> Trainer:
+class HeadOnlyTrainer(Trainer):
+    """Trainer that saves only fine-tuned parameters at every checkpoint."""
+
+    def __init__(self, *args, use_rank_loss: bool = False, **kwargs):
+        """Initialise the trainer.
+
+        Args:
+            *args: Positional arguments forwarded to `Trainer.__init__`.
+            use_rank_loss (bool): Whether to add the pairwise rank loss term to the base loss.
+            **kwargs: Keyword arguments forwarded to `Trainer.__init__`.
+        """
+        super().__init__(*args, **kwargs)
+        self.use_rank_loss = use_rank_loss
+
+    def save_fine_tuned_head(self) -> str:
+        """Save only the fine-tuned parameters (requires_grad=True) and the model config.
+
+        Skips frozen backbone weights, keeping checkpoints small and focused on what actually changed.
+
+        Returns:
+            str: Folder containing fine-tuned model head
+        """
+        out_dir = Path(self.args.output_dir) / "model_head"
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        # Gather only trained layers (gradient is available)
+        fine_tuned_names = {n for n, p in self.model.named_parameters() if p.requires_grad}
+        head_state = {k: v.cpu() for k, v in self.model.state_dict().items() if k in fine_tuned_names}
+
+        # Save trained layer and model config
+        self.model.config.save_pretrained(out_dir)
+        save_file(head_state, out_dir / "model.safetensors")
+        return str(out_dir)
+
+    def clean_checkpoints(self) -> None:
+        """Clean checkpoints after training."""
+        for folder in list(Path(self.args.output_dir).rglob("checkpoint*")):
+            if folder.is_dir():
+                shutil.rmtree(folder)
+
+    def compute_rank_loss(self, outputs: SequenceClassifierOutput, rank_labels: torch.Tensor) -> torch.Tensor:
+        """Pairwise RankNet loss that pushes higher-ranked classes' logits above lower-ranked ones.
+
+        For every pair of classes (i, j) where the ground truth ranks i above j, penalizes the model with a
+        smooth logistic loss on the score gap, log(1 + exp(-(s_i - s_j))). Minimizing it directly increases the
+        fraction of correctly-ordered pairs, which is what Kendall's tau measures.
+
+        Args:
+            outputs (SequenceClassifierOutput): Model outputs; only `logits` (shape (batch, num_class)) is used.
+            rank_labels (torch.Tensor): Ground-truth class ids in rank order per sample (index 0 = primary,
+                1 = secondary, ...).
+
+        Returns:
+            torch.Tensor: Scalar ranking loss, averaged over all comparable (non-tied) class pairs in the batch.
+        """
+        logits = outputs["logits"]
+
+        # outranks[b, i, j] is True if class i is ranked above class j for sample b (ties excluded).
+        # Map of pairs where rank is expected to be lower -> reduce loss
+        outranks = rank_labels.unsqueeze(2) < rank_labels.unsqueeze(1)
+        score_diff = logits.unsqueeze(2) - logits.unsqueeze(1)  # s_i - s_j
+
+        pair_losses = nn.functional.softplus(-score_diff)[outranks]  # log(1 + exp(-(s_i - s_j)))
+        if pair_losses.numel() == 0:
+            return torch.zeros((), dtype=logits.dtype, device=logits.device)
+        return pair_losses.mean()
+
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+        """Compute the training loss, combining the base loss with a custom loss term."""
+        rank_labels = inputs.pop("rank_labels", None)  # always remove; model doesn't accept this kwarg
+        loss, outputs = super().compute_loss(model, inputs, return_outputs=True, num_items_in_batch=num_items_in_batch)
+        if self.use_rank_loss and rank_labels is not None:
+            loss = loss + self.compute_rank_loss(outputs, rank_labels)
+        return (loss, outputs) if return_outputs else loss
+
+
+def multilabel_confusion_matrix_nxn(labels: np.ndarray, predictions: np.ndarray) -> np.ndarray:
+    """Create nxn confusion matrix for multi-label classification.
+
+    One sample can contribute to multiple cells: cm[i, j] counts samples where label i is true
+    and label j is predicted.
+
+    Args:
+        labels (np.ndarray): binary indicator matrix of shape (n_samples, n_labels)
+        predictions (np.ndarray): binary indicator matrix of shape (n_samples, n_labels)
+
+    Returns:
+        np.ndarray: confusion matrix of shape (n_labels, n_labels) where cm[i, j]
+            counts samples where label i is true and label j is predicted.
+    """
+    return (labels.T @ predictions).astype(int)
+
+
+class ConfusionMatrixCallback(TrainerCallback):
+    """Trainer callback to compute and save confusion matrix after evaluation."""
+
+    def __init__(self, id2class_enum: dict, classification_task: ClassificationTask = ClassificationTask.single_label):
+        """Initialise the callback.
+
+        Args:
+            id2class_enum: Mapping from class index to its enum member.
+            classification_task: Type of classification task (default: ClassificationTask.single_label).
+        """
+        self._id2class_enum = id2class_enum
+        self._classification_task = classification_task
+        self._sorted_ids = sorted(id2class_enum.keys(), key=lambda i: id2class_enum[i].value)
+        self._cm: np.ndarray | None = None
+        self.current_test_name: str = "test"
+
+    def compute_metrics(self, eval_pred: EvalPrediction) -> dict[str, float]:
+        """Compute per-class F1 and (for rank tasks) Kendall's tau metrics."""
+        logits = eval_pred.predictions
+        # For rank tasks the Trainer passes label_ids as (labels, rank_labels); unpack accordingly.
+        if isinstance(eval_pred.label_ids, tuple):
+            labels, rank_labels = eval_pred.label_ids
+        else:
+            labels, rank_labels = eval_pred.label_ids, None
+
+        if (
+            self._classification_task == ClassificationTask.multi_label
+            or self._classification_task == ClassificationTask.rank
+        ):
+            predictions = (logits > 0).astype(int)
+            id_no_prediction = predictions.sum(axis=-1) == 0
+            predictions[id_no_prediction, logits[id_no_prediction].argmax(axis=-1)] = 1
+            self._cm = multilabel_confusion_matrix_nxn(labels.astype(int), predictions)
+        elif (
+            self._classification_task == ClassificationTask.single_label
+        ):  # single-label: binary label vectors → integer indices (n_samples,)
+            predictions = np.zeros_like(logits)
+            predictions[range(predictions.shape[0]), logits.argmax(axis=1)] = 1
+            self._cm = confusion_matrix(labels.argmax(axis=-1), logits.argmax(axis=-1), labels=self._sorted_ids)
+        else:
+            raise NotImplementedError(f"Unsupported classification task {self._classification_task}")
+
+        # Drop non existing labels
+        (id_keep_col,) = np.nonzero(labels.sum(axis=0) + predictions.sum(axis=0))
+
+        # Use sklearn classification report to get global stats
+        report = classification_report(
+            labels[:, id_keep_col],
+            predictions[:, id_keep_col],
+            target_names=[self._id2class_enum[id_keep].name for id_keep in id_keep_col],
+            output_dict=True,
+        )
+
+        metrics = {
+            f"{group_name.replace(' ', '_')}_f1": group_metrics["f1-score"]
+            for group_name, group_metrics in report.items()
+            if isinstance(group_metrics, dict) and "f1-score" in group_metrics
+        }
+
+        if self._classification_task == ClassificationTask.rank and rank_labels is not None:
+            n_classes = rank_labels.shape[1]
+            pred_enum_lists = [
+                [self._id2class_enum[i] for i in np.argsort(logit)[::-1] if logit[i] > 0]
+                or [self._id2class_enum[int(np.argmax(logit))]]  # fallback: top-1 class
+                for logit in logits
+            ]
+            label_enum_lists = [
+                [self._id2class_enum[i] for i in np.argsort(rank_row) if rank_row[i] < n_classes]
+                for rank_row in rank_labels
+            ]
+            metrics["kendall_tau"] = rank_metrics_from(pred_enum_lists, label_enum_lists)
+
+        return metrics
+
+    def on_predict(self, args, state, control, metrics, **kwargs):
+        """Save confusion matrix PNG and per-class metrics CSV to the output directory."""
+        csv_path, png_path = plot_confusion_matrix(
+            self._cm,
+            Path(args.output_dir),
+            split=self.current_test_name,
+            all_classes=list(self._id2class_enum.values()),
+        )
+        if mlflow.active_run():
+            mlflow.log_metrics(
+                {k: v for k, v in metrics.items() if "f1" in k and any(tag in k for tag in ["micro", "macro"])}
+            )
+            mlflow.log_artifact(str(csv_path))
+            mlflow.log_artifact(str(png_path))
+
+
+class MetricsMLflowCallback(TrainerCallback):
+    """Logs step metrics to an active MLflow run.
+
+    Replaces report_to='mlflow' on the Trainer, which dumps all 207 TrainingArguments
+    fields as params and exceeds Azure ML MLflow's 200-parameter limit.
+    """
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        """Log numeric metrics to the active MLflow run at each logging step."""
+        if logs and mlflow.active_run():
+            mlflow.log_metrics(
+                {k: v for k, v in logs.items() if isinstance(v, int | float)},
+                step=state.global_step,
+            )
+
+
+def setup_trainer(
+    bert_model: BertModel,
+    train_dataset: datasets.Dataset,
+    eval_dataset: datasets.Dataset,
+    model_config: ExperimentConfig,
+    out_directory: Path,
+) -> HeadOnlyTrainer:
     """Create a Trainer object.
 
     Args:
         bert_model (BertModel): The bert model and tokenizer.
-        model_config (dict): The dictionary containing the model configuration.
+        train_dataset: Training dataset.
+        eval_dataset: Evaluation dataset.
+        model_config (ExperimentConfig): The experiment configuration.
         out_directory (Path): The directory for storing the model.
 
     Returns:
-        Trainer: The trainer object.
+        HeadOnlyTrainer: The trainer object.
     """
-    # load the training arguments from the config file
-    training_args = setup_training_args(model_config, out_directory)
+    classification_task = bert_model.classification_system.classification_task()
+    use_class_balancing = model_config.use_class_balancing
+    use_rank_loss = classification_task == ClassificationTask.rank
+    logger.info(f"{classification_task=}, {use_class_balancing=}, {use_rank_loss=}")
 
-    # Load datasets
-    logger.info("Loading datasets (transformers library).")
-    train_dataset, eval_dataset = setup_data(bert_model, model_config)
+    label_names = ["labels", "rank_labels"] if use_rank_loss else None
+    training_args = setup_training_args(model_config.hyperparameters, out_directory, label_names=label_names)
 
-    # Define a custom compute_metrics function
-    def compute_metrics(eval_pred: EvalPrediction) -> dict[str, float]:
-        """Function used for evaluating prediction, and logging during the training.
-
-        Note: The metrics are not used to optimize the model during the training, just to evaluate it.
-            The model is trained by trying to lower the cross-entropy loss.
-
-        Args:
-            eval_pred (EvalPrediction): Object of type EvalPrediction that will be passed to this function.
-
-        Returns:
-            dict[str, float]: Dictionary containing all the metrics produced to evaluate the predictions.
-        """
-        logits, labels = eval_pred
-        predictions = logits.argmax(axis=-1)
-        metrics = per_class_metric(predictions, labels)
-        return AllClassificationMetrics.compute_micro_average(metrics.values())
-
-    use_class_balacing = model_config.get("use_class_balancing", "false").lower() == "true"
     compute_loss_func = None
-    if use_class_balacing:
+    if use_class_balancing:
         class_weights = compute_trainset_weights(train_dataset)
         # create the object that will be called to compute the loss function (standard in transformers lib).
         compute_loss_func = WeightedLabelSmoother(class_weights=class_weights)
 
+    cm_callback = ConfusionMatrixCallback(
+        id2class_enum=bert_model.id2classEnum,
+        classification_task=classification_task,
+    )
+    callbacks = [cm_callback]
+    if mlflow_tracking:
+        callbacks.append(MetricsMLflowCallback())
+
     # Create the Trainer object
-    trainer = Trainer(
+    trainer = HeadOnlyTrainer(
         model=bert_model.model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         processing_class=bert_model.tokenizer,
-        data_collator=DataCollatorWithPadding(tokenizer=bert_model.tokenizer),
-        compute_metrics=compute_metrics,
         compute_loss_func=compute_loss_func,
+        compute_metrics=cm_callback.compute_metrics,
+        callbacks=callbacks,
+        use_rank_loss=use_rank_loss,
     )
     return trainer
 
 
 if __name__ == "__main__":
-    # run: fine-tune-bert -cf bert_config_uscs.yml -c models/your_chekpoint_model_folder
+    # run: fine-tune-bert -cf bert/bert_config_uscs.yml -c models/your_checkpoint_model_folder
+    # python -m src.classification.models.train -cf bert/bert_config_color.yml
     train_model()

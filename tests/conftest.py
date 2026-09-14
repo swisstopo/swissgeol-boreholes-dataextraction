@@ -1,5 +1,7 @@
 """Pytest configuration file."""
 
+import os
+
 import boto3
 import pytest
 from fastapi.testclient import TestClient
@@ -10,6 +12,11 @@ from app.common.config import config
 from app.main import app
 
 TEST_BUCKET_NAME = "test-bucket"
+
+
+def pytest_configure(config):
+    """Enforce MLFlow tracking to False before importing modules."""
+    os.environ["MLFLOW_TRACKING"] = "False"
 
 
 @pytest.fixture(autouse=True, scope="session")

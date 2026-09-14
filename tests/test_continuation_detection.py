@@ -1,5 +1,8 @@
 """Test suite for merge boreholes in continuation detection."""
 
+import pymupdf
+
+from extraction.features.metadata.borehole_name_extraction import BoreholeName
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import (
     ExtractedBorehole,
@@ -8,11 +11,29 @@ from extraction.features.stratigraphy.layer.layer import (
     LayerDepthsEntry,
 )
 from extraction.features.stratigraphy.layer.overlap_detection import OverlapResult
+from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
+from swissgeol_doc_processing.geometry.geometry_dataclasses import BoundingBox
 from swissgeol_doc_processing.text.textblock import MaterialDescription
+from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 
 def _depth(value: float, page: int) -> LayerDepthsEntry:
     return LayerDepthsEntry(value=value, rect=None, page_number=page)
+
+
+def _name(text: str, confidence: float = 1.0) -> FeatureOnPage[BoreholeName]:
+    return FeatureOnPage(
+        feature=BoreholeName(name=text, confidence=confidence), rect=pymupdf.Rect(0, 0, 10, 10), page=1
+    )
+
+
+def _page_bbox(page: int) -> PageBoundingBoxes:
+    return PageBoundingBoxes(
+        sidebar_bbox=None,
+        depth_column_entry_bboxes=[],
+        material_description_bbox=BoundingBox(pymupdf.Rect(0, 0, 10, 10)),
+        page=page,
+    )
 
 
 def _layer(text: str, start: float | None, end: float | None, page: int) -> Layer:
@@ -77,3 +98,87 @@ def test_merge_boreholes_reconciles_duplicated_boundary_layer(monkeypatch):
     assert merged.predictions[2].material_description.text == "grauer siltiger Ton, wenig Kies"
     assert merged.predictions[2].depths.start.value == 108.0
     assert merged.predictions[2].depths.end.value == 140.0
+
+
+def test_merge_boreholes_does_not_merge_when_neither_side_has_depths(monkeypatch):
+    """Without any depth values to compare, two boreholes must not be merged.
+
+    Regression test: previously, when depths couldn't be compared, the continuation check
+    defaulted to accepting the merge, welding unrelated boreholes together (issue seen in 3384.pdf).
+    """
+    previous_borehole = ExtractedBorehole(
+        predictions=[_layer("Humus, Sand", None, None, 1)],
+        bounding_boxes=[_page_bbox(1)],
+    )
+    current_borehole = ExtractedBorehole(
+        predictions=[_layer("Humus, Kies", None, None, 2)],
+        bounding_boxes=[_page_bbox(2)],
+    )
+
+    monkeypatch.setattr(
+        "extraction.features.stratigraphy.layer.continuation_detection.select_boreholes_with_overlap",
+        lambda previous_page_boreholes, current_page_boreholes, matching_params: (None, None, None),
+    )
+
+    merged_boreholes = merge_boreholes(
+        boreholes_per_page=[[previous_borehole], [current_borehole]],
+        matching_params={},
+    )
+
+    assert len(merged_boreholes) == 2
+
+
+def test_merge_boreholes_name_conflict_blocks_depth_fallback_merge(monkeypatch):
+    """Test name conflict.
+
+    A confidently detected, disagreeing name on both sides must block a merge, even when the
+    depth-continuity fallback heuristic would otherwise merge them.
+    """
+    previous_borehole = ExtractedBorehole(
+        predictions=[_layer("Sandstein", 10.0, 20.0, 1)],
+        bounding_boxes=[_page_bbox(1)],
+        name=_name("KB12"),
+    )
+    current_borehole = ExtractedBorehole(
+        predictions=[_layer("Mergel", 20.0, 30.0, 2)],
+        bounding_boxes=[_page_bbox(2)],
+        name=_name("KB13"),
+    )
+
+    monkeypatch.setattr(
+        "extraction.features.stratigraphy.layer.continuation_detection.select_boreholes_with_overlap",
+        lambda previous_page_boreholes, current_page_boreholes, matching_params: (None, None, None),
+    )
+
+    merged_boreholes = merge_boreholes(
+        boreholes_per_page=[[previous_borehole], [current_borehole]],
+        matching_params={},
+    )
+
+    assert len(merged_boreholes) == 2
+
+
+def test_merge_boreholes_low_confidence_name_does_not_block_merge(monkeypatch):
+    """A disagreeing name must not block a merge if either side's detection is low-confidence."""
+    previous_borehole = ExtractedBorehole(
+        predictions=[_layer("Sandstein", 10.0, 20.0, 1)],
+        bounding_boxes=[_page_bbox(1)],
+        name=_name("KB12", confidence=0.2),
+    )
+    current_borehole = ExtractedBorehole(
+        predictions=[_layer("Mergel", 20.0, 30.0, 2)],
+        bounding_boxes=[_page_bbox(2)],
+        name=_name("KB13"),
+    )
+
+    monkeypatch.setattr(
+        "extraction.features.stratigraphy.layer.continuation_detection.select_boreholes_with_overlap",
+        lambda previous_page_boreholes, current_page_boreholes, matching_params: (None, None, None),
+    )
+
+    merged_boreholes = merge_boreholes(
+        boreholes_per_page=[[previous_borehole], [current_borehole]],
+        matching_params={},
+    )
+
+    assert len(merged_boreholes) == 1

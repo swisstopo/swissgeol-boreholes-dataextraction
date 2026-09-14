@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import abc
+import math
 from dataclasses import dataclass, field
 from typing import ClassVar, Generic, TypeVar
 
-import fastquadtree
 import pymupdf
 
-from extraction.features.stratigraphy.base.sidebar_entry import SidebarEntry
 from extraction.features.stratigraphy.interval.interval import IntervalBlockPair, IntervalZone
+from extraction.features.stratigraphy.sidebarentry.sidebar_entry import SidebarEntry
 from swissgeol_doc_processing.geometry.util import x_overlap_significant_smallest
 from swissgeol_doc_processing.text.textblock import TextBlock
 from swissgeol_doc_processing.text.textline import TextLine
 from swissgeol_doc_processing.text.textline_affinity import Affinity
+from swissgeol_doc_processing.text.textline_rtree import TextLineRTree
 from swissgeol_doc_processing.utils.file_utils import read_params
 
 EntryT = TypeVar("EntryT", bound=SidebarEntry)
@@ -70,16 +71,6 @@ class Sidebar(abc.ABC, Generic[EntryT]):
     def get_interval_zone(self) -> list[IntervalZone]:
         """Get the interval zones defined by the sidebar entries."""
         pass
-
-    @staticmethod
-    def get_zones_from_entries(entries: list[EntryT], include_open_ended: bool = True):
-        zones = [
-            IntervalZone(entry.rect, next_entry.rect, entry)
-            for entry, next_entry in zip(entries, entries[1:], strict=False)
-        ]
-        if include_open_ended:
-            return zones + [IntervalZone(entries[-1].rect, None, entries[-1])]
-        return zones
 
     @staticmethod
     @abc.abstractmethod
@@ -142,6 +133,37 @@ class SidebarNoise(Generic[SidebarT]):
     def __repr__(self):
         return f"SidebarNoise(sidebar={repr(self.sidebar)}, noise_count={self.noise_count})"
 
+    def score_match(self, rect: pymupdf.Rect) -> float:
+        """Scores the match between the sidebar and a material description bounding box.
+
+        The score is
+        - positively influenced by the width of the material description bounding box
+        - negatively influenced by the horizontal distance between (the right-hand-side of) the sidebar and (the
+          left-hand-side of) the material descriptions
+        - positively influenced by the height of the sidebar
+        - negatively influenced by vertical distance between the top of the sidebar and the top of the material
+          descriptions, and the vertical distance between the bottom of the sidebar and the bottom of the material
+          descriptions
+        The resulting score is also reduced if the sidebar has a high noise count (many unrelated tokens in between
+        the extracted depths values).
+
+        Returns:
+            float: The score of the match. Better matches have a higher score value.
+        """
+        sidebar_top, sidebar_bottom, sidebar_right = self.sidebar.rect.y0, self.sidebar.rect.y1, self.sidebar.rect.x1
+        material_left = rect.x0
+        material_top, material_bottom = rect.y0, rect.y1
+        x_distance = abs(sidebar_right - material_left)
+        y_distance = abs(sidebar_top - material_top) + abs(sidebar_bottom - material_bottom)
+
+        height = sidebar_bottom - sidebar_top
+
+        geometry_score = rect.width - 1.64 * x_distance + height - 2 * y_distance
+
+        noise_penalty_multiplier = math.pow(0.8, 10 * self.noise_count / len(self.sidebar.entries))
+
+        return geometry_score * noise_penalty_multiplier
+
 
 @dataclass
 class SidebarQualityMetrics:
@@ -156,18 +178,20 @@ class SidebarQualityMetrics:
     best_sidebar_score: float
 
 
-def noise_count(sidebar: Sidebar, line_rtree: fastquadtree.RectQuadTreeObjects) -> int:
+def noise_count(sidebar: Sidebar, line_rtree: TextLineRTree) -> int:
     """Counts the number of text lines that intersect with the Sidebar entries.
 
     Args:
         sidebar (Sidebar): Sidebar object for which the noise count is calculated.
-        line_rtree (fastquadtree.RectQuadTreeObjects): Pre-built R-tree of all text lines on page for spatial queries.
+        line_rtree (TextLineRTree): Pre-built R-tree of all text lines on page for spatial queries.
 
     Returns:
         int: The number of text lines that intersect with the Sidebar entries but are not part of it.
     """
     sidebar_rect = sidebar.rect
-    intersecting_lines = _get_intersecting_lines(line_rtree, sidebar_rect)
+
+    intersecting_lines = line_rtree.query(sidebar_rect)
+    intersecting_lines = [line for line in intersecting_lines if any(char.isalnum() for char in line.text)]
 
     def significant_intersection(line: TextLine) -> bool:
         line_rect = line.rect
@@ -180,9 +204,3 @@ def noise_count(sidebar: Sidebar, line_rtree: fastquadtree.RectQuadTreeObjects) 
         return not any(line_rect.intersects(entry.rect) for entry in sidebar.all_entries)
 
     return sum(1 for line in intersecting_lines if significant_intersection(line) and not_in_entries(line))
-
-
-def _get_intersecting_lines(line_rtree: fastquadtree.RectQuadTreeObjects, rect: pymupdf.Rect) -> list[TextLine]:
-    """Retrieve all words from the page intersecting with Sidebar bounding box."""
-    intersecting_lines = [item.obj for item in line_rtree.query((rect.x0, rect.y0, rect.x1, rect.y1))]
-    return [line for line in intersecting_lines if any(char.isalnum() for char in line.text)]
