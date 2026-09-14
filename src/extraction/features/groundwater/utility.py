@@ -1,6 +1,7 @@
 """Series of utility functions for groundwater stratigraphy."""
 
 from datetime import date, datetime
+from decimal import Decimal
 
 import regex
 
@@ -33,7 +34,7 @@ def is_valid_date(date_str: str, date_format: str) -> bool:
         return False
 
 
-def extract_depth(text: str, max_depth: int) -> float | None:
+def extract_depth(text: str, max_depth: int) -> Decimal | None:
     """Extract the depth from a string.
 
     Args:
@@ -41,7 +42,7 @@ def extract_depth(text: str, max_depth: int) -> float | None:
         max_depth (int): The maximum depth allowed.
 
     Returns:
-        float: The extracted depth.
+        Decimal | None: The extracted depth.
     """
     depth_patterns = [
         r"([\d.]+)\s*m\s*u\.t\.",  # e.g. "5.13 m u.T."
@@ -55,7 +56,7 @@ def extract_depth(text: str, max_depth: int) -> float | None:
         depth_match = regex.search(pattern, corrected_text)
         try:
             if depth_match:
-                depth = float(depth_match.group(1).replace(",", "."))
+                depth = Decimal(depth_match.group(1).replace(",", "."))
                 if depth > max_depth:
                     # If the extracted depth is greater than the max depth, set it to None and continue searching.
                     depth = None
@@ -66,7 +67,7 @@ def extract_depth(text: str, max_depth: int) -> float | None:
     return depth
 
 
-def extract_elevation(text: str) -> float | None:
+def extract_elevation(text: str) -> Decimal | None:
     """Extract the elevation from a string.
 
     Args:
@@ -86,7 +87,7 @@ def extract_elevation(text: str) -> float | None:
     for pattern in elevation_patterns:
         elevation_match = regex.search(pattern, text.lower().replace(", ", ",").replace(". ", "."))
         if elevation_match:
-            elevation = float(elevation_match.group(1).replace(" ", "").replace(",", "."))
+            elevation = Decimal(elevation_match.group(1).replace(" ", "").replace(",", "."))
             break
 
     return elevation

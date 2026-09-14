@@ -1,5 +1,7 @@
 """Test suite for the find_depth_columns module."""
 
+from decimal import Decimal
+
 import pymupdf
 import pytest
 
@@ -75,7 +77,7 @@ def test_aabovebsidebar_arithmeticprogressionentries(input, expected):  # noqa: 
 )
 def test_aabovebsidebar_ascendingcount(input, expected):
     """Test the ascending_count method of the AAboveBSidebar class."""
-    entries = [DepthColumnEntry(value=value, rect=pymupdf.Rect(), page_number=0) for value in input]
+    entries = [DepthColumnEntry(value=Decimal(value), rect=pymupdf.Rect(), page_number=0) for value in input]
     assert AAboveBSidebar(entries).ascending_count() == expected
 
 

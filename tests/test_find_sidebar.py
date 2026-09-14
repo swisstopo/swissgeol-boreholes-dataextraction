@@ -1,5 +1,7 @@
 """Test suite for the find_depth_columns module."""
 
+from decimal import Decimal
+
 import pymupdf
 import pytest
 
@@ -33,25 +35,25 @@ def test_depth_column_entries():  # noqa: D103
     ]
     entries = DepthColumnEntryExtractor.find_in_words(all_words)
     assert len(entries) == 7, "There should be 7 entries"
-    assert pytest.approx(entries[0].value) == 10.0, "The first entry should have a value of 10.0"
+    assert entries[0].value == Decimal(10.0), "The first entry should have a value of 10.0"
     assert entries[0].has_decimal_point, "The first entry has a decimal point"
 
-    assert pytest.approx(entries[1].value) == 20.0, "The second entry should have a value of 20.0"
+    assert entries[1].value == Decimal(20.0), "The second entry should have a value of 20.0"
     assert entries[1].has_decimal_point, "The second entry has a decimal point"
 
-    assert pytest.approx(entries[2].value) == 30.0, "The third entry should have a value of 30.0"
+    assert entries[2].value == Decimal(30.0), "The third entry should have a value of 30.0"
     assert entries[2].has_decimal_point, "The third entry has a decimal point"
 
-    assert pytest.approx(entries[3].value) == 40.0, "The fourth entry should have a value of 40.0"
+    assert entries[3].value == Decimal(40.0), "The fourth entry should have a value of 40.0"
     assert entries[3].has_decimal_point, "The forth entry has a decimal point"
 
-    assert pytest.approx(entries[4].value) == 50.0, "The fifth entry should have a value of 50.0"
+    assert entries[4].value == Decimal(50.0), "The fifth entry should have a value of 50.0"
     assert not entries[4].has_decimal_point, "The fifth entry doesn't have a decimal point"
 
-    assert pytest.approx(entries[5].value) == 60.0, "The sixth entry should have a value of 60.0"
+    assert entries[5].value == Decimal(60.0), "The sixth entry should have a value of 60.0"
     assert entries[5].has_decimal_point, "The sixth entry has a decimal point"
 
-    assert pytest.approx(entries[6].value) == 70.0, "The seventh entry should have a value of 70.0"
+    assert entries[6].value == Decimal(70.0), "The seventh entry should have a value of 70.0"
     assert not entries[6].has_decimal_point, "The seventh entry doesn't have a decimal point"
 
 
@@ -59,13 +61,13 @@ def test_atobintervalextractor_fromtext():  # noqa: D103
     """Test the AToBIntervalExtractor.from_text."""
     line = TextLine([TextWord(pymupdf.Rect(0, 0, 10, 1), "10.00-20.0m", PAGE_NUMBER)])
     interval, _ = AToBIntervalExtractor.from_text(line)
-    assert interval.start.value == 10.0, "The start value of the interval should be 10.0"
-    assert interval.end.value == 20.0, "The end value of the interval should be 20.0"
+    assert interval.start.value == Decimal(10.0), "The start value of the interval should be 10.0"
+    assert interval.end.value == Decimal(20.0), "The end value of the interval should be 20.0"
 
     line = TextLine([TextWord(pymupdf.Rect(0, 2, 10, 3), "30.0-40.0m", PAGE_NUMBER)])
     interval, _ = AToBIntervalExtractor.from_text(line)
-    assert interval.start.value == 30.0, "The start value of the interval should be 30.0"
-    assert interval.end.value == 40.0, "The end value of the interval should be 40.0"
+    assert interval.start.value == Decimal(30.0), "The start value of the interval should be 30.0"
+    assert interval.end.value == Decimal(40.0), "The end value of the interval should be 40.0"
 
 
 def test_depth_column_entries_with_leading_character():  # noqa: D103

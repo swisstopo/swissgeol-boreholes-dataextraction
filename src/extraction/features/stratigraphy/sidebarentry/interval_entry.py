@@ -1,5 +1,7 @@
 """Contains a class for interval entries, which each entry defines the start and end depth of a layer."""
 
+from decimal import Decimal
+
 from extraction.features.stratigraphy.interval.interval import AToBInterval
 from extraction.features.stratigraphy.sidebarentry.sidebar_entry import SidebarEntry
 
@@ -11,9 +13,9 @@ class IntervalEntry(SidebarEntry[AToBInterval]):
         super().__init__(interval, interval.rect, page_number)
 
     @property
-    def start_value(self) -> float | None:
+    def start_value(self) -> Decimal | None:
         return self.value.start.value if self.value.start is not None else None
 
     @property
-    def end_value(self) -> float | None:
+    def end_value(self) -> Decimal | None:
         return self.value.end.value if self.value.end is not None else None

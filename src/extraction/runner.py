@@ -194,7 +194,10 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
             run_result,
             "predictions_elevation.json",
             lambda borehole: borehole.metadata.elevation,
-            lambda elevation: {"elevation": elevation.feature.elevation, "is_correct": elevation.feature.is_correct},
+            lambda elevation: {
+                "elevation": float(elevation.feature.elevation),
+                "is_correct": elevation.feature.is_correct,
+            },
         )
 
         self._log_per_borehole_predictions(
@@ -202,8 +205,8 @@ class ExtractionPipelineRunner(PipelineRunner[OverallFilePredictions, Extraction
             "predictions_coordinates.json",
             lambda borehole: borehole.metadata.coordinates,
             lambda coordinates: {
-                "E": coordinates.feature.east.coordinate_value,
-                "N": coordinates.feature.north.coordinate_value,
+                "E": float(coordinates.feature.east.coordinate_value),
+                "N": float(coordinates.feature.north.coordinate_value),
                 "is_correct": coordinates.feature.is_correct,
             },
         )

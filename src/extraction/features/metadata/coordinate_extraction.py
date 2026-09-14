@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from decimal import Decimal
 
 import pymupdf
 import regex
@@ -25,7 +26,7 @@ COORDINATE_ENTRY_REGEX = r"(?:([12])[\.\s'‘’]{0,3})?(\d{3})[\.\s'‘’]{0,3
 class CoordinateEntry:
     """Dataclass to represent a coordinate entry."""
 
-    coordinate_value: float
+    coordinate_value: Decimal
 
     def __repr__(self):
         if self.coordinate_value > 1e5:
@@ -57,18 +58,18 @@ class Coordinate(ExtractedFeature):
             dict: The object as a dictionary.
         """
         return {
-            "E": self.east.coordinate_value,
-            "N": self.north.coordinate_value,
+            "E": float(self.east.coordinate_value),
+            "N": float(self.north.coordinate_value),
             "is_correct": self.is_correct,
         }
 
     @staticmethod
-    def from_values(east: float, north: float, is_correct: bool | None = None) -> Coordinate | None:
+    def from_values(east: Decimal, north: Decimal, is_correct: bool | None = None) -> Coordinate | None:
         """Creates a Coordinate object from the given values.
 
         Args:
-            east (float): The east coordinate value.
-            north (float): The north coordinate value.
+            east (Decimal): The east coordinate value.
+            north (Decimal): The north coordinate value.
             is_correct (bool): Indicate if the coordinates are properly detected.
 
         Returns:
@@ -91,16 +92,18 @@ class Coordinate(ExtractedFeature):
             return None
 
     @classmethod
-    def from_json(cls, input: dict) -> Coordinate:
+    def from_json(cls, input: dict) -> Coordinate | None:
         """Converts a dictionary to a Coordinate object.
 
         Args:
             input (dict): A dictionary containing the coordinate information.
 
         Returns:
-            Coordinate: The coordinate object.
+            Coordinate | None: The coordinate object.
         """
-        return Coordinate.from_values(east=input["E"], north=input["N"], is_correct=input.get("is_correct"))
+        return Coordinate.from_values(
+            east=Decimal(input["E"]), north=Decimal(input["N"]), is_correct=input.get("is_correct")
+        )
 
 
 @dataclass
@@ -165,7 +168,8 @@ class CoordinateExtractor(DataExtractor):
             rect.include_rect(x_match[1])
             rect.include_rect(y_match[1])
             coordinates = Coordinate.from_values(
-                east=int("".join(x_match[0].groups(default=""))), north=int("".join(y_match[0].groups(default="")))
+                east=Decimal("".join(x_match[0].groups(default=""))),
+                north=Decimal("".join(y_match[0].groups(default=""))),
             )
             if coordinates is not None and coordinates.is_valid():
                 found_coordinates.append(FeatureOnPage(feature=coordinates, rect=rect, page=page))

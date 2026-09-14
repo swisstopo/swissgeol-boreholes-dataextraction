@@ -1,6 +1,7 @@
 """Layer class definition."""
 
 from dataclasses import dataclass
+from decimal import Decimal
 
 import pymupdf
 
@@ -21,14 +22,14 @@ class LayerDepthsEntry(RectWithPageMixin):
     data serialization, such as `to_json()`.
     """
 
-    def __init__(self, value: float, rect: pymupdf.Rect | None, page_number: int):
+    def __init__(self, value: Decimal, rect: pymupdf.Rect | None, page_number: int):
         self.value = value
         self.rect_with_page = RectWithPage(rect, page_number)
 
     def to_json(self) -> dict:
         """Convert the LayerDepthsEntry object to a JSON serializable format."""
         return {
-            "value": self.value,
+            "value": float(self.value),
             "rect": [self.rect.x0, self.rect.y0, self.rect.x1, self.rect.y1] if self.rect else None,
             "page": self.page_number if self.page_number else None,
         }
@@ -47,7 +48,9 @@ class LayerDepthsEntry(RectWithPageMixin):
             LayerDepthsEntry: the corresponding LayerDepthsEntry object.
         """
         return cls(
-            value=data["value"], rect=pymupdf.Rect(data["rect"]) if data["rect"] else None, page_number=data["page"]
+            value=Decimal(data["value"]),
+            rect=pymupdf.Rect(data["rect"]) if data["rect"] else None,
+            page_number=data["page"],
         )
 
 

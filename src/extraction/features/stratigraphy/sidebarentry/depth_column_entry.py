@@ -1,11 +1,13 @@
 """Contains a class for depth column entries, which indicate the measured depth of an interface between layers."""
 
+from decimal import Decimal
+
 import pymupdf
 
 from extraction.features.stratigraphy.sidebarentry.sidebar_entry import SidebarEntry
 
 
-class DepthColumnEntry(SidebarEntry[float]):
+class DepthColumnEntry(SidebarEntry[Decimal]):
     """Represents a depth value extracted from the document.
 
     DepthColumnEntry are used during the extraction process to hold depth data, which will later be part Intervals
@@ -13,7 +15,7 @@ class DepthColumnEntry(SidebarEntry[float]):
     of the core extraction logic, and is the building block for larger object like Sidebars.
     """
 
-    def __init__(self, value: float, rect: pymupdf.Rect, page_number: int, has_decimal_point: bool = False):
+    def __init__(self, value: Decimal, rect: pymupdf.Rect, page_number: int, has_decimal_point: bool = False):
         super().__init__(value, rect, page_number)
         self.has_decimal_point = has_decimal_point
         self.relative_shift = 0.0
@@ -35,7 +37,7 @@ class DepthColumnEntry(SidebarEntry[float]):
         """
         return cls(
             rect=rect,
-            value=abs(float(string_value.replace(",", "."))),
+            value=abs(Decimal(string_value.replace(",", "."))),
             page_number=page_number,
             has_decimal_point="." in string_value,
         )
