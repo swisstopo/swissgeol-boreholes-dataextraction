@@ -1,0 +1,26 @@
+name: "generate_counterfeits"
+description: "Generate counterfeit for each text from ground truth class to counterfeit class."
+input_schema:
+  type: "object"
+  required: ["predictions"]
+  properties:
+    predictions:
+      type: "array"
+      items:
+        type: "object"
+        required:
+          [
+            "ground_truth_text",
+            "counterfeit_text",
+            "ground_truth_class",
+            "counterfeit_class",
+          ]
+        properties:
+          ground_truth_text:
+            type: "string"
+          counterfeit_text:
+            type: "string"
+          ground_truth_class:
+            type: "string"
+          counterfeit_class:
+            type: "string"

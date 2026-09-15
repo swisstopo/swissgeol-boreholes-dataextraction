@@ -1,7 +1,7 @@
 classification_system: "grain_shape"
 experiment_name: "grain_shape"
 model_path: "google-bert/bert-base-multilingual-uncased"
-use_class_balancing: false
+use_class_balancing: true
 inference_batch_size: 32
 
 # Training and testing sets
@@ -11,6 +11,8 @@ training_sets:
     ground_truths:
       - deepwells_ground_truth.json
       - geoquat_ground_truth.json
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/grain_shape_extra_ground_truth.json
 
 test_sets:
   global_grain_shape:
@@ -18,6 +20,8 @@ test_sets:
     ground_truths:
       - deepwells_ground_truth.json
       - geoquat_ground_truth.json
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/grain_shape_extra_ground_truth.json
   deepwells_grain_shape:
     classification_system: grain_shape
     ground_truths:
@@ -26,6 +30,11 @@ test_sets:
     classification_system: grain_shape
     ground_truths:
       - geoquat_ground_truth.json
+  extra_grain_shape:
+    classification_system: grain_shape
+    ground_truths:
+      - bert_extra/negative_ground_truth.json
+      - bert_extra/grain_shape_extra_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:
