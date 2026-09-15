@@ -174,7 +174,6 @@ class AWSBedrockCounterfeits:
 
 def generate(
     samples: list[LayerInformation],
-    classification_system_cls: type[ClassificationSystem],
     aws_model: AWSBedrockCounterfeits,
     seed: int = 0,
 ) -> list[LayerInformationCounterfeits]:
@@ -182,7 +181,6 @@ def generate(
 
     Args:
         samples (list[LayerInformation]): Ground truth layers to generate counterfeits for.
-        classification_system_cls (type[ClassificationSystem]): Classification system defining the class set.
         aws_model (AWSBedrockCounterfeits): Bedrock client used to generate the counterfeit rewrites.
         seed (int): Seed for the random target-class assignment. Defaults to 0.
 
