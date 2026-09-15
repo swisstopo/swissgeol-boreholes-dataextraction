@@ -56,7 +56,7 @@ Additional endpoints and their functionalities can be found in the project's sou
 
 ### Memory usage
 
-We tested the `classify_borehole_type`endpoint on three different files 
+We tested the `classify_borehole_type`endpoint on three different files
 -  "267122001-bp.pdf" / 127 KB , 1 borehole
 - "267125358-bp.pdf" / 428 KB , 2 boreholes
 - "3384.pdf" / 275 MB, 259 pages
@@ -68,12 +68,12 @@ We tested the `classify_borehole_type`endpoint on three different files
 | Classify (plain text) -- idle+BERT baseline | 1883.5 MB | 40.4 MB |
 | Classify (plain text) -- peak increase | 599.2 MB | 7.0 MB |
 | Classify (plain text) -- retained increase | 600.5 MB | 5.8 MB |
-| Classify borehole type (267122001-bp.pdf, 0 MB) -- idle+BERT baseline | 1833.1 MB | 124.6 MB |
-| Classify borehole type (267122001-bp.pdf, 0 MB) -- peak increase | 410.4 MB | 4.9 MB |
-| Classify borehole type (267122001-bp.pdf, 0 MB) -- retained increase | 410.4 MB | 4.2 MB |
-| Classify borehole type (267125358-bp.pdf, 0 MB) -- idle+BERT baseline | 1918.0 MB | 29.5 MB |
-| Classify borehole type (267125358-bp.pdf, 0 MB) -- peak increase | 406.4 MB | 6.9 MB |
-| Classify borehole type (267125358-bp.pdf, 0 MB) -- retained increase | 406.3 MB | 7.0 MB |
+| Classify borehole type (267122001-bp.pdf, 127 KB) -- idle+BERT baseline | 1833.1 MB | 124.6 MB |
+| Classify borehole type (267122001-bp.pdf, 127 KB) -- peak increase | 410.4 MB | 4.9 MB |
+| Classify borehole type (267122001-bp.pdf, 127 KB) -- retained increase | 410.4 MB | 4.2 MB |
+| Classify borehole type (267125358-bp.pdf, 428 KB) -- idle+BERT baseline | 1918.0 MB | 29.5 MB |
+| Classify borehole type (267125358-bp.pdf, 428 KB) -- peak increase | 406.4 MB | 6.9 MB |
+| Classify borehole type (267125358-bp.pdf, 428 KB) -- retained increase | 406.3 MB | 7.0 MB |
 | Classify borehole type (3384.pdf, 275 MB) -- idle+BERT baseline | 2028.5 MB | 715.6 MB |
 | Classify borehole type (3384.pdf, 275 MB) -- peak increase | 1390.3 MB | 761.3 MB |
 | Classify borehole type (3384.pdf, 275 MB) -- retained increase | 104.7 MB | 802.6 MB |
