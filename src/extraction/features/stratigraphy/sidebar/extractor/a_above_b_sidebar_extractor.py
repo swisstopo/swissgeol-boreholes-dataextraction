@@ -57,10 +57,7 @@ class AAboveBSidebarExtractor:
             # return candidate values that are part of a segment of at least 3 consecutive values
             segments = [[value - step, value, value + step] for value in candidate_values]
             return {
-                value / 100
-                for segment in segments
-                if all(value in values_set for value in segment)
-                for value in segment
+                value for segment in segments if all(value in values_set for value in segment) for value in segment
             }
         else:
             return set()
