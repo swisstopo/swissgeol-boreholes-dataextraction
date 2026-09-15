@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from decimal import Decimal
 from itertools import product
 from typing import ClassVar
 
@@ -47,7 +48,7 @@ class AAboveBSidebar(DepthColumEntrySidebar):
         # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with
         # the line of the corresponding layer boundary.
         positions = np.array([entry.rect.y1 for entry in self.entries])
-        entries = np.array([entry.value for entry in self.entries])
+        entries = np.array([float(entry.value) for entry in self.entries])
 
         std_positions = np.std(positions)
         std_entries = np.std(entries)
@@ -79,13 +80,13 @@ class AAboveBSidebar(DepthColumEntrySidebar):
         # We look at the lower y coordinate, because most often the baseline of the depth value text is aligned with
         # the line of the corresponding layer boundary.
         positions = np.array([entry.rect.y1 for entry in self.entries])
-        values = np.array([entry.value for entry in self.entries])
+        values = np.array([float(entry.value) for entry in self.entries])
 
         if len(set(positions)) >= 2:
             b, a = np.polynomial.polynomial.polyfit(positions, values, 1)  # linear regression
         else:
             b, a = np.median(positions), 0
-        squared_errors = [(entry.value - (a * entry.rect.y1 + b)) ** 2 for entry in self.entries]
+        squared_errors = [(float(entry.value) - (a * entry.rect.y1 + b)) ** 2 for entry in self.entries]
         mean_squared_error = sum(squared_errors) / len(self.entries)
         return mean_squared_error
 
@@ -94,7 +95,9 @@ class AAboveBSidebar(DepthColumEntrySidebar):
         if not self.entries:
             return self
 
-        def new_sidebar(index: int, new_value: float) -> AAboveBSidebar:
+        applied_factor = [1 for entry in self.entries]
+
+        def new_sidebar(index: int, new_value: Decimal) -> AAboveBSidebar:
             entry = self.entries[index]
             new_entry = DepthColumnEntry(rect=entry.rect, value=new_value, page_number=entry.page_number)
             return AAboveBSidebar([*self.entries[:index], new_entry, *self.entries[index + 1 :]])
@@ -105,6 +108,7 @@ class AAboveBSidebar(DepthColumEntrySidebar):
         best_score = score(self)
         best_index = None
         best_new_value = None
+        best_factor = None
 
         continue_search = True
         # Repeatedly improve the values until there is nothing left to improve
@@ -113,16 +117,19 @@ class AAboveBSidebar(DepthColumEntrySidebar):
             median_value = np.median(np.array([entry.value for entry in self.entries]))
 
             for i, entry in enumerate(self.entries):
-                if entry.value.is_integer() and entry.value > median_value and not entry.has_decimal_point:
-                    candidate_values = [entry.value / 100, entry.value / 10]
-                    for new_value in candidate_values:
+                if entry.value > median_value and not entry.has_decimal_point:
+                    factors = [factor for factor in [10, 100] if factor * applied_factor[i] <= 100]
+                    for factor in factors:
+                        new_value = entry.value / factor
                         new_score = score(new_sidebar(i, new_value))
                         if new_score > best_score:
                             best_score = new_score
                             best_index = i
                             best_new_value = new_value
+                            best_factor = factor
 
-            if best_index is not None:
+            if best_index is not None and best_new_value is not None:
+                applied_factor[best_index] *= best_factor
                 continue_search = True
                 old_entry = self.entries[best_index]
                 self.entries[best_index] = DepthColumnEntry(

@@ -1,5 +1,7 @@
 """Test suite for the interval module."""
 
+from decimal import Decimal
+
 import pymupdf
 import pytest
 
@@ -19,9 +21,9 @@ def test_atobintervalextractor_fromtext():  # noqa: D103
         TextWord(pymupdf.Rect(5, 0, 6, 1), "m", page=1),
     ]
     interval, _ = AToBIntervalExtractor.from_text(TextLine(words), require_start_of_string=False)
-    assert interval.start.value == 1.70, "The start value of the interval should be 1.70m"
+    assert interval.start.value == Decimal("1.70"), "The start value of the interval should be 1.70m"
     assert interval.start.rect == pymupdf.Rect(2, 0, 3, 1), "The start rect of the interval should be correct"
-    assert interval.end.value == 5.80, "The start value of the interval should be 5.80m"
+    assert interval.end.value == Decimal("5.80"), "The start value of the interval should be 5.80m"
     assert interval.end.rect == pymupdf.Rect(4, 0, 5, 1), "The end rect of the interval should be correct"
 
     words = [
@@ -29,9 +31,9 @@ def test_atobintervalextractor_fromtext():  # noqa: D103
         TextWord(pymupdf.Rect(2, 0, 6, 1), "1,70-5,80m", page=1),
     ]
     interval, _ = AToBIntervalExtractor.from_text(TextLine(words), require_start_of_string=False)
-    assert interval.start.value == 1.70, "The start value of the interval should be 1.70m"
+    assert interval.start.value == Decimal("1.70"), "The start value of the interval should be 1.70m"
     assert interval.start.rect == pymupdf.Rect(2, 0, 6, 1), "The start rect of the interval should be correct"
-    assert interval.end.value == 5.80, "The start value of the interval should be 5.80m"
+    assert interval.end.value == Decimal("5.80"), "The start value of the interval should be 5.80m"
     assert interval.end.rect == pymupdf.Rect(2, 0, 6, 1), "The end rect of the interval should be correct"
 
     words = [

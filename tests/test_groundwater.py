@@ -1,6 +1,7 @@
 """Tests for the groundwater module."""
 
 from datetime import date
+from decimal import Decimal
 
 import pymupdf
 import pytest
@@ -58,32 +59,22 @@ def groundtruth():
 
 
 @pytest.fixture
-def groundwater_at_2m22() -> dict:
-    """Fixture that returns an Groundwater object (embeded in a FeatureOnPage)."""
-    return FeatureOnPage.from_json(
-        {
-            "depth": 2.22,
-            "date": "2016-04-18",
-            "elevation": 448.07,
-            "page": 1,
-            "rect": [0, 0, 100, 100],
-        },
-        Groundwater,
+def groundwater_at_2m22() -> FeatureOnPage[Groundwater]:
+    """Fixture that returns a Groundwater object (embeded in a FeatureOnPage)."""
+    return FeatureOnPage(
+        Groundwater(depth=Decimal("2.22"), date=date(2016, 4, 18), elevation=Decimal("448.07")),
+        rect=pymupdf.Rect(0, 0, 100, 100),
+        page=1,
     )
 
 
 @pytest.fixture
-def groundwater_at_3m22() -> dict:
+def groundwater_at_3m22() -> FeatureOnPage[Groundwater]:
     """Fixture that returns another Groundwater object (embeded in a FeatureOnPage)."""
-    return FeatureOnPage.from_json(
-        {
-            "depth": 3.22,
-            "date": "2016-04-20",
-            "elevation": 447.07,
-            "page": 1,
-            "rect": [0, 0, 100, 100],
-        },
-        Groundwater,
+    return FeatureOnPage(
+        Groundwater(depth=Decimal("3.22"), date=date(2016, 4, 20), elevation=Decimal("447.07")),
+        rect=pymupdf.Rect(0, 0, 100, 100),
+        page=1,
     )
 
 
@@ -96,8 +87,8 @@ def test_extract_date(date_test_cases):
 def test_extract_elevation_ignores_millimeter_diameters():
     """A "600 mm" drilling diameter must not be read as a 600m elevation."""
     assert extract_elevation("Greiferbohrung 0 600 mm") is None
-    assert extract_elevation("448.07 m") == 448.07
-    assert extract_elevation("430.75 m u.M.") == 430.75
+    assert extract_elevation("448.07 m") == Decimal("448.07")
+    assert extract_elevation("430.75 m u.M.") == Decimal("430.75")
 
 
 def test_evaluate_with_ground_truth(groundtruth, groundwater_at_2m22, groundwater_at_3m22):
@@ -188,7 +179,7 @@ def test_evaluate_multiple_documents(groundtruth, groundwater_at_2m22, groundwat
 
 def test_merge_compatible_candidates_merges_unique_pair():
     """Two candidates with no overlapping fields are merged into one."""
-    depth_only = _gw(depth=5.0, rect=(0, 0, 1, 1))
+    depth_only = _gw(depth=Decimal(5), rect=(0, 0, 1, 1))
     date_only = _gw(date_=date(2020, 3, 12), rect=(2, 2, 3, 3))
 
     borehole = GroundwatersInBorehole([depth_only, date_only])
@@ -196,7 +187,7 @@ def test_merge_compatible_candidates_merges_unique_pair():
 
     assert len(borehole.groundwater_feature_list) == 1
     feature = borehole.groundwater_feature_list[0].feature
-    assert (feature.depth, feature.date, feature.elevation) == (5.0, date(2020, 3, 12), None)
+    assert (feature.depth, feature.date, feature.elevation) == (Decimal(5.0), date(2020, 3, 12), None)
     assert borehole.groundwater_feature_list[0].rect == pymupdf.Rect(0, 0, 3, 3)
 
 

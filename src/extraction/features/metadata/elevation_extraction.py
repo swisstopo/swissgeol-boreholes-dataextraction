@@ -8,6 +8,7 @@ descriptions.
 
 import logging
 from dataclasses import dataclass
+from decimal import Decimal
 
 import numpy as np
 import pymupdf
@@ -28,12 +29,7 @@ logger = logging.getLogger(__name__)
 class Elevation(ExtractedFeature):
     """Abstract class for Elevation Information."""
 
-    elevation: float  # Elevation relative to the mean sea level
-
-    def __post_init__(self):
-        """Checks if the information is valid."""
-        if not isinstance(self.elevation, float):
-            raise ValueError("Elevation must be a float")
+    elevation: Decimal  # Elevation relative to the mean sea level
 
     def is_valid(self) -> bool:
         """Checks if the information is valid.
@@ -58,7 +54,7 @@ class Elevation(ExtractedFeature):
             dict: The object as a dictionary.
         """
         return {
-            "elevation": self.elevation,
+            "elevation": float(self.elevation),
             "is_correct": self.is_correct,
         }
 
@@ -72,7 +68,7 @@ class Elevation(ExtractedFeature):
         Returns:
             Elevation: The elevation information object.
         """
-        return cls(elevation=data["elevation"], is_correct=data.get("is_correct"))
+        return cls(elevation=Decimal(data["elevation"]), is_correct=data.get("is_correct"))
 
 
 class ElevationExtractor(DataExtractor):
