@@ -59,6 +59,7 @@ class AWSBedrockCounterfeits:
             max_concurrent_calls (int): Max number of concurrent Bedrock calls. Defaults to 3.
         """
         self.max_concurrent_calls = max_concurrent_calls
+        self._semaphore = asyncio.Semaphore(max_concurrent_calls)
         self.model_id: str | None = os.environ.get("ANTHROPIC_MODEL_ID")
         self.model_region: str | None = os.environ.get("AWS_DEFAULT_REGION")
         self.bedrock_client = anthropic.AsyncAnthropicBedrock(aws_region=self.model_region)
@@ -145,7 +146,7 @@ class AWSBedrockCounterfeits:
         Returns:
             list[LayerInformationCounterfeits]: The batch, rewritten where the call succeeded.
         """
-        async with asyncio.Semaphore(self.max_concurrent_calls):
+        async with self._semaphore:
             try:
                 return await self._call_bedrock(layers)
             except Exception as e:
