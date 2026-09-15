@@ -149,6 +149,9 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
             for sec in predictions[ExistingClassificationSystems.en_secondary.name] or []
             if sec != predictions[ExistingClassificationSystems.en_main.name]
         ]
+        # Ensure emptied list is set to None
+        if not predictions[ExistingClassificationSystems.en_secondary.name]:
+            predictions[ExistingClassificationSystems.en_secondary.name] = None
 
     return ClassifyResponse(
         consolidation=ClassificationConsolidationClasses.unconsolidated
