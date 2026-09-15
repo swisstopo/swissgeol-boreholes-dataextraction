@@ -124,7 +124,7 @@ class Groundwater(ExtractedFeature):
         If both information are missing, tries to infer them from the given layers and the feature rectangle.
 
         Args:
-            terrain_elevation (float): The elevation of the terrain at the top of the borehole.
+            terrain_elevation (Decimal): The elevation of the terrain at the top of the borehole.
             layers (list[Layer]): The list of layers in the borehole.
             feature_rect (pymupdf.Rect): The bounding box of the groundwater feature.
         """

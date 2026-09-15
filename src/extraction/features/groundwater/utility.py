@@ -74,7 +74,7 @@ def extract_elevation(text: str) -> Decimal | None:
         text (str): The text to extract the elevation from.
 
     Returns:
-        float: The extracted elevation.
+        Decimal | None: The extracted elevation.
     """
     elevation_patterns = [
         r"(\d+(\.\d+)?)\s*m\s*u\.m\.",
