@@ -146,7 +146,7 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
     ):
         predictions[ExistingClassificationSystems.en_secondary.name] = [
             sec
-            for sec in predictions[ExistingClassificationSystems.en_secondary.name]
+            for sec in predictions[ExistingClassificationSystems.en_secondary.name] or []
             if sec != predictions[ExistingClassificationSystems.en_main.name]
         ]
 
