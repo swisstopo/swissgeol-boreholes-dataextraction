@@ -154,7 +154,7 @@ class AWSBedrockCounterfeits:
                 return layers
 
     async def process(
-        self, layers: list[LayerInformationCounterfeits], batch_size: int = 5
+        self, layers: list[LayerInformationCounterfeits], batch_size: int = 10
     ) -> list[LayerInformationCounterfeits]:
         """Generate counterfeits for all items, split into concurrently-processed batches.
 
@@ -295,7 +295,6 @@ def main(
     # Step 2: Generate counterfeit samples for classes
     counterfeit_samples = generate(
         samples=samples[:n_samples],
-        classification_system_cls=classification_system_cls,
         aws_model=aws_model,
         seed=seed,
     )
