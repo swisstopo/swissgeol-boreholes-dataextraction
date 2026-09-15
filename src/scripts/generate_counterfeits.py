@@ -63,7 +63,7 @@ class AWSBedrockCounterfeits:
         self.model_region: str | None = os.environ.get("AWS_DEFAULT_REGION")
         self.bedrock_client = anthropic.AsyncAnthropicBedrock(aws_region=self.model_region)
         self.tool: dict = read_params("bedrock/tool/tool_generate_counterfeits.yml")
-        self.class_examples: str = read_params(examples_path)["baseline"]
+        self.class_examples: str = read_params(str(examples_path))["baseline"]
         self.system_prompts: str = read_params("bedrock/prompts/bedrock_generate_counterfeits_prompt.yml")
 
     @backoff.on_exception(
@@ -190,7 +190,10 @@ def generate(
     """
     counterfeit_classes = list(set([sample.ground_truth_class[0] for sample in samples]))
     rnd = np.random.RandomState(seed=seed)
-    rnd_class_samples = rnd.randint(low=0, high=len(counterfeit_classes), size=len(samples))
+
+    def pick_counterfeit_index(ground_truth_name: str) -> int:
+        choices = [i for i, c in enumerate(counterfeit_classes) if c.name != ground_truth_name]
+        return choices[rnd.randint(low=0, high=len(choices))]
 
     return asyncio.run(
         aws_model.process(
@@ -199,12 +202,14 @@ def generate(
                     ground_truth_text=layer.material_description,
                     counterfeit_text=None,
                     ground_truth_class=layer.ground_truth_class[0].name,
-                    counterfeit_class=counterfeit_classes[rnd_class].name,
+                    counterfeit_class=counterfeit_classes[
+                        pick_counterfeit_index(layer.ground_truth_class[0].name)
+                    ].name,
                     filename=layer.filename,
                     borehole_index=layer.borehole_index,
                     layer_index=layer.layer_index,
                 )
-                for layer, rnd_class in zip(samples, rnd_class_samples, strict=True)
+                for layer in samples
             ]
         )
     )
@@ -288,7 +293,7 @@ def main(
     gt_boreholes = GroundTruthBoreholeWithLanguage.from_ground_truth(ground_truth=ground_truth.ground_truth)
     samples = classification_system_cls.process(ground_truth=gt_boreholes)
 
-    # Step 2: Generate counterfeit exmaples for classes
+    # Step 2: Generate counterfeit samples for classes
     counterfeit_samples = generate(
         samples=samples[:n_samples],
         classification_system_cls=classification_system_cls,
