@@ -1,16 +1,24 @@
 """Layer class definition."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import pymupdf
 
 from extraction.features.metadata.borehole_name_extraction import BoreholeName
+from extraction.features.metadata.coordinate_extraction import Coordinate
+from extraction.features.metadata.elevation_extraction import Elevation
 from extraction.features.stratigraphy.interval.interval import Interval
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature, FeatureOnPage
 from swissgeol_doc_processing.utils.file_utils import parse_text
+
+if TYPE_CHECKING:
+    # only needed for type hints; a real import would create a circular dependency, since
+    # groundwater_extraction.py itself imports ExtractedBorehole from this module
+    from extraction.features.groundwater.groundwater_extraction import Groundwater
 
 
 class LayerDepthsEntry(RectWithPageMixin):
@@ -229,9 +237,13 @@ class ExtractedBorehole:
 
     predictions: list[Layer]
     bounding_boxes: list[PageBoundingBoxes]  # one for each page that the borehole spans
-    # the borehole's own printed name, if one was found near it on the page it was (re-)detected on;
-    # used as a cross-page merge signal, not part of the final output (that's matched separately)
+    # metadata matched to this borehole on the page(s) it was (re-)detected on; carried forward across
+    # continuation merges (see `_merge_boreholes`)
     name: FeatureOnPage[BoreholeName] | None = None
+    elevation: FeatureOnPage[Elevation] | None = None
+    coordinates: FeatureOnPage[Coordinate] | None = None
+    # many-to-one, unlike the fields above: a borehole can have several groundwater readings
+    groundwater: list[FeatureOnPage["Groundwater"]] = field(default_factory=list)
 
 
 class LayersInDocument:

@@ -398,6 +398,9 @@ def _merge_boreholes(
         predictions=new_predictions,
         bounding_boxes=borehole_to_extend.bounding_boxes + borehole_continuation.bounding_boxes,
         name=borehole_to_extend.name or borehole_continuation.name,
+        elevation=borehole_to_extend.elevation or borehole_continuation.elevation,
+        coordinates=borehole_to_extend.coordinates or borehole_continuation.coordinates,
+        groundwater=borehole_to_extend.groundwater + borehole_continuation.groundwater,
     )
 
 
