@@ -188,7 +188,7 @@ def generate(
     Returns:
         list[LayerInformationCounterfeits]: One counterfeit item per input sample.
     """
-    counterfeit_classes = list(classification_system_cls.get_enum())
+    counterfeit_classes = list(set([sample.ground_truth_class[0] for sample in samples]))
     rnd = np.random.RandomState(seed=seed)
     rnd_class_samples = rnd.randint(low=0, high=len(counterfeit_classes), size=len(samples))
 
