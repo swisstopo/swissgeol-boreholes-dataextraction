@@ -27,6 +27,7 @@ training_sets:
     ground_truths:
       - bert_extra/negative_ground_truth.json
       - bert_extra/color_extra_ground_truth.json
+      - bert_extra/color_counterfeit_ground_truth.json
 
 test_sets:
   # Consolidated test (+ global)
@@ -40,6 +41,7 @@ test_sets:
       - zurich_ground_truth.json
       - bert_extra/negative_ground_truth.json
       - bert_extra/color_extra_ground_truth.json
+      - bert_extra/color_counterfeit_ground_truth.json
   deepwells_consolidated:
     classification_system: color_consolidated
     ground_truths:
@@ -101,6 +103,7 @@ test_sets:
     ground_truths:
       - bert_extra/negative_ground_truth.json
       - bert_extra/color_extra_ground_truth.json
+      - bert_extra/color_counterfeit_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:
