@@ -105,8 +105,11 @@ def classify(request: ClassifyRequest, bert_models: dict[str, BertModel]) -> Cla
 
     # Lithology head (layer 11 + pooler + classifier) determines consolidated vs unconsolidated.
     lithology_class = lithology_model.predict_from_embedding(shared_hidden_states, extended_mask)[0]
-    is_unconsolidated = lithology_class == LithologySystem.LithologyClasses.unconsolidated
 
+    if lithology_class == LithologySystem.LithologyClasses.not_specified:
+        return ClassifyResponse()
+
+    is_unconsolidated = lithology_class == LithologySystem.LithologyClasses.unconsolidated
     relevant_tasks = _UNCONSOLIDATED_TASKS if is_unconsolidated else _CONSOLIDATED_TASKS
 
     # Step 2: fan out to each relevant task head using the same shared backbone output.

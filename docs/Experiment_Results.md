@@ -7,7 +7,7 @@
 | `accessory_components`             | x        |          152,083 (47) |  Multi |    0.842 |    0.972 |             - |
 | `alteration_degree_consolidated`   |          |             2,716 (8) | Single |    0.392 |    0.782 |             - |
 | `alteration_degree_unconsolidated` |          |                41 (8) | Single |        - |        - |             - |
-| `cementation`                      | x        |           119,404 (7) | Single |    0.851 |    0.959|             - |
+| `cementation`                      | x        |           119,404 (7) | Single |    0.851 |    0.959 |             - |
 | `color_consolidated`*              |          |           16,143 (91) | Single |    0.487 |    0.752 |             - |
 | `color_unconsolidated`*            |          |           20,121 (91) | Single |    0.502 |    0.803 |             - |
 | `debris`                           |          |           70,084, (7) |  Multi |    0.797 |    0.983 |             - |
@@ -21,6 +21,7 @@
 | `uscs`                             |          |            9,917 (38) | Single |    0.329 |    0.602 |             - |
 
 * Model jointly trained, same for both tasks.
+
 
 ## Accessory Components - Enhanced
 
@@ -140,12 +141,13 @@
 
 | Test set  | Bedrock F1-macro | Bedrock F1-micro | BERT F1-macro | BERT F1-micro |
 |-----------|------------------|------------------|---------------|---------------|
-| Deepwells | 0.469            | 0.374            | 0.808         | 0.947         |
-| Geoquat   | 0.456            | 0.745            | 0.529         | 0.872         |
-| Lithology | 0.735            | 0.925            | 0.798         | 0.942         |
-| Nagra     | 0.504            | 0.968            | 0.842         | 0.992         |
-| Thurgau   | 0.363            | 0.864            | 0.576         | 0.916         |
-| Overall   | -                | -                | 0.848         | 0.942         |
+| Deepwells | 0.490            | 0.384            | 0.784         | 0.938         |
+| Geoquat   | 0.548            | 0.747            | 0.585         | 0.865         |
+| Lithology | 0.767            | 0.931            | 0.858         | 0.960         |
+| Nagra     | 0.579            | 0.973            | 0.912         | 0.992         |
+| Thurgau   | 0.406            | 0.855            | 0.537         | 0.912         |
+| Extra     | -                | -                | 0.989         | 0.990         |
+| Overall   | -                | -                | 0.941         | 0.942         |
 
 
 ## Mineral Components - Enhanced
