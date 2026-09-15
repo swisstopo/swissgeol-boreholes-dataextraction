@@ -262,32 +262,6 @@ def to_ground_truth(
     }
 
 
-def write_counterfeit_gt(
-    counterfeit_samples: list[LayerInformationCounterfeits],
-    classification_system_cls: type[ClassificationSystem],
-    out_path: Path,
-) -> None:
-    """Write counterfeit samples to a GroundTruth-shaped JSON file.
-
-    Args:
-        counterfeit_samples (list[LayerInformationCounterfeits]): Counterfeit items.
-        classification_system_cls (type[ClassificationSystem]): Classification system that produced the samples.
-        out_path (Path): Output JSON file path. Parent directories are created if missing.
-    """
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(
-            {
-                filename: [borehole.model_dump() for borehole in boreholes]
-                for filename, boreholes in to_ground_truth(counterfeit_samples, classification_system_cls).items()
-            },
-            f,
-            indent=2,
-            ensure_ascii=False,
-        )
-    logger.info("Wrote %d counterfeit samples to %s", len(counterfeit_samples), out_path)
-
-
 def main(
     ground_truth_path: Path,
     classification_system: str,
@@ -307,12 +281,14 @@ def main(
         seed (int): Seed for the random target-class assignment. Defaults to 0.
     """
     aws_model = AWSBedrockCounterfeits(examples_path=examples_path)
+
+    # Step 1: Load ground truth examples for classes
     ground_truth = GroundTruth(ground_truth_path)
     classification_system_cls = ExistingClassificationSystems.get_classification_system_type(classification_system)
-
     gt_boreholes = GroundTruthBoreholeWithLanguage.from_ground_truth(ground_truth=ground_truth.ground_truth)
     samples = classification_system_cls.process(ground_truth=gt_boreholes)
 
+    # Step 2: Generate counterfeit exmaples for classes
     counterfeit_samples = generate(
         samples=samples[:n_samples],
         classification_system_cls=classification_system_cls,
@@ -320,11 +296,20 @@ def main(
         seed=seed,
     )
 
-    write_counterfeit_gt(
-        counterfeit_samples,
-        classification_system_cls,
-        output_folder / f"{classification_system}_counterfeit_ground_truth.json",
-    )
+    # Step 3: Save parsed outputs
+    output_folder.mkdir(parents=True, exist_ok=True)
+    output_file = output_folder / f"{classification_system}_counterfeit_ground_truth.json"
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                filename: [borehole.model_dump() for borehole in boreholes]
+                for filename, boreholes in to_ground_truth(counterfeit_samples, classification_system_cls).items()
+            },
+            f,
+            indent=2,
+            ensure_ascii=False,
+        )
+    logger.info("Wrote %d counterfeit samples to %s", len(counterfeit_samples), output_file)
 
 
 if __name__ == "__main__":
