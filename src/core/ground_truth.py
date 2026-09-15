@@ -122,7 +122,7 @@ class GroundTruth:
 
         # Load the ground truth data
         with open(path, encoding="utf-8") as in_file:
-            ground_truth = json.load(in_file)
+            ground_truth = json.load(in_file, parse_float=Decimal)
 
         # Validate entries
         for filename, data in ground_truth.items():
