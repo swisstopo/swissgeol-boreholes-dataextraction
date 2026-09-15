@@ -61,30 +61,20 @@ def groundtruth():
 @pytest.fixture
 def groundwater_at_2m22() -> FeatureOnPage[Groundwater]:
     """Fixture that returns a Groundwater object (embeded in a FeatureOnPage)."""
-    return FeatureOnPage.from_json(
-        {
-            "depth": 2.22,
-            "date": "2016-04-18",
-            "elevation": 448.07,
-            "page": 1,
-            "rect": [0, 0, 100, 100],
-        },
-        Groundwater,
+    return FeatureOnPage(
+        Groundwater(depth=Decimal("2.22"), date=date(2016, 4, 18), elevation=Decimal("448.07")),
+        rect=pymupdf.Rect(0, 0, 100, 100),
+        page=1,
     )
 
 
 @pytest.fixture
 def groundwater_at_3m22() -> FeatureOnPage[Groundwater]:
     """Fixture that returns another Groundwater object (embeded in a FeatureOnPage)."""
-    return FeatureOnPage.from_json(
-        {
-            "depth": 3.22,
-            "date": "2016-04-20",
-            "elevation": 447.07,
-            "page": 1,
-            "rect": [0, 0, 100, 100],
-        },
-        Groundwater,
+    return FeatureOnPage(
+        Groundwater(depth=Decimal("3.22"), date=date(2016, 4, 20), elevation=Decimal("447.07")),
+        rect=pymupdf.Rect(0, 0, 100, 100),
+        page=1,
     )
 
 

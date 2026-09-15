@@ -15,13 +15,16 @@ class DepthColumnEntry(SidebarEntry[Decimal]):
     of the core extraction logic, and is the building block for larger object like Sidebars.
     """
 
-    def __init__(self, value: Decimal, rect: pymupdf.Rect, page_number: int, has_decimal_point: bool = False):
+    def __init__(self, value: Decimal, rect: pymupdf.Rect, page_number: int):
         super().__init__(value, rect, page_number)
-        self.has_decimal_point = has_decimal_point
         self.relative_shift = 0.0
 
     def __repr__(self) -> str:
         return str(self.value)
+
+    @property
+    def has_decimal_point(self) -> bool:
+        return self.value.as_tuple().exponent < 0
 
     @classmethod
     def from_string_value(cls, rect: pymupdf.Rect, string_value: str, page_number: int) -> "DepthColumnEntry":
@@ -35,12 +38,13 @@ class DepthColumnEntry(SidebarEntry[Decimal]):
         Returns:
             DepthColumnEntry: The depth column entry object.
         """
-        return cls(
-            rect=rect,
-            value=abs(Decimal(string_value.replace(",", "."))),
-            page_number=page_number,
-            has_decimal_point="." in string_value,
-        )
+        clean_value = string_value.replace(",", ".")
+
+        # treat a value of e.g. "60." as Decimal("60.0") instead of Decimal("60")
+        if clean_value.endswith("."):
+            clean_value += "0"
+
+        return cls(rect=rect, value=abs(Decimal(clean_value)), page_number=page_number)
 
     @property
     def shifted_rect(self) -> pymupdf.Rect:

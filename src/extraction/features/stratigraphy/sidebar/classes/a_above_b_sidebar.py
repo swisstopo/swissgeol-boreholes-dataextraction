@@ -95,7 +95,7 @@ class AAboveBSidebar(DepthColumEntrySidebar):
         if not self.entries:
             return self
 
-        modified_indices = set()
+        applied_factor = [1 for entry in self.entries]
 
         def new_sidebar(index: int, new_value: Decimal) -> AAboveBSidebar:
             entry = self.entries[index]
@@ -108,6 +108,7 @@ class AAboveBSidebar(DepthColumEntrySidebar):
         best_score = score(self)
         best_index = None
         best_new_value = None
+        best_factor = None
 
         continue_search = True
         # Repeatedly improve the values until there is nothing left to improve
@@ -116,17 +117,19 @@ class AAboveBSidebar(DepthColumEntrySidebar):
             median_value = np.median(np.array([entry.value for entry in self.entries]))
 
             for i, entry in enumerate(self.entries):
-                if i not in modified_indices and entry.value > median_value and not entry.has_decimal_point:
-                    candidate_values = [entry.value / 100, entry.value / 10]
-                    for new_value in candidate_values:
+                if entry.value > median_value and not entry.has_decimal_point:
+                    factors = [factor for factor in [10, 100] if factor * applied_factor[i] <= 100]
+                    for factor in factors:
+                        new_value = entry.value / factor
                         new_score = score(new_sidebar(i, new_value))
                         if new_score > best_score:
                             best_score = new_score
                             best_index = i
                             best_new_value = new_value
+                            best_factor = factor
 
             if best_index is not None and best_new_value is not None:
-                modified_indices.add(best_index)
+                applied_factor[best_index] *= best_factor
                 continue_search = True
                 old_entry = self.entries[best_index]
                 self.entries[best_index] = DepthColumnEntry(
