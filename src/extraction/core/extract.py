@@ -51,11 +51,10 @@ def _assign_borehole_names(
         extracted_boreholes (list[ExtractedBorehole]): The boreholes just extracted from this page.
         name_entries (list[FeatureOnPage[BoreholeName]]): The name candidates found on this same page.
     """
-    if not name_entries:
-        return
     for borehole in extracted_boreholes:
         borehole_top = borehole.bounding_boxes[-1].get_outer_rect().y0
-        borehole.name = min(name_entries, key=lambda entry: abs(entry.rect.y0 - borehole_top))
+        if name_entries_above := [entry for entry in name_entries if entry.rect.y0 < borehole_top]:
+            borehole.name = min(name_entries_above, key=lambda entry: abs(entry.rect.y0 - borehole_top))
 
 
 @dataclasses.dataclass
