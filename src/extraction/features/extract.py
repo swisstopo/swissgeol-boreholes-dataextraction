@@ -394,7 +394,7 @@ class BoreholeExtractor:
             best_y0 = min([line.rect.y0 for line in cluster])
             best_y1 = max([line.rect.y1 for line in cluster])
 
-            min_description_x0 = min([line.rect.x0 - 0.01 * line.rect.width for line in cluster])
+            min_description_x0 = min([line.rect.x0 - 0.05 * line.rect.width for line in cluster])
             max_description_x0 = max([line.rect.x0 + 0.2 * line.rect.width for line in cluster])
             good_lines = [
                 line
