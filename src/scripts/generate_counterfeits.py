@@ -176,6 +176,7 @@ def generate(
     samples: list[LayerInformation],
     aws_model: AWSBedrockCounterfeits,
     seed: int = 0,
+    classification_system: type[ClassificationSystem] | None = None,
 ) -> list[LayerInformationCounterfeits]:
     """Generate a counterfeit rewrite for each sample, targeting a random other class.
 
@@ -183,11 +184,19 @@ def generate(
         samples (list[LayerInformation]): Ground truth layers to generate counterfeits for.
         aws_model (AWSBedrockCounterfeits): Bedrock client used to generate the counterfeit rewrites.
         seed (int): Seed for the random target-class assignment. Defaults to 0.
+        classification_system (type[ClassificationSystem] | None): Currently only checked for truthiness;
+            both branches build the same candidate-class list from `samples`. Defaults to None.
 
     Returns:
         list[LayerInformationCounterfeits]: One counterfeit item per input sample.
     """
-    counterfeit_classes = list(set([sample.ground_truth_class[0] for sample in samples]))
+    counterfeit_classes = (
+        # All classes available
+        list(classification_system.get_enum())
+        if classification_system
+        # Only classes that appear at least once
+        else list(set([sample.ground_truth_class[0] for sample in samples]))
+    )
     rnd = np.random.RandomState(seed=seed)
 
     def pick_counterfeit_index(ground_truth_name: str) -> int:
@@ -273,6 +282,7 @@ def main(
     output_folder: Path,
     n_samples: int = 10,
     seed: int = 0,
+    limited: bool = False,
 ) -> None:
     """Load ground truth samples for a classification system and generate counterfeits for the train split.
 
@@ -283,6 +293,8 @@ def main(
         output_folder (Path): Output JSON file path for the generated counterfeit ground truth.
         n_samples (int): Number of train samples to generate counterfeits for. Defaults to 10.
         seed (int): Seed for the random target-class assignment. Defaults to 0.
+        limited (bool): If True, only generate counterfeits for classes that appear at least once in
+            the sampled layers. Defaults to False.
     """
     aws_model = AWSBedrockCounterfeits(examples_path=examples_path)
 
@@ -297,6 +309,7 @@ def main(
         samples=samples[:n_samples],
         aws_model=aws_model,
         seed=seed,
+        classification_system=None if limited else classification_system_cls,
     )
 
     # Step 3: Save parsed outputs
@@ -344,6 +357,13 @@ if __name__ == "__main__":
         help="Number of train samples to generate counterfeits for.",
     )
     parser.add_argument(
+        "-l",
+        "--limited",
+        type=int,
+        default=10,
+        help="Generate counterfeits on for class that appear at least once.",
+    )
+    parser.add_argument(
         "-o",
         "--output-folder",
         type=Path,
@@ -353,4 +373,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(args.ground_truth_path, args.classification_system, args.examples_path, args.output_folder, args.n_samples)
+    main(
+        args.ground_truth_path,
+        args.classification_system,
+        args.examples_path,
+        args.output_folder,
+        args.n_samples,
+        args.limited,
+    )
