@@ -189,9 +189,9 @@ def assign_page_metadata(
     groundwater_by_borehole = many_to_one_match_element_to_borehole(groundwater_entries, extracted_boreholes)
 
     for index, borehole in enumerate(extracted_boreholes):
-        borehole.name = name_by_borehole.get(index)
-        borehole.elevation = elevation_by_borehole.get(index)
-        borehole.coordinates = coordinate_by_borehole.get(index)
+        borehole.name = borehole.name or name_by_borehole.get(index)
+        borehole.elevation = borehole.elevation or elevation_by_borehole.get(index)
+        borehole.coordinates = borehole.coordinates or coordinate_by_borehole.get(index)
         borehole.groundwater.extend(groundwater_by_borehole.get(index, []))
 
 
