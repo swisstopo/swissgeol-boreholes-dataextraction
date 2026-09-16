@@ -14,7 +14,7 @@ from extraction.features.predictions.borehole_predictions import BoreholePredict
 from extraction.features.predictions.predictions import (
     assign_page_metadata,
     build_borehole_predictions,
-    resolve_orphan_pages,
+    resolve_boreholeless_pages,
 )
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import LayersInDocument
@@ -69,7 +69,7 @@ def extract_stratigraphy(filename: str, include_groundwater: bool = False) -> Ex
     groundwater_extractor = GroundwaterLevelExtractor(language, matching_params) if include_groundwater else None
 
     boreholes_per_page = []
-    orphan_pages = []
+    boreholeless_pages = []
     for page_index, page in enumerate(document):
         # 2. load the png image to infer the scaling, MUST have been generated before
         page_number = page_index + 1  # page number is 1-indexed
@@ -121,9 +121,9 @@ def extract_stratigraphy(filename: str, include_groundwater: bool = False) -> Ex
         elif groundwater_entries:
             # No borehole on this page to match against; try to attach it to an adjacent page's
             # borehole once all pages have been processed.
-            orphan_pages.append((page_index, [], [], [], groundwater_entries))
+            boreholeless_pages.append((page_index, [], [], [], groundwater_entries))
 
-    resolve_orphan_pages(boreholes_per_page, orphan_pages)
+    resolve_boreholeless_pages(boreholes_per_page, boreholeless_pages)
 
     layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page, matching_params), filename)
 

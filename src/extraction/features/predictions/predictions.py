@@ -195,9 +195,9 @@ def assign_page_metadata(
         borehole.groundwater.extend(groundwater_by_borehole.get(index, []))
 
 
-def resolve_orphan_pages(
+def resolve_boreholeless_pages(
     boreholes_per_page: list[list[ExtractedBorehole]],
-    orphan_pages: list[
+    boreholeless_pages: list[
         tuple[
             int,
             list[FeatureOnPage[BoreholeName]],
@@ -215,7 +215,7 @@ def resolve_orphan_pages(
     attached there. If neither or both do, which borehole it belongs to is ambiguous, so it is left
     unassigned rather than guessed.
     """
-    for page_index, name_entries, elevation_entries, coordinate_entries, groundwater_entries in orphan_pages:
+    for page_index, name_entries, elevation_entries, coordinate_entries, groundwater_entries in boreholeless_pages:
         neighbor_indices = (page_index - 1, page_index + 1)
         unambiguous_neighbors = [
             boreholes_per_page[i]
@@ -235,7 +235,7 @@ def build_borehole_predictions(
 
     Metadata (name, elevation, coordinates, groundwater) is matched to boreholes per page, before
     continuation-detection merges boreholes across pages (see `assign_page_metadata` /
-    `resolve_orphan_pages` in `extract.py`), so by the time this runs each merged borehole already
+    `resolve_boreholeless_pages` in `extract.py`), so by the time this runs each merged borehole already
     carries its own metadata; this only reshapes it into the output type.
     """
     return [

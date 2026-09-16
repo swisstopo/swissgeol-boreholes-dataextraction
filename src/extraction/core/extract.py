@@ -18,7 +18,7 @@ from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.predictions import (
     assign_page_metadata,
     build_borehole_predictions,
-    resolve_orphan_pages,
+    resolve_boreholeless_pages,
 )
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, LayersInDocument
@@ -125,7 +125,7 @@ def extract(
 
         # Save the predictions to the overall predictions object, initialize common variables
         boreholes_per_page = []
-        orphan_pages = []
+        boreholeless_pages = []
         pages_data = []
 
         if part != "all":
@@ -184,7 +184,7 @@ def extract(
             elif name_entries or elevation_entries or coordinate_entries or groundwater_entries:
                 # No borehole on this page to match against (e.g. a metadata-only cover page); try to
                 # attach it to an adjacent page's borehole once all pages have been processed.
-                orphan_pages.append(
+                boreholeless_pages.append(
                     (page_index, name_entries, elevation_entries, coordinate_entries, groundwater_entries)
                 )
 
@@ -198,7 +198,7 @@ def extract(
                 )
             )
 
-        resolve_orphan_pages(boreholes_per_page, orphan_pages)
+        resolve_boreholeless_pages(boreholes_per_page, boreholeless_pages)
 
         # Merge detections if possible
         layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page, matching_params), filename)
