@@ -5,9 +5,7 @@ from typing import TYPE_CHECKING
 
 import pymupdf
 
-from extraction.features.metadata.borehole_name_extraction import BoreholeName
-from extraction.features.metadata.coordinate_extraction import Coordinate
-from extraction.features.metadata.elevation_extraction import Elevation
+from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.stratigraphy.interval.interval import Interval
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
@@ -237,12 +235,10 @@ class ExtractedBorehole:
 
     predictions: list[Layer]
     bounding_boxes: list[PageBoundingBoxes]  # one for each page that the borehole spans
-    # metadata matched to this borehole on the page(s) it was (re-)detected on; carried forward across
-    # continuation merges (see `_merge_boreholes`)
-    name: FeatureOnPage[BoreholeName] | None = None
-    elevation: FeatureOnPage[Elevation] | None = None
-    coordinates: FeatureOnPage[Coordinate] | None = None
-    # many-to-one, unlike the fields above: a borehole can have several groundwater readings
+    # name/elevation/coordinates matched to this borehole on the page(s) it was (re-)detected on; carried
+    # forward across continuation merges (see `_merge_boreholes`)
+    metadata: BoreholeMetadata | None = None
+    # many-to-one, unlike metadata above: a borehole can have several groundwater readings
     groundwater: list[FeatureOnPage["Groundwater"]] = field(default_factory=list)
 
 

@@ -184,9 +184,11 @@ def assign_page_metadata(extracted_boreholes: list[ExtractedBorehole], candidate
     groundwater_by_borehole = _many_to_one_match_element_to_borehole(candidates.groundwater, extracted_boreholes)
 
     for index, borehole in enumerate(extracted_boreholes):
-        borehole.name = borehole.name or name_by_borehole.get(index)
-        borehole.elevation = borehole.elevation or elevation_by_borehole.get(index)
-        borehole.coordinates = borehole.coordinates or coordinate_by_borehole.get(index)
+        if borehole.metadata is None:
+            borehole.metadata = BoreholeMetadata()
+        borehole.metadata.name = borehole.metadata.name or name_by_borehole.get(index)
+        borehole.metadata.elevation = borehole.metadata.elevation or elevation_by_borehole.get(index)
+        borehole.metadata.coordinates = borehole.metadata.coordinates or coordinate_by_borehole.get(index)
         borehole.groundwater.extend(groundwater_by_borehole.get(index, []))
 
 
@@ -239,7 +241,7 @@ def build_borehole_predictions(
             borehole_index,
             borehole.predictions,
             file_name,
-            BoreholeMetadata(borehole.elevation, borehole.coordinates, borehole.name),
+            borehole.metadata or BoreholeMetadata(),
             GroundwatersInBorehole(borehole.groundwater),
             borehole.bounding_boxes,
         )

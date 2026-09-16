@@ -4,6 +4,7 @@ import dataclasses
 
 import numpy as np
 
+from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepths, LayerDepthsEntry
 from extraction.features.stratigraphy.layer.overlap_detection import (
     _normalize_for_comparison,
@@ -17,16 +18,18 @@ MIN_NAME_CONFIDENCE = 0.5
 
 def _confident_names(borehole_a: ExtractedBorehole, borehole_b: ExtractedBorehole) -> tuple[str, str] | None:
     """Return both boreholes' normalized printed names, if each was confidently detected, else None."""
+    name_a = borehole_a.metadata.name if borehole_a.metadata else None
+    name_b = borehole_b.metadata.name if borehole_b.metadata else None
     if not (
-        borehole_a.name
-        and borehole_b.name
-        and borehole_a.name.feature.confidence >= MIN_NAME_CONFIDENCE
-        and borehole_b.name.feature.confidence >= MIN_NAME_CONFIDENCE
+        name_a
+        and name_b
+        and name_a.feature.confidence >= MIN_NAME_CONFIDENCE
+        and name_b.feature.confidence >= MIN_NAME_CONFIDENCE
     ):
         return None
     return (
-        _normalize_for_comparison(borehole_a.name.feature.name),
-        _normalize_for_comparison(borehole_b.name.feature.name),
+        _normalize_for_comparison(name_a.feature.name),
+        _normalize_for_comparison(name_b.feature.name),
     )
 
 
@@ -397,10 +400,17 @@ def _merge_boreholes(
         borehole_to_extend,
         predictions=new_predictions,
         bounding_boxes=borehole_to_extend.bounding_boxes + borehole_continuation.bounding_boxes,
-        name=borehole_to_extend.name or borehole_continuation.name,
-        elevation=borehole_to_extend.elevation or borehole_continuation.elevation,
-        coordinates=borehole_to_extend.coordinates or borehole_continuation.coordinates,
+        metadata=_merge_metadata(borehole_to_extend.metadata, borehole_continuation.metadata),
         groundwater=borehole_to_extend.groundwater + borehole_continuation.groundwater,
+    )
+
+
+def _merge_metadata(a: BoreholeMetadata | None, b: BoreholeMetadata | None) -> BoreholeMetadata | None:
+    """Combine two boreholes' matched name/elevation/coordinates, preferring whichever side has each set."""
+    if a is None or b is None:
+        return a or b
+    return BoreholeMetadata(
+        elevation=a.elevation or b.elevation, coordinates=a.coordinates or b.coordinates, name=a.name or b.name
     )
 
 
