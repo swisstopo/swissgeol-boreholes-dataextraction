@@ -184,8 +184,8 @@ def generate(
         samples (list[LayerInformation]): Ground truth layers to generate counterfeits for.
         aws_model (AWSBedrockCounterfeits): Bedrock client used to generate the counterfeit rewrites.
         seed (int): Seed for the random target-class assignment. Defaults to 0.
-        classification_system (type[ClassificationSystem] | None): Currently only checked for truthiness;
-            both branches build the same candidate-class list from `samples`. Defaults to None.
+        classification_system (type[ClassificationSystem] | None): If provided, sample for all classes,
+            otherwise only occuring ones. Defaults to None.
 
     Returns:
         list[LayerInformationCounterfeits]: One counterfeit item per input sample.
@@ -200,7 +200,11 @@ def generate(
     rnd = np.random.RandomState(seed=seed)
 
     def pick_counterfeit_index(ground_truth_name: str) -> int:
-        choices = [i for i, c in enumerate(counterfeit_classes) if c.name != ground_truth_name and c.name != "other"]
+        choices = [
+            i
+            for i, c in enumerate(counterfeit_classes)
+            if c.name != ground_truth_name and c.name != "other" and c.name != "not_specified"
+        ]
         return choices[rnd.randint(low=0, high=len(choices))]
 
     return asyncio.run(
@@ -359,9 +363,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-l",
         "--limited",
-        type=int,
-        default=10,
-        help="Generate counterfeits on for class that appear at least once.",
+        action="store_true",
+        help="Only generate counterfeits for classes that appear at least once in the sampled layers.",
     )
     parser.add_argument(
         "-o",
@@ -378,6 +381,6 @@ if __name__ == "__main__":
         args.classification_system,
         args.examples_path,
         args.output_folder,
-        args.n_samples,
-        args.limited,
+        n_samples=args.n_samples,
+        limited=args.limited,
     )

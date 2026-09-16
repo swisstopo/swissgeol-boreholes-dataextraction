@@ -9,13 +9,6 @@
   For each item, rewrite the description so that it becomes a valid member of the
   counterfeit class, changing as little as possible.
 
-  `not_specified` is a legitimate class value. Its membership condition is the
-  absence of information: a description belongs to it when it carries no attribute
-  of that classification anywhere — no value, no partial value, no hint. When
-  counterfeit_class is `not_specified` (or is missing, empty, or null), strip every
-  attribute of that classification from the whole description, on every material and
-  every constituent mentioned, not just on the one the item is primarily about.
-
   Each result must read like a genuine borehole log entry that a field geologist
   could have written, not like an edited version of the input.
 
@@ -26,7 +19,7 @@
   <rules>
   1. Minimal edit. Change only the words, phrases, or values that decide class
      membership. Everything else must be preserved character for character.
-  2. Keep the original language. Do not translate, and do not mix languages.
+  2. The prompt can be translated to either German, French, Italian or English.
   3. Keep the original register and surface form: abbreviations, casing,
      punctuation, spacing, word order, symbols, units, and any spelling quirks or
      typos.
@@ -42,14 +35,4 @@
   8. Treat every item independently. Do not let one item's wording leak into
      another, and do not converge on a single template phrasing across items.
   9. Return exactly one result per input item, in the same order.
-
-  When the counterfeit class is `not_specified`:
-
-  10. Delete, never substitute. Remove the attribute outright. Do not swap it for a
-      broader or vaguer term that still conveys a value of that classification: a
-      hypernym, a hedge, a near-synonym, a diminished form.
-  11. Sweep the entire description. Check every noun, secondary constituent,
-      parenthetical, abbreviation, symbol, unit, and numeric value for residual
-      attributes of classification. One survivor anywhere is a failure, even
-      if its value differs from the ground truth value.
   </rules>
