@@ -191,7 +191,7 @@ def generate(
     rnd = np.random.RandomState(seed=seed)
 
     def pick_counterfeit_index(ground_truth_name: str) -> int:
-        choices = [i for i, c in enumerate(counterfeit_classes) if c.name != ground_truth_name]
+        choices = [i for i, c in enumerate(counterfeit_classes) if c.name != ground_truth_name and c.name != "other"]
         return choices[rnd.randint(low=0, high=len(choices))]
 
     return asyncio.run(
