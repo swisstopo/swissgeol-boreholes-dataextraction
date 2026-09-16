@@ -12,6 +12,7 @@ from extraction.features.extract import BoreholeExtractor
 from extraction.features.groundwater.groundwater_extraction import GroundwaterLevelExtractor
 from extraction.features.predictions.borehole_predictions import BoreholePredictions
 from extraction.features.predictions.predictions import (
+    PageMetadataCandidates,
     assign_page_metadata,
     build_borehole_predictions,
     resolve_boreholeless_pages,
@@ -121,7 +122,7 @@ def extract_stratigraphy(filename: str, include_groundwater: bool = False) -> Ex
         elif groundwater_entries:
             # No borehole on this page to match against; try to attach it to an adjacent page's
             # borehole once all pages have been processed.
-            boreholeless_pages.append((page_index, [], [], [], groundwater_entries))
+            boreholeless_pages.append(PageMetadataCandidates(page_index=page_index, groundwater=groundwater_entries))
 
     resolve_boreholeless_pages(boreholes_per_page, boreholeless_pages)
 

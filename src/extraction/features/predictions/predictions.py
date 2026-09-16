@@ -3,6 +3,7 @@
 import logging
 from collections import defaultdict
 from copy import deepcopy
+from dataclasses import dataclass, field
 from typing import TypeVar
 
 from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
@@ -195,17 +196,20 @@ def assign_page_metadata(
         borehole.groundwater.extend(groundwater_by_borehole.get(index, []))
 
 
+@dataclass
+class PageMetadataCandidates:
+    """Metadata candidates found on one page, deferred because it had no borehole to match against."""
+
+    page_index: int
+    names: list[FeatureOnPage[BoreholeName]] = field(default_factory=list)
+    elevations: list[FeatureOnPage[Elevation]] = field(default_factory=list)
+    coordinates: list[FeatureOnPage[Coordinate]] = field(default_factory=list)
+    groundwater: list[FeatureOnPage[Groundwater]] = field(default_factory=list)
+
+
 def resolve_boreholeless_pages(
     boreholes_per_page: list[list[ExtractedBorehole]],
-    boreholeless_pages: list[
-        tuple[
-            int,
-            list[FeatureOnPage[BoreholeName]],
-            list[FeatureOnPage[Elevation]],
-            list[FeatureOnPage[Coordinate]],
-            list[FeatureOnPage[Groundwater]],
-        ]
-    ],
+    boreholeless_pages: list[PageMetadataCandidates],
 ) -> None:
     """Attaches metadata found on a borehole-less page to an adjacent page's borehole, in place.
 
@@ -215,8 +219,8 @@ def resolve_boreholeless_pages(
     attached there. If neither or both do, which borehole it belongs to is ambiguous, so it is left
     unassigned rather than guessed.
     """
-    for page_index, name_entries, elevation_entries, coordinate_entries, groundwater_entries in boreholeless_pages:
-        neighbor_indices = (page_index - 1, page_index + 1)
+    for page in boreholeless_pages:
+        neighbor_indices = (page.page_index - 1, page.page_index + 1)
         unambiguous_neighbors = [
             boreholes_per_page[i]
             for i in neighbor_indices
@@ -224,7 +228,7 @@ def resolve_boreholeless_pages(
         ]
         if len(unambiguous_neighbors) == 1:
             assign_page_metadata(
-                unambiguous_neighbors[0], name_entries, elevation_entries, coordinate_entries, groundwater_entries
+                unambiguous_neighbors[0], page.names, page.elevations, page.coordinates, page.groundwater
             )
 
 

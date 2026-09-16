@@ -16,6 +16,7 @@ from extraction.features.metadata.metadata import FileMetadata, MetadataInDocume
 from extraction.features.predictions.borehole_predictions import BoreholePredictions
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.predictions.predictions import (
+    PageMetadataCandidates,
     assign_page_metadata,
     build_borehole_predictions,
     resolve_boreholeless_pages,
@@ -185,7 +186,13 @@ def extract(
                 # No borehole on this page to match against (e.g. a metadata-only cover page); try to
                 # attach it to an adjacent page's borehole once all pages have been processed.
                 boreholeless_pages.append(
-                    (page_index, name_entries, elevation_entries, coordinate_entries, groundwater_entries)
+                    PageMetadataCandidates(
+                        page_index=page_index,
+                        names=name_entries,
+                        elevations=elevation_entries,
+                        coordinates=coordinate_entries,
+                        groundwater=groundwater_entries,
+                    )
                 )
 
             # Store per-page intermediate data for optional downstream visualization
