@@ -325,22 +325,6 @@ class GroundwatersInBorehole:
         self.remove_overlaps()
 
 
-@dataclass
-class GroundwaterInDocument:
-    """Class for extracted groundwater information from a document."""
-
-    groundwater_feature_list: list[FeatureOnPage[Groundwater]]
-    filename: str
-
-    def to_json(self) -> list[dict]:
-        """Converts the object to a list of dictionaries.
-
-        Returns:
-            list[dict]: The object as a list of dictionaries.
-        """
-        return [entry.to_json() for entry in self.groundwater_feature_list]
-
-
 class GroundwaterLevelExtractor(DataExtractor):
     """Extract groundwater information from a PDF document."""
 
