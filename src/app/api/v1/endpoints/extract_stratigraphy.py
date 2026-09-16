@@ -116,13 +116,14 @@ def extract_stratigraphy(filename: str, include_groundwater: bool = False) -> Ex
             )
 
         # Match this page's groundwater to this page's boreholes, before any cross-page merging happens.
-        # Name/elevation/coordinates are not extracted by this endpoint, hence the empty lists.
+        # Name/elevation/coordinates are not extracted by this endpoint.
+        page_metadata = PageMetadataCandidates(page_index=page_index, groundwater=groundwater_entries)
         if extracted_boreholes:
-            assign_page_metadata(extracted_boreholes, [], [], [], groundwater_entries)
+            assign_page_metadata(extracted_boreholes, page_metadata)
         elif groundwater_entries:
             # No borehole on this page to match against; try to attach it to an adjacent page's
             # borehole once all pages have been processed.
-            boreholeless_pages.append(PageMetadataCandidates(page_index=page_index, groundwater=groundwater_entries))
+            boreholeless_pages.append(page_metadata)
 
     resolve_boreholeless_pages(boreholes_per_page, boreholeless_pages)
 

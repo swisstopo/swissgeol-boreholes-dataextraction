@@ -49,7 +49,7 @@ def _compute_distance(feat: FeatureOnPage, borehole: ExtractedBorehole) -> float
     return element_center.distance_to(outer_rect)
 
 
-def many_to_one_match_element_to_borehole(
+def _many_to_one_match_element_to_borehole(
     element_list: list[FeatureOnPage],
     boreholes: list[ExtractedBorehole],
     taken_boreholes: set[int] | None = None,
@@ -96,10 +96,10 @@ def many_to_one_match_element_to_borehole(
     return borehole_index_to_matched_elem
 
 
-def one_to_one_match_element_to_borehole(
+def _one_to_one_match_element_to_borehole(
     element_list: list[FeatureOnPage], boreholes: list[ExtractedBorehole]
 ) -> dict[int, FeatureOnPage | None]:
-    """Matches elements (e.g. elevation, coordonates) one-to-one to boreholes based on spatial position.
+    """Matches elements (e.g. elevation, coordinates) one-to-one to boreholes based on spatial position.
 
     The algorithm ensures that each borehole is assigned exactly one element, resolving cases where
     multiple elements might be close to a single borehole. It works iteratively by:
@@ -131,7 +131,7 @@ def one_to_one_match_element_to_borehole(
 
     while len(borehole_index_to_matched_elem_index) != num_boreholes:
         # map all elements to their closest borehole.
-        borehole_idx_to_many_element_mapping = many_to_one_match_element_to_borehole(
+        borehole_idx_to_many_element_mapping = _many_to_one_match_element_to_borehole(
             element_list, boreholes, set(borehole_index_to_matched_elem_index.keys())
         )
 
@@ -167,13 +167,7 @@ def _remove_elevations_matching_groundwater(
     return [elevation for elevation in elevation_entries if elevation.feature.elevation not in groundwater_elevations]
 
 
-def assign_page_metadata(
-    extracted_boreholes: list[ExtractedBorehole],
-    name_entries: list[FeatureOnPage[BoreholeName]],
-    elevation_entries: list[FeatureOnPage[Elevation]],
-    coordinate_entries: list[FeatureOnPage[Coordinate]],
-    groundwater_entries: list[FeatureOnPage[Groundwater]],
-) -> None:
+def assign_page_metadata(extracted_boreholes: list[ExtractedBorehole], candidates: "PageMetadataCandidates") -> None:
     """Matches this page's (or these pages') metadata candidates to these boreholes, in place.
 
     `extracted_boreholes` is normally the list of boreholes found on a single page, but during
@@ -182,12 +176,12 @@ def assign_page_metadata(
     """
     if not extracted_boreholes:
         return
-    elevation_entries = _remove_elevations_matching_groundwater(elevation_entries, groundwater_entries)
+    elevation_entries = _remove_elevations_matching_groundwater(candidates.elevations, candidates.groundwater)
 
-    name_by_borehole = one_to_one_match_element_to_borehole(name_entries, extracted_boreholes)
-    elevation_by_borehole = one_to_one_match_element_to_borehole(elevation_entries, extracted_boreholes)
-    coordinate_by_borehole = one_to_one_match_element_to_borehole(coordinate_entries, extracted_boreholes)
-    groundwater_by_borehole = many_to_one_match_element_to_borehole(groundwater_entries, extracted_boreholes)
+    name_by_borehole = _one_to_one_match_element_to_borehole(candidates.names, extracted_boreholes)
+    elevation_by_borehole = _one_to_one_match_element_to_borehole(elevation_entries, extracted_boreholes)
+    coordinate_by_borehole = _one_to_one_match_element_to_borehole(candidates.coordinates, extracted_boreholes)
+    groundwater_by_borehole = _many_to_one_match_element_to_borehole(candidates.groundwater, extracted_boreholes)
 
     for index, borehole in enumerate(extracted_boreholes):
         borehole.name = borehole.name or name_by_borehole.get(index)
@@ -227,9 +221,7 @@ def resolve_boreholeless_pages(
             if 0 <= i < len(boreholes_per_page) and len(boreholes_per_page[i]) == 1
         ]
         if len(unambiguous_neighbors) == 1:
-            assign_page_metadata(
-                unambiguous_neighbors[0], page.names, page.elevations, page.coordinates, page.groundwater
-            )
+            assign_page_metadata(unambiguous_neighbors[0], page)
 
 
 def build_borehole_predictions(

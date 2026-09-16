@@ -178,22 +178,19 @@ def extract(
             )
 
             # Match this page's metadata to this page's boreholes, before any cross-page merging happens.
+            page_metadata = PageMetadataCandidates(
+                page_index=page_index,
+                names=name_entries,
+                elevations=elevation_entries,
+                coordinates=coordinate_entries,
+                groundwater=groundwater_entries,
+            )
             if extracted_boreholes:
-                assign_page_metadata(
-                    extracted_boreholes, name_entries, elevation_entries, coordinate_entries, groundwater_entries
-                )
+                assign_page_metadata(extracted_boreholes, page_metadata)
             elif name_entries or elevation_entries or coordinate_entries or groundwater_entries:
                 # No borehole on this page to match against (e.g. a metadata-only cover page); try to
                 # attach it to an adjacent page's borehole once all pages have been processed.
-                boreholeless_pages.append(
-                    PageMetadataCandidates(
-                        page_index=page_index,
-                        names=name_entries,
-                        elevations=elevation_entries,
-                        coordinates=coordinate_entries,
-                        groundwater=groundwater_entries,
-                    )
-                )
+                boreholeless_pages.append(page_metadata)
 
             # Store per-page intermediate data for optional downstream visualization
             pages_data.append(
