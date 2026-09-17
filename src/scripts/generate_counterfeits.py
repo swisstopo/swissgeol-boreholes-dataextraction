@@ -199,6 +199,9 @@ def generate(
             for i, c in enumerate(counterfeit_classes)
             if c.name != ground_truth_name and c.name != "other" and c.name != "not_specified"
         ]
+        if len(choices) == 0:
+            raise ValueError("Empty class list for counterfeit creation.")
+
         return choices[rnd.randint(low=0, high=len(choices))]
 
     return asyncio.run(
