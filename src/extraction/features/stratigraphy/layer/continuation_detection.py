@@ -4,8 +4,9 @@ import dataclasses
 
 import numpy as np
 
+from extraction.features.extracted_borehole import ExtractedBorehole
 from extraction.features.metadata.metadata import BoreholeMetadata
-from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, Layer, LayerDepths, LayerDepthsEntry
+from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry
 from extraction.features.stratigraphy.layer.overlap_detection import (
     _normalize_for_comparison,
     select_boreholes_with_overlap,

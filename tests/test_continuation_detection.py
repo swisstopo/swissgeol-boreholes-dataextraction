@@ -2,15 +2,11 @@
 
 import pymupdf
 
+from extraction.features.extracted_borehole import ExtractedBorehole
 from extraction.features.metadata.borehole_name_extraction import BoreholeName
 from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
-from extraction.features.stratigraphy.layer.layer import (
-    ExtractedBorehole,
-    Layer,
-    LayerDepths,
-    LayerDepthsEntry,
-)
+from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry
 from extraction.features.stratigraphy.layer.overlap_detection import OverlapResult
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from swissgeol_doc_processing.geometry.geometry_dataclasses import BoundingBox

@@ -6,7 +6,8 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import TypeVar
 
-from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
+from extraction.features.extracted_borehole import ExtractedBorehole
+from extraction.features.groundwater.groundwater import Groundwater, GroundwatersInBorehole
 from extraction.features.metadata.borehole_name_extraction import BoreholeName
 from extraction.features.metadata.coordinate_extraction import Coordinate
 from extraction.features.metadata.elevation_extraction import Elevation
@@ -14,7 +15,6 @@ from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.predictions.borehole_predictions import (
     BoreholePredictions,
 )
-from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, LayersInDocument
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 logger = logging.getLogger(__name__)
@@ -227,7 +227,7 @@ def resolve_boreholeless_pages(
 
 
 def build_borehole_predictions(
-    layers_with_bb_in_document: LayersInDocument, file_name: str
+    extracted_boreholes: list[ExtractedBorehole], file_name: str
 ) -> list[BoreholePredictions]:
     """Builds the final list of BoreholePredictions from already-matched, merged boreholes.
 
@@ -245,5 +245,5 @@ def build_borehole_predictions(
             GroundwatersInBorehole(borehole.groundwater),
             borehole.bounding_boxes,
         )
-        for borehole_index, borehole in enumerate(layers_with_bb_in_document.boreholes_layers_with_bb)
+        for borehole_index, borehole in enumerate(extracted_boreholes)
     ]

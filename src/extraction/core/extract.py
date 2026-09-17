@@ -10,6 +10,7 @@ from pathlib import Path
 import pymupdf
 
 from extraction.features.extract import BoreholeExtractor
+from extraction.features.extracted_borehole import ExtractedBorehole
 from extraction.features.groundwater.groundwater_extraction import GroundwaterLevelExtractor
 from extraction.features.metadata.borehole_name_extraction import extract_borehole_names
 from extraction.features.metadata.metadata import FileMetadata, MetadataInDocument
@@ -22,7 +23,6 @@ from extraction.features.predictions.predictions import (
     resolve_boreholeless_pages,
 )
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
-from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, LayersInDocument
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
@@ -205,17 +205,15 @@ def extract(
         resolve_boreholeless_pages(boreholes_per_page, boreholeless_pages)
 
         # Merge detections if possible
-        layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page, matching_params), filename)
+        merged_boreholes = merge_boreholes(boreholes_per_page, matching_params)
 
-        for borehole in layers_with_bb_in_document.boreholes_layers_with_bb:
+        for borehole in merged_boreholes:
             max_line_width = _reference_line_width(borehole)
             for layer in borehole.predictions:
                 layer.material_description.insert_line_breaks(max_line_width)
 
         # create list of BoreholePrediction objects; metadata is already matched and merged per borehole
-        borehole_predictions_list: list[BoreholePredictions] = build_borehole_predictions(
-            layers_with_bb_in_document, filename
-        )
+        borehole_predictions_list: list[BoreholePredictions] = build_borehole_predictions(merged_boreholes, filename)
 
         # now that the matching is done, duplicated groundwater can be removed and depths info can be set
         for borehole in borehole_predictions_list:

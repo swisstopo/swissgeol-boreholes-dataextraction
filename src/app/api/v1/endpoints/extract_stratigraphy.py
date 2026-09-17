@@ -9,6 +9,7 @@ from app.common.schemas import (
     GroundwaterSchema,
 )
 from extraction.features.extract import BoreholeExtractor
+from extraction.features.extracted_borehole import ExtractedBorehole
 from extraction.features.groundwater.groundwater_extraction import GroundwaterLevelExtractor
 from extraction.features.predictions.borehole_predictions import BoreholePredictions
 from extraction.features.predictions.predictions import (
@@ -18,7 +19,6 @@ from extraction.features.predictions.predictions import (
     resolve_boreholeless_pages,
 )
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
-from extraction.features.stratigraphy.layer.layer import LayersInDocument
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
 from swissgeol_doc_processing.utils.file_utils import read_params
@@ -127,28 +127,28 @@ def extract_stratigraphy(filename: str, include_groundwater: bool = False) -> Ex
 
     resolve_boreholeless_pages(boreholes_per_page, boreholeless_pages)
 
-    layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page, matching_params), filename)
+    merged_boreholes = merge_boreholes(boreholes_per_page, matching_params)
 
     # Groundwater is already matched and merged per borehole; only build the response's groundwater
     # section if it was requested.
     borehole_predictions_list = None
     if include_groundwater:
-        borehole_predictions_list = build_borehole_predictions(layers_with_bb_in_document, filename)
+        borehole_predictions_list = build_borehole_predictions(merged_boreholes, filename)
         for borehole in borehole_predictions_list:
             borehole.filter_groundwater_entries()
 
-    return create_response_object(layers_with_bb_in_document, pdf_img_scalings, borehole_predictions_list)
+    return create_response_object(merged_boreholes, pdf_img_scalings, borehole_predictions_list)
 
 
 def create_response_object(
-    layers_with_bb: LayersInDocument,
+    extracted_boreholes: list[ExtractedBorehole],
     pdf_img_scalings: list[tuple[float]],
     borehole_predictions_list: list[BoreholePredictions] | None = None,
 ) -> ExtractStratigraphyResponse:
     """Create a response object from the extracted layers with bounding boxes.
 
     Args:
-        layers_with_bb (LayersInDocument): Object containing borehole layers with bounding boxes.
+        extracted_boreholes (ExtractedBorehole): Object containing extracted boreholes.
         pdf_img_scalings (list): list of 2-tuples containing the height and width scalings to convert the coordinates
             from pdf to png. This scaling is chosen at the png creation, and could potentially be simplified.
         borehole_predictions_list (list[BoreholePredictions] | None): Optional list of borehole predictions
@@ -159,7 +159,7 @@ def create_response_object(
     """
     boreholes: list[BoreholeExtractionSchema] = []
 
-    for borehole_index, borehole in enumerate(layers_with_bb.boreholes_layers_with_bb):
+    for borehole_index, borehole in enumerate(extracted_boreholes):
         layers: list[BoreholeLayerSchema] = []
         page_numbers = set()
 

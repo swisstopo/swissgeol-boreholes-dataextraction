@@ -7,13 +7,8 @@ import pytest
 
 from core.benchmark_utils import Metrics
 from core.ground_truth import GroundTruth
-from extraction.evaluation.groundwater_evaluator import (
-    GroundwaterEvaluator,
-)
-from extraction.features.groundwater.groundwater_extraction import (
-    Groundwater,
-    GroundwatersInBorehole,
-)
+from extraction.evaluation.groundwater_evaluator import GroundwaterEvaluator
+from extraction.features.groundwater.groundwater import Groundwater, GroundwatersInBorehole
 from extraction.features.groundwater.utility import extract_date, extract_elevation
 from extraction.features.predictions.borehole_predictions import (
     BoreholeGroundwaterWithGroundTruth,

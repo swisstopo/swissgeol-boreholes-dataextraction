@@ -11,7 +11,8 @@ from core.ground_truth import GroundTruth
 from extraction.evaluation.benchmark.metrics import OverallMetricsCatalog
 from extraction.evaluation.layer_evaluator import LayerEvaluator
 from extraction.evaluation.utility import evaluate, evaluate_single
-from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
+from extraction.features.extracted_borehole import ExtractedBorehole
+from extraction.features.groundwater.groundwater import Groundwater, GroundwatersInBorehole
 from extraction.features.metadata.borehole_name_extraction import BoreholeName
 from extraction.features.metadata.coordinate_extraction import CoordinateEntry, LV95Coordinate
 from extraction.features.metadata.metadata import BoreholeMetadata, FileMetadata
@@ -21,12 +22,7 @@ from extraction.features.predictions.borehole_predictions import (
 )
 from extraction.features.predictions.file_predictions import FilePredictions
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
-from extraction.features.stratigraphy.layer.layer import (
-    ExtractedBorehole,
-    Layer,
-    LayerDepths,
-    LayerDepthsEntry,
-)
+from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.text.textline import TextLine, TextWord
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage

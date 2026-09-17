@@ -1,22 +1,14 @@
 """Layer class definition."""
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
 
 import pymupdf
 
-from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.stratigraphy.interval.interval import Interval
-from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
 from swissgeol_doc_processing.geometry.geometry_dataclasses import RectWithPage, RectWithPageMixin
 from swissgeol_doc_processing.text.textblock import MaterialDescription
-from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature, FeatureOnPage
+from swissgeol_doc_processing.utils.data_extractor import ExtractedFeature
 from swissgeol_doc_processing.utils.file_utils import parse_text
-
-if TYPE_CHECKING:
-    # only needed for type hints; a real import would create a circular dependency, since
-    # groundwater_extraction.py itself imports ExtractedBorehole from this module
-    from extraction.features.groundwater.groundwater_extraction import Groundwater
 
 
 class LayerDepthsEntry(RectWithPageMixin):
@@ -227,24 +219,3 @@ class Layer(ExtractedFeature):
         depths = LayerDepths.from_json(data["depths"]) if ("depths" in data and data["depths"] is not None) else None
 
         return Layer(material_description=material_prediction, depths=depths, is_correct=data.get("is_correct"))
-
-
-@dataclass
-class ExtractedBorehole:
-    """A class to store the extracted information of one single borehole."""
-
-    predictions: list[Layer]
-    bounding_boxes: list[PageBoundingBoxes]  # one for each page that the borehole spans
-    # name/elevation/coordinates matched to this borehole on the page(s) it was (re-)detected on; carried
-    # forward across continuation merges (see `_merge_boreholes`)
-    metadata: BoreholeMetadata | None = None
-    # many-to-one, unlike metadata above: a borehole can have several groundwater readings
-    groundwater: list[FeatureOnPage["Groundwater"]] = field(default_factory=list)
-
-
-class LayersInDocument:
-    """A class to represent predictions for a single document."""
-
-    def __init__(self, boreholes_layers: list[ExtractedBorehole], filename: str):
-        self.boreholes_layers_with_bb = boreholes_layers
-        self.filename = filename

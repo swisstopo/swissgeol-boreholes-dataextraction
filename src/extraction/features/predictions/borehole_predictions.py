@@ -10,7 +10,7 @@ from core.ground_truth import (
     GroundTruthLayer,
     GroundTruthMetadata,
 )
-from extraction.features.groundwater.groundwater_extraction import GroundwatersInBorehole
+from extraction.features.groundwater.groundwater import GroundwatersInBorehole
 from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
