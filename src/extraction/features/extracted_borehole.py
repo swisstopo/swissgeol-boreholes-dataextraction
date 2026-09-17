@@ -1,4 +1,4 @@
-"""Module containing a dataclasses for full data on extracted ."""
+"""Module containing a dataclass with full information on an extracted borehole."""
 
 from dataclasses import dataclass, field
 
