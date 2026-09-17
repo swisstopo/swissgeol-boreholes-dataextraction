@@ -128,7 +128,7 @@ def extract_stratigraphy(filename: str, include_groundwater: bool = False) -> Ex
     merged_boreholes = merge_boreholes(boreholes_per_page, matching_params)
 
     for borehole in merged_boreholes:
-        borehole.filter_groundwater_entries()
+        borehole.post_processing()
 
     return create_response_object(merged_boreholes, pdf_img_scalings, include_groundwater=include_groundwater)
 

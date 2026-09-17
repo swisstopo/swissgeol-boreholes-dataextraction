@@ -10,7 +10,6 @@ from pathlib import Path
 import pymupdf
 
 from extraction.features.extract import BoreholeExtractor
-from extraction.features.extracted_borehole import ExtractedBorehole
 from extraction.features.groundwater.groundwater_extraction import GroundwaterLevelExtractor
 from extraction.features.metadata.borehole_name_extraction import extract_borehole_names
 from extraction.features.metadata.metadata import FileMetadata, MetadataInDocument
@@ -82,17 +81,6 @@ def open_pdf(
     )
     yield doc
     doc.close()
-
-
-def _reference_line_width(borehole: ExtractedBorehole) -> float | None:
-    """Return the width of each borehole's longest description line.
-
-    `MaterialDescription.insert_line_breaks` uses this as a reference for how long a line can get
-    before the layout wraps it. Scoped per borehole (not per file): different boreholes, even across
-    pages of the same file, can have differently sized description columns.
-    """
-    line_widths = [line.rect.width for layer in borehole.predictions for line in layer.material_description.lines]
-    return max(line_widths, default=None)
 
 
 def extract(
@@ -208,12 +196,7 @@ def extract(
         merged_boreholes = merge_boreholes(boreholes_per_page, matching_params)
 
         for borehole in merged_boreholes:
-            max_line_width = _reference_line_width(borehole)
-            for layer in borehole.predictions:
-                layer.material_description.insert_line_breaks(max_line_width)
-
-            # now that the matching is done, duplicated groundwater can be removed and depths info can be set
-            borehole.filter_groundwater_entries()
+            borehole.post_processing()
 
         # create list of BoreholePrediction objects; metadata is already matched and merged per borehole
         borehole_predictions_list: list[BoreholePredictions] = build_borehole_predictions(merged_boreholes)
