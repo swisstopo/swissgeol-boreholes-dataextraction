@@ -51,12 +51,13 @@ class LayerInformationCounterfeits:
 class AWSBedrockCounterfeits:
     """Generates counterfeit material descriptions by asking Bedrock to rewrite them into a target class."""
 
-    def __init__(self, examples_path: Path, max_concurrent_calls: int = 3) -> None:
+    def __init__(self, examples_path: Path, max_concurrent_calls: int = 3, example_version: str = "baseline") -> None:
         """Create the Bedrock client and load the tool/prompt/example configuration.
 
         Args:
             examples_path (Path): Path to the YAML file of classification examples shown to Bedrock.
             max_concurrent_calls (int): Max number of concurrent Bedrock calls. Defaults to 3.
+            example_version (str): Version of example to consider for class definitions.
         """
         self.max_concurrent_calls = max_concurrent_calls
         self._semaphore = asyncio.Semaphore(max_concurrent_calls)
@@ -64,7 +65,7 @@ class AWSBedrockCounterfeits:
         self.model_region: str | None = os.environ.get("AWS_DEFAULT_REGION")
         self.bedrock_client = anthropic.AsyncAnthropicBedrock(aws_region=self.model_region)
         self.tool: dict = read_params("bedrock/tool/tool_generate_counterfeits.yml")
-        self.class_examples: str = read_params(str(examples_path))["baseline"]
+        self.class_examples: str = read_params(str(examples_path))[example_version]
         self.system_prompts: str = read_params("bedrock/prompts/bedrock_generate_counterfeits_prompt.yml")
 
     @backoff.on_exception(
@@ -174,29 +175,22 @@ class AWSBedrockCounterfeits:
 
 def generate(
     samples: list[LayerInformation],
+    counterfeit_classes: list[ClassificationSystem.EnumMember],
     aws_model: AWSBedrockCounterfeits,
     seed: int = 0,
-    classification_system: type[ClassificationSystem] | None = None,
 ) -> list[LayerInformationCounterfeits]:
     """Generate a counterfeit rewrite for each sample, targeting a random other class.
 
     Args:
         samples (list[LayerInformation]): Ground truth layers to generate counterfeits for.
+        counterfeit_classes (list[ClassificationSystem.EnumMember]): Candidate target classes a sample's
+            ground truth class can be flipped to.
         aws_model (AWSBedrockCounterfeits): Bedrock client used to generate the counterfeit rewrites.
         seed (int): Seed for the random target-class assignment. Defaults to 0.
-        classification_system (type[ClassificationSystem] | None): If provided, sample for all classes,
-            otherwise only occuring ones. Defaults to None.
 
     Returns:
         list[LayerInformationCounterfeits]: One counterfeit item per input sample.
     """
-    counterfeit_classes = (
-        # All classes available
-        list(classification_system.get_enum())
-        if classification_system
-        # Only classes that appear at least once
-        else list(set([sample.ground_truth_class[0] for sample in samples]))
-    )
     rnd = np.random.RandomState(seed=seed)
 
     def pick_counterfeit_index(ground_truth_name: str) -> int:
@@ -287,6 +281,7 @@ def main(
     n_samples: int = 10,
     seed: int = 0,
     limited: bool = False,
+    example_version: str = "baseline",
 ) -> None:
     """Load ground truth samples for a classification system and generate counterfeits for the train split.
 
@@ -299,8 +294,9 @@ def main(
         seed (int): Seed for the random target-class assignment. Defaults to 0.
         limited (bool): If True, only generate counterfeits for classes that appear at least once in
             the sampled layers. Defaults to False.
+        example_version (str): Version of example to consider for class definitions.
     """
-    aws_model = AWSBedrockCounterfeits(examples_path=examples_path)
+    aws_model = AWSBedrockCounterfeits(examples_path=examples_path, example_version=example_version)
 
     # Step 1: Load ground truth examples for classes
     ground_truth = GroundTruth(ground_truth_path)
@@ -309,11 +305,16 @@ def main(
     samples = classification_system_cls.process(ground_truth=gt_boreholes)
 
     # Step 2: Generate counterfeit samples for classes
+    if limited:
+        counterfeit_classes = list(set([sample.ground_truth_class[0] for sample in samples]))
+    else:
+        counterfeit_classes = list(classification_system_cls.get_enum())
+
     counterfeit_samples = generate(
         samples=samples[:n_samples],
+        counterfeit_classes=counterfeit_classes,
         aws_model=aws_model,
         seed=seed,
-        classification_system=None if limited else classification_system_cls,
     )
 
     # Step 3: Save parsed outputs
@@ -373,6 +374,13 @@ if __name__ == "__main__":
         default=Path("data/bert_extra"),
         help="Output folder for the generated counterfeit ground truth.",
     )
+    parser.add_argument(
+        "-v",
+        "--version",
+        type=str,
+        default="baseline",
+        help="Version of example to consider for class definitions.",
+    )
 
     args = parser.parse_args()
 
@@ -383,4 +391,5 @@ if __name__ == "__main__":
         args.output_folder,
         n_samples=args.n_samples,
         limited=args.limited,
+        example_version=args.version,
     )
