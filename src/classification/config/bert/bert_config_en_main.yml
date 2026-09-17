@@ -16,6 +16,7 @@ training_sets:
       - zurich_ground_truth.json
       - bert_extra/negative_ground_truth.json
       - bert_extra/en_main_extra_ground_truth.json
+      - bert_extra/en_main_counterfeit_ground_truth.json
 
 test_sets:
   global_en_main:
@@ -28,6 +29,7 @@ test_sets:
       - zurich_ground_truth.json
       - bert_extra/negative_ground_truth.json
       - bert_extra/en_main_extra_ground_truth.json
+      - bert_extra/en_main_counterfeit_ground_truth.json
   deepwells_en_main:
     classification_system: en_main
     ground_truths:
@@ -53,6 +55,7 @@ test_sets:
     ground_truths:
       - bert_extra/negative_ground_truth.json
       - bert_extra/en_main_extra_ground_truth.json
+      - bert_extra/en_main_counterfeit_ground_truth.json
 
 # Custom Training hyperparameters
 hyperparameters:
