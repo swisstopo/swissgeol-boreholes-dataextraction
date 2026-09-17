@@ -189,10 +189,10 @@ def test_merge_compatible_candidates_merges_unique_pair():
     borehole = GroundwatersInBorehole([depth_only, date_only])
     borehole.merge_compatible_candidates()
 
-    assert len(borehole.groundwater_feature_list) == 1
-    feature = borehole.groundwater_feature_list[0].feature
+    assert len(borehole.features) == 1
+    feature = borehole.features[0].feature
     assert (feature.depth, feature.date, feature.elevation) == (5.0, date(2020, 3, 12), None)
-    assert borehole.groundwater_feature_list[0].rect == pymupdf.Rect(0, 0, 3, 3)
+    assert borehole.features[0].rect == pymupdf.Rect(0, 0, 3, 3)
 
 
 def test_merge_compatible_candidates_blocks_on_conflicting_field():
@@ -203,7 +203,7 @@ def test_merge_compatible_candidates_blocks_on_conflicting_field():
     borehole = GroundwatersInBorehole([a, b])
     borehole.merge_compatible_candidates()
 
-    assert len(borehole.groundwater_feature_list) == 2
+    assert len(borehole.features) == 2
 
 
 def test_merge_compatible_candidates_merges_mutually_compatible_group():
@@ -215,8 +215,8 @@ def test_merge_compatible_candidates_merges_mutually_compatible_group():
     borehole = GroundwatersInBorehole([depth_only, date_only, elevation_only])
     borehole.merge_compatible_candidates()
 
-    assert len(borehole.groundwater_feature_list) == 1
-    feature = borehole.groundwater_feature_list[0].feature
+    assert len(borehole.features) == 1
+    feature = borehole.features[0].feature
     assert (feature.depth, feature.date, feature.elevation) == (5.0, date(2020, 3, 12), 400.0)
 
 
@@ -229,7 +229,7 @@ def test_merge_compatible_candidates_leaves_pairwise_conflicting_group_unmerged(
     borehole = GroundwatersInBorehole([depth_5, depth_9, depth_13])
     borehole.merge_compatible_candidates()
 
-    assert len(borehole.groundwater_feature_list) == 3
+    assert len(borehole.features) == 3
 
 
 def test_merge_compatible_candidates_does_not_merge_across_pages():
@@ -240,4 +240,4 @@ def test_merge_compatible_candidates_does_not_merge_across_pages():
     borehole = GroundwatersInBorehole([depth_only, date_only])
     borehole.merge_compatible_candidates()
 
-    assert len(borehole.groundwater_feature_list) == 2
+    assert len(borehole.features) == 2

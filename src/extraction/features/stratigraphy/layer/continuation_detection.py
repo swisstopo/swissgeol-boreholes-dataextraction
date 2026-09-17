@@ -5,6 +5,7 @@ import dataclasses
 import numpy as np
 
 from extraction.features.extracted_borehole import ExtractedBorehole
+from extraction.features.groundwater.groundwater import GroundwatersInBorehole
 from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepths, LayerDepthsEntry
 from extraction.features.stratigraphy.layer.overlap_detection import (
@@ -402,14 +403,14 @@ def _merge_boreholes(
         predictions=new_predictions,
         bounding_boxes=borehole_to_extend.bounding_boxes + borehole_continuation.bounding_boxes,
         metadata=_merge_metadata(borehole_to_extend.metadata, borehole_continuation.metadata),
-        groundwater=borehole_to_extend.groundwater + borehole_continuation.groundwater,
+        groundwater=GroundwatersInBorehole(
+            borehole_to_extend.groundwater.features + borehole_continuation.groundwater.features
+        ),
     )
 
 
-def _merge_metadata(a: BoreholeMetadata | None, b: BoreholeMetadata | None) -> BoreholeMetadata | None:
+def _merge_metadata(a: BoreholeMetadata, b: BoreholeMetadata) -> BoreholeMetadata:
     """Combine two boreholes' matched name/elevation/coordinates, preferring whichever side has each set."""
-    if a is None or b is None:
-        return a or b
     return BoreholeMetadata(
         elevation=a.elevation or b.elevation, coordinates=a.coordinates or b.coordinates, name=a.name or b.name
     )

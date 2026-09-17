@@ -112,6 +112,6 @@ class FilePredictionsWithMetrics:
         return FilePredictionsWithMetrics(
             filename=filename,
             file_metadata=FileMetadata.from_json(json["file_metadata"], filename),
-            boreholes=[BoreholePredictions.from_json(bh_data, filename) for bh_data in json["boreholes"]],
+            boreholes=[BoreholePredictions.from_json(bh_data) for bh_data in json["boreholes"]],
             metrics=FilePredictionsMetrics.from_json(json["metrics"], filename) if json.get("metrics") else None,
         )

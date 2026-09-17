@@ -3,7 +3,7 @@
 import datetime
 import logging
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import pymupdf
@@ -183,7 +183,7 @@ def _group_by_page(
 class GroundwatersInBorehole:
     """Class for extracted groundwater information from a single borehole."""
 
-    groundwater_feature_list: list[FeatureOnPage[Groundwater]]
+    features: list[FeatureOnPage[Groundwater]] = field(default_factory=list)
 
     def to_json(self) -> list[dict]:
         """Converts the object to a list of dictionaries.
@@ -192,7 +192,7 @@ class GroundwatersInBorehole:
             list[dict]: The object as a list of dictionaries.
         """
         sorted_entries = sorted(
-            self.groundwater_feature_list,
+            self.features,
             key=lambda e: (
                 e.feature.depth or 0,
                 e.feature.date or datetime.date.min,
@@ -240,9 +240,9 @@ class GroundwatersInBorehole:
 
         def merge_into(target: FeatureOnPage[Groundwater], others: list[FeatureOnPage[Groundwater]]) -> None:
             for other in others:
-                for field in ("depth", "date", "elevation"):
-                    if getattr(target.feature, field) is None:
-                        setattr(target.feature, field, getattr(other.feature, field))
+                for attribute in ("depth", "date", "elevation"):
+                    if getattr(target.feature, attribute) is None:
+                        setattr(target.feature, attribute, getattr(other.feature, attribute))
                 target.rect_with_page.rect |= other.rect
 
         def merge_page(candidates: list[FeatureOnPage[Groundwater]]) -> list[FeatureOnPage[Groundwater]]:
@@ -263,11 +263,9 @@ class GroundwatersInBorehole:
                     break
             return result
 
-        pages = _group_by_page(self.groundwater_feature_list)
+        pages = _group_by_page(self.features)
 
-        self.groundwater_feature_list = [
-            gw for page_candidates in pages.values() for gw in merge_page(page_candidates)
-        ]
+        self.features = [gw for page_candidates in pages.values() for gw in merge_page(page_candidates)]
 
     def remove_overlaps(self):
         """Removes groundwater entries whose bounding box overlaps with another entry on the same page.
@@ -275,7 +273,7 @@ class GroundwatersInBorehole:
         When two entries' rects intersect, only the more compact one is kept, since the larger one likely
         just encloses unrelated neighboring text along with the actual reading.
         """
-        pages = _group_by_page(self.groundwater_feature_list)
+        pages = _group_by_page(self.features)
 
         result: list[FeatureOnPage[Groundwater]] = []
         for page_candidates in pages.values():
@@ -294,7 +292,7 @@ class GroundwatersInBorehole:
                 if keep:
                     non_overlapping.append(gw)
             result.extend(non_overlapping)
-        self.groundwater_feature_list = result
+        self.features = result
 
     def filter_entries(self, terrain_elevation: float | None, layers: list[Layer]):
         """Merges compatible candidates, removes duplicates, and sets the depth/elevation of all entries.
@@ -303,7 +301,7 @@ class GroundwatersInBorehole:
             terrain_elevation (float): The elevation of the terrain at the top of the borehole.
             layers (list[Layer]): The list of layers in the borehole.
         """
-        for entry in self.groundwater_feature_list:
+        for entry in self.features:
             entry.feature.infer_infos(terrain_elevation, layers, entry.rect)
         self.merge_compatible_candidates()
         self.remove_overlaps()

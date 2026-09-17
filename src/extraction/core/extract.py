@@ -212,12 +212,11 @@ def extract(
             for layer in borehole.predictions:
                 layer.material_description.insert_line_breaks(max_line_width)
 
-        # create list of BoreholePrediction objects; metadata is already matched and merged per borehole
-        borehole_predictions_list: list[BoreholePredictions] = build_borehole_predictions(merged_boreholes, filename)
-
-        # now that the matching is done, duplicated groundwater can be removed and depths info can be set
-        for borehole in borehole_predictions_list:
+            # now that the matching is done, duplicated groundwater can be removed and depths info can be set
             borehole.filter_groundwater_entries()
+
+        # create list of BoreholePrediction objects; metadata is already matched and merged per borehole
+        borehole_predictions_list: list[BoreholePredictions] = build_borehole_predictions(merged_boreholes)
 
         return ExtractionResult(
             predictions=FilePredictions(borehole_predictions_list, file_metadata, filename),
