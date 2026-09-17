@@ -6,15 +6,14 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import TypeVar
 
-from extraction.features.groundwater.groundwater_extraction import Groundwater, GroundwatersInBorehole
+from extraction.features.extracted_borehole import ExtractedBorehole
+from extraction.features.groundwater.groundwater import Groundwater
 from extraction.features.metadata.borehole_name_extraction import BoreholeName
 from extraction.features.metadata.coordinate_extraction import Coordinate
 from extraction.features.metadata.elevation_extraction import Elevation
-from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.predictions.borehole_predictions import (
     BoreholePredictions,
 )
-from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, LayersInDocument
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage
 
 logger = logging.getLogger(__name__)
@@ -184,12 +183,10 @@ def assign_page_metadata(extracted_boreholes: list[ExtractedBorehole], candidate
     groundwater_by_borehole = _many_to_one_match_element_to_borehole(candidates.groundwater, extracted_boreholes)
 
     for index, borehole in enumerate(extracted_boreholes):
-        if borehole.metadata is None:
-            borehole.metadata = BoreholeMetadata()
         borehole.metadata.name = borehole.metadata.name or name_by_borehole.get(index)
         borehole.metadata.elevation = borehole.metadata.elevation or elevation_by_borehole.get(index)
         borehole.metadata.coordinates = borehole.metadata.coordinates or coordinate_by_borehole.get(index)
-        borehole.groundwater.extend(groundwater_by_borehole.get(index, []))
+        borehole.groundwater.features.extend(groundwater_by_borehole.get(index, []))
 
 
 @dataclass
@@ -226,9 +223,7 @@ def resolve_boreholeless_pages(
             assign_page_metadata(unambiguous_neighbors[0], page)
 
 
-def build_borehole_predictions(
-    layers_with_bb_in_document: LayersInDocument, file_name: str
-) -> list[BoreholePredictions]:
+def build_borehole_predictions(extracted_boreholes: list[ExtractedBorehole]) -> list[BoreholePredictions]:
     """Builds the final list of BoreholePredictions from already-matched, merged boreholes.
 
     Metadata (name, elevation, coordinates, groundwater) is matched to boreholes per page, before
@@ -240,10 +235,9 @@ def build_borehole_predictions(
         BoreholePredictions(
             borehole_index,
             borehole.predictions,
-            file_name,
-            borehole.metadata or BoreholeMetadata(),
-            GroundwatersInBorehole(borehole.groundwater),
+            borehole.metadata,
+            borehole.groundwater,
             borehole.bounding_boxes,
         )
-        for borehole_index, borehole in enumerate(layers_with_bb_in_document.boreholes_layers_with_bb)
+        for borehole_index, borehole in enumerate(extracted_boreholes)
     ]

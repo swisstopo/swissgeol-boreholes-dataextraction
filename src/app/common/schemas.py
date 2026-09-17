@@ -29,7 +29,7 @@ from classification.utils.datasets.lithology import LithologySystem
 from classification.utils.datasets.mineral_components import MineralComponentsSystem
 from classification.utils.datasets.organic_components import OrganicComponentsSystem
 from classification.utils.datasets.uscs import USCSSystem
-from extraction.features.groundwater.groundwater_extraction import Groundwater
+from extraction.features.groundwater.groundwater import Groundwater
 from extraction.features.stratigraphy.layer.layer import Layer, LayerDepthsEntry
 from swissgeol_doc_processing.text.textblock import MaterialDescription
 from swissgeol_doc_processing.utils.data_extractor import FeatureOnPage

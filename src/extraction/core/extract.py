@@ -22,7 +22,6 @@ from extraction.features.predictions.predictions import (
     resolve_boreholeless_pages,
 )
 from extraction.features.stratigraphy.layer.continuation_detection import merge_boreholes
-from extraction.features.stratigraphy.layer.layer import ExtractedBorehole, LayersInDocument
 from swissgeol_doc_processing.geometry.geometry_dataclasses import Line
 from swissgeol_doc_processing.geometry.line_detection import extract_lines
 from swissgeol_doc_processing.text.extract_text import extract_text_lines
@@ -82,17 +81,6 @@ def open_pdf(
     )
     yield doc
     doc.close()
-
-
-def _reference_line_width(borehole: ExtractedBorehole) -> float | None:
-    """Return the width of each borehole's longest description line.
-
-    `MaterialDescription.insert_line_breaks` uses this as a reference for how long a line can get
-    before the layout wraps it. Scoped per borehole (not per file): different boreholes, even across
-    pages of the same file, can have differently sized description columns.
-    """
-    line_widths = [line.rect.width for layer in borehole.predictions for line in layer.material_description.lines]
-    return max(line_widths, default=None)
 
 
 def extract(
@@ -205,21 +193,13 @@ def extract(
         resolve_boreholeless_pages(boreholes_per_page, boreholeless_pages)
 
         # Merge detections if possible
-        layers_with_bb_in_document = LayersInDocument(merge_boreholes(boreholes_per_page, matching_params), filename)
+        merged_boreholes = merge_boreholes(boreholes_per_page, matching_params)
 
-        for borehole in layers_with_bb_in_document.boreholes_layers_with_bb:
-            max_line_width = _reference_line_width(borehole)
-            for layer in borehole.predictions:
-                layer.material_description.insert_line_breaks(max_line_width)
+        for borehole in merged_boreholes:
+            borehole.post_processing()
 
         # create list of BoreholePrediction objects; metadata is already matched and merged per borehole
-        borehole_predictions_list: list[BoreholePredictions] = build_borehole_predictions(
-            layers_with_bb_in_document, filename
-        )
-
-        # now that the matching is done, duplicated groundwater can be removed and depths info can be set
-        for borehole in borehole_predictions_list:
-            borehole.filter_groundwater_entries()
+        borehole_predictions_list: list[BoreholePredictions] = build_borehole_predictions(merged_boreholes)
 
         return ExtractionResult(
             predictions=FilePredictions(borehole_predictions_list, file_metadata, filename),

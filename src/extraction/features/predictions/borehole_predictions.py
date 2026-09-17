@@ -10,7 +10,7 @@ from core.ground_truth import (
     GroundTruthLayer,
     GroundTruthMetadata,
 )
-from extraction.features.groundwater.groundwater_extraction import GroundwatersInBorehole
+from extraction.features.groundwater.groundwater import GroundwatersInBorehole
 from extraction.features.metadata.metadata import BoreholeMetadata
 from extraction.features.stratigraphy.layer.layer import Layer
 from extraction.features.stratigraphy.layer.page_bounding_boxes import PageBoundingBoxes
@@ -22,7 +22,6 @@ class BoreholePredictions:
 
     borehole_index: int
     layers: list[Layer]
-    file_name: str
     metadata: BoreholeMetadata
     groundwater_in_borehole: GroundwatersInBorehole
     bounding_boxes: list[PageBoundingBoxes]
@@ -71,12 +70,11 @@ class BoreholePredictions:
         return output.getvalue()
 
     @classmethod
-    def from_json(cls, json_object, file_name) -> "BoreholePredictions":
+    def from_json(cls, json_object) -> "BoreholePredictions":
         """Extract a BoreholePrediction object from a json dictionary.
 
         Args:
             json_object (dict): the json object containing the informations of the borehole
-            file_name: the file name
 
         Returns:
             (BoreholePredictions): the extracted object
@@ -84,7 +82,6 @@ class BoreholePredictions:
         return cls(
             json_object["borehole_index"],
             [Layer.from_json(layer_json) for layer_json in json_object["layers"]],
-            file_name,
             BoreholeMetadata.from_json(json_object["metadata"]),
             GroundwatersInBorehole.from_json(json_object["groundwater"]),
             [PageBoundingBoxes.from_json(bbox_json) for bbox_json in json_object["bounding_boxes"]],
