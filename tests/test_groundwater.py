@@ -10,7 +10,7 @@ from core.benchmark_utils import Metrics
 from core.ground_truth import GroundTruth
 from extraction.evaluation.groundwater_evaluator import GroundwaterEvaluator
 from extraction.features.groundwater.groundwater import Groundwater, GroundwatersInBorehole
-from extraction.features.groundwater.utility import extract_date, extract_elevation
+from extraction.features.groundwater.utility import extract_date, extract_depth, extract_elevation
 from extraction.features.predictions.borehole_predictions import (
     BoreholeGroundwaterWithGroundTruth,
     FileGroundwaterWithGroundTruth,
@@ -77,6 +77,15 @@ def test_extract_date(date_test_cases):
     """Test extract_date function with various inputs."""
     for text, expected_date, expected_str in date_test_cases:
         assert extract_date(text) == (expected_date, expected_str)
+
+
+def test_extract_depth():
+    """Test extract_depth function with various inputs."""
+    assert extract_depth("12.07", max_depth=100) == Decimal("12.07")
+    assert extract_depth("0,07", max_depth=100) == Decimal("0.07")
+    assert extract_depth(".43.75", max_depth=100) == Decimal("43.75")
+    assert extract_depth("43.75", max_depth=10) is None
+    assert extract_depth("test", max_depth=100) is None
 
 
 def test_extract_elevation_ignores_millimeter_diameters():

@@ -45,18 +45,18 @@ def extract_depth(text: str, max_depth: int) -> Decimal | None:
         Decimal | None: The extracted depth.
     """
     depth_patterns = [
-        r"([\d.]+)\s*m\s*u\.t\.",  # e.g. "5.13 m u.T."
-        r"([\d.]+)\s*m\s*u\.t",
+        r"(\d+\.?\d+?)\s*m\s*u\.t\.",  # e.g. "5.13 m u.T."
+        r"(\d+\.?\d+?)\s*m\s*u\.t",
         r"(\d+\.\d+)",
     ]
 
     depth = None
-    corrected_text = correct_ocr_text(text).lower()
+    corrected_text = correct_ocr_text(text).lower().replace(",", ".")
     for pattern in depth_patterns:
         depth_match = regex.search(pattern, corrected_text)
         try:
             if depth_match:
-                depth = Decimal(depth_match.group(1).replace(",", "."))
+                depth = Decimal(depth_match.group(1))
                 if depth > max_depth:
                     # If the extracted depth is greater than the max depth, set it to None and continue searching.
                     depth = None
