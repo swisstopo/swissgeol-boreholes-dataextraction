@@ -4,6 +4,7 @@ import datetime
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
+from decimal import Decimal
 
 import numpy as np
 import pymupdf
@@ -21,12 +22,12 @@ logger = logging.getLogger(__name__)
 class Groundwater(ExtractedFeature):
     """Abstract class for Groundwater Information."""
 
-    depth: float | None  # Depth of the groundwater relative to the surface
+    depth: Decimal | None  # Depth of the groundwater relative to the surface
     date: datetime.date | None = (
         None  # Date of the groundwater measurement, if several dates
         # are present, the date of the document the last measurement is taken
     )
-    elevation: float | None = None  # Elevation of the groundwater relative to the mean sea level
+    elevation: Decimal | None = None  # Elevation of the groundwater relative to the mean sea level
 
     def __str__(self) -> str:
         """Converts the object to a string.
@@ -38,14 +39,14 @@ class Groundwater(ExtractedFeature):
 
     @classmethod
     def from_json_values(
-        cls, depth: float | None, date: str | None, elevation: float | None, is_correct: bool | None = None
+        cls, depth: Decimal | None, date: str | None, elevation: Decimal | None, is_correct: bool | None = None
     ) -> "Groundwater":
         """Converts the object from a dictionary.
 
         Args:
-            depth (float | None): The depth of the groundwater.
+            depth (Decimal | None): The depth of the groundwater.
             date (str | None): The measurement date of the groundwater.
-            elevation (float | None): The elevation of the groundwater.
+            elevation (Decimal | None): The elevation of the groundwater.
             is_correct (bool | None): Indicator of correctness w.r.t. ground truth.
 
         Returns:
@@ -93,24 +94,24 @@ class Groundwater(ExtractedFeature):
         """
         return {
             "date": self.format_date(),
-            "depth": self.depth,
-            "elevation": self.elevation,
+            "depth": float(self.depth) if self.depth is not None else None,
+            "elevation": float(self.elevation) if self.elevation is not None else None,
             "is_correct": self.is_correct,
         }
 
-    def infer_infos(self, terrain_elevation: float | None, layers: list[Layer], feature_rect: pymupdf.Rect):
+    def infer_infos(self, terrain_elevation: Decimal | None, layers: list[Layer], feature_rect: pymupdf.Rect):
         """Sets the depth or elevation of the groundwater, knowing one and the terrain elevation.
 
         If both information are missing, tries to infer them from the given layers and the feature rectangle.
 
         Args:
-            terrain_elevation (float): The elevation of the terrain at the top of the borehole.
+            terrain_elevation (Decimal): The elevation of the terrain at the top of the borehole.
             layers (list[Layer]): The list of layers in the borehole.
             feature_rect (pymupdf.Rect): The bounding box of the groundwater feature.
         """
         if self.depth is None:
             if self.elevation is not None and terrain_elevation is not None:
-                self.depth = round(terrain_elevation - self.elevation, 2)
+                self.depth = terrain_elevation - self.elevation
             else:
                 # TODO https://github.com/swisstopo/swissgeol-boreholes-dataextraction/issues/293
                 # Optional method to infer groundwater depths when they are not explicitly provided.
@@ -122,9 +123,9 @@ class Groundwater(ExtractedFeature):
             return
 
         if self.elevation is None and terrain_elevation is not None:
-            self.elevation = round(terrain_elevation - self.depth, 2)
+            self.elevation = terrain_elevation - self.depth
 
-    def infer_depth(self, layers: list[Layer], feature_rect: pymupdf.Rect) -> float | None:
+    def infer_depth(self, layers: list[Layer], feature_rect: pymupdf.Rect) -> Decimal | None:
         """Infers the depth of the groundwater feature based on the given layers and feature rectangle.
 
         TODO https://github.com/swisstopo/swissgeol-boreholes-dataextraction/issues/293
@@ -136,7 +137,7 @@ class Groundwater(ExtractedFeature):
             feature_rect (pymupdf.Rect): The bounding box of the groundwater feature.
 
         Returns:
-            float | None: The inferred depth of the groundwater feature, or None if it could not be determined.
+            Decimal | None: The inferred depth of the groundwater feature, or None if it could not be determined.
         """
         # Step 1: Prepare depths and y-values
         depths = np.array(
@@ -164,7 +165,7 @@ class Groundwater(ExtractedFeature):
         if y_value < min(depths[:, 1]) or y_value > max(depths[:, 1]):  # out of bounds, not reliable
             return None
         a, b = np.polyfit(depths[:, 0], depths[:, 1], 1)
-        depth = round((y_value - b) / a, 2)
+        depth = Decimal(str(round((y_value - b) / a, 2)))
         logger.info(f"Inferred depth for groundwater: {depth}")
         return depth
 
@@ -294,11 +295,11 @@ class GroundwatersInBorehole:
             result.extend(non_overlapping)
         self.features = result
 
-    def filter_entries(self, terrain_elevation: float | None, layers: list[Layer]):
+    def filter_entries(self, terrain_elevation: Decimal | None, layers: list[Layer]):
         """Merges compatible candidates, removes duplicates, and sets the depth/elevation of all entries.
 
         Args:
-            terrain_elevation (float): The elevation of the terrain at the top of the borehole.
+            terrain_elevation (Decimal | None): The elevation of the terrain at the top of the borehole.
             layers (list[Layer]): The list of layers in the borehole.
         """
         for entry in self.features:

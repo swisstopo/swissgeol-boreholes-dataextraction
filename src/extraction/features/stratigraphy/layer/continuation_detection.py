@@ -346,7 +346,9 @@ def _is_continuation(
         bool: True if the current borehole is the continuation of the previous borehole, False otherwise.
     """
     ok_prev_layers = [lay for lay in borehole_to_extend.predictions if lay.depths is not None]
-    prev_depths = [d.value for lay in ok_prev_layers for d in (lay.depths.start, lay.depths.end) if d is not None]
+    prev_depths = [
+        float(d.value) for lay in ok_prev_layers for d in (lay.depths.start, lay.depths.end) if d is not None
+    ]
 
     ok_layers = [lay for lay in borehole_continuation.predictions if lay.depths is not None]
     depths = [d.value for lay in ok_layers for d in (lay.depths.start, lay.depths.end) if d is not None]

@@ -2,6 +2,7 @@
 
 import datetime
 import logging
+from decimal import Decimal
 
 from extraction.features.extracted_borehole import ExtractedBorehole
 from extraction.features.groundwater.groundwater import Groundwater
@@ -73,8 +74,8 @@ class GroundwaterLevelExtractor(DataExtractor):
             FeatureOnPage[Groundwater]: the extracted groundwater information
         """
         date: datetime.date | None = None
-        depth: float | None = None
-        elevation: float | None = None
+        depth: Decimal | None = None
+        elevation: Decimal | None = None
 
         matched_lines_rect = []
         for line in lines:
