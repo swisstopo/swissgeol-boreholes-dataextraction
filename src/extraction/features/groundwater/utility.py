@@ -45,8 +45,8 @@ def extract_depth(text: str, max_depth: int) -> Decimal | None:
         Decimal | None: The extracted depth.
     """
     depth_patterns = [
-        r"(\d+\.?\d+?)\s*m\s*u\.t\.",  # e.g. "5.13 m u.T."
-        r"(\d+\.?\d+?)\s*m\s*u\.t",
+        r"(\d+(?:\.\d+)?)\s*m\s*u\.t\.",  # e.g. "5.13 m u.T."
+        r"(\d+(?:\.\d+)?)\s*m\s*u\.t",
         r"(\d+\.\d+)",
     ]
 
