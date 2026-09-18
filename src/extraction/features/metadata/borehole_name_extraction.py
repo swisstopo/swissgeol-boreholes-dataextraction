@@ -66,22 +66,6 @@ class BoreholeName(ExtractedFeature):
         return cls(name=data["name"], confidence=data["confidence"], is_correct=data.get("is_correct"))
 
 
-@dataclass
-class NameInDocument:
-    """Class for extracted borehole name information from a document."""
-
-    name_feature_list: list[FeatureOnPage[BoreholeName]]
-    filename: str
-
-    def to_json(self) -> list[dict]:
-        """Converts the object to a list of dictionaries.
-
-        Returns:
-            list[dict]: The object as a list of dictionaries.
-        """
-        return [entry.to_json() for entry in self.name_feature_list]
-
-
 def _find_closest_nearby_line(
     current_line: TextLine, all_lines: list[TextLine], min_vertical_overlap: float, max_horizontal_distance: float
 ) -> TextLine | None:

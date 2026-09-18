@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import pymupdf
 
-from extraction.features.stratigraphy.layer.layer import ExtractedBorehole
+from extraction.features.extracted_borehole import ExtractedBorehole
 from extraction.features.stratigraphy.sidebar.classes.layer_identifier_sidebar import LayerIdentifierSidebar
 from extraction.features.stratigraphy.sidebar.classes.sidebar import Sidebar, SidebarNoise
 
