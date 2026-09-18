@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import statistics
 from dataclasses import dataclass
 from decimal import Decimal
 from itertools import product
@@ -114,7 +115,7 @@ class AAboveBSidebar(DepthColumEntrySidebar):
         # Repeatedly improve the values until there is nothing left to improve
         while continue_search:
             continue_search = False
-            median_value = np.median(np.array([entry.value for entry in self.entries]))
+            median_value = statistics.median([entry.value for entry in self.entries])
 
             for i, entry in enumerate(self.entries):
                 if entry.value > median_value and not entry.has_decimal_point:

@@ -165,7 +165,7 @@ class Groundwater(ExtractedFeature):
         if y_value < min(depths[:, 1]) or y_value > max(depths[:, 1]):  # out of bounds, not reliable
             return None
         a, b = np.polyfit(depths[:, 0], depths[:, 1], 1)
-        depth = Decimal(round((y_value - b) / a, 2))
+        depth = Decimal(str(round((y_value - b) / a, 2)))
         logger.info(f"Inferred depth for groundwater: {depth}")
         return depth
 

@@ -241,8 +241,10 @@ class CoordinateExtractor(DataExtractor):
         potential_coordinates = [
             FeatureOnPage(
                 feature=Coordinate.from_values(
-                    east=float("{}.{}".format("".join(match.groups(default="")[:3]), match.groups(default="")[3])),
-                    north=float("{}.{}".format("".join(match.groups(default="")[4:-1]), match.groups(default="")[-1])),
+                    east=Decimal("{}.{}".format("".join(match.groups(default="")[:3]), match.groups(default="")[3])),
+                    north=Decimal(
+                        "{}.{}".format("".join(match.groups(default="")[4:-1]), match.groups(default="")[-1])
+                    ),
                 ),
                 page=page,
                 rect=rect,

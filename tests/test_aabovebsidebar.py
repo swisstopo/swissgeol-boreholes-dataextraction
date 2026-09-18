@@ -137,7 +137,7 @@ def test_aabovebsidebar_fixocrmistakes():  # noqa: D103
     # edge case
     run_test([], [])
 
-    # Test decimal point for "383"_Schlatt_Gishalden_KB"1" (if decimal detected, not rescaled)
+    # Test decimal point for "383"_Schlatt_Gishalden_KB1 (if decimal detected, not rescaled)
     run_test(["1.0", "2.0", "30.0", "4.0"], ["1.0", "2.0", "30.0", "4.0"])
     run_test(["1.0", "2.0", "30", "4.0"], ["1.0", "2.0", "3.0", "4.0"])
 
